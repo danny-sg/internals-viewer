@@ -5,10 +5,13 @@ namespace InternalsViewer.Query.FullTrace.Export;
 internal static class ExportBinary
 {
     public static void WriteArray<T>(BinaryWriter writer, T[] values) where T : unmanaged
+        => WriteArray(writer, (ReadOnlySpan<T>)values);
+
+    public static void WriteArray<T>(BinaryWriter writer, ReadOnlySpan<T> values) where T : unmanaged
     {
         writer.Write(values.Length);
 
-        writer.Write(MemoryMarshal.AsBytes(values.AsSpan()));
+        writer.Write(MemoryMarshal.AsBytes(values));
     }
 
     public static T[] ReadArray<T>(BinaryReader reader) where T : unmanaged

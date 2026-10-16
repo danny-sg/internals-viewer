@@ -9,6 +9,7 @@ using InternalsViewer.Internals.BatchMode.Normalization;
 using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Batches;
+using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
@@ -67,6 +68,8 @@ public sealed partial class BatchesViewModel(CallStackNode node, CallStoreLookup
 
     private bool IsDecoded { get; set; } = isDecoded;
 
+    private int? RequestedCall { get; set; }
+
     private (BatchSlotRow Row, int Ordinal)? SelectedSlot { get; set; }
 
     public bool IsShowing(CallStackNode other)
@@ -93,6 +96,8 @@ public sealed partial class BatchesViewModel(CallStackNode node, CallStoreLookup
             Table = table;
 
             Message = table.Rows.Count == 0 ? "No Batches" : null;
+
+            ApplyRequestedCall();
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
@@ -174,6 +179,13 @@ public sealed partial class BatchesViewModel(CallStackNode node, CallStoreLookup
         RefreshDetail();
     }
 
+    public void SelectCall(int call)
+    {
+        RequestedCall = call;
+
+        ApplyRequestedCall();
+    }
+
     public CallStackNode? GetCallNode(int call)
         => Node.Frame is { } frame
            && lookup.Store.GetCallList(frame.Address, frame.Instance) is { } calls
@@ -202,6 +214,23 @@ public sealed partial class BatchesViewModel(CallStackNode node, CallStoreLookup
     }
 
     private static string GetText(byte[] data) => string.Concat(data.Select(b => b is >= 32 and < 127 ? (char)b : '.'));
+
+    private void ApplyRequestedCall()
+    {
+        if (RequestedCall is not { } call || Table is not { Rows: var rows })
+        {
+            return;
+        }
+
+        RequestedCall = null;
+
+        var index = SortedSearch.FirstAtOrAfter(rows, (long)call, r => r.Id);
+
+        if (index < rows.Count && rows[index].Id == call)
+        {
+            SelectedRow = rows[index];
+        }
+    }
 
     private QueryResultSet BuildTable(ulong address, ulong instance)
     {

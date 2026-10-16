@@ -4,7 +4,7 @@ public sealed record CustomHookCapture(string Name,
                                        ulong Function,
                                        ulong Instance,
                                        int Call,
-                                       ulong Id,
+                                       TracePosition Position,
                                        uint Thread,
                                        ulong Address,
                                        byte[] Data);

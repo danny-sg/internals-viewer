@@ -15,18 +15,18 @@ public sealed partial class TraceTimelineRow
 
     internal void Write(BinaryWriter writer)
     {
-        ExportBinary.WriteArray(writer, PositionStarts);
+        ExportBinary.WriteArray<double>(writer, PositionStarts.AsSpan(Offset, Count));
 
-        ExportBinary.WriteArray(writer, PositionEnds);
+        ExportBinary.WriteArray<double>(writer, PositionEnds.AsSpan(Offset, Count));
 
-        ExportBinary.WriteArray(writer, InstructionStarts);
+        ExportBinary.WriteArray<double>(writer, InstructionStarts.AsSpan(Offset, Count));
 
-        ExportBinary.WriteArray(writer, InstructionEnds);
+        ExportBinary.WriteArray<double>(writer, InstructionEnds.AsSpan(Offset, Count));
 
-        ExportBinary.WriteArray(writer, Nodes);
+        ExportBinary.WriteArray<int>(writer, Nodes.AsSpan(Offset, Count));
 
-        ExportBinary.WriteArray(writer, Calls);
+        ExportBinary.WriteArray<uint>(writer, Calls.AsSpan(Offset, Count));
 
-        ExportBinary.WriteArray(writer, Flags);
+        ExportBinary.WriteArray<byte>(writer, Flags.AsSpan(Offset, Count));
     }
 }

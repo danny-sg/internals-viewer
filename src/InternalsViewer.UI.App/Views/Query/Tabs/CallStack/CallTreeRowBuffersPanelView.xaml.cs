@@ -10,6 +10,11 @@ namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 
 public sealed partial class CallTreeRowBuffersPanelView : UserControl, IDocumentCommands
 {
+    private const double CommandSpacing = 4;
+
+    private const string SourceToolTip = "Add a column after each field showing where its value came from: inline in the row buffer, "
+                                         + "the buffer pool, a LOB, another operator's row buffer or batch, or other memory";
+
     public CallTreeRowBuffersPanelView()
     {
         InitializeComponent();
@@ -19,7 +24,13 @@ public sealed partial class CallTreeRowBuffersPanelView : UserControl, IDocument
 
     public RowBuffersViewModel? ViewModel => DataContext as RowBuffersViewModel;
 
-    public FrameworkElement CreateCommands() => TabCommands.Panel(0, new DecodeToggle());
+    public FrameworkElement CreateCommands()
+        => TabCommands.Panel(CommandSpacing,
+                             new DecodeToggle(),
+                             TabCommands.Toggle(TabCommands.Label("Source"),
+                                                ViewModel?.IsSourceVisible == true,
+                                                SourceToolTip,
+                                                (sender, _) => ViewModel?.SetSourceVisible(TabCommands.IsChecked(sender))));
 
     private void OnCallClicked(object? sender, CallValue value) => ViewModel?.Owner.Tree.ShowCall(value.Node, value.Call);
 

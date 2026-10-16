@@ -46,7 +46,6 @@ internal sealed class TraceHooks
             Function = source->Function,
             Instance = source->Instance,
             Id = source->Id,
-            CallCount = source->CallCount,
             Call = source->Call,
             Thread = source->Thread,
             Node = source->Node,
@@ -54,8 +53,7 @@ internal sealed class TraceHooks
             ReturnValue = source->ReturnValue,
             StackPointer = source->StackPointer,
             ReturnAddress = source->ReturnAddress,
-            Sequence = source->Sequence,
-            Steps = source->Steps,
+            Position = new TracePosition(source->Sequence, source->Steps),
             Instructions = source->Instructions
         };
 

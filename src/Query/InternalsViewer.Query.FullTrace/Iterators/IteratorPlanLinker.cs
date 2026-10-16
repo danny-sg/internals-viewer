@@ -172,8 +172,8 @@ internal static class IteratorPlanLinker
                 continue;
             }
 
-            var parent = factoryNodes[ancestor].Where(f => f.Thread == call.Thread && f.Sequence <= call.Sequence)
-                                               .MaxBy(f => (f.Sequence, f.Index));
+            var parent = factoryNodes[ancestor].Where(f => f.Thread == call.Thread && f.FromPosition <= call.FromPosition)
+                                               .MaxBy(f => (f.FromPosition, f.Index));
 
             if (parent is not null)
             {
@@ -319,7 +319,7 @@ internal static class IteratorPlanLinker
 
         public uint Thread => Call.ThreadId;
 
-        public ulong Sequence => Call.Sequence;
+        public TracePosition FromPosition => Call.FromPosition;
 
         public ulong Object => Call.Slot(ObjectRegister);
 
@@ -329,11 +329,11 @@ internal static class IteratorPlanLinker
 
         public static int Compare(LoggedCall x, LoggedCall y)
         {
-            var sequence = x.Sequence.CompareTo(y.Sequence);
+            var start = x.FromPosition.CompareTo(y.FromPosition);
 
-            if (sequence != 0)
+            if (start != 0)
             {
-                return sequence;
+                return start;
             }
 
             var order = x.Node.Order.CompareTo(y.Node.Order);

@@ -9,13 +9,21 @@ namespace InternalsViewer.UI.App.Controls.FlameChart;
 
 public sealed partial class FlameChartControl
 {
-    private const float RowBufferBarHeight = 9f;
+    private const float MarkBandHeight = 9f;
+
+    private const float MarkBandShare = 0.4f;
 
     private const float RowBufferMarkWidth = 2f;
+
+    private const string MarkBandToolTip = "Row Buffers/Batches";
 
     private static readonly SKColor RowBufferMarkColour = new(0xFF, 0x99, 0xA4);
 
     private static readonly SKColor BatchMarkColour = new(0x8C, 0xC8, 0xFF);
+
+    private static readonly SKColor MarkBandColour = new(48, 48, 48);
+
+    private static readonly SKColor MarkBandHoverColour = new(78, 78, 78);
 
     public static readonly DependencyProperty RowBufferMarksProperty =
         DependencyProperty.Register(nameof(RowBufferMarks),
@@ -41,27 +49,43 @@ public sealed partial class FlameChartControl
         set => SetValue(ShowRowBuffersProperty, value);
     }
 
-    private bool ShowsRowBuffers => ShowRowBuffers && RowBufferMarks is { Count: > 0 };
+    private int? _hoverMarkBand;
 
-    private float RowsOffset => LaneHeaderHeight + (ShowsRowBuffers ? RowBufferBarHeight : 0);
+    public event Action<CallStackNode, int, bool>? RowBufferOpenRequested;
 
-    private void DrawRowBufferBar(SKCanvas canvas, TraceTimelineThread thread, float top, int width, double scale)
+    private bool HasMarkBand(int row)
+        => ShowRowBuffers && RowBufferMarks is { Count: > 0 } marks && marks.HasMarks(_operatorRows[row].Operator);
+
+    private float MarkBandHeightOf(int row) => HasMarkBand(row) ? Math.Min(MarkBandHeight, OperatorRowHeight * MarkBandShare) : 0;
+
+    private void DrawMarkBand(SKCanvas canvas, int row, int width, double scale)
     {
-        if (!ShowsRowBuffers || RowBufferMarks is not { } marks)
+        var height = MarkBandHeightOf(row);
+
+        if (height <= 0 || RowBufferMarks is not { } marks)
         {
             return;
         }
 
-        _paints.Fill.Color = OperatorPaneColour;
+        var top = OperatorRowTop(row) + OperatorRowHeight - height;
 
-        canvas.DrawRect(0, top, width, RowBufferBarHeight, _paints.Fill);
+        _paints.Fill.Color = _hoverMarkBand == row ? MarkBandHoverColour : MarkBandColour;
 
-        DrawMarks(canvas, marks.GetMarks(thread.ThreadId, _axis), top, scale, RowBufferMarkColour);
+        canvas.DrawRect(0, top, width, height, _paints.Fill);
 
-        DrawMarks(canvas, marks.GetBatchMarks(thread.ThreadId, _axis), top, scale, BatchMarkColour);
+        var operatorEvent = _operatorRows[row].Operator;
+
+        DrawMarks(canvas, marks.GetMarks(operatorEvent, _axis), top, height, scale, RowBufferMarkColour);
+
+        DrawMarks(canvas, marks.GetBatchMarks(operatorEvent, _axis), top, height, scale, BatchMarkColour);
     }
 
-    private void DrawMarks(SKCanvas canvas, ReadOnlySpan<double> values, float top, double scale, SKColor colour)
+    private void DrawMarks(SKCanvas canvas,
+                           ReadOnlySpan<double> values,
+                           float top,
+                           float height,
+                           double scale,
+                           SKColor colour)
     {
         if (values.IsEmpty)
         {
@@ -76,51 +100,37 @@ public sealed partial class FlameChartControl
         {
             var x = (float)((values[index] - _viewStart) * scale);
 
-            canvas.DrawRect(x, top + 1, RowBufferMarkWidth, RowBufferBarHeight - 2, _paints.Fill);
+            canvas.DrawRect(x, top + 1, RowBufferMarkWidth, height - 2, _paints.Fill);
 
             index = SortedSearch.FirstAtOrAfter(values, _viewStart + (Math.Floor(x) + RowBufferMarkWidth) / scale, index + 1);
         }
     }
 
-    private bool IsOnRowBufferBar(Point position) => GetRowBufferLane(position) >= 0;
-
-    private (CallStackNode Node, int Call)? GetRowBufferMarkAt(Point position)
+    private int? MarkBandAt(Point position)
     {
-        if (GetRowBufferLane(position) is not (>= 0 and var lane)
-            || _visible is not { } timeline
-            || RowBufferMarks is not { } marks)
+        if (OperatorRowAt(position) is not { } found)
         {
             return null;
         }
 
-        var scale = PixelsPerUnit((int)_overlay.ActualWidth);
+        var height = MarkBandHeightOf(found.Row);
 
-        return marks.GetMarkAt(timeline.Threads[lane].ThreadId,
-                               _axis,
-                               _viewStart + position.X / scale,
-                               (HitTolerance + RowBufferMarkWidth) / scale);
+        return height > 0 && found.InRow >= OperatorRowHeight - height ? found.Row : null;
     }
 
-    private int GetRowBufferLane(Point position)
+    private void OpenNearestMark(int row, Point position)
     {
-        if (!ShowsRowBuffers || _visible is not { } timeline || position.Y < ContentTop)
+        if (RowBufferMarks is not { } marks)
         {
-            return -1;
+            return;
         }
 
-        var contentY = position.Y - ContentTop + _scrollY;
+        var scale = PixelsPerUnit((int)_overlay.ActualWidth);
 
-        for (var lane = 0; lane < timeline.Threads.Count && lane < _laneTops.Length; lane++)
+        if (marks.GetNearestMark(_operatorRows[row].Operator, _axis, _viewStart + position.X / scale) is { } mark)
         {
-            var top = _laneTops[lane] + LaneHeaderHeight;
-
-            if (_laneTops[lane] + RowsOffset >= _scrollY && contentY >= top && contentY < top + RowBufferBarHeight)
-            {
-                return lane;
-            }
+            RowBufferOpenRequested?.Invoke(mark.Node, mark.Call, mark.IsBatch);
         }
-
-        return -1;
     }
 
     private static void OnRowBuffersChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

@@ -160,11 +160,9 @@ public sealed partial class FlameChartControl
                 break;
             }
 
-            if (laneTop + RowsOffset >= ContentTop)
+            if (laneTop + LaneHeaderHeight >= ContentTop)
             {
                 DrawLaneHeader(canvas, timeline.Threads[lane], laneTop, width, timeline.Threads.Count > 1);
-
-                DrawRowBufferBar(canvas, timeline.Threads[lane], laneTop + LaneHeaderHeight, width, scale);
             }
         }
 
@@ -187,7 +185,7 @@ public sealed partial class FlameChartControl
         {
             var thread = timeline.Threads[lane];
 
-            var rowsTop = ContentTop + _laneTops[lane] - (float)_scrollY + RowsOffset;
+            var rowsTop = ContentTop + _laneTops[lane] - (float)_scrollY + LaneHeaderHeight;
 
             for (var depth = 0; depth < DepthOf(thread) && depth < thread.Rows.Count; depth++)
             {
@@ -331,18 +329,22 @@ public sealed partial class FlameChartControl
                 continue;
             }
 
-            if (runStart < 0 || left > runEnd + NarrowSpan)
+            var colour = ColourOf(row.NodeAt(index));
+
+            if (focus is { } narrow && narrow.Excludes(visible.Lane, visible.Depth, starts[index], ends[index]))
+            {
+                colour = Dimmed(colour);
+            }
+
+            var isContiguous = runStart >= 0 && left <= runEnd + NarrowSpan;
+
+            if (!isContiguous || colour != runColour)
             {
                 DrawRun(canvas, runStart, runEnd, runColour, top);
 
-                runStart = left;
+                runStart = isContiguous ? Math.Max(left, runEnd) : left;
 
-                runColour = ColourOf(row.NodeAt(index));
-
-                if (focus is { } narrow && narrow.Excludes(visible.Lane, visible.Depth, starts[index], ends[index]))
-                {
-                    runColour = Dimmed(runColour);
-                }
+                runColour = colour;
             }
 
             var boundary = MathF.Floor(Math.Max(right, left)) + 1f;
@@ -429,7 +431,7 @@ public sealed partial class FlameChartControl
 
     private void DrawOverlay(SKCanvas canvas, int width, int height)
     {
-        var hover = _hoverOnPopout ? null : _hover;
+        var hover = _hover;
 
         canvas.Save();
 
@@ -458,7 +460,7 @@ public sealed partial class FlameChartControl
             canvas.Restore();
         }
 
-        DrawPopout(canvas, width, height);
+        DrawPlayhead(canvas, width, height);
 
         DrawHover(canvas);
 
@@ -479,23 +481,17 @@ public sealed partial class FlameChartControl
 
     private void DrawHover(SKCanvas canvas)
     {
-        var block = _hoverOnPopout && _hover is { } hover ? PopoutOf(hover) : ShowMemory ? _hoverBlock : null;
-
-        if (block is not { } hovered)
+        if (!ShowMemory || _hoverBlock is not { } hovered)
         {
             return;
         }
 
-        if (_hoverOnPopout)
-        {
-            DrawWireframe(canvas, hovered, _paints.Hover);
-        }
-        else if (MemoryMode == FlameChartMemoryMode.InUse)
+        if (MemoryMode == FlameChartMemoryMode.InUse)
         {
             canvas.DrawRect(FrontOf(hovered), _paints.Hover);
         }
 
-        if (ShowMemory && hovered.Bytes > 0)
+        if (hovered.Bytes > 0)
         {
             DrawBlockLabel(canvas, hovered);
         }
@@ -541,7 +537,7 @@ public sealed partial class FlameChartControl
 
         var right = (float)((row.Ends(_axis)[hit.Index] - _viewStart) * scale);
 
-        var top = ContentTop + _laneTops[hit.Lane] - (float)_scrollY + RowsOffset + hit.Depth * _rowHeight;
+        var top = ContentTop + _laneTops[hit.Lane] - (float)_scrollY + LaneHeaderHeight + hit.Depth * _rowHeight;
 
         return new SKRect(Math.Max(left, -2f), top, Math.Min(Math.Max(right, left + NarrowSpan), width + 2f), top + BarHeight);
     }

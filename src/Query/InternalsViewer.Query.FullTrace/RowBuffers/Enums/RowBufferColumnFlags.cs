@@ -8,6 +8,7 @@ public enum RowBufferColumnFlags : byte
     HasLength = 2,
     Truncated = 4,
     Unreadable = 8,
+    Deferred = 16,
     BindingUnreadable = 32,
     AlternateBuffer = 64,
     SlotUnreadable = 128

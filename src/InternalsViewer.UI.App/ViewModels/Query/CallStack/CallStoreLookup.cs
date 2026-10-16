@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Arguments;
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.Calls;
@@ -22,9 +23,9 @@ public sealed class CallStoreLookup(TraceCallStore store,
                                   IReadOnlyDictionary<ulong, IteratorTarget> iterators,
                                   HoBtAccessMap hobtAccess,
                                   MemoryMap memoryMap,
-                                  RowBufferIndex rowBuffers,
+                                  RowBufferStore rowBuffers,
                                   RowBufferDecoder? rowBufferDecoder,
-                                  BatchIndex batches,
+                                  BatchStore batches,
                                   BatchDecoder? batchDecoder,
                                   SymbolsViewModel symbols,
                                   Func<ulong, string?> getHoBtName)
@@ -35,11 +36,11 @@ public sealed class CallStoreLookup(TraceCallStore store,
 
     public TraceCallStore Store { get; } = store;
 
-    public RowBufferIndex RowBuffers { get; } = rowBuffers;
+    public RowBufferStore RowBuffers { get; } = rowBuffers;
 
     public RowBufferDecoder? RowBufferDecoder { get; } = rowBufferDecoder;
 
-    public BatchIndex Batches { get; } = batches;
+    public BatchStore Batches { get; } = batches;
 
     public BatchDecoder? BatchDecoder { get; } = batchDecoder;
 
@@ -66,14 +67,14 @@ public sealed class CallStoreLookup(TraceCallStore store,
             return hobtId;
         }
 
-        return slot.Type == ThisType || ArgumentValue.IsPointer(slot.Type) ? hobtAccess.GetHoBtId(value, call.Sequence) : null;
+        return slot.Type == ThisType || ArgumentValue.IsPointer(slot.Type) ? hobtAccess.GetHoBtId(value, call.FromPosition) : null;
     }
 
     public ValueDescription? Describe(ArgumentSlot slot, ulong value, TraceArgumentCall call)
     {
         var isObject = slot.Type == ThisType || ArgumentValue.IsPointer(slot.Type);
 
-        var entry = isObject && value != 0 ? memoryMap.GetEntry(value, GetMoment(slot, call)) : null;
+        var entry = isObject && value != 0 ? memoryMap.GetEntry(value, GetPosition(slot, call)) : null;
 
         if (GetHoBtId(slot, value, call) is { } hobtId && getHoBtName(hobtId) is { } name)
         {
@@ -139,13 +140,18 @@ public sealed class CallStoreLookup(TraceCallStore store,
         });
     }
 
-    public ulong GetCallId(CallStackNode node, int call)
-        => CallsOf(node) is { } calls && call >= 0 && call < calls.Count ? calls.GetId(call) : 0;
+    public (TracePosition FromPosition, TracePosition ToPosition) GetPositions(CallStackNode node, int call)
+        => CallsOf(node) is { } calls && call >= 0 && call < calls.Count
+            ? (calls.GetFromPosition(call), calls.GetToPosition(call))
+            : (TracePosition.Unknown, TracePosition.Unknown);
 
-    public int GetEnclosingCall(CallStackNode node, ulong id) => CallsOf(node)?.IndexOfEnclosing(id) ?? -1;
+    public int GetEnclosingCall(CallStackNode node, TracePosition position, uint thread)
+        => CallsOf(node)?.IndexOfEnclosing(position, thread) ?? -1;
 
     public CallReference? GetOrigin(MemoryMapEntry origin)
-        => Store.GetNode(origin.Node) is { Frame: not null } node ? new CallReference(node, CallsOf(node)?.IndexOf(origin.Call) ?? -1) : null;
+        => Store.GetNode(origin.Node) is { Frame: not null } node && CallsOf(node) is { } calls
+            ? new CallReference(node, origin.Call < calls.Count ? origin.Call : -1)
+            : null;
 
     public Task<ResolvedSignature?> ResolveAsync(CallstackFrame frame)
     {
@@ -217,8 +223,8 @@ public sealed class CallStoreLookup(TraceCallStore store,
 
     private static string? GetAllocationName(MemoryMapEntry entry) => entry.Allocator is { } allocator ? $"{allocator} Allocation" : null;
 
-    private static ulong GetMoment(ArgumentSlot slot, TraceArgumentCall call)
-        => slot.Index == LocatorReadResolver.ReturnRegister ? call.EndId : call.Id;
+    private static TracePosition GetPosition(ArgumentSlot slot, TraceArgumentCall call)
+        => slot.Index == LocatorReadResolver.ReturnRegister ? call.ToPosition : call.FromPosition;
 
     private static string IteratorLabel(IteratorTarget iterator)
         => $"{iterator.Label} {(iterator.IsPlanObject ? "Plan Object" : "Iterator")}";
@@ -292,7 +298,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
             return $"HoBtAccess ({name})";
         }
 
-        var firstUse = groups.SelectMany(g => g.Rows).Select(r => r.Use).MinBy(u => u.First.Sequence);
+        var firstUse = groups.SelectMany(g => g.Rows).Select(r => r.Use).MinBy(u => u.First.Position);
 
         if (firstUse is not null
             && Store.GetCallList(firstUse.Address, firstUse.Instance) is { } calls
@@ -300,7 +306,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
         {
             var call = calls[firstUse.First.Call];
 
-            var moment = firstUse.Location == ReturnLocation ? call.EndId : call.Id;
+            var moment = firstUse.Location == ReturnLocation ? call.ToPosition : call.FromPosition;
 
             if (memoryMap.GetEntry(value, moment) is { } entry && (entry.ClassName ?? GetAllocationName(entry)) is { } typeName)
             {

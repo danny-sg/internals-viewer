@@ -1,10 +1,13 @@
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Batches;
+using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.FullTrace.Batches.Enums;
+using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -20,6 +23,19 @@ public class TraceRowBufferMarksTests
     private const ulong GetRow = 0x2000;
 
     private const ulong DirectSelect = 0x3000;
+
+    private const ulong Adapter = 0x1F4_EEAE_1900;
+
+    private const ulong BatchAddress = 0x20F_0CA6_ECA0;
+
+    private static readonly ExecutionOperatorEvent Scan = new()
+    {
+        Name = "Columnstore Index Scan",
+        OperatorDescription = "Columnstore Index Scan",
+        Instances = [Iterator]
+    };
+
+    private static readonly TraceSpan Whole = new(0, 1000, 0, 0, TraceSpanFlags.None);
 
     private static readonly CallNode[] Nodes =
     [
@@ -37,7 +53,7 @@ public class TraceRowBufferMarksTests
 
         var marks = TraceRowBufferMarks.Build(timeline, Capture((Helper, Iterator, 0), (GetRow, Iterator, 0), (DirectSelect, 0, 0)));
 
-        Assert.Equal([GetEnd(timeline, depth: 2, index: 0)], marks.GetMarks(Thread, TraceTimelineAxis.Position).ToArray());
+        Assert.Equal([GetEnd(timeline, depth: 2, index: 0)], marks.GetMarks(Scan, TraceTimelineAxis.Position).ToArray());
     }
 
     [Fact]
@@ -53,7 +69,7 @@ public class TraceRowBufferMarksTests
         var marks = TraceRowBufferMarks.Build(timeline, captures);
 
         Assert.Equal([GetEnd(timeline, depth: 1, index: 0), GetEnd(timeline, depth: 1, index: 1)],
-                     marks.GetMarks(Thread, TraceTimelineAxis.Position).ToArray());
+                     marks.GetMarks(Scan, TraceTimelineAxis.Position).ToArray());
     }
 
     [Fact]
@@ -62,23 +78,68 @@ public class TraceRowBufferMarksTests
         var timeline = Build(Span(node: 0, start: 0, end: 100),
                              Span(node: 1, start: 10, end: 90));
 
-        var batch = new BatchCapture(GetRow, Iterator, 0, 100, Iterator, 0x20F_0CA6_ECA0, 0, BatchCaptureFlags.None, [], []);
+        var marks = TraceRowBufferMarks.Build(timeline, RowBufferStore.Empty, new BatchStore([Batch(call: 0)]));
 
-        var marks = TraceRowBufferMarks.Build(timeline, RowBufferIndex.Empty, new BatchIndex([batch]));
-
-        Assert.Equal([GetEnd(timeline, depth: 1, index: 0)], marks.GetBatchMarks(Thread, TraceTimelineAxis.Position).ToArray());
-        Assert.True(marks.GetMarks(Thread, TraceTimelineAxis.Position).IsEmpty);
+        Assert.Equal([GetEnd(timeline, depth: 1, index: 0)], marks.GetBatchMarks(Scan, TraceTimelineAxis.Position).ToArray());
+        Assert.True(marks.GetMarks(Scan, TraceTimelineAxis.Position).IsEmpty);
         Assert.Equal(1, marks.Count);
     }
 
     [Fact]
-    public void A_Thread_Without_Captures_Has_No_Marks()
+    public void An_Operator_Without_Captures_Has_No_Marks()
     {
         var timeline = Build(Span(node: 0, start: 0, end: 100));
 
         var marks = TraceRowBufferMarks.Build(timeline, Capture((Helper, Iterator, 0)));
 
-        Assert.True(marks.GetMarks(Thread + 1, TraceTimelineAxis.Position).IsEmpty);
+        var other = new ExecutionOperatorEvent { Name = "Top", OperatorDescription = "Top", Instances = [0x99] };
+
+        Assert.True(marks.GetMarks(other, TraceTimelineAxis.Position).IsEmpty);
+        Assert.False(marks.HasMarks(other));
+    }
+
+    [Fact]
+    public void Rows_Of_An_Adapter_Belong_To_The_Operator_Handing_It_Batches()
+    {
+        var timeline = Build(Span(node: 0, start: 0, end: 100),
+                             Span(node: 1, start: 10, end: 90));
+
+        var marks = TraceRowBufferMarks.Build(timeline,
+                                              CaptureFor(Adapter, (GetRow, Iterator, 0)),
+                                              new BatchStore([Batch(call: 0, consumer: Adapter)]));
+
+        Assert.Equal([GetEnd(timeline, depth: 1, index: 0)], marks.GetMarks(Scan, TraceTimelineAxis.Position).ToArray());
+    }
+
+    [Fact]
+    public void Rows_Of_An_Iterator_Without_An_Operator_Are_Not_Marked()
+    {
+        var timeline = Build(Span(node: 0, start: 0, end: 100),
+                             Span(node: 1, start: 10, end: 90));
+
+        var marks = TraceRowBufferMarks.Build(timeline, CaptureFor(Adapter, (GetRow, Iterator, 0)));
+
+        Assert.False(marks.HasMarks(Scan));
+    }
+
+    [Fact]
+    public void The_Nearest_Mark_Is_Found_Across_Row_Buffers_And_Batches()
+    {
+        var timeline = Build(Span(node: 1, start: 10, end: 90),
+                             Span(node: 1, start: 210, end: 290, call: 1));
+
+        var marks = TraceRowBufferMarks.Build(timeline, Capture((GetRow, Iterator, 0)), new BatchStore([Batch(call: 1)]));
+
+        var rowBufferEnd = marks.GetMarks(Scan, TraceTimelineAxis.Position)[0];
+
+        var batchEnd = marks.GetBatchMarks(Scan, TraceTimelineAxis.Position)[0];
+
+        var rowBuffer = marks.GetNearestMark(Scan, TraceTimelineAxis.Position, rowBufferEnd + (batchEnd - rowBufferEnd) / 4);
+
+        var batch = marks.GetNearestMark(Scan, TraceTimelineAxis.Position, batchEnd - (batchEnd - rowBufferEnd) / 4);
+
+        Assert.Equal((0, false), (rowBuffer?.Call, rowBuffer?.IsBatch));
+        Assert.Equal((1, true), (batch?.Call, batch?.IsBatch));
     }
 
     private static TraceTimeline Build(params CallSpan[] spans)
@@ -101,18 +162,27 @@ public class TraceRowBufferMarksTests
 
         timeline.MapNodes([helper, getRow, directSelect]);
 
+        timeline.SetLifetimes([new TraceOperatorLifetime(Thread, Scan, 0, [Whole], [Whole], MemoryInUseCurve.Empty)]);
+
+        timeline.SetCalls(TraceCallRows.CallsFor(Nodes, spans));
+
         return timeline;
     }
 
-    private static RowBufferIndex Capture(params (ulong Function, ulong Instance, uint Call)[] calls)
-    {
-        RowBufferColumn[] columns = [new RowBufferColumn(0, new RowBufferBinding(4, 2, 4), 0, 0, 4, [1, 0, 0, 0])];
+    private static BatchCapture Batch(uint call, ulong consumer = 0)
+        => new(GetRow, Iterator, (int)call, At(100 + call), Iterator, BatchAddress, consumer, BatchCaptureFlags.None, [], []);
 
-        return new RowBufferIndex(calls.Select(c => new RowBuffer(c.Function,
+    private static RowBufferStore Capture(params (ulong Function, ulong Instance, uint Call)[] calls) => CaptureFor(Iterator, calls);
+
+    private static RowBufferStore CaptureFor(ulong iterator, params (ulong Function, ulong Instance, uint Call)[] calls)
+    {
+        RowBufferColumn[] columns = [new RowBufferColumn(0, new RowBufferBinding(4, 2, 4, 0), 0, 0, 4, [1, 0, 0, 0])];
+
+        return new RowBufferStore(calls.Select(c => new RowBuffer(c.Function,
                                                                   c.Instance,
                                                                   (int)c.Call,
-                                                                  100 + c.Call,
-                                                                  Iterator,
+                                                                  At(100 + c.Call),
+                                                                  iterator,
                                                                   0x1F4_EEAE_2000,
                                                                   columns)));
     }

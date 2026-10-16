@@ -4,36 +4,16 @@ using InternalsViewer.Query.FullTrace.Arguments.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Calls;
 
-public sealed record TraceArgumentCall(ulong Sequence,
+public sealed record TraceArgumentCall(TracePosition FromPosition,
                                        uint ThreadId,
                                        bool Returned,
                                        ulong[] IntegerSlots,
                                        ulong ReturnValue,
                                        int Node = -1)
 {
-    internal const int ValueCount = 10;
-
-    internal const int RegisterCount = 4;
-
-    internal const int FlagsIndex = 1;
-
-    internal const int IntegerOffset = 2;
-
-    internal const int ReturnValueIndex = 6;
-
-    internal const int NodeIndex = 7;
-
-    internal const int IdIndex = 8;
-
-    internal const int EndIdIndex = 9;
-
-    internal const ulong ReturnedFlag = 1ul << 32;
-
     public IReadOnlyList<Locator> Locators { get; init; } = [];
 
-    public ulong Id { get; init; }
-
-    public ulong EndId { get; init; }
+    public TracePosition ToPosition { get; init; } = TracePosition.Unknown;
 
     public ulong ReturnedValue => Returned ? ReturnValue : 0;
 
@@ -76,22 +56,5 @@ public sealed record TraceArgumentCall(ulong Sequence,
         }
 
         return null;
-    }
-
-    internal static TraceArgumentCall Decode(ReadOnlySpan<ulong> values, IReadOnlyList<Locator>? locators = null)
-    {
-        var flags = values[FlagsIndex];
-
-        return new TraceArgumentCall(values[0],
-                                     (uint)flags,
-                                     (flags & ReturnedFlag) != 0,
-                                     [.. values.Slice(IntegerOffset, RegisterCount)],
-                                     values[ReturnValueIndex],
-                                     (int)values[NodeIndex])
-        {
-            Locators = locators ?? [],
-            Id = values[IdIndex],
-            EndId = values[EndIdIndex]
-        };
     }
 }

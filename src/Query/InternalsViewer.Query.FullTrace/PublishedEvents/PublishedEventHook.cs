@@ -67,7 +67,7 @@ internal sealed class PublishedEventHook(PublishedEventFunctions functions) : IT
             Publishing[call.Thread] = publishing;
         }
 
-        publishing.Add(new PendingPublish(call.Function, call.StackPointer, call.Sequence, call.Steps, call.Instructions, call.Node, 0));
+        publishing.Add(new PendingPublish(call.Function, call.StackPointer, call.Position, call.Instructions, call.Node, 0));
 
         PendingCount++;
 
@@ -104,8 +104,7 @@ internal sealed class PublishedEventHook(PublishedEventFunctions functions) : IT
 
         Events.Add(new PublishedEvent(publish.Publisher,
                                       buffer,
-                                      publish.Sequence,
-                                      publish.Steps,
+                                      publish.Position,
                                       publish.Instructions,
                                       publish.Node,
                                       thread));
@@ -113,8 +112,7 @@ internal sealed class PublishedEventHook(PublishedEventFunctions functions) : IT
 
     private readonly record struct PendingPublish(ulong Publisher,
                                                   ulong StackPointer,
-                                                  ulong Sequence,
-                                                  ulong Steps,
+                                                  TracePosition Position,
                                                   ulong Instructions,
                                                   int Node,
                                                   ulong SessionBuffer);

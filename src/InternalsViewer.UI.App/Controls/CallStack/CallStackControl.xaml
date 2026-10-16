@@ -475,15 +475,15 @@
                                              Tag="{x:Bind ReturnText(ViewModel.SelectedCall), Mode=OneWay}"
                                              Click="OnCopyValueClick"/>
 
-                        <TextBlock Grid.Row="4" Text="Call Id" Style="{StaticResource DetailLabelStyle}"/>
+                        <TextBlock Grid.Row="4" Text="TTD Position" Style="{StaticResource DetailLabelStyle}"/>
                         <TextBlock Grid.Row="4"
                                    Grid.Column="1"
                                    Style="{StaticResource DetailValueStyle}"
-                                   Text="{x:Bind CallIdText(ViewModel.SelectedCall), Mode=OneWay}"/>
+                                   Text="{x:Bind PositionText(ViewModel.SelectedCall), Mode=OneWay}"/>
                         <controls:CopyButton Grid.Row="4"
                                              Grid.Column="2"
                                              Style="{StaticResource ValueCopyButtonStyle}"
-                                             Tag="{x:Bind CallIdText(ViewModel.SelectedCall), Mode=OneWay}"
+                                             Tag="{x:Bind PositionText(ViewModel.SelectedCall), Mode=OneWay}"
                                              Click="OnCopyValueClick"/>
 
                         <TextBlock Grid.Row="5" Text="Start" Style="{StaticResource DetailLabelStyle}"/>

@@ -90,14 +90,21 @@
     </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <Border x:Name="TableHost"
+        <Canvas x:Name="GroupBand"
                 Grid.Row="0"
+                Height="28"
+                Visibility="Collapsed"
+                Background="{ThemeResource LayerFillColorDefaultBrush}"
+                SizeChanged="OnGroupBandSizeChanged" />
+        <Border x:Name="TableHost"
+                Grid.Row="1"
                 Background="{ThemeResource LayerFillColorDefaultBrush}" />
         <Border x:Name="StatusBar"
-                Grid.Row="1"
+                Grid.Row="2"
                 Padding="8,4"
                 BorderThickness="0,1,0,0"
                 BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}">

@@ -142,9 +142,9 @@ public static class SignatureRuns
 
         AddFunction(inlines, step.Node.Symbol);
 
-        if (step.Id != 0)
+        if (step.Position.IsKnown)
         {
-            inlines.Add(new Run { Text = $"  [{step.Id}]", Foreground = AppResources.Get<Brush>("TextFillColorSecondaryBrush") });
+            inlines.Add(new Run { Text = $"  [{step.Position}]", Foreground = AppResources.Get<Brush>("TextFillColorSecondaryBrush") });
         }
     }
 }

@@ -1,8 +1,8 @@
 namespace InternalsViewer.Query.FullTrace.CustomHooks;
 
-public sealed class CustomHookIndex(IReadOnlyList<CustomHookCapture> captures)
+public sealed class CustomHookStore(IReadOnlyList<CustomHookCapture> captures)
 {
-    public static CustomHookIndex Empty { get; } = new([]);
+    public static CustomHookStore Empty { get; } = new([]);
 
     public int Count => Captures.Count;
 

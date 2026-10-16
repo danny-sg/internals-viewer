@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.UI.App.Models;
@@ -173,12 +174,9 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
     {
         foreach (var timeline in timelines.OfType<TraceTimeline>().Distinct())
         {
-            foreach (var location in timeline.GetSpanLocations())
+            if (timeline.FindCall(node, call) is { } location)
             {
-                if (location.Call == call && ReferenceEquals(location.Node, node))
-                {
-                    return timeline.StackAt(TraceTimelineAxis.Position, location.StartOf(TraceTimelineAxis.Position));
-                }
+                return timeline.StackAt(TraceTimelineAxis.Position, location.StartOf(TraceTimelineAxis.Position));
             }
         }
 
@@ -206,7 +204,8 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
             : row.Signature.FirstOrDefault(p => p.Kind == CallSignaturePartKind.Function);
     }
 
-    private int GetEnclosingCall(SourceFrame frame) => Query.Arguments.Lookup?.GetEnclosingCall(frame.Node, frame.Moment) ?? -1;
+    private int GetEnclosingCall(SourceFrame frame)
+        => Query.Arguments.Lookup?.GetEnclosingCall(frame.Node, frame.Position, frame.Thread) ?? -1;
 
     private PlayheadCallRow? FindRow(PlayheadCallRow selected)
         => Threads.SelectMany(t => t.Calls)
@@ -268,7 +267,7 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
     {
         var timeline = Query.FlameChart;
 
-        var origin = timeline?.StartOf(TraceTimelineAxis.Position) ?? 0;
+        var origin = (ulong)Math.Floor(timeline?.StartOf(TraceTimelineAxis.Position) ?? 0);
 
         var threads = new List<PlayheadThreadRow>();
 
@@ -288,7 +287,7 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
 
             for (var index = found.Count - 1; index >= 0; index--)
             {
-                rows.Add(await BuildRowAsync(found[index].Node, found[index].Call, index == found.Count - 1, origin));
+                rows.Add(await BuildRowAsync(found[index].Node, found[index].Call, stack.ThreadId, index == found.Count - 1, origin));
             }
 
             if (rows.Count > 0)
@@ -300,7 +299,7 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
         return threads;
     }
 
-    private async Task<PlayheadCallRow> BuildRowAsync(CallStackNode node, TraceStackCall call, bool isCurrent, double origin)
+    private async Task<PlayheadCallRow> BuildRowAsync(CallStackNode node, TraceStackCall call, uint thread, bool isCurrent, ulong origin)
     {
         var index = call.Span.Call;
 
@@ -312,7 +311,9 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
 
         var hasRowBuffer = lookup is not null && node.Frame is { } frame && lookup.RowBuffers.HasRow(frame.Address, frame.Instance, index);
 
-        return new PlayheadCallRow(node, call, signature, lookup?.GetCallId(node, index) ?? 0, isCurrent, origin)
+        var (from, to) = lookup?.GetPositions(node, index) ?? (TracePosition.Unknown, TracePosition.Unknown);
+
+        return new PlayheadCallRow(node, call, signature, from, to, thread, isCurrent, origin)
         {
             HasRowBuffer = hasRowBuffer,
             CurrentText = CurrentText

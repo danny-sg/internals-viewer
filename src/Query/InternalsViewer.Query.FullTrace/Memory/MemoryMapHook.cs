@@ -53,7 +53,7 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions) : 
 
         foreach (var index in owned)
         {
-            Entries[index] = Entries[index] with { Until = call.CallCount };
+            Entries[index] = Entries[index] with { ToPosition = call.Position };
         }
     }
 
@@ -90,7 +90,7 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions) : 
             return;
         }
 
-        if (LatestEntries.TryGetValue(address, out var latest) && Entries[latest].Until == 0)
+        if (LatestEntries.TryGetValue(address, out var latest) && Entries[latest].IsAlive)
         {
             var entry = Entries[latest];
 
@@ -103,14 +103,14 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions) : 
 
             if (operation == MemoryMapOperation.Constructed
                 && existing == MemoryMapOperation.Constructed
-                && IsActive(replay.GetFrames(call.Thread), entry.Call))
+                && IsActive(replay.GetFrames(call.Thread), entry.Frame))
             {
                 return;
             }
 
-            if (operation == MemoryMapOperation.Allocated && existing == MemoryMapOperation.Allocated && entry.Call > call.Id)
+            if (operation == MemoryMapOperation.Allocated && existing == MemoryMapOperation.Allocated && entry.Frame > call.Id)
             {
-                Entries[latest] = entry with { Call = call.Id, Node = call.Node };
+                Entries[latest] = entry with { Frame = call.Id, Call = (int)call.Call, FromPosition = call.Position, Node = call.Node };
 
                 return;
             }
@@ -134,6 +134,14 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions) : 
             owned.Add(Entries.Count);
         }
 
-        Entries.Add(new AddressEntry(address, call.Id, owner, 0, call.Node, call.Thread, operation));
+        Entries.Add(new AddressEntry(address,
+                                     call.Id,
+                                     (int)call.Call,
+                                     call.Position,
+                                     owner,
+                                     TracePosition.Unknown,
+                                     call.Node,
+                                     call.Thread,
+                                     operation));
     }
 }

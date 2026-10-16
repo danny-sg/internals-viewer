@@ -8,6 +8,7 @@ using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.RowBuffers;
+using InternalsViewer.Query.Memory;
 
 namespace InternalsViewer.Query.FullTrace.Export;
 
@@ -26,6 +27,8 @@ internal sealed class TraceExportSection : IQueryExportSection
     internal const string RowBuffersEntry = "fulltrace/rowbuffers.bin";
 
     internal const string BatchesEntry = "fulltrace/batches.bin";
+
+    internal const string ObjectPoolSnapshotEntry = "fulltrace/objectpool.bin";
 
     public bool CanExport(QueryExportContent content) => content.ExtraOf<TraceResult>() is not null;
 
@@ -53,11 +56,13 @@ internal sealed class TraceExportSection : IQueryExportSection
         writer.WriteBinary(RowBuffersEntry, CompressionLevel.Fastest, fullTrace.RowBuffers.Write);
 
         writer.WriteBinary(BatchesEntry, CompressionLevel.Fastest, fullTrace.Batches.Write);
+
+        writer.WriteBinary(ObjectPoolSnapshotEntry, CompressionLevel.Fastest, fullTrace.ObjectPool.Write);
     }
 
     public IRunExtra? Read(QueryExportReader reader)
     {
-        if (reader.CallTree(CallTreeName) is not { } tree)
+        if (reader.CallTree(CallTreeName) is not { } tree || !reader.ReadBinary(CallStoreEntry, TraceCallStore.IsCurrent))
         {
             return null;
         }
@@ -72,11 +77,13 @@ internal sealed class TraceExportSection : IQueryExportSection
 
         callStore.MapNodes(timeline.MappedNodes);
 
-        var rowBuffers = reader.HasEntry(RowBuffersEntry) ? reader.ReadBinary(RowBuffersEntry, RowBufferIndex.Read) : RowBufferIndex.Empty;
+        timeline.SetCalls(callStore);
 
-        var batches = reader.HasEntry(BatchesEntry) ? reader.ReadBinary(BatchesEntry, BatchIndex.Read) : BatchIndex.Empty;
+        var rowBuffers = reader.HasEntry(RowBuffersEntry) ? reader.ReadBinary(RowBuffersEntry, RowBufferStore.Read) : RowBufferStore.Empty;
 
-        rowBuffers.AnnotateNodes(callStore);
+        var batches = reader.HasEntry(BatchesEntry) ? reader.ReadBinary(BatchesEntry, BatchStore.Read) : BatchStore.Empty;
+
+        rowBuffers.AnnotateCallStackNodes(callStore);
 
         batches.AnnotateNodes(callStore);
 
@@ -94,9 +101,13 @@ internal sealed class TraceExportSection : IQueryExportSection
             MemoryMap = reader.HasEntry(MemoryMapEntry)
                 ? reader.ReadBinary(MemoryMapEntry, r => MemoryMap.Read(r, timeline.NodeOf))
                 : MemoryMap.Empty,
+            ObjectPool = reader.HasEntry(ObjectPoolSnapshotEntry)
+                ? reader.ReadBinary(ObjectPoolSnapshotEntry, ObjectPoolSnapshot.Read)
+                : ObjectPoolSnapshot.Empty,
             RowBuffers = rowBuffers,
             Batches = batches,
-            RowBufferMarks = TraceRowBufferMarks.Build(timeline, rowBuffers, batches)
+            RowBufferMarks = TraceRowBufferMarks.Build(timeline, rowBuffers, batches),
+            RowReturnMarks = TraceRowReturnMarks.Build(timeline, callStore)
         };
     }
 }

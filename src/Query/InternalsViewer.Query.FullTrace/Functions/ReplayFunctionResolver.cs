@@ -11,6 +11,7 @@ using InternalsViewer.Query.FullTrace.PublishedEvents;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.RowBuffers;
+using InternalsViewer.Query.FullTrace.RowBuffers.HashRows;
 using Microsoft.Extensions.Logging;
 using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.Helpers;
@@ -225,6 +226,8 @@ internal static class ReplayFunctionResolver
 
         var batches = new BatchFunctions.Collector();
 
+        var hashRows = new HashRowFunctions.Collector();
+
         var functions = ModuleSymbols.Load(resolver,
                                            (rva, name) =>
                                            {
@@ -232,9 +235,16 @@ internal static class ReplayFunctionResolver
 
                                                batches.VisitFunction(rva, name);
 
+                                               hashRows.VisitFunction(rva, name);
+
                                                return ClassifyFunction(mappings, moduleName, rva, name);
                                            },
-                                           rowBuffers.VisitData);
+                                           (rva, name) =>
+                                           {
+                                               rowBuffers.VisitData(rva, name);
+
+                                               hashRows.VisitData(rva, name);
+                                           });
 
         var iterates = string.Equals(moduleName, IteratorModule, StringComparison.OrdinalIgnoreCase);
 
@@ -257,7 +267,8 @@ internal static class ReplayFunctionResolver
                                    [.. functions.Values.Select(f => f.MemoryFunction).OfType<MemoryFunction>()],
                                    [.. MemoryMapFunctionResolver.Find(resolver, kept)],
                                    rowBuffers.Build(bases),
-                                   batches.Build(bases));
+                                   batches.Build(bases),
+                                   hashRows.Build());
     }
 
     private static FunctionClassification ClassifyFunction(CategoryMappings mappings, string module, uint rva, ReadOnlySpan<char> symbol)

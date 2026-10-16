@@ -18,9 +18,10 @@ namespace InternalsViewer.Query.FullTrace.Native;
 /// buffered locally before being flushed. The flat forward read uses a local stack to replicate the entry/exit (push/pop) of nested
 /// functions as return values are only available at the exit point.
 ///
-/// The replay uses several function indicators to dictate behaviour, excluded functions to ignore, instance methods, value locators where
-/// arguments and return results are pointers which should be followed in the trace memory at the current position for actual values, and
-/// functions that publish extended events.
+/// The bridge uses a hook mechanism to pass control back to managed code using the ITraceHook interface. The hooks are registered with a
+/// set of addresses they are interested in. When the bridge reaches an address with a hook it will dispatch a callback for the hook on the
+/// same thread and control is passed to this managed project. It can then read memory including pointer following to extract the
+/// information it needs. When the hook returns control is passed back to the bridge and the replay continues.
 ///
 /// The replay also reports progress through a callback, and stops when the caller sets the cancellation flag.
 ///
@@ -66,45 +67,49 @@ namespace InternalsViewer.Query.FullTrace.Native;
 ///
 ///      Each entry is packed by PackInstanceMethod as the address with the register index (0-3 for RCX, RDX, R8, R9) in the top 4 bits.
 ///
-///    - Pointer Reads
+///    - Hook Functions
 ///
-///      Pointer Reads define functions where an argument or the return value is treated as a pointer into the recorded process's memory.
-///      Each read gives the argument (register or stack slot) or return value, an optional path of up to 3 hops (each hop reads a pointer
-///      at an offset), and the offset of the final 8 byte value. Wider values such as a ColumnStoreObjectKey take several reads.
+///      Each hook function is an address to watch, a mask of the events to fire (Call, Entry, Return), and a hook id passed back with
+///      each event so the managed side can route it. One event is dispatched per address; the managed side fans out to every hook
+///      registered for that address.
 ///
-///      The read can be performed at the time of the call or the return. An at-return read of an argument uses the pointer captured at the
-///      call, which is how out parameters are read.
+///      The hook callback receives a HookEvent with one of six types:
 ///
-///    - Event Writer/Publisher Functions
+///          Call         - A call instruction to the address was found, before any tracking. No call id or instance yet
+///          Entry        - The call was tracked, logged and added to the call tree, with its call id, log row and instance
+///          Return       - A tracked frame was popped with a confirmed return, including the return value (RAX)
+///          Abandoned    - A tracked frame was popped without a confirmed return (e.g. exception unwinding), no return value
+///          FrameEnded   - A frame marked with WatchFrame left the stack, whether it returned or not. Sent to every hook
+///          StackUnwound - The stack pointer passed a stack pointer value registered with WatchStack. Sent to every hook
 ///
-///      Extended events are excluded from the call tracing and tracked separately to allow the trace to be matched against the .xel events
-///      tracked in general query execution.
-///
-///      An extended event is first published, then written into the buffer of each session collecting it by a shared writer. Entering a
-///      publisher (an event's Publish) starts a pending event, and entering the shared writer (XE_BufferMgr::Reserve) while one is pending
-///      records it as a published event: the publisher's position and the session buffer it was written to. Both are checked before
-///      exclusion, so they are seen even though the extended events code is excluded from the tree. Published events are buffered and
-///      passed back in chunks, then matched in order to the .xel events, giving each event its position in the trace.
+///      The callback also receives a view handle for ReadTraceMemory, and a session handle for WatchFrame, WatchStack and
+///      GetHookFrames. Both handles are only valid for the duration of the callback.
 ///
 ///    The callbacks are:
 ///
 ///    - Call Log
 ///
-///      The call log includes sequence, thread, registers (RCX, RDX, R8, R9), return value, and node index in the tree per call. Bit 32
-///      of the thread value is set when the call returns.
+///      The call log has one row per call with start sequence and steps, thread, registers (RCX, RDX, R8, R9), return value, node
+///      index in the tree, and end sequence and steps. Bit 32 of the thread value is set when the call returns.
 ///
-///      Calls are buffered per function and instance. A call's row is written when the call is made, but its return value is only
-///      filled in when it returns, so a chunk waits for its calls to return. The bridge flushes calls in chunks in several scenarios:
+///      Calls are buffered per function and instance. A call's row is written when the call is made, but its return value and end
+///      position are only filled in when it returns, so a chunk waits for its calls to return. The bridge flushes calls in chunks in
+///      several scenarios:
 ///
 ///          Normal - At 16,384 calls of the function, once none of them are in flight (InFlight == 0)
-///          Forced - At 65,536 calls of the function, even with calls still in flight. Those calls lose their return value and
-///                   at-return reads
+///          Forced - At 65,536 calls of the function, even with calls still in flight. Those calls are flushed without their return
+///                   value and end position, which are reported later through the Call End callback when the call returns
 ///          Idle   - Every 262,144 calls across all functions, flushes each function with at least 256 calls and none in flight, so
 ///                   functions that never reach 16,384 don't hold memory until the end
 ///          End    - Everything left is flushed when the replay finishes
 ///
 ///      The call log is transposed to columns in the bridge as part of the flush process, then the columns are returned to the managed
 ///      code via a callback. Chunks are compressed after they have been returned to the managed code.
+///
+///    - Call End
+///
+///      When a call ends after its chunk has already been force flushed, the Call End callback reports the function, instance, call
+///      row, end position, return value, and whether the call returned, so the managed side can patch the already received chunk.
 ///
 ///    - Span Timeline
 ///
@@ -116,17 +121,9 @@ namespace InternalsViewer.Query.FullTrace.Native;
 ///      Spans arrive in the order their frames end, so children come before their parents. They are flushed every 65,536 spans and at
 ///      the end.
 ///
-///    - Pointer Values
+///    - Hook
 ///
-///      The values read by the pointer reads, with the function, instance and call they belong to, so they can be joined to the call
-///      log. Nothing is returned if the pointer is zero or the trace has no value for the memory. Values are flushed every 65,536
-///      values and at the end.
-///
-///    - Published Events
-///
-///      Each publish that reached a session buffer: the publisher's address, the session buffer (the writer's RCX), the position, the
-///      thread's instruction count, the call tree node of the nearest recorded caller, and the thread. A publish written to two sessions
-///      is passed back twice. Published events are flushed every 65,536 and at the end.
+///      Fired for each hook event as described under Hook Functions above.
 ///
 ///    - Progress
 ///
@@ -150,10 +147,22 @@ internal static class ReplayBridge
     public delegate void CallChunkCallback(ulong address, ulong instance, IntPtr columns, int calls);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    public delegate void CallEndCallback(ulong address,
+                                         ulong instance,
+                                         uint call,
+                                         ulong endSequence,
+                                         ulong endSteps,
+                                         ulong returnValue,
+                                         uint returned);
+
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     public delegate void CallSpanCallback(IntPtr spans, int count);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     public delegate void HookCallback(IntPtr hookEvent, IntPtr view, IntPtr session);
+
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    public delegate int StubCallback(IntPtr view, ulong address, IntPtr registers, IntPtr target);
 
     [DllImport(Library, CharSet = CharSet.Unicode)]
     public static extern int OpenTrace(string replayLibraryPath, string tracePath, out TraceHandle trace);
@@ -181,8 +190,10 @@ internal static class ReplayBridge
                                           HookFunction[] hookFunctions,
                                           int hookFunctionCount,
                                           CallChunkCallback? logCalls,
+                                          CallEndCallback? logCallEnds,
                                           CallSpanCallback? logSpans,
                                           HookCallback? onHook,
+                                          StubCallback? resolveStub,
                                           ProgressCallback? progress,
                                           IntPtr cancel,
                                           out IntPtr tree);

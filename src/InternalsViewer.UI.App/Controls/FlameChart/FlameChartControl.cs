@@ -6,6 +6,7 @@ using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Helpers;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using InternalsViewer.UI.App.ViewModels.Query.CallStack;
 using Microsoft.UI;
@@ -25,6 +26,8 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
     private const double FitPadding = 30;
 
     private const string MemoryModeGroup = "MemoryMode";
+
+    private const string MemoryMenuGroup = "FlameChartMemoryMenu";
 
     public static readonly DependencyProperty TimelineProperty =
         DependencyProperty.Register(nameof(Timeline),
@@ -255,8 +258,6 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
     private int _reportedVersion = -1;
 
     private TraceTimelineAxis _reportedAxis;
-
-    private ulong _memoryMaximum;
 
     private ulong _selfMaximum;
 
@@ -585,7 +586,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
     private void StepToMark(bool forward, bool isBatch)
     {
-        if (_visible is not { } timeline || RowBufferMarks is not { } marks)
+        if (RowBufferMarks is not { } marks)
         {
             return;
         }
@@ -596,9 +597,9 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
         double? next = null;
 
-        foreach (var thread in timeline.Threads)
+        foreach (var row in _operatorRows)
         {
-            var values = isBatch ? marks.GetBatchMarks(thread.ThreadId, _axis) : marks.GetMarks(thread.ThreadId, _axis);
+            var values = isBatch ? marks.GetBatchMarks(row.Operator, _axis) : marks.GetMarks(row.Operator, _axis);
 
             next = forward ? FindMarkAfter(values, from, next) : FindMarkBefore(values, from, next);
         }
@@ -851,7 +852,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
         var rows = threads.Sum(DepthOf);
 
-        var available = (float)ViewportHeight - threads.Count * (RowsOffset + LaneGap);
+        var available = (float)ViewportHeight - threads.Count * (LaneHeaderHeight + LaneGap);
 
         var maximum = _expandedThread is null ? MaximumRowHeight : FocusedMaximumRowHeight;
 
@@ -874,7 +875,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
     }
 
     private float LaneHeight(TraceTimelineThread thread)
-        => RowsOffset + DepthOf(thread) * _rowHeight + (thread.ThreadId == _expandedThread ? _focusPadding : 0) + LaneGap;
+        => LaneHeaderHeight + DepthOf(thread) * _rowHeight + (thread.ThreadId == _expandedThread ? _focusPadding : 0) + LaneGap;
 
     private int DepthOf(TraceTimelineThread thread) => IsExpanded(thread) ? thread.Depth : 0;
 
@@ -959,6 +960,8 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
         _hover = null;
         _selected = null;
 
+        ReleaseMinimap();
+
         if (_timeline is { } timeline)
         {
             _rooted = _root is { } root ? timeline.RootedAt(n => ReferenceEquals(n, root)) : null;
@@ -980,6 +983,10 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
         _hoverOperator = null;
 
+        _hoverMarkBand = null;
+
+        _hoverReturnStrip = null;
+
         if (_selectedOperator is { } selected && !_operatorRows.Any(r => ReferenceEquals(r.Operator, selected)))
         {
             _selectedOperator = null;
@@ -990,8 +997,6 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
         UpdateFitRange();
 
         BuildLayout();
-
-        _memoryMaximum = MemoryMaximum(_visible);
 
         _inUseCurves.Clear();
 
@@ -1020,34 +1025,38 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
         }
     }
 
+    private MenuFlyoutSubItem CreateMemoryMenu()
+        => MenuItems.SubMenu("Memory",
+                             MemoryItem("Allocated", FlameChartMemoryMode.Allocated),
+                             MemoryItem("In Use", FlameChartMemoryMode.InUse),
+                             MemoryItem("None", null));
+
+    private RadioMenuFlyoutItem MemoryItem(string text, FlameChartMemoryMode? mode)
+    {
+        var item = new RadioMenuFlyoutItem
+        {
+            Text = text,
+            GroupName = MemoryMenuGroup,
+            IsChecked = mode is { } shown ? ShowMemory && MemoryMode == shown : !ShowMemory
+        };
+
+        item.Click += (_, _) => SetMemory(mode);
+
+        return item;
+    }
+
+    private void SetMemory(FlameChartMemoryMode? mode)
+    {
+        if (mode is { } shown)
+        {
+            MemoryMode = shown;
+        }
+
+        ShowMemory = mode is not null;
+    }
+
     private static string MemoryModeLabel(FlameChartMemoryMode mode)
         => mode == FlameChartMemoryMode.InUse ? "Memory: In Use" : "Memory: Allocated";
-
-    private static ulong MemoryMaximum(TraceTimeline? timeline)
-    {
-        if (timeline is not { Memory.HasAllocations: true })
-        {
-            return 0;
-        }
-
-        ulong maximum = 0;
-
-        foreach (var thread in timeline.Threads.Where(t => t.Rows.Count > 0))
-        {
-            var row = thread.Rows[0];
-
-            var starts = row.Starts(TraceTimelineAxis.Position);
-
-            var ends = row.Ends(TraceTimelineAxis.Position);
-
-            for (var index = 0; index < row.Count; index++)
-            {
-                maximum = Math.Max(maximum, timeline.Memory.AllocatedDuring(thread.ThreadId, starts[index], ends[index]).Bytes);
-            }
-        }
-
-        return maximum;
-    }
 
     private bool[]? PrunedNodes(TraceTimeline timeline)
     {
@@ -1073,54 +1082,8 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
         return any ? hidden : null;
     }
 
-    private static bool[]? Matches(TraceTimeline timeline, Func<CallStackNode, bool> predicate)
-    {
-        var matches = new bool[timeline.NodeCount];
-
-        var any = false;
-
-        for (var node = 0; node < matches.Length; node++)
-        {
-            if (timeline.NodeOf(node) is { } callNode && predicate(callNode))
-            {
-                matches[node] = true;
-
-                any = true;
-            }
-        }
-
-        return any ? matches : null;
-    }
-
     private static FlameHit? FindCall(TraceTimeline timeline, CallStackNode node, int call)
-    {
-        if (Matches(timeline, n => ReferenceEquals(n, node)) is not { } nodes)
-        {
-            return null;
-        }
-
-        for (var lane = 0; lane < timeline.Threads.Count; lane++)
-        {
-            var rows = timeline.Threads[lane].Rows;
-
-            for (var depth = 0; depth < rows.Count; depth++)
-            {
-                var row = rows[depth];
-
-                for (var index = 0; index < row.Count; index++)
-                {
-                    var spanNode = row.NodeAt(index);
-
-                    if (row.CallAt(index) == call && spanNode >= 0 && spanNode < nodes.Length && nodes[spanNode])
-                    {
-                        return new FlameHit(lane, depth, index);
-                    }
-                }
-            }
-        }
-
-        return null;
-    }
+        => timeline.FindCall(node, call) is { } location ? new FlameHit(location.ThreadIndex, location.Depth, location.Index) : null;
 
     private void FindSelectedCall(bool bringIntoView)
     {
@@ -1166,7 +1129,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
             _version++;
         }
 
-        var top = _laneTops[hit.Lane] + RowsOffset + hit.Depth * _rowHeight;
+        var top = _laneTops[hit.Lane] + LaneHeaderHeight + hit.Depth * _rowHeight;
 
         if (top < _scrollY || top + _rowHeight > _scrollY + ViewportHeight)
         {
@@ -1203,6 +1166,8 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
         var control = (FlameChartControl)d;
 
         control._markedCalls.Clear();
+
+        control.ReleaseMinimap();
 
         control._canvas.Invalidate();
     }

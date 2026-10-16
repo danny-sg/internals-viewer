@@ -14,8 +14,6 @@ internal unsafe struct HookEvent
 
     public ulong Id;
 
-    public ulong CallCount;
-
     public fixed ulong Arguments[ArgumentCount];
 
     public ulong ReturnValue;

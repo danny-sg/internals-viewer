@@ -5,7 +5,7 @@ namespace InternalsViewer.Query.FullTrace.Batches;
 public sealed record BatchCapture(ulong Function,
                                   ulong Instance,
                                   int Call,
-                                  ulong Id,
+                                  TracePosition Position,
                                   ulong Iterator,
                                   ulong Address,
                                   ulong Consumer,

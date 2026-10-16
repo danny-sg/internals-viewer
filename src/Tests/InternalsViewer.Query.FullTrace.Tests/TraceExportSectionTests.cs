@@ -230,7 +230,7 @@ public class TraceExportSectionTests
 
         var storeBuilder = new TraceCallStore.Builder();
 
-        storeBuilder.Add(0x30, Scan, Columns(Call(1, 5), Call(2, 6)), 2);
+        storeBuilder.Add(0x30, Scan, TraceCallRows.Chunk(Call(1, 5), Call(2, 6)), 2);
 
         storeBuilder.AddLocator(0x30, Scan, 1, new Locator(2, LocatorValueType.Page, Page336), false);
 
@@ -256,29 +256,5 @@ public class TraceExportSectionTests
     private static CallSpan Span(int node, ulong start, ulong end)
         => new(start, 0, end, 0, start, end, node, 7, uint.MaxValue, 1);
 
-    private static ulong[] Call(ulong sequence, ulong rcx)
-    {
-        var row = new ulong[TraceArgumentCall.ValueCount];
-
-        row[0] = sequence;
-        row[2] = rcx;
-        row[7] = 1;
-
-        return row;
-    }
-
-    private static ulong[] Columns(params ulong[][] rows)
-    {
-        var columns = new ulong[rows.Length * TraceArgumentCall.ValueCount];
-
-        for (var call = 0; call < rows.Length; call++)
-        {
-            for (var value = 0; value < TraceArgumentCall.ValueCount; value++)
-            {
-                columns[value * rows.Length + call] = rows[call][value];
-            }
-        }
-
-        return columns;
-    }
+    private static ulong[] Call(ulong sequence, ulong rcx) => TraceCallRows.Row(sequence, rcx: rcx, node: 1);
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using CommunityToolkit.WinUI;
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Helpers.Converters.Page;
 using InternalsViewer.UI.App.Models;
@@ -95,13 +96,16 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
 
     private Visibility IsSourceVisible(IReadOnlyList<SourceStep>? steps) => GetVisibility(steps is { Count: > 0 });
 
-    private string CallIdText(PlayheadCallRow? row) => row is { Id: > 0 } ? $"{row.Id}" : "None";
+    private string PositionText(PlayheadCallRow? row) => row is { FromPosition.IsKnown: true } ? row.FromPosition.ToString() : "None";
 
-    private string StartText(PlayheadCallRow? row) => row is null ? string.Empty : $"{row.PositionStart:N0}";
+    private string StartText(PlayheadCallRow? row) => row is null ? string.Empty : GetRulerText(row.FromPosition, row.OriginSequence);
 
-    private string EndText(PlayheadCallRow? row) => row is null ? string.Empty : $"{row.PositionEnd:N0}";
+    private string EndText(PlayheadCallRow? row) => row is null ? string.Empty : GetRulerText(row.ToPosition, row.OriginSequence);
 
     private string InstructionsText(PlayheadCallRow? row) => row is null ? string.Empty : $"{row.Instructions:N0}";
+
+    private static string GetRulerText(TracePosition position, ulong originSequence)
+        => position.IsKnown ? $"{(long)position.Sequence - (long)originSequence:N0}:{position.Steps:N0}" : "None";
 
     private Brush? CategoryBrush(PlayheadCallRow? row) => row is null ? null : HexColorToBrushConverter.ToBrush(row.Node.CategoryColour);
 

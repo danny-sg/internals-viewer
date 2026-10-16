@@ -90,9 +90,9 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
                           IReadOnlyDictionary<ulong, IteratorTarget>? iterators = null,
                           HoBtAccessMap? hobtAccess = null,
                           MemoryMap? memoryMap = null,
-                          RowBufferIndex? rowBuffers = null,
+                          RowBufferStore? rowBuffers = null,
                           RowBufferDecoder? rowBufferDecoder = null,
-                          BatchIndex? batches = null,
+                          BatchStore? batches = null,
                           BatchDecoder? batchDecoder = null)
     {
         Cancel();
@@ -104,9 +104,9 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
                                 iterators ?? new Dictionary<ulong, IteratorTarget>(),
                                 hobtAccess ?? HoBtAccessMap.Empty,
                                 memoryMap ?? MemoryMap.Empty,
-                                rowBuffers ?? RowBufferIndex.Empty,
+                                rowBuffers ?? RowBufferStore.Empty,
                                 rowBufferDecoder,
-                                batches ?? BatchIndex.Empty,
+                                batches ?? BatchStore.Empty,
                                 batchDecoder,
                                 symbols,
                                 getHoBtName);

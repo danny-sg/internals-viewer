@@ -26,7 +26,7 @@ public sealed class FlameChartMinimap : UserControl, IDisposable
         DependencyProperty.Register(nameof(Timeline),
                                     typeof(TraceTimeline),
                                     typeof(FlameChartMinimap),
-                                    new PropertyMetadata(null, OnChanged));
+                                    new PropertyMetadata(null, OnTimelineChanged));
 
     public TraceTimeline? Timeline
     {
@@ -515,4 +515,15 @@ public sealed class FlameChartMinimap : UserControl, IDisposable
 
     private static void OnChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((FlameChartMinimap)d)._canvas.Invalidate();
+
+    private static void OnTimelineChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var minimap = (FlameChartMinimap)d;
+
+        minimap._picture?.Dispose();
+        minimap._picture = null;
+        minimap._pictureKey = null;
+
+        minimap._canvas.Invalidate();
+    }
 }

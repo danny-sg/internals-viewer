@@ -19,6 +19,7 @@ using InternalsViewer.Query;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.RowBuffers;
+using InternalsViewer.Query.FullTrace.RowBuffers.HashRows;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.Iterators;
@@ -270,6 +271,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     [ObservableProperty]
     private TraceRowBufferMarks? _rowBufferMarks;
+
+    [ObservableProperty]
+    private TraceRowReturnMarks? _rowReturnMarks;
 
     [ObservableProperty]
     private TraceEventLink? _currentEventLink;
@@ -804,6 +808,20 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         NavigateToCall(node, call);
     }
 
+    public void OpenRowBuffers(CallStackNode node, int call, bool isBatch)
+    {
+        Layout.ShowCallTree();
+
+        if (isBatch)
+        {
+            CallTreeTab.ShowBatches(node, call);
+        }
+        else
+        {
+            CallTreeTab.ShowRowBuffers(node, call);
+        }
+    }
+
     /// <summary>
     /// Opens the Call Tree document's detail pane on the symbol search
     /// </summary>
@@ -1067,6 +1085,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         FullFlameChart = null;
 
         RowBufferMarks = null;
+
+        RowReturnMarks = null;
 
         CreatedCallTreeTab?.Dispose();
 
@@ -1362,6 +1382,16 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private IReadOnlyList<ColumnReference>? GetOutputColumns(IteratorTarget? iterator)
         => iterator?.Operator?.PlanNodeIdentifier is { } identifier ? ResolvePlanNode(identifier)?.OutputColumns : null;
+
+    private IReadOnlyList<ColumnReference>? GetBuildColumns(IteratorTarget? iterator)
+        => iterator?.Operator?.PlanNodeIdentifier is { } identifier && ResolvePlanNode(identifier) is { } node
+            ? HashTableColumns.Get(node)
+            : null;
+
+    private int GetBuildKeyCount(IteratorTarget? iterator)
+        => iterator?.Operator?.PlanNodeIdentifier is { } identifier && ResolvePlanNode(identifier) is { } node
+            ? HashTableColumns.GetKeyCount(node)
+            : 0;
 
     private PlanNode? ResolvePlanNode(PlanNodeIdentifier identifier)
     {
@@ -2250,6 +2280,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         var batchDecoder = new BatchDecoder(Database, i => GetOutputColumns(iterators.GetValueOrDefault(i)));
 
+        var buildDecoder = new BatchDecoder(Database, i => GetBuildColumns(iterators.GetValueOrDefault(i)));
+
+        result.RowBuffers.ApplyRecordLayouts(buildDecoder.GetColumn, i => GetBuildKeyCount(iterators.GetValueOrDefault(i)));
+
         Arguments.SetSource(result.CallStore,
                             result.CallStack,
                             iterators,
@@ -2265,6 +2299,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         FullFlameChart = result.Timeline;
 
         RowBufferMarks = result.RowBufferMarks;
+
+        RowReturnMarks = result.RowReturnMarks;
 
         FlameChart = flameChart;
 
@@ -2391,6 +2427,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         FullFlameChart = null;
 
         RowBufferMarks = null;
+
+        RowReturnMarks = null;
 
         SelectedCallNode = null;
 

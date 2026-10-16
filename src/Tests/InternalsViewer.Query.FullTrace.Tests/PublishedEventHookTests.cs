@@ -1,5 +1,6 @@
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.PublishedEvents;
+using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -27,7 +28,7 @@ public class PublishedEventHookTests
 
         hook.OnCall(Write(Session), replay);
 
-        Assert.Equal(new PublishedEvent(Publisher, Session, 50, 6, 700, 3, Thread), Assert.Single(hook.Build()));
+        Assert.Equal(new PublishedEvent(Publisher, Session, At(50, 6), 700, 3, Thread), Assert.Single(hook.Build()));
         Assert.Equal([(Thread, PublishStack)], replay.WatchedStacks);
     }
 
@@ -85,8 +86,7 @@ public class PublishedEventHookTests
             Node = 3,
             Arguments = new ulong[4],
             StackPointer = PublishStack,
-            Sequence = 50,
-            Steps = 6,
+            Position = At(50, 6),
             Instructions = 700
         };
 

@@ -25,7 +25,7 @@ public class LocatorHookTests
 
     private const ulong ReturnAddress = 0x7FF8_0061_0010;
 
-    private const ulong ReturnedFlag = 1ul << 32;
+    private const ulong ReturnedFlag = TraceCallColumns.ReturnedFlag;
 
     [Fact]
     public void A_Pointer_Argument_Is_Read_When_The_Call_Is_Made()

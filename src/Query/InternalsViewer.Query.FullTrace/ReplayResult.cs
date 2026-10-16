@@ -30,6 +30,6 @@ internal sealed record ReplayResult(CallNode[] Nodes,
                                     TraceTimeline Timeline,
                                     PublishedEvent[] PublishedEvents,
                                     AddressEntry[] MemoryMap,
-                                    RowBufferIndex RowBuffers,
-                                    BatchIndex Batches,
-                                    CustomHookIndex CustomHooks);
+                                    RowBufferStore RowBuffers,
+                                    BatchStore Batches,
+                                    CustomHookStore CustomHooks);

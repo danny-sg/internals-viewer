@@ -10,7 +10,7 @@ namespace InternalsViewer.Query.FullTrace.Tests;
 [Trait("Category", "Unit")]
 public class IteratorPlanLinkerTests
 {
-    private const ulong ReturnedFlag = 1ul << 32;
+    private const ulong ReturnedFlag = TraceCallColumns.ReturnedFlag;
 
     [Fact]
     public void Each_Plan_Object_Takes_The_Plan_Node_In_The_Same_Place()
@@ -279,7 +279,7 @@ public class IteratorPlanLinkerTests
 
             foreach (var ((address, instance), rows) in Rows)
             {
-                builder.Add(address, instance, Chunk(rows), rows.Count);
+                builder.Add(address, instance, TraceCallRows.Chunk([.. rows]), rows.Count);
             }
 
             return IteratorPlanLinker.Link(builder.Build(), Nodes, operators);
@@ -305,7 +305,7 @@ public class IteratorPlanLinkerTests
                 Rows[(frame.Address, frame.Instance)] = rows;
             }
 
-            rows.Add([sequence, flags, rcx, rdx, r8, 0, returned, (ulong)Indexes[node]]);
+            rows.Add(TraceCallRows.Row(sequence, flags: flags, rcx: rcx, rdx: rdx, r8: r8, returnValue: returned, node: Indexes[node]));
 
             return node;
         }
@@ -346,21 +346,6 @@ public class IteratorPlanLinkerTests
                     PlanOperator = planOperator is null ? [] : [.. planOperator.Split(',').Select(GlobPattern.Parse)]
                 }
             };
-        }
-
-        private static ulong[] Chunk(List<ulong[]> rows)
-        {
-            var columns = new ulong[rows.Count * TraceArgumentCall.ValueCount];
-
-            for (var call = 0; call < rows.Count; call++)
-            {
-                for (var value = 0; value < rows[call].Length; value++)
-                {
-                    columns[value * rows.Count + call] = rows[call][value];
-                }
-            }
-
-            return columns;
         }
     }
 }

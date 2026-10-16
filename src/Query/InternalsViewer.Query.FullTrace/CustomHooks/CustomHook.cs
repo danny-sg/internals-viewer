@@ -10,7 +10,7 @@ internal sealed class CustomHook(IEnumerable<(ulong Address, CustomHookDefinitio
 
     private List<CustomHookCapture> Captures { get; } = [];
 
-    public CustomHookIndex Build() => new([.. Captures]);
+    public CustomHookStore Build() => new([.. Captures]);
 
     protected override void Read(ITraceReplay replay, in TraceHookCall call, CustomHookDefinition definition, ulong pointer)
     {
@@ -29,7 +29,7 @@ internal sealed class CustomHook(IEnumerable<(ulong Address, CustomHookDefinitio
                                            call.Function,
                                            call.Instance,
                                            (int)call.Call,
-                                           call.Id,
+                                           call.Position,
                                            call.Thread,
                                            address,
                                            read == data.Length ? data : data[..read]));

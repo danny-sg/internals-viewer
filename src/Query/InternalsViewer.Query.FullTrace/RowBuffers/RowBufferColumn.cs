@@ -1,4 +1,5 @@
 using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
+using InternalsViewer.Query.FullTrace.RowBuffers.DeferredValues;
 
 namespace InternalsViewer.Query.FullTrace.RowBuffers;
 
@@ -9,17 +10,32 @@ public sealed record RowBufferColumn(int Ordinal,
                                      int Length,
                                      byte[] Data)
 {
+    public DeferredValue? Deferred { get; init; }
+
+    public ulong Pointer { get; init; }
+
+    public int DeepDataVectorId { get; init; }
+
     public bool IsByReference => Flags.HasFlag(RowBufferColumnFlags.ByReference);
 
     public bool IsTruncated => Flags.HasFlag(RowBufferColumnFlags.Truncated);
 
     public bool IsUnreadable => Flags.HasFlag(RowBufferColumnFlags.Unreadable);
 
+    public bool HasLength => Flags.HasFlag(RowBufferColumnFlags.HasLength);
+
+    public string? UnreadableReason => IsUnreadable ? GetUnreadableReason() : null;
+
     public override string ToString()
     {
         if (Status != 0)
         {
             return $"Status {Status}";
+        }
+
+        if (Deferred is { } deferred)
+        {
+            return deferred.ToString();
         }
 
         if (IsUnreadable)

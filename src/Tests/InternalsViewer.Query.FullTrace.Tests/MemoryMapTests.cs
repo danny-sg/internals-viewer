@@ -2,6 +2,7 @@ using System.Text;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
+using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -24,7 +25,8 @@ public class MemoryMapTests
         var map = Build(Entry(MemoryMapOperation.Visited, call: 10, ScanMethod),
                         Entry(MemoryMapOperation.Allocated, call: 20, OperatorNew));
 
-        Assert.Equal(("CQScanRangeNew", "OperatorNew"), (map.GetEntry(Address, 15)?.ClassName, map.GetEntry(Address, 25)?.Allocator));
+        Assert.Equal(("CQScanRangeNew", "OperatorNew"),
+                     (map.GetEntry(Address, At(15))?.ClassName, map.GetEntry(Address, At(25))?.Allocator));
     }
 
     [Fact]
@@ -33,7 +35,8 @@ public class MemoryMapTests
         var map = Build(Entry(MemoryMapOperation.Allocated, call: 10, OperatorNew),
                         Entry(MemoryMapOperation.Visited, call: 20, ScanMethod));
 
-        Assert.Equal(("CQScanRangeNew", "OperatorNew"), (map.GetEntry(Address, 15)?.ClassName, map.GetEntry(Address, 25)?.Allocator));
+        Assert.Equal(("CQScanRangeNew", "OperatorNew"),
+                     (map.GetEntry(Address, At(15))?.ClassName, map.GetEntry(Address, At(25))?.Allocator));
     }
 
     [Fact]
@@ -42,7 +45,7 @@ public class MemoryMapTests
         var map = Build(Entry(MemoryMapOperation.Allocated, call: 10, OperatorNew),
                         Entry(MemoryMapOperation.Allocated, call: 20, OperatorNew));
 
-        Assert.Equal(((string?)null, "OperatorNew"), (map.GetEntry(Address, 15)?.ClassName, map.GetEntry(Address, 15)?.Allocator));
+        Assert.Equal(((string?)null, "OperatorNew"), (map.GetEntry(Address, At(15))?.ClassName, map.GetEntry(Address, At(15))?.Allocator));
     }
 
     [Fact]
@@ -50,7 +53,7 @@ public class MemoryMapTests
     {
         var map = Build(Entry(MemoryMapOperation.Allocated, call: 10, OperatorNew));
 
-        Assert.Null(map.GetEntry(Address, 5));
+        Assert.Null(map.GetEntry(Address, At(5)));
     }
 
     [Fact]
@@ -58,7 +61,7 @@ public class MemoryMapTests
     {
         var map = Build(Entry(MemoryMapOperation.Visited, call: 10, ScanMethod, owner: 5, until: 30));
 
-        Assert.Equal(("CQScanRangeNew", null), (map.GetEntry(Address, 30)?.ClassName, map.GetEntry(Address, 31)?.ClassName));
+        Assert.Equal(("CQScanRangeNew", null), (map.GetEntry(Address, At(30))?.ClassName, map.GetEntry(Address, At(31))?.ClassName));
     }
 
     [Fact]
@@ -66,7 +69,7 @@ public class MemoryMapTests
     {
         var map = Build(Entry(MemoryMapOperation.Visited, call: 50, ScanMethod));
 
-        Assert.Equal("CQScanRangeNew", map.GetEntry(Address, 10)?.ClassName);
+        Assert.Equal("CQScanRangeNew", map.GetEntry(Address, At(10))?.ClassName);
     }
 
     [Fact]
@@ -74,15 +77,15 @@ public class MemoryMapTests
     {
         var map = Build(Entry(MemoryMapOperation.Visited, call: 50, ScanMethod, owner: 40, until: 60));
 
-        Assert.Null(map.GetEntry(Address, 10));
+        Assert.Null(map.GetEntry(Address, At(10)));
     }
 
     [Fact]
-    public void A_Call_Without_An_Id_Finds_Nothing()
+    public void An_Unknown_Moment_Finds_Nothing()
     {
         var map = Build(Entry(MemoryMapOperation.Visited, call: 50, ScanMethod));
 
-        Assert.Null(map.GetEntry(Address, 0));
+        Assert.Null(map.GetEntry(Address, TracePosition.Unknown));
     }
 
     [Fact]
@@ -104,13 +107,13 @@ public class MemoryMapTests
 
         var read = MemoryMap.Read(reader, NodeOf);
 
-        Assert.Equal((2, "OperatorNew"), (read.Count, read.GetEntry(Address, 15)?.Allocator));
+        Assert.Equal((2, "OperatorNew"), (read.Count, read.GetEntry(Address, At(15))?.Allocator));
     }
 
     private static MemoryMap Build(params AddressEntry[] entries) => MemoryMap.Build(entries, NodeOf);
 
     private static AddressEntry Entry(MemoryMapOperation operation, ulong call, int node, ulong owner = 0, ulong until = 0)
-        => new(Address, call, owner, until, node, 7, operation);
+        => new(Address, call, 0, At(call), owner, until == 0 ? TracePosition.Unknown : At(until), node, 7, operation);
 
     private static CallStackNode? NodeOf(int node) => node >= 0 && node < Nodes.Length ? Nodes[node] : null;
 

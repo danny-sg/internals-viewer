@@ -160,11 +160,13 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         replay.CallStore.AnnotateNodes();
 
-        replay.RowBuffers.AnnotateNodes(replay.CallStore);
+        replay.RowBuffers.AnnotateCallStackNodes(replay.CallStore);
 
         replay.Batches.AnnotateNodes(replay.CallStore);
 
         replay.Timeline.MapNodes(mapped);
+
+        replay.Timeline.SetCalls(replay.CallStore);
 
         callStack.RemoveCallsUnder(IsInstrumentation);
 
@@ -175,8 +177,6 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                               callStack.Nodes().Sum(n => n.Calls),
                               timeline.SpanCount,
                               timeline.Threads.Count);
-
-        timeline.AddCallActivity(QueryRunner.ActivityBuckets);
 
         var memoryMap = MemoryMap.Build(replay.MemoryMap, replay.Timeline.NodeOf);
 
@@ -250,10 +250,12 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
             PlanLink = planLink,
             HoBtAccess = hobtAccess,
             MemoryMap = memoryMap,
+            ObjectPool = request.ObjectPool,
             RowBuffers = replay.RowBuffers,
             Batches = replay.Batches,
             CustomHooks = replay.CustomHooks,
-            RowBufferMarks = TraceRowBufferMarks.Build(timeline, replay.RowBuffers, replay.Batches)
+            RowBufferMarks = TraceRowBufferMarks.Build(timeline, replay.RowBuffers, replay.Batches),
+            RowReturnMarks = TraceRowReturnMarks.Build(timeline, replay.CallStore)
         };
     }
 

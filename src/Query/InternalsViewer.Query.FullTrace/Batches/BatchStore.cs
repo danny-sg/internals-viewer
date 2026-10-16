@@ -3,13 +3,15 @@ using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Batches;
 
-public sealed partial class BatchIndex
+public sealed partial class BatchStore
 {
     private const int MaximumLineage = 64;
 
     private const string ProducerMethod = "BpGetNextBatch";
 
-    internal BatchIndex(IEnumerable<BatchCapture> captures)
+    private const ulong DeepValueTag = 1;
+
+    internal BatchStore(IEnumerable<BatchCapture> captures)
     {
         Captures = [.. captures];
 
@@ -17,7 +19,7 @@ public sealed partial class BatchIndex
 
         Handoffs = Captures.Where(c => c.Consumer != 0)
                            .GroupBy(c => (c.Address, c.Consumer))
-                           .ToDictionary(g => g.Key, g => g.OrderBy(c => c.Id).ToArray());
+                           .ToDictionary(g => g.Key, g => g.OrderBy(c => c.Position).ToArray());
 
         foreach (var capture in Batches.Values.SelectMany(b => b).Where(c => c.Consumer != 0))
         {
@@ -25,9 +27,11 @@ public sealed partial class BatchIndex
         }
     }
 
-    public static BatchIndex Empty { get; } = new([]);
+    public static BatchStore Empty { get; } = new([]);
 
     public int Count => Captures.Length;
+
+    internal IReadOnlyList<BatchCapture> All => Captures;
 
     private BatchCapture[] Captures { get; }
 
@@ -36,6 +40,8 @@ public sealed partial class BatchIndex
     private Dictionary<(ulong Batch, ulong Consumer), BatchCapture[]> Handoffs { get; }
 
     private Dictionary<ulong, ulong> Producers { get; } = [];
+
+    private Dictionary<ulong, (BatchCapture Capture, int VectorId, int Row)> DeepValues => field ??= BuildDeepValues();
 
     public bool HasBatches(ulong address, ulong instance) => Batches.ContainsKey((address, instance));
 
@@ -59,12 +65,44 @@ public sealed partial class BatchIndex
             return null;
         }
 
-        var index = SortedSearch.FirstAtOrAfter(handoffs, capture.Id, h => h.Id) - 1;
+        var index = SortedSearch.FirstAtOrAfter(handoffs, capture.Position, h => h.Position) - 1;
 
         return index < 0 ? null : handoffs[index];
     }
 
+    public BatchCapture? GetHandoff(ulong batch, ulong consumer, TracePosition position)
+    {
+        if (!Handoffs.TryGetValue((batch, consumer), out var handoffs))
+        {
+            return null;
+        }
+
+        var index = SortedSearch.FirstAfter(handoffs, position, h => h.Position) - 1;
+
+        return index < 0 ? null : handoffs[index];
+    }
+
+    public ulong? GetVectorSlot(BatchCapture capture, int vectorId, int row)
+    {
+        var current = capture;
+
+        for (var depth = 0; depth <= MaximumLineage && current is not null; depth++)
+        {
+            if (current.Vectors.FirstOrDefault(v => v.VectorId == vectorId)?.GetSlot(row) is { } slot)
+            {
+                return slot;
+            }
+
+            current = GetInput(current);
+        }
+
+        return null;
+    }
+
     public ulong? GetProducer(ulong consumer) => Producers.TryGetValue(consumer, out var producer) ? producer : null;
+
+    public (BatchCapture Capture, int VectorId, int Row)? GetDeepValue(ulong pointer)
+        => DeepValues.TryGetValue(pointer, out var deepValue) ? deepValue : null;
 
     public BatchLineage? GetLineage(ulong address, ulong instance, int call)
     {
@@ -89,7 +127,7 @@ public sealed partial class BatchIndex
 
     internal void AnnotateNodes(TraceCallStore store)
     {
-        var produced = Captures.GroupBy(c => c.Instance).ToDictionary(g => g.Key, g => g.OrderBy(c => c.Id).ToArray());
+        var produced = Captures.GroupBy(c => c.Instance).ToDictionary(g => g.Key, g => g.OrderBy(c => c.Position).ToArray());
 
         foreach (var (address, instance) in store.FunctionKeys)
         {
@@ -125,6 +163,24 @@ public sealed partial class BatchIndex
         }
     }
 
+    private Dictionary<ulong, (BatchCapture Capture, int VectorId, int Row)> BuildDeepValues()
+    {
+        var deepValues = new Dictionary<ulong, (BatchCapture Capture, int VectorId, int Row)>();
+
+        foreach (var capture in Captures)
+        {
+            foreach (var vector in capture.Vectors)
+            {
+                foreach (var row in vector.DeepValues.Keys)
+                {
+                    deepValues.TryAdd(vector.Slots[row] & ~DeepValueTag, (capture, vector.VectorId, row));
+                }
+            }
+        }
+
+        return deepValues;
+    }
+
     private static BatchCapture[] GetProductions(ulong address, TraceCallList calls, BatchCapture[] handoffs)
     {
         var productions = new List<BatchCapture>();
@@ -133,21 +189,21 @@ public sealed partial class BatchIndex
 
         for (var call = 0; call < calls.Count; call++)
         {
-            var end = calls.GetEndId(call);
+            var end = calls.GetToPosition(call);
 
-            if (end == 0)
+            if (!end.IsKnown)
             {
                 continue;
             }
 
-            var limit = call + 1 < calls.Count ? calls.GetId(call + 1) : ulong.MaxValue;
+            var limit = call + 1 < calls.Count ? calls.GetFromPosition(call + 1) : TracePosition.Unknown;
 
-            while (next < handoffs.Length && handoffs[next].Id <= end)
+            while (next < handoffs.Length && handoffs[next].Position <= end)
             {
                 next++;
             }
 
-            if (next < handoffs.Length && handoffs[next].Id < limit)
+            if (next < handoffs.Length && handoffs[next].Position < limit)
             {
                 productions.Add(handoffs[next] with { Function = address, Call = call });
             }

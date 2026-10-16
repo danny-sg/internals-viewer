@@ -19,10 +19,12 @@ public sealed class RowBufferDecoder(DatabaseSource database,
 
     private ConcurrentDictionary<ulong, IReadOnlyDictionary<int, ColumnStructure>?> Columns { get; } = new();
 
-    public ColumnStructure? GetColumn(RowBuffer row, RowBufferColumn column)
-        => row.Format == RowBufferFormat.Values
-            ? getOutputColumn?.Invoke(row.Iterator, column.Ordinal)
-            : GetColumns(row.Iterator)?.GetValueOrDefault(column.Binding.RecordOffset);
+    public ColumnStructure? GetColumn(RowBuffer row, RowBufferColumn column) => row.Format switch
+    {
+        RowBufferFormat.Batch => getOutputColumn?.Invoke(row.Iterator, column.Ordinal),
+        RowBufferFormat.HashTable => GetRecordColumn(row, column),
+        _ => GetColumns(row.Iterator)?.GetValueOrDefault(column.Binding.RecordOffset)
+    };
 
     public string? Decode(RowBuffer row, RowBufferColumn column)
     {
@@ -36,12 +38,12 @@ public sealed class RowBufferDecoder(DatabaseSource database,
             return NullText;
         }
 
-        if (column is not { Status: 0, IsUnreadable: false, IsTruncated: false })
+        if (column is not { Status: 0, IsUnreadable: false, IsTruncated: false, Deferred: null })
         {
             return null;
         }
 
-        return row.Format == RowBufferFormat.Values
+        return row.Format == RowBufferFormat.Batch
             ? DecodeValue(column, structure)
             : DataConverter.BinaryToString(column.Data, structure.DataType, structure.Precision, structure.Scale, structure.BitPosition);
     }
@@ -74,12 +76,15 @@ public sealed class RowBufferDecoder(DatabaseSource database,
                                             structure.Scale);
     }
 
-    internal static IReadOnlyDictionary<int, ColumnStructure> GetColumns(TableStructure structure)
+    internal static IReadOnlyDictionary<int, ColumnStructure> GetColumns<T>(Structure<T> structure) where T : ColumnStructure
         => structure.Columns
                     .Where(c => !c.IsDropped)
                     .GroupBy(c => (int)c.LeafOffset)
                     .Where(g => g.Count() == 1)
-                    .ToDictionary(g => g.Key, g => g.Single());
+                    .ToDictionary(g => g.Key, ColumnStructure (g) => g.Single());
+
+    private static ColumnStructure? GetRecordColumn(RowBuffer row, RowBufferColumn column)
+        => row.RecordLayout is { } layout && column.Ordinal < layout.Columns.Count ? layout.Columns[column.Ordinal] : null;
 
     private IReadOnlyDictionary<int, ColumnStructure>? GetColumns(ulong iterator) => Columns.GetOrAdd(iterator, LoadColumns);
 
@@ -89,11 +94,13 @@ public sealed class RowBufferDecoder(DatabaseSource database,
             || AllocationUnitProvider.FindAllocationUnit(database,
                                                          operatorEvent.OperatorSchemaName,
                                                          operatorEvent.OperatorTableName,
-                                                         operatorEvent.OperatorIndexName) is not { IndexId: <= 1 } allocationUnit)
+                                                         operatorEvent.OperatorIndexName) is not { } allocationUnit)
         {
             return null;
         }
 
-        return GetColumns(TableStructureProvider.GetTableStructure(database, allocationUnit.AllocationUnitId));
+        return allocationUnit.IndexId <= 1
+            ? GetColumns(TableStructureProvider.GetTableStructure(database, allocationUnit.AllocationUnitId))
+            : GetColumns(IndexStructureProvider.GetIndexStructure(database, allocationUnit.AllocationUnitId));
     }
 }

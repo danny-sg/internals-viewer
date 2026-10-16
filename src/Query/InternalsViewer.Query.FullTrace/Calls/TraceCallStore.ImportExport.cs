@@ -5,19 +5,20 @@ namespace InternalsViewer.Query.FullTrace.Calls;
 
 public sealed partial class TraceCallStore
 {
-    private const int FormatVersion = 2;
+    private const int FormatVersion = 3;
 
-    private const int LegacyReturnRegister = 8;
+    internal static bool IsCurrent(BinaryReader reader) => reader.ReadInt32() == -FormatVersion;
 
     internal static TraceCallStore Read(BinaryReader reader)
     {
         var functions = new Dictionary<(ulong Address, ulong Instance), Chunk[]>();
 
-        var first = reader.ReadInt32();
+        if (!IsCurrent(reader))
+        {
+            throw new InvalidDataException("The call log was exported before positions were recorded and must be re-recorded");
+        }
 
-        var version = first < 0 ? -first : 1;
-
-        var functionCount = first < 0 ? reader.ReadInt32() : first;
+        var functionCount = reader.ReadInt32();
 
         for (var index = 0; index < functionCount; index++)
         {
@@ -43,7 +44,7 @@ public sealed partial class TraceCallStore
         {
             var key = (reader.ReadUInt64(), reader.ReadUInt64());
 
-            locators[key] = LocatorTable.Read(reader, version < FormatVersion ? LegacyReturnRegister : null);
+            locators[key] = LocatorTable.Read(reader);
         }
 
         return new TraceCallStore(functions, locators);

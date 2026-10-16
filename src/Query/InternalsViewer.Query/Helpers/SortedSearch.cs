@@ -19,7 +19,14 @@ public static class SortedSearch
     public static int FirstAtOrAfter(ReadOnlySpan<ulong> values, ulong value, int from = 0)
         => LowerBound(values, value, from, strict: false);
 
-    public static int FirstAtOrAfter<T, TKey>(IReadOnlyList<T> values, TKey value, Func<T, TKey> getKey) where TKey : INumber<TKey>
+    public static int FirstAtOrAfter<T, TKey>(IReadOnlyList<T> values, TKey value, Func<T, TKey> getKey) where TKey : IComparable<TKey>
+        => KeyLowerBound(values, value, getKey, strict: false);
+
+    public static int FirstAfter<T, TKey>(IReadOnlyList<T> values, TKey value, Func<T, TKey> getKey) where TKey : IComparable<TKey>
+        => KeyLowerBound(values, value, getKey, strict: true);
+
+    private static int KeyLowerBound<T, TKey>(IReadOnlyList<T> values, TKey value, Func<T, TKey> getKey, bool strict)
+        where TKey : IComparable<TKey>
     {
         var low = 0;
 
@@ -29,7 +36,9 @@ public static class SortedSearch
         {
             var middle = low + (high - low) / 2;
 
-            if (getKey(values[middle]) < value)
+            var comparison = getKey(values[middle]).CompareTo(value);
+
+            if (strict ? comparison <= 0 : comparison < 0)
             {
                 low = middle + 1;
             }
@@ -41,6 +50,7 @@ public static class SortedSearch
 
         return low;
     }
+
 
     private static int LowerBound<T>(ReadOnlySpan<T> values, T value, int from, bool strict) where T : INumber<T>
     {

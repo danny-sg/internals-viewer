@@ -6,7 +6,14 @@ namespace InternalsViewer.UI.App.Models.Query.CallStack;
 internal static class RowBufferDisplay
 {
     public static string GetLabel(RowBuffer row, RowBufferColumn column, RowBufferDecoder? decoder)
-        => decoder?.GetColumn(row, column) is { } structure ? structure.ColumnName : $"Column {column.Ordinal}";
+    {
+        if (decoder?.GetColumn(row, column) is not { } structure)
+        {
+            return $"Column {column.Ordinal}";
+        }
+
+        return row.RecordLayout?.IsKey(column.Ordinal) == true ? $"{structure.ColumnName} (Build Key)" : structure.ColumnName;
+    }
 
     public static object GetValue(RowBuffer row, RowBufferColumn column, RowBufferDecoder? decoder, bool decode)
         => decode && decoder?.Decode(row, column) is { } text ? text : column.ToString();

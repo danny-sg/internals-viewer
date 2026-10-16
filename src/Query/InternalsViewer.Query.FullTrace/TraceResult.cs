@@ -8,6 +8,7 @@ using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.FullTrace.Timeline;
+using InternalsViewer.Query.Memory;
 
 namespace InternalsViewer.Query.FullTrace;
 
@@ -19,13 +20,17 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
 
     public MemoryMap MemoryMap { get; init; } = MemoryMap.Empty;
 
-    public RowBufferIndex RowBuffers { get; init; } = RowBufferIndex.Empty;
+    public ObjectPoolSnapshot ObjectPool { get; init; } = ObjectPoolSnapshot.Empty;
 
-    public BatchIndex Batches { get; init; } = BatchIndex.Empty;
+    public RowBufferStore RowBuffers { get; init; } = RowBufferStore.Empty;
 
-    public CustomHookIndex CustomHooks { get; init; } = CustomHookIndex.Empty;
+    public BatchStore Batches { get; init; } = BatchStore.Empty;
+
+    public CustomHookStore CustomHooks { get; init; } = CustomHookStore.Empty;
 
     public TraceRowBufferMarks RowBufferMarks { get; init; } = TraceRowBufferMarks.Empty;
+
+    public TraceRowReturnMarks RowReturnMarks { get; init; } = TraceRowReturnMarks.Empty;
 
     public IReadOnlyList<CallStackNode> QueryRoots => Roots ??= QueryExecutionCropper.GetRoots(CallStack);
 

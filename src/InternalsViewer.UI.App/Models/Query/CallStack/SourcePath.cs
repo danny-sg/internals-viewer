@@ -23,7 +23,7 @@ public static class SourcePath
 
         var creation = origin is { Operation: not MemoryMapOperation.Visited } ? origin : null;
 
-        if (creation is not null && creation.Call == call.Id)
+        if (creation is not null && IsCall(creation, originNode, call))
         {
             return [];
         }
@@ -37,15 +37,16 @@ public static class SourcePath
                 continue;
             }
 
-            if (creation is not null && caller.Id < creation.Call)
+            if (creation is not null && caller.FromPosition < creation.FromPosition)
             {
                 break;
             }
 
-            var isCreation = creation is not null && caller.Id == creation.Call;
+            var isCreation = creation is not null && IsCall(creation, originNode, caller);
 
             steps.Add(new SourceStep(caller.Node,
-                                     caller.Id,
+                                     caller.FromPosition,
+                                     caller.Thread,
                                      steps.Count,
                                      isCreation ? creation!.Operation : null,
                                      isOnStack: true,
@@ -57,15 +58,18 @@ public static class SourcePath
             }
         }
 
-        var latest = steps.Count > 0 ? steps[^1].Id : call.Id;
+        var latest = steps.Count > 0 ? steps[^1].Position : call.FromPosition;
 
-        if (origin is not null && originNode is not null && origin.Call < latest)
+        if (origin is not null && originNode is not null && origin.FromPosition < latest)
         {
-            steps.Add(new SourceStep(originNode, origin.Call, steps.Count, creation?.Operation, call: originCall));
+            steps.Add(new SourceStep(originNode, origin.FromPosition, origin.Thread, steps.Count, creation?.Operation, call: originCall));
         }
 
         return steps;
     }
+
+    private static bool IsCall(MemoryMapEntry entry, CallStackNode? entryNode, PlayheadCallRow row)
+        => ReferenceEquals(entryNode, row.Node) && entry.Call == row.Call && entry.Thread == row.Thread;
 
     private static bool Receives(PlayheadCallRow row, ulong value)
         => row.This?.Value == value || row.Signature.Any(p => p.Kind == CallSignaturePartKind.Value && p.Value == value);

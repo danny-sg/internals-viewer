@@ -3,7 +3,7 @@ using InternalsViewer.Query.FullTrace.Batches.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Batches;
 
-public sealed partial class BatchIndex
+public sealed partial class BatchStore
 {
     internal void Write(BinaryWriter writer)
     {
@@ -17,7 +17,9 @@ public sealed partial class BatchIndex
 
             writer.Write(capture.Call);
 
-            writer.Write(capture.Id);
+            writer.Write(capture.Position.Sequence);
+
+            writer.Write(capture.Position.Steps);
 
             writer.Write(capture.Iterator);
 
@@ -40,7 +42,7 @@ public sealed partial class BatchIndex
         }
     }
 
-    internal static BatchIndex Read(BinaryReader reader)
+    internal static BatchStore Read(BinaryReader reader)
     {
         var captures = new BatchCapture[reader.ReadInt32()];
 
@@ -52,7 +54,7 @@ public sealed partial class BatchIndex
 
             var call = reader.ReadInt32();
 
-            var id = reader.ReadUInt64();
+            var position = new TracePosition(reader.ReadUInt64(), reader.ReadUInt64());
 
             var iterator = reader.ReadUInt64();
 
@@ -76,7 +78,7 @@ public sealed partial class BatchIndex
             captures[index] = new BatchCapture(function,
                                                instance,
                                                call,
-                                               id,
+                                               position,
                                                iterator,
                                                address,
                                                consumer,
@@ -86,7 +88,7 @@ public sealed partial class BatchIndex
                                                capacity);
         }
 
-        return new BatchIndex(captures);
+        return new BatchStore(captures);
     }
 
     private static void WriteVector(BinaryWriter writer, BatchCaptureVector vector)

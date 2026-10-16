@@ -74,7 +74,9 @@ public sealed partial class FlameChartControl
             ReverseRows();
         }
 
-        var length = Math.Min(_extrusionLength, MaximumLength(Flat(_spikes), _directionX, _directionY, width, bottom, popout: false));
+        var length = Math.Min(_extrusionLength, MaximumLength(Flat(_spikes), _directionX, _directionY, width, bottom));
+
+        _drawnLength = length;
 
         for (var index = 0; index < _spikes.Count; index++)
         {

@@ -1,8 +1,8 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline;
 
 namespace InternalsViewer.UI.App.Models.Query.CallStack;
@@ -10,16 +10,24 @@ namespace InternalsViewer.UI.App.Models.Query.CallStack;
 public sealed partial class PlayheadCallRow(CallStackNode node,
                                             TraceStackCall stackCall,
                                             CallSignature signature,
-                                            ulong id,
+                                            TracePosition fromPosition,
+                                            TracePosition toPosition,
+                                            uint thread,
                                             bool isCurrent,
-                                            double positionOrigin = 0) : ObservableObject
+                                            ulong originSequence = 0) : ObservableObject
 {
     [ObservableProperty]
     private CallSignaturePart? _highlighted;
 
     public CallStackNode Node { get; } = node;
 
-    public ulong Id { get; } = id;
+    public TracePosition FromPosition { get; } = fromPosition;
+
+    public TracePosition ToPosition { get; } = toPosition;
+
+    public ulong OriginSequence { get; } = originSequence;
+
+    public uint Thread { get; } = thread;
 
     public int Call => stackCall.Span.Call;
 
@@ -38,10 +46,6 @@ public sealed partial class PlayheadCallRow(CallStackNode node,
     public string CurrentText { get; set; } = string.Empty;
 
     public bool HasRowBuffer { get; set; }
-
-    public long PositionStart => (long)Math.Floor(stackCall.PositionStart - positionOrigin);
-
-    public long PositionEnd => (long)Math.Floor(stackCall.PositionEnd - positionOrigin);
 
     public long Instructions => (long)stackCall.Instructions;
 

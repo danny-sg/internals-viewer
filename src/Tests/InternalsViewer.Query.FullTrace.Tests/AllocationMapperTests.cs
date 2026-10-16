@@ -17,7 +17,7 @@ public class AllocationMapperTests
 
     private const ulong Inner = 0x6000;
 
-    private const ulong ReturnedFlag = 1ul << 32;
+    private const ulong ReturnedFlag = TraceCallColumns.ReturnedFlag;
 
     private const string WorkspaceClerk = "MEMORYCLERK_SQLQERESERVATIONS";
 
@@ -251,31 +251,12 @@ public class AllocationMapperTests
     private static CallstackFrame Frame(ulong address) => new() { Module = "sqldk", Rva = (uint)address, Address = address };
 
     private static ulong[] Row(ulong sequence, ulong size, int node, ulong returned = 0, ulong receiver = 0)
-    {
-        var row = new ulong[TraceArgumentCall.ValueCount];
+        => TraceCallRows.Row(sequence,
+                             flags: returned != 0 ? ReturnedFlag : 0,
+                             rcx: receiver,
+                             rdx: size,
+                             returnValue: returned,
+                             node: node);
 
-        row[0] = sequence;
-        row[1] = returned != 0 ? ReturnedFlag : 0;
-        row[2] = receiver;
-        row[3] = size;
-        row[6] = returned;
-        row[7] = (ulong)node;
-
-        return row;
-    }
-
-    private static ulong[] Chunk(params ulong[][] rows)
-    {
-        var columns = new ulong[rows.Length * TraceArgumentCall.ValueCount];
-
-        for (var call = 0; call < rows.Length; call++)
-        {
-            for (var value = 0; value < TraceArgumentCall.ValueCount; value++)
-            {
-                columns[value * rows.Length + call] = rows[call][value];
-            }
-        }
-
-        return columns;
-    }
+    private static ulong[] Chunk(params ulong[][] rows) => TraceCallRows.Chunk(rows);
 }

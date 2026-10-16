@@ -9,6 +9,7 @@ using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.FullTrace.Functions;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
 using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
+using InternalsViewer.Query.FullTrace.RowBuffers.HashRows;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -27,7 +28,8 @@ public class ReplayFunctionsTests
                                            [new MemoryFunction(0x90, AllocationOperation.Allocate, 1, -1, 1)],
                                            [new MemoryMapFunction(0xA0, MemoryMapOperation.Visited)],
                                            new RowBufferFunctions([0xB0], [(0xC0, RowBufferFormat.Bindings)]),
-                                           new BatchFunctions([0xD0]));
+                                           new BatchFunctions([0xD0]),
+                                           new HashRowFunctions([0x100], [0x104], [0x10C], [0x108]));
 
         var rebased = relative.Rebase(Base);
 
@@ -41,5 +43,9 @@ public class ReplayFunctionsTests
         Assert.Equal([Base + 0xB0], rebased.RowBuffers.Functions);
         Assert.Equal((Base + 0xC0, RowBufferFormat.Bindings), Assert.Single(rebased.RowBuffers.Formats));
         Assert.Equal([Base + 0xD0], rebased.Batches.Functions);
+        Assert.Equal([Base + 0x100], rebased.HashRows.GetRows);
+        Assert.Equal([Base + 0x104], rebased.HashRows.Lookups);
+        Assert.Equal([Base + 0x10C], rebased.HashRows.Inserts);
+        Assert.Equal([Base + 0x108], rebased.HashRows.HashIterators);
     }
 }

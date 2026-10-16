@@ -11,6 +11,7 @@ using InternalsViewer.UI.App.Controls.Timeline;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using SkiaSharp;
 using Windows.Foundation;
 
@@ -24,15 +25,13 @@ public sealed partial class FlameChartControl
 
     private const float SplitterHitMargin = 2f;
 
-    private const float CompactOperatorRowHeight = 28f;
-
-    private const float CompactOperatorsShare = 0.4f;
+    private const float OperatorsShare = 1f / 3;
 
     private const float MinimumOperatorsHeight = 20f;
 
     private const float OperatorsPadding = 4f;
 
-    private const float OperatorRowGap = 2f;
+    private const float OperatorRowGap = 6f;
 
     private const float MinimumLanesHeight = 60f;
 
@@ -43,8 +42,6 @@ public sealed partial class FlameChartControl
     private const float OperatorCornerRadius = 3f;
 
     private const float OperatorGradientLift = 0.04f;
-
-    private const float OperatorIdleShade = 0.7f;
 
     private const float OperatorMaximumFont = 12f;
 
@@ -116,15 +113,17 @@ public sealed partial class FlameChartControl
 
     public event Action<PlanNodeIdentifier>? PlanNodeSelected;
 
+    public event Action<PlanNodeIdentifier?>? ExecutionPlanRequested;
+
     private bool ShowsOperators => ShowOperators && _operatorRows.Length > 0;
 
     private float OperatorsTop => RulerTop + RulerHeight + PlayheadStripHeight;
 
     private float OperatorsArea => ShowsOperators ? OperatorsHeight + SplitterHeight : 0;
 
-    private float OperatorsRoom
-        => Math.Max(MinimumOperatorsHeight,
-                    (float)_overlay.ActualHeight - OperatorsTop - BandHeight - SplitterHeight - MinimumLanesHeight);
+    private float ChartHeight => (float)_overlay.ActualHeight - OperatorsTop - BandHeight - SplitterHeight;
+
+    private float OperatorsRoom => Math.Max(MinimumOperatorsHeight, ChartHeight - MinimumLanesHeight);
 
     private float OperatorsHeight
     {
@@ -135,15 +134,9 @@ public sealed partial class FlameChartControl
                 return 0;
             }
 
-            var room = OperatorsRoom;
+            var wanted = _operatorsHeight ?? ChartHeight * OperatorsShare;
 
-            var compact = _operatorRows.Length * CompactOperatorRowHeight
-                          + (_operatorRows.Length - 1) * OperatorRowGap
-                          + OperatorsPadding * 2;
-
-            var wanted = _operatorsHeight ?? Math.Min(compact, room * CompactOperatorsShare);
-
-            return Math.Clamp(wanted, MinimumOperatorsHeight, room);
+            return Math.Clamp(wanted, MinimumOperatorsHeight, OperatorsRoom);
         }
     }
 
@@ -223,6 +216,8 @@ public sealed partial class FlameChartControl
                     DrawOperatorBar(canvas, _operatorRows[row], lifetime, rect, scale, !IsRaised(lifetime));
                 }
             }
+
+            DrawMarkBand(canvas, row, width, scale);
         }
 
         canvas.Restore();
@@ -243,14 +238,6 @@ public sealed partial class FlameChartControl
 
         _operatorShape.SetRect(rect, radius, radius);
 
-        _paints.Fill.IsAntialias = true;
-
-        _paints.Fill.Color = TimelineColours.Scale(colour, OperatorIdleShade);
-
-        canvas.DrawRoundRect(_operatorShape, _paints.Fill);
-
-        _paints.Fill.IsAntialias = false;
-
         canvas.Save();
 
         canvas.ClipRoundRect(_operatorShape, antialias: true);
@@ -263,11 +250,13 @@ public sealed partial class FlameChartControl
 
         _paints.Fill.Shader = OperatorGradientOf(colour);
 
-        DrawActivity(canvas, lifetime, scale);
+        canvas.DrawRect(rect.Left, 0, rect.Width, 1, _paints.Fill);
 
         _paints.Fill.Shader = null;
 
         canvas.Restore();
+
+        DrawReturnStrip(canvas, row, lifetime, rect, colour, scale);
 
         if (labelled)
         {
@@ -295,47 +284,6 @@ public sealed partial class FlameChartControl
         }
 
         return gradient;
-    }
-
-    private void DrawActivity(SKCanvas canvas, TraceOperatorLifetime lifetime, double scale)
-    {
-        var calls = lifetime.Calls(_axis);
-
-        var runStart = -1f;
-
-        var runEnd = -1f;
-
-        var index = lifetime.FirstEndingAfter(_axis, _viewStart);
-
-        while (index < calls.Count && calls[index].Start <= _viewEnd)
-        {
-            var left = (float)((calls[index].Start - _viewStart) * scale);
-
-            var right = Math.Max((float)((calls[index].End - _viewStart) * scale), left + NarrowSpan);
-
-            if (runStart >= 0 && left <= runEnd + NarrowSpan)
-            {
-                runEnd = Math.Max(runEnd, right);
-            }
-            else
-            {
-                if (runStart >= 0)
-                {
-                    canvas.DrawRect(runStart, 0, runEnd - runStart, 1, _paints.Fill);
-                }
-
-                runStart = left;
-
-                runEnd = right;
-            }
-
-            index = lifetime.FirstEndingAfter(_axis, _viewStart + (MathF.Floor(right) + 1f) / scale, index + 1);
-        }
-
-        if (runStart >= 0)
-        {
-            canvas.DrawRect(runStart, 0, runEnd - runStart, 1, _paints.Fill);
-        }
     }
 
     private void DrawOperatorLabel(SKCanvas canvas, OperatorRow row, SKRect rect)
@@ -441,9 +389,9 @@ public sealed partial class FlameChartControl
 
     private (float Top, float Height) TrackBounds(int row, int track)
     {
-        var rowHeight = OperatorRowHeight;
+        var barsHeight = OperatorRowHeight - MarkBandHeightOf(row);
 
-        var trackHeight = rowHeight / _operatorRows[row].Lifetimes.Length;
+        var trackHeight = barsHeight / _operatorRows[row].Lifetimes.Length;
 
         var padding = Math.Min(OperatorBarPadding, trackHeight * OperatorBarShare);
 
@@ -557,7 +505,7 @@ public sealed partial class FlameChartControl
                 continue;
             }
 
-            var rowsTop = ContentTop + _laneTops[lane] - (float)_scrollY + RowsOffset;
+            var rowsTop = ContentTop + _laneTops[lane] - (float)_scrollY + LaneHeaderHeight;
 
             var rowsBottom = rowsTop + DepthOf(timeline.Threads[lane]) * _rowHeight;
 
@@ -720,6 +668,37 @@ public sealed partial class FlameChartControl
 
     private OperatorHit? OperatorAt(Point position)
     {
+        if (OperatorRowAt(position) is not { } found)
+        {
+            return null;
+        }
+
+        var (row, inRow) = found;
+
+        var barsHeight = OperatorRowHeight - MarkBandHeightOf(row);
+
+        if (inRow >= barsHeight)
+        {
+            return null;
+        }
+
+        var lifetimes = _operatorRows[row].Lifetimes;
+
+        var track = Math.Clamp((int)(inRow / (barsHeight / lifetimes.Length)), 0, lifetimes.Length - 1);
+
+        var scale = PixelsPerUnit((int)_overlay.ActualWidth);
+
+        var value = _viewStart + position.X / scale;
+
+        var tolerance = HitTolerance / scale;
+
+        return lifetimes[track].StartOf(_axis) - tolerance <= value && value <= lifetimes[track].EndOf(_axis) + tolerance
+            ? new OperatorHit(row, track)
+            : null;
+    }
+
+    private (int Row, float InRow)? OperatorRowAt(Point position)
+    {
         if (!IsInOperators(position))
         {
             return null;
@@ -733,24 +712,7 @@ public sealed partial class FlameChartControl
 
         var inRow = y - row * (rowHeight + OperatorRowGap);
 
-        if (row < 0 || row >= _operatorRows.Length || inRow >= rowHeight)
-        {
-            return null;
-        }
-
-        var lifetimes = _operatorRows[row].Lifetimes;
-
-        var track = Math.Clamp((int)(inRow / (rowHeight / lifetimes.Length)), 0, lifetimes.Length - 1);
-
-        var scale = PixelsPerUnit((int)_overlay.ActualWidth);
-
-        var value = _viewStart + position.X / scale;
-
-        var tolerance = HitTolerance / scale;
-
-        return lifetimes[track].StartOf(_axis) - tolerance <= value && value <= lifetimes[track].EndOf(_axis) + tolerance
-            ? new OperatorHit(row, track)
-            : null;
+        return row < 0 || row >= _operatorRows.Length || inRow >= rowHeight ? null : (row, inRow);
     }
 
     private bool IsInOperators(Point position)
@@ -782,6 +744,42 @@ public sealed partial class FlameChartControl
         {
             PlanNodeSelected?.Invoke(identifier);
         }
+    }
+
+    private void ClearSelectedOperator()
+    {
+        if (_selectedOperator is null)
+        {
+            return;
+        }
+
+        _selectedOperator = null;
+
+        FindSelectedRegions();
+
+        _canvas.Invalidate();
+    }
+
+    private OperatorHit? OperatorUnder(Point position)
+        => BlockAt(position) is { Source.Operator: { } surface } ? surface : OperatorAt(position);
+
+    private MenuFlyout CreateOperatorsMenu(OperatorHit? hit)
+    {
+        var identifier = hit is { } found ? _operatorRows[found.Row].Operator.PlanNodeIdentifier : null;
+
+        var flyout = new MenuFlyout();
+
+        flyout.Items.Add(MenuItems.Create("Execution Plan", () => ExecutionPlanRequested?.Invoke(identifier)));
+
+        flyout.Items.Add(new MenuFlyoutSeparator());
+
+        var iteratorCalls = MenuItems.Toggle("Iterator Calls", ShowIteratorCalls, isChecked => ShowIteratorCalls = isChecked);
+
+        var rowBuffers = MenuItems.Toggle("Row Buffers", ShowRowBuffers, isChecked => ShowRowBuffers = isChecked);
+
+        flyout.Items.Add(MenuItems.SubMenu("View", iteratorCalls, rowBuffers));
+
+        return flyout;
     }
 
     private void ZoomToOperator(OperatorHit hit)

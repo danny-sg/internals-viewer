@@ -8,6 +8,10 @@ namespace InternalsViewer.Query.FullTrace.Calls;
 
 public sealed partial class TraceCallStore
 {
+    private const long CachedColumnBytes = 64L * 1024 * 1024;
+
+    private const long CachedColumns = CachedColumnBytes / sizeof(ulong);
+
     private TraceCallStore(Dictionary<(ulong Address, ulong Instance), Chunk[]> functions,
                            Dictionary<(ulong Address, ulong Instance), LocatorTable> locators)
     {
@@ -33,9 +37,11 @@ public sealed partial class TraceCallStore
 
     private CallStackNode?[] Nodes { get; set; } = [];
 
+    private ChunkCache Columns { get; } = new(CachedColumns);
+
     public TraceCallList? GetCallList(ulong address, ulong instance)
         => Functions.TryGetValue((address, instance), out var chunks)
-            ? new TraceCallList(address, instance, chunks, Locators.GetValueOrDefault((address, instance)))
+            ? new TraceCallList(address, instance, chunks, Columns, Locators.GetValueOrDefault((address, instance)))
             : null;
 
     public CallStackNode? GetNode(TraceArgumentCall call) => GetNode(call.Node);
@@ -66,26 +72,6 @@ public sealed partial class TraceCallStore
 
     internal IEnumerable<(ulong Address, ulong Instance)> FunctionKeys => Functions.Keys;
 
-    internal IEnumerable<(ulong Sequence, int Node, ulong Self)> GetSelves(ulong address, ulong instance)
-    {
-        if (!Functions.TryGetValue((address, instance), out var chunks))
-        {
-            yield break;
-        }
-
-        foreach (var chunk in chunks)
-        {
-            var columns = Decompress(chunk);
-
-            for (var call = 0; call < chunk.Calls; call++)
-            {
-                yield return (columns[call],
-                              (int)columns[TraceArgumentCall.NodeIndex * chunk.Calls + call],
-                              columns[TraceArgumentCall.IntegerOffset * chunk.Calls + call]);
-            }
-        }
-    }
-
     internal void AnnotateNodes()
     {
         foreach (var ((address, instance), table) in Locators)
@@ -110,9 +96,9 @@ public sealed partial class TraceCallStore
         }
     }
 
-    internal static ulong[] Decompress(Chunk chunk)
+    internal static TraceCallColumns Decompress(Chunk chunk)
     {
-        var columns = new ulong[chunk.Calls * TraceArgumentCall.ValueCount];
+        var columns = new ulong[chunk.Calls * TraceCallColumns.ValueCount];
 
         using var stream = new ZLibStream(new MemoryStream(chunk.Columns), CompressionMode.Decompress);
 
@@ -122,8 +108,60 @@ public sealed partial class TraceCallStore
 
         bytes[read..].Clear();
 
-        return columns;
+        return new TraceCallColumns(columns, chunk.Calls);
     }
 
     internal sealed record Chunk(int Calls, byte[] Columns);
+
+    internal sealed class ChunkCache(long capacity)
+    {
+        private LinkedList<(Chunk Chunk, TraceCallColumns Columns)> Order { get; } = [];
+
+        private Dictionary<Chunk, LinkedListNode<(Chunk Chunk, TraceCallColumns Columns)>> Entries { get; }
+            = new(ReferenceEqualityComparer.Instance);
+
+        private Lock Sync { get; } = new();
+
+        private long Size { get; set; }
+
+        public TraceCallColumns Get(Chunk chunk)
+        {
+            lock (Sync)
+            {
+                if (Entries.TryGetValue(chunk, out var cached))
+                {
+                    Order.Remove(cached);
+
+                    Order.AddFirst(cached);
+
+                    return cached.Value.Columns;
+                }
+            }
+
+            var columns = Decompress(chunk);
+
+            lock (Sync)
+            {
+                if (Entries.TryGetValue(chunk, out var added))
+                {
+                    return added.Value.Columns;
+                }
+
+                Entries[chunk] = Order.AddFirst((chunk, columns));
+
+                Size += columns.Values.Length;
+
+                while (Size > capacity && Order.Last is { } oldest && oldest != Order.First)
+                {
+                    Order.RemoveLast();
+
+                    Entries.Remove(oldest.Value.Chunk);
+
+                    Size -= oldest.Value.Columns.Values.Length;
+                }
+            }
+
+            return columns;
+        }
+    }
 }

@@ -17,6 +17,7 @@ public sealed record TraceRequest(TimeTravelTraceFile TraceFile,
                                   IReadOnlyList<EngineEvent> Events,
                                   string SymbolsPath,
                                   MemoryClerkSnapshot MemoryClerks,
+                                  ObjectPoolSnapshot ObjectPool,
                                   IReadOnlyList<RawEvent> RawEvents)
 {
     public IReadOnlySet<uint> ThreadIds { get; } = RawEvents.Where(e => e.SystemThreadId is not null)

@@ -1,11 +1,13 @@
 using InternalsViewer.Query.CallStack;
 using System.Buffers;
 using System.Runtime.InteropServices;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Events.Operators;
 
 namespace InternalsViewer.Query.FullTrace.Timeline;
 
@@ -40,6 +42,7 @@ public sealed partial class TraceTimeline
         InstructionStart = source.InstructionStart;
         InstructionEnd = source.InstructionEnd;
         Memory = source.Memory;
+        Calls = source.Calls;
         Lifetimes = source.Lifetimes;
         EventLinks = source.EventLinks;
         EventLinksBySequence = source.EventLinksBySequence;
@@ -85,6 +88,8 @@ public sealed partial class TraceTimeline
 
     private Dictionary<int, TraceEventLink> EventLinksBySequence { get; set; } = [];
 
+    private TraceCallStore? Calls { get; set; }
+
     public double StartOf(TraceTimelineAxis axis) => axis == TraceTimelineAxis.Position ? PositionStart : InstructionStart;
 
     public double EndOf(TraceTimelineAxis axis) => axis == TraceTimelineAxis.Position ? PositionEnd : InstructionEnd;
@@ -92,6 +97,55 @@ public sealed partial class TraceTimeline
     public double StepOf(TraceTimelineAxis axis) => axis == TraceTimelineAxis.Position ? 1 / StepsPerSequence : 1;
 
     public CallStackNode? NodeOf(int node) => node >= 0 && node < Nodes.Length ? Nodes[node] : null;
+
+    public TraceSpanLocation? FindCall(CallStackNode node, int call)
+        => node.Frame is { } frame ? FindCall(frame.Address, frame.Instance, call) : null;
+
+    public TraceSpanLocation? FindCall(ulong address, ulong instance, int call)
+    {
+        if (Calls?.GetCallList(address, instance) is not { } calls || call < 0 || call >= calls.Count)
+        {
+            return null;
+        }
+
+        var node = calls.GetNodeIndex(call);
+
+        if (NodeOf(node) is not { } callNode)
+        {
+            return null;
+        }
+
+        var thread = calls.GetThread(call);
+
+        var start = PositionOf(calls.GetFromPosition(call));
+
+        var depth = DepthOf(node);
+
+        for (var lane = 0; lane < Threads.Count; lane++)
+        {
+            if (Threads[lane].ThreadId != thread)
+            {
+                continue;
+            }
+
+            var rows = Threads[lane].Rows;
+
+            if (depth < rows.Count && IndexOf(rows[depth], start, node, call) is >= 0 and var expected)
+            {
+                return new TraceSpanLocation(lane, Threads[lane], depth, rows[depth], expected, callNode);
+            }
+
+            for (var row = 0; row < rows.Count; row++)
+            {
+                if (row != depth && IndexOf(rows[row], start, node, call) is >= 0 and var index)
+                {
+                    return new TraceSpanLocation(lane, Threads[lane], row, rows[row], index, callNode);
+                }
+            }
+        }
+
+        return null;
+    }
 
     public IReadOnlyList<TraceThreadStack> StackAt(TraceTimelineAxis axis, double position)
     {
@@ -110,11 +164,9 @@ public sealed partial class TraceTimeline
                     continue;
                 }
 
-                var positions = row.Span(TraceTimelineAxis.Position, index);
-
                 var instructions = row.Span(TraceTimelineAxis.Instructions, index);
 
-                calls.Add(new TraceStackCall(row.Span(axis, index), positions.Start, positions.End, instructions.End - instructions.Start));
+                calls.Add(new TraceStackCall(row.Span(axis, index), instructions.End - instructions.Start));
             }
 
             if (calls.Count > 0)
@@ -344,6 +396,44 @@ public sealed partial class TraceTimeline
 
     internal void SetLifetimes(IReadOnlyList<TraceOperatorLifetime> lifetimes) => Lifetimes = lifetimes;
 
+    internal void SetCalls(TraceCallStore calls) => Calls = calls;
+
+    internal Dictionary<ulong, ExecutionOperatorEvent> GetOperatorsByInstance()
+    {
+        var owners = new Dictionary<ulong, ExecutionOperatorEvent>();
+
+        foreach (var lifetime in Lifetimes)
+        {
+            foreach (var instance in lifetime.Operator.Instances)
+            {
+                owners.TryAdd(instance, lifetime.Operator);
+            }
+        }
+
+        return owners;
+    }
+
+    private static int IndexOf(TraceTimelineRow row, double start, int node, int call)
+    {
+        var starts = row.Starts(TraceTimelineAxis.Position);
+
+        var index = SortedSearch.FirstAtOrAfter(starts, start);
+
+        return index < row.Count && starts[index] == start && row.NodeAt(index) == node && row.CallAt(index) == call ? index : -1;
+    }
+
+    private int DepthOf(int node)
+    {
+        var depth = 0;
+
+        for (var current = node >= 0 && node < Parents.Length ? Parents[node] : -1; current >= 0; current = Parents[current])
+        {
+            depth++;
+        }
+
+        return depth;
+    }
+
     internal void SetEventLinks(IReadOnlyList<TraceEventLink> links)
     {
         EventLinks = links;
@@ -356,16 +446,8 @@ public sealed partial class TraceTimeline
         }
     }
 
-    internal double PositionOf(ulong sequence, ulong steps)
-        => PositionOf(sequence, Math.Min(steps, (ulong)Math.Max(StepsPerSequence - 1, 0)), StepsPerSequence);
-
-    internal void AddCallActivity(int buckets)
-    {
-        foreach (var (node, activity) in GetCallActivity(buckets))
-        {
-            node.CallActivity = activity;
-        }
-    }
+    public double PositionOf(TracePosition position)
+        => PositionOf(position.Sequence, Math.Min(position.Steps, (ulong)Math.Max(StepsPerSequence - 1, 0)), StepsPerSequence);
 
     internal Dictionary<CallStackNode, int[]> GetCallActivity(int buckets)
     {
@@ -498,7 +580,7 @@ public sealed partial class TraceTimeline
     private static TraceTimelineThread Regroup(TraceTimelineThread thread,
                                                Func<int, TraceTimelineRow, int, int> depthOf)
     {
-        var counts = new List<int>();
+        var sources = new List<RowSource>();
 
         for (var source = 0; source < thread.Rows.Count; source++)
         {
@@ -513,17 +595,29 @@ public sealed partial class TraceTimeline
                     continue;
                 }
 
-                while (counts.Count <= depth)
+                while (sources.Count <= depth)
                 {
-                    counts.Add(0);
+                    sources.Add(new RowSource());
                 }
 
-                counts[depth]++;
+                sources[depth].Add(source, index);
             }
         }
 
-        var rows = counts.Select(c => new RowArrays(c)).ToArray();
+        var copies = sources.Select(s => s is { Count: > 0, IsSlice: true } ? null : new RowArrays(s.Count)).ToArray();
 
+        if (sources.Any(s => s is { Count: > 0, IsSlice: false }))
+        {
+            Copy(thread, depthOf, copies);
+        }
+
+        TraceTimelineRow[] rows = [.. sources.Select((s, depth) => copies[depth]?.Build() ?? thread.Rows[s.Row].Slice(s.First, s.Count))];
+
+        return new TraceTimelineThread(thread.ThreadId, rows, sources.Sum(s => s.Count));
+    }
+
+    private static void Copy(TraceTimelineThread thread, Func<int, TraceTimelineRow, int, int> depthOf, RowArrays?[] copies)
+    {
         for (var source = 0; source < thread.Rows.Count; source++)
         {
             var row = thread.Rows[source];
@@ -540,24 +634,22 @@ public sealed partial class TraceTimeline
             {
                 var depth = depthOf(source, row, index);
 
-                if (depth < 0)
+                if (depth < 0 || copies[depth] is not { } copy)
                 {
                     continue;
                 }
 
                 var call = row.CallAt(index);
 
-                rows[depth].Add(positionStarts[index],
-                                positionEnds[index],
-                                instructionStarts[index],
-                                instructionEnds[index],
-                                row.NodeAt(index),
-                                call < 0 ? uint.MaxValue : (uint)call,
-                                (byte)row.FlagsAt(index));
+                copy.Add(positionStarts[index],
+                         positionEnds[index],
+                         instructionStarts[index],
+                         instructionEnds[index],
+                         row.NodeAt(index),
+                         call < 0 ? uint.MaxValue : (uint)call,
+                         (byte)row.FlagsAt(index));
             }
         }
-
-        return new TraceTimelineThread(thread.ThreadId, [.. rows.Select(r => r.Build())], counts.Sum());
     }
 
     internal sealed class Builder
@@ -793,6 +885,33 @@ public sealed partial class TraceTimeline
             {
                 values[index] = copy[order[index]];
             }
+        }
+    }
+
+    private sealed class RowSource
+    {
+        public int Count { get; private set; }
+
+        public int Row { get; private set; } = -1;
+
+        public int First { get; private set; }
+
+        public bool IsSlice { get; private set; } = true;
+
+        public void Add(int row, int index)
+        {
+            if (Count == 0)
+            {
+                Row = row;
+
+                First = index;
+            }
+            else if (row != Row || index != First + Count)
+            {
+                IsSlice = false;
+            }
+
+            Count++;
         }
     }
 }

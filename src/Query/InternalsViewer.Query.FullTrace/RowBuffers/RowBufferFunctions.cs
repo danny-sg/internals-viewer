@@ -21,7 +21,7 @@ internal sealed record RowBufferFunctions(ulong[] Functions, (ulong VTable, RowB
     {
         private const string RowsetClass = "CQScanRowsetNew";
 
-        private const string ValueRowClass = "CQScanBatchHelper";
+        private const string BatchHelperClass = "CQScanBatchHelper";
 
         private const string VTableName = "`vftable'";
 
@@ -80,12 +80,12 @@ internal sealed record RowBufferFunctions(ulong[] Functions, (ulong VTable, RowB
         {
             HashSet<string> rowsets = [.. bases.Where(b => b.Value.Contains(RowsetClass)).Select(b => b.Key)];
 
-            HashSet<string> valueRows = [.. bases.Where(b => b.Value.Contains(ValueRowClass)).Select(b => b.Key)];
+            HashSet<string> batchHelpers = [.. bases.Where(b => b.Value.Contains(BatchHelperClass)).Select(b => b.Key)];
 
             (ulong VTable, RowBufferFormat Format)[] formats =
             [
                 .. rowsets.Where(VTables.ContainsKey).Select(c => ((ulong)VTables[c], RowBufferFormat.Bindings)),
-                .. valueRows.Where(VTables.ContainsKey).Select(c => ((ulong)VTables[c], RowBufferFormat.Values))
+                .. batchHelpers.Where(VTables.ContainsKey).Select(c => ((ulong)VTables[c], RowBufferFormat.Batch))
             ];
 
             if (formats.Length == 0)
@@ -95,7 +95,7 @@ internal sealed record RowBufferFunctions(ulong[] Functions, (ulong VTable, RowB
 
             HashSet<uint> functions =
             [
-                .. Methods.Where(m => rowsets.Contains(m.ClassName) || valueRows.Contains(m.ClassName)).Select(m => m.Rva),
+                .. Methods.Where(m => rowsets.Contains(m.ClassName) || batchHelpers.Contains(m.ClassName)).Select(m => m.Rva),
                 .. Helpers
             ];
 
