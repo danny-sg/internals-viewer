@@ -191,6 +191,16 @@ public sealed partial class FlameChartControl
         _minimap.Visibility = Visibility.Visible;
     }
 
+    private void ReleaseMinimap()
+    {
+        _minimap.Timeline = null;
+        _minimap.Crop = null;
+        _minimap.Scope = null;
+        _minimap.Markers = null;
+
+        _minimapMarkers = null;
+    }
+
     private MarkedCall? GetMarkedCall() => _marked is { } marked ? GetCall(marked.Node, marked.Call) : null;
 
     private MarkedCall? GetCall(CallStackNode node, int call)

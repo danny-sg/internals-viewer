@@ -2,13 +2,15 @@ using System.Collections.Generic;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
 
 namespace InternalsViewer.UI.App.Models.Query.CallStack;
 
 public sealed partial class SourceStep(CallStackNode node,
-                                       ulong id,
+                                       TracePosition position,
+                                       uint thread,
                                        int depth,
                                        MemoryMapOperation? creation = null,
                                        bool isOnStack = false,
@@ -23,7 +25,9 @@ public sealed partial class SourceStep(CallStackNode node,
 
     public CallStackNode Node { get; } = node;
 
-    public ulong Id { get; } = id;
+    public TracePosition Position { get; } = position;
+
+    public uint Thread { get; } = thread;
 
     public int Depth { get; } = depth;
 
@@ -38,7 +42,7 @@ public sealed partial class SourceStep(CallStackNode node,
     public string CreationText => Creation == MemoryMapOperation.Allocated ? "Allocated Here" : "Constructed Here";
 
     public IReadOnlyList<SourceFrame> Stack
-        => field ??= [.. Node.Ancestors().Skip(1).Where(n => n.Symbol.Length > 0).Select(n => new SourceFrame(n, Id))];
+        => field ??= [.. Node.Ancestors().Skip(1).Where(n => n.Symbol.Length > 0).Select(n => new SourceFrame(n, Position, Thread))];
 
     public IReadOnlyList<SourceFrame> VisibleStack => IsExpanded ? Stack : [];
 

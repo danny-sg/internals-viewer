@@ -42,21 +42,25 @@ namespace
 
     using GapFunction = bool(__fastcall*)(uintptr_t, GapKind, GapEventType, IThreadView const*);
 
-    constexpr size_t ValuesPerCall = 10;
+    constexpr size_t ValuesPerCall = 11;
 
-    constexpr size_t SequenceValue = 0;
+    constexpr size_t StartSequenceValue = 0;
 
-    constexpr size_t ThreadValue = 1;
+    constexpr size_t StartStepsValue = 1;
 
-    constexpr size_t IntegerValues = 2;
+    constexpr size_t ThreadValue = 2;
 
-    constexpr size_t ReturnValue = 6;
+    constexpr size_t IntegerValues = 3;
 
-    constexpr size_t NodeValue = 7;
+    constexpr size_t ReturnValue = 7;
 
-    constexpr size_t IdValue = 8;
+    constexpr size_t NodeValue = 8;
 
-    constexpr size_t EndValue = 9;
+    constexpr size_t EndSequenceValue = 9;
+
+    constexpr size_t EndStepsValue = 10;
+
+    constexpr uint64_t UnknownSequence = UINT64_MAX;
 
     constexpr int32_t ArgumentRegisters = 4;
 
@@ -246,6 +250,7 @@ namespace
         std::unordered_map<FunctionKey, LoggedFunction, FunctionKeyHash> Log;
         size_t                                              LoggedSinceFlush = 0;
         CallChunkCallback                                   LogCalls = nullptr;
+        CallEndCallback                                     LogCallEnds = nullptr;
         std::vector<uint64_t>                               Columns;
         CallSpanCallback                                    LogSpans = nullptr;
         std::vector<CallSpan>                               Spans;
@@ -306,11 +311,17 @@ namespace
             OnHook(&hookEvent, thread, this);
         }
 
+        static void SetPosition(HookEvent& hookEvent, ThreadClock const& clock)
+        {
+            hookEvent.Sequence = static_cast<uint64_t>(clock.Last.Sequence);
+            hookEvent.Steps = static_cast<uint64_t>(clock.Last.Steps);
+            hookEvent.Instructions = clock.Instructions;
+        }
+
         void HookCall(IThreadView const&             thread,
                       uint64_t                       target,
                       uint64_t                       stackPointer,
                       uint64_t                       returnAddress,
-                      Position const&                position,
                       ThreadClock const&             clock,
                       uint32_t                       threadId,
                       int32_t                        node,
@@ -323,16 +334,13 @@ namespace
             HookEvent hookEvent{};
 
             hookEvent.Function = target;
-            hookEvent.CallCount = CallCount;
             hookEvent.Arguments[0] = registers.Rcx;
             hookEvent.Arguments[1] = registers.Rdx;
             hookEvent.Arguments[2] = registers.R8;
             hookEvent.Arguments[3] = registers.R9;
             hookEvent.StackPointer = stackPointer;
             hookEvent.ReturnAddress = returnAddress;
-            hookEvent.Sequence = static_cast<uint64_t>(position.Sequence);
-            hookEvent.Steps = static_cast<uint64_t>(position.Steps);
-            hookEvent.Instructions = clock.Instructions;
+            SetPosition(hookEvent, clock);
             hookEvent.Node = node;
             hookEvent.Call = NoCall;
             hookEvent.Thread = threadId;
@@ -350,7 +358,6 @@ namespace
                        int32_t                        node,
                        uint64_t                       stackPointer,
                        uint64_t                       returnAddress,
-                       Position const&                position,
                        ThreadClock const&             clock,
                        uint32_t                       threadId,
                        uint32_t                       hook)
@@ -360,16 +367,13 @@ namespace
             hookEvent.Function = function.Address;
             hookEvent.Instance = function.Instance;
             hookEvent.Id = id;
-            hookEvent.CallCount = CallCount;
             hookEvent.Arguments[0] = registers.Rcx;
             hookEvent.Arguments[1] = registers.Rdx;
             hookEvent.Arguments[2] = registers.R8;
             hookEvent.Arguments[3] = registers.R9;
             hookEvent.StackPointer = stackPointer;
             hookEvent.ReturnAddress = returnAddress;
-            hookEvent.Sequence = static_cast<uint64_t>(position.Sequence);
-            hookEvent.Steps = static_cast<uint64_t>(position.Steps);
-            hookEvent.Instructions = clock.Instructions;
+            SetPosition(hookEvent, clock);
             hookEvent.Node = node;
             hookEvent.Call = call;
             hookEvent.Thread = threadId;
@@ -382,7 +386,8 @@ namespace
         void HookExit(StackFrame const&              frame,
                       IThreadView const*             thread,
                       uint32_t                       threadId,
-                      uint64_t                       stackPointer)
+                      uint64_t                       stackPointer,
+                      ThreadClock const&             clock)
         {
             HookEvent hookEvent{};
 
@@ -396,9 +401,9 @@ namespace
             hookEvent.Function = frame.Function->Address;
             hookEvent.Instance = frame.Function->Instance;
             hookEvent.Id = frame.Id;
-            hookEvent.CallCount = CallCount;
             hookEvent.StackPointer = stackPointer;
             hookEvent.ReturnAddress = frame.ReturnAddress;
+            SetPosition(hookEvent, clock);
             hookEvent.Node = frame.Node;
             hookEvent.Call = frame.LoggedCall;
             hookEvent.Thread = threadId;
@@ -408,13 +413,13 @@ namespace
             Dispatch(hookEvent, thread);
         }
 
-        void FrameEnded(StackFrame const& frame, IThreadView const* thread, uint32_t threadId)
+        void FrameEnded(StackFrame const& frame, IThreadView const* thread, uint32_t threadId, ThreadClock const& clock)
         {
             HookEvent hookEvent{};
 
             hookEvent.Id = frame.Id;
-            hookEvent.CallCount = CallCount;
             hookEvent.StackPointer = frame.StackPointer;
+            SetPosition(hookEvent, clock);
             hookEvent.Node = frame.Node;
             hookEvent.Call = frame.LoggedCall;
             hookEvent.Thread = threadId;
@@ -424,7 +429,7 @@ namespace
             Dispatch(hookEvent, thread);
         }
 
-        void StackUnwound(uint32_t threadId, uint64_t stackPointer, IThreadView const* thread)
+        void StackUnwound(uint32_t threadId, uint64_t stackPointer, IThreadView const* thread, ThreadClock const& clock)
         {
             if (WatchedStackCount == 0)
             {
@@ -456,8 +461,8 @@ namespace
 
             HookEvent hookEvent{};
 
-            hookEvent.CallCount = CallCount;
             hookEvent.StackPointer = stackPointer;
+            SetPosition(hookEvent, clock);
             hookEvent.Node = -1;
             hookEvent.Call = NoCall;
             hookEvent.Thread = threadId;
@@ -609,12 +614,11 @@ namespace
 
     LoggedCall LogCall(CallTree&            tree,
                        AMD64_CONTEXT const& registers,
-                       uint64_t             sequence,
+                       Position const&      position,
                        uint32_t             threadId,
                        uint64_t             target,
                        uint64_t             instance,
-                       int32_t              node,
-                       uint64_t             id)
+                       int32_t              node)
     {
         if (tree.LogCalls == nullptr)
         {
@@ -632,7 +636,8 @@ namespace
 
         auto* values = function.Values.data() + call * ValuesPerCall;
 
-        values[SequenceValue] = sequence;
+        values[StartSequenceValue] = static_cast<uint64_t>(position.Sequence);
+        values[StartStepsValue] = static_cast<uint64_t>(position.Steps);
         values[ThreadValue] = threadId;
 
         values[IntegerValues + 0] = registers.Rcx;
@@ -642,7 +647,7 @@ namespace
 
         values[NodeValue] = static_cast<uint64_t>(node);
 
-        values[IdValue] = id;
+        values[EndSequenceValue] = UnknownSequence;
 
         function.InFlight++;
 
@@ -700,29 +705,55 @@ namespace
         }
     }
 
-    void CompleteCall(CallTree& tree, StackFrame const& frame, IThreadView const& thread)
+    void Release(CallTree&          tree,
+                 StackFrame const&  frame,
+                 IThreadView const* thread,
+                 uint64_t           returnTarget,
+                 ThreadClock const& clock)
     {
-        auto* values = frame.Function->Values.data() + frame.Call * ValuesPerCall;
-
-        CROSS_PLATFORM_CONTEXT const context = thread.GetCrossPlatformContext();
-
-        values[ReturnValue] = context.Amd64Context.Rax;
-
-        values[ThreadValue] |= ReturnedFlag;
-    }
-
-    void Release(CallTree& tree, StackFrame const& frame, IThreadView const* thread, uint64_t returnTarget)
-    {
-        if (frame.Call < 0 || frame.Chunk != frame.Function->Chunk)
+        if (frame.Call < 0)
         {
             return;
         }
 
-        frame.Function->Values[frame.Call * ValuesPerCall + EndValue] = tree.CallCount;
+        auto const returned = thread != nullptr && frame.ReturnAddress == returnTarget;
 
-        if (thread != nullptr && frame.ReturnAddress == returnTarget)
+        uint64_t returnValue = 0;
+
+        if (returned)
         {
-            CompleteCall(tree, frame, *thread);
+            CROSS_PLATFORM_CONTEXT const context = thread->GetCrossPlatformContext();
+
+            returnValue = context.Amd64Context.Rax;
+        }
+
+        if (frame.Chunk != frame.Function->Chunk)
+        {
+            if (tree.LogCallEnds != nullptr)
+            {
+                tree.LogCallEnds(frame.Function->Address,
+                                 frame.Function->Instance,
+                                 frame.LoggedCall,
+                                 static_cast<uint64_t>(clock.Last.Sequence),
+                                 static_cast<uint64_t>(clock.Last.Steps),
+                                 returnValue,
+                                 returned ? 1 : 0);
+            }
+
+            return;
+        }
+
+        auto* values = frame.Function->Values.data() + frame.Call * ValuesPerCall;
+
+        values[EndSequenceValue] = static_cast<uint64_t>(clock.Last.Sequence);
+
+        values[EndStepsValue] = static_cast<uint64_t>(clock.Last.Steps);
+
+        if (returned)
+        {
+            values[ReturnValue] = returnValue;
+
+            values[ThreadValue] |= ReturnedFlag;
         }
 
         auto& function = *frame.Function;
@@ -755,16 +786,16 @@ namespace
 
             tree.RecordSpan(frame, threadId, clock, returned ? SpanReturned : 0);
 
-            Release(tree, frame, thread, returnTarget);
+            Release(tree, frame, thread, returnTarget, clock);
 
             if ((frame.Events & ReturnEvents) != 0)
             {
-                tree.HookExit(frame, returned ? thread : nullptr, threadId, stackPointer);
+                tree.HookExit(frame, returned ? thread : nullptr, threadId, stackPointer, clock);
             }
 
             if (frame.IsWatched)
             {
-                tree.FrameEnded(frame, thread, threadId);
+                tree.FrameEnded(frame, thread, threadId, clock);
             }
         }
     }
@@ -803,7 +834,7 @@ namespace
 
             if ((hooked.Events & CallEvents) != 0)
             {
-                tree.HookCall(*thread, target, stackPointer, returnAddress, position, clock, threadId, NearestNode(stack), hooked.Hook);
+                tree.HookCall(*thread, target, stackPointer, returnAddress, clock, threadId, NearestNode(stack), hooked.Hook);
             }
 
             if (!stack.empty() && stack.back().Node == ExcludedNode)
@@ -848,12 +879,11 @@ namespace
 
             auto const logged = LogCall(tree,
                                         registers,
-                                        static_cast<uint64_t>(position.Sequence),
+                                        position,
                                         threadId,
                                         target,
                                         instance,
-                                        node,
-                                        id);
+                                        node);
 
             auto const frameEvents = logged.Function != nullptr ? hooked.Events : 0;
 
@@ -867,7 +897,6 @@ namespace
                                node,
                                stackPointer,
                                returnAddress,
-                               position,
                                clock,
                                threadId,
                                hooked.Hook);
@@ -895,7 +924,7 @@ namespace
             return;
         }
 
-        tree.StackUnwound(threadId, stackPointer + sizeof(uint64_t), thread);
+        tree.StackUnwound(threadId, stackPointer + sizeof(uint64_t), thread, clock);
 
         Unwind(tree, stack, stackPointer + sizeof(uint64_t), thread, target, threadId, clock);
 
@@ -932,7 +961,7 @@ namespace
         {
             auto const& clock = tree.Advance(threadId, thread->GetPosition());
 
-            tree.StackUnwound(threadId, UINT64_MAX, thread);
+            tree.StackUnwound(threadId, UINT64_MAX, thread, clock);
 
             Unwind(tree, stack, UINT64_MAX, nullptr, 0, threadId, clock);
 
@@ -1211,6 +1240,7 @@ extern "C"
                          const HookFunction*    hookFunctions,
                          int32_t                hookFunctionCount,
                          CallChunkCallback      logCalls,
+                         CallEndCallback        logCallEnds,
                          CallSpanCallback       logSpans,
                          HookCallback           onHook,
                          ProgressCallback       progress,
@@ -1240,6 +1270,8 @@ extern "C"
         }
 
         result->LogCalls = logCalls;
+
+        result->LogCallEnds = logCallEnds;
 
         result->LogSpans = logSpans;
 
@@ -1279,6 +1311,8 @@ extern "C"
             for (auto frame = stack.rbegin(); frame != stack.rend(); ++frame)
             {
                 result->RecordSpan(*frame, threadId, last->second, 0);
+
+                Release(*result, *frame, nullptr, 0, last->second);
             }
         }
 

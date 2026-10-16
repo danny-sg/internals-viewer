@@ -37,12 +37,12 @@ public sealed class TraceValueSearch(TraceCallStore store)
 
             for (var call = 0; call < chunk.Calls; call++)
             {
-                if (!IsIncluded(columns, chunk.Calls, call, include))
+                if (!IsIncluded(columns, call, include))
                 {
                     continue;
                 }
 
-                foreach (var location in GetLocations(columns, chunk.Calls, call, value))
+                foreach (var location in GetLocations(columns, call, value))
                 {
                     found[location] = found.TryGetValue(location, out var counted)
                         ? (counted.Calls + 1, counted.First, call)
@@ -63,8 +63,8 @@ public sealed class TraceValueSearch(TraceCallStore store)
                                                 instance,
                                                 location,
                                                 calls,
-                                                GetValueCall(columns, chunk.Calls, first, start),
-                                                GetValueCall(columns, chunk.Calls, last, start));
+                                                GetValueCall(columns, first, start),
+                                                GetValueCall(columns, last, start));
 
                     uses[(address, instance, location)] = uses.TryGetValue((address, instance, location), out var existing)
                         ? MergeValueUse(existing, use)
@@ -75,7 +75,7 @@ public sealed class TraceValueSearch(TraceCallStore store)
 
         AddStackUses(uses, value, include, cancellationToken);
 
-        return [.. uses.Values.OrderBy(u => u.First.Sequence)];
+        return [.. uses.Values.OrderBy(u => u.First.Position)];
     }
 
     private List<TraceValueCall> GetTraceValueCalls(TraceValueUse use,
@@ -105,10 +105,9 @@ public sealed class TraceValueSearch(TraceCallStore store)
 
             for (var call = 0; call < chunk.Calls; call++)
             {
-                if (IsIncluded(columns, chunk.Calls, call, include)
-                    && GetLocations(columns, chunk.Calls, call, value).Contains(use.Location))
+                if (IsIncluded(columns, call, include) && GetLocations(columns, call, value).Contains(use.Location))
                 {
-                    valueCalls.Add(GetValueCall(columns, chunk.Calls, call, start));
+                    valueCalls.Add(GetValueCall(columns, call, start));
                 }
             }
 
@@ -122,7 +121,7 @@ public sealed class TraceValueSearch(TraceCallStore store)
 
     private static int? GetStackPosition(string location)
     {
-        for (var position = TraceArgumentCall.RegisterCount; position < ArgumentLayout.CapturedSlots; position++)
+        for (var position = TraceCallColumns.RegisterCount; position < ArgumentLayout.CapturedSlots; position++)
         {
             if (location == GetStackLocation(position))
             {
@@ -210,26 +209,20 @@ public sealed class TraceValueSearch(TraceCallStore store)
 
         var node = store.GetNode(argument.Node);
 
-        return include is null || include(node) ? new TraceValueCall(call, argument.Sequence, node, argument.ThreadId) : null;
+        return include is null || include(node) ? new TraceValueCall(call, argument.FromPosition, node, argument.ThreadId) : null;
     }
 
-    private bool IsIncluded(ulong[] columns, int calls, int call, Func<CallStackNode?, bool>? include)
-        => include is null || include(store.GetNode((int)columns[TraceArgumentCall.NodeIndex * calls + call]));
+    private bool IsIncluded(TraceCallColumns columns, int call, Func<CallStackNode?, bool>? include)
+        => include is null || include(store.GetNode(columns.GetNodeIndex(call)));
 
-    private TraceValueCall GetValueCall(ulong[] columns, int calls, int call, int start)
-    {
-        var node = (int)columns[TraceArgumentCall.NodeIndex * calls + call];
-
-        var thread = (uint)columns[TraceArgumentCall.FlagsIndex * calls + call];
-
-        return new TraceValueCall(start + call, columns[call], store.GetNode(node), thread);
-    }
+    private TraceValueCall GetValueCall(TraceCallColumns columns, int call, int start)
+        => new(start + call, columns.GetFromPosition(call), store.GetNode(columns.GetNodeIndex(call)), columns.GetThread(call));
 
     private static TraceValueUse MergeValueUse(TraceValueUse existing, TraceValueUse use) => existing with
     {
         Calls = existing.Calls + use.Calls,
-        First = use.First.Sequence < existing.First.Sequence ? use.First : existing.First,
-        Last = use.Last.Sequence > existing.Last.Sequence ? use.Last : existing.Last
+        First = use.First.Position < existing.First.Position ? use.First : existing.First,
+        Last = use.Last.Position > existing.Last.Position ? use.Last : existing.Last
     };
 
     private IEnumerable<(ulong Address, ulong Instance, int Start, TraceCallStore.Chunk Chunk)> GetScans()
@@ -247,19 +240,17 @@ public sealed class TraceValueSearch(TraceCallStore store)
         }
     }
 
-    private static IEnumerable<string> GetLocations(ulong[] columns, int calls, int call, ulong value)
+    private static IEnumerable<string> GetLocations(TraceCallColumns columns, int call, ulong value)
     {
-        var flags = columns[TraceArgumentCall.FlagsIndex * calls + call];
-
-        for (var slot = 0; slot < TraceArgumentCall.RegisterCount; slot++)
+        for (var slot = 0; slot < TraceCallColumns.RegisterCount; slot++)
         {
-            if (columns[(TraceArgumentCall.IntegerOffset + slot) * calls + call] == value)
+            if (columns.GetRegister(call, slot) == value)
             {
                 yield return Registers[slot];
             }
         }
 
-        if ((flags & TraceArgumentCall.ReturnedFlag) != 0 && columns[TraceArgumentCall.ReturnValueIndex * calls + call] == value)
+        if (columns.IsReturned(call) && columns.GetReturnValue(call) == value)
         {
             yield return "RAX";
         }

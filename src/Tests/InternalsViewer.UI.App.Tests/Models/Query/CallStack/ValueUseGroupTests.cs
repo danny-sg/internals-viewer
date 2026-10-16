@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.UI.App.Models.Query.CallStack;
@@ -48,7 +49,9 @@ public class ValueUseGroupTests
     [Fact]
     public void More_Calls_Are_Offered_From_Where_The_Last_Page_Ended()
     {
-        TraceValueCall[] valueCalls = [.. Enumerable.Range(0, 1_250).Select(i => new TraceValueCall(i, (ulong)i, null))];
+        var positions = Enumerable.Range(0, 1_250).Select(i => new TracePosition((ulong)i, 0));
+
+        TraceValueCall[] valueCalls = [.. positions.Select((p, i) => new TraceValueCall(i, p, null))];
 
         var more = ValueNoteRow.More(valueCalls, 500);
 
@@ -64,5 +67,7 @@ public class ValueUseGroupTests
     };
 
     private static TraceValueUse Use(ulong address, string location, int calls = 1)
-        => new(address, 0, location, calls, new TraceValueCall(0, 1, null), new TraceValueCall(0, 1, null));
+        => new(address, 0, location, calls, FirstCall(), FirstCall());
+
+    private static TraceValueCall FirstCall() => new(0, new TracePosition(1, 0), null);
 }

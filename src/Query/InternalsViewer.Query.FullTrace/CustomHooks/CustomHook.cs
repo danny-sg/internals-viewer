@@ -29,7 +29,7 @@ internal sealed class CustomHook(IEnumerable<(ulong Address, CustomHookDefinitio
                                            call.Function,
                                            call.Instance,
                                            (int)call.Call,
-                                           call.Id,
+                                           call.Position,
                                            call.Thread,
                                            address,
                                            read == data.Length ? data : data[..read]));

@@ -119,7 +119,7 @@ internal sealed class BatchHook(BatchFunctions functions) : ITraceHook
         Batches.Add(new BatchCapture(call.Function,
                                      call.Instance,
                                      (int)call.Call,
-                                     call.CallCount,
+                                     call.Position,
                                      start.Iterator,
                                      batch,
                                      start.Consumer,

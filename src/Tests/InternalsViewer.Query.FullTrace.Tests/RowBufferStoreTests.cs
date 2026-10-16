@@ -9,6 +9,7 @@ using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
 
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRows;
 using InternalsViewer.Query.FullTrace.RowBuffers.DeferredValues;
+using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -46,7 +47,7 @@ public class RowBufferStoreTests
     {
         var row = Assert.IsType<RowBuffer>(Build().GetRow(Function, Instance, 1));
 
-        Assert.Equal((Buffer, Iterator, 100ul, 1), (row.Address, row.Iterator, row.Id, row.Call));
+        Assert.Equal((Buffer, Iterator, At(100), 1), (row.Address, row.Iterator, row.Position, row.Call));
         Assert.Equal([1, 0, 0, 0], row.Columns[0].Data);
         Assert.Equal("First", Encoding.ASCII.GetString(row.Columns[1].Data));
     }
@@ -80,36 +81,6 @@ public class RowBufferStoreTests
     }
 
     [Fact]
-    public void A_Call_Sees_The_Row_Its_Iterator_Returned_Last()
-    {
-        var index = Build();
-
-        Assert.Equal(1, index.GetRowAt(Iterator, 101)?.Call);
-        Assert.Equal(1, index.GetRowAt(Iterator, 200)?.Call);
-        Assert.Equal(2, index.GetRowAt(Iterator, 201)?.Call);
-    }
-
-    [Fact]
-    public void A_Call_Inside_The_First_GetRow_Sees_No_Row()
-    {
-        var index = Build();
-
-        Assert.Null(index.GetRowAt(Iterator, 100));
-        Assert.Null(index.GetRowAt(Iterator + 8, 500));
-    }
-
-    [Fact]
-    public void Every_Function_Writing_An_Iterator_Buffer_Shares_One_Timeline()
-    {
-        var index = new RowBufferStore([CreateRow(Function, call: 1, id: 100, number: 1, "First"),
-                                        CreateRow(DirectSelect, call: 1, id: 300, number: 3, "Third")]);
-
-        var row = index.GetRowAt(Iterator, 301);
-
-        Assert.Equal((DirectSelect, "Third"), (row?.Function, Encoding.ASCII.GetString(row!.Columns[1].Data)));
-    }
-
-    [Fact]
     public void Nodes_With_A_Row_Are_Annotated()
     {
         var tree = new CallStackTree();
@@ -126,7 +97,7 @@ public class RowBufferStoreTests
 
         store.MapNodes([other, scan]);
 
-        new RowBufferStore([CreateRow(Function, call: 2, id: 100, number: 1, "First")]).AnnotateCallStackNodes(store);
+        new RowBufferStore([CreateRow(Function, call: 2, sequence: 100, number: 1, "First")]).AnnotateCallStackNodes(store);
 
         Assert.Equal((true, false), (scan.HasRowBuffers, other.HasRowBuffers));
     }
@@ -144,7 +115,7 @@ public class RowBufferStoreTests
     {
         var column = new RowBufferColumn(0, RowBufferBinding.None, 0, RowBufferColumnFlags.None, 8, [0x20, 0x28, 0x30, 0, 0, 0, 0, 0]);
 
-        var index = new RowBufferStore([new RowBuffer(Function, Instance, 1, 100, Iterator, Buffer, [column], RowBufferFormat.Batch)]);
+        var index = new RowBufferStore([new RowBuffer(Function, Instance, 1, At(100), Iterator, Buffer, [column], RowBufferFormat.Batch)]);
 
         var row = Export(index).GetRow(Function, Instance, 1)!;
 
@@ -161,7 +132,7 @@ public class RowBufferStoreTests
 
         var column = new RowBufferColumn(0, Variable, 0, flags, 5, []) { Deferred = page };
 
-        column = Export(new RowBufferStore([new RowBuffer(Function, Instance, 1, 100, Iterator, Buffer, [column])]))
+        column = Export(new RowBufferStore([new RowBuffer(Function, Instance, 1, At(100), Iterator, Buffer, [column])]))
             .GetRow(Function, Instance, 1)!.Columns[0];
 
         Assert.Equal(page, column.Deferred);
@@ -179,7 +150,7 @@ public class RowBufferStoreTests
 
         var column = new RowBufferColumn(0, Variable, 0, flags, 100, []) { Deferred = lob };
 
-        var row = Export(new RowBufferStore([new RowBuffer(Function, Instance, 1, 100, Iterator, Buffer, [column])]))
+        var row = Export(new RowBufferStore([new RowBuffer(Function, Instance, 1, At(100), Iterator, Buffer, [column])]))
             .GetRow(Function, Instance, 1)!;
 
         var imported = Assert.IsType<DeferredLobValue>(row.Columns[0].Deferred);
@@ -200,9 +171,9 @@ public class RowBufferStoreTests
     [Fact]
     public void Rows_Sharing_Columns_Still_Share_Them_After_Export_And_Import()
     {
-        var first = CreateRow(Function, call: 1, id: 100, number: 1, "First");
+        var first = CreateRow(Function, call: 1, sequence: 100, number: 1, "First");
 
-        var imported = Export(new RowBufferStore([first, first with { Call = 2, Id = 200 }]));
+        var imported = Export(new RowBufferStore([first, first with { Call = 2, Position = At(200) }]));
 
         var (left, right) = (imported.GetRow(Function, Instance, 1)!, imported.GetRow(Function, Instance, 2)!);
 
@@ -213,7 +184,7 @@ public class RowBufferStoreTests
     [Fact]
     public void A_Value_Is_Sourced_From_Its_Binding_A_Page_Or_Memory()
     {
-        var row = CreateRow(Function, call: 1, id: 100, number: 1, "First");
+        var row = CreateRow(Function, call: 1, sequence: 100, number: 1, "First");
 
         var index = new RowBufferStore([row]);
 
@@ -232,13 +203,13 @@ public class RowBufferStoreTests
     [Fact]
     public void A_Value_Pointing_Into_Another_Row_Buffer_Names_It_And_The_Offset()
     {
-        var other = CreateRow(Function, call: 1, id: 100, number: 1, "First");
+        var other = CreateRow(Function, call: 1, sequence: 100, number: 1, "First");
 
         var pointer = Buffer + 0x0A;
 
         var reference = new RowBufferColumn(0, Variable, 0, RowBufferColumnFlags.ByReference, 3, [0x72, 0x73, 0x74]) { Pointer = pointer };
 
-        var row = new RowBuffer(DirectSelect, Instance + 8, 1, 300, Iterator + 8, 0x1F4_EEAF_0000, [reference]);
+        var row = new RowBuffer(DirectSelect, Instance + 8, 1, At(300), Iterator + 8, 0x1F4_EEAF_0000, [reference]);
 
         var index = new RowBufferStore([other, row]);
 
@@ -257,11 +228,11 @@ public class RowBufferStoreTests
                                             [1, deep | 1],
                                             new Dictionary<int, BatchDeepValue> { [1] = new(5, "Fifth"u8.ToArray()) });
 
-        var capture = new BatchCapture(Function, 0, 0, 10, batchIterator, 0x2_0000_8000, 0, BatchCaptureFlags.None, [0, 1], [vector]);
+        var capture = new BatchCapture(Function, 0, 0, At(10), batchIterator, 0x2_0000_8000, 0, BatchCaptureFlags.None, [0, 1], [vector]);
 
         var batches = new BatchStore([capture]);
 
-        var row = CreateRow(Function, call: 1, id: 100, number: 1, "First");
+        var row = CreateRow(Function, call: 1, sequence: 100, number: 1, "First");
 
         var value = row.Columns[1] with { Pointer = deep };
 
@@ -326,7 +297,7 @@ public class RowBufferStoreTests
     }
 
     [Fact]
-    public void A_First_Version_Export_Is_Still_Read()
+    public void An_Export_In_An_Older_Format_Is_Rejected()
     {
         using var stream = new MemoryStream();
 
@@ -343,7 +314,7 @@ public class RowBufferStoreTests
 
         using var reader = new BinaryReader(stream);
 
-        Assert.Equal(0, RowBufferStore.Read(reader).Count);
+        Assert.Throws<InvalidDataException>(() => RowBufferStore.Read(reader));
     }
 
     [Fact]
@@ -362,18 +333,17 @@ public class RowBufferStoreTests
         var row = imported.GetRow(Function, Instance, 2)!;
 
         Assert.Equal(2, imported.Count);
-        Assert.Equal((200ul, Iterator, Buffer), (row.Id, row.Iterator, row.Address));
+        Assert.Equal((At(200), Iterator, Buffer), (row.Position, row.Iterator, row.Address));
         Assert.Equal([2, 0, 0, 0], row.Columns[0].Data);
         Assert.Equal("Second", Encoding.ASCII.GetString(row.Columns[1].Data));
         Assert.Equal(RowBufferColumnFlags.ByReference | RowBufferColumnFlags.HasLength, row.Columns[1].Flags);
-        Assert.Equal(2, imported.GetRowAt(Iterator, 201)?.Call);
     }
 
     private static (RowBuffer Row, BatchStore Batches) CreateHandoff(ulong slot, int selectionIndex)
     {
         var vector = new BatchCaptureVector(5, BatchVectorFlags.Pure, [slot], NoDeepValues);
 
-        var row = CreateRow(Function, call: 1, id: 100, number: 1, "First") with
+        var row = CreateRow(Function, call: 1, sequence: 100, number: 1, "First") with
         {
             Batch = HandoffBatch,
             BatchSelectionIndex = selectionIndex
@@ -385,19 +355,20 @@ public class RowBufferStoreTests
     }
 
     private static BatchCapture CreateCapture(ulong producer, ulong consumer, ulong id, BatchCaptureVector vector)
-        => new(Function, producer, 0, id, producer, HandoffBatch, consumer, BatchCaptureFlags.None, [0, 3, 6], [vector]);
+        => new(Function, producer, 0, At(id), producer, HandoffBatch, consumer, BatchCaptureFlags.None, [0, 3, 6], [vector]);
 
     private static RowBufferStore Build()
-        => new([CreateRow(Function, call: 2, id: 200, number: 2, "Second"), CreateRow(Function, call: 1, id: 100, number: 1, "First")]);
+        => new([CreateRow(Function, call: 2, sequence: 200, number: 2, "Second"),
+                CreateRow(Function, call: 1, sequence: 100, number: 1, "First")]);
 
-    private static RowBuffer CreateRow(ulong function, int call, ulong id, byte number, string text)
+    private static RowBuffer CreateRow(ulong function, int call, ulong sequence, byte number, string text)
     {
         var flags = RowBufferColumnFlags.ByReference | RowBufferColumnFlags.HasLength;
 
         return new RowBuffer(function,
                              Instance,
                              call,
-                             id,
+                             At(sequence),
                              Iterator,
                              Buffer,
                              [new RowBufferColumn(0, Fixed, 0, RowBufferColumnFlags.None, 4, [number, 0, 0, 0]),

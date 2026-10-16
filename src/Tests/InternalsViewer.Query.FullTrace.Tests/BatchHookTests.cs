@@ -2,6 +2,7 @@ using System.Text;
 using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Batches.Enums;
+using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -128,7 +129,7 @@ public class BatchHookTests
             Function = Function,
             Instance = Iterator,
             Id = 200,
-            CallCount = 260,
+            Position = At(260),
             Call = 4,
             Arguments = new[] { Iterator, Data, 0ul, 0ul }
         };

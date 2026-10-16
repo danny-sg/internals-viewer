@@ -80,7 +80,7 @@ internal sealed class RowBufferHook(RowBufferFunctions functions) : ITraceHook
         Rows.Add(new RowBuffer(call.Function,
                                call.Instance,
                                (int)call.Call,
-                               call.CallCount,
+                               call.Position,
                                start.Iterator,
                                start.Buffer,
                                GetShared(start.Iterator, columns),

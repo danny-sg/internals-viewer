@@ -959,6 +959,8 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
         _hover = null;
         _selected = null;
 
+        ReleaseMinimap();
+
         if (_timeline is { } timeline)
         {
             _rooted = _root is { } root ? timeline.RootedAt(n => ReferenceEquals(n, root)) : null;
@@ -1075,54 +1077,8 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
         return any ? hidden : null;
     }
 
-    private static bool[]? Matches(TraceTimeline timeline, Func<CallStackNode, bool> predicate)
-    {
-        var matches = new bool[timeline.NodeCount];
-
-        var any = false;
-
-        for (var node = 0; node < matches.Length; node++)
-        {
-            if (timeline.NodeOf(node) is { } callNode && predicate(callNode))
-            {
-                matches[node] = true;
-
-                any = true;
-            }
-        }
-
-        return any ? matches : null;
-    }
-
     private static FlameHit? FindCall(TraceTimeline timeline, CallStackNode node, int call)
-    {
-        if (Matches(timeline, n => ReferenceEquals(n, node)) is not { } nodes)
-        {
-            return null;
-        }
-
-        for (var lane = 0; lane < timeline.Threads.Count; lane++)
-        {
-            var rows = timeline.Threads[lane].Rows;
-
-            for (var depth = 0; depth < rows.Count; depth++)
-            {
-                var row = rows[depth];
-
-                for (var index = 0; index < row.Count; index++)
-                {
-                    var spanNode = row.NodeAt(index);
-
-                    if (row.CallAt(index) == call && spanNode >= 0 && spanNode < nodes.Length && nodes[spanNode])
-                    {
-                        return new FlameHit(lane, depth, index);
-                    }
-                }
-            }
-        }
-
-        return null;
-    }
+        => timeline.FindCall(node, call) is { } location ? new FlameHit(location.ThreadIndex, location.Depth, location.Index) : null;
 
     private void FindSelectedCall(bool bringIntoView)
     {
@@ -1205,6 +1161,8 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
         var control = (FlameChartControl)d;
 
         control._markedCalls.Clear();
+
+        control.ReleaseMinimap();
 
         control._canvas.Invalidate();
     }

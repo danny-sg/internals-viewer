@@ -139,6 +139,8 @@ internal sealed class ReplaySession : IDisposable
 
         ReplayBridge.CallChunkCallback onChunk = store.Add;
 
+        ReplayBridge.CallEndCallback onEnd = store.AddToPosition;
+
         ReplayBridge.CallSpanCallback onSpans = timeline.Add;
 
         ulong[] instanceMethods = [.. functions.InstanceMethods.Select(ReplayBridge.PackInstanceMethod)];
@@ -179,6 +181,7 @@ internal sealed class ReplaySession : IDisposable
                                                    hooks.Functions,
                                                    hooks.Functions.Length,
                                                    onChunk,
+                                                   onEnd,
                                                    onSpans,
                                                    onHook,
                                                    onProgress,
@@ -187,6 +190,8 @@ internal sealed class ReplaySession : IDisposable
 
             // Stops the delegates from being GCed while the replay is in progress
             GC.KeepAlive(onChunk);
+
+            GC.KeepAlive(onEnd);
 
             GC.KeepAlive(onSpans);
 

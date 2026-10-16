@@ -1,5 +1,6 @@
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
+using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Memory;
 
@@ -16,14 +17,14 @@ public sealed partial class MemoryMap
 
     private Dictionary<ulong, MemoryMapEntry[]> Entries { get; }
 
-    public MemoryMapEntry? GetEntry(ulong address, ulong call)
+    public MemoryMapEntry? GetEntry(ulong address, TracePosition position)
     {
-        if (call == 0 || !Entries.TryGetValue(address, out var entries))
+        if (!position.IsKnown || !Entries.TryGetValue(address, out var entries))
         {
             return null;
         }
 
-        var index = GetLatest(entries, call);
+        var index = SortedSearch.FirstAfter(entries, position, e => e.FromPosition) - 1;
 
         if (index < 0)
         {
@@ -32,13 +33,13 @@ public sealed partial class MemoryMap
 
         var entry = entries[index];
 
-        return entry.Until != 0 && call > entry.Until ? null : entry;
+        return entry.ToPosition.IsKnown && position > entry.ToPosition ? null : entry;
     }
 
     internal static MemoryMap Build(IEnumerable<AddressEntry> entries, Func<int, CallStackNode?> nodeOf)
         => new(entries.Select(e => GetEntry(e, nodeOf))
                       .GroupBy(e => e.Address)
-                      .ToDictionary(g => g.Key, g => Link([.. g.OrderBy(e => e.Call)])));
+                      .ToDictionary(g => g.Key, g => Link([.. g.OrderBy(e => e.FromPosition)])));
 
     private static MemoryMapEntry GetEntry(AddressEntry entry, Func<int, CallStackNode?> nodeOf)
     {
@@ -51,8 +52,9 @@ public sealed partial class MemoryMap
         return new MemoryMapEntry(entry.Address,
                                   operation,
                                   entry.Call,
+                                  entry.FromPosition,
                                   entry.Owner,
-                                  entry.Until,
+                                  entry.ToPosition,
                                   entry.Thread,
                                   entry.Node,
                                   allocates ? null : GetName(node?.Frame?.Resolved?.ClassName),
@@ -78,32 +80,4 @@ public sealed partial class MemoryMap
     }
 
     private static string? GetName(string? name) => name is { Length: > 0 } ? name : null;
-
-    private static int GetLatest(MemoryMapEntry[] entries, ulong call)
-    {
-        var low = 0;
-
-        var high = entries.Length - 1;
-
-        var found = -1;
-
-        while (low <= high)
-        {
-            var middle = low + (high - low) / 2;
-
-            if (entries[middle].Call <= call)
-            {
-                found = middle;
-
-                low = middle + 1;
-            }
-            else
-            {
-                high = middle - 1;
-            }
-        }
-
-        return found;
-    }
-
 }

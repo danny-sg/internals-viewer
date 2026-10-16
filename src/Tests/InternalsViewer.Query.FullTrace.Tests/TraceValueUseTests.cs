@@ -1,6 +1,7 @@
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
+using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -16,7 +17,7 @@ public class TraceValueUseTests
     [InlineData("RAX", FunctionType.Member, TraceValueRole.Returned)]
     public void A_Use_Takes_Its_Role_From_Where_The_Value_Was_Held(string location, FunctionType? type, TraceValueRole role)
     {
-        var valueCall = new TraceValueCall(0, 1, null);
+        var valueCall = new TraceValueCall(0, At(1), null);
 
         Assert.Equal(role, new TraceValueUse(0x1000, 0, location, 1, valueCall, valueCall).GetRole(type));
     }

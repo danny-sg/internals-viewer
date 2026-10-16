@@ -32,7 +32,7 @@ public sealed class HoBtAccessMap
 
     public static HoBtAccessMap Build(TraceCallStore callStore, IReadOnlyList<CallStackNode?> nodes)
     {
-        var destroyed = CallsOf(callStore, nodes, DestructorMethod).ToLookup(c => c.Slot(ObjectSlot), c => c.Sequence);
+        var destroyed = CallsOf(callStore, nodes, DestructorMethod).ToLookup(c => c.Slot(ObjectSlot), c => c.FromPosition);
 
         var lifetimes = new Dictionary<ulong, Lifetime[]>();
 
@@ -41,17 +41,18 @@ public sealed class HoBtAccessMap
             var ends = destroyed[calls.Key].Order().ToArray();
 
             lifetimes[calls.Key] = [.. calls.Where(c => c.Slot(HoBtIdSlot) != 0)
-                                           .GroupBy(c => c.Sequence)
-                                           .OrderBy(g => g.Key)
-                                           .Select(g => new Lifetime(g.Key,
-                                                                     ends.FirstOrDefault(e => e >= g.Key, ulong.MaxValue),
-                                                                     GetHoBtId([.. g.Select(c => c.Slot(HoBtIdSlot)).Distinct()])))];
+                                           .GroupBy(c => c.FromPosition.Sequence)
+                                           .Select(g => (Start: g.Min(c => c.FromPosition), Values: g.Select(c => c.Slot(HoBtIdSlot))))
+                                           .OrderBy(g => g.Start)
+                                           .Select(g => new Lifetime(g.Start,
+                                                                     ends.FirstOrDefault(e => e >= g.Start, TracePosition.Unknown),
+                                                                     GetHoBtId([.. g.Values.Distinct()])))];
         }
 
         return new HoBtAccessMap(lifetimes);
     }
 
-    public ulong? GetHoBtId(ulong address, ulong sequence)
+    public ulong? GetHoBtId(ulong address, TracePosition position)
     {
         if (!Lifetimes.TryGetValue(address, out var lifetimes))
         {
@@ -60,9 +61,9 @@ public sealed class HoBtAccessMap
 
         for (var index = lifetimes.Length - 1; index >= 0; index--)
         {
-            if (lifetimes[index].Start <= sequence)
+            if (lifetimes[index].FromPosition <= position)
             {
-                return sequence <= lifetimes[index].End ? lifetimes[index].HoBtId : null;
+                return position <= lifetimes[index].ToPosition ? lifetimes[index].HoBtId : null;
             }
         }
 
@@ -108,5 +109,5 @@ public sealed class HoBtAccessMap
         }
     }
 
-    private readonly record struct Lifetime(ulong Start, ulong End, ulong HoBtId);
+    private readonly record struct Lifetime(TracePosition FromPosition, TracePosition ToPosition, ulong HoBtId);
 }

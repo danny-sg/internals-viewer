@@ -5,7 +5,7 @@ namespace InternalsViewer.Query.FullTrace.RowBuffers;
 public sealed record RowBuffer(ulong Function,
                                ulong Instance,
                                int Call,
-                               ulong Id,
+                               TracePosition Position,
                                ulong Iterator,
                                ulong Address,
                                IReadOnlyList<RowBufferColumn> Columns,

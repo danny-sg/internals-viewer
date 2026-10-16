@@ -2,6 +2,7 @@
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.Memory;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
+using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -46,7 +47,7 @@ public class MemoryFunctionTests
     [Fact]
     public void Bytes_Are_Read_From_The_Size_Argument()
     {
-        var call = new TraceArgumentCall(1, 1, true, [0xA0, 3, 100, 0], 0);
+        var call = new TraceArgumentCall(At(1), 1, true, [0xA0, 3, 100, 0], 0);
 
         Assert.Equal(3ul, MemoryFunction.Classify(0x1000, "CMemObj::Alloc")!.GetByteCount(call));
         Assert.Equal(100ul, MemoryFunction.Classify(0x1000, "CMemObj::Realloc")!.GetByteCount(call));
@@ -72,7 +73,7 @@ public class MemoryFunctionTests
     [Fact]
     public void Calloc_Allocates_Its_Count_Times_Its_Size()
     {
-        var call = new TraceArgumentCall(1, 1, true, [4, 24, 0, 0], 0);
+        var call = new TraceArgumentCall(At(1), 1, true, [4, 24, 0, 0], 0);
 
         Assert.Equal(96ul, MemoryFunction.ClassifyExport(0x1000, "calloc")!.GetByteCount(call));
     }
@@ -100,11 +101,11 @@ public class MemoryFunctionTests
 
         var free = MemoryFunction.ClassifyExport(0x2000, "VirtualFree")!;
 
-        var commit = new TraceArgumentCall(1, 1, true, [0, 65536, 0x3000, 4], 0x9000);
+        var commit = new TraceArgumentCall(At(1), 1, true, [0, 65536, 0x3000, 4], 0x9000);
 
-        var reserve = new TraceArgumentCall(2, 1, true, [0, 65536, 0x2000, 4], 0xA000);
+        var reserve = new TraceArgumentCall(At(2), 1, true, [0, 65536, 0x2000, 4], 0xA000);
 
-        var release = new TraceArgumentCall(3, 1, true, [0x9000, 0, 0x8000, 0], 1);
+        var release = new TraceArgumentCall(At(3), 1, true, [0x9000, 0, 0x8000, 0], 1);
 
         Assert.Equal((true, false, true), (allocate.IsCounted(commit), allocate.IsCounted(reserve), free.IsCounted(release)));
         Assert.Equal(65536ul, allocate.GetByteCount(commit));
@@ -120,7 +121,7 @@ public class MemoryFunctionTests
     [Fact]
     public void A_Fixed_Size_Allocator_Allocates_Its_Unit()
     {
-        var call = new TraceArgumentCall(1, 1, true, [0xA0, 0, 0, 0], 0x5000);
+        var call = new TraceArgumentCall(At(1), 1, true, [0xA0, 0, 0, 0], 0x5000);
 
         var function = MemoryFunction.Classify(0x1000, "CHashWorkfilePartitionInstance::PvAllocateHashBucketPage")!;
 
@@ -130,7 +131,7 @@ public class MemoryFunctionTests
     [Fact]
     public void An_Impossible_Size_Counts_As_Nothing()
     {
-        var call = new TraceArgumentCall(1, 1, true, [0xA0, ulong.MaxValue, 0, 0], 0);
+        var call = new TraceArgumentCall(At(1), 1, true, [0xA0, ulong.MaxValue, 0, 0], 0);
 
         Assert.Equal(0ul, MemoryFunction.Classify(0x1000, "CMemObj::Alloc")!.GetByteCount(call));
     }

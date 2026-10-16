@@ -69,35 +69,29 @@ public sealed class TraceRowBufferMarks
 
         var batchCaptures = new Dictionary<ExecutionOperatorEvent, List<Capture>>(ReferenceEqualityComparer.Instance);
 
-        foreach (var location in timeline.GetSpanLocations())
+        foreach (var batch in batches.All)
         {
-            if (location.Call < 0 || location.Node.Frame is not { } frame)
+            if (owners.GetValueOrDefault(batch.Instance) is not { } producer
+                || timeline.FindCall(batch.Function, batch.Instance, batch.Call) is not { } location)
             {
                 continue;
             }
 
-            var capture = new Capture(location.StartOf(TraceTimelineAxis.Position),
-                                      location.EndOf(TraceTimelineAxis.Position),
-                                      location.EndOf(TraceTimelineAxis.Instructions),
-                                      location.Node,
-                                      location.Call);
+            ref var batchList = ref CollectionsMarshal.GetValueRefOrAddDefault(batchCaptures, producer, out _);
 
-            if (batches.HasBatch(frame.Address, frame.Instance, location.Call)
-                && owners.GetValueOrDefault(frame.Instance) is { } producer)
-            {
-                ref var batchList = ref CollectionsMarshal.GetValueRefOrAddDefault(batchCaptures, producer, out _);
+            (batchList ??= []).Add(GetCapture(location));
+        }
 
-                (batchList ??= []).Add(capture);
-            }
-
-            if (rowBuffers.GetRow(frame.Address, frame.Instance, location.Call) is not { } row)
+        foreach (var row in rowBuffers.All)
+        {
+            if (timeline.FindCall(row.Function, row.Instance, row.Call) is not { } location)
             {
                 continue;
             }
 
             ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(captures, (location.Thread.ThreadId, row.Iterator), out _);
 
-            (list ??= []).Add(capture);
+            (list ??= []).Add(GetCapture(location));
         }
 
         var operators = new Dictionary<ExecutionOperatorEvent, List<Capture>>(ReferenceEqualityComparer.Instance);
@@ -128,6 +122,13 @@ public sealed class TraceRowBufferMarks
 
         return marks;
     }
+
+    private static Capture GetCapture(TraceSpanLocation location)
+        => new(location.StartOf(TraceTimelineAxis.Position),
+               location.EndOf(TraceTimelineAxis.Position),
+               location.EndOf(TraceTimelineAxis.Instructions),
+               location.Node,
+               location.Call);
 
     private static Dictionary<ulong, ExecutionOperatorEvent> GetOwners(TraceTimeline timeline)
     {

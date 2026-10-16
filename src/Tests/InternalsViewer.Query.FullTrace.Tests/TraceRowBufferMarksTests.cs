@@ -7,6 +7,7 @@ using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.FullTrace.Batches.Enums;
+using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -163,11 +164,13 @@ public class TraceRowBufferMarksTests
 
         timeline.SetLifetimes([new TraceOperatorLifetime(Thread, Scan, 0, [Whole], [Whole], MemoryInUseCurve.Empty)]);
 
+        timeline.SetCalls(TraceCallRows.CallsFor(Nodes, spans));
+
         return timeline;
     }
 
     private static BatchCapture Batch(uint call, ulong consumer = 0)
-        => new(GetRow, Iterator, (int)call, 100 + call, Iterator, BatchAddress, consumer, BatchCaptureFlags.None, [], []);
+        => new(GetRow, Iterator, (int)call, At(100 + call), Iterator, BatchAddress, consumer, BatchCaptureFlags.None, [], []);
 
     private static RowBufferStore Capture(params (ulong Function, ulong Instance, uint Call)[] calls) => CaptureFor(Iterator, calls);
 
@@ -178,7 +181,7 @@ public class TraceRowBufferMarksTests
         return new RowBufferStore(calls.Select(c => new RowBuffer(c.Function,
                                                                   c.Instance,
                                                                   (int)c.Call,
-                                                                  100 + c.Call,
+                                                                  At(100 + c.Call),
                                                                   iterator,
                                                                   0x1F4_EEAE_2000,
                                                                   columns)));

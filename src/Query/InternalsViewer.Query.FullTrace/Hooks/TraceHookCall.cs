@@ -8,8 +8,6 @@ internal readonly ref struct TraceHookCall
 
     public ulong Id { get; init; }
 
-    public ulong CallCount { get; init; }
-
     public uint Call { get; init; }
 
     public uint Thread { get; init; }
@@ -24,9 +22,7 @@ internal readonly ref struct TraceHookCall
 
     public ulong ReturnAddress { get; init; }
 
-    public ulong Sequence { get; init; }
-
-    public ulong Steps { get; init; }
+    public TracePosition Position { get; init; }
 
     public ulong Instructions { get; init; }
 }

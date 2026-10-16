@@ -1,6 +1,7 @@
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Calls;
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRows;
+using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -25,7 +26,7 @@ public class TraceValueSearchTests
     {
         var builder = new TraceCallStore.Builder();
 
-        builder.Add(0x1000, 0, Chunk(Row(1, returnValue: 0xD0), Row(2, flags: TraceArgumentCall.ReturnedFlag, returnValue: 0xD0)), 2);
+        builder.Add(0x1000, 0, Chunk(Row(1, returnValue: 0xD0), Row(2, flags: TraceCallColumns.ReturnedFlag, returnValue: 0xD0)), 2);
 
         var use = Assert.Single(await new TraceValueSearch(builder.Build()).GetValueUsesAsync(0xD0, CancellationToken.None));
 
@@ -43,8 +44,8 @@ public class TraceValueSearchTests
         var use = Assert.Single(await new TraceValueSearch(builder.Build()).GetValueUsesAsync(0xA0, CancellationToken.None));
 
         Assert.Equal(20, use.Calls);
-        Assert.Equal((0, 100ul), (use.First.Call, use.First.Sequence));
-        Assert.Equal((19, 119ul), (use.Last.Call, use.Last.Sequence));
+        Assert.Equal((0, At(100)), (use.First.Call, use.First.Position));
+        Assert.Equal((19, At(119)), (use.Last.Call, use.Last.Position));
     }
 
     [Fact]
@@ -53,7 +54,7 @@ public class TraceValueSearchTests
         var builder = new TraceCallStore.Builder();
 
         builder.Add(0x1000, 0, Chunk(Row(10, flags: 7, rcx: 0xA0), Row(11, flags: 7, rcx: 0xB0)), 2);
-        builder.Add(0x1000, 0, Chunk(Row(12, flags: 8 | TraceArgumentCall.ReturnedFlag, rcx: 0xA0, returnValue: 0xA0)), 1);
+        builder.Add(0x1000, 0, Chunk(Row(12, flags: 8 | TraceCallColumns.ReturnedFlag, rcx: 0xA0, returnValue: 0xA0)), 1);
 
         var search = new TraceValueSearch(builder.Build());
 
@@ -61,7 +62,7 @@ public class TraceValueSearchTests
 
         var calls = await search.GetTraceValueCallsAsync(use, 0xA0, CancellationToken.None);
 
-        Assert.Equal([(0, 10ul, 7u), (2, 12ul, 8u)], calls.Select(c => (c.Call, c.Sequence, c.Thread)));
+        Assert.Equal([(0, At(10), 7u), (2, At(12), 8u)], calls.Select(c => (c.Call, c.Position, c.Thread)));
     }
 
     [Fact]
@@ -99,7 +100,7 @@ public class TraceValueSearchTests
         var builder = new TraceCallStore.Builder();
 
         builder.Add(0x1000, 0, Chunk(Row(50, rcx: 0xA0)), 1);
-        builder.Add(0x2000, 0, Chunk(Row(10, flags: TraceArgumentCall.ReturnedFlag, returnValue: 0xA0)), 1);
+        builder.Add(0x2000, 0, Chunk(Row(10, flags: TraceCallColumns.ReturnedFlag, returnValue: 0xA0)), 1);
 
         var uses = await new TraceValueSearch(builder.Build()).GetValueUsesAsync(0xA0, CancellationToken.None);
 

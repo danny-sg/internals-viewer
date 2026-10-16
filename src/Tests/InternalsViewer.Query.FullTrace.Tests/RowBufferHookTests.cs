@@ -4,6 +4,7 @@ using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
 using InternalsViewer.Query.FullTrace.RowBuffers.DeferredValues;
+using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -349,7 +350,7 @@ public class RowBufferHookTests
             Function = Function,
             Instance = Iterator,
             Id = id,
-            CallCount = 20 + id,
+            Position = At(20 + id),
             Call = index,
             Arguments = new[] { Iterator, 0ul, 0ul, 0ul }
         };

@@ -427,10 +427,10 @@ public class TraceTimelineTests
 
         timeline.MapNodes([root, child, null]);
 
-        timeline.AddCallActivity(4);
+        var activity = timeline.GetCallActivity(4);
 
-        Assert.Equal([1, 0, 0, 2], root.CallActivity);
-        Assert.Equal([0, 1, 0, 0], child.CallActivity);
+        Assert.Equal([1, 0, 0, 2], activity[root]);
+        Assert.Equal([0, 1, 0, 0], activity[child]);
     }
 
     [Fact]
@@ -456,6 +456,58 @@ public class TraceTimelineTests
         timeline.SetEventLinks([new TraceEventLink(latch, null, 7, 10, 10)]);
 
         Assert.Same(latch, timeline.EventLinkOf(new ReadEventGroup { SequenceId = 2, Events = [latch] })?.Event);
+    }
+
+    [Fact]
+    public void A_Call_Is_Found_Where_The_Call_Log_Says_It_Started()
+    {
+        CallSpan[] spans = [Span(node: 0, start: 0, end: 40), Span(node: 1, start: 5, end: 20), Span(node: 1, start: 25, end: 30, call: 1)];
+
+        var timeline = Build(spans);
+
+        var nodes = MapNodes(timeline);
+
+        timeline.SetCalls(TraceCallRows.CallsFor(Nodes, spans));
+
+        var found = timeline.FindCall(nodes[1], 1);
+
+        Assert.Equal((0, 1, 1, 1), (found?.ThreadIndex, found?.Depth, found?.Index, found?.Call));
+        Assert.Same(nodes[1], found?.Node);
+    }
+
+    [Fact]
+    public void A_Call_Is_Not_Found_Without_Its_Call_Log_Or_Outside_It()
+    {
+        CallSpan[] spans = [Span(node: 0, start: 0, end: 40)];
+
+        var timeline = Build(spans);
+
+        var nodes = MapNodes(timeline);
+
+        Assert.Null(timeline.FindCall(nodes[0], 0));
+
+        timeline.SetCalls(TraceCallRows.CallsFor(Nodes, spans));
+
+        Assert.NotNull(timeline.FindCall(nodes[0], 0));
+        Assert.Null(timeline.FindCall(nodes[0], 1));
+        Assert.Null(timeline.FindCall(nodes[2], 0));
+    }
+
+    private static CallStackNode[] MapNodes(TraceTimeline timeline)
+    {
+        var tree = new CallStackTree();
+
+        var root = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x10, Address = 0x1000 }, 1);
+
+        var child = tree.AddCall(root, new CallstackFrame { Module = "sqlmin", Rva = 0x20, Address = 0x2000 }, 1);
+
+        var leaf = tree.AddCall(child, new CallstackFrame { Module = "sqlmin", Rva = 0x30, Address = 0x3000 }, 1);
+
+        CallStackNode[] nodes = [root, child, leaf];
+
+        timeline.MapNodes(nodes);
+
+        return nodes;
     }
 
     private static TraceTimeline Build(params CallSpan[] spans)

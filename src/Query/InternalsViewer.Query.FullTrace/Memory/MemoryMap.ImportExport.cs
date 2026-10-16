@@ -15,9 +15,15 @@ public sealed partial class MemoryMap
 
             writer.Write(entry.Call);
 
+            writer.Write(entry.FromPosition.Sequence);
+
+            writer.Write(entry.FromPosition.Steps);
+
             writer.Write(entry.Owner);
 
-            writer.Write(entry.Until);
+            writer.Write(entry.ToPosition.Sequence);
+
+            writer.Write(entry.ToPosition.Steps);
 
             writer.Write(entry.Node);
 
@@ -33,13 +39,15 @@ public sealed partial class MemoryMap
 
         for (var index = 0; index < entries.Length; index++)
         {
-            entries[index] = new AddressEntry(reader.ReadUInt64(),
-                                              reader.ReadUInt64(),
-                                              reader.ReadUInt64(),
-                                              reader.ReadUInt64(),
-                                              reader.ReadInt32(),
-                                              reader.ReadUInt32(),
-                                              (MemoryMapOperation)reader.ReadByte());
+            entries[index] = new AddressEntry(Address: reader.ReadUInt64(),
+                                              Frame: 0,
+                                              Call: reader.ReadInt32(),
+                                              FromPosition: new TracePosition(reader.ReadUInt64(), reader.ReadUInt64()),
+                                              Owner: reader.ReadUInt64(),
+                                              ToPosition: new TracePosition(reader.ReadUInt64(), reader.ReadUInt64()),
+                                              Node: reader.ReadInt32(),
+                                              Thread: reader.ReadUInt32(),
+                                              Operation: (MemoryMapOperation)reader.ReadByte());
         }
 
         return Build(entries, nodeOf);

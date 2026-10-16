@@ -31,6 +31,14 @@ extern "C"
 
     typedef void(__stdcall* CallChunkCallback)(uint64_t address, uint64_t instance, const uint64_t* columns, int32_t calls);
 
+    typedef void(__stdcall* CallEndCallback)(uint64_t address,
+                                             uint64_t instance,
+                                             uint32_t call,
+                                             uint64_t endSequence,
+                                             uint64_t endSteps,
+                                             uint64_t returnValue,
+                                             uint32_t returned);
+
     typedef void(__stdcall* CallSpanCallback)(const CallSpan* spans, int32_t count);
 
     struct HookFunction
@@ -54,7 +62,6 @@ extern "C"
         uint64_t         Function;
         uint64_t         Instance;
         uint64_t         Id;
-        uint64_t         CallCount;
         uint64_t         Arguments[4];
         uint64_t         ReturnValue;
         uint64_t         StackPointer;
@@ -93,6 +100,7 @@ extern "C"
                                                const HookFunction*    hookFunctions,
                                                int32_t                hookFunctionCount,
                                                CallChunkCallback      logCalls,
+                                               CallEndCallback        logCallEnds,
                                                CallSpanCallback       logSpans,
                                                HookCallback           onHook,
                                                ProgressCallback       progress,

@@ -5,16 +5,16 @@ namespace InternalsViewer.Query.FullTrace.Calls;
 
 public sealed class TraceCallList : IReadOnlyList<TraceArgumentCall>
 {
-    private const int CachedChunks = 2;
-
     internal TraceCallList(ulong address,
                            ulong instance,
                            TraceCallStore.Chunk[] chunks,
+                           TraceCallStore.ChunkCache columns,
                            LocatorTable? locators = null)
     {
         Address = address;
         Instance = instance;
         Chunks = chunks;
+        Columns = columns;
         Locators = locators;
         Starts = new int[chunks.Length];
 
@@ -40,26 +40,17 @@ public sealed class TraceCallList : IReadOnlyList<TraceArgumentCall>
 
     private int[] Starts { get; }
 
+    private TraceCallStore.ChunkCache Columns { get; }
+
     private LocatorTable? Locators { get; }
-
-    private List<(int Chunk, ulong[] Columns)> Cache { get; } = [];
-
-    private Lock Sync { get; } = new();
 
     public TraceArgumentCall this[int index]
     {
         get
         {
-            var (columns, calls, call) = GetLocation(index);
+            var (columns, call) = GetLocation(index);
 
-            var row = new ulong[TraceArgumentCall.ValueCount];
-
-            for (var column = 0; column < row.Length; column++)
-            {
-                row[column] = columns[column * calls + call];
-            }
-
-            return TraceArgumentCall.Decode(row, Locators?.GetLocators(index));
+            return columns.GetCall(call, Locators?.GetLocators(index));
         }
     }
 
@@ -73,65 +64,11 @@ public sealed class TraceCallList : IReadOnlyList<TraceArgumentCall>
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    public int IndexOf(ulong id)
+    public int IndexOfEnclosing(TracePosition position, uint thread)
     {
-        var low = 0;
-
-        var high = Count - 1;
-
-        while (low <= high)
+        for (var index = FirstStartingAfter(position) - 1; index >= 0; index--)
         {
-            var middle = low + (high - low) / 2;
-
-            var current = GetId(middle);
-
-            if (current == id)
-            {
-                return middle;
-            }
-
-            if (current < id)
-            {
-                low = middle + 1;
-            }
-            else
-            {
-                high = middle - 1;
-            }
-        }
-
-        return -1;
-    }
-
-    public int IndexOfEnclosing(ulong id)
-    {
-        var low = 0;
-
-        var high = Count - 1;
-
-        var latest = -1;
-
-        while (low <= high)
-        {
-            var middle = low + (high - low) / 2;
-
-            if (GetId(middle) <= id)
-            {
-                latest = middle;
-
-                low = middle + 1;
-            }
-            else
-            {
-                high = middle - 1;
-            }
-        }
-
-        for (var index = latest; index >= 0; index--)
-        {
-            var end = GetEndId(index);
-
-            if (end == 0 || end >= id)
+            if (GetThread(index) == thread && GetToPosition(index) >= position)
             {
                 return index;
             }
@@ -140,28 +77,35 @@ public sealed class TraceCallList : IReadOnlyList<TraceArgumentCall>
         return -1;
     }
 
-    public ulong GetId(int index)
+    public TracePosition GetFromPosition(int index)
     {
-        var (columns, calls, call) = GetLocation(index);
+        var (columns, call) = GetLocation(index);
 
-        return columns[TraceArgumentCall.IdIndex * calls + call];
+        return columns.GetFromPosition(call);
+    }
+
+    public TracePosition GetToPosition(int index)
+    {
+        var (columns, call) = GetLocation(index);
+
+        return columns.GetToPosition(call);
+    }
+
+    public uint GetThread(int index)
+    {
+        var (columns, call) = GetLocation(index);
+
+        return columns.GetThread(call);
     }
 
     internal int GetNodeIndex(int index)
     {
-        var (columns, calls, call) = GetLocation(index);
+        var (columns, call) = GetLocation(index);
 
-        return (int)columns[TraceArgumentCall.NodeIndex * calls + call];
+        return columns.GetNodeIndex(call);
     }
 
-    internal ulong GetEndId(int index)
-    {
-        var (columns, calls, call) = GetLocation(index);
-
-        return columns[TraceArgumentCall.EndIdIndex * calls + call];
-    }
-
-    private (ulong[] Columns, int Calls, int Call) GetLocation(int index)
+    private (TraceCallColumns Columns, int Call) GetLocation(int index)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(index);
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, Count);
@@ -170,31 +114,29 @@ public sealed class TraceCallList : IReadOnlyList<TraceArgumentCall>
 
         chunk = chunk >= 0 ? chunk : ~chunk - 1;
 
-        return (GetChunkColumns(chunk), Chunks[chunk].Calls, index - Starts[chunk]);
+        return (Columns.Get(Chunks[chunk]), index - Starts[chunk]);
     }
 
-    private ulong[] GetChunkColumns(int chunk)
+    private int FirstStartingAfter(TracePosition position)
     {
-        lock (Sync)
+        var low = 0;
+
+        var high = Count;
+
+        while (low < high)
         {
-            foreach (var (cached, columns) in Cache)
+            var middle = low + (high - low) / 2;
+
+            if (GetFromPosition(middle) <= position)
             {
-                if (cached == chunk)
-                {
-                    return columns;
-                }
+                low = middle + 1;
             }
-
-            var decompressed = TraceCallStore.Decompress(Chunks[chunk]);
-
-            Cache.Insert(0, (chunk, decompressed));
-
-            if (Cache.Count > CachedChunks)
+            else
             {
-                Cache.RemoveAt(Cache.Count - 1);
+                high = middle;
             }
-
-            return decompressed;
         }
+
+        return low;
     }
 }

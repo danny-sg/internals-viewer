@@ -1,6 +1,7 @@
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
+using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -32,8 +33,8 @@ public class MemoryMapHookTests
 
         var entry = Assert.Single(hook.Build());
 
-        Assert.Equal((StackObject, 10ul, 5ul, MemoryMapOperation.Constructed),
-                     (entry.Address, entry.Call, entry.Owner, entry.Operation));
+        Assert.Equal((StackObject, 10ul, At(10), 5ul, MemoryMapOperation.Constructed),
+                     (entry.Address, entry.Frame, entry.FromPosition, entry.Owner, entry.Operation));
         Assert.Equal([(Thread, 5ul)], replay.WatchedFrames);
     }
 
@@ -44,9 +45,9 @@ public class MemoryMapHookTests
 
         hook.OnEntry(Call(Constructor, 10, arguments: [StackObject, 0, 0, 0]), replay);
 
-        hook.OnFrameEnded(new TraceHookCall { Id = 5, CallCount = 99, Thread = Thread });
+        hook.OnFrameEnded(new TraceHookCall { Id = 5, Position = At(99), Thread = Thread });
 
-        Assert.Equal(99ul, Assert.Single(hook.Build()).Until);
+        Assert.Equal(At(99), Assert.Single(hook.Build()).ToPosition);
     }
 
     [Fact]
@@ -58,8 +59,8 @@ public class MemoryMapHookTests
 
         var entry = Assert.Single(hook.Build());
 
-        Assert.Equal((HeapObject, 20ul, 0ul, MemoryMapOperation.Allocated),
-                     (entry.Address, entry.Call, entry.Owner, entry.Operation));
+        Assert.Equal((HeapObject, 20ul, At(20), 0ul, MemoryMapOperation.Allocated),
+                     (entry.Address, entry.Frame, entry.FromPosition, entry.Owner, entry.Operation));
         Assert.Empty(replay.WatchedFrames);
     }
 
@@ -72,7 +73,7 @@ public class MemoryMapHookTests
 
         hook.OnReturn(Call(OperatorNew, 12, returnValue: HeapObject), replay);
 
-        Assert.Equal(12ul, Assert.Single(hook.Build()).Call);
+        Assert.Equal(12ul, Assert.Single(hook.Build()).Frame);
     }
 
     [Fact]
@@ -98,6 +99,7 @@ public class MemoryMapHookTests
         {
             Function = function,
             Id = id,
+            Position = At(id),
             Thread = Thread,
             Node = 7,
             Arguments = arguments ?? [0, 0, 0, 0],

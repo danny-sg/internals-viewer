@@ -19,7 +19,7 @@ public sealed partial class BatchStore
 
         Handoffs = Captures.Where(c => c.Consumer != 0)
                            .GroupBy(c => (c.Address, c.Consumer))
-                           .ToDictionary(g => g.Key, g => g.OrderBy(c => c.Id).ToArray());
+                           .ToDictionary(g => g.Key, g => g.OrderBy(c => c.Position).ToArray());
 
         foreach (var capture in Batches.Values.SelectMany(b => b).Where(c => c.Consumer != 0))
         {
@@ -30,6 +30,8 @@ public sealed partial class BatchStore
     public static BatchStore Empty { get; } = new([]);
 
     public int Count => Captures.Length;
+
+    internal IReadOnlyList<BatchCapture> All => Captures;
 
     private BatchCapture[] Captures { get; }
 
@@ -63,19 +65,19 @@ public sealed partial class BatchStore
             return null;
         }
 
-        var index = SortedSearch.FirstAtOrAfter(handoffs, capture.Id, h => h.Id) - 1;
+        var index = SortedSearch.FirstAtOrAfter(handoffs, capture.Position, h => h.Position) - 1;
 
         return index < 0 ? null : handoffs[index];
     }
 
-    public BatchCapture? GetHandoff(ulong batch, ulong consumer, ulong id)
+    public BatchCapture? GetHandoff(ulong batch, ulong consumer, TracePosition position)
     {
         if (!Handoffs.TryGetValue((batch, consumer), out var handoffs))
         {
             return null;
         }
 
-        var index = SortedSearch.FirstAtOrAfter(handoffs, id + 1, h => h.Id) - 1;
+        var index = SortedSearch.FirstAfter(handoffs, position, h => h.Position) - 1;
 
         return index < 0 ? null : handoffs[index];
     }
@@ -125,7 +127,7 @@ public sealed partial class BatchStore
 
     internal void AnnotateNodes(TraceCallStore store)
     {
-        var produced = Captures.GroupBy(c => c.Instance).ToDictionary(g => g.Key, g => g.OrderBy(c => c.Id).ToArray());
+        var produced = Captures.GroupBy(c => c.Instance).ToDictionary(g => g.Key, g => g.OrderBy(c => c.Position).ToArray());
 
         foreach (var (address, instance) in store.FunctionKeys)
         {
@@ -187,21 +189,21 @@ public sealed partial class BatchStore
 
         for (var call = 0; call < calls.Count; call++)
         {
-            var end = calls.GetEndId(call);
+            var end = calls.GetToPosition(call);
 
-            if (end == 0)
+            if (!end.IsKnown)
             {
                 continue;
             }
 
-            var limit = call + 1 < calls.Count ? calls.GetId(call + 1) : ulong.MaxValue;
+            var limit = call + 1 < calls.Count ? calls.GetFromPosition(call + 1) : TracePosition.Unknown;
 
-            while (next < handoffs.Length && handoffs[next].Id <= end)
+            while (next < handoffs.Length && handoffs[next].Position <= end)
             {
                 next++;
             }
 
-            if (next < handoffs.Length && handoffs[next].Id < limit)
+            if (next < handoffs.Length && handoffs[next].Position < limit)
             {
                 productions.Add(handoffs[next] with { Function = address, Call = call });
             }

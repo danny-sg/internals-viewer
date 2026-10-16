@@ -150,6 +150,15 @@ internal static class ReplayBridge
     public delegate void CallChunkCallback(ulong address, ulong instance, IntPtr columns, int calls);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    public delegate void CallEndCallback(ulong address,
+                                         ulong instance,
+                                         uint call,
+                                         ulong endSequence,
+                                         ulong endSteps,
+                                         ulong returnValue,
+                                         uint returned);
+
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     public delegate void CallSpanCallback(IntPtr spans, int count);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
@@ -181,6 +190,7 @@ internal static class ReplayBridge
                                           HookFunction[] hookFunctions,
                                           int hookFunctionCount,
                                           CallChunkCallback? logCalls,
+                                          CallEndCallback? logCallEnds,
                                           CallSpanCallback? logSpans,
                                           HookCallback? onHook,
                                           ProgressCallback? progress,

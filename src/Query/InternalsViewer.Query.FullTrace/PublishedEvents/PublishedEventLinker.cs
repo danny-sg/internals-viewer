@@ -22,7 +22,7 @@ internal static class PublishedEventLinker
 
         var written = published.Where(p => p.SessionBuffer == buffer && names.ContainsKey(p.Publisher))
                                .GroupBy(p => p.Thread)
-                               .ToDictionary(g => g.Key, g => g.OrderBy(p => p.Sequence).ThenBy(p => p.Steps).ToList());
+                               .ToDictionary(g => g.Key, g => g.OrderBy(p => p.Position).ToList());
 
         var raw = rawEvents.Where(e => e.SystemThreadId is not null)
                            .GroupBy(e => e.SystemThreadId!.Value)
@@ -45,7 +45,7 @@ internal static class PublishedEventLinker
 
             List<string> rawNames = [.. threadRaw.Select(r => r.Name)];
 
-            List<double> positions = [.. threadPublished.Select(p => timeline.PositionOf(p.Sequence, p.Steps))];
+            List<double> positions = [.. threadPublished.Select(p => timeline.PositionOf(p.Position))];
 
             var pairs = new List<(int Published, int Raw)>();
 

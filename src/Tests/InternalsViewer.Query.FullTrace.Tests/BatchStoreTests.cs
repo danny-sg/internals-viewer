@@ -5,6 +5,7 @@ using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Batches.Enums;
 
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRows;
+using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -34,7 +35,7 @@ public class BatchStoreTests
     {
         var batch = Assert.IsType<BatchCapture>(Build().GetBatch(Function, 0, 1));
 
-        Assert.Equal((Address, Iterator, 100ul, 1), (batch.Address, batch.Iterator, batch.Id, batch.Call));
+        Assert.Equal((Address, Iterator, At(100), 1), (batch.Address, batch.Iterator, batch.Position, batch.Call));
         Assert.Equal([0, 2, 5], batch.Selection);
         Assert.Equal((3, 6), (batch.SelectedCount, batch.RowCount));
         Assert.Equal([1, 3, 7], batch.Vectors.Select(v => v.VectorId));
@@ -79,7 +80,7 @@ public class BatchStoreTests
         var index = new BatchStore([CreateBatch(call: 2, id: 200), CreateBatch(call: 1, id: 100)]);
 
         Assert.Equal([1, 2], index.GetBatches(Function, 0).Select(b => b.Call));
-        Assert.Equal(200ul, index.GetBatch(Function, 0, 2)?.Id);
+        Assert.Equal(At(200), index.GetBatch(Function, 0, 2)?.Position);
         Assert.True(index.HasBatch(Function, 0, 1));
         Assert.False(index.HasBatch(Function, 0, 3));
     }
@@ -113,7 +114,7 @@ public class BatchStoreTests
 
         var batch = Assert.IsType<BatchCapture>(index.GetBatch(FilterNextBatch, Consumer, 0));
 
-        Assert.Equal((200ul, FilterNextBatch, 0), (batch.Id, batch.Function, batch.Call));
+        Assert.Equal((At(200), FilterNextBatch, 0), (batch.Position, batch.Function, batch.Call));
         Assert.Equal([0], index.GetBatches(FilterNextBatch, Consumer).Select(b => b.Call));
         Assert.True(node.HasBatches);
     }
@@ -137,7 +138,7 @@ public class BatchStoreTests
     {
         var lineage = Assert.IsType<BatchLineage>(BuildFiltered().GetLineage(Filter, Consumer, 1));
 
-        Assert.Equal(100ul, lineage.Input?.Id);
+        Assert.Equal(At(100), lineage.Input?.Position);
         Assert.Equal(6, lineage.RowCount);
         Assert.Equal([3], lineage.Capture.Selection);
     }
@@ -209,7 +210,7 @@ public class BatchStoreTests
 
         var calls = new TraceCallStore.Builder();
 
-        calls.Add(FilterNextBatch, Consumer, Chunk(Row(1, id: 150, endId: 190), Row(2, id: 210, endId: 250)), 2);
+        calls.Add(FilterNextBatch, Consumer, Chunk(Row(150, endSequence: 190), Row(210, endSequence: 250)), 2);
 
         var store = calls.Build();
 
@@ -227,7 +228,7 @@ public class BatchStoreTests
         var filtered = new BatchCapture(Filter,
                                         Consumer,
                                         1,
-                                        200,
+                                        At(200),
                                         Consumer,
                                         Address,
                                         Helper,
@@ -247,7 +248,7 @@ public class BatchStoreTests
         return new BatchCapture(Function,
                                 0,
                                 call,
-                                id,
+                                At(id),
                                 Iterator,
                                 Address,
                                 Consumer,

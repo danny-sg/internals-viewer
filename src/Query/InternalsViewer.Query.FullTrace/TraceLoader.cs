@@ -166,6 +166,8 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         replay.Timeline.MapNodes(mapped);
 
+        replay.Timeline.SetCalls(replay.CallStore);
+
         callStack.RemoveCallsUnder(IsInstrumentation);
 
         var timeline = replay.Timeline.WithoutCallsUnder(IsInstrumentation);
@@ -175,8 +177,6 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                               callStack.Nodes().Sum(n => n.Calls),
                               timeline.SpanCount,
                               timeline.Threads.Count);
-
-        timeline.AddCallActivity(QueryRunner.ActivityBuckets);
 
         var memoryMap = MemoryMap.Build(replay.MemoryMap, replay.Timeline.NodeOf);
 

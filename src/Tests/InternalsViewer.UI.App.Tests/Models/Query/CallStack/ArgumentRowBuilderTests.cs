@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace;
 using System.Collections;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.CallStack.Arguments;
@@ -207,7 +208,7 @@ public class ArgumentRowBuilderTests
     {
         var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["unsigned __int64 *", "int"], FunctionType.Member, "void"));
 
-        var call = new TraceArgumentCall(1, 1, true, [0x1_F000, 0x2_F000, 5, 0], 0, 0);
+        var call = new TraceArgumentCall(new TracePosition(1, 0), 1, true, [0x1_F000, 0x2_F000, 5, 0], 0, 0);
 
         var parts = ArgumentRowBuilder.GetSignature("HoBtAccess::Init", layout, call);
 
@@ -219,7 +220,7 @@ public class ArgumentRowBuilderTests
     {
         var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["unsigned __int64 *", "int"], FunctionType.Member, "void"));
 
-        var call = new TraceArgumentCall(1, 1, true, [0x1_F000, 0x2_F000, 5, 0], 0, 0);
+        var call = new TraceArgumentCall(new TracePosition(1, 0), 1, true, [0x1_F000, 0x2_F000, 5, 0], 0, 0);
 
         var found = ArgumentRowBuilder.GetSignature("F", layout, call).Where(p => p.CanFind).Select(p => p.Value);
 
@@ -324,7 +325,7 @@ public class ArgumentRowBuilderTests
     {
         var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["bool", "int"], FunctionType.Member, "void"));
 
-        var call = new TraceArgumentCall(1, 1, true, [0x1_0000, 1, 5, 0], 0, 0);
+        var call = new TraceArgumentCall(new TracePosition(1, 0), 1, true, [0x1_0000, 1, 5, 0], 0, 0);
 
         var parts = ArgumentRowBuilder.GetSignature("F", layout, call, includeTypes: true);
 
@@ -338,7 +339,7 @@ public class ArgumentRowBuilderTests
     {
         var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["int"], FunctionType.Member, "void"));
 
-        var call = new TraceArgumentCall(1, 1, true, [0x1_0000, 5, 0, 0], 0, 0);
+        var call = new TraceArgumentCall(new TracePosition(1, 0), 1, true, [0x1_0000, 5, 0, 0], 0, 0);
 
         ValueDescription? Describe(ArgumentSlot slot, ulong value, TraceArgumentCall _) => slot.Type == "this" ? reading : null;
 
@@ -352,7 +353,7 @@ public class ArgumentRowBuilderTests
     {
         var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["bool", "int"], FunctionType.Member, "void"));
 
-        var call = new TraceArgumentCall(1, 1, true, [0x1_0000, 1, 5, 0], 0, 0);
+        var call = new TraceArgumentCall(new TracePosition(1, 0), 1, true, [0x1_0000, 1, 5, 0], 0, 0);
 
         var parts = ArgumentRowBuilder.GetSignature("F", layout, call, includeTypes: true);
 
@@ -364,7 +365,7 @@ public class ArgumentRowBuilderTests
     {
         var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["bool", "int"], FunctionType.Member, "int"));
 
-        var call = new TraceArgumentCall(1, 1, true, [0x1_0000, 1, 5, 0], 9, 0);
+        var call = new TraceArgumentCall(new TracePosition(1, 0), 1, true, [0x1_0000, 1, 5, 0], 9, 0);
 
         var parts = ArgumentRowBuilder.GetSignature("F", layout, call);
 
@@ -413,7 +414,7 @@ public class ArgumentRowBuilderTests
     {
         var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["HoBtAccess *", "int"], FunctionType.Member, "void"));
 
-        var call = new TraceArgumentCall(1, 1, true, [0x1_0000, 0x2_0000, 5, 0], 0, 0);
+        var call = new TraceArgumentCall(new TracePosition(1, 0), 1, true, [0x1_0000, 0x2_0000, 5, 0], 0, 0);
 
         var parts = ArgumentRowBuilder.GetSignature("F", layout, call, (_, _, _) => "dbo.T.PK");
 
@@ -450,7 +451,16 @@ public class ArgumentRowBuilderTests
     {
         var layout = ArgumentLayout.LayoutOf(new FunctionSignature([], FunctionType.Member, "void"));
 
-        var origin = new MemoryMapEntry(0x1_0000, MemoryMapOperation.Constructed, 5, 0, 0, 1, 3, "CQScanNew", null);
+        var origin = new MemoryMapEntry(0x1_0000,
+                                        MemoryMapOperation.Constructed,
+                                        5,
+                                        new TracePosition(5, 0),
+                                        0,
+                                        TracePosition.Unknown,
+                                        1,
+                                        3,
+                                        "CQScanNew",
+                                        null);
 
         var call = Call(0x1_0000, 0);
 
@@ -464,7 +474,7 @@ public class ArgumentRowBuilderTests
         => string.Concat(parts.Select(p => p.GetText(decode)));
 
     private static TraceArgumentCall Call(ulong self, ulong pointer, ulong returnValue = 0, bool returned = true)
-        => new(1, 1, returned, [self, pointer, 0, 0], returnValue, 0);
+        => new(new TracePosition(1, 0), 1, returned, [self, pointer, 0, 0], returnValue, 0);
 
     private sealed class CountingCalls(int count) : IReadOnlyList<TraceArgumentCall>
     {

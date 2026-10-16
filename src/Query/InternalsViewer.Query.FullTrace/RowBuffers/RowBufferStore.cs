@@ -22,15 +22,11 @@ public sealed partial class RowBufferStore
 
     public static RowBufferStore Empty { get; } = new([]);
 
+    internal IEnumerable<RowBuffer> All => Rows.Values.SelectMany(r => r);
+
     public int Count { get; }
 
     private Dictionary<(ulong Function, ulong Instance), RowBuffer[]> Rows { get; }
-
-    private Dictionary<ulong, RowBuffer[]> Iterators
-        => field ??= Rows.Values
-                         .SelectMany(r => r)
-                         .GroupBy(r => r.Iterator)
-                         .ToDictionary(g => g.Key, g => g.OrderBy(r => r.Id).ToArray());
 
     private RowBufferRange[] Ranges
         => field ??= [.. Rows.Values
@@ -57,18 +53,6 @@ public sealed partial class RowBufferStore
 
     public int GetColumnCount(ulong address, ulong instance)
         => GetRows(address, instance).Select(r => r.Columns.Count).DefaultIfEmpty().Max();
-
-    public RowBuffer? GetRowAt(ulong iterator, ulong callId)
-    {
-        if (!Iterators.TryGetValue(iterator, out var rows))
-        {
-            return null;
-        }
-
-        var index = SortedSearch.FirstAtOrAfter(rows, callId, r => r.Id) - 1;
-
-        return index < 0 ? null : rows[index];
-    }
 
     public RowBufferSource GetSource(RowBuffer row, RowBufferColumn column, BatchStore? batches = null) => column.Deferred switch
     {
@@ -133,7 +117,7 @@ public sealed partial class RowBufferStore
 
     private static RowBufferSource GetVectorSource(RowBuffer row, RowBufferColumn column, BatchStore? batches)
     {
-        var handoff = batches?.GetHandoff(row.Batch, row.Iterator, row.Id);
+        var handoff = batches?.GetHandoff(row.Batch, row.Iterator, row.Position);
 
         var index = row.BatchSelectionIndex;
 

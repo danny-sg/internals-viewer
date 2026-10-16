@@ -17,7 +17,9 @@ public sealed partial class BatchStore
 
             writer.Write(capture.Call);
 
-            writer.Write(capture.Id);
+            writer.Write(capture.Position.Sequence);
+
+            writer.Write(capture.Position.Steps);
 
             writer.Write(capture.Iterator);
 
@@ -52,7 +54,7 @@ public sealed partial class BatchStore
 
             var call = reader.ReadInt32();
 
-            var id = reader.ReadUInt64();
+            var position = new TracePosition(reader.ReadUInt64(), reader.ReadUInt64());
 
             var iterator = reader.ReadUInt64();
 
@@ -76,7 +78,7 @@ public sealed partial class BatchStore
             captures[index] = new BatchCapture(function,
                                                instance,
                                                call,
-                                               id,
+                                               position,
                                                iterator,
                                                address,
                                                consumer,

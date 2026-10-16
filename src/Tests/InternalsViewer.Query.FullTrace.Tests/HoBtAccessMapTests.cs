@@ -3,6 +3,7 @@ using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
+using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -20,10 +21,10 @@ public class HoBtAccessMapTests
     {
         var map = new Recording().Init(Access, ClusteredColumnstore, sequence: 10).Destroy(Access, sequence: 50).Build();
 
-        Assert.Null(map.GetHoBtId(Access, 9));
-        Assert.Equal(ClusteredColumnstore, map.GetHoBtId(Access, 10));
-        Assert.Equal(ClusteredColumnstore, map.GetHoBtId(Access, 50));
-        Assert.Null(map.GetHoBtId(Access, 51));
+        Assert.Null(map.GetHoBtId(Access, At(9)));
+        Assert.Equal(ClusteredColumnstore, map.GetHoBtId(Access, At(10)));
+        Assert.Equal(ClusteredColumnstore, map.GetHoBtId(Access, At(50)));
+        Assert.Null(map.GetHoBtId(Access, At(51)));
     }
 
     [Fact]
@@ -31,7 +32,7 @@ public class HoBtAccessMapTests
     {
         var map = new Recording().Init(Access, ClusteredColumnstore >> 16, sequence: 10).Build();
 
-        Assert.Equal(ClusteredColumnstore, map.GetHoBtId(Access, 20));
+        Assert.Equal(ClusteredColumnstore, map.GetHoBtId(Access, At(20)));
     }
 
     [Fact]
@@ -41,7 +42,7 @@ public class HoBtAccessMapTests
 
         var map = new Recording().Init(Access, worktable, sequence: 10).Init(Access, worktable >> 16, sequence: 10).Build();
 
-        Assert.Equal(worktable, map.GetHoBtId(Access, 10));
+        Assert.Equal(worktable, map.GetHoBtId(Access, At(10)));
     }
 
     [Fact]
@@ -52,9 +53,9 @@ public class HoBtAccessMapTests
                                  .Init(Access, DeleteBitmap, sequence: 30)
                                  .Build();
 
-        Assert.Equal(ClusteredColumnstore, map.GetHoBtId(Access, 15));
-        Assert.Null(map.GetHoBtId(Access, 25));
-        Assert.Equal(DeleteBitmap, map.GetHoBtId(Access, 35));
+        Assert.Equal(ClusteredColumnstore, map.GetHoBtId(Access, At(15)));
+        Assert.Null(map.GetHoBtId(Access, At(25)));
+        Assert.Equal(DeleteBitmap, map.GetHoBtId(Access, At(35)));
         Assert.Null(map.GetHoBtId(Access));
     }
 
@@ -112,7 +113,7 @@ public class HoBtAccessMapTests
 
             foreach (var (frame, rows) in Functions.Values)
             {
-                builder.Add(frame.Address, frame.Instance, Columns(rows), rows.Count);
+                builder.Add(frame.Address, frame.Instance, TraceCallRows.Chunk([.. rows]), rows.Count);
             }
 
             return HoBtAccessMap.Build(builder.Build(), Nodes);
@@ -144,24 +145,9 @@ public class HoBtAccessMapTests
                 Functions[method] = function;
             }
 
-            function.Rows.Add([sequence, 1, rcx, rdx, r8, 0, 0, (ulong)(Nodes.Count - 1)]);
+            function.Rows.Add(TraceCallRows.Row(sequence, flags: 1, rcx: rcx, rdx: rdx, r8: r8, node: Nodes.Count - 1));
 
             return this;
-        }
-
-        private static ulong[] Columns(List<ulong[]> rows)
-        {
-            var columns = new ulong[rows.Count * TraceArgumentCall.ValueCount];
-
-            for (var call = 0; call < rows.Count; call++)
-            {
-                for (var value = 0; value < rows[call].Length; value++)
-                {
-                    columns[value * rows.Count + call] = rows[call][value];
-                }
-            }
-
-            return columns;
         }
     }
 }

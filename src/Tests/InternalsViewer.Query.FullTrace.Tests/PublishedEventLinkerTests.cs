@@ -4,6 +4,7 @@ using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Latches;
+using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -93,7 +94,7 @@ public class PublishedEventLinkerTests
     }
 
     private static PublishedEvent Published(ulong publisher, ulong sequence, ulong buffer = Session)
-        => new(publisher, buffer, sequence, 0, sequence, 0, Thread);
+        => new(publisher, buffer, At(sequence), sequence, 0, Thread);
 
     private static RawEvent Raw(string name, int sequence) => new(name, Thread, null, null, sequence);
 

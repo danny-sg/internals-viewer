@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -29,7 +30,7 @@ public class SourcePathTests
                                      [Row(manager, 30, Value()), Row(session, 20, Value()), Row(tree.Root, 0)],
                                      constructor);
 
-        Assert.Equal([30ul, 20, 15], steps.Select(s => s.Id));
+        Assert.Equal([At(30), At(20), At(15)], steps.Select(s => s.Position));
         Assert.Equal([0, 1, 2], steps.Select(s => s.Depth));
         Assert.Equal([null, null, MemoryMapOperation.Constructed], steps.Select(s => s.Creation));
         Assert.Equal("SEBindings::SEBindings", steps[^1].Node.Symbol);
@@ -53,7 +54,7 @@ public class SourcePathTests
 
         var step = Assert.Single(steps);
 
-        Assert.Equal(20ul, step.Id);
+        Assert.Equal(At(20), step.Position);
         Assert.Equal(0, step.Depth);
     }
 
@@ -70,7 +71,7 @@ public class SourcePathTests
 
         var steps = SourcePath.Build(value, Row(seek, 40, value), [Row(outer, 10, Value())], constructor);
 
-        Assert.Equal([15ul], steps.Select(s => s.Id));
+        Assert.Equal([At(15)], steps.Select(s => s.Position));
     }
 
     [Fact]
@@ -86,7 +87,7 @@ public class SourcePathTests
 
         var steps = SourcePath.Build(value, Row(init, 40, value), [Row(constructor, 15, This()), Row(outer, 10)], constructor);
 
-        Assert.Equal([15ul], steps.Select(s => s.Id));
+        Assert.Equal([At(15)], steps.Select(s => s.Position));
         Assert.Equal(MemoryMapOperation.Constructed, steps[^1].Creation);
     }
 
@@ -118,7 +119,7 @@ public class SourcePathTests
 
         var step = Assert.Single(steps);
 
-        Assert.Equal(12ul, step.Id);
+        Assert.Equal(At(12), step.Position);
         Assert.Null(step.Creation);
     }
 
@@ -166,7 +167,7 @@ public class SourcePathTests
 
         var steps = SourcePath.Build(value, Row(read, 40, value), [Row(completion, 30, raw)], null);
 
-        Assert.Equal([30ul], steps.Select(s => s.Id));
+        Assert.Equal([At(30)], steps.Select(s => s.Position));
     }
 
     [Fact]
@@ -210,7 +211,7 @@ public class SourcePathTests
         Assert.Equal(3, step.Call);
         Assert.True(step.CanExpand);
         Assert.Equal(["IndexDataSetSession::GetRowByKeyValue"], step.Stack.Select(f => f.Symbol));
-        Assert.All(step.Stack, f => Assert.Equal(15ul, f.Moment));
+        Assert.All(step.Stack, f => Assert.Equal(At(15), f.Position));
         Assert.Empty(step.VisibleStack);
 
         step.Toggle();
@@ -219,7 +220,7 @@ public class SourcePathTests
     }
 
     private static MemoryMapEntry Origin(MemoryMapOperation operation, ulong call)
-        => new(Address, operation, call, 0, 0, 1, 0, "SEBindings", null);
+        => new(Address, operation, 0, At(call), 0, TracePosition.Unknown, 1, 0, "SEBindings", null);
 
     private static CallSignaturePart Value(MemoryMapEntry? origin = null, bool other = false)
         => new($"0x{Address:X}",
@@ -247,10 +248,12 @@ public class SourcePathTests
             parts.Add(value);
         }
 
-        var call = new TraceStackCall(new TraceSpan(0, 1, 0, 0, default), 0, 0, 0);
+        var call = new TraceStackCall(new TraceSpan(0, 1, 0, 0, default), 0);
 
-        return new PlayheadCallRow(node, call, new CallSignature(parts, self, null), id, false);
+        return new PlayheadCallRow(node, call, new CallSignature(parts, self, null), At(id), TracePosition.Unknown, 1, false);
     }
+
+    private static TracePosition At(ulong sequence) => new(sequence, 0);
 
     private static CallstackFrame Frame(string className, string methodName, uint rva)
         => new() { Module = "sqlmin", Rva = rva, Resolved = new ResolvedCallstackFrame { ClassName = className, MethodName = methodName } };

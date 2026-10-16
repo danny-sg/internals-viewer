@@ -1,6 +1,8 @@
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Arguments;
+using static InternalsViewer.Query.FullTrace.Tests.TraceCallRows;
+using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -10,19 +12,11 @@ public class TraceArgumentCallTests
     [Fact]
     public void A_Captured_Call_Is_Decoded_From_Its_Values()
     {
-        var values = new ulong[TraceArgumentCall.ValueCount];
-
-        values[0] = 99;
-        values[1] = 1234u | (1ul << 32);
-        values[2] = 0xA0;
-        values[4] = 0xC0;
-        values[6] = 42;
-
-        var call = TraceArgumentCall.Decode(values);
+        var call = Decode(Row(99, flags: 1234u | TraceCallColumns.ReturnedFlag, rcx: 0xA0, r8: 0xC0, returnValue: 42));
 
         var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["unsigned __int64 *", "int", "int"], FunctionType.Static, "int"));
 
-        Assert.Equal(99ul, call.Sequence);
+        Assert.Equal(At(99), call.FromPosition);
         Assert.Equal(1234u, call.ThreadId);
         Assert.True(call.Returned);
         Assert.Equal(0xA0ul, call.GetValue(layout.Slots[0]));
@@ -33,17 +27,13 @@ public class TraceArgumentCallTests
     [Fact]
     public void A_Call_Records_The_Call_Tree_Node_It_Was_Made_On()
     {
-        var values = new ulong[TraceArgumentCall.ValueCount];
-
-        values[7] = 7;
-
-        Assert.Equal(7, TraceArgumentCall.Decode(values).Node);
+        Assert.Equal(7, Decode(Row(1, node: 7)).Node);
     }
 
     [Fact]
     public void Integer_Register_And_Stack_Arguments_Are_Captured()
     {
-        var call = TraceArgumentCall.Decode(new ulong[TraceArgumentCall.ValueCount]);
+        var call = Decode(Row(0));
 
         var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["double", "int", "int", "int", "int"], FunctionType.Free, null));
 
@@ -51,4 +41,6 @@ public class TraceArgumentCallTests
         Assert.Null(call.GetValue(layout.Slots[0]));
         Assert.Null(call.GetValue(layout.Slots[4]));
     }
+
+    private static TraceArgumentCall Decode(ulong[] row) => new TraceCallColumns(row, 1).GetCall(0);
 }
