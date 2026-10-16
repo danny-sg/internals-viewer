@@ -53,8 +53,6 @@ public sealed partial class FlameChartControl
 
     private InputSystemCursorShape _cursorShape = InputSystemCursorShape.Arrow;
 
-    private bool _hoverOnPopout;
-
     private Block? _hoverBlock;
 
     private Point _stretchPress;
@@ -66,8 +64,6 @@ public sealed partial class FlameChartControl
     private float _stretchShare;
 
     private bool _hasStretched;
-
-    private bool _stretchPopout;
 
     private Block _stretchBlock;
 
@@ -157,7 +153,7 @@ public sealed partial class FlameChartControl
 
         if (BlockAt(position) is { } found)
         {
-            BeginStretch(found.Block, found.IsPopout, position);
+            BeginStretch(found, position);
 
             _overlay.CapturePointer(e.Pointer);
 
@@ -293,7 +289,7 @@ public sealed partial class FlameChartControl
 
         OperatorHit? hoverOperator;
 
-        if (found is { Block.Source.Operator: { } surface })
+        if (found is { Source.Operator: { } surface })
         {
             hit = null;
 
@@ -301,7 +297,7 @@ public sealed partial class FlameChartControl
         }
         else if (found is { } block)
         {
-            hit = block.Block.Source.Call;
+            hit = block.Source.Call;
 
             hoverOperator = null;
         }
@@ -312,20 +308,15 @@ public sealed partial class FlameChartControl
             hoverOperator = hoverReturns is null ? OperatorAt(position) : null;
         }
 
-        var onPopout = found?.IsPopout == true;
-
-        Block? hoverBlock = found is { IsPopout: false } raised ? raised.Block : null;
+        var hoverBlock = found;
 
         if (hit != _hover
-            || onPopout != _hoverOnPopout
             || !Nullable.Equals(hoverBlock, _hoverBlock)
             || !Nullable.Equals(hoverOperator, _hoverOperator)
             || hoverBand != _hoverMarkBand
             || hoverReturns != _hoverReturnStrip)
         {
             _hover = hit;
-
-            _hoverOnPopout = onPopout;
 
             _hoverBlock = hoverBlock;
 
@@ -784,24 +775,9 @@ public sealed partial class FlameChartControl
         => _playhead is { } playhead
            && Math.Abs((playhead - _viewStart) * PixelsPerUnit((int)_overlay.ActualWidth) - x) <= PlayheadHalfWidth + DragThreshold;
 
-    private (Block Block, bool IsPopout)? BlockAt(Point position)
+    private Block? BlockAt(Point position)
     {
-        if (position.Y >= _overlay.ActualHeight - BandHeight)
-        {
-            return null;
-        }
-
-        for (var index = _popouts.Count - 1; index >= 0; index--)
-        {
-            var block = _popouts[DrawIndex(index)].Block;
-
-            if (block.Extrusion > 0 && Covers(block, position))
-            {
-                return (block, true);
-            }
-        }
-
-        if (!ShowMemory)
+        if (!ShowMemory || position.Y >= _overlay.ActualHeight - BandHeight)
         {
             return null;
         }
@@ -810,7 +786,7 @@ public sealed partial class FlameChartControl
         {
             if (Covers(_spikes[index], position))
             {
-                return (_spikes[index], false);
+                return _spikes[index];
             }
         }
 
@@ -873,13 +849,11 @@ public sealed partial class FlameChartControl
         }
     }
 
-    private void BeginStretch(Block block, bool popout, Point position)
+    private void BeginStretch(Block block, Point position)
     {
         _isStretching = true;
 
         _hasStretched = false;
-
-        _stretchPopout = popout;
 
         _stretchBlock = block;
 
@@ -911,12 +885,7 @@ public sealed partial class FlameChartControl
 
         var y = _stretchY + (float)(position.Y - _stretchPress.Y);
 
-        var angle = MathF.Atan2(_stretchPopout ? Math.Min(y, 0f) : y, x);
-
-        if (_stretchPopout && angle > 0)
-        {
-            angle = -MathF.PI;
-        }
+        var angle = MathF.Atan2(y, x);
 
         var directionX = MathF.Cos(angle);
 
@@ -924,12 +893,11 @@ public sealed partial class FlameChartControl
 
         var length = Math.Max(MinimumExtrusion, x * directionX + y * directionY);
 
-        var maximum = MaximumLength(_stretchPopout ? Edged(directionX) : Flat(_spikes),
+        var maximum = MaximumLength(Flat(_spikes),
                                     directionX,
                                     directionY,
                                     (int)_overlay.ActualWidth,
-                                    (float)_overlay.ActualHeight - BandHeight,
-                                    popout: _stretchPopout);
+                                    (float)_overlay.ActualHeight - BandHeight);
 
         _extrusionAngle = angle;
 

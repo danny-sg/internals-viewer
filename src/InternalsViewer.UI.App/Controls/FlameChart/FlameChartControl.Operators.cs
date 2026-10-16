@@ -761,7 +761,7 @@ public sealed partial class FlameChartControl
     }
 
     private OperatorHit? OperatorUnder(Point position)
-        => BlockAt(position) is { Block.Source.Operator: { } surface } ? surface : OperatorAt(position);
+        => BlockAt(position) is { Source.Operator: { } surface } ? surface : OperatorAt(position);
 
     private MenuFlyout CreateOperatorsMenu(OperatorHit? hit)
     {

@@ -259,8 +259,6 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
     private TraceTimelineAxis _reportedAxis;
 
-    private ulong _memoryMaximum;
-
     private ulong _selfMaximum;
 
     private ulong _inUseMaximum;
@@ -1000,8 +998,6 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
         BuildLayout();
 
-        _memoryMaximum = MemoryMaximum(_visible);
-
         _inUseCurves.Clear();
 
         _inUseMaximum = _visible is { Memory.HasAllocations: true } visible
@@ -1061,32 +1057,6 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
     private static string MemoryModeLabel(FlameChartMemoryMode mode)
         => mode == FlameChartMemoryMode.InUse ? "Memory: In Use" : "Memory: Allocated";
-
-    private static ulong MemoryMaximum(TraceTimeline? timeline)
-    {
-        if (timeline is not { Memory.HasAllocations: true })
-        {
-            return 0;
-        }
-
-        ulong maximum = 0;
-
-        foreach (var thread in timeline.Threads.Where(t => t.Rows.Count > 0))
-        {
-            var row = thread.Rows[0];
-
-            var starts = row.Starts(TraceTimelineAxis.Position);
-
-            var ends = row.Ends(TraceTimelineAxis.Position);
-
-            for (var index = 0; index < row.Count; index++)
-            {
-                maximum = Math.Max(maximum, timeline.Memory.AllocatedDuring(thread.ThreadId, starts[index], ends[index]).Bytes);
-            }
-        }
-
-        return maximum;
-    }
 
     private bool[]? PrunedNodes(TraceTimeline timeline)
     {

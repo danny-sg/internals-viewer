@@ -48,8 +48,7 @@ public sealed partial class FlameChartControl
                                 float directionX,
                                 float directionY,
                                 int width,
-                                float bottom,
-                                bool popout)
+                                float bottom)
     {
         var maximum = float.MaxValue;
 
@@ -64,11 +63,9 @@ public sealed partial class FlameChartControl
 
             var room = float.MaxValue;
 
-            if (directionX != 0 && (popout || (directionX > 0 ? ShowsEnd && right <= width : ShowsStart && left >= 0)))
+            if (directionX != 0 && (directionX > 0 ? ShowsEnd && right <= width : ShowsStart && left >= 0))
             {
-                var label = popout ? LabelWidth(block) : 0;
-
-                room = directionX > 0 ? (width - right - label) / directionX : (left - label) / -directionX;
+                room = directionX > 0 ? (width - right) / directionX : left / -directionX;
             }
 
             if (directionY < 0)
@@ -87,11 +84,6 @@ public sealed partial class FlameChartControl
     }
 
     private static IEnumerable<(Block Block, float Left, float Right)> Flat(List<Block> blocks) => blocks.Select(b => (b, b.Left, b.Right));
-
-    private float LabelWidth(Block block)
-        => ShowMemory && block.Bytes > 0 && _rowHeight >= MinimumLabelRowHeight
-            ? _paints.Font.MeasureText(SizeFormat.Format((long)block.Bytes)) + LabelPadding * 3
-            : 0;
 
     private void DrawBlock(SKCanvas canvas, Block block, byte alpha = byte.MaxValue, bool sideText = true)
     {
