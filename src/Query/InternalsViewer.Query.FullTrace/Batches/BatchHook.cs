@@ -47,7 +47,7 @@ internal sealed class BatchHook(BatchFunctions functions) : ITraceHook
 
     private List<BatchCapture> Batches { get; } = [];
 
-    public BatchIndex Build() => new(Batches);
+    public BatchStore Build() => new(Batches);
 
     public void OnEntry(in TraceHookCall call, ITraceReplay replay)
     {

@@ -19,11 +19,11 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
 
     public MemoryMap MemoryMap { get; init; } = MemoryMap.Empty;
 
-    public RowBufferIndex RowBuffers { get; init; } = RowBufferIndex.Empty;
+    public RowBufferStore RowBuffers { get; init; } = RowBufferStore.Empty;
 
-    public BatchIndex Batches { get; init; } = BatchIndex.Empty;
+    public BatchStore Batches { get; init; } = BatchStore.Empty;
 
-    public CustomHookIndex CustomHooks { get; init; } = CustomHookIndex.Empty;
+    public CustomHookStore CustomHooks { get; init; } = CustomHookStore.Empty;
 
     public TraceRowBufferMarks RowBufferMarks { get; init; } = TraceRowBufferMarks.Empty;
 

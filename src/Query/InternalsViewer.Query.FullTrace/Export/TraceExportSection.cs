@@ -72,9 +72,9 @@ internal sealed class TraceExportSection : IQueryExportSection
 
         callStore.MapNodes(timeline.MappedNodes);
 
-        var rowBuffers = reader.HasEntry(RowBuffersEntry) ? reader.ReadBinary(RowBuffersEntry, RowBufferIndex.Read) : RowBufferIndex.Empty;
+        var rowBuffers = reader.HasEntry(RowBuffersEntry) ? reader.ReadBinary(RowBuffersEntry, RowBufferStore.Read) : RowBufferStore.Empty;
 
-        var batches = reader.HasEntry(BatchesEntry) ? reader.ReadBinary(BatchesEntry, BatchIndex.Read) : BatchIndex.Empty;
+        var batches = reader.HasEntry(BatchesEntry) ? reader.ReadBinary(BatchesEntry, BatchStore.Read) : BatchStore.Empty;
 
         rowBuffers.AnnotateNodes(callStore);
 

@@ -43,9 +43,9 @@ public sealed class TraceRowBufferMarks
         return nearest;
     }
 
-    internal static TraceRowBufferMarks Build(TraceTimeline timeline, RowBufferIndex rowBuffers, BatchIndex? batches = null)
+    internal static TraceRowBufferMarks Build(TraceTimeline timeline, RowBufferStore rowBuffers, BatchStore? batches = null)
     {
-        batches ??= BatchIndex.Empty;
+        batches ??= BatchStore.Empty;
 
         if (rowBuffers.Count == 0 && batches.Count == 0)
         {

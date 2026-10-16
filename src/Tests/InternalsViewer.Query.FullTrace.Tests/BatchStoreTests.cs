@@ -9,7 +9,7 @@ using static InternalsViewer.Query.FullTrace.Tests.TraceCallRows;
 namespace InternalsViewer.Query.FullTrace.Tests;
 
 [Trait("Category", "Unit")]
-public class BatchIndexTests
+public class BatchStoreTests
 {
     private const ulong Function = 0x7FF8_0020_0000;
 
@@ -76,7 +76,7 @@ public class BatchIndexTests
     [Fact]
     public void Batches_Are_Found_By_Call_Whatever_Order_They_Arrive_In()
     {
-        var index = new BatchIndex([CreateBatch(call: 2, id: 200), CreateBatch(call: 1, id: 100)]);
+        var index = new BatchStore([CreateBatch(call: 2, id: 200), CreateBatch(call: 1, id: 100)]);
 
         Assert.Equal([1, 2], index.GetBatches(Function, 0).Select(b => b.Call));
         Assert.Equal(200ul, index.GetBatch(Function, 0, 2)?.Id);
@@ -101,7 +101,7 @@ public class BatchIndexTests
 
         store.MapNodes([other, filter]);
 
-        new BatchIndex([CreateBatch(call: 2, id: 100)]).AnnotateNodes(store);
+        new BatchStore([CreateBatch(call: 2, id: 100)]).AnnotateNodes(store);
 
         Assert.Equal((true, false), (filter.HasBatches, other.HasBatches));
     }
@@ -186,7 +186,7 @@ public class BatchIndexTests
 
         using var reader = new BinaryReader(stream);
 
-        var batch = BatchIndex.Read(reader).GetBatch(Function, 0, 1)!;
+        var batch = BatchStore.Read(reader).GetBatch(Function, 0, 1)!;
 
         Assert.Equal([0, 2, 5], batch.Selection);
         Assert.Equal(900, batch.Capacity);
@@ -194,7 +194,7 @@ public class BatchIndexTests
         Assert.Equal("REF-0003148000", Encoding.ASCII.GetString(batch.Vectors[2].GetDeepValue(2)!.Data));
     }
 
-    private static (BatchIndex Index, CallStackNode Node) BuildProducer()
+    private static (BatchStore Index, CallStackNode Node) BuildProducer()
     {
         var tree = new CallStackTree();
 
@@ -222,7 +222,7 @@ public class BatchIndexTests
         return (index, node);
     }
 
-    private static BatchIndex BuildFiltered()
+    private static BatchStore BuildFiltered()
     {
         var filtered = new BatchCapture(Filter,
                                         Consumer,
@@ -235,10 +235,10 @@ public class BatchIndexTests
                                         [3],
                                         [Vector(1, BatchVectorFlags.None, [0x600220, 0x6011C0, 0x602160, 0x603100])]);
 
-        return new BatchIndex([CreateBatch(call: 1, id: 100), filtered]);
+        return new BatchStore([CreateBatch(call: 1, id: 100), filtered]);
     }
 
-    private static BatchIndex Build() => new([CreateBatch(call: 1, id: 100)]);
+    private static BatchStore Build() => new([CreateBatch(call: 1, id: 100)]);
 
     private static BatchCapture CreateBatch(int call, ulong id)
     {

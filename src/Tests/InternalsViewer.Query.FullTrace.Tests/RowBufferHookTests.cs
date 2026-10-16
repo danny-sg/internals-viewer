@@ -1,7 +1,9 @@
 using System.Text;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
+using InternalsViewer.Query.FullTrace.RowBuffers.DeferredValues;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -68,7 +70,7 @@ public class RowBufferHookTests
         var row = Replay(BoundRow())!;
 
         Assert.Equal(RowBufferFormat.Bindings, row.Format);
-        Assert.Equal(new RowBufferBinding(4, 2, 4), row.Columns[0].Binding);
+        Assert.Equal(new RowBufferBinding(4, 2, 4, 0x10), row.Columns[0].Binding);
         Assert.Equal([0x20, 0x28, 0x30, 0], row.Columns[0].Data);
     }
 
@@ -127,6 +129,76 @@ public class RowBufferHookTests
         var column = Replay(memory)!.Columns[0];
 
         Assert.Equal(("Fifth", 5, true), (Encoding.ASCII.GetString(column.Data), column.Length, column.IsByReference));
+    }
+
+    [Fact]
+    public void A_Value_On_A_Data_Page_Is_Deferred_To_Its_Page()
+    {
+        const ulong page = 0x21C_0BB9_0000;
+
+        var memory = new FakeTraceReplay().Write(Iterator, BindingTable)
+                                          .Write(Iterator + 0x80, Buffer)
+                                          .Write(Iterator + 0x88, Bindings)
+                                          .Write(Bindings + 0x62, (ushort)1)
+                                          .Write(Bindings + 0x70, BindingArray)
+                                          .Write(BindingArray, -1)
+                                          .Write(BindingArray + 0x28, 0x10ul)
+                                          .Write(BindingArray + 0x30, 0x08ul)
+                                          .Write(BindingArray + 0x3C, (ushort)8000)
+                                          .Write(BindingArray + 0x40, 0x902u)
+                                          .Write(BindingArray + 0x48, BindingInfo)
+                                          .Write(BindingInfo + 0x18, 0x18ul)
+                                          .Write(BindingInfo + 0x2A, (byte)0)
+                                          .Write(Buffer + 0x08, (byte)0)
+                                          .Write(Buffer + 0x10, page + 416)
+                                          .Write(Buffer + 0x18, 5ul)
+                                          .Write(page, (byte)1)
+                                          .Write(page + 0x20, (byte[])[0x50, 0x01, 0, 0, 1, 0])
+                                          .Write(page + 0x28, (byte[])[0x2A, 0, 0, 0, 0x10, 0, 0, 0, 0x03, 0])
+                                          .Write(page + 416, "Fifth"u8);
+
+        var column = Replay(memory)!.Columns[0];
+
+        Assert.Equal(new DeferredPageValue(new PageAddress(1, 336), 416, new LogSequenceNumber(42, 16, 3)), column.Deferred);
+        Assert.Empty(column.Data);
+        Assert.Equal("Page (1:336) Offset 416", column.ToString());
+    }
+
+    [Fact]
+    public void A_Value_Row_Reference_Into_A_Data_Page_Is_Deferred()
+    {
+        const ulong page = 0x21C_0BB9_0000;
+
+        var memory = ValueRow().Write(Row + 0x20, (byte)0)
+                               .Write(Row + 0x28, page + 416)
+                               .Write(Row + 0x30, 5ul)
+                               .Write(page, (byte)1)
+                               .Write(page + 0x20, (byte[])[0x50, 0x01, 0, 0, 1, 0])
+                               .Write(page + 0x28, (byte[])[0x2A, 0, 0, 0, 0x10, 0, 0, 0, 0x03, 0]);
+
+        var column = Replay(memory, count: 2)!.Columns[1];
+
+        Assert.Equal(new DeferredPageValue(new PageAddress(1, 336), 416, new LogSequenceNumber(42, 16, 3)), column.Deferred);
+        Assert.Empty(column.Data);
+    }
+
+    [Fact]
+    public void A_Lob_Stored_In_Row_Is_Read_Without_The_Query_Handle()
+    {
+        var column = Replay(LobRow("Small LOB"u8, 33))!.Columns[0];
+
+        Assert.Equal(("Small LOB", 9, false), (Encoding.ASCII.GetString(column.Data), column.Length, column.IsUnreadable));
+    }
+
+    [Fact]
+    public void A_Lob_Stored_Off_Row_Is_Deferred_To_Its_Pages()
+    {
+        var handle = Convert.FromHexString(BlobHandleParserTests.OffRowHandle)[..76];
+
+        var column = Replay(LobRow(handle, 100))!.Columns[0];
+
+        Assert.Equal("LOB (1:39873), (1:39874), (1:39872)", column.Deferred?.ToString());
+        Assert.False(column.IsUnreadable);
     }
 
     [Fact]
@@ -191,6 +263,24 @@ public class RowBufferHookTests
 
         return hasInfoFlags ? memory.Write(BindingInfo + 0x2A, (byte)0) : memory;
     }
+
+    private static FakeTraceReplay LobRow(ReadOnlySpan<byte> value, ulong length)
+        => new FakeTraceReplay().Write(Iterator, BindingTable)
+                                .Write(Iterator + 0x80, Buffer)
+                                .Write(Iterator + 0x88, Bindings)
+                                .Write(Bindings + 0x62, (ushort)1)
+                                .Write(Bindings + 0x70, BindingArray)
+                                .Write(BindingArray, -1)
+                                .Write(BindingArray + 0x28, 0x40ul)
+                                .Write(BindingArray + 0x30, 0x08ul)
+                                .Write(BindingArray + 0x3C, (ushort)8000)
+                                .Write(BindingArray + 0x40, 0x4103u)
+                                .Write(BindingArray + 0x48, BindingInfo)
+                                .Write(BindingInfo + 0x18, 0x18ul)
+                                .Write(BindingInfo + 0x2A, (byte)0)
+                                .Write(Buffer + 0x08, (byte)0)
+                                .Write(Buffer + 0x18, length)
+                                .Write(Buffer + 0x40, value);
 
     private static FakeTraceReplay ValueRow()
         => new FakeTraceReplay().Write(Iterator, ValueTable)

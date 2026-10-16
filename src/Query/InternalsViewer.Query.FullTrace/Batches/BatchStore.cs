@@ -3,13 +3,15 @@ using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Batches;
 
-public sealed partial class BatchIndex
+public sealed partial class BatchStore
 {
     private const int MaximumLineage = 64;
 
     private const string ProducerMethod = "BpGetNextBatch";
 
-    internal BatchIndex(IEnumerable<BatchCapture> captures)
+    private const ulong DeepValueTag = 1;
+
+    internal BatchStore(IEnumerable<BatchCapture> captures)
     {
         Captures = [.. captures];
 
@@ -25,7 +27,7 @@ public sealed partial class BatchIndex
         }
     }
 
-    public static BatchIndex Empty { get; } = new([]);
+    public static BatchStore Empty { get; } = new([]);
 
     public int Count => Captures.Length;
 
@@ -36,6 +38,8 @@ public sealed partial class BatchIndex
     private Dictionary<(ulong Batch, ulong Consumer), BatchCapture[]> Handoffs { get; }
 
     private Dictionary<ulong, ulong> Producers { get; } = [];
+
+    private Dictionary<ulong, (BatchCapture Capture, int VectorId, int Row)> DeepValues => field ??= BuildDeepValues();
 
     public bool HasBatches(ulong address, ulong instance) => Batches.ContainsKey((address, instance));
 
@@ -65,6 +69,9 @@ public sealed partial class BatchIndex
     }
 
     public ulong? GetProducer(ulong consumer) => Producers.TryGetValue(consumer, out var producer) ? producer : null;
+
+    public (BatchCapture Capture, int VectorId, int Row)? GetDeepValue(ulong pointer)
+        => DeepValues.TryGetValue(pointer, out var deepValue) ? deepValue : null;
 
     public BatchLineage? GetLineage(ulong address, ulong instance, int call)
     {
@@ -123,6 +130,24 @@ public sealed partial class BatchIndex
                 }
             }
         }
+    }
+
+    private Dictionary<ulong, (BatchCapture Capture, int VectorId, int Row)> BuildDeepValues()
+    {
+        var deepValues = new Dictionary<ulong, (BatchCapture Capture, int VectorId, int Row)>();
+
+        foreach (var capture in Captures)
+        {
+            foreach (var vector in capture.Vectors)
+            {
+                foreach (var row in vector.DeepValues.Keys)
+                {
+                    deepValues.TryAdd(vector.Slots[row] & ~DeepValueTag, (capture, vector.VectorId, row));
+                }
+            }
+        }
+
+        return deepValues;
     }
 
     private static BatchCapture[] GetProductions(ulong address, TraceCallList calls, BatchCapture[] handoffs)

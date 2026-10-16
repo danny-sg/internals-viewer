@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -8,6 +9,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.RowBuffers;
+using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Query.CallStack;
@@ -26,6 +28,10 @@ public sealed partial class RowBuffersViewModel(CallStackNode node,
     private const int CallWidth = 70;
 
     private const int ThreadWidth = 80;
+
+    private const string SourceHeader = "Source";
+
+    private static readonly Color SourceTint = Color.FromArgb(28, Color.LightGreen);
 
     [ObservableProperty]
     private string? _message;
@@ -49,6 +55,8 @@ public sealed partial class RowBuffersViewModel(CallStackNode node,
     public CallTreeTabViewModel Owner { get; } = owner;
 
     private CancellationTokenSource Cancellation { get; } = new();
+
+    public bool IsSourceVisible { get; private set; }
 
     private bool IsDecoded { get; set; } = isDecoded;
 
@@ -109,6 +117,18 @@ public sealed partial class RowBuffersViewModel(CallStackNode node,
         TableVersion++;
     }
 
+    public void SetSourceVisible(bool isVisible)
+    {
+        if (IsSourceVisible == isVisible)
+        {
+            return;
+        }
+
+        IsSourceVisible = isVisible;
+
+        _ = LoadAsync();
+    }
+
     public CallStackNode? GetCallNode(int call)
         => Node.Frame is { } frame
            && lookup.Store.GetCallList(frame.Address, frame.Instance) is { } calls
@@ -144,6 +164,8 @@ public sealed partial class RowBuffersViewModel(CallStackNode node,
 
         var first = rowBuffers.Count > 0 ? rowBuffers[0] : null;
 
+        var isSourceVisible = IsSourceVisible;
+
         cancellationToken.ThrowIfCancellationRequested();
 
         var columns = new List<ResultColumn>
@@ -159,11 +181,21 @@ public sealed partial class RowBuffersViewModel(CallStackNode node,
                 : $"Column {ordinal}";
 
             columns.Add(new ResultColumn(columns.Count, name, typeof(string), true));
+
+            if (isSourceVisible)
+            {
+                columns.Add(new ResultColumn(columns.Count, SourceHeader, typeof(string), false) { BackgroundColour = SourceTint });
+            }
         }
 
         var source = new CachedRowSource<RowBuffer>(rowBuffers,
                                                     columns.Count,
-                                                    (row, _) => GetValues(callList, row, columns.Count, decoder, IsDecoded));
+                                                    (row, _) => GetValues(callList,
+                                                                          row,
+                                                                          columns.Count,
+                                                                          decoder,
+                                                                          IsDecoded,
+                                                                          isSourceVisible));
 
         var rows = new ResultRow<long>[rowBuffers.Count];
 
@@ -175,7 +207,12 @@ public sealed partial class RowBuffersViewModel(CallStackNode node,
         return new QueryResultSet { Columns = columns, Rows = rows, Source = source };
     }
 
-    private object?[] GetValues(TraceCallList? callList, RowBuffer row, int fieldCount, RowBufferDecoder? decoder, bool decode)
+    private object?[] GetValues(TraceCallList? callList,
+                                RowBuffer row,
+                                int fieldCount,
+                                RowBufferDecoder? decoder,
+                                bool decode,
+                                bool isSourceVisible)
     {
         var values = new object?[fieldCount];
 
@@ -187,11 +224,38 @@ public sealed partial class RowBuffersViewModel(CallStackNode node,
 
         values[1] = call?.ThreadId;
 
-        for (var ordinal = 0; ordinal < row.Columns.Count && FixedColumns + ordinal < fieldCount; ordinal++)
+        var stride = isSourceVisible ? 2 : 1;
+
+        for (var ordinal = 0; ordinal < row.Columns.Count && FixedColumns + ordinal * stride < fieldCount; ordinal++)
         {
-            values[FixedColumns + ordinal] = RowBufferDisplay.GetValue(row, row.Columns[ordinal], decoder, decode);
+            var index = FixedColumns + ordinal * stride;
+
+            values[index] = RowBufferDisplay.GetValue(row, row.Columns[ordinal], decoder, decode);
+
+            if (isSourceVisible && index + 1 < fieldCount)
+            {
+                values[index + 1] = GetSourceLabel(row, row.Columns[ordinal]);
+            }
         }
 
         return values;
     }
+
+    private string GetSourceLabel(RowBuffer row, RowBufferColumn column)
+    {
+        var source = lookup.RowBuffers.GetSource(row, column, lookup.Batches);
+
+        return source.Type switch
+        {
+            RowBufferSourceType.Binding => "Binding",
+            RowBufferSourceType.ValueRow => "Value Row",
+            RowBufferSourceType.BufferPool => "Buffer Pool",
+            RowBufferSourceType.Lob => "LOB",
+            RowBufferSourceType.RowBuffer => $"{GetIteratorLabel(source.Iterator)} +0x{source.Offset:X}",
+            RowBufferSourceType.Batch => $"{GetIteratorLabel(source.Iterator)} Vector {source.Column} Row {source.Row}",
+            _ => "Memory"
+        };
+    }
+
+    private string GetIteratorLabel(ulong iterator) => lookup.GetIterator(iterator)?.Label ?? $"Iterator 0x{iterator:X}";
 }

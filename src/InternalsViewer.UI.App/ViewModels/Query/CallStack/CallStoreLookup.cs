@@ -22,9 +22,9 @@ public sealed class CallStoreLookup(TraceCallStore store,
                                   IReadOnlyDictionary<ulong, IteratorTarget> iterators,
                                   HoBtAccessMap hobtAccess,
                                   MemoryMap memoryMap,
-                                  RowBufferIndex rowBuffers,
+                                  RowBufferStore rowBuffers,
                                   RowBufferDecoder? rowBufferDecoder,
-                                  BatchIndex batches,
+                                  BatchStore batches,
                                   BatchDecoder? batchDecoder,
                                   SymbolsViewModel symbols,
                                   Func<ulong, string?> getHoBtName)
@@ -35,11 +35,11 @@ public sealed class CallStoreLookup(TraceCallStore store,
 
     public TraceCallStore Store { get; } = store;
 
-    public RowBufferIndex RowBuffers { get; } = rowBuffers;
+    public RowBufferStore RowBuffers { get; } = rowBuffers;
 
     public RowBufferDecoder? RowBufferDecoder { get; } = rowBufferDecoder;
 
-    public BatchIndex Batches { get; } = batches;
+    public BatchStore Batches { get; } = batches;
 
     public BatchDecoder? BatchDecoder { get; } = batchDecoder;
 

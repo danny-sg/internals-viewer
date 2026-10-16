@@ -64,7 +64,7 @@ public class TraceRowBufferMarksTests
 
         var batch = new BatchCapture(GetRow, Iterator, 0, 100, Iterator, 0x20F_0CA6_ECA0, 0, BatchCaptureFlags.None, [], []);
 
-        var marks = TraceRowBufferMarks.Build(timeline, RowBufferIndex.Empty, new BatchIndex([batch]));
+        var marks = TraceRowBufferMarks.Build(timeline, RowBufferStore.Empty, new BatchStore([batch]));
 
         Assert.Equal([GetEnd(timeline, depth: 1, index: 0)], marks.GetBatchMarks(Thread, TraceTimelineAxis.Position).ToArray());
         Assert.True(marks.GetMarks(Thread, TraceTimelineAxis.Position).IsEmpty);
@@ -104,11 +104,11 @@ public class TraceRowBufferMarksTests
         return timeline;
     }
 
-    private static RowBufferIndex Capture(params (ulong Function, ulong Instance, uint Call)[] calls)
+    private static RowBufferStore Capture(params (ulong Function, ulong Instance, uint Call)[] calls)
     {
-        RowBufferColumn[] columns = [new RowBufferColumn(0, new RowBufferBinding(4, 2, 4), 0, 0, 4, [1, 0, 0, 0])];
+        RowBufferColumn[] columns = [new RowBufferColumn(0, new RowBufferBinding(4, 2, 4, 0), 0, 0, 4, [1, 0, 0, 0])];
 
-        return new RowBufferIndex(calls.Select(c => new RowBuffer(c.Function,
+        return new RowBufferStore(calls.Select(c => new RowBuffer(c.Function,
                                                                   c.Instance,
                                                                   (int)c.Call,
                                                                   100 + c.Call,

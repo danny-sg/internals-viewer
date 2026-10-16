@@ -1,9 +1,17 @@
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
+using InternalsViewer.Query.FullTrace.RowBuffers.DeferredValues;
 
 namespace InternalsViewer.Query.FullTrace.RowBuffers;
 
-public sealed partial class RowBufferIndex
+public sealed partial class RowBufferStore
 {
+    private const byte NoDeferredType = 0;
+
+    private const byte DeferredPageType = 1;
+
+    private const byte DeferredLobType = 2;
+
     internal void Write(BinaryWriter writer)
     {
         var rows = Rows.Values.SelectMany(r => r).ToArray();
@@ -21,6 +29,8 @@ public sealed partial class RowBufferIndex
             writer.Write(binding.Flags);
 
             writer.Write(binding.FixedLength);
+
+            writer.Write(binding.ValueOffset);
         }
 
         writer.Write(columnSets.Count);
@@ -57,13 +67,13 @@ public sealed partial class RowBufferIndex
         }
     }
 
-    internal static RowBufferIndex Read(BinaryReader reader)
+    internal static RowBufferStore Read(BinaryReader reader)
     {
         var bindings = new RowBufferBinding[reader.ReadInt32()];
 
         for (var index = 0; index < bindings.Length; index++)
         {
-            bindings[index] = new RowBufferBinding(reader.ReadInt32(), reader.ReadUInt32(), reader.ReadInt32());
+            bindings[index] = new RowBufferBinding(reader.ReadInt32(), reader.ReadUInt32(), reader.ReadInt32(), reader.ReadUInt64());
         }
 
         var columnSets = new RowBufferColumn[reader.ReadInt32()][];
@@ -101,7 +111,7 @@ public sealed partial class RowBufferIndex
             rows[index] = new RowBuffer(function, instance, call, id, iterator, address, columnSets[reader.ReadInt32()], format);
         }
 
-        return new RowBufferIndex(rows);
+        return new RowBufferStore(rows);
     }
 
     private static Dictionary<T, int> GetIndexes<T>(IEnumerable<T> items) where T : class
@@ -129,13 +139,97 @@ public sealed partial class RowBufferIndex
         writer.Write(column.Data.Length);
 
         writer.Write(column.Data);
+
+        writer.Write(column.Pointer);
+
+        switch (column.Deferred)
+        {
+            case DeferredPageValue page:
+                writer.Write(DeferredPageType);
+
+                writer.Write(page.Page.FileId);
+
+                writer.Write(page.Page.PageId);
+
+                writer.Write(page.Offset);
+
+                writer.Write(page.Lsn.VirtualLogFile);
+
+                writer.Write(page.Lsn.FileOffset);
+
+                writer.Write(page.Lsn.RecordSequence);
+
+                break;
+
+            case DeferredLobValue lob:
+                writer.Write(DeferredLobType);
+
+                writer.Write(lob.Links.Count);
+
+                foreach (var link in lob.Links)
+                {
+                    writer.Write(link.Offset);
+
+                    writer.Write(link.Page.FileId);
+
+                    writer.Write(link.Page.PageId);
+
+                    writer.Write(link.Slot);
+                }
+
+                break;
+
+            default:
+                writer.Write(NoDeferredType);
+
+                break;
+        }
     }
 
     private static RowBufferColumn ReadColumn(BinaryReader reader, int ordinal, RowBufferBinding[] bindings)
-        => new(ordinal,
-               bindings[reader.ReadInt32()],
-               reader.ReadByte(),
-               (RowBufferColumnFlags)reader.ReadByte(),
-               reader.ReadInt32(),
-               reader.ReadBytes(reader.ReadInt32()));
+    {
+        var column = new RowBufferColumn(ordinal,
+                                         bindings[reader.ReadInt32()],
+                                         reader.ReadByte(),
+                                         (RowBufferColumnFlags)reader.ReadByte(),
+                                         reader.ReadInt32(),
+                                         reader.ReadBytes(reader.ReadInt32()))
+        {
+            Pointer = reader.ReadUInt64()
+        };
+
+        return reader.ReadByte() switch
+        {
+            DeferredPageType => column with { Deferred = ReadDeferredPage(reader) },
+            DeferredLobType => column with { Deferred = ReadDeferredLob(reader) },
+            _ => column
+        };
+    }
+
+    private static DeferredPageValue ReadDeferredPage(BinaryReader reader)
+    {
+        var page = new PageAddress(reader.ReadInt16(), reader.ReadInt32());
+
+        var offset = reader.ReadInt32();
+
+        var lsn = new LogSequenceNumber(reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt16());
+
+        return new DeferredPageValue(page, offset, lsn);
+    }
+
+    private static DeferredLobValue ReadDeferredLob(BinaryReader reader)
+    {
+        var links = new DeferredLobLink[reader.ReadInt32()];
+
+        for (var index = 0; index < links.Length; index++)
+        {
+            var offset = reader.ReadInt32();
+
+            var page = new PageAddress(reader.ReadInt16(), reader.ReadInt32());
+
+            links[index] = new DeferredLobLink(offset, page, reader.ReadInt32());
+        }
+
+        return new DeferredLobValue(links);
+    }
 }
