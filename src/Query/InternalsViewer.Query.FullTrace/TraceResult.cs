@@ -5,6 +5,7 @@ using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -27,6 +28,8 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
     public BatchStore Batches { get; init; } = BatchStore.Empty;
 
     public CustomHookStore CustomHooks { get; init; } = CustomHookStore.Empty;
+
+    public IReadOnlyList<TraceOutputStructure> OutputStructures { get; init; } = [];
 
     public TraceRowBufferMarks RowBufferMarks { get; init; } = TraceRowBufferMarks.Empty;
 

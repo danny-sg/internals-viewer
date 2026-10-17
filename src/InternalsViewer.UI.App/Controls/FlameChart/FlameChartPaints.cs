@@ -78,9 +78,39 @@ internal sealed class FlameChartPaints : IDisposable
 
     public SKPaint Mark { get; } = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 2f, Color = new SKColor(0x00, 0xC8, 0x53) };
 
+    public SKPaint OutputRowLink { get; } = new()
+    {
+        Style = SKPaintStyle.Stroke,
+        StrokeWidth = 1.5f,
+        StrokeJoin = SKStrokeJoin.Miter,
+        IsAntialias = true,
+        Color = new SKColor(0xFF, 0xD5, 0x4F)
+    };
+
+    public SKPaint OutputValueLink { get; } = new()
+    {
+        Style = SKPaintStyle.Stroke,
+        StrokeWidth = 1.5f,
+        StrokeJoin = SKStrokeJoin.Miter,
+        IsAntialias = true,
+        Color = new SKColor(0xFF, 0x99, 0xA4)
+    };
+
+    public SKPaint LineageShadow { get; } = new()
+    {
+        Style = SKPaintStyle.Stroke,
+        StrokeWidth = 3f,
+        StrokeJoin = SKStrokeJoin.Miter,
+        IsAntialias = true,
+        Color = new SKColor(0, 0, 0, 170),
+        MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 1.5f)
+    };
+
     public SKFont Font { get; } = new(SKTypeface.Default, 10f);
 
     public SKFont HeaderFont { get; } = new(SKTypeface.Default, 11f);
+
+    public SKFont HeaderBoldFont { get; } = new(BoldTypeface, 11f);
 
     public SKFont TiltedFont { get; } = new(SKTypeface.Default, 10f)
     {
@@ -117,6 +147,7 @@ internal sealed class FlameChartPaints : IDisposable
         GrantFill.Color = Accent.WithAlpha(isDark ? (byte)40 : (byte)28);
         GrantEdge.Color = Accent.WithAlpha(140);
         Mark.Color = isDark ? new SKColor(0x00, 0xE6, 0x76) : new SKColor(0x00, 0xC8, 0x53);
+        LineageShadow.Color = isDark ? new SKColor(0, 0, 0, 170) : new SKColor(0, 0, 0, 90);
     }
 
     public void Dispose()
@@ -142,6 +173,11 @@ internal sealed class FlameChartPaints : IDisposable
         PlayheadText.Dispose();
         Outline.Dispose();
         Mark.Dispose();
+        OutputRowLink.Dispose();
+        OutputValueLink.Dispose();
+        LineageShadow.MaskFilter?.Dispose();
+        LineageShadow.Dispose();
+        HeaderBoldFont.Dispose();
         Font.Dispose();
         TiltedFont.Dispose();
         OperatorFont.Dispose();

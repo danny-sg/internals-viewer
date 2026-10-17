@@ -52,6 +52,7 @@
                                       FullTimeline="{x:Bind ViewModel.FullFlameChart, Mode=OneWay}"
                                       RowBufferMarks="{x:Bind ViewModel.RowBufferMarks, Mode=OneWay}"
                                       RowReturnMarks="{x:Bind ViewModel.RowReturnMarks, Mode=OneWay}"
+                                      OutputColumnNames="{x:Bind ViewModel.OutputColumnNames, Mode=OneWay}"
                                       HiddenCategories="{x:Bind Settings.CallTreeHiddenCategorySet, Mode=OneWay}"
                                       PrunedCategories="{x:Bind Settings.CallTreePrunedCategorySet, Mode=OneWay}"
                                       GrantedMemory="{x:Bind ViewModel.GrantedMemory, Mode=OneWay}"

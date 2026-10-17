@@ -4,6 +4,7 @@ using System.Linq;
 using Windows.Foundation;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
+using InternalsViewer.Query.Helpers;
 using InternalsViewer.UI.App.Controls.Timeline;
 using SkiaSharp;
 
@@ -21,7 +22,11 @@ public sealed partial class FlameChartControl
 
     private const float ReturnStripHoverShade = 0.7f;
 
+    private const float MinimumCallDurationWidth = 1f;
+
     private const string ReturnStripTitle = "GetRow Returns";
+
+    private static readonly SKColor CallDurationColour = new(0x3D, 0xDC, 0x84, 0x80);
 
     private static readonly ReturnStyle[] ReturnStyles =
     [
@@ -89,6 +94,13 @@ public sealed partial class FlameChartControl
 
         canvas.DrawRect(bar.Left, bar.Top, bar.Width, height, _paints.Fill);
 
+        DrawCallDurations(canvas,
+                          marks.GetCallStarts(row.Operator, lifetime.Thread, _axis),
+                          marks.GetCallEnds(row.Operator, lifetime.Thread, _axis),
+                          bar.Top,
+                          height,
+                          scale);
+
         foreach (var style in ReturnStyles)
         {
             var returns = marks.GetMarks(row.Operator, lifetime.Thread, _axis, style.Type);
@@ -97,6 +109,56 @@ public sealed partial class FlameChartControl
         }
 
         canvas.Restore();
+    }
+
+    private void DrawCallDurations(SKCanvas canvas,
+                                   ReadOnlySpan<double> starts,
+                                   ReadOnlySpan<double> ends,
+                                   float top,
+                                   float height,
+                                   double scale)
+    {
+        _paints.Fill.Color = CallDurationColour;
+
+        var index = SortedSearch.FirstAtOrAfter(ends, _viewStart);
+
+        while (index < ends.Length && starts[index] <= _viewEnd)
+        {
+            var left = (float)((starts[index] - _viewStart) * scale);
+
+            var right = (float)((ends[index] - _viewStart) * scale);
+
+            if (right - left > MinimumCallDurationWidth)
+            {
+                canvas.DrawRect(left, top, right - left, height, _paints.Fill);
+
+                index++;
+            }
+            else
+            {
+                index = SortedSearch.FirstAtOrAfter(ends, _viewStart + (Math.Floor(right) + 1) / scale, index + 1);
+            }
+        }
+    }
+
+    private FlameHit? GetCallDuration(OperatorHit hit, Point position)
+    {
+        if (RowReturnMarks is not { } marks || _visible is not { } timeline)
+        {
+            return null;
+        }
+
+        var scale = PixelsPerUnit((int)_overlay.ActualWidth);
+
+        var lifetime = _operatorRows[hit.Row].Lifetimes[hit.Track];
+
+        if (marks.GetCall(_operatorRows[hit.Row].Operator, lifetime.Thread, _axis, _viewStart + position.X / scale) is not { } call
+            || (call.End - call.Start) * scale <= MinimumCallDurationWidth)
+        {
+            return null;
+        }
+
+        return FindCall(timeline, call.Node, call.Call);
     }
 
     private OperatorHit? ReturnStripAt(Point position)

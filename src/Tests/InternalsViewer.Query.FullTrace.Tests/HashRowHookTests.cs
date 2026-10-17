@@ -5,6 +5,7 @@ using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
 using InternalsViewer.Query.FullTrace.RowBuffers.HashRows;
+using InternalsViewer.Query.FullTrace.RowBuffers.HashRows.Enums;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
@@ -177,7 +178,14 @@ public class HashRowHookTests
         return hook.Rows;
     }
 
-    private static HashRowHook CreateHook() => new(new HashRowFunctions([GetRow], [Lookup], [Insert], [HashIteratorTable]));
+    private static HashRowHook CreateHook()
+        => new(new HashRowFunctions(new Dictionary<ulong, HashRowFunctionType>
+                                    {
+                                        [GetRow] = HashRowFunctionType.GetRow,
+                                        [Lookup] = HashRowFunctionType.Lookup,
+                                        [Insert] = HashRowFunctionType.Insert
+                                    },
+                                    [HashIteratorTable]));
 
     private static void InsertRow(HashRowHook hook, FakeTraceReplay replay)
     {

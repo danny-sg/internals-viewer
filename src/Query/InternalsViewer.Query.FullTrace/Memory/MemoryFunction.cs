@@ -90,9 +90,9 @@ internal sealed record MemoryFunction(ulong Address,
             return symbol switch
             {
                 "operator new" or "operator new[]"
-                    => new MemoryFunction(address, AllocationOperation.Allocate, 0, -1, 1),
+                    => new(address, AllocationOperation.Allocate, 0, -1, 1),
                 "operator delete" or "operator delete[]"
-                    => new MemoryFunction(address, AllocationOperation.Free, -1, 0, 1),
+                    => new(address, AllocationOperation.Free, -1, 0, 1),
                 _ => null
             };
         }
@@ -144,7 +144,7 @@ internal sealed record MemoryFunction(ulong Address,
     private static MemoryFunction? ClassifyVirtualExport(ulong address, string export) => export switch
     {
         "VirtualAlloc"
-            => new MemoryFunction(address, AllocationOperation.Allocate, 1, -1, 1)
+            => new(address, AllocationOperation.Allocate, 1, -1, 1)
             {
                 IsPage = true,
                 IsVirtual = true,
@@ -152,7 +152,7 @@ internal sealed record MemoryFunction(ulong Address,
                 FlagMask = MemCommit
             },
         "VirtualFree"
-            => new MemoryFunction(address, AllocationOperation.Free, -1, 0, 1)
+            => new(address, AllocationOperation.Free, -1, 0, 1)
             {
                 IsPage = true,
                 IsVirtual = true,
@@ -165,27 +165,27 @@ internal sealed record MemoryFunction(ulong Address,
     private static MemoryFunction? ClassifyHeapExport(ulong address, string export) => export switch
     {
         "RtlAllocateHeap" or "HeapAlloc"
-            => new MemoryFunction(address, AllocationOperation.Allocate, 2, -1, 1),
+            => new(address, AllocationOperation.Allocate, 2, -1, 1),
         "RtlReAllocateHeap" or "HeapReAlloc"
-            => new MemoryFunction(address, AllocationOperation.Reallocate, 3, 2, 1),
+            => new(address, AllocationOperation.Reallocate, 3, 2, 1),
         "RtlFreeHeap" or "HeapFree"
-            => new MemoryFunction(address, AllocationOperation.Free, -1, 2, 1),
+            => new(address, AllocationOperation.Free, -1, 2, 1),
         "LocalAlloc" or "GlobalAlloc"
-            => new MemoryFunction(address, AllocationOperation.Allocate, 1, -1, 1),
+            => new(address, AllocationOperation.Allocate, 1, -1, 1),
         "LocalReAlloc" or "GlobalReAlloc"
-            => new MemoryFunction(address, AllocationOperation.Reallocate, 1, 0, 1),
+            => new(address, AllocationOperation.Reallocate, 1, 0, 1),
         "LocalFree" or "GlobalFree"
-            => new MemoryFunction(address, AllocationOperation.Free, -1, 0, 1),
+            => new(address, AllocationOperation.Free, -1, 0, 1),
         "malloc" or "_aligned_malloc"
-            => new MemoryFunction(address, AllocationOperation.Allocate, 0, -1, 1),
+            => new(address, AllocationOperation.Allocate, 0, -1, 1),
         "calloc"
-            => new MemoryFunction(address, AllocationOperation.Allocate, 1, -1, 1, CountSlot: 0),
+            => new(address, AllocationOperation.Allocate, 1, -1, 1, CountSlot: 0),
         "realloc" or "_aligned_realloc"
-            => new MemoryFunction(address, AllocationOperation.Reallocate, 1, 0, 1),
+            => new(address, AllocationOperation.Reallocate, 1, 0, 1),
         "_recalloc"
-            => new MemoryFunction(address, AllocationOperation.Reallocate, 2, 0, 1, CountSlot: 1),
+            => new(address, AllocationOperation.Reallocate, 2, 0, 1, CountSlot: 1),
         "free" or "_aligned_free"
-            => new MemoryFunction(address, AllocationOperation.Free, -1, 0, 1),
+            => new(address, AllocationOperation.Free, -1, 0, 1),
         _ => null
     };
 

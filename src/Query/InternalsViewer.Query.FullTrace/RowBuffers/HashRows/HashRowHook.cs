@@ -2,6 +2,7 @@ using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
 using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
+using InternalsViewer.Query.FullTrace.RowBuffers.HashRows.Enums;
 using InternalsViewer.Query.FullTrace.RowBuffers.Parsers;
 
 namespace InternalsViewer.Query.FullTrace.RowBuffers.HashRows;
@@ -24,18 +25,9 @@ internal sealed class HashRowHook(HashRowFunctions functions) : ITraceHook
 
     private const TraceHookEvents EntryAndReturn = TraceHookEvents.Entry | TraceHookEvents.Return;
 
-    public IEnumerable<TraceHookFunction> Functions
-        => [.. functions.GetRows
-                        .Concat(functions.Lookups)
-                        .Concat(functions.Inserts)
-                        .Distinct()
-                        .Select(f => new TraceHookFunction(f, EntryAndReturn))];
+    public IEnumerable<TraceHookFunction> Functions => [.. functions.Functions.Keys.Select(f => new TraceHookFunction(f, EntryAndReturn))];
 
     public IReadOnlyList<RowBuffer> Rows => Captured;
-
-    private HashSet<ulong> GetRows { get; } = [.. functions.GetRows];
-
-    private HashSet<ulong> Inserts { get; } = [.. functions.Inserts];
 
     private HashSet<ulong> HashIterators { get; } = [.. functions.HashIterators];
 
@@ -51,7 +43,12 @@ internal sealed class HashRowHook(HashRowFunctions functions) : ITraceHook
 
     public void OnEntry(in TraceHookCall call, ITraceReplay replay)
     {
-        if (!GetRows.Contains(call.Function))
+        if (!functions.Functions.TryGetValue(call.Function, out var type))
+        {
+            return;
+        }
+
+        if (type != HashRowFunctionType.GetRow)
         {
             PartitionCalls[call.Id] = new PartitionCall(call.Arguments[PartitionGroupArgument], call.Arguments[ContextArgument]);
 
@@ -115,7 +112,7 @@ internal sealed class HashRowHook(HashRowFunctions functions) : ITraceHook
             return;
         }
 
-        if (Inserts.Contains(call.Function))
+        if (functions.Functions.TryGetValue(call.Function, out var type) && type == HashRowFunctionType.Insert)
         {
             if (GetRecordAddress(partitionCall.Context, slot, replay) is { } address
                 && RecordRowParser.Read(replay, address) is { } record)

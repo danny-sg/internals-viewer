@@ -6,6 +6,7 @@ using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.Memory;
@@ -29,6 +30,8 @@ internal sealed class TraceExportSection : IQueryExportSection
     internal const string BatchesEntry = "fulltrace/batches.bin";
 
     internal const string ObjectPoolSnapshotEntry = "fulltrace/objectpool.bin";
+
+    internal const string OutputStructuresEntry = "fulltrace/output.bin";
 
     public bool CanExport(QueryExportContent content) => content.ExtraOf<TraceResult>() is not null;
 
@@ -58,6 +61,8 @@ internal sealed class TraceExportSection : IQueryExportSection
         writer.WriteBinary(BatchesEntry, CompressionLevel.Fastest, fullTrace.Batches.Write);
 
         writer.WriteBinary(ObjectPoolSnapshotEntry, CompressionLevel.Fastest, fullTrace.ObjectPool.Write);
+
+        writer.WriteBinary(OutputStructuresEntry, CompressionLevel.Fastest, w => TraceOutputStructure.Write(w, fullTrace.OutputStructures));
     }
 
     public IRunExtra? Read(QueryExportReader reader)
@@ -83,6 +88,10 @@ internal sealed class TraceExportSection : IQueryExportSection
 
         var batches = reader.HasEntry(BatchesEntry) ? reader.ReadBinary(BatchesEntry, BatchStore.Read) : BatchStore.Empty;
 
+        List<TraceOutputStructure> outputStructures = reader.HasEntry(OutputStructuresEntry)
+            ? reader.ReadBinary(OutputStructuresEntry, TraceOutputStructure.Read)
+            : [];
+
         rowBuffers.AnnotateCallStackNodes(callStore);
 
         batches.AnnotateNodes(callStore);
@@ -106,8 +115,11 @@ internal sealed class TraceExportSection : IQueryExportSection
                 : ObjectPoolSnapshot.Empty,
             RowBuffers = rowBuffers,
             Batches = batches,
+            OutputStructures = outputStructures,
             RowBufferMarks = TraceRowBufferMarks.Build(timeline, rowBuffers, batches),
-            RowReturnMarks = TraceRowReturnMarks.Build(timeline, callStore)
+            RowReturnMarks = TraceRowReturnMarks.Build(timeline,
+                                                       callStore,
+                                                       TraceOutputLineage.Build(timeline, outputStructures, rowBuffers))
         };
     }
 }

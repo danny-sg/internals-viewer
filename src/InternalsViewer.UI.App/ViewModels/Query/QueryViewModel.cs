@@ -276,6 +276,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private TraceRowReturnMarks? _rowReturnMarks;
 
     [ObservableProperty]
+    private IReadOnlyList<string> _outputColumnNames = [];
+
+    [ObservableProperty]
     private TraceEventLink? _currentEventLink;
 
     [ObservableProperty]
@@ -1087,6 +1090,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         RowBufferMarks = null;
 
         RowReturnMarks = null;
+
+        OutputColumnNames = [];
 
         CreatedCallTreeTab?.Dispose();
 
@@ -2302,9 +2307,20 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         RowReturnMarks = result.RowReturnMarks;
 
+        OutputColumnNames = GetOutputColumnNames(result.RowReturnMarks.OutputRows);
+
         FlameChart = flameChart;
 
         ExecutionPlans = [.. ExecutionPlans];
+    }
+
+    private IReadOnlyList<string> GetOutputColumnNames(TraceOutputRows outputRows)
+    {
+        var plan = outputRows.All.FirstOrDefault()?.Return.Operator.PlanNodeIdentifier is { } identifier
+            ? ExecutionPlans.FirstOrDefault(p => p.PlanHandleId == identifier.PlanHandleId)
+            : ExecutionPlans.FirstOrDefault(p => !p.IsInternalPlan);
+
+        return plan?.NodesById.GetValueOrDefault(0) is { } root ? [.. root.OutputColumns.Select(c => c.Column)] : [];
     }
 
     private TraceTimeline ApplyCrop(TraceResult result)
@@ -2429,6 +2445,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         RowBufferMarks = null;
 
         RowReturnMarks = null;
+
+        OutputColumnNames = [];
 
         SelectedCallNode = null;
 

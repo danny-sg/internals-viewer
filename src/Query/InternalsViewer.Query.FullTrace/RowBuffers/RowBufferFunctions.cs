@@ -1,21 +1,22 @@
+using InternalsViewer.Query.FullTrace.Functions;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
 
 namespace InternalsViewer.Query.FullTrace.RowBuffers;
 
-internal sealed record RowBufferFunctions(ulong[] Functions, (ulong VTable, RowBufferFormat Format)[] Formats)
+internal sealed record RowBufferFunctions(ulong[] Functions, IReadOnlyDictionary<ulong, RowBufferFormat> Formats)
 {
-    public static RowBufferFunctions Empty { get; } = new([], []);
+    public static RowBufferFunctions Empty { get; } = new([], new Dictionary<ulong, RowBufferFormat>());
 
     public static RowBufferFunctions Merge(IEnumerable<RowBufferFunctions> functions)
     {
         var all = functions.ToList();
 
-        return new([.. all.SelectMany(f => f.Functions)], [.. all.SelectMany(f => f.Formats)]);
+        return new([.. all.SelectMany(f => f.Functions)], AddressMap.Merge(all.Select(f => f.Formats)));
     }
 
     public RowBufferFunctions Rebase(ulong address)
-        => new([.. Functions.Select(f => f + address)], [.. Formats.Select(f => (f.VTable + address, f.Format))]);
+        => new([.. Functions.Select(f => f + address)], AddressMap.Rebase(Formats, address));
 
     internal sealed class Collector
     {
@@ -82,13 +83,19 @@ internal sealed record RowBufferFunctions(ulong[] Functions, (ulong VTable, RowB
 
             HashSet<string> batchHelpers = [.. bases.Where(b => b.Value.Contains(BatchHelperClass)).Select(b => b.Key)];
 
-            (ulong VTable, RowBufferFormat Format)[] formats =
-            [
-                .. rowsets.Where(VTables.ContainsKey).Select(c => ((ulong)VTables[c], RowBufferFormat.Bindings)),
-                .. batchHelpers.Where(VTables.ContainsKey).Select(c => ((ulong)VTables[c], RowBufferFormat.Batch))
-            ];
+            var formats = new Dictionary<ulong, RowBufferFormat>();
 
-            if (formats.Length == 0)
+            foreach (var rowset in rowsets.Where(VTables.ContainsKey))
+            {
+                formats[VTables[rowset]] = RowBufferFormat.Bindings;
+            }
+
+            foreach (var batchHelper in batchHelpers.Where(VTables.ContainsKey))
+            {
+                formats[VTables[batchHelper]] = RowBufferFormat.Batch;
+            }
+
+            if (formats.Count == 0)
             {
                 return Empty;
             }

@@ -28,7 +28,7 @@ public class RowBufferFunctionsTests
     [Fact]
     public void Every_Rowset_Iterator_Reads_Its_Bindings()
     {
-        var formats = Collect().Build(Bases).Formats.OrderBy(f => f.VTable);
+        var formats = Collect().Build(Bases).Formats.OrderBy(f => f.Key).Select(f => (f.Key, f.Value));
 
         (ulong, RowBufferFormat)[] expected =
         [
@@ -52,7 +52,7 @@ public class RowBufferFunctionsTests
         var functions = collector.Build(new Dictionary<string, string[]> { ["CQScanBatchHelper"] = ["CQScanBatchHelper", "CQScanNew"] });
 
         Assert.Equal(0xA0ul, Assert.Single(functions.Functions));
-        Assert.Equal((0x7000ul, RowBufferFormat.Batch), Assert.Single(functions.Formats));
+        Assert.Equal(RowBufferFormat.Batch, Assert.Single(functions.Formats, f => f.Key == 0x7000).Value);
     }
 
     [Fact]

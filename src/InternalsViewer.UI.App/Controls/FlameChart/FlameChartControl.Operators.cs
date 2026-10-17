@@ -146,7 +146,7 @@ public sealed partial class FlameChartControl
         {
             var rows = Math.Max(_operatorRows.Length, 1);
 
-            return Math.Max((OperatorsHeight - OperatorsPadding * 2 - (rows - 1) * OperatorRowGap) / rows, 1);
+            return Math.Max((OperatorsHeight - OperatorsPadding * 2 - OutputRowsArea - (rows - 1) * OperatorRowGap) / rows, 1);
         }
     }
 
@@ -204,6 +204,8 @@ public sealed partial class FlameChartControl
         canvas.Save();
 
         canvas.ClipRect(new SKRect(0, top, width, top + height));
+
+        DrawOutputRows(canvas, scale);
 
         for (var row = 0; row < _operatorRows.Length; row++)
         {
@@ -398,7 +400,7 @@ public sealed partial class FlameChartControl
         return (OperatorRowTop(row) + track * trackHeight + padding, Math.Max(trackHeight - padding * 2, 1));
     }
 
-    private float OperatorRowTop(int row) => OperatorsTop + OperatorsPadding + row * (OperatorRowHeight + OperatorRowGap);
+    private float OperatorRowTop(int row) => OperatorsTop + OperatorsPadding + OutputRowsArea + row * (OperatorRowHeight + OperatorRowGap);
 
     private SKColor OperatorColourOf(ExecutionOperatorEvent operatorEvent, TraceOperatorLifetime lifetime)
         => ColourProvider is { } colours ? colours.GetColour(operatorEvent).ToSkColor() : ColourOf(lifetime.Node);
@@ -435,6 +437,8 @@ public sealed partial class FlameChartControl
                 OutlineTrack(canvas, row, track, width, scale, OperatorSelectedColour, OperatorSelectedStroke);
             }
         }
+
+        DrawOutputRowLineage(canvas, width, scale);
 
         canvas.Restore();
     }
@@ -706,7 +710,7 @@ public sealed partial class FlameChartControl
 
         var rowHeight = OperatorRowHeight;
 
-        var y = (float)position.Y - OperatorsTop - OperatorsPadding;
+        var y = (float)position.Y - OperatorsTop - OperatorsPadding - OutputRowsArea;
 
         var row = (int)Math.Floor(y / (rowHeight + OperatorRowGap));
 

@@ -13,6 +13,8 @@ public class RowBufferHookTests
 {
     private const ulong Function = 0x7FF8_0030_0000;
 
+    private const ulong Helper = 0x7FF8_0031_0000;
+
     private const ulong Iterator = 0x21C_0BB4_C180;
 
     private const ulong ValueTable = 0x7FF8_0040_0000;
@@ -246,6 +248,27 @@ public class RowBufferHookTests
     }
 
     [Fact]
+    public void A_Row_Returned_Through_The_Helper_Is_Captured_Once_By_The_Iterators_Own_Call()
+    {
+        var hook = CreateHook();
+
+        var memory = BoundRow();
+
+        hook.OnEntry(Call(function: Helper), memory);
+
+        hook.OnEntry(Call(id: 101, index: 4), memory);
+
+        hook.OnReturn(Call(id: 101, index: 4), memory);
+
+        hook.OnReturn(Call(function: Helper), memory);
+
+        var rows = hook.Build();
+
+        Assert.Equal(1, rows.Count);
+        Assert.NotNull(rows.GetRow(Function, Iterator, 4));
+    }
+
+    [Fact]
     public void An_Unknown_Class_Has_No_Row()
     {
         var memory = new FakeTraceReplay().Write(Iterator, 0x7FF8_0042_0000ul);
@@ -342,12 +365,17 @@ public class RowBufferHookTests
     }
 
     private static RowBufferHook CreateHook()
-        => new(new RowBufferFunctions([Function], [(ValueTable, RowBufferFormat.Batch), (BindingTable, RowBufferFormat.Bindings)]));
+        => new(new RowBufferFunctions([Function],
+                                      new Dictionary<ulong, RowBufferFormat>
+                                      {
+                                          [ValueTable] = RowBufferFormat.Batch,
+                                          [BindingTable] = RowBufferFormat.Bindings
+                                      }));
 
-    private static TraceHookCall Call(ulong id = 100, uint index = 3)
+    private static TraceHookCall Call(ulong id = 100, uint index = 3, ulong function = Function)
         => new()
         {
-            Function = Function,
+            Function = function,
             Instance = Iterator,
             Id = id,
             Position = At(20 + id),

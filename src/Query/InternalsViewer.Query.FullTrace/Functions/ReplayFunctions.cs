@@ -2,6 +2,7 @@
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.PublishedEvents;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.FullTrace.RowBuffers.HashRows;
@@ -16,7 +17,8 @@ internal sealed record ReplayFunctions(ulong[] ExcludedFunctions,
                                        MemoryMapFunction[] MemoryMapFunctions,
                                        RowBufferFunctions RowBuffers,
                                        BatchFunctions Batches,
-                                       HashRowFunctions HashRows)
+                                       HashRowFunctions HashRows,
+                                       OutputFunctions Output)
 {
     public static ReplayFunctions Empty { get; } = new([],
                                                        [],
@@ -26,7 +28,8 @@ internal sealed record ReplayFunctions(ulong[] ExcludedFunctions,
                                                        [],
                                                        RowBufferFunctions.Empty,
                                                        BatchFunctions.Empty,
-                                                       HashRowFunctions.Empty);
+                                                       HashRowFunctions.Empty,
+                                                       OutputFunctions.Empty);
 
     public static ReplayFunctions Merge(IReadOnlyList<ReplayFunctions> functions)
         => new([.. functions.SelectMany(f => f.ExcludedFunctions)],
@@ -37,7 +40,8 @@ internal sealed record ReplayFunctions(ulong[] ExcludedFunctions,
                [.. functions.SelectMany(f => f.MemoryMapFunctions)],
                RowBufferFunctions.Merge(functions.Select(f => f.RowBuffers)),
                BatchFunctions.Merge(functions.Select(f => f.Batches)),
-               HashRowFunctions.Merge(functions.Select(f => f.HashRows)));
+               HashRowFunctions.Merge(functions.Select(f => f.HashRows)),
+               OutputFunctions.Merge(functions.Select(f => f.Output)));
 
     public ReplayFunctions Rebase(ulong address)
         => new([.. ExcludedFunctions.Select(f => f + address)],
@@ -48,5 +52,6 @@ internal sealed record ReplayFunctions(ulong[] ExcludedFunctions,
                [.. MemoryMapFunctions.Select(f => f with { Address = f.Address + address })],
                RowBuffers.Rebase(address),
                Batches.Rebase(address),
-               HashRows.Rebase(address));
+               HashRows.Rebase(address),
+               Output.Rebase(address));
 }

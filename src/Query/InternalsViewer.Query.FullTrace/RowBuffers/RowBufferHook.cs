@@ -26,10 +26,11 @@ internal sealed class RowBufferHook(RowBufferFunctions functions) : ITraceHook
     public IEnumerable<TraceHookFunction> Functions
         => functions.Functions.Distinct().Select(f => new TraceHookFunction(f, TraceHookEvents.Entry | TraceHookEvents.Return));
 
-    private Dictionary<ulong, RowBufferFormat> Formats { get; }
-        = functions.Formats.GroupBy(f => f.VTable).ToDictionary(g => g.Key, g => g.Last().Format);
+    private IReadOnlyDictionary<ulong, RowBufferFormat> Formats => functions.Formats;
 
     private Dictionary<ulong, RowBufferStart> Starts { get; } = [];
+
+    private Dictionary<(uint Thread, ulong Iterator), ulong> OpenCalls { get; } = [];
 
     private BindingParser Bindings { get; } = new();
 
@@ -43,15 +44,26 @@ internal sealed class RowBufferHook(RowBufferFunctions functions) : ITraceHook
     {
         var start = new RowBufferStart(call.Arguments[IteratorArgument]);
 
-        if (start.Iterator >= ColumnValueParser.SmallestAddress && TryReadIterator(replay, ref start))
+        if (start.Iterator < ColumnValueParser.SmallestAddress || !TryReadIterator(replay, ref start))
         {
-            Starts[call.Id] = start;
+            return;
         }
+
+        var key = (call.Thread, start.Iterator);
+
+        if (OpenCalls.TryGetValue(key, out var outer))
+        {
+            Starts.Remove(outer);
+        }
+
+        OpenCalls[key] = call.Id;
+
+        Starts[call.Id] = start;
     }
 
     public void OnReturn(in TraceHookCall call, ITraceReplay replay)
     {
-        if (!Starts.Remove(call.Id, out var start))
+        if (!Remove(call.Thread, call.Id, out var start))
         {
             return;
         }
@@ -91,7 +103,7 @@ internal sealed class RowBufferHook(RowBufferFunctions functions) : ITraceHook
         });
     }
 
-    public void OnAbandoned(in TraceHookCall call) => Starts.Remove(call.Id);
+    public void OnAbandoned(in TraceHookCall call) => Remove(call.Thread, call.Id, out _);
 
     private static bool IsSame(RowBufferColumn[] left, RowBufferColumn[] right)
     {
@@ -154,6 +166,23 @@ internal sealed class RowBufferHook(RowBufferFunctions functions) : ITraceHook
         }
 
         return (batch, selectionIndex);
+    }
+
+    private bool Remove(uint thread, ulong id, out RowBufferStart start)
+    {
+        if (!Starts.Remove(id, out start))
+        {
+            return false;
+        }
+
+        var key = (thread, start.Iterator);
+
+        if (OpenCalls.TryGetValue(key, out var open) && open == id)
+        {
+            OpenCalls.Remove(key);
+        }
+
+        return true;
     }
 
     private RowBufferColumn[]? ParseBoundRow(ITraceReplay replay, RowBufferStart start)
