@@ -22,7 +22,7 @@ Turning on **Record Full Trace** shows a dialog explaining what a recording invo
 badge turns it off.
 
 A recording has no clock, so the Timeline, Events and Allocations panes are hidden, and the
-[Flame Chart](view:FlameChart) takes the Timeline's place. Turning Full Trace off puts the previous layout back.
+[Trace Timeline](view:TraceTimeline) takes the Timeline's place. Turning Full Trace off puts the previous layout back.
 
 ## On Execute
 
@@ -40,13 +40,13 @@ Keep the query small - the larger the recording, the longer it takes to load.
 
 - [Call Tree](view:CallTree) - every call on the query's threads, merged into one tree with a count on each path and
   the memory allocated beneath each frame
-- [Flame Chart](view:FlameChart) - every call as a bar on its thread, in the order it happened
+- [Trace Timeline](view:TraceTimeline) - every call as a bar on its thread, in the order it happened
 - **Arguments** - right-click a frame in the Call Tree and choose **Show Arguments** to see what each call was
   passed and returned
 - [Execution Plan](view:ExecutionPlan) - each operator is matched to the code that ran it
 
 **Record Events**, on the same menu, puts the normal event set back into the recording, at the cost of a larger and
 slower recording. The Timeline, Events and Allocations panes then stay, and as the Timeline's current event changes
-the Flame Chart's playhead moves to where that event happened in the recording.
+the Trace Timeline's playhead moves to where that event happened in the recording.
 
 **Export to file** on the **Query** menu keeps a Full Trace for later, without the recording itself.

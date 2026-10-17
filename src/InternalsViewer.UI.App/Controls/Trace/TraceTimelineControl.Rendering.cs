@@ -5,9 +5,9 @@ using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using SkiaSharp;
 using SkiaSharp.Views.Windows;
 
-namespace InternalsViewer.UI.App.Controls.FlameChart;
+namespace InternalsViewer.UI.App.Controls.Trace;
 
-public sealed partial class FlameChartControl
+public sealed partial class TraceTimelineControl
 {
     private const float RulerHeight = 18f;
 
@@ -258,7 +258,7 @@ public sealed partial class FlameChartControl
             return null;
         }
 
-        if (MemoryMode == FlameChartMemoryMode.InUse)
+        if (MemoryMode == TraceTimelineMemoryMode.InUse)
         {
             var row = thread.Rows[depth];
 
@@ -486,7 +486,7 @@ public sealed partial class FlameChartControl
             return;
         }
 
-        if (MemoryMode == FlameChartMemoryMode.InUse)
+        if (MemoryMode == TraceTimelineMemoryMode.InUse)
         {
             canvas.DrawRect(FrontOf(hovered), _paints.Hover);
         }

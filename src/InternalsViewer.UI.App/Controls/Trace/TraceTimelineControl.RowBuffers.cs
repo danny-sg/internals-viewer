@@ -5,9 +5,9 @@ using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Helpers;
 using SkiaSharp;
 
-namespace InternalsViewer.UI.App.Controls.FlameChart;
+namespace InternalsViewer.UI.App.Controls.Trace;
 
-public sealed partial class FlameChartControl
+public sealed partial class TraceTimelineControl
 {
     private const float MarkBandHeight = 9f;
 
@@ -28,7 +28,7 @@ public sealed partial class FlameChartControl
     public static readonly DependencyProperty RowBufferMarksProperty =
         DependencyProperty.Register(nameof(RowBufferMarks),
                                     typeof(TraceRowBufferMarks),
-                                    typeof(FlameChartControl),
+                                    typeof(TraceTimelineControl),
                                     new PropertyMetadata(null, OnRowBuffersChanged));
 
     public TraceRowBufferMarks? RowBufferMarks
@@ -40,7 +40,7 @@ public sealed partial class FlameChartControl
     public static readonly DependencyProperty ShowRowBuffersProperty =
         DependencyProperty.Register(nameof(ShowRowBuffers),
                                     typeof(bool),
-                                    typeof(FlameChartControl),
+                                    typeof(TraceTimelineControl),
                                     new PropertyMetadata(true, OnRowBuffersChanged));
 
     public bool ShowRowBuffers
@@ -134,5 +134,5 @@ public sealed partial class FlameChartControl
     }
 
     private static void OnRowBuffersChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((FlameChartControl)d).Relayout();
+        => ((TraceTimelineControl)d).Relayout();
 }

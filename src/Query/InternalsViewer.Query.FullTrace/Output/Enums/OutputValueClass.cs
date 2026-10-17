@@ -7,5 +7,6 @@ internal enum OutputValueClass : byte
     Table,
     Hash,
     HashSwitch,
-    HashCachedSwitch
+    HashCachedSwitch,
+    BatchRedirect
 }

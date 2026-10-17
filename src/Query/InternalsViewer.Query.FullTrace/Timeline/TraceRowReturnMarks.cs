@@ -16,25 +16,36 @@ public sealed class TraceRowReturnMarks
 
     private const uint FakeRowStatus = 0x4FFFF;
 
+    private const string BatchMethod = "BpGetNextBatch";
+
     private static readonly int TypeCount = Enum.GetValues<RowReturnType>().Length;
 
     private TraceRowReturnMarks(Dictionary<ExecutionOperatorEvent, Dictionary<uint, OperatorReturns>> operators,
+                                HashSet<ExecutionOperatorEvent> batchOperators,
                                 TraceOutputRows outputRows)
     {
         Operators = operators;
+
+        BatchOperators = batchOperators;
 
         OutputRows = outputRows;
 
         Count = operators.Values.Sum(o => o.Values.Sum(t => t.Count));
     }
 
-    public static TraceRowReturnMarks Empty { get; } = new(new(ReferenceEqualityComparer.Instance), TraceOutputRows.Empty);
+    public static TraceRowReturnMarks Empty { get; } = new(new(ReferenceEqualityComparer.Instance),
+                                                           new(ReferenceEqualityComparer.Instance),
+                                                           TraceOutputRows.Empty);
 
     public int Count { get; }
 
     public TraceOutputRows OutputRows { get; }
 
     private Dictionary<ExecutionOperatorEvent, Dictionary<uint, OperatorReturns>> Operators { get; }
+
+    private HashSet<ExecutionOperatorEvent> BatchOperators { get; }
+
+    public bool IsBatch(ExecutionOperatorEvent operatorEvent) => BatchOperators.Contains(operatorEvent);
 
     public bool HasMarks(ExecutionOperatorEvent operatorEvent, uint thread) => GetReturns(operatorEvent, thread) is not null;
 
@@ -106,8 +117,15 @@ public sealed class TraceRowReturnMarks
 
         var passedUp = new List<TraceRowReturn>();
 
+        var batchOperators = new HashSet<ExecutionOperatorEvent>(ReferenceEqualityComparer.Instance);
+
         foreach (var group in groups)
         {
+            if (group.IsBatch)
+            {
+                batchOperators.Add(owners[group.Instance]);
+            }
+
             var parent = GetParent(group, groups);
 
             for (var index = 0; index < group.Calls.Length; index++)
@@ -132,7 +150,7 @@ public sealed class TraceRowReturnMarks
 
                 (list ??= []).Add(mark);
 
-                if (type == RowReturnType.PassedUp)
+                if (type == RowReturnType.PassedUp && !group.IsBatch)
                 {
                     passedUp.Add(new TraceRowReturn(owners[group.Instance],
                                                     group.Thread,
@@ -160,25 +178,37 @@ public sealed class TraceRowReturnMarks
             (threads ??= [])[thread] = OperatorReturns.Build(list);
         }
 
-        return new TraceRowReturnMarks(operators, TraceOutputRows.Build(passedUp, lineage ?? TraceOutputLineage.Empty));
+        var outputRows = TraceOutputRows.Build(groups.Select(g => owners[g.Instance]), passedUp, lineage ?? TraceOutputLineage.Empty);
+
+        return new TraceRowReturnMarks(operators, batchOperators, outputRows);
     }
 
     private static List<CallGroup> GetCallGroups(TraceCallStore calls, Dictionary<ulong, ExecutionOperatorEvent> owners)
     {
         var grouped = new Dictionary<(ulong Instance, uint Thread), List<GetRowCall>>();
 
+        var batches = new HashSet<(ulong Instance, uint Thread)>();
+
         foreach (var (address, instance) in calls.FunctionKeys)
         {
             if (!owners.ContainsKey(instance)
                 || calls.GetCallList(address, instance) is not { Count: > 0 } list
-                || !IsGetRow(calls.GetNode(list.GetNodeIndex(0))))
+                || calls.GetNode(list.GetNodeIndex(0))?.Frame?.Resolved?.MethodName is not { } method
+                || !IsIteratorCall(method))
             {
                 continue;
             }
 
             for (var index = 0; index < list.Count; index++)
             {
-                ref var group = ref CollectionsMarshal.GetValueRefOrAddDefault(grouped, (instance, list.GetThread(index)), out _);
+                var key = (instance, list.GetThread(index));
+
+                if (method == BatchMethod)
+                {
+                    batches.Add(key);
+                }
+
+                ref var group = ref CollectionsMarshal.GetValueRefOrAddDefault(grouped, key, out _);
 
                 (group ??= []).Add(new GetRowCall(address,
                                                   index,
@@ -188,7 +218,7 @@ public sealed class TraceRowReturnMarks
             }
         }
 
-        return [.. grouped.Select(g => new CallGroup(g.Key.Instance, g.Key.Thread, GetOutermost(g.Value)))];
+        return [.. grouped.Select(g => new CallGroup(g.Key.Instance, g.Key.Thread, GetOutermost(g.Value), batches.Contains(g.Key)))];
     }
 
     private static GetRowCall[] GetOutermost(List<GetRowCall> calls)
@@ -262,7 +292,7 @@ public sealed class TraceRowReturnMarks
         return returned < parent.RowEnds.Length && parent.RowEnds[returned] < next;
     }
 
-    private static bool IsGetRow(CallStackNode? node) => node?.Frame?.Resolved?.MethodName is "GetRow" or "GetRowOrReQualifyHelper";
+    private static bool IsIteratorCall(string method) => method is "GetRow" or "GetRowOrReQualifyHelper" or BatchMethod;
 
     private OperatorReturns? GetReturns(ExecutionOperatorEvent operatorEvent, uint thread)
         => Operators.TryGetValue(operatorEvent, out var threads) ? threads.GetValueOrDefault(thread) : null;
@@ -277,13 +307,15 @@ public sealed class TraceRowReturnMarks
                                         CallStackNode Node,
                                         int Call);
 
-    private sealed class CallGroup(ulong instance, uint thread, GetRowCall[] calls)
+    private sealed class CallGroup(ulong instance, uint thread, GetRowCall[] calls, bool isBatch)
     {
         public ulong Instance { get; } = instance;
 
         public uint Thread { get; } = thread;
 
         public GetRowCall[] Calls { get; } = calls;
+
+        public bool IsBatch { get; } = isBatch;
 
         public TracePosition[] RowEnds { get; } = [.. calls.Where(c => c.Status == RowStatus).Select(c => c.ToPosition)];
     }

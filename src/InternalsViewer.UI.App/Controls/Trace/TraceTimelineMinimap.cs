@@ -6,9 +6,9 @@ using Microsoft.UI.Xaml.Controls;
 using SkiaSharp;
 using SkiaSharp.Views.Windows;
 
-namespace InternalsViewer.UI.App.Controls.FlameChart;
+namespace InternalsViewer.UI.App.Controls.Trace;
 
-public sealed class FlameChartMinimap : UserControl, IDisposable
+public sealed class TraceTimelineMinimap : UserControl, IDisposable
 {
     private const float InnerPadding = 3f;
 
@@ -25,7 +25,7 @@ public sealed class FlameChartMinimap : UserControl, IDisposable
     public static readonly DependencyProperty TimelineProperty =
         DependencyProperty.Register(nameof(Timeline),
                                     typeof(TraceTimeline),
-                                    typeof(FlameChartMinimap),
+                                    typeof(TraceTimelineMinimap),
                                     new PropertyMetadata(null, OnTimelineChanged));
 
     public TraceTimeline? Timeline
@@ -37,7 +37,7 @@ public sealed class FlameChartMinimap : UserControl, IDisposable
     public static readonly DependencyProperty AxisProperty =
         DependencyProperty.Register(nameof(Axis),
                                     typeof(TraceTimelineAxis),
-                                    typeof(FlameChartMinimap),
+                                    typeof(TraceTimelineMinimap),
                                     new PropertyMetadata(TraceTimelineAxis.Position, OnChanged));
 
     public TraceTimelineAxis Axis
@@ -49,7 +49,7 @@ public sealed class FlameChartMinimap : UserControl, IDisposable
     public static readonly DependencyProperty WindowStartProperty =
         DependencyProperty.Register(nameof(WindowStart),
                                     typeof(double),
-                                    typeof(FlameChartMinimap),
+                                    typeof(TraceTimelineMinimap),
                                     new PropertyMetadata(double.NaN, OnChanged));
 
     public double WindowStart
@@ -61,7 +61,7 @@ public sealed class FlameChartMinimap : UserControl, IDisposable
     public static readonly DependencyProperty WindowEndProperty =
         DependencyProperty.Register(nameof(WindowEnd),
                                     typeof(double),
-                                    typeof(FlameChartMinimap),
+                                    typeof(TraceTimelineMinimap),
                                     new PropertyMetadata(double.NaN, OnChanged));
 
     public double WindowEnd
@@ -73,7 +73,7 @@ public sealed class FlameChartMinimap : UserControl, IDisposable
     public static readonly DependencyProperty ScopeProperty =
         DependencyProperty.Register(nameof(Scope),
                                     typeof(TraceTimeline),
-                                    typeof(FlameChartMinimap),
+                                    typeof(TraceTimelineMinimap),
                                     new PropertyMetadata(null, OnChanged));
 
     public TraceTimeline? Scope
@@ -85,7 +85,7 @@ public sealed class FlameChartMinimap : UserControl, IDisposable
     public static readonly DependencyProperty CropProperty =
         DependencyProperty.Register(nameof(Crop),
                                     typeof(TraceTimeline),
-                                    typeof(FlameChartMinimap),
+                                    typeof(TraceTimelineMinimap),
                                     new PropertyMetadata(null, OnChanged));
 
     public TraceTimeline? Crop
@@ -97,7 +97,7 @@ public sealed class FlameChartMinimap : UserControl, IDisposable
     public static readonly DependencyProperty MarkersProperty =
         DependencyProperty.Register(nameof(Markers),
                                     typeof(IReadOnlyList<MinimapMarker>),
-                                    typeof(FlameChartMinimap),
+                                    typeof(TraceTimelineMinimap),
                                     new PropertyMetadata(null, OnChanged));
 
     public IReadOnlyList<MinimapMarker>? Markers
@@ -126,7 +126,7 @@ public sealed class FlameChartMinimap : UserControl, IDisposable
 
     private (TraceTimeline Timeline, TraceTimeline? Crop, TraceTimelineAxis Axis, int Width, int Height)? _pictureKey;
 
-    public FlameChartMinimap()
+    public TraceTimelineMinimap()
     {
         _canvas = new SKXamlCanvas { IgnorePixelScaling = false };
 
@@ -514,11 +514,11 @@ public sealed class FlameChartMinimap : UserControl, IDisposable
     private static byte Blend(byte from, byte to) => (byte)(from + (to - from) * Fade);
 
     private static void OnChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((FlameChartMinimap)d)._canvas.Invalidate();
+        => ((TraceTimelineMinimap)d)._canvas.Invalidate();
 
     private static void OnTimelineChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        var minimap = (FlameChartMinimap)d;
+        var minimap = (TraceTimelineMinimap)d;
 
         minimap._picture?.Dispose();
         minimap._picture = null;

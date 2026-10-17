@@ -36,7 +36,7 @@ The execution plan says what SQL Server decided to do, and the counters say how 
 
 - **Which code ran** - the functions behind each operator, in the storage engine as well as the query processor. The plan shows an Index Seek, and the calls show the B-tree navigation, the pages fixed in the buffer pool, the latches and the row reads beneath it.
 - **How often** - a count on every path, so a loop that runs once per row shows up as a call per row, and an operator doing more work than expected stands out.
-- **In what order** - each thread's calls one after another, as execution actually unfolded. That is what the [Flame Chart](/docs/user-guide/query/FlameChart) draws.
+- **In what order** - each thread's calls one after another, as execution actually unfolded. That is what the [Trace Timeline](/docs/user-guide/query/TraceTimeline) draws.
 - **What each call worked on** - its arguments and its return value. `BPool::Get` is passed a pointer to the id of the page it fetches, an allocation is passed a size and returns the address of the memory, and an iterator method is called on its operator's object. That is how a call is tied to a page, a row, a block of memory or an operator in the plan.
 
 Showing the storage engine at work is what Internals Viewer is for, and the calls are the most direct record of that work there is.
@@ -182,7 +182,7 @@ Each call produces three things:
 
 - **A node count** - the call tree is the node table, with a count on each node, and comes back when the replay ends.
 - **A call log row** - ten 64-bit values per call, logged per function and object: its sequence position, its thread and whether it returned, RCX, RDX, R8 and R9 at the call, RAX at the return, its node, and the call ids at its start and end. Each function's calls are kept in chunks of 16,384 and handed over column by column - every call's RCX together, then every RDX - and the app compresses each chunk with zlib on the thread pool while the replay carries on. Columns, because the values repeat: 41% of them are zero, and only 12% of a column's non-zero values are distinct, so a column compresses to around 6.5% of its raw size against 8.7% for rows. The log lives in memory and is read lazily.
-- **A span** - when a frame closes, its start and end positions, the instructions the thread executed in between, its thread, its node, its call number and whether it returned or started before the recording. Spans are streamed 65,536 at a time and become the Flame Chart.
+- **A span** - when a frame closes, its start and end positions, the instructions the thread executed in between, its thread, its node, its call number and whether it returned or started before the recording. Spans are streamed 65,536 at a time and become the Trace Timeline.
 
 The call log row holds only the four integer argument registers and RAX. Stack arguments come in alongside the locator reads below: for each function in the resolved modules with more than four arguments, the fifth to sixteenth are read from the stack at the call, in one memory read per call, and kept with the locators as argument values rather than pages or rows. The floating point registers are not logged, which is why the [Arguments](/docs/user-guide/query/CallStack#arguments) tab has no column for them, and memory behind pointers is only read by the locator reads.
 
@@ -202,11 +202,11 @@ The replay hands back addresses, counts, spans and values. The rest turns them i
 
 ### The call tree
 
-Each node's address is looked up in the module ranges and becomes a frame - module, offset, PDB and object - added to a call tree with its count. The frames are resolved to names with the same DIA bridge as sampled stacks, and calls from different places in the same function are merged into one node per function. A map from each raw node to its merged node is kept, so a call log row or a Flame Chart bar always knows its frame - which is what **Go To Call** follows.
+Each node's address is looked up in the module ranges and becomes a frame - module, offset, PDB and object - added to a call tree with its count. The frames are resolved to names with the same DIA bridge as sampled stacks, and calls from different places in the same function are merged into one node per function. A map from each raw node to its merged node is kept, so a call log row or a Trace Timeline bar always knows its frame - which is what **Go To Call** follows.
 
-The whole recording is kept, compilation included, so what is worked out from it - objects, allocations, memory and event links - sees every call. **Crop To Query** only changes what is shown, and can be switched without tracing again. Each thread's calls start well above the query - receiving the batch, compiling and setting up the statement - so with it on the Call Tree starts at the outermost `CMsqlExecContext::FExecute`, the statement's execution in `sqllang.dll`. A parallel worker's thread never runs beneath that frame, so a thread running operator code without it is shown from its top. The Flame Chart is cropped to match.
+The whole recording is kept, compilation included, so what is worked out from it - objects, allocations, memory and event links - sees every call. **Crop To Query** only changes what is shown, and can be switched without tracing again. Each thread's calls start well above the query - receiving the batch, compiling and setting up the statement - so with it on the Call Tree starts at the outermost `CMsqlExecContext::FExecute`, the statement's execution in `sqllang.dll`. A parallel worker's thread never runs beneath that frame, so a thread running operator code without it is shown from its top. The Trace Timeline is cropped to match.
 
-Anything left beneath Extended Events or tracing frames is then removed from the tree and the Flame Chart. Each node's activity band counts when its calls started, bucketed by trace position, and its locators are gathered from the call log, so a frame can show the pages and rows it read and the Call Tree's search can find frames by a page address, a RID or `rowgroup:N column:M`.
+Anything left beneath Extended Events or tracing frames is then removed from the tree and the Trace Timeline. Each node's activity band counts when its calls started, bucketed by trace position, and its locators are gathered from the call log, so a frame can show the pages and rows it read and the Call Tree's search can find frames by a page address, a RID or `rowgroup:N column:M`.
 
 ### Operators by iterator
 
@@ -218,7 +218,7 @@ Which object belongs to which operator comes from how the plan is built. Before 
 
 That tree is aligned with the plan. A plan object scores against an operator when the iterator classes it constructed are ones the mappings give that operator, and loses points when they are not. Skipping a plan node or a plan object costs points too. The iterator each plan object built - its return value, or the object its constructor ran on - then takes that plan object's operator, and wrappers such as the profiling iterator are looked through to the iterator inside. This needs no row counts and no guesswork about stack shapes, only the calls that build the plan.
 
-The linked objects give each operator its entry frames - for the Call Tree's operator view and its target badge - and its lifetime, from its object's first method call to its last, for the Flame Chart's Operators pane. The Arguments tab uses the same link to name an iterator or a plan object when its address turns up as a value.
+The linked objects give each operator its entry frames - for the Call Tree's operator view and its target badge - and its lifetime, from its object's first method call to its last, for the Trace Timeline's Operators pane. The Arguments tab uses the same link to name an iterator or a plan object when its address turns up as a value.
 
 ### Memory
 
@@ -228,8 +228,8 @@ SQL Server allocates through SQLOS, which is not recorded. But every allocation 
 - **Size and pointer** - the size comes from the entry registers, and the pointer from RAX at the return.
 - **Outermost only** - an allocator called inside another is not counted again. Page allocations made by the memory object machinery are its plumbing, since the memory object's own `Alloc` has already counted them.
 - **Frees by pointer** - frees are matched to allocations by pointer, across threads, in trace position order, with frees first where they tie so an in-place reallocation works. That gives memory in use and its peak.
-- **Clerks** - the first argument of a `MemoryClerkInternal` call is its memory clerk, and the two clerk snapshots name it. `MEMORYCLERK_SQLQERESERVATIONS` is the query's workspace memory, which is what the Flame Chart's **Grant In Use** line draws against the grant.
-- **Operators** - an operator's memory in use is what was allocated inside its own calls on its thread and not yet freed, which is what the Flame Chart's Operators pane draws and gives the peak of.
+- **Clerks** - the first argument of a `MemoryClerkInternal` call is its memory clerk, and the two clerk snapshots name it. `MEMORYCLERK_SQLQERESERVATIONS` is the query's workspace memory, which is what the Trace Timeline's **Grant In Use** line draws against the grant.
+- **Operators** - an operator's memory in use is what was allocated inside its own calls on its thread and not yet freed, which is what the Trace Timeline's Operators pane draws and gives the peak of.
 
 The known gap is a memory object released as a whole. Its pages go back through the plumbing, so its memory is never seen to be freed, and in use only climbs for it.
 
@@ -239,13 +239,13 @@ The events in the `.xel` file have a timestamp, but no position in the recording
 
 Every event is published through its own `Publish` function, such as `XeSqlPkg::lock_acquired::Publish`, and each session collecting it has the event written into its buffer by `XE_BufferMgr::Reserve`, with that session's buffer manager as its first argument. The bridge watches for both, even inside the Extended Events code that is otherwise excluded. Entering a publisher starts a pending event on that thread, and entering the writer while one is pending records a **published event** - the event's name, the session buffer it went to, the position and instruction count of the publish, and the nearest recorded frame above it. A publish that no session collects, or whose predicate rejects it, never reaches the writer and leaves nothing behind.
 
-Other sessions are running too, `system_health` among them, so the buffer that most published events went to is taken to be this session's, and the rest are dropped. What is left is paired, thread by thread and in order, with the raw events read from the `.xel` file, matching on the event name. The order is the same on both sides, since a thread publishes one event at a time, and when a name does not match the pairing skips ahead a short way to get back in step. Each pair links an event to its place in the recording, which is how the Timeline's current event moves the Flame Chart's playhead.
+Other sessions are running too, `system_health` among them, so the buffer that most published events went to is taken to be this session's, and the rest are dropped. What is left is paired, thread by thread and in order, with the raw events read from the `.xel` file, matching on the event name. The order is the same on both sides, since a thread publishes one event at a time, and when a name does not match the pairing skips ahead a short way to get back in step. Each pair links an event to its place in the recording, which is how the Timeline's current event moves the Trace Timeline's playhead.
 
 The [Diagnostic log](/docs/user-guide/settings#diagnostic-log) records how many events were published, how many were written to the session and how many were paired and linked.
 
 ### No clock
 
-TTD records instructions, not time. There is no timestamp, and the recording slows everything down, and not evenly, so a millisecond figure would not mean much anyway. This is why the Flame Chart measures in positions or instructions, and why events are placed by their publish calls rather than by time:
+TTD records instructions, not time. There is no timestamp, and the recording slows everything down, and not evenly, so a millisecond figure would not mean much anyway. This is why the Trace Timeline measures in positions or instructions, and why events are placed by their publish calls rather than by time:
 
 - **Position** is `sequence + steps / (largest step count + 1)`, which lines up across threads and is linear within a sequence. An earlier encoding squashed late steps together, and merged a hundred `GetRow` calls into one bar.
 - **Instructions** is a clock kept for each thread, adding up the steps between callbacks. It is the closest the recording has to how long a call took, but it is counted separately for each thread, so the lanes do not line up.
@@ -256,13 +256,13 @@ TTD records instructions, not time. There is no timestamp, and the recording slo
 | --- | --- |
 | Every call path, with its call count | The [Call Tree](/docs/user-guide/query/CallStack) |
 | When each path ran across the recording | The Call Tree's activity band |
-| Memory allocated beneath each frame | The Call Tree, and the [Flame Chart](/docs/user-guide/query/FlameChart)'s Memory view |
-| Every call as a span on its thread | The Flame Chart |
-| Each operator's frames, target and lifetime | The Call Tree's operator view and target badges, and the Flame Chart's Operators pane |
-| Memory in use per operator | The Flame Chart's Operators pane |
+| Memory allocated beneath each frame | The Call Tree, and the [Trace Timeline](/docs/user-guide/query/TraceTimeline)'s Memory view |
+| Every call as a span on its thread | The Trace Timeline |
+| Each operator's frames, target and lifetime | The Call Tree's operator view and target badges, and the Trace Timeline's Operators pane |
+| Memory in use per operator | The Trace Timeline's Operators pane |
 | Every call's register arguments and return value | The [Arguments](/docs/user-guide/query/CallStack#arguments) tab and **Find** |
 | The pages, rows and columnstore objects each call touched | The Call Tree's frames and search, and the Arguments tab |
-| Where each event happened in the recording | The Flame Chart's playhead, following the Timeline |
+| Where each event happened in the recording | The Trace Timeline's playhead, following the Timeline |
 | Calls replayed, operators matched, memory allocated, and events published, written and linked | The [Diagnostic log](/docs/user-guide/settings#diagnostic-log) |
 
 The recording itself is deleted once it has replayed successfully. Everything above lives in memory for as long as the Query tab holds the result, and running the query again makes a new recording. **Export to file** saves it all - the call tree, the call log, the spans, the memory and the event links - so a run can be opened again without the recording. See [Exporting a run](/docs/user-guide/query#exporting-a-run).
@@ -289,6 +289,6 @@ The recording itself is deleted once it has replayed successfully. Everything ab
   - `Iterators/` - linking plan objects and iterators to the plan, and their lifetimes
   - `Memory/` - allocations, frees, clerks and memory in use
   - `PublishedEvents/` - placing events in the recording
-  - `Timeline/` - the Flame Chart's spans and axes
+  - `Timeline/` - the Trace Timeline's spans and axes
   - `Export/` - the Full Trace part of an exported run
 - `src/Query/InternalsViewer.Query/QueryRunner.cs` - the run sequence, and `Export/` - exporting and importing a run

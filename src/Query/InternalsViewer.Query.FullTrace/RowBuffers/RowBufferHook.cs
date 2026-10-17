@@ -36,6 +36,8 @@ internal sealed class RowBufferHook(RowBufferFunctions functions) : ITraceHook
 
     private Dictionary<ulong, RowBufferColumn[]> LastColumns { get; } = [];
 
+    private Dictionary<ulong, RowBufferStart> KnownLayouts { get; } = [];
+
     private List<RowBuffer> Rows { get; } = [];
 
     public RowBufferStore Build(IEnumerable<RowBuffer>? others = null) => new([.. Rows, .. others ?? []]);
@@ -68,7 +70,14 @@ internal sealed class RowBufferHook(RowBufferFunctions functions) : ITraceHook
             return;
         }
 
-        if ((start.Format is null && !TryReadIterator(replay, ref start)) || start.Format is not { } format)
+        if (start.Format is null && !TryReadIterator(replay, ref start))
+        {
+            return;
+        }
+
+        ApplyKnownLayout(ref start);
+
+        if (start.Format is not { } format)
         {
             return;
         }
@@ -78,6 +87,8 @@ internal sealed class RowBufferHook(RowBufferFunctions functions) : ITraceHook
         if (start.Buffer == 0 || (isBatchRow ? start.Count == 0 : start.Bindings == 0))
         {
             TryReadIterator(replay, ref start);
+
+            ApplyKnownLayout(ref start);
         }
 
         var columns = isBatchRow ? BatchRowParser.Parse(replay, start.Buffer, start.Count) : ParseBoundRow(replay, start);
@@ -86,6 +97,8 @@ internal sealed class RowBufferHook(RowBufferFunctions functions) : ITraceHook
         {
             return;
         }
+
+        KnownLayouts[start.Iterator] = start;
 
         var (batch, selectionIndex) = isBatchRow ? LocateBatchValues(replay, start.Iterator, columns) : (0ul, -1);
 
@@ -168,6 +181,31 @@ internal sealed class RowBufferHook(RowBufferFunctions functions) : ITraceHook
         return (batch, selectionIndex);
     }
 
+    private void ApplyKnownLayout(ref RowBufferStart start)
+    {
+        if (!KnownLayouts.TryGetValue(start.Iterator, out var known))
+        {
+            return;
+        }
+
+        start.Format ??= known.Format;
+
+        if (start.Buffer == 0)
+        {
+            start.Buffer = known.Buffer;
+        }
+
+        if (start.Bindings == 0)
+        {
+            start.Bindings = known.Bindings;
+        }
+
+        if (start.Count == 0)
+        {
+            start.Count = known.Count;
+        }
+    }
+
     private bool Remove(uint thread, ulong id, out RowBufferStart start)
     {
         if (!Starts.Remove(id, out start))
@@ -218,6 +256,8 @@ internal sealed class RowBufferHook(RowBufferFunctions functions) : ITraceHook
 
         if (!Formats.TryGetValue(vtable, out var format))
         {
+            KnownLayouts.Remove(start.Iterator);
+
             return false;
         }
 

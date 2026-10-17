@@ -36,7 +36,7 @@ public sealed class PlayheadCallStackViewModel(QueryViewModel query) : CallStack
 
     public void RequestChart(Action<IPlayheadChart> request)
     {
-        Query.Layout.ShowFlameChart();
+        Query.Layout.ShowTraceTimeline();
 
         if (Chart is { } chart)
         {

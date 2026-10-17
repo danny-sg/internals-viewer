@@ -7,8 +7,6 @@ namespace InternalsViewer.Query.FullTrace.Timeline;
 
 public sealed class TraceOutputRows
 {
-    private const int RootNodeId = 0;
-
     private TraceOutputRows(TraceOutputRow[] rows)
     {
         Rows = rows;
@@ -67,8 +65,14 @@ public sealed class TraceOutputRows
         return row.Return.GetStart(axis) <= value ? row : null;
     }
 
-    internal static TraceOutputRows Build(IReadOnlyList<TraceRowReturn> passedUp, TraceOutputLineage lineage)
+    internal static TraceOutputRows Build(IEnumerable<ExecutionOperatorEvent> operators,
+                                          IReadOnlyList<TraceRowReturn> passedUp,
+                                          TraceOutputLineage lineage)
     {
+        var rootOperators = GetRootOperators(operators);
+
+        bool IsRoot(TraceRowReturn rowReturn) => rootOperators.Contains(rowReturn.Operator);
+
         TraceRowReturn[] roots = [.. passedUp.Where(IsRoot).OrderBy(r => r.FromPosition)];
 
         if (roots.Length == 0)
@@ -100,7 +104,11 @@ public sealed class TraceOutputRows
         return new TraceOutputRows(rows);
     }
 
-    private static bool IsRoot(TraceRowReturn rowReturn) => rowReturn.Operator.PlanNodeIdentifier is { NodeId: RootNodeId };
+    private static HashSet<ExecutionOperatorEvent> GetRootOperators(IEnumerable<ExecutionOperatorEvent> operators)
+        => operators.Where(o => o.PlanNodeIdentifier is not null)
+                    .GroupBy(o => o.PlanNodeIdentifier!.PlanHandleId)
+                    .Select(g => g.MinBy(o => o.PlanNodeIdentifier!.NodeId)!)
+                    .ToHashSet<ExecutionOperatorEvent>(ReferenceEqualityComparer.Instance);
 
     private static TraceOutputStep[] GetSteps(TraceRowReturn[] returns, TraceRowReturn root)
     {
@@ -118,7 +126,7 @@ public sealed class TraceOutputRows
 
         TraceRowReturn[] candidates = [root, .. nested];
 
-        return [.. nested.Select(r => new TraceOutputStep(r, GetParent(r, candidates) ?? root))];
+        return [.. nested.Select(r => new TraceOutputStep(r, GetParent(r, candidates) ?? GetEnclosing(r, candidates) ?? root))];
     }
 
     private static TraceRowReturn? GetParent(TraceRowReturn child, TraceRowReturn[] candidates)
@@ -136,6 +144,24 @@ public sealed class TraceOutputRows
         }
 
         return parent;
+    }
+
+    private static TraceRowReturn? GetEnclosing(TraceRowReturn child, TraceRowReturn[] candidates)
+    {
+        TraceRowReturn? enclosing = null;
+
+        foreach (var candidate in candidates)
+        {
+            if (!ReferenceEquals(candidate, child)
+                && candidate.FromPosition <= child.FromPosition
+                && candidate.ToPosition >= child.ToPosition
+                && (enclosing is null || candidate.FromPosition > enclosing.FromPosition))
+            {
+                enclosing = candidate;
+            }
+        }
+
+        return enclosing;
     }
 
     private static bool IsParent(TraceRowReturn candidate, TraceRowReturn child)

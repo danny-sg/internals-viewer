@@ -130,6 +130,25 @@ public class RowBufferHookTests
     }
 
     [Fact]
+    public void A_Row_Whose_Bindings_Are_Missing_From_The_Trace_Uses_The_Bindings_Last_Read_From_The_Same_Address()
+    {
+        var rows = ReplayTwoRows(BoundRow(hasBindingArray: false, value: 4100000));
+
+        Assert.Equal([0xA0, 0x8F, 0x3E, 0], rows.GetRow(Function, Iterator, 4)!.Columns[0].Data);
+    }
+
+    [Fact]
+    public void An_Iterator_Whose_Type_Is_Missing_From_The_Trace_Keeps_The_Format_Last_Read_For_It()
+    {
+        var rows = ReplayTwoRows(BoundRow(hasTable: false, value: 4100000));
+
+        var row = rows.GetRow(Function, Iterator, 4)!;
+
+        Assert.Equal(RowBufferFormat.Bindings, row.Format);
+        Assert.Equal([0xA0, 0x8F, 0x3E, 0], row.Columns[0].Data);
+    }
+
+    [Fact]
     public void A_Bound_Value_Read_By_Reference_Follows_Its_Pointer()
     {
         const ulong value = 0x21C_0BB9_01A0;
@@ -292,13 +311,14 @@ public class RowBufferHookTests
         Assert.Equal(0, hook.Build().Count);
     }
 
-    private static FakeTraceReplay BoundRow(bool hasInfoFlags = true)
+    private static FakeTraceReplay BoundRow(bool hasInfoFlags = true,
+                                            bool hasTable = true,
+                                            bool hasBindingArray = true,
+                                            int value = 3156000)
     {
-        var memory = new FakeTraceReplay().Write(Iterator, BindingTable)
-                                          .Write(Iterator + 0x80, Buffer)
+        var memory = new FakeTraceReplay().Write(Iterator + 0x80, Buffer)
                                           .Write(Iterator + 0x88, Bindings)
                                           .Write(Bindings + 0x62, (ushort)1)
-                                          .Write(Bindings + 0x70, BindingArray)
                                           .Write(BindingArray, 4)
                                           .Write(BindingArray + 0x28, 0x10ul)
                                           .Write(BindingArray + 0x30, 0x08ul)
@@ -306,9 +326,36 @@ public class RowBufferHookTests
                                           .Write(BindingArray + 0x40, 2u)
                                           .Write(BindingArray + 0x48, BindingInfo)
                                           .Write(Buffer + 0x08, (byte)0)
-                                          .Write(Buffer + 0x10, 3156000);
+                                          .Write(Buffer + 0x10, value);
+
+        if (hasTable)
+        {
+            memory.Write(Iterator, BindingTable);
+        }
+
+        if (hasBindingArray)
+        {
+            memory.Write(Bindings + 0x70, BindingArray);
+        }
 
         return hasInfoFlags ? memory.Write(BindingInfo + 0x2A, (byte)0) : memory;
+    }
+
+    private static RowBufferStore ReplayTwoRows(FakeTraceReplay second)
+    {
+        var hook = CreateHook();
+
+        var first = BoundRow();
+
+        hook.OnEntry(Call(), first);
+
+        hook.OnReturn(Call(), first);
+
+        hook.OnEntry(Call(id: 101, index: 4), second);
+
+        hook.OnReturn(Call(id: 101, index: 4), second);
+
+        return hook.Build();
     }
 
     private static FakeTraceReplay LobRow(ReadOnlySpan<byte> value, ulong length)

@@ -17,9 +17,9 @@ using SkiaSharp;
 using SkiaSharp.Views.Windows;
 using Windows.UI;
 
-namespace InternalsViewer.UI.App.Controls.FlameChart;
+namespace InternalsViewer.UI.App.Controls.Trace;
 
-public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposable
+public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDisposable
 {
     private const double MinimumRangeSteps = 20;
 
@@ -27,12 +27,12 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
     private const string MemoryModeGroup = "MemoryMode";
 
-    private const string MemoryMenuGroup = "FlameChartMemoryMenu";
+    private const string MemoryMenuGroup = "TraceTimelineMemoryMenu";
 
     public static readonly DependencyProperty TimelineProperty =
         DependencyProperty.Register(nameof(Timeline),
                                     typeof(TraceTimeline),
-                                    typeof(FlameChartControl),
+                                    typeof(TraceTimelineControl),
                                     new PropertyMetadata(null, OnTimelineChanged));
 
     public TraceTimeline? Timeline
@@ -44,7 +44,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
     public static readonly DependencyProperty FullTimelineProperty =
         DependencyProperty.Register(nameof(FullTimeline),
                                     typeof(TraceTimeline),
-                                    typeof(FlameChartControl),
+                                    typeof(TraceTimelineControl),
                                     new PropertyMetadata(null, OnFullTimelineChanged));
 
     public TraceTimeline? FullTimeline
@@ -56,7 +56,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
     public static readonly DependencyProperty AxisProperty =
         DependencyProperty.Register(nameof(Axis),
                                     typeof(TraceTimelineAxis),
-                                    typeof(FlameChartControl),
+                                    typeof(TraceTimelineControl),
                                     new PropertyMetadata(TraceTimelineAxis.Position, OnAxisChanged));
 
     public TraceTimelineAxis Axis
@@ -68,7 +68,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
     public static readonly DependencyProperty HiddenCategoriesProperty =
         DependencyProperty.Register(nameof(HiddenCategories),
                                     typeof(IReadOnlySet<string>),
-                                    typeof(FlameChartControl),
+                                    typeof(TraceTimelineControl),
                                     new PropertyMetadata(null, OnHiddenCategoriesChanged));
 
     public IReadOnlySet<string>? HiddenCategories
@@ -80,7 +80,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
     public static readonly DependencyProperty PrunedCategoriesProperty =
         DependencyProperty.Register(nameof(PrunedCategories),
                                     typeof(IReadOnlySet<string>),
-                                    typeof(FlameChartControl),
+                                    typeof(TraceTimelineControl),
                                     new PropertyMetadata(null, OnHiddenCategoriesChanged));
 
     public IReadOnlySet<string>? PrunedCategories
@@ -92,7 +92,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
     public static readonly DependencyProperty SelectedNodeProperty =
         DependencyProperty.Register(nameof(SelectedNode),
                                     typeof(CallStackNode),
-                                    typeof(FlameChartControl),
+                                    typeof(TraceTimelineControl),
                                     new PropertyMetadata(null, OnSelectedNodeChanged));
 
     public CallStackNode? SelectedNode
@@ -104,7 +104,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
     public static readonly DependencyProperty ShowMemoryProperty =
         DependencyProperty.Register(nameof(ShowMemory),
                                     typeof(bool),
-                                    typeof(FlameChartControl),
+                                    typeof(TraceTimelineControl),
                                     new PropertyMetadata(false, OnShowMemoryChanged));
 
     public bool ShowMemory
@@ -116,7 +116,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
     public static readonly DependencyProperty ShowCallStackProperty =
         DependencyProperty.Register(nameof(ShowCallStack),
                                     typeof(bool),
-                                    typeof(FlameChartControl),
+                                    typeof(TraceTimelineControl),
                                     new PropertyMetadata(false, OnShowCallStackChanged));
 
     public bool ShowCallStack
@@ -128,7 +128,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
     public static readonly DependencyProperty AutoZoomProperty =
         DependencyProperty.Register(nameof(AutoZoom),
                                     typeof(bool),
-                                    typeof(FlameChartControl),
+                                    typeof(TraceTimelineControl),
                                     new PropertyMetadata(false));
 
     public bool AutoZoom
@@ -140,7 +140,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
     public static readonly DependencyProperty GrantedMemoryProperty =
         DependencyProperty.Register(nameof(GrantedMemory),
                                     typeof(long),
-                                    typeof(FlameChartControl),
+                                    typeof(TraceTimelineControl),
                                     new PropertyMetadata(0L, OnGrantedMemoryChanged));
 
     public long GrantedMemory
@@ -151,20 +151,20 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
     public static readonly DependencyProperty MemoryModeProperty =
         DependencyProperty.Register(nameof(MemoryMode),
-                                    typeof(FlameChartMemoryMode),
-                                    typeof(FlameChartControl),
-                                    new PropertyMetadata(FlameChartMemoryMode.Allocated, OnMemoryModeChanged));
+                                    typeof(TraceTimelineMemoryMode),
+                                    typeof(TraceTimelineControl),
+                                    new PropertyMetadata(TraceTimelineMemoryMode.Allocated, OnMemoryModeChanged));
 
-    public FlameChartMemoryMode MemoryMode
+    public TraceTimelineMemoryMode MemoryMode
     {
-        get => (FlameChartMemoryMode)GetValue(MemoryModeProperty);
+        get => (TraceTimelineMemoryMode)GetValue(MemoryModeProperty);
         set => SetValue(MemoryModeProperty, value);
     }
 
     public static readonly DependencyProperty SelectedCallProperty =
         DependencyProperty.Register(nameof(SelectedCall),
                                     typeof(CallReference),
-                                    typeof(FlameChartControl),
+                                    typeof(TraceTimelineControl),
                                     new PropertyMetadata(null, OnSelectedCallChanged));
 
     public CallReference? SelectedCall
@@ -176,7 +176,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
     public static readonly DependencyProperty CurrentEventLinkProperty =
         DependencyProperty.Register(nameof(CurrentEventLink),
                                     typeof(TraceEventLink),
-                                    typeof(FlameChartControl),
+                                    typeof(TraceTimelineControl),
                                     new PropertyMetadata(null, OnCurrentEventLinkChanged));
 
     public TraceEventLink? CurrentEventLink
@@ -188,7 +188,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
     public static readonly DependencyProperty SweepBetweenEventsProperty =
         DependencyProperty.Register(nameof(SweepBetweenEvents),
                                     typeof(bool),
-                                    typeof(FlameChartControl),
+                                    typeof(TraceTimelineControl),
                                     new PropertyMetadata(false));
 
     public bool SweepBetweenEvents
@@ -215,7 +215,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
     private readonly TextBlock _toolTipText;
 
-    private readonly FlameChartPaints _paints = new();
+    private readonly TraceTimelinePaints _paints = new();
 
     private readonly SKPathBuilder _pathBuilder = new();
 
@@ -279,7 +279,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
     private int _version;
 
-    public FlameChartControl()
+    public TraceTimelineControl()
     {
         Background = new SolidColorBrush(Colors.Transparent);
 
@@ -358,13 +358,13 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
         {
             Text = "Allocated",
             GroupName = MemoryModeGroup,
-            Tag = FlameChartMemoryMode.Allocated,
+            Tag = TraceTimelineMemoryMode.Allocated,
             IsChecked = true
         };
 
         _allocatedItem.Click += OnMemoryModeClick;
 
-        _inUseItem = new RadioMenuFlyoutItem { Text = "In Use", GroupName = MemoryModeGroup, Tag = FlameChartMemoryMode.InUse };
+        _inUseItem = new RadioMenuFlyoutItem { Text = "In Use", GroupName = MemoryModeGroup, Tag = TraceTimelineMemoryMode.InUse };
 
         _inUseItem.Click += OnMemoryModeClick;
 
@@ -375,7 +375,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
         _memoryModeButton = new DropDownButton
         {
-            Content = MemoryModeLabel(FlameChartMemoryMode.Allocated),
+            Content = MemoryModeLabel(TraceTimelineMemoryMode.Allocated),
             Flyout = memoryModes,
             FontSize = 12,
             MinHeight = 0,
@@ -434,7 +434,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
     private float ContentTop => OperatorsTop + OperatorsArea;
 
-    private bool ShowsSpikes => ShowMemory && MemoryMode == FlameChartMemoryMode.Allocated;
+    private bool ShowsSpikes => ShowMemory && MemoryMode == TraceTimelineMemoryMode.Allocated;
 
     private bool ShowsMemoryBand => ShowMemory && _axis == TraceTimelineAxis.Position && _visible is { Memory.HasAllocations: true };
 
@@ -817,7 +817,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
         _verticalScrollBar.LargeChange = viewport;
         _verticalScrollBar.SmallChange = _rowHeight * 3;
         _verticalScrollBar.Value = _scrollY;
-        _verticalScrollBar.Visibility = _contentHeight > viewport ? Visibility.Visible : Visibility.Collapsed;
+        _verticalScrollBar.Visibility = ShowsFlameChart && _contentHeight > viewport ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void OnHorizontalScroll(object sender, ScrollEventArgs e) => ScrollViewTo(FullStart + e.NewValue);
@@ -1021,7 +1021,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
     private void OnMemoryModeClick(object sender, RoutedEventArgs e)
     {
-        if (sender is RadioMenuFlyoutItem { Tag: FlameChartMemoryMode mode })
+        if (sender is RadioMenuFlyoutItem { Tag: TraceTimelineMemoryMode mode })
         {
             MemoryMode = mode;
         }
@@ -1029,11 +1029,11 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
     private MenuFlyoutSubItem CreateMemoryMenu()
         => MenuItems.SubMenu("Memory",
-                             MemoryItem("Allocated", FlameChartMemoryMode.Allocated),
-                             MemoryItem("In Use", FlameChartMemoryMode.InUse),
+                             MemoryItem("Allocated", TraceTimelineMemoryMode.Allocated),
+                             MemoryItem("In Use", TraceTimelineMemoryMode.InUse),
                              MemoryItem("None", null));
 
-    private RadioMenuFlyoutItem MemoryItem(string text, FlameChartMemoryMode? mode)
+    private RadioMenuFlyoutItem MemoryItem(string text, TraceTimelineMemoryMode? mode)
     {
         var item = new RadioMenuFlyoutItem
         {
@@ -1047,7 +1047,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
         return item;
     }
 
-    private void SetMemory(FlameChartMemoryMode? mode)
+    private void SetMemory(TraceTimelineMemoryMode? mode)
     {
         if (mode is { } shown)
         {
@@ -1057,8 +1057,8 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
         ShowMemory = mode is not null;
     }
 
-    private static string MemoryModeLabel(FlameChartMemoryMode mode)
-        => mode == FlameChartMemoryMode.InUse ? "Memory: In Use" : "Memory: Allocated";
+    private static string MemoryModeLabel(TraceTimelineMemoryMode mode)
+        => mode == TraceTimelineMemoryMode.InUse ? "Memory: In Use" : "Memory: Allocated";
 
     private bool[]? PrunedNodes(TraceTimeline timeline)
     {
@@ -1154,7 +1154,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
     private static void OnTimelineChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        var control = (FlameChartControl)d;
+        var control = (TraceTimelineControl)d;
 
         control._timeline = e.NewValue as TraceTimeline;
 
@@ -1165,7 +1165,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
     private static void OnFullTimelineChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        var control = (FlameChartControl)d;
+        var control = (TraceTimelineControl)d;
 
         control._markedCalls.Clear();
 
@@ -1176,7 +1176,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
     private static void OnAxisChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        var control = (FlameChartControl)d;
+        var control = (TraceTimelineControl)d;
 
         control._axis = (TraceTimelineAxis)e.NewValue;
 
@@ -1199,7 +1199,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
     private static void OnHiddenCategoriesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        var control = (FlameChartControl)d;
+        var control = (TraceTimelineControl)d;
 
         control.HideToolTip();
 
@@ -1210,7 +1210,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
     private static void OnSelectedNodeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        var control = (FlameChartControl)d;
+        var control = (TraceTimelineControl)d;
 
         control._highlightedNode = e.NewValue as CallStackNode;
 
@@ -1221,7 +1221,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
     private static void OnShowMemoryChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        var control = (FlameChartControl)d;
+        var control = (TraceTimelineControl)d;
 
         control.HideToolTip();
 
@@ -1231,22 +1231,22 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
     }
 
     private static void OnGrantedMemoryChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((FlameChartControl)d).Redraw();
+        => ((TraceTimelineControl)d).Redraw();
 
     private static void OnShowCallStackChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((FlameChartControl)d).Redraw();
+        => ((TraceTimelineControl)d).Redraw();
 
     private static void OnMemoryModeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        var control = (FlameChartControl)d;
+        var control = (TraceTimelineControl)d;
 
-        var mode = (FlameChartMemoryMode)e.NewValue;
+        var mode = (TraceTimelineMemoryMode)e.NewValue;
 
         control._memoryModeButton.Content = MemoryModeLabel(mode);
 
-        control._allocatedItem.IsChecked = mode == FlameChartMemoryMode.Allocated;
+        control._allocatedItem.IsChecked = mode == TraceTimelineMemoryMode.Allocated;
 
-        control._inUseItem.IsChecked = mode == FlameChartMemoryMode.InUse;
+        control._inUseItem.IsChecked = mode == TraceTimelineMemoryMode.InUse;
 
         control.HideToolTip();
 
@@ -1259,7 +1259,7 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
 
     private static void OnSelectedCallChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        var control = (FlameChartControl)d;
+        var control = (TraceTimelineControl)d;
 
         var reference = e.NewValue as CallReference;
 
@@ -1294,5 +1294,5 @@ public sealed partial class FlameChartControl : Grid, IPlayheadChart, IDisposabl
     }
 
     private static void OnCurrentEventLinkChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((FlameChartControl)d).FollowLink(e.NewValue as TraceEventLink);
+        => ((TraceTimelineControl)d).FollowLink(e.NewValue as TraceEventLink);
 }

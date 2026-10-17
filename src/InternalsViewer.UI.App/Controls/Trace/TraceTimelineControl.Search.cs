@@ -6,16 +6,16 @@ using InternalsViewer.Query.FullTrace.Timeline;
 using Microsoft.UI.Xaml;
 using SkiaSharp;
 
-namespace InternalsViewer.UI.App.Controls.FlameChart;
+namespace InternalsViewer.UI.App.Controls.Trace;
 
-public sealed partial class FlameChartControl
+public sealed partial class TraceTimelineControl
 {
     private const byte SearchDimAlpha = 110;
 
     public static readonly DependencyProperty SearchTextProperty =
         DependencyProperty.Register(nameof(SearchText),
                                     typeof(string),
-                                    typeof(FlameChartControl),
+                                    typeof(TraceTimelineControl),
                                     new PropertyMetadata(null, OnSearchTextChanged));
 
     public string? SearchText
@@ -25,7 +25,7 @@ public sealed partial class FlameChartControl
     }
 
     public static readonly DependencyProperty HasSearchMatchesProperty =
-        DependencyProperty.Register(nameof(HasSearchMatches), typeof(bool), typeof(FlameChartControl), new PropertyMetadata(false));
+        DependencyProperty.Register(nameof(HasSearchMatches), typeof(bool), typeof(TraceTimelineControl), new PropertyMetadata(false));
 
     public bool HasSearchMatches
     {
@@ -122,7 +122,7 @@ public sealed partial class FlameChartControl
 
     private static void OnSearchTextChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        var control = (FlameChartControl)d;
+        var control = (TraceTimelineControl)d;
 
         control.FindSearchMatches();
 

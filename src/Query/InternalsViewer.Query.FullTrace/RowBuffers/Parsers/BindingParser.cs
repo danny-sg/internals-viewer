@@ -40,6 +40,8 @@ internal sealed class BindingParser
 
     private Dictionary<ulong, BindingSet> BindingSets { get; } = [];
 
+    private Dictionary<ulong, BindingSet> KnownSets { get; } = [];
+
     public BindingSet? Parse(ITraceReplay replay, ulong bindings)
     {
         if (!replay.TryRead(bindings + LayoutCountOffset, out ushort count)
@@ -48,13 +50,13 @@ internal sealed class BindingParser
             || count > MaximumBindings
             || array < ColumnValueParser.SmallestAddress)
         {
-            return null;
+            return KnownSets.GetValueOrDefault(bindings);
         }
 
         if (!replay.TryRead(array + LayoutValueOffset, out ulong firstValueOffset)
             || !replay.TryRead(array + LayoutFlagsOffset, out uint firstFlags))
         {
-            return null;
+            return KnownSets.GetValueOrDefault(bindings);
         }
 
         if (BindingSets.TryGetValue(array, out var set)
@@ -62,6 +64,8 @@ internal sealed class BindingParser
             && set.FirstValueOffset == firstValueOffset
             && set.FirstFlags == firstFlags)
         {
+            KnownSets[bindings] = set;
+
             return set;
         }
 
@@ -73,6 +77,8 @@ internal sealed class BindingParser
         if (set.Columns.All(c => c.Unreadable != RowBufferColumnFlags.BindingUnreadable))
         {
             BindingSets[array] = set;
+
+            KnownSets[bindings] = set;
         }
 
         return set;

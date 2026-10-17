@@ -5,9 +5,9 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 
-public sealed partial class FlameChartCallStackView : UserControl, IDisposable
+public sealed partial class TraceTimelineCallStackView : UserControl, IDisposable
 {
-    public FlameChartCallStackView()
+    public TraceTimelineCallStackView()
     {
         InitializeComponent();
     }
@@ -18,7 +18,7 @@ public sealed partial class FlameChartCallStackView : UserControl, IDisposable
 
     public void Dispose() => Stack.Dispose();
 
-    private void OnCloseClick(object sender, RoutedEventArgs e) => Settings.FlameChartShowCallStack = false;
+    private void OnCloseClick(object sender, RoutedEventArgs e) => Settings.TraceTimelineShowCallStack = false;
 
     private void OnStepBackClick(object sender, RoutedEventArgs e) => ViewModel?.Step(forward: false);
 

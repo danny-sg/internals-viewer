@@ -2,9 +2,9 @@ using System;
 using System.Diagnostics;
 using Microsoft.UI.Xaml;
 
-namespace InternalsViewer.UI.App.Controls.FlameChart;
+namespace InternalsViewer.UI.App.Controls.Trace;
 
-public sealed partial class FlameChartControl
+public sealed partial class TraceTimelineControl
 {
     private const double PlayTickMs = 16;
 

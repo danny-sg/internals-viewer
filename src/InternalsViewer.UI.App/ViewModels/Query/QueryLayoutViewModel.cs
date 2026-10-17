@@ -23,7 +23,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     private const string LegacyCallTreeKey = "Callstack";
     private const string InstructionsKey = "Instructions";
     private const string TimelineKey = "Timeline";
-    private const string FlameChartKey = "FlameChart";
+    private const string TraceTimelineKey = "FlameChart";
     private const string CustomHooksKey = "CustomHooks";
 
     private readonly Dictionary<string, DocumentViewModel> _documentsByKey;
@@ -65,7 +65,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     private bool _isTimelineVisible = true;
 
     [ObservableProperty]
-    private bool _isFlameChartVisible;
+    private bool _isTraceTimelineVisible;
 
     [ObservableProperty]
     private bool _isCustomHooksVisible;
@@ -121,10 +121,10 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
                                                                            keepAlive: true,
                                                                            key: TimelineKey),
 
-            [FlameChartKey] = DocumentViewModel.Create<QueryFlameChartTabView>("Flame Chart",
+            [TraceTimelineKey] = DocumentViewModel.Create<QueryTraceTimelineTabView>("Trace Timeline",
                                                                                content,
                                                                                keepAlive: true,
-                                                                               key: FlameChartKey),
+                                                                               key: TraceTimelineKey),
 
             [CustomHooksKey] = DocumentViewModel.Create<QueryCustomHooksTabView>("Custom Hooks",
                                                                                  content,
@@ -200,14 +200,14 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         {
             Dock.SetRoot(DefaultRoot(TimelineKey));
 
-            Dock.ShowBeside(_documentsByKey[FlameChartKey], _documentsByKey[TimelineKey], select: false);
+            Dock.ShowBeside(_documentsByKey[TraceTimelineKey], _documentsByKey[TimelineKey], select: false);
 
             return;
         }
 
         _hiddenForTrace.Add(_documentsByKey[TimelineKey]);
 
-        Dock.SetRoot(DefaultRoot(FlameChartKey));
+        Dock.SetRoot(DefaultRoot(TraceTimelineKey));
     }
 
     public bool TryGetDocument(string key, out DocumentViewModel document)
@@ -231,11 +231,11 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         Show(_documentsByKey[CallTreeKey]);
     }
 
-    public void ShowFlameChart()
+    public void ShowTraceTimeline()
     {
-        IsFlameChartVisible = true;
+        IsTraceTimelineVisible = true;
 
-        Show(_documentsByKey[FlameChartKey]);
+        Show(_documentsByKey[TraceTimelineKey]);
     }
 
     public void ShowCustomHooks()
@@ -294,8 +294,8 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     partial void OnIsTimelineVisibleChanged(bool value)
         => SetDocumentVisible(_documentsByKey[TimelineKey], value);
 
-    partial void OnIsFlameChartVisibleChanged(bool value)
-        => SetDocumentVisible(_documentsByKey[FlameChartKey], value);
+    partial void OnIsTraceTimelineVisibleChanged(bool value)
+        => SetDocumentVisible(_documentsByKey[TraceTimelineKey], value);
 
     partial void OnIsCustomHooksVisibleChanged(bool value)
         => SetDocumentVisible(_documentsByKey[CustomHooksKey], value);
@@ -311,7 +311,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
         RestoreEventViews();
 
-        Dock.Close(_documentsByKey[FlameChartKey]);
+        Dock.Close(_documentsByKey[TraceTimelineKey]);
 
         _rootBeforeTrace = null;
     }
@@ -345,11 +345,11 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         {
             var replacesTimeline = !CanShowEventViews && ReferenceEquals(group.SelectedDocument, timeline);
 
-            Dock.ShowBeside(_documentsByKey[FlameChartKey], timeline, select: replacesTimeline);
+            Dock.ShowBeside(_documentsByKey[TraceTimelineKey], timeline, select: replacesTimeline);
         }
         else
         {
-            Dock.DockBottom(_documentsByKey[FlameChartKey]);
+            Dock.DockBottom(_documentsByKey[TraceTimelineKey]);
         }
 
         if (!CanShowEventViews)
@@ -364,7 +364,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         {
             if (ReferenceEquals(document, _documentsByKey[TimelineKey]))
             {
-                Dock.ShowBeside(document, _documentsByKey[FlameChartKey]);
+                Dock.ShowBeside(document, _documentsByKey[TraceTimelineKey]);
             }
             else
             {
@@ -404,7 +404,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
             return;
         }
 
-        if (isVisible && ReferenceEquals(document, _documentsByKey[FlameChartKey]))
+        if (isVisible && ReferenceEquals(document, _documentsByKey[TraceTimelineKey]))
         {
             if (IsTrace)
             {
@@ -439,7 +439,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         IsCallTreeVisible = Dock.Contains(_documentsByKey[CallTreeKey]);
         IsInstructionsVisible = Dock.Contains(_documentsByKey[InstructionsKey]);
         IsTimelineVisible = Dock.Contains(_documentsByKey[TimelineKey]);
-        IsFlameChartVisible = Dock.Contains(_documentsByKey[FlameChartKey]);
+        IsTraceTimelineVisible = Dock.Contains(_documentsByKey[TraceTimelineKey]);
         IsCustomHooksVisible = Dock.Contains(_documentsByKey[CustomHooksKey]);
 
         _suppressVisibilitySync = false;

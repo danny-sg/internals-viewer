@@ -258,16 +258,16 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private bool _isSqlHistoryVisible;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowFlameChartHint))]
+    [NotifyPropertyChangedFor(nameof(ShowTraceTimelineHint))]
     [NotifyCanExecuteChangedFor(nameof(ExportRunCommand))]
     private bool _isTraceLoading;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowFlameChartHint))]
-    private TraceTimeline? _flameChart;
+    [NotifyPropertyChangedFor(nameof(ShowTraceTimelineHint))]
+    private TraceTimeline? _traceTimeline;
 
     [ObservableProperty]
-    private TraceTimeline? _fullFlameChart;
+    private TraceTimeline? _fullTraceTimeline;
 
     [ObservableProperty]
     private TraceRowBufferMarks? _rowBufferMarks;
@@ -642,7 +642,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    public bool ShowFlameChartHint => FlameChart is null && !IsTraceLoading;
+    public bool ShowTraceTimelineHint => TraceTimeline is null && !IsTraceLoading;
 
     private IBufferPoolInfoProvider BufferPoolInfoProvider { get; }
 
@@ -766,7 +766,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public void SetCurrentEvent(EngineEvent? engineEvent)
     {
-        if (engineEvent is not null && FlameChart?.EventLinkOf(engineEvent) is { } link)
+        if (engineEvent is not null && TraceTimeline?.EventLinkOf(engineEvent) is { } link)
         {
             CurrentEventLink = link;
         }
@@ -853,7 +853,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         SetCurrentEvent(value);
     }
 
-    partial void OnFlameChartChanged(TraceTimeline? value) => CurrentEventLink = null;
+    partial void OnTraceTimelineChanged(TraceTimeline? value) => CurrentEventLink = null;
 
     partial void OnCallStackChanged(CallStackTree? value)
     {
@@ -1029,7 +1029,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                  && Trace is { } trace
                  && ReferenceEquals(trace.CallStack, CallStack))
         {
-            FlameChart = ApplyCrop(trace);
+            TraceTimeline = ApplyCrop(trace);
         }
     }
 
@@ -1083,9 +1083,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         CancelTraceLoad();
 
-        FlameChart = null;
+        TraceTimeline = null;
 
-        FullFlameChart = null;
+        FullTraceTimeline = null;
 
         RowBufferMarks = null;
 
@@ -2277,7 +2277,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     {
         Trace = result;
 
-        var flameChart = ApplyCrop(result);
+        var traceTimeline = ApplyCrop(result);
 
         CallStack = result.CallStack;
 
@@ -2301,7 +2301,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                             result.Batches,
                             batchDecoder);
 
-        FullFlameChart = result.Timeline;
+        FullTraceTimeline = result.Timeline;
 
         RowBufferMarks = result.RowBufferMarks;
 
@@ -2309,7 +2309,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         OutputColumnNames = GetOutputColumnNames(result.RowReturnMarks.OutputRows);
 
-        FlameChart = flameChart;
+        TraceTimeline = traceTimeline;
 
         ExecutionPlans = [.. ExecutionPlans];
     }
@@ -2438,9 +2438,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         LastRun = null;
 
-        FlameChart = null;
+        TraceTimeline = null;
 
-        FullFlameChart = null;
+        FullTraceTimeline = null;
 
         RowBufferMarks = null;
 

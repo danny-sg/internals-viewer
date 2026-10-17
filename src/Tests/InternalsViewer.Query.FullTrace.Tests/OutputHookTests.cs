@@ -32,6 +32,8 @@ public class OutputHookTests
 
     private const ulong OtherTable = 0x7400;
 
+    private const ulong RedirectTable = 0x7500;
+
     private const ulong Executor = 0x1F4_0000_1000;
 
     private const ulong Instruction = 0x1F4_0000_2000;
@@ -57,6 +59,12 @@ public class OutputHookTests
     private const ulong SortIterator = 0x1F4_0000_A000;
 
     private const ulong SortBuffer = 0x1F4_0000_B000;
+
+    private const ulong BatchHelper = 0x1F4_0000_C000;
+
+    private const ulong HelperRow = 0x1F4_0000_C800;
+
+    private const ulong RedirectValue = 0x1F4_0000_5400;
 
     private const ulong Rowset = 0x1F4_0000_8800;
 
@@ -177,6 +185,31 @@ public class OutputHookTests
     }
 
     [Fact]
+    public void A_Column_Redirected_To_A_Batch_Row_Is_Owned_By_The_Batch_Helper()
+    {
+        var replay = CreateReplay().Write(Values + 0x08, RedirectValue)
+                                   .Write(RedirectValue, RedirectTable)
+                                   .Write(RedirectValue + 0x08, 1)
+                                   .Write(RedirectValue + 0x10, BatchHelper)
+                                   .Write(BatchHelper + 0x78, HelperRow);
+
+        var hook = CreateHook();
+
+        Prepare(hook, replay);
+
+        hook.OnEntry(Call(Evaluate, 10, [Context, Executor]), replay);
+
+        ReadColumn(hook, replay, 11, 1);
+
+        hook.OnReturn(Call(Evaluate, 10, [Context, Executor]), replay);
+
+        var column = Assert.Single(Assert.Single(hook.Build()).Columns);
+
+        Assert.Equal((OutputSourceType.Buffer, HelperRow + 0x20, BatchHelper, 1),
+                     (column.Type, column.Address, column.Owner, column.Ordinal));
+    }
+
+    [Fact]
     public void An_Evaluation_Of_Anything_But_The_Output_Row_Is_Ignored()
         => Assert.Empty(Capture(CreateReplay().Write(OutputRowValue, OtherTable)));
 
@@ -236,7 +269,8 @@ public class OutputHookTests
                                        [OutputRowTable] = OutputValueClass.OutputRow,
                                        [SwitchTable] = OutputValueClass.HashSwitch,
                                        [HashTable] = OutputValueClass.Hash,
-                                       [ScanTable] = OutputValueClass.Table
+                                       [ScanTable] = OutputValueClass.Table,
+                                       [RedirectTable] = OutputValueClass.BatchRedirect
                                    }));
 
     private static Dictionary<ulong, OutputFunctionType> CreateFunctions()

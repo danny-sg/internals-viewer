@@ -11,9 +11,9 @@ using Microsoft.UI.Xaml.Input;
 using Windows.Foundation;
 using Windows.System;
 
-namespace InternalsViewer.UI.App.Controls.FlameChart;
+namespace InternalsViewer.UI.App.Controls.Trace;
 
-public sealed partial class FlameChartControl
+public sealed partial class TraceTimelineControl
 {
     private const double DragThreshold = 4;
 
@@ -283,9 +283,11 @@ public sealed partial class FlameChartControl
                          ? InputSystemCursorShape.SizeNorthSouth
                          : found is not null
                              ? InputSystemCursorShape.SizeAll
-                             : hoverBand is not null || hoverReturns is not null || hoverOutputRow is not null
-                                 ? InputSystemCursorShape.Hand
-                                 : InputSystemCursorShape.Arrow);
+                             : IsOnOutputRows(position)
+                                 ? InputSystemCursorShape.Cross
+                                 : hoverBand is not null || hoverReturns is not null
+                                     ? InputSystemCursorShape.Hand
+                                     : InputSystemCursorShape.Arrow);
 
         FlameHit? hit;
 
@@ -379,21 +381,9 @@ public sealed partial class FlameChartControl
 
             ZoomToSelection();
         }
-        else if (_isPressed && !_isDragging && _pressedOperators && MarkBandAt(position) is { } band)
-        {
-            OpenNearestMark(band, position);
-        }
-        else if (_isPressed && !_isDragging && _pressedOperators && GetOutputRow(position) is { } outputRow)
-        {
-            MovePlayheadToOutputRow(outputRow);
-        }
-        else if (_isPressed && !_isDragging && _pressedOperators && ReturnStripAt(position) is { } strip)
-        {
-            OpenNearestReturn(strip, position);
-        }
         else if (_isPressed && !_isDragging && _pressedOperators)
         {
-            ClickOperator(OperatorAt(position));
+            ClickOperators(position);
         }
         else if (_isPressed && !_isDragging && _isShiftPressed)
         {

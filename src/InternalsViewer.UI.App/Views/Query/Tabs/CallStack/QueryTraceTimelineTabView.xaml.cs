@@ -4,7 +4,7 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.Docking;
-using InternalsViewer.UI.App.Controls.FlameChart;
+using InternalsViewer.UI.App.Controls.Trace;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Query;
@@ -16,7 +16,7 @@ using Windows.System;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 
-public sealed partial class QueryFlameChartTabView : UserControl, IDocumentCommands, IDisposable
+public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCommands, IDisposable
 {
     private const string StepBackGlyph = "";
 
@@ -32,7 +32,7 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
     private const double CommandSpacing = 8;
 
-    private const string ScaleGroup = "FlameChartScale";
+    private const string ScaleGroup = "TraceTimelineScale";
 
     private ToggleButton? _searchToggle;
 
@@ -46,29 +46,29 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
     private PlayheadStepMode _stepMode = PlayheadStepMode.Call;
 
-    public QueryFlameChartTabView()
+    public QueryTraceTimelineTabView()
     {
         InitializeComponent();
 
         DataContextChanged += (_, _) => OnViewModelChanged();
 
-        FlameChart.CallSelected += OnCallSelected;
+        TraceTimeline.CallSelected += OnCallSelected;
 
-        FlameChart.SelectionCleared += OnSelectionCleared;
+        TraceTimeline.SelectionCleared += OnSelectionCleared;
 
-        FlameChart.CallTreeOpenRequested += OnCallTreeOpenRequested;
+        TraceTimeline.CallTreeOpenRequested += OnCallTreeOpenRequested;
 
-        FlameChart.RowBufferOpenRequested += OnRowBufferOpenRequested;
+        TraceTimeline.RowBufferOpenRequested += OnRowBufferOpenRequested;
 
-        FlameChart.CallStackOpenRequested += OnCallStackOpenRequested;
+        TraceTimeline.CallStackOpenRequested += OnCallStackOpenRequested;
 
-        FlameChart.PlanNodeSelected += OnPlanNodeSelected;
+        TraceTimeline.PlanNodeSelected += OnPlanNodeSelected;
 
-        FlameChart.ExecutionPlanRequested += OnExecutionPlanRequested;
+        TraceTimeline.ExecutionPlanRequested += OnExecutionPlanRequested;
 
-        FlameChart.PlayStateChanged += OnPlayStateChanged;
+        TraceTimeline.PlayStateChanged += OnPlayStateChanged;
 
-        FlameChart.PlayheadChanged += OnPlayheadChanged;
+        TraceTimeline.PlayheadChanged += OnPlayheadChanged;
 
         SearchBar.SearchTextChanged += OnSearchTextChanged;
 
@@ -84,20 +84,20 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
     public FrameworkElement CreateCommands()
     {
         _memoryToggle = TabCommands.Toggle(TabCommands.Label("Memory"),
-                                           Settings.FlameChartShowMemory,
+                                           Settings.TraceTimelineShowMemory,
                                            "Display allocation/in-use memory",
-                                           (sender, _) => Settings.FlameChartShowMemory = TabCommands.IsChecked(sender));
+                                           (sender, _) => Settings.TraceTimelineShowMemory = TabCommands.IsChecked(sender));
 
         _callStackToggle = TabCommands.Toggle(TabCommands.Label("Call Stack"),
-                                              Settings.FlameChartShowCallStack,
+                                              Settings.TraceTimelineShowCallStack,
                                               "Show the calls in progress at the playhead, with the values they were passed",
-                                              (sender, _) => Settings.FlameChartShowCallStack = TabCommands.IsChecked(sender));
+                                              (sender, _) => Settings.TraceTimelineShowCallStack = TabCommands.IsChecked(sender));
 
-        _callStackToggle.IsEnabled = FlameChart.HasCallStack;
+        _callStackToggle.IsEnabled = TraceTimeline.HasCallStack;
 
-        _playButton = TabCommands.Button(TabCommands.Glyph(FlameChart.IsPlaying ? PauseGlyph : PlayGlyph),
-                                         FlameChart.IsPlaying ? "Pause" : "Play",
-                                         (_, _) => FlameChart.TogglePlay());
+        _playButton = TabCommands.Button(TabCommands.Glyph(TraceTimeline.IsPlaying ? PauseGlyph : PlayGlyph),
+                                         TraceTimeline.IsPlaying ? "Pause" : "Play",
+                                         (_, _) => TraceTimeline.TogglePlay());
 
         _searchToggle = TabCommands.Toggle(TabCommands.Glyph(SearchGlyph),
                                            false,
@@ -128,23 +128,23 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
     {
         Bindings.StopTracking();
 
-        FlameChart.CallSelected -= OnCallSelected;
+        TraceTimeline.CallSelected -= OnCallSelected;
 
-        FlameChart.SelectionCleared -= OnSelectionCleared;
+        TraceTimeline.SelectionCleared -= OnSelectionCleared;
 
-        FlameChart.CallTreeOpenRequested -= OnCallTreeOpenRequested;
+        TraceTimeline.CallTreeOpenRequested -= OnCallTreeOpenRequested;
 
-        FlameChart.RowBufferOpenRequested -= OnRowBufferOpenRequested;
+        TraceTimeline.RowBufferOpenRequested -= OnRowBufferOpenRequested;
 
-        FlameChart.CallStackOpenRequested -= OnCallStackOpenRequested;
+        TraceTimeline.CallStackOpenRequested -= OnCallStackOpenRequested;
 
-        FlameChart.PlanNodeSelected -= OnPlanNodeSelected;
+        TraceTimeline.PlanNodeSelected -= OnPlanNodeSelected;
 
-        FlameChart.ExecutionPlanRequested -= OnExecutionPlanRequested;
+        TraceTimeline.ExecutionPlanRequested -= OnExecutionPlanRequested;
 
-        FlameChart.PlayStateChanged -= OnPlayStateChanged;
+        TraceTimeline.PlayStateChanged -= OnPlayStateChanged;
 
-        FlameChart.PlayheadChanged -= OnPlayheadChanged;
+        TraceTimeline.PlayheadChanged -= OnPlayheadChanged;
 
         SearchBar.SearchTextChanged -= OnSearchTextChanged;
 
@@ -152,7 +152,7 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
         AttachStack(null);
 
-        FlameChart.Dispose();
+        TraceTimeline.Dispose();
 
         StackView.Dispose();
     }
@@ -171,14 +171,14 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
             return;
         }
 
-        if (Stack is { } previous && ReferenceEquals(previous.Chart, FlameChart))
+        if (Stack is { } previous && ReferenceEquals(previous.Chart, TraceTimeline))
         {
             previous.Chart = null;
         }
 
         Stack = stack;
 
-        Stack?.Chart = FlameChart;
+        Stack?.Chart = TraceTimeline;
     }
 
     private MenuFlyout CreateViewMenu()
@@ -193,13 +193,19 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
                                   TraceTimelineAxis.Instructions,
                                   "Width is the instructions each call executed, so it shows how long each call took"));
 
-        var operators = MenuItems.Toggle("Operators", FlameChart.ShowOperators, isChecked => FlameChart.ShowOperators = isChecked);
+        var operators = MenuItems.Toggle("Operators", TraceTimeline.ShowOperators, isChecked => TraceTimeline.ShowOperators = isChecked);
 
         var iteratorCalls = MenuItems.Toggle("Iterator Calls",
-                                             FlameChart.ShowIteratorCalls,
-                                             isChecked => FlameChart.ShowIteratorCalls = isChecked);
+                                             TraceTimeline.ShowIteratorCalls,
+                                             isChecked => TraceTimeline.ShowIteratorCalls = isChecked);
 
-        var rowBuffers = MenuItems.Toggle("Row Buffers", FlameChart.ShowRowBuffers, isChecked => FlameChart.ShowRowBuffers = isChecked);
+        var rowBuffers = MenuItems.Toggle("Row Buffers",
+                                          TraceTimeline.ShowRowBuffers,
+                                          isChecked => TraceTimeline.ShowRowBuffers = isChecked);
+
+        var flameChart = MenuItems.Toggle("Flame Chart",
+                                          TraceTimeline.ShowFlameChart,
+                                          isChecked => TraceTimeline.ShowFlameChart = isChecked);
 
         var menu = new MenuFlyout();
 
@@ -211,17 +217,21 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
         menu.Items.Add(rowBuffers);
 
+        menu.Items.Add(flameChart);
+
         menu.Items.Add(new MenuFlyoutSeparator());
 
-        menu.Items.Add(MenuItems.Toggle("Auto-Zoom", FlameChart.AutoZoom, isChecked => FlameChart.AutoZoom = isChecked));
+        menu.Items.Add(MenuItems.Toggle("Auto-Zoom", TraceTimeline.AutoZoom, isChecked => TraceTimeline.AutoZoom = isChecked));
 
         menu.Opening += (_, _) =>
         {
-            operators.IsChecked = FlameChart.ShowOperators;
+            operators.IsChecked = TraceTimeline.ShowOperators;
 
-            iteratorCalls.IsChecked = FlameChart.ShowIteratorCalls;
+            iteratorCalls.IsChecked = TraceTimeline.ShowIteratorCalls;
 
-            rowBuffers.IsChecked = FlameChart.ShowRowBuffers;
+            rowBuffers.IsChecked = TraceTimeline.ShowRowBuffers;
+
+            flameChart.IsChecked = TraceTimeline.ShowFlameChart;
         };
 
         return menu;
@@ -229,7 +239,7 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
 
     private RadioMenuFlyoutItem ScaleItem(string text, TraceTimelineAxis axis, string toolTip)
     {
-        var item = new RadioMenuFlyoutItem { Text = text, GroupName = ScaleGroup, Tag = axis, IsChecked = FlameChart.Axis == axis };
+        var item = new RadioMenuFlyoutItem { Text = text, GroupName = ScaleGroup, Tag = axis, IsChecked = TraceTimeline.Axis == axis };
 
         ToolTipService.SetToolTip(item, toolTip);
 
@@ -242,21 +252,21 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
     {
         if (sender is RadioMenuFlyoutItem { Tag: TraceTimelineAxis axis })
         {
-            FlameChart.Axis = axis;
+            TraceTimeline.Axis = axis;
         }
     }
 
     private void OnPlayheadChanged()
     {
-        _callStackToggle?.IsEnabled = FlameChart.HasCallStack;
+        _callStackToggle?.IsEnabled = TraceTimeline.HasCallStack;
 
-        var isVisible = Settings.FlameChartShowCallStack;
+        var isVisible = Settings.TraceTimelineShowCallStack;
 
-        SetStackVisible(isVisible && FlameChart.HasCallStack);
+        SetStackVisible(isVisible && TraceTimeline.HasCallStack);
 
         if (isVisible)
         {
-            ViewModel?.PlayheadStack.SetStack(FlameChart.GetCallStack());
+            ViewModel?.PlayheadStack.SetStack(TraceTimeline.GetCallStack());
         }
     }
 
@@ -297,18 +307,18 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
     {
         Stack?.ClearSelection();
 
-        FlameChart.StepPlayhead(forward, _stepMode);
+        TraceTimeline.StepPlayhead(forward, _stepMode);
     }
 
-    private void OnPreviousMatchClick(object sender, RoutedEventArgs e) => FlameChart.StepSearch(forward: false);
+    private void OnPreviousMatchClick(object sender, RoutedEventArgs e) => TraceTimeline.StepSearch(forward: false);
 
-    private void OnNextMatchClick(object sender, RoutedEventArgs e) => FlameChart.StepSearch(forward: true);
+    private void OnNextMatchClick(object sender, RoutedEventArgs e) => TraceTimeline.StepSearch(forward: true);
 
     private void SetSearchVisible(bool isVisible)
     {
         SearchRow.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
 
-        FlameChart.SearchText = isVisible ? SearchBar.Text : null;
+        TraceTimeline.SearchText = isVisible ? SearchBar.Text : null;
 
         _searchToggle?.IsChecked = isVisible;
 
@@ -318,7 +328,7 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
         }
     }
 
-    private void OnSearchTextChanged(string text) => FlameChart.SearchText = text;
+    private void OnSearchTextChanged(string text) => TraceTimeline.SearchText = text;
 
     private void OnSearchKeyDown(object sender, KeyRoutedEventArgs e)
     {
@@ -342,7 +352,7 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
     {
         Stack?.ClearSelection();
 
-        Settings.FlameChartShowCallStack = true;
+        Settings.TraceTimelineShowCallStack = true;
     }
 
     private void OnSelectionCleared()
@@ -375,12 +385,12 @@ public sealed partial class QueryFlameChartTabView : UserControl, IDocumentComma
     {
         switch (e.PropertyName)
         {
-            case nameof(SettingsViewModel.FlameChartShowMemory):
-                _memoryToggle?.IsChecked = Settings.FlameChartShowMemory;
+            case nameof(SettingsViewModel.TraceTimelineShowMemory):
+                _memoryToggle?.IsChecked = Settings.TraceTimelineShowMemory;
                 break;
 
-            case nameof(SettingsViewModel.FlameChartShowCallStack):
-                _callStackToggle?.IsChecked = Settings.FlameChartShowCallStack;
+            case nameof(SettingsViewModel.TraceTimelineShowCallStack):
+                _callStackToggle?.IsChecked = Settings.TraceTimelineShowCallStack;
 
                 OnPlayheadChanged();
                 break;

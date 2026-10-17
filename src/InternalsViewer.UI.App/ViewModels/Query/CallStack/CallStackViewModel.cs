@@ -73,7 +73,7 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
     {
         Opened = (node, call);
 
-        TraceTimeline?[] timelines = [Query.FlameChart, Query.FullFlameChart];
+        TraceTimeline?[] timelines = [Query.TraceTimeline, Query.FullTraceTimeline];
 
         var stacks = await Task.Run(() => GetStackAt(timelines, node, call));
 
@@ -265,7 +265,7 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
 
     private async Task<IReadOnlyList<PlayheadThreadRow>> BuildAsync(IReadOnlyList<TraceThreadStack> stacks)
     {
-        var timeline = Query.FlameChart;
+        var timeline = Query.TraceTimeline;
 
         var origin = (ulong)Math.Floor(timeline?.StartOf(TraceTimelineAxis.Position) ?? 0);
 

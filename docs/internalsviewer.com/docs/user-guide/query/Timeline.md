@@ -18,7 +18,7 @@ The Log and Columnstore bands only appear when the query produced those events, 
 
 Hovering over the timeline shows a tooltip describing the event under the pointer.
 
-A query recorded with [Full Trace](/docs/user-guide/query/FullTrace) has no timed events, so while **Record Full Trace** is on the Timeline is hidden and the [Flame Chart](/docs/user-guide/query/FlameChart) takes its place. With **Record Events** on as well, the Timeline stays, with the Flame Chart beside it, and its current event moves the Flame Chart's playhead to where that event happened in the recording.
+A query recorded with [Full Trace](/docs/user-guide/query/FullTrace) has no timed events, so while **Record Full Trace** is on the Timeline is hidden and the [Trace Timeline](/docs/user-guide/query/TraceTimeline) takes its place. With **Record Events** on as well, the Timeline stays, with the Trace Timeline beside it, and its current event moves the Trace Timeline's playhead to where that event happened in the recording.
 
 ## Playback
 

@@ -2,9 +2,9 @@ using System;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using SkiaSharp;
 
-namespace InternalsViewer.UI.App.Controls.FlameChart;
+namespace InternalsViewer.UI.App.Controls.Trace;
 
-public sealed partial class FlameChartControl
+public sealed partial class TraceTimelineControl
 {
     private const float PlayheadHalfWidth = 9f;
 
@@ -26,7 +26,7 @@ public sealed partial class FlameChartControl
             return;
         }
 
-        canvas.DrawLine(x, OperatorsTop, x, height, _paints.Playhead);
+        canvas.DrawLine(x, IsLineageVisible ? OperatorsTop + OperatorsArea : OperatorsTop, x, height, _paints.Playhead);
 
         DrawBandMarker(canvas, timeline, x, width, height, scale);
 

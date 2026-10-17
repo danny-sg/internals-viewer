@@ -1,9 +1,9 @@
 using System;
 using SkiaSharp;
 
-namespace InternalsViewer.UI.App.Controls.FlameChart;
+namespace InternalsViewer.UI.App.Controls.Trace;
 
-internal sealed class FlameChartPaints : IDisposable
+internal sealed class TraceTimelinePaints : IDisposable
 {
     public SKColor LaneHeader { get; private set; } = new(255, 255, 255, 14);
 

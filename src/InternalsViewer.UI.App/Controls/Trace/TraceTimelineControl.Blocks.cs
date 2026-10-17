@@ -4,9 +4,9 @@ using System.Linq;
 using InternalsViewer.UI.App.Helpers;
 using SkiaSharp;
 
-namespace InternalsViewer.UI.App.Controls.FlameChart;
+namespace InternalsViewer.UI.App.Controls.Trace;
 
-public sealed partial class FlameChartControl
+public sealed partial class TraceTimelineControl
 {
     private const float MinimumExtrusion = 3f;
 

@@ -8,11 +8,11 @@ using InternalsViewer.Query.Helpers;
 using InternalsViewer.UI.App.Controls.Timeline;
 using SkiaSharp;
 
-namespace InternalsViewer.UI.App.Controls.FlameChart;
+namespace InternalsViewer.UI.App.Controls.Trace;
 
-public sealed partial class FlameChartControl
+public sealed partial class TraceTimelineControl
 {
-    private const float ReturnStripHeight = 6f;
+    private const float ReturnStripHeight = 7f;
 
     private const float ReturnStripShare = 0.35f;
 
@@ -24,9 +24,13 @@ public sealed partial class FlameChartControl
 
     private const float MinimumCallDurationWidth = 1f;
 
+    private const byte CallDurationAlpha = 0x60;
+
+    private const float CallDurationGap = 1f;
+
     private const string ReturnStripTitle = "GetRow Returns";
 
-    private static readonly SKColor CallDurationColour = new(0x3D, 0xDC, 0x84, 0x80);
+    private const string BatchReturnStripTitle = "GetBatch Returns";
 
     private static readonly ReturnStyle[] ReturnStyles =
     [
@@ -40,7 +44,7 @@ public sealed partial class FlameChartControl
     public static readonly DependencyProperty RowReturnMarksProperty =
         DependencyProperty.Register(nameof(RowReturnMarks),
                                     typeof(TraceRowReturnMarks),
-                                    typeof(FlameChartControl),
+                                    typeof(TraceTimelineControl),
                                     new PropertyMetadata(null, OnRowBuffersChanged));
 
     public TraceRowReturnMarks? RowReturnMarks
@@ -52,7 +56,7 @@ public sealed partial class FlameChartControl
     public static readonly DependencyProperty ShowIteratorCallsProperty =
         DependencyProperty.Register(nameof(ShowIteratorCalls),
                                     typeof(bool),
-                                    typeof(FlameChartControl),
+                                    typeof(TraceTimelineControl),
                                     new PropertyMetadata(true, OnRowBuffersChanged));
 
     public bool ShowIteratorCalls
@@ -99,6 +103,7 @@ public sealed partial class FlameChartControl
                           marks.GetCallEnds(row.Operator, lifetime.Thread, _axis),
                           bar.Top,
                           height,
+                          colour.WithAlpha(CallDurationAlpha),
                           scale);
 
         foreach (var style in ReturnStyles)
@@ -116,9 +121,10 @@ public sealed partial class FlameChartControl
                                    ReadOnlySpan<double> ends,
                                    float top,
                                    float height,
+                                   SKColor colour,
                                    double scale)
     {
-        _paints.Fill.Color = CallDurationColour;
+        _paints.Fill.Color = colour;
 
         var index = SortedSearch.FirstAtOrAfter(ends, _viewStart);
 
@@ -130,7 +136,7 @@ public sealed partial class FlameChartControl
 
             if (right - left > MinimumCallDurationWidth)
             {
-                canvas.DrawRect(left, top, right - left, height, _paints.Fill);
+                canvas.DrawRect(left, top, right - left - CallDurationGap, height, _paints.Fill);
 
                 index++;
             }
@@ -192,7 +198,7 @@ public sealed partial class FlameChartControl
 
         var thread = _operatorRows[hit.Row].Lifetimes[hit.Track].Thread;
 
-        List<string> lines = [ReturnStripTitle];
+        List<string> lines = [marks.IsBatch(operatorEvent) ? BatchReturnStripTitle : ReturnStripTitle];
 
         foreach (var style in ReturnStyles.OrderBy(s => s.Type))
         {
@@ -203,6 +209,23 @@ public sealed partial class FlameChartControl
         }
 
         return string.Join(Environment.NewLine, lines);
+    }
+
+    private void ClickReturnStrip(OperatorHit hit, Point position)
+    {
+        if (GetCallDuration(hit, position) is not { } duration)
+        {
+            OpenNearestReturn(hit, position);
+
+            return;
+        }
+
+        Click(duration);
+
+        if (_selected is { } selected)
+        {
+            BringIntoView(selected);
+        }
     }
 
     private void OpenNearestReturn(OperatorHit hit, Point position)

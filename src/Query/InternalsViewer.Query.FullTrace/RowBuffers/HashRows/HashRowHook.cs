@@ -31,6 +31,8 @@ internal sealed class HashRowHook(HashRowFunctions functions) : ITraceHook
 
     private HashSet<ulong> HashIterators { get; } = [.. functions.HashIterators];
 
+    private HashSet<ulong> KnownIterators { get; } = [];
+
     private Dictionary<uint, Stack<GetRowFrame>> Frames { get; } = [];
 
     private Dictionary<ulong, PartitionCall> PartitionCalls { get; } = [];
@@ -57,7 +59,7 @@ internal sealed class HashRowHook(HashRowFunctions functions) : ITraceHook
 
         var iterator = call.Arguments[IteratorArgument];
 
-        if (replay.TryRead(iterator, out ulong vtable) && HashIterators.Contains(vtable))
+        if (IsHashIterator(replay, iterator))
         {
             GetFrames(call.Thread).Push(new GetRowFrame(call.Id, iterator, call.Arguments[ContextArgument]));
         }
@@ -104,6 +106,25 @@ internal sealed class HashRowHook(HashRowFunctions functions) : ITraceHook
         => replay.TryRead(context + (ulong)slot * sizeof(ulong), out ulong address) && address >= ColumnValueParser.SmallestAddress
             ? address
             : null;
+
+    private bool IsHashIterator(ITraceReplay replay, ulong iterator)
+    {
+        if (!replay.TryRead(iterator, out ulong vtable))
+        {
+            return KnownIterators.Contains(iterator);
+        }
+
+        if (!HashIterators.Contains(vtable))
+        {
+            KnownIterators.Remove(iterator);
+
+            return false;
+        }
+
+        KnownIterators.Add(iterator);
+
+        return true;
+    }
 
     private void OnPartitionReturn(in TraceHookCall call, PartitionCall partitionCall, ITraceReplay replay)
     {

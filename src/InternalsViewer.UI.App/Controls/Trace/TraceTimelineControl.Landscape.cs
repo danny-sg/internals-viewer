@@ -4,9 +4,9 @@ using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using SkiaSharp;
 
-namespace InternalsViewer.UI.App.Controls.FlameChart;
+namespace InternalsViewer.UI.App.Controls.Trace;
 
-public sealed partial class FlameChartControl
+public sealed partial class TraceTimelineControl
 {
     private const float SpikeMinimumWidth = 3f;
 
@@ -60,7 +60,7 @@ public sealed partial class FlameChartControl
 
         _directionY = MathF.Sin(_extrusionAngle);
 
-        if (MemoryMode == FlameChartMemoryMode.InUse)
+        if (MemoryMode == TraceTimelineMemoryMode.InUse)
         {
             CollectSurfaces(timeline, width, bottom, scale);
         }
@@ -88,7 +88,7 @@ public sealed partial class FlameChartControl
             }
         }
 
-        if (MemoryMode == FlameChartMemoryMode.InUse)
+        if (MemoryMode == TraceTimelineMemoryMode.InUse)
         {
             DrawSurfaces(canvas);
 

@@ -173,7 +173,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         var timeline = replay.Timeline.WithoutCallsUnder(IsInstrumentation);
 
         Logger.LogInformation("{Calls} call(s) after removing Extended Events and tracing, {Spans} call span(s) on {Threads} "
-                              + "thread(s) in the flame chart",
+                              + "thread(s) in the trace timeline",
                               callStack.Nodes().Sum(n => n.Calls),
                               timeline.SpanCount,
                               timeline.Threads.Count);
@@ -197,7 +197,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         var memory = AllocationMapper.Map(replay.CallStore, functions.MemoryFunctions, timeline, request.MemoryClerks);
 
-        var lifetimes = IteratorLifetimeBuilder.Build(timeline, operators);
+        var lifetimes = IteratorLifetimeBuilder.Build(timeline, operators, replay.Batches);
 
         timeline.SetLifetimes(lifetimes);
 
@@ -258,7 +258,10 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
             RowBufferMarks = TraceRowBufferMarks.Build(timeline, replay.RowBuffers, replay.Batches),
             RowReturnMarks = TraceRowReturnMarks.Build(timeline,
                                                        replay.CallStore,
-                                                       TraceOutputLineage.Build(timeline, replay.OutputStructures, replay.RowBuffers))
+                                                       TraceOutputLineage.Build(timeline,
+                                                                                replay.OutputStructures,
+                                                                                replay.RowBuffers,
+                                                                                replay.Batches))
         };
     }
 

@@ -64,7 +64,7 @@
                            FontSize="11"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            VerticalAlignment="Center"
-                           ToolTipService.ToolTip="Show this call in the call tree and the Flame Chart"/>
+                           ToolTipService.ToolTip="Show this call in the call tree and the Trace Timeline"/>
                 <TextBlock Text="{x:Bind ((members:ValueCallRow)Content).Thread}"
                            FontSize="11"
                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"

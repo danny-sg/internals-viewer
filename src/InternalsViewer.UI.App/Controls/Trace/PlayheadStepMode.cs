@@ -1,4 +1,4 @@
-namespace InternalsViewer.UI.App.Controls.FlameChart;
+namespace InternalsViewer.UI.App.Controls.Trace;
 
 public enum PlayheadStepMode
 {

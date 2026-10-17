@@ -6,5 +6,6 @@ public enum OperatorCategory
     Join,
     Transformation,
     Buffer,
-    Modification
+    Modification,
+    Adapter
 }

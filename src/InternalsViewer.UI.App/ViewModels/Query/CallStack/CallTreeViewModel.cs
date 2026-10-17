@@ -187,7 +187,7 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
     {
         LeaveLocation();
 
-        NavigateTo(node, selectInFlameChart: false);
+        NavigateTo(node, selectInTraceTimeline: false);
 
         PushLocation(CurrentLocation());
     }
@@ -317,7 +317,7 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
 
         if (IsFocused || !Rows.TryGetValue(reference.Node, out var row) || (RevealTarget is not null && !IsRevealed(reference.Node)))
         {
-            NavigateTo(reference.Node, selectInFlameChart: false);
+            NavigateTo(reference.Node, selectInTraceTimeline: false);
         }
         else
         {
@@ -561,7 +561,7 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
         CanGoForward = HistoryIndex >= 0 && HistoryIndex < History.Count - 1;
     }
 
-    private void NavigateTo(CallStackNode target, bool selectInFlameChart = true)
+    private void NavigateTo(CallStackNode target, bool selectInTraceTimeline = true)
     {
         if (!IsOutsideCrop(target))
         {
@@ -570,7 +570,7 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
 
         NavigatedNode = target;
 
-        if (selectInFlameChart)
+        if (selectInTraceTimeline)
         {
             Query.SelectedCallNode = target;
         }

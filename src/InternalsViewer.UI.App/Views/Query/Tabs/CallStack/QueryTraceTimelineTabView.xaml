@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <UserControl
-    x:Class="InternalsViewer.UI.App.Views.Query.Tabs.CallStack.QueryFlameChartTabView"
+    x:Class="InternalsViewer.UI.App.Views.Query.Tabs.CallStack.QueryTraceTimelineTabView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:flameChart="using:InternalsViewer.UI.App.Controls.FlameChart"
+    xmlns:trace="using:InternalsViewer.UI.App.Controls.Trace"
     xmlns:callStack="using:InternalsViewer.UI.App.Controls.CallStack"
     xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
     xmlns:local="using:InternalsViewer.UI.App.Views.Query.Tabs.CallStack"
@@ -28,13 +28,13 @@
                     <StackPanel Orientation="Horizontal" Spacing="2">
                         <Button Style="{StaticResource TabCommandButtonStyle}"
                                 ToolTipService.ToolTip="Previous Match"
-                                IsEnabled="{x:Bind FlameChart.HasSearchMatches, Mode=OneWay}"
+                                IsEnabled="{x:Bind TraceTimeline.HasSearchMatches, Mode=OneWay}"
                                 Click="OnPreviousMatchClick">
                             <FontIcon Glyph="&#xE892;" FontSize="12"/>
                         </Button>
                         <Button Style="{StaticResource TabCommandButtonStyle}"
                                 ToolTipService.ToolTip="Next Match"
-                                IsEnabled="{x:Bind FlameChart.HasSearchMatches, Mode=OneWay}"
+                                IsEnabled="{x:Bind TraceTimeline.HasSearchMatches, Mode=OneWay}"
                                 Click="OnNextMatchClick">
                             <FontIcon Glyph="&#xE893;" FontSize="12"/>
                         </Button>
@@ -43,22 +43,22 @@
             </callStack:CallSearchBar>
         </Grid>
 
-        <flameChart:FlameChartControl x:Name="FlameChart"
+        <trace:TraceTimelineControl x:Name="TraceTimeline"
                                       Grid.Row="1"
                                       VerticalAlignment="Stretch"
                                       HorizontalAlignment="Stretch"
                                       Background="{ThemeResource LayerFillColorDefaultBrush}"
-                                      Timeline="{x:Bind ViewModel.FlameChart, Mode=OneWay}"
-                                      FullTimeline="{x:Bind ViewModel.FullFlameChart, Mode=OneWay}"
+                                      Timeline="{x:Bind ViewModel.TraceTimeline, Mode=OneWay}"
+                                      FullTimeline="{x:Bind ViewModel.FullTraceTimeline, Mode=OneWay}"
                                       RowBufferMarks="{x:Bind ViewModel.RowBufferMarks, Mode=OneWay}"
                                       RowReturnMarks="{x:Bind ViewModel.RowReturnMarks, Mode=OneWay}"
                                       OutputColumnNames="{x:Bind ViewModel.OutputColumnNames, Mode=OneWay}"
                                       HiddenCategories="{x:Bind Settings.CallTreeHiddenCategorySet, Mode=OneWay}"
                                       PrunedCategories="{x:Bind Settings.CallTreePrunedCategorySet, Mode=OneWay}"
                                       GrantedMemory="{x:Bind ViewModel.GrantedMemory, Mode=OneWay}"
-                                      ShowMemory="{x:Bind Settings.FlameChartShowMemory, Mode=TwoWay}"
-                                      ShowCallStack="{x:Bind Settings.FlameChartShowCallStack, Mode=OneWay}"
-                                      MemoryMode="{x:Bind Settings.FlameChartMemoryMode, Mode=TwoWay}"
+                                      ShowMemory="{x:Bind Settings.TraceTimelineShowMemory, Mode=TwoWay}"
+                                      ShowCallStack="{x:Bind Settings.TraceTimelineShowCallStack, Mode=OneWay}"
+                                      MemoryMode="{x:Bind Settings.TraceTimelineMemoryMode, Mode=TwoWay}"
                                       ColourProvider="{x:Bind ViewModel.EventColours, Mode=OneWay}"
                                       SelectedNode="{x:Bind ViewModel.SelectedCallNode, Mode=OneWay}"
                                       SelectedCall="{x:Bind ViewModel.Arguments.SelectedCallReference, Mode=OneWay}"
@@ -72,7 +72,7 @@
                               ResizeBehavior="PreviousAndNext"
                               Visibility="Collapsed"/>
 
-        <local:FlameChartCallStackView x:Name="StackView"
+        <local:TraceTimelineCallStackView x:Name="StackView"
                                        Grid.Row="3"
                                        Visibility="Collapsed"
                                        DataContext="{x:Bind ViewModel.PlayheadStack, Mode=OneWay}"/>

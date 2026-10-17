@@ -35,7 +35,7 @@ The search box filters the tree to matching frames and the calls that lead to th
 
 For a [Full Trace](/docs/user-guide/query/FullTrace) run, **Batches** and **Rows** beside the search box filter the tree to the frames that handed back [batches](#batches) or rows, and the calls that lead to them. With both on the tree keeps either, and with both off it is whole again. They work alongside the search, keeping only the frames that pass both.
 
-Going to a call - from **Arguments**, a **Find** tab or the [Flame Chart](/docs/user-guide/query/FlameChart) - turns Focus off, selects the frame and opens the tree down to it. Nothing else is hidden, so the rest of the tree stays where it was. A frame the tree does not normally show because its category is hidden is shown dimmed along with the calls that lead to it. The dimmed frames go again when you select something outside them. With **Crop To Query** on, the tree stays cropped. A call that ran outside the query, such as one found by **Find** during compilation, opens in **Arguments** but is not added to the tree.
+Going to a call - from **Arguments**, a **Find** tab or the [Trace Timeline](/docs/user-guide/query/TraceTimeline) - turns Focus off, selects the frame and opens the tree down to it. Nothing else is hidden, so the rest of the tree stays where it was. A frame the tree does not normally show because its category is hidden is shown dimmed along with the calls that lead to it. The dimmed frames go again when you select something outside them. With **Crop To Query** on, the tree stays cropped. A call that ran outside the query, such as one found by **Find** during compilation, opens in **Arguments** but is not added to the tree.
 
 Right-clicking a node gives:
 
@@ -50,7 +50,7 @@ A frame whose symbol did not resolve is copied as `module+offset`. Right-clickin
 
 ## Filtering by category
 
-The filter button beside the search box opens a row of category badges, one for each category found in the tree. Click a badge to hide or show that category, **All** to show or hide every one at once, and **Defaults** to go back to the categories hidden by default. Those are the infrastructure categories - Compilation, Execution Tree, Expression Evaluation, Metadata, Networking, Query Binding, Query Store, Security, Tracing and Transaction Management - so the frames doing the query's work stand out. The choice is remembered between sessions, and the [Flame Chart](/docs/user-guide/query/FlameChart#search)'s search bar shares it.
+The filter button beside the search box opens a row of category badges, one for each category found in the tree. Click a badge to hide or show that category, **All** to show or hide every one at once, and **Defaults** to go back to the categories hidden by default. Those are the infrastructure categories - Compilation, Execution Tree, Expression Evaluation, Metadata, Networking, Query Binding, Query Store, Security, Tracing and Transaction Management - so the frames doing the query's work stand out. The choice is remembered between sessions, and the [Trace Timeline](/docs/user-guide/query/TraceTimeline#search)'s search bar shares it.
 
 ![The category badges open beneath the search box, with the hidden categories struck through](/docs/user-guide/images/call-stack-category-filter.png)
 
@@ -72,7 +72,7 @@ A [Full Trace](/docs/user-guide/query/FullTrace) logs every call it replays, wit
 
 The header gives the function's signature, with its return type. Below it a table lists every call - **Call**, **Thread**, a column for each argument named from the signature (`this` first for a member function) and **Return**. Each argument's column header gives its type and the register it was read from. An iterator's calls are kept apart per object, so that two operators of the same class stay separate, and for an iterator method the table holds the calls on that frame's object only.
 
-Selecting a call outlines it in the [Flame Chart](/docs/user-guide/query/FlameChart), and clicking a bar in the Flame Chart, or choosing **Open Call Tree** on its right-click menu, selects its call here.
+Selecting a call outlines it in the [Trace Timeline](/docs/user-guide/query/TraceTimeline), and clicking a bar in the Trace Timeline, or choosing **Open Call Tree** on its right-click menu, selects its call here.
 
 ![The Arguments tab beside a Full Trace call tree, listing the calls of CQueryScan::GetRow on one iterator](/docs/user-guide/images/call-stack-arguments.png)
 
@@ -102,11 +102,11 @@ Right-click the signature above the table and choose **Copy Signature** to copy 
 
 Right-click a cell for what can be done with its call and value:
 
-- **Go To Call** - shows the call in the call tree and the Flame Chart
-- **Call Stack** - opens a tab beside **Arguments** listing the calls in progress at the start of the call, on every thread, as the Flame Chart's [Call Stack](/docs/user-guide/query/FlameChart#call-stack) does. The tab stays at that point, so several can be open side by side. Clicking a call in it selects the call in the Flame Chart without leaving the tab
+- **Go To Call** - shows the call in the call tree and the Trace Timeline
+- **Call Stack** - opens a tab beside **Arguments** listing the calls in progress at the start of the call, on every thread, as the Trace Timeline's [Call Stack](/docs/user-guide/query/TraceTimeline#call-stack) does. The tab stays at that point, so several can be open side by side. Clicking a call in it selects the call in the Trace Timeline without leaving the tab
 - **Row Buffers** - for a function that handed back rows, opens its **Row Buffers** tab, the same as the red square beside it in the call tree
 - **Batches** - for a batch mode operator that handed back batches, opens its **Batches** tab, the same as the blue square beside it in the call tree
-- **Scope** - scopes the Flame Chart to the call's function
+- **Scope** - scopes the Trace Timeline to the call's function
 - **Custom Hook** - for an argument, or the value the call returned, saves a hook that reads the bytes it points to on later runs - see [Custom Hooks](/docs/user-guide/query/FullTrace#custom-hooks)
 - **Go To Origin** - for an object in the trace's map, goes to the call that created it, the same as clicking the link
 - **Open In The Columnstore Viewer** - for a columnstore object
@@ -146,7 +146,7 @@ Each call reads as the function's signature with the values it was passed in pla
 
 **Decode** works here as it does in the Arguments table, and the two share the setting. Decoded readings are in the normal font and hex in monospace, and hovering over a value shows its other form.
 
-Right-click a value in a call and choose **Find** to open a tab for that value in turn. Clicking a call shows it in the call tree and the [Flame Chart](/docs/user-guide/query/FlameChart), and selects it in **Arguments**. Following a pointer like this traces an object through the query - what created it, what was done to it and what it was handed to - and then the same for every object it met along the way. When nothing matches, the heading reads **No References To** and the value.
+Right-click a value in a call and choose **Find** to open a tab for that value in turn. Clicking a call shows it in the call tree and the [Trace Timeline](/docs/user-guide/query/TraceTimeline), and selects it in **Arguments**. Following a pointer like this traces an object through the query - what created it, what was done to it and what it was handed to - and then the same for every object it met along the way. When nothing matches, the heading reads **No References To** and the value.
 
 <!-- Screenshot (new): a Find tab beside Arguments - Type, Called by and Referenced by, with one function expanded to its calls, each a signature with its values in place -->
 

@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Events.Operators;
@@ -8,11 +9,12 @@ namespace InternalsViewer.Query.FullTrace.Iterators;
 internal static class IteratorLifetimeBuilder
 {
     public static IReadOnlyList<TraceOperatorLifetime> Build(TraceTimeline timeline,
-                                                             IReadOnlyList<ExecutionOperatorEvent> operators)
+                                                             IReadOnlyList<ExecutionOperatorEvent> operators,
+                                                             BatchStore batches)
     {
         var owners = new Dictionary<ulong, ExecutionOperatorEvent>();
 
-        foreach (var operatorEvent in operators)
+        foreach (var operatorEvent in operators.Concat(BatchToRowOperators.Create(timeline, batches, operators)))
         {
             foreach (var instance in operatorEvent.Instances)
             {

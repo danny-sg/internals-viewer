@@ -6,9 +6,9 @@ using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using SkiaSharp;
 using Windows.UI;
 
-namespace InternalsViewer.UI.App.Controls.FlameChart;
+namespace InternalsViewer.UI.App.Controls.Trace;
 
-public sealed partial class FlameChartControl
+public sealed partial class TraceTimelineControl
 {
     private const float MinimapWidth = 360f;
 
@@ -20,7 +20,7 @@ public sealed partial class FlameChartControl
 
     private static readonly Color MarkedColour = Color.FromArgb(255, 0, 0, 0);
 
-    private readonly FlameChartMinimap _minimap = new()
+    private readonly TraceTimelineMinimap _minimap = new()
     {
         Width = MinimapWidth,
         Height = MinimapHeight,

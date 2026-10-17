@@ -33,6 +33,7 @@ internal sealed record OutputFunctions(IReadOnlyDictionary<ulong, OutputFunction
 
         private static readonly Dictionary<string, OutputFunctionType> FunctionTypes = new(StringComparer.Ordinal)
         {
+            ["CEsExec::GeneralEval"] = OutputFunctionType.Evaluation,
             ["CEsExec::GeneralEval4"] = OutputFunctionType.Evaluation,
             ["GetData"] = OutputFunctionType.ValueRead,
             ["GetDataWithBuffer"] = OutputFunctionType.ValueRead,
@@ -50,7 +51,8 @@ internal sealed record OutputFunctions(IReadOnlyDictionary<ulong, OutputFunction
             ["CValSSTable"] = OutputValueClass.Table,
             ["CValHash"] = OutputValueClass.Hash,
             ["CValHashSwitch"] = OutputValueClass.HashSwitch,
-            ["CValHashCachedSwitch"] = OutputValueClass.HashCachedSwitch
+            ["CValHashCachedSwitch"] = OutputValueClass.HashCachedSwitch,
+            ["CValBatchRedirect"] = OutputValueClass.BatchRedirect
         };
 
         private static Dictionary<string, OutputFunctionType>.AlternateLookup<ReadOnlySpan<char>> FunctionLookup { get; }

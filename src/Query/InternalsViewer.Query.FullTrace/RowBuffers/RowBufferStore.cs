@@ -129,7 +129,7 @@ public sealed partial class RowBufferStore
         _ => row.Columns.Select(c => c.Binding.ValueOffset + Math.Max((ulong)c.Binding.FixedLength, SmallestSlot)).DefaultIfEmpty().Max()
     };
 
-    private static int GetColumn(RowBuffer row, ulong offset)
+    internal static int GetColumn(RowBuffer row, ulong offset)
     {
         if (row.Format == RowBufferFormat.Batch)
         {

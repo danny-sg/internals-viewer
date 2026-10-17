@@ -81,6 +81,18 @@ public class HashRowHookTests
     }
 
     [Fact]
+    public void A_Hash_Match_Whose_Type_Is_Missing_From_The_Trace_Is_Still_Read_Once_Its_Type_Is_Known()
+    {
+        var hook = CreateHook();
+
+        ReturnRow(hook, CreateReplay(BuildRecord(0)), status: 0);
+
+        ReturnRow(hook, CreateReplay(BuildRecord(0), hasTable: false), status: 0);
+
+        Assert.Equal(2, hook.Rows.Count);
+    }
+
+    [Fact]
     public void A_Layout_From_The_Plan_Splits_The_Record_Into_Its_Columns()
     {
         var store = new RowBufferStore(Capture(nullBitmap: 0, status: 0));
@@ -205,12 +217,15 @@ public class HashRowHookTests
         hook.OnReturn(Call(GetRow, 30, [Iterator, Context, 0, 0], returnValue: status), replay);
     }
 
-    private static FakeTraceReplay CreateReplay(byte[] record)
-        => new FakeTraceReplay().Write(Iterator, HashIteratorTable)
-                                .Write(PartitionGroup + 0x08, Probe)
-                                .Write(Probe + 0x14, Slot)
-                                .Write(Context + Slot * sizeof(ulong), Record)
-                                .Write(Record, record);
+    private static FakeTraceReplay CreateReplay(byte[] record, bool hasTable = true)
+    {
+        var replay = new FakeTraceReplay().Write(PartitionGroup + 0x08, Probe)
+                                          .Write(Probe + 0x14, Slot)
+                                          .Write(Context + Slot * sizeof(ulong), Record)
+                                          .Write(Record, record);
+
+        return hasTable ? replay.Write(Iterator, HashIteratorTable) : replay;
+    }
 
     private static byte[] BuildRecord(byte nullBitmap)
     {

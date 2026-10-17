@@ -96,7 +96,7 @@ internal sealed class TraceExportSection : IQueryExportSection
 
         batches.AnnotateNodes(callStore);
 
-        timeline.SetLifetimes(IteratorLifetimeBuilder.Build(timeline, [.. events.OfType<ExecutionOperatorEvent>()]));
+        timeline.SetLifetimes(IteratorLifetimeBuilder.Build(timeline, [.. events.OfType<ExecutionOperatorEvent>()], batches));
 
         if (reader.HasEntry(EventLinksEntry))
         {
@@ -119,7 +119,7 @@ internal sealed class TraceExportSection : IQueryExportSection
             RowBufferMarks = TraceRowBufferMarks.Build(timeline, rowBuffers, batches),
             RowReturnMarks = TraceRowReturnMarks.Build(timeline,
                                                        callStore,
-                                                       TraceOutputLineage.Build(timeline, outputStructures, rowBuffers))
+                                                       TraceOutputLineage.Build(timeline, outputStructures, rowBuffers, batches))
         };
     }
 }

@@ -52,6 +52,12 @@ internal sealed class OutputHook(OutputFunctions functions) : ITraceHook
 
     private const ulong LayoutTableSlotOffset = 0x10;
 
+    private const ulong LayoutRedirectIndexOffset = 0x08;
+
+    private const ulong LayoutRedirectHelperOffset = 0x10;
+
+    private const ulong LayoutHelperRowOffset = 0x78;
+
     private const ulong ValueSize = 0x20;
 
     private const int MaximumDepth = 4;
@@ -337,6 +343,13 @@ internal sealed class OutputHook(OutputFunctions functions) : ITraceHook
                      && replay.TryRead(value + LayoutTableSlotOffset, out int tableSlot):
                 return new TraceOutputSource(OutputSourceType.Rowset, value, rowset) { Slot = tableSlot, State = state };
 
+            case OutputValueClass.BatchRedirect
+                when replay.TryRead(value + LayoutRedirectIndexOffset, out int index)
+                     && replay.TryRead(value + LayoutRedirectHelperOffset, out ulong helper):
+                var row = replay.TryRead(helper + LayoutHelperRowOffset, out ulong helperRow) ? helperRow + (ulong)index * ValueSize : 0;
+
+                return new TraceOutputSource(OutputSourceType.Buffer, value, row) { Ordinal = index, Owner = helper, State = state };
+
             case OutputValueClass.Constant when replay.TryRead(value + LayoutVariantOffset, out ulong variant):
                 return new TraceOutputSource(OutputSourceType.Buffer, value, variant) { State = state };
 
@@ -375,7 +388,7 @@ internal sealed class OutputHook(OutputFunctions functions) : ITraceHook
     {
         if (!owners.TryGetValue(source, out var owned))
         {
-            owned = source with { Owner = GetOwner(source) };
+            owned = source.Owner != 0 ? source : source with { Owner = GetOwner(source) };
 
             owners[source] = owned;
         }

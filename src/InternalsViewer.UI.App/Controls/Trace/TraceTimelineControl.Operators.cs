@@ -7,6 +7,7 @@ using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.Query.Plans.Operators;
 using InternalsViewer.UI.App.Controls.Timeline;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels.Query;
@@ -15,9 +16,9 @@ using Microsoft.UI.Xaml.Controls;
 using SkiaSharp;
 using Windows.Foundation;
 
-namespace InternalsViewer.UI.App.Controls.FlameChart;
+namespace InternalsViewer.UI.App.Controls.Trace;
 
-public sealed partial class FlameChartControl
+public sealed partial class TraceTimelineControl
 {
     private const float SplitterHeight = 6f;
 
@@ -30,6 +31,8 @@ public sealed partial class FlameChartControl
     private const float MinimumOperatorsHeight = 20f;
 
     private const float OperatorsPadding = 4f;
+
+    private const float OperatorsBottomGap = 2f;
 
     private const float OperatorRowGap = 6f;
 
@@ -68,8 +71,8 @@ public sealed partial class FlameChartControl
     public static readonly DependencyProperty ShowOperatorsProperty =
         DependencyProperty.Register(nameof(ShowOperators),
                                     typeof(bool),
-                                    typeof(FlameChartControl),
-                                    new PropertyMetadata(true, OnShowOperatorsChanged));
+                                    typeof(TraceTimelineControl),
+                                    new PropertyMetadata(true, OnPaneVisibilityChanged));
 
     public bool ShowOperators
     {
@@ -77,10 +80,22 @@ public sealed partial class FlameChartControl
         set => SetValue(ShowOperatorsProperty, value);
     }
 
+    public static readonly DependencyProperty ShowFlameChartProperty =
+        DependencyProperty.Register(nameof(ShowFlameChart),
+                                    typeof(bool),
+                                    typeof(TraceTimelineControl),
+                                    new PropertyMetadata(true, OnPaneVisibilityChanged));
+
+    public bool ShowFlameChart
+    {
+        get => (bool)GetValue(ShowFlameChartProperty);
+        set => SetValue(ShowFlameChartProperty, value);
+    }
+
     public static readonly DependencyProperty ColourProviderProperty =
         DependencyProperty.Register(nameof(ColourProvider),
                                     typeof(EventColourProvider),
-                                    typeof(FlameChartControl),
+                                    typeof(TraceTimelineControl),
                                     new PropertyMetadata(null, OnColourProviderChanged));
 
     public EventColourProvider? ColourProvider
@@ -119,7 +134,9 @@ public sealed partial class FlameChartControl
 
     private float OperatorsTop => RulerTop + RulerHeight + PlayheadStripHeight;
 
-    private float OperatorsArea => ShowsOperators ? OperatorsHeight + SplitterHeight : 0;
+    private bool ShowsFlameChart => ShowFlameChart || !ShowsOperators;
+
+    private float OperatorsArea => ShowsOperators ? OperatorsHeight + (ShowsFlameChart ? SplitterHeight : 0) : 0;
 
     private float ChartHeight => (float)_overlay.ActualHeight - OperatorsTop - BandHeight - SplitterHeight;
 
@@ -134,6 +151,11 @@ public sealed partial class FlameChartControl
                 return 0;
             }
 
+            if (!ShowsFlameChart)
+            {
+                return ChartHeight + SplitterHeight;
+            }
+
             var wanted = _operatorsHeight ?? ChartHeight * OperatorsShare;
 
             return Math.Clamp(wanted, MinimumOperatorsHeight, OperatorsRoom);
@@ -146,7 +168,9 @@ public sealed partial class FlameChartControl
         {
             var rows = Math.Max(_operatorRows.Length, 1);
 
-            return Math.Max((OperatorsHeight - OperatorsPadding * 2 - OutputRowsArea - (rows - 1) * OperatorRowGap) / rows, 1);
+            var spacing = OperatorsPadding * 2 + OperatorsBottomGap + OutputRowsArea + (rows - 1) * OperatorRowGap;
+
+            return Math.Max((OperatorsHeight - spacing) / rows, 1);
         }
     }
 
@@ -169,6 +193,7 @@ public sealed partial class FlameChartControl
                            .GroupBy(l => l.Operator, ReferenceEqualityComparer.Instance)
                            .Select(g => RowOf((ExecutionOperatorEvent)g.Key!, [.. g.OrderBy(l => lanes[l.Thread])]))
                            .OrderBy(r => r.Operator.NodeLevel)
+                           .ThenBy(r => r.Operator.Category != OperatorCategory.Adapter)
                            .ThenBy(r => r.Lifetimes.Min(l => l.StartOf(TraceTimelineAxis.Position)))
                            .ThenBy(r => r.Operator.PlanNodeIdentifier?.NodeId ?? 0)];
     }
@@ -224,7 +249,10 @@ public sealed partial class FlameChartControl
 
         canvas.Restore();
 
-        DrawSplitter(canvas, top + height, width);
+        if (ShowsFlameChart)
+        {
+            DrawSplitter(canvas, top + height, width);
+        }
     }
 
     private void DrawOperatorBar(SKCanvas canvas,
@@ -267,7 +295,7 @@ public sealed partial class FlameChartControl
     }
 
     private bool IsRaised(TraceOperatorLifetime lifetime)
-        => ShowMemory && MemoryMode == FlameChartMemoryMode.InUse && _inUseMaximum > 0 && !lifetime.InUse.IsEmpty;
+        => ShowMemory && MemoryMode == TraceTimelineMemoryMode.InUse && _inUseMaximum > 0 && !lifetime.InUse.IsEmpty;
 
     private SKShader OperatorGradientOf(SKColor colour)
     {
@@ -418,7 +446,7 @@ public sealed partial class FlameChartControl
 
         canvas.ClipRect(new SKRect(0, OperatorsTop, width, OperatorsTop + OperatorsHeight));
 
-        DimUnselectedOperators(canvas, width);
+        DimOperators(canvas, width, scale);
 
         if (_hoverOperator is { } hover && hover.Row < _operatorRows.Length)
         {
@@ -443,22 +471,31 @@ public sealed partial class FlameChartControl
         canvas.Restore();
     }
 
-    private void DimUnselectedOperators(SKCanvas canvas, int width)
+    private void DimOperators(SKCanvas canvas, int width, double scale)
     {
-        if (_selectedOperator is null)
+        var call = GetSelectedCallRange(width, scale);
+
+        if (_selectedOperator is null && call is null)
         {
             return;
         }
 
+        var (left, right) = call ?? (0, width);
+
+        if (_selectedOperator is null)
+        {
+            _pathBuilder.AddRect(new SKRect(left, OperatorsTop, right, OperatorsTop + OperatorsHeight));
+        }
+
         var rowHeight = OperatorRowHeight;
 
-        for (var row = 0; row < _operatorRows.Length; row++)
+        for (var row = 0; row < _operatorRows.Length && _selectedOperator is not null; row++)
         {
             if (ReferenceEquals(_operatorRows[row].Operator, _selectedOperator))
             {
                 var top = OperatorRowTop(row);
 
-                _pathBuilder.AddRect(new SKRect(0, top, width, top + rowHeight));
+                _pathBuilder.AddRect(new SKRect(left, top, right, top + rowHeight));
             }
         }
 
@@ -473,6 +510,20 @@ public sealed partial class FlameChartControl
         canvas.DrawRect(0, OperatorsTop, width, OperatorsHeight, _paints.Fill);
 
         canvas.Restore();
+    }
+
+    private (float Left, float Right)? GetSelectedCallRange(int width, double scale)
+    {
+        if (SelectedHit is not { } selected || SpanOf(selected) is not { } span)
+        {
+            return null;
+        }
+
+        var left = Math.Clamp((float)((span.Start - _viewStart) * scale), 0, width);
+
+        var right = Math.Clamp(Math.Max((float)((span.End - _viewStart) * scale), left + NarrowSpan), 0, width);
+
+        return (left, right);
     }
 
     private void OutlineTrack(SKCanvas canvas, int row, int track, int width, double scale, SKColor colour, float stroke)
@@ -724,7 +775,7 @@ public sealed partial class FlameChartControl
 
     private bool IsOnSplitter(Point position)
     {
-        if (!ShowsOperators)
+        if (!ShowsOperators || !ShowsFlameChart)
         {
             return false;
         }
@@ -732,6 +783,36 @@ public sealed partial class FlameChartControl
         var top = OperatorsTop + OperatorsHeight;
 
         return position.Y >= top - SplitterHitMargin && position.Y < top + SplitterHeight + SplitterHitMargin;
+    }
+
+    private void ClickOperators(Point position)
+    {
+        var width = (int)_overlay.ActualWidth;
+
+        var isOutsideSelectedCall = GetSelectedCallRange(width, PixelsPerUnit(width)) is { } range
+                                    && (position.X < range.Left || position.X > range.Right);
+
+        if (isOutsideSelectedCall)
+        {
+            Deselect();
+        }
+
+        if (MarkBandAt(position) is { } band)
+        {
+            OpenNearestMark(band, position);
+        }
+        else if (GetOutputRow(position) is { } outputRow)
+        {
+            MovePlayheadToOutputRow(outputRow);
+        }
+        else if (ReturnStripAt(position) is { } strip)
+        {
+            ClickReturnStrip(strip, position);
+        }
+        else if (!isOutsideSelectedCall)
+        {
+            ClickOperator(OperatorAt(position));
+        }
     }
 
     private void ClickOperator(OperatorHit? hit)
@@ -872,9 +953,9 @@ public sealed partial class FlameChartControl
         return string.Join(Environment.NewLine, lines);
     }
 
-    private static void OnShowOperatorsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    private static void OnPaneVisibilityChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        var control = (FlameChartControl)d;
+        var control = (TraceTimelineControl)d;
 
         control.HideToolTip();
 
@@ -884,7 +965,7 @@ public sealed partial class FlameChartControl
     }
 
     private static void OnColourProviderChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((FlameChartControl)d).Redraw();
+        => ((TraceTimelineControl)d).Redraw();
 
     private sealed record OperatorRow(ExecutionOperatorEvent Operator,
                                       TraceOperatorLifetime[] Lifetimes,

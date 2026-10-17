@@ -1,10 +1,10 @@
-# Flame Chart
+# Trace Timeline
 
-The Flame Chart draws every call recorded by a [Full Trace](/docs/user-guide/query/FullTrace) - one lane per thread, one bar per call, each call nested beneath the call that made it. The bars use the [Call Tree](/docs/user-guide/query/CallStack)'s category colours.
+The Trace Timeline draws every call recorded by a [Full Trace](/docs/user-guide/query/FullTrace) - one lane per thread, one bar per call, each call nested beneath the call that made it. The bars use the [Call Tree](/docs/user-guide/query/CallStack)'s category colours.
 
-The Call Tree merges every call down the same path into one row with a count. The Flame Chart keeps each call apart, in the order it happened, so a scan's `GetRow` calls show as a run of short bars, one per row, and a function called once for a long time as a single wide one. It takes the Timeline's place while **Record Full Trace** is on, or sits beside it when **Record Events** is on too, and the **Flame Chart** item on the View menu, enabled only then, brings it back if it is closed.
+The Call Tree merges every call down the same path into one row with a count. The Trace Timeline keeps each call apart, in the order it happened, so a scan's `GetRow` calls show as a run of short bars, one per row, and a function called once for a long time as a single wide one. It takes the Timeline's place while **Record Full Trace** is on, or sits beside it when **Record Events** is on too, and the **Trace Timeline** item on the View menu, enabled only then, brings it back if it is closed.
 
-<!-- Screenshot: the Flame Chart for a parallel query, with a lane per thread and the Operators pane open above them -->
+<!-- Screenshot: the Trace Timeline for a parallel query, with a lane per thread and the Operators pane open above them -->
 
 ## Reading the chart
 
@@ -22,7 +22,7 @@ In a lane, each call is a bar running from where it started to where it ended. T
 - **A gap beneath a bar** - the call working in its own code rather than in a call it made, or in Extended Events and tracing code, which is left out of the chart
 - **A pale strip** - calls too narrow to draw one by one, merged into a single strip. Zoom in to pull them apart
 
-The Flame Chart is not the [Flame Graph](/docs/user-guide/query/ExecutionPlan#flame-graph) on the Execution Plan, which breaks each operator's bar down into the calls sampled from its events.
+The Trace Timeline is not the [Flame Graph](/docs/user-guide/query/ExecutionPlan#flame-graph) on the Execution Plan, which breaks each operator's bar down into the calls sampled from its events.
 
 ## Position and instructions
 
@@ -54,7 +54,7 @@ Right-clicking a bar gives:
 - **Open Call Tree** - opens the [Call Tree](/docs/user-guide/query/CallStack) at the call's frame, with the call selected in the [Arguments](/docs/user-guide/query/CallStack#arguments) tab. Right-clicking empty space just opens the pane, and if it is already open its tab is selected
 - **Open Call Stack** - only over a call. Opens the [Call Stack](#call-stack) pane at the start of the call, listing the calls that led to it with the values they were passed, without putting a playhead on the chart. Placing the playhead takes the pane back to following it
 
-<!-- Screenshot: the Flame Chart's right-click menu over a call, with Scope and Open Call Tree -->
+<!-- Screenshot: the Trace Timeline's right-click menu over a call, with Scope and Open Call Tree -->
 
 ## Selecting a call
 
@@ -76,11 +76,11 @@ Hovering over a bar describes the call:
 
 Selecting a frame in the Call Tree highlights that function in the chart. Its calls and everything beneath them stay in colour and the rest is dimmed, the same way a search dims, so you can see everywhere it ran without the chart moving.
 
-<!-- Screenshot: a frame selected in the Call Tree, with its calls highlighted in the Flame Chart and the rest dimmed -->
+<!-- Screenshot: a frame selected in the Call Tree, with its calls highlighted in the Trace Timeline and the rest dimmed -->
 
 A frame stands for every call made down that path, so selecting one does not pick a call in the [Arguments](/docs/user-guide/query/CallStack#arguments) tab. Choosing a call there narrows the highlight to that one call - it is outlined, and only it and the calls it made stay in colour. If the chart is scoped somewhere that call is not, it goes back to the whole recording to show it. Clicking the background clears the call.
 
-<!-- Screenshot: one call chosen in the Arguments tab, outlined in the Flame Chart with everything outside it dimmed -->
+<!-- Screenshot: one call chosen in the Arguments tab, outlined in the Trace Timeline with everything outside it dimmed -->
 
 The Call Tree's [category filter](/docs/user-guide/query/CallStack#filtering-by-category) applies here as well. A hidden category's calls are taken out and the calls they made move up into their place, so a category you have kept is never lost beneath one you have hidden. A category hidden with **Hide With Callees** takes everything beneath its calls with it.
 
@@ -90,7 +90,7 @@ The Call Tree's [category filter](/docs/user-guide/query/CallStack#filtering-by-
 
 **Shift + click** empty space, or choose **Clear Scope** from the right-click menu, to go back to the whole recording.
 
-![The Flame Chart scoped to CQScanTableScanNew::GetRow](/docs/user-guide/images/flame-chart-rooted-on-frame.png)
+![The Trace Timeline scoped to CQScanTableScanNew::GetRow](/docs/user-guide/images/flame-chart-rooted-on-frame.png)
 
 ## Search
 
@@ -128,7 +128,7 @@ The **Memory** toggle shows where the query allocated memory:
 
 ![Memory: In Use - a surface along each call showing the memory it held as it ran](/docs/user-guide/images/flame-chart-memory-in-use.png)
 
-The **Memory** toggle and the **Allocated** or **In Use** choice are remembered between sessions, and shared by every Flame Chart.
+The **Memory** toggle and the **Allocated** or **In Use** choice are remembered between sessions, and shared by every Trace Timeline.
 
 ## Playhead
 
