@@ -13,6 +13,7 @@ using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.RowBuffers.HashRows;
+using InternalsViewer.Query.FullTrace.RowBuffers.VariantTables;
 using Microsoft.Extensions.Logging;
 using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.Helpers;
@@ -229,6 +230,8 @@ internal static class ReplayFunctionResolver
 
         var hashRows = new HashRowFunctions.Collector();
 
+        var variantTables = new VariantTableFunctions.Collector();
+
         var output = new OutputFunctions.Collector();
 
         var functions = ModuleSymbols.Load(resolver,
@@ -240,6 +243,8 @@ internal static class ReplayFunctionResolver
 
                                                hashRows.VisitFunction(rva, name);
 
+                                               variantTables.VisitFunction(rva, name);
+
                                                output.VisitFunction(rva, name);
 
                                                return ClassifyFunction(mappings, moduleName, rva, name);
@@ -249,6 +254,8 @@ internal static class ReplayFunctionResolver
                                                rowBuffers.VisitData(rva, name);
 
                                                hashRows.VisitData(rva, name);
+
+                                               variantTables.VisitData(rva, name);
 
                                                output.VisitData(rva, name);
                                            });
@@ -276,6 +283,7 @@ internal static class ReplayFunctionResolver
                                    rowBuffers.Build(bases),
                                    batches.Build(bases),
                                    hashRows.Build(),
+                                   variantTables.Build(),
                                    output.Build());
     }
 

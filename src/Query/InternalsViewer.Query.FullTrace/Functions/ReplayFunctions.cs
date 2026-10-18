@@ -6,6 +6,7 @@ using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.PublishedEvents;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.FullTrace.RowBuffers.HashRows;
+using InternalsViewer.Query.FullTrace.RowBuffers.VariantTables;
 
 namespace InternalsViewer.Query.FullTrace.Functions;
 
@@ -18,6 +19,7 @@ internal sealed record ReplayFunctions(ulong[] ExcludedFunctions,
                                        RowBufferFunctions RowBuffers,
                                        BatchFunctions Batches,
                                        HashRowFunctions HashRows,
+                                       VariantTableFunctions VariantTables,
                                        OutputFunctions Output)
 {
     public static ReplayFunctions Empty { get; } = new([],
@@ -29,6 +31,7 @@ internal sealed record ReplayFunctions(ulong[] ExcludedFunctions,
                                                        RowBufferFunctions.Empty,
                                                        BatchFunctions.Empty,
                                                        HashRowFunctions.Empty,
+                                                       VariantTableFunctions.Empty,
                                                        OutputFunctions.Empty);
 
     public static ReplayFunctions Merge(IReadOnlyList<ReplayFunctions> functions)
@@ -41,6 +44,7 @@ internal sealed record ReplayFunctions(ulong[] ExcludedFunctions,
                RowBufferFunctions.Merge(functions.Select(f => f.RowBuffers)),
                BatchFunctions.Merge(functions.Select(f => f.Batches)),
                HashRowFunctions.Merge(functions.Select(f => f.HashRows)),
+               VariantTableFunctions.Merge(functions.Select(f => f.VariantTables)),
                OutputFunctions.Merge(functions.Select(f => f.Output)));
 
     public ReplayFunctions Rebase(ulong address)
@@ -53,5 +57,6 @@ internal sealed record ReplayFunctions(ulong[] ExcludedFunctions,
                RowBuffers.Rebase(address),
                Batches.Rebase(address),
                HashRows.Rebase(address),
+               VariantTables.Rebase(address),
                Output.Rebase(address));
 }

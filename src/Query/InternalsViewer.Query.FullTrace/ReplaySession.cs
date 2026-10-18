@@ -14,6 +14,7 @@ using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.RowBuffers.HashRows;
+using InternalsViewer.Query.FullTrace.RowBuffers.VariantTables;
 using InternalsViewer.Query.FullTrace.Stubs;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
 
@@ -161,6 +162,8 @@ internal sealed class ReplaySession : IDisposable
 
         var hashRows = new HashRowHook(functions.HashRows);
 
+        var variantTables = new VariantTableHook(functions.VariantTables);
+
         var batches = new BatchHook(functions.Batches);
 
         var output = new OutputHook(functions.Output);
@@ -172,6 +175,7 @@ internal sealed class ReplaySession : IDisposable
                                     publishedEvents,
                                     rowBuffers,
                                     hashRows,
+                                    variantTables,
                                     batches,
                                     output,
                                     customHook]);
@@ -244,7 +248,7 @@ internal sealed class ReplaySession : IDisposable
                                         timeline.Build(nodes),
                                         publishedEvents.Build(),
                                         memoryMap.Build(),
-                                        rowBuffers.Build(hashRows.Rows),
+                                        rowBuffers.Build([.. hashRows.Rows, .. variantTables.Rows]),
                                         batches.Build(),
                                         customHook.Build(),
                                         output.Build());

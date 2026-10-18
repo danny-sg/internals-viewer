@@ -21,7 +21,7 @@ public sealed class RowBufferDecoder(DatabaseSource database,
 
     public ColumnStructure? GetColumn(RowBuffer row, RowBufferColumn column) => row.Format switch
     {
-        RowBufferFormat.Batch => getOutputColumn?.Invoke(row.Iterator, column.Ordinal),
+        RowBufferFormat.Batch or RowBufferFormat.VariantTable => getOutputColumn?.Invoke(row.Iterator, column.Ordinal),
         RowBufferFormat.HashTable => GetRecordColumn(row, column),
         _ => GetColumns(row.Iterator)?.GetValueOrDefault(column.Binding.RecordOffset)
     };
@@ -43,7 +43,7 @@ public sealed class RowBufferDecoder(DatabaseSource database,
             return null;
         }
 
-        return row.Format == RowBufferFormat.Batch
+        return row.Format is RowBufferFormat.Batch or RowBufferFormat.VariantTable
             ? DecodeValue(column, structure)
             : DataConverter.BinaryToString(column.Data, structure.DataType, structure.Precision, structure.Scale, structure.BitPosition);
     }

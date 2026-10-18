@@ -13,6 +13,8 @@ using InternalsViewer.Query.FullTrace.Output.Enums;
 using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
 using InternalsViewer.Query.FullTrace.RowBuffers.HashRows;
 using InternalsViewer.Query.FullTrace.RowBuffers.HashRows.Enums;
+using InternalsViewer.Query.FullTrace.RowBuffers.VariantTables;
+using InternalsViewer.Query.FullTrace.RowBuffers.VariantTables.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -33,6 +35,8 @@ public class ReplayFunctionsTests
                                            new RowBufferFunctions([0xB0], Map(0xC0, RowBufferFormat.Bindings)),
                                            new BatchFunctions([0xD0]),
                                            new HashRowFunctions(Map(0x100, HashRowFunctionType.Insert), [0x108]),
+                                           new VariantTableFunctions(Map(0x130, VariantTableFunctionType.Writer),
+                                                                     Map(0x140, VariantTableClass.Row)),
                                            new OutputFunctions(Map(0x110, OutputFunctionType.Send),
                                                                Map(0x120, OutputValueClass.OutputRow)));
 
@@ -50,6 +54,8 @@ public class ReplayFunctionsTests
         Assert.Equal([Base + 0xD0], rebased.Batches.Functions);
         Assert.Equal((Base + 0x100, HashRowFunctionType.Insert), Pair(Assert.Single(rebased.HashRows.Functions)));
         Assert.Equal([Base + 0x108], rebased.HashRows.HashIterators);
+        Assert.Equal((Base + 0x130, VariantTableFunctionType.Writer), Pair(Assert.Single(rebased.VariantTables.Functions)));
+        Assert.Equal((Base + 0x140, VariantTableClass.Row), Pair(Assert.Single(rebased.VariantTables.Classes)));
         Assert.Equal((Base + 0x110, OutputFunctionType.Send), Pair(Assert.Single(rebased.Output.Functions)));
         Assert.Equal((Base + 0x120, OutputValueClass.OutputRow), Pair(Assert.Single(rebased.Output.Classes)));
     }

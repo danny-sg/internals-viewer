@@ -124,7 +124,7 @@ public sealed partial class RowBufferStore
 
     private static ulong GetExtent(RowBuffer row) => row.Format switch
     {
-        RowBufferFormat.Batch
+        RowBufferFormat.Batch or RowBufferFormat.VariantTable
             => (ulong)row.Columns.Count * BatchRowParser.LayoutValueSize,
         RowBufferFormat.HashTable
             => (ulong)(row.Record?.Length ?? 0),
@@ -133,7 +133,7 @@ public sealed partial class RowBufferStore
 
     internal static int GetColumn(RowBuffer row, ulong offset)
     {
-        if (row.Format == RowBufferFormat.Batch)
+        if (row.Format is RowBufferFormat.Batch or RowBufferFormat.VariantTable)
         {
             return (int)(offset / BatchRowParser.LayoutValueSize);
         }
