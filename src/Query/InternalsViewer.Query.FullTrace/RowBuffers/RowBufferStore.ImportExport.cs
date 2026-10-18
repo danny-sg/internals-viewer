@@ -7,7 +7,7 @@ namespace InternalsViewer.Query.FullTrace.RowBuffers;
 
 public sealed partial class RowBufferStore
 {
-    private const int FormatVersion = 4;
+    private const int FormatVersion = 6;
 
     private const int NoIndex = -1;
 
@@ -39,6 +39,23 @@ public sealed partial class RowBufferStore
             writer.Write(binding.FixedLength);
 
             writer.Write(binding.ValueOffset);
+
+            writer.Write(binding.Type is not null);
+
+            if (binding.Type is { } type)
+            {
+                writer.Write(type.Ordinal);
+
+                writer.Write(type.TypeId);
+
+                writer.Write(type.MaxLength);
+
+                writer.Write(type.Precision);
+
+                writer.Write(type.Scale);
+
+                writer.Write(type.Collation);
+            }
         }
 
         writer.Write(columnSets.Count);
@@ -85,6 +102,13 @@ public sealed partial class RowBufferStore
             {
                 writer.Write(record);
             }
+
+            writer.Write(row.Location is not null);
+
+            if (row.Location is { } location)
+            {
+                WriteLocation(writer, location);
+            }
         }
     }
 
@@ -99,7 +123,19 @@ public sealed partial class RowBufferStore
 
         for (var index = 0; index < bindings.Length; index++)
         {
-            bindings[index] = new RowBufferBinding(reader.ReadInt32(), reader.ReadUInt32(), reader.ReadInt32(), reader.ReadUInt64());
+            var binding = new RowBufferBinding(reader.ReadInt32(), reader.ReadUInt32(), reader.ReadInt32(), reader.ReadUInt64());
+
+            bindings[index] = reader.ReadBoolean()
+                ? binding with
+                {
+                    Type = new RowBufferType(reader.ReadInt32(),
+                                             reader.ReadByte(),
+                                             reader.ReadInt32(),
+                                             reader.ReadByte(),
+                                             reader.ReadByte(),
+                                             reader.ReadUInt32())
+                }
+                : binding;
         }
 
         var columnSets = new RowBufferColumn[reader.ReadInt32()][];
@@ -144,13 +180,16 @@ public sealed partial class RowBufferStore
 
             var record = recordLength >= 0 ? reader.ReadBytes(recordLength) : null;
 
+            var location = reader.ReadBoolean() ? ReadLocation(reader) : null;
+
             var columns = record is null ? columnSets[columnSet] : RecordRowParser.Split(record, null);
 
             rows[index] = new RowBuffer(function, instance, call, position, iterator, address, columns, format)
             {
                 Batch = batch,
                 BatchSelectionIndex = selectionIndex,
-                Record = record
+                Record = record,
+                Location = location
             };
         }
 
@@ -251,6 +290,22 @@ public sealed partial class RowBufferStore
         };
 
         return column with { DeepDataVectorId = reader.ReadInt32() };
+    }
+
+    private static void WriteLocation(BinaryWriter writer, DeferredRecordValue location)
+    {
+        writer.Write(location.Page.FileId);
+
+        writer.Write(location.Page.PageId);
+
+        writer.Write(location.Slot);
+    }
+
+    private static DeferredRecordValue ReadLocation(BinaryReader reader)
+    {
+        var page = new PageAddress(reader.ReadInt16(), reader.ReadInt32());
+
+        return new DeferredRecordValue(page, reader.ReadInt32());
     }
 
     private static DeferredPageValue ReadDeferredPage(BinaryReader reader)

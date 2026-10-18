@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.Output;
-using InternalsViewer.Query.FullTrace.Output.Enums;
+using InternalsViewer.Query.FullTrace.Output.Sources;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Helpers;
@@ -53,9 +53,7 @@ internal sealed class TraceOutputLineage
             return Empty;
         }
 
-        var operators = timeline.GetOperatorsByInstance();
-
-        var owners = GetOwners(operators, structures, rowBuffers, batches);
+        var owners = timeline.GetOperatorsByInstance();
 
         var captures = new Dictionary<ulong, List<Capture>>();
 
@@ -80,7 +78,7 @@ internal sealed class TraceOutputLineage
 
         var plans = new Dictionary<short, TraceOutputStructure>();
 
-        foreach (var structure in structures.Select(s => GetResolved(s, operators)).OrderByDescending(s => s.Columns.Count))
+        foreach (var structure in structures.Select(s => GetResolved(s, owners, rowBuffers)).OrderByDescending(s => s.Columns.Count))
         {
             if (GetPlanHandle(structure, owners, batches) is { } planHandle)
             {
@@ -126,43 +124,19 @@ internal sealed class TraceOutputLineage
         return [.. columns.Select(c => GetSource(c.Key, structure, c.Value, root.ToPosition))];
     }
 
-    private static Dictionary<ulong, ExecutionOperatorEvent> GetOwners(Dictionary<ulong, ExecutionOperatorEvent> operators,
-                                                                       IReadOnlyList<TraceOutputStructure> structures,
-                                                                       RowBufferStore rowBuffers,
-                                                                       BatchStore batches)
-    {
-        var owners = new Dictionary<ulong, ExecutionOperatorEvent>(operators);
-
-        var iterators = structures.SelectMany(s => s.Columns.Select(c => c.Owner).Append(s.DirectSelectOwner))
-                                  .Concat(rowBuffers.All.Select(r => r.Iterator));
-
-        foreach (var iterator in iterators)
+    private static TraceOutputStructure GetResolved(TraceOutputStructure structure,
+                                                    Dictionary<ulong, ExecutionOperatorEvent> operators,
+                                                    RowBufferStore rowBuffers)
+        => structure with
         {
-            if (!owners.ContainsKey(iterator)
-                && batches.GetProducer(iterator) is { } producer
-                && operators.TryGetValue(producer, out var operatorEvent))
-            {
-                owners[iterator] = operatorEvent;
-            }
-        }
-
-        return owners;
-    }
-
-    private static TraceOutputStructure GetResolved(TraceOutputStructure structure, Dictionary<ulong, ExecutionOperatorEvent> operators)
-    {
-        if (!structure.Columns.Any(IsUnowned))
-        {
-            return structure;
-        }
-
-        return structure with
-        {
-            Columns = [.. structure.Columns.Select(c => IsUnowned(c) ? c with { Owner = GetEnclosingIterator(c.Address, operators.Keys) } : c)]
+            Columns = [.. structure.Columns.Select(c => c is BufferOutputSource { Owner: 0, Address: not 0 } buffer
+                                                            ? buffer with { Owner = GetAddressOwner(buffer.Address, operators, rowBuffers) }
+                                                            : c)],
+            DirectSelectOwner = structure.DirectSelectBuffer == 0 ? 0 : GetAddressOwner(structure.DirectSelectBuffer, operators, rowBuffers)
         };
-    }
 
-    private static bool IsUnowned(TraceOutputSource source) => source is { Type: OutputSourceType.Buffer, Owner: 0, Address: not 0 };
+    private static ulong GetAddressOwner(ulong address, Dictionary<ulong, ExecutionOperatorEvent> operators, RowBufferStore rowBuffers)
+        => rowBuffers.GetIterator(address) is not 0 and var iterator ? iterator : GetEnclosingIterator(address, operators.Keys);
 
     private static ulong GetEnclosingIterator(ulong address, IEnumerable<ulong> iterators)
         => iterators.Where(i => i <= address && address - i < MaximumIteratorSize).DefaultIfEmpty().Max();
@@ -199,7 +173,9 @@ internal sealed class TraceOutputLineage
             return [];
         }
 
-        TraceOutputColumn[] columns = [.. capture.Row.Columns.Select(c => GetColumn(c.Ordinal, capture.Row, c))];
+        var row = GetCurrentRow(capture.Row);
+
+        TraceOutputColumn[] columns = [.. row.Columns.Select(c => GetColumn(c.Ordinal, row, c))];
 
         return [new TraceOutputRowSource(operatorEvent, capture.Mark, columns)];
     }
@@ -208,26 +184,17 @@ internal sealed class TraceOutputLineage
     {
         var capture = GetCapture(owner, position);
 
-        TraceOutputColumn[] columns =
-            [.. ordinals.Select(o => GetColumn(o, capture?.Row, GetRowColumn(structure.Columns[o], capture?.Row)))];
+        var row = capture is null ? null : GetCurrentRow(capture.Row);
+
+        TraceOutputColumn[] columns = [.. ordinals.Select(o => GetColumn(o, row, row is null ? null : structure.Columns[o].GetColumn(row)))];
 
         return new TraceOutputRowSource(Owners[owner], capture?.Mark, columns);
     }
 
-    private static RowBufferColumn? GetRowColumn(TraceOutputSource source, RowBuffer? row)
-    {
-        if (row is null || source.Type != OutputSourceType.Buffer || source.Address < row.Address)
-        {
-            return null;
-        }
-
-        var ordinal = RowBufferStore.GetColumn(row, source.Address - row.Address);
-
-        return ordinal >= 0 && ordinal < row.Columns.Count ? row.Columns[ordinal] : null;
-    }
-
     private TraceOutputColumn GetColumn(int ordinal, RowBuffer? row, RowBufferColumn? column)
-        => new(ordinal, column, row is not null && column is not null ? RowBuffers.GetSource(row, column, Batches) : null);
+        => new(ordinal, row, column, row is not null && column is not null ? RowBuffers.GetSource(row, column, Batches) : null);
+
+    private RowBuffer GetCurrentRow(RowBuffer row) => RowBuffers.GetRow(row.Function, row.Instance, row.Call) ?? row;
 
     private Capture? GetCapture(ulong owner, TracePosition position)
     {

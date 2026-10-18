@@ -96,7 +96,9 @@ internal sealed class TraceExportSection : IQueryExportSection
 
         batches.AnnotateNodes(callStore);
 
-        timeline.SetLifetimes(IteratorLifetimeBuilder.Build(timeline, [.. events.OfType<ExecutionOperatorEvent>()], batches));
+        var iterators = IteratorTree.Build(callStore, timeline.MappedNodes, batches);
+
+        timeline.SetLifetimes(IteratorLifetimeBuilder.Build(timeline, [.. events.OfType<ExecutionOperatorEvent>()], batches, iterators));
 
         if (reader.HasEntry(EventLinksEntry))
         {

@@ -12,13 +12,13 @@ namespace InternalsViewer.Query.FullTrace.RowBuffers.Parsers;
 
 internal static class RecordRowParser
 {
-    private const int LayoutHeaderSize = 4;
+    private const int HeaderSize = 4;
 
-    private const int LayoutFixedEndOffset = 2;
+    private const int FixedEndOffset = 2;
 
-    private const int LayoutCountSize = sizeof(ushort);
+    private const int CountSize = sizeof(ushort);
 
-    private const int LayoutVariableOffsetSize = sizeof(ushort);
+    private const int VariableOffsetSize = sizeof(ushort);
 
     private const byte NullBitmapFlag = 0x10;
 
@@ -34,16 +34,16 @@ internal static class RecordRowParser
 
     public static byte[]? Read(ITraceReplay replay, ulong address)
     {
-        Span<byte> header = stackalloc byte[LayoutHeaderSize];
+        Span<byte> header = stackalloc byte[HeaderSize];
 
         if (replay.Read(address, header) != header.Length)
         {
             return null;
         }
 
-        var fixedEnd = BinaryPrimitives.ReadUInt16LittleEndian(header[LayoutFixedEndOffset..]);
+        var fixedEnd = BinaryPrimitives.ReadUInt16LittleEndian(header[FixedEndOffset..]);
 
-        if (fixedEnd < LayoutHeaderSize || fixedEnd > MaximumRecordSize)
+        if (fixedEnd is < HeaderSize or > MaximumRecordSize)
         {
             return null;
         }
@@ -53,7 +53,7 @@ internal static class RecordRowParser
             return null;
         }
 
-        var end = fixedEnd + LayoutCountSize + ((header[0] & NullBitmapFlag) != 0 ? GetBitmapSize(columnCount) : 0);
+        var end = fixedEnd + CountSize + ((header[0] & NullBitmapFlag) != 0 ? GetBitmapSize(columnCount) : 0);
 
         if ((header[0] & VariableColumnsFlag) != 0)
         {
@@ -62,9 +62,9 @@ internal static class RecordRowParser
                 return null;
             }
 
-            end += LayoutCountSize + variableCount * LayoutVariableOffsetSize;
+            end += CountSize + variableCount * VariableOffsetSize;
 
-            if (variableCount > 0 && replay.TryRead(address + (ulong)(end - LayoutVariableOffsetSize), out ushort lastEnd))
+            if (variableCount > 0 && replay.TryRead(address + (ulong)(end - VariableOffsetSize), out ushort lastEnd))
             {
                 end = Math.Max(end, lastEnd & ~ComplexColumnFlag);
             }
@@ -81,11 +81,11 @@ internal static class RecordRowParser
     }
 
     public static ushort GetColumnCount(byte[] record)
-        => record.Length >= LayoutHeaderSize && GetFixedEnd(record) + LayoutCountSize <= record.Length
+        => record.Length >= HeaderSize && GetFixedEnd(record) + CountSize <= record.Length
             ? BinaryPrimitives.ReadUInt16LittleEndian(record.AsSpan(GetFixedEnd(record)))
             : (ushort)0;
 
-    public static int GetFixedEnd(byte[] record) => BinaryPrimitives.ReadUInt16LittleEndian(record.AsSpan(LayoutFixedEndOffset));
+    public static int GetFixedEnd(byte[] record) => BinaryPrimitives.ReadUInt16LittleEndian(record.AsSpan(FixedEndOffset));
 
     public static RowBufferColumn[] Split(byte[] record, RowRecordLayout? layout)
     {
@@ -108,10 +108,24 @@ internal static class RecordRowParser
         return columns;
     }
 
+    public static RowBufferColumn? GetFixedColumn(byte[] record, int index, int offset, int length)
+    {
+        if (offset < HeaderSize || length < 0 || offset + length > GetFixedEnd(record))
+        {
+            return null;
+        }
+
+        var binding = new RowBufferBinding(offset, 0, length, (ulong)offset);
+
+        return IsNull(record, index)
+            ? new RowBufferColumn(index, binding, NullStatus, RowBufferColumnFlags.None, length, [])
+            : new RowBufferColumn(index, binding, 0, RowBufferColumnFlags.None, length, record[offset..(offset + length)]);
+    }
+
     public static bool Fits(byte[] record, RowRecordLayout layout)
-        => record.Length >= LayoutHeaderSize
+        => record.Length >= HeaderSize
            && GetColumnCount(record) == layout.Columns.Count
-           && LayoutHeaderSize + layout.FixedLength == GetFixedEnd(record);
+           && HeaderSize + layout.FixedLength == GetFixedEnd(record);
 
     private static RowBufferColumn ToColumn(int ordinal, bool isVariableLength, FixedVarRecordField field)
         => new(ordinal,
@@ -122,4 +136,14 @@ internal static class RecordRowParser
                field.IsNull ? [] : field.Data.ToArray());
 
     private static int GetBitmapSize(int columnCount) => (columnCount + 7) / 8;
+
+    private static bool IsNull(byte[] record, int index)
+    {
+        var bitmap = GetFixedEnd(record) + CountSize + index / 8;
+
+        return (record[0] & NullBitmapFlag) != 0
+               && index < GetColumnCount(record)
+               && bitmap < record.Length
+               && (record[bitmap] & (1 << (index % 8))) != 0;
+    }
 }

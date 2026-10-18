@@ -43,6 +43,8 @@ public static class SqlTypeHelpers
         return Types[type];
     }
 
+    public static bool TryGetSqlType(byte type, out SqlDbType sqlType) => Types.TryGetValue(type, out sqlType);
+
     public static bool IsVariableLength(SqlDbType type)
     {
         return !IsFixedLength(type);

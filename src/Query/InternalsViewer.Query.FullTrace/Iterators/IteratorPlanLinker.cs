@@ -225,7 +225,7 @@ internal static class IteratorPlanLinker
         => node.Frame?.Resolved is { ClassName: { } className, MethodName: BatchIteratorMethod }
            && className.StartsWith(BatchClass, StringComparison.Ordinal);
 
-    private static bool IsIteratorConstructor(CallStackNode node)
+    internal static bool IsIteratorConstructor(CallStackNode node)
         => node is { IsConstructor: true, Frame.Resolved.SymbolCategory: SymbolCategory.QueryOperator or SymbolCategory.PhysicalOperator };
 
     private static IEnumerable<(PlanObject Root, ExecutionOperatorEvent Operator, Choice Choice)> AcceptedRoots(

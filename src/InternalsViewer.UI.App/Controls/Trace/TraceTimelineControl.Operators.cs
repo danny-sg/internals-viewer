@@ -7,7 +7,6 @@ using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.Plans.Model;
-using InternalsViewer.Query.Plans.Operators;
 using InternalsViewer.UI.App.Controls.Timeline;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels.Query;
@@ -192,8 +191,7 @@ public sealed partial class TraceTimelineControl
                            .Where(l => lanes.ContainsKey(l.Thread))
                            .GroupBy(l => l.Operator, ReferenceEqualityComparer.Instance)
                            .Select(g => RowOf((ExecutionOperatorEvent)g.Key!, [.. g.OrderBy(l => lanes[l.Thread])]))
-                           .OrderBy(r => r.Operator.NodeLevel)
-                           .ThenBy(r => r.Operator.Category != OperatorCategory.Adapter)
+                           .OrderBy(r => r.Lifetimes.Min(l => l.Depth))
                            .ThenBy(r => r.Lifetimes.Min(l => l.StartOf(TraceTimelineAxis.Position)))
                            .ThenBy(r => r.Operator.PlanNodeIdentifier?.NodeId ?? 0)];
     }

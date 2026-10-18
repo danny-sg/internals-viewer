@@ -5,7 +5,7 @@ namespace InternalsViewer.Query.FullTrace.RowBuffers.Records;
 
 public sealed class RowRecordLayout
 {
-    private const int LayoutHeaderSize = 4;
+    private const int HeaderSize = 4;
 
     public RowRecordLayout(IReadOnlyList<ColumnStructure> columns, int keyCount = 0)
     {
@@ -61,7 +61,7 @@ public sealed class RowRecordLayout
     {
         var structure = new TableStructure(0);
 
-        var fixedOffset = LayoutHeaderSize;
+        var fixedOffset = HeaderSize;
 
         var variableIndex = 0;
 

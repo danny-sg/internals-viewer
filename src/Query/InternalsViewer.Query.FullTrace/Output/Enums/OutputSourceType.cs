@@ -1,6 +1,6 @@
 namespace InternalsViewer.Query.FullTrace.Output.Enums;
 
-public enum OutputSourceType : byte
+internal enum OutputSourceType : byte
 {
     Unknown,
     Buffer,

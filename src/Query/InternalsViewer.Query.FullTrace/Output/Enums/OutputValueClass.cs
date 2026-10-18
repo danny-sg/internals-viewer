@@ -9,6 +9,5 @@ internal enum OutputValueClass : byte
     HashSwitch,
     HashCachedSwitch,
     BatchRedirect,
-    VariantTable,
-    VariantTableRow
+    VariantTable
 }

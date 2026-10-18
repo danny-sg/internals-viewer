@@ -7,7 +7,7 @@ using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.Batches.Enums;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Output;
-using InternalsViewer.Query.FullTrace.Output.Enums;
+using InternalsViewer.Query.FullTrace.Output.Sources;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
 using InternalsViewer.Query.FullTrace.RowBuffers.Parsers;
@@ -34,7 +34,6 @@ public class TraceRowReturnMarksTests
 
     private const ulong OutputRow = 0x1F4_0000_9000;
 
-    private const ulong BatchHelper = 0x1F4_0000_C000;
 
     private const ulong RowStatus = 0;
 
@@ -260,7 +259,7 @@ public class TraceRowReturnMarksTests
     [Fact]
     public void A_Row_Sent_Directly_Takes_Every_Column_From_The_Row_Buffer_Of_Its_Sender()
     {
-        var structure = new TraceOutputStructure(OutputRow, [], ScanIterator);
+        var structure = new TraceOutputStructure(OutputRow, [], ScanBuffer);
 
         var outputRow = Assert.Single(Build([(10, 40, RowStatus), (50, 70, EndStatus)],
                                             [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)],
@@ -283,18 +282,13 @@ public class TraceRowReturnMarksTests
     }
 
     [Fact]
-    public void A_Batch_Helper_That_Is_Not_An_Operator_Is_Shown_On_The_Operator_It_Reads_Batches_From()
+    public void A_Value_In_A_Captured_Row_Buffer_Belongs_To_The_Iterator_That_Captured_It()
     {
-        var structure = new TraceOutputStructure(OutputRow,
-                                                 [new TraceOutputSource(OutputSourceType.Buffer, 0, ScanBuffer) { Owner = BatchHelper }],
-                                                 0);
-
-        var batches = new BatchStore([new BatchCapture(0x2000, ScanIterator, 0, At(14), ScanIterator, 0x1F4_0000_A000, BatchHelper,
-                                                       BatchCaptureFlags.None, [], [])]);
+        var structure = new TraceOutputStructure(OutputRow, [new BufferOutputSource(0, ScanBuffer + 0x04)], 0);
 
         var outputRow = Assert.Single(Build([(10, 40, RowStatus), (50, 70, EndStatus)],
                                             [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)],
-                                            t => CreateLineage(t, structure, batches, BatchHelper, 15, 25)).OutputRows.All);
+                                            t => CreateLineage(t, structure, 15, 25)).OutputRows.All);
 
         var source = Assert.Single(outputRow.Sources);
 
@@ -304,7 +298,7 @@ public class TraceRowReturnMarksTests
     [Fact]
     public void A_Value_Held_Inside_An_Iterator_Belongs_To_That_Operator()
     {
-        var structure = new TraceOutputStructure(OutputRow, [new TraceOutputSource(OutputSourceType.Buffer, 0, ScanIterator + 0x88)], 0);
+        var structure = new TraceOutputStructure(OutputRow, [new BufferOutputSource(0, ScanIterator + 0x88)], 0);
 
         var outputRow = Assert.Single(Build([(10, 40, RowStatus), (50, 70, EndStatus)],
                                             [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)],
@@ -327,7 +321,7 @@ public class TraceRowReturnMarksTests
         };
 
         var structure = new TraceOutputStructure(OutputRow,
-                                                 [new TraceOutputSource(OutputSourceType.Buffer, 0, ScanBuffer) { Owner = ScanIterator }],
+                                                 [new BufferOutputSource(0, ScanBuffer) { Owner = ScanIterator }],
                                                  0);
 
         var batches = new BatchStore([new BatchCapture(0x2000, JoinIterator, 0, At(14), JoinIterator, 0x1F4_0000_A000, ScanIterator,
@@ -447,7 +441,7 @@ public class TraceRowReturnMarksTests
     }
 
     private static TraceOutputStructure ScanColumns()
-        => new(OutputRow, [new TraceOutputSource(OutputSourceType.Buffer, 0, ScanBuffer) { Owner = ScanIterator }], 0);
+        => new(OutputRow, [new BufferOutputSource(0, ScanBuffer) { Owner = ScanIterator }], 0);
 
     private static ulong[] Call((ulong Start, ulong End, ulong Status) call, int node)
         => Row(call.Start, flags: Thread | TraceCallColumns.ReturnedFlag, returnValue: call.Status, node: node, endSequence: call.End);

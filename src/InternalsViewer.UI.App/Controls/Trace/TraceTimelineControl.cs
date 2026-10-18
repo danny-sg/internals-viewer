@@ -916,6 +916,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
         FindNodeMatches(_highlightedNode);
 
+        FindCallHighlights();
+
         _operatorsHeight = null;
 
         _selectedOperator = null;

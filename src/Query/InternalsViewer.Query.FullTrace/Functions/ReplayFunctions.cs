@@ -5,8 +5,10 @@ using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.PublishedEvents;
 using InternalsViewer.Query.FullTrace.RowBuffers;
+using InternalsViewer.Query.FullTrace.RowBuffers.Accessors;
 using InternalsViewer.Query.FullTrace.RowBuffers.HashRows;
-using InternalsViewer.Query.FullTrace.RowBuffers.VariantTables;
+using InternalsViewer.Query.FullTrace.RowBuffers.VariantRows;
+using InternalsViewer.Query.FullTrace.RowSources;
 
 namespace InternalsViewer.Query.FullTrace.Functions;
 
@@ -19,7 +21,9 @@ internal sealed record ReplayFunctions(ulong[] ExcludedFunctions,
                                        RowBufferFunctions RowBuffers,
                                        BatchFunctions Batches,
                                        HashRowFunctions HashRows,
-                                       VariantTableFunctions VariantTables,
+                                       VariantRowFunctions VariantRows,
+                                       RowSourceFunctions RowSources,
+                                       AccessorFunctions Accessors,
                                        OutputFunctions Output)
 {
     public static ReplayFunctions Empty { get; } = new([],
@@ -31,7 +35,9 @@ internal sealed record ReplayFunctions(ulong[] ExcludedFunctions,
                                                        RowBufferFunctions.Empty,
                                                        BatchFunctions.Empty,
                                                        HashRowFunctions.Empty,
-                                                       VariantTableFunctions.Empty,
+                                                       VariantRowFunctions.Empty,
+                                                       RowSourceFunctions.Empty,
+                                                       AccessorFunctions.Empty,
                                                        OutputFunctions.Empty);
 
     public static ReplayFunctions Merge(IReadOnlyList<ReplayFunctions> functions)
@@ -44,7 +50,9 @@ internal sealed record ReplayFunctions(ulong[] ExcludedFunctions,
                RowBufferFunctions.Merge(functions.Select(f => f.RowBuffers)),
                BatchFunctions.Merge(functions.Select(f => f.Batches)),
                HashRowFunctions.Merge(functions.Select(f => f.HashRows)),
-               VariantTableFunctions.Merge(functions.Select(f => f.VariantTables)),
+               VariantRowFunctions.Merge(functions.Select(f => f.VariantRows)),
+               RowSourceFunctions.Merge(functions.Select(f => f.RowSources)),
+               AccessorFunctions.Merge(functions.Select(f => f.Accessors)),
                OutputFunctions.Merge(functions.Select(f => f.Output)));
 
     public ReplayFunctions Rebase(ulong address)
@@ -57,6 +65,8 @@ internal sealed record ReplayFunctions(ulong[] ExcludedFunctions,
                RowBuffers.Rebase(address),
                Batches.Rebase(address),
                HashRows.Rebase(address),
-               VariantTables.Rebase(address),
+               VariantRows.Rebase(address),
+               RowSources.Rebase(address),
+               Accessors.Rebase(address),
                Output.Rebase(address));
 }

@@ -5,8 +5,5 @@ internal enum OutputFunctionType : byte
     Evaluation,
     ValueRead,
     VariantRead,
-    Send,
-    Creator,
-    Iterator,
-    SlotWriter
+    Send
 }

@@ -99,19 +99,6 @@ public class TraceRowBufferMarksTests
     }
 
     [Fact]
-    public void Rows_Of_An_Adapter_Belong_To_The_Operator_Handing_It_Batches()
-    {
-        var timeline = Build(Span(node: 0, start: 0, end: 100),
-                             Span(node: 1, start: 10, end: 90));
-
-        var marks = TraceRowBufferMarks.Build(timeline,
-                                              CaptureFor(Adapter, (GetRow, Iterator, 0)),
-                                              new BatchStore([Batch(call: 0, consumer: Adapter)]));
-
-        Assert.Equal([GetEnd(timeline, depth: 1, index: 0)], marks.GetMarks(Scan, TraceTimelineAxis.Position).ToArray());
-    }
-
-    [Fact]
     public void Rows_Of_An_Iterator_Without_An_Operator_Are_Not_Marked()
     {
         var timeline = Build(Span(node: 0, start: 0, end: 100),

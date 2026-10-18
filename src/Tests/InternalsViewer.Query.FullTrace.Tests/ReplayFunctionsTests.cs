@@ -10,11 +10,14 @@ using InternalsViewer.Query.FullTrace.Functions;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
 using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Output.Enums;
+using InternalsViewer.Query.FullTrace.RowBuffers.Accessors;
 using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
 using InternalsViewer.Query.FullTrace.RowBuffers.HashRows;
 using InternalsViewer.Query.FullTrace.RowBuffers.HashRows.Enums;
-using InternalsViewer.Query.FullTrace.RowBuffers.VariantTables;
-using InternalsViewer.Query.FullTrace.RowBuffers.VariantTables.Enums;
+using InternalsViewer.Query.FullTrace.RowBuffers.VariantRows;
+using InternalsViewer.Query.FullTrace.RowBuffers.VariantRows.Enums;
+using InternalsViewer.Query.FullTrace.RowSources;
+using InternalsViewer.Query.FullTrace.RowSources.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -32,11 +35,13 @@ public class ReplayFunctionsTests
                                            new PublishedEventFunctions([new EventPublisher(0x70, "latch_acquired")], [0x80]),
                                            [new MemoryFunction(0x90, AllocationOperation.Allocate, 1, -1, 1)],
                                            [new MemoryMapFunction(0xA0, MemoryMapOperation.Visited)],
-                                           new RowBufferFunctions([0xB0], Map(0xC0, RowBufferFormat.Bindings)),
+                                           new RowBufferFunctions([0xB0], [0xC0], Map(0xC8, RowObjectClass.BTree)),
                                            new BatchFunctions([0xD0]),
                                            new HashRowFunctions(Map(0x100, HashRowFunctionType.Insert), [0x108]),
-                                           new VariantTableFunctions(Map(0x130, VariantTableFunctionType.Writer),
-                                                                     Map(0x140, VariantTableClass.Row)),
+                                           new VariantRowFunctions(Map(0x130, VariantRowFunctionType.ColumnCreator),
+                                                                   Map(0x140, VariantTableClass.Row)),
+                                           new RowSourceFunctions(Map(0x150, RowSourceFunctionType.Creator)),
+                                           new AccessorFunctions([0x160]),
                                            new OutputFunctions(Map(0x110, OutputFunctionType.Send),
                                                                Map(0x120, OutputValueClass.OutputRow)));
 
@@ -50,12 +55,15 @@ public class ReplayFunctionsTests
         Assert.Equal(Base + 0x90, Assert.Single(rebased.MemoryFunctions).Address);
         Assert.Equal(Base + 0xA0, Assert.Single(rebased.MemoryMapFunctions).Address);
         Assert.Equal([Base + 0xB0], rebased.RowBuffers.Functions);
-        Assert.Equal((Base + 0xC0, RowBufferFormat.Bindings), Pair(Assert.Single(rebased.RowBuffers.Formats)));
+        Assert.Equal([Base + 0xC0], rebased.RowBuffers.Rowsets);
+        Assert.Equal((Base + 0xC8, RowObjectClass.BTree), Pair(Assert.Single(rebased.RowBuffers.RowObjects)));
         Assert.Equal([Base + 0xD0], rebased.Batches.Functions);
         Assert.Equal((Base + 0x100, HashRowFunctionType.Insert), Pair(Assert.Single(rebased.HashRows.Functions)));
         Assert.Equal([Base + 0x108], rebased.HashRows.HashIterators);
-        Assert.Equal((Base + 0x130, VariantTableFunctionType.Writer), Pair(Assert.Single(rebased.VariantTables.Functions)));
-        Assert.Equal((Base + 0x140, VariantTableClass.Row), Pair(Assert.Single(rebased.VariantTables.Classes)));
+        Assert.Equal((Base + 0x130, VariantRowFunctionType.ColumnCreator), Pair(Assert.Single(rebased.VariantRows.Functions)));
+        Assert.Equal((Base + 0x140, VariantTableClass.Row), Pair(Assert.Single(rebased.VariantRows.Classes)));
+        Assert.Equal((Base + 0x150, RowSourceFunctionType.Creator), Pair(Assert.Single(rebased.RowSources.Functions)));
+        Assert.Equal([Base + 0x160], rebased.Accessors.Functions);
         Assert.Equal((Base + 0x110, OutputFunctionType.Send), Pair(Assert.Single(rebased.Output.Functions)));
         Assert.Equal((Base + 0x120, OutputValueClass.OutputRow), Pair(Assert.Single(rebased.Output.Classes)));
     }

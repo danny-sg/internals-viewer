@@ -1,5 +1,6 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Interfaces.Events;
 
@@ -14,7 +15,7 @@ internal class FileEventParser : IEventParser<FileEvent>
 
         var fileId = e.GetShort("file_id") ?? 0;
 
-        var pageId = e.GetInt("page_id") ?? (int)(offset / 8192);
+        var pageId = e.GetInt("page_id") ?? (int)(offset / PageData.Size);
 
         var mode = (ReadMode)(e.GetByte("mode") ?? 0);
 

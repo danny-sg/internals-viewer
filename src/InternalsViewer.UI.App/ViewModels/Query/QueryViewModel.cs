@@ -279,6 +279,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private IReadOnlyList<string> _outputColumnNames = [];
 
     [ObservableProperty]
+    private Func<RowBuffer, RowBufferColumn, bool, string>? _outputValueFormatter;
+
+    [ObservableProperty]
     private TraceEventLink? _currentEventLink;
 
     [ObservableProperty]
@@ -1092,6 +1095,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         RowReturnMarks = null;
 
         OutputColumnNames = [];
+
+        OutputValueFormatter = null;
 
         CreatedCallTreeTab?.Dispose();
 
@@ -2289,15 +2294,17 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         result.RowBuffers.ApplyRecordLayouts(buildDecoder.GetColumn, i => GetBuildKeyCount(iterators.GetValueOrDefault(i)));
 
+        var rowBufferDecoder = new RowBufferDecoder(Database,
+                                                    i => iterators.GetValueOrDefault(i)?.Operator,
+                                                    (i, o) => batchDecoder.GetColumn(result.Batches.GetProducer(i) ?? i, o));
+
         Arguments.SetSource(result.CallStore,
                             result.CallStack,
                             iterators,
                             result.HoBtAccess,
                             result.MemoryMap,
                             result.RowBuffers,
-                            new RowBufferDecoder(Database,
-                                                 i => iterators.GetValueOrDefault(i)?.Operator,
-                                                 (i, o) => batchDecoder.GetColumn(result.Batches.GetProducer(i) ?? i, o)),
+                            rowBufferDecoder,
                             result.Batches,
                             batchDecoder);
 
@@ -2308,6 +2315,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         RowReturnMarks = result.RowReturnMarks;
 
         OutputColumnNames = GetOutputColumnNames(result.RowReturnMarks.OutputRows);
+
+        OutputValueFormatter = (row, column, isDecoded)
+            => RowBufferDisplay.GetValue(row, column, rowBufferDecoder, isDecoded).ToString() ?? string.Empty;
 
         TraceTimeline = traceTimeline;
 
@@ -2447,6 +2457,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         RowReturnMarks = null;
 
         OutputColumnNames = [];
+
+        OutputValueFormatter = null;
 
         SelectedCallNode = null;
 

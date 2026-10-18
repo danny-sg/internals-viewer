@@ -124,6 +124,30 @@ public class RowBufferStoreTests
     }
 
     [Fact]
+    public void A_Binding_Keeps_Its_Reported_Type_Through_Export()
+    {
+        var binding = new RowBufferBinding(4, 2, 4, 0x10) { Type = new RowBufferType(2, 167, 100, 0, 0, 0x3400D008) };
+
+        var column = new RowBufferColumn(0, binding, 0, RowBufferColumnFlags.None, 4, [1, 0, 0, 0]);
+
+        var index = new RowBufferStore([new RowBuffer(Function, Instance, 1, At(100), Iterator, Buffer, [column])]);
+
+        Assert.Equal(binding.Type, Export(index).GetRow(Function, Instance, 1)!.Columns[0].Binding.Type);
+    }
+
+    [Fact]
+    public void A_Row_Keeps_The_Record_It_Was_Read_From_Through_Export()
+    {
+        var location = new DeferredRecordValue(new PageAddress(1, 336), 2);
+
+        var column = new RowBufferColumn(0, RowBufferBinding.None, 0, RowBufferColumnFlags.None, 4, [1, 0, 0, 0]);
+
+        var index = new RowBufferStore([new RowBuffer(Function, Instance, 1, At(100), Iterator, Buffer, [column]) { Location = location }]);
+
+        Assert.Equal(location, Export(index).GetRow(Function, Instance, 1)!.Location);
+    }
+
+    [Fact]
     public void A_Page_Reference_Survives_Export_And_Import()
     {
         var flags = RowBufferColumnFlags.ByReference | RowBufferColumnFlags.HasLength | RowBufferColumnFlags.Deferred;

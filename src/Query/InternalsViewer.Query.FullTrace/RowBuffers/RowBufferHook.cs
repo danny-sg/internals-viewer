@@ -1,32 +1,25 @@
-using InternalsViewer.Query.FullTrace.Batches;
+using InternalsViewer.Query.FullTrace.RowBuffers.DeferredValues;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
+using InternalsViewer.Query.FullTrace.RowBuffers.Accessors;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
-using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
 using InternalsViewer.Query.FullTrace.RowBuffers.Parsers;
 
 namespace InternalsViewer.Query.FullTrace.RowBuffers;
 
-internal sealed class RowBufferHook(RowBufferFunctions functions) : ITraceHook
+internal sealed class RowBufferHook(RowBufferFunctions functions, AccessorHook accessors) : ITraceHook
 {
     private const int IteratorArgument = 0;
 
-    private const ulong LayoutRowsetBufferOffset = 0x80;
+    private const ulong RowsetBufferOffset = 0x80;
 
-    private const ulong LayoutRowsetBindingsOffset = 0x88;
-
-    private const ulong LayoutBatchRowBufferOffset = 0x78;
-
-    private const ulong LayoutBatchRowCountOffset = 0x50;
-
-    private const ulong LayoutBatchRowCursorOffset = 0x88;
-
-    private const ulong LayoutBatchRowBatchOffset = 0x90;
+    private const ulong RowsetBindingsOffset = 0x88;
 
     public IEnumerable<TraceHookFunction> Functions
         => functions.Functions.Distinct().Select(f => new TraceHookFunction(f, TraceHookEvents.Entry | TraceHookEvents.Return));
 
-    private IReadOnlyDictionary<ulong, RowBufferFormat> Formats => functions.Formats;
+    private HashSet<ulong> Rowsets { get; } = [.. functions.Rowsets];
 
     private Dictionary<ulong, RowBufferStart> Starts { get; } = [];
 
@@ -38,9 +31,15 @@ internal sealed class RowBufferHook(RowBufferFunctions functions) : ITraceHook
 
     private Dictionary<ulong, RowBufferStart> KnownLayouts { get; } = [];
 
+    private Dictionary<(ulong Iterator, RowBufferBinding Binding), RowBufferBinding> TypedBindings { get; } = [];
+
     private List<RowBuffer> Rows { get; } = [];
 
-    public RowBufferStore Build(IEnumerable<RowBuffer>? others = null) => new([.. Rows, .. others ?? []]);
+    private Dictionary<int, RowLocationParser.RowPosition> Positions { get; } = [];
+
+    private Dictionary<ulong, PageAddress> KnownPages { get; } = [];
+
+    public RowBufferStore Build(IEnumerable<RowBuffer>? others = null) => new([.. GetLocatedRows(), .. others ?? []]);
 
     public void OnEntry(in TraceHookCall call, ITraceReplay replay)
     {
@@ -70,37 +69,41 @@ internal sealed class RowBufferHook(RowBufferFunctions functions) : ITraceHook
             return;
         }
 
-        if (start.Format is null && !TryReadIterator(replay, ref start))
+        if (!start.IsRowset && !TryReadIterator(replay, ref start))
         {
             return;
         }
 
         ApplyKnownLayout(ref start);
 
-        if (start.Format is not { } format)
+        if (!start.IsRowset)
         {
             return;
         }
 
-        var isBatchRow = format == RowBufferFormat.Batch;
-
-        if (start.Buffer == 0 || (isBatchRow ? start.Count == 0 : start.Bindings == 0))
+        if (start.Buffer == 0 || start.Bindings == 0)
         {
             TryReadIterator(replay, ref start);
 
             ApplyKnownLayout(ref start);
         }
 
-        var columns = isBatchRow ? BatchRowParser.Parse(replay, start.Buffer, start.Count) : ParseBoundRow(replay, start);
-
-        if (columns is null)
+        if (ParseBoundRow(replay, start) is not { } columns)
         {
             return;
         }
 
         KnownLayouts[start.Iterator] = start;
 
-        var (batch, selectionIndex) = isBatchRow ? LocateBatchValues(replay, start.Iterator, columns) : (0ul, -1);
+        if (RowLocationParser.Parse(replay, start.Iterator, functions.RowObjects) is { } position)
+        {
+            if (position.Page is { } page)
+            {
+                KnownPages[position.Frame] = page;
+            }
+
+            Positions[Rows.Count] = position;
+        }
 
         Rows.Add(new RowBuffer(call.Function,
                                call.Instance,
@@ -108,12 +111,7 @@ internal sealed class RowBufferHook(RowBufferFunctions functions) : ITraceHook
                                call.Position,
                                start.Iterator,
                                start.Buffer,
-                               GetShared(start.Iterator, columns),
-                               format)
-        {
-            Batch = batch,
-            BatchSelectionIndex = selectionIndex
-        });
+                               GetShared(start.Iterator, columns)));
     }
 
     public void OnAbandoned(in TraceHookCall call) => Remove(call.Thread, call.Id, out _);
@@ -145,42 +143,6 @@ internal sealed class RowBufferHook(RowBufferFunctions functions) : ITraceHook
         return true;
     }
 
-    private static (ulong Batch, int SelectionIndex) LocateBatchValues(ITraceReplay replay, ulong iterator, RowBufferColumn[] columns)
-    {
-        if (!replay.TryRead(iterator + LayoutBatchRowBatchOffset, out ulong batch) || batch < ColumnValueParser.SmallestAddress)
-        {
-            return (0, -1);
-        }
-
-        var selectionIndex = replay.TryRead(iterator + LayoutBatchRowCursorOffset, out int cursor) && cursor > 0 ? cursor - 1 : -1;
-
-        List<(ulong Start, ulong End, int VectorId)>? pages = null;
-
-        for (var index = 0; index < columns.Length; index++)
-        {
-            var pointer = columns[index].Pointer;
-
-            if (pointer == 0)
-            {
-                continue;
-            }
-
-            pages ??= BatchDeepDataLocator.GetPages(replay, batch);
-
-            foreach (var page in pages)
-            {
-                if (pointer >= page.Start && pointer < page.End)
-                {
-                    columns[index] = columns[index] with { DeepDataVectorId = page.VectorId };
-
-                    break;
-                }
-            }
-        }
-
-        return (batch, selectionIndex);
-    }
-
     private void ApplyKnownLayout(ref RowBufferStart start)
     {
         if (!KnownLayouts.TryGetValue(start.Iterator, out var known))
@@ -188,7 +150,7 @@ internal sealed class RowBufferHook(RowBufferFunctions functions) : ITraceHook
             return;
         }
 
-        start.Format ??= known.Format;
+        start.IsRowset = true;
 
         if (start.Buffer == 0)
         {
@@ -199,12 +161,15 @@ internal sealed class RowBufferHook(RowBufferFunctions functions) : ITraceHook
         {
             start.Bindings = known.Bindings;
         }
-
-        if (start.Count == 0)
-        {
-            start.Count = known.Count;
-        }
     }
+
+    private IEnumerable<RowBuffer> GetLocatedRows()
+        => Rows.Select((r, i) => Positions.TryGetValue(i, out var position) && GetPage(position) is { } page
+                                     ? r with { Location = new DeferredRecordValue(page, position.Slot) }
+                                     : r);
+
+    private PageAddress? GetPage(RowLocationParser.RowPosition position)
+        => position.Page ?? (KnownPages.TryGetValue(position.Frame, out var page) ? page : null);
 
     private bool Remove(uint thread, ulong id, out RowBufferStart start)
     {
@@ -232,7 +197,31 @@ internal sealed class RowBufferHook(RowBufferFunctions functions) : ITraceHook
             return null;
         }
 
-        return BoundRowParser.Parse(replay, set, start.Buffer);
+        var columns = BoundRowParser.Parse(replay, set, start.Buffer);
+
+        for (var index = 0; index < columns.Length; index++)
+        {
+            columns[index] = columns[index] with { Binding = GetTypedBinding(start.Iterator, columns[index].Binding) };
+        }
+
+        return columns;
+    }
+
+    private RowBufferBinding GetTypedBinding(ulong iterator, RowBufferBinding binding)
+    {
+        if (binding.Type is not null)
+        {
+            return binding;
+        }
+
+        if (!TypedBindings.TryGetValue((iterator, binding), out var typed))
+        {
+            typed = accessors.GetColumnType(iterator, binding.ValueOffset) is { } type ? binding with { Type = type } : binding;
+
+            TypedBindings[(iterator, binding)] = typed;
+        }
+
+        return typed;
     }
 
     private RowBufferColumn[] GetShared(ulong iterator, RowBufferColumn[] columns)
@@ -254,30 +243,21 @@ internal sealed class RowBufferHook(RowBufferFunctions functions) : ITraceHook
             return true;
         }
 
-        if (!Formats.TryGetValue(vtable, out var format))
+        if (!Rowsets.Contains(vtable))
         {
             KnownLayouts.Remove(start.Iterator);
 
             return false;
         }
 
-        start.Format = format;
+        start.IsRowset = true;
 
-        var isBatchRow = format == RowBufferFormat.Batch;
-
-        if (replay.TryRead(start.Iterator + (isBatchRow ? LayoutBatchRowBufferOffset : LayoutRowsetBufferOffset), out ulong buffer))
+        if (replay.TryRead(start.Iterator + RowsetBufferOffset, out ulong buffer))
         {
             start.Buffer = buffer;
         }
 
-        if (isBatchRow)
-        {
-            if (replay.TryRead(start.Iterator + LayoutBatchRowCountOffset, out uint count))
-            {
-                start.Count = count;
-            }
-        }
-        else if (replay.TryRead(start.Iterator + LayoutRowsetBindingsOffset, out ulong bindings))
+        if (replay.TryRead(start.Iterator + RowsetBindingsOffset, out ulong bindings))
         {
             start.Bindings = bindings;
         }
@@ -287,12 +267,10 @@ internal sealed class RowBufferHook(RowBufferFunctions functions) : ITraceHook
 
     private record struct RowBufferStart(ulong Iterator)
     {
-        public RowBufferFormat? Format { get; set; }
+        public bool IsRowset { get; set; }
 
         public ulong Buffer { get; set; }
 
         public ulong Bindings { get; set; }
-
-        public uint Count { get; set; }
     }
 }

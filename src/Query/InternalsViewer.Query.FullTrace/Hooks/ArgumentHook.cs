@@ -90,11 +90,7 @@ internal abstract class ArgumentHook<TRead>(IEnumerable<(ulong Function, TRead R
             return;
         }
 
-        var homeSpace = replay.TryRead(call.StackPointer, out ulong top) && top == call.ReturnAddress
-                        ? call.StackPointer + sizeof(ulong)
-                        : call.StackPointer;
-
-        var read = replay.Read(homeSpace + RegisterCount * sizeof(ulong), MemoryMarshal.AsBytes(stack)) / sizeof(ulong);
+        var read = replay.Read(replay.GetStackArguments(call), MemoryMarshal.AsBytes(stack)) / sizeof(ulong);
 
         stack[read..].Clear();
     }

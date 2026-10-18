@@ -13,8 +13,10 @@ using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.FullTrace.Output;
+using InternalsViewer.Query.FullTrace.RowBuffers.Accessors;
 using InternalsViewer.Query.FullTrace.RowBuffers.HashRows;
-using InternalsViewer.Query.FullTrace.RowBuffers.VariantTables;
+using InternalsViewer.Query.FullTrace.RowBuffers.VariantRows;
+using InternalsViewer.Query.FullTrace.RowSources;
 using InternalsViewer.Query.FullTrace.Stubs;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
 
@@ -158,24 +160,31 @@ internal sealed class ReplaySession : IDisposable
 
         var publishedEvents = new PublishedEventHook(functions.PublishedEvents);
 
-        var rowBuffers = new RowBufferHook(functions.RowBuffers);
 
         var hashRows = new HashRowHook(functions.HashRows);
 
-        var variantTables = new VariantTableHook(functions.VariantTables);
+        var rowSources = new RowSourceHook(functions.RowSources);
+
+        var accessors = new AccessorHook(functions.Accessors, rowSources);
+
+        var rowBuffers = new RowBufferHook(functions.RowBuffers, accessors);
+
+        var variantRows = new VariantRowHook(functions.VariantRows, rowSources);
 
         var batches = new BatchHook(functions.Batches);
 
-        var output = new OutputHook(functions.Output);
+        var output = new OutputHook(functions.Output, rowSources, accessors);
 
         var customHook = new CustomHook(Resolve(customHooks));
 
-        var hooks = new TraceHooks([new LocatorHook(functions.LocatorReads, store, images),
+        var hooks = new TraceHooks([rowSources,
+                                    accessors,
+                                    new LocatorHook(functions.LocatorReads, store, images),
                                     memoryMap,
                                     publishedEvents,
                                     rowBuffers,
                                     hashRows,
-                                    variantTables,
+                                    variantRows,
                                     batches,
                                     output,
                                     customHook]);
@@ -248,7 +257,7 @@ internal sealed class ReplaySession : IDisposable
                                         timeline.Build(nodes),
                                         publishedEvents.Build(),
                                         memoryMap.Build(),
-                                        rowBuffers.Build([.. hashRows.Rows, .. variantTables.Rows]),
+                                        rowBuffers.Build([.. hashRows.Rows, .. variantRows.Rows]),
                                         batches.Build(),
                                         customHook.Build(),
                                         output.Build());

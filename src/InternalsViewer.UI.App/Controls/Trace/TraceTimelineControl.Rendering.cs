@@ -128,6 +128,8 @@ public sealed partial class TraceTimelineControl
 
             canvas.ClipRect(new SKRect(0, ContentTop, width, lanesBottom));
 
+            DrawCallHighlights(canvas, ContentTop, lanesBottom, width, scale);
+
             DrawLanes(canvas, visible, lanesBottom, width, scale);
 
             canvas.Restore();

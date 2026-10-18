@@ -19,6 +19,8 @@ internal sealed class TraceTimelinePaints : IDisposable
 
     public SKPaint Label { get; } = new() { IsAntialias = true, Color = SKColors.LightGray };
 
+    public SKPaint DimLabel { get; } = new() { IsAntialias = true, Color = SKColors.Gray };
+
     public SKPaint Tick { get; } = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 1f, Color = new SKColor(60, 60, 60) };
 
     public SKPaint Hover { get; } = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 1f, Color = SKColors.White };
@@ -136,6 +138,7 @@ internal sealed class TraceTimelinePaints : IDisposable
         Dim = isDark ? new SKColor(0, 0, 0, 150) : new SKColor(255, 255, 255, 170);
 
         Label.Color = isDark ? new SKColor(0xD8, 0xD8, 0xD8) : new SKColor(0x30, 0x30, 0x30);
+        DimLabel.Color = isDark ? new SKColor(0x9A, 0x9A, 0x9A) : new SKColor(0x6E, 0x6E, 0x6E);
         Tick.Color = isDark ? new SKColor(0x70, 0x70, 0x70) : SKColors.LightGray;
         Hover.Color = isDark ? SKColors.White : SKColors.Black;
         Selection.Color = isDark ? new SKColor(255, 200, 0) : new SKColor(0xE0, 0x7A, 0x00);
@@ -155,6 +158,7 @@ internal sealed class TraceTimelinePaints : IDisposable
         Fill.Dispose();
         Text.Dispose();
         Label.Dispose();
+        DimLabel.Dispose();
         Tick.Dispose();
         Hover.Dispose();
         Selection.Dispose();

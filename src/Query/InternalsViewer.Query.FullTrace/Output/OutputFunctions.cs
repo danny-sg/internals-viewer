@@ -39,11 +39,7 @@ internal sealed record OutputFunctions(IReadOnlyDictionary<ulong, OutputFunction
             ["GetDataWithBuffer"] = OutputFunctionType.ValueRead,
             ["GetDataFromXvar"] = OutputFunctionType.VariantRead,
             ["GetDataFromXvar8"] = OutputFunctionType.VariantRead,
-            ["CValOdsRow::SetDataX"] = OutputFunctionType.Send,
-            ["CQScanRowsetNew::CreateValSSTable"] = OutputFunctionType.Creator,
-            ["CQScanNew::GetRowOrReQualifyHelper"] = OutputFunctionType.Iterator,
-            ["CValXVarTable::SetDataX"] = OutputFunctionType.SlotWriter,
-            ["CValXVarTableRow::SetDataX"] = OutputFunctionType.SlotWriter
+            ["CValOdsRow::SetDataX"] = OutputFunctionType.Send
         };
 
         private static readonly Dictionary<string, OutputValueClass> ValueClasses = new(StringComparer.Ordinal)
@@ -55,8 +51,7 @@ internal sealed record OutputFunctions(IReadOnlyDictionary<ulong, OutputFunction
             ["CValHashSwitch"] = OutputValueClass.HashSwitch,
             ["CValHashCachedSwitch"] = OutputValueClass.HashCachedSwitch,
             ["CValBatchRedirect"] = OutputValueClass.BatchRedirect,
-            ["CValXVarTable"] = OutputValueClass.VariantTable,
-            ["CValXVarTableRow"] = OutputValueClass.VariantTableRow
+            ["CValXVarTable"] = OutputValueClass.VariantTable
         };
 
         private static Dictionary<string, OutputFunctionType>.AlternateLookup<ReadOnlySpan<char>> FunctionLookup { get; }

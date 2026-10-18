@@ -197,7 +197,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         var memory = AllocationMapper.Map(replay.CallStore, functions.MemoryFunctions, timeline, request.MemoryClerks);
 
-        var lifetimes = IteratorLifetimeBuilder.Build(timeline, operators, replay.Batches);
+        var lifetimes = IteratorLifetimeBuilder.Build(timeline, operators, replay.Batches, IteratorTree.Build(replay.CallStore, mapped, replay.Batches));
 
         timeline.SetLifetimes(lifetimes);
 

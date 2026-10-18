@@ -98,7 +98,7 @@ public sealed class TraceRowBufferMarks
 
         foreach (var ((_, iterator), list) in captures)
         {
-            if (GetOwner(owners, batches, iterator) is not { } owner)
+            if (owners.GetValueOrDefault(iterator) is not { } owner)
             {
                 continue;
             }
@@ -129,16 +129,6 @@ public sealed class TraceRowBufferMarks
                location.EndOf(TraceTimelineAxis.Instructions),
                location.Node,
                location.Call);
-
-    private static ExecutionOperatorEvent? GetOwner(Dictionary<ulong, ExecutionOperatorEvent> owners, BatchStore batches, ulong iterator)
-    {
-        if (owners.TryGetValue(iterator, out var owner))
-        {
-            return owner;
-        }
-
-        return batches.GetProducer(iterator) is { } producer ? owners.GetValueOrDefault(producer) : null;
-    }
 
     private static ReadOnlySpan<double> GetMarks(Dictionary<ExecutionOperatorEvent, OperatorMarks> operators,
                                                  ExecutionOperatorEvent operatorEvent,

@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Data;
 using InternalsViewer.Internals.Converters;
+using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Internals.Providers.Metadata;
@@ -23,7 +24,7 @@ public sealed class RowBufferDecoder(DatabaseSource database,
     {
         RowBufferFormat.Batch or RowBufferFormat.VariantTable => getOutputColumn?.Invoke(row.Iterator, column.Ordinal),
         RowBufferFormat.HashTable => GetRecordColumn(row, column),
-        _ => GetColumns(row.Iterator)?.GetValueOrDefault(column.Binding.RecordOffset)
+        _ => GetColumns(row.Iterator)?.GetValueOrDefault(column.Binding.RecordOffset) ?? GetTypedColumn(column.Binding.Type)
     };
 
     public string? Decode(RowBuffer row, RowBufferColumn column)
@@ -82,6 +83,18 @@ public sealed class RowBufferDecoder(DatabaseSource database,
                     .GroupBy(c => (int)c.LeafOffset)
                     .Where(g => g.Count() == 1)
                     .ToDictionary(g => g.Key, ColumnStructure (g) => g.Single());
+
+    private static ColumnStructure? GetTypedColumn(RowBufferType? type)
+        => type is not null && SqlTypeHelpers.TryGetSqlType(type.TypeId, out var dataType)
+            ? new ColumnStructure
+            {
+                ColumnName = $"Column {type.Ordinal}",
+                DataType = dataType,
+                DataLength = (short)type.MaxLength,
+                Precision = type.Precision,
+                Scale = type.Scale
+            }
+            : null;
 
     private static ColumnStructure? GetRecordColumn(RowBuffer row, RowBufferColumn column)
         => row.RecordLayout is { } layout && column.Ordinal < layout.Columns.Count ? layout.Columns[column.Ordinal] : null;

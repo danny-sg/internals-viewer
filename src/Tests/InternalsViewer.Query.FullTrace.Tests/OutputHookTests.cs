@@ -1,6 +1,10 @@
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Output.Enums;
+using InternalsViewer.Query.FullTrace.Output.Sources;
+using InternalsViewer.Query.FullTrace.RowBuffers.Accessors;
+using InternalsViewer.Query.FullTrace.RowSources;
+using InternalsViewer.Query.FullTrace.RowSources.Enums;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
@@ -18,11 +22,9 @@ public class OutputHookTests
 
     private const ulong Send = 0x2200;
 
-    private const ulong Create = 0x3000;
+    private const ulong CreateValue = 0x3000;
 
     private const ulong GetRow = 0x4000;
-
-    private const ulong WriteSlot = 0x4100;
 
     private const ulong OutputRowTable = 0x7000;
 
@@ -37,8 +39,6 @@ public class OutputHookTests
     private const ulong RedirectTable = 0x7500;
 
     private const ulong VariantTable = 0x7600;
-
-    private const ulong VariantTableRow = 0x7700;
 
     private const ulong Executor = 0x1F4_0000_1000;
 
@@ -62,8 +62,6 @@ public class OutputHookTests
 
     private const ulong ScanIterator = 0x1F4_0000_8000;
 
-    private const ulong SortIterator = 0x1F4_0000_A000;
-
     private const ulong SortBuffer = 0x1F4_0000_B000;
 
     private const ulong BatchHelper = 0x1F4_0000_C000;
@@ -74,8 +72,6 @@ public class OutputHookTests
 
     private const ulong VariantValue = 0x1F4_0000_5500;
 
-    private const ulong VariantWriter = 0x1F4_0000_5600;
-
     private const ulong VariantRow = 0x1F4_0000_D000;
 
     private const ulong AggregateIterator = 0x1F4_0000_E000;
@@ -83,6 +79,8 @@ public class OutputHookTests
     private const int VariantSlot = 5;
 
     private const ulong Rowset = 0x1F4_0000_8800;
+
+    private const ulong Accessor = 0x1F4_0000_8900;
 
     private const ulong Record = 0x1F4_0001_0000;
 
@@ -93,20 +91,23 @@ public class OutputHookTests
     [Fact]
     public void A_Column_Read_Through_A_Hash_Switch_Is_Located_In_Its_Hash_Record()
     {
-        var column = Assert.Single(Capture(CreateReplay())).Columns[0];
+        var column = Assert.IsType<HashRecordOutputSource>(Assert.Single(Capture(CreateReplay())).Columns[0]);
 
-        Assert.Equal((OutputSourceType.HashRecord, Slot, 1, 4, 4),
-                     (column.Type, column.Slot, column.Ordinal, column.Offset, column.Length));
+        Assert.Equal((Slot, 1, 4, 4), (column.Slot, column.Ordinal, column.Offset, column.Length));
         Assert.Equal(HashIterator, column.Owner);
     }
 
     [Fact]
     public void A_Column_Read_From_A_Scan_Is_Owned_By_The_Scan_That_Created_It()
     {
-        var column = Assert.Single(Capture(CreateReplay())).Columns[1];
+        var column = Assert.IsType<RowsetOutputSource>(Assert.Single(Capture(CreateReplay())).Columns[1]);
 
-        Assert.Equal((OutputSourceType.Rowset, Rowset, 1, ScanIterator), (column.Type, column.Address, column.Slot, column.Owner));
+        Assert.Equal((Rowset, 1, ScanIterator), (column.Rowset, column.Slot, column.Owner));
     }
+
+    [Fact]
+    public void A_Column_Read_From_A_Scan_Takes_The_Ordinal_Of_The_Accessor_It_Reads_Through()
+        => Assert.Equal(3, Assert.IsType<RowsetOutputSource>(Assert.Single(Capture(CreateReplay())).Columns[1]).Ordinal);
 
     [Fact]
     public void The_Structure_Belongs_To_The_Output_Row_It_Was_Read_For()
@@ -121,23 +122,21 @@ public class OutputHookTests
 
         Evaluation(hook, CreateReplay().Write(Values + 0x10, SwitchValue), 20);
 
-        Assert.Equal(OutputSourceType.Rowset, Assert.Single(hook.Build()).Columns[1].Type);
+        Assert.IsType<RowsetOutputSource>(Assert.Single(hook.Build()).Columns[1]);
     }
 
     [Fact]
-    public void A_Row_Sent_Directly_By_An_Iterator_Comes_From_Its_Buffer()
+    public void A_Row_Sent_Directly_Records_The_Buffer_It_Was_Sent_From()
     {
         var replay = CreateReplay();
 
         var hook = CreateHook();
 
-        Prepare(hook, replay);
-
         hook.OnEntry(Call(Send, 30, [OutputRowValue, Context, SortBuffer]), replay);
 
         var structure = Assert.Single(hook.Build());
 
-        Assert.Equal((OutputRowValue, SortIterator, 0), (structure.OutputRow, structure.DirectSelectOwner, structure.Columns.Count));
+        Assert.Equal((OutputRowValue, SortBuffer, 0), (structure.OutputRow, structure.DirectSelectBuffer, structure.Columns.Count));
     }
 
     [Fact]
@@ -147,8 +146,6 @@ public class OutputHookTests
 
         var hook = CreateHook();
 
-        Prepare(hook, replay);
-
         hook.OnEntry(Call(Evaluate, 10, [Context, Executor]), replay);
 
         ReadColumn(hook, replay, 11, 1);
@@ -157,17 +154,15 @@ public class OutputHookTests
 
         hook.OnReturn(Call(Evaluate, 10, [Context, Executor]), replay);
 
-        Assert.Equal(0UL, Assert.Single(hook.Build()).DirectSelectOwner);
+        Assert.Equal(0UL, Assert.Single(hook.Build()).DirectSelectBuffer);
     }
 
     [Fact]
-    public void A_Column_Read_From_A_Variant_Is_Owned_By_The_Iterator_Whose_Buffer_Holds_It()
+    public void A_Column_Read_From_A_Variant_Records_Where_The_Variant_Is()
     {
         var replay = CreateReplay().Write(Variants + 0x08, SortBuffer + 0x20);
 
         var hook = CreateHook();
-
-        Prepare(hook, replay);
 
         hook.OnEntry(Call(Evaluate, 10, [Context, Executor]), replay);
 
@@ -175,29 +170,9 @@ public class OutputHookTests
 
         hook.OnReturn(Call(Evaluate, 10, [Context, Executor]), replay);
 
-        var column = Assert.Single(Assert.Single(hook.Build()).Columns);
+        var column = Assert.IsType<BufferOutputSource>(Assert.Single(Assert.Single(hook.Build()).Columns));
 
-        Assert.Equal((OutputSourceType.Buffer, SortBuffer + 0x20, SortIterator), (column.Type, column.Address, column.Owner));
-    }
-
-    [Fact]
-    public void An_Iterator_Whose_Buffer_Cannot_Be_Read_On_Entry_Is_Read_On_Return()
-    {
-        var replay = CreateReplay().Write(Variants + 0x08, SortBuffer + 0x20);
-
-        var hook = CreateHook();
-
-        hook.OnEntry(Call(GetRow, 3, [SortIterator]), new FakeTraceReplay());
-
-        hook.OnReturn(Call(GetRow, 3, [SortIterator]), replay);
-
-        hook.OnEntry(Call(Evaluate, 10, [Context, Executor]), replay);
-
-        ReadColumn(hook, replay, 11, 1, function: VariantRead);
-
-        hook.OnReturn(Call(Evaluate, 10, [Context, Executor]), replay);
-
-        Assert.Equal(SortIterator, Assert.Single(Assert.Single(hook.Build()).Columns).Owner);
+        Assert.Equal((SortBuffer + 0x20, 0UL), (column.Address, column.Owner));
     }
 
     [Fact]
@@ -211,40 +186,27 @@ public class OutputHookTests
 
         var hook = CreateHook();
 
-        Prepare(hook, replay);
-
         hook.OnEntry(Call(Evaluate, 10, [Context, Executor]), replay);
 
         ReadColumn(hook, replay, 11, 1);
 
         hook.OnReturn(Call(Evaluate, 10, [Context, Executor]), replay);
 
-        var column = Assert.Single(Assert.Single(hook.Build()).Columns);
+        var column = Assert.IsType<BufferOutputSource>(Assert.Single(Assert.Single(hook.Build()).Columns));
 
-        Assert.Equal((OutputSourceType.Buffer, HelperRow + 0x20, BatchHelper, 1),
-                     (column.Type, column.Address, column.Owner, column.Ordinal));
+        Assert.Equal((HelperRow + 0x20, BatchHelper), (column.Address, column.Owner));
     }
 
     [Fact]
-    public void A_Column_Read_From_A_Variant_Table_Is_Owned_By_The_Iterator_That_Wrote_Its_Slot()
+    public void A_Column_Read_From_A_Variant_Table_Is_Owned_By_The_Iterator_That_Set_Its_Slot()
     {
         var replay = CreateReplay().Write(Values + 0x08, VariantValue)
                                    .Write(VariantValue, VariantTable)
                                    .Write(VariantValue + 0x08, VariantSlot)
                                    .Write(VariantValue + 0x0C, 1)
-                                   .Write(Context + VariantSlot * sizeof(ulong), VariantRow)
-                                   .Write(VariantWriter, VariantTableRow)
-                                   .Write(VariantWriter + 0x08, VariantSlot);
+                                   .Write(Context + VariantSlot * sizeof(ulong), VariantRow);
 
         var hook = CreateHook();
-
-        hook.OnEntry(Call(GetRow, 3, [AggregateIterator]), replay);
-
-        hook.OnEntry(Call(WriteSlot, 4, [VariantWriter, Context, 0]), replay);
-
-        hook.OnReturn(Call(WriteSlot, 4, [VariantWriter, Context, 0]), replay);
-
-        hook.OnReturn(Call(GetRow, 3, [AggregateIterator]), replay);
 
         hook.OnEntry(Call(Evaluate, 10, [Context, Executor]), replay);
 
@@ -252,10 +214,9 @@ public class OutputHookTests
 
         hook.OnReturn(Call(Evaluate, 10, [Context, Executor]), replay);
 
-        var column = Assert.Single(Assert.Single(hook.Build()).Columns);
+        var column = Assert.IsType<BufferOutputSource>(Assert.Single(Assert.Single(hook.Build()).Columns));
 
-        Assert.Equal((OutputSourceType.Buffer, VariantRow + 0x20, AggregateIterator, 1),
-                     (column.Type, column.Address, column.Owner, column.Ordinal));
+        Assert.Equal((VariantRow + 0x20, AggregateIterator), (column.Address, column.Owner));
     }
 
     [Fact]
@@ -281,8 +242,6 @@ public class OutputHookTests
 
         var hook = CreateHook();
 
-        Prepare(hook, replay);
-
         hook.OnEntry(Call(Evaluate, 10, [Context, Executor]), replay);
 
         hook.OnEntry(Call(Evaluate, 11, [Context, Executor + 0x100]), replay);
@@ -300,7 +259,9 @@ public class OutputHookTests
 
     [Fact]
     public void Functions_Without_The_Output_Row_Class_Hook_Nothing()
-        => Assert.Empty(new OutputHook(new OutputFunctions(CreateFunctions(), new Dictionary<ulong, OutputValueClass>())).Functions);
+        => Assert.Empty(new OutputHook(new OutputFunctions(CreateFunctions(), new Dictionary<ulong, OutputValueClass>()),
+                                       new RowSourceHook(RowSourceFunctions.Empty),
+                                       AccessorHookTests.CreateHandle(Accessor, 3)).Functions);
 
     private static IReadOnlyList<TraceOutputStructure> Capture(FakeTraceReplay replay)
     {
@@ -320,9 +281,42 @@ public class OutputHookTests
                                        [HashTable] = OutputValueClass.Hash,
                                        [ScanTable] = OutputValueClass.Table,
                                        [RedirectTable] = OutputValueClass.BatchRedirect,
-                                       [VariantTable] = OutputValueClass.VariantTable,
-                                       [VariantTableRow] = OutputValueClass.VariantTableRow
-                                   }));
+                                       [VariantTable] = OutputValueClass.VariantTable
+                                   }),
+               CreateRowSources(),
+               AccessorHookTests.CreateHandle(Accessor, 3));
+
+    private static RowSourceHook CreateRowSources()
+    {
+        var rowSources = new RowSourceHook(new RowSourceFunctions(new Dictionary<ulong, RowSourceFunctionType>
+                                                                  {
+                                                                      [CreateValue] = RowSourceFunctionType.Creator,
+                                                                      [GetRow] = RowSourceFunctionType.Iterator
+                                                                  }));
+
+        var replay = new FakeTraceReplay();
+
+        rowSources.OnEntry(Call(CreateValue, 1, [ScanIterator, 0]), replay);
+
+        rowSources.OnReturn(Call(CreateValue, 1, [ScanIterator, 0], returnValue: ScanValue), replay);
+
+        (ulong Iterator, int Slot, ulong Row)[] sources = [(HashIterator, Slot, Record), (AggregateIterator, VariantSlot, VariantRow)];
+
+        for (var index = 0; index < sources.Length; index++)
+        {
+            var (iterator, slot, row) = sources[index];
+
+            replay.Write(Context + (ulong)slot * sizeof(ulong), 0UL);
+
+            rowSources.OnEntry(Call(GetRow, (ulong)index + 2, [iterator, Context]), replay);
+
+            replay.Write(Context + (ulong)slot * sizeof(ulong), row);
+
+            rowSources.OnReturn(Call(GetRow, (ulong)index + 2, [iterator, Context]), replay);
+        }
+
+        return rowSources;
+    }
 
     private static Dictionary<ulong, OutputFunctionType> CreateFunctions()
         => new()
@@ -330,27 +324,11 @@ public class OutputHookTests
             [Evaluate] = OutputFunctionType.Evaluation,
             [Read] = OutputFunctionType.ValueRead,
             [VariantRead] = OutputFunctionType.VariantRead,
-            [Send] = OutputFunctionType.Send,
-            [Create] = OutputFunctionType.Creator,
-            [GetRow] = OutputFunctionType.Iterator,
-            [WriteSlot] = OutputFunctionType.SlotWriter
+            [Send] = OutputFunctionType.Send
         };
-
-    private static void Prepare(OutputHook hook, FakeTraceReplay replay)
-    {
-        hook.OnEntry(Call(GetRow, 1, [HashIterator]), replay);
-
-        hook.OnEntry(Call(GetRow, 3, [SortIterator]), replay);
-
-        hook.OnEntry(Call(Create, 2, [ScanIterator]), replay);
-
-        hook.OnReturn(Call(Create, 2, [ScanIterator], returnValue: ScanValue), replay);
-    }
 
     private static void Evaluation(OutputHook hook, FakeTraceReplay replay, ulong id)
     {
-        Prepare(hook, replay);
-
         hook.OnEntry(Call(Evaluate, id, [Context, Executor]), replay);
 
         ReadColumn(hook, replay, id + 1, 1);
@@ -394,11 +372,8 @@ public class OutputHookTests
                                 .Write(ScanValue, ScanTable)
                                 .Write(ScanValue + 0x08, Rowset)
                                 .Write(ScanValue + 0x10, 1)
+                                .Write(ScanValue + 0x18, Accessor)
                                 .Write(Context + Slot * sizeof(ulong), Record)
-                                .Write(HashIterator + 0x48, 0x1F4_0000_7800UL)
-                                .Write(HashIterator + 0x80, 0x1F4_0000_7C00UL)
-                                .Write(SortIterator + 0x48, 0x1F4_0000_A800UL)
-                                .Write(SortIterator + 0x80, SortBuffer)
                                 .Write(Variant, (byte)0)
                                 .Write(Variant + 0x08, 5UL)
                                 .Write(Variant + 0x10, 0UL);

@@ -12,27 +12,27 @@ internal sealed class BindingParser
 
     public const uint LobBinding = 0x4000;
 
-    private const ulong LayoutCountOffset = 0x62;
+    private const ulong CountOffset = 0x62;
 
-    private const ulong LayoutArrayOffset = 0x70;
+    private const ulong ArrayOffset = 0x70;
 
-    private const ulong LayoutBindingSize = 0x50;
+    private const ulong BindingSize = 0x50;
 
-    private const ulong LayoutRecordOffset = 0x00;
+    private const ulong RecordOffsetOffset = 0x00;
 
-    private const ulong LayoutValueOffset = 0x28;
+    private const ulong ValueOffsetOffset = 0x28;
 
-    private const ulong LayoutStatusOffset = 0x30;
+    private const ulong StatusOffsetOffset = 0x30;
 
-    private const ulong LayoutFixedLengthOffset = 0x3C;
+    private const ulong FixedLengthOffset = 0x3C;
 
-    private const ulong LayoutFlagsOffset = 0x40;
+    private const ulong FlagsOffset = 0x40;
 
-    private const ulong LayoutInfoOffset = 0x48;
+    private const ulong InfoOffset = 0x48;
 
-    private const ulong LayoutInfoLengthOffset = 0x18;
+    private const ulong InfoLengthOffset = 0x18;
 
-    private const ulong LayoutInfoFlagsOffset = 0x2A;
+    private const ulong InfoFlagsOffset = 0x2A;
 
     private const byte AlternateBufferBinding = 0x10;
 
@@ -44,8 +44,8 @@ internal sealed class BindingParser
 
     public BindingSet? Parse(ITraceReplay replay, ulong bindings)
     {
-        if (!replay.TryRead(bindings + LayoutCountOffset, out ushort count)
-            || !replay.TryRead(bindings + LayoutArrayOffset, out ulong array)
+        if (!replay.TryRead(bindings + CountOffset, out ushort count)
+            || !replay.TryRead(bindings + ArrayOffset, out ulong array)
             || count == 0
             || count > MaximumBindings
             || array < ColumnValueParser.SmallestAddress)
@@ -53,8 +53,8 @@ internal sealed class BindingParser
             return KnownSets.GetValueOrDefault(bindings);
         }
 
-        if (!replay.TryRead(array + LayoutValueOffset, out ulong firstValueOffset)
-            || !replay.TryRead(array + LayoutFlagsOffset, out uint firstFlags))
+        if (!replay.TryRead(array + ValueOffsetOffset, out ulong firstValueOffset)
+            || !replay.TryRead(array + FlagsOffset, out uint firstFlags))
         {
             return KnownSets.GetValueOrDefault(bindings);
         }
@@ -72,7 +72,7 @@ internal sealed class BindingParser
         set = new BindingSet(count,
                              firstValueOffset,
                              firstFlags,
-                             [.. Enumerable.Range(0, count).Select(i => ParseBinding(replay, array + (ulong)i * LayoutBindingSize))]);
+                             [.. Enumerable.Range(0, count).Select(i => ParseBinding(replay, array + (ulong)i * BindingSize))]);
 
         if (set.Columns.All(c => c.Unreadable != RowBufferColumnFlags.BindingUnreadable))
         {
@@ -86,7 +86,7 @@ internal sealed class BindingParser
 
     private static ColumnBinding ParseBinding(ITraceReplay replay, ulong address)
     {
-        if (!replay.TryRead(address + LayoutRecordOffset, out int recordOffset))
+        if (!replay.TryRead(address + RecordOffsetOffset, out int recordOffset))
         {
             recordOffset = -1;
         }
@@ -97,14 +97,14 @@ internal sealed class BindingParser
         ulong lengthOffset = 0;
         byte infoFlags = 0;
 
-        var isReadable = replay.TryRead(address + LayoutFlagsOffset, out uint flags)
-                         && replay.TryRead(address + LayoutFixedLengthOffset, out fixedLength)
-                         && replay.TryRead(address + LayoutValueOffset, out valueOffset)
-                         && replay.TryRead(address + LayoutStatusOffset, out statusOffset)
-                         && replay.TryRead(address + LayoutInfoOffset, out ulong info)
+        var isReadable = replay.TryRead(address + FlagsOffset, out uint flags)
+                         && replay.TryRead(address + FixedLengthOffset, out fixedLength)
+                         && replay.TryRead(address + ValueOffsetOffset, out valueOffset)
+                         && replay.TryRead(address + StatusOffsetOffset, out statusOffset)
+                         && replay.TryRead(address + InfoOffset, out ulong info)
                          && info >= ColumnValueParser.SmallestAddress
-                         && replay.TryRead(info + LayoutInfoFlagsOffset, out infoFlags)
-                         && ((flags & LengthBinding) == 0 || replay.TryRead(info + LayoutInfoLengthOffset, out lengthOffset));
+                         && replay.TryRead(info + InfoFlagsOffset, out infoFlags)
+                         && ((flags & LengthBinding) == 0 || replay.TryRead(info + InfoLengthOffset, out lengthOffset));
 
         var unreadable = !isReadable ? RowBufferColumnFlags.BindingUnreadable
                          : (infoFlags & AlternateBufferBinding) != 0 ? RowBufferColumnFlags.AlternateBuffer

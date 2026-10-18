@@ -98,7 +98,7 @@ public sealed class TraceOutputRows
 
             var steps = returns.TryGetValue(root.Thread, out var thread) ? GetSteps(thread, root) : [];
 
-            rows[index] = new TraceOutputRow(ordinal, root, steps, lineage.GetSources(root));
+            rows[index] = new TraceOutputRow(ordinal, root, steps, lineage);
         }
 
         return new TraceOutputRows(rows);

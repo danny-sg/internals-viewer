@@ -1,30 +1,36 @@
 using InternalsViewer.Query.FullTrace.Functions;
-using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
+using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.RowBuffers;
 
-internal sealed record RowBufferFunctions(ulong[] Functions, IReadOnlyDictionary<ulong, RowBufferFormat> Formats)
+internal sealed record RowBufferFunctions(ulong[] Functions, ulong[] Rowsets, IReadOnlyDictionary<ulong, RowObjectClass> RowObjects)
 {
-    public static RowBufferFunctions Empty { get; } = new([], new Dictionary<ulong, RowBufferFormat>());
+    public static RowBufferFunctions Empty { get; } = new([], [], new Dictionary<ulong, RowObjectClass>());
 
     public static RowBufferFunctions Merge(IEnumerable<RowBufferFunctions> functions)
     {
         var all = functions.ToList();
 
-        return new([.. all.SelectMany(f => f.Functions)], AddressMap.Merge(all.Select(f => f.Formats)));
+        return new([.. all.SelectMany(f => f.Functions)],
+                   [.. all.SelectMany(f => f.Rowsets)],
+                   AddressMap.Merge(all.Select(f => f.RowObjects)));
     }
 
     public RowBufferFunctions Rebase(ulong address)
-        => new([.. Functions.Select(f => f + address)], AddressMap.Rebase(Formats, address));
+        => new([.. Functions.Select(f => f + address)], [.. Rowsets.Select(r => r + address)], AddressMap.Rebase(RowObjects, address));
 
     internal sealed class Collector
     {
         private const string RowsetClass = "CQScanRowsetNew";
 
-        private const string BatchHelperClass = "CQScanBatchHelper";
-
         private const string VTableName = "`vftable'";
+
+        private static readonly Dictionary<string, RowObjectClass> RowObjectClasses = new(StringComparer.Ordinal)
+        {
+            ["BTreeRow"] = RowObjectClass.BTree,
+            ["HeapRowObject"] = RowObjectClass.Heap
+        };
 
         private const string HierarchyName = "`RTTI Class Hierarchy Descriptor'";
 
@@ -81,32 +87,18 @@ internal sealed record RowBufferFunctions(ulong[] Functions, IReadOnlyDictionary
         {
             HashSet<string> rowsets = [.. bases.Where(b => b.Value.Contains(RowsetClass)).Select(b => b.Key)];
 
-            HashSet<string> batchHelpers = [.. bases.Where(b => b.Value.Contains(BatchHelperClass)).Select(b => b.Key)];
+            ulong[] vtables = [.. rowsets.Where(VTables.ContainsKey).Select(r => (ulong)VTables[r])];
 
-            var formats = new Dictionary<ulong, RowBufferFormat>();
-
-            foreach (var rowset in rowsets.Where(VTables.ContainsKey))
-            {
-                formats[VTables[rowset]] = RowBufferFormat.Bindings;
-            }
-
-            foreach (var batchHelper in batchHelpers.Where(VTables.ContainsKey))
-            {
-                formats[VTables[batchHelper]] = RowBufferFormat.Batch;
-            }
-
-            if (formats.Count == 0)
+            if (vtables.Length == 0)
             {
                 return Empty;
             }
 
-            HashSet<uint> functions =
-            [
-                .. Methods.Where(m => rowsets.Contains(m.ClassName) || batchHelpers.Contains(m.ClassName)).Select(m => m.Rva),
-                .. Helpers
-            ];
+            HashSet<uint> functions = [.. Methods.Where(m => rowsets.Contains(m.ClassName)).Select(m => m.Rva), .. Helpers];
 
-            return functions.Count == 0 ? Empty : new([.. functions.Select(f => (ulong)f)], formats);
+            var rowObjects = RowObjectClasses.Where(c => VTables.ContainsKey(c.Key)).ToDictionary(c => (ulong)VTables[c.Key], c => c.Value);
+
+            return functions.Count == 0 ? Empty : new([.. functions.Select(f => (ulong)f)], vtables, rowObjects);
         }
 
         private static bool IsRowMethod(ReadOnlySpan<char> name)

@@ -15,9 +15,9 @@ internal sealed class HashRowHook(HashRowFunctions functions) : ITraceHook
 
     private const int ContextArgument = 1;
 
-    private const ulong LayoutPartitionGroupProbeOffset = 0x08;
+    private const ulong PartitionGroupProbeOffset = 0x08;
 
-    private const ulong LayoutProbeSlotOffset = 0x14;
+    private const ulong ProbeSlotOffset = 0x14;
 
     private const uint RowStatus = 0;
 
@@ -156,8 +156,8 @@ internal sealed class HashRowHook(HashRowFunctions functions) : ITraceHook
 
     private int? GetSlot(ulong partitionGroup, ITraceReplay replay)
     {
-        if (replay.TryRead(partitionGroup + LayoutPartitionGroupProbeOffset, out ulong probe)
-            && replay.TryRead(probe + LayoutProbeSlotOffset, out int slot)
+        if (replay.TryRead(partitionGroup + PartitionGroupProbeOffset, out ulong probe)
+            && replay.TryRead(probe + ProbeSlotOffset, out int slot)
             && slot is >= 0 and < MaximumSlot)
         {
             Slots[partitionGroup] = slot;

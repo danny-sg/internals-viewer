@@ -28,31 +28,24 @@ public class RowBufferFunctionsTests
     [Fact]
     public void Every_Rowset_Iterator_Reads_Its_Bindings()
     {
-        var formats = Collect().Build(Bases).Formats.OrderBy(f => f.Key).Select(f => (f.Key, f.Value));
+        ulong[] rowsets = [.. Collect().Build(Bases).Rowsets.Order()];
 
-        (ulong, RowBufferFormat)[] expected =
-        [
-            (0x1000, RowBufferFormat.Bindings),
-            (0x2000, RowBufferFormat.Bindings),
-            (0x3000, RowBufferFormat.Bindings)
-        ];
-
-        Assert.Equal(expected, formats);
+        Assert.Equal([0x1000ul, 0x2000, 0x3000], rowsets);
     }
 
     [Fact]
-    public void The_Batch_Helper_Reads_Its_Batch_Row()
+    public void Row_Objects_Are_Known_By_Their_VTables()
     {
-        var collector = new RowBufferFunctions.Collector();
+        var collector = Collect();
 
-        collector.VisitFunction(0xA0, "CQScanBatchHelper::GetRow");
+        collector.VisitData(0x7000, "BTreeRow::`vftable'");
+        collector.VisitData(0x7100, "HeapRowObject::`vftable'");
 
-        collector.VisitData(0x7000, "CQScanBatchHelper::`vftable'");
+        var rowObjects = collector.Build(Bases).RowObjects.OrderBy(r => r.Key).Select(r => (r.Key, r.Value));
 
-        var functions = collector.Build(new Dictionary<string, string[]> { ["CQScanBatchHelper"] = ["CQScanBatchHelper", "CQScanNew"] });
+        (ulong, RowObjectClass)[] expected = [(0x7000, RowObjectClass.BTree), (0x7100, RowObjectClass.Heap)];
 
-        Assert.Equal(0xA0ul, Assert.Single(functions.Functions));
-        Assert.Equal(RowBufferFormat.Batch, Assert.Single(functions.Formats, f => f.Key == 0x7000).Value);
+        Assert.Equal(expected, rowObjects);
     }
 
     [Fact]

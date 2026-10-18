@@ -42,8 +42,7 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     private const string CustomHooksKey = "CustomHooks";
 
     private const string DefaultCallTreeHiddenCategories =
-        "Compilation;Execution Tree;Expression Evaluation;Metadata;Networking;Query Binding;Query Store;Security;Tracing;" +
-        "Transaction Management";
+        "Compilation;Metadata;Networking;Query Store;Security;Tracing;Transaction Management";
 
     private const double DefaultMaxTraceSizeMb = 150;
 

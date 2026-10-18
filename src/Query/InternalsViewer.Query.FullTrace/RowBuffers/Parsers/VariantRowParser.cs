@@ -4,17 +4,17 @@ using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
 
 namespace InternalsViewer.Query.FullTrace.RowBuffers.Parsers;
 
-internal static class BatchRowParser
+internal static class VariantRowParser
 {
     private const int MaximumValues = 1024;
 
-    public const ulong LayoutValueSize = 0x20;
+    public const ulong ValueSize = 0x20;
 
-    private const ulong LayoutStatusOffset = 0x00;
+    private const ulong StatusOffset = 0x00;
 
-    private const ulong LayoutDataOffset = 0x08;
+    private const ulong DataOffset = 0x08;
 
-    private const ulong LayoutLengthOffset = 0x10;
+    private const ulong LengthOffset = 0x10;
 
     public static RowBufferColumn[]? Parse(ITraceReplay replay, ulong buffer, uint count)
     {
@@ -27,7 +27,7 @@ internal static class BatchRowParser
 
         for (var index = 0; index < columns.Length; index++)
         {
-            columns[index] = ParseValue(replay, index, buffer + (ulong)index * LayoutValueSize);
+            columns[index] = ParseValue(replay, index, buffer + (ulong)index * ValueSize);
         }
 
         return columns;
@@ -37,7 +37,7 @@ internal static class BatchRowParser
     {
         var column = ColumnValueParser.Create(ordinal, RowBufferBinding.None);
 
-        if (!replay.TryRead(address + LayoutStatusOffset, out byte status))
+        if (!replay.TryRead(address + StatusOffset, out byte status))
         {
             return column with { Flags = ColumnValueParser.SlotUnreadable };
         }
@@ -47,7 +47,7 @@ internal static class BatchRowParser
             return column with { Status = status };
         }
 
-        if (!replay.TryRead(address + LayoutDataOffset, out ulong value) || !replay.TryRead(address + LayoutLengthOffset, out ulong length))
+        if (!replay.TryRead(address + DataOffset, out ulong value) || !replay.TryRead(address + LengthOffset, out ulong length))
         {
             return column with { Flags = ColumnValueParser.SlotUnreadable };
         }

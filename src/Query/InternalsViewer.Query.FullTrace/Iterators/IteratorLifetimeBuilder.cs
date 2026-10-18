@@ -10,7 +10,8 @@ internal static class IteratorLifetimeBuilder
 {
     public static IReadOnlyList<TraceOperatorLifetime> Build(TraceTimeline timeline,
                                                              IReadOnlyList<ExecutionOperatorEvent> operators,
-                                                             BatchStore batches)
+                                                             BatchStore batches,
+                                                             IteratorTree tree)
     {
         var owners = new Dictionary<ulong, ExecutionOperatorEvent>();
 
@@ -28,6 +29,8 @@ internal static class IteratorLifetimeBuilder
         {
             return lifetimes;
         }
+
+        var depths = new Dictionary<ExecutionOperatorEvent, int>(ReferenceEqualityComparer.Instance);
 
         var callsByThread = new Dictionary<uint, Dictionary<ExecutionOperatorEvent, List<InstanceCall>>>();
 
@@ -75,11 +78,56 @@ internal static class IteratorLifetimeBuilder
                                                         positions[0].Node,
                                                         positions,
                                                         instructions,
-                                                        curves[index]));
+                                                        curves[index])
+                {
+                    Depth = GetDepth(owner, owners, tree, depths)
+                });
             }
         }
 
         return lifetimes;
+    }
+
+    private static int GetDepth(ExecutionOperatorEvent operatorEvent,
+                                Dictionary<ulong, ExecutionOperatorEvent> owners,
+                                IteratorTree tree,
+                                Dictionary<ExecutionOperatorEvent, int> depths)
+    {
+        if (depths.TryGetValue(operatorEvent, out var known))
+        {
+            return known;
+        }
+
+        depths[operatorEvent] = operatorEvent.NodeLevel;
+
+        if (!operatorEvent.Instances.Any(tree.Contains))
+        {
+            return operatorEvent.NodeLevel;
+        }
+
+        var depth = GetParentOperator(operatorEvent, owners, tree) is { } parent ? GetDepth(parent, owners, tree, depths) + 1 : 0;
+
+        depths[operatorEvent] = depth;
+
+        return depth;
+    }
+
+    private static ExecutionOperatorEvent? GetParentOperator(ExecutionOperatorEvent operatorEvent,
+                                                             Dictionary<ulong, ExecutionOperatorEvent> owners,
+                                                             IteratorTree tree)
+    {
+        foreach (var instance in operatorEvent.Instances)
+        {
+            for (var parent = tree.GetParent(instance); parent != 0; parent = tree.GetParent(parent))
+            {
+                if (owners.TryGetValue(parent, out var owner) && !ReferenceEquals(owner, operatorEvent))
+                {
+                    return owner;
+                }
+            }
+        }
+
+        return null;
     }
 
     private static (TraceSpan[] Positions, TraceSpan[] Instructions) Merged(List<InstanceCall> calls)

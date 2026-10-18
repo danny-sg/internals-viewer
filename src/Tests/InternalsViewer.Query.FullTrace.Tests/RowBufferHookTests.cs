@@ -2,8 +2,10 @@ using System.Text;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.RowBuffers;
+using InternalsViewer.Query.FullTrace.RowBuffers.Accessors;
 using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
 using InternalsViewer.Query.FullTrace.RowBuffers.DeferredValues;
+using InternalsViewer.Query.FullTrace.RowSources;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
@@ -17,13 +19,7 @@ public class RowBufferHookTests
 
     private const ulong Iterator = 0x21C_0BB4_C180;
 
-    private const ulong ValueTable = 0x7FF8_0040_0000;
-
     private const ulong BindingTable = 0x7FF8_0041_0000;
-
-    private const ulong Row = 0x21C_0BB4_C620;
-
-    private const ulong Text = 0x21C_1EB7_C068;
 
     private const ulong Buffer = 0x21C_0BB5_0000;
 
@@ -33,62 +29,17 @@ public class RowBufferHookTests
 
     private const ulong BindingInfo = 0x21C_0BB8_0000;
 
-    private const ulong Batch = 0x21C_0BB9_0000;
+    private const ulong BTreeTable = 0x7FF8_0043_0000;
 
-    private const ulong Vectors = 0x21C_0BBA_0000;
+    private const ulong HeapTable = 0x7FF8_0044_0000;
 
-    private const ulong DeepPage = 0x21C_0BBC_0040;
+    private const ulong Rowset = 0x21C_0BC0_0000;
 
-    [Fact]
-    public void A_Batch_Row_Holds_Inline_Values_And_The_Bytes_Behind_Pointers()
-    {
-        var memory = BatchRow().Write(Row + 0x20, (byte)0)
-                               .Write(Row + 0x28, Text)
-                               .Write(Row + 0x30, 6ul)
-                               .Write(Text, "SYM000"u8);
+    private const ulong RowObject = 0x21C_0BC1_0000;
 
-        var row = Replay(memory, count: 2)!;
+    private const ulong HeapBuffer = 0x21C_0BC2_0000;
 
-        Assert.Equal(RowBufferFormat.Batch, row.Format);
-        Assert.Equal([0x20, 0x28, 0x30, 0, 0, 0, 0, 0], row.Columns[0].Data);
-        Assert.Equal("SYM000", Encoding.ASCII.GetString(row.Columns[1].Data));
-        Assert.True(row.Columns[1].IsByReference);
-    }
-
-    [Fact]
-    public void A_Batch_Row_Names_The_Vector_Whose_Deep_Data_Holds_A_Value()
-    {
-        var row = Replay(DeepDataRow(), count: 2)!;
-
-        Assert.Equal((Batch, 2, 5), (row.Batch, row.BatchSelectionIndex, row.Columns[1].DeepDataVectorId));
-        Assert.Equal(0, row.Columns[0].DeepDataVectorId);
-    }
-
-    [Fact]
-    public void A_Page_Without_Its_Magic_Is_Not_Deep_Data()
-    {
-        var row = Replay(DeepDataRow().Write(DeepPage + 0x10, 0u), count: 2)!;
-
-        Assert.Equal(0, row.Columns[1].DeepDataVectorId);
-    }
-
-    [Fact]
-    public void A_Null_Value_Keeps_Its_Status()
-    {
-        var memory = BatchRow().Write(Row + 0x20, (byte)3);
-
-        var column = Replay(memory, count: 2)!.Columns[1];
-
-        Assert.Equal((3, 0), (column.Status, column.Data.Length));
-    }
-
-    [Fact]
-    public void A_Value_Missing_From_The_Trace_Is_Unreadable()
-    {
-        var memory = BatchRow().Write(Row + 0x20, (byte)0);
-
-        Assert.True(Replay(memory, count: 2)!.Columns[1].IsUnreadable);
-    }
+    private const ulong DataPage = 0x21C_0BC4_0000;
 
     [Fact]
     public void A_Bound_Row_Reads_Each_Column_At_Its_Binding()
@@ -98,6 +49,20 @@ public class RowBufferHookTests
         Assert.Equal(RowBufferFormat.Bindings, row.Format);
         Assert.Equal(new RowBufferBinding(4, 2, 4, 0x10), row.Columns[0].Binding);
         Assert.Equal([0x20, 0x28, 0x30, 0], row.Columns[0].Data);
+    }
+
+    [Fact]
+    public void A_Bound_Column_Takes_The_Type_Its_Accessor_Reported()
+    {
+        var memory = BoundRow();
+
+        var hook = CreateHook(AccessorHookTests.CreateAccessors(memory, Iterator, 0x10));
+
+        hook.OnEntry(Call(), memory);
+
+        hook.OnReturn(Call(), memory);
+
+        Assert.Equal(new RowBufferType(2, 56, 4, 10, 0, 0), hook.Build().GetRow(Function, Iterator, 3)!.Columns[0].Binding.Type);
     }
 
     [Fact]
@@ -138,7 +103,7 @@ public class RowBufferHookTests
     }
 
     [Fact]
-    public void An_Iterator_Whose_Type_Is_Missing_From_The_Trace_Keeps_The_Format_Last_Read_For_It()
+    public void An_Iterator_Whose_Type_Is_Missing_From_The_Trace_Keeps_The_Layout_Last_Read_For_It()
     {
         var rows = ReplayTwoRows(BoundRow(hasTable: false, value: 4100000));
 
@@ -147,6 +112,56 @@ public class RowBufferHookTests
         Assert.Equal(RowBufferFormat.Bindings, row.Format);
         Assert.Equal([0xA0, 0x8F, 0x3E, 0], row.Columns[0].Data);
     }
+
+    [Fact]
+    public void A_Row_Read_From_A_B_Tree_Records_The_Page_And_Slot_The_Scan_Is_On()
+    {
+        var memory = Positioned(BoundRow()).Write(RowObject, BTreeTable)
+                                           .Write(RowObject + 0x20, DataPage)
+                                           .Write(RowObject + 0x30, 2);
+
+        Assert.Equal("Page (1:336) Slot 2", Replay(memory)!.Location?.ToString());
+    }
+
+    [Fact]
+    public void A_Row_Read_From_A_Heap_Records_The_Page_And_Slot_The_Scan_Is_On()
+    {
+        var memory = Positioned(BoundRow(), hasPageHeader: false).Write(RowObject, HeapTable)
+                                                                 .Write(RowObject + 0x58, HeapBuffer)
+                                                                 .Write(HeapBuffer, DataPage)
+                                                                 .Write(HeapBuffer + 0x70, (byte[])[0x50, 0x01, 0, 0, 1, 0])
+                                                                 .Write(RowObject + 0x50, 5);
+
+        Assert.Equal("Page (1:336) Slot 5", Replay(memory)!.Location?.ToString());
+    }
+
+    [Fact]
+    public void A_Row_On_A_Page_Whose_Header_Is_Not_In_The_Trace_Takes_The_Page_Read_For_Another_Row_On_It()
+    {
+        var hook = CreateHook();
+
+        var first = Positioned(BoundRow(), hasPageHeader: false).Write(RowObject, BTreeTable)
+                                                                .Write(RowObject + 0x20, DataPage)
+                                                                .Write(RowObject + 0x30, 1);
+
+        hook.OnEntry(Call(), first);
+
+        hook.OnReturn(Call(), first);
+
+        var second = Positioned(BoundRow()).Write(RowObject, BTreeTable)
+                                           .Write(RowObject + 0x20, DataPage)
+                                           .Write(RowObject + 0x30, 2);
+
+        hook.OnEntry(Call(id: 101, index: 4), second);
+
+        hook.OnReturn(Call(id: 101, index: 4), second);
+
+        Assert.Equal("Page (1:336) Slot 1", hook.Build().GetRow(Function, Iterator, 3)!.Location?.ToString());
+    }
+
+    [Fact]
+    public void A_Row_Whose_Row_Object_Is_Not_Known_Has_No_Location()
+        => Assert.Null(Replay(Positioned(BoundRow()).Write(RowObject, 0x7FF8_0045_0000UL))!.Location);
 
     [Fact]
     public void A_Bound_Value_Read_By_Reference_Follows_Its_Pointer()
@@ -210,24 +225,6 @@ public class RowBufferHookTests
     }
 
     [Fact]
-    public void A_Batch_Row_Reference_Into_A_Data_Page_Is_Deferred()
-    {
-        const ulong page = 0x21C_0BB9_0000;
-
-        var memory = BatchRow().Write(Row + 0x20, (byte)0)
-                               .Write(Row + 0x28, page + 416)
-                               .Write(Row + 0x30, 5ul)
-                               .Write(page, (byte)1)
-                               .Write(page + 0x20, (byte[])[0x50, 0x01, 0, 0, 1, 0])
-                               .Write(page + 0x28, (byte[])[0x2A, 0, 0, 0, 0x10, 0, 0, 0, 0x03, 0]);
-
-        var column = Replay(memory, count: 2)!.Columns[1];
-
-        Assert.Equal(new DeferredPageValue(new PageAddress(1, 336), 416, new LogSequenceNumber(42, 16, 3)), column.Deferred);
-        Assert.Empty(column.Data);
-    }
-
-    [Fact]
     public void A_Lob_Stored_In_Row_Is_Read_Without_The_Query_Handle()
     {
         var column = Replay(LobRow("Small LOB"u8, 33))!.Columns[0];
@@ -251,7 +248,7 @@ public class RowBufferHookTests
     {
         var hook = CreateHook();
 
-        var memory = BatchRow();
+        var memory = BoundRow();
 
         hook.OnEntry(Call(), memory);
 
@@ -300,7 +297,7 @@ public class RowBufferHookTests
     {
         var hook = CreateHook();
 
-        var memory = BatchRow();
+        var memory = BoundRow();
 
         hook.OnEntry(Call(), memory);
 
@@ -341,6 +338,14 @@ public class RowBufferHookTests
         return hasInfoFlags ? memory.Write(BindingInfo + 0x2A, (byte)0) : memory;
     }
 
+    private static FakeTraceReplay Positioned(FakeTraceReplay memory, bool hasPageHeader = true)
+    {
+        memory.Write(Iterator + 0x48, Rowset)
+              .Write(Rowset + 0x48, RowObject);
+
+        return hasPageHeader ? memory.Write(DataPage, (byte)1).Write(DataPage + 0x20, (byte[])[0x50, 0x01, 0, 0, 1, 0]) : memory;
+    }
+
     private static RowBufferStore ReplayTwoRows(FakeTraceReplay second)
     {
         var hook = CreateHook();
@@ -376,33 +381,9 @@ public class RowBufferHookTests
                                 .Write(Buffer + 0x18, length)
                                 .Write(Buffer + 0x40, value);
 
-    private static FakeTraceReplay DeepDataRow()
-        => BatchRow().Write(Row + 0x20, (byte)0)
-                     .Write(Row + 0x28, DeepPage + 0x1C)
-                     .Write(Row + 0x30, 6ul)
-                     .Write(DeepPage + 0x1C, "SYM000"u8)
-                     .Write(Iterator + 0x88, 3)
-                     .Write(Iterator + 0x90, Batch)
-                     .Write(Batch + 0x08, Vectors)
-                     .Write(Batch + 0x1C, 6)
-                     .Write(Vectors + 4 * 0x58 + 0x18, DeepPage)
-                     .Write(DeepPage + 0x08, 0ul)
-                     .Write(DeepPage + 0x10, 0x53445042u)
-                     .Write(DeepPage + 0x14, (ushort)0x1F8C);
-
-    private static FakeTraceReplay BatchRow()
-        => new FakeTraceReplay().Write(Iterator, ValueTable)
-                                .Write(Iterator + 0x78, Row)
-                                .Write(Iterator + 0x50, 2u)
-                                .Write(Row, (byte)0)
-                                .Write(Row + 0x08, 3156000ul)
-                                .Write(Row + 0x10, 0ul);
-
-    private static RowBuffer? Replay(FakeTraceReplay memory, uint count = 1)
+    private static RowBuffer? Replay(FakeTraceReplay memory)
     {
         var hook = CreateHook();
-
-        memory.Write(Iterator + 0x50, count);
 
         hook.OnEntry(Call(), memory);
 
@@ -411,13 +392,15 @@ public class RowBufferHookTests
         return hook.Build().GetRow(Function, Iterator, 3);
     }
 
-    private static RowBufferHook CreateHook()
+    private static RowBufferHook CreateHook(AccessorHook? accessors = null)
         => new(new RowBufferFunctions([Function],
-                                      new Dictionary<ulong, RowBufferFormat>
+                                      [BindingTable],
+                                      new Dictionary<ulong, RowObjectClass>
                                       {
-                                          [ValueTable] = RowBufferFormat.Batch,
-                                          [BindingTable] = RowBufferFormat.Bindings
-                                      }));
+                                          [BTreeTable] = RowObjectClass.BTree,
+                                          [HeapTable] = RowObjectClass.Heap
+                                      }),
+               accessors ?? new AccessorHook(AccessorFunctions.Empty, new RowSourceHook(RowSourceFunctions.Empty)));
 
     private static TraceHookCall Call(ulong id = 100, uint index = 3, ulong function = Function)
         => new()

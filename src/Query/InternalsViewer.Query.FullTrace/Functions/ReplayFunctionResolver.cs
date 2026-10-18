@@ -12,8 +12,10 @@ using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.FullTrace.Output;
+using InternalsViewer.Query.FullTrace.RowBuffers.Accessors;
 using InternalsViewer.Query.FullTrace.RowBuffers.HashRows;
-using InternalsViewer.Query.FullTrace.RowBuffers.VariantTables;
+using InternalsViewer.Query.FullTrace.RowBuffers.VariantRows;
+using InternalsViewer.Query.FullTrace.RowSources;
 using Microsoft.Extensions.Logging;
 using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.Helpers;
@@ -230,7 +232,11 @@ internal static class ReplayFunctionResolver
 
         var hashRows = new HashRowFunctions.Collector();
 
-        var variantTables = new VariantTableFunctions.Collector();
+        var variantRows = new VariantRowFunctions.Collector();
+
+        var rowSources = new RowSourceFunctions.Collector();
+
+        var accessors = new AccessorFunctions.Collector();
 
         var output = new OutputFunctions.Collector();
 
@@ -243,7 +249,11 @@ internal static class ReplayFunctionResolver
 
                                                hashRows.VisitFunction(rva, name);
 
-                                               variantTables.VisitFunction(rva, name);
+                                               variantRows.VisitFunction(rva, name);
+
+                                               rowSources.VisitFunction(rva, name);
+
+                                               accessors.VisitFunction(rva, name);
 
                                                output.VisitFunction(rva, name);
 
@@ -255,7 +265,7 @@ internal static class ReplayFunctionResolver
 
                                                hashRows.VisitData(rva, name);
 
-                                               variantTables.VisitData(rva, name);
+                                               variantRows.VisitData(rva, name);
 
                                                output.VisitData(rva, name);
                                            });
@@ -283,7 +293,9 @@ internal static class ReplayFunctionResolver
                                    rowBuffers.Build(bases),
                                    batches.Build(bases),
                                    hashRows.Build(),
-                                   variantTables.Build(),
+                                   variantRows.Build(),
+                                   rowSources.Build(),
+                                   accessors.Build(),
                                    output.Build());
     }
 

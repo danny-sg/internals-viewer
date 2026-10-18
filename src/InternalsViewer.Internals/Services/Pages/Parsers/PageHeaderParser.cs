@@ -11,6 +11,9 @@ namespace InternalsViewer.Internals.Services.Pages.Parsers;
 /// </summary>
 public static class PageHeaderParser
 {    
+    public const byte PageAddressOffset = 32;
+    public const byte LsnOffset = 40;
+
     internal const byte PreviousPageOffset = 8;
     internal const byte PageTypeOffset = 1;
     internal const byte LevelOffset = 3;
@@ -25,9 +28,7 @@ public static class PageHeaderParser
     private const byte ObjectIdOffset = 24;
     private const byte FreeCountOffset = 28;
     private const byte FreeDataOffset = 30;
-    private const byte PageAddressOffset = 32;
     private const byte ReservedCountOffset = 38;
-    private const byte LsnOffset = 40;
     private const byte TransactionReservedCountOffset = 50;
     private const byte InternalTransactionIdOffset = 52;
     private const byte GhostRecordCountOffset = 58;

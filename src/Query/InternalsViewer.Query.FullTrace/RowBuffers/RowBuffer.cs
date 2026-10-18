@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.RowBuffers.DeferredValues;
 using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
 using InternalsViewer.Query.FullTrace.RowBuffers.Records;
 
@@ -17,6 +18,8 @@ public sealed record RowBuffer(ulong Function,
     public int BatchSelectionIndex { get; init; } = -1;
 
     public byte[]? Record { get; init; }
+
+    public DeferredRecordValue? Location { get; init; }
 
     public RowRecordLayout? RecordLayout { get; init; }
 

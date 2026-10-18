@@ -57,7 +57,7 @@ public class IteratorLifetimeBuilderTests
             Instances = [Hash]
         };
 
-        var lifetime = Assert.Single(IteratorLifetimeBuilder.Build(timeline, [hashMatch], BatchStore.Empty));
+        var lifetime = Assert.Single(IteratorLifetimeBuilder.Build(timeline, [hashMatch], BatchStore.Empty, IteratorTree.Empty));
 
         var calls = lifetime.Calls(TraceTimelineAxis.Instructions);
 
@@ -100,7 +100,7 @@ public class IteratorLifetimeBuilderTests
 
         var scan = Operator("Index Scan", 2, Scan);
 
-        var lifetimes = IteratorLifetimeBuilder.Build(timeline, [hashMatch, scan], BatchStore.Empty);
+        var lifetimes = IteratorLifetimeBuilder.Build(timeline, [hashMatch, scan], BatchStore.Empty, IteratorTree.Empty);
 
         var hashLifetime = lifetimes.Single(l => ReferenceEquals(l.Operator, hashMatch));
 
@@ -133,7 +133,7 @@ public class IteratorLifetimeBuilderTests
 
         var batches = new BatchStore([new BatchCapture(0x60, Scan, 0, At(25), Scan, 0x1000, BatchHelper, BatchCaptureFlags.None, [], [])]);
 
-        var lifetimes = IteratorLifetimeBuilder.Build(timeline, [scan], batches);
+        var lifetimes = IteratorLifetimeBuilder.Build(timeline, [scan], batches, IteratorTree.Empty);
 
         var adapter = Assert.Single(lifetimes, l => l.Operator.Instances.Contains(BatchHelper)).Operator;
 

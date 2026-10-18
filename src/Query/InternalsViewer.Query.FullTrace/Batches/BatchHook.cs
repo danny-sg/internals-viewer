@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using InternalsViewer.Internals.Columnstore.Decoding;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
 using InternalsViewer.Query.FullTrace.Batches.Enums;
@@ -35,8 +36,6 @@ internal sealed class BatchHook(BatchFunctions functions) : ITraceHook
     private const int MaximumBatchSelection = 0x10000;
 
     private const ulong LargestInlineTag = 0xF;
-
-    private const ulong DeepLengthOffset = 2;
 
     private const ulong MaximumValueBytes = 8000;
 
@@ -237,7 +236,7 @@ internal sealed class BatchHook(BatchFunctions functions) : ITraceHook
 
             var pointer = value & ~1ul;
 
-            if (pointer < SmallestAddress || !replay.TryRead(pointer - DeepLengthOffset, out ushort length))
+            if (pointer < SmallestAddress || !replay.TryRead(pointer - ColumnstoreValueConverter.DeepDataPrefixSize, out ushort length))
             {
                 deepValues[slot] = new BatchDeepValue(0, []);
 

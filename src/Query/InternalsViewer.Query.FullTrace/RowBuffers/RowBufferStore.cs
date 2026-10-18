@@ -83,6 +83,8 @@ public sealed partial class RowBufferStore
         }
     }
 
+    internal ulong GetIterator(ulong address) => GetRowBufferSource(address)?.Iterator ?? 0;
+
     public int GetColumnCount(ulong address, ulong instance)
         => GetRows(address, instance).Select(r => r.Columns.Count).DefaultIfEmpty().Max();
 
@@ -90,7 +92,7 @@ public sealed partial class RowBufferStore
     {
         _ when row.Format == RowBufferFormat.HashTable
             => new RowBufferSource(RowBufferSourceType.HashTable, row.Address, row.Iterator, column.Binding.ValueOffset, column.Ordinal),
-        DeferredPageValue 
+        DeferredPageValue or DeferredRecordValue
             => new RowBufferSource(RowBufferSourceType.BufferPool, column.Pointer),
         DeferredLobValue 
             => new RowBufferSource(RowBufferSourceType.Lob),
@@ -125,7 +127,7 @@ public sealed partial class RowBufferStore
     private static ulong GetExtent(RowBuffer row) => row.Format switch
     {
         RowBufferFormat.Batch or RowBufferFormat.VariantTable
-            => (ulong)row.Columns.Count * BatchRowParser.LayoutValueSize,
+            => (ulong)row.Columns.Count * VariantRowParser.ValueSize,
         RowBufferFormat.HashTable
             => (ulong)(row.Record?.Length ?? 0),
         _ => row.Columns.Select(c => c.Binding.ValueOffset + Math.Max((ulong)c.Binding.FixedLength, SmallestSlot)).DefaultIfEmpty().Max()
@@ -135,7 +137,7 @@ public sealed partial class RowBufferStore
     {
         if (row.Format is RowBufferFormat.Batch or RowBufferFormat.VariantTable)
         {
-            return (int)(offset / BatchRowParser.LayoutValueSize);
+            return (int)(offset / VariantRowParser.ValueSize);
         }
 
         foreach (var column in row.Columns)

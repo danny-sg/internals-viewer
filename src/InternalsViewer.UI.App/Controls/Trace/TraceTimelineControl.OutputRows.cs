@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.FullTrace.Timeline;
 using SkiaSharp;
 using Windows.Foundation;
@@ -42,7 +43,7 @@ public sealed partial class TraceTimelineControl
 
     private const float LineagePanelMinimumWidth = 120f;
 
-    private const float LineagePanelMaximumWidth = 280f;
+    private const float LineagePanelMaximumWidth = 360f;
 
     private const float LineageColumnHeight = 13f;
 
@@ -60,9 +61,15 @@ public sealed partial class TraceTimelineControl
 
     private const float LineageWrapStep = 8f;
 
+    private const float LineageValueGap = 8f;
+
+    private const float LineageMaximumValueWidth = 160f;
+
     private const string ColumnSeparator = ",";
 
     private const string DictionaryBadge = "Dictionary";
+
+    private const string TrimmedValueSuffix = "\u2026";
 
     private const string OutputRowTitle = "Output Row";
 
@@ -82,7 +89,33 @@ public sealed partial class TraceTimelineControl
         set => SetValue(OutputColumnNamesProperty, value);
     }
 
+    public static readonly DependencyProperty OutputValueFormatterProperty =
+        DependencyProperty.Register(nameof(OutputValueFormatter),
+                                    typeof(Func<RowBuffer, RowBufferColumn, bool, string>),
+                                    typeof(TraceTimelineControl),
+                                    new PropertyMetadata(null, OnOutputValuesChanged));
+
+    public Func<RowBuffer, RowBufferColumn, bool, string>? OutputValueFormatter
+    {
+        get => (Func<RowBuffer, RowBufferColumn, bool, string>?)GetValue(OutputValueFormatterProperty);
+        set => SetValue(OutputValueFormatterProperty, value);
+    }
+
+    public static readonly DependencyProperty IsDecodedProperty =
+        DependencyProperty.Register(nameof(IsDecoded),
+                                    typeof(bool),
+                                    typeof(TraceTimelineControl),
+                                    new PropertyMetadata(true, OnOutputValuesChanged));
+
+    public bool IsDecoded
+    {
+        get => (bool)GetValue(IsDecodedProperty);
+        set => SetValue(IsDecodedProperty, value);
+    }
+
     private TraceOutputRow? _hoverOutputRow;
+
+    private LineageBlocks? _lineageBlocks;
 
     private TraceOutputRows? OutputRows => RowReturnMarks?.OutputRows is { Count: > 0 } rows ? rows : null;
 
@@ -372,21 +405,72 @@ public sealed partial class TraceTimelineControl
                   .OrderBy(s => s.Item2)];
 
     private List<(int Row, List<LineageColumn> Columns)> GetColumnBlocks(TraceOutputRow row)
-        => [.. row.Sources
-                  .Select(s => (Row: GetRowIndex(s.Operator), Columns: s.Columns.Select(GetLineageColumn).ToList()))
-                  .Where(s => s.Row is not null && s.Columns.Count > 0)
-                  .Select(s => (s.Row!.Value, s.Columns))
-                  .OrderBy(s => s.Item1)];
+    {
+        if (_lineageBlocks is { } cached && ReferenceEquals(cached.Row, row) && cached.IsDecoded == IsDecoded)
+        {
+            return cached.Blocks;
+        }
 
-    private LineageColumn GetLineageColumn(TraceOutputColumn column) => new(GetColumnName(column.Ordinal), column.IsFromDictionary);
+        List<(int Row, List<LineageColumn> Columns)> blocks =
+            [.. row.Sources
+                   .Select(s => (Row: GetRowIndex(s.Operator), Columns: s.Columns.Select(GetLineageColumn).ToList()))
+                   .Where(s => s.Row is not null && s.Columns.Count > 0)
+                   .Select(s => (s.Row!.Value, s.Columns))
+                   .OrderBy(s => s.Item1)];
+
+        _lineageBlocks = new LineageBlocks(row, IsDecoded, blocks);
+
+        return blocks;
+    }
+
+    private LineageColumn GetLineageColumn(TraceOutputColumn column)
+        => new(GetColumnName(column.Ordinal), GetValueText(column.Row, column.Value), column.IsFromDictionary);
+
+    private string? GetValueText(RowBuffer? row, RowBufferColumn? column)
+        => row is not null && column is not null && OutputValueFormatter is { } formatter
+            ? GetTrimmed(formatter(row, column, IsDecoded))
+            : null;
+
+    private string GetTrimmed(string text)
+    {
+        if (_paints.Font.MeasureText(text) <= LineageMaximumValueWidth)
+        {
+            return text;
+        }
+
+        var (low, high) = (0, text.Length - 1);
+
+        while (low < high)
+        {
+            var middle = (low + high + 1) / 2;
+
+            if (_paints.Font.MeasureText(text[..middle] + TrimmedValueSuffix) <= LineageMaximumValueWidth)
+            {
+                low = middle;
+            }
+            else
+            {
+                high = middle - 1;
+            }
+        }
+
+        return text[..low] + TrimmedValueSuffix;
+    }
 
     private void DrawColumnRun(SKCanvas canvas, LineageColumnRun run, float left, float lineTop)
     {
         var baseline = GetBaseline(_paints.Font, lineTop, LineageColumnHeight);
 
-        canvas.DrawText(run.Column.Name, left, baseline, SKTextAlign.Left, _paints.Font, _paints.Label);
+        canvas.DrawText(run.Column.Name, left, baseline, SKTextAlign.Left, _paints.Font, _paints.DimLabel);
 
         var right = left + _paints.Font.MeasureText(run.Column.Name);
+
+        if (run.Column.Value is { } value)
+        {
+            canvas.DrawText(value, left + run.ValueLeft, baseline, SKTextAlign.Left, _paints.Font, _paints.Label);
+
+            right = left + run.ValueLeft + _paints.Font.MeasureText(value);
+        }
 
         if (run.Column.IsFromDictionary)
         {
@@ -436,12 +520,14 @@ public sealed partial class TraceTimelineControl
     {
         if (columns.Count <= LineageColumnCapacity)
         {
-            return columns.Max(c => GetRunWidth(new LineageColumnRun(c, 0, false)));
+            var valueLeft = GetValueLeft(columns);
+
+            return columns.Max(c => GetRunWidth(new LineageColumnRun(c, 0, valueLeft, false)));
         }
 
         var maximum = LineagePanelMaximumWidth - LineagePanelPadding * 2 - LineageBulletWidth - LineageBulletGap;
 
-        var width = Math.Min(columns.Select((c, i) => GetRunWidth(new LineageColumnRun(c, 0, i < columns.Count - 1))).Max(), maximum);
+        var width = Math.Min(columns.Select((_, i) => GetRunWidth(GetWrappedRun(columns, i))).Max(), maximum);
 
         while (width < maximum && GetColumnLines(columns, width).Count > LineageColumnCapacity)
         {
@@ -455,7 +541,9 @@ public sealed partial class TraceTimelineControl
     {
         if (columns.Count <= LineageColumnCapacity)
         {
-            return [.. columns.Select(c => new List<LineageColumnRun> { new(c, 0, false) })];
+            var valueLeft = GetValueLeft(columns);
+
+            return [.. columns.Select(c => new List<LineageColumnRun> { new(c, 0, valueLeft, false) })];
         }
 
         var space = _paints.Font.MeasureText(" ");
@@ -468,7 +556,7 @@ public sealed partial class TraceTimelineControl
 
         for (var index = 0; index < columns.Count; index++)
         {
-            var run = new LineageColumnRun(columns[index], 0, index < columns.Count - 1);
+            var run = GetWrappedRun(columns, index);
 
             var runWidth = GetRunWidth(run);
 
@@ -495,9 +583,19 @@ public sealed partial class TraceTimelineControl
         return lines;
     }
 
+    private LineageColumnRun GetWrappedRun(List<LineageColumn> columns, int index)
+        => new(columns[index],
+               0,
+               _paints.Font.MeasureText(columns[index].Name) + _paints.Font.MeasureText(" "),
+               index < columns.Count - 1);
+
+    private float GetValueLeft(List<LineageColumn> columns) => columns.Max(c => _paints.Font.MeasureText(c.Name)) + LineageValueGap;
+
     private float GetRunWidth(LineageColumnRun run)
     {
-        var width = _paints.Font.MeasureText(run.Column.Name);
+        var width = run.Column.Value is { } value
+            ? run.ValueLeft + _paints.Font.MeasureText(value)
+            : _paints.Font.MeasureText(run.Column.Name);
 
         if (run.Column.IsFromDictionary)
         {
@@ -609,11 +707,22 @@ public sealed partial class TraceTimelineControl
             ? (LineageJoinY + OperatorRowTop(0)) / 2 + GapLineOffset
             : OperatorRowTop(row) - OperatorRowGap / 2;
 
+    private static void OnOutputValuesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (TraceTimelineControl)d;
+
+        control._lineageBlocks = null;
+
+        control.Redraw();
+    }
+
     private readonly record struct LineageTick(int Row, float Top, float Height);
 
-    private readonly record struct LineageColumn(string Name, bool IsFromDictionary);
+    private readonly record struct LineageColumn(string Name, string? Value, bool IsFromDictionary);
 
-    private readonly record struct LineageColumnRun(LineageColumn Column, float Left, bool HasSeparator);
+    private readonly record struct LineageColumnRun(LineageColumn Column, float Left, float ValueLeft, bool HasSeparator);
+
+    private sealed record LineageBlocks(TraceOutputRow Row, bool IsDecoded, List<(int Row, List<LineageColumn> Columns)> Blocks);
 
     private sealed record LineageLine(SKPaint Paint, SKPoint[] Points);
 
