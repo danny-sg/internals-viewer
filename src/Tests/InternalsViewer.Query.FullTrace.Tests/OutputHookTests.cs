@@ -22,6 +22,8 @@ public class OutputHookTests
 
     private const ulong GetRow = 0x4000;
 
+    private const ulong WriteSlot = 0x4100;
+
     private const ulong OutputRowTable = 0x7000;
 
     private const ulong SwitchTable = 0x7100;
@@ -33,6 +35,10 @@ public class OutputHookTests
     private const ulong OtherTable = 0x7400;
 
     private const ulong RedirectTable = 0x7500;
+
+    private const ulong VariantTable = 0x7600;
+
+    private const ulong VariantTableRow = 0x7700;
 
     private const ulong Executor = 0x1F4_0000_1000;
 
@@ -65,6 +71,16 @@ public class OutputHookTests
     private const ulong HelperRow = 0x1F4_0000_C800;
 
     private const ulong RedirectValue = 0x1F4_0000_5400;
+
+    private const ulong VariantValue = 0x1F4_0000_5500;
+
+    private const ulong VariantWriter = 0x1F4_0000_5600;
+
+    private const ulong VariantRow = 0x1F4_0000_D000;
+
+    private const ulong AggregateIterator = 0x1F4_0000_E000;
+
+    private const int VariantSlot = 5;
 
     private const ulong Rowset = 0x1F4_0000_8800;
 
@@ -210,6 +226,39 @@ public class OutputHookTests
     }
 
     [Fact]
+    public void A_Column_Read_From_A_Variant_Table_Is_Owned_By_The_Iterator_That_Wrote_Its_Slot()
+    {
+        var replay = CreateReplay().Write(Values + 0x08, VariantValue)
+                                   .Write(VariantValue, VariantTable)
+                                   .Write(VariantValue + 0x08, VariantSlot)
+                                   .Write(VariantValue + 0x0C, 1)
+                                   .Write(Context + VariantSlot * sizeof(ulong), VariantRow)
+                                   .Write(VariantWriter, VariantTableRow)
+                                   .Write(VariantWriter + 0x08, VariantSlot);
+
+        var hook = CreateHook();
+
+        hook.OnEntry(Call(GetRow, 3, [AggregateIterator]), replay);
+
+        hook.OnEntry(Call(WriteSlot, 4, [VariantWriter, Context, 0]), replay);
+
+        hook.OnReturn(Call(WriteSlot, 4, [VariantWriter, Context, 0]), replay);
+
+        hook.OnReturn(Call(GetRow, 3, [AggregateIterator]), replay);
+
+        hook.OnEntry(Call(Evaluate, 10, [Context, Executor]), replay);
+
+        ReadColumn(hook, replay, 11, 1);
+
+        hook.OnReturn(Call(Evaluate, 10, [Context, Executor]), replay);
+
+        var column = Assert.Single(Assert.Single(hook.Build()).Columns);
+
+        Assert.Equal((OutputSourceType.Buffer, VariantRow + 0x20, AggregateIterator, 1),
+                     (column.Type, column.Address, column.Owner, column.Ordinal));
+    }
+
+    [Fact]
     public void An_Evaluation_Of_Anything_But_The_Output_Row_Is_Ignored()
         => Assert.Empty(Capture(CreateReplay().Write(OutputRowValue, OtherTable)));
 
@@ -270,7 +319,9 @@ public class OutputHookTests
                                        [SwitchTable] = OutputValueClass.HashSwitch,
                                        [HashTable] = OutputValueClass.Hash,
                                        [ScanTable] = OutputValueClass.Table,
-                                       [RedirectTable] = OutputValueClass.BatchRedirect
+                                       [RedirectTable] = OutputValueClass.BatchRedirect,
+                                       [VariantTable] = OutputValueClass.VariantTable,
+                                       [VariantTableRow] = OutputValueClass.VariantTableRow
                                    }));
 
     private static Dictionary<ulong, OutputFunctionType> CreateFunctions()
@@ -281,7 +332,8 @@ public class OutputHookTests
             [VariantRead] = OutputFunctionType.VariantRead,
             [Send] = OutputFunctionType.Send,
             [Create] = OutputFunctionType.Creator,
-            [GetRow] = OutputFunctionType.Iterator
+            [GetRow] = OutputFunctionType.Iterator,
+            [WriteSlot] = OutputFunctionType.SlotWriter
         };
 
     private static void Prepare(OutputHook hook, FakeTraceReplay replay)

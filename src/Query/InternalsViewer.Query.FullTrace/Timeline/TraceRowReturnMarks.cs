@@ -18,6 +18,8 @@ public sealed class TraceRowReturnMarks
 
     private const string BatchMethod = "BpGetNextBatch";
 
+    private const string FilterOperator = "Filter";
+
     private static readonly int TypeCount = Enum.GetValues<RowReturnType>().Length;
 
     private TraceRowReturnMarks(Dictionary<ExecutionOperatorEvent, Dictionary<uint, OperatorReturns>> operators,
@@ -117,6 +119,10 @@ public sealed class TraceRowReturnMarks
 
         var passedUp = new List<TraceRowReturn>();
 
+        var passedUpCalls = new Dictionary<(ulong Instance, uint Thread, int Index), TraceRowReturn>();
+
+        var consumers = new List<(TraceRowReturn Return, (ulong Instance, uint Thread, int Index) Consumer)>();
+
         var batchOperators = new HashSet<ExecutionOperatorEvent>(ReferenceEqualityComparer.Instance);
 
         foreach (var group in groups)
@@ -128,11 +134,13 @@ public sealed class TraceRowReturnMarks
 
             var parent = GetParent(group, groups);
 
+            var isFiltered = parent is not null && owners[parent.Instance].Name == FilterOperator;
+
             for (var index = 0; index < group.Calls.Length; index++)
             {
                 var call = group.Calls[index];
 
-                if (GetReturnType(group, index, parent) is not { } type
+                if (GetReturnType(group, index, parent, isFiltered) is not { } type
                     || timeline.FindCall(call.Function, group.Instance, call.Call) is not { } location)
                 {
                     continue;
@@ -152,21 +160,35 @@ public sealed class TraceRowReturnMarks
 
                 if (type == RowReturnType.PassedUp && !group.IsBatch)
                 {
-                    passedUp.Add(new TraceRowReturn(owners[group.Instance],
-                                                    group.Thread,
-                                                    mark.Node,
-                                                    mark.Call,
-                                                    type,
-                                                    mark.Position,
-                                                    mark.Instructions)
+                    var rowReturn = new TraceRowReturn(owners[group.Instance],
+                                                       group.Thread,
+                                                       mark.Node,
+                                                       mark.Call,
+                                                       type,
+                                                       mark.Position,
+                                                       mark.Instructions)
                     {
                         StartPosition = mark.StartPosition,
                         StartInstructions = mark.StartInstructions,
                         FromPosition = call.FromPosition,
                         ToPosition = call.ToPosition
-                    });
+                    };
+
+                    passedUp.Add(rowReturn);
+
+                    passedUpCalls[(group.Instance, group.Thread, index)] = rowReturn;
+
+                    if (parent is not null && GetConsumerCall(parent, call) is { } consumer)
+                    {
+                        consumers.Add((rowReturn, (parent.Instance, parent.Thread, consumer)));
+                    }
                 }
             }
+        }
+
+        foreach (var (rowReturn, consumer) in consumers)
+        {
+            rowReturn.Consumer = passedUpCalls.GetValueOrDefault(consumer);
         }
 
         var operators = new Dictionary<ExecutionOperatorEvent, Dictionary<uint, OperatorReturns>>(ReferenceEqualityComparer.Instance);
@@ -273,11 +295,19 @@ public sealed class TraceRowReturnMarks
         return parent;
     }
 
-    private static RowReturnType? GetReturnType(CallGroup group, int index, CallGroup? parent)
+    private static int? GetConsumerCall(CallGroup parent, GetRowCall call)
+    {
+        var index = SortedSearch.FirstAfter(parent.Calls, call.FromPosition, c => c.FromPosition) - 1;
+
+        return index >= 0 && parent.Calls[index].ToPosition >= call.ToPosition ? index : null;
+    }
+
+    private static RowReturnType? GetReturnType(CallGroup group, int index, CallGroup? parent, bool isFiltered)
         => group.Calls[index].Status switch
         {
             null => null,
-            RowStatus => parent is null || IsPassedUp(group, index, parent) ? RowReturnType.PassedUp : RowReturnType.NotPassedUp,
+            RowStatus when parent is null || IsPassedUp(group, index, parent) => RowReturnType.PassedUp,
+            RowStatus => isFiltered ? RowReturnType.Rejected : RowReturnType.NotPassedUp,
             EndStatus => RowReturnType.End,
             FakeRowStatus => RowReturnType.FakeRow,
             _ => RowReturnType.Other

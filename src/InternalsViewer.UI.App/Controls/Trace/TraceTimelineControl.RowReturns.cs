@@ -35,9 +35,10 @@ public sealed partial class TraceTimelineControl
     private static readonly ReturnStyle[] ReturnStyles =
     [
         new(RowReturnType.NotPassedUp, new SKColor(0x8A, 0x8A, 0x8A), "Not Passed Up"),
+        new(RowReturnType.Rejected, new SKColor(0xF0, 0x48, 0x48), "Rejected"),
         new(RowReturnType.PassedUp, null, "Passed Up"),
         new(RowReturnType.FakeRow, new SKColor(0xFF, 0xC8, 0x57), "Fake Row"),
-        new(RowReturnType.Other, new SKColor(0xFF, 0x6B, 0x6B), "Other Status"),
+        new(RowReturnType.Other, new SKColor(0xC0, 0x84, 0xFC), "Other Status"),
         new(RowReturnType.End, new SKColor(0xF0, 0xF0, 0xF0), "End")
     ];
 

@@ -112,63 +112,26 @@ public sealed class TraceOutputRows
 
     private static TraceOutputStep[] GetSteps(TraceRowReturn[] returns, TraceRowReturn root)
     {
-        var nested = new List<TraceRowReturn>();
+        var path = new HashSet<TraceRowReturn>(ReferenceEqualityComparer.Instance) { root };
+
+        var steps = new List<TraceOutputStep>();
 
         var index = SortedSearch.FirstAtOrAfter(returns, root.FromPosition, r => r.FromPosition);
 
         for (; index < returns.Length && returns[index].FromPosition < root.ToPosition; index++)
         {
-            if (returns[index].ToPosition <= root.ToPosition)
+            var rowReturn = returns[index];
+
+            if (rowReturn.ToPosition <= root.ToPosition && rowReturn.Consumer is { } consumer && path.Contains(consumer))
             {
-                nested.Add(returns[index]);
+                path.Add(rowReturn);
+
+                steps.Add(new TraceOutputStep(rowReturn, consumer));
             }
         }
 
-        TraceRowReturn[] candidates = [root, .. nested];
-
-        return [.. nested.Select(r => new TraceOutputStep(r, GetParent(r, candidates) ?? GetEnclosing(r, candidates) ?? root))];
+        return [.. steps];
     }
-
-    private static TraceRowReturn? GetParent(TraceRowReturn child, TraceRowReturn[] candidates)
-    {
-        TraceRowReturn? parent = null;
-
-        foreach (var candidate in candidates)
-        {
-            if (IsParent(candidate, child)
-                && candidate.ToPosition >= child.ToPosition
-                && (parent is null || candidate.ToPosition < parent.ToPosition))
-            {
-                parent = candidate;
-            }
-        }
-
-        return parent;
-    }
-
-    private static TraceRowReturn? GetEnclosing(TraceRowReturn child, TraceRowReturn[] candidates)
-    {
-        TraceRowReturn? enclosing = null;
-
-        foreach (var candidate in candidates)
-        {
-            if (!ReferenceEquals(candidate, child)
-                && candidate.FromPosition <= child.FromPosition
-                && candidate.ToPosition >= child.ToPosition
-                && (enclosing is null || candidate.FromPosition > enclosing.FromPosition))
-            {
-                enclosing = candidate;
-            }
-        }
-
-        return enclosing;
-    }
-
-    private static bool IsParent(TraceRowReturn candidate, TraceRowReturn child)
-        => child.Operator.ParentNodeId is { } parentNodeId
-           && candidate.Operator.PlanNodeIdentifier is { } identifier
-           && identifier.NodeId == parentNodeId
-           && identifier.PlanHandleId == child.Operator.PlanNodeIdentifier?.PlanHandleId;
 
     private AxisRows Of(TraceTimelineAxis axis) => axis == TraceTimelineAxis.Position ? Positions : Instructions;
 

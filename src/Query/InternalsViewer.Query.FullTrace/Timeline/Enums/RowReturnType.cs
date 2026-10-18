@@ -6,5 +6,6 @@ public enum RowReturnType
     NotPassedUp,
     End,
     FakeRow,
-    Other
+    Other,
+    Rejected
 }

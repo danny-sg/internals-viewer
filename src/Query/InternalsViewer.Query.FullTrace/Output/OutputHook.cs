@@ -8,6 +8,8 @@ namespace InternalsViewer.Query.FullTrace.Output;
 
 internal sealed class OutputHook(OutputFunctions functions) : ITraceHook
 {
+    private const int EvaluationContextArgument = 0;
+
     private const int EvaluationExecutorArgument = 1;
 
     private const int ReadExecutorArgument = 0;
@@ -17,6 +19,10 @@ internal sealed class OutputHook(OutputFunctions functions) : ITraceHook
     private const int SendValuesArgument = 2;
 
     private const int IteratorArgument = 0;
+
+    private const int SlotWriterArgument = 0;
+
+    private const int SlotWriterContextArgument = 1;
 
     private const ulong LayoutExecutorInstructionOffset = 0x20;
 
@@ -57,6 +63,10 @@ internal sealed class OutputHook(OutputFunctions functions) : ITraceHook
     private const ulong LayoutRedirectHelperOffset = 0x10;
 
     private const ulong LayoutHelperRowOffset = 0x78;
+
+    private const ulong LayoutVariantTableSlotOffset = 0x08;
+
+    private const ulong LayoutVariantTableOrdinalOffset = 0x0C;
 
     private const ulong ValueSize = 0x20;
 
@@ -101,6 +111,10 @@ internal sealed class OutputHook(OutputFunctions functions) : ITraceHook
 
     private Dictionary<ulong, ulong> DirectSends { get; } = [];
 
+    private Dictionary<uint, Stack<OpenIterator>> OpenIterators { get; } = [];
+
+    private Dictionary<(ulong Context, int Slot), ulong> SlotOwners { get; } = [];
+
     public void OnEntry(in TraceHookCall call, ITraceReplay replay)
     {
         if (!functions.Functions.TryGetValue(call.Function, out var type))
@@ -126,14 +140,20 @@ internal sealed class OutputHook(OutputFunctions functions) : ITraceHook
                 Creating[call.Id] = call.Arguments[IteratorArgument];
                 break;
 
-            case OutputFunctionType.Iterator when !AddStorage(replay, call.Arguments[IteratorArgument]):
-                Fetching[call.Id] = call.Arguments[IteratorArgument];
+            case OutputFunctionType.Iterator:
+                StartIterator(call, replay);
+                break;
+
+            case OutputFunctionType.SlotWriter:
+                AddSlotOwner(call, replay);
                 break;
         }
     }
 
     public void OnReturn(in TraceHookCall call, ITraceReplay replay)
     {
+        EndIterator(call.Thread, call.Id);
+
         if (Reading.Remove(call.Id, out var read))
         {
             AddColumn(call.Thread, read, replay);
@@ -159,6 +179,8 @@ internal sealed class OutputHook(OutputFunctions functions) : ITraceHook
 
     public void OnAbandoned(in TraceHookCall call)
     {
+        EndIterator(call.Thread, call.Id);
+
         Reading.Remove(call.Id);
 
         Creating.Remove(call.Id);
@@ -209,7 +231,10 @@ internal sealed class OutputHook(OutputFunctions functions) : ITraceHook
 
         var executor = call.Arguments[EvaluationExecutorArgument];
 
-        Frames[call.Thread] = new EvaluationFrame(call.Id, executor, IsKnown(executor) ? null : []);
+        Frames[call.Thread] = new EvaluationFrame(call.Id,
+                                                  executor,
+                                                  call.Arguments[EvaluationContextArgument],
+                                                  IsKnown(executor) ? null : []);
     }
 
     private void StartRead(in TraceHookCall call, bool isVariant, ITraceReplay replay)
@@ -294,7 +319,7 @@ internal sealed class OutputHook(OutputFunctions functions) : ITraceHook
         {
             source = address == 0 ? TraceOutputSource.Unknown
                      : read.IsVariant ? new TraceOutputSource(OutputSourceType.Buffer, 0, address)
-                     : GetSource(replay, address, 0, 0);
+                     : GetSource(replay, address, frame.Context, 0, 0);
 
             if (address != 0 && source.Type != OutputSourceType.Unknown)
             {
@@ -305,7 +330,7 @@ internal sealed class OutputHook(OutputFunctions functions) : ITraceHook
         columns.Add(source);
     }
 
-    private TraceOutputSource GetSource(ITraceReplay replay, ulong value, ulong state, int depth)
+    private TraceOutputSource GetSource(ITraceReplay replay, ulong value, ulong context, ulong state, int depth)
     {
         if (depth > MaximumDepth || !replay.TryRead(value, out ulong vtable) || !Classes.TryGetValue(vtable, out var valueClass))
         {
@@ -317,12 +342,12 @@ internal sealed class OutputHook(OutputFunctions functions) : ITraceHook
             case OutputValueClass.HashSwitch
                 when replay.TryRead(value + LayoutSwitchStateOffset, out ulong switchState)
                      && replay.TryRead(value + LayoutSwitchPrimaryOffset, out ulong primary):
-                return GetSource(replay, primary, state == 0 ? switchState : state, depth + 1);
+                return GetSource(replay, primary, context, state == 0 ? switchState : state, depth + 1);
 
             case OutputValueClass.HashCachedSwitch
                 when replay.TryRead(value + LayoutCachedSwitchInnerOffset, out ulong inner)
                      && replay.TryRead(value + LayoutCachedSwitchStateOffset, out ulong cachedState):
-                return GetSource(replay, inner, state == 0 ? cachedState : state, depth + 1);
+                return GetSource(replay, inner, context, state == 0 ? cachedState : state, depth + 1);
 
             case OutputValueClass.Hash
                 when replay.TryRead(value + LayoutHashSlotOffset, out int slot)
@@ -340,8 +365,8 @@ internal sealed class OutputHook(OutputFunctions functions) : ITraceHook
 
             case OutputValueClass.Table
                 when replay.TryRead(value + LayoutTableRowsetOffset, out ulong rowset)
-                     && replay.TryRead(value + LayoutTableSlotOffset, out int tableSlot):
-                return new TraceOutputSource(OutputSourceType.Rowset, value, rowset) { Slot = tableSlot, State = state };
+                     && replay.TryRead(value + LayoutTableSlotOffset, out int rowsetSlot):
+                return new TraceOutputSource(OutputSourceType.Rowset, value, rowset) { Slot = rowsetSlot, State = state };
 
             case OutputValueClass.BatchRedirect
                 when replay.TryRead(value + LayoutRedirectIndexOffset, out int index)
@@ -350,12 +375,69 @@ internal sealed class OutputHook(OutputFunctions functions) : ITraceHook
 
                 return new TraceOutputSource(OutputSourceType.Buffer, value, row) { Ordinal = index, Owner = helper, State = state };
 
+            case OutputValueClass.VariantTable
+                when replay.TryRead(value + LayoutVariantTableSlotOffset, out int tableSlot)
+                     && replay.TryRead(value + LayoutVariantTableOrdinalOffset, out int tableOrdinal):
+                var tableRow = replay.TryRead(context + (ulong)tableSlot * sizeof(ulong), out ulong variants)
+                    ? variants + (ulong)tableOrdinal * ValueSize
+                    : 0;
+
+                return new TraceOutputSource(OutputSourceType.Buffer, value, tableRow)
+                {
+                    Slot = tableSlot,
+                    Ordinal = tableOrdinal,
+                    State = context
+                };
+
             case OutputValueClass.Constant when replay.TryRead(value + LayoutVariantOffset, out ulong variant):
                 return new TraceOutputSource(OutputSourceType.Buffer, value, variant) { State = state };
 
             default:
                 return TraceOutputSource.Unknown with { State = state };
         }
+    }
+
+    private void StartIterator(in TraceHookCall call, ITraceReplay replay)
+    {
+        var iterator = call.Arguments[IteratorArgument];
+
+        if (!OpenIterators.TryGetValue(call.Thread, out var iterators))
+        {
+            iterators = [];
+
+            OpenIterators[call.Thread] = iterators;
+        }
+
+        iterators.Push(new OpenIterator(call.Id, iterator));
+
+        if (!AddStorage(replay, iterator))
+        {
+            Fetching[call.Id] = iterator;
+        }
+    }
+
+    private void EndIterator(uint thread, ulong id)
+    {
+        if (OpenIterators.TryGetValue(thread, out var iterators) && iterators.TryPeek(out var open) && open.Id == id)
+        {
+            iterators.Pop();
+        }
+    }
+
+    private void AddSlotOwner(in TraceHookCall call, ITraceReplay replay)
+    {
+        var writer = call.Arguments[SlotWriterArgument];
+
+        if (!OpenIterators.TryGetValue(call.Thread, out var iterators)
+            || !iterators.TryPeek(out var open)
+            || !replay.TryRead(writer, out ulong vtable)
+            || Classes.GetValueOrDefault(vtable) is not (OutputValueClass.VariantTable or OutputValueClass.VariantTableRow)
+            || !replay.TryRead(writer + LayoutVariantTableSlotOffset, out int slot))
+        {
+            return;
+        }
+
+        SlotOwners[(call.Arguments[SlotWriterContextArgument], slot)] = open.Iterator;
     }
 
     private bool AddStorage(ITraceReplay replay, ulong iterator)
@@ -402,6 +484,7 @@ internal sealed class OutputHook(OutputFunctions functions) : ITraceHook
             OutputSourceType.HashRecord => GetNearest(Storage.Keys, source.State, MaximumOwnerDistance),
             OutputSourceType.Rowset when TableOwners.TryGetValue(source.Value, out var creator) => creator,
             OutputSourceType.Rowset => Storage.FirstOrDefault(s => s.Value.Rowset == source.Address).Key,
+            OutputSourceType.Buffer when SlotOwners.TryGetValue((source.State, source.Slot), out var writer) => writer,
             OutputSourceType.Buffer => GetBufferOwner(source.Address),
             _ => 0
         };
@@ -433,5 +516,7 @@ internal sealed class OutputHook(OutputFunctions functions) : ITraceHook
 
     private readonly record struct IteratorStorage(ulong Rowset, ulong Buffer);
 
-    private sealed record EvaluationFrame(ulong Id, ulong Executor, List<TraceOutputSource>? Columns);
+    private readonly record struct OpenIterator(ulong Id, ulong Iterator);
+
+    private sealed record EvaluationFrame(ulong Id, ulong Executor, ulong Context, List<TraceOutputSource>? Columns);
 }

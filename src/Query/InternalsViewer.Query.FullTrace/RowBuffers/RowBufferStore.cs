@@ -94,8 +94,10 @@ public sealed partial class RowBufferStore
             => new RowBufferSource(RowBufferSourceType.BufferPool, column.Pointer),
         DeferredLobValue 
             => new RowBufferSource(RowBufferSourceType.Lob),
-        _ when column.Pointer == 0 => new RowBufferSource(RowBufferSourceType.Inline),
-        _ when column.DeepDataVectorId > 0 => GetVectorSource(row, column, batches),
+        _ when column.Pointer == 0 
+            => new RowBufferSource(RowBufferSourceType.Inline),
+        _ when column.DeepDataVectorId > 0 
+            => GetVectorSource(row, column, batches),
         _ => GetRowBufferSource(column.Pointer)
              ?? GetBatchSource(column.Pointer, batches)
              ?? new RowBufferSource(RowBufferSourceType.Memory, column.Pointer)

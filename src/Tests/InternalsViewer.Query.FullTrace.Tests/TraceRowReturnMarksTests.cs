@@ -114,6 +114,51 @@ public class TraceRowReturnMarksTests
     }
 
     [Fact]
+    public void Rows_Passed_Up_To_A_Parent_Row_That_Was_Rejected_Are_Not_On_The_GetRow_Path()
+    {
+        var filter = Operator("Filter", 0, null);
+
+        var aggregate = Operator("Stream Aggregate", 1, 0);
+
+        var scan = Operator("Table Scan", 2, 1);
+
+        var root = Return(filter, 10, 100);
+
+        var rejectedInput = Return(scan, 25, 30);
+
+        var passed = Return(aggregate, 50, 90, root);
+
+        var passedInput = Return(scan, 55, 60, passed);
+
+        var outputRow = Assert.Single(TraceOutputRows.Build([filter, aggregate, scan],
+                                                            [root, rejectedInput, passed, passedInput],
+                                                            TraceOutputLineage.Empty).All);
+
+        Assert.Equal([(passed, root), (passedInput, passed)], outputRow.Steps.Select(s => (s.Return, s.Parent)));
+    }
+
+    [Fact]
+    public void Rows_A_Filter_Reads_Without_Returning_Are_Rejected()
+    {
+        var filter = new ExecutionOperatorEvent
+        {
+            Name = "Filter",
+            OperatorDescription = "Filter",
+            Instances = [JoinIterator],
+            PlanNodeIdentifier = new PlanNodeIdentifier(1, 0)
+        };
+
+        var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)],
+                          [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)],
+                          top: filter);
+
+        Assert.Equal((1, 1, 0),
+                     (marks.GetCount(Scan, Thread, RowReturnType.PassedUp),
+                      marks.GetCount(Scan, Thread, RowReturnType.Rejected),
+                      marks.GetCount(Scan, Thread, RowReturnType.NotPassedUp)));
+    }
+
+    [Fact]
     public void A_Batch_Passed_Up_Is_Marked_On_A_Batch_Operator_But_Is_Not_A_Step_Of_The_Output_Row()
     {
         var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)],
@@ -359,6 +404,22 @@ public class TraceRowReturnMarksTests
 
         return TraceRowReturnMarks.Build(timeline, calls, createLineage?.Invoke(timeline));
     }
+
+    private static ExecutionOperatorEvent Operator(string name, int nodeId, int? parentNodeId) => new()
+    {
+        Name = name,
+        OperatorDescription = name,
+        PlanNodeIdentifier = new PlanNodeIdentifier(1, (short)nodeId),
+        ParentNodeId = parentNodeId
+    };
+
+    private static TraceRowReturn Return(ExecutionOperatorEvent operatorEvent, ulong from, ulong to, TraceRowReturn? consumer = null)
+        => new(operatorEvent, Thread, new CallStackTree().Root, 0, RowReturnType.PassedUp, to, to)
+        {
+            FromPosition = At(from),
+            ToPosition = At(to),
+            Consumer = consumer
+        };
 
     private static TraceOutputLineage CreateLineage(TraceTimeline timeline) => CreateLineage(timeline, ScanColumns(), 15, 25);
 

@@ -20,6 +20,8 @@ public sealed record TraceRowReturn(ExecutionOperatorEvent Operator,
 
     internal TracePosition ToPosition { get; init; }
 
+    internal TraceRowReturn? Consumer { get; set; }
+
     public double GetValue(TraceTimelineAxis axis) => axis == TraceTimelineAxis.Position ? Position : Instructions;
 
     public double GetStart(TraceTimelineAxis axis) => axis == TraceTimelineAxis.Position ? StartPosition : StartInstructions;
