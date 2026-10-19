@@ -12,8 +12,6 @@ public sealed record TraceOperatorLifetime(uint Thread,
                                            IReadOnlyList<TraceSpan> InstructionCalls,
                                            MemoryInUseCurve InUse)
 {
-    public int Depth { get; init; }
-
     private double[] PositionEnds { get; } = [.. PositionCalls.Select(c => c.End)];
 
     private double[] InstructionStarts { get; } = [.. InstructionCalls.Select(c => c.Start)];

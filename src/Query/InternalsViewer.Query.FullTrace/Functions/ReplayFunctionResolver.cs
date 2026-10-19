@@ -267,6 +267,8 @@ internal static class ReplayFunctionResolver
 
                                                variantRows.VisitData(rva, name);
 
+                                               rowSources.VisitData(rva, name);
+
                                                output.VisitData(rva, name);
                                            });
 

@@ -33,6 +33,8 @@ internal sealed class TraceExportSection : IQueryExportSection
 
     internal const string OutputStructuresEntry = "fulltrace/output.bin";
 
+    internal const string PlanNodesEntry = "fulltrace/plannodes.bin";
+
     public bool CanExport(QueryExportContent content) => content.ExtraOf<TraceResult>() is not null;
 
     public void Collect(QueryExportCollector collector, QueryExportContent content)
@@ -63,6 +65,8 @@ internal sealed class TraceExportSection : IQueryExportSection
         writer.WriteBinary(ObjectPoolSnapshotEntry, CompressionLevel.Fastest, fullTrace.ObjectPool.Write);
 
         writer.WriteBinary(OutputStructuresEntry, CompressionLevel.Fastest, w => TraceOutputStructure.Write(w, fullTrace.OutputStructures));
+
+        writer.WriteBinary(PlanNodesEntry, CompressionLevel.Fastest, w => IteratorPlanNode.Write(w, fullTrace.PlanNodes));
     }
 
     public IRunExtra? Read(QueryExportReader reader)
@@ -92,13 +96,15 @@ internal sealed class TraceExportSection : IQueryExportSection
             ? reader.ReadBinary(OutputStructuresEntry, TraceOutputStructure.Read)
             : [];
 
+        IReadOnlyList<IteratorPlanNode> planNodes = reader.HasEntry(PlanNodesEntry)
+            ? reader.ReadBinary(PlanNodesEntry, IteratorPlanNode.Read)
+            : [];
+
         rowBuffers.AnnotateCallStackNodes(callStore);
 
         batches.AnnotateNodes(callStore);
 
-        var iterators = IteratorTree.Build(callStore, timeline.MappedNodes, batches);
-
-        timeline.SetLifetimes(IteratorLifetimeBuilder.Build(timeline, [.. events.OfType<ExecutionOperatorEvent>()], batches, iterators));
+        timeline.SetLifetimes(IteratorLifetimeBuilder.Build(timeline, [.. events.OfType<ExecutionOperatorEvent>()], batches));
 
         if (reader.HasEntry(EventLinksEntry))
         {
@@ -107,7 +113,8 @@ internal sealed class TraceExportSection : IQueryExportSection
 
         return new TraceResult(tree, callStore, timeline)
         {
-            PlanLink = IteratorPlanLinker.Link(callStore, timeline.MappedNodes, events),
+            PlanLink = IteratorPlanLinker.Link(planNodes, timeline.MappedNodes, events),
+            PlanNodes = planNodes,
             HoBtAccess = HoBtAccessMap.Build(callStore, timeline.MappedNodes),
             MemoryMap = reader.HasEntry(MemoryMapEntry)
                 ? reader.ReadBinary(MemoryMapEntry, r => MemoryMap.Read(r, timeline.NodeOf))

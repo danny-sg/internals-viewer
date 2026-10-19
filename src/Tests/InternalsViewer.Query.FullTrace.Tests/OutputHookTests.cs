@@ -292,7 +292,7 @@ public class OutputHookTests
                                                                   {
                                                                       [CreateValue] = RowSourceFunctionType.Creator,
                                                                       [GetRow] = RowSourceFunctionType.Iterator
-                                                                  }));
+                                                                  }, RowSourceFunctions.Empty.PlanObjects));
 
         var replay = new FakeTraceReplay();
 

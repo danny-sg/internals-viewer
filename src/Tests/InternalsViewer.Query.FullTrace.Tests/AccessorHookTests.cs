@@ -89,7 +89,7 @@ public class AccessorHookTests
         var rowSources = new RowSourceHook(new RowSourceFunctions(new Dictionary<ulong, RowSourceFunctionType>
                                                                   {
                                                                       [Constructor] = RowSourceFunctionType.Constructor
-                                                                  }));
+                                                                  }, RowSourceFunctions.Empty.PlanObjects));
 
         var accessors = new AccessorHook(new AccessorFunctions([CreateAccessor]), rowSources);
 

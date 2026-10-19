@@ -191,7 +191,7 @@ public sealed partial class TraceTimelineControl
                            .Where(l => lanes.ContainsKey(l.Thread))
                            .GroupBy(l => l.Operator, ReferenceEqualityComparer.Instance)
                            .Select(g => RowOf((ExecutionOperatorEvent)g.Key!, [.. g.OrderBy(l => lanes[l.Thread])]))
-                           .OrderBy(r => r.Lifetimes.Min(l => l.Depth))
+                           .OrderBy(r => r.Operator.NodeLevel)
                            .ThenBy(r => r.Lifetimes.Min(l => l.StartOf(TraceTimelineAxis.Position)))
                            .ThenBy(r => r.Operator.PlanNodeIdentifier?.NodeId ?? 0)];
     }

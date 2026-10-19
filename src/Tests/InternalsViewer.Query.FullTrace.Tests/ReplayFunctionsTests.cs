@@ -40,7 +40,7 @@ public class ReplayFunctionsTests
                                            new HashRowFunctions(Map(0x100, HashRowFunctionType.Insert), [0x108]),
                                            new VariantRowFunctions(Map(0x130, VariantRowFunctionType.ColumnCreator),
                                                                    Map(0x140, VariantTableClass.Row)),
-                                           new RowSourceFunctions(Map(0x150, RowSourceFunctionType.Creator)),
+                                           new RowSourceFunctions(Map(0x150, RowSourceFunctionType.Creator), Map(0x158, PlanObjectClass.Row)),
                                            new AccessorFunctions([0x160]),
                                            new OutputFunctions(Map(0x110, OutputFunctionType.Send),
                                                                Map(0x120, OutputValueClass.OutputRow)));
@@ -63,6 +63,7 @@ public class ReplayFunctionsTests
         Assert.Equal((Base + 0x130, VariantRowFunctionType.ColumnCreator), Pair(Assert.Single(rebased.VariantRows.Functions)));
         Assert.Equal((Base + 0x140, VariantTableClass.Row), Pair(Assert.Single(rebased.VariantRows.Classes)));
         Assert.Equal((Base + 0x150, RowSourceFunctionType.Creator), Pair(Assert.Single(rebased.RowSources.Functions)));
+        Assert.Equal((Base + 0x158, PlanObjectClass.Row), Pair(Assert.Single(rebased.RowSources.PlanObjects)));
         Assert.Equal([Base + 0x160], rebased.Accessors.Functions);
         Assert.Equal((Base + 0x110, OutputFunctionType.Send), Pair(Assert.Single(rebased.Output.Functions)));
         Assert.Equal((Base + 0x120, OutputValueClass.OutputRow), Pair(Assert.Single(rebased.Output.Classes)));

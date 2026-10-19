@@ -1,6 +1,7 @@
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
+using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.RowBuffers.Parsers;
 using InternalsViewer.Query.FullTrace.RowSources.Enums;
 
@@ -18,6 +19,14 @@ internal sealed class RowSourceHook(RowSourceFunctions functions) : ITraceHook
 
     private const int RowBytes = 64;
 
+    private const ulong PlanObjectOffset = 0x10;
+
+    private const ulong BatchPlanObjectOffset = 0x10;
+
+    private const ulong PlanNodeIdOffset = 0x0C;
+
+    private const ulong PlanQueryOffset = 0x28;
+
     private const TraceHookEvents EntryAndReturn = TraceHookEvents.Entry | TraceHookEvents.Return;
 
     public IEnumerable<TraceHookFunction> Functions => [.. functions.Functions.Keys.Select(f => new TraceHookFunction(f, EntryAndReturn))];
@@ -32,6 +41,14 @@ internal sealed class RowSourceHook(RowSourceFunctions functions) : ITraceHook
 
     private Dictionary<ulong, ulong> Creators { get; } = [];
 
+    private Dictionary<ulong, IteratorPlanNode> PlanNodes { get; } = [];
+
+    private Dictionary<ulong, ulong> PendingPlanNodes { get; } = [];
+
+    private Dictionary<ulong, ulong> Factories { get; } = [];
+
+    private List<ulong> ResolvedPlanNodes { get; } = [];
+
     public void OnEntry(in TraceHookCall call, ITraceReplay replay)
     {
         if (!functions.Functions.TryGetValue(call.Function, out var type))
@@ -40,6 +57,26 @@ internal sealed class RowSourceHook(RowSourceFunctions functions) : ITraceHook
         }
 
         var iterator = call.Arguments[IteratorArgument];
+
+        if (type != RowSourceFunctionType.Iterator)
+        {
+            ResolvePlanNodes(replay);
+        }
+
+        switch (type)
+        {
+            case RowSourceFunctionType.BatchFactory:
+                Factories[call.Id] = iterator;
+                return;
+
+            case RowSourceFunctionType.BatchIterator:
+                AddPlanNode(replay, iterator);
+                return;
+
+            case RowSourceFunctionType.Iterator:
+                AddPlanNode(replay, iterator);
+                break;
+        }
 
         var context = call.Arguments[ContextArgument];
 
@@ -52,6 +89,18 @@ internal sealed class RowSourceHook(RowSourceFunctions functions) : ITraceHook
 
     public void OnReturn(in TraceHookCall call, ITraceReplay replay)
     {
+        if (Factories.Remove(call.Id, out var planObject))
+        {
+            if (call.ReturnValue >= ColumnValueParser.SmallestAddress && !PlanNodes.ContainsKey(call.ReturnValue))
+            {
+                PendingPlanNodes[call.ReturnValue] = planObject;
+
+                ResolvePlanNodes(replay);
+            }
+
+            return;
+        }
+
         if (Pop(call.Thread, call.Id) is not { } frame)
         {
             return;
@@ -80,13 +129,20 @@ internal sealed class RowSourceHook(RowSourceFunctions functions) : ITraceHook
         }
     }
 
-    public void OnAbandoned(in TraceHookCall call) => Pop(call.Thread, call.Id);
+    public void OnAbandoned(in TraceHookCall call)
+    {
+        Factories.Remove(call.Id);
+
+        Pop(call.Thread, call.Id);
+    }
 
     public ulong GetOwner(ulong context, int slot) => Owners.GetValueOrDefault((context, slot));
 
     public IReadOnlyList<(ulong Context, int Slot)> GetSlots(ulong iterator) => OwnedSlots.TryGetValue(iterator, out var slots) ? slots : [];
 
     public ulong GetCreator(ulong value) => Creators.GetValueOrDefault(value);
+
+    public IReadOnlyList<IteratorPlanNode> GetPlanNodes() => [.. PlanNodes.Values];
 
     public ulong GetCurrentIterator(uint thread)
         => Frames.TryGetValue(thread, out var frames) && frames.TryPeek(out var frame) ? frame.Iterator : 0;
@@ -132,6 +188,74 @@ internal sealed class RowSourceHook(RowSourceFunctions functions) : ITraceHook
 
         return replay.Read(handle, row) == row.Length ? row : null;
     }
+
+    private void AddPlanNode(ITraceReplay replay, ulong iterator)
+    {
+        if (PlanNodes.ContainsKey(iterator)
+            || PendingPlanNodes.ContainsKey(iterator)
+            || !replay.TryRead(iterator + PlanObjectOffset, out ulong planObject)
+            || GetPlanObjectClass(replay, planObject) is null)
+        {
+            return;
+        }
+
+        PendingPlanNodes[iterator] = planObject;
+
+        ResolvePlanNodes(replay);
+    }
+
+    private void ResolvePlanNodes(ITraceReplay replay)
+    {
+        foreach (var (iterator, planObject) in PendingPlanNodes)
+        {
+            if (GetPlanNode(replay, iterator, planObject) is { } planNode)
+            {
+                PlanNodes[iterator] = planNode;
+
+                ResolvedPlanNodes.Add(iterator);
+            }
+        }
+
+        foreach (var iterator in ResolvedPlanNodes)
+        {
+            PendingPlanNodes.Remove(iterator);
+        }
+
+        ResolvedPlanNodes.Clear();
+    }
+
+    private IteratorPlanNode? GetPlanNode(ITraceReplay replay, ulong iterator, ulong planObject)
+    {
+        var batchPlanObject = 0UL;
+
+        if (GetPlanObjectClass(replay, planObject) == PlanObjectClass.Batch)
+        {
+            batchPlanObject = planObject;
+
+            if (!replay.TryRead(batchPlanObject + BatchPlanObjectOffset, out planObject))
+            {
+                return null;
+            }
+        }
+
+        if (GetPlanObjectClass(replay, planObject) != PlanObjectClass.Row
+            || !replay.TryRead(planObject + PlanNodeIdOffset, out int nodeId)
+            || !replay.TryRead(planObject + PlanQueryOffset, out ulong query)
+            || nodeId < 0
+            || query < ColumnValueParser.SmallestAddress)
+        {
+            return null;
+        }
+
+        return new IteratorPlanNode(iterator, planObject, batchPlanObject, query, nodeId);
+    }
+
+    private PlanObjectClass? GetPlanObjectClass(ITraceReplay replay, ulong planObject)
+        => planObject >= ColumnValueParser.SmallestAddress
+           && replay.TryRead(planObject, out ulong vtable)
+           && functions.PlanObjects.TryGetValue(vtable, out var planClass)
+            ? planClass
+            : null;
 
     private void AddOwner(ulong context, int slot, ulong iterator)
     {

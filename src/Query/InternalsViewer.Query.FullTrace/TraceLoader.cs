@@ -152,7 +152,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         CallStackNode?[] mapped = [.. replayed.Select(node => collapsed.GetValueOrDefault(node))];
 
-        var planLink = IteratorPlanLinker.Link(replay.CallStore, mapped, events);
+        var planLink = IteratorPlanLinker.Link(replay.PlanNodes, mapped, events);
 
         var hobtAccess = HoBtAccessMap.Build(replay.CallStore, mapped);
 
@@ -197,7 +197,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         var memory = AllocationMapper.Map(replay.CallStore, functions.MemoryFunctions, timeline, request.MemoryClerks);
 
-        var lifetimes = IteratorLifetimeBuilder.Build(timeline, operators, replay.Batches, IteratorTree.Build(replay.CallStore, mapped, replay.Batches));
+        var lifetimes = IteratorLifetimeBuilder.Build(timeline, operators, replay.Batches);
 
         timeline.SetLifetimes(lifetimes);
 
@@ -248,6 +248,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         return new TraceResult(callStack, replay.CallStore, timeline)
         {
             PlanLink = planLink,
+            PlanNodes = replay.PlanNodes,
             HoBtAccess = hobtAccess,
             MemoryMap = memoryMap,
             ObjectPool = request.ObjectPool,

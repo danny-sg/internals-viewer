@@ -260,7 +260,8 @@ internal sealed class ReplaySession : IDisposable
                                         rowBuffers.Build([.. hashRows.Rows, .. variantRows.Rows]),
                                         batches.Build(),
                                         customHook.Build(),
-                                        output.Build());
+                                        output.Build(),
+                                        rowSources.GetPlanNodes());
             }
             finally
             {

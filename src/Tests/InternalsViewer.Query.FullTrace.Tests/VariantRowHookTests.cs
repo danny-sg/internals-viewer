@@ -176,7 +176,7 @@ public class VariantRowHookTests
         var rowSources = new RowSourceHook(new RowSourceFunctions(new Dictionary<ulong, RowSourceFunctionType>
                                                                   {
                                                                       [GetRow] = RowSourceFunctionType.Iterator
-                                                                  }));
+                                                                  }, RowSourceFunctions.Empty.PlanObjects));
 
         var hook = CreateHook(rowSources);
 

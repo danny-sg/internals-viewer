@@ -17,6 +17,8 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
 {
     public IteratorPlanLink PlanLink { get; init; } = IteratorPlanLink.Empty;
 
+    internal IReadOnlyList<IteratorPlanNode> PlanNodes { get; init; } = [];
+
     public HoBtAccessMap HoBtAccess { get; init; } = HoBtAccessMap.Empty;
 
     public MemoryMap MemoryMap { get; init; } = MemoryMap.Empty;
