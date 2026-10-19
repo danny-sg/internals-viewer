@@ -29,7 +29,7 @@ public enum ModuleCategory : byte
     [Category(
         "SQL Server Host",
         Description = "Top-level SQL Server executable and hosting infrastructure",
-        ForegroundColor = "#7F8C8D")]
+        ForegroundColor = "#5B9BD5")]
     SqlServerHost,
 
     [Category(
@@ -42,12 +42,12 @@ public enum ModuleCategory : byte
     [Category(
         "Expression Services",
         Description = "Expression evaluation and scalar computation infrastructure",
-        ForegroundColor = "#E36C09")]
+        ForegroundColor = "#8E44AD")]
     ExpressionServices,
 
     [Category(
         "Query Store",
         Description = "Query Store persistence, plan forcing, hints and feedback",
-        ForegroundColor = "#FAD4E1")]
+        ForegroundColor = "#6C5CE7")]
     QueryStore,
 }

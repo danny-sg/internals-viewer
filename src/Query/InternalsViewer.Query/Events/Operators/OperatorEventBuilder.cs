@@ -212,6 +212,7 @@ internal sealed class OperatorEventBuilder
             PlanHandleId = _plan.PlanHandleId,
             NodeLevel = node.NodeLevel,
             ParentNodeId = _parentByNode.TryGetValue(node.NodeId, out var parent) ? parent : null,
+            IsBlockingInput = IsBlockingInput(node),
             Cost = OwnCost(node),
             RowsProcessed = node.RowsProcessed,
             OperatorObjectName = ObjectName(node),
@@ -235,6 +236,11 @@ internal sealed class OperatorEventBuilder
 
         return operatorEvent;
     }
+
+    private bool IsBlockingInput(PlanNode node)
+        => _parentByNode.TryGetValue(node.NodeId, out var parent)
+           && _plan.NodesById.TryGetValue(parent, out var parentNode)
+           && OperatorClassifier.RoleOf(parentNode, node) == InputRole.Blocking;
 
     /// <summary>
     /// Splits a blocking/hybrid operator into a consume (build) phase and an emit (probe) phase, around

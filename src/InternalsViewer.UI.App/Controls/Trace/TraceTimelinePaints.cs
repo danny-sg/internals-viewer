@@ -87,23 +87,16 @@ internal sealed class TraceTimelinePaints : IDisposable
         PathEffect = SKPathEffect.CreateDash([2f, 2f], 0)
     };
 
-    public SKPaint HoverCallLink { get; } = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 1.5f };
+    public SKPaint HoverCallLink { get; } = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 1f };
 
     public SKPaint HoverDottedCallLink { get; } = new()
-    {
-        Style = SKPaintStyle.Stroke,
-        StrokeWidth = 1.5f,
-        PathEffect = SKPathEffect.CreateDash([2f, 2f], 0)
-    };
-
-    public SKPaint ReadCallRail { get; } = new()
     {
         Style = SKPaintStyle.Stroke,
         StrokeWidth = 1f,
         PathEffect = SKPathEffect.CreateDash([2f, 2f], 0)
     };
 
-    public SKPaint ReadReturnRail { get; } = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 1.5f };
+    public SKPaint ConnectorNotch { get; } = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 1f };
 
     public SKPaint OutputRowLink { get; } = new()
     {
@@ -197,9 +190,7 @@ internal sealed class TraceTimelinePaints : IDisposable
         HoverCallLink.Dispose();
         HoverDottedCallLink.PathEffect?.Dispose();
         HoverDottedCallLink.Dispose();
-        ReadCallRail.PathEffect?.Dispose();
-        ReadCallRail.Dispose();
-        ReadReturnRail.Dispose();
+        ConnectorNotch.Dispose();
         OutputRowLink.Dispose();
         LineageShadow.MaskFilter?.Dispose();
         LineageShadow.Dispose();

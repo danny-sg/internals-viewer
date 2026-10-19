@@ -74,8 +74,6 @@ public sealed class TraceOutputRows
     {
         var rootOperator = operators.Where(o => o.PlanNodeIdentifier is not null).MinBy(o => o.PlanNodeIdentifier!.NodeId);
 
-        bool IsRoot(TraceRowReturn rowReturn) => ReferenceEquals(rowReturn.Operator, rootOperator);
-
         TraceRowReturn[] roots = [.. passedUp.Where(IsRoot).OrderBy(r => r.FromPosition)];
 
         if (roots.Length == 0)
@@ -99,6 +97,8 @@ public sealed class TraceOutputRows
         }
 
         return new TraceOutputRows(rows, sources);
+
+        bool IsRoot(TraceRowReturn rowReturn) => ReferenceEquals(rowReturn.Operator, rootOperator);
     }
 
     private static TraceOutputStep[] GetSteps(TraceRowReturn[] returns, TraceRowReturn root)

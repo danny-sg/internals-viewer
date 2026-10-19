@@ -33,6 +33,7 @@ internal static class BatchToRowOperators
                     LogicalOperator = OperatorName,
                     Category = OperatorCategory.Adapter,
                     NodeLevel = source.NodeLevel,
+                    IsBlockingInput = source.IsBlockingInput,
                     Instances = [.. helpers.Select(h => h.Key)]
                 });
             }

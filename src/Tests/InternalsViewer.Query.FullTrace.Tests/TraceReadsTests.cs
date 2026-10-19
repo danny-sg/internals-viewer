@@ -100,13 +100,22 @@ public class TraceReadsTests
     }
 
     [Fact]
-    public void The_Nearest_Read_Within_The_Tolerance_Is_Found()
+    public void Reads_Are_Indexed_By_The_Operator_And_Thread_That_Made_Them()
     {
         var reads = Build();
 
-        Assert.Equal((70d, null),
-                     (reads.GetNearest(TraceTimelineAxis.Position, 74, 5)?.Position.Start,
-                      reads.GetNearest(TraceTimelineAxis.Position, 55, 5)?.Position.Start));
+        Assert.Equal((1, 1, null),
+                     (reads.GetReads(Scan, Thread)?.Count, reads.GetReads(Join, Thread)?.Count, reads.GetReads(Scan, Thread + 1)?.Count));
+    }
+
+    [Fact]
+    public void The_Nearest_Read_Of_An_Operator_Within_The_Tolerance_Is_Found()
+    {
+        var reads = Build().GetReads(Scan, Thread)!;
+
+        Assert.Equal((20d, null),
+                     (reads.GetNearest(TraceTimelineAxis.Position, 28, 5)?.Position.Start,
+                      reads.GetNearest(TraceTimelineAxis.Position, 40, 5)?.Position.Start));
     }
 
     private static TraceReads Build()

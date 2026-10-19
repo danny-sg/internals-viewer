@@ -14,48 +14,48 @@ public enum SymbolCategory : byte
     [Category(
         "Extended Events",
         Description = "Extended Events publishing and action processing",
-        ForegroundColor = "#BFBFBF",
+        ForegroundColor = "#C00000",
         IsInfrastructure = true)]
     XEventInfrastructure,
 
     [Category(
         "Tracing",
         Description = "Tracing and diagnostic event collection",
-        ForegroundColor = "#A6A6A6",
+        ForegroundColor = "#E36C09",
         IsInfrastructure = true)]
     Tracing,
 
     [Category(
         "SQL OS Scheduling",
         Description = "Schedulers, tasks, workers and the points where a task yields or sleeps",
-        ForegroundColor = "#C956FF",
+        ForegroundColor = "#7030A0",
         IsInfrastructure = true)]
     Scheduling,
 
     [Category(
         "SQL OS Synchronisation",
         Description = "Mutexes, semaphores, events, spinlocks and the waits on them",
-        ForegroundColor = "#4A235A",
+        ForegroundColor = "#7030A0",
         IsInfrastructure = true)]
     Synchronisation,
 
     [Category(
         "I/O Infrastructure",
         Description = "Asynchronous I/O processing and completion",
-        ForegroundColor = "#1F3864",
+        ForegroundColor = "#974806",
         IsInfrastructure = true)]
     IoInfrastructure,
 
     [Category(
         "Query Execution",
         Description = "Statement and execution context processing and the execution tree",
-        ForegroundColor = "#58D68D")]
+        ForegroundColor = "#5B9BD5")]
     QueryExecution,
 
     [Category(
         "Statement Execution",
         Description = "Batch and statement execution",
-        ForegroundColor = "#1E8449")]
+        ForegroundColor = "#4F81BD")]
     StatementExecution,
 
     [Category(
@@ -73,19 +73,19 @@ public enum SymbolCategory : byte
     [Category(
         "Rowset",
         Description = "The rowset interface operators call, the heap and index sessions behind it, and record decoding",
-        ForegroundColor = "#26A69A")]
+        ForegroundColor = "#70AD47")]
     Rowset,
 
     [Category(
         "Expression Evaluation",
         Description = "Expression and scalar value evaluation",
-        ForegroundColor = "#E36C09")]
+        ForegroundColor = "#9966CC")]
     ExpressionEvaluation,
 
     [Category(
         "B-Tree Navigation",
         Description = "B-tree navigation from the root to the page holding a key",
-        ForegroundColor = "#1E96B4")]
+        ForegroundColor = "#4472C4")]
     BTreeNavigation,
 
     [Category(
@@ -97,7 +97,7 @@ public enum SymbolCategory : byte
     [Category(
         "Buffer Pool",
         Description = "Buffer cache management, buffer descriptors and dirty pages",
-        ForegroundColor = "#A8BEE0")]
+        ForegroundColor = "#17375E")]
     BufferPool,
 
     [Category(
@@ -135,7 +135,7 @@ public enum SymbolCategory : byte
     [Category(
         "Networking",
         Description = "Tabular Data Stream (TDS) protocol processing and client communication",
-        ForegroundColor = "#F1C232")]
+        ForegroundColor = "#F79646")]
     Networking,
 
     [Category(
@@ -147,56 +147,56 @@ public enum SymbolCategory : byte
     [Category(
         "Transaction Management",
         Description = "Transaction lifecycle, commit, rollback and transaction state management",
-        ForegroundColor = "#E06666")]
+        ForegroundColor = "#B45F06")]
     TransactionManagement,
 
     [Category(
         "Compilation",
         Description = "Query compilation and plan construction",
-        ForegroundColor = "#D9668F",
-        BackgroundColor = "#D9668F")]
+        ForegroundColor = "#16A085",
+        BackgroundColor = "#16A085")]
     Compilation,
 
     [Category(
         "Optimization",
         Description = "Query optimization and relational operator transformations",
-        ForegroundColor = "#F08FB0",
-        BackgroundColor = "#F08FB0")]
+        ForegroundColor = "#1ABC9C",
+        BackgroundColor = "#1ABC9C")]
     Optimization,
 
     [Category(
         "Metadata",
         Description = "Metadata, catalog and object lookup infrastructure",
-        ForegroundColor = "#A8436A",
-        BackgroundColor = "#A8436A")]
+        ForegroundColor = "#27AE60",
+        BackgroundColor = "#27AE60")]
     Metadata,
 
     [Category(
         "Query Binding",
         Description = "Object, schema and column binding",
-        ForegroundColor = "#F6B8CE",
-        BackgroundColor = "#F6B8CE")]
+        ForegroundColor = "#2980B9",
+        BackgroundColor = "#2980B9")]
     QueryBinding,
 
     [Category(
         "Query Store",
         Description = "Query Store persistence, feedback, plan forcing and hint management",
-        ForegroundColor = "#FAD4E1",
-        BackgroundColor = "#FAD4E1")]
+        ForegroundColor = "#6C5CE7",
+        BackgroundColor = "#6C5CE7")]
     QueryStore,
 
     [Category(
         "Logging",
         Description = "Transaction log, recovery and log flush processing",
-        ForegroundColor = "#B0A89A",
-        BackgroundColor = "#B0A89A")]
+        ForegroundColor = "#E17055",
+        BackgroundColor = "#E17055")]
     Logging,
 
     [Category(
         "Security",
         Description = "Permission, security and access control evaluation",
-        ForegroundColor = "#BF9000",
-        BackgroundColor = "#BF9000")]
+        ForegroundColor = "#D63031",
+        BackgroundColor = "#D63031")]
     Security,
 
     [Category(
@@ -210,18 +210,18 @@ public enum SymbolCategory : byte
     [Category(
         "Storage",
         Description = "Storage and recovery context, HoBts, worktables and file control blocks",
-        ForegroundColor = "#44546A")]
+        ForegroundColor = "#76923C")]
     Storage,
 
     [Category(
         "Columnstore",
         Description = "Column segment, dictionary and row group access in the storage engine",
-        ForegroundColor = "#3A6EA5")]
+        ForegroundColor = "#2E8B90")]
     ColumnStore,
 
     [Category(
         "XML",
         Description = "XML data type conversion, serialisation and XML index access",
-        ForegroundColor = "#F8A65A")]
+        ForegroundColor = "#8E44AD")]
     Xml
 }

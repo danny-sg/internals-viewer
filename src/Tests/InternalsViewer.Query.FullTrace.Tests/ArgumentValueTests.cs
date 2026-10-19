@@ -43,6 +43,7 @@ public class ArgumentValueTests
     [InlineData("enum LCK_RESULT", 0xFFFFFFFFul, "TIMEDOUT")]
     [InlineData("enum LCK_RESULT", 0ul, "OK")]
     [InlineData("enum BTreeMgr::VR_STATUS", 1ul, "Root Leaf")]
+    [InlineData("enum BTreeMgr::BTREE_SEEK_OPTION", 1ul, "Descending")]
     [InlineData("enum BPool::StealOption", 13ul, "Cold Buffer | For Short Term Use | No Zeroing")]
     [InlineData("enum BPool::StealOption", 0ul, "No Steal Option")]
     [InlineData("enum BPool::StealOption", 0x101ul, "Cold Buffer | 0x100")]

@@ -5,7 +5,8 @@ namespace InternalsViewer.UI.App.Controls.Trace;
 internal readonly record struct TraceOperatorsHover(TraceOperatorHit? Operator,
                                                     TraceOperatorHit? ReturnStrip,
                                                     TraceCallLinkHit? CallLink,
-                                                    TraceOutputRow? OutputRow)
+                                                    TraceOutputRow? OutputRow,
+                                                    TraceRead? Read)
 {
-    public static TraceOperatorsHover None { get; } = new(null, null, null, null);
+    public static TraceOperatorsHover None { get; } = new(null, null, null, null, null);
 }

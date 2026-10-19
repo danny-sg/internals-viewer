@@ -39,6 +39,10 @@ public sealed partial class TraceTimelineControl
 
     internal const float NarrowSpan = 1f;
 
+    internal const float ConnectorNotchLength = 4f;
+
+    internal const float ConnectorNotchShade = 0.5f;
+
     private const byte RunAlpha = 190;
 
     private float _rowHeight = MaximumRowHeight;

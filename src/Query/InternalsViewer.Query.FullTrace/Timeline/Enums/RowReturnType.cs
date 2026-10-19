@@ -4,6 +4,7 @@ public enum RowReturnType
 {
     PassedUp,
     NotPassedUp,
+    Stored,
     End,
     FakeRow,
     Other,

@@ -39,6 +39,7 @@ public static class ArgumentValue
         ["LatchBase::LATCH_TYPE"] = new(GetEnumNames<LatchMode>),
         ["LatchBase::LatchClass"] = new(GetEnumNames<LatchClass>),
         ["BTreeMgr::VR_STATUS"] = new(GetEnumNames<BTreeRootStatus>),
+        ["BTreeMgr::BTREE_SEEK_OPTION"] = new(GetEnumNames<BTreeSeekOption>),
         ["LCK_MODE"] = new(GetEnumNames<LockMode>),
         ["LCK_RESULT"] = new(GetEnumNames<LockResult>),
         ["LockRes::LockResourceType"] = new(GetEnumNames<LockResourceType>),
@@ -77,7 +78,6 @@ public static class ArgumentValue
         "ACCESSTYPE",
         "AccessMode",
         "BPool::ShortageOption",
-        "BTreeMgr::BTREE_SEEK_OPTION",
         "BTreeMgr::BTREE_TRAVERSAL_MODE",
         "LatchBase::AcquireResult",
         "std::align_val_t"

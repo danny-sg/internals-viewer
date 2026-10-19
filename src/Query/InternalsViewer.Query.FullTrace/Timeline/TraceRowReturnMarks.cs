@@ -5,6 +5,7 @@ using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Helpers;
+using InternalsViewer.Query.Plans.Operators;
 
 namespace InternalsViewer.Query.FullTrace.Timeline;
 
@@ -155,7 +156,7 @@ public sealed class TraceRowReturnMarks
 
                 var parent = enclosing == 0 ? null : groupsByInstance.GetValueOrDefault((enclosing, group.Thread));
 
-                if (GetReturnType(group, index, parent, caller?.Name == FilterOperator) is not { } type
+                if (GetReturnType(group, index, parent, caller?.Name == FilterOperator, IsStored(operatorEvent, caller)) is not { } type
                     || timeline.FindCall(call.Function, group.Instance, call.Call) is not { } location)
                 {
                     continue;
@@ -357,16 +358,20 @@ public sealed class TraceRowReturnMarks
         return index >= 0 && parent.Calls[index].ToPosition >= call.ToPosition ? index : null;
     }
 
-    private static RowReturnType? GetReturnType(CallGroup group, int index, CallGroup? parent, bool isFiltered)
+    private static RowReturnType? GetReturnType(CallGroup group, int index, CallGroup? parent, bool isFiltered, bool isStored)
         => group.Calls[index].Status switch
         {
             null => null,
+            RowStatus when isStored => RowReturnType.Stored,
             RowStatus when parent is null || IsPassedUp(group, index, parent) => RowReturnType.PassedUp,
             RowStatus => isFiltered ? RowReturnType.Rejected : RowReturnType.NotPassedUp,
             EndStatus => RowReturnType.End,
             FakeRowStatus => RowReturnType.FakeRow,
             _ => RowReturnType.Other
         };
+
+    private static bool IsStored(ExecutionOperatorEvent operatorEvent, ExecutionOperatorEvent? caller)
+        => operatorEvent.IsBlockingInput && caller is { Category: not OperatorCategory.Adapter };
 
     private static bool IsPassedUp(CallGroup group, int index, CallGroup parent)
     {

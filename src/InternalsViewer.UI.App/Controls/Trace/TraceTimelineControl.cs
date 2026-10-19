@@ -197,8 +197,6 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     private readonly TraceOperatorsPane _operators;
 
-    private readonly TraceReadsPane _reads;
-
     private readonly SKPathBuilder _pathBuilder = new();
 
     private readonly SKPath _playheadTriangle = PlayheadTriangle();
@@ -265,7 +263,6 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
     {
         _operators = new TraceOperatorsPane(this, () => (OperatorsTop, OperatorsHeight));
 
-        _reads = new TraceReadsPane(this, () => (ReadsTop, ReadsHeight));
 
         Background = new SolidColorBrush(Colors.Transparent);
 

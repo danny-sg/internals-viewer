@@ -20,6 +20,8 @@ public sealed partial record ExecutionOperatorEvent : EngineEvent
     [EventProperty("Parent Node")]
     public int? ParentNodeId { get; set; }
 
+    public bool IsBlockingInput { get; set; }
+
     /// <remarks>
     /// When rows first flow out of this operator (capture-relative microseconds). Equals the start for a streaming operator, but is later
     /// for a blocking one (it must consume its input first).

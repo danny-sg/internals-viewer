@@ -41,8 +41,6 @@ public sealed partial class TraceTimelineControl
 
     private bool _pressedOperators;
 
-    private bool _pressedReads;
-
     private bool _isDragging;
 
     private bool _isPanning;
@@ -166,25 +164,13 @@ public sealed partial class TraceTimelineControl
 
         var inOperators = _operators.Contains(position);
 
-        var inReads = _reads.Contains(position);
-
-        if (inReads && isDoubleClick)
+        if (inOperators && isDoubleClick)
         {
-            if (_reads.GetReadAt(position) is { } read)
+            if (_operators.GetReadAt(position) is { } read)
             {
                 ZoomTo(read.Of(_axis).Start, read.Of(_axis).End);
             }
-            else
-            {
-                ClearSelections();
-            }
-
-            return;
-        }
-
-        if (inOperators && isDoubleClick)
-        {
-            if (_operators.GetOperatorAt(position) is { } operatorHit)
+            else if (_operators.GetOperatorAt(position) is { } operatorHit)
             {
                 ZoomToOperator(operatorHit);
             }
@@ -203,7 +189,7 @@ public sealed partial class TraceTimelineControl
             return;
         }
 
-        if (!inOperators && !inReads && isDoubleClick)
+        if (!inOperators && isDoubleClick)
         {
             if (HitTest(position) is { } hit && SpanOf(hit) is { } span)
             {
@@ -220,7 +206,6 @@ public sealed partial class TraceTimelineControl
         _isPressed = true;
         _isSelecting = false;
         _pressedOperators = inOperators;
-        _pressedReads = inReads;
         _isShiftPressed = e.KeyModifiers.HasFlag(VirtualKeyModifiers.Shift);
         _pressPoint = position;
         _dragPoint = position;
@@ -303,24 +288,21 @@ public sealed partial class TraceTimelineControl
 
         var operatorsHover = found is null ? _operators.GetHover(position) : TraceOperatorsHover.None;
 
-        var readHover = found is null ? _reads.GetReadAt(position) : null;
-
         UpdateCursor(IsOnSplitter(position)
                          ? InputSystemCursorShape.SizeNorthSouth
                          : found is not null
                              ? InputSystemCursorShape.SizeAll
                              : _operators.IsOnOutputRows(position)
                                  ? InputSystemCursorShape.Cross
-                                 : operatorsHover.ReturnStrip is not null || readHover is not null
+                                 : operatorsHover.ReturnStrip is not null || operatorsHover.Read is not null
                                      ? InputSystemCursorShape.Hand
                                      : InputSystemCursorShape.Arrow);
 
-        var hit = found?.Call ?? HitTest(position) ?? GetDurationHit(operatorsHover, position);
+        var hit = found?.Call ?? HitTest(position) ?? GetDurationHit(operatorsHover, position) ?? GetReadHit(operatorsHover.Read);
 
         if (hit != _hover
             || !Nullable.Equals(found, _hoverBlock)
-            || operatorsHover != _operators.Hover
-            || !ReferenceEquals(readHover, _reads.Hover))
+            || operatorsHover != _operators.Hover)
         {
             _hover = hit;
 
@@ -328,16 +310,14 @@ public sealed partial class TraceTimelineControl
 
             _operators.Hover = operatorsHover;
 
-            _reads.Hover = readHover;
-
             _canvas.Invalidate();
         }
 
-        if (hit is { } hovered)
+        if (hit is { } hovered && operatorsHover.Read is null)
         {
             ShowToolTip(hovered, position);
         }
-        else if ((_operators.GetToolTip(operatorsHover, position) ?? _reads.GetToolTip(readHover, position)) is { } text)
+        else if (_operators.GetToolTip(operatorsHover, position) is { } text)
         {
             OpenToolTip(text, position);
         }
@@ -352,6 +332,9 @@ public sealed partial class TraceTimelineControl
             ? FindCall(timeline, duration.Node, duration.Call)
             : null;
 
+    private FlameHit? GetReadHit(TraceRead? read)
+        => read is not null && _visible is { } timeline ? FindCall(timeline, read.Node, read.Call) : null;
+
     private void OnPointerReleased(object sender, PointerRoutedEventArgs e)
     {
         var position = e.GetCurrentPoint(_overlay).Position;
@@ -365,10 +348,6 @@ public sealed partial class TraceTimelineControl
         else if (_isPressed && !_isDragging && _pressedOperators)
         {
             _operators.Click(position);
-        }
-        else if (_isPressed && !_isDragging && _pressedReads)
-        {
-            _reads.Click(position);
         }
         else if (_isPressed && !_isDragging && _isShiftPressed)
         {
@@ -401,15 +380,13 @@ public sealed partial class TraceTimelineControl
 
         UpdateCursor(InputSystemCursorShape.Arrow);
 
-        if (_hover is not null || _hoverBlock is not null || _operators.Hover != TraceOperatorsHover.None || _reads.Hover is not null)
+        if (_hover is not null || _hoverBlock is not null || _operators.Hover != TraceOperatorsHover.None)
         {
             _hover = null;
 
             _hoverBlock = null;
 
             _operators.Hover = TraceOperatorsHover.None;
-
-            _reads.Hover = null;
 
             _canvas.Invalidate();
         }
@@ -602,7 +579,7 @@ public sealed partial class TraceTimelineControl
 
         var hasPosition = e.TryGetPosition(_overlay, out var position);
 
-        var flyout = hasPosition && (_operators.Contains(position) || _reads.Contains(position))
+        var flyout = hasPosition && _operators.Contains(position)
             ? CreateOperatorsMenu(_operators.GetPlanNode(position))
             : CreateChartMenu(hasPosition ? HitTest(position) : _selected);
 

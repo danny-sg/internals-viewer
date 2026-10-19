@@ -6,6 +6,7 @@ using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using SkiaSharp;
@@ -26,8 +27,6 @@ public sealed partial class TraceTimelineControl
     private const float MinimumOperatorsHeight = 20f;
 
     private const float MinimumLanesHeight = 60f;
-
-    private const float ReadLaneHeight = 14f;
 
     public static readonly DependencyProperty ShowOperatorsProperty =
         DependencyProperty.Register(nameof(ShowOperators),
@@ -81,7 +80,7 @@ public sealed partial class TraceTimelineControl
         DependencyProperty.Register(nameof(ShowReads),
                                     typeof(bool),
                                     typeof(TraceTimelineControl),
-                                    new PropertyMetadata(true, OnPaneVisibilityChanged));
+                                    new PropertyMetadata(true, OnReadsChanged));
 
     public bool ShowReads
     {
@@ -113,6 +112,18 @@ public sealed partial class TraceTimelineControl
         set => SetValue(OutputColumnNamesProperty, value);
     }
 
+    public static readonly DependencyProperty ColourProviderProperty =
+        DependencyProperty.Register(nameof(ColourProvider),
+                                    typeof(EventColourProvider),
+                                    typeof(TraceTimelineControl),
+                                    new PropertyMetadata(null, OnColourProviderChanged));
+
+    public EventColourProvider? ColourProvider
+    {
+        get => (EventColourProvider?)GetValue(ColourProviderProperty);
+        set => SetValue(ColourProviderProperty, value);
+    }
+
     private readonly Dictionary<int, SelectedLane> _selectedLanes = [];
 
     private float? _operatorsHeight;
@@ -133,17 +144,11 @@ public sealed partial class TraceTimelineControl
 
     private bool ShowsFlameChart => ShowFlameChart || !ShowsOperators;
 
-    private bool ShowsReads => ShowReads && _reads.HasReads;
-
-    private float ReadsTop => OperatorsTop + OperatorsHeight;
-
-    private float ReadsHeight => ShowsReads ? ReadLaneHeight : 0;
-
     private bool ShowsSplitter => ShowsOperators && ShowsFlameChart;
 
-    private float PanesArea => OperatorsHeight + ReadsHeight + (ShowsSplitter ? SplitterHeight : 0);
+    private float PanesArea => OperatorsHeight + (ShowsSplitter ? SplitterHeight : 0);
 
-    private float ChartHeight => (float)_overlay.ActualHeight - OperatorsTop - BandHeight - SplitterHeight - ReadsHeight;
+    private float ChartHeight => (float)_overlay.ActualHeight - OperatorsTop - BandHeight - SplitterHeight;
 
     private float OperatorsRoom => Math.Max(MinimumOperatorsHeight, ChartHeight - MinimumLanesHeight);
 
@@ -174,14 +179,9 @@ public sealed partial class TraceTimelineControl
             _operators.Draw(canvas, width, scale);
         }
 
-        if (ShowsReads)
-        {
-            _reads.Draw(canvas, width, scale);
-        }
-
         if (ShowsSplitter)
         {
-            DrawSplitter(canvas, ReadsTop + ReadsHeight, width);
+            DrawSplitter(canvas, OperatorsTop + OperatorsHeight, width);
         }
     }
 
@@ -192,11 +192,6 @@ public sealed partial class TraceTimelineControl
         if (ShowsOperators)
         {
             _operators.DrawOverlay(canvas, width, scale);
-        }
-
-        if (ShowsReads)
-        {
-            _reads.DrawOverlay(canvas, width, scale, ShowsOperators ? _operators.GetTrackBottom : null);
         }
     }
 
@@ -320,7 +315,7 @@ public sealed partial class TraceTimelineControl
             return false;
         }
 
-        var top = ReadsTop + ReadsHeight;
+        var top = OperatorsTop + OperatorsHeight;
 
         return position.Y >= top - SplitterHitMargin && position.Y < top + SplitterHeight + SplitterHitMargin;
     }
@@ -373,8 +368,6 @@ public sealed partial class TraceTimelineControl
 
         control._operators.Hover = TraceOperatorsHover.None;
 
-        control._reads.Hover = null;
-
         control.Relayout();
     }
 
@@ -382,11 +375,13 @@ public sealed partial class TraceTimelineControl
     {
         var control = (TraceTimelineControl)d;
 
-        control._reads.Reads = e.NewValue as TraceReads;
+        control._operators.Reads = control.Reads;
 
-        control._reads.Hover = null;
+        control._operators.ShowReads = control.ShowReads;
 
-        control.Relayout();
+        control._operators.Hover = TraceOperatorsHover.None;
+
+        control.Redraw();
     }
 
     private static void OnRowReturnsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -405,6 +400,15 @@ public sealed partial class TraceTimelineControl
         var control = (TraceTimelineControl)d;
 
         control._operators.OutputColumnNames = e.NewValue as IReadOnlyList<string>;
+
+        control.Redraw();
+    }
+
+    private static void OnColourProviderChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (TraceTimelineControl)d;
+
+        control._operators.ColourProvider = e.NewValue as EventColourProvider;
 
         control.Redraw();
     }

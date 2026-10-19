@@ -8,6 +8,7 @@ using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.Query.Plans.Operators;
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRows;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
@@ -149,6 +150,47 @@ public class TraceRowReturnMarksTests
                      (marks.GetCount(Scan, Thread, RowReturnType.PassedUp),
                       marks.GetCount(Scan, Thread, RowReturnType.Rejected),
                       marks.GetCount(Scan, Thread, RowReturnType.NotPassedUp)));
+    }
+
+    [Fact]
+    public void Rows_Read_By_A_Blocking_Input_Are_Stored()
+    {
+        var input = BuildInput();
+
+        var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)],
+                          [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)],
+                          top: Operator("Hash Match", 0, null) with { Instances = [JoinIterator] },
+                          child: input);
+
+        Assert.Equal((2, 0, 0, 1),
+                     (marks.GetCount(input, Thread, RowReturnType.Stored),
+                      marks.GetCount(input, Thread, RowReturnType.PassedUp),
+                      marks.GetCount(input, Thread, RowReturnType.NotPassedUp),
+                      marks.GetCount(input, Thread, RowReturnType.End)));
+    }
+
+    [Fact]
+    public void Rows_A_Batch_To_Row_Adapter_Reads_From_A_Blocking_Input_Are_Not_Stored()
+    {
+        var adapter = new ExecutionOperatorEvent
+        {
+            Name = "Batch To Row",
+            OperatorDescription = "Batch To Row",
+            Category = OperatorCategory.Adapter,
+            Instances = [JoinIterator]
+        };
+
+        var input = BuildInput();
+
+        var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)],
+                          [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)],
+                          top: adapter,
+                          child: input);
+
+        Assert.Equal((0, 1, 1),
+                     (marks.GetCount(input, Thread, RowReturnType.Stored),
+                      marks.GetCount(input, Thread, RowReturnType.PassedUp),
+                      marks.GetCount(input, Thread, RowReturnType.NotPassedUp)));
     }
 
     [Fact]
@@ -361,6 +403,8 @@ public class TraceRowReturnMarksTests
 
         return TraceRowReturnMarks.Build(timeline, calls, getSources?.Invoke(timeline));
     }
+
+    private static ExecutionOperatorEvent BuildInput() => Scan with { IsBlockingInput = true };
 
     private static ExecutionOperatorEvent Operator(string name, int nodeId, int? parentNodeId) => new()
     {

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Windows.Foundation;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
@@ -14,7 +15,7 @@ namespace InternalsViewer.UI.App.Controls.Trace;
 
 internal sealed partial class TraceOperatorsPane
 {
-    private const float ReturnStripHeight = 7f;
+    private const float ReturnStripHeight = 9f;
 
     private const float ReturnStripShare = 0.35f;
 
@@ -38,9 +39,12 @@ internal sealed partial class TraceOperatorsPane
 
     private const string BatchReturnStripTitle = "GetBatch Returns";
 
+    private static readonly SKColor ReturnStripColour = SKColor.Parse(SymbolCategory.QueryOperator.GetCategoryMetadata()!.ForegroundColor);
+
     private static readonly ReturnStyle[] ReturnStyles =
     [
         new(RowReturnType.NotPassedUp, new SKColor(0x8A, 0x8A, 0x8A), "Not Passed Up"),
+        new(RowReturnType.Stored, new SKColor(0x4F, 0xC3, 0xF7), "Stored"),
         new(RowReturnType.Rejected, new SKColor(0xF0, 0x48, 0x48), "Rejected"),
         new(RowReturnType.PassedUp, null, "Passed Up"),
         new(RowReturnType.FakeRow, new SKColor(0xFF, 0xC8, 0x57), "Fake Row"),
@@ -111,14 +115,14 @@ internal sealed partial class TraceOperatorsPane
                           marks.GetCallEnds(row.Operator, lifetime.Thread, Axis),
                           bar.Top,
                           height,
-                          colour.WithAlpha(CallDurationAlpha),
+                          ReturnStripColour.WithAlpha(CallDurationAlpha),
                           scale);
 
         foreach (var style in ReturnStyles)
         {
             var returns = marks.GetMarks(row.Operator, lifetime.Thread, Axis, style.Type);
 
-            DrawMarks(canvas, returns, bar.Top, height, scale, style.Colour ?? colour);
+            DrawMarks(canvas, returns, bar.Top, height, scale, style.Colour ?? ReturnStripColour);
         }
 
         canvas.Restore();
@@ -313,6 +317,8 @@ internal sealed partial class TraceOperatorsPane
     {
         var (callerY, calleeY) = GetCallLinkEnds(callee, caller);
 
+        var notchY = GetNotchEnd(callerY, calleeY);
+
         SetCallLinkColours(Paints.DottedCallLink, Paints.CallLink, callee, caller);
 
         for (var index = first; index < end; index++)
@@ -324,6 +330,8 @@ internal sealed partial class TraceOperatorsPane
             canvas.DrawLine(callX, callerY, callX, calleeY, Paints.DottedCallLink);
 
             canvas.DrawLine(returnX, calleeY, returnX, callerY, Paints.CallLink);
+
+            DrawNotches(canvas, callX, returnX, callerY, notchY);
         }
     }
 
@@ -340,11 +348,9 @@ internal sealed partial class TraceOperatorsPane
 
         var (callerY, calleeY) = GetCallLinkEnds((hover.Row, hover.Track), caller);
 
-        var offset = (Paints.HoverCallLink.StrokeWidth - 1) / 2;
+        var callX = GetPixelCentre((float)((links.Starts[hover.Index] - Host.ViewStart) * scale));
 
-        var callX = GetPixelCentre((float)((links.Starts[hover.Index] - Host.ViewStart) * scale)) + offset;
-
-        var returnX = GetPixelCentre((float)((links.Ends[hover.Index] - Host.ViewStart) * scale)) + offset;
+        var returnX = GetPixelCentre((float)((links.Ends[hover.Index] - Host.ViewStart) * scale));
 
         Host.PathBuilder.MoveTo(callX, callerY);
         Host.PathBuilder.LineTo(callX, calleeY);
@@ -367,7 +373,19 @@ internal sealed partial class TraceOperatorsPane
         canvas.DrawLine(callX, callerY, callX, calleeY, Paints.HoverDottedCallLink);
 
         canvas.DrawLine(returnX, calleeY, returnX, callerY, Paints.HoverCallLink);
+
+        DrawNotches(canvas, callX, returnX, callerY, GetNotchEnd(callerY, calleeY));
     }
+
+    private void DrawNotches(SKCanvas canvas, float callX, float returnX, float callerY, float notchY)
+    {
+        canvas.DrawLine(callX, callerY, callX, notchY, Paints.ConnectorNotch);
+
+        canvas.DrawLine(returnX, callerY, returnX, notchY, Paints.ConnectorNotch);
+    }
+
+    private static float GetNotchEnd(float callerY, float calleeY)
+        => callerY < calleeY ? callerY - TraceTimelineControl.ConnectorNotchLength : callerY + TraceTimelineControl.ConnectorNotchLength;
 
     private (float CallerY, float CalleeY) GetCallLinkEnds((int Row, int Track) callee, (int Row, int Track) caller)
     {
@@ -384,9 +402,11 @@ internal sealed partial class TraceOperatorsPane
 
         var calleeRow = Rows[callee.Row];
 
-        call.Color = GetOperatorColour(callerRow.Operator);
+        call.Color = GetOperatorColour(callerRow.Operator, callerRow.Lifetimes[caller.Track]);
 
-        callReturn.Color = GetOperatorColour(calleeRow.Operator);
+        callReturn.Color = GetOperatorColour(calleeRow.Operator, calleeRow.Lifetimes[callee.Track]);
+
+        Paints.ConnectorNotch.Color = TimelineColours.Scale(call.Color, TraceTimelineControl.ConnectorNotchShade);
     }
 
     private TraceCallLinkHit? GetCallLinkAt(Point position)

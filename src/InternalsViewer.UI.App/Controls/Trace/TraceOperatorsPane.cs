@@ -1,14 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Plans.Model;
-using InternalsViewer.Query.Plans.Operators;
 using InternalsViewer.UI.App.Controls.Timeline;
+using InternalsViewer.UI.App.Controls.Timeline.Renderers;
 using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.ViewModels.Query;
 using SkiaSharp;
 using Windows.Foundation;
 
@@ -20,7 +20,7 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
     private const float OperatorsBottomGap = 2f;
 
-    private const float OperatorRowGap = 6f;
+    private const float OperatorRowGap = 10f;
 
     private const float OperatorBarPadding = 1f;
 
@@ -29,16 +29,6 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
     private const float OperatorCornerRadius = 3f;
 
     private const float OperatorGradientLift = 0.04f;
-
-    private const float OperatorMaximumFont = 12f;
-
-    private const float OperatorMinimumFont = 7f;
-
-    private const float OperatorLabelGap = 0.5f;
-
-    private const float OperatorBaselineShift = 0.35f;
-
-    private const float MinimumOperatorLabelWidth = 26f;
 
     private const float OperatorSelectedStroke = 2f;
 
@@ -56,15 +46,13 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
     private static readonly SKColor OperatorDimColour = new(0, 0, 0, 160);
 
-    private static readonly SKColor OperatorColour = SKColor.Parse(SymbolCategory.QueryOperator.GetCategoryMetadata()!.ForegroundColor);
-
-    private static readonly SKColor AdapterColour = new(0x80, 0x80, 0x80);
-
     public TraceOperatorRow[] Rows { get; private set; } = [];
 
     public bool HasRows => Rows.Length > 0;
 
     public ExecutionOperatorEvent? SelectedOperator { get; private set; }
+
+    public EventColourProvider? ColourProvider { get; set; }
 
     public TraceOperatorsHover Hover { get; set; } = TraceOperatorsHover.None;
 
@@ -189,6 +177,8 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
             }
         }
 
+        DrawReadHover(canvas, scale);
+
         DrawOutputRowLineage(canvas, width, scale);
 
         DrawHoverCallLink(canvas, scale);
@@ -207,11 +197,13 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
         var returnStrip = outputRow is null ? GetReturnStripAt(position) : null;
 
+        var read = outputRow is null && returnStrip is null ? GetReadAt(position) : null;
+
         var callLink = outputRow is null ? GetCallLinkAt(position) : null;
 
-        var operatorHit = returnStrip is null && outputRow is null ? GetOperatorAt(position) : null;
+        var operatorHit = returnStrip is null && outputRow is null && read is null ? GetOperatorAt(position) : null;
 
-        return new TraceOperatorsHover(operatorHit, returnStrip, callLink, outputRow);
+        return new TraceOperatorsHover(operatorHit, returnStrip, callLink, outputRow, read);
     }
 
     public string? GetToolTip(TraceOperatorsHover hover, Point position)
@@ -229,6 +221,11 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
         if (hover.ReturnStrip is { } strip)
         {
             return GetReturnStripToolTip(strip);
+        }
+
+        if (hover.Read is { } read)
+        {
+            return GetReadToolTip(read);
         }
 
         return Contains(position) ? ToolTipTitle : null;
@@ -258,25 +255,6 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
             : null;
     }
 
-    public float? GetTrackBottom(ExecutionOperatorEvent operatorEvent, uint thread)
-    {
-        if (GetRowIndex(operatorEvent) is not { } row)
-        {
-            return null;
-        }
-
-        var track = Array.FindIndex(Rows[row].Lifetimes, l => l.Thread == thread);
-
-        if (track < 0)
-        {
-            return null;
-        }
-
-        var (top, height) = GetTrackBounds(row, track);
-
-        return top + height;
-    }
-
     public bool IsBackground(Point position)
         => GetOperatorAt(position) is null && GetOutputRow(position) is null && GetReturnStripAt(position) is null;
 
@@ -299,6 +277,10 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
         else if (GetReturnStripAt(position) is { } strip)
         {
             ClickReturnStrip(strip, position);
+        }
+        else if (GetReadAt(position) is { } read)
+        {
+            Host.ClickCall(read.Node, read.Call);
         }
         else
         {
@@ -356,7 +338,7 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
     private void DrawOperatorBar(SKCanvas canvas, TraceOperatorRow row, TraceOperatorLifetime lifetime, SKRect rect, double scale)
     {
-        var colour = GetOperatorColour(row.Operator);
+        var colour = GetOperatorColour(row.Operator, lifetime);
 
         var radius = Math.Min(rect.Height / 2, OperatorCornerRadius);
 
@@ -382,14 +364,18 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
         DrawReturnStrip(canvas, row, lifetime, rect, colour, scale);
 
+        DrawReadStrip(canvas, row, lifetime, rect, colour, scale);
+
         var stripHeight = HasReturnStrip(row, lifetime) ? GetReturnStripHeight(rect) : 0;
 
-        DrawOperatorLabel(canvas, row, rect with { Top = rect.Top + stripHeight });
+        var readsHeight = HasReadStrip(row, lifetime) ? GetReturnStripHeight(rect) : 0;
+
+        DrawOperatorLabel(canvas, row, rect with { Top = rect.Top + stripHeight, Bottom = rect.Bottom - readsHeight });
     }
 
     private void DrawLifespan(SKCanvas canvas, TraceOperatorRow row, TraceOperatorLifetime lifetime, SKRect rect)
     {
-        var colour = GetOperatorColour(row.Operator);
+        var colour = GetOperatorColour(row.Operator, lifetime);
 
         var radius = Math.Min(rect.Height / 2, OperatorCornerRadius);
 
@@ -410,6 +396,13 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
             Paints.Fill.Color = TimelineColours.Scale(colour, ReturnStripShade);
 
             canvas.DrawRect(rect.Left, rect.Top, rect.Width, stripHeight, Paints.Fill);
+        }
+
+        if (stripHeight > 0 && HasReadStrip(row, lifetime))
+        {
+            Paints.Fill.Color = TimelineColours.Scale(colour, ReturnStripShade);
+
+            canvas.DrawRect(rect.Left, rect.Bottom - stripHeight, rect.Width, stripHeight, Paints.Fill);
         }
 
         canvas.Restore();
@@ -436,65 +429,22 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
     private void DrawOperatorLabel(SKCanvas canvas, TraceOperatorRow row, SKRect rect)
     {
-        var left = Math.Max(rect.Left, 0) + TraceTimelineControl.LabelPadding * 2;
-
-        var available = rect.Right - TraceTimelineControl.LabelPadding * 2 - left;
-
-        var sizeByHeight = Math.Min(OperatorMaximumFont, rect.Height - 2);
-
-        if (available < MinimumOperatorLabelWidth || sizeByHeight < OperatorMinimumFont)
-        {
-            return;
-        }
-
-        var bold = Paints.OperatorBoldFont;
-
-        var regular = Paints.OperatorFont;
-
-        bold.Size = OperatorMaximumFont;
-
-        regular.Size = OperatorMaximumFont;
-
-        var nameWidth = Math.Max(bold.MeasureText(row.Name), 1);
-
-        var bothWidth = row.Target.Length > 0
-            ? nameWidth + OperatorMaximumFont * OperatorLabelGap + regular.MeasureText(row.Target)
-            : nameWidth;
-
-        var bothSize = Math.Min(sizeByHeight, OperatorMaximumFont * available / bothWidth);
-
-        var withTarget = row.Target.Length > 0 && bothSize >= OperatorMinimumFont;
-
-        var size = withTarget ? bothSize : Math.Min(sizeByHeight, OperatorMaximumFont * available / nameWidth);
-
-        if (size < OperatorMinimumFont)
-        {
-            return;
-        }
-
-        bold.Size = size;
-
-        regular.Size = size;
-
-        var baseline = rect.MidY + size * OperatorBaselineShift;
-
         Paints.Text.Color = OperatorLabelColour;
 
         canvas.Save();
 
         canvas.ClipRect(rect);
 
-        canvas.DrawText(row.Name, left, baseline, SKTextAlign.Left, bold, Paints.Text);
-
-        if (withTarget)
-        {
-            canvas.DrawText(row.Target,
-                            left + bold.MeasureText(row.Name) + size * OperatorLabelGap,
-                            baseline,
-                            SKTextAlign.Left,
-                            regular,
-                            Paints.Text);
-        }
+        OperatorLabelRenderer.Draw(canvas,
+                                   row.Name,
+                                   row.Target,
+                                   Math.Max(rect.Left, 0),
+                                   rect.Right,
+                                   rect.MidY,
+                                   rect.Height,
+                                   Paints.OperatorBoldFont,
+                                   Paints.OperatorFont,
+                                   Paints.Text);
 
         canvas.Restore();
     }
@@ -543,8 +493,8 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
     private float GetRowTop(int row) => Top + OperatorsPadding + OutputRowsArea + row * (RowHeight + OperatorRowGap);
 
-    private static SKColor GetOperatorColour(ExecutionOperatorEvent operatorEvent)
-        => operatorEvent.Category == OperatorCategory.Adapter ? AdapterColour : OperatorColour;
+    private SKColor GetOperatorColour(ExecutionOperatorEvent operatorEvent, TraceOperatorLifetime lifetime)
+        => ColourProvider is { } colours ? colours.GetColour(operatorEvent).ToSkColor() : Host.GetColour(lifetime.Node);
 
     private void DimOperators(SKCanvas canvas, int width)
     {

@@ -53,6 +53,7 @@
                                       RowReturnMarks="{x:Bind ViewModel.RowReturnMarks, Mode=OneWay}"
                                       Reads="{x:Bind ViewModel.TraceReads, Mode=OneWay}"
                                       OutputColumnNames="{x:Bind ViewModel.OutputColumnNames, Mode=OneWay}"
+                                      ColourProvider="{x:Bind ViewModel.EventColours, Mode=OneWay}"
                                       HiddenCategories="{x:Bind Settings.CallTreeHiddenCategorySet, Mode=OneWay}"
                                       PrunedCategories="{x:Bind Settings.CallTreePrunedCategorySet, Mode=OneWay}"
                                       GrantedMemory="{x:Bind ViewModel.GrantedMemory, Mode=OneWay}"
