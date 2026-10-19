@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Helpers;
@@ -7,20 +6,24 @@ namespace InternalsViewer.Query.FullTrace.Timeline;
 
 public sealed class TraceOutputRows
 {
-    private TraceOutputRows(TraceOutputRow[] rows)
+    private TraceOutputRows(TraceOutputRow[] rows, IReadOnlyList<TraceOutputRowSource> sources)
     {
         Rows = rows;
+
+        Sources = sources;
 
         Positions = AxisRows.Build(rows, TraceTimelineAxis.Position);
 
         Instructions = AxisRows.Build(rows, TraceTimelineAxis.Instructions);
     }
 
-    public static TraceOutputRows Empty { get; } = new([]);
+    public static TraceOutputRows Empty { get; } = new([], []);
 
     public int Count => Rows.Length;
 
     public IReadOnlyList<TraceOutputRow> All => Rows;
+
+    public IReadOnlyList<TraceOutputRowSource> Sources { get; }
 
     private TraceOutputRow[] Rows { get; }
 
@@ -67,11 +70,11 @@ public sealed class TraceOutputRows
 
     internal static TraceOutputRows Build(IEnumerable<ExecutionOperatorEvent> operators,
                                           IReadOnlyList<TraceRowReturn> passedUp,
-                                          TraceOutputLineage lineage)
+                                          IReadOnlyList<TraceOutputRowSource> sources)
     {
-        var rootOperators = GetRootOperators(operators);
+        var rootOperator = operators.Where(o => o.PlanNodeIdentifier is not null).MinBy(o => o.PlanNodeIdentifier!.NodeId);
 
-        bool IsRoot(TraceRowReturn rowReturn) => rootOperators.Contains(rowReturn.Operator);
+        bool IsRoot(TraceRowReturn rowReturn) => ReferenceEquals(rowReturn.Operator, rootOperator);
 
         TraceRowReturn[] roots = [.. passedUp.Where(IsRoot).OrderBy(r => r.FromPosition)];
 
@@ -84,31 +87,19 @@ public sealed class TraceOutputRows
                               .GroupBy(r => r.Thread)
                               .ToDictionary(g => g.Key, g => g.OrderBy(r => r.FromPosition).ToArray());
 
-        var ordinals = new Dictionary<ExecutionOperatorEvent, int>(ReferenceEqualityComparer.Instance);
-
         var rows = new TraceOutputRow[roots.Length];
 
         for (var index = 0; index < roots.Length; index++)
         {
             var root = roots[index];
 
-            ref var ordinal = ref CollectionsMarshal.GetValueRefOrAddDefault(ordinals, root.Operator, out _);
-
-            ordinal++;
-
             var steps = returns.TryGetValue(root.Thread, out var thread) ? GetSteps(thread, root) : [];
 
-            rows[index] = new TraceOutputRow(ordinal, root, steps, lineage);
+            rows[index] = new TraceOutputRow(index + 1, root, steps);
         }
 
-        return new TraceOutputRows(rows);
+        return new TraceOutputRows(rows, sources);
     }
-
-    private static HashSet<ExecutionOperatorEvent> GetRootOperators(IEnumerable<ExecutionOperatorEvent> operators)
-        => operators.Where(o => o.PlanNodeIdentifier is not null)
-                    .GroupBy(o => o.PlanNodeIdentifier!.PlanHandleId)
-                    .Select(g => g.MinBy(o => o.PlanNodeIdentifier!.NodeId)!)
-                    .ToHashSet<ExecutionOperatorEvent>(ReferenceEqualityComparer.Instance);
 
     private static TraceOutputStep[] GetSteps(TraceRowReturn[] returns, TraceRowReturn root)
     {

@@ -201,6 +201,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     private readonly Canvas _overlay;
 
+    private readonly UserControl _keyboardHost;
+
     private readonly ScrollBar _horizontalScrollBar;
 
     private readonly ScrollBar _verticalScrollBar;
@@ -216,6 +218,10 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
     private readonly TextBlock _toolTipText;
 
     private readonly TraceTimelinePaints _paints = new();
+
+    private readonly TraceOperatorsPane _operators;
+
+    private readonly TraceReadsPane _reads;
 
     private readonly SKPathBuilder _pathBuilder = new();
 
@@ -249,11 +255,11 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     private double? _playhead;
 
-    private double? _reportedPlayhead;
+    private FlameHit? _stackFrame;
 
-    private double? _stackPosition;
+    private FlameHit? _reportedStackFrame;
 
-    private double? _reportedStackPosition;
+    private FlameHit? _reportedSelected;
 
     private int _reportedVersion = -1;
 
@@ -281,6 +287,10 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     public TraceTimelineControl()
     {
+        _operators = new TraceOperatorsPane(this, () => (OperatorsTop, OperatorsHeight));
+
+        _reads = new TraceReadsPane(this, () => (ReadsTop, ReadsHeight));
+
         Background = new SolidColorBrush(Colors.Transparent);
 
         RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
@@ -294,14 +304,16 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
         Children.Add(_canvas);
 
-        _overlay = new Canvas
+        _overlay = new Canvas { Background = new SolidColorBrush(Colors.Transparent) };
+
+        _keyboardHost = new UserControl
         {
-            Background = new SolidColorBrush(Colors.Transparent),
+            Content = _overlay,
             IsTabStop = true,
             UseSystemFocusVisuals = false
         };
 
-        Children.Add(_overlay);
+        Children.Add(_keyboardHost);
 
         Children.Add(_minimap);
 
@@ -393,9 +405,9 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         Children.Add(_memoryModeButton);
 
         _overlay.PointerPressed += OnPointerPressed;
-        _overlay.ContextRequested += OnContextRequested;
+        _keyboardHost.ContextRequested += OnContextRequested;
 
-        _overlay.KeyDown += OnKeyDown;
+        _keyboardHost.KeyDown += OnKeyDown;
         _overlay.PointerMoved += OnPointerMoved;
         _overlay.PointerReleased += OnPointerReleased;
         _overlay.PointerCaptureLost += OnPointerCaptureLost;
@@ -416,9 +428,9 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     public event Action? CallStackOpenRequested;
 
-    public event Action? PlayheadChanged;
+    public event Action? CallStackChanged;
 
-    public bool HasCallStack => CallStackPosition is not null;
+    public bool HasCallStack => GetStackPath().Count > 0;
 
     private double FullStart => _fitStart;
 
@@ -426,13 +438,11 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     private double MinimumRange => MinimumRangeSteps * (_timeline?.StepOf(_axis) ?? 1);
 
-    private double? CallStackPosition => _playhead ?? _stackPosition;
-
     private double ViewportHeight => Math.Max(0, _overlay.ActualHeight - ContentTop - BandHeight);
 
     private float RulerTop => ShowMemory ? MemoryBarHeight : 0;
 
-    private float ContentTop => OperatorsTop + OperatorsArea;
+    private float ContentTop => OperatorsTop + PanesArea;
 
     private bool ShowsSpikes => ShowMemory && MemoryMode == TraceTimelineMemoryMode.Allocated;
 
@@ -457,9 +467,42 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
     public void ScopeTo(CallStackNode node) => SetRoot(node);
 
     public IReadOnlyList<TraceThreadStack> GetCallStack()
-        => CallStackPosition is { } position && _visible is { } timeline ? timeline.StackAt(_axis, position) : [];
+    {
+        var path = GetStackPath();
 
-    public void StepPlayhead(bool forward) => StepPlayhead(forward, PlayheadStepMode.Call);
+        if (path.Count == 0 || _visible is not { } timeline)
+        {
+            return [];
+        }
+
+        var thread = timeline.Threads[path[0].Lane];
+
+        var calls = new List<TraceStackCall>(path.Count);
+
+        foreach (var hit in path)
+        {
+            var row = thread.Rows[hit.Depth];
+
+            var instructions = row.Span(TraceTimelineAxis.Instructions, hit.Index);
+
+            calls.Add(new TraceStackCall(row.Span(_axis, hit.Index), instructions.End - instructions.Start));
+        }
+
+        return [new TraceThreadStack(thread.ThreadId, calls)];
+    }
+
+    public CallReference? GetSelectedCall() => GetCallReference(_selected);
+
+    public void SelectAdjacentCall(bool forward)
+    {
+        if (_selected is { } hit
+            && _visible is { } timeline
+            && hit.Lane < timeline.Threads.Count
+            && GetAdjacentCall(timeline.Threads[hit.Lane].Rows, hit, forward) is { } next)
+        {
+            SelectAndShow(next);
+        }
+    }
 
     public void StepPlayhead(bool forward, PlayheadStepMode mode)
     {
@@ -509,9 +552,9 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         _verticalScrollBar.Scroll -= OnVerticalScroll;
 
         _overlay.PointerPressed -= OnPointerPressed;
-        _overlay.ContextRequested -= OnContextRequested;
+        _keyboardHost.ContextRequested -= OnContextRequested;
 
-        _overlay.KeyDown -= OnKeyDown;
+        _keyboardHost.KeyDown -= OnKeyDown;
         _overlay.PointerMoved -= OnPointerMoved;
         _overlay.PointerReleased -= OnPointerReleased;
         _overlay.PointerCaptureLost -= OnPointerCaptureLost;
@@ -536,14 +579,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
         _playheadTriangle.Dispose();
 
-        _operatorShape.Dispose();
-
-        foreach (var gradient in _operatorGradients.Values)
-        {
-            gradient.Dispose();
-        }
-
-        _operatorGradients.Clear();
+        _operators.Dispose();
 
         _timeline = null;
         _rooted = null;
@@ -564,7 +600,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
         StopTransition();
 
-        var from = CallStackPosition ?? _viewStart;
+        var from = _playhead ?? _viewStart;
 
         double? next = null;
 
@@ -586,22 +622,25 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     private void StepToMark(bool forward, bool isBatch)
     {
-        if (RowBufferMarks is not { } marks)
+        if (RowReturnMarks is not { } marks)
         {
             return;
         }
 
         StopTransition();
 
-        var from = CallStackPosition ?? _viewStart;
+        var from = _playhead ?? _viewStart;
 
         double? next = null;
 
-        foreach (var row in _operatorRows)
+        foreach (var row in _operators.Rows.Where(r => marks.IsBatch(r.Operator) == isBatch))
         {
-            var values = isBatch ? marks.GetBatchMarks(row.Operator, _axis) : marks.GetMarks(row.Operator, _axis);
+            foreach (var lifetime in row.Lifetimes)
+            {
+                var values = marks.GetMarks(row.Operator, lifetime.Thread, _axis, RowReturnType.PassedUp);
 
-            next = forward ? FindMarkAfter(values, from, next) : FindMarkBefore(values, from, next);
+                next = forward ? FindMarkAfter(values, from, next) : FindMarkBefore(values, from, next);
+            }
         }
 
         if (next is { } target)
@@ -707,7 +746,12 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         PlacePlayhead(link.StartOf(_axis));
     }
 
-    private void OnLoaded(object sender, RoutedEventArgs e) => ApplyTheme();
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        ApplyTheme();
+
+        WatchKeyboard();
+    }
 
     private void OnActualThemeChanged(FrameworkElement sender, object args) => ApplyTheme();
 
@@ -920,7 +964,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
         _operatorsHeight = null;
 
-        _selectedOperator = null;
+        _operators.ClearSelectedOperator();
 
         _root = null;
 
@@ -935,8 +979,6 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         StopTransition();
 
         _playhead = null;
-
-        _stackPosition = null;
     }
 
     private void SetRoot(CallStackNode? root)
@@ -957,10 +999,15 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     private void RebuildVisible()
     {
+        var selectedCall = GetCallReference(_selected) ?? (SelectedCall is { IsSelected: true } reference ? reference : null);
+
+        var stackFrame = GetCallReference(_stackFrame);
+
         _rooted = null;
         _visible = null;
         _hover = null;
         _selected = null;
+        _stackFrame = null;
 
         ReleaseMinimap();
 
@@ -979,22 +1026,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
                 : pruned;
         }
 
-        _operatorRows = OperatorRowsOf(_visible);
-
-        _operatorDetails.Clear();
-
-        _hoverOperator = null;
-
-        _hoverMarkBand = null;
-
-        _hoverReturnStrip = null;
-
-        _hoverOutputRow = null;
-
-        if (_selectedOperator is { } selected && !_operatorRows.Any(r => ReferenceEquals(r.Operator, selected)))
-        {
-            _selectedOperator = null;
-        }
+        _operators.Rebuild(_visible);
 
         FindSelectedRegions();
 
@@ -1016,7 +1048,9 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
                                      .ToDictionary(g => g.Key,
                                                    g => new RaisedRow([.. g.Select(s => s.Index)], [.. g.Select(s => s.Bytes)]));
 
-        FindSelectedCall(bringIntoView: false);
+        _stackFrame = stackFrame is not null && _visible is { } rebuilt ? FindCall(rebuilt, stackFrame.Node, stackFrame.Call) : null;
+
+        FindSelectedCall(selectedCall, bringIntoView: false);
 
         _version++;
     }
@@ -1089,9 +1123,9 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
     private static FlameHit? FindCall(TraceTimeline timeline, CallStackNode node, int call)
         => timeline.FindCall(node, call) is { } location ? new FlameHit(location.ThreadIndex, location.Depth, location.Index) : null;
 
-    private void FindSelectedCall(bool bringIntoView)
+    private void FindSelectedCall(CallReference? reference, bool bringIntoView)
     {
-        if (SelectedCall is not { } reference || _visible is not { } visible)
+        if (reference is null || _visible is not { } visible)
         {
             return;
         }
@@ -1103,13 +1137,37 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
             return;
         }
 
-        _selected = hit;
+        SetSelected(hit);
 
         if (bringIntoView)
         {
             BringIntoView(hit);
         }
     }
+
+    private void ReportCallStack()
+    {
+        if (_stackFrame == _reportedStackFrame
+            && _selected == _reportedSelected
+            && _version == _reportedVersion
+            && _axis == _reportedAxis)
+        {
+            return;
+        }
+
+        _reportedStackFrame = _stackFrame;
+
+        _reportedSelected = _selected;
+
+        _reportedVersion = _version;
+
+        _reportedAxis = _axis;
+
+        DispatcherQueue.TryEnqueue(() => CallStackChanged?.Invoke());
+    }
+
+    private CallReference? GetCallReference(FlameHit? hit)
+        => hit is { } at && SpanOf(at) is { } span && _visible?.NodeOf(span.Node) is { } node ? new CallReference(node, span.Call, true) : null;
 
     private bool IsCall(FlameHit? hit, CallReference reference)
         => hit is { } at
@@ -1195,8 +1253,6 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         control.StopTransition();
 
         control._playhead = null;
-
-        control._stackPosition = null;
     }
 
     private static void OnHiddenCategoriesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -1254,7 +1310,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
         control._hoverBlock = null;
 
-        control._hoverOperator = null;
+        control._operators.Hover = TraceOperatorsHover.None;
 
         control.Redraw();
     }
@@ -1265,19 +1321,15 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
         var reference = e.NewValue as CallReference;
 
-        if (reference is null)
+        if (reference is { IsSelected: true })
         {
-            control._selected = null;
-        }
-        else
-        {
-            control.FindSelectedCall(bringIntoView: true);
+            control.FindSelectedCall(reference, bringIntoView: true);
 
-            if (reference.IsSelected && control._selected is null && control._root is not null)
+            if (!control.IsCall(control._selected, reference) && control._root is not null)
             {
                 control.SetRoot(null);
 
-                control.FindSelectedCall(bringIntoView: true);
+                control.FindSelectedCall(reference, bringIntoView: true);
             }
 
             if (control.AutoZoom)
@@ -1287,7 +1339,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         }
 
         var highlighted = reference is { IsSelected: true }
-            ? control._selected is null ? reference.Node : null
+            ? control.IsCall(control._selected, reference) ? null : reference.Node
             : control._highlightedNode;
 
         control.FindNodeMatches(highlighted);

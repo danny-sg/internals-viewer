@@ -1,8 +1,8 @@
 namespace InternalsViewer.Query.FullTrace.Output;
 
-public sealed partial record TraceOutputStructure
+internal sealed partial record TraceOutputStructure
 {
-    private const int FormatVersion = 2;
+    private const int FormatVersion = 3;
 
     internal static void Write(BinaryWriter writer, IReadOnlyList<TraceOutputStructure> structures)
     {
@@ -14,13 +14,13 @@ public sealed partial record TraceOutputStructure
         {
             writer.Write(structure.OutputRow);
 
-            writer.Write(structure.DirectSelectBuffer);
+            writer.Write(structure.DirectSelectOwner);
 
-            writer.Write(structure.Columns.Count);
+            writer.Write(structure.Owners.Count);
 
-            foreach (var column in structure.Columns)
+            foreach (var owner in structure.Owners)
             {
-                TraceOutputSource.Write(writer, column);
+                writer.Write(owner);
             }
         }
     }
@@ -38,16 +38,16 @@ public sealed partial record TraceOutputStructure
         {
             var outputRow = reader.ReadUInt64();
 
-            var directSelectBuffer = reader.ReadUInt64();
+            var directSelectOwner = reader.ReadUInt64();
 
-            var columns = new TraceOutputSource[reader.ReadInt32()];
+            var owners = new ulong[reader.ReadInt32()];
 
-            for (var ordinal = 0; ordinal < columns.Length; ordinal++)
+            for (var ordinal = 0; ordinal < owners.Length; ordinal++)
             {
-                columns[ordinal] = TraceOutputSource.Read(reader);
+                owners[ordinal] = reader.ReadUInt64();
             }
 
-            structures.Add(new TraceOutputStructure(outputRow, columns, directSelectBuffer));
+            structures.Add(new TraceOutputStructure(outputRow, owners, directSelectOwner));
         }
 
         return structures;

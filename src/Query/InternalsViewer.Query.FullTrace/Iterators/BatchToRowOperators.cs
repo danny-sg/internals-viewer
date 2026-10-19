@@ -1,18 +1,13 @@
 using InternalsViewer.Query.Events.Operators;
-using InternalsViewer.Query.FullTrace.Batches;
-using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Plans.Operators;
 
 namespace InternalsViewer.Query.FullTrace.Iterators;
 
 internal static class BatchToRowOperators
 {
-    private const string HelperClass = "CQScanBatchHelper";
-
     private const string OperatorName = "Batch To Row";
 
-    public static List<ExecutionOperatorEvent> Create(TraceTimeline timeline,
-                                                      BatchStore batches,
+    public static List<ExecutionOperatorEvent> Create(IReadOnlyList<IteratorPlanNode> planNodes,
                                                       IReadOnlyList<ExecutionOperatorEvent> operators)
     {
         var owners = new Dictionary<ulong, ExecutionOperatorEvent>();
@@ -25,19 +20,11 @@ internal static class BatchToRowOperators
             }
         }
 
-        var helpers = timeline.MappedNodes
-                              .Select(n => n?.Frame)
-                              .Where(f => f is { Instance: not 0, Resolved.ClassName: HelperClass })
-                              .Select(f => f!.Instance)
-                              .Distinct();
-
         var adapters = new List<ExecutionOperatorEvent>();
 
-        foreach (var helper in helpers)
+        foreach (var helpers in IteratorPlanLinker.GetAdapters(planNodes).GroupBy(a => a.Value))
         {
-            if (!owners.ContainsKey(helper)
-                && batches.GetProducer(helper) is { } producer
-                && owners.TryGetValue(producer, out var source))
+            if (owners.TryGetValue(helpers.Key, out var source))
             {
                 adapters.Add(new ExecutionOperatorEvent
                 {
@@ -46,7 +33,7 @@ internal static class BatchToRowOperators
                     LogicalOperator = OperatorName,
                     Category = OperatorCategory.Adapter,
                     NodeLevel = source.NodeLevel,
-                    Instances = [helper]
+                    Instances = [.. helpers.Select(h => h.Key)]
                 });
             }
         }

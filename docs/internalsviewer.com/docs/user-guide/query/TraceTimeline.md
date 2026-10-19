@@ -12,7 +12,7 @@ From top to bottom:
 
 - **The ruler** - how far through the recording, in trace positions or instructions - see [Position and instructions](#position-and-instructions). Click it to put down the [playhead](#playhead)
 - **The Operators pane** - with **View > Operators** on, a row per plan operator - see [Operators](#operators)
-- **A lane per thread** - headed **Thread** and the operating system thread id, with the [row buffer](#row-buffers) marks under the header when **View > Row Buffers** is on
+- **A lane per thread** - headed **Thread** and the operating system thread id
 - **The memory band** - with **Memory** on, the memory allocated and in use along the bottom - see [Memory](#memory)
 
 In a lane, each call is a bar running from where it started to where it ended. The calls it made sit directly beneath it, inside its width, so the outermost call is at the top of the lane and each row down is one level deeper in the stack. That is the reverse of a classic flame graph, which grows upwards, but it reads the same way as the Call Tree. A bar is coloured by its function's category and labelled with the function's name once it is wide enough to read.
@@ -39,7 +39,7 @@ TTD has no clock. A recording is a sequence of positions - a sequence number sha
 - **Drag** pans sideways, and a **middle-button drag** pans in both directions
 - **Shift + drag** draws a rectangle and zooms to it
 - **Shift + click** a bar to scope the chart to its function, or empty space to go back to the whole recording
-- **Double-click** a bar to zoom to it, or empty space to zoom back out to the whole recording
+- **Double-click** a bar to zoom to it, or empty space to clear the selected call and operator
 - **Click a thread's header** to expand that thread and collapse the others to their headers, and click it again to show them all
 
 The lanes shrink to fit every thread into the pane, and a call's name appears once there is room to read it - zoom in, or click a thread's header to give it the whole pane, to see more of them.
@@ -49,16 +49,23 @@ The lanes shrink to fit every thread into the pane, and a call's name appears on
 Right-clicking a bar gives:
 
 - **Zoom to Selection** - only while a call is selected, wherever you right-click. Zooms to the selected call, as double-clicking it does, and scrolls its thread into view
+- **Zoom to Fit** - wherever you right-click. Zooms back out to the whole recording
 - **Scope** - scopes the chart to the call's function, as **Shift + click** does - see [Scoping to a function](#scoping-to-a-function)
 - **Clear Scope** - only while the chart is scoped, wherever you right-click. Goes back to the whole recording
 - **Open Call Tree** - opens the [Call Tree](/docs/user-guide/query/CallStack) at the call's frame, with the call selected in the [Arguments](/docs/user-guide/query/CallStack#arguments) tab. Right-clicking empty space just opens the pane, and if it is already open its tab is selected
-- **Open Call Stack** - only over a call. Opens the [Call Stack](#call-stack) pane at the start of the call, listing the calls that led to it with the values they were passed, without putting a playhead on the chart. Placing the playhead takes the pane back to following it
+- **Open Call Stack** - only over a call. Selects the call and opens the [Call Stack](#call-stack) pane, listing the calls that led to it with the values they were passed
 
 <!-- Screenshot: the Trace Timeline's right-click menu over a call, with Scope and Open Call Tree -->
 
 ## Selecting a call
 
-**Click** a bar to select the call. The Call Tree goes to its frame, the [Arguments](/docs/user-guide/query/CallStack#arguments) tab follows with that call selected, and the chart dims everything except that function's calls and the calls beneath them. Click the selected bar again, or the background, to deselect.
+**Click** a bar to select the call. It is outlined, the Call Tree goes to its frame, and the [Arguments](/docs/user-guide/query/CallStack#arguments) tab follows with that call selected. Nothing is dimmed, so the rest of the chart stays readable. Only a [search](#search) dims the chart. Click the selected bar again, or the background, to deselect.
+
+With a call selected, the arrow keys move the selection:
+
+- **Up** - the call that made it
+- **Down** - back down the [call stack](#call-stack), or from its innermost call to the first call it made
+- **Left** and **Right** - the previous or next call at the same depth on its thread, even when a different call made it
 
 With **View > Auto-Zoom** on, the chart zooms to fit the selected call whenever the selection changes, whether it was clicked here or selected in the Call Tree or **Arguments**.
 
@@ -74,13 +81,9 @@ Hovering over a bar describes the call:
 
 ## Following the Call Tree
 
-Selecting a frame in the Call Tree highlights that function in the chart. Its calls and everything beneath them stay in colour and the rest is dimmed, the same way a search dims, so you can see everywhere it ran without the chart moving.
+Choosing a call in the [Arguments](/docs/user-guide/query/CallStack#arguments) tab selects it in the chart, outlined as if its bar had been clicked, and scrolls it into view. If the chart is scoped somewhere that call is not, it goes back to the whole recording to show it. A frame in the Call Tree stands for every call made down that path, so selecting a frame there does not pick a call, and the chart is left as it is.
 
-<!-- Screenshot: a frame selected in the Call Tree, with its calls highlighted in the Trace Timeline and the rest dimmed -->
-
-A frame stands for every call made down that path, so selecting one does not pick a call in the [Arguments](/docs/user-guide/query/CallStack#arguments) tab. Choosing a call there narrows the highlight to that one call - it is outlined, and only it and the calls it made stay in colour. If the chart is scoped somewhere that call is not, it goes back to the whole recording to show it. Clicking the background clears the call.
-
-<!-- Screenshot: one call chosen in the Arguments tab, outlined in the Trace Timeline with everything outside it dimmed -->
+<!-- Screenshot: one call chosen in the Arguments tab, outlined in the Trace Timeline -->
 
 The Call Tree's [category filter](/docs/user-guide/query/CallStack#filtering-by-category) applies here as well. A hidden category's calls are taken out and the calls they made move up into their place, so a category you have kept is never lost beneath one you have hidden. A category hidden with **Hide With Callees** takes everything beneath its calls with it.
 
@@ -100,22 +103,26 @@ The filter button beside the box opens the same category badges as the Call Tree
 
 ## Operators
 
-**View > Operators** adds a pane above the threads, with a row per plan operator in the same order and colours as the Timeline's Plan band. Each row runs from the operator's first call to its last. The stretches where one of its methods was on the stack are drawn in full colour and the rest shaded, and an operator that ran on several threads gets a track per thread.
+**View > Operators** adds a pane above the threads, with a row per plan operator in the same order as the Timeline's Plan band. Operators are drawn in the Query Operator category's colour, and a Batch To Row adapter between batch and row mode operators is grey. Each row runs from the operator's first call to its last. The stretches where one of its methods was on the stack are drawn in full colour and the rest shaded, and an operator that ran on several threads gets a track per thread. Either side of that, a fainter bar shows how long the operator's iterator existed. It starts at the iterator's constructor, or for a batch mode operator the call that built it, and ends with the query's `CQueryScan::DestroyQuery`, where SQL Server frees all of a query's iterators together. When the recording started after an iterator was built, or stopped before the query was torn down, the fainter bar runs to the edge of the recording.
 
-This shows something the lanes cannot. An operator is only on a thread's stack while one of its methods runs, so a Hash Match sits beside its scans in the lanes rather than above them - but its iterator object, and the hash table it owns, live from its first call to its last. The Operators pane draws that lifetime.
+This shows something the lanes cannot. An operator is only on a thread's stack while one of its methods runs, so a Hash Match sits beside its scans in the lanes rather than above them - but its iterator object exists from the moment it is built until the query is torn down, and does its work from its first call to its last. The Operators pane draws both.
 
 - **Drag** the splitter under the pane to make its rows taller
-- **Click** an operator to select it in the [Execution Plan](/docs/user-guide/query/ExecutionPlan) and dim everything except its calls and the calls beneath them
+- **Click** an operator to select it in the [Execution Plan](/docs/user-guide/query/ExecutionPlan). While [Call Stack](#call-stack) is off, everything except its calls and the calls beneath them is dimmed
 - **Double-click** an operator to zoom to its lifetime
 - Hovering over an operator shows its thread, how many times each of its methods was called, its instructions and positions, the share of its lifetime spent inside its calls (child operators included) and its peak memory in use
 
 ![The Operators pane above the thread lanes, with the Table Scan selected and every call outside it dimmed](/docs/user-guide/images/flame-chart-operator-selected.png)
 
-## Row buffers
+## Reads
 
-**View > Row Buffers** adds a strip under each thread header with a mark for every row a scan, seek, sort or spool handed back, at the point its `GetRow` call returned it. Rows a batch mode operator hands to a row mode operator above it are marked too, from the `GetRow` call that turns each one from the batch into a row. When one `GetRow` calls another for the same row, only the innermost call is marked, so each row is marked once. The values in each row are on the Call Tree's **Row Buffers** tab, opened from the red square beside a call that captured rows - see [Call Tree](/docs/user-guide/query/CallStack). Click a mark to open its call in the Call Tree.
+**View > Reads** adds a lane under the operators showing every page the query asked the buffer pool for. Each read is drawn as in the Timeline's Read lane, a faint bar across the call with a solid tick at its end. A call to `BPool::Get` asks for a single page. A call to `BPool::ReadAhead` asks for a run of pages ahead of the scan, and is labelled with how many when there is room. Pages already in memory and pages read from disk are drawn the same way. The calls beneath a read in the lanes below show which it was, such as `BPool::GetFromDisk` when the page had to be read.
 
-Batch mode operators are marked on the same strip in blue, one mark for each batch handed to the operator above, at the point its `BpGetBatchData` call returned it. The batches are on the Call Tree's [Batches](/docs/user-guide/query/CallStack#batches) tab.
+Reads are drawn in the Buffer Pool category's colour, and lines join each one to the operator whose call it was made in, as in the [Timeline](/docs/user-guide/query/Timeline)'s Read lane: a dotted line where the call starts, when the read is wide enough to tell it apart, and a solid line at its end for each page. Reads made outside every operator, such as metadata lookups while the query is set up, have no lines.
+
+- Hovering over a read shows its page, or the first page and page count of a read ahead, with its function, operator, thread and position
+- **Click** a read to select its call in the chart
+- **Double-click** a read to zoom to it
 
 ## Memory
 
@@ -132,7 +139,7 @@ The **Memory** toggle and the **Allocated** or **In Use** choice are remembered 
 
 ## Playhead
 
-Click the ruler to put a playhead on the chart, and drag along the ruler to move it. Its badge gives the position, as `sequence:steps` on the Position axis. The step back and step forward buttons move it to the start of the previous or next call on any visible thread, and double-clicking the ruler hides it again.
+Click the ruler to put a playhead on the chart, and drag along the ruler to move it. Its badge gives the position, as `sequence:steps` on the Position axis. The step back and step forward buttons move it to the start of the previous or next call on any visible thread, and double-clicking the ruler hides it again and clears the selected call and operator.
 
 **Play** moves the playhead steadily along the chart, scrolling the view on when it reaches the edge, and stops at the end of the recording. It starts from the playhead, or from the left of the view when there is none or the playhead is already at the end. Click it again to pause.
 
@@ -148,13 +155,11 @@ See [How Full Trace works](/docs/deep-dives/full-trace) for the details.
 
 ## Call Stack
 
-**Call Stack** on the tab strip opens a pane beneath the chart, while there is a playhead, listing the calls in progress at the playhead. It is greyed out until there is a playhead, or until **Open Call Stack** opens the pane without one, so it can be closed again. Its header has the same step back and step forward buttons as the tab strip, to move the playhead from one call to the next without leaving the pane, and an **X** that closes it again. Stepping, from either place, closes the details. Each thread with a call there is a row of its own, and opening it shows its calls, each as the function's signature with each parameter's type and the value it was passed, coloured as in the Call Tree's signatures. A dot before each call shows its category's colour, and hovering over it names the category. A value that decodes to an object shows the object's class instead of its declared type. `this` is shown without its address, unless it decodes to something such as an operator or an index, and its address is in the call's details. The call running at the playhead, the innermost, comes first, highlighted and marked with a red arrow, and each call below it is the one that called it, as a debugger lists a stack. The values decode as they do in [Arguments](/docs/user-guide/query/CallStack#arguments), and the **Decode** setting is shared. The first thread is open to begin with, and a thread you open or close stays that way as the playhead moves. The pane follows the playhead as it is clicked, dragged, stepped or played, and drag the splitter above it to resize it. The setting is remembered between sessions.
+**Call Stack** on the tab strip opens a pane beneath the chart while a call is selected, listing the calls that led to it. Turned on with nothing selected, the pane opens as soon as a call is selected. **Open Call Stack** on the right-click menu selects a call and turns the pane on in one step. Its header has step back and step forward buttons, which select the previous or next call at the same depth as **Left** and **Right** do, and an **X** that closes it again. The stack sits under a row for the selected call's thread, each call shown as the function's signature with each parameter's type and the value it was passed, coloured as in the Call Tree's signatures. A dot before each call shows its category's colour, and hovering over it names the category. A value that decodes to an object shows the object's class instead of its declared type. `this` is shown without its address, unless it decodes to something such as an operator or an index, and its address is in the call's details. The innermost call comes first, highlighted and marked with a red arrow, and each call below it is the one that called it, as a debugger lists a stack. The pane selects the same call as the chart, and opens its details beside the stack. The values decode as they do in [Arguments](/docs/user-guide/query/CallStack#arguments), and the **Decode** setting is shared. Drag the splitter above the pane to resize it. The setting is remembered between sessions.
 
-A red square before a call means it handed back a row, the same as the red square in the Call Tree. Clicking it lists the [row buffer](#row-buffers) in the details, a line for each of the row's columns with its value, named after the table's column where the table could be found.
+Selecting a call further up the stack, with **Up** or by clicking it in the pane, keeps the stack as it is and moves the selection along it, so **Down** comes back the same way. Selecting a call that is not on the stack, by clicking its bar or with **Left** and **Right**, starts a new stack ending at that call. The pane follows the [category filter](/docs/user-guide/query/CallStack#filtering-by-category) and **Scope**, so its calls are the ones drawn in the chart above it.
 
-The pane takes the place of the raised calls at the playhead, which show the same stack without its values. It follows the [category filter](/docs/user-guide/query/CallStack#filtering-by-category) and **Scope**, so its calls are the ones drawn in the chart above it.
-
-Clicking a call selects it in the Call Tree and **Arguments**, the same as clicking its bar, and opens its details beside the stack. These show its category, its module, `this` and the value it returns. They also show its **Call Id**, the number that **Source** shows in brackets, the trace positions it started and ended at, how many instructions it executed, and its **Arguments**, each with its number, type and value. Clicking an argument shows that value's details, as clicking it in the stack does. Right-clicking a call gives **Open In Call Tree**, **Zoom**, which fits the chart to that call, **Scope**, which scopes the chart to its function the same as the chart's own [Scope](#scoping-to-a-function), **Copy Signature**, which copies the line as it reads, with its types and values, **Copy Symbol**, which copies the function's name, and **Copy Address**, which copies the function's address. The copy button at the end of each call copies its signature, and every value in the details has a copy button beside it too. The return is not shown in the stack itself, since none of these calls has returned yet at the playhead. The details are headed by the function's name. Clicking a value shows its details in place of the function's, and adds its argument number and type to the heading, such as `[3] SEBindings const *`. Right-clicking a value gives **Copy Decoded**, **Copy Value** and **Find**. The selected call's function, or the selected value, is highlighted in the stack in the same way as a search match, until the details are closed.
+Clicking a call selects it in the chart, the Call Tree and **Arguments**, the same as clicking its bar, and opens its details beside the stack. These show its category, its module, `this` and the value it returns. They also show its **Call Id**, the number that **Source** shows in brackets, the trace positions it started and ended at, how many instructions it executed, and its **Arguments**, each with its number, type and value. Clicking an argument shows that value's details, as clicking it in the stack does. Right-clicking a call gives **Open In Call Tree**, **Zoom**, which fits the chart to that call, **Scope**, which scopes the chart to its function the same as the chart's own [Scope](#scoping-to-a-function), **Copy Signature**, which copies the line as it reads, with its types and values, **Copy Symbol**, which copies the function's name, and **Copy Address**, which copies the function's address. The copy button at the end of each call copies its signature, and every value in the details has a copy button beside it too. The value a call returned is in its details rather than the stack. The details are headed by the function's name. Clicking a value shows its details in place of the function's, and adds its argument number and type to the heading, such as `[3] SEBindings const *`. Right-clicking a value gives **Copy Decoded**, **Copy Value** and **Find**. The selected call's function, or the selected value, is highlighted in the stack in the same way as a search match, until the details are closed.
 
 An object's details end with its **Source**, the path that brought it to the call, when there is one to trace. Each step, a little further in than the last, is a call further up the stack that was passed it too, and the path ends at the call that created it, marked with a green plus, such as its constructor or the allocation it was made in. Each step shows its call's number in the trace in brackets, so the numbers fall as the path goes back in time. A step that is not on the stack in the pane, such as a constructor that has already returned, opens to list the stack at that call, the function's callers in order, innermost first. An object that was in use before the trace began ends at the first call seen using it, without a plus.
 

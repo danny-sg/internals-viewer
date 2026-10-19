@@ -20,9 +20,9 @@ public class MappingParserTests
     {
         // Trailing cells are a leftover from when Iterator and PlanOperator lived here; a row that still carries them
         // must not be dropped for it.
-        var rules = MappingParser.ParseSymbols(new StringReader("*|*|GetRow*|RowAccess|Row Iterator|")).ToList();
+        var rules = MappingParser.ParseSymbols(new StringReader("*|*|GetRow*|Rowset|Row Iterator|")).ToList();
 
-        Assert.Equal(SymbolCategory.RowAccess, Assert.Single(rules).Category);
+        Assert.Equal(SymbolCategory.Rowset, Assert.Single(rules).Category);
     }
 
     [Fact]

@@ -3,14 +3,8 @@ using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory;
-using InternalsViewer.Query.FullTrace.Batches;
-using InternalsViewer.Query.FullTrace.Batches.Enums;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Output;
-using InternalsViewer.Query.FullTrace.Output.Sources;
-using InternalsViewer.Query.FullTrace.RowBuffers;
-using InternalsViewer.Query.FullTrace.RowBuffers.Enums;
-using InternalsViewer.Query.FullTrace.RowBuffers.Parsers;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Plans.Model;
@@ -26,11 +20,11 @@ public class TraceRowReturnMarksTests
 
     private const ulong Helper = 0x1000;
 
+    private const ulong OpenFunction = 0x1100;
+
     private const ulong JoinIterator = 0x1F4_0000_1000;
 
     private const ulong ScanIterator = 0x1F4_0000_2000;
-
-    private const ulong ScanBuffer = 0x1F4_0000_3000;
 
     private const ulong OutputRow = 0x1F4_0000_9000;
 
@@ -131,7 +125,7 @@ public class TraceRowReturnMarksTests
 
         var outputRow = Assert.Single(TraceOutputRows.Build([filter, aggregate, scan],
                                                             [root, rejectedInput, passed, passedInput],
-                                                            TraceOutputLineage.Empty).All);
+                                                            []).All);
 
         Assert.Equal([(passed, root), (passedInput, passed)], outputRow.Steps.Select(s => (s.Return, s.Parent)));
     }
@@ -166,6 +160,31 @@ public class TraceRowReturnMarksTests
 
         Assert.Equal((true, false, 1), (marks.IsBatch(Scan), marks.IsBatch(Join), marks.GetCount(Scan, Thread, RowReturnType.PassedUp)));
         Assert.Empty(Assert.Single(marks.OutputRows.All).Steps);
+    }
+
+    [Fact]
+    public void Each_GetRow_Call_Is_Linked_To_The_Operator_That_Made_It()
+    {
+        var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)], [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)]);
+
+        var links = marks.GetCallLinks(Scan, Thread, TraceTimelineAxis.Instructions);
+
+        Assert.Same(Join, links?.Caller);
+        Assert.Equal([12d, 20d, 55d], links!.Starts);
+        Assert.Equal([15d, 25d, 60d], links.Ends);
+        Assert.Null(marks.GetCallLinks(Join, Thread, TraceTimelineAxis.Instructions));
+    }
+
+    [Fact]
+    public void Rows_Read_Inside_An_Operators_Open_Are_Called_By_It_But_Not_Passed_Up()
+    {
+        var marks = Build([(50, 60, RowStatus), (70, 80, EndStatus)],
+                          [(12, 15, RowStatus), (20, 25, RowStatus), (30, 35, EndStatus)],
+                          joinOpens: [(10, 40)]);
+
+        Assert.Equal((0, 2),
+                     (marks.GetCount(Scan, Thread, RowReturnType.PassedUp), marks.GetCount(Scan, Thread, RowReturnType.NotPassedUp)));
+        Assert.Same(Join, marks.GetCallLinks(Scan, Thread, TraceTimelineAxis.Instructions)?.Caller);
     }
 
     [Fact]
@@ -210,30 +229,54 @@ public class TraceRowReturnMarksTests
     }
 
     [Fact]
-    public void An_Output_Row_Comes_From_The_Last_Row_Buffer_Its_Source_Captured_Before_It_Was_Sent()
+    public void Each_Output_Column_Comes_From_The_Operator_That_Owns_It()
     {
-        var outputRow = Assert.Single(Build([(10, 40, RowStatus), (50, 70, EndStatus)],
-                                            [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)],
-                                            CreateLineage).OutputRows.All);
+        var source = Assert.Single(Build([(10, 40, RowStatus), (50, 70, EndStatus)],
+                                         [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)],
+                                         t => Sources(t, ScanColumns())).OutputRows.Sources);
 
-        var source = Assert.Single(outputRow.Sources);
-
-        Assert.Equal((Scan, 1, 25d), (source.Operator, source.RowBuffer?.Call, source.RowBuffer?.Position));
-        Assert.Equal([0], source.Columns.Select(c => c.Ordinal));
+        Assert.Equal((Scan, false), (source.Operator, source.IsWholeRow));
+        Assert.Equal([0, 1], source.Columns);
     }
 
     [Fact]
-    public void An_Output_Column_Is_The_Column_Its_Source_Captured_At_The_Same_Place_In_The_Row()
+    public void A_Row_Sent_Directly_Comes_Whole_From_The_Iterator_That_Sent_It()
     {
-        var outputRow = Assert.Single(Build([(10, 40, RowStatus), (50, 70, EndStatus)],
-                                            [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)],
-                                            CreateLineage).OutputRows.All);
+        var source = Assert.Single(Build([(10, 40, RowStatus), (50, 70, EndStatus)],
+                                         [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)],
+                                         t => Sources(t, new TraceOutputStructure(OutputRow, [], ScanIterator))).OutputRows.Sources);
 
-        var column = Assert.Single(Assert.Single(outputRow.Sources).Columns);
-
-        Assert.Equal((0, RowBufferSourceType.Inline), (column.Value?.Ordinal, column.Source?.Type));
-        Assert.False(column.IsFromDictionary);
+        Assert.Equal((Scan, true), (source.Operator, source.IsWholeRow));
     }
+
+    [Fact]
+    public void Columns_Owned_By_An_Iterator_No_Operator_Runs_Have_No_Source()
+        => Assert.Empty(Build([(10, 40, RowStatus), (50, 70, EndStatus)],
+                              [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)],
+                              t => Sources(t, new TraceOutputStructure(OutputRow, [0x1F4_0000_A000], 0))).OutputRows.Sources);
+
+    [Fact]
+    public void Columns_Owned_By_A_Batch_To_Row_Operator_Come_From_That_Operator()
+    {
+        var adapter = new ExecutionOperatorEvent
+        {
+            Name = "Batch To Row",
+            OperatorDescription = "Batch To Row",
+            Instances = [ScanIterator]
+        };
+
+        var source = Assert.Single(Build([(10, 40, RowStatus), (50, 70, EndStatus)],
+                                         [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)],
+                                         t => Sources(t, ScanColumns()),
+                                         child: adapter).OutputRows.Sources);
+
+        Assert.Same(adapter, source.Operator);
+    }
+
+    [Fact]
+    public void Output_Rows_Without_A_Structure_Have_No_Sources()
+        => Assert.Empty(Build([(10, 40, RowStatus), (50, 70, EndStatus)],
+                              [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)]).OutputRows.Sources);
 
     [Fact]
     public void The_GetRow_Path_Links_Each_Row_Passed_Up_To_The_Return_Of_Its_Parent_Operator()
@@ -247,31 +290,6 @@ public class TraceRowReturnMarksTests
     }
 
     [Fact]
-    public void Each_Output_Row_Takes_The_Last_Row_Buffer_Its_Source_Captured_Before_The_Root_Returned()
-    {
-        var outputRows = Build([(10, 40, RowStatus), (50, 80, RowStatus), (90, 100, EndStatus)],
-                               [(12, 15, RowStatus), (55, 60, RowStatus), (92, 95, EndStatus)],
-                               t => CreateLineage(t, ScanColumns(), 15, 60)).OutputRows;
-
-        Assert.Equal([0, 1], outputRows.All.Select(r => Assert.Single(r.Sources).RowBuffer?.Call));
-    }
-
-    [Fact]
-    public void A_Row_Sent_Directly_Takes_Every_Column_From_The_Row_Buffer_Of_Its_Sender()
-    {
-        var structure = new TraceOutputStructure(OutputRow, [], ScanBuffer);
-
-        var outputRow = Assert.Single(Build([(10, 40, RowStatus), (50, 70, EndStatus)],
-                                            [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)],
-                                            t => CreateLineage(t, structure, 15, 25)).OutputRows.All);
-
-        var source = Assert.Single(outputRow.Sources);
-
-        Assert.Equal((Scan, 1), (source.Operator, source.RowBuffer?.Call));
-        Assert.Equal([0, 1], source.Columns.Select(c => c.Ordinal));
-    }
-
-    [Fact]
     public void The_Output_Row_At_A_Point_Is_The_One_Whose_Root_Call_Contains_It()
     {
         var outputRows = Build([(10, 40, RowStatus), (50, 80, RowStatus), (90, 100, EndStatus)],
@@ -279,71 +297,6 @@ public class TraceRowReturnMarksTests
 
         Assert.Equal([1, null, 2],
                      new[] { 30d, 45d, 60d }.Select(p => outputRows.GetRow(TraceTimelineAxis.Instructions, p)?.Ordinal));
-    }
-
-    [Fact]
-    public void A_Value_In_A_Captured_Row_Buffer_Belongs_To_The_Iterator_That_Captured_It()
-    {
-        var structure = new TraceOutputStructure(OutputRow, [new BufferOutputSource(0, ScanBuffer + 0x04)], 0);
-
-        var outputRow = Assert.Single(Build([(10, 40, RowStatus), (50, 70, EndStatus)],
-                                            [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)],
-                                            t => CreateLineage(t, structure, 15, 25)).OutputRows.All);
-
-        var source = Assert.Single(outputRow.Sources);
-
-        Assert.Equal((Scan, 1), (source.Operator, source.RowBuffer?.Call));
-    }
-
-    [Fact]
-    public void A_Value_Held_Inside_An_Iterator_Belongs_To_That_Operator()
-    {
-        var structure = new TraceOutputStructure(OutputRow, [new BufferOutputSource(0, ScanIterator + 0x88)], 0);
-
-        var outputRow = Assert.Single(Build([(10, 40, RowStatus), (50, 70, EndStatus)],
-                                            [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)],
-                                            t => CreateLineage(t, structure)).OutputRows.All);
-
-        var source = Assert.Single(outputRow.Sources);
-
-        Assert.Equal(Scan, source.Operator);
-        Assert.Equal([0], source.Columns.Select(c => c.Ordinal));
-    }
-
-    [Fact]
-    public void Columns_Owned_By_A_Batch_To_Row_Operator_Belong_To_The_Plan_Of_The_Operator_It_Reads_Batches_From()
-    {
-        var adapter = new ExecutionOperatorEvent
-        {
-            Name = "Batch To Row",
-            OperatorDescription = "Batch To Row",
-            Instances = [ScanIterator]
-        };
-
-        var structure = new TraceOutputStructure(OutputRow,
-                                                 [new BufferOutputSource(0, ScanBuffer) { Owner = ScanIterator }],
-                                                 0);
-
-        var batches = new BatchStore([new BatchCapture(0x2000, JoinIterator, 0, At(14), JoinIterator, 0x1F4_0000_A000, ScanIterator,
-                                                       BatchCaptureFlags.None, [], [])]);
-
-        var outputRow = Assert.Single(Build([(10, 40, RowStatus), (50, 70, EndStatus)],
-                                            [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)],
-                                            t => CreateLineage(t, structure, batches, ScanIterator, 15, 25),
-                                            child: adapter).OutputRows.All);
-
-        var source = Assert.Single(outputRow.Sources);
-
-        Assert.Equal((adapter, 1), (source.Operator, source.RowBuffer?.Call));
-    }
-
-    [Fact]
-    public void An_Output_Row_Without_Captured_Values_Has_No_Sources()
-    {
-        var outputRow = Assert.Single(Build([(10, 40, RowStatus), (50, 70, EndStatus)],
-                                            [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)]).OutputRows.All);
-
-        Assert.Empty(outputRow.Sources);
     }
 
     [Fact]
@@ -357,10 +310,11 @@ public class TraceRowReturnMarksTests
 
     private static TraceRowReturnMarks Build((ulong Start, ulong End, ulong Status)[] joinCalls,
                                              (ulong Start, ulong End, ulong Status)[] scanCalls,
-                                             Func<TraceTimeline, TraceOutputLineage>? createLineage = null,
+                                             Func<TraceTimeline, IReadOnlyList<TraceOutputRowSource>>? getSources = null,
                                              ExecutionOperatorEvent? top = null,
                                              ExecutionOperatorEvent? child = null,
-                                             string childMethod = "GetRowOrReQualifyHelper")
+                                             string childMethod = "GetRowOrReQualifyHelper",
+                                             (ulong Start, ulong End)[]? joinOpens = null)
     {
         CallSpan[] spans = [.. joinCalls.Select((c, i) => Span(0, c.Start, c.End, (uint)i)),
                             .. scanCalls.Select((c, i) => Span(1, c.Start, c.End, (uint)i))];
@@ -381,22 +335,31 @@ public class TraceRowReturnMarksTests
 
         timeline.MapNodes(nodes);
 
+        var open = tree.AddCall(tree.Root, Frame(JoinIterator, "Open"), 1);
+
         var store = new TraceCallStore.Builder();
 
         store.Add(Helper, JoinIterator, Chunk([.. joinCalls.Select(c => Call(c, node: 0))]), joinCalls.Length);
 
         store.Add(Helper, ScanIterator, Chunk([.. scanCalls.Select(c => Call(c, node: 1))]), scanCalls.Length);
 
+        if (joinOpens is not null)
+        {
+            ulong[][] opens = [.. joinOpens.Select(c => Call((c.Start, c.End, RowStatus), node: 2))];
+
+            store.Add(OpenFunction, JoinIterator, Chunk(opens), opens.Length);
+        }
+
         var calls = store.Build();
 
-        calls.MapNodes(nodes);
+        calls.MapNodes([join, scan, open]);
 
         timeline.SetCalls(calls);
 
         timeline.SetLifetimes([new TraceOperatorLifetime(Thread, top ?? Join, 0, [Whole()], [Whole()], MemoryInUseCurve.Empty),
                                new TraceOperatorLifetime(Thread, child ?? Scan, 1, [Whole()], [Whole()], MemoryInUseCurve.Empty)]);
 
-        return TraceRowReturnMarks.Build(timeline, calls, createLineage?.Invoke(timeline));
+        return TraceRowReturnMarks.Build(timeline, calls, getSources?.Invoke(timeline));
     }
 
     private static ExecutionOperatorEvent Operator(string name, int nodeId, int? parentNodeId) => new()
@@ -415,33 +378,10 @@ public class TraceRowReturnMarksTests
             Consumer = consumer
         };
 
-    private static TraceOutputLineage CreateLineage(TraceTimeline timeline) => CreateLineage(timeline, ScanColumns(), 15, 25);
+    private static IReadOnlyList<TraceOutputRowSource> Sources(TraceTimeline timeline, TraceOutputStructure structure)
+        => TraceOutputLineage.GetSources(timeline, [structure]);
 
-    private static TraceOutputLineage CreateLineage(TraceTimeline timeline, TraceOutputStructure structure, params ulong[] captured)
-        => CreateLineage(timeline, structure, BatchStore.Empty, ScanIterator, captured);
-
-    private static TraceOutputLineage CreateLineage(TraceTimeline timeline,
-                                                    TraceOutputStructure structure,
-                                                    BatchStore batches,
-                                                    ulong iterator,
-                                                    params ulong[] captured)
-    {
-        RowBufferColumn[] columns = [ColumnValueParser.Create(0, RowBufferBinding.None),
-                                     ColumnValueParser.Create(1, RowBufferBinding.None)];
-
-        var rowBuffers = new RowBufferStore([.. captured.Select((p, i) => new RowBuffer(Helper,
-                                                                                         ScanIterator,
-                                                                                         i,
-                                                                                         At(p),
-                                                                                         iterator,
-                                                                                         ScanBuffer,
-                                                                                         columns))]);
-
-        return TraceOutputLineage.Build(timeline, [structure], rowBuffers, batches);
-    }
-
-    private static TraceOutputStructure ScanColumns()
-        => new(OutputRow, [new BufferOutputSource(0, ScanBuffer) { Owner = ScanIterator }], 0);
+    private static TraceOutputStructure ScanColumns() => new(OutputRow, [ScanIterator, ScanIterator], 0);
 
     private static ulong[] Call((ulong Start, ulong End, ulong Status) call, int node)
         => Row(call.Start, flags: Thread | TraceCallColumns.ReturnedFlag, returnValue: call.Status, node: node, endSequence: call.End);

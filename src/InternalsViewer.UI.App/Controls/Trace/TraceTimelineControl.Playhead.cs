@@ -26,37 +26,11 @@ public sealed partial class TraceTimelineControl
             return;
         }
 
-        canvas.DrawLine(x, IsLineageVisible ? OperatorsTop + OperatorsArea : OperatorsTop, x, height, _paints.Playhead);
+        canvas.DrawLine(x, _operators.IsLineageVisible ? OperatorsTop + PanesArea : OperatorsTop, x, height, _paints.Playhead);
 
         DrawBandMarker(canvas, timeline, x, width, height, scale);
 
         DrawPlayheadHandle(canvas, x, value, width);
-    }
-
-    private void ReportPlayhead()
-    {
-        if (_playhead is not null)
-        {
-            _stackPosition = null;
-        }
-
-        if (_playhead == _reportedPlayhead
-            && _stackPosition == _reportedStackPosition
-            && _version == _reportedVersion
-            && _axis == _reportedAxis)
-        {
-            return;
-        }
-
-        _reportedPlayhead = _playhead;
-
-        _reportedStackPosition = _stackPosition;
-
-        _reportedVersion = _version;
-
-        _reportedAxis = _axis;
-
-        DispatcherQueue.TryEnqueue(() => PlayheadChanged?.Invoke());
     }
 
     private void DrawPlayheadHandle(SKCanvas canvas, float x, double value, int width)

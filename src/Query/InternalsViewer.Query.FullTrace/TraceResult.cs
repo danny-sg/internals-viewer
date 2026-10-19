@@ -6,8 +6,6 @@ using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Output;
-using InternalsViewer.Query.FullTrace.Batches;
-using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Memory;
 
@@ -19,23 +17,21 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
 
     internal IReadOnlyList<IteratorPlanNode> PlanNodes { get; init; } = [];
 
+    internal IReadOnlyList<QueryTeardown> Teardowns { get; init; } = [];
+
     public HoBtAccessMap HoBtAccess { get; init; } = HoBtAccessMap.Empty;
 
     public MemoryMap MemoryMap { get; init; } = MemoryMap.Empty;
 
     public ObjectPoolSnapshot ObjectPool { get; init; } = ObjectPoolSnapshot.Empty;
 
-    public RowBufferStore RowBuffers { get; init; } = RowBufferStore.Empty;
-
-    public BatchStore Batches { get; init; } = BatchStore.Empty;
-
     public CustomHookStore CustomHooks { get; init; } = CustomHookStore.Empty;
 
-    public IReadOnlyList<TraceOutputStructure> OutputStructures { get; init; } = [];
-
-    public TraceRowBufferMarks RowBufferMarks { get; init; } = TraceRowBufferMarks.Empty;
+    internal IReadOnlyList<TraceOutputStructure> OutputStructures { get; init; } = [];
 
     public TraceRowReturnMarks RowReturnMarks { get; init; } = TraceRowReturnMarks.Empty;
+
+    public TraceReads Reads { get; init; } = TraceReads.Empty;
 
     public IReadOnlyList<CallStackNode> QueryRoots => Roots ??= QueryExecutionCropper.GetRoots(CallStack);
 

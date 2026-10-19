@@ -63,6 +63,9 @@ public sealed class TraceRowReturnMarks
     public ReadOnlySpan<double> GetCallEnds(ExecutionOperatorEvent operatorEvent, uint thread, TraceTimelineAxis axis)
         => GetReturns(operatorEvent, thread) is { } returns ? returns.Of(axis).Values : [];
 
+    public TraceCallLinks? GetCallLinks(ExecutionOperatorEvent operatorEvent, uint thread, TraceTimelineAxis axis)
+        => GetReturns(operatorEvent, thread)?.LinksOf(axis);
+
     public (CallStackNode Node, int Call, double Start, double End)? GetCall(ExecutionOperatorEvent operatorEvent,
                                                                              uint thread,
                                                                              TraceTimelineAxis axis,
@@ -104,7 +107,9 @@ public sealed class TraceRowReturnMarks
         return index < marks.Values.Length ? (marks.Nodes[index], marks.Calls[index], marks.Types[index]) : null;
     }
 
-    internal static TraceRowReturnMarks Build(TraceTimeline timeline, TraceCallStore calls, TraceOutputLineage? lineage = null)
+    internal static TraceRowReturnMarks Build(TraceTimeline timeline,
+                                              TraceCallStore calls,
+                                              IReadOnlyList<TraceOutputRowSource>? sources = null)
     {
         var owners = timeline.GetOperatorsByInstance();
 
@@ -115,7 +120,13 @@ public sealed class TraceRowReturnMarks
 
         var groups = GetCallGroups(calls, owners);
 
+        SetEnclosing(calls, owners, groups);
+
+        var groupsByInstance = groups.ToDictionary(g => (g.Instance, g.Thread));
+
         var marks = new Dictionary<(ExecutionOperatorEvent Operator, uint Thread), List<Mark>>(OperatorThreadComparer.Instance);
+
+        var called = new Dictionary<(ExecutionOperatorEvent Operator, uint Thread), CalledMarks>(OperatorThreadComparer.Instance);
 
         var passedUp = new List<TraceRowReturn>();
 
@@ -127,26 +138,30 @@ public sealed class TraceRowReturnMarks
 
         foreach (var group in groups)
         {
+            var operatorEvent = owners[group.Instance];
+
             if (group.IsBatch)
             {
-                batchOperators.Add(owners[group.Instance]);
+                batchOperators.Add(operatorEvent);
             }
-
-            var parent = GetParent(group, groups);
-
-            var isFiltered = parent is not null && owners[parent.Instance].Name == FilterOperator;
 
             for (var index = 0; index < group.Calls.Length; index++)
             {
                 var call = group.Calls[index];
 
-                if (GetReturnType(group, index, parent, isFiltered) is not { } type
+                var enclosing = group.Enclosing[index];
+
+                var caller = enclosing == 0 ? null : owners[enclosing];
+
+                var parent = enclosing == 0 ? null : groupsByInstance.GetValueOrDefault((enclosing, group.Thread));
+
+                if (GetReturnType(group, index, parent, caller?.Name == FilterOperator) is not { } type
                     || timeline.FindCall(call.Function, group.Instance, call.Call) is not { } location)
                 {
                     continue;
                 }
 
-                ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(marks, (owners[group.Instance], group.Thread), out _);
+                ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(marks, (operatorEvent, group.Thread), out _);
 
                 var mark = new Mark(location.EndOf(TraceTimelineAxis.Position),
                                     location.EndOf(TraceTimelineAxis.Instructions),
@@ -158,9 +173,21 @@ public sealed class TraceRowReturnMarks
 
                 (list ??= []).Add(mark);
 
+                if (caller is not null && !ReferenceEquals(caller, operatorEvent))
+                {
+                    ref var callerMarks = ref CollectionsMarshal.GetValueRefOrAddDefault(called, (operatorEvent, group.Thread), out _);
+
+                    callerMarks ??= new CalledMarks(caller, []);
+
+                    if (ReferenceEquals(callerMarks.Caller, caller))
+                    {
+                        callerMarks.Marks.Add(mark);
+                    }
+                }
+
                 if (type == RowReturnType.PassedUp && !group.IsBatch)
                 {
-                    var rowReturn = new TraceRowReturn(owners[group.Instance],
+                    var rowReturn = new TraceRowReturn(operatorEvent,
                                                        group.Thread,
                                                        mark.Node,
                                                        mark.Call,
@@ -197,10 +224,10 @@ public sealed class TraceRowReturnMarks
         {
             ref var threads = ref CollectionsMarshal.GetValueRefOrAddDefault(operators, operatorEvent, out _);
 
-            (threads ??= [])[thread] = OperatorReturns.Build(list);
+            (threads ??= [])[thread] = OperatorReturns.Build(list, called.GetValueOrDefault((operatorEvent, thread)));
         }
 
-        var outputRows = TraceOutputRows.Build(groups.Select(g => owners[g.Instance]), passedUp, lineage ?? TraceOutputLineage.Empty);
+        var outputRows = TraceOutputRows.Build(groups.Select(g => owners[g.Instance]), passedUp, sources ?? []);
 
         return new TraceRowReturnMarks(operators, batchOperators, outputRows);
     }
@@ -262,37 +289,65 @@ public sealed class TraceRowReturnMarks
         return [.. outermost];
     }
 
-    private static CallGroup? GetParent(CallGroup group, List<CallGroup> groups)
+    private static void SetEnclosing(TraceCallStore calls, Dictionary<ulong, ExecutionOperatorEvent> owners, List<CallGroup> groups)
     {
-        var first = group.Calls[0];
+        var threads = new Dictionary<uint, List<SweepCall>>();
 
-        CallGroup? parent = null;
-
-        var parentStart = TracePosition.Unknown;
-
-        foreach (var other in groups)
+        foreach (var group in groups)
         {
-            if (other.Thread != group.Thread || other.Instance == group.Instance)
+            for (var index = 0; index < group.Calls.Length; index++)
             {
-                continue;
-            }
+                var call = group.Calls[index];
 
-            var index = SortedSearch.FirstAfter(other.Calls, first.FromPosition, c => c.FromPosition) - 1;
-
-            if (index < 0 || other.Calls[index].ToPosition < first.ToPosition)
-            {
-                continue;
-            }
-
-            if (parent is null || other.Calls[index].FromPosition > parentStart)
-            {
-                parent = other;
-
-                parentStart = other.Calls[index].FromPosition;
+                Add(group.Thread, new SweepCall(call.FromPosition, call.ToPosition, group.Instance, group, index));
             }
         }
 
-        return parent;
+        foreach (var (address, instance) in calls.FunctionKeys)
+        {
+            if (!owners.ContainsKey(instance)
+                || calls.GetCallList(address, instance) is not { Count: > 0 } list
+                || IsIteratorCall(calls.GetNode(list.GetNodeIndex(0))?.Frame?.Resolved?.MethodName ?? string.Empty))
+            {
+                continue;
+            }
+
+            for (var index = 0; index < list.Count; index++)
+            {
+                Add(list.GetThread(index), new SweepCall(list.GetFromPosition(index), list.GetToPosition(index), instance, null, -1));
+            }
+        }
+
+        var open = new Stack<SweepCall>();
+
+        foreach (var thread in threads.Values)
+        {
+            thread.Sort((left, right) => left.From != right.From ? left.From.CompareTo(right.From) : right.To.CompareTo(left.To));
+
+            open.Clear();
+
+            foreach (var call in thread)
+            {
+                while (open.TryPeek(out var outer) && outer.To <= call.From)
+                {
+                    open.Pop();
+                }
+
+                if (call.Group is { } group)
+                {
+                    group.Enclosing[call.Index] = open.TryPeek(out var enclosing) ? enclosing.Instance : 0;
+                }
+
+                open.Push(call);
+            }
+        }
+
+        void Add(uint thread, SweepCall call)
+        {
+            ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(threads, thread, out _);
+
+            (list ??= []).Add(call);
+        }
     }
 
     private static int? GetConsumerCall(CallGroup parent, GetRowCall call)
@@ -348,7 +403,11 @@ public sealed class TraceRowReturnMarks
         public bool IsBatch { get; } = isBatch;
 
         public TracePosition[] RowEnds { get; } = [.. calls.Where(c => c.Status == RowStatus).Select(c => c.ToPosition)];
+
+        public ulong[] Enclosing { get; } = new ulong[calls.Length];
     }
+
+    private readonly record struct SweepCall(TracePosition From, TracePosition To, ulong Instance, CallGroup? Group, int Index);
 
     private sealed record AxisReturns(double[] Values,
                                       double[] Starts,
@@ -390,14 +449,30 @@ public sealed class TraceRowReturnMarks
             => HashCode.Combine(RuntimeHelpers.GetHashCode(value.Operator), value.Thread);
     }
 
-    private sealed record OperatorReturns(AxisReturns Positions, AxisReturns Instructions)
+    private sealed record OperatorReturns(AxisReturns Positions,
+                                          AxisReturns Instructions,
+                                          TraceCallLinks? PositionLinks,
+                                          TraceCallLinks? InstructionLinks)
     {
         public int Count => Positions.Values.Length;
 
         public AxisReturns Of(TraceTimelineAxis axis) => axis == TraceTimelineAxis.Position ? Positions : Instructions;
 
-        public static OperatorReturns Build(List<Mark> marks)
+        public TraceCallLinks? LinksOf(TraceTimelineAxis axis) => axis == TraceTimelineAxis.Position ? PositionLinks : InstructionLinks;
+
+        public static OperatorReturns Build(List<Mark> marks, CalledMarks? called)
             => new(AxisReturns.Build(marks, m => m.Position, m => m.StartPosition),
-                   AxisReturns.Build(marks, m => m.Instructions, m => m.StartInstructions));
+                   AxisReturns.Build(marks, m => m.Instructions, m => m.StartInstructions),
+                   called is null ? null : GetLinks(called, m => m.StartPosition, m => m.Position),
+                   called is null ? null : GetLinks(called, m => m.StartInstructions, m => m.Instructions));
+
+        private static TraceCallLinks GetLinks(CalledMarks called, Func<Mark, double> getStart, Func<Mark, double> getEnd)
+        {
+            Mark[] ordered = [.. called.Marks.OrderBy(getStart)];
+
+            return new TraceCallLinks(called.Caller, [.. ordered.Select(getStart)], [.. ordered.Select(getEnd)]);
+        }
     }
+
+    private sealed record CalledMarks(ExecutionOperatorEvent Caller, List<Mark> Marks);
 }

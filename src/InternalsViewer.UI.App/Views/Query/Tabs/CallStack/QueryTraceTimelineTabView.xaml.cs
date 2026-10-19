@@ -58,7 +58,6 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         TraceTimeline.CallTreeOpenRequested += OnCallTreeOpenRequested;
 
-        TraceTimeline.RowBufferOpenRequested += OnRowBufferOpenRequested;
 
         TraceTimeline.CallStackOpenRequested += OnCallStackOpenRequested;
 
@@ -68,7 +67,7 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         TraceTimeline.PlayStateChanged += OnPlayStateChanged;
 
-        TraceTimeline.PlayheadChanged += OnPlayheadChanged;
+        TraceTimeline.CallStackChanged += OnCallStackChanged;
 
         SearchBar.SearchTextChanged += OnSearchTextChanged;
 
@@ -90,10 +89,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         _callStackToggle = TabCommands.Toggle(TabCommands.Label("Call Stack"),
                                               Settings.TraceTimelineShowCallStack,
-                                              "Show the calls in progress at the playhead, with the values they were passed",
+                                              "Show the calls that led to the selected call, with the values they were passed",
                                               (sender, _) => Settings.TraceTimelineShowCallStack = TabCommands.IsChecked(sender));
-
-        _callStackToggle.IsEnabled = TraceTimeline.HasCallStack;
 
         _playButton = TabCommands.Button(TabCommands.Glyph(TraceTimeline.IsPlaying ? PauseGlyph : PlayGlyph),
                                          TraceTimeline.IsPlaying ? "Pause" : "Play",
@@ -134,7 +131,6 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         TraceTimeline.CallTreeOpenRequested -= OnCallTreeOpenRequested;
 
-        TraceTimeline.RowBufferOpenRequested -= OnRowBufferOpenRequested;
 
         TraceTimeline.CallStackOpenRequested -= OnCallStackOpenRequested;
 
@@ -144,7 +140,7 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         TraceTimeline.PlayStateChanged -= OnPlayStateChanged;
 
-        TraceTimeline.PlayheadChanged -= OnPlayheadChanged;
+        TraceTimeline.CallStackChanged -= OnCallStackChanged;
 
         SearchBar.SearchTextChanged -= OnSearchTextChanged;
 
@@ -199,13 +195,15 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
                                              TraceTimeline.ShowIteratorCalls,
                                              isChecked => TraceTimeline.ShowIteratorCalls = isChecked);
 
-        var rowBuffers = MenuItems.Toggle("Row Buffers",
-                                          TraceTimeline.ShowRowBuffers,
-                                          isChecked => TraceTimeline.ShowRowBuffers = isChecked);
+        var reads = MenuItems.Toggle("Reads", TraceTimeline.ShowReads, isChecked => TraceTimeline.ShowReads = isChecked);
 
         var flameChart = MenuItems.Toggle("Flame Chart",
                                           TraceTimeline.ShowFlameChart,
                                           isChecked => TraceTimeline.ShowFlameChart = isChecked);
+
+        var highlightRegions = MenuItems.Toggle("Highlight Regions",
+                                                TraceTimeline.ShowHighlightRegions,
+                                                isChecked => TraceTimeline.ShowHighlightRegions = isChecked);
 
         var menu = new MenuFlyout();
 
@@ -215,9 +213,11 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         menu.Items.Add(iteratorCalls);
 
-        menu.Items.Add(rowBuffers);
+        menu.Items.Add(reads);
 
         menu.Items.Add(flameChart);
+
+        menu.Items.Add(highlightRegions);
 
         menu.Items.Add(new MenuFlyoutSeparator());
 
@@ -229,9 +229,11 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
             iteratorCalls.IsChecked = TraceTimeline.ShowIteratorCalls;
 
-            rowBuffers.IsChecked = TraceTimeline.ShowRowBuffers;
+            reads.IsChecked = TraceTimeline.ShowReads;
 
             flameChart.IsChecked = TraceTimeline.ShowFlameChart;
+
+            highlightRegions.IsChecked = TraceTimeline.ShowHighlightRegions;
         };
 
         return menu;
@@ -256,17 +258,15 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         }
     }
 
-    private void OnPlayheadChanged()
+    private void OnCallStackChanged()
     {
-        _callStackToggle?.IsEnabled = TraceTimeline.HasCallStack;
+        var isVisible = Settings.TraceTimelineShowCallStack && TraceTimeline.HasCallStack;
 
-        var isVisible = Settings.TraceTimelineShowCallStack;
-
-        SetStackVisible(isVisible && TraceTimeline.HasCallStack);
+        SetStackVisible(isVisible);
 
         if (isVisible)
         {
-            ViewModel?.PlayheadStack.SetStack(TraceTimeline.GetCallStack());
+            ViewModel?.PlayheadStack.SetStack(TraceTimeline.GetCallStack(), TraceTimeline.GetSelectedCall());
         }
     }
 
@@ -303,12 +303,7 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         ToolTipService.SetToolTip(button, isPlaying ? "Pause" : "Play");
     }
 
-    private void Step(bool forward)
-    {
-        Stack?.ClearSelection();
-
-        TraceTimeline.StepPlayhead(forward, _stepMode);
-    }
+    private void Step(bool forward) => TraceTimeline.StepPlayhead(forward, _stepMode);
 
     private void OnPreviousMatchClick(object sender, RoutedEventArgs e) => TraceTimeline.StepSearch(forward: false);
 
@@ -346,14 +341,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
     private void OnCallTreeOpenRequested(CallStackNode? node, int call) => ViewModel?.OpenCallTree(node, call);
 
-    private void OnRowBufferOpenRequested(CallStackNode node, int call, bool isBatch) => ViewModel?.OpenRowBuffers(node, call, isBatch);
 
-    private void OnCallStackOpenRequested()
-    {
-        Stack?.ClearSelection();
-
-        Settings.TraceTimelineShowCallStack = true;
-    }
+    private void OnCallStackOpenRequested() => Settings.TraceTimelineShowCallStack = true;
 
     private void OnSelectionCleared()
     {
@@ -392,7 +381,7 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
             case nameof(SettingsViewModel.TraceTimelineShowCallStack):
                 _callStackToggle?.IsChecked = Settings.TraceTimelineShowCallStack;
 
-                OnPlayheadChanged();
+                OnCallStackChanged();
                 break;
         }
     }

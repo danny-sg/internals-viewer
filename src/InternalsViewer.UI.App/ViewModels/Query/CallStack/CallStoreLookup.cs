@@ -7,12 +7,10 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Arguments;
-using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory;
-using InternalsViewer.Query.FullTrace.RowBuffers;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
 
@@ -23,10 +21,6 @@ public sealed class CallStoreLookup(TraceCallStore store,
                                   IReadOnlyDictionary<ulong, IteratorTarget> iterators,
                                   HoBtAccessMap hobtAccess,
                                   MemoryMap memoryMap,
-                                  RowBufferStore rowBuffers,
-                                  RowBufferDecoder? rowBufferDecoder,
-                                  BatchStore batches,
-                                  BatchDecoder? batchDecoder,
                                   SymbolsViewModel symbols,
                                   Func<ulong, string?> getHoBtName)
 {
@@ -35,14 +29,6 @@ public sealed class CallStoreLookup(TraceCallStore store,
     private const string ReturnLocation = "RAX";
 
     public TraceCallStore Store { get; } = store;
-
-    public RowBufferStore RowBuffers { get; } = rowBuffers;
-
-    public RowBufferDecoder? RowBufferDecoder { get; } = rowBufferDecoder;
-
-    public BatchStore Batches { get; } = batches;
-
-    public BatchDecoder? BatchDecoder { get; } = batchDecoder;
 
     private TraceValueSearch Search { get; } = new(store);
 

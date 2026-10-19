@@ -18,8 +18,6 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
             <AutoSuggestBox x:Name="SearchBox"
@@ -42,27 +40,7 @@
                 <FontIcon Glyph="&#xE71C;" FontSize="12"/>
             </ToggleButton>
 
-            <ToggleButton x:Name="BatchesFilterButton"
-                          Grid.Column="2"
-                          Content="Batches"
-                          Visibility="{x:Bind IsDataFilterVisible, Mode=OneWay}"
-                          Style="{StaticResource TabCommandToggleStyle}"
-                          FontSize="11"
-                          Margin="2,2,0,0"
-                          Click="OnDataFilterClick"
-                          ToolTipService.ToolTip="Show only the frames that handed back batches, with their callers"/>
-
-            <ToggleButton x:Name="RowsFilterButton"
-                          Grid.Column="3"
-                          Content="Rows"
-                          Visibility="{x:Bind IsDataFilterVisible, Mode=OneWay}"
-                          Style="{StaticResource TabCommandToggleStyle}"
-                          FontSize="11"
-                          Margin="2,2,0,0"
-                          Click="OnDataFilterClick"
-                          ToolTipService.ToolTip="Show only the frames that handed back rows, with their callers"/>
-
-            <ContentPresenter Grid.Column="4"
+            <ContentPresenter Grid.Column="2"
                               Margin="2,2,0,0"
                               VerticalAlignment="Center"
                               Content="{x:Bind Commands, Mode=OneWay}"

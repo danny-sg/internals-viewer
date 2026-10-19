@@ -27,13 +27,11 @@ public sealed partial class TraceTimelineControl
 
     private const double TooltipGap = 12;
 
-    private const double HitTolerance = 1.5;
+    internal const double HitTolerance = 1.5;
 
     private FlameHit? _hover;
 
     private FlameHit? _selected;
-
-    private FlameHit? SelectedHit => SelectedCall is { IsSelected: true } ? _selected : null;
 
     private bool _isPressed;
 
@@ -42,6 +40,8 @@ public sealed partial class TraceTimelineControl
     private bool _isShiftPressed;
 
     private bool _pressedOperators;
+
+    private bool _pressedReads;
 
     private bool _isDragging;
 
@@ -92,10 +92,12 @@ public sealed partial class TraceTimelineControl
 
         HideToolTip();
 
-        _overlay.Focus(FocusState.Pointer);
+        LogKeyboard($"press focus={_keyboardHost.Focus(FocusState.Pointer)}");
 
         if (point.Properties.IsMiddleButtonPressed)
         {
+            e.Handled = true;
+
             _isPanning = true;
             _pressPoint = position;
             _panViewStart = _viewStart;
@@ -110,6 +112,8 @@ public sealed partial class TraceTimelineControl
         {
             return;
         }
+
+        e.Handled = true;
 
         var now = Environment.TickCount64;
 
@@ -127,6 +131,8 @@ public sealed partial class TraceTimelineControl
                 StopTransition();
 
                 _playhead = null;
+
+                ClearSelections();
 
                 _canvas.Invalidate();
 
@@ -160,11 +166,34 @@ public sealed partial class TraceTimelineControl
             return;
         }
 
-        var inOperators = IsInOperators(position);
+        var inOperators = _operators.Contains(position);
 
-        if (inOperators && isDoubleClick && OperatorAt(position) is { } operatorHit)
+        var inReads = _reads.Contains(position);
+
+        if (inReads && isDoubleClick)
         {
-            ZoomToOperator(operatorHit);
+            if (_reads.GetReadAt(position) is { } read)
+            {
+                ZoomTo(read.Of(_axis).Start, read.Of(_axis).End);
+            }
+            else
+            {
+                ClearSelections();
+            }
+
+            return;
+        }
+
+        if (inOperators && isDoubleClick)
+        {
+            if (_operators.GetOperatorAt(position) is { } operatorHit)
+            {
+                ZoomToOperator(operatorHit);
+            }
+            else if (_operators.IsBackground(position))
+            {
+                ClearSelections();
+            }
 
             return;
         }
@@ -176,7 +205,7 @@ public sealed partial class TraceTimelineControl
             return;
         }
 
-        if (!inOperators && isDoubleClick)
+        if (!inOperators && !inReads && isDoubleClick)
         {
             if (HitTest(position) is { } hit && SpanOf(hit) is { } span)
             {
@@ -184,7 +213,7 @@ public sealed partial class TraceTimelineControl
             }
             else
             {
-                ZoomToFit();
+                ClearSelections();
             }
 
             return;
@@ -193,6 +222,7 @@ public sealed partial class TraceTimelineControl
         _isPressed = true;
         _isSelecting = false;
         _pressedOperators = inOperators;
+        _pressedReads = inReads;
         _isShiftPressed = e.KeyModifiers.HasFlag(VirtualKeyModifiers.Shift);
         _pressPoint = position;
         _dragPoint = position;
@@ -273,70 +303,34 @@ public sealed partial class TraceTimelineControl
     {
         var found = BlockAt(position);
 
-        var hoverBand = found is null ? MarkBandAt(position) : null;
+        var operatorsHover = found is null ? _operators.GetHover(position) : TraceOperatorsHover.None;
 
-        var hoverOutputRow = found is null && hoverBand is null ? GetOutputRow(position) : null;
-
-        var hoverReturns = found is null && hoverBand is null && hoverOutputRow is null ? ReturnStripAt(position) : null;
+        var readHover = found is null ? _reads.GetReadAt(position) : null;
 
         UpdateCursor(IsOnSplitter(position)
                          ? InputSystemCursorShape.SizeNorthSouth
                          : found is not null
                              ? InputSystemCursorShape.SizeAll
-                             : IsOnOutputRows(position)
+                             : _operators.IsOnOutputRows(position)
                                  ? InputSystemCursorShape.Cross
-                                 : hoverBand is not null || hoverReturns is not null
+                                 : operatorsHover.ReturnStrip is not null || readHover is not null
                                      ? InputSystemCursorShape.Hand
                                      : InputSystemCursorShape.Arrow);
 
-        FlameHit? hit;
-
-        OperatorHit? hoverOperator;
-
-        if (found is { Source.Operator: { } surface })
-        {
-            hit = null;
-
-            hoverOperator = surface;
-        }
-        else if (found is { } block)
-        {
-            hit = block.Source.Call;
-
-            hoverOperator = null;
-        }
-        else
-        {
-            hit = HitTest(position);
-
-            hoverOperator = hoverReturns is null && hoverOutputRow is null ? OperatorAt(position) : null;
-        }
-
-        if (hit is null && hoverReturns is { } returnStrip && GetCallDuration(returnStrip, position) is { } duration)
-        {
-            hit = duration;
-        }
-
-        var hoverBlock = found;
+        var hit = found?.Call ?? HitTest(position) ?? GetDurationHit(operatorsHover, position);
 
         if (hit != _hover
-            || !Nullable.Equals(hoverBlock, _hoverBlock)
-            || !Nullable.Equals(hoverOperator, _hoverOperator)
-            || hoverBand != _hoverMarkBand
-            || hoverReturns != _hoverReturnStrip
-            || !ReferenceEquals(hoverOutputRow, _hoverOutputRow))
+            || !Nullable.Equals(found, _hoverBlock)
+            || operatorsHover != _operators.Hover
+            || !ReferenceEquals(readHover, _reads.Hover))
         {
             _hover = hit;
 
-            _hoverBlock = hoverBlock;
+            _hoverBlock = found;
 
-            _hoverOperator = hoverOperator;
+            _operators.Hover = operatorsHover;
 
-            _hoverMarkBand = hoverBand;
-
-            _hoverReturnStrip = hoverReturns;
-
-            _hoverOutputRow = hoverOutputRow;
+            _reads.Hover = readHover;
 
             _canvas.Invalidate();
         }
@@ -345,31 +339,20 @@ public sealed partial class TraceTimelineControl
         {
             ShowToolTip(hovered, position);
         }
-        else if (hoverOperator is { } operatorHit)
+        else if ((_operators.GetToolTip(operatorsHover, position) ?? _reads.GetToolTip(readHover, position)) is { } text)
         {
-            ShowOperatorToolTip(operatorHit, position);
-        }
-        else if (hoverBand is not null)
-        {
-            OpenToolTip(MarkBandToolTip, position);
-        }
-        else if (hoverOutputRow is not null)
-        {
-            HideToolTip();
-        }
-        else if (hoverReturns is { } strip)
-        {
-            OpenToolTip(ReturnStripToolTipOf(strip), position);
-        }
-        else if (IsInOperators(position))
-        {
-            OpenToolTip("Operators", position);
+            OpenToolTip(text, position);
         }
         else
         {
             HideToolTip();
         }
     }
+
+    private FlameHit? GetDurationHit(TraceOperatorsHover hover, Point position)
+        => hover.ReturnStrip is { } strip && _operators.GetCallDuration(strip, position) is { } duration && _visible is { } timeline
+            ? FindCall(timeline, duration.Node, duration.Call)
+            : null;
 
     private void OnPointerReleased(object sender, PointerRoutedEventArgs e)
     {
@@ -383,7 +366,11 @@ public sealed partial class TraceTimelineControl
         }
         else if (_isPressed && !_isDragging && _pressedOperators)
         {
-            ClickOperators(position);
+            _operators.Click(position);
+        }
+        else if (_isPressed && !_isDragging && _pressedReads)
+        {
+            _reads.Click(position);
         }
         else if (_isPressed && !_isDragging && _isShiftPressed)
         {
@@ -395,14 +382,7 @@ public sealed partial class TraceTimelineControl
         }
         else if (_isStretching && !_hasStretched)
         {
-            if (_stretchBlock.Source.Operator is { } operatorHit)
-            {
-                ClickOperator(operatorHit);
-            }
-            else
-            {
-                Click(_stretchBlock.Source.Call);
-            }
+            Click(_stretchBlock.Call);
         }
 
         EndPointer();
@@ -423,24 +403,15 @@ public sealed partial class TraceTimelineControl
 
         UpdateCursor(InputSystemCursorShape.Arrow);
 
-        if (_hover is not null
-            || _hoverOperator is not null
-            || _hoverBlock is not null
-            || _hoverMarkBand is not null
-            || _hoverReturnStrip is not null
-            || _hoverOutputRow is not null)
+        if (_hover is not null || _hoverBlock is not null || _operators.Hover != TraceOperatorsHover.None || _reads.Hover is not null)
         {
             _hover = null;
 
-            _hoverOutputRow = null;
-
-            _hoverOperator = null;
-
-            _hoverMarkBand = null;
-
-            _hoverReturnStrip = null;
-
             _hoverBlock = null;
+
+            _operators.Hover = TraceOperatorsHover.None;
+
+            _reads.Hover = null;
 
             _canvas.Invalidate();
         }
@@ -513,6 +484,8 @@ public sealed partial class TraceTimelineControl
 
     private void OnKeyDown(object sender, KeyRoutedEventArgs e)
     {
+        LogKeyboard($"key {e.Key} selected={_selected}");
+
         if (e.Key is not (VirtualKey.Up or VirtualKey.Down or VirtualKey.Left or VirtualKey.Right)
             || _selected is not { } hit
             || _visible is not { } timeline
@@ -527,23 +500,26 @@ public sealed partial class TraceTimelineControl
 
         FlameHit? next = e.Key switch
         {
-            VirtualKey.Up => CallerOf(rows, hit),
-            VirtualKey.Down => OnlyCalleeOf(rows, hit),
-            VirtualKey.Left => SiblingOf(rows, hit, forward: false),
-            _ => SiblingOf(rows, hit, forward: true)
+            VirtualKey.Up => GetCaller(rows, hit),
+            VirtualKey.Down => GetStackCallee(hit) ?? GetFirstCallee(rows, hit),
+            VirtualKey.Left => GetAdjacentCall(rows, hit, forward: false),
+            _ => GetAdjacentCall(rows, hit, forward: true)
         };
 
-        if (next is not { } target)
+        if (next is { } target)
         {
-            return;
+            SelectAndShow(target);
         }
-
-        Select(target);
-
-        BringIntoView(target);
     }
 
-    private FlameHit? CallerOf(IReadOnlyList<TraceTimelineRow> rows, FlameHit hit)
+    private void SelectAndShow(FlameHit hit)
+    {
+        Select(hit);
+
+        BringIntoView(hit);
+    }
+
+    private FlameHit? GetCaller(IReadOnlyList<TraceTimelineRow> rows, FlameHit hit)
     {
         if (hit.Depth == 0 || hit.Depth >= rows.Count)
         {
@@ -559,7 +535,7 @@ public sealed partial class TraceTimelineControl
         return index < 0 ? null : hit with { Depth = hit.Depth - 1, Index = index };
     }
 
-    private FlameHit? OnlyCalleeOf(IReadOnlyList<TraceTimelineRow> rows, FlameHit hit)
+    private FlameHit? GetFirstCallee(IReadOnlyList<TraceTimelineRow> rows, FlameHit hit)
     {
         if (hit.Depth + 1 >= rows.Count)
         {
@@ -568,44 +544,53 @@ public sealed partial class TraceTimelineControl
 
         var row = rows[hit.Depth];
 
-        var start = row.Starts(_axis)[hit.Index];
-
-        var end = row.Ends(_axis)[hit.Index];
-
         var callees = rows[hit.Depth + 1];
 
-        var first = callees.FirstStartingFrom(_axis, start, 0);
+        var first = callees.FirstStartingFrom(_axis, row.Starts(_axis)[hit.Index], 0);
 
-        var only = first < callees.Count && callees.Ends(_axis)[first] <= end;
-
-        var second = first + 1 < callees.Count && callees.Starts(_axis)[first + 1] < end;
-
-        return only && !second ? hit with { Depth = hit.Depth + 1, Index = first } : null;
+        return first < callees.Count && callees.Ends(_axis)[first] <= row.Ends(_axis)[hit.Index]
+            ? hit with { Depth = hit.Depth + 1, Index = first }
+            : null;
     }
 
-    private FlameHit? SiblingOf(IReadOnlyList<TraceTimelineRow> rows, FlameHit hit, bool forward)
+    private static FlameHit? GetAdjacentCall(IReadOnlyList<TraceTimelineRow> rows, FlameHit hit, bool forward)
     {
-        var row = rows[hit.Depth];
-
         var index = forward ? hit.Index + 1 : hit.Index - 1;
 
-        if (index < 0 || index >= row.Count)
+        return index >= 0 && index < rows[hit.Depth].Count ? hit with { Index = index } : null;
+    }
+
+    private FlameHit? GetStackCallee(FlameHit hit)
+    {
+        var path = GetStackPath();
+
+        var index = path.IndexOf(hit);
+
+        return index >= 0 && index + 1 < path.Count ? path[index + 1] : null;
+    }
+
+    private List<FlameHit> GetStackPath()
+    {
+        var path = new List<FlameHit>();
+
+        if (_stackFrame is not { } frame
+            || _visible is not { } timeline
+            || frame.Lane >= timeline.Threads.Count
+            || SpanOf(frame) is null)
         {
-            return null;
+            return path;
         }
 
-        if (CallerOf(rows, hit) is { } caller)
-        {
-            var callerRow = rows[caller.Depth];
+        var rows = timeline.Threads[frame.Lane].Rows;
 
-            if (row.Starts(_axis)[index] < callerRow.Starts(_axis)[caller.Index]
-                || row.Ends(_axis)[index] > callerRow.Ends(_axis)[caller.Index])
-            {
-                return null;
-            }
+        for (FlameHit? hit = frame; hit is { } current; hit = GetCaller(rows, current))
+        {
+            path.Add(current);
         }
 
-        return hit with { Index = index };
+        path.Reverse();
+
+        return path;
     }
 
     private void OnContextRequested(UIElement sender, ContextRequestedEventArgs e)
@@ -619,8 +604,8 @@ public sealed partial class TraceTimelineControl
 
         var hasPosition = e.TryGetPosition(_overlay, out var position);
 
-        var flyout = hasPosition && IsInOperators(position)
-            ? CreateOperatorsMenu(OperatorUnder(position))
+        var flyout = hasPosition && (_operators.Contains(position) || _reads.Contains(position))
+            ? CreateOperatorsMenu(_operators.GetPlanNode(position))
             : CreateChartMenu(hasPosition ? HitTest(position) : _selected);
 
         if (hasPosition)
@@ -677,9 +662,9 @@ public sealed partial class TraceTimelineControl
 
         flyout.Items.Add(MenuItems.Create("Open Call Tree", () => CallTreeOpenRequested?.Invoke(node, call)));
 
-        if (span is { } opened)
+        if (hit is { } opened && span is not null)
         {
-            flyout.Items.Add(MenuItems.Create("Open Call Stack", () => OpenCallStackAt(opened.Start)));
+            flyout.Items.Add(MenuItems.Create("Open Call Stack", () => OpenCallStack(opened)));
         }
 
         flyout.Items.Add(new MenuFlyoutSeparator());
@@ -691,29 +676,21 @@ public sealed partial class TraceTimelineControl
         return flyout;
     }
 
-    private void OpenCallStackAt(double position)
+    private void OpenCallStack(FlameHit hit)
     {
-        StopPlay();
-
-        StopTransition();
-
-        _playhead = null;
-
-        _stackPosition = position;
-
-        if (position < _viewStart || position > _viewEnd)
+        if (hit != _selected)
         {
-            CentreViewOn(position);
+            Select(hit);
         }
-
-        _canvas.Invalidate();
 
         CallStackOpenRequested?.Invoke();
     }
 
     private void Select(FlameHit? hit)
     {
-        _selected = hit;
+        SetSelected(hit);
+
+        ClearOutputRowSelection();
 
         _canvas.Invalidate();
 
@@ -739,11 +716,41 @@ public sealed partial class TraceTimelineControl
             return;
         }
 
-        _selected = null;
+        SetSelected(null);
 
         _canvas.Invalidate();
 
         SelectionCleared?.Invoke();
+    }
+
+    private void SetSelected(FlameHit? hit)
+    {
+        _stackFrame = hit is { } selected && GetStackPath().Contains(selected) ? _stackFrame : hit;
+
+        _selected = hit;
+    }
+
+    private void ClearSelections()
+    {
+        _operators.ClearSelectedOperator();
+
+        ClearOutputRowSelection();
+
+        Deselect();
+    }
+
+    private void ClearOutputRowSelection()
+    {
+        if (IsPlaying || _playhead is not { } playhead || _operators.OutputRows?.GetRow(_axis, playhead) is null)
+        {
+            return;
+        }
+
+        StopTransition();
+
+        _playhead = null;
+
+        _canvas.Invalidate();
     }
 
     private void EndPointer()
@@ -846,7 +853,7 @@ public sealed partial class TraceTimelineControl
     {
         if (hit is null)
         {
-            ClearSelectedOperator();
+            _operators.ClearSelectedOperator();
 
             Deselect();
         }

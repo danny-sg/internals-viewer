@@ -24,17 +24,17 @@ sqlmin|CQueryScan|GetRow|QueryOperator
 sqlmin|CQScanProfileNew|*|Tracing
 sqlmin|CQScanLightProfileNew|*|Tracing
 
-sqlmin|CQScanHashAgg*|*|PhysicalOperator
+sqlmin|CQScanHashAgg*|*|QueryOperator
 
-sqlmin|CQScanHash|ConsumeBuild|PhysicalOperator
-sqlmin|CQScanHash|ConsumeProbe|PhysicalOperator
-sqlmin|CQScanHash*|*|PhysicalOperator
+sqlmin|CQScanHash|ConsumeBuild|QueryOperator
+sqlmin|CQScanHash|ConsumeProbe|QueryOperator
+sqlmin|CQScanHash*|*|QueryOperator
 
 # The hash's own workfile partitions, built during Open.
-sqlmin|CHashWorkfilePartitionGroup*|*|PhysicalOperator
+sqlmin|CHashWorkfilePartitionGroup*|*|QueryOperator
 
 # Execution Tree (?)
-sqlmin|CXte*|*|ExecutionTree
+sqlmin|CXte*|*|QueryExecution
 
 sqlmin|CQScanMergeJoin*|*|QueryOperator
 sqlmin|CQScanNLJoin*|*|QueryOperator
@@ -66,8 +66,8 @@ sqlmin|QueryScan*|*|QueryOperator
 sqlmin|CQueryScan*|*|QueryOperator
 
 # Rowset (Row iterators)
-sqlmin|Rowset*|*FetchNextRow|RowAccess
-sqlmin|Rowset*|*|RowAccess
+sqlmin|Rowset*|*FetchNextRow|Rowset
+sqlmin|Rowset*|*|Rowset
 
 # DataSet (Dataset operations)
 
@@ -82,11 +82,11 @@ sqlmin|Rowset*|*|RowAccess
 *|XeSosPkg*|*|XEventInfrastructure
 *|PublishWaitStatsXEvents*|*|XEventInfrastructure
 
-*|SOS_Task*|*|SqlOs
-*|SOS_Scheduler*|*|SqlOs
-*|Worker*|*|SqlOs
-*|ThreadScheduler*|*|SqlOs
-*|SchedulerManager*|*|SqlOs
+*|SOS_Task*|*|Scheduling
+*|SOS_Scheduler*|*|Scheduling
+*|Worker*|*|Scheduling
+*|ThreadScheduler*|*|Scheduling
+*|SchedulerManager*|*|Scheduling
 
 # The SOS cache store's probabilistic admission/eviction cost algorithm - shared infrastructure the columnstore object
 # pool decides through, not columnstore code itself.
@@ -106,24 +106,24 @@ sqllang|*|PsqlGetSqlSourceFromPcp|QueryExecution
 *|CLanguageExecEnv*|*|QueryExecution
 *|CExecuteStatement*|*|QueryExecution
 
-*|BTree*|*|IndexAccess
-*|IndexPageManager*|*|IndexAccess
+*|BTree*|*|BTreeNavigation
+*|IndexPageManager*|*|BTreeNavigation
 
-*|BUF*|*|BufferManager
+*|BUF*|*|BufferPool
 *|BPool*|*|BufferPool
 *|*|IssueReadAheadHelper*|BufferPool
-*|FCB*|*|FileControlBlock
+*|FCB*|*|Storage
 
-*|IndexRowScanner*|*|RowAccess
-*|CValFetchByKey*|*|RowAccess
-*|OpenRowset*|*|RowAccess
-*|OpenSystemTableRowset*|*|RowAccess
-*|FsInternalTableAccess*|*|RowAccess
-*|GetRowForKeyValue*|*|RowAccess
+*|IndexRowScanner*|*|Rowset
+*|CValFetchByKey*|*|Rowset
+*|OpenRowset*|*|Rowset
+*|OpenSystemTableRowset*|*|Rowset
+*|FsInternalTableAccess*|*|Rowset
+*|GetRowForKeyValue*|*|Rowset
 
-*|DataSet*|*|Dataset
-*|IndexDataSetSession*|*|Dataset
-*|HeapDataSetSession*|*|Dataset
+*|DataSet*|*|Rowset
+*|IndexDataSetSession*|*|Rowset
+*|HeapDataSetSession*|*|Rowset
 
 *|FixPage*|*|PageAccess
 *|Page*|*|PageAccess
@@ -144,9 +144,9 @@ sqllang|*|PsqlGetSqlSourceFromPcp|QueryExecution
 *|SMD*|*|Locking
 *|HeapFragment|Lock*|Locking
 
-*|WaitableBase*|*|Scheduling
-*|SOSHost_EventAuto*|*|Scheduling
-*|CSyncPoint*|*|Scheduling
+*|WaitableBase*|*|Synchronisation
+*|SOSHost_EventAuto*|*|Synchronisation
+*|CSyncPoint*|*|Synchronisation
 
 # Yield points and the callbacks SQLOS runs as a task suspends. Not the storage engine doing work — the scheduler
 # taking the thread away from it, which is why a wait shows up under an unrelated-looking frame.
@@ -163,7 +163,7 @@ sqllang|*|PsqlGetSqlSourceFromPcp|QueryExecution
 *|PostEventSessionEvent*|*|Tracing
 *|CMIterTriggers*|*|Tracing
 
-*|SystemThreadDispatcher*|*|WorkerManagement
+*|SystemThreadDispatcher*|*|Scheduling
 *|CEsExec*|*|ExpressionEvaluation
 
 *|Blob*|*|LargeObjectStorage
@@ -369,9 +369,9 @@ qds|*|Clone|QueryStore
 
 # The hash join's own partitions, alongside the CHashWorkfilePartitionGroup rule above. Contains-globs: the group is
 # reached through a CAutoShutdown<> wrapper, which arrives as part of the class name.
-*|*CHashWorkfile*|*|PhysicalOperator
-*|*CHashWorktable*|*|PhysicalOperator
-*|CHashBitmap*|*|PhysicalOperator
+*|*CHashWorkfile*|*|QueryOperator
+*|*CHashWorktable*|*|QueryOperator
+*|CHashBitmap*|*|QueryOperator
 sqlmin|CHashWorkfilePartitionInstance|PhiGetNewHashItem|Memory
 sqlmin|CHashWorkfilePartitionInstance|PhiGetItemWithAlloc|Memory
 sqlmin|CHashWorkfilePartitionInstance|PvAllocateHashBucketPage|Memory
@@ -390,8 +390,8 @@ sqlmin|CHashWorkfilePartitionInstance|FreeHashBucketPage|Memory
 *|CEsCompValSeg*|*|ExpressionEvaluation
 *|udf*|*|ExpressionEvaluation
 
-*|*Accessor*|*|RowAccess
-*|CPrefetchMgr*|*|RowAccess
+*|*Accessor*|*|Rowset
+*|CPrefetchMgr*|*|Rowset
 
 *|CAutoLatch*|*|Latching
 *|CIncPageMgr*|*|PageAccess
@@ -405,11 +405,11 @@ sqlmin|CHashWorkfilePartitionInstance|FreeHashBucketPage|Memory
 *|CExecLvlIntCtxt*|*|QueryExecution
 
 # --- Function rules (any class) --------------------------------------------------------------------------------------
-*|*|GetRow*|RowAccess
-*|*|GetRowForKeyValue*|RowAccess
-*|*|ReleaseRow*|RowAccess
-*|*|OpenSystemTableRowset*|RowAccess
-*|*|ReleaseSystemTableRowset*|RowAccess
+*|*|GetRow*|Rowset
+*|*|GetRowForKeyValue*|Rowset
+*|*|ReleaseRow*|Rowset
+*|*|OpenSystemTableRowset*|Rowset
+*|*|ReleaseSystemTableRowset*|Rowset
 
 # The I/O path's own publish points: these exist to fire the event, so they are the same noise as the Publish frames
 # below them rather than part of the read.
@@ -512,11 +512,11 @@ sqlmin|CHashWorkfilePartitionInstance|FreeHashBucketPage|Memory
 *|*|IncrWorktableUseCount*|Storage
 *|*|DecrWorktableUseCountAndDropIfZero*|Storage
 
-*|*|ComputeRowsetTypeAndLogMode*|RowAccess
-*|*|GetTableCursor*|RowAccess
-*|*|GetQETableCursor*|RowAccess
-*|*|CreateAccessorCommon*|RowAccess
-*|*|StartupRanges*|RowAccess
+*|*|ComputeRowsetTypeAndLogMode*|Rowset
+*|*|GetTableCursor*|Rowset
+*|*|GetQETableCursor*|Rowset
+*|*|CreateAccessorCommon*|Rowset
+*|*|StartupRanges*|Rowset
 *|*|PvalGetFastInRow*|ExpressionEvaluation
 
 *|*|intnl_flush*|LargeObjectStorage
@@ -583,38 +583,38 @@ sqlmin|CHashWorkfilePartitionInstance|FreeHashBucketPage|Memory
 # CQScanBatchHelper is the join between the two - a row mode parent pulling batches from a batch mode subtree.
 sqlmin|CQScanBatchHelper|*|QueryOperator
 sqlmin|CBpQScan|*|QueryOperator
-sqlmin|CBpQScan*|*|PhysicalOperator
+sqlmin|CBpQScan*|*|BatchOperator
 sqlmin|CBpagExpr*|*|ExpressionEvaluation
-sqlmin|CBpagBatchProcessing*|*|PhysicalOperator
-sqlmin|CBpagAggregate*|*|PhysicalOperator
-sqlmin|CBpagHashTable*|*|PhysicalOperator
-sqlmin|CBpSpillProcessor*|*|PhysicalOperator
+sqlmin|CBpagBatchProcessing*|*|BatchOperator
+sqlmin|CBpagAggregate*|*|BatchOperator
+sqlmin|CBpagHashTable*|*|BatchOperator
+sqlmin|CBpSpillProcessor*|*|BatchOperator
 sqlmin|CBpCompute*|*|ExpressionEvaluation
-sqlmin|CBpHashTable*|*|PhysicalOperator
-sqlmin|CBpBatchScanAccessor*|*|RowAccess
+sqlmin|CBpHashTable*|*|BatchOperator
+sqlmin|CBpBatchScanAccessor*|*|Rowset
 sqlmin|RbpExpression*|*|ExpressionEvaluation
 *|RbpExpr*|*|ExpressionEvaluation
 *|RbpExprFilter*|*|ColumnStore
 
 # The batch itself, its vectors, and the off-batch memory a value too wide for a vector slot is held in.
-sqlmin|CBpBatch*|*|Dataset
-sqlmin|CBatchVectorInserter*|*|Dataset
-sqlmin|CBpDeepDataContext*|*|Dataset
-sqlmin|CBpRowCacheDeepData*|*|Dataset
-sqlmin|CValRunTimeDeepData*|*|Dataset
+sqlmin|CBpBatch*|*|BatchOperator
+sqlmin|CBatchVectorInserter*|*|BatchOperator
+sqlmin|CBpDeepDataContext*|*|BatchOperator
+sqlmin|CBpRowCacheDeepData*|*|BatchOperator
+sqlmin|CValRunTimeDeepData*|*|BatchOperator
 sqlmin|CBpNormalizationHelper*|*|ExpressionEvaluation
-sqlmin|CBatchToRowDeserializer*|*|Dataset
-sqlmin|CBatchAdapterBaseHelpers*|*|Dataset
+sqlmin|CBatchToRowDeserializer*|*|BatchOperator
+sqlmin|CBatchAdapterBaseHelpers*|*|BatchOperator
 
 sqlmin|IBpScanner*|*|QueryOperator
 sqlmin|CBpChildIteratorScanner*|*|QueryOperator
-sqlmin|CAutoShutdown<CBpQScan*|*|PhysicalOperator
-sqlmin|CBpagBufferedHashTable*|*|PhysicalOperator
-sqlmin|CBpagConcurrentHashTable*|*|PhysicalOperator
-sqlmin|CBpagLocalAggregate*|*|PhysicalOperator
-sqlmin|CBpagRepartitioning*|*|PhysicalOperator
-sqlmin|CBprlSpilledHardPartition*|*|PhysicalOperator
-sqlmin|CBpagDeepData*|*|Dataset
+sqlmin|CAutoShutdown<CBpQScan*|*|BatchOperator
+sqlmin|CBpagBufferedHashTable*|*|BatchOperator
+sqlmin|CBpagConcurrentHashTable*|*|BatchOperator
+sqlmin|CBpagLocalAggregate*|*|BatchOperator
+sqlmin|CBpagRepartitioning*|*|BatchOperator
+sqlmin|CBprlSpilledHardPartition*|*|BatchOperator
+sqlmin|CBpagDeepData*|*|BatchOperator
 sqlmin|CBpParallelCoordinator*|*|QueryExecution
 sqlmin|CBpWorkfileMgr*|*|Storage
 sqlmin|CAutoShutdown<CBpWorkfileMgr>|*|Storage
@@ -650,7 +650,7 @@ sqlmin|*|traceTransactionEvent|XEventInfrastructure
 *|*|CheckPageAllocStatus*|Allocations
 *|*|GetIAMPage*|Allocations
 *|*|FCardBasedRecompile*|Compilation
-*|SystemThread*|*|SqlOs
+*|SystemThread*|*|Scheduling
 *|CModTrackingInfo*|*|Optimization
 *|CBpContext*|*|QueryExecution
 
@@ -686,14 +686,14 @@ sqlmin|*|traceTransactionEvent|XEventInfrastructure
 sqlmin|*|GetCSIScanColumnBindingTypeInfo|ColumnStore
 
 # Batch mode setup.
-*|CBpXte*|*|ExecutionTree
+*|CBpXte*|*|QueryExecution
 *|CBpProfiler*|*|QueryOperator
-*|*|ConstructCXVariantRowAccessor*|RowAccess
+*|*|ConstructCXVariantRowAccessor*|Rowset
 
 # SOS synchronisation waits, the blob handle factory, database context, the id manager, and the C++ destructor helper.
-*|SOS_Mutex*|*|Scheduling
-*|SOS_Semaphore*|*|Scheduling
-*|SOS::Event*|*|Scheduling
+*|SOS_Mutex*|*|Synchronisation
+*|SOS_Semaphore*|*|Synchronisation
+*|SOS::Event*|*|Synchronisation
 *|*|ReturnBlobHandleFactory*|LargeObjectStorage
 *|CAutoDb*|*|QueryExecution
 *|*|sqlusedb*|QueryExecution
@@ -980,8 +980,8 @@ sqlmin|*|GetCSIScanColumnBindingTypeInfo|ColumnStore
 *|ThreadResourceOwner*|*|SqlOs
 *|OomIndicator*|*|Memory
 *|PollingMonitor*|*|SqlOs
-*|LongTermSchedulerEnum*|*|SqlOs
-*|WorkDispatcher*|*|SqlOs
+*|LongTermSchedulerEnum*|*|Scheduling
+*|WorkDispatcher*|*|Scheduling
 *|CMallocSpy*|*|Memory
 *|CCache*|*|SqlOs
 *|CCacheObject*|*|SqlOs
@@ -1008,33 +1008,33 @@ sqlmin|*|GetCSIScanColumnBindingTypeInfo|ColumnStore
 *|*|IsFeatureSwitchEnabled|SqlOs
 
 # --- Synchronisation and waits ------------------------------------------------------------------------------------------
-*|Spinlock*|*|Scheduling
-*|AutoSpinlockHolder*|*|Scheduling
-*|ReaderWriterSpinlock*|*|Scheduling
-*|TSpinEventLock*|*|Scheduling
-*|SOS_RWLock*|*|Scheduling
-*|SOS_RecursiveMutex*|*|Scheduling
-*|SOS_Unfair*|*|Scheduling
-*|UnfairRecursiveMutexInternal*|*|Scheduling
-*|TAutoMutex*|*|Scheduling
-*|TAutoRWLock*|*|Scheduling
-*|TransactionMutex*|*|Scheduling
-*|SOSHost_RWLock*|*|Scheduling
-*|SOSHost_RecursiveMutex*|*|Scheduling
-*|SOSHost_AutoRecursiveMutex*|*|Scheduling
-*|SOSHost_EventManual*|*|Scheduling
+*|Spinlock*|*|Synchronisation
+*|AutoSpinlockHolder*|*|Synchronisation
+*|ReaderWriterSpinlock*|*|Synchronisation
+*|TSpinEventLock*|*|Synchronisation
+*|SOS_RWLock*|*|Synchronisation
+*|SOS_RecursiveMutex*|*|Synchronisation
+*|SOS_Unfair*|*|Synchronisation
+*|UnfairRecursiveMutexInternal*|*|Synchronisation
+*|TAutoMutex*|*|Synchronisation
+*|TAutoRWLock*|*|Synchronisation
+*|TransactionMutex*|*|Synchronisation
+*|SOSHost_RWLock*|*|Synchronisation
+*|SOSHost_RecursiveMutex*|*|Synchronisation
+*|SOSHost_AutoRecursiveMutex*|*|Synchronisation
+*|SOSHost_EventManual*|*|Synchronisation
 *|SOSHost_Task*|*|Scheduling
-*|CCriticalSectionSOS*|*|Scheduling
-*|SOS_WaitableAddress*|*|Scheduling
-*|SOS_ExternalAutoWait*|*|Scheduling
+*|CCriticalSectionSOS*|*|Synchronisation
+*|SOS_WaitableAddress*|*|Synchronisation
+*|SOS_ExternalAutoWait*|*|Synchronisation
 *|SOS_AutoAllowNonyield*|*|Scheduling
-*|SOS_Wait*|*|Scheduling
+*|SOS_Wait*|*|Synchronisation
 *|AutoSwitch*|*|Scheduling
 *|AutoDisableWorkerStealing*|*|Scheduling
 *|CFastYield*|*|Scheduling
-*|WaitCategoryStats*|*|Scheduling
-*|WaitStats*|*|Scheduling
-*|WaitRow*|*|Scheduling
+*|WaitCategoryStats*|*|SqlOs
+*|WaitStats*|*|SqlOs
+*|WaitRow*|*|SqlOs
 *|ITaskProxy*|*|Scheduling
 *|CTaskContext*|*|Scheduling
 *|CTaskList*|*|Scheduling
@@ -1798,45 +1798,45 @@ sqllang|*|InitXVarWithBH|ExpressionEvaluation
 *|*|SeCompareOp|ExpressionEvaluation
 *|*|ComputeCrc|ExpressionEvaluation
 *|*|ComputeColumnCompressibleState|ExpressionEvaluation
-*|*|ComputeRowAccessOptionLong|RowAccess
+*|*|ComputeRowAccessOptionLong|Rowset
 *|*|WchGetSerializableStaticStringForUsualSuspectsOrNULL|ExpressionEvaluation
 *|*|GetGlobalResouceStr|ExpressionEvaluation
 
 # --- Storage engine: records, rows, pages, allocation and the transaction -----------------------------------------------
-*|Record*|*|RowAccess
-*|RecordFromHRow*|*|RowAccess
-*|FixedVarRecord*|*|RowAccess
-*|VariableColumnSlot*|*|RowAccess
-*|PhysicalColumnAttribute*|*|RowAccess
-*|RowObject*|*|RowAccess
-*|CRptColumns*|*|RowAccess
-*|AccBindings*|*|RowAccess
-*|AccessWrapper*|*|RowAccess
-*|SEBindings*|*|RowAccess
-*|SEParams*|*|RowAccess
-*|SERowsetId*|*|RowAccess
-*|IRowsetSS*|*|RowAccess
-*|FsInternalIndexAccess*|*|RowAccess
-*|KeyRangeObject*|*|RowAccess
-*|COledbRange*|*|RowAccess
-*|CRangeElem*|*|RowAccess
-*|CScan1Context*|*|RowAccess
-*|CSlotGroup*|*|RowAccess
-*|CSlotHdr*|*|RowAccess
-*|CCompRowIndexDataExtractor*|*|RowAccess
-*|CKeyRowIndex*|*|RowAccess
-*|*|CreateAccessorInternal|RowAccess
-*|*|CreateBindings|RowAccess
-*|*|CreateSystemAccessor|RowAccess
-*|*|CompareColumnBindingOnOffset|RowAccess
-*|*|CompareRow|RowAccess
-*|*|RefreshByValueSEParams|RowAccess
-*|*|SEDefaultMaxInRowLen|RowAccess
-*|*|RemapAndTrimKeys|RowAccess
-*|*|PkgRemapAndTrimKeys|RowAccess
+*|Record*|*|Rowset
+*|RecordFromHRow*|*|Rowset
+*|FixedVarRecord*|*|Rowset
+*|VariableColumnSlot*|*|Rowset
+*|PhysicalColumnAttribute*|*|Rowset
+*|RowObject*|*|Rowset
+*|CRptColumns*|*|Rowset
+*|AccBindings*|*|Rowset
+*|AccessWrapper*|*|Rowset
+*|SEBindings*|*|Rowset
+*|SEParams*|*|Rowset
+*|SERowsetId*|*|Rowset
+*|IRowsetSS*|*|Rowset
+*|FsInternalIndexAccess*|*|Rowset
+*|KeyRangeObject*|*|Rowset
+*|COledbRange*|*|Rowset
+*|CRangeElem*|*|Rowset
+*|CScan1Context*|*|Rowset
+*|CSlotGroup*|*|Rowset
+*|CSlotHdr*|*|Rowset
+*|CCompRowIndexDataExtractor*|*|Rowset
+*|CKeyRowIndex*|*|Rowset
+*|*|CreateAccessorInternal|Rowset
+*|*|CreateBindings|Rowset
+*|*|CreateSystemAccessor|Rowset
+*|*|CompareColumnBindingOnOffset|Rowset
+*|*|CompareRow|Rowset
+*|*|RefreshByValueSEParams|Rowset
+*|*|SEDefaultMaxInRowLen|Rowset
+*|*|RemapAndTrimKeys|Rowset
+*|*|PkgRemapAndTrimKeys|Rowset
 *|*|GetDataWithBuffer|ExpressionEvaluation
-*|*|GetBitSetForSparseColumnCheck|RowAccess
-*|*|PXteAccessor|RowAccess
+*|*|GetBitSetForSparseColumnCheck|Rowset
+*|*|PXteAccessor|Rowset
 *|*|ChooseQDSIttAccessorBindings|QueryStore
 *|*|IsWorktableRowset|Storage
 *|*|SetupDefaultWorkTableRUD|Storage
@@ -1860,10 +1860,10 @@ sqllang|*|InitXVarWithBH|ExpressionEvaluation
 *|CVarPageFolderMgr*|*|SqlOs
 *|RecentPagesContext*|*|PageAccess
 *|WritePageRecorder2*|*|PageAccess
-*|DirtyPageMgr*|*|BufferManager
+*|DirtyPageMgr*|*|BufferPool
 *|RBPEX*|*|BufferPool
-*|FGCB*|*|FileControlBlock
-*|FGMgr*|*|FileControlBlock
+*|FGCB*|*|Storage
+*|FGMgr*|*|Storage
 *|LSN*|*|Logging
 *|SQLServerCOWLogMgr*|*|Logging
 *|SQLServerLogIter*|*|Logging
@@ -1935,11 +1935,11 @@ sqllang|*|InitXVarWithBH|ExpressionEvaluation
 *|Rbp*|*|ColumnStore
 *|CBpQueryDictionaryManager*|*|ColumnStore
 *|CBpBitmapReferenceCollection*|*|ColumnStore
-*|CBpDeepDataStore*|*|Dataset
+*|CBpDeepDataStore*|*|BatchOperator
 *|CBpMemoryManager*|*|Memory
-*|CBpVectorIdArray*|*|Dataset
+*|CBpVectorIdArray*|*|BatchOperator
 *|CMultiDataIntermediateResults*|*|ExpressionEvaluation
-*|CNativeShuffleWriteBuffer*|*|Dataset
+*|CNativeShuffleWriteBuffer*|*|BatchOperator
 *|*|Imbi*|ColumnStore
 *|*|PFCreateInstance*|ColumnStore
 *|*|huffman_decode_create|ColumnStore
@@ -1961,15 +1961,15 @@ sqllang|*|InitXVarWithBH|ExpressionEvaluation
 *|StatementStats*|*|QueryStore
 
 # --- Service Broker, full text and other background work ----------------------------------------------------------------
-*|CSb*|*|WorkerManagement
-*|CFTW*|*|WorkerManagement
-*|*|SbSelectProcedure|WorkerManagement
+*|CSb*|*|Scheduling
+*|CFTW*|*|Scheduling
+*|*|SbSelectProcedure|Scheduling
 *|HkCsHostSerialization*|*|Storage
 *|RpsTicket*|*|Storage
 *|SbsFileTableHandleAccess*|*|Storage
 *|FFtSqlStoreTableContext*|*|Storage
-*|CDmpClient*|*|WorkerManagement
-*|DmpStaticBaseCustomizeCallback*|*|WorkerManagement
+*|CDmpClient*|*|Scheduling
+*|DmpStaticBaseCustomizeCallback*|*|Scheduling
 *|DbCopyDmvRow*|*|Metadata
 *|ActivityDirector*|*|Tracing
 *|CAppDomainManager*|*|QueryExecution
@@ -2063,12 +2063,12 @@ sqllang|CBTreeIndexCapabilities*|*|Optimization
 *|*|FColumnStoreIndexUsedInExpr|Optimization
 sqllang|*|check_identity_ins|QueryBinding
 sqllang|BECWSProxy*|*|Networking
-sqlmin|CRangeInterval*|*|RowAccess
-sqlmin|CRangeEnumerator*|*|RowAccess
-sqlmin|CRiCompInfo*|*|RowAccess
-sqlmin|CRiGroup*|*|RowAccess
-sqlmin|CRiLeaf*|*|RowAccess
-sqlmin|*|AccountForDescIdx|RowAccess
+sqlmin|CRangeInterval*|*|Rowset
+sqlmin|CRangeEnumerator*|*|Rowset
+sqlmin|CRiCompInfo*|*|Rowset
+sqlmin|CRiGroup*|*|Rowset
+sqlmin|CRiLeaf*|*|Rowset
+sqlmin|*|AccountForDescIdx|Rowset
 *|*|ConvertR8I4|ExpressionEvaluation
 *|*|ManipData|ExpressionEvaluation
 *|*|GetIdtFuncs|ExpressionEvaluation
@@ -2132,7 +2132,7 @@ sqldk|MemoryWorkSpaceVersion*|*|Memory
 sqldk|TMemoryWorkSpace*|*|Memory
 sqldk|ResourceMonitor*|*|SqlOs
 sqldk|SOS_LargeCacheStore*|*|SqlOs
-*|TAutoSpinEventLock*|*|Scheduling
+*|TAutoSpinEventLock*|*|Synchronisation
 sqlmin|WORKFILE|*|Storage
 sqlmin|BufferGroup|*|Storage
 sqlmin|WFRSRCMGR*|*|Storage
@@ -2142,9 +2142,9 @@ sqlmin|RowComprBufMgr*|*|Storage
 sqlmin|*|GetCheckpointRate|Storage
 sqlmin|*|GetCheckpointRateMB|Storage
 sqlmin|*|ComputeXModeAndActivateXdes|TransactionManagement
-sqlmin|*|CreateFullRangeEnumerator|RowAccess
-sqlmin|*|CreateLiteBindings|RowAccess
-sqlmin|LiteBinding*|*|RowAccess
+sqlmin|*|CreateFullRangeEnumerator|Rowset
+sqlmin|*|CreateLiteBindings|Rowset
+sqlmin|LiteBinding*|*|Rowset
 sqlmin|*|AllocateCColumnInfo|Metadata
 sqlmin|*|AdjustRETypeToSEType|Metadata
 *|*|GetDefaultColMaxInRowLen|Metadata
@@ -2153,7 +2153,7 @@ sqlmin|*|AdjustRETypeToSEType|Metadata
 sqlmin|AggregatedStatistics*|*|ColumnStore
 *|BaseLockBytesSS*|*|LargeObjectStorage
 *|LobSrc*|*|LargeObjectStorage
-sqlmin|CAutoShutdown<CQScanHash>|*|PhysicalOperator
+sqlmin|CAutoShutdown<CQScanHash>|*|QueryOperator
 sqlmin|*|ModifyTypeInfoForHash|ExpressionEvaluation
 *|*|GetHashType|ExpressionEvaluation
 *|*|PfnQPHashNotNull|ExpressionEvaluation

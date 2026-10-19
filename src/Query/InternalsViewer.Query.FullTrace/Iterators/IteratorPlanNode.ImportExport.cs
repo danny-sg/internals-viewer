@@ -1,8 +1,10 @@
+using InternalsViewer.Query.FullTrace.Export;
+
 namespace InternalsViewer.Query.FullTrace.Iterators;
 
 internal readonly partial record struct IteratorPlanNode
 {
-    private const int FormatVersion = 1;
+    private const int FormatVersion = 2;
 
     internal static void Write(BinaryWriter writer, IReadOnlyList<IteratorPlanNode> planNodes)
     {
@@ -17,6 +19,12 @@ internal readonly partial record struct IteratorPlanNode
             writer.Write(planNode.BatchPlanObject);
             writer.Write(planNode.Query);
             writer.Write(planNode.NodeId);
+            writer.Write(planNode.Constructed.HasValue);
+
+            if (planNode.Constructed is { } constructed)
+            {
+                TracePointExport.Write(writer, constructed);
+            }
         }
     }
 
@@ -35,7 +43,8 @@ internal readonly partial record struct IteratorPlanNode
                                                     reader.ReadUInt64(),
                                                     reader.ReadUInt64(),
                                                     reader.ReadUInt64(),
-                                                    reader.ReadInt32());
+                                                    reader.ReadInt32(),
+                                                    reader.ReadBoolean() ? TracePointExport.Read(reader) : null);
         }
 
         return planNodes;

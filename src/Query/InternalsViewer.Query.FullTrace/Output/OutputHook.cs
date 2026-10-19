@@ -2,22 +2,17 @@ using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
 using InternalsViewer.Query.FullTrace.Output.Enums;
-using InternalsViewer.Query.FullTrace.Output.SourceParsers;
-using InternalsViewer.Query.FullTrace.Output.Sources;
-using InternalsViewer.Query.FullTrace.RowBuffers.Accessors;
-using InternalsViewer.Query.FullTrace.RowBuffers.Parsers;
 using InternalsViewer.Query.FullTrace.RowSources;
 
 namespace InternalsViewer.Query.FullTrace.Output;
 
-internal sealed class OutputHook(OutputFunctions functions, RowSourceHook rowSources, AccessorHook accessors) : ITraceHook
+internal sealed class OutputHook(OutputFunctions functions, RowSourceHook rowSources) : ITraceHook
 {
     private const int EvaluationContextArgument = 0;
     private const int EvaluationExecutorArgument = 1;
 
     private const int ReadExecutorArgument = 0;
     private const int SendRowArgument = 0;
-    private const int SendValuesArgument = 2;
 
     private const ulong ExecutorInstructionOffset = 0x20;
     private const ulong ExecutorValuesOffset = 0x28;
@@ -39,15 +34,15 @@ internal sealed class OutputHook(OutputFunctions functions, RowSourceHook rowSou
 
     private Dictionary<ulong, PendingRead> Reading { get; } = [];
 
-    private Dictionary<ulong, TraceOutputSource> Sources { get; } = [];
+    private Dictionary<ulong, OutputSource> Sources { get; } = [];
 
     private Dictionary<ulong, ulong> OutputExecutors { get; } = [];
 
     private HashSet<ulong> OtherExecutors { get; } = [];
 
-    private Dictionary<ulong, List<TraceOutputSource>> Undecided { get; } = [];
+    private Dictionary<ulong, List<OutputSource>> Undecided { get; } = [];
 
-    private Dictionary<ulong, List<TraceOutputSource>> Columns { get; } = [];
+    private Dictionary<ulong, List<OutputSource>> Columns { get; } = [];
 
     private Dictionary<ulong, ulong> DirectSends { get; } = [];
 
@@ -69,7 +64,7 @@ internal sealed class OutputHook(OutputFunctions functions, RowSourceHook rowSou
                 break;
 
             case OutputFunctionType.Send when !Frames.ContainsKey(call.Thread):
-                DirectSends.TryAdd(call.Arguments[SendRowArgument], call.Arguments[SendValuesArgument]);
+                DirectSends.TryAdd(call.Arguments[SendRowArgument], rowSources.GetCurrentIterator(call.Thread));
                 break;
         }
     }
@@ -99,17 +94,11 @@ internal sealed class OutputHook(OutputFunctions functions, RowSourceHook rowSou
     }
 
     public List<TraceOutputStructure> Build()
-    {
-        var owners = new Dictionary<TraceOutputSource, TraceOutputSource>(ReferenceEqualityComparer.Instance);
-
-        return [.. Columns.Keys
-                          .Union(DirectSends.Keys)
-                          .Select(r => new TraceOutputStructure(r,
-                                                                Columns.TryGetValue(r, out var columns)
-                                                                    ? [.. columns.Select(c => GetOwned(c, owners))]
-                                                                    : [],
-                                                                DirectSends.GetValueOrDefault(r)))];
-    }
+        => [.. Columns.Keys
+                      .Union(DirectSends.Keys)
+                      .Select(r => new TraceOutputStructure(r,
+                                                            Columns.TryGetValue(r, out var columns) ? [.. columns.Select(GetOwner)] : [],
+                                                            DirectSends.GetValueOrDefault(r)))];
 
     private static ulong? GetSourceAddress(ITraceReplay replay, ulong executor, bool isVariant)
     {
@@ -119,7 +108,7 @@ internal sealed class OutputHook(OutputFunctions functions, RowSourceHook rowSou
             || !replay.TryRead(instruction + InstructionValueOffset, out uint index)
             || !replay.TryRead(table, out ulong entries)
             || !replay.TryRead(entries + index * sizeof(ulong), out ulong address)
-            || address < ColumnValueParser.SmallestAddress)
+            || address < TraceAddress.Smallest)
         {
             return null;
         }
@@ -187,7 +176,7 @@ internal sealed class OutputHook(OutputFunctions functions, RowSourceHook rowSou
         }
     }
 
-    private void Classify(ulong executor, List<TraceOutputSource> columns, ITraceReplay replay)
+    private void Classify(ulong executor, List<OutputSource> columns, ITraceReplay replay)
     {
         switch (GetOutputRow(replay, executor))
         {
@@ -222,11 +211,11 @@ internal sealed class OutputHook(OutputFunctions functions, RowSourceHook rowSou
 
         if (address == 0 || !Sources.TryGetValue(address, out var source))
         {
-            source = address == 0 ? TraceOutputSource.Unknown
-                     : read.IsVariant ? new BufferOutputSource(0, address)
-                     : OutputSourceParser.Parse(replay, Classes, address, frame.Context);
+            source = address == 0 || read.IsVariant
+                ? OutputSource.Unknown
+                : OutputSourceParser.Parse(replay, Classes, address, frame.Context);
 
-            if (address != 0 && source is not UnknownOutputSource)
+            if (source != OutputSource.Unknown)
             {
                 Sources[address] = source;
             }
@@ -235,25 +224,13 @@ internal sealed class OutputHook(OutputFunctions functions, RowSourceHook rowSou
         columns.Add(source);
     }
 
-    private TraceOutputSource GetOwned(TraceOutputSource source, Dictionary<TraceOutputSource, TraceOutputSource> owners)
+    private ulong GetOwner(OutputSource source)
     {
-        if (!owners.TryGetValue(source, out var owned))
+        if (source.Owner != 0)
         {
-            owned = source.Owner != 0 ? source : source with { Owner = GetOwner(source) };
-
-            if (owned is RowsetOutputSource { Ordinal: < 0, Accessor: not 0 } rowset)
-            {
-                owned = rowset with { Ordinal = accessors.GetOrdinal(rowset.Accessor) };
-            }
-
-            owners[source] = owned;
+            return source.Owner;
         }
 
-        return owned;
-    }
-
-    private ulong GetOwner(TraceOutputSource source)
-    {
         if (source is { Context: not 0, Slot: >= 0 } && rowSources.GetOwner(source.Context, source.Slot) is not 0 and var owner)
         {
             return owner;
@@ -264,5 +241,5 @@ internal sealed class OutputHook(OutputFunctions functions, RowSourceHook rowSou
 
     private readonly record struct PendingRead(ulong Address, bool IsVariant);
 
-    private sealed record EvaluationFrame(ulong Id, ulong Executor, ulong Context, List<TraceOutputSource>? Columns);
+    private sealed record EvaluationFrame(ulong Id, ulong Executor, ulong Context, List<OutputSource>? Columns);
 }

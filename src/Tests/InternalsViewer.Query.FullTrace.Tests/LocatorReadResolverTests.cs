@@ -36,8 +36,8 @@ public class LocatorReadResolverTests
     {
         var reads = Reads("IndexPageManager::ReleaseHPage(HPageHandle &)", "?ReleaseHPage@IndexPageManager@@QEAAXAEAVHPageHandle@@@Z");
 
-        Assert.Equal([new LocatorRead(Function, 1, false, LocatorValueType.Page, 0x20, LocatorType.PageHandlePath),
-                      new LocatorRead(Function, 1, true, LocatorValueType.Page, 0x20, LocatorType.PageHandlePath)],
+        Assert.Equal([new LocatorRead(Function, 1, false, LocatorValueType.Page, 0x70, LocatorType.PageHandlePath),
+                      new LocatorRead(Function, 1, true, LocatorValueType.Page, 0x70, LocatorType.PageHandlePath)],
                      reads);
     }
 
@@ -143,8 +143,8 @@ public class LocatorReadResolverTests
                           "?GetPageWithKey@IndexPageManager@@QEAAXPEBVSEBindings@@W4BTREE_SEEK_OPTION@BTreeMgr@@W4AccessMode@@"
                           + "AEAVHPageHandle@@AEAVSearchInfo@@PEAV2@PEAEKPEAVHPageIdVersionId@@_N@Z");
 
-        Assert.Equal([new LocatorRead(Function, 4, false, LocatorValueType.Page, 0x20, LocatorType.PageHandlePath),
-                      new LocatorRead(Function, 4, true, LocatorValueType.Page, 0x20, LocatorType.PageHandlePath)],
+        Assert.Equal([new LocatorRead(Function, 4, false, LocatorValueType.Page, 0x70, LocatorType.PageHandlePath),
+                      new LocatorRead(Function, 4, true, LocatorValueType.Page, 0x70, LocatorType.PageHandlePath)],
                      reads);
     }
 

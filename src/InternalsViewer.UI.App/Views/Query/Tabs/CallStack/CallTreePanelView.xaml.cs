@@ -40,7 +40,6 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
 
         SearchBar.SearchTextChanged += OnSearchTextChanged;
 
-        SearchBar.DataFilterChanged += OnDataFilterChanged;
 
         NodeTemplates.IsRevealed = node => RowsByNode.TryGetValue(node, out var row) && row.IsRevealed;
 
@@ -126,7 +125,6 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
     {
         SearchBar.SearchTextChanged -= OnSearchTextChanged;
 
-        SearchBar.DataFilterChanged -= OnDataFilterChanged;
 
         Detach();
     }
@@ -407,7 +405,6 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
 
     private void OnSearchTextChanged(string text) => CallTree?.SetSearch(text);
 
-    private void OnDataFilterChanged(CallTreeDataFilter filter) => CallTree?.SetDataFilter(filter);
 
     private void OnTreeExpanding(TreeView sender, TreeViewExpandingEventArgs args)
     {
@@ -477,22 +474,6 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
 
                     break;
                 }
-                case "ShowRowBuffers":
-                {
-                    item.Visibility = ContextNode?.Content is CallStackNode { HasRowBuffers: true }
-                        ? Visibility.Visible
-                        : Visibility.Collapsed;
-
-                    break;
-                }
-                case "ShowBatches":
-                {
-                    item.Visibility = ContextNode?.Content is CallStackNode { HasBatches: true }
-                        ? Visibility.Visible
-                        : Visibility.Collapsed;
-
-                    break;
-                }
             }
         }
     }
@@ -541,41 +522,6 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
         }
     }
 
-    private void OnShowRowBuffersClick(object sender, RoutedEventArgs e)
-    {
-        if (ContextNode?.Content is CallStackNode node)
-        {
-            ViewModel?.ShowRowBuffers(node);
-        }
-    }
-
-    private void OnNodeRowBuffersTapped(object sender, TappedRoutedEventArgs e)
-    {
-        if (sender is FrameworkElement { DataContext: TreeViewNode { Content: CallStackNode node } })
-        {
-            e.Handled = true;
-
-            ViewModel?.ShowRowBuffers(node);
-        }
-    }
-
-    private void OnShowBatchesClick(object sender, RoutedEventArgs e)
-    {
-        if (ContextNode?.Content is CallStackNode node)
-        {
-            ViewModel?.ShowBatches(node);
-        }
-    }
-
-    private void OnNodeBatchesTapped(object sender, TappedRoutedEventArgs e)
-    {
-        if (sender is FrameworkElement { DataContext: TreeViewNode { Content: CallStackNode node } })
-        {
-            e.Handled = true;
-
-            ViewModel?.ShowBatches(node);
-        }
-    }
 
     private void OnListMembersClick(object sender, RoutedEventArgs e)
     {

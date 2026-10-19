@@ -49,9 +49,7 @@ public sealed partial class CallTreeViewModel
 
     private string Search { get; set; } = string.Empty;
 
-    private CallTreeDataFilter DataFilter { get; set; }
-
-    private bool IsFiltering => Search.Length > 0 || DataFilter != CallTreeDataFilter.None;
+    private bool IsFiltering => Search.Length > 0;
 
     private LocatorSearch? SearchedLocator { get; set; }
 
@@ -437,7 +435,7 @@ public sealed partial class CallTreeViewModel
             row.Add(child);
         }
 
-        AddSearchHit(row, IsHit(node, matched, underMatch || matched));
+        AddSearchHit(row, matched);
 
         return row;
     }
@@ -464,14 +462,6 @@ public sealed partial class CallTreeViewModel
     private bool IsConcealed(CallStackNode node) => IsHidden(node) || IsCategoryIn(PrunedCategories, node);
 
     private bool IsSearchMatch(CallStackNode node) => Search.Length > 0 && Matches(node);
-
-    private bool MatchesDataFilter(CallStackNode node)
-        => DataFilter == CallTreeDataFilter.None
-           || (DataFilter.HasFlag(CallTreeDataFilter.Batches) && node.HasBatches)
-           || (DataFilter.HasFlag(CallTreeDataFilter.Rows) && node.HasRowBuffers);
-
-    private bool IsHit(CallStackNode node, bool matched, bool searched)
-        => DataFilter == CallTreeDataFilter.None ? matched : MatchesDataFilter(node) && (Search.Length == 0 || searched);
 
     private void AddSearchHit(CallTreeRow row, bool isHit)
     {
@@ -762,7 +752,7 @@ public sealed partial class CallTreeViewModel
             row.Add(child);
         }
 
-        AddSearchHit(row, IsHit(node, matched, underMatch || matched));
+        AddSearchHit(row, matched);
 
         return row;
     }
@@ -774,7 +764,7 @@ public sealed partial class CallTreeViewModel
         // row — and counted as one below, so a frame whose only answer to the search is where it led still shows.
         foreach (var next in cuts.Select(frame => NextOperator.GetValueOrDefault(frame))
                                  .OfType<ExecutionOperatorEvent>()
-                                 .Where(next => DataFilter == CallTreeDataFilter.None && (underMatch || Matches(next)))
+                                 .Where(next => underMatch || Matches(next))
                                  .DistinctBy(next => next.PlanNodeIdentifier)
                                  .OrderBy(next => next.PlanNodeIdentifier!.NodeId))
         {
@@ -899,7 +889,7 @@ public sealed partial class CallTreeViewModel
     // A row survives a search by matching it, or by being on the way to something that does — a hit is unreadable
     // without the calls that led to it, so the ancestors come too.
     private bool Filtered(CallStackNode node, int survivingChildren, bool searched)
-        => survivingChildren == 0 && ((Search.Length > 0 && !searched) || !MatchesDataFilter(node) || HoldsOnlyHiddenEvents(node));
+        => survivingChildren == 0 && ((Search.Length > 0 && !searched) || HoldsOnlyHiddenEvents(node));
 
     private bool HoldsOnlyHiddenEvents(CallStackNode node) => HiddenEventState(node, Query.QueryOptions) == EventVisibility.Hidden;
 

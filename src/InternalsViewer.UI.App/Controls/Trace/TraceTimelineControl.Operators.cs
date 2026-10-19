@@ -1,15 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
-using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.Plans.Model;
-using InternalsViewer.UI.App.Controls.Timeline;
 using InternalsViewer.UI.App.Helpers;
-using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using SkiaSharp;
@@ -29,43 +25,9 @@ public sealed partial class TraceTimelineControl
 
     private const float MinimumOperatorsHeight = 20f;
 
-    private const float OperatorsPadding = 4f;
-
-    private const float OperatorsBottomGap = 2f;
-
-    private const float OperatorRowGap = 6f;
-
     private const float MinimumLanesHeight = 60f;
 
-    private const float OperatorBarPadding = 1f;
-
-    private const float OperatorBarShare = 0.15f;
-
-    private const float OperatorCornerRadius = 3f;
-
-    private const float OperatorGradientLift = 0.04f;
-
-    private const float OperatorMaximumFont = 12f;
-
-    private const float OperatorMinimumFont = 7f;
-
-    private const float OperatorLabelGap = 0.5f;
-
-    private const float OperatorBaselineShift = 0.35f;
-
-    private const float MinimumOperatorLabelWidth = 26f;
-
-    private const float OperatorSelectedStroke = 2f;
-
-    private static readonly SKColor OperatorPaneColour = new(30, 30, 30, 220);
-
-    private static readonly SKColor OperatorLabelColour = new(235, 235, 235);
-
-    private static readonly SKColor OperatorSelectedColour = new(255, 255, 255, 230);
-
-    private static readonly SKColor OperatorHoverColour = new(255, 255, 255, 150);
-
-    private static readonly SKColor OperatorDimColour = new(0, 0, 0, 160);
+    private const float ReadLaneHeight = 14f;
 
     public static readonly DependencyProperty ShowOperatorsProperty =
         DependencyProperty.Register(nameof(ShowOperators),
@@ -91,27 +53,67 @@ public sealed partial class TraceTimelineControl
         set => SetValue(ShowFlameChartProperty, value);
     }
 
-    public static readonly DependencyProperty ColourProviderProperty =
-        DependencyProperty.Register(nameof(ColourProvider),
-                                    typeof(EventColourProvider),
+    public static readonly DependencyProperty RowReturnMarksProperty =
+        DependencyProperty.Register(nameof(RowReturnMarks),
+                                    typeof(TraceRowReturnMarks),
                                     typeof(TraceTimelineControl),
-                                    new PropertyMetadata(null, OnColourProviderChanged));
+                                    new PropertyMetadata(null, OnRowReturnsChanged));
 
-    public EventColourProvider? ColourProvider
+    public TraceRowReturnMarks? RowReturnMarks
     {
-        get => (EventColourProvider?)GetValue(ColourProviderProperty);
-        set => SetValue(ColourProviderProperty, value);
+        get => (TraceRowReturnMarks?)GetValue(RowReturnMarksProperty);
+        set => SetValue(RowReturnMarksProperty, value);
+    }
+
+    public static readonly DependencyProperty ShowIteratorCallsProperty =
+        DependencyProperty.Register(nameof(ShowIteratorCalls),
+                                    typeof(bool),
+                                    typeof(TraceTimelineControl),
+                                    new PropertyMetadata(true, OnRowReturnsChanged));
+
+    public bool ShowIteratorCalls
+    {
+        get => (bool)GetValue(ShowIteratorCallsProperty);
+        set => SetValue(ShowIteratorCallsProperty, value);
+    }
+
+    public static readonly DependencyProperty ShowReadsProperty =
+        DependencyProperty.Register(nameof(ShowReads),
+                                    typeof(bool),
+                                    typeof(TraceTimelineControl),
+                                    new PropertyMetadata(true, OnPaneVisibilityChanged));
+
+    public bool ShowReads
+    {
+        get => (bool)GetValue(ShowReadsProperty);
+        set => SetValue(ShowReadsProperty, value);
+    }
+
+    public static readonly DependencyProperty ReadsProperty =
+        DependencyProperty.Register(nameof(Reads),
+                                    typeof(TraceReads),
+                                    typeof(TraceTimelineControl),
+                                    new PropertyMetadata(null, OnReadsChanged));
+
+    public TraceReads? Reads
+    {
+        get => (TraceReads?)GetValue(ReadsProperty);
+        set => SetValue(ReadsProperty, value);
+    }
+
+    public static readonly DependencyProperty OutputColumnNamesProperty =
+        DependencyProperty.Register(nameof(OutputColumnNames),
+                                    typeof(IReadOnlyList<string>),
+                                    typeof(TraceTimelineControl),
+                                    new PropertyMetadata(null, OnOutputColumnNamesChanged));
+
+    public IReadOnlyList<string>? OutputColumnNames
+    {
+        get => (IReadOnlyList<string>?)GetValue(OutputColumnNamesProperty);
+        set => SetValue(OutputColumnNamesProperty, value);
     }
 
     private readonly Dictionary<int, SelectedLane> _selectedLanes = [];
-
-    private readonly Dictionary<TraceOperatorLifetime, string> _operatorDetails = new(ReferenceEqualityComparer.Instance);
-
-    private readonly Dictionary<SKColor, SKShader> _operatorGradients = [];
-
-    private readonly SKRoundRect _operatorShape = new();
-
-    private OperatorRow[] _operatorRows = [];
 
     private float? _operatorsHeight;
 
@@ -121,23 +123,27 @@ public sealed partial class TraceTimelineControl
 
     private float _resizeStartHeight;
 
-    private ExecutionOperatorEvent? _selectedOperator;
-
-    private OperatorHit? _hoverOperator;
-
     public event Action<PlanNodeIdentifier>? PlanNodeSelected;
 
     public event Action<PlanNodeIdentifier?>? ExecutionPlanRequested;
 
-    private bool ShowsOperators => ShowOperators && _operatorRows.Length > 0;
+    private bool ShowsOperators => ShowOperators && _operators.HasRows;
 
     private float OperatorsTop => RulerTop + RulerHeight + PlayheadStripHeight;
 
     private bool ShowsFlameChart => ShowFlameChart || !ShowsOperators;
 
-    private float OperatorsArea => ShowsOperators ? OperatorsHeight + (ShowsFlameChart ? SplitterHeight : 0) : 0;
+    private bool ShowsReads => ShowReads && _reads.HasReads;
 
-    private float ChartHeight => (float)_overlay.ActualHeight - OperatorsTop - BandHeight - SplitterHeight;
+    private float ReadsTop => OperatorsTop + OperatorsHeight;
+
+    private float ReadsHeight => ShowsReads ? ReadLaneHeight : 0;
+
+    private bool ShowsSplitter => ShowsOperators && ShowsFlameChart;
+
+    private float PanesArea => OperatorsHeight + ReadsHeight + (ShowsSplitter ? SplitterHeight : 0);
+
+    private float ChartHeight => (float)_overlay.ActualHeight - OperatorsTop - BandHeight - SplitterHeight - ReadsHeight;
 
     private float OperatorsRoom => Math.Max(MinimumOperatorsHeight, ChartHeight - MinimumLanesHeight);
 
@@ -161,222 +167,37 @@ public sealed partial class TraceTimelineControl
         }
     }
 
-    private float OperatorRowHeight
+    private void DrawPanes(SKCanvas canvas, int width, double scale)
     {
-        get
+        if (ShowsOperators)
         {
-            var rows = Math.Max(_operatorRows.Length, 1);
+            _operators.Draw(canvas, width, scale);
+        }
 
-            var spacing = OperatorsPadding * 2 + OperatorsBottomGap + OutputRowsArea + (rows - 1) * OperatorRowGap;
+        if (ShowsReads)
+        {
+            _reads.Draw(canvas, width, scale, ShowsOperators ? _operators.GetTrackBottom : null);
+        }
 
-            return Math.Max((OperatorsHeight - spacing) / rows, 1);
+        if (ShowsSplitter)
+        {
+            DrawSplitter(canvas, ReadsTop + ReadsHeight, width);
         }
     }
 
-    private static OperatorRow[] OperatorRowsOf(TraceTimeline? timeline)
+    private void DrawPaneOverlays(SKCanvas canvas, int width)
     {
-        if (timeline is null)
+        var scale = PixelsPerUnit(width);
+
+        if (ShowsOperators)
         {
-            return [];
+            _operators.DrawOverlay(canvas, width, scale);
         }
 
-        var lanes = new Dictionary<uint, int>();
-
-        for (var lane = 0; lane < timeline.Threads.Count; lane++)
+        if (ShowsReads)
         {
-            lanes[timeline.Threads[lane].ThreadId] = lane;
+            _reads.DrawOverlay(canvas, width, scale);
         }
-
-        return [.. timeline.Lifetimes
-                           .Where(l => lanes.ContainsKey(l.Thread))
-                           .GroupBy(l => l.Operator, ReferenceEqualityComparer.Instance)
-                           .Select(g => RowOf((ExecutionOperatorEvent)g.Key!, [.. g.OrderBy(l => lanes[l.Thread])]))
-                           .OrderBy(r => r.Operator.NodeLevel)
-                           .ThenBy(r => r.Lifetimes.Min(l => l.StartOf(TraceTimelineAxis.Position)))
-                           .ThenBy(r => r.Operator.PlanNodeIdentifier?.NodeId ?? 0)];
-    }
-
-    private static OperatorRow RowOf(ExecutionOperatorEvent operatorEvent, TraceOperatorLifetime[] lifetimes)
-    {
-        var target = operatorEvent.ObjectName.Length > 0
-            ? operatorEvent.ObjectName
-            : operatorEvent.LogicalOperator != operatorEvent.Name ? operatorEvent.LogicalOperator : string.Empty;
-
-        var title = operatorEvent.PlanNodeIdentifier is { } identifier
-            ? $"{operatorEvent.OperatorDescription} (Node {identifier.NodeId})"
-            : operatorEvent.OperatorDescription;
-
-        return new OperatorRow(operatorEvent, lifetimes, operatorEvent.Name, target, title);
-    }
-
-    private void DrawOperators(SKCanvas canvas, int width, double scale)
-    {
-        if (!ShowsOperators)
-        {
-            return;
-        }
-
-        var top = OperatorsTop;
-
-        var height = OperatorsHeight;
-
-        _paints.Fill.Color = OperatorPaneColour;
-
-        canvas.DrawRect(0, top, width, height, _paints.Fill);
-
-        canvas.Save();
-
-        canvas.ClipRect(new SKRect(0, top, width, top + height));
-
-        DrawOutputRows(canvas, scale);
-
-        for (var row = 0; row < _operatorRows.Length; row++)
-        {
-            for (var track = 0; track < _operatorRows[row].Lifetimes.Length; track++)
-            {
-                if (TrackRect(row, track, width, scale) is { } rect)
-                {
-                    var lifetime = _operatorRows[row].Lifetimes[track];
-
-                    DrawOperatorBar(canvas, _operatorRows[row], lifetime, rect, scale, !IsRaised(lifetime));
-                }
-            }
-
-            DrawMarkBand(canvas, row, width, scale);
-        }
-
-        canvas.Restore();
-
-        if (ShowsFlameChart)
-        {
-            DrawSplitter(canvas, top + height, width);
-        }
-    }
-
-    private void DrawOperatorBar(SKCanvas canvas,
-                                 OperatorRow row,
-                                 TraceOperatorLifetime lifetime,
-                                 SKRect rect,
-                                 double scale,
-                                 bool labelled)
-    {
-        var colour = OperatorColourOf(row.Operator, lifetime);
-
-        var radius = Math.Min(rect.Height / 2, OperatorCornerRadius);
-
-        _operatorShape.SetRect(rect, radius, radius);
-
-        canvas.Save();
-
-        canvas.ClipRoundRect(_operatorShape, antialias: true);
-
-        canvas.Translate(0, rect.Top);
-
-        canvas.Scale(1, rect.Height);
-
-        _paints.Fill.Color = colour;
-
-        _paints.Fill.Shader = OperatorGradientOf(colour);
-
-        canvas.DrawRect(rect.Left, 0, rect.Width, 1, _paints.Fill);
-
-        _paints.Fill.Shader = null;
-
-        canvas.Restore();
-
-        DrawReturnStrip(canvas, row, lifetime, rect, colour, scale);
-
-        if (labelled)
-        {
-            DrawOperatorLabel(canvas, row, rect);
-        }
-    }
-
-    private bool IsRaised(TraceOperatorLifetime lifetime)
-        => ShowMemory && MemoryMode == TraceTimelineMemoryMode.InUse && _inUseMaximum > 0 && !lifetime.InUse.IsEmpty;
-
-    private SKShader OperatorGradientOf(SKColor colour)
-    {
-        if (!_operatorGradients.TryGetValue(colour, out var gradient))
-        {
-            gradient = SKShader.CreateLinearGradient(new SKPoint(0, 0),
-                                                     new SKPoint(0, 1),
-                                                     [
-                                                         TimelineColours.Scale(colour, 1f + OperatorGradientLift),
-                                                         TimelineColours.Scale(colour, 1f - OperatorGradientLift)
-                                                     ],
-                                                     null,
-                                                     SKShaderTileMode.Clamp);
-
-            _operatorGradients[colour] = gradient;
-        }
-
-        return gradient;
-    }
-
-    private void DrawOperatorLabel(SKCanvas canvas, OperatorRow row, SKRect rect)
-    {
-        var left = Math.Max(rect.Left, 0) + LabelPadding * 2;
-
-        var available = rect.Right - LabelPadding * 2 - left;
-
-        var sizeByHeight = Math.Min(OperatorMaximumFont, rect.Height - 2);
-
-        if (available < MinimumOperatorLabelWidth || sizeByHeight < OperatorMinimumFont)
-        {
-            return;
-        }
-
-        var bold = _paints.OperatorBoldFont;
-
-        var regular = _paints.OperatorFont;
-
-        bold.Size = OperatorMaximumFont;
-
-        regular.Size = OperatorMaximumFont;
-
-        var nameWidth = Math.Max(bold.MeasureText(row.Name), 1);
-
-        var bothWidth = row.Target.Length > 0
-            ? nameWidth + OperatorMaximumFont * OperatorLabelGap + regular.MeasureText(row.Target)
-            : nameWidth;
-
-        var bothSize = Math.Min(sizeByHeight, OperatorMaximumFont * available / bothWidth);
-
-        var withTarget = row.Target.Length > 0 && bothSize >= OperatorMinimumFont;
-
-        var size = withTarget ? bothSize : Math.Min(sizeByHeight, OperatorMaximumFont * available / nameWidth);
-
-        if (size < OperatorMinimumFont)
-        {
-            return;
-        }
-
-        bold.Size = size;
-
-        regular.Size = size;
-
-        var baseline = rect.MidY + size * OperatorBaselineShift;
-
-        _paints.Text.Color = OperatorLabelColour;
-
-        canvas.Save();
-
-        canvas.ClipRect(rect);
-
-        canvas.DrawText(row.Name, left, baseline, SKTextAlign.Left, bold, _paints.Text);
-
-        if (withTarget)
-        {
-            canvas.DrawText(row.Target,
-                            left + bold.MeasureText(row.Name) + size * OperatorLabelGap,
-                            baseline,
-                            SKTextAlign.Left,
-                            regular,
-                            _paints.Text);
-        }
-
-        canvas.Restore();
     }
 
     private void DrawSplitter(SKCanvas canvas, float top, int width)
@@ -390,159 +211,9 @@ public sealed partial class TraceTimelineControl
         canvas.DrawLine(width / 2f - SplitterGripWidth / 2, centre, width / 2f + SplitterGripWidth / 2, centre, _paints.Tick);
     }
 
-    private SKRect? TrackRect(int row, int track, int width, double scale)
-    {
-        var (top, height) = TrackBounds(row, track);
-
-        var lifetime = _operatorRows[row].Lifetimes[track];
-
-        var start = lifetime.StartOf(_axis);
-
-        var end = lifetime.EndOf(_axis);
-
-        if (end < _viewStart || start > _viewEnd)
-        {
-            return null;
-        }
-
-        var left = (float)((start - _viewStart) * scale);
-
-        var right = Math.Max((float)((end - _viewStart) * scale), left + NarrowSpan * 2);
-
-        return new SKRect(Math.Max(left, -OperatorCornerRadius * 2),
-                          top,
-                          Math.Min(right, width + OperatorCornerRadius * 2),
-                          top + height);
-    }
-
-    private (float Top, float Height) TrackBounds(int row, int track)
-    {
-        var barsHeight = OperatorRowHeight - MarkBandHeightOf(row);
-
-        var trackHeight = barsHeight / _operatorRows[row].Lifetimes.Length;
-
-        var padding = Math.Min(OperatorBarPadding, trackHeight * OperatorBarShare);
-
-        return (OperatorRowTop(row) + track * trackHeight + padding, Math.Max(trackHeight - padding * 2, 1));
-    }
-
-    private float OperatorRowTop(int row) => OperatorsTop + OperatorsPadding + OutputRowsArea + row * (OperatorRowHeight + OperatorRowGap);
-
-    private SKColor OperatorColourOf(ExecutionOperatorEvent operatorEvent, TraceOperatorLifetime lifetime)
-        => ColourProvider is { } colours ? colours.GetColour(operatorEvent).ToSkColor() : ColourOf(lifetime.Node);
-
-    private void DrawOperatorOverlay(SKCanvas canvas, int width)
-    {
-        if (!ShowsOperators)
-        {
-            return;
-        }
-
-        var scale = PixelsPerUnit(width);
-
-        canvas.Save();
-
-        canvas.ClipRect(new SKRect(0, OperatorsTop, width, OperatorsTop + OperatorsHeight));
-
-        DimOperators(canvas, width, scale);
-
-        if (_hoverOperator is { } hover && hover.Row < _operatorRows.Length)
-        {
-            OutlineTrack(canvas, hover.Row, hover.Track, width, scale, OperatorHoverColour, 1f);
-        }
-
-        for (var row = 0; row < _operatorRows.Length; row++)
-        {
-            if (!ReferenceEquals(_operatorRows[row].Operator, _selectedOperator))
-            {
-                continue;
-            }
-
-            for (var track = 0; track < _operatorRows[row].Lifetimes.Length; track++)
-            {
-                OutlineTrack(canvas, row, track, width, scale, OperatorSelectedColour, OperatorSelectedStroke);
-            }
-        }
-
-        DrawOutputRowLineage(canvas, width, scale);
-
-        canvas.Restore();
-    }
-
-    private void DimOperators(SKCanvas canvas, int width, double scale)
-    {
-        var call = GetSelectedCallRange(width, scale);
-
-        if (_selectedOperator is null && call is null)
-        {
-            return;
-        }
-
-        var (left, right) = call ?? (0, width);
-
-        if (_selectedOperator is null)
-        {
-            _pathBuilder.AddRect(new SKRect(left, OperatorsTop, right, OperatorsTop + OperatorsHeight));
-        }
-
-        var rowHeight = OperatorRowHeight;
-
-        for (var row = 0; row < _operatorRows.Length && _selectedOperator is not null; row++)
-        {
-            if (ReferenceEquals(_operatorRows[row].Operator, _selectedOperator))
-            {
-                var top = OperatorRowTop(row);
-
-                _pathBuilder.AddRect(new SKRect(left, top, right, top + rowHeight));
-            }
-        }
-
-        using var selected = _pathBuilder.Detach();
-
-        canvas.Save();
-
-        canvas.ClipPath(selected, SKClipOperation.Difference);
-
-        _paints.Fill.Color = OperatorDimColour;
-
-        canvas.DrawRect(0, OperatorsTop, width, OperatorsHeight, _paints.Fill);
-
-        canvas.Restore();
-    }
-
-    private (float Left, float Right)? GetSelectedCallRange(int width, double scale)
-    {
-        if (SelectedHit is not { } selected || SpanOf(selected) is not { } span)
-        {
-            return null;
-        }
-
-        var left = Math.Clamp((float)((span.Start - _viewStart) * scale), 0, width);
-
-        var right = Math.Clamp(Math.Max((float)((span.End - _viewStart) * scale), left + NarrowSpan), 0, width);
-
-        return (left, right);
-    }
-
-    private void OutlineTrack(SKCanvas canvas, int row, int track, int width, double scale, SKColor colour, float stroke)
-    {
-        if (TrackRect(row, track, width, scale) is not { } rect)
-        {
-            return;
-        }
-
-        var radius = Math.Min(rect.Height / 2, OperatorCornerRadius);
-
-        _paints.Outline.Color = colour;
-
-        _paints.Outline.StrokeWidth = stroke;
-
-        canvas.DrawRoundRect(rect, radius, radius, _paints.Outline);
-    }
-
     private void DrawSelectedCalls(SKCanvas canvas, int width, int height)
     {
-        if (_selectedOperator is null || _visible is not { } timeline)
+        if (_operators.SelectedOperator is null || ShowCallStack || _visible is not { } timeline)
         {
             return;
         }
@@ -604,7 +275,7 @@ public sealed partial class TraceTimelineControl
     {
         _selectedLanes.Clear();
 
-        if (_selectedOperator is not { } selected || _visible is not { } timeline)
+        if (_operators.SelectedOperator is not { } selected || _visible is not { } timeline)
         {
             return;
         }
@@ -642,214 +313,20 @@ public sealed partial class TraceTimelineControl
         }
     }
 
-    private void CollectOperatorSurfaces(float firstPixel, float lastPixel, double scale)
-    {
-        if (!ShowsOperators)
-        {
-            return;
-        }
-
-        for (var row = 0; row < _operatorRows.Length; row++)
-        {
-            var rowStart = StartSpikeRow();
-
-            for (var track = 0; track < _operatorRows[row].Lifetimes.Length; track++)
-            {
-                var lifetime = _operatorRows[row].Lifetimes[track];
-
-                if (lifetime.InUse.IsEmpty)
-                {
-                    continue;
-                }
-
-                var left = (float)((lifetime.StartOf(_axis) - _viewStart) * scale);
-
-                var right = (float)((lifetime.EndOf(_axis) - _viewStart) * scale);
-
-                if (right < firstPixel || left > lastPixel || right - left < SurfaceBucketWidth)
-                {
-                    continue;
-                }
-
-                AddOperatorSurface(row, track, Math.Max(left, firstPixel), Math.Min(right, lastPixel), scale);
-            }
-
-            EndSpikeRow(rowStart);
-        }
-    }
-
-    private void AddOperatorSurface(int row, int track, float left, float right, double scale)
-    {
-        var operatorRow = _operatorRows[row];
-
-        var lifetime = operatorRow.Lifetimes[track];
-
-        var (top, height) = TrackBounds(row, track);
-
-        var colour = OperatorColourOf(operatorRow.Operator, lifetime);
-
-        var source = BlockSource.Of(new OperatorHit(row, track));
-
-        var first = _spikes.Count;
-
-        for (var x = left; x < right; x += SurfaceBucketWidth)
-        {
-            var end = Math.Min(x + SurfaceBucketWidth, right);
-
-            var bytes = lifetime.InUse.PeakDuring(lifetime.PositionAt(_axis, _viewStart + x / scale),
-                                                  lifetime.PositionAt(_axis, _viewStart + end / scale));
-
-            var last = _spikes.Count - 1;
-
-            if (last >= first && _spikes[last].Bytes == bytes && _spikes[last].Right >= x)
-            {
-                _spikes[last] = _spikes[last] with { Right = end };
-            }
-            else
-            {
-                _spikes.Add(Raised(source, lifetime.Node, x, end, top, height, bytes, _inUseMaximum) with { Colour = colour });
-            }
-        }
-
-        FinishSurface(first);
-    }
-
-    private string TextOf(Block block)
-        => block.Source.Operator is { } operatorHit && operatorHit.Row < _operatorRows.Length
-            ? _operatorRows[operatorHit.Row].Name
-            : LabelOf(block.Node);
-
-    private OperatorHit? OperatorAt(Point position)
-    {
-        if (OperatorRowAt(position) is not { } found)
-        {
-            return null;
-        }
-
-        var (row, inRow) = found;
-
-        var barsHeight = OperatorRowHeight - MarkBandHeightOf(row);
-
-        if (inRow >= barsHeight)
-        {
-            return null;
-        }
-
-        var lifetimes = _operatorRows[row].Lifetimes;
-
-        var track = Math.Clamp((int)(inRow / (barsHeight / lifetimes.Length)), 0, lifetimes.Length - 1);
-
-        var scale = PixelsPerUnit((int)_overlay.ActualWidth);
-
-        var value = _viewStart + position.X / scale;
-
-        var tolerance = HitTolerance / scale;
-
-        return lifetimes[track].StartOf(_axis) - tolerance <= value && value <= lifetimes[track].EndOf(_axis) + tolerance
-            ? new OperatorHit(row, track)
-            : null;
-    }
-
-    private (int Row, float InRow)? OperatorRowAt(Point position)
-    {
-        if (!IsInOperators(position))
-        {
-            return null;
-        }
-
-        var rowHeight = OperatorRowHeight;
-
-        var y = (float)position.Y - OperatorsTop - OperatorsPadding - OutputRowsArea;
-
-        var row = (int)Math.Floor(y / (rowHeight + OperatorRowGap));
-
-        var inRow = y - row * (rowHeight + OperatorRowGap);
-
-        return row < 0 || row >= _operatorRows.Length || inRow >= rowHeight ? null : (row, inRow);
-    }
-
-    private bool IsInOperators(Point position)
-        => ShowsOperators && position.Y >= OperatorsTop && position.Y < OperatorsTop + OperatorsHeight;
-
     private bool IsOnSplitter(Point position)
     {
-        if (!ShowsOperators || !ShowsFlameChart)
+        if (!ShowsSplitter)
         {
             return false;
         }
 
-        var top = OperatorsTop + OperatorsHeight;
+        var top = ReadsTop + ReadsHeight;
 
         return position.Y >= top - SplitterHitMargin && position.Y < top + SplitterHeight + SplitterHitMargin;
     }
 
-    private void ClickOperators(Point position)
+    private MenuFlyout CreateOperatorsMenu(PlanNodeIdentifier? identifier)
     {
-        var width = (int)_overlay.ActualWidth;
-
-        var isOutsideSelectedCall = GetSelectedCallRange(width, PixelsPerUnit(width)) is { } range
-                                    && (position.X < range.Left || position.X > range.Right);
-
-        if (isOutsideSelectedCall)
-        {
-            Deselect();
-        }
-
-        if (MarkBandAt(position) is { } band)
-        {
-            OpenNearestMark(band, position);
-        }
-        else if (GetOutputRow(position) is { } outputRow)
-        {
-            MovePlayheadToOutputRow(outputRow);
-        }
-        else if (ReturnStripAt(position) is { } strip)
-        {
-            ClickReturnStrip(strip, position);
-        }
-        else if (!isOutsideSelectedCall)
-        {
-            ClickOperator(OperatorAt(position));
-        }
-    }
-
-    private void ClickOperator(OperatorHit? hit)
-    {
-        var clicked = hit is { } found ? _operatorRows[found.Row].Operator : null;
-
-        _selectedOperator = ReferenceEquals(clicked, _selectedOperator) ? null : clicked;
-
-        FindSelectedRegions();
-
-        _canvas.Invalidate();
-
-        if (_selectedOperator?.PlanNodeIdentifier is { } identifier)
-        {
-            PlanNodeSelected?.Invoke(identifier);
-        }
-    }
-
-    private void ClearSelectedOperator()
-    {
-        if (_selectedOperator is null)
-        {
-            return;
-        }
-
-        _selectedOperator = null;
-
-        FindSelectedRegions();
-
-        _canvas.Invalidate();
-    }
-
-    private OperatorHit? OperatorUnder(Point position)
-        => BlockAt(position) is { Source.Operator: { } surface } ? surface : OperatorAt(position);
-
-    private MenuFlyout CreateOperatorsMenu(OperatorHit? hit)
-    {
-        var identifier = hit is { } found ? _operatorRows[found.Row].Operator.PlanNodeIdentifier : null;
-
         var flyout = new MenuFlyout();
 
         flyout.Items.Add(MenuItems.Create("Execution Plan", () => ExecutionPlanRequested?.Invoke(identifier)));
@@ -858,18 +335,18 @@ public sealed partial class TraceTimelineControl
 
         var iteratorCalls = MenuItems.Toggle("Iterator Calls", ShowIteratorCalls, isChecked => ShowIteratorCalls = isChecked);
 
-        var rowBuffers = MenuItems.Toggle("Row Buffers", ShowRowBuffers, isChecked => ShowRowBuffers = isChecked);
+        var reads = MenuItems.Toggle("Reads", ShowReads, isChecked => ShowReads = isChecked);
 
-        flyout.Items.Add(MenuItems.SubMenu("View", iteratorCalls, rowBuffers));
+        flyout.Items.Add(MenuItems.SubMenu("View", iteratorCalls, reads));
 
         return flyout;
     }
 
-    private void ZoomToOperator(OperatorHit hit)
+    private void ZoomToOperator(TraceOperatorHit hit)
     {
-        var lifetime = _operatorRows[hit.Row].Lifetimes[hit.Track];
+        var (start, end) = _operators.GetActiveRange(hit);
 
-        ZoomTo(lifetime.StartOf(_axis), lifetime.EndOf(_axis));
+        ZoomTo(start, end);
     }
 
     private void BeginOperatorsResize(Point position)
@@ -888,90 +365,49 @@ public sealed partial class TraceTimelineControl
         Relayout();
     }
 
-    private void ShowOperatorToolTip(OperatorHit hit, Point position)
-    {
-        var lifetime = _operatorRows[hit.Row].Lifetimes[hit.Track];
-
-        if (!_operatorDetails.TryGetValue(lifetime, out var details))
-        {
-            details = DetailsOf(_operatorRows[hit.Row], lifetime);
-
-            _operatorDetails[lifetime] = details;
-        }
-
-        OpenToolTip(details, position);
-    }
-
-    private string DetailsOf(OperatorRow row, TraceOperatorLifetime lifetime)
-    {
-        var methods = new Dictionary<string, int>();
-
-        var active = 0d;
-
-        foreach (var call in lifetime.InstructionCalls)
-        {
-            var label = LabelOf(call.Node);
-
-            var separator = label.LastIndexOf("::", StringComparison.Ordinal);
-
-            var method = separator < 0 ? label : label[(separator + 2)..];
-
-            methods[method] = methods.GetValueOrDefault(method) + 1;
-
-            active += call.End - call.Start;
-        }
-
-        var instructions = lifetime.EndOf(TraceTimelineAxis.Instructions) - lifetime.StartOf(TraceTimelineAxis.Instructions);
-
-        var origin = OriginOf(TraceTimelineAxis.Position);
-
-        var start = lifetime.StartOf(TraceTimelineAxis.Position) - origin;
-
-        var end = lifetime.EndOf(TraceTimelineAxis.Position) - origin;
-
-        var lines = new List<string>
-        {
-            row.Title,
-            $"Thread {lifetime.Thread}",
-            string.Join("  ·  ", methods.Select(m => $"{m.Key} {m.Value:N0}")),
-            $"Instructions {instructions:N0}",
-            $"Position {Math.Floor(start):N0} to {Math.Floor(end):N0}"
-        };
-
-        if (instructions > 0)
-        {
-            lines.Add($"Inside Calls {active / instructions:P1} (Including Child Operators)");
-        }
-
-        if (!lifetime.InUse.IsEmpty)
-        {
-            lines.Add($"Peak In Use {SizeFormat.Format((long)lifetime.InUse.PeakDuring(start, end))}");
-        }
-
-        return string.Join(Environment.NewLine, lines);
-    }
-
     private static void OnPaneVisibilityChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var control = (TraceTimelineControl)d;
 
         control.HideToolTip();
 
-        control._hoverOperator = null;
+        control._operators.Hover = TraceOperatorsHover.None;
+
+        control._reads.Hover = null;
 
         control.Relayout();
     }
 
-    private static void OnColourProviderChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((TraceTimelineControl)d).Redraw();
+    private static void OnReadsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (TraceTimelineControl)d;
 
-    private sealed record OperatorRow(ExecutionOperatorEvent Operator,
-                                      TraceOperatorLifetime[] Lifetimes,
-                                      string Name,
-                                      string Target,
-                                      string Title);
+        control._reads.Reads = e.NewValue as TraceReads;
 
-    private readonly record struct OperatorHit(int Row, int Track);
+        control._reads.Hover = null;
+
+        control.Relayout();
+    }
+
+    private static void OnRowReturnsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (TraceTimelineControl)d;
+
+        control._operators.RowReturnMarks = control.RowReturnMarks;
+
+        control._operators.ShowIteratorCalls = control.ShowIteratorCalls;
+
+        control.Relayout();
+    }
+
+    private static void OnOutputColumnNamesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (TraceTimelineControl)d;
+
+        control._operators.OutputColumnNames = e.NewValue as IReadOnlyList<string>;
+
+        control.Redraw();
+    }
 
     private readonly record struct SelectedRegion(int Depth, TraceSpan Position, TraceSpan Instructions)
     {

@@ -21,18 +21,13 @@ public sealed class PlayheadCallStackViewModel(QueryViewModel query) : CallStack
         }
     }
 
-    public override string EmptyText => "No Calls At The Playhead";
+    public override string EmptyText => "No Call Selected";
 
-    protected override string CurrentText => "Running At The Playhead";
+    protected override string CurrentText => "Innermost Selected Call";
 
     private Action<IPlayheadChart>? ChartRequest { get; set; }
 
-    public void Step(bool forward)
-    {
-        ClearSelection();
-
-        Chart?.StepPlayhead(forward);
-    }
+    public void Step(bool forward) => Chart?.SelectAdjacentCall(forward);
 
     public void RequestChart(Action<IPlayheadChart> request)
     {

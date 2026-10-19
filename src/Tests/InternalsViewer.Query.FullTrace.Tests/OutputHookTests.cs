@@ -1,8 +1,6 @@
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Output.Enums;
-using InternalsViewer.Query.FullTrace.Output.Sources;
-using InternalsViewer.Query.FullTrace.RowBuffers.Accessors;
 using InternalsViewer.Query.FullTrace.RowSources;
 using InternalsViewer.Query.FullTrace.RowSources.Enums;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
@@ -66,8 +64,6 @@ public class OutputHookTests
 
     private const ulong BatchHelper = 0x1F4_0000_C000;
 
-    private const ulong HelperRow = 0x1F4_0000_C800;
-
     private const ulong RedirectValue = 0x1F4_0000_5400;
 
     private const ulong VariantValue = 0x1F4_0000_5500;
@@ -78,10 +74,6 @@ public class OutputHookTests
 
     private const int VariantSlot = 5;
 
-    private const ulong Rowset = 0x1F4_0000_8800;
-
-    private const ulong Accessor = 0x1F4_0000_8900;
-
     private const ulong Record = 0x1F4_0001_0000;
 
     private const ulong Variant = 0x1F4_0000_9000;
@@ -89,25 +81,12 @@ public class OutputHookTests
     private const int Slot = 2;
 
     [Fact]
-    public void A_Column_Read_Through_A_Hash_Switch_Is_Located_In_Its_Hash_Record()
-    {
-        var column = Assert.IsType<HashRecordOutputSource>(Assert.Single(Capture(CreateReplay())).Columns[0]);
-
-        Assert.Equal((Slot, 1, 4, 4), (column.Slot, column.Ordinal, column.Offset, column.Length));
-        Assert.Equal(HashIterator, column.Owner);
-    }
+    public void A_Column_Read_Through_A_Hash_Switch_Is_Owned_By_The_Iterator_That_Set_Its_Slot()
+        => Assert.Equal(HashIterator, Assert.Single(Capture(CreateReplay())).Owners[0]);
 
     [Fact]
     public void A_Column_Read_From_A_Scan_Is_Owned_By_The_Scan_That_Created_It()
-    {
-        var column = Assert.IsType<RowsetOutputSource>(Assert.Single(Capture(CreateReplay())).Columns[1]);
-
-        Assert.Equal((Rowset, 1, ScanIterator), (column.Rowset, column.Slot, column.Owner));
-    }
-
-    [Fact]
-    public void A_Column_Read_From_A_Scan_Takes_The_Ordinal_Of_The_Accessor_It_Reads_Through()
-        => Assert.Equal(3, Assert.IsType<RowsetOutputSource>(Assert.Single(Capture(CreateReplay())).Columns[1]).Ordinal);
+        => Assert.Equal(ScanIterator, Assert.Single(Capture(CreateReplay())).Owners[1]);
 
     [Fact]
     public void The_Structure_Belongs_To_The_Output_Row_It_Was_Read_For()
@@ -122,21 +101,25 @@ public class OutputHookTests
 
         Evaluation(hook, CreateReplay().Write(Values + 0x10, SwitchValue), 20);
 
-        Assert.IsType<RowsetOutputSource>(Assert.Single(hook.Build()).Columns[1]);
+        Assert.Equal(ScanIterator, Assert.Single(hook.Build()).Owners[1]);
     }
 
     [Fact]
-    public void A_Row_Sent_Directly_Records_The_Buffer_It_Was_Sent_From()
+    public void A_Row_Sent_Directly_Is_Owned_By_The_Iterator_That_Sent_It()
     {
         var replay = CreateReplay();
 
-        var hook = CreateHook();
+        var rowSources = CreateRowSources();
+
+        var hook = CreateHook(rowSources);
+
+        rowSources.OnEntry(Call(GetRow, 29, [ScanIterator, Context]), replay);
 
         hook.OnEntry(Call(Send, 30, [OutputRowValue, Context, SortBuffer]), replay);
 
         var structure = Assert.Single(hook.Build());
 
-        Assert.Equal((OutputRowValue, SortBuffer, 0), (structure.OutputRow, structure.DirectSelectBuffer, structure.Columns.Count));
+        Assert.Equal((OutputRowValue, ScanIterator, 0), (structure.OutputRow, structure.DirectSelectOwner, structure.Owners.Count));
     }
 
     [Fact]
@@ -154,11 +137,11 @@ public class OutputHookTests
 
         hook.OnReturn(Call(Evaluate, 10, [Context, Executor]), replay);
 
-        Assert.Equal(0UL, Assert.Single(hook.Build()).DirectSelectBuffer);
+        Assert.Equal(0UL, Assert.Single(hook.Build()).DirectSelectOwner);
     }
 
     [Fact]
-    public void A_Column_Read_From_A_Variant_Records_Where_The_Variant_Is()
+    public void A_Column_Read_From_A_Variant_Has_No_Owner()
     {
         var replay = CreateReplay().Write(Variants + 0x08, SortBuffer + 0x20);
 
@@ -170,9 +153,7 @@ public class OutputHookTests
 
         hook.OnReturn(Call(Evaluate, 10, [Context, Executor]), replay);
 
-        var column = Assert.IsType<BufferOutputSource>(Assert.Single(Assert.Single(hook.Build()).Columns));
-
-        Assert.Equal((SortBuffer + 0x20, 0UL), (column.Address, column.Owner));
+        Assert.Equal(0UL, Assert.Single(Assert.Single(hook.Build()).Owners));
     }
 
     [Fact]
@@ -181,8 +162,7 @@ public class OutputHookTests
         var replay = CreateReplay().Write(Values + 0x08, RedirectValue)
                                    .Write(RedirectValue, RedirectTable)
                                    .Write(RedirectValue + 0x08, 1)
-                                   .Write(RedirectValue + 0x10, BatchHelper)
-                                   .Write(BatchHelper + 0x78, HelperRow);
+                                   .Write(RedirectValue + 0x10, BatchHelper);
 
         var hook = CreateHook();
 
@@ -192,9 +172,7 @@ public class OutputHookTests
 
         hook.OnReturn(Call(Evaluate, 10, [Context, Executor]), replay);
 
-        var column = Assert.IsType<BufferOutputSource>(Assert.Single(Assert.Single(hook.Build()).Columns));
-
-        Assert.Equal((HelperRow + 0x20, BatchHelper), (column.Address, column.Owner));
+        Assert.Equal(BatchHelper, Assert.Single(Assert.Single(hook.Build()).Owners));
     }
 
     [Fact]
@@ -214,9 +192,7 @@ public class OutputHookTests
 
         hook.OnReturn(Call(Evaluate, 10, [Context, Executor]), replay);
 
-        var column = Assert.IsType<BufferOutputSource>(Assert.Single(Assert.Single(hook.Build()).Columns));
-
-        Assert.Equal((VariantRow + 0x20, AggregateIterator), (column.Address, column.Owner));
+        Assert.Equal(AggregateIterator, Assert.Single(Assert.Single(hook.Build()).Owners));
     }
 
     [Fact]
@@ -232,7 +208,7 @@ public class OutputHookTests
 
         Evaluation(hook, CreateReplay(), 20);
 
-        Assert.Equal(2, Assert.Single(hook.Build()).Columns.Count);
+        Assert.Equal(2, Assert.Single(hook.Build()).Owners.Count);
     }
 
     [Fact]
@@ -254,14 +230,13 @@ public class OutputHookTests
 
         hook.OnReturn(Call(Evaluate, 10, [Context, Executor]), replay);
 
-        Assert.Single(Assert.Single(hook.Build()).Columns);
+        Assert.Single(Assert.Single(hook.Build()).Owners);
     }
 
     [Fact]
     public void Functions_Without_The_Output_Row_Class_Hook_Nothing()
         => Assert.Empty(new OutputHook(new OutputFunctions(CreateFunctions(), new Dictionary<ulong, OutputValueClass>()),
-                                       new RowSourceHook(RowSourceFunctions.Empty),
-                                       AccessorHookTests.CreateHandle(Accessor, 3)).Functions);
+                                       new RowSourceHook(RowSourceFunctions.Empty)).Functions);
 
     private static IReadOnlyList<TraceOutputStructure> Capture(FakeTraceReplay replay)
     {
@@ -272,7 +247,7 @@ public class OutputHookTests
         return hook.Build();
     }
 
-    private static OutputHook CreateHook()
+    private static OutputHook CreateHook(RowSourceHook? rowSources = null)
         => new(new OutputFunctions(CreateFunctions(),
                                    new Dictionary<ulong, OutputValueClass>
                                    {
@@ -283,8 +258,7 @@ public class OutputHookTests
                                        [RedirectTable] = OutputValueClass.BatchRedirect,
                                        [VariantTable] = OutputValueClass.VariantTable
                                    }),
-               CreateRowSources(),
-               AccessorHookTests.CreateHandle(Accessor, 3));
+               rowSources ?? CreateRowSources());
 
     private static RowSourceHook CreateRowSources()
     {
@@ -365,14 +339,9 @@ public class OutputHookTests
                                 .Write(SwitchValue + 0x08, HashIterator + 0x110)
                                 .Write(SwitchValue + 0x10, HashValue)
                                 .Write(HashValue, HashTable)
-                                .Write(HashValue + 0x10, 4)
-                                .Write(HashValue + 0x14, (ushort)1)
-                                .Write(HashValue + 0x2A, (ushort)4)
                                 .Write(HashValue + 0x2C, Slot)
                                 .Write(ScanValue, ScanTable)
-                                .Write(ScanValue + 0x08, Rowset)
                                 .Write(ScanValue + 0x10, 1)
-                                .Write(ScanValue + 0x18, Accessor)
                                 .Write(Context + Slot * sizeof(ulong), Record)
                                 .Write(Variant, (byte)0)
                                 .Write(Variant + 0x08, 5UL)

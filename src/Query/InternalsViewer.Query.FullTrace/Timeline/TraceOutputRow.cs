@@ -2,15 +2,13 @@ namespace InternalsViewer.Query.FullTrace.Timeline;
 
 public sealed class TraceOutputRow
 {
-    internal TraceOutputRow(int ordinal, TraceRowReturn rowReturn, IReadOnlyList<TraceOutputStep> steps, TraceOutputLineage lineage)
+    internal TraceOutputRow(int ordinal, TraceRowReturn rowReturn, IReadOnlyList<TraceOutputStep> steps)
     {
         Ordinal = ordinal;
 
         Return = rowReturn;
 
         Steps = steps;
-
-        Lineage = lineage;
     }
 
     public int Ordinal { get; }
@@ -18,8 +16,4 @@ public sealed class TraceOutputRow
     public TraceRowReturn Return { get; }
 
     public IReadOnlyList<TraceOutputStep> Steps { get; }
-
-    public IReadOnlyList<TraceOutputRowSource> Sources => field ??= Lineage.GetSources(Return);
-
-    private TraceOutputLineage Lineage { get; }
 }

@@ -1,0 +1,73 @@
+using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.FullTrace.Timeline.Enums;
+using SkiaSharp;
+
+namespace InternalsViewer.UI.App.Controls.Trace;
+
+public sealed partial class TraceTimelineControl : ITraceTimelineHost
+{
+    TraceTimelineAxis ITraceTimelineHost.Axis => _axis;
+
+    double ITraceTimelineHost.ViewStart => _viewStart;
+
+    double ITraceTimelineHost.ViewEnd => _viewEnd;
+
+    int ITraceTimelineHost.Width => (int)_overlay.ActualWidth;
+
+    double ITraceTimelineHost.Scale => PixelsPerUnit((int)_overlay.ActualWidth);
+
+    double? ITraceTimelineHost.Playhead => _playhead;
+
+    bool ITraceTimelineHost.ShowCallStack => ShowCallStack;
+
+    TraceTimelinePaints ITraceTimelineHost.Paints => _paints;
+
+    SKPathBuilder ITraceTimelineHost.PathBuilder => _pathBuilder;
+
+    double ITraceTimelineHost.GetOrigin(TraceTimelineAxis axis) => OriginOf(axis);
+
+    SKColor ITraceTimelineHost.GetColour(int node) => ColourOf(node);
+
+    string ITraceTimelineHost.GetLabel(int node) => LabelOf(node);
+
+    void ITraceTimelineHost.Invalidate() => _canvas.Invalidate();
+
+    void ITraceTimelineHost.MovePlayhead(double position)
+    {
+        StopPlay();
+
+        StopTransition();
+
+        PlacePlayhead(position);
+    }
+
+    void ITraceTimelineHost.ClickCall(CallStackNode node, int call)
+    {
+        if (_visible is not { } timeline || FindCall(timeline, node, call) is not { } hit)
+        {
+            return;
+        }
+
+        Click(hit);
+
+        if (_selected is { } selected)
+        {
+            BringIntoView(selected);
+        }
+    }
+
+    void ITraceTimelineHost.OpenCallTree(CallStackNode node, int call) => CallTreeOpenRequested?.Invoke(node, call);
+
+    void ITraceTimelineHost.OnSelectedOperatorChanged(ExecutionOperatorEvent? selected)
+    {
+        FindSelectedRegions();
+
+        _canvas.Invalidate();
+
+        if (selected?.PlanNodeIdentifier is { } identifier)
+        {
+            PlanNodeSelected?.Invoke(identifier);
+        }
+    }
+}

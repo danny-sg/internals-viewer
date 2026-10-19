@@ -2,7 +2,6 @@ using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
 using InternalsViewer.Query.FullTrace.Iterators;
-using InternalsViewer.Query.FullTrace.RowBuffers.Parsers;
 using InternalsViewer.Query.FullTrace.RowSources.Enums;
 
 namespace InternalsViewer.Query.FullTrace.RowSources;
@@ -37,15 +36,19 @@ internal sealed class RowSourceHook(RowSourceFunctions functions) : ITraceHook
 
     private Dictionary<(ulong Context, int Slot), ulong> Owners { get; } = [];
 
-    private Dictionary<ulong, List<(ulong Context, int Slot)>> OwnedSlots { get; } = [];
-
     private Dictionary<ulong, ulong> Creators { get; } = [];
 
     private Dictionary<ulong, IteratorPlanNode> PlanNodes { get; } = [];
 
     private Dictionary<ulong, ulong> PendingPlanNodes { get; } = [];
 
-    private Dictionary<ulong, ulong> Factories { get; } = [];
+    private Dictionary<ulong, PendingFactory> Factories { get; } = [];
+
+    private Dictionary<ulong, TracePoint> Constructions { get; } = [];
+
+    private HashSet<ulong> TearingDown { get; } = [];
+
+    private List<QueryTeardown> Teardowns { get; } = [];
 
     private List<ulong> ResolvedPlanNodes { get; } = [];
 
@@ -66,8 +69,16 @@ internal sealed class RowSourceHook(RowSourceFunctions functions) : ITraceHook
         switch (type)
         {
             case RowSourceFunctionType.BatchFactory:
-                Factories[call.Id] = iterator;
+                Factories[call.Id] = new PendingFactory(iterator, new TracePoint(call.Position, call.Instructions));
                 return;
+
+            case RowSourceFunctionType.Teardown:
+                TearingDown.Add(call.Id);
+                return;
+
+            case RowSourceFunctionType.Constructor:
+                Constructions[iterator] = new TracePoint(call.Position, call.Instructions);
+                break;
 
             case RowSourceFunctionType.BatchIterator:
                 AddPlanNode(replay, iterator);
@@ -81,7 +92,7 @@ internal sealed class RowSourceHook(RowSourceFunctions functions) : ITraceHook
         var context = call.Arguments[ContextArgument];
 
         var isObserved = type == RowSourceFunctionType.Iterator
-                         && context >= ColumnValueParser.SmallestAddress
+                         && context >= TraceAddress.Smallest
                          && Observed.GetValueOrDefault(iterator) < ObservedCalls;
 
         GetFrames(call.Thread).Push(new RowSourceFrame(call.Id, type, iterator, context, isObserved ? ReadSlots(replay, context) : null));
@@ -89,11 +100,20 @@ internal sealed class RowSourceHook(RowSourceFunctions functions) : ITraceHook
 
     public void OnReturn(in TraceHookCall call, ITraceReplay replay)
     {
-        if (Factories.Remove(call.Id, out var planObject))
+        if (TearingDown.Remove(call.Id))
         {
-            if (call.ReturnValue >= ColumnValueParser.SmallestAddress && !PlanNodes.ContainsKey(call.ReturnValue))
+            Teardowns.Add(new QueryTeardown(call.Thread, new TracePoint(call.Position, call.Instructions)));
+
+            return;
+        }
+
+        if (Factories.Remove(call.Id, out var factory))
+        {
+            if (call.ReturnValue >= TraceAddress.Smallest && !PlanNodes.ContainsKey(call.ReturnValue))
             {
-                PendingPlanNodes[call.ReturnValue] = planObject;
+                PendingPlanNodes[call.ReturnValue] = factory.PlanObject;
+
+                Constructions[call.ReturnValue] = factory.Started;
 
                 ResolvePlanNodes(replay);
             }
@@ -106,7 +126,7 @@ internal sealed class RowSourceHook(RowSourceFunctions functions) : ITraceHook
             return;
         }
 
-        if (frame.Type == RowSourceFunctionType.Creator && call.ReturnValue >= ColumnValueParser.SmallestAddress)
+        if (frame.Type == RowSourceFunctionType.Creator && call.ReturnValue >= TraceAddress.Smallest)
         {
             Creators.TryAdd(call.ReturnValue, frame.Iterator);
         }
@@ -124,7 +144,7 @@ internal sealed class RowSourceHook(RowSourceFunctions functions) : ITraceHook
         {
             if (IsChanged(before[slot], after[slot]))
             {
-                AddOwner(frame.Context, slot, frame.Iterator);
+                Owners.TryAdd((frame.Context, slot), frame.Iterator);
             }
         }
     }
@@ -133,23 +153,25 @@ internal sealed class RowSourceHook(RowSourceFunctions functions) : ITraceHook
     {
         Factories.Remove(call.Id);
 
+        TearingDown.Remove(call.Id);
+
         Pop(call.Thread, call.Id);
     }
 
     public ulong GetOwner(ulong context, int slot) => Owners.GetValueOrDefault((context, slot));
 
-    public IReadOnlyList<(ulong Context, int Slot)> GetSlots(ulong iterator) => OwnedSlots.TryGetValue(iterator, out var slots) ? slots : [];
-
     public ulong GetCreator(ulong value) => Creators.GetValueOrDefault(value);
 
     public IReadOnlyList<IteratorPlanNode> GetPlanNodes() => [.. PlanNodes.Values];
+
+    public IReadOnlyList<QueryTeardown> GetTeardowns() => Teardowns;
 
     public ulong GetCurrentIterator(uint thread)
         => Frames.TryGetValue(thread, out var frames) && frames.TryPeek(out var frame) ? frame.Iterator : 0;
 
     private static bool IsChanged(SlotState? before, SlotState? after)
     {
-        if (before is not { } from || after is not { Handle: >= ColumnValueParser.SmallestAddress } to)
+        if (before is not { } from || after is not { Handle: >= TraceAddress.Smallest } to)
         {
             return false;
         }
@@ -179,7 +201,7 @@ internal sealed class RowSourceHook(RowSourceFunctions functions) : ITraceHook
 
     private static byte[]? ReadRow(ITraceReplay replay, ulong handle)
     {
-        if (handle < ColumnValueParser.SmallestAddress)
+        if (handle < TraceAddress.Smallest)
         {
             return null;
         }
@@ -242,37 +264,25 @@ internal sealed class RowSourceHook(RowSourceFunctions functions) : ITraceHook
             || !replay.TryRead(planObject + PlanNodeIdOffset, out int nodeId)
             || !replay.TryRead(planObject + PlanQueryOffset, out ulong query)
             || nodeId < 0
-            || query < ColumnValueParser.SmallestAddress)
+            || query < TraceAddress.Smallest)
         {
             return null;
         }
 
-        return new IteratorPlanNode(iterator, planObject, batchPlanObject, query, nodeId);
+        return new IteratorPlanNode(iterator,
+                                    planObject,
+                                    batchPlanObject,
+                                    query,
+                                    nodeId,
+                                    Constructions.TryGetValue(iterator, out var constructed) ? constructed : null);
     }
 
     private PlanObjectClass? GetPlanObjectClass(ITraceReplay replay, ulong planObject)
-        => planObject >= ColumnValueParser.SmallestAddress
+        => planObject >= TraceAddress.Smallest
            && replay.TryRead(planObject, out ulong vtable)
            && functions.PlanObjects.TryGetValue(vtable, out var planClass)
             ? planClass
             : null;
-
-    private void AddOwner(ulong context, int slot, ulong iterator)
-    {
-        if (!Owners.TryAdd((context, slot), iterator))
-        {
-            return;
-        }
-
-        if (!OwnedSlots.TryGetValue(iterator, out var slots))
-        {
-            slots = [];
-
-            OwnedSlots[iterator] = slots;
-        }
-
-        slots.Add((context, slot));
-    }
 
     private RowSourceFrame? Pop(uint thread, ulong id)
     {
@@ -305,6 +315,8 @@ internal sealed class RowSourceHook(RowSourceFunctions functions) : ITraceHook
     }
 
     private readonly record struct SlotState(ulong Handle, byte[]? Row);
+
+    private readonly record struct PendingFactory(ulong PlanObject, TracePoint Started);
 
     private sealed record RowSourceFrame(ulong Id, RowSourceFunctionType Type, ulong Iterator, ulong Context, SlotState?[]? Slots);
 }

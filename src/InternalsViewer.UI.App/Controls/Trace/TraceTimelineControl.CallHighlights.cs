@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Helpers;
+using Microsoft.UI.Xaml;
 using SkiaSharp;
 
 namespace InternalsViewer.UI.App.Controls.Trace;
@@ -16,6 +17,18 @@ public sealed partial class TraceTimelineControl
         new("CQuery::CreateExecPlan", SKColors.LightGreen),
         new("CXStmtQuery::ShutdownNormal", SKColors.LightCoral)
     ];
+
+    public static readonly DependencyProperty ShowHighlightRegionsProperty =
+        DependencyProperty.Register(nameof(ShowHighlightRegions),
+                                    typeof(bool),
+                                    typeof(TraceTimelineControl),
+                                    new PropertyMetadata(true, OnShowHighlightRegionsChanged));
+
+    public bool ShowHighlightRegions
+    {
+        get => (bool)GetValue(ShowHighlightRegionsProperty);
+        set => SetValue(ShowHighlightRegionsProperty, value);
+    }
 
     private HighlightBand _positionHighlights = HighlightBand.Empty;
 
@@ -80,6 +93,11 @@ public sealed partial class TraceTimelineControl
 
     private void DrawCallHighlights(SKCanvas canvas, float top, float bottom, int width, double scale)
     {
+        if (!ShowHighlightRegions)
+        {
+            return;
+        }
+
         var band = _axis == TraceTimelineAxis.Position ? _positionHighlights : _instructionHighlights;
 
         var index = SortedSearch.FirstAfter(band.Ends, _viewStart);
@@ -202,6 +220,9 @@ public sealed partial class TraceTimelineControl
 
         return innermost.Highlight;
     }
+
+    private static void OnShowHighlightRegionsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((TraceTimelineControl)d).Redraw();
 
     private readonly record struct CallHighlight(string Name, SKColor Colour);
 

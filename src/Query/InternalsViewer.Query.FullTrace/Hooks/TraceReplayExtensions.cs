@@ -23,16 +23,4 @@ internal static class TraceReplayExtensions
 
         return homeSpace + RegisterArguments * sizeof(ulong);
     }
-
-    public static bool TryReadArgument(this ITraceReplay replay, in TraceHookCall call, int index, out ulong value)
-    {
-        if (index >= RegisterArguments)
-        {
-            return replay.TryRead(replay.GetStackArguments(call) + (ulong)(index - RegisterArguments) * sizeof(ulong), out value);
-        }
-
-        value = index < call.Arguments.Length ? call.Arguments[index] : 0;
-
-        return index < call.Arguments.Length;
-    }
 }

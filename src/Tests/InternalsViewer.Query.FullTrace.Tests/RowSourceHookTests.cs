@@ -19,6 +19,10 @@ public class RowSourceHookTests
 
     private const ulong BatchFactory = 0x2200;
 
+    private const ulong Constructor = 0x2300;
+
+    private const ulong Teardown = 0x2400;
+
     private const ulong PlanObjectTable = 0x7000;
 
     private const ulong BatchPlanObjectTable = 0x7100;
@@ -55,7 +59,6 @@ public class RowSourceHookTests
         hook.OnReturn(Call(GetRow, 1, Parent), replay);
 
         Assert.Equal((Parent, 0UL), (hook.GetOwner(Context, 1), hook.GetOwner(Context, 0)));
-        Assert.Equal([(Context, 1)], hook.GetSlots(Parent));
     }
 
     [Fact]
@@ -159,9 +162,10 @@ public class RowSourceHookTests
 
         hook.OnEntry(Call(BatchFactory, 1, BatchPlanObject), replay);
 
-        hook.OnReturn(Call(BatchFactory, 1, BatchPlanObject, returnValue: Child), replay);
+        hook.OnReturn(Call(BatchFactory, 1, BatchPlanObject, returnValue: Child, at: 3), replay);
 
-        Assert.Equal(new IteratorPlanNode(Child, PlanObject, BatchPlanObject, Query, 2), Assert.Single(hook.GetPlanNodes()));
+        Assert.Equal(new IteratorPlanNode(Child, PlanObject, BatchPlanObject, Query, 2, new TracePoint(At(1), 1)),
+                     Assert.Single(hook.GetPlanNodes()));
     }
 
     [Fact]
@@ -179,7 +183,36 @@ public class RowSourceHookTests
 
         hook.OnEntry(Call(BatchGetData, 2, Parent), PlanObjects());
 
-        Assert.Equal(new IteratorPlanNode(Child, PlanObject, BatchPlanObject, Query, 2), Assert.Single(hook.GetPlanNodes()));
+        Assert.Equal(new IteratorPlanNode(Child, PlanObject, BatchPlanObject, Query, 2, new TracePoint(At(1), 1)),
+                     Assert.Single(hook.GetPlanNodes()));
+    }
+
+    [Fact]
+    public void A_Row_Iterator_Reports_When_Its_Constructor_Ran()
+    {
+        var replay = PlanObjects().Write(Parent + 0x10, PlanObject);
+
+        var hook = CreateHook();
+
+        hook.OnEntry(Call(Constructor, 1, Parent), replay);
+
+        hook.OnReturn(Call(Constructor, 1, Parent), replay);
+
+        hook.OnEntry(Call(GetRow, 2, Parent), replay);
+
+        Assert.Equal(new TracePoint(At(1), 1), Assert.Single(hook.GetPlanNodes()).Constructed);
+    }
+
+    [Fact]
+    public void A_Query_Teardown_Ends_When_Its_Call_Returns()
+    {
+        var hook = CreateHook();
+
+        hook.OnEntry(Call(Teardown, 1, Parent), new FakeTraceReplay());
+
+        hook.OnReturn(Call(Teardown, 1, Parent, at: 9), new FakeTraceReplay());
+
+        Assert.Equal(new QueryTeardown(Thread, new TracePoint(At(9), 9)), Assert.Single(hook.GetTeardowns()));
     }
 
     [Fact]
@@ -222,7 +255,9 @@ public class RowSourceHookTests
                                           [GetRow] = RowSourceFunctionType.Iterator,
                                           [BatchGetData] = RowSourceFunctionType.BatchIterator,
                                           [BatchFactory] = RowSourceFunctionType.BatchFactory,
-                                          [CreateValue] = RowSourceFunctionType.Creator
+                                          [CreateValue] = RowSourceFunctionType.Creator,
+                                          [Constructor] = RowSourceFunctionType.Constructor,
+                                          [Teardown] = RowSourceFunctionType.Teardown
                                       },
                                       new Dictionary<ulong, PlanObjectClass>
                                       {
@@ -230,14 +265,15 @@ public class RowSourceHookTests
                                           [BatchPlanObjectTable] = PlanObjectClass.Batch
                                       }));
 
-    private static TraceHookCall Call(ulong function, ulong id, ulong iterator, ulong returnValue = 0)
+    private static TraceHookCall Call(ulong function, ulong id, ulong iterator, ulong returnValue = 0, ulong? at = null)
         => new()
         {
             Function = function,
             Instance = iterator,
             Id = id,
             Call = (uint)id,
-            Position = At(id),
+            Position = At(at ?? id),
+            Instructions = at ?? id,
             Thread = Thread,
             Arguments = new[] { iterator, Context, 0UL, 0UL },
             ReturnValue = returnValue

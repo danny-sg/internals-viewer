@@ -152,17 +152,13 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         CallStackNode?[] mapped = [.. replayed.Select(node => collapsed.GetValueOrDefault(node))];
 
-        var planLink = IteratorPlanLinker.Link(replay.PlanNodes, mapped, events);
+        var planLink = IteratorPlanLinker.Link(replay.PlanNodes, events);
 
         var hobtAccess = HoBtAccessMap.Build(replay.CallStore, mapped);
 
         replay.CallStore.MapNodes(mapped);
 
         replay.CallStore.AnnotateNodes();
-
-        replay.RowBuffers.AnnotateCallStackNodes(replay.CallStore);
-
-        replay.Batches.AnnotateNodes(replay.CallStore);
 
         replay.Timeline.MapNodes(mapped);
 
@@ -197,7 +193,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         var memory = AllocationMapper.Map(replay.CallStore, functions.MemoryFunctions, timeline, request.MemoryClerks);
 
-        var lifetimes = IteratorLifetimeBuilder.Build(timeline, operators, replay.Batches);
+        var lifetimes = IteratorLifetimeBuilder.Build(timeline, operators, replay.PlanNodes, replay.Teardowns);
 
         timeline.SetLifetimes(lifetimes);
 
@@ -239,30 +235,22 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         Logger.LogInformation("{Entries} memory map entr(ies) from allocations, constructors and member calls", memoryMap.Count);
 
-        Logger.LogInformation("{Rows} row buffer(s) read from iterator GetRow calls", replay.RowBuffers.Count);
-
-        Logger.LogInformation("{Batches} batch(es) read from iterator BpGetBatchData calls", replay.Batches.Count);
-
         Logger.LogInformation("{Captures} custom hook capture(s) read from {Hooks} hook(s)", replay.CustomHooks.Count, customHooks.Count);
 
         return new TraceResult(callStack, replay.CallStore, timeline)
         {
             PlanLink = planLink,
             PlanNodes = replay.PlanNodes,
+            Teardowns = replay.Teardowns,
             HoBtAccess = hobtAccess,
             MemoryMap = memoryMap,
             ObjectPool = request.ObjectPool,
-            RowBuffers = replay.RowBuffers,
-            Batches = replay.Batches,
             CustomHooks = replay.CustomHooks,
             OutputStructures = replay.OutputStructures,
-            RowBufferMarks = TraceRowBufferMarks.Build(timeline, replay.RowBuffers, replay.Batches),
             RowReturnMarks = TraceRowReturnMarks.Build(timeline,
                                                        replay.CallStore,
-                                                       TraceOutputLineage.Build(timeline,
-                                                                                replay.OutputStructures,
-                                                                                replay.RowBuffers,
-                                                                                replay.Batches))
+                                                       TraceOutputLineage.GetSources(timeline, replay.OutputStructures)),
+            Reads = TraceReads.Build(timeline, replay.CallStore)
         };
     }
 

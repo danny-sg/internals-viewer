@@ -10,7 +10,7 @@ public interface IPlayheadChart
 
     void ScopeTo(CallStackNode node);
 
-    void StepPlayhead(bool forward);
+    void SelectAdjacentCall(bool forward);
 
     void MarkCall(CallStackNode? node, int call);
 

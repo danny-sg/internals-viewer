@@ -82,7 +82,7 @@ The `package0.callstack` action doesn't produce function names - each raw frame 
 
 2. **Resolve** - the RVA is mapped to a function name against the cached PDB using the Debug Interface Access (DIA) API, giving the `module!Class::Method` symbol and the offset into the function. DIA normally comes with Visual Studio, but its redistributable `msdia140.dll` ships with Internals Viewer and is accessed registration-free through a small C++ bridge (`InternalsViewer.Query.DiaBridge`) - so there are no dependencies to install and no COM registration step.
 
-3. **Classify** - the resolved symbols are classified by a mapping dictionary into the **Module** badge (Storage Engine, Query Processor, SQL OS, SQL Server Host, etc.) and the **Category** badge (Index Access, Row Access, Page Access, Buffer Manager, Buffer Pool, Latching, Lock Manager, etc.) shown in the Call Tree. Frames belonging to infrastructure - Extended Events publishing, scheduling, thread management - are flagged so the frames doing the actual work stand out.
+3. **Classify** - the resolved symbols are classified by a mapping dictionary into the **Module** badge (Storage Engine, Query Processor, SQL OS, SQL Server Host, etc.) and the **Category** badge (Rowset, B-Tree Navigation, Page Access, Buffer Pool, Latching, Locking, etc.) shown in the Call Tree. Frames belonging to infrastructure - Extended Events publishing, scheduling, thread management - are flagged so the frames doing the actual work stand out.
 
 ## Full Trace
 

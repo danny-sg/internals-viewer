@@ -18,10 +18,7 @@ using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Query;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace;
-using InternalsViewer.Query.FullTrace.RowBuffers;
-using InternalsViewer.Query.FullTrace.RowBuffers.HashRows;
 using InternalsViewer.Query.FullTrace.Arguments;
-using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Events.Latches;
@@ -270,16 +267,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private TraceTimeline? _fullTraceTimeline;
 
     [ObservableProperty]
-    private TraceRowBufferMarks? _rowBufferMarks;
-
-    [ObservableProperty]
     private TraceRowReturnMarks? _rowReturnMarks;
 
     [ObservableProperty]
-    private IReadOnlyList<string> _outputColumnNames = [];
+    private TraceReads? _traceReads;
 
     [ObservableProperty]
-    private Func<RowBuffer, RowBufferColumn, bool, string>? _outputValueFormatter;
+    private IReadOnlyList<string> _outputColumnNames = [];
 
     [ObservableProperty]
     private TraceEventLink? _currentEventLink;
@@ -814,20 +808,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         NavigateToCall(node, call);
     }
 
-    public void OpenRowBuffers(CallStackNode node, int call, bool isBatch)
-    {
-        Layout.ShowCallTree();
-
-        if (isBatch)
-        {
-            CallTreeTab.ShowBatches(node, call);
-        }
-        else
-        {
-            CallTreeTab.ShowRowBuffers(node, call);
-        }
-    }
-
     /// <summary>
     /// Opens the Call Tree document's detail pane on the symbol search
     /// </summary>
@@ -1090,13 +1070,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         FullTraceTimeline = null;
 
-        RowBufferMarks = null;
-
         RowReturnMarks = null;
 
-        OutputColumnNames = [];
+        TraceReads = null;
 
-        OutputValueFormatter = null;
+        OutputColumnNames = [];
 
         CreatedCallTreeTab?.Dispose();
 
@@ -1389,19 +1367,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         return min == long.MaxValue ? 0 : min;
     }
-
-    private IReadOnlyList<ColumnReference>? GetOutputColumns(IteratorTarget? iterator)
-        => iterator?.Operator?.PlanNodeIdentifier is { } identifier ? ResolvePlanNode(identifier)?.OutputColumns : null;
-
-    private IReadOnlyList<ColumnReference>? GetBuildColumns(IteratorTarget? iterator)
-        => iterator?.Operator?.PlanNodeIdentifier is { } identifier && ResolvePlanNode(identifier) is { } node
-            ? HashTableColumns.Get(node)
-            : null;
-
-    private int GetBuildKeyCount(IteratorTarget? iterator)
-        => iterator?.Operator?.PlanNodeIdentifier is { } identifier && ResolvePlanNode(identifier) is { } node
-            ? HashTableColumns.GetKeyCount(node)
-            : 0;
 
     private PlanNode? ResolvePlanNode(PlanNodeIdentifier identifier)
     {
@@ -2288,36 +2253,15 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         var iterators = IteratorTarget.Build(result.CallStack, Events, result.PlanLink);
 
-        var batchDecoder = new BatchDecoder(Database, i => GetOutputColumns(iterators.GetValueOrDefault(i)));
-
-        var buildDecoder = new BatchDecoder(Database, i => GetBuildColumns(iterators.GetValueOrDefault(i)));
-
-        result.RowBuffers.ApplyRecordLayouts(buildDecoder.GetColumn, i => GetBuildKeyCount(iterators.GetValueOrDefault(i)));
-
-        var rowBufferDecoder = new RowBufferDecoder(Database,
-                                                    i => iterators.GetValueOrDefault(i)?.Operator,
-                                                    (i, o) => batchDecoder.GetColumn(result.Batches.GetProducer(i) ?? i, o));
-
-        Arguments.SetSource(result.CallStore,
-                            result.CallStack,
-                            iterators,
-                            result.HoBtAccess,
-                            result.MemoryMap,
-                            result.RowBuffers,
-                            rowBufferDecoder,
-                            result.Batches,
-                            batchDecoder);
+        Arguments.SetSource(result.CallStore, result.CallStack, iterators, result.HoBtAccess, result.MemoryMap);
 
         FullTraceTimeline = result.Timeline;
 
-        RowBufferMarks = result.RowBufferMarks;
-
         RowReturnMarks = result.RowReturnMarks;
 
-        OutputColumnNames = GetOutputColumnNames(result.RowReturnMarks.OutputRows);
+        TraceReads = result.Reads;
 
-        OutputValueFormatter = (row, column, isDecoded)
-            => RowBufferDisplay.GetValue(row, column, rowBufferDecoder, isDecoded).ToString() ?? string.Empty;
+        OutputColumnNames = GetOutputColumnNames(result.RowReturnMarks.OutputRows);
 
         TraceTimeline = traceTimeline;
 
@@ -2452,13 +2396,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         FullTraceTimeline = null;
 
-        RowBufferMarks = null;
-
         RowReturnMarks = null;
 
-        OutputColumnNames = [];
+        TraceReads = null;
 
-        OutputValueFormatter = null;
+        OutputColumnNames = [];
 
         SelectedCallNode = null;
 

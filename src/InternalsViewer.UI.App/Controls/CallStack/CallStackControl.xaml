@@ -57,7 +57,6 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="16"/>
                     <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
@@ -71,17 +70,7 @@
                            ToolTipService.ToolTip="{x:Bind ((members:PlayheadCallRow)Content).CurrentText}"
                            Visibility="{x:Bind ((members:PlayheadCallRow)Content).IsCurrent, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
-                <Border Grid.Column="1"
-                        Width="8"
-                        Height="8"
-                        Margin="0,0,6,0"
-                        VerticalAlignment="Center"
-                        Background="{ThemeResource SystemFillColorCriticalBrush}"
-                        ToolTipService.ToolTip="Row Buffer"
-                        Tapped="OnRowBufferTapped"
-                        Visibility="{x:Bind ((members:PlayheadCallRow)Content).HasRowBuffer, Converter={StaticResource BoolToVisibilityConverter}}"/>
-
-                <Ellipse Grid.Column="2"
+                <Ellipse Grid.Column="1"
                          Width="8"
                          Height="8"
                          Margin="0,6,6,6"
@@ -89,13 +78,13 @@
                          Fill="{x:Bind ((members:PlayheadCallRow)Content).Node.CategoryColour, Converter={StaticResource HexColorToBrushConverter}}"
                          ToolTipService.ToolTip="{x:Bind ((members:PlayheadCallRow)Content).Node.Category}"/>
 
-                <callStack:CallSignatureLine Grid.Column="3"
+                <callStack:CallSignatureLine Grid.Column="2"
                                              TextSize="12"
                                              Parts="{x:Bind ((members:PlayheadCallRow)Content).Signature}"
                                              HighlightedPart="{x:Bind ((members:PlayheadCallRow)Content).Highlighted, Mode=OneWay}"
                                              ValueSelected="OnValueSelected"/>
 
-                <controls:CopyButton Grid.Column="4"
+                <controls:CopyButton Grid.Column="3"
                                      Style="{StaticResource ValueCopyButtonStyle}"
                                      VerticalAlignment="Center"
                                      Tapped="OnCopyTapped"
@@ -400,7 +389,7 @@
                 <StackPanel Padding="12,8,12,8" Spacing="4" VerticalAlignment="Top">
                     <Grid ColumnSpacing="12"
                           RowSpacing="4"
-                          Visibility="{x:Bind IsFunctionVisible(ViewModel.SelectedCall, ViewModel.SelectedValue, ViewModel.RowBufferCall), Mode=OneWay}">
+                          Visibility="{x:Bind IsFunctionVisible(ViewModel.SelectedCall, ViewModel.SelectedValue), Mode=OneWay}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
@@ -581,21 +570,6 @@
                                              Style="{StaticResource ValueCopyButtonStyle}"
                                              Click="OnCopyValueClick"/>
                     </Grid>
-
-                    <StackPanel x:Name="RowBufferPanel"
-                                Spacing="4"
-                                Visibility="Collapsed">
-                        <TextBlock Text="Row Buffer" Style="{StaticResource DetailLabelStyle}"/>
-                        <Grid x:Name="RowBufferGrid"
-                              ColumnSpacing="12"
-                              RowSpacing="4">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                        </Grid>
-                    </StackPanel>
 
                     <TextBlock Text="Source"
                                Style="{StaticResource DetailLabelStyle}"

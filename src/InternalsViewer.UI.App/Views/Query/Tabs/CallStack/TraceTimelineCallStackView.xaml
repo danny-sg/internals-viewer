@@ -43,8 +43,6 @@
             </Grid>
         </Border>
 
-        <callStack:CallStackControl x:Name="Stack"
-                                    Grid.Row="1"
-                                    DisplayRowBuffer="True"/>
+        <callStack:CallStackControl x:Name="Stack" Grid.Row="1"/>
     </Grid>
 </UserControl>

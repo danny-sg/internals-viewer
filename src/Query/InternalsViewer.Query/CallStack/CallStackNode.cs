@@ -139,10 +139,6 @@ public sealed class CallStackNode
 
     public string LocatorsDetail => Locators?.Detail ?? string.Empty;
 
-    public bool HasRowBuffers { get; set; }
-
-    public bool HasBatches { get; set; }
-
     public IReadOnlyList<ExecutionOperatorEvent> PlanOperators { get; internal set; } = [];
 
     public bool HasTarget => TargetLabel.Length > 0;
@@ -218,8 +214,6 @@ public sealed class CallStackNode
             Calls = nodes.Sum(n => n.Calls),
             AllocatedBytes = nodes.Sum(n => n.AllocatedBytes),
             Allocations = nodes.Sum(n => n.Allocations),
-            HasRowBuffers = nodes.Any(n => n.HasRowBuffers),
-            HasBatches = nodes.Any(n => n.HasBatches),
             AllocatedIncludingChildren = (nodes.Sum(n => n.AllocatedBytesIncludingChildren),
                                           nodes.Sum(n => n.AllocationsIncludingChildren)),
             PlanOperators = [.. nodes.SelectMany(n => n.PlanOperators).Distinct<ExecutionOperatorEvent>(ReferenceEqualityComparer.Instance)]

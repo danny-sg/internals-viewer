@@ -33,11 +33,11 @@ public sealed partial class TraceTimelineControl
 
     private const float MinimumLabelWidth = 30f;
 
-    private const float LabelPadding = 3f;
+    internal const float LabelPadding = 3f;
 
     private const float TickSpacing = 110f;
 
-    private const float NarrowSpan = 1f;
+    internal const float NarrowSpan = 1f;
 
     private const byte RunAlpha = 190;
 
@@ -59,7 +59,7 @@ public sealed partial class TraceTimelineControl
 
     private void OnPaintSurface(object? sender, SKPaintSurfaceEventArgs e)
     {
-        ReportPlayhead();
+        ReportCallStack();
 
         var canvas = e.Surface.Canvas;
 
@@ -120,7 +120,7 @@ public sealed partial class TraceTimelineControl
         {
             var scale = PixelsPerUnit(width);
 
-            DrawOperators(canvas, width, scale);
+            DrawPanes(canvas, width, scale);
 
             canvas.Save();
 
@@ -168,16 +168,9 @@ public sealed partial class TraceTimelineControl
             }
         }
 
-        var focus = FocusOf(timeline);
-
         foreach (var visible in VisibleRows(timeline, height))
         {
-            DrawRow(canvas,
-                    visible,
-                    scale,
-                    width,
-                    RaisedOf(visible.Thread, visible.Lane, visible.Depth),
-                    focus);
+            DrawRow(canvas, visible, scale, width, RaisedOf(visible.Thread, visible.Lane, visible.Depth));
         }
     }
 
@@ -275,22 +268,7 @@ public sealed partial class TraceTimelineControl
         return _raisedRows.TryGetValue((lane, depth), out var raised) ? index => Array.BinarySearch(raised.Indexes, index) >= 0 : null;
     }
 
-    private CallFocus? FocusOf(TraceTimeline timeline)
-    {
-        if (SelectedCall is not { IsSelected: true }
-            || _selected is not { } hit
-            || hit.Lane >= timeline.Threads.Count
-            || hit.Depth >= timeline.Threads[hit.Lane].Rows.Count)
-        {
-            return null;
-        }
-
-        var row = timeline.Threads[hit.Lane].Rows[hit.Depth];
-
-        return new CallFocus(hit.Lane, hit.Depth, row.Starts(_axis)[hit.Index], row.Ends(_axis)[hit.Index]);
-    }
-
-    private void DrawRow(SKCanvas canvas, VisibleRow visible, double scale, int width, Func<int, bool>? raised, CallFocus? focus)
+    private void DrawRow(SKCanvas canvas, VisibleRow visible, double scale, int width, Func<int, bool>? raised)
     {
         var row = visible.Row;
 
@@ -322,9 +300,7 @@ public sealed partial class TraceTimelineControl
 
                 var labelled = raised is null || !raised(index);
 
-                var outside = focus is { } wide && wide.Excludes(visible.Lane, visible.Depth, starts[index], ends[index]);
-
-                DrawSpan(canvas, row.NodeAt(index), left, right, top, width, labelled, outside);
+                DrawSpan(canvas, row.NodeAt(index), left, right, top, width, labelled);
 
                 index++;
 
@@ -332,11 +308,6 @@ public sealed partial class TraceTimelineControl
             }
 
             var colour = ColourOf(row.NodeAt(index));
-
-            if (focus is { } narrow && narrow.Excludes(visible.Lane, visible.Depth, starts[index], ends[index]))
-            {
-                colour = Dimmed(colour);
-            }
 
             var isContiguous = runStart >= 0 && left <= runEnd + NarrowSpan;
 
@@ -371,9 +342,9 @@ public sealed partial class TraceTimelineControl
         canvas.DrawRect(start, top, Math.Max(end - start, NarrowSpan), BarHeight, _paints.Fill);
     }
 
-    private void DrawSpan(SKCanvas canvas, int node, float left, float right, float top, int width, bool labelled, bool outside)
+    private void DrawSpan(SKCanvas canvas, int node, float left, float right, float top, int width, bool labelled)
     {
-        var colour = outside ? Dimmed(ColourOf(node)) : ColourOf(node);
+        var colour = ColourOf(node);
 
         var visibleLeft = Math.Max(left, -1f);
 
@@ -443,11 +414,11 @@ public sealed partial class TraceTimelineControl
 
         DrawHighlight(canvas, hover, width, _paints.Hover);
 
-        DrawHighlight(canvas, SelectedHit, width, _paints.Selection);
+        DrawHighlight(canvas, _selected, width, _paints.Selection);
 
         canvas.Restore();
 
-        DrawOperatorOverlay(canvas, width);
+        DrawPaneOverlays(canvas, width);
 
         if (ShowsSpikes)
         {
@@ -457,7 +428,7 @@ public sealed partial class TraceTimelineControl
 
             DrawSpikeHighlight(canvas, hover, _paints.Hover);
 
-            DrawSpikeHighlight(canvas, SelectedHit, _paints.Selection);
+            DrawSpikeHighlight(canvas, _selected, _paints.Selection);
 
             canvas.Restore();
         }
@@ -633,12 +604,6 @@ public sealed partial class TraceTimelineControl
     }
 
     private readonly record struct VisibleRow(int Lane, TraceTimelineThread Thread, int Depth, TraceTimelineRow Row, float Top);
-
-    private readonly record struct CallFocus(int Lane, int Depth, double Start, double End)
-    {
-        public bool Excludes(int lane, int depth, double start, double end)
-            => lane != Lane || depth < Depth || start < Start || end > End;
-    }
 
     private readonly record struct LayerKey(int Width,
                                             int Height,

@@ -82,10 +82,7 @@ public sealed partial class TraceTimelineControl
         {
             _spikes[index] = _spikes[index] with { Extrusion = ExtrusionOf(_spikes[index].Ratio, length) };
 
-            if (_spikes[index].Source.Call is { } call)
-            {
-                _spikeIndex[call] = index;
-            }
+            _spikeIndex[_spikes[index].Call] = index;
         }
 
         if (MemoryMode == TraceTimelineMemoryMode.InUse)
@@ -126,13 +123,6 @@ public sealed partial class TraceTimelineControl
     {
         var front = FrontOf(block);
 
-        if (block.Source.Operator is { } operatorHit && operatorHit.Row < _operatorRows.Length)
-        {
-            DrawOperatorLabel(canvas, _operatorRows[operatorHit.Row], front);
-
-            return;
-        }
-
         if (front.Width < MinimumLabelWidth || _rowHeight < MinimumLabelRowHeight)
         {
             return;
@@ -144,7 +134,7 @@ public sealed partial class TraceTimelineControl
 
         canvas.ClipRect(front);
 
-        canvas.DrawText(TextOf(block),
+        canvas.DrawText(LabelOf(block.Node),
                         Math.Max(front.Left, 0) + LabelPadding,
                         Baseline(front.Top, block.Height),
                         SKTextAlign.Left,
@@ -228,7 +218,7 @@ public sealed partial class TraceTimelineControl
 
             var right = Math.Max((float)((span.End - _viewStart) * scale), left + SpikeMinimumWidth);
 
-            var spike = Raised(BlockSource.Of(new FlameHit(visible.Lane, visible.Depth, index)),
+            var spike = Raised(new FlameHit(visible.Lane, visible.Depth, index),
                                row.NodeAt(index),
                                left,
                                right,
@@ -243,7 +233,7 @@ public sealed partial class TraceTimelineControl
             {
                 var dominant = spike.Bytes > _spikes[last].Bytes ? spike : _spikes[last];
 
-                _spikes[last] = Raised(dominant.Source,
+                _spikes[last] = Raised(dominant.Call,
                                        dominant.Node,
                                        _spikes[last].Left,
                                        Math.Max(_spikes[last].Right, right),
@@ -275,8 +265,6 @@ public sealed partial class TraceTimelineControl
         var firstPixel = _directionX >= 0 ? -reach : 0;
 
         var lastPixel = _directionX >= 0 ? width : width + reach;
-
-        CollectOperatorSurfaces(firstPixel, lastPixel, scale);
 
         CollectRows(timeline, bottom, visible => CollectRowSurfaces(timeline, visible, firstPixel, lastPixel, scale));
     }
@@ -367,8 +355,6 @@ public sealed partial class TraceTimelineControl
 
         var node = row.NodeAt(source.Index);
 
-        var blockSource = BlockSource.Of(source);
-
         var first = _spikes.Count;
 
         for (var x = left; x < right; x += SurfaceBucketWidth)
@@ -386,7 +372,7 @@ public sealed partial class TraceTimelineControl
             }
             else
             {
-                _spikes.Add(Raised(blockSource, node, x, end, top, BarHeight, bytes, _inUseMaximum));
+                _spikes.Add(Raised(source, node, x, end, top, BarHeight, bytes, _inUseMaximum));
             }
         }
 
@@ -414,7 +400,7 @@ public sealed partial class TraceTimelineControl
         {
             var end = first + 1;
 
-            while (end < _spikes.Count && _spikes[end].Source == _spikes[first].Source)
+            while (end < _spikes.Count && _spikes[end].Call == _spikes[first].Call)
             {
                 end++;
             }
@@ -507,7 +493,7 @@ public sealed partial class TraceTimelineControl
 
         using (var ribbon = _pathBuilder.Detach())
         {
-            _paints.Face.Color = leftmost.Colour.WithAlpha(leftmost.Source.Operator is null ? LandscapeAlpha : byte.MaxValue);
+            _paints.Face.Color = leftmost.Colour.WithAlpha(LandscapeAlpha);
 
             canvas.DrawPath(ribbon, _paints.Face);
 
@@ -526,9 +512,7 @@ public sealed partial class TraceTimelineControl
 
     private Block? NamedSlab(int first, int end)
     {
-        var needed = _spikes[first].Source.Operator is not null
-            ? MinimumOperatorLabelWidth + LabelPadding * 4
-            : _paints.Font.MeasureText(TextOf(_spikes[first])) + LabelPadding * 2;
+        var needed = _paints.Font.MeasureText(LabelOf(_spikes[first].Node)) + LabelPadding * 2;
 
         var devicePixel = 1f / (float)Math.Max(_canvas.Dpi, 1);
 
@@ -591,21 +575,12 @@ public sealed partial class TraceTimelineControl
 
         var dy = _directionY * run.Extrusion;
 
-        if (run.Source.Operator is { } operatorHit && operatorHit.Row < _operatorRows.Length)
-        {
-            DrawOperatorLabel(canvas,
-                              _operatorRows[operatorHit.Row],
-                              new SKRect(left + dx, run.Top + dy, right + dx, run.Top + dy + run.Height));
-
-            return;
-        }
-
         if (_rowHeight < MinimumLabelRowHeight)
         {
             return;
         }
 
-        var text = TextOf(run);
+        var text = LabelOf(run.Node);
 
         var textWidth = _paints.Font.MeasureText(text);
 

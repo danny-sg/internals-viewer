@@ -19,8 +19,6 @@ internal sealed class TraceTimelinePaints : IDisposable
 
     public SKPaint Label { get; } = new() { IsAntialias = true, Color = SKColors.LightGray };
 
-    public SKPaint DimLabel { get; } = new() { IsAntialias = true, Color = SKColors.Gray };
-
     public SKPaint Tick { get; } = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 1f, Color = new SKColor(60, 60, 60) };
 
     public SKPaint Hover { get; } = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 1f, Color = SKColors.White };
@@ -80,6 +78,35 @@ internal sealed class TraceTimelinePaints : IDisposable
 
     public SKPaint Mark { get; } = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 2f, Color = new SKColor(0x00, 0xC8, 0x53) };
 
+    public SKPaint CallLink { get; } = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 1f };
+
+    public SKPaint DottedCallLink { get; } = new()
+    {
+        Style = SKPaintStyle.Stroke,
+        StrokeWidth = 1f,
+        PathEffect = SKPathEffect.CreateDash([2f, 2f], 0)
+    };
+
+    public SKPaint HoverCallLink { get; } = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 2f };
+
+    public SKPaint HoverDottedCallLink { get; } = new()
+    {
+        Style = SKPaintStyle.Stroke,
+        StrokeWidth = 2f,
+        PathEffect = SKPathEffect.CreateDash([4f, 3f], 0)
+    };
+
+    public SKPaint ReadCallRail { get; } = new()
+    {
+        Style = SKPaintStyle.Stroke,
+        StrokeWidth = 1f,
+        PathEffect = SKPathEffect.CreateDash([2f, 2f], 0)
+    };
+
+    public SKPaint ReadReturnRail { get; } = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 1.5f };
+
+    public SKPaint ReadRailLayer { get; } = new() { Color = SKColors.White.WithAlpha(90) };
+
     public SKPaint OutputRowLink { get; } = new()
     {
         Style = SKPaintStyle.Stroke,
@@ -87,15 +114,6 @@ internal sealed class TraceTimelinePaints : IDisposable
         StrokeJoin = SKStrokeJoin.Miter,
         IsAntialias = true,
         Color = new SKColor(0xFF, 0xD5, 0x4F)
-    };
-
-    public SKPaint OutputValueLink { get; } = new()
-    {
-        Style = SKPaintStyle.Stroke,
-        StrokeWidth = 1.5f,
-        StrokeJoin = SKStrokeJoin.Miter,
-        IsAntialias = true,
-        Color = new SKColor(0xFF, 0x99, 0xA4)
     };
 
     public SKPaint LineageShadow { get; } = new()
@@ -138,7 +156,6 @@ internal sealed class TraceTimelinePaints : IDisposable
         Dim = isDark ? new SKColor(0, 0, 0, 150) : new SKColor(255, 255, 255, 170);
 
         Label.Color = isDark ? new SKColor(0xD8, 0xD8, 0xD8) : new SKColor(0x30, 0x30, 0x30);
-        DimLabel.Color = isDark ? new SKColor(0x9A, 0x9A, 0x9A) : new SKColor(0x6E, 0x6E, 0x6E);
         Tick.Color = isDark ? new SKColor(0x70, 0x70, 0x70) : SKColors.LightGray;
         Hover.Color = isDark ? SKColors.White : SKColors.Black;
         Selection.Color = isDark ? new SKColor(255, 200, 0) : new SKColor(0xE0, 0x7A, 0x00);
@@ -158,7 +175,6 @@ internal sealed class TraceTimelinePaints : IDisposable
         Fill.Dispose();
         Text.Dispose();
         Label.Dispose();
-        DimLabel.Dispose();
         Tick.Dispose();
         Hover.Dispose();
         Selection.Dispose();
@@ -177,8 +193,17 @@ internal sealed class TraceTimelinePaints : IDisposable
         PlayheadText.Dispose();
         Outline.Dispose();
         Mark.Dispose();
+        CallLink.Dispose();
+        DottedCallLink.PathEffect?.Dispose();
+        DottedCallLink.Dispose();
+        HoverCallLink.Dispose();
+        HoverDottedCallLink.PathEffect?.Dispose();
+        HoverDottedCallLink.Dispose();
+        ReadCallRail.PathEffect?.Dispose();
+        ReadCallRail.Dispose();
+        ReadReturnRail.Dispose();
+        ReadRailLayer.Dispose();
         OutputRowLink.Dispose();
-        OutputValueLink.Dispose();
         LineageShadow.MaskFilter?.Dispose();
         LineageShadow.Dispose();
         HeaderBoldFont.Dispose();

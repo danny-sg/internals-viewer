@@ -436,7 +436,7 @@ internal static class OperatorCallStackMatcher
         => leaf.Ancestors().Any(IsExecutingIterator);
 
     private static bool IsExecutingIterator(CallStackNode frame)
-        => frame.Frame?.Resolved?.SymbolCategory is SymbolCategory.QueryOperator or SymbolCategory.PhysicalOperator
+        => frame.Frame?.Resolved?.SymbolCategory is SymbolCategory.QueryOperator or SymbolCategory.BatchOperator
            && !frame.IsConstructor;
 
 

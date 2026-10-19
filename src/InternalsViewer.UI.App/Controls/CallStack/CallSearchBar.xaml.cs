@@ -42,15 +42,6 @@ public sealed partial class CallSearchBar : UserControl
         set => SetValue(CommandsProperty, value);
     }
 
-    public static readonly DependencyProperty IsDataFilterVisibleProperty =
-        DependencyProperty.Register(nameof(IsDataFilterVisible), typeof(bool), typeof(CallSearchBar), new PropertyMetadata(false));
-
-    public bool IsDataFilterVisible
-    {
-        get => (bool)GetValue(IsDataFilterVisibleProperty);
-        set => SetValue(IsDataFilterVisibleProperty, value);
-    }
-
     public CallSearchBar()
     {
         InitializeComponent();
@@ -61,8 +52,6 @@ public sealed partial class CallSearchBar : UserControl
     }
 
     public event Action<string>? SearchTextChanged;
-
-    public event Action<CallTreeDataFilter>? DataFilterChanged;
 
     public string Text
     {
@@ -89,10 +78,6 @@ public sealed partial class CallSearchBar : UserControl
         PublishedSearch = string.Empty;
 
         SearchBox.Text = string.Empty;
-
-        BatchesFilterButton.IsChecked = false;
-
-        RowsFilterButton.IsChecked = false;
     }
 
     private Visibility GetCommandsVisibility(object? commands) => commands is null ? Visibility.Collapsed : Visibility.Visible;
@@ -156,23 +141,6 @@ public sealed partial class CallSearchBar : UserControl
         PublishedSearch = text;
 
         SearchTextChanged?.Invoke(text);
-    }
-
-    private void OnDataFilterClick(object sender, RoutedEventArgs e)
-    {
-        var filter = CallTreeDataFilter.None;
-
-        if (BatchesFilterButton.IsChecked == true)
-        {
-            filter |= CallTreeDataFilter.Batches;
-        }
-
-        if (RowsFilterButton.IsChecked == true)
-        {
-            filter |= CallTreeDataFilter.Rows;
-        }
-
-        DataFilterChanged?.Invoke(filter);
     }
 
     private void OnCategoryFilterClick(object sender, RoutedEventArgs e)

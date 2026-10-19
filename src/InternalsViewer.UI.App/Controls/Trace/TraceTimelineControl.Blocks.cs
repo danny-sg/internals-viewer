@@ -34,11 +34,11 @@ public sealed partial class TraceTimelineControl
 
     private float _directionY = MathF.Sin(DefaultExtrusionAngle);
 
-    private Block Raised(BlockSource source, int node, float left, float right, float top, float height, ulong bytes, ulong maximum)
+    private Block Raised(FlameHit call, int node, float left, float right, float top, float height, ulong bytes, ulong maximum)
     {
         var ratio = LogRatio(bytes, maximum);
 
-        return new Block(source, node, ColourOf(node), left, right, top, height, ratio, ExtrusionOf(ratio, _extrusionLength), bytes);
+        return new Block(call, node, ColourOf(node), left, right, top, height, ratio, ExtrusionOf(ratio, _extrusionLength), bytes);
     }
 
     private static float LogRatio(ulong bytes, ulong maximum)
@@ -154,7 +154,7 @@ public sealed partial class TraceTimelineControl
 
         canvas.ClipRect(new SKRect(0, 0, length, block.Height));
 
-        canvas.DrawText(TextOf(block), LabelPadding, Baseline(0, block.Height), SKTextAlign.Left, _paints.TiltedFont, _paints.Text);
+        canvas.DrawText(LabelOf(block.Node), LabelPadding, Baseline(0, block.Height), SKTextAlign.Left, _paints.TiltedFont, _paints.Text);
 
         canvas.Restore();
     }
@@ -242,7 +242,7 @@ public sealed partial class TraceTimelineControl
     private static SKColor Shade(SKColor colour, float factor)
         => new((byte)(colour.Red * factor), (byte)(colour.Green * factor), (byte)(colour.Blue * factor), colour.Alpha);
 
-    private readonly record struct Block(BlockSource Source,
+    private readonly record struct Block(FlameHit Call,
                                          int Node,
                                          SKColor Colour,
                                          float Left,
@@ -252,11 +252,4 @@ public sealed partial class TraceTimelineControl
                                          float Ratio,
                                          float Extrusion,
                                          ulong Bytes);
-
-    private readonly record struct BlockSource(FlameHit? Call, OperatorHit? Operator)
-    {
-        public static BlockSource Of(FlameHit call) => new(call, null);
-
-        public static BlockSource Of(OperatorHit operatorHit) => new(null, operatorHit);
-    }
 }

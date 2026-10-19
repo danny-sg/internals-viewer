@@ -109,7 +109,7 @@ public sealed partial class TraceTimelineControl
         return any ? under : null;
     }
 
-    private bool IsDimmed(int node) => Excludes(_searchMatches, node) || Excludes(_nodeMatches, node);
+    private bool IsDimmed(int node) => Excludes(_searchMatches, node);
 
     private static bool Excludes(bool[]? matches, int node) => matches is not null && node >= 0 && node < matches.Length && !matches[node];
 

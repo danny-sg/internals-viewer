@@ -37,6 +37,10 @@ internal sealed record RowSourceFunctions(IReadOnlyDictionary<ulong, RowSourceFu
 
         private const string VTableName = "`vftable'";
 
+        private const string TeardownClass = "CQueryScan";
+
+        private const string TeardownMethod = "DestroyQuery";
+
         private Dictionary<uint, RowSourceFunctionType> Candidates { get; } = [];
 
         private HashSet<uint> Others { get; } = [];
@@ -54,6 +58,10 @@ internal sealed record RowSourceFunctions(IReadOnlyDictionary<ulong, RowSourceFu
             else if (className.StartsWith(BatchPlanObjectPrefix, StringComparison.Ordinal) && methodName is BatchFactoryMethod)
             {
                 Candidates.TryAdd(rva, RowSourceFunctionType.BatchFactory);
+            }
+            else if (className is TeardownClass && methodName is TeardownMethod)
+            {
+                Candidates.TryAdd(rva, RowSourceFunctionType.Teardown);
             }
             else if (!className.StartsWith(IteratorPrefix, StringComparison.Ordinal))
             {

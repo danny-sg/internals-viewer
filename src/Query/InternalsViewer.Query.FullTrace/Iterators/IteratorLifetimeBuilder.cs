@@ -1,4 +1,3 @@
-using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Events.Operators;
@@ -10,11 +9,12 @@ internal static class IteratorLifetimeBuilder
 {
     public static IReadOnlyList<TraceOperatorLifetime> Build(TraceTimeline timeline,
                                                              IReadOnlyList<ExecutionOperatorEvent> operators,
-                                                             BatchStore batches)
+                                                             IReadOnlyList<IteratorPlanNode> planNodes,
+                                                             IReadOnlyList<QueryTeardown> teardowns)
     {
         var owners = new Dictionary<ulong, ExecutionOperatorEvent>();
 
-        foreach (var operatorEvent in operators.Concat(BatchToRowOperators.Create(timeline, batches, operators)))
+        foreach (var operatorEvent in operators.Concat(BatchToRowOperators.Create(planNodes, operators)))
         {
             foreach (var instance in operatorEvent.Instances)
             {
@@ -29,7 +29,9 @@ internal static class IteratorLifetimeBuilder
             return lifetimes;
         }
 
-        var callsByThread = new Dictionary<uint, Dictionary<ExecutionOperatorEvent, List<InstanceCall>>>();
+        var constructions = planNodes.Where(n => n.Constructed is not null).ToDictionary(n => n.Iterator, n => n.Constructed!.Value);
+
+        var callsByThread = new Dictionary<uint, Dictionary<ExecutionOperatorEvent, OperatorCalls>>();
 
         foreach (var span in timeline.GetSpanLocations())
         {
@@ -40,19 +42,21 @@ internal static class IteratorLifetimeBuilder
 
             if (!callsByThread.TryGetValue(span.Thread.ThreadId, out var calls))
             {
-                calls = new Dictionary<ExecutionOperatorEvent, List<InstanceCall>>(ReferenceEqualityComparer.Instance);
+                calls = new Dictionary<ExecutionOperatorEvent, OperatorCalls>(ReferenceEqualityComparer.Instance);
 
                 callsByThread[span.Thread.ThreadId] = calls;
             }
 
-            if (!calls.TryGetValue(owner, out var spans))
+            if (!calls.TryGetValue(owner, out var operatorCalls))
             {
-                spans = [];
+                operatorCalls = new OperatorCalls();
 
-                calls[owner] = spans;
+                calls[owner] = operatorCalls;
             }
 
-            spans.Add(new InstanceCall(span.Span(TraceTimelineAxis.Position), span.Span(TraceTimelineAxis.Instructions)));
+            operatorCalls.Instances.Add(frame.Instance);
+
+            operatorCalls.Calls.Add(new InstanceCall(span.Span(TraceTimelineAxis.Position), span.Span(TraceTimelineAxis.Instructions)));
         }
 
         foreach (var thread in timeline.Threads)
@@ -62,20 +66,44 @@ internal static class IteratorLifetimeBuilder
                 continue;
             }
 
-            var merged = calls.Select(c => (Operator: c.Key, Calls: Merged(c.Value))).ToList();
+            var merged = calls.Select(c => (Operator: c.Key, c.Value.Instances, Calls: Merged(c.Value.Calls))).ToList();
 
             var curves = timeline.Memory.InUseOwnedBy(thread.ThreadId, [.. merged.Select(m => m.Calls.Positions)]);
 
+            TracePoint[] threadTeardowns = [.. teardowns.Where(t => t.Thread == thread.ThreadId)
+                                                        .Select(t => t.End)
+                                                        .OrderBy(e => e.Position)];
+
             for (var index = 0; index < merged.Count; index++)
             {
-                var (owner, (positions, instructions)) = merged[index];
+                var (owner, instances, (positions, instructions)) = merged[index];
+
+                var constructed = instances.Where(constructions.ContainsKey).Select(i => constructions[i]).OrderBy(c => c.Position).ToList();
+
+                var lastEnd = positions[^1].End;
+
+                var destroyed = threadTeardowns.Where(t => timeline.PositionOf(t.Position) >= lastEnd).ToList();
 
                 lifetimes.Add(new TraceOperatorLifetime(thread.ThreadId,
                                                         owner,
                                                         positions[0].Node,
                                                         positions,
                                                         instructions,
-                                                        curves[index]));
+                                                        curves[index])
+                {
+                    ConstructedPosition = constructed.Count > 0
+                        ? Math.Min(timeline.PositionOf(constructed[0].Position), positions[0].Start)
+                        : timeline.StartOf(TraceTimelineAxis.Position),
+                    ConstructedInstructions = constructed.Count > 0
+                        ? Math.Min(constructed[0].Instructions, instructions[0].Start)
+                        : timeline.StartOf(TraceTimelineAxis.Instructions),
+                    DestroyedPosition = destroyed.Count > 0
+                        ? timeline.PositionOf(destroyed[0].Position)
+                        : timeline.EndOf(TraceTimelineAxis.Position),
+                    DestroyedInstructions = destroyed.Count > 0
+                        ? Math.Max(destroyed[0].Instructions, instructions[^1].End)
+                        : timeline.EndOf(TraceTimelineAxis.Instructions)
+                });
             }
         }
 
@@ -90,4 +118,11 @@ internal static class IteratorLifetimeBuilder
     }
 
     private readonly record struct InstanceCall(TraceSpan Position, TraceSpan Instructions);
+
+    private sealed class OperatorCalls
+    {
+        public HashSet<ulong> Instances { get; } = [];
+
+        public List<InstanceCall> Calls { get; } = [];
+    }
 }
