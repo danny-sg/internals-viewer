@@ -35,9 +35,7 @@ internal static class EventSql
                                                bool isReplayMode,
                                                EventOptions eventOptions)
     {
-        var minimal = eventOptions is { RecordTimeTravel: true, RecordTraceEvents: false };
-
-        var sessionEvents = minimal
+        var sessionEvents = eventOptions.RecordTimeTravel
             ? new List<string>(EventConstants.TimeTravelEvents)
             : TraceEvents(isReplayMode, eventOptions);
 
@@ -86,7 +84,7 @@ internal static class EventSql
                 stringBuilder.Append($"sqlserver.session_id = {spid}");
                 stringBuilder.Append($" AND sqlserver.sql_text NOT LIKE '%{sessionName}%'");
 
-                if (minimal && EventConstants.TimeTravelPredicates.TryGetValue(eventName, out var predicate))
+                if (eventOptions.RecordTimeTravel && EventConstants.TimeTravelPredicates.TryGetValue(eventName, out var predicate))
                 {
                     stringBuilder.Append($" AND {predicate}");
                 }

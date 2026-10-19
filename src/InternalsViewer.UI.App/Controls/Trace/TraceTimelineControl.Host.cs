@@ -37,8 +37,6 @@ public sealed partial class TraceTimelineControl : ITraceTimelineHost
     {
         StopPlay();
 
-        StopTransition();
-
         PlacePlayhead(position);
     }
 

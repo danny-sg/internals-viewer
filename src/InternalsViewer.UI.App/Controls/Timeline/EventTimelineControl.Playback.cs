@@ -22,11 +22,6 @@ public sealed partial class EventTimelineControl
     /// </summary>
     public event Action<long>? PlayheadTimeChanged;
 
-    /// <summary>
-    /// Raised when auto-play starts (true) or stops (false)
-    /// </summary>
-    public event Action<bool>? PlayStateChanged;
-
     private bool IsCurrentEventAtPlayhead => _currentEvent >= 0 && _eventStarts[_currentEvent] == _playheadTime;
 
     public void MovePlayheadTo(long timeUs)
@@ -128,17 +123,7 @@ public sealed partial class EventTimelineControl
         SetCurrentEvent(SortedSearch.FirstAfter(_eventStarts, _playheadTime) - 1);
     }
 
-    private void SetCurrentEvent(int index)
-    {
-        if (index == _currentEvent)
-        {
-            return;
-        }
-
-        _currentEvent = index;
-
-        CurrentEventChanged?.Invoke(index >= 0 ? _eventsByTime[index] : null);
-    }
+    private void SetCurrentEvent(int index) => _currentEvent = index;
 
     private void StartPlay()
     {
@@ -167,8 +152,6 @@ public sealed partial class EventTimelineControl
 
         _playTimer.Start();
 
-        PlayStateChanged?.Invoke(true);
-
         _skCanvas.Invalidate();
     }
 
@@ -183,18 +166,11 @@ public sealed partial class EventTimelineControl
 
     private void StopPlay()
     {
-        var wasPlaying = _isPlaying;
-
         _playTimer.Stop();
 
         _isPlaying = false;
 
         _transport.SetPlaying(isPlaying: false);
-
-        if (wasPlaying)
-        {
-            PlayStateChanged?.Invoke(false);
-        }
     }
 
     private void OnPlayTimerTick(object? sender, object e)

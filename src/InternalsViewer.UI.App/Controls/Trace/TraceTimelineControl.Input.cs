@@ -128,8 +128,6 @@ public sealed partial class TraceTimelineControl
         {
             if (isDoubleClick)
             {
-                StopTransition();
-
                 _playhead = null;
 
                 ClearSelections();
@@ -746,8 +744,6 @@ public sealed partial class TraceTimelineControl
             return;
         }
 
-        StopTransition();
-
         _playhead = null;
 
         _canvas.Invalidate();
@@ -779,8 +775,6 @@ public sealed partial class TraceTimelineControl
     private void MovePlayheadTo(double x)
     {
         var scale = PixelsPerUnit((int)_overlay.ActualWidth);
-
-        StopTransition();
 
         _playhead = Math.Clamp(_viewStart + x / scale, Math.Max(_viewStart, FullStart), Math.Min(_viewEnd, FullEnd));
 

@@ -74,10 +74,6 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(CanShowEventViews))]
     private bool _isTrace;
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanShowEventViews))]
-    private bool _hasTraceEvents;
-
     /// <param name="content">
     /// The data context the tab document views bind to (the owning query view model)
     /// </param>
@@ -147,7 +143,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
     public DockLayoutViewModel Dock { get; }
 
-    public bool CanShowEventViews => !IsTrace || HasTraceEvents;
+    public bool CanShowEventViews => !IsTrace;
 
     public bool IsTimelineVisibleOutsideTrace
         => IsTimelineVisible || _hiddenForTrace.Contains(_documentsByKey[TimelineKey]);
@@ -195,15 +191,6 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         _hiddenForTrace.Clear();
 
         _rootBeforeTrace = DockLayoutSerializer.Serialize(DefaultRoot(TimelineKey));
-
-        if (CanShowEventViews)
-        {
-            Dock.SetRoot(DefaultRoot(TimelineKey));
-
-            Dock.ShowBeside(_documentsByKey[TraceTimelineKey], _documentsByKey[TimelineKey], select: false);
-
-            return;
-        }
 
         _hiddenForTrace.Add(_documentsByKey[TimelineKey]);
 
@@ -316,23 +303,6 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         _rootBeforeTrace = null;
     }
 
-    partial void OnHasTraceEventsChanged(bool value)
-    {
-        if (!IsTrace)
-        {
-            return;
-        }
-
-        if (value)
-        {
-            RestoreEventViews();
-        }
-        else
-        {
-            HideEventViews();
-        }
-    }
-
     private void EnterTrace()
     {
         _hiddenForTrace.Clear();
@@ -343,19 +313,14 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
         if (Dock.FindGroup(timeline) is { } group)
         {
-            var replacesTimeline = !CanShowEventViews && ReferenceEquals(group.SelectedDocument, timeline);
-
-            Dock.ShowBeside(_documentsByKey[TraceTimelineKey], timeline, select: replacesTimeline);
+            Dock.ShowBeside(_documentsByKey[TraceTimelineKey], timeline, select: ReferenceEquals(group.SelectedDocument, timeline));
         }
         else
         {
             Dock.DockBottom(_documentsByKey[TraceTimelineKey]);
         }
 
-        if (!CanShowEventViews)
-        {
-            HideEventViews();
-        }
+        HideEventViews();
     }
 
     private void RestoreEventViews()

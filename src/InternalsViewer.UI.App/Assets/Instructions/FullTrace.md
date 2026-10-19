@@ -45,8 +45,4 @@ Keep the query small - the larger the recording, the longer it takes to load.
   passed and returned
 - [Execution Plan](view:ExecutionPlan) - each operator is matched to the code that ran it
 
-**Record Events**, on the same menu, puts the normal event set back into the recording, at the cost of a larger and
-slower recording. The Timeline, Events and Allocations panes then stay, and as the Timeline's current event changes
-the Trace Timeline's playhead moves to where that event happened in the recording.
-
 **Export to file** on the **Query** menu keeps a Full Trace for later, without the recording itself.

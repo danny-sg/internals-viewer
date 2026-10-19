@@ -7,7 +7,6 @@ using InternalsViewer.Query.CallStack.Dia;
 using InternalsViewer.Query.CallStack.Symbols;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Locators;
-using InternalsViewer.Query.FullTrace.PublishedEvents;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.RowSources;
@@ -190,7 +189,7 @@ internal static class ReplayFunctionResolver
         Cache[GetKey(module)] = relative;
 
         logger?.LogInformation("Replay functions for {Module} resolved from {Pdb} in {Elapsed}: {Excluded} excluded, "
-                               + "{Iterators} iterator methods, {Locators} locator reads, {Publishers} event publishers, "
+                               + "{Iterators} iterator methods, {Locators} locator reads, "
                                + "{Memory} memory functions, {Members} member functions",
                                module.Name,
                                module.Pdb,
@@ -198,7 +197,6 @@ internal static class ReplayFunctionResolver
                                relative.ExcludedFunctions.Length,
                                relative.InstanceMethods.Length,
                                relative.LocatorReads.Length,
-                               relative.PublishedEvents.Publishers.Length,
                                relative.MemoryFunctions.Length,
                                relative.MemoryMapFunctions.Length);
     }
@@ -253,7 +251,6 @@ internal static class ReplayFunctionResolver
         return new ReplayFunctions(excluded,
                                    instanceMethods,
                                    locators,
-                                   PublishedEventFunctions.From(functions),
                                    [.. functions.Values.Select(f => f.MemoryFunction).OfType<MemoryFunction>()],
                                    [.. MemoryMapFunctionResolver.Find(resolver, kept)],
                                    rowSources.Build(),
@@ -262,13 +259,9 @@ internal static class ReplayFunctionResolver
 
     private static FunctionClassification ClassifyFunction(CategoryMappings mappings, string module, uint rva, ReadOnlySpan<char> symbol)
     {
-        SymbolsHelper.Split(symbol, out var className, out var methodName);
-
         return new(IsExcluded(mappings, module, symbol),
                    InstanceMethodCollector.IsInstanceMethod(symbol),
                    InstanceMethodCollector.IsInstanceClass(symbol),
-                   PublishedEventFunctions.IsEventWriter(className, methodName),
-                   PublishedEventFunctions.GetPublishEventName(className, methodName),
                    MemoryFunction.Classify(rva, symbol));
     }
 

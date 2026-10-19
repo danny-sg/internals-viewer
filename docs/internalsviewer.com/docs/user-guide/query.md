@@ -75,8 +75,6 @@ Pages and indexes opened from the trace - by double-clicking a timeline event, c
 
 **Record Full Trace** records each run with Microsoft's Time Travel Debugging while it is on, so the [Call Tree](/docs/user-guide/query/CallStack) holds every call the query made rather than the stacks sampled at each event - see [Full Trace](/docs/user-guide/query/FullTrace). It is for development and test instances only: it needs administrator consent, can restart the SQL Server service, slows the recorded query down considerably and writes very large files. The dialog shown when it is turned on explains the requirements, and the **Time Travel Warning** [setting](/docs/user-guide/settings#time-travel-warning) brings the dialog back once it has been dismissed. While it is on, a red **Full Trace** badge sits at the end of the menu bar - click it to turn recording off again.
 
-**Record Events** adds the normal event set to the recording, at the cost of a larger trace, and keeps the Timeline alongside the Trace Timeline - see [Extended Events in a recording](/docs/user-guide/query/FullTrace#extended-events-in-a-recording).
-
 **Search symbols** is covered in [Searching Symbols](/docs/user-guide/query/CallStack#searching-symbols).
 
 **Custom Hooks** opens the Custom Hooks tab - see [Custom Hooks](/docs/user-guide/query/FullTrace#custom-hooks).

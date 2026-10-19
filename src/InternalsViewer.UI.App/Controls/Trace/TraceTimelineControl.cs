@@ -173,30 +173,6 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         set => SetValue(SelectedCallProperty, value);
     }
 
-    public static readonly DependencyProperty CurrentEventLinkProperty =
-        DependencyProperty.Register(nameof(CurrentEventLink),
-                                    typeof(TraceEventLink),
-                                    typeof(TraceTimelineControl),
-                                    new PropertyMetadata(null, OnCurrentEventLinkChanged));
-
-    public TraceEventLink? CurrentEventLink
-    {
-        get => (TraceEventLink?)GetValue(CurrentEventLinkProperty);
-        set => SetValue(CurrentEventLinkProperty, value);
-    }
-
-    public static readonly DependencyProperty SweepBetweenEventsProperty =
-        DependencyProperty.Register(nameof(SweepBetweenEvents),
-                                    typeof(bool),
-                                    typeof(TraceTimelineControl),
-                                    new PropertyMetadata(false));
-
-    public bool SweepBetweenEvents
-    {
-        get => (bool)GetValue(SweepBetweenEventsProperty);
-        set => SetValue(SweepBetweenEventsProperty, value);
-    }
-
     private readonly SKXamlCanvas _canvas;
 
     private readonly Canvas _overlay;
@@ -530,16 +506,9 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
     {
         StopPlay();
 
-        StopTransition();
-
         if (_playTimer is not null)
         {
             _playTimer.Tick -= OnPlayTick;
-        }
-
-        if (_transitionTimer is not null)
-        {
-            _transitionTimer.Tick -= OnTransitionTick;
         }
 
         Loaded -= OnLoaded;
@@ -598,8 +567,6 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
             return;
         }
 
-        StopTransition();
-
         var from = _playhead ?? _viewStart;
 
         double? next = null;
@@ -626,8 +593,6 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         {
             return;
         }
-
-        StopTransition();
 
         var from = _playhead ?? _viewStart;
 
@@ -723,27 +688,6 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         }
 
         _canvas.Invalidate();
-    }
-
-    private void FollowLink(TraceEventLink? link)
-    {
-        if (_visible is null || link is null)
-        {
-            return;
-        }
-
-        StopPlay();
-
-        if (SweepBetweenEvents)
-        {
-            TransitionPlayhead(link.StartOf(_axis));
-
-            return;
-        }
-
-        StopTransition();
-
-        PlacePlayhead(link.StartOf(_axis));
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -975,8 +919,6 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         ZoomToFit();
 
         StopPlay();
-
-        StopTransition();
 
         _playhead = null;
     }
@@ -1250,8 +1192,6 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
         control.StopPlay();
 
-        control.StopTransition();
-
         control._playhead = null;
     }
 
@@ -1346,7 +1286,4 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
         control.Redraw();
     }
-
-    private static void OnCurrentEventLinkChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((TraceTimelineControl)d).FollowLink(e.NewValue as TraceEventLink);
 }

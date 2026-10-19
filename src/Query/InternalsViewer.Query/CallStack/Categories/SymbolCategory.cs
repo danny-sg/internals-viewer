@@ -28,7 +28,7 @@ public enum SymbolCategory : byte
     [Category(
         "SQL OS Scheduling",
         Description = "Schedulers, tasks, workers and the points where a task yields or sleeps",
-        ForegroundColor = "#8E7CC3",
+        ForegroundColor = "#C956FF",
         IsInfrastructure = true)]
     Scheduling,
 
@@ -97,7 +97,7 @@ public enum SymbolCategory : byte
     [Category(
         "Buffer Pool",
         Description = "Buffer cache management, buffer descriptors and dirty pages",
-        ForegroundColor = "#76A0E2")]
+        ForegroundColor = "#A8BEE0")]
     BufferPool,
 
     [Category(

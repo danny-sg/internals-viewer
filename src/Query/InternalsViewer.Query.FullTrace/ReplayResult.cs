@@ -4,7 +4,6 @@ using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Output;
-using InternalsViewer.Query.FullTrace.PublishedEvents;
 using InternalsViewer.Query.FullTrace.Timeline;
 
 namespace InternalsViewer.Query.FullTrace;
@@ -28,7 +27,6 @@ internal sealed record ReplayResult(CallNode[] Nodes,
                                     IReadOnlyList<TraceModule> Modules,
                                     TraceCallStore CallStore,
                                     TraceTimeline Timeline,
-                                    PublishedEvent[] PublishedEvents,
                                     AddressEntry[] MemoryMap,
                                     CustomHookStore CustomHooks,
                                     List<TraceOutputStructure> OutputStructures,

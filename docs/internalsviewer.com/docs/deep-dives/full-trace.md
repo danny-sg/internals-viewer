@@ -113,11 +113,9 @@ Extended Events is code that runs on the query's own thread, so under a recordin
 
 The waits are about threads. A recording holds every thread in the process and the replay should only follow the query's, so Full Trace adds the `sqlos.system_thread_id` action - the operating system thread each event fired on. The query's own thread is on every event. Parallel workers are harder - `query_thread_profile` only fires on the coordinator, and `sqlos.task_started` never fires with the session's context. What every worker does do is wait on its exchange at least once, with a `CXSYNC_PORT` wait as it starts, so the filtered waits name every worker's thread. The thread ids are taken straight from the raw rows of the event file, before any other processing, since the processed events lose the workers' waits.
 
-**Record Events** turns the normal event set back on, and each event is then found in the recording - see [Placing events](#placing-events).
-
 ## Opening the recording
 
-When the query finishes the app has a `.run` file and the list of the query's threads. Everything from here happens in the background, in five steps that Messages and the taskbar show progress through - **Opening Full Trace**, **Resolving Symbols**, **Replaying Threads**, **Building Call Tree** and **Matching Operators**. The counts along the way - functions excluded, calls replayed, operators matched, memory allocated, events linked - go to the [Diagnostic log](/docs/user-guide/settings#diagnostic-log).
+When the query finishes the app has a `.run` file and the list of the query's threads. Everything from here happens in the background, in five steps that Messages and the taskbar show progress through - **Opening Full Trace**, **Resolving Symbols**, **Replaying Threads**, **Building Call Tree** and **Matching Operators**. The counts along the way - functions excluded, calls replayed, operators matched and memory allocated - go to the [Diagnostic log](/docs/user-guide/settings#diagnostic-log).
 
 ### Opening
 
@@ -132,7 +130,6 @@ A recording knows addresses, not names, so the replay needs to know some functio
 Then one walk over each PDB of `sqlmin.dll`, `sqllang.dll` and `sqldk.dll` sorts functions into the sets the replay needs:
 
 - **Excluded functions** - every function the Call Stack's category mappings put in Extended Events or tracing, around 9,000 of them, so the replay can skip them
-- **Event publishers and the event writer** - each event's `Publish` function, such as `XeSqlPkg::lock_acquired::Publish`, and `XE_BufferMgr::Reserve`, which writes an event into a session's buffer, for [placing events](#placing-events)
 - **Instance methods** - `Open`, `GetRow`, `Close` and their batch mode and helper forms on every `CQScan*`, `CBpQScan*` and `CQueryScan*` class, and the methods of the plan's own `CXte*` and `CBpXte*` objects, whose calls are kept apart by the object they ran on
 - **Memory functions** - the allocators and frees, for counting memory
 - **Locator reads** - functions that take or return a page id, row id, page handle or page reference, columnstore object key, LSN or string, and pointer or reference arguments to simple values, for reading those values as the replay passes
@@ -149,11 +146,11 @@ The replay API is C++ interfaces, which .NET cannot call directly, so `Internals
 | --- | --- |
 | `OpenTrace` | Loads the replay engine, opens and indexes the recording, reads the modules |
 | `GetModuleCount` / `GetModule` | The recording's modules |
-| `ReadCallTree` | The replay itself - takes the threads, the function sets and the locator reads, streams calls, spans, values and published events back through callbacks, and returns a call tree |
+| `ReadCallTree` | The replay itself - takes the threads, the function sets and the locator reads, streams calls, spans and values back through callbacks, and returns a call tree |
 | `GetCallNodeCount` / `GetCallNodes` | The call tree's nodes - parent, address, object and call count |
 | `CloseCallTree` / `CloseTrace` | Frees them |
 
-Results come back while the replay runs rather than at the end - call log chunks, call spans, the values read through pointers and published events each through a callback, and progress per thread. Cancelling writes a flag the bridge checks as it reports progress, and interrupts the replay.
+Results come back while the replay runs rather than at the end - call log chunks, call spans and the values read through pointers, each through a callback, and progress per thread. Cancelling writes a flag the bridge checks as it reports progress, and interrupts the replay.
 
 ### One pass
 
@@ -174,7 +171,7 @@ TTD reports calls and returns, not a call tree, so the bridge keeps a shadow sta
 - **A large gap**, or the end of recording, clears the stack.
 - **A return with nothing on the stack** belongs to a call that started before the recording did. The frame is kept, marked as having an unknown start.
 
-Calls under an excluded function are not logged at all - an excluded frame is pushed and everything beneath it skipped. The event publishers and the event writer are checked before that, so they are still seen inside the Extended Events code that is excluded - see [Placing events](#placing-events).
+Calls under an excluded function are not logged at all - an excluded frame is pushed and everything beneath it skipped.
 
 ### What the replay streams back
 
@@ -185,8 +182,6 @@ Each call produces three things:
 - **A span** - when a frame closes, its start and end positions, the instructions the thread executed in between, its thread, its node, its call number and whether it returned or started before the recording. Spans are streamed 65,536 at a time and become the Trace Timeline.
 
 The call log row holds only the four integer argument registers and RAX. Stack arguments come in alongside the locator reads below: for each function in the resolved modules with more than four arguments, the fifth to sixteenth are read from the stack at the call, in one memory read per call, and kept with the locators as argument values rather than pages or rows. The floating point registers are not logged, which is why the [Arguments](/docs/user-guide/query/CallStack#arguments) tab has no column for them, and memory behind pointers is only read by the locator reads.
-
-Alongside the calls come **published events** - an event published and written to an event session, with the position it was published at - see [Placing events](#placing-events).
 
 ### Locator reads
 
@@ -204,7 +199,7 @@ The replay hands back addresses, counts, spans and values. The rest turns them i
 
 Each node's address is looked up in the module ranges and becomes a frame - module, offset, PDB and object - added to a call tree with its count. The frames are resolved to names with the same DIA bridge as sampled stacks, and calls from different places in the same function are merged into one node per function. A map from each raw node to its merged node is kept, so a call log row or a Trace Timeline bar always knows its frame - which is what **Go To Call** follows.
 
-The whole recording is kept, compilation included, so what is worked out from it - objects, allocations, memory and event links - sees every call. **Crop To Query** only changes what is shown, and can be switched without tracing again. Each thread's calls start well above the query - receiving the batch, compiling and setting up the statement - so with it on the Call Tree starts at the outermost `CXStmtQuery::ErsqExecuteQuery`, the statement's execution in `sqllang.dll`. It starts as the plan's iterators are built and returns just after they are torn down, so the batch work around it is left out - checks for schema changes and statement setup before it, and releasing locks and freeing memory after it. Switch **Crop To Query** off to see that work. A parallel worker's thread never runs beneath that frame, so a thread running operator code without it is shown from its top. The Trace Timeline is cropped to match.
+The whole recording is kept, compilation included, so what is worked out from it - objects, allocations and memory - sees every call. **Crop To Query** only changes what is shown, and can be switched without tracing again. Each thread's calls start well above the query - receiving the batch, compiling and setting up the statement - so with it on the Call Tree starts at the outermost `CXStmtQuery::ErsqExecuteQuery`, the statement's execution in `sqllang.dll`. It starts as the plan's iterators are built and returns just after they are torn down, so the batch work around it is left out - checks for schema changes and statement setup before it, and releasing locks and freeing memory after it. Switch **Crop To Query** off to see that work. A parallel worker's thread never runs beneath that frame, so a thread running operator code without it is shown from its top. The Trace Timeline is cropped to match.
 
 Anything left beneath Extended Events or tracing frames is then removed from the tree and the Trace Timeline. Each node's activity band counts when its calls started, bucketed by trace position, and its locators are gathered from the call log, so a frame can show the pages and rows it read and the Call Tree's search can find frames by a page address, a RID or `rowgroup:N column:M`.
 
@@ -233,19 +228,9 @@ SQL Server allocates through SQLOS, which is not recorded. But every allocation 
 
 The known gap is a memory object released as a whole. Its pages go back through the plumbing, so its memory is never seen to be freed, and in use only climbs for it.
 
-### Placing events
-
-The events in the `.xel` file have a timestamp, but no position in the recording, and an Extended Events timestamp is only accurate to a millisecond - far too coarse to find one call among millions. So events are placed by the calls that produced them rather than by time.
-
-Every event is published through its own `Publish` function, such as `XeSqlPkg::lock_acquired::Publish`, and each session collecting it has the event written into its buffer by `XE_BufferMgr::Reserve`, with that session's buffer manager as its first argument. The bridge watches for both, even inside the Extended Events code that is otherwise excluded. Entering a publisher starts a pending event on that thread, and entering the writer while one is pending records a **published event** - the event's name, the session buffer it went to, the position and instruction count of the publish, and the nearest recorded frame above it. A publish that no session collects, or whose predicate rejects it, never reaches the writer and leaves nothing behind.
-
-Other sessions are running too, `system_health` among them, so the buffer that most published events went to is taken to be this session's, and the rest are dropped. What is left is paired, thread by thread and in order, with the raw events read from the `.xel` file, matching on the event name. The order is the same on both sides, since a thread publishes one event at a time, and when a name does not match the pairing skips ahead a short way to get back in step. Each pair links an event to its place in the recording, which is how the Timeline's current event moves the Trace Timeline's playhead.
-
-The [Diagnostic log](/docs/user-guide/settings#diagnostic-log) records how many events were published, how many were written to the session and how many were paired and linked.
-
 ### No clock
 
-TTD records instructions, not time. There is no timestamp, and the recording slows everything down, and not evenly, so a millisecond figure would not mean much anyway. This is why the Trace Timeline measures in positions or instructions, and why events are placed by their publish calls rather than by time:
+TTD records instructions, not time. There is no timestamp, and the recording slows everything down, and not evenly, so a millisecond figure would not mean much anyway. This is why the Trace Timeline measures in positions or instructions:
 
 - **Position** is `sequence + steps / (largest step count + 1)`, which lines up across threads and is linear within a sequence. An earlier encoding squashed late steps together, and merged a hundred `GetRow` calls into one bar.
 - **Instructions** is a clock kept for each thread, adding up the steps between callbacks. It is the closest the recording has to how long a call took, but it is counted separately for each thread, so the lanes do not line up.
@@ -262,10 +247,9 @@ TTD records instructions, not time. There is no timestamp, and the recording slo
 | Memory in use per operator | The Trace Timeline's Operators pane |
 | Every call's register arguments and return value | The [Arguments](/docs/user-guide/query/CallStack#arguments) tab and **Find** |
 | The pages, rows and columnstore objects each call touched | The Call Tree's frames and search, and the Arguments tab |
-| Where each event happened in the recording | The Trace Timeline's playhead, following the Timeline |
-| Calls replayed, operators matched, memory allocated, and events published, written and linked | The [Diagnostic log](/docs/user-guide/settings#diagnostic-log) |
+| Calls replayed, operators matched and memory allocated | The [Diagnostic log](/docs/user-guide/settings#diagnostic-log) |
 
-The recording itself is deleted once it has replayed successfully. Everything above lives in memory for as long as the Query tab holds the result, and running the query again makes a new recording. **Export to file** saves it all - the call tree, the call log, the spans, the memory and the event links - so a run can be opened again without the recording. See [Exporting a run](/docs/user-guide/query#exporting-a-run).
+The recording itself is deleted once it has replayed successfully. Everything above lives in memory for as long as the Query tab holds the result, and running the query again makes a new recording. **Export to file** saves it all - the call tree, the call log, the spans and the memory - so a run can be opened again without the recording. See [Exporting a run](/docs/user-guide/query#exporting-a-run).
 
 ## Limits
 
@@ -277,7 +261,7 @@ The recording itself is deleted once it has replayed successfully. Everything ab
 ## In the source
 
 - `src/Query/InternalsViewer.Query.TraceHarness/TraceHarness.cpp` - the elevated harness: the signature checks, the service restart, and attaching and stopping TTD
-- `src/Query/InternalsViewer.Query.TimeTravelBridge/` - the native bridge over the TTD replay API: the shadow stacks, the call tree, the spans, the call log, the locator reads and the published events
+- `src/Query/InternalsViewer.Query.TimeTravelBridge/` - the native bridge over the TTD replay API: the shadow stacks, the call tree, the spans, the call log and the locator reads
 - `src/Query/InternalsViewer.Query.FullTrace/` - the managed side:
   - `Recording/` - preparing a recording: finding WinDbg, the TTD copy, the licence check, the trace folder, starting the harness and the events it signals
   - `TraceLoader.cs` - the load that ties the steps together
@@ -288,7 +272,6 @@ The recording itself is deleted once it has replayed successfully. Everything ab
   - `Locators/` - the page, row, columnstore object and referenced value reads
   - `Iterators/` - linking plan objects and iterators to the plan, and their lifetimes
   - `Memory/` - allocations, frees, clerks and memory in use
-  - `PublishedEvents/` - placing events in the recording
   - `Timeline/` - the Trace Timeline's spans and axes
   - `Export/` - the Full Trace part of an exported run
 - `src/Query/InternalsViewer.Query/QueryRunner.cs` - the run sequence, and `Export/` - exporting and importing a run

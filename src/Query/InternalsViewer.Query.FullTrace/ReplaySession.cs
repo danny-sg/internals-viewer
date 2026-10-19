@@ -2,7 +2,6 @@ using System.Runtime.InteropServices;
 using System.Text;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Locators;
-using InternalsViewer.Query.FullTrace.PublishedEvents;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Recording;
@@ -153,9 +152,6 @@ internal sealed class ReplaySession : IDisposable
 
         var memoryMap = new MemoryMapHook(memoryMapFunctions);
 
-        var publishedEvents = new PublishedEventHook(functions.PublishedEvents);
-
-
         var rowSources = new RowSourceHook(functions.RowSources);
 
         var output = new OutputHook(functions.Output, rowSources);
@@ -165,7 +161,6 @@ internal sealed class ReplaySession : IDisposable
         var hooks = new TraceHooks([rowSources,
                                     new LocatorHook(functions.LocatorReads, store, images),
                                     memoryMap,
-                                    publishedEvents,
                                     output,
                                     customHook]);
 
@@ -235,7 +230,6 @@ internal sealed class ReplaySession : IDisposable
                                         Modules,
                                         store.Build(),
                                         timeline.Build(nodes),
-                                        publishedEvents.Build(),
                                         memoryMap.Build(),
                                         customHook.Build(),
                                         output.Build(),

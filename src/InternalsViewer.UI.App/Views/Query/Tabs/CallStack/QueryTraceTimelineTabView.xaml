@@ -60,9 +60,7 @@
                                       ShowCallStack="{x:Bind Settings.TraceTimelineShowCallStack, Mode=OneWay}"
                                       MemoryMode="{x:Bind Settings.TraceTimelineMemoryMode, Mode=TwoWay}"
                                       SelectedNode="{x:Bind ViewModel.SelectedCallNode, Mode=OneWay}"
-                                      SelectedCall="{x:Bind ViewModel.Arguments.SelectedCallReference, Mode=OneWay}"
-                                      CurrentEventLink="{x:Bind ViewModel.CurrentEventLink, Mode=OneWay}"
-                                      SweepBetweenEvents="{x:Bind ViewModel.IsTimelinePlaying, Mode=OneWay}"/>
+                                      SelectedCall="{x:Bind ViewModel.Arguments.SelectedCallReference, Mode=OneWay}"/>
 
         <toolkit:GridSplitter x:Name="StackSplitter"
                               Grid.Row="2"

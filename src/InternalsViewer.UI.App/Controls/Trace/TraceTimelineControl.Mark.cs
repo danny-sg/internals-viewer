@@ -53,8 +53,6 @@ public sealed partial class TraceTimelineControl
 
         StopPlay();
 
-        StopTransition();
-
         PlacePlayhead(start);
     }
 

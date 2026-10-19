@@ -176,7 +176,7 @@ public sealed partial class TraceTimelineControl
 
         if (ShowsReads)
         {
-            _reads.Draw(canvas, width, scale, ShowsOperators ? _operators.GetTrackBottom : null);
+            _reads.Draw(canvas, width, scale);
         }
 
         if (ShowsSplitter)
@@ -196,7 +196,7 @@ public sealed partial class TraceTimelineControl
 
         if (ShowsReads)
         {
-            _reads.DrawOverlay(canvas, width, scale);
+            _reads.DrawOverlay(canvas, width, scale, ShowsOperators ? _operators.GetTrackBottom : null);
         }
     }
 

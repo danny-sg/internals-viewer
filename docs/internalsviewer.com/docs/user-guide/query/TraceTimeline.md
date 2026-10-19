@@ -2,7 +2,7 @@
 
 The Trace Timeline draws every call recorded by a [Full Trace](/docs/user-guide/query/FullTrace) - one lane per thread, one bar per call, each call nested beneath the call that made it. The bars use the [Call Tree](/docs/user-guide/query/CallStack)'s category colours.
 
-The Call Tree merges every call down the same path into one row with a count. The Trace Timeline keeps each call apart, in the order it happened, so a scan's `GetRow` calls show as a run of short bars, one per row, and a function called once for a long time as a single wide one. It takes the Timeline's place while **Record Full Trace** is on, or sits beside it when **Record Events** is on too, and the **Trace Timeline** item on the View menu, enabled only then, brings it back if it is closed.
+The Call Tree merges every call down the same path into one row with a count. The Trace Timeline keeps each call apart, in the order it happened, so a scan's `GetRow` calls show as a run of short bars, one per row, and a function called once for a long time as a single wide one. It takes the Timeline's place while **Record Full Trace** is on, and the **Trace Timeline** item on the View menu, enabled only then, brings it back if it is closed.
 
 <!-- Screenshot: the Trace Timeline for a parallel query, with a lane per thread and the Operators pane open above them -->
 
@@ -116,9 +116,9 @@ This shows something the lanes cannot. An operator is only on a thread's stack w
 
 ## Reads
 
-**View > Reads** adds a lane under the operators showing every page the query asked the buffer pool for. Each read is drawn as in the Timeline's Read lane, a faint bar across the call with a solid tick at its end. A call to `BPool::Get` asks for a single page. A call to `BPool::ReadAhead` asks for a run of pages ahead of the scan, and is labelled with how many when there is room. Pages already in memory and pages read from disk are drawn the same way. The calls beneath a read in the lanes below show which it was, such as `BPool::GetFromDisk` when the page had to be read.
+**View > Reads** adds a lane under the operators showing every page the query asked the buffer pool for. Each read is drawn as in the Timeline's Read lane, a faint bar across the call with a solid tick at its end. A call to `BPool::Get` asks for a single page. A call to `BPool::ReadAhead` asks for a run of pages ahead of the scan. Pages already in memory and pages read from disk are drawn the same way. The calls beneath a read in the lanes below show which it was, such as `BPool::GetFromDisk` when the page had to be read.
 
-Reads are drawn in the Buffer Pool category's colour, and lines join each one to the operator whose call it was made in, as in the [Timeline](/docs/user-guide/query/Timeline)'s Read lane: a dotted line where the call starts, when the read is wide enough to tell it apart, and a solid line at its end for each page. Reads made outside every operator, such as metadata lookups while the query is set up, have no lines.
+Reads are drawn in the Buffer Pool category's colour. Hovering over a read draws lines joining it to the operator whose call it was made in, as in the [Timeline](/docs/user-guide/query/Timeline)'s Read lane: a dotted line where the call starts, when the read is wide enough to tell it apart, and a solid line at its end for each page. The lines are drawn over any operators they cross. Reads made outside every operator, such as metadata lookups while the query is set up, have no lines.
 
 - Hovering over a read shows its page, or the first page and page count of a read ahead, with its function, operator, thread and position
 - **Click** a read to select its call in the chart
@@ -142,8 +142,6 @@ The **Memory** toggle and the **Allocated** or **In Use** choice are remembered 
 Click the ruler to put a playhead on the chart, and drag along the ruler to move it. Its badge gives the position, as `sequence:steps` on the Position axis. The step back and step forward buttons move it to the start of the previous or next call on any visible thread, and double-clicking the ruler hides it again and clears the selected call and operator.
 
 **Play** moves the playhead steadily along the chart, scrolling the view on when it reaches the edge, and stops at the end of the recording. It starts from the playhead, or from the left of the view when there is none or the playhead is already at the end. Click it again to pause.
-
-With **Record Events** on, the Timeline drives the playhead too. As its current event changes, the playhead moves to where that event happened in the recording - see [Extended Events in a recording](/docs/user-guide/query/FullTrace#extended-events-in-a-recording).
 
 With **Memory** and **Call Stack** off, the calls under the playhead pop out of the chart, each raised by the memory it allocated, so scrubbing along shows which part of the stack is allocating. Drag a raised call to change the angle and depth, as with the memory view. With Memory on, the band marks the memory allocated and in use at the playhead.
 

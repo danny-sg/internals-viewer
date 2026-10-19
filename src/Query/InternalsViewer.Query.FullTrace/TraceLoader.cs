@@ -9,7 +9,6 @@ using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Iterators;
-using InternalsViewer.Query.FullTrace.PublishedEvents;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Helpers;
@@ -196,24 +195,6 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         var lifetimes = IteratorLifetimeBuilder.Build(timeline, operators, replay.PlanNodes, replay.Teardowns);
 
         timeline.SetLifetimes(lifetimes);
-
-        var expanded = events.ExpandOwned();
-
-        var linked = PublishedEventLinker.Link(replay.PublishedEvents,
-                                               functions.PublishedEvents.Publishers,
-                                               request.RawEvents,
-                                               expanded,
-                                               timeline);
-
-        timeline.SetEventLinks(linked.Links);
-
-        Logger.LogInformation("{Linked} of {Events} event(s) linked to their trace position: {Written} of {Published} published "
-                              + "event(s) written to the session, {Paired} paired with an event",
-                              timeline.EventLinks.Count,
-                              request.RawEvents.Count,
-                              linked.Written,
-                              linked.Published,
-                              linked.Paired);
 
         Logger.LogInformation("{Matched} of {Operators} operator(s) matched to recorded iterators, {Allocations} allocation(s) of "
                               + "{Bytes}, {Lifetimes} operator lifetime(s) on {Threads} thread(s)",

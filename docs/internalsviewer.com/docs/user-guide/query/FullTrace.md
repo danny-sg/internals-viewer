@@ -20,8 +20,6 @@ While it is on, a red **Full Trace** badge sits at the end of the menu bar, beca
 
 Turning it on also changes the layout straight away. A recording has no clock, so the **Timeline**, **Events** and **Allocations** panes are hidden and their View menu items disabled, and the [Trace Timeline](/docs/user-guide/query/TraceTimeline) takes the Timeline's place - at the bottom in the default layout. Turning it off puts the previous layout back.
 
-**Record Events**, enabled only while Record Full Trace is on, adds the normal event set to the recording and keeps those panes, with the Trace Timeline beside the Timeline - see [Extended Events in a recording](#extended-events-in-a-recording).
-
 Turning Record Full Trace on also starts preparing the symbols the replay needs, in the background, so they are ready by the time the first recording finishes.
 
 ## Requirements
@@ -63,15 +61,6 @@ A recording runs with a minimal event session: the batch start and end, the oper
 
 The parallelism waits are there to find the threads. A recording holds every thread in SQL Server, and the replay only follows the query's. Every parallel worker waits on a parallelism exchange at least once, and the wait names the thread it happened on, so those waits are how the workers are found.
 
-**Record Events** puts the normal event set from the [Events menu](/docs/user-guide/query#events-menu) back, with the call stack action if **Call Stack** is on, at the cost of a larger and slower recording. The Timeline, Events and Allocations panes stay open, with the Trace Timeline beside the Timeline.
-
-Each event is also found in the recording - the replay sees SQL Server publish it and write it to the session, so it knows the call it came from and where in the recording it happened. That links the two views:
-
-- **Following the Timeline** - as the Timeline's current event changes, by stepping, playing or scrubbing, the Trace Timeline's playhead moves to where that event happened. While the Timeline plays, the playhead sweeps from one event to the next rather than jumping.
-- **Selecting an event** - selecting an event in the Events pane or on the Timeline moves the playhead the same way.
-
-An event the replay could not place leaves the playhead where it is. The [Diagnostic log](/docs/user-guide/settings#diagnostic-log) records how many events were published, how many were written to the session and how many were linked.
-
 ## Custom Hooks
 
 A custom hook reads the structure an argument points to, so memory the views do not decode can still be looked at. In [Arguments](/docs/user-guide/query/CallStack#arguments), right-click an argument, or the value a call returned, and choose **Custom Hook**. Give it a **Name**, the **Length** in bytes to read and an **Offset** from the pointer, such as `0x24`, and choose whether to **Read At** the call or its return. Reading at the return suits an out parameter, which the call fills in.
@@ -88,7 +77,7 @@ The hook is kept in settings and applies to every Full Trace run from then on. I
 - **No time** - TTD records instructions, not time, and the recording slows everything down anyway, so nothing in a Full Trace is in milliseconds. The Trace Timeline measures in trace positions or instructions instead.
 
 ::: details How this works
-The recording is made by an elevated harness that attaches TTD to SQL Server, restarting the service first if an earlier recording is still loaded in it. The recording is then replayed once, from start to finish, and every call on the query's threads goes into the call tree, the Trace Timeline and a log of call arguments. Operators are matched by the iterator object each call ran on, found from the calls that build the plan's iterators, memory is counted from the calls to SQL Server's allocators, and events are placed by the calls that publish them.
+The recording is made by an elevated harness that attaches TTD to SQL Server, restarting the service first if an earlier recording is still loaded in it. The recording is then replayed once, from start to finish, and every call on the query's threads goes into the call tree, the Trace Timeline and a log of call arguments. Operators are matched by the iterator object each call ran on, found from the calls that build the plan's iterators, and memory is counted from the calls to SQL Server's allocators.
 
 See [How Full Trace works](/docs/deep-dives/full-trace) for the details.
 :::

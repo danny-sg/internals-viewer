@@ -182,9 +182,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private PfsChain _pfsChain = new();
 
     [ObservableProperty]
-    private bool _isTimelinePlaying;
-
-    [ObservableProperty]
     private bool _showBufferPool;
 
     [ObservableProperty]
@@ -274,9 +271,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     [ObservableProperty]
     private IReadOnlyList<string> _outputColumnNames = [];
-
-    [ObservableProperty]
-    private TraceEventLink? _currentEventLink;
 
     [ObservableProperty]
     private CallStackNode? _selectedCallNode;
@@ -409,8 +403,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         Schema = SchemaHelper.ToSqlSchema(database);
 
         Layout = new QueryLayoutViewModel(this);
-
-        Layout.HasTraceEvents = QueryOptions.RecordTraceEvents;
 
         Layout.Changed += OnLayoutChanged;
         Layout.SelectionChanged += ScheduleSaveLayout;
@@ -761,14 +753,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         SyncIndexPage(timeUs);
     }
 
-    public void SetCurrentEvent(EngineEvent? engineEvent)
-    {
-        if (engineEvent is not null && TraceTimeline?.EventLinkOf(engineEvent) is { } link)
-        {
-            CurrentEventLink = link;
-        }
-    }
-
     public void SelectPlanNode(PlanNodeIdentifier identifier)
     {
         SelectedPlanNode = ResolvePlanNode(identifier);
@@ -829,14 +813,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [RelayCommand]
     private void ShowCustomHooks() => Layout.ShowCustomHooks();
 
-    partial void OnSelectedEventChanged(EngineEvent? value)
-    {
-        SelectedEventProperties = value?.GetProperties() ?? [];
-
-        SetCurrentEvent(value);
-    }
-
-    partial void OnTraceTimelineChanged(TraceTimeline? value) => CurrentEventLink = null;
+    partial void OnSelectedEventChanged(EngineEvent? value) => SelectedEventProperties = value?.GetProperties() ?? [];
 
     partial void OnCallStackChanged(CallStackTree? value)
     {
@@ -1003,10 +980,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             Layout.IsTrace = QueryOptions.RecordTimeTravel;
 
             PrepareTrace();
-        }
-        else if (e.PropertyName == nameof(QueryOptionsViewModel.RecordTraceEvents))
-        {
-            Layout.HasTraceEvents = QueryOptions.RecordTraceEvents;
         }
         else if (e.PropertyName == nameof(QueryOptionsViewModel.CropToQuery)
                  && Trace is { } trace
@@ -2212,8 +2185,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         if (run.ExtraOf<TraceResult>() is { } fullTrace)
         {
-            Layout.HasTraceEvents = run.EventOptions.RecordTraceEvents;
-
             Layout.IsTrace = true;
 
             ShowTrace(fullTrace);
@@ -2410,7 +2381,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         SequenceFrom = 0;
         SequenceTo = 0;
         PlayheadTimeUs = 0;
-        IsTimelinePlaying = false;
         SelectedPlanNode = null;
         ActivePlanNodes = [];
         EmittingPlanNodes = [];

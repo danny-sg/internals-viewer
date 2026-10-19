@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -99,7 +98,7 @@ internal sealed class TraceReadsPane(ITraceTimelineHost host, Func<(float Top, f
         }
     }
 
-    public void Draw(SKCanvas canvas, int width, double scale, Func<ExecutionOperatorEvent, uint, float?>? getOrigin)
+    public void Draw(SKCanvas canvas, int width, double scale)
     {
         Paints.Fill.Color = PaneColour;
 
@@ -122,11 +121,9 @@ internal sealed class TraceReadsPane(ITraceTimelineHost host, Func<(float Top, f
 
         var height = Math.Max(Height - LanePadding * 2, 1);
 
-        var markerWidth = reads.Count < SparseReadCount ? SparseMarkerWidth : MarkerWidth;
+        var markerWidth = GetMarkerWidth();
 
         var nextPagePixel = float.MinValue;
-
-        var rails = new List<ReadRail>();
 
         canvas.Save();
 
@@ -153,19 +150,12 @@ internal sealed class TraceReadsPane(ITraceTimelineHost host, Func<(float Top, f
             {
                 nextPagePixel = MathF.Floor(right) + 1;
             }
-
-            if (read.Operator is { } operatorEvent && getOrigin?.Invoke(operatorEvent, read.Thread) is { } origin)
-            {
-                rails.Add(new ReadRail(left, right, origin, read.PageCount));
-            }
         }
 
         canvas.Restore();
-
-        DrawRails(canvas, rails, width, top, top + height);
     }
 
-    public void DrawOverlay(SKCanvas canvas, int width, double scale)
+    public void DrawOverlay(SKCanvas canvas, int width, double scale, Func<ExecutionOperatorEvent, uint, float?>? getOrigin)
     {
         if (Hover is not { } read)
         {
@@ -176,7 +166,16 @@ internal sealed class TraceReadsPane(ITraceTimelineHost host, Func<(float Top, f
 
         var left = (float)((span.Start - Host.ViewStart) * scale);
 
-        var right = Math.Max((float)((span.End - Host.ViewStart) * scale), left + MarkerWidth);
+        var right = Math.Max((float)((span.End - Host.ViewStart) * scale), left + GetMarkerWidth());
+
+        var top = Top + LanePadding;
+
+        var bottom = Top + Height - LanePadding;
+
+        if (read.Operator is { } operatorEvent && getOrigin?.Invoke(operatorEvent, read.Thread) is { } origin)
+        {
+            DrawRails(canvas, new ReadRail(left, right, origin, read.PageCount), top, bottom);
+        }
 
         Paints.Outline.Color = HoverColour;
 
@@ -186,47 +185,35 @@ internal sealed class TraceReadsPane(ITraceTimelineHost host, Func<(float Top, f
 
         canvas.ClipRect(new SKRect(0, Top, width, Top + Height));
 
-        canvas.DrawRect(new SKRect(left, Top + LanePadding, right, Top + Height - LanePadding), Paints.Outline);
+        canvas.DrawRect(new SKRect(left, top, right, bottom), Paints.Outline);
 
         canvas.Restore();
     }
 
-    private void DrawRails(SKCanvas canvas, List<ReadRail> rails, int width, float top, float bottom)
+    private float GetMarkerWidth() => Reads is { Count: < SparseReadCount } ? SparseMarkerWidth : MarkerWidth;
+
+    private void DrawRails(SKCanvas canvas, ReadRail rail, float top, float bottom)
     {
-        if (rails.Count == 0)
-        {
-            return;
-        }
-
-        var highest = rails.Min(r => r.Origin);
-
-        canvas.SaveLayer(new SKRect(0, highest, width, bottom), Paints.ReadRailLayer);
-
         Paints.ReadCallRail.Color = ReadColour.WithAlpha(RailAlpha);
 
         Paints.ReadReturnRail.Color = ReadColour.WithAlpha(RailAlpha);
 
-        foreach (var rail in rails)
+        if (rail.End - rail.Start > MinimumCallRailGap)
         {
-            if (rail.End - rail.Start > MinimumCallRailGap)
-            {
-                canvas.DrawLine(rail.Start, rail.Origin, rail.Start, top, Paints.ReadCallRail);
-            }
-
-            for (var page = 0; page < rail.Pages; page++)
-            {
-                var x = Math.Max(rail.Start, rail.End - page * PageRailGap);
-
-                canvas.DrawLine(x, rail.Origin, x, bottom, Paints.ReadReturnRail);
-
-                if (x <= rail.Start)
-                {
-                    break;
-                }
-            }
+            canvas.DrawLine(rail.Start, rail.Origin, rail.Start, top, Paints.ReadCallRail);
         }
 
-        canvas.Restore();
+        for (var page = 0; page < rail.Pages; page++)
+        {
+            var x = Math.Max(rail.Start, rail.End - page * PageRailGap);
+
+            canvas.DrawLine(x, rail.Origin, x, bottom, Paints.ReadReturnRail);
+
+            if (x <= rail.Start)
+            {
+                break;
+            }
+        }
     }
 
     private void DrawRead(SKCanvas canvas, TraceRead read, SKRect rect, float markerWidth)
@@ -241,29 +228,6 @@ internal sealed class TraceReadsPane(ITraceTimelineHost host, Func<(float Top, f
         Paints.Fill.Color = ReadColour;
 
         canvas.DrawRect(rect.Right - markerWidth, rect.Top, markerWidth, rect.Height, Paints.Fill);
-
-        if (read.Type == TraceReadType.ReadAhead)
-        {
-            DrawPageCount(canvas, read, rect);
-        }
-    }
-
-    private void DrawPageCount(SKCanvas canvas, TraceRead read, SKRect rect)
-    {
-        var label = $"{read.PageCount:N0} {(read.PageCount == 1 ? "Page" : "Pages")}";
-
-        var labelWidth = Paints.Font.MeasureText(label);
-
-        if (labelWidth + LabelPadding * 2 > rect.Width)
-        {
-            return;
-        }
-
-        var metrics = Paints.Font.Metrics;
-
-        var baseline = rect.Top + (rect.Height - (metrics.Descent - metrics.Ascent)) / 2 - metrics.Ascent;
-
-        canvas.DrawText(label, rect.MidX - labelWidth / 2, baseline, SKTextAlign.Left, Paints.Font, Paints.Label);
     }
 
     private static string GetOperatorTitle(ExecutionOperatorEvent operatorEvent)

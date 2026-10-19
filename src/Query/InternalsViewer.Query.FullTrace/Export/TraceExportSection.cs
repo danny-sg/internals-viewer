@@ -19,8 +19,6 @@ internal sealed class TraceExportSection : IQueryExportSection
 
     internal const string TimelineEntry = "fulltrace/timeline.bin";
 
-    internal const string EventLinksEntry = "fulltrace/eventlinks.bin";
-
     internal const string MemoryMapEntry = "fulltrace/memorymap.bin";
 
     internal const string ObjectPoolSnapshotEntry = "fulltrace/objectpool.bin";
@@ -49,8 +47,6 @@ internal sealed class TraceExportSection : IQueryExportSection
         writer.WriteBinary(CallStoreEntry, CompressionLevel.NoCompression, fullTrace.CallStore.Write);
 
         writer.WriteBinary(TimelineEntry, CompressionLevel.Fastest, w => fullTrace.Timeline.Write(w, writer.IdOf));
-
-        writer.WriteBinary(EventLinksEntry, CompressionLevel.Fastest, w => fullTrace.Timeline.WriteEventLinks(w, writer.IdOf));
 
         writer.WriteBinary(MemoryMapEntry, CompressionLevel.Fastest, fullTrace.MemoryMap.Write);
 
@@ -95,11 +91,6 @@ internal sealed class TraceExportSection : IQueryExportSection
             : [];
 
         timeline.SetLifetimes(IteratorLifetimeBuilder.Build(timeline, [.. events.OfType<ExecutionOperatorEvent>()], planNodes, teardowns));
-
-        if (reader.HasEntry(EventLinksEntry))
-        {
-            timeline.SetEventLinks(reader.ReadBinary(EventLinksEntry, r => TraceTimeline.ReadEventLinks(r, nodes, events)));
-        }
 
         return new TraceResult(tree, callStore, timeline)
         {
