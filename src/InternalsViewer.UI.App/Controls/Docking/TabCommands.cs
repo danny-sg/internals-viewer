@@ -3,6 +3,7 @@ using InternalsViewer.UI.App.Helpers;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
+using Windows.Foundation;
 
 namespace InternalsViewer.UI.App.Controls.Docking;
 
@@ -10,7 +11,17 @@ public static class TabCommands
 {
     private const string ChevronGlyph = "\uE70D";
 
+    private const string FunnelGlyph = "\uE71C";
+
     private const double ChevronSize = 8;
+
+    private const double GlyphSize = 12;
+
+    private const double KeylineSize = 10.5;
+
+    private const double FunnelScale = KeylineSize / GlyphSize;
+
+    private const double FunnelDrop = 0.375;
 
     private const double MenuSpacing = 6;
 
@@ -140,7 +151,15 @@ public static class TabCommands
         Background = AppResources.Get<Brush>("DividerStrokeColorDefaultBrush")
     };
 
-    public static FontIcon Glyph(string glyph) => new() { Glyph = glyph, FontSize = 12 };
+    public static FontIcon Glyph(string glyph) => new() { Glyph = glyph, FontSize = GlyphSize };
+
+    public static FontIcon FilterGlyph() => new()
+    {
+        Glyph = FunnelGlyph,
+        FontSize = GlyphSize,
+        RenderTransformOrigin = new Point(0.5, 0.5),
+        RenderTransform = new CompositeTransform { ScaleX = FunnelScale, ScaleY = FunnelScale, TranslateY = -FunnelDrop * FunnelScale }
+    };
 
     public static bool IsChecked(object sender) => sender is ToggleButton { IsChecked: true };
 

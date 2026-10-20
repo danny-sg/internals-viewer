@@ -4,6 +4,7 @@ using System.Linq;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
+using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.UI.App.Controls.Timeline;
 using InternalsViewer.UI.App.Controls.Trace.Enums;
@@ -38,7 +39,19 @@ internal sealed partial class TraceOperatorsPane
 
     private const float MinimumCallLinkWidth = 3f;
 
+    private const float BandLabelGap = 1f;
+
+    private const float BandLabelPadding = 2f;
+
+    private const float BandLabelInset = 5f;
+
+    private const float BorderOffset = 0.5f;
+
     private static readonly SKColor TickHoverColour = new(255, 255, 255, 200);
+
+    private static readonly SKColor BandHoverColour = new(255, 255, 255, 0x80);
+
+    private static readonly SKColor BandLabelBorderColour = new(0, 0, 0, 0x40);
 
     private TraceTickTrack[] VisibleTracks { get; set; } = [];
 
@@ -83,9 +96,13 @@ internal sealed partial class TraceOperatorsPane
         => track.Values.FirstOrDefault(v => v.Value == value).Label ?? value.ToString();
 
     private static SKColor GetStripBackground(TraceTickTrack track, SKColor colour, bool isHovered)
-        => track.Background is { } background
+        => GetBackground(track) is { } background
             ? isHovered ? background.WithAlpha((byte)Math.Min(background.Alpha * BackgroundHoverAlpha, byte.MaxValue)) : background
             : TimelineColours.Scale(colour, isHovered ? StripHoverShade : StripShade);
+
+    private static SKColor? GetBackground(TraceTickTrack track)
+        => track.Background
+           ?? (track.Colour is { } trackColour && TimelineColours.IsDark(trackColour) ? TraceTickTracks.LightBackground : null);
 
     private static float GetTickWidth(TraceTickTrack track, int count)
         => (count < SparseTickCount ? Math.Max(SparseTickWidth, track.TickWidth) : track.TickWidth) * track.WidthFactor;
@@ -105,16 +122,16 @@ internal sealed partial class TraceOperatorsPane
     {
         var strips = new List<TickStrip>();
 
-        var baseHeight = GetStripHeight(bar);
-
-        if (baseHeight <= 0)
+        if (bar.Height < MinimumStripHeight)
         {
             return strips;
         }
 
-        var operatorEvent = Rows[row].Operator;
+        var baseHeight = GetStripHeight(bar);
 
-        var thread = Rows[row].Lifetimes[track].Thread;
+        var operatorRow = Rows[row];
+
+        var thread = operatorRow.Lifetimes[track].Thread;
 
         var top = 0f;
 
@@ -122,14 +139,17 @@ internal sealed partial class TraceOperatorsPane
 
         foreach (var tickTrack in VisibleTracks)
         {
-            if (tickTrack.Series.GetTicks(operatorEvent, thread) is not { Count: > 0 } ticks)
+            if ((operatorRow.IsStatement && !tickTrack.IsStatementTrack)
+                || tickTrack.Series.GetTicks(operatorRow.TickOperator, thread) is not { Count: > 0 } ticks)
             {
                 continue;
             }
 
-            var height = baseHeight * tickTrack.HeightFactor;
+            var wanted = BandHeights.TryGetValue(tickTrack.Name, out var set) ? set : baseHeight * tickTrack.HeightFactor;
 
-            if (top + bottom + height > bar.Height)
+            var height = Math.Min(wanted, bar.Height - top - bottom);
+
+            if (height < MinimumStripHeight)
             {
                 break;
             }
@@ -241,7 +261,7 @@ internal sealed partial class TraceOperatorsPane
                 canvas.DrawRect(left, top, Math.Max(right - left - TickBodyGap, 0), height, Paints.Fill);
             }
 
-            Paints.Fill.Color = colour;
+            Paints.Fill.Color = colour.WithAlpha(byte.MaxValue);
 
             canvas.DrawRect(right - width, top, width, height, Paints.Fill);
 
@@ -276,30 +296,98 @@ internal sealed partial class TraceOperatorsPane
         return null;
     }
 
-    private void DrawTickHover(SKCanvas canvas, double scale)
+    private HoveredStrip? GetHoveredStrip(double scale)
     {
-        if (Hover.Tick is not { Tick: { } tick } hover
+        if (Hover.Tick is not { } hover
             || hover.Row >= Rows.Length
             || GetTrackRect(hover.Row, hover.Track, Host.Width, scale) is not { } bar)
         {
-            return;
+            return null;
         }
 
         foreach (var strip in GetStrips(hover.Row, hover.Track, bar))
         {
-            if (!ReferenceEquals(strip.Track, hover.TickTrack))
+            if (ReferenceEquals(strip.Track, hover.TickTrack))
             {
-                continue;
+                return new HoveredStrip(hover, strip, bar);
             }
-
-            var (left, right) = GetTickEdges(tick.Of(Axis), GetTickWidth(strip.Track, strip.Ticks.Count), scale);
-
-            Paints.Outline.Color = TickHoverColour;
-
-            Paints.Outline.StrokeWidth = 1f;
-
-            canvas.DrawRect(new SKRect(left, strip.Top, right, strip.Top + strip.Height), Paints.Outline);
         }
+
+        return null;
+    }
+
+    private void DrawTickHover(SKCanvas canvas, double scale)
+    {
+        if (GetHoveredStrip(scale) is not { Hit.Tick: { } tick } hovered)
+        {
+            return;
+        }
+
+        var strip = hovered.Strip;
+
+        var (left, right) = GetTickEdges(tick.Of(Axis), GetTickWidth(strip.Track, strip.Ticks.Count), scale);
+
+        Paints.Outline.Color = TickHoverColour;
+
+        Paints.Outline.StrokeWidth = 1f;
+
+        canvas.DrawRect(new SKRect(left, strip.Top, right, strip.Top + strip.Height), Paints.Outline);
+    }
+
+    private static SKRect Snap(SKRect rect)
+        => new(MathF.Round(rect.Left), MathF.Round(rect.Top), MathF.Round(rect.Right), MathF.Round(rect.Bottom));
+
+    private void DrawBandHover(SKCanvas canvas, double scale)
+    {
+        if (GetHoveredStrip(scale) is not { } hovered)
+        {
+            return;
+        }
+
+        var (hit, strip, bar) = hovered;
+
+        var band = Snap(new SKRect(bar.Left, strip.Top, bar.Right, strip.Top + strip.Height));
+
+        Paints.Outline.Color = BandHoverColour;
+
+        Paints.Outline.StrokeWidth = 1f;
+
+        canvas.DrawRect(SKRect.Inflate(band, BorderOffset, BorderOffset), Paints.Outline);
+
+        DrawBandLabel(canvas, hit, strip, band);
+    }
+
+    private void DrawBandLabel(SKCanvas canvas, TraceTickHit hit, TickStrip strip, SKRect band)
+    {
+        var text = hit.TickTrack.GetTitle?.Invoke(Rows[hit.Row].TickOperator) ?? hit.TickTrack.Name;
+
+        var colour = GetTickColour(hit.TickTrack, hit.Tick, hit.Row, hit.Track);
+
+        var font = Paints.OperatorFont;
+
+        var metrics = font.Metrics;
+
+        var height = MathF.Ceiling(metrics.Descent - metrics.Ascent + BandLabelPadding * 2);
+
+        var left = MathF.Max(band.Left, 0);
+
+        var top = strip.Track.Location == TraceTickLocation.Top
+            ? band.Bottom + BandLabelGap
+            : band.Top - BandLabelGap - height;
+
+        var rect = new SKRect(left, top, MathF.Ceiling(left + font.MeasureText(text) + BandLabelInset * 2), top + height);
+
+        Paints.Fill.Color = colour;
+
+        canvas.DrawRect(rect, Paints.Fill);
+
+        Paints.Outline.Color = BandLabelBorderColour;
+
+        canvas.DrawRect(SKRect.Inflate(rect, -BorderOffset, -BorderOffset), Paints.Outline);
+
+        Paints.Text.Color = TimelineColours.IsLight(colour) ? SKColors.Black : SKColors.White;
+
+        canvas.DrawText(text, rect.Left + BandLabelInset, rect.Top + BandLabelPadding - metrics.Ascent, SKTextAlign.Left, font, Paints.Text);
     }
 
     private string GetTickToolTip(TraceTickHit hit)
@@ -308,11 +396,11 @@ internal sealed partial class TraceOperatorsPane
 
         var track = hit.TickTrack;
 
-        var lines = new List<string> { track.GetTitle?.Invoke(row.Operator) ?? track.Name };
+        var lines = new List<string> { track.GetTitle?.Invoke(row.TickOperator) ?? track.Name };
 
         if (hit.Tick is not { } tick)
         {
-            var ticks = track.Series.GetTicks(row.Operator, row.Lifetimes[hit.Track].Thread)?.All ?? [];
+            var ticks = track.Series.GetTicks(row.TickOperator, row.Lifetimes[hit.Track].Thread)?.All ?? [];
 
             foreach (var value in track.Values.OrderBy(v => v.Value))
             {
@@ -359,6 +447,11 @@ internal sealed partial class TraceOperatorsPane
 
             for (var row = 0; row < Rows.Length; row++)
             {
+                if (Rows[row].IsStatement)
+                {
+                    continue;
+                }
+
                 for (var track = 0; track < Rows[row].Lifetimes.Length; track++)
                 {
                     var thread = Rows[row].Lifetimes[track].Thread;
@@ -375,11 +468,9 @@ internal sealed partial class TraceOperatorsPane
                     {
                         var tick = ticks.Get(Axis, index);
 
-                        if (tick.Caller is { } caller && GetTrack(caller, thread) is { } callerTrack)
+                        if (GetCallerTrack(tick, row, thread) is { } callerTrack)
                         {
-                            var callLink = new TraceCallLinkHit(row, track, tickTrack, tick);
-
-                            DrawCallLink(canvas, callLink, callerTrack, width, Paints.DottedCallLink, Paints.CallLink, scale);
+                            DrawCallLink(canvas, tickTrack, tick, (row, track), callerTrack, width, scale);
                         }
                     }
                 }
@@ -412,71 +503,30 @@ internal sealed partial class TraceOperatorsPane
     }
 
     private void DrawCallLink(SKCanvas canvas,
-                              TraceCallLinkHit callLink,
+                              TraceTickTrack tickTrack,
+                              TraceTick tick,
+                              (int Row, int Track) callee,
                               (int Row, int Track) caller,
                               float width,
-                              SKPaint call,
-                              SKPaint callReturn,
                               double scale)
     {
-        var callee = (callLink.Row, callLink.Track);
-
         var (callerY, calleeY) = GetCallLinkEnds(callee, caller);
 
-        var calleeRow = Rows[callLink.Row];
+        var calleeRow = Rows[callee.Row];
 
-        var colour = callLink.TickTrack.GetColour(callLink.Tick)
-                     ?? GetOperatorColour(calleeRow.Operator, calleeRow.Lifetimes[callLink.Track]);
+        Paints.DottedCallLink.Color = tickTrack.Colour ?? GetOperatorColour(calleeRow.Operator, calleeRow.Lifetimes[callee.Track]);
 
-        call.Color = colour;
+        Paints.CallLink.Color = GetTickColour(tickTrack, tick, callee.Row, callee.Track);
 
-        callReturn.Color = colour;
+        var (callX, returnX) = GetCallLinkPositions(tick, width, scale);
 
-        var (callX, returnX) = GetCallLinkPositions(callLink.Tick, width, scale);
+        canvas.DrawLine(callX, callerY, callX, calleeY, Paints.DottedCallLink);
 
-        canvas.DrawLine(callX, callerY, callX, calleeY, call);
-
-        canvas.DrawLine(returnX, calleeY, returnX, callerY, callReturn);
+        canvas.DrawLine(returnX, calleeY, returnX, callerY, Paints.CallLink);
     }
 
-    private void DrawHoverCallLink(SKCanvas canvas, double scale)
-    {
-        if (Hover.CallLink is not { } hover
-            || hover.Row >= Rows.Length
-            || hover.Tick.Caller is not { } callerEvent
-            || GetTrack(callerEvent, Rows[hover.Row].Lifetimes[hover.Track].Thread) is not { } caller)
-        {
-            return;
-        }
-
-        var row = Rows[hover.Row];
-
-        var count = hover.TickTrack.Series.GetTicks(row.Operator, row.Lifetimes[hover.Track].Thread)?.Count ?? 0;
-
-        var width = GetTickWidth(hover.TickTrack, count);
-
-        var (callerY, calleeY) = GetCallLinkEnds((hover.Row, hover.Track), caller);
-
-        var (callX, returnX) = GetCallLinkPositions(hover.Tick, width, scale);
-
-        Host.PathBuilder.MoveTo(callX, callerY);
-        Host.PathBuilder.LineTo(callX, calleeY);
-        Host.PathBuilder.MoveTo(returnX, calleeY);
-        Host.PathBuilder.LineTo(returnX, callerY);
-
-        using (var shadow = Host.PathBuilder.Detach())
-        {
-            canvas.Save();
-
-            canvas.Translate(LineageShadowOffset, LineageShadowOffset);
-
-            canvas.DrawPath(shadow, Paints.LineageShadow);
-
-            canvas.Restore();
-        }
-
-        DrawCallLink(canvas, hover, caller, width, Paints.HoverDottedCallLink, Paints.HoverCallLink, scale);
-    }
+    private SKColor GetTickColour(TraceTickTrack tickTrack, TraceTick? tick, int row, int track)
+        => (tick is null ? null : tickTrack.GetColour(tick)) ?? GetOperatorColour(Rows[row].Operator, Rows[row].Lifetimes[track]);
 
     private (float CallX, float ReturnX) GetCallLinkPositions(TraceTick tick, float width, double scale)
     {
@@ -494,34 +544,19 @@ internal sealed partial class TraceOperatorsPane
         return callerTop < calleeTop ? (callerTop + callerHeight, calleeTop) : (callerTop, calleeTop + calleeHeight);
     }
 
-    private TraceCallLinkHit? GetCallLinkAt(Point position)
+    private (int Row, int Track)? GetCallerTrack(TraceTick tick, int row, uint thread)
+        => tick.Caller is { } caller ? GetTrack(caller, thread) : GetStatementTrack(row, thread);
+
+    private (int Row, int Track)? GetStatementTrack(int row, uint thread)
     {
-        if (GetOperatorAt(position) is not { } hit)
+        if (row == 0 || !Rows[0].IsStatement || !ReferenceEquals(Rows[0].TickOperator, Rows[row].Operator))
         {
             return null;
         }
 
-        var scale = Host.Scale;
+        var track = Array.FindIndex(Rows[0].Lifetimes, l => l.Thread == thread);
 
-        var value = Host.ViewStart + position.X / scale;
-
-        var tolerance = TraceTimelineControl.HitTolerance / scale;
-
-        var row = Rows[hit.Row];
-
-        var thread = row.Lifetimes[hit.Track].Thread;
-
-        foreach (var tickTrack in VisibleTracks)
-        {
-            if (tickTrack.HasCallReturnLine
-                && tickTrack.Series.GetTicks(row.Operator, thread) is { } ticks
-                && ticks.GetNearest(Axis, value, tolerance) is { Caller: not null } tick)
-            {
-                return new TraceCallLinkHit(hit.Row, hit.Track, tickTrack, tick);
-            }
-        }
-
-        return null;
+        return track >= 0 ? (0, track) : null;
     }
 
     private (int Row, int Track)? GetTrack(ExecutionOperatorEvent operatorEvent, uint thread)
@@ -537,4 +572,6 @@ internal sealed partial class TraceOperatorsPane
     }
 
     private readonly record struct TickStrip(TraceTickTrack Track, TraceMarkIndex<TraceTick> Ticks, float Top, float Height);
+
+    private readonly record struct HoveredStrip(TraceTickHit Hit, TickStrip Strip, SKRect Bar);
 }

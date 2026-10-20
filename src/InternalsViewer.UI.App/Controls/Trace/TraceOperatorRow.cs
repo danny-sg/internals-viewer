@@ -7,4 +7,9 @@ internal sealed record TraceOperatorRow(ExecutionOperatorEvent Operator,
                                         TraceOperatorLifetime[] Lifetimes,
                                         string Name,
                                         string Target,
-                                        string Title);
+                                        string Title)
+{
+    public ExecutionOperatorEvent TickOperator { get; init; } = Operator;
+
+    public bool IsStatement { get; init; }
+}

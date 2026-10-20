@@ -6,7 +6,10 @@ using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Output;
+using InternalsViewer.Query.FullTrace.RowSources;
 using InternalsViewer.Query.FullTrace.Timeline;
+using InternalsViewer.Query.FullTrace.Timeline.Ticks;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.Query.Memory;
 
 namespace InternalsViewer.Query.FullTrace;
@@ -39,7 +42,11 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
 
     public TraceTimeline QueryTimeline => CroppedTimeline ??= GetQueryTimeline();
 
+    public IReadOnlyList<TraceOutputRowSource> OutputSources => Sources ??= TraceOutputLineage.GetSources(Timeline, OutputStructures);
+
     private IReadOnlyList<CallStackNode>? Roots { get; set; }
+
+    private IReadOnlyList<TraceOutputRowSource>? Sources { get; set; }
 
     private TraceTimeline? CroppedTimeline { get; set; }
 

@@ -2,9 +2,10 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.CallStack.Locators.Enums;
 using InternalsViewer.Query.FullTrace.Calls;
-using InternalsViewer.Query.FullTrace.Timeline.Enums;
+using InternalsViewer.Query.FullTrace.Timeline.Ticks;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 
-namespace InternalsViewer.Query.FullTrace.Timeline;
+namespace InternalsViewer.Query.FullTrace.Timeline.Tracks;
 
 public static class TraceEvaluations
 {

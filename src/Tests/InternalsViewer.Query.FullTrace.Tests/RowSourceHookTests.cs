@@ -13,6 +13,8 @@ public class RowSourceHookTests
 
     private const ulong GetRow = 0x1000;
 
+    private const ulong BatchHelperGetRow = 0x1100;
+
     private const ulong BatchGetData = 0x2100;
 
     private const ulong BatchFactory = 0x2200;
@@ -49,6 +51,18 @@ public class RowSourceHookTests
         hook.OnEntry(Call(GetRow, 1, Parent), replay);
 
         Assert.Equal(new IteratorPlanNode(Parent, PlanObject, 0, Query, 2), Assert.Single(hook.GetPlanNodes()));
+    }
+
+    [Fact]
+    public void A_Batch_Helper_Reports_The_Plan_Node_Of_The_Operator_It_Adapts_And_Is_Marked_As_A_Helper()
+    {
+        var replay = PlanObjects().Write(Parent + 0x10, PlanObject);
+
+        var hook = CreateHook();
+
+        hook.OnEntry(Call(BatchHelperGetRow, 1, Parent), replay);
+
+        Assert.Equal(new IteratorPlanNode(Parent, PlanObject, 0, Query, 2, IsBatchHelper: true), Assert.Single(hook.GetPlanNodes()));
     }
 
     [Fact]
@@ -151,6 +165,7 @@ public class RowSourceHookTests
         => new(new RowSourceFunctions(new Dictionary<ulong, RowSourceFunctionType>
                                       {
                                           [GetRow] = RowSourceFunctionType.Iterator,
+                                          [BatchHelperGetRow] = RowSourceFunctionType.BatchHelper,
                                           [BatchGetData] = RowSourceFunctionType.BatchIterator,
                                           [BatchFactory] = RowSourceFunctionType.BatchFactory,
                                           [Constructor] = RowSourceFunctionType.Constructor,

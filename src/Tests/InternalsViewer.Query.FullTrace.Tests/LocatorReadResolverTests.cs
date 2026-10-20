@@ -1,6 +1,5 @@
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.FullTrace.Locators;
-using InternalsViewer.Query.FullTrace.Locators.Parsers;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.CallStack.Locators;
 
@@ -38,8 +37,8 @@ public class LocatorReadResolverTests
     {
         var reads = Reads("IndexPageManager::ReleaseHPage(HPageHandle &)", "?ReleaseHPage@IndexPageManager@@QEAAXAEAVHPageHandle@@@Z");
 
-        Assert.Equal([new LocatorRead(Function, 1, false, LocatorValueType.Page, 0x70, PageLocatorParser.PageHandlePath),
-                      new LocatorRead(Function, 1, true, LocatorValueType.Page, 0x70, PageLocatorParser.PageHandlePath)],
+        Assert.Equal([new LocatorRead(Function, 1, false, LocatorValueType.Page, 0x70, LocatorType.PageHandlePath),
+                      new LocatorRead(Function, 1, true, LocatorValueType.Page, 0x70, LocatorType.PageHandlePath)],
                      reads);
     }
 
@@ -48,8 +47,8 @@ public class LocatorReadResolverTests
     {
         var reads = Reads("SMOLockOrder::Add(PageRef &)", "?Add@SMOLockOrder@@QEAAXAEAVPageRef@@@Z");
 
-        Assert.Equal([new LocatorRead(Function, 1, false, LocatorValueType.Page, 0x70, PageLocatorParser.PageRefPath),
-                      new LocatorRead(Function, 1, true, LocatorValueType.Page, 0x70, PageLocatorParser.PageRefPath)],
+        Assert.Equal([new LocatorRead(Function, 1, false, LocatorValueType.Page, 0x70, LocatorType.PageRefPath),
+                      new LocatorRead(Function, 1, true, LocatorValueType.Page, 0x70, LocatorType.PageRefPath)],
                      reads);
     }
 
@@ -59,10 +58,10 @@ public class LocatorReadResolverTests
         var reads = Reads("BTreeMgr::HandleRoot(BTreeMgr::BTREE_TRAVERSAL_MODE,int,int &,PageRef &,BTreeHPage *)",
                           "?HandleRoot@BTreeMgr@@AEAA?AW4VR_STATUS@1@W4BTREE_TRAVERSAL_MODE@1@HAEAHAEAVPageRef@@PEAVBTreeHPage@@@Z");
 
-        Assert.Equal([new LocatorRead(Function, 4, false, LocatorValueType.Page, 0x70, PageLocatorParser.PageRefPath),
-                      new LocatorRead(Function, 4, true, LocatorValueType.Page, 0x70, PageLocatorParser.PageRefPath),
-                      new LocatorRead(Function, 5, false, LocatorValueType.Page, 0x70, PageLocatorParser.PageRefPath),
-                      new LocatorRead(Function, 5, true, LocatorValueType.Page, 0x70, PageLocatorParser.PageRefPath)],
+        Assert.Equal([new LocatorRead(Function, 4, false, LocatorValueType.Page, 0x70, LocatorType.PageRefPath),
+                      new LocatorRead(Function, 4, true, LocatorValueType.Page, 0x70, LocatorType.PageRefPath),
+                      new LocatorRead(Function, 5, false, LocatorValueType.Page, 0x70, LocatorType.PageRefPath),
+                      new LocatorRead(Function, 5, true, LocatorValueType.Page, 0x70, LocatorType.PageRefPath)],
                      reads.Where(r => r.ValueType == LocatorValueType.Page));
     }
 
@@ -145,8 +144,8 @@ public class LocatorReadResolverTests
                           "?GetPageWithKey@IndexPageManager@@QEAAXPEBVSEBindings@@W4BTREE_SEEK_OPTION@BTreeMgr@@W4AccessMode@@"
                           + "AEAVHPageHandle@@AEAVSearchInfo@@PEAV2@PEAEKPEAVHPageIdVersionId@@_N@Z");
 
-        Assert.Equal([new LocatorRead(Function, 4, false, LocatorValueType.Page, 0x70, PageLocatorParser.PageHandlePath),
-                      new LocatorRead(Function, 4, true, LocatorValueType.Page, 0x70, PageLocatorParser.PageHandlePath)],
+        Assert.Equal([new LocatorRead(Function, 4, false, LocatorValueType.Page, 0x70, LocatorType.PageHandlePath),
+                      new LocatorRead(Function, 4, true, LocatorValueType.Page, 0x70, LocatorType.PageHandlePath)],
                      reads);
     }
 
@@ -265,7 +264,7 @@ public class LocatorReadResolverTests
     [InlineData("PSPageRef &")]
     public void A_Page_Reference_Is_Read_Through_Its_Buffer(string type)
         => Assert.True(LocatorType.GetLocatorType(type) is { ValueType: LocatorValueType.Page, Offset: 0x70, IsIndirect: true, IsConst: false } found
-                       && ReferenceEquals(found.Path, PageLocatorParser.PageRefPath));
+                       && ReferenceEquals(found.Path, LocatorType.PageRefPath));
 
     [Theory]
     [InlineData("int &", true, false)]

@@ -29,6 +29,27 @@ public class RowSourceFunctionsTests
     }
 
     [Fact]
+    public void Every_Iterator_Method_Of_The_Batch_Helper_Is_A_Batch_Helper_Call()
+    {
+        var collector = new RowSourceFunctions.Collector();
+
+        collector.VisitFunction(0x10, "CQScanBatchHelper::GetRow");
+        collector.VisitFunction(0x20, "CQScanBatchHelper::Open");
+        collector.VisitFunction(0x30, "CQScanHash::GetRow");
+
+        var functions = collector.Build().Functions.OrderBy(f => f.Key).Select(f => (f.Key, f.Value));
+
+        (ulong, RowSourceFunctionType)[] expected =
+        [
+            (0x10, RowSourceFunctionType.BatchHelper),
+            (0x20, RowSourceFunctionType.BatchHelper),
+            (0x30, RowSourceFunctionType.Iterator)
+        ];
+
+        Assert.Equal(expected, functions);
+    }
+
+    [Fact]
     public void Constructors_And_The_Query_Teardown_Are_Found_By_Name()
     {
         var collector = new RowSourceFunctions.Collector();

@@ -1,7 +1,8 @@
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Output;
+using InternalsViewer.Query.FullTrace.Timeline;
 
-namespace InternalsViewer.Query.FullTrace.Timeline;
+namespace InternalsViewer.Query.FullTrace.RowSources;
 
 internal static class TraceOutputLineage
 {

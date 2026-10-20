@@ -23,6 +23,8 @@ internal sealed record RowSourceFunctions(IReadOnlyDictionary<ulong, RowSourceFu
     {
         private const string IteratorPrefix = "CQScan";
 
+        private const string BatchHelperClass = "CQScanBatchHelper";
+
         private const string BatchIteratorPrefix = "CBpQScan";
 
         private const string BatchIteratorMethod = "BpGetBatchData";
@@ -67,7 +69,7 @@ internal sealed record RowSourceFunctions(IReadOnlyDictionary<ulong, RowSourceFu
             }
             else if (methodName is "GetRow" or "GetRowOrReQualifyHelper" or "Open")
             {
-                Candidates.TryAdd(rva, RowSourceFunctionType.Iterator);
+                Candidates.TryAdd(rva, className is BatchHelperClass ? RowSourceFunctionType.BatchHelper : RowSourceFunctionType.Iterator);
             }
             else if (methodName.SequenceEqual(className))
             {

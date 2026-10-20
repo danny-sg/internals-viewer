@@ -4,6 +4,7 @@ using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using SkiaSharp;
 using SkiaSharp.Views.Windows;
+using InternalsViewer.UI.App.Controls.Timeline;
 
 namespace InternalsViewer.UI.App.Controls.Trace;
 
@@ -38,6 +39,8 @@ public sealed partial class TraceTimelineControl
     private const float TickSpacing = 110f;
 
     internal const float NarrowSpan = 1f;
+
+    private const float TickHighlightOutset = 1f;
 
     private const byte RunAlpha = 190;
 
@@ -361,7 +364,7 @@ public sealed partial class TraceTimelineControl
             return;
         }
 
-        _paints.Text.Color = (IsLight(colour) ? SKColors.Black : SKColors.White).WithAlpha(colour.Alpha);
+        _paints.Text.Color = (TimelineColours.IsLight(colour) ? SKColors.Black : SKColors.White).WithAlpha(colour.Alpha);
 
         canvas.Save();
 
@@ -406,13 +409,17 @@ public sealed partial class TraceTimelineControl
     {
         var hover = _hover;
 
+        var isTickHover = _operators.Hover.Tick?.Tick is not null;
+
+        var hoverPaint = isTickHover ? _paints.TickHighlight : _paints.Hover;
+
         canvas.Save();
 
         canvas.ClipRect(new SKRect(0, ContentTop, width, height - BandHeight));
 
         DrawSelectedCalls(canvas, width, height);
 
-        DrawHighlight(canvas, hover, width, _paints.Hover);
+        DrawHighlight(canvas, hover, width, hoverPaint, isTickHover ? TickHighlightOutset : 0);
 
         DrawHighlight(canvas, _selected, width, _paints.Selection);
 
@@ -426,7 +433,7 @@ public sealed partial class TraceTimelineControl
 
             canvas.ClipRect(new SKRect(0, 0, width, height - BandHeight));
 
-            DrawSpikeHighlight(canvas, hover, _paints.Hover);
+            DrawSpikeHighlight(canvas, hover, hoverPaint);
 
             DrawSpikeHighlight(canvas, _selected, _paints.Selection);
 
@@ -470,7 +477,7 @@ public sealed partial class TraceTimelineControl
         }
     }
 
-    private void DrawHighlight(SKCanvas canvas, FlameHit? hit, int width, SKPaint paint)
+    private void DrawHighlight(SKCanvas canvas, FlameHit? hit, int width, SKPaint paint, float outset = 0)
     {
         if (hit is not { } highlighted || (ShowsSpikes && SpikeOf(highlighted) is not null))
         {
@@ -479,7 +486,7 @@ public sealed partial class TraceTimelineControl
 
         if (SpanRect(highlighted, width) is { } rect)
         {
-            canvas.DrawRect(rect, paint);
+            canvas.DrawRect(SKRect.Inflate(rect, outset, outset), paint);
         }
     }
 
@@ -564,8 +571,6 @@ public sealed partial class TraceTimelineControl
 
         return label;
     }
-
-    private static bool IsLight(SKColor colour) => colour.Red * 0.299 + colour.Green * 0.587 + colour.Blue * 0.114 > 160;
 
     private static double TickStep(double minimum)
     {

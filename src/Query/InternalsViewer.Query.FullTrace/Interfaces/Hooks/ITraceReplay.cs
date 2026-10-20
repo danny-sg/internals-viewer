@@ -1,11 +1,10 @@
 using InternalsViewer.Query.FullTrace.Hooks;
+using InternalsViewer.Query.Interfaces;
 
 namespace InternalsViewer.Query.FullTrace.Interfaces.Hooks;
 
-internal interface ITraceReplay
+internal interface ITraceReplay : IMemoryReader
 {
-    int Read(ulong address, Span<byte> destination);
-
     bool WatchFrame(uint thread, ulong frame);
 
     void WatchStack(uint thread, ulong stackPointer);

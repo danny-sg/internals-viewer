@@ -32,8 +32,6 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
     private const string PauseGlyph = "";
 
-    private const string FilterGlyph = "";
-
     private const double StackStar = 0.5;
 
     private const double CommandSpacing = 8;
@@ -115,7 +113,7 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
                                            "Search function names",
                                            (sender, _) => SetSearchVisible(TabCommands.IsChecked(sender)));
 
-        var categoryToggle = TabCommands.Toggle(TabCommands.Glyph(FilterGlyph),
+        var categoryToggle = TabCommands.Toggle(TabCommands.FilterGlyph(),
                                                 CategoryFilter.IsPanelVisible,
                                                 "Filter by Category",
                                                 (sender, _) => CategoryFilter.SetPanelVisible(TabCommands.IsChecked(sender)));

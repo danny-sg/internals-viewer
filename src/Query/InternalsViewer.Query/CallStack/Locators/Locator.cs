@@ -1,4 +1,6 @@
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Query.Extensions;
+using InternalsViewer.Query.Interfaces;
 
 namespace InternalsViewer.Query.CallStack.Locators;
 
@@ -14,7 +16,22 @@ public readonly record struct Locator(int Register, LocatorValueType ValueType, 
 
     public RowIdentifier Row => new(Page, Slot);
 
-    public string SearchText => ColumnStoreObjectLocator.From(this) is { } columnStore ? columnStore.SearchText : ToString();
+    public string SearchText => ValueType == LocatorValueType.ColumnStoreObject ? new ColumnStoreObjectLocator(this).SearchText : ToString();
+
+    public static Locator? Read(LocatorValueType valueType, IMemoryReader memory, int register, ulong address) => valueType switch
+    {
+        LocatorValueType.ColumnStoreObject
+            => ColumnStoreObjectLocator.Read(memory, register, address),
+        LocatorValueType.LogSequenceNumber
+            => LogSequenceNumberLocator.Read(memory, register, address),
+        LocatorValueType.Text or LocatorValueType.WideText
+            => TextLocator.Read(memory, register, address, valueType),
+        LocatorValueType.TypeInfo
+            => TypeInfoLocator.Read(memory, register, address),
+        LocatorValueType.Variant
+            => VariantLocator.Read(memory, register, address),
+        _ => memory.TryRead(address, out ulong value) ? new Locator(register, valueType, value) : null
+    };
 
     public override string ToString() => ValueType switch
     {

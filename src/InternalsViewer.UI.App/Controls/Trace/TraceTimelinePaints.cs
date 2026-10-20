@@ -87,33 +87,7 @@ internal sealed class TraceTimelinePaints : IDisposable
         PathEffect = SKPathEffect.CreateDash([2f, 2f], 0)
     };
 
-    public SKPaint HoverCallLink { get; } = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 1f };
-
-    public SKPaint HoverDottedCallLink { get; } = new()
-    {
-        Style = SKPaintStyle.Stroke,
-        StrokeWidth = 1f,
-        PathEffect = SKPathEffect.CreateDash([2f, 2f], 0)
-    };
-
-    public SKPaint OutputRowLink { get; } = new()
-    {
-        Style = SKPaintStyle.Stroke,
-        StrokeWidth = 1.5f,
-        StrokeJoin = SKStrokeJoin.Miter,
-        IsAntialias = true,
-        Color = new SKColor(0xFF, 0xD5, 0x4F)
-    };
-
-    public SKPaint LineageShadow { get; } = new()
-    {
-        Style = SKPaintStyle.Stroke,
-        StrokeWidth = 3f,
-        StrokeJoin = SKStrokeJoin.Miter,
-        IsAntialias = true,
-        Color = new SKColor(0, 0, 0, 170),
-        MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 1.5f)
-    };
+    public SKPaint TickHighlight { get; } = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 2f, Color = new SKColor(230, 60, 60) };
 
     public SKFont Font { get; } = new(SKTypeface.Default, 10f);
 
@@ -156,7 +130,6 @@ internal sealed class TraceTimelinePaints : IDisposable
         GrantFill.Color = Accent.WithAlpha(isDark ? (byte)40 : (byte)28);
         GrantEdge.Color = Accent.WithAlpha(140);
         Mark.Color = isDark ? new SKColor(0x00, 0xE6, 0x76) : new SKColor(0x00, 0xC8, 0x53);
-        LineageShadow.Color = isDark ? new SKColor(0, 0, 0, 170) : new SKColor(0, 0, 0, 90);
     }
 
     public void Dispose()
@@ -185,12 +158,7 @@ internal sealed class TraceTimelinePaints : IDisposable
         CallLink.Dispose();
         DottedCallLink.PathEffect?.Dispose();
         DottedCallLink.Dispose();
-        HoverCallLink.Dispose();
-        HoverDottedCallLink.PathEffect?.Dispose();
-        HoverDottedCallLink.Dispose();
-        OutputRowLink.Dispose();
-        LineageShadow.MaskFilter?.Dispose();
-        LineageShadow.Dispose();
+        TickHighlight.Dispose();
         HeaderBoldFont.Dispose();
         Font.Dispose();
         TiltedFont.Dispose();

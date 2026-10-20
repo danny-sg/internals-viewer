@@ -2,7 +2,7 @@
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
 
-namespace InternalsViewer.Query.FullTrace.Timeline;
+namespace InternalsViewer.Query.FullTrace.Timeline.Ticks;
 
 internal sealed class OperatorMarks<T> where T : ITraceMark
 {

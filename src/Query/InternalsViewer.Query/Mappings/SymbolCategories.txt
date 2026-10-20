@@ -2248,3 +2248,12 @@ sqlmin|*|GetGlobalTraceFlagStore|System
 *|*|registerLockDetailsRingBufferEntry|Locking
 *|*|IsRuntimeStatsAppTypeAllowed|QueryExecution
 *|*|IsSynapseSqlFrontendSession|QueryExecution
+*|*|EscalateLocks|Locking
+*|*|IsEscalationPossible|Locking
+*|*|RecordLockEscalation|Locking
+*|*|ReleaseSpinlockAndSignalAddress|Synchronisation
+*|*|RandomNumberLessThan|System
+*|SessionHeapDataSetSessionIter|*|Rowset
+*|SessionIndexDataSetSessionIter|*|Rowset
+SqlDK|PerProcessGlobals*|*|SqlOs
+*|*|GetOverlappedResult*|IoInfrastructure

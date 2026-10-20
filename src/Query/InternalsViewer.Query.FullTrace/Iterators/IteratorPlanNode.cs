@@ -5,4 +5,5 @@ internal readonly partial record struct IteratorPlanNode(ulong Iterator,
                                                          ulong BatchPlanObject,
                                                          ulong Query,
                                                          int NodeId,
-                                                         TracePoint? Constructed = null);
+                                                         TracePoint? Constructed = null,
+                                                         bool IsBatchHelper = false);

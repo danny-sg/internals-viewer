@@ -2,7 +2,7 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
 
-namespace InternalsViewer.Query.FullTrace.Timeline;
+namespace InternalsViewer.Query.FullTrace.Timeline.Ticks;
 
 public sealed partial record TraceTickDefinition(string Name,
                                                  string Module,

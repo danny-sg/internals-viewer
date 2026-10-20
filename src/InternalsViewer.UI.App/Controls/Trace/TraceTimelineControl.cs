@@ -5,6 +5,7 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.CallStack;
@@ -904,6 +905,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         FindCallHighlights();
 
         _operatorsHeight = null;
+
+        _operators.Reset();
 
         _operators.ClearSelectedOperator();
 

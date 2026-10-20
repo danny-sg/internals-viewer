@@ -12,6 +12,7 @@ using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Timeline;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.Query.Helpers;
 using Microsoft.Extensions.Logging;
 using InternalsViewer.Query.Recording;
@@ -197,6 +198,8 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         timeline.SetLifetimes(lifetimes);
 
+        LogOperators(operators, replay.PlanNodes, lifetimes);
+
         var allocations = IteratorAllocations.Build(timeline,
                                                     replay.CallStore,
                                                     timeline.GetOperatorsByInstance().Keys.ToHashSet(),
@@ -242,12 +245,38 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
             ObjectPool = request.ObjectPool,
             CustomHooks = replay.CustomHooks,
             OutputStructures = outputStructures,
-            RowReturnMarks = TraceRowReturnMarks.Build(timeline,
-                                                       replay.CallStore,
-                                                       TraceOutputLineage.GetSources(timeline, outputStructures)),
+            RowReturnMarks = TraceRowReturnMarks.Build(timeline, replay.CallStore),
             Reads = TraceReads.Build(timeline, replay.CallStore),
             Evaluations = TraceEvaluations.Build(timeline, replay.CallStore)
         };
+    }
+
+    private void LogOperators(IReadOnlyList<ExecutionOperatorEvent> operators,
+                              IReadOnlyList<IteratorPlanNode> planNodes,
+                              IReadOnlyList<TraceOperatorLifetime> lifetimes)
+    {
+        if (!Logger.IsEnabled(LogLevel.Debug))
+        {
+            return;
+        }
+
+        foreach (var planNode in planNodes)
+        {
+            Logger.LogDebug($"Plan node: iterator 0x{planNode.Iterator:X} node {planNode.NodeId} query 0x{planNode.Query:X}"
+                            + (planNode.IsBatchHelper ? " batch helper" : string.Empty));
+        }
+
+        foreach (var operatorEvent in operators)
+        {
+            Logger.LogDebug($"Operator: {operatorEvent.OperatorDescription} node {operatorEvent.PlanNodeIdentifier} instances "
+                            + string.Join(", ", operatorEvent.Instances.Select(i => $"0x{i:X}")));
+        }
+
+        foreach (var lifetime in lifetimes)
+        {
+            Logger.LogDebug($"Operator lifetime: {lifetime.Operator.OperatorDescription} on thread {lifetime.Thread} instances "
+                            + string.Join(", ", lifetime.Operator.Instances.Select(i => $"0x{i:X}")));
+        }
     }
 
     private void LogUnknownSymbols(string[] unknownSymbols)

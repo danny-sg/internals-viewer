@@ -7,7 +7,7 @@ using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
-using InternalsViewer.Query.FullTrace.Timeline;
+using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.UI.App.Controls.Trace;
 using InternalsViewer.UI.App.Models.Query;
 using InternalsViewer.UI.App.Services.Query;

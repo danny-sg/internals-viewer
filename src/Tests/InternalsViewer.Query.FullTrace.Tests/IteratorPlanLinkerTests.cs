@@ -56,9 +56,20 @@ public class IteratorPlanLinkerTests
     }
 
     [Fact]
-    public void A_Row_Iterator_Sharing_A_Batch_Operators_Plan_Object_Is_An_Adapter_Not_That_Operator()
+    public void A_Batch_Helper_Is_An_Adapter_Not_The_Operator_It_Reports()
     {
-        var link = Link([Node(0xA1, 0xA0, 1, batchPlanObject: 0xAB), Node(0xC1, 0xA0, 1)], Operator(1, 1, "Filter"));
+        var link = Link([Node(0xA1, 0xA0, 1, batchPlanObject: 0xAB), Node(0xC1, 0xA0, 1) with { IsBatchHelper = true }],
+                        Operator(1, 1, "Filter"));
+
+        Assert.Equal((1, null), ((int?)link.GetNode(0xA1)?.NodeId, link.GetNode(0xC1)));
+    }
+
+    [Fact]
+    public void A_Batch_Helper_Is_Not_Linked_When_Its_Batch_Operator_Reported_No_Plan_Node()
+    {
+        var link = Link([Node(0xC1, 0xA0, 1) with { IsBatchHelper = true }, Node(0xD1, 0xD0, 2)],
+                        Operator(1, 1, "Filter"),
+                        Operator(1, 2, "Top"));
 
         Assert.Null(link.GetNode(0xC1));
     }
@@ -67,7 +78,7 @@ public class IteratorPlanLinkerTests
     public void Plan_Nodes_Survive_Export()
     {
         IteratorPlanNode[] planNodes = [Node(0xA1, 0xA0, 1, batchPlanObject: 0xAB) with { Constructed = new TracePoint(new(5, 6), 7) },
-                                        Node(0xC1, 0xC0, 2)];
+                                        Node(0xC1, 0xC0, 2) with { IsBatchHelper = true }];
 
         using var stream = new MemoryStream();
 

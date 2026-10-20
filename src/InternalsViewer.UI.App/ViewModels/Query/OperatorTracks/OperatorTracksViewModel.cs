@@ -10,7 +10,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
-using InternalsViewer.Query.FullTrace.Timeline;
+using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Services.Query;

@@ -1,6 +1,6 @@
 ﻿using InternalsViewer.Query.FullTrace.Timeline.Enums;
 
-namespace InternalsViewer.Query.FullTrace.Timeline;
+namespace InternalsViewer.Query.FullTrace.Timeline.Ticks;
 
 public interface ITraceMark
 {

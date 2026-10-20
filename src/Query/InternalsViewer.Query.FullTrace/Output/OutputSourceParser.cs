@@ -1,6 +1,8 @@
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
 using InternalsViewer.Query.FullTrace.Output.Enums;
+using InternalsViewer.Query.CallStack.Locators;
+using InternalsViewer.Query.Extensions;
 
 namespace InternalsViewer.Query.FullTrace.Output;
 
@@ -63,16 +65,16 @@ internal static class OutputSourceParser
         => GetSlotRow(replay, value + VariantTableSlotOffset, context) is not 0 and var row
            && replay.TryRead(value + VariantTableOrdinalOffset, out int ordinal)
            && ordinal >= 0
-            ? row + (ulong)ordinal * VariantLayout.Size
+            ? row + (ulong)ordinal * VariantLocator.Size
             : 0;
 
     private static ulong GetSlotRow(ITraceReplay replay, ulong slotAddress, ulong context)
-        => context >= TraceAddress.Smallest
+        => context >= TraceAddress.MinAddress
            && replay.TryRead(slotAddress, out int slot)
            && slot >= 0
             ? Read(replay, context + (ulong)slot * sizeof(ulong))
             : 0;
 
     private static ulong Read(ITraceReplay replay, ulong address)
-        => address >= TraceAddress.Smallest && replay.TryRead(address, out ulong value) && value >= TraceAddress.Smallest ? value : 0;
+        => address >= TraceAddress.MinAddress && replay.TryRead(address, out ulong value) && value >= TraceAddress.MinAddress ? value : 0;
 }

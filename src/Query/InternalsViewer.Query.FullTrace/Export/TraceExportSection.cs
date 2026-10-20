@@ -7,6 +7,7 @@ using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Output;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.Query.Memory;
 
 namespace InternalsViewer.Query.FullTrace.Export;
@@ -105,7 +106,7 @@ internal sealed class TraceExportSection : IQueryExportSection
                 ? reader.ReadBinary(ObjectPoolSnapshotEntry, ObjectPoolSnapshot.Read)
                 : ObjectPoolSnapshot.Empty,
             OutputStructures = outputStructures,
-            RowReturnMarks = TraceRowReturnMarks.Build(timeline, callStore, TraceOutputLineage.GetSources(timeline, outputStructures)),
+            RowReturnMarks = TraceRowReturnMarks.Build(timeline, callStore),
             Reads = TraceReads.Build(timeline, callStore),
             Evaluations = TraceEvaluations.Build(timeline, callStore)
         };

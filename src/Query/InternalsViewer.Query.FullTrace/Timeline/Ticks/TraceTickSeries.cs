@@ -3,7 +3,7 @@ using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 
-namespace InternalsViewer.Query.FullTrace.Timeline;
+namespace InternalsViewer.Query.FullTrace.Timeline.Ticks;
 
 public sealed class TraceTickSeries
 {

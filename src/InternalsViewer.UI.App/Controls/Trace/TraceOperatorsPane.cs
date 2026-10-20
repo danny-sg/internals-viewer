@@ -34,15 +34,21 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
     private const byte LifespanAlpha = 120;
 
+    private const float StatementRowHeight = 34f;
+
     private const string ToolTipTitle = "Operators";
+
+    private const string DefaultStatementName = "Statement";
+
+    private const int StatementNodeId = -1;
+
+    private static readonly SKColor StatementColour = new(130, 130, 130);
 
     private static readonly SKColor OperatorPaneColour = new(30, 30, 30, 220);
 
     private static readonly SKColor OperatorLabelColour = new(235, 235, 235);
 
     private static readonly SKColor OperatorSelectedColour = new(255, 255, 255, 230);
-
-    private static readonly SKColor OperatorHoverColour = new(255, 255, 255, 150);
 
     private static readonly SKColor OperatorDimColour = new(0, 0, 0, 160);
 
@@ -53,6 +59,17 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
     public ExecutionOperatorEvent? SelectedOperator { get; private set; }
 
     public EventColourProvider? ColourProvider { get; set; }
+
+    public string? StatementName
+    {
+        get;
+        set
+        {
+            field = value;
+
+            StatementEvent = null;
+        }
+    }
 
     public TraceOperatorsHover Hover { get; set; } = TraceOperatorsHover.None;
 
@@ -74,27 +91,19 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
     private TraceTimelineAxis Axis => Host.Axis;
 
-    private float RowHeight
-    {
-        get
-        {
-            var rows = Math.Max(Rows.Length, 1);
+    private ExecutionOperatorEvent? StatementEvent { get; set; }
 
-            var spacing = OperatorsPadding * 2 + OperatorsBottomGap + OutputRowsArea + (rows - 1) * OperatorRowGap;
+    private RowLayout? CachedLayout { get; set; }
 
-            return Math.Max((Height - spacing) / rows, 1);
-        }
-    }
+    private int LayoutVersion { get; set; }
 
     public void Rebuild(TraceTimeline? timeline)
     {
-        Rows = GetOperatorRows(timeline);
+        Rows = AddStatementRow(GetOperatorRows(timeline));
 
         Details.Clear();
 
         Hover = TraceOperatorsHover.None;
-
-        CachedBlocks = null;
 
         if (SelectedOperator is { } selected && !Rows.Any(r => ReferenceEquals(r.Operator, selected)))
         {
@@ -126,8 +135,6 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
         canvas.ClipRect(new SKRect(0, Top, width, Top + Height));
 
-        DrawOutputRows(canvas, scale);
-
         for (var row = 0; row < Rows.Length; row++)
         {
             for (var track = 0; track < Rows[row].Lifetimes.Length; track++)
@@ -157,11 +164,6 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
         DimOperators(canvas, width);
 
-        if (Hover.Operator is { } hover && hover.Row < Rows.Length)
-        {
-            OutlineTrack(canvas, hover.Row, hover.Track, width, scale, OperatorHoverColour, 1f);
-        }
-
         for (var row = 0; row < Rows.Length; row++)
         {
             if (!ReferenceEquals(Rows[row].Operator, SelectedOperator))
@@ -177,9 +179,7 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
         DrawTickHover(canvas, scale);
 
-        DrawOutputRowLineage(canvas, width, scale);
-
-        DrawHoverCallLink(canvas, scale);
+        DrawBandHover(canvas, scale);
 
         canvas.Restore();
     }
@@ -191,15 +191,11 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
             return TraceOperatorsHover.None;
         }
 
-        var outputRow = GetOutputRow(position);
+        var tick = GetTickHit(position);
 
-        var tick = outputRow is null ? GetTickHit(position) : null;
+        var operatorHit = tick is null ? GetOperatorAt(position) : null;
 
-        var callLink = outputRow is null ? GetCallLinkAt(position) : null;
-
-        var operatorHit = outputRow is null && tick is null ? GetOperatorAt(position) : null;
-
-        return new TraceOperatorsHover(operatorHit, callLink, outputRow, tick);
+        return new TraceOperatorsHover(operatorHit, tick);
     }
 
     public string? GetToolTip(TraceOperatorsHover hover, Point position)
@@ -207,11 +203,6 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
         if (hover.Operator is { } operatorHit)
         {
             return GetDetails(operatorHit);
-        }
-
-        if (hover.OutputRow is not null)
-        {
-            return null;
         }
 
         if (hover.Tick is { } tick)
@@ -233,7 +224,7 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
         var lifetimes = Rows[row].Lifetimes;
 
-        var track = Math.Clamp((int)(inRow / (RowHeight / lifetimes.Length)), 0, lifetimes.Length - 1);
+        var track = Math.Clamp((int)(inRow / (GetRowHeight(row) / lifetimes.Length)), 0, lifetimes.Length - 1);
 
         var scale = Host.Scale;
 
@@ -246,7 +237,7 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
             : null;
     }
 
-    public bool IsBackground(Point position) => GetOperatorAt(position) is null && GetOutputRow(position) is null;
+    public bool IsBackground(Point position) => GetOperatorAt(position) is null;
 
     public (double Start, double End) GetActiveRange(TraceOperatorHit hit)
     {
@@ -260,11 +251,7 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
     public void Click(Point position)
     {
-        if (GetOutputRow(position) is { } outputRow)
-        {
-            Host.MovePlayhead(outputRow.Return.GetValue(Axis));
-        }
-        else if (GetTickAt(position) is { } tick)
+        if (GetTickAt(position) is { } tick)
         {
             Host.ClickCall(tick.Node, tick.Call);
         }
@@ -307,6 +294,45 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
                            .OrderBy(r => r.Operator.NodeLevel)
                            .ThenBy(r => r.Lifetimes.Min(l => l.StartOf(TraceTimelineAxis.Position)))
                            .ThenBy(r => r.Operator.PlanNodeIdentifier?.NodeId ?? 0)];
+    }
+
+    private TraceOperatorRow[] AddStatementRow(TraceOperatorRow[] rows)
+    {
+        if (rows.Length == 0)
+        {
+            return rows;
+        }
+
+        var root = rows[0];
+
+        var statement = GetStatementEvent(root.Operator);
+
+        var row = new TraceOperatorRow(statement, root.Lifetimes, statement.Name, string.Empty, statement.OperatorDescription)
+        {
+            TickOperator = root.Operator,
+            IsStatement = true
+        };
+
+        return [row, .. rows];
+    }
+
+    private ExecutionOperatorEvent GetStatementEvent(ExecutionOperatorEvent root)
+    {
+        if (StatementEvent is { } existing)
+        {
+            return existing;
+        }
+
+        var name = StatementName ?? DefaultStatementName;
+
+        StatementEvent = new ExecutionOperatorEvent
+        {
+            Name = name,
+            OperatorDescription = name,
+            PlanNodeIdentifier = root.PlanNodeIdentifier is { } identifier ? new PlanNodeIdentifier(identifier.PlanHandleId, StatementNodeId) : null
+        };
+
+        return StatementEvent;
     }
 
     private static TraceOperatorRow CreateRow(ExecutionOperatorEvent operatorEvent, TraceOperatorLifetime[] lifetimes)
@@ -450,17 +476,83 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
     private (float Top, float Height) GetTrackBounds(int row, int track)
     {
-        var trackHeight = RowHeight / Rows[row].Lifetimes.Length;
+        var trackHeight = GetRowHeight(row) / Rows[row].Lifetimes.Length;
 
         var padding = Math.Min(OperatorBarPadding, trackHeight * OperatorBarShare);
 
         return (GetRowTop(row) + track * trackHeight + padding, Math.Max(trackHeight - padding * 2, 1));
     }
 
-    private float GetRowTop(int row) => Top + OperatorsPadding + OutputRowsArea + row * (RowHeight + OperatorRowGap);
+    private RowLayout GetLayout()
+    {
+        var (top, height) = GetBounds();
+
+        if (CachedLayout is { } layout && layout.Matches(top, height, Rows, LayoutVersion))
+        {
+            return layout;
+        }
+
+        CachedLayout = BuildRowLayout(top, height);
+
+        return CachedLayout;
+    }
+
+    private RowLayout BuildRowLayout(float top, float height)
+    {
+        var tops = new float[Rows.Length];
+
+        var heights = new float[Rows.Length];
+
+        var available = height - OperatorsPadding * 2 - OperatorsBottomGap - Math.Max(Rows.Length - 1, 0) * OperatorRowGap;
+
+        var fixedHeight = 0f;
+
+        var flexible = 0;
+
+        foreach (var row in Rows)
+        {
+            if (GetFixedHeight(row) is { } value)
+            {
+                fixedHeight += value;
+            }
+            else
+            {
+                flexible++;
+            }
+        }
+
+        var shared = flexible == 0 ? 0 : Math.Max((available - fixedHeight) / flexible, MinimumRowHeight);
+
+        var rowTop = top + OperatorsPadding;
+
+        for (var row = 0; row < Rows.Length; row++)
+        {
+            heights[row] = GetFixedHeight(Rows[row]) ?? shared;
+
+            tops[row] = rowTop;
+
+            rowTop += heights[row] + OperatorRowGap;
+        }
+
+        return new RowLayout(top, height, Rows, LayoutVersion, tops, heights, shared);
+    }
+
+    private float? GetFixedHeight(TraceOperatorRow row)
+        => RowHeights.TryGetValue(row.Operator, out var height) ? height : row.IsStatement ? StatementRowHeight : null;
+
+    private float GetRowTop(int row) => GetLayout().Tops[row];
+
+    private float GetRowHeight(int row) => GetLayout().Heights[row];
 
     private SKColor GetOperatorColour(ExecutionOperatorEvent operatorEvent, TraceOperatorLifetime lifetime)
-        => ColourProvider is { } colours ? colours.GetColour(operatorEvent).ToSkColor() : Host.GetColour(lifetime.Node);
+        => IsStatement(operatorEvent)
+            ? StatementColour
+            : ColourProvider is { } colours
+                ? colours.GetColour(operatorEvent).ToSkColor()
+                : Host.GetColour(lifetime.Node);
+
+    private bool IsStatement(ExecutionOperatorEvent operatorEvent)
+        => Rows.Length > 0 && Rows[0].IsStatement && ReferenceEquals(Rows[0].Operator, operatorEvent);
 
     private void DimOperators(SKCanvas canvas, int width)
     {
@@ -469,15 +561,13 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
             return;
         }
 
-        var rowHeight = RowHeight;
-
         for (var row = 0; row < Rows.Length; row++)
         {
             if (ReferenceEquals(Rows[row].Operator, SelectedOperator))
             {
                 var top = GetRowTop(row);
 
-                Host.PathBuilder.AddRect(new SKRect(0, top, width, top + rowHeight));
+                Host.PathBuilder.AddRect(new SKRect(0, top, width, top + GetRowHeight(row)));
             }
         }
 
@@ -517,15 +607,19 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
             return null;
         }
 
-        var rowHeight = RowHeight;
+        var layout = GetLayout();
 
-        var y = (float)position.Y - Top - OperatorsPadding - OutputRowsArea;
+        var y = (float)position.Y;
 
-        var row = (int)Math.Floor(y / (rowHeight + OperatorRowGap));
+        for (var row = 0; row < Rows.Length; row++)
+        {
+            if (y >= layout.Tops[row] && y < layout.Tops[row] + layout.Heights[row])
+            {
+                return (row, y - layout.Tops[row]);
+            }
+        }
 
-        var inRow = y - row * (rowHeight + OperatorRowGap);
-
-        return row < 0 || row >= Rows.Length || inRow >= rowHeight ? null : (row, inRow);
+        return null;
     }
 
     private int? GetRowIndex(ExecutionOperatorEvent operatorEvent)
@@ -543,6 +637,11 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
     private void SelectOperator(TraceOperatorHit? hit)
     {
+        if (hit is { } statement && Rows[statement.Row].IsStatement)
+        {
+            return;
+        }
+
         var clicked = hit is { } found ? Rows[found.Row].Operator : null;
 
         SelectedOperator = ReferenceEquals(clicked, SelectedOperator) ? null : clicked;
@@ -553,6 +652,11 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
     private string GetDetails(TraceOperatorHit hit)
     {
         var row = Rows[hit.Row];
+
+        if (row.IsStatement)
+        {
+            return row.Title;
+        }
 
         var lifetime = row.Lifetimes[hit.Track];
 
@@ -610,5 +714,17 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
         Details[lifetime] = details;
 
         return details;
+    }
+
+    private sealed record RowLayout(float Top,
+                                    float Height,
+                                    TraceOperatorRow[] Rows,
+                                    int Version,
+                                    float[] Tops,
+                                    float[] Heights,
+                                    float Shared)
+    {
+        public bool Matches(float top, float height, TraceOperatorRow[] rows, int version)
+            => Top == top && Height == height && ReferenceEquals(Rows, rows) && Version == version;
     }
 }

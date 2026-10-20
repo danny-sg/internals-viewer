@@ -1,5 +1,7 @@
 using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.BatchMode.Enums;
+using InternalsViewer.Query.Extensions;
+using InternalsViewer.Query.Interfaces;
 
 namespace InternalsViewer.Query.CallStack.Locators;
 
@@ -26,8 +28,12 @@ public readonly record struct ColumnStoreObjectLocator(Locator Locator)
         _ => $"column:{ColumnId}"
     };
 
-    public static ColumnStoreObjectLocator? From(Locator locator)
-        => locator.ValueType == LocatorValueType.ColumnStoreObject ? new ColumnStoreObjectLocator(locator) : null;
+    public static Locator? Read(IMemoryReader memory, int register, ulong address)
+        => memory.TryRead(address, out ulong first)
+           && memory.TryRead(address + sizeof(ulong), out ulong second)
+           && memory.TryRead(address + 2 * sizeof(ulong), out ulong third)
+            ? Create(register, first, second, third)
+            : null;
 
     public static Locator Create(int register, ulong first, ulong second, ulong third)
     {

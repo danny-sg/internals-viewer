@@ -17,3 +17,6 @@ SqlTsEs|CAutoFree*|*|System
 SqlTsEs|SOS_TraceStream*|*|SqlOs
 SqlTsEs|SOS_StateProtectors*|*|SqlOs
 SqlTsEs|CAutoSortTableMutex*|*|Synchronisation
+KERNELBASE|*|*|System
+kernel32|*|*|System
+ntdll|*|*|System

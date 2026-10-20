@@ -5,7 +5,6 @@ using InternalsViewer.Query.CallStack.Dia;
 using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Arguments.Enums;
-using InternalsViewer.Query.FullTrace.Locators.Parsers;
 
 namespace InternalsViewer.Query.FullTrace.Locators;
 
@@ -106,9 +105,7 @@ public static partial class LocatorReadResolver
 
     private static IEnumerable<LocatorRead> CreateReads(ulong function, int register, LocatorType type, bool returned)
     {
-        var isReadAtReturn = returned || LocatorParsers.Default.Get(type.ValueType)?.IsReadAtReturn == true;
-
-        bool[] ends = isReadAtReturn ? [true] : type.IsInOut ? [false, true] : [type.IsOutput];
+        bool[] ends = returned || type.ValueType == LocatorValueType.Variant ? [true] : type.IsInOut ? [false, true] : [type.IsOutput];
 
         return ends.Select(e => new LocatorRead(function, register, e, type.ValueType, type.Offset, type.Path));
     }

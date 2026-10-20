@@ -1,10 +1,9 @@
-namespace InternalsViewer.Query.FullTrace.Timeline.Enums;
+namespace InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 
 public enum RowReturnType
 {
     PassedUp,
-    NotPassedUp,
-    Stored,
+    Skipped,
     End,
     FakeRow,
     Other,

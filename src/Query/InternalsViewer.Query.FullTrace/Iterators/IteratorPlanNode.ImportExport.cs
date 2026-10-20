@@ -4,7 +4,9 @@ namespace InternalsViewer.Query.FullTrace.Iterators;
 
 internal readonly partial record struct IteratorPlanNode
 {
-    private const int FormatVersion = 2;
+    private const int FormatVersion = 3;
+
+    private const int PreviousVersion = 2;
 
     internal static void Write(BinaryWriter writer, IReadOnlyList<IteratorPlanNode> planNodes)
     {
@@ -25,12 +27,16 @@ internal readonly partial record struct IteratorPlanNode
             {
                 TracePointExport.Write(writer, constructed);
             }
+
+            writer.Write(planNode.IsBatchHelper);
         }
     }
 
     internal static IteratorPlanNode[] Read(BinaryReader reader)
     {
-        if (reader.ReadInt32() != -FormatVersion)
+        var version = -reader.ReadInt32();
+
+        if (version is not (FormatVersion or PreviousVersion))
         {
             throw new InvalidDataException("The plan nodes were exported in an older format and must be re-recorded");
         }
@@ -44,7 +50,8 @@ internal readonly partial record struct IteratorPlanNode
                                                     reader.ReadUInt64(),
                                                     reader.ReadUInt64(),
                                                     reader.ReadInt32(),
-                                                    reader.ReadBoolean() ? TracePointExport.Read(reader) : null);
+                                                    reader.ReadBoolean() ? TracePointExport.Read(reader) : null,
+                                                    version == FormatVersion && reader.ReadBoolean());
         }
 
         return planNodes;

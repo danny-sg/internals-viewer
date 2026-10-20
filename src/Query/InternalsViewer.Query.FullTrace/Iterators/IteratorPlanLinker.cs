@@ -24,13 +24,11 @@ internal static class IteratorPlanLinker
 
         var query = planNodes[0].Query;
 
-        var adapters = GetAdapters(planNodes);
-
         var planObjects = new Dictionary<ulong, PlanNodeIdentifier>();
 
         var instances = new Dictionary<ulong, PlanNodeIdentifier>();
 
-        foreach (var planNode in planNodes.Where(n => n.Query == query && !adapters.ContainsKey(n.Iterator)))
+        foreach (var planNode in planNodes.Where(n => n.Query == query && !n.IsBatchHelper))
         {
             if (!plan.TryGetValue(planNode.NodeId, out var identifier))
             {
@@ -48,15 +46,5 @@ internal static class IteratorPlanLinker
         }
 
         return instances.Count == 0 ? IteratorPlanLink.Empty : new IteratorPlanLink(planObjects, instances);
-    }
-
-    internal static Dictionary<ulong, ulong> GetAdapters(IReadOnlyList<IteratorPlanNode> planNodes)
-    {
-        var batchIterators = planNodes.Where(n => n.BatchPlanObject != 0)
-                                      .DistinctBy(n => n.PlanObject)
-                                      .ToDictionary(n => n.PlanObject, n => n.Iterator);
-
-        return planNodes.Where(n => n.BatchPlanObject == 0 && batchIterators.ContainsKey(n.PlanObject))
-                        .ToDictionary(n => n.Iterator, n => batchIterators[n.PlanObject]);
     }
 }

@@ -153,6 +153,15 @@ public sealed partial class TraceTimelineControl
             return;
         }
 
+        if (GetPaneResizeHandle(position) is { } handle)
+        {
+            _operators.BeginResize(handle, position.Y);
+
+            _overlay.CapturePointer(e.Pointer);
+
+            return;
+        }
+
         if (BlockAt(position) is { } found)
         {
             BeginStretch(found, position);
@@ -241,6 +250,15 @@ public sealed partial class TraceTimelineControl
             return;
         }
 
+        if (_operators.IsResizing)
+        {
+            _operators.Resize(position.Y);
+
+            Redraw();
+
+            return;
+        }
+
         if (_isStretching)
         {
             Stretch(position);
@@ -288,15 +306,13 @@ public sealed partial class TraceTimelineControl
 
         var operatorsHover = found is null ? _operators.GetHover(position) : TraceOperatorsHover.None;
 
-        UpdateCursor(IsOnSplitter(position)
+        UpdateCursor(IsOnSplitter(position) || GetPaneResizeHandle(position) is not null
                          ? InputSystemCursorShape.SizeNorthSouth
                          : found is not null
                              ? InputSystemCursorShape.SizeAll
-                             : _operators.IsOnOutputRows(position)
-                                 ? InputSystemCursorShape.Cross
-                                 : operatorsHover.Tick is not null
-                                     ? InputSystemCursorShape.Hand
-                                     : InputSystemCursorShape.Arrow);
+                             : operatorsHover.Tick is not null
+                                 ? InputSystemCursorShape.Hand
+                                 : InputSystemCursorShape.Arrow);
 
         var hit = found?.Call ?? HitTest(position) ?? GetMarkHit(operatorsHover.Tick?.Tick?.Node, operatorsHover.Tick?.Tick?.Call);
 
@@ -326,6 +342,8 @@ public sealed partial class TraceTimelineControl
             HideToolTip();
         }
     }
+
+    private TraceResizeHandle? GetPaneResizeHandle(Point position) => ShowsOperators ? _operators.GetResizeHandle(position) : null;
 
     private FlameHit? GetMarkHit(CallStackNode? node, int? call)
         => node is not null && call is { } index && _visible is { } timeline ? FindCall(timeline, node, index) : null;
@@ -366,7 +384,7 @@ public sealed partial class TraceTimelineControl
 
     private void OnPointerExited(object sender, PointerRoutedEventArgs e)
     {
-        if (_isPressed || _isPanning || _isScrubbing || _isStretching || _isResizingOperators)
+        if (_isPressed || _isPanning || _isScrubbing || _isStretching || _isResizingOperators || _operators.IsResizing)
         {
             return;
         }
@@ -662,8 +680,6 @@ public sealed partial class TraceTimelineControl
     {
         SetSelected(hit);
 
-        ClearOutputRowSelection();
-
         _canvas.Invalidate();
 
         if (hit is not { } selected || SpanOf(selected) is not { } span || _visible?.NodeOf(span.Node) is not { } node)
@@ -706,21 +722,7 @@ public sealed partial class TraceTimelineControl
     {
         _operators.ClearSelectedOperator();
 
-        ClearOutputRowSelection();
-
         Deselect();
-    }
-
-    private void ClearOutputRowSelection()
-    {
-        if (IsPlaying || _playhead is not { } playhead || _operators.OutputRows?.GetRow(_axis, playhead) is null)
-        {
-            return;
-        }
-
-        _playhead = null;
-
-        _canvas.Invalidate();
     }
 
     private void EndPointer()
@@ -739,6 +741,8 @@ public sealed partial class TraceTimelineControl
         _isScrubbing = false;
         _isStretching = false;
         _isResizingOperators = false;
+
+        _operators.EndResize();
 
         if (invalidate)
         {

@@ -14,7 +14,7 @@ internal static class IteratorLifetimeBuilder
     {
         var owners = new Dictionary<ulong, ExecutionOperatorEvent>();
 
-        foreach (var operatorEvent in operators.Concat(BatchToRowOperators.Create(planNodes, operators)))
+        foreach (var operatorEvent in operators.Concat(BatchToRowOperators.Create(timeline, planNodes, operators)))
         {
             foreach (var instance in operatorEvent.Instances)
             {

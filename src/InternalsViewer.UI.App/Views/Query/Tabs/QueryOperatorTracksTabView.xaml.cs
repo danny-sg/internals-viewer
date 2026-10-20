@@ -1,4 +1,4 @@
-using InternalsViewer.Query.FullTrace.Timeline;
+using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.UI.App.ViewModels.Query;
 using InternalsViewer.UI.App.ViewModels.Query.OperatorTracks;
 using Microsoft.UI.Xaml;

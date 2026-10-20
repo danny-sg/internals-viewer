@@ -4,6 +4,7 @@ using System.Linq;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Helpers;
@@ -89,18 +90,6 @@ public sealed partial class TraceTimelineControl
         set => SetValue(HiddenTickTracksProperty, value);
     }
 
-    public static readonly DependencyProperty OutputColumnNamesProperty =
-        DependencyProperty.Register(nameof(OutputColumnNames),
-                                    typeof(IReadOnlyList<string>),
-                                    typeof(TraceTimelineControl),
-                                    new PropertyMetadata(null, OnOutputColumnNamesChanged));
-
-    public IReadOnlyList<string>? OutputColumnNames
-    {
-        get => (IReadOnlyList<string>?)GetValue(OutputColumnNamesProperty);
-        set => SetValue(OutputColumnNamesProperty, value);
-    }
-
     public static readonly DependencyProperty ColourProviderProperty =
         DependencyProperty.Register(nameof(ColourProvider),
                                     typeof(EventColourProvider),
@@ -111,6 +100,18 @@ public sealed partial class TraceTimelineControl
     {
         get => (EventColourProvider?)GetValue(ColourProviderProperty);
         set => SetValue(ColourProviderProperty, value);
+    }
+
+    public static readonly DependencyProperty StatementNameProperty =
+        DependencyProperty.Register(nameof(StatementName),
+                                    typeof(string),
+                                    typeof(TraceTimelineControl),
+                                    new PropertyMetadata(null, OnStatementNameChanged));
+
+    public string? StatementName
+    {
+        get => (string?)GetValue(StatementNameProperty);
+        set => SetValue(StatementNameProperty, value);
     }
 
     private readonly Dictionary<int, SelectedLane> _selectedLanes = [];
@@ -395,18 +396,18 @@ public sealed partial class TraceTimelineControl
     {
         var control = (TraceTimelineControl)d;
 
-        control._operators.RowReturnMarks = control.RowReturnMarks;
-
         control.Relayout();
     }
 
-    private static void OnOutputColumnNamesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    private static void OnStatementNameChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var control = (TraceTimelineControl)d;
 
-        control._operators.OutputColumnNames = e.NewValue as IReadOnlyList<string>;
+        control._operators.StatementName = e.NewValue as string;
 
-        control.Redraw();
+        control.RebuildVisible();
+
+        control.Relayout();
     }
 
     private static void OnColourProviderChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

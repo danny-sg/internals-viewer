@@ -1,4 +1,5 @@
 ﻿using InternalsViewer.Query.FullTrace.CustomHooks;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.UI.App.Services.Query.Simulation;
 using InternalsViewer.UI.App.ViewModels.Query.OperatorTracks;
 using InternalsViewer.UI.App.Services.Query;
@@ -277,7 +278,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private IReadOnlyList<TraceTickTrack> _tickTracks = [];
 
     [ObservableProperty]
-    private IReadOnlyList<string> _outputColumnNames = [];
+    private string? _statementName;
 
     [ObservableProperty]
     private CallStackNode? _selectedCallNode;
@@ -1061,7 +1062,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         ResetTickTracks();
 
-        OutputColumnNames = [];
+        StatementName = null;
 
         CreatedCallTreeTab?.Dispose();
 
@@ -2252,20 +2253,19 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         RefreshTickTracks();
 
-        OutputColumnNames = GetOutputColumnNames(result.RowReturnMarks.OutputRows);
+        StatementName = GetStatementOperator(result.Timeline)?.Name;
 
         TraceTimeline = traceTimeline;
 
         ExecutionPlans = [.. ExecutionPlans];
     }
 
-    private IReadOnlyList<string> GetOutputColumnNames(TraceOutputRows outputRows)
+    private ExecutionOperatorEvent? GetStatementOperator(TraceTimeline timeline)
     {
-        var plan = outputRows.All.FirstOrDefault()?.Return.Operator.PlanNodeIdentifier is { } identifier
-            ? ExecutionPlans.FirstOrDefault(p => p.PlanHandleId == identifier.PlanHandleId)
-            : ExecutionPlans.FirstOrDefault(p => !p.IsInternalPlan);
+        var planHandle = timeline.Lifetimes.Select(l => l.Operator.PlanNodeIdentifier?.PlanHandleId).FirstOrDefault(h => h is not null);
 
-        return plan?.NodesById.GetValueOrDefault(0) is { } root ? [.. root.OutputColumns.Select(c => c.Column)] : [];
+        return Events.OfType<ExecutionOperatorEvent>()
+                     .FirstOrDefault(o => o.NodeLevel == 0 && (planHandle is null || o.PlanNodeIdentifier?.PlanHandleId == planHandle));
     }
 
     private TraceTimeline ApplyCrop(TraceResult result)
@@ -2390,8 +2390,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         RowReturnMarks = null;
 
         ResetTickTracks();
-
-        OutputColumnNames = [];
 
         SelectedCallNode = null;
 

@@ -3,6 +3,7 @@ using InternalsViewer.Query.FullTrace.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.RowSources.Enums;
+using InternalsViewer.Query.Extensions;
 
 namespace InternalsViewer.Query.FullTrace.RowSources;
 
@@ -33,6 +34,8 @@ internal sealed class RowSourceHook(RowSourceFunctions functions) : ITraceHook
 
     private HashSet<ulong> TearingDown { get; } = [];
 
+    private HashSet<ulong> BatchHelpers { get; } = [];
+
     private List<QueryTeardown> Teardowns { get; } = [];
 
     private List<ulong> ResolvedPlanNodes { get; } = [];
@@ -46,7 +49,7 @@ internal sealed class RowSourceHook(RowSourceFunctions functions) : ITraceHook
 
         var iterator = call.Arguments[IteratorArgument];
 
-        if (type != RowSourceFunctionType.Iterator)
+        if (type is not (RowSourceFunctionType.Iterator or RowSourceFunctionType.BatchHelper))
         {
             ResolvePlanNodes(replay);
         }
@@ -65,6 +68,11 @@ internal sealed class RowSourceHook(RowSourceFunctions functions) : ITraceHook
                 Constructions[iterator] = new TracePoint(call.Position, call.Instructions);
                 return;
 
+            case RowSourceFunctionType.BatchHelper:
+                BatchHelpers.Add(iterator);
+                AddPlanNode(replay, iterator);
+                return;
+
             case RowSourceFunctionType.Iterator or RowSourceFunctionType.BatchIterator:
                 AddPlanNode(replay, iterator);
                 return;
@@ -81,7 +89,7 @@ internal sealed class RowSourceHook(RowSourceFunctions functions) : ITraceHook
         }
 
         if (Factories.Remove(call.Id, out var factory)
-            && call.ReturnValue >= TraceAddress.Smallest
+            && call.ReturnValue >= TraceAddress.MinAddress
             && !PlanNodes.ContainsKey(call.ReturnValue))
         {
             PendingPlanNodes[call.ReturnValue] = factory.PlanObject;
@@ -158,7 +166,7 @@ internal sealed class RowSourceHook(RowSourceFunctions functions) : ITraceHook
             || !replay.TryRead(planObject + PlanNodeIdOffset, out int nodeId)
             || !replay.TryRead(planObject + PlanQueryOffset, out ulong query)
             || nodeId < 0
-            || query < TraceAddress.Smallest)
+            || query < TraceAddress.MinAddress)
         {
             return null;
         }
@@ -168,11 +176,12 @@ internal sealed class RowSourceHook(RowSourceFunctions functions) : ITraceHook
                                     batchPlanObject,
                                     query,
                                     nodeId,
-                                    Constructions.TryGetValue(iterator, out var constructed) ? constructed : null);
+                                    Constructions.TryGetValue(iterator, out var constructed) ? constructed : null,
+                                    BatchHelpers.Contains(iterator));
     }
 
     private PlanObjectClass? GetPlanObjectClass(ITraceReplay replay, ulong planObject)
-        => planObject >= TraceAddress.Smallest
+        => planObject >= TraceAddress.MinAddress
            && replay.TryRead(planObject, out ulong vtable)
            && functions.PlanObjects.TryGetValue(vtable, out var planClass)
             ? planClass

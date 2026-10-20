@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using InternalsViewer.Query.Events.Operators;
-using InternalsViewer.Query.FullTrace.Timeline;
+using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.UI.App.Controls.Trace.Enums;
 using SkiaSharp;
 
@@ -13,9 +13,13 @@ public sealed record TraceTickTrack(string Name, TraceTickLocation Location, int
 
     public Func<TraceTick, SKColor?> GetColour { get; init; } = _ => null;
 
+    public SKColor? Colour { get; init; }
+
     public SKColor? Background { get; init; }
 
     public bool HasCallReturnLine { get; init; }
+
+    public bool IsStatementTrack { get; init; }
 
     public float TickWidth { get; init; } = 1f;
 

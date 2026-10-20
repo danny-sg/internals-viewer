@@ -97,7 +97,7 @@ public enum SymbolCategory : byte
     [Category(
         "Buffer Pool",
         Description = "Buffer cache management, buffer descriptors and dirty pages",
-        ForegroundColor = "#17375E")]
+        ForegroundColor = "#0026E4")]
     BufferPool,
 
     [Category(

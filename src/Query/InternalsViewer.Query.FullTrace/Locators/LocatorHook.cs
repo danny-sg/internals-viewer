@@ -1,15 +1,16 @@
 using InternalsViewer.Query.CallStack.Locators;
+using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
-using InternalsViewer.Query.FullTrace.Locators.Parsers;
+using InternalsViewer.Query.Interfaces;
 
 namespace InternalsViewer.Query.FullTrace.Locators;
 
 internal sealed class LocatorHook(IEnumerable<LocatorRead> reads, TraceCallStore.Builder store, ImageText? images = null)
     : ArgumentHook<LocatorRead>(reads.Select(r => (r.Function, r)))
 {
-    private LocatorParsers Parsers { get; } = new(images);
+    private ImageFallbackMemory? Memory { get; set; }
 
     protected override void Read(ITraceReplay replay, in TraceHookCall call, LocatorRead read, ulong pointer)
     {
@@ -40,11 +41,28 @@ internal sealed class LocatorHook(IEnumerable<LocatorRead> reads, TraceCallStore
 
     private Locator? ReadValue(ITraceReplay replay, LocatorRead read, ulong pointer)
     {
-        if (pointer == 0 || !TryFollow(replay, read.Path, ref pointer) || Parsers.Get(read.ValueType) is not { } parser)
+        if (pointer == 0 || !TryFollow(replay, read.Path, ref pointer))
         {
             return null;
         }
 
-        return parser.Read(replay, read.Register, pointer + (uint)read.Offset);
+        return Locator.Read(read.ValueType, GetMemory(replay), read.Register, pointer + (uint)read.Offset);
+    }
+
+    private IMemoryReader GetMemory(ITraceReplay replay)
+    {
+        if (images is null)
+        {
+            return replay;
+        }
+
+        if (Memory is not { } memory || !ReferenceEquals(memory.Replay, replay))
+        {
+            memory = new ImageFallbackMemory(replay, images);
+
+            Memory = memory;
+        }
+
+        return memory;
     }
 }

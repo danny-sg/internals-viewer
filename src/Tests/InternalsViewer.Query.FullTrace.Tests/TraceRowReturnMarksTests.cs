@@ -4,13 +4,12 @@ using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Native;
-using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.Query.Plans.Model;
-using InternalsViewer.Query.Plans.Operators;
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRows;
-using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -26,8 +25,6 @@ public class TraceRowReturnMarksTests
     private const ulong JoinIterator = 0x1F4_0000_1000;
 
     private const ulong ScanIterator = 0x1F4_0000_2000;
-
-    private const ulong OutputRow = 0x1F4_0000_9000;
 
 
     private const ulong RowStatus = 0;
@@ -51,24 +48,6 @@ public class TraceRowReturnMarksTests
         ParentNodeId = 0
     };
 
-    private static readonly ExecutionOperatorEvent Aggregate = new()
-    {
-        Name = "Stream Aggregate",
-        OperatorDescription = "Stream Aggregate",
-        Instances = [JoinIterator],
-        PlanNodeIdentifier = new PlanNodeIdentifier(1, 1),
-        ParentNodeId = 0
-    };
-
-    private static readonly ExecutionOperatorEvent AggregateInput = new()
-    {
-        Name = "Hash Match",
-        OperatorDescription = "Hash Match",
-        Instances = [ScanIterator],
-        PlanNodeIdentifier = new PlanNodeIdentifier(1, 2),
-        ParentNodeId = 1
-    };
-
     private static readonly CallNode[] Nodes =
     [
         new(-1, 0, Helper, JoinIterator, 2),
@@ -82,7 +61,7 @@ public class TraceRowReturnMarksTests
 
         Assert.Equal((1, 1, 1),
                      (marks.GetCount(Scan, Thread, RowReturnType.PassedUp),
-                      marks.GetCount(Scan, Thread, RowReturnType.NotPassedUp),
+                      marks.GetCount(Scan, Thread, RowReturnType.Skipped),
                       marks.GetCount(Scan, Thread, RowReturnType.End)));
     }
 
@@ -93,7 +72,7 @@ public class TraceRowReturnMarksTests
 
         Assert.Equal((1, 0, 1),
                      (marks.GetCount(Join, Thread, RowReturnType.PassedUp),
-                      marks.GetCount(Join, Thread, RowReturnType.NotPassedUp),
+                      marks.GetCount(Join, Thread, RowReturnType.Skipped),
                       marks.GetCount(Join, Thread, RowReturnType.End)));
     }
 
@@ -104,31 +83,7 @@ public class TraceRowReturnMarksTests
                           [(12, 15, RowStatus), (20, 25, RowStatus), (30, 35, EndStatus)]);
 
         Assert.Equal((0, 2),
-                     (marks.GetCount(Scan, Thread, RowReturnType.PassedUp), marks.GetCount(Scan, Thread, RowReturnType.NotPassedUp)));
-    }
-
-    [Fact]
-    public void Rows_Passed_Up_To_A_Parent_Row_That_Was_Rejected_Are_Not_On_The_GetRow_Path()
-    {
-        var filter = Operator("Filter", 0, null);
-
-        var aggregate = Operator("Stream Aggregate", 1, 0);
-
-        var scan = Operator("Table Scan", 2, 1);
-
-        var root = Return(filter, 10, 100);
-
-        var rejectedInput = Return(scan, 25, 30);
-
-        var passed = Return(aggregate, 50, 90, root);
-
-        var passedInput = Return(scan, 55, 60, passed);
-
-        var outputRow = Assert.Single(TraceOutputRows.Build([filter, aggregate, scan],
-                                                            [root, rejectedInput, passed, passedInput],
-                                                            []).All);
-
-        Assert.Equal([(passed, root), (passedInput, passed)], outputRow.Steps.Select(s => (s.Return, s.Parent)));
+                     (marks.GetCount(Scan, Thread, RowReturnType.PassedUp), marks.GetCount(Scan, Thread, RowReturnType.Skipped)));
     }
 
     [Fact]
@@ -149,59 +104,17 @@ public class TraceRowReturnMarksTests
         Assert.Equal((1, 1, 0),
                      (marks.GetCount(Scan, Thread, RowReturnType.PassedUp),
                       marks.GetCount(Scan, Thread, RowReturnType.Rejected),
-                      marks.GetCount(Scan, Thread, RowReturnType.NotPassedUp)));
+                      marks.GetCount(Scan, Thread, RowReturnType.Skipped)));
     }
 
     [Fact]
-    public void Rows_Read_By_A_Blocking_Input_Are_Stored()
-    {
-        var input = BuildInput();
-
-        var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)],
-                          [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)],
-                          top: Operator("Hash Match", 0, null) with { Instances = [JoinIterator] },
-                          child: input);
-
-        Assert.Equal((2, 0, 0, 1),
-                     (marks.GetCount(input, Thread, RowReturnType.Stored),
-                      marks.GetCount(input, Thread, RowReturnType.PassedUp),
-                      marks.GetCount(input, Thread, RowReturnType.NotPassedUp),
-                      marks.GetCount(input, Thread, RowReturnType.End)));
-    }
-
-    [Fact]
-    public void Rows_A_Batch_To_Row_Adapter_Reads_From_A_Blocking_Input_Are_Not_Stored()
-    {
-        var adapter = new ExecutionOperatorEvent
-        {
-            Name = "Batch To Row",
-            OperatorDescription = "Batch To Row",
-            Category = OperatorCategory.Adapter,
-            Instances = [JoinIterator]
-        };
-
-        var input = BuildInput();
-
-        var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)],
-                          [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)],
-                          top: adapter,
-                          child: input);
-
-        Assert.Equal((0, 1, 1),
-                     (marks.GetCount(input, Thread, RowReturnType.Stored),
-                      marks.GetCount(input, Thread, RowReturnType.PassedUp),
-                      marks.GetCount(input, Thread, RowReturnType.NotPassedUp)));
-    }
-
-    [Fact]
-    public void A_Batch_Passed_Up_Is_Marked_On_A_Batch_Operator_But_Is_Not_A_Step_Of_The_Output_Row()
+    public void A_Batch_Passed_Up_Is_Marked_On_A_Batch_Operator()
     {
         var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)],
                           [(12, 15, RowStatus), (55, 60, EndStatus)],
                           childMethod: "BpGetNextBatch");
 
         Assert.Equal((true, false, 1), (marks.IsBatch(Scan), marks.IsBatch(Join), marks.GetCount(Scan, Thread, RowReturnType.PassedUp)));
-        Assert.Empty(Assert.Single(marks.OutputRows.All).Steps);
     }
 
     [Fact]
@@ -225,7 +138,7 @@ public class TraceRowReturnMarksTests
                           joinOpens: [(10, 40)]);
 
         Assert.Equal((0, 2),
-                     (marks.GetCount(Scan, Thread, RowReturnType.PassedUp), marks.GetCount(Scan, Thread, RowReturnType.NotPassedUp)));
+                     (marks.GetCount(Scan, Thread, RowReturnType.PassedUp), marks.GetCount(Scan, Thread, RowReturnType.Skipped)));
         Assert.All(marks.Ticks.GetTicks(Scan, Thread)!.All, t => Assert.Same(Join, t.Caller));
     }
 
@@ -252,111 +165,9 @@ public class TraceRowReturnMarksTests
         Assert.Null(ticks.GetNearest(TraceTimelineAxis.Instructions, 17, 0));
     }
 
-    [Fact]
-    public void Each_Row_The_Root_Operator_Returns_Is_An_Output_Row()
-    {
-        var outputRows = Build([(10, 40, RowStatus), (50, 80, RowStatus), (90, 100, EndStatus)],
-                               [(12, 15, RowStatus), (55, 60, RowStatus), (92, 95, EndStatus)]).OutputRows;
-
-        Assert.Equal([(1, 0), (2, 1)], outputRows.All.Select(r => (r.Ordinal, r.Return.Call)));
-    }
-
-    [Fact]
-    public void The_Topmost_Operator_That_Runs_Returns_The_Output_Rows_When_The_Plan_Root_Does_Not()
-    {
-        var outputRows = Build([(10, 40, RowStatus), (50, 70, EndStatus)],
-                               [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)],
-                               top: Aggregate,
-                               child: AggregateInput).OutputRows;
-
-        Assert.Equal([Aggregate], outputRows.All.Select(r => r.Return.Operator));
-    }
-
-    [Fact]
-    public void Each_Output_Column_Comes_From_The_Operator_That_Owns_It()
-    {
-        var source = Assert.Single(Build([(10, 40, RowStatus), (50, 70, EndStatus)],
-                                         [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)],
-                                         t => Sources(t, ScanColumns())).OutputRows.Sources);
-
-        Assert.Equal((Scan, false), (source.Operator, source.IsWholeRow));
-        Assert.Equal([0, 1], source.Columns);
-    }
-
-    [Fact]
-    public void A_Row_Sent_Directly_Comes_Whole_From_The_Iterator_That_Sent_It()
-    {
-        var source = Assert.Single(Build([(10, 40, RowStatus), (50, 70, EndStatus)],
-                                         [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)],
-                                         t => Sources(t, new TraceOutputStructure(OutputRow, [], ScanIterator))).OutputRows.Sources);
-
-        Assert.Equal((Scan, true), (source.Operator, source.IsWholeRow));
-    }
-
-    [Fact]
-    public void Columns_Owned_By_An_Iterator_No_Operator_Runs_Have_No_Source()
-        => Assert.Empty(Build([(10, 40, RowStatus), (50, 70, EndStatus)],
-                              [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)],
-                              t => Sources(t, new TraceOutputStructure(OutputRow, [0x1F4_0000_A000], 0))).OutputRows.Sources);
-
-    [Fact]
-    public void Columns_Owned_By_A_Batch_To_Row_Operator_Come_From_That_Operator()
-    {
-        var adapter = new ExecutionOperatorEvent
-        {
-            Name = "Batch To Row",
-            OperatorDescription = "Batch To Row",
-            Instances = [ScanIterator]
-        };
-
-        var source = Assert.Single(Build([(10, 40, RowStatus), (50, 70, EndStatus)],
-                                         [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)],
-                                         t => Sources(t, ScanColumns()),
-                                         child: adapter).OutputRows.Sources);
-
-        Assert.Same(adapter, source.Operator);
-    }
-
-    [Fact]
-    public void Output_Rows_Without_A_Structure_Have_No_Sources()
-        => Assert.Empty(Build([(10, 40, RowStatus), (50, 70, EndStatus)],
-                              [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)]).OutputRows.Sources);
-
-    [Fact]
-    public void The_GetRow_Path_Links_Each_Row_Passed_Up_To_The_Return_Of_Its_Parent_Operator()
-    {
-        var outputRow = Assert.Single(Build([(10, 40, RowStatus), (50, 70, EndStatus)],
-                                            [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)]).OutputRows.All);
-
-        var step = Assert.Single(outputRow.Steps);
-
-        Assert.Equal((Scan, 1, Join, 0), (step.Return.Operator, step.Return.Call, step.Parent.Operator, step.Parent.Call));
-    }
-
-    [Fact]
-    public void The_Output_Row_At_A_Point_Is_The_One_Whose_Root_Call_Contains_It()
-    {
-        var outputRows = Build([(10, 40, RowStatus), (50, 80, RowStatus), (90, 100, EndStatus)],
-                               [(12, 15, RowStatus), (55, 60, RowStatus), (92, 95, EndStatus)]).OutputRows;
-
-        Assert.Equal([1, null, 2],
-                     new[] { 30d, 45d, 60d }.Select(p => outputRows.GetRow(TraceTimelineAxis.Instructions, p)?.Ordinal));
-    }
-
-    [Fact]
-    public void The_Nearest_Output_Row_Is_The_Root_Return_Closest_To_The_Point()
-    {
-        var outputRows = Build([(10, 40, RowStatus), (50, 80, RowStatus), (90, 100, EndStatus)],
-                               [(12, 15, RowStatus), (55, 60, RowStatus), (92, 95, EndStatus)]).OutputRows;
-
-        Assert.Equal(2, outputRows.GetNearest(TraceTimelineAxis.Instructions, 75)?.Ordinal);
-    }
-
     private static TraceRowReturnMarks Build((ulong Start, ulong End, ulong Status)[] joinCalls,
                                              (ulong Start, ulong End, ulong Status)[] scanCalls,
-                                             Func<TraceTimeline, IReadOnlyList<TraceOutputRowSource>>? getSources = null,
                                              ExecutionOperatorEvent? top = null,
-                                             ExecutionOperatorEvent? child = null,
                                              string childMethod = "GetRowOrReQualifyHelper",
                                              (ulong Start, ulong End)[]? joinOpens = null)
     {
@@ -401,33 +212,10 @@ public class TraceRowReturnMarksTests
         timeline.SetCalls(calls);
 
         timeline.SetLifetimes([new TraceOperatorLifetime(Thread, top ?? Join, 0, [Whole()], [Whole()], MemoryInUseCurve.Empty),
-                               new TraceOperatorLifetime(Thread, child ?? Scan, 1, [Whole()], [Whole()], MemoryInUseCurve.Empty)]);
+                               new TraceOperatorLifetime(Thread, Scan, 1, [Whole()], [Whole()], MemoryInUseCurve.Empty)]);
 
-        return TraceRowReturnMarks.Build(timeline, calls, getSources?.Invoke(timeline));
+        return TraceRowReturnMarks.Build(timeline, calls);
     }
-
-    private static ExecutionOperatorEvent BuildInput() => Scan with { IsBlockingInput = true };
-
-    private static ExecutionOperatorEvent Operator(string name, int nodeId, int? parentNodeId) => new()
-    {
-        Name = name,
-        OperatorDescription = name,
-        PlanNodeIdentifier = new PlanNodeIdentifier(1, (short)nodeId),
-        ParentNodeId = parentNodeId
-    };
-
-    private static TraceRowReturn Return(ExecutionOperatorEvent operatorEvent, ulong from, ulong to, TraceRowReturn? consumer = null)
-        => new(operatorEvent, Thread, new CallStackTree().Root, 0, RowReturnType.PassedUp, to, to)
-        {
-            FromPosition = At(from),
-            ToPosition = At(to),
-            Consumer = consumer
-        };
-
-    private static IReadOnlyList<TraceOutputRowSource> Sources(TraceTimeline timeline, TraceOutputStructure structure)
-        => TraceOutputLineage.GetSources(timeline, [structure]);
-
-    private static TraceOutputStructure ScanColumns() => new(OutputRow, [ScanIterator, ScanIterator], 0);
 
     private static ulong[] Call((ulong Start, ulong End, ulong Status) call, int node)
         => Row(call.Start, flags: Thread | TraceCallColumns.ReturnedFlag, returnValue: call.Status, node: node, endSequence: call.End);

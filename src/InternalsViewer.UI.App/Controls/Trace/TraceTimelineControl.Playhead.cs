@@ -26,7 +26,7 @@ public sealed partial class TraceTimelineControl
             return;
         }
 
-        canvas.DrawLine(x, _operators.IsLineageVisible ? OperatorsTop + PanesArea : OperatorsTop, x, height, _paints.Playhead);
+        canvas.DrawLine(x, OperatorsTop, x, height, _paints.Playhead);
 
         DrawBandMarker(canvas, timeline, x, width, height, scale);
 

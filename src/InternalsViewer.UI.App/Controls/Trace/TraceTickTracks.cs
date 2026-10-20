@@ -2,8 +2,9 @@ using System.Collections.Generic;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.FullTrace.Calls;
-using InternalsViewer.Query.FullTrace.Timeline;
-using InternalsViewer.Query.FullTrace.Timeline.Enums;
+using InternalsViewer.Query.FullTrace.Timeline.Ticks;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.UI.App.Controls.Trace.Enums;
 using SkiaSharp;
 
@@ -13,9 +14,11 @@ public static class TraceTickTracks
 {
     public const int CustomOrdinal = 2;
 
-    private const string GetRowsName = "GetRow Returns";
+    public static readonly SKColor LightBackground = new(0xFF, 0xFF, 0xFF, 0x40);
 
-    private const string BatchReturnsTitle = "GetBatch Returns";
+    private const string GetRowsName = "GetRow";
+
+    private const string BatchReturnsTitle = "GetBatch";
 
     private const string ReadsName = "Reads";
 
@@ -25,18 +28,18 @@ public static class TraceTickTracks
 
     private static readonly SKColor PassedUpColour = SKColor.Parse(SymbolCategory.QueryOperator.GetCategoryMetadata()!.ForegroundColor);
 
+    private static readonly SKColor ReadColour = SKColor.Parse(SymbolCategory.BufferPool.GetCategoryMetadata()!.ForegroundColor);
+
     private static readonly SKColor FalseColour = new(0xF0, 0x48, 0x48);
 
     private static readonly SKColor TrueColour = new(0x5C, 0xD6, 0x6B);
 
     private static readonly SKColor NullColour = new(0x9E, 0x9E, 0x9E);
 
-    private static readonly SKColor CustomBackground = new(0xFF, 0xFF, 0xFF, 0x40);
 
     private static readonly Dictionary<RowReturnType, SKColor> ReturnColours = new()
     {
-        [RowReturnType.NotPassedUp] = new SKColor(0x8A, 0x8A, 0x8A),
-        [RowReturnType.Stored] = new SKColor(0x4F, 0xC3, 0xF7),
+        [RowReturnType.Skipped] = new SKColor(0xC8, 0xC8, 0xC8),
         [RowReturnType.Rejected] = new SKColor(0xF0, 0x48, 0x48),
         [RowReturnType.PassedUp] = PassedUpColour,
         [RowReturnType.FakeRow] = new SKColor(0xFF, 0xC8, 0x57),
@@ -44,29 +47,38 @@ public static class TraceTickTracks
         [RowReturnType.End] = new SKColor(0xF0, 0xF0, 0xF0)
     };
 
-    public static TraceTickTrack GetRows(TraceRowReturnMarks marks) => new(GetRowsName, TraceTickLocation.Top, 0, marks.Ticks)
+    public static TraceTickTrack GetRows(TraceRowReturnMarks marks)
     {
-        Values =
+        return new(GetRowsName, TraceTickLocation.Top, 0, marks.Ticks)
+        {
+            Values =
         [
-            Value(RowReturnType.NotPassedUp, "Not Passed Up"),
-            Value(RowReturnType.Stored, "Stored"),
+            Value(RowReturnType.Skipped, "Skipped"),
             Value(RowReturnType.Rejected, "Rejected"),
             Value(RowReturnType.PassedUp, "Passed Up"),
             Value(RowReturnType.FakeRow, "Fake Row"),
             Value(RowReturnType.Other, "Other Status"),
             Value(RowReturnType.End, "End")
         ],
-        GetColour = t => ReturnColours.GetValueOrDefault((RowReturnType)t.Value, PassedUpColour),
-        HasCallReturnLine = true,
-        TickWidth = 2f,
-        GetTitle = o => marks.IsBatch(o) ? BatchReturnsTitle : GetRowsName
-    };
+            GetColour = t => ReturnColours.GetValueOrDefault((RowReturnType)t.Value, PassedUpColour),
+            Colour = PassedUpColour,
+            HasCallReturnLine = true,
+            IsStatementTrack = true,
+            TickWidth = 2f,
+            GetTitle = o => marks.IsBatch(o) ? BatchReturnsTitle : GetRowsName
+        };
+    }
 
-    public static TraceTickTrack Reads(TraceTickSeries series, TraceCallStore calls) => new(ReadsName, TraceTickLocation.Bottom, 0, series)
+    public static TraceTickTrack Reads(TraceTickSeries series, TraceCallStore calls)
     {
-        Values = [Value(TraceReadType.Page, "Page Read"), Value(TraceReadType.ReadAhead, "Read Ahead")],
-        GetDetails = t => GetReadDetails(t, calls)
-    };
+        return new(ReadsName, TraceTickLocation.Bottom, 0, series)
+        {
+            Values = [Value(TraceReadType.Page, "Page Read"), Value(TraceReadType.ReadAhead, "Read Ahead")],
+            GetColour = _ => ReadColour,
+            Colour = ReadColour,
+            GetDetails = t => GetReadDetails(t, calls)
+        };
+    }
 
     public static TraceTickTrack Evaluations(TraceTickSeries series) => new(EvaluationsName, TraceTickLocation.Bottom, 1, series)
     {
@@ -94,7 +106,8 @@ public static class TraceTickTracks
         {
             Values = [new TraceTickValue(0, CallLabel)],
             GetColour = _ => colour,
-            Background = CustomBackground,
+            Colour = colour,
+            Background = LightBackground,
             HeightFactor = (float)definition.HeightFactor,
             WidthFactor = (float)definition.WidthFactor,
             Definition = definition

@@ -173,8 +173,10 @@ public sealed class CallTreeTabViewModel : IDisposable
 
     public void OpenLocator(Locator locator, bool detached)
     {
-        if (ColumnStoreObjectLocator.From(locator) is { } columnStore)
+        if (locator.ValueType == LocatorValueType.ColumnStoreObject)
         {
+            var columnStore = new ColumnStoreObjectLocator(locator);
+
             var target = new ColumnstoreObjectTarget(columnStore.ObjectType, columnStore.ColumnId, columnStore.ObjectId);
 
             Query.OpenColumnstoreObject(columnStore.HobtId, target);

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using InternalsViewer.UI.App.Helpers;
 using SkiaSharp;
+using InternalsViewer.UI.App.Controls.Timeline;
 
 namespace InternalsViewer.UI.App.Controls.Trace;
 
@@ -146,7 +147,7 @@ public sealed partial class TraceTimelineControl
                                   0,
                                   1);
 
-        _paints.Text.Color = IsLight(face) ? SKColors.Black : SKColors.White;
+        _paints.Text.Color = TimelineColours.IsLight(face) ? SKColors.Black : SKColors.White;
 
         canvas.Save();
 

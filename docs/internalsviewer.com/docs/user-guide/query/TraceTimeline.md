@@ -107,9 +107,12 @@ The filter button beside the **Search** toggle opens the same category badges as
 
 **View > Operators** adds a pane above the threads, with a row per plan operator in the same order and colours as the Timeline's Plan band. A Batch To Row adapter between batch and row mode operators is grey. Each row runs from the operator's first call to its last. The stretches where one of its methods was on the stack are drawn in full colour and the rest shaded, and an operator that ran on several threads gets a track per thread. Either side of that, a fainter bar shows how long the operator's iterator existed. It starts at the iterator's constructor, or for a batch mode operator the call that built it, and ends with the query's `CQueryScan::DestroyQuery`, where SQL Server frees all of a query's iterators together. When the recording started after an iterator was built, or stopped before the query was torn down, the fainter bar runs to the edge of the recording.
 
+The top row is the statement, such as **SELECT**, in grey. Its **GetRow Returns** strip has a tick for each call the statement made to the plan's top operator, with a line down to it, so its **Passed Up** ticks are the rows the query returned.
+
 This shows something the lanes cannot. An operator is only on a thread's stack while one of its methods runs, so a Hash Match sits beside its scans in the lanes rather than above them - but its iterator object exists from the moment it is built until the query is torn down, and does its work from its first call to its last. The Operators pane draws both.
 
 - **Drag** the splitter under the pane to make its rows taller
+- **Drag** the bottom edge of a row to resize that row alone, and the inner edge of a strip to resize that track's strip on every operator. The sizes last until another trace is opened
 - **Click** an operator to select it in the [Execution Plan](/docs/user-guide/query/ExecutionPlan). While [Call Stack](#call-stack) is off, everything except its calls and the calls beneath them is dimmed
 - **Double-click** an operator to zoom to its lifetime
 - Hovering over an operator shows its thread, how many times each of its methods was called, its instructions and positions, the share of its lifetime spent inside its calls (child operators included) and its peak memory in use
@@ -143,20 +146,20 @@ The same function can be added more than once, such as one track for `GetRow` ca
 
 **Operator Tracks**, on the Trace menu, opens a tab listing the custom tracks with their function, conditions, colour, height, width and how many ticks each has in the current trace. **Add** opens the same dialog, **Edit** and **Delete** change or remove a track, and **Export** and **Import** save the tracks to a file and load them back, into this or any later session.
 
-- Hovering over a strip shows the track and how many ticks of each kind the operator has on that thread
-- Hovering over a tick highlights its call in the lanes below, and shows what kind of tick it is, its function, thread and position
+- Hovering over a strip names it in a label at the left of the operator, beneath a strip along the top and above one along the bottom, and shows how many ticks of each kind the operator has on that thread
+- Hovering over a tick outlines its call in red in the lanes below, and shows what kind of tick it is, its function, thread and position
 - **Click** a tick to select its call in the chart
 - **Double-click** a tick to zoom to it
 
 ### GetRow returns
 
-A tick is a call to the operator's `GetRow`, or `BpGetNextBatch` for a batch mode operator. It ends at the return and is coloured by what happened to the row. **Passed Up** rows went on to the operator that asked for them. **Not Passed Up** rows were taken by the operator that asked for them without it returning a row before it asked again, such as the rows a Stream Aggregate folds into a group. **Stored** rows were kept by a blocking operator, such as the build input of a Hash Match. **Rejected** rows failed a Filter. **End** is the call that reported there were no more rows.
+A tick is a call to the operator's `GetRow`, or `BpGetNextBatch` for a batch mode operator. It ends at the return and is coloured by what happened to the row. **Passed Up** rows went on to the operator that asked for them. **Skipped** rows were taken by the operator that asked for them without it returning a row before it asked again, such as the rows a Stream Aggregate folds into a group or the build input of a Hash Match. **Rejected** rows failed a Filter. **End** is the call that reported there were no more rows.
 
-A line runs from each call up to the operator that made it. The dotted line is the call and the solid line is the return. Both take the colour of the call's marker, and the return line meets the marker's edge. The lines are drawn only once the calls are wide enough to tell apart, and hovering over a call highlights its line.
+A line runs from each call up to the operator that made it. The dotted line is the call, in the track's colour. The solid line is the return, in the colour of the call's marker, and meets the marker's edge. The lines are drawn only once the calls are wide enough to tell apart.
 
 ### Reads
 
-A call to `BPool::Get` asks for a single page. A call to `BPool::ReadAhead` asks for a run of pages ahead of the scan. Each read is drawn in the operator's colour, and its tooltip shows the page, or the first page and page count of a read ahead. Pages already in memory and pages read from disk are drawn the same way. The calls beneath a read in the lanes below show which it was, such as `BPool::GetFromDisk` when the page had to be read. Reads made outside every operator, such as metadata lookups while the query is set up, are not shown.
+A call to `BPool::Get` asks for a single page. A call to `BPool::ReadAhead` asks for a run of pages ahead of the scan. Each read is drawn in the Buffer Pool category's colour, and its tooltip shows the page, or the first page and page count of a read ahead. Pages already in memory and pages read from disk are drawn the same way. The calls beneath a read in the lanes below show which it was, such as `BPool::GetFromDisk` when the page had to be read. Reads made outside every operator, such as metadata lookups while the query is set up, are not shown.
 
 ### Evaluations
 

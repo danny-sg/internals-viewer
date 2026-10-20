@@ -2,6 +2,7 @@ using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
 using InternalsViewer.Query.FullTrace.Output.Enums;
+using InternalsViewer.Query.Extensions;
 
 namespace InternalsViewer.Query.FullTrace.Output;
 
@@ -104,7 +105,7 @@ internal sealed class OutputHook(OutputFunctions functions) : ITraceHook
             || !replay.TryRead(instruction + InstructionValueOffset, out uint index)
             || !replay.TryRead(table, out ulong entries)
             || !replay.TryRead(entries + index * sizeof(ulong), out ulong address)
-            || address < TraceAddress.Smallest)
+            || address < TraceAddress.MinAddress)
         {
             return null;
         }

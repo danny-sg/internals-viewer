@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using SkiaSharp;
+using InternalsViewer.UI.App.Controls.Timeline;
 
 namespace InternalsViewer.UI.App.Controls.Trace;
 
@@ -128,7 +129,7 @@ public sealed partial class TraceTimelineControl
             return;
         }
 
-        _paints.Text.Color = IsLight(block.Colour) ? SKColors.Black : SKColors.White;
+        _paints.Text.Color = TimelineColours.IsLight(block.Colour) ? SKColors.Black : SKColors.White;
 
         canvas.Save();
 
@@ -584,7 +585,7 @@ public sealed partial class TraceTimelineControl
 
         var textWidth = _paints.Font.MeasureText(text);
 
-        _paints.Text.Color = IsLight(run.Colour) ? SKColors.Black : SKColors.White;
+        _paints.Text.Color = TimelineColours.IsLight(run.Colour) ? SKColors.Black : SKColors.White;
 
         canvas.Save();
 

@@ -1,4 +1,5 @@
-using InternalsViewer.Query.FullTrace.Timeline;
+using InternalsViewer.Query.FullTrace.Timeline.Ticks;
+
 
 namespace InternalsViewer.UI.App.Controls.Trace;
 

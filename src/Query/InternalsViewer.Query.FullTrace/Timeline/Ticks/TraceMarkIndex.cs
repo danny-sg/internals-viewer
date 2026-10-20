@@ -1,7 +1,7 @@
 ﻿using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Helpers;
 
-namespace InternalsViewer.Query.FullTrace.Timeline;
+namespace InternalsViewer.Query.FullTrace.Timeline.Ticks;
 
 public sealed class TraceMarkIndex<T> where T : ITraceMark
 {

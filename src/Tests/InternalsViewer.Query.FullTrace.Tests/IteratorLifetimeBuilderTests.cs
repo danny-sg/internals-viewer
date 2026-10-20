@@ -19,6 +19,8 @@ public class IteratorLifetimeBuilderTests
 
     private const ulong BatchHelper = 0x300;
 
+    private const ulong BatchFilter = 0x400;
+
     private const ulong Query = 0x1F4_0000_1000;
 
     private const uint Thread = 7;
@@ -113,7 +115,7 @@ public class IteratorLifetimeBuilderTests
     }
 
     [Fact]
-    public void A_Batch_Helper_Reading_An_Operators_Batches_Is_A_Batch_To_Row_Operator_On_The_Same_Level()
+    public void A_Batch_Helper_Is_A_Batch_To_Row_Operator_For_The_Node_It_Reports()
     {
         var tree = new CallStackTree();
 
@@ -131,14 +133,46 @@ public class IteratorLifetimeBuilderTests
 
         var scan = Operator("Columnstore Index Scan", 2, Scan) with { NodeLevel = 2 };
 
-        IteratorPlanNode[] planNodes = [new(Scan, 0xA0, 0xAB, Query, 2), new(BatchHelper, 0xA0, 0, Query, 2)];
+        IteratorPlanNode[] planNodes = [new(BatchHelper, 0xA0, 0, Query, 2, IsBatchHelper: true)];
 
         var lifetimes = IteratorLifetimeBuilder.Build(timeline, [scan], planNodes, []);
 
         var adapter = Assert.Single(lifetimes, l => l.Operator.Instances.Contains(BatchHelper)).Operator;
 
-        Assert.Equal(("Batch To Row", OperatorCategory.Adapter, 2), (adapter.Name, adapter.Category, adapter.NodeLevel));
+        Assert.Equal(("Batch To Row Adapter", OperatorCategory.Adapter, 2), (adapter.Name, adapter.Category, adapter.NodeLevel));
         Assert.Null(adapter.PlanNodeIdentifier);
+    }
+
+    [Fact]
+    public void A_Batch_Helper_For_A_Node_The_Plan_Does_Not_Show_Adapts_The_Operator_Beneath_It()
+    {
+        var tree = new CallStackTree();
+
+        var caller = tree.AddCall(tree.Root, Frame(0x10, 0), 1);
+        var helperRow = tree.AddCall(caller, Frame(0x70, BatchHelper), 1);
+        var filterBatch = tree.AddCall(helperRow, Frame(0x80, BatchFilter), 1);
+        var scanBatch = tree.AddCall(filterBatch, Frame(0x60, Scan), 1);
+
+        var builder = new TraceTimeline.Builder();
+
+        builder.Add([Span(0, 0, 100), Span(1, 10, 50), Span(2, 15, 45), Span(3, 20, 30)]);
+
+        var timeline = builder.Build([new(-1, 0, 0x10, 0, 1),
+                                      new(0, 0, 0x70, BatchHelper, 1),
+                                      new(1, 0, 0x80, BatchFilter, 1),
+                                      new(2, 0, 0x60, Scan, 1)]);
+
+        timeline.MapNodes([caller, helperRow, filterBatch, scanBatch]);
+
+        var scan = Operator("Columnstore Index Scan", 2, Scan) with { NodeLevel = 2 };
+
+        IteratorPlanNode[] planNodes = [new(BatchHelper, 0xA0, 0, Query, 1, IsBatchHelper: true)];
+
+        var lifetimes = IteratorLifetimeBuilder.Build(timeline, [scan], planNodes, []);
+
+        var adapter = Assert.Single(lifetimes, l => l.Operator.Instances.Contains(BatchHelper)).Operator;
+
+        Assert.Equal(("Batch To Row Adapter", 2), (adapter.Name, adapter.NodeLevel));
     }
 
     [Fact]

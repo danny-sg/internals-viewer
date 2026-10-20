@@ -1,13 +1,14 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
+using InternalsViewer.Query.FullTrace.Timeline.Ticks;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.Plans.Operators;
 
-namespace InternalsViewer.Query.FullTrace.Timeline;
+namespace InternalsViewer.Query.FullTrace.Timeline.Tracks;
 
 public sealed class TraceRowReturnMarks
 {
@@ -25,7 +26,6 @@ public sealed class TraceRowReturnMarks
 
     private TraceRowReturnMarks(Dictionary<ExecutionOperatorEvent, Dictionary<uint, OperatorReturns>> operators,
                                 HashSet<ExecutionOperatorEvent> batchOperators,
-                                TraceOutputRows outputRows,
                                 TraceTickSeries ticks)
     {
         Operators = operators;
@@ -34,19 +34,14 @@ public sealed class TraceRowReturnMarks
 
         BatchOperators = batchOperators;
 
-        OutputRows = outputRows;
-
         Count = operators.Values.Sum(o => o.Values.Sum(t => t.Count));
     }
 
     public static TraceRowReturnMarks Empty { get; } = new(new(ReferenceEqualityComparer.Instance),
                                                            new(ReferenceEqualityComparer.Instance),
-                                                           TraceOutputRows.Empty,
                                                            TraceTickSeries.Empty);
 
     public int Count { get; }
-
-    public TraceOutputRows OutputRows { get; }
 
     public TraceTickSeries Ticks { get; }
 
@@ -64,9 +59,7 @@ public sealed class TraceRowReturnMarks
     public int GetCount(ExecutionOperatorEvent operatorEvent, uint thread, RowReturnType type)
         => GetReturns(operatorEvent, thread) is { } returns ? returns.Positions.GetValues(type).Length : 0;
 
-    internal static TraceRowReturnMarks Build(TraceTimeline timeline,
-                                              TraceCallStore calls,
-                                              IReadOnlyList<TraceOutputRowSource>? sources = null)
+    internal static TraceRowReturnMarks Build(TraceTimeline timeline, TraceCallStore calls)
     {
         var owners = timeline.GetOperatorsByInstance();
 
@@ -84,12 +77,6 @@ public sealed class TraceRowReturnMarks
         var marks = new Dictionary<(ExecutionOperatorEvent Operator, uint Thread), List<Mark>>(OperatorThreadComparer.Instance);
 
         var ticks = new List<TraceTick>();
-
-        var passedUp = new List<TraceRowReturn>();
-
-        var passedUpCalls = new Dictionary<(ulong Instance, uint Thread, int Index), TraceRowReturn>();
-
-        var consumers = new List<(TraceRowReturn Return, (ulong Instance, uint Thread, int Index) Consumer)>();
 
         var batchOperators = new HashSet<ExecutionOperatorEvent>(ReferenceEqualityComparer.Instance);
 
@@ -112,7 +99,7 @@ public sealed class TraceRowReturnMarks
 
                 var parent = enclosing == 0 ? null : groupsByInstance.GetValueOrDefault((enclosing, group.Thread));
 
-                if (GetReturnType(group, index, parent, caller?.Name == FilterOperator, IsStored(operatorEvent, caller)) is not { } type
+                if (GetReturnType(group, index, parent, caller?.Name == FilterOperator) is not { } type
                     || timeline.FindCall(call.Function, group.Instance, call.Call) is not { } location)
                 {
                     continue;
@@ -120,15 +107,7 @@ public sealed class TraceRowReturnMarks
 
                 ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(marks, (operatorEvent, group.Thread), out _);
 
-                var mark = new Mark(location.EndOf(TraceTimelineAxis.Position),
-                                    location.EndOf(TraceTimelineAxis.Instructions),
-                                    location.StartOf(TraceTimelineAxis.Position),
-                                    location.StartOf(TraceTimelineAxis.Instructions),
-                                    type,
-                                    location.Node,
-                                    location.Call);
-
-                (list ??= []).Add(mark);
+                (list ??= []).Add(new Mark(location.EndOf(TraceTimelineAxis.Position), location.EndOf(TraceTimelineAxis.Instructions), type));
 
                 ticks.Add(new TraceTick((byte)type,
                                         group.Thread,
@@ -143,38 +122,7 @@ public sealed class TraceRowReturnMarks
                     Instance = group.Instance,
                     Index = call.Call
                 });
-
-                if (type == RowReturnType.PassedUp && !group.IsBatch)
-                {
-                    var rowReturn = new TraceRowReturn(operatorEvent,
-                                                       group.Thread,
-                                                       mark.Node,
-                                                       mark.Call,
-                                                       type,
-                                                       mark.Position,
-                                                       mark.Instructions)
-                    {
-                        StartPosition = mark.StartPosition,
-                        StartInstructions = mark.StartInstructions,
-                        FromPosition = call.FromPosition,
-                        ToPosition = call.ToPosition
-                    };
-
-                    passedUp.Add(rowReturn);
-
-                    passedUpCalls[(group.Instance, group.Thread, index)] = rowReturn;
-
-                    if (parent is not null && GetConsumerCall(parent, call) is { } consumer)
-                    {
-                        consumers.Add((rowReturn, (parent.Instance, parent.Thread, consumer)));
-                    }
-                }
             }
-        }
-
-        foreach (var (rowReturn, consumer) in consumers)
-        {
-            rowReturn.Consumer = passedUpCalls.GetValueOrDefault(consumer);
         }
 
         var operators = new Dictionary<ExecutionOperatorEvent, Dictionary<uint, OperatorReturns>>(ReferenceEqualityComparer.Instance);
@@ -186,9 +134,7 @@ public sealed class TraceRowReturnMarks
             (threads ??= [])[thread] = OperatorReturns.Build(list);
         }
 
-        var outputRows = TraceOutputRows.Build(groups.Select(g => owners[g.Instance]), passedUp, sources ?? []);
-
-        return new TraceRowReturnMarks(operators, batchOperators, outputRows, TraceTickSeries.Create(ticks));
+        return new TraceRowReturnMarks(operators, batchOperators, TraceTickSeries.Create(ticks));
     }
 
     private static List<CallGroup> GetCallGroups(TraceCallStore calls, Dictionary<ulong, ExecutionOperatorEvent> owners)
@@ -309,27 +255,16 @@ public sealed class TraceRowReturnMarks
         }
     }
 
-    private static int? GetConsumerCall(CallGroup parent, GetRowCall call)
-    {
-        var index = SortedSearch.FirstAfter(parent.Calls, call.FromPosition, c => c.FromPosition) - 1;
-
-        return index >= 0 && parent.Calls[index].ToPosition >= call.ToPosition ? index : null;
-    }
-
-    private static RowReturnType? GetReturnType(CallGroup group, int index, CallGroup? parent, bool isFiltered, bool isStored)
+    private static RowReturnType? GetReturnType(CallGroup group, int index, CallGroup? parent, bool isFiltered)
         => group.Calls[index].Status switch
         {
             null => null,
-            RowStatus when isStored => RowReturnType.Stored,
             RowStatus when parent is null || IsPassedUp(group, index, parent) => RowReturnType.PassedUp,
-            RowStatus => isFiltered ? RowReturnType.Rejected : RowReturnType.NotPassedUp,
+            RowStatus => isFiltered ? RowReturnType.Rejected : RowReturnType.Skipped,
             EndStatus => RowReturnType.End,
             FakeRowStatus => RowReturnType.FakeRow,
             _ => RowReturnType.Other
         };
-
-    private static bool IsStored(ExecutionOperatorEvent operatorEvent, ExecutionOperatorEvent? caller)
-        => operatorEvent.IsBlockingInput && caller is { Category: not OperatorCategory.Adapter };
 
     private static bool IsPassedUp(CallGroup group, int index, CallGroup parent)
     {
@@ -347,13 +282,7 @@ public sealed class TraceRowReturnMarks
 
     private readonly record struct GetRowCall(ulong Function, int Call, TracePosition FromPosition, TracePosition ToPosition, uint? Status);
 
-    private readonly record struct Mark(double Position,
-                                        double Instructions,
-                                        double StartPosition,
-                                        double StartInstructions,
-                                        RowReturnType Type,
-                                        CallStackNode Node,
-                                        int Call);
+    private readonly record struct Mark(double Position, double Instructions, RowReturnType Type);
 
     private sealed class CallGroup(ulong instance, uint thread, GetRowCall[] calls, bool isBatch)
     {
