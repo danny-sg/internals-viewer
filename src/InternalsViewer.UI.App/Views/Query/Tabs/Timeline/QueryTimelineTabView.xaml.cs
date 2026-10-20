@@ -25,12 +25,10 @@ public sealed partial class QueryTimelineTabView : UserControl, IDocumentCommand
         EventTimeline.PlayheadTimeChanged += OnPlayheadTimeChanged;
         EventTimeline.PlanNodeSelected += OnPlanNodeSelected;
         EventTimeline.EventSelected += OnEventSelected;
-        EventTimeline.CurrentEventChanged += OnCurrentEventChanged;
         EventTimeline.EventDoubleClicked += OnEventDoubleClicked;
         EventTimeline.IndexOpenRequested += OnIndexOpenRequested;
         EventTimeline.ExecutionPlanRequested += OnExecutionPlanRequested;
         EventTimeline.SimulationOpenRequested += OnSimulationOpenRequested;
-        EventTimeline.PlayStateChanged += OnPlayStateChanged;
 
         Loaded += (_, _) => AttachStructureResolver();
     }
@@ -62,12 +60,10 @@ public sealed partial class QueryTimelineTabView : UserControl, IDocumentCommand
         EventTimeline.PlayheadTimeChanged -= OnPlayheadTimeChanged;
         EventTimeline.PlanNodeSelected -= OnPlanNodeSelected;
         EventTimeline.EventSelected -= OnEventSelected;
-        EventTimeline.CurrentEventChanged -= OnCurrentEventChanged;
         EventTimeline.EventDoubleClicked -= OnEventDoubleClicked;
         EventTimeline.IndexOpenRequested -= OnIndexOpenRequested;
         EventTimeline.ExecutionPlanRequested -= OnExecutionPlanRequested;
         EventTimeline.SimulationOpenRequested -= OnSimulationOpenRequested;
-        EventTimeline.PlayStateChanged -= OnPlayStateChanged;
 
         if (_subscribed is not null)
         {
@@ -95,14 +91,6 @@ public sealed partial class QueryTimelineTabView : UserControl, IDocumentCommand
         }
     }
 
-    private void OnPlayStateChanged(bool isPlaying)
-    {
-        if (ViewModel is { } viewModel)
-        {
-            viewModel.IsTimelinePlaying = isPlaying;
-        }
-    }
-
     private void OnScopeChanged(long fromUs, long toUs) => ViewModel?.SetScope(fromUs, toUs);
 
     private void OnPlayheadTimeChanged(long timeUs) => ViewModel?.SetPlayheadTime(timeUs);
@@ -120,8 +108,6 @@ public sealed partial class QueryTimelineTabView : UserControl, IDocumentCommand
     private void OnPlanNodeSelected(PlanNodeIdentifier identifier) => ViewModel?.SelectPlanNode(identifier);
 
     private void OnEventSelected(EngineEvent engineEvent) => ViewModel?.NavigateToEvent(engineEvent);
-
-    private void OnCurrentEventChanged(EngineEvent? engineEvent) => ViewModel?.SetCurrentEvent(engineEvent);
 
     private void OnEventDoubleClicked(EngineEvent engineEvent) => ViewModel?.OpenEventPage(engineEvent);
 

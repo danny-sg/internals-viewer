@@ -5,102 +5,37 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:app="using:InternalsViewer.UI.App.Controls"
     mc:Ignorable="d">
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+    <Grid Margin="0,0,8,4">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
 
-        <Grid Grid.Row="0" Margin="0,0,8,4">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
+        <AutoSuggestBox x:Name="SearchBox"
+                        Grid.Column="0"
+                        PlaceholderText="Search"
+                        QueryIcon="Find"
+                        TextBoxStyle="{StaticResource SearchTextBoxStyle}"
+                        BorderThickness="0"
+                        FontSize="12"
+                        Height="28"
+                        TextChanged="OnSearchTextChanged"
+                        QuerySubmitted="OnSearchQuerySubmitted"/>
 
-            <AutoSuggestBox x:Name="SearchBox"
-                            Grid.Column="0"
-                            PlaceholderText="Search"
-                            QueryIcon="Find"
-                            TextBoxStyle="{StaticResource SearchTextBoxStyle}"
-                            BorderThickness="0"
-                            FontSize="12"
-                            Height="28"
-                            TextChanged="OnSearchTextChanged"
-                            QuerySubmitted="OnSearchQuerySubmitted"/>
+        <TextBlock Grid.Column="1"
+                   Margin="8,2,0,0"
+                   FontSize="11"
+                   VerticalAlignment="Center"
+                   Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                   Text="{x:Bind GetMatchCountText(MatchCount), Mode=OneWay}"
+                   Visibility="{x:Bind GetMatchCountVisibility(MatchCount), Mode=OneWay}"/>
 
-            <ToggleButton x:Name="CategoryFilterButton"
-                          Grid.Column="1"
-                          Style="{StaticResource TabCommandToggleStyle}"
-                          Margin="2,2,0,0"
-                          Click="OnCategoryFilterClick"
-                          ToolTipService.ToolTip="Filter by Category">
-                <FontIcon Glyph="&#xE71C;" FontSize="12"/>
-            </ToggleButton>
-
-            <ToggleButton x:Name="BatchesFilterButton"
-                          Grid.Column="2"
-                          Content="Batches"
-                          Visibility="{x:Bind IsDataFilterVisible, Mode=OneWay}"
-                          Style="{StaticResource TabCommandToggleStyle}"
-                          FontSize="11"
-                          Margin="2,2,0,0"
-                          Click="OnDataFilterClick"
-                          ToolTipService.ToolTip="Show only the frames that handed back batches, with their callers"/>
-
-            <ToggleButton x:Name="RowsFilterButton"
-                          Grid.Column="3"
-                          Content="Rows"
-                          Visibility="{x:Bind IsDataFilterVisible, Mode=OneWay}"
-                          Style="{StaticResource TabCommandToggleStyle}"
-                          FontSize="11"
-                          Margin="2,2,0,0"
-                          Click="OnDataFilterClick"
-                          ToolTipService.ToolTip="Show only the frames that handed back rows, with their callers"/>
-
-            <ContentPresenter Grid.Column="4"
-                              Margin="2,2,0,0"
-                              VerticalAlignment="Center"
-                              Content="{x:Bind Commands, Mode=OneWay}"
-                              Visibility="{x:Bind GetCommandsVisibility(Commands), Mode=OneWay}"/>
-        </Grid>
-
-        <Grid x:Name="CategoryPanel"
-              Grid.Row="1"
-              Visibility="Collapsed"
-              Padding="8,0,8,6"
-              ColumnSpacing="8">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-
-            <app:WrapPanel x:Name="CategoryBadges"
-                           Grid.Column="0"
-                           HorizontalSpacing="4"
-                           VerticalSpacing="4"/>
-
-            <Button Grid.Column="1"
-                    Content="Defaults"
-                    Style="{StaticResource TabCommandButtonStyle}"
-                    FontSize="11"
-                    VerticalAlignment="Top"
-                    Click="OnDefaultCategoriesClick"
-                    ToolTipService.ToolTip="Hide the categories hidden by default"/>
-
-            <ToggleButton x:Name="AllCategoriesToggle"
-                          Grid.Column="2"
-                          Content="All"
-                          Style="{StaticResource TabCommandToggleStyle}"
-                          FontSize="11"
-                          VerticalAlignment="Top"
-                          Click="OnAllCategoriesClick"
-                          ToolTipService.ToolTip="Show or hide every category"/>
-        </Grid>
+        <ContentPresenter Grid.Column="2"
+                          Margin="4,2,0,0"
+                          VerticalAlignment="Center"
+                          Content="{x:Bind Commands, Mode=OneWay}"
+                          Visibility="{x:Bind GetCommandsVisibility(Commands), Mode=OneWay}"/>
     </Grid>
 </UserControl>

@@ -2,17 +2,15 @@ using System.Runtime.InteropServices;
 using System.Text;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Locators;
-using InternalsViewer.Query.FullTrace.PublishedEvents;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Recording;
 using InternalsViewer.Query.FullTrace.Functions;
 using InternalsViewer.Query.FullTrace.Memory;
-using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Hooks;
-using InternalsViewer.Query.FullTrace.RowBuffers;
-using InternalsViewer.Query.FullTrace.RowBuffers.HashRows;
+using InternalsViewer.Query.FullTrace.Output;
+using InternalsViewer.Query.FullTrace.RowSources;
 using InternalsViewer.Query.FullTrace.Stubs;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
 
@@ -154,22 +152,16 @@ internal sealed class ReplaySession : IDisposable
 
         var memoryMap = new MemoryMapHook(memoryMapFunctions);
 
-        var publishedEvents = new PublishedEventHook(functions.PublishedEvents);
+        var rowSources = new RowSourceHook(functions.RowSources);
 
-        var rowBuffers = new RowBufferHook(functions.RowBuffers);
-
-        var hashRows = new HashRowHook(functions.HashRows);
-
-        var batches = new BatchHook(functions.Batches);
+        var output = new OutputHook(functions.Output);
 
         var customHook = new CustomHook(Resolve(customHooks));
 
-        var hooks = new TraceHooks([new LocatorHook(functions.LocatorReads, store, images),
+        var hooks = new TraceHooks([rowSources,
+                                    new LocatorHook(functions.LocatorReads, store, images),
                                     memoryMap,
-                                    publishedEvents,
-                                    rowBuffers,
-                                    hashRows,
-                                    batches,
+                                    output,
                                     customHook]);
 
         ReplayBridge.HookCallback onHook = hooks.OnHook;
@@ -238,11 +230,11 @@ internal sealed class ReplaySession : IDisposable
                                         Modules,
                                         store.Build(),
                                         timeline.Build(nodes),
-                                        publishedEvents.Build(),
                                         memoryMap.Build(),
-                                        rowBuffers.Build(hashRows.Rows),
-                                        batches.Build(),
-                                        customHook.Build());
+                                        customHook.Build(),
+                                        output.Build(),
+                                        rowSources.GetPlanNodes(),
+                                        rowSources.GetTeardowns());
             }
             finally
             {

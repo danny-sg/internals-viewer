@@ -18,8 +18,6 @@ public sealed record EventOptions
 
     public bool RecordTimeTravel { get; set; }
 
-    public bool RecordTraceEvents { get; set; } = true;
-
     public bool IncludeLatch { get; set; } = false;
 
     public bool IncludeBatchMode { get; set; } = true;

@@ -14,8 +14,6 @@ namespace InternalsViewer.UI.App.ViewModels.Query.CallStack;
 
 public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
 {
-    private const string RowBufferTitle = "Row Buffer";
-
     [ObservableProperty]
     private IReadOnlyList<PlayheadThreadRow> _threads = [];
 
@@ -24,9 +22,6 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
 
     [ObservableProperty]
     private PlayheadCallRow? _selectedCall;
-
-    [ObservableProperty]
-    private PlayheadCallRow? _rowBufferCall;
 
     [ObservableProperty]
     private IReadOnlyList<SourceStep> _source = [];
@@ -49,13 +44,24 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
 
     private (CallStackNode Node, int Call)? Opened { get; set; }
 
+    private CallReference? SelectedFrame { get; set; }
+
     public bool IsShowing(CallStackNode node, int call)
         => Opened is { } opened && ReferenceEquals(opened.Node, node) && opened.Call == call;
 
-    public void SetStack(IReadOnlyList<TraceThreadStack> stacks)
+    public void SetStack(IReadOnlyList<TraceThreadStack> stacks, CallReference? selected = null)
     {
+        var isNewFrame = selected != SelectedFrame;
+
+        SelectedFrame = selected;
+
         if (Received is { } received && IsSame(received, stacks))
         {
+            if (isNewFrame)
+            {
+                SelectFrame();
+            }
+
             return;
         }
 
@@ -73,7 +79,7 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
     {
         Opened = (node, call);
 
-        TraceTimeline?[] timelines = [Query.FlameChart, Query.FullFlameChart];
+        TraceTimeline?[] timelines = [Query.TraceTimeline, Query.FullTraceTimeline];
 
         var stacks = await Task.Run(() => GetStackAt(timelines, node, call));
 
@@ -86,8 +92,6 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
         {
             SelectedValue = null;
         }
-
-        RowBufferCall = null;
 
         SelectedCall = row;
 
@@ -102,30 +106,7 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
         SelectedValue = null;
 
         SelectedCall = null;
-
-        RowBufferCall = null;
     }
-
-    public void ShowRowBuffer(PlayheadCallRow row)
-    {
-        RowBufferCall = row;
-
-        SelectedValue = null;
-
-        SelectedCall = row;
-    }
-
-    public ResultDetails GetRowBufferDetails(PlayheadCallRow row, bool decode)
-    {
-        var lookup = Query.Arguments.Lookup;
-
-        var rowBuffer = lookup is not null && row.Node.Frame is { } frame && row.Call >= 0
-            ? lookup.RowBuffers.GetRow(frame.Address, frame.Instance, row.Call)
-            : null;
-
-        return RowBufferDisplay.GetDetails(RowBufferTitle, rowBuffer, lookup?.RowBufferDecoder, decode);
-    }
-
 
     public void OpenInCallTree(PlayheadCallRow row) => Query.OpenCallTree(row.Node, row.Call);
 
@@ -156,11 +137,6 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
 
     partial void OnSelectedValueChanged(CallSignaturePart? value)
     {
-        if (value is not null)
-        {
-            RowBufferCall = null;
-        }
-
         Source = GetSource(value);
 
         Highlight();
@@ -202,6 +178,25 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
         row.Highlighted = index >= 0 && index < row.Signature.Count
             ? row.Signature[index]
             : row.Signature.FirstOrDefault(p => p.Kind == CallSignaturePartKind.Function);
+    }
+
+    private void SelectFrame()
+    {
+        if (SelectedFrame is not { } frame)
+        {
+            return;
+        }
+
+        var row = Threads.SelectMany(t => t.Calls).FirstOrDefault(r => ReferenceEquals(r.Node, frame.Node) && r.Call == frame.Call);
+
+        if (row is null || ReferenceEquals(row, SelectedCall))
+        {
+            return;
+        }
+
+        SelectedValue = null;
+
+        SelectedCall = row;
     }
 
     private int GetEnclosingCall(SourceFrame frame)
@@ -254,6 +249,8 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
 
                 Threads = await BuildAsync(stacks);
 
+                SelectFrame();
+
                 Highlight();
             }
         }
@@ -265,7 +262,7 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
 
     private async Task<IReadOnlyList<PlayheadThreadRow>> BuildAsync(IReadOnlyList<TraceThreadStack> stacks)
     {
-        var timeline = Query.FlameChart;
+        var timeline = Query.TraceTimeline;
 
         var origin = (ulong)Math.Floor(timeline?.StartOf(TraceTimelineAxis.Position) ?? 0);
 
@@ -309,13 +306,10 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
 
         signature ??= new CallSignature([new CallSignaturePart(node.Symbol, CallSignaturePartKind.Function)], null, null);
 
-        var hasRowBuffer = lookup is not null && node.Frame is { } frame && lookup.RowBuffers.HasRow(frame.Address, frame.Instance, index);
-
         var (from, to) = lookup?.GetPositions(node, index) ?? (TracePosition.Unknown, TracePosition.Unknown);
 
         return new PlayheadCallRow(node, call, signature, from, to, thread, isCurrent, origin)
         {
-            HasRowBuffer = hasRowBuffer,
             CurrentText = CurrentText
         };
     }

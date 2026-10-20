@@ -198,8 +198,6 @@
             <MenuFlyoutItem Text="List Members" Click="OnListMembersClick"/>
             <MenuFlyoutSeparator/>
             <MenuFlyoutItem Text="Arguments" Tag="ShowArguments" Click="OnShowArgumentsClick"/>
-            <MenuFlyoutItem Text="Row Buffers" Tag="ShowRowBuffers" Click="OnShowRowBuffersClick"/>
-            <MenuFlyoutItem Text="Batches" Tag="ShowBatches" Click="OnShowBatchesClick"/>
         </MenuFlyout>
 
         <MenuFlyout x:Key="TreeBackgroundMenu">
@@ -212,22 +210,6 @@
                         VerticalAlignment="Center"
                         RightTapped="OnNodeRightTapped"
                         ContextFlyout="{StaticResource CallFrameMenu}">
-                <Border Width="8"
-                        Height="8"
-                        VerticalAlignment="Center"
-                        Background="{ThemeResource SystemFillColorCriticalBrush}"
-                        ToolTipService.ToolTip="Row Buffers"
-                        Tapped="OnNodeRowBuffersTapped"
-                        Visibility="{x:Bind ((model:CallStackNode)Content).HasRowBuffers, Converter={StaticResource BoolToVisibilityConverter}}"/>
-
-                <Border Width="8"
-                        Height="8"
-                        VerticalAlignment="Center"
-                        Background="{ThemeResource SystemFillColorAttentionBrush}"
-                        ToolTipService.ToolTip="Batches"
-                        Tapped="OnNodeBatchesTapped"
-                        Visibility="{x:Bind ((model:CallStackNode)Content).HasBatches, Converter={StaticResource BoolToVisibilityConverter}}"/>
-
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Border Background="#61B0E3"
                             CornerRadius="{x:Bind ((model:CallStackNode)Content).HasOperator, Converter={StaticResource CategoryBadgeCornerConverter}}"
@@ -301,22 +283,6 @@
                         VerticalAlignment="Center"
                         RightTapped="OnNodeRightTapped"
                         ContextFlyout="{StaticResource CallFrameMenu}">
-                <Border Width="8"
-                        Height="8"
-                        VerticalAlignment="Center"
-                        Background="{ThemeResource SystemFillColorCriticalBrush}"
-                        ToolTipService.ToolTip="Row Buffers"
-                        Tapped="OnNodeRowBuffersTapped"
-                        Visibility="{x:Bind ((model:CallStackNode)Content).HasRowBuffers, Converter={StaticResource BoolToVisibilityConverter}}"/>
-
-                <Border Width="8"
-                        Height="8"
-                        VerticalAlignment="Center"
-                        Background="{ThemeResource SystemFillColorAttentionBrush}"
-                        ToolTipService.ToolTip="Batches"
-                        Tapped="OnNodeBatchesTapped"
-                        Visibility="{x:Bind ((model:CallStackNode)Content).HasBatches, Converter={StaticResource BoolToVisibilityConverter}}"/>
-
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Border Background="#61B0E3"
                             CornerRadius="{x:Bind ((model:CallStackNode)Content).HasOperator, Converter={StaticResource CategoryBadgeCornerConverter}}"
@@ -501,10 +467,13 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <callStack:CallSearchBar x:Name="SearchBar"
-                                 Grid.Row="0"
-                                 IsDataFilterVisible="True"
-                                 CallStack="{x:Bind ViewModel.Query.CallStack, Mode=OneWay}"/>
+        <StackPanel Grid.Row="0">
+            <callStack:CallSearchBar x:Name="SearchBar"
+                                     MatchCount="{x:Bind ViewModel.Tree.SearchMatchCount, Mode=OneWay}"/>
+
+            <callStack:CategoryFilterPanel x:Name="CategoryFilter"
+                                           CallStack="{x:Bind ViewModel.Query.CallStack, Mode=OneWay}"/>
+        </StackPanel>
 
         <Grid x:Name="FilterHeader"
               Grid.Row="1"

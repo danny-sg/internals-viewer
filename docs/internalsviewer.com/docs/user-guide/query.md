@@ -38,7 +38,7 @@ The lock categories, **Waits** and **Latches** also filter what is already loade
 
 ## Exporting a run
 
-**Export to file** saves the last run to an `.ivtrace` file - the SQL, the messages, the execution plan, the captured events and log records, and the call tree. For a [Full Trace](/docs/user-guide/query/FullTrace) run it also saves what the replay produced - the call tree, the Flame Chart and every call's arguments - but not the recording itself, so a Full Trace can be looked at again without recording it again. It is available once a query has run, and for a Full Trace run once the recording has loaded. The result rows are not saved.
+**Export to file** saves the last run to an `.ivtrace` file - the SQL, the messages, the execution plan, the captured events and log records, and the call tree. For a [Full Trace](/docs/user-guide/query/FullTrace) run it also saves what the replay produced - the call tree, the Trace Timeline and every call's arguments - but not the recording itself, so a Full Trace can be looked at again without recording it again. It is available once a query has run, and for a Full Trace run once the recording has loaded. The result rows are not saved.
 
 **Import from file** opens a saved run in the current Query tab, in place of whatever was there, and puts its SQL in the editor. Messages starts with the server and database it was exported from, followed by the messages from the original run.
 
@@ -64,7 +64,7 @@ The **View** menu opens additional panes:
 - **Events** - the raw list of captured events behind the timeline - see [Events](/docs/user-guide/query/Events)
 - **Call Tree** - the query's call stacks merged into one tree, with **Members** and **Symbols** beside it on its submenu - see [Call Stack](/docs/user-guide/query/CallStack)
 - **Timeline** - the replay timeline - see [Timeline](/docs/user-guide/query/Timeline)
-- **Flame Chart** - every call recorded by **Record Full Trace** on the Trace menu, which takes the Timeline's place while it is on - see [Flame Chart](/docs/user-guide/query/FlameChart)
+- **Trace Timeline** - every call recorded by **Record Full Trace** on the Trace menu, which takes the Timeline's place while it is on - see [Trace Timeline](/docs/user-guide/query/TraceTimeline)
 - **Simulation** - steps through the query's plan operator by operator - see [Simulation](/docs/user-guide/query/Simulation)
 - **Reset Layout** - restores the default pane arrangement
 - **Instructions** - a quick reference for the view, with links that open panes and switch capture options
@@ -75,11 +75,11 @@ Pages and indexes opened from the trace - by double-clicking a timeline event, c
 
 **Record Full Trace** records each run with Microsoft's Time Travel Debugging while it is on, so the [Call Tree](/docs/user-guide/query/CallStack) holds every call the query made rather than the stacks sampled at each event - see [Full Trace](/docs/user-guide/query/FullTrace). It is for development and test instances only: it needs administrator consent, can restart the SQL Server service, slows the recorded query down considerably and writes very large files. The dialog shown when it is turned on explains the requirements, and the **Time Travel Warning** [setting](/docs/user-guide/settings#time-travel-warning) brings the dialog back once it has been dismissed. While it is on, a red **Full Trace** badge sits at the end of the menu bar - click it to turn recording off again.
 
-**Record Events** adds the normal event set to the recording, at the cost of a larger trace, and keeps the Timeline alongside the Flame Chart - see [Extended Events in a recording](/docs/user-guide/query/FullTrace#extended-events-in-a-recording).
-
 **Search symbols** is covered in [Searching Symbols](/docs/user-guide/query/CallStack#searching-symbols).
 
 **Custom Hooks** opens the Custom Hooks tab - see [Custom Hooks](/docs/user-guide/query/FullTrace#custom-hooks).
+
+**Operator Tracks** opens the Operator Tracks tab, which lists the tracks you have added to the Trace Timeline's operators - see [Operator tracks](/docs/user-guide/query/TraceTimeline#operator-tracks).
 
 ## Layout
 

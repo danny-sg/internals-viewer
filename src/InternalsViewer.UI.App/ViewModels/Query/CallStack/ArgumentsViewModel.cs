@@ -12,9 +12,7 @@ using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using Microsoft.Extensions.Logging;
 using InternalsViewer.Query.FullTrace.Arguments;
-using InternalsViewer.Query.FullTrace.Batches;
 using InternalsViewer.Query.FullTrace.Memory;
-using InternalsViewer.Query.FullTrace.RowBuffers;
 using System.Linq;
 using InternalsViewer.UI.App.Models;
 
@@ -24,8 +22,6 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
     : ObservableObject, IDisposable
 {
     private const string DefaultMessage = "Right click a frame in a Full Trace call tree and choose Show Arguments";
-
-    private const string RowBufferTitle = "Row Buffer";
 
     [ObservableProperty]
     private string _signature = string.Empty;
@@ -48,9 +44,6 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
     [ObservableProperty]
     private CallReference? _selectedCallReference;
-
-    [ObservableProperty]
-    private Func<ResultRow<long>, ResultDetails>? _rowDetails;
 
     [ObservableProperty]
     private int _callTableVersion;
@@ -89,11 +82,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
                           CallStackTree? tree = null,
                           IReadOnlyDictionary<ulong, IteratorTarget>? iterators = null,
                           HoBtAccessMap? hobtAccess = null,
-                          MemoryMap? memoryMap = null,
-                          RowBufferStore? rowBuffers = null,
-                          RowBufferDecoder? rowBufferDecoder = null,
-                          BatchStore? batches = null,
-                          BatchDecoder? batchDecoder = null)
+                          MemoryMap? memoryMap = null)
     {
         Cancel();
 
@@ -104,10 +93,6 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
                                 iterators ?? new Dictionary<ulong, IteratorTarget>(),
                                 hobtAccess ?? HoBtAccessMap.Empty,
                                 memoryMap ?? MemoryMap.Empty,
-                                rowBuffers ?? RowBufferStore.Empty,
-                                rowBufferDecoder,
-                                batches ?? BatchStore.Empty,
-                                batchDecoder,
                                 symbols,
                                 getHoBtName);
 
@@ -295,9 +280,6 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
             Layout = layout;
             LoggedCalls = calls;
             Included = included;
-            RowDetails = lookup.RowBuffers.HasRows(frame.Address, frame.Instance)
-                ? r => GetRowBufferDetails(lookup, frame, r)
-                : null;
             CallTable = table;
 
             if (GetRow(table, select) is { } row)
@@ -324,12 +306,6 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
     }
 
     private TraceArgumentCall? GetCall(int index) => index >= 0 && index < LoggedCalls.Count ? LoggedCalls[index] : null;
-
-    private ResultDetails GetRowBufferDetails(CallStoreLookup lookup, CallstackFrame frame, ResultRow<long> row)
-        => RowBufferDisplay.GetDetails(RowBufferTitle,
-                                       lookup.RowBuffers.GetRow(frame.Address, frame.Instance, (int)row.Id),
-                                       lookup.RowBufferDecoder,
-                                       IsDecoded);
 
     private static IReadOnlyList<int> Include(IReadOnlyList<int> included, int? call)
     {
@@ -433,7 +409,6 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
         LoggedCalls = [];
         Included = null;
         SelectedCall = null;
-        RowDetails = null;
         CallTable = null;
     }
 

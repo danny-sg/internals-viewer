@@ -1,5 +1,6 @@
-﻿using InternalsViewer.Query.Events.Properties;
-using InternalsViewer.Internals.Engine.Address;
+﻿using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Query.Events.Properties;
 
 namespace InternalsViewer.Query.Events.Reads;
 
@@ -23,9 +24,9 @@ public sealed partial record FileEvent : PageEngineEvent
     [EventProperty("Size", Type = EventPropertyType.Bytes)]
     public long Size { get; set; }
 
-    public PageAddress FromPageAddress => new(FileId, (int)(Offset / 8192));
+    public PageAddress FromPageAddress => new(FileId, (int)(Offset / PageData.Size));
 
-    public PageAddress ToPageAddress => new(FileId, (int)((Offset + Size) / 8192));
+    public PageAddress ToPageAddress => new(FileId, (int)((Offset + Size) / PageData.Size));
 
     public override string Description => $"File {(IsRead ? "Read" : "Write")} {PageAddress}";
 

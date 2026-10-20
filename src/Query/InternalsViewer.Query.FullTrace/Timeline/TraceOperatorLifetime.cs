@@ -12,6 +12,14 @@ public sealed record TraceOperatorLifetime(uint Thread,
                                            IReadOnlyList<TraceSpan> InstructionCalls,
                                            MemoryInUseCurve InUse)
 {
+    public double ConstructedPosition { get; init; } = PositionCalls[0].Start;
+
+    public double ConstructedInstructions { get; init; } = InstructionCalls[0].Start;
+
+    public double DestroyedPosition { get; init; } = PositionCalls[^1].End;
+
+    public double DestroyedInstructions { get; init; } = InstructionCalls[^1].End;
+
     private double[] PositionEnds { get; } = [.. PositionCalls.Select(c => c.End)];
 
     private double[] InstructionStarts { get; } = [.. InstructionCalls.Select(c => c.Start)];
@@ -24,6 +32,12 @@ public sealed record TraceOperatorLifetime(uint Thread,
     public double StartOf(TraceTimelineAxis axis) => Calls(axis)[0].Start;
 
     public double EndOf(TraceTimelineAxis axis) => Calls(axis)[^1].End;
+
+    public double GetConstructed(TraceTimelineAxis axis)
+        => axis == TraceTimelineAxis.Position ? ConstructedPosition : ConstructedInstructions;
+
+    public double GetDestroyed(TraceTimelineAxis axis)
+        => axis == TraceTimelineAxis.Position ? DestroyedPosition : DestroyedInstructions;
 
     public int FirstEndingAfter(TraceTimelineAxis axis, double value, int from = 0)
         => SortedSearch.FirstAfter(axis == TraceTimelineAxis.Position ? PositionEnds : InstructionEnds, value, from);

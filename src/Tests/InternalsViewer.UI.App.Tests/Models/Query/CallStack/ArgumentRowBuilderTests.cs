@@ -3,7 +3,6 @@ using System.Collections;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
-using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using InternalsViewer.Query.CallStack.Locators;
@@ -168,7 +167,7 @@ public class ArgumentRowBuilderTests
 
         var call = Call(0x100, 0, returnValue: 0x300) with
         {
-            Locators = [new Locator(LocatorReadResolver.ReturnRegister, LocatorValueType.Row, 0x0005_0001_0000_0150)]
+            Locators = [new Locator(ArgumentLayout.ReturnRegister, LocatorValueType.Row, 0x0005_0001_0000_0150)]
         };
 
         var table = ArgumentRowBuilder.BuildTable(layout, [call]);
@@ -181,7 +180,7 @@ public class ArgumentRowBuilderTests
     {
         var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["ColumnStoreObjectKey const &"], FunctionType.Member, "void"));
 
-        var key = Locator.ColumnStoreObject(1, 5 | (0x02A7ul << 32), 0x0100 | (2ul << 32), 3 | (1ul << 32));
+        var key = ColumnStoreObjectLocator.Create(1, 5 | (0x02A7ul << 32), 0x0100 | (2ul << 32), 3 | (1ul << 32));
 
         var call = Call(0x100, 0x200) with { Locators = [key] };
 

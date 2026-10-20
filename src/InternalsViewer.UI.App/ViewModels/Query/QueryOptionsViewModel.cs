@@ -80,12 +80,6 @@ public sealed partial class QueryOptionsViewModel : ObservableObject
         set => SetOption(_options.RecordTimeTravel, value, v => _options.RecordTimeTravel = v);
     }
 
-    public bool RecordTraceEvents
-    {
-        get => _options.RecordTraceEvents;
-        set => SetOption(_options.RecordTraceEvents, value, v => _options.RecordTraceEvents = v);
-    }
-
     /// <summary>Whether any lock category is selected, and therefore locks are shown</summary>
     public bool ShowLocks => _options.IncludeLock;
 

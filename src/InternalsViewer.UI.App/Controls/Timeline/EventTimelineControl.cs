@@ -269,8 +269,6 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
 
     public event Action<EngineEvent>? EventSelected;
 
-    public event Action<EngineEvent?>? CurrentEventChanged;
-
     public event Action<EngineEvent>? EventDoubleClicked;
 
     public event Action<ExecutionOperatorEvent>? IndexOpenRequested;

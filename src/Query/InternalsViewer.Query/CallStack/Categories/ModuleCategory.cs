@@ -40,9 +40,9 @@ public enum ModuleCategory : byte
     System,
 
     [Category(
-    "Expression Services",
-    Description = "Expression evaluation and scalar computation infrastructure",
-    ForegroundColor = "#8E44AD")]
+        "Expression Services",
+        Description = "Expression evaluation and scalar computation infrastructure",
+        ForegroundColor = "#8E44AD")]
     ExpressionServices,
 
     [Category(

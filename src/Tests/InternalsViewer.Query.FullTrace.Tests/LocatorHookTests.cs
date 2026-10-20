@@ -2,9 +2,11 @@ using System.Reflection.PortableExecutable;
 using System.Text;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.CallStack.Locators;
+using InternalsViewer.Query.CallStack.Locators.Enums;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Arguments;
 
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRows;
 
@@ -70,7 +72,7 @@ public class LocatorHookTests
     [Fact]
     public void A_Return_Value_Is_Read_When_The_Call_Returns()
     {
-        var register = LocatorReadResolver.ReturnRegister;
+        var register = ArgumentLayout.ReturnRegister;
 
         var replay = new FakeTraceReplay().Write(Pointer, Page336);
 
@@ -90,7 +92,7 @@ public class LocatorHookTests
     [Fact]
     public void A_Call_Left_Without_Returning_Reads_Nothing_At_Return()
     {
-        var register = LocatorReadResolver.ReturnRegister;
+        var register = ArgumentLayout.ReturnRegister;
 
         var store = new TraceCallStore.Builder();
 
@@ -182,7 +184,59 @@ public class LocatorHookTests
 
         var locator = Replay(new LocatorRead(Function, 1, false, LocatorValueType.LogSequenceNumber), replay).GetLocator(1);
 
-        Assert.Equal((new LogSequenceNumber(37, 152, 2), "(37:152:2)"), (locator?.Lsn, locator?.ToString()));
+        Assert.NotNull(locator);
+
+        Assert.Equal((new LogSequenceNumber(37, 152, 2), "(37:152:2)"), (new LogSequenceNumberLocator(locator.Value).Lsn, locator.ToString()));
+    }
+
+    [Fact]
+    public void An_Inline_Variant_Shows_Its_Value()
+    {
+        var replay = new FakeTraceReplay().Write(Pointer, (byte)0).Write(Pointer + 8, 42ul).Write(Pointer + 0x10, 0u);
+
+        var locator = Replay(new LocatorRead(Function, 1, false, LocatorValueType.Variant), replay).GetLocator(1);
+
+        Assert.NotNull(locator);
+
+        var variant = new VariantLocator(locator.Value);
+
+        Assert.Equal((VariantStatus.Value, 0u, "0x2A (42)"), (variant.Status, variant.Length, locator.ToString()));
+    }
+
+    [Fact]
+    public void A_Null_Variant_Shows_Null()
+    {
+        var replay = new FakeTraceReplay().Write(Pointer, (byte)3).Write(Pointer + 8, 0ul).Write(Pointer + 0x10, 0u);
+
+        Assert.Equal("NULL", Replay(new LocatorRead(Function, 1, false, LocatorValueType.Variant), replay).GetLocator(1)?.ToString());
+    }
+
+    [Fact]
+    public void A_Variant_Held_By_Reference_Shows_Its_Pointer()
+    {
+        var replay = new FakeTraceReplay().Write(Pointer, (byte)0).Write(Pointer + 8, Inner).Write(Pointer + 0x10, 12u);
+
+        var locator = Replay(new LocatorRead(Function, 1, false, LocatorValueType.Variant), replay).GetLocator(1);
+
+        Assert.NotNull(locator);
+
+        Assert.Equal((12u, $"0x{Inner:X}"), (new VariantLocator(locator.Value).Length, locator.ToString()));
+    }
+
+    [Fact]
+    public void A_Variant_Whose_Length_Is_Not_In_The_Trace_Is_Read_As_Inline()
+    {
+        var replay = new FakeTraceReplay().Write(Pointer, (byte)0).Write(Pointer + 8, 1ul);
+
+        Assert.Equal("0x1 (1)", Replay(new LocatorRead(Function, 1, false, LocatorValueType.Variant), replay).GetLocator(1)?.ToString());
+    }
+
+    [Fact]
+    public void A_Variant_Without_Its_Status_In_The_Trace_Is_Not_Read()
+    {
+        var replay = new FakeTraceReplay().Write(Pointer + 8, 1ul);
+
+        Assert.Null(Replay(new LocatorRead(Function, 1, false, LocatorValueType.Variant), replay).GetLocator(1));
     }
 
     private static TraceArgumentCall Replay(LocatorRead read,

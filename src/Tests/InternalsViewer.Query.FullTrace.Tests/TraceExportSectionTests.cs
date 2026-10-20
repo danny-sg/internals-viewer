@@ -226,7 +226,7 @@ public class TraceExportSectionTests
 
         timeline.SetMemory([new MemoryAllocation(7, 22, 23, 100, 0xA)], [new MemoryFree(7, 31, 32, 0xA)]);
 
-        timeline.SetLifetimes(IteratorLifetimeBuilder.Build(timeline, [scan]));
+        timeline.SetLifetimes(IteratorLifetimeBuilder.Build(timeline, [scan], [], []));
 
         var storeBuilder = new TraceCallStore.Builder();
 

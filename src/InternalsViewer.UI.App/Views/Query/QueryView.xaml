@@ -77,8 +77,8 @@
                                 <ToggleMenuFlyoutItem Text="Timeline"
                                    IsChecked="{x:Bind ViewModel.Layout.IsTimelineVisible, Mode=TwoWay}"
                                    IsEnabled="{x:Bind ViewModel.Layout.CanShowEventViews, Mode=OneWay}"/>
-                                <ToggleMenuFlyoutItem Text="Flame Chart"
-                                   IsChecked="{x:Bind ViewModel.Layout.IsFlameChartVisible, Mode=TwoWay}"
+                                <ToggleMenuFlyoutItem Text="Trace Timeline"
+                                   IsChecked="{x:Bind ViewModel.Layout.IsTraceTimelineVisible, Mode=TwoWay}"
                                    IsEnabled="{x:Bind ViewModel.Layout.IsTrace, Mode=OneWay}"/>
                                 <ToggleMenuFlyoutItem Text="Simulation"
                                    IsChecked="{x:Bind ViewModel.IsSimulationVisible, Mode=TwoWay}"/>
@@ -147,14 +147,13 @@
                                 <ToggleMenuFlyoutItem Text="Record Full Trace"
                                                       IsChecked="{x:Bind ViewModel.QueryOptions.RecordTimeTravel, Mode=OneWay}"
                                                       Click="OnRecordTimeTravelClick"/>
-                                <ToggleMenuFlyoutItem Text="Record Events"
-                                                      IsChecked="{x:Bind ViewModel.QueryOptions.RecordTraceEvents, Mode=TwoWay}"
-                                                      IsEnabled="{x:Bind ViewModel.QueryOptions.RecordTimeTravel, Mode=OneWay}"/>
                                 <MenuFlyoutSeparator/>
                                 <MenuFlyoutItem Text="Search symbols"
                                                 Command="{x:Bind ViewModel.SearchSymbolsCommand}"/>
                                 <MenuFlyoutItem Text="Custom Hooks"
                                                 Command="{x:Bind ViewModel.ShowCustomHooksCommand}"/>
+                                <MenuFlyoutItem Text="Operator Tracks"
+                                                Command="{x:Bind ViewModel.ShowOperatorTracksCommand}"/>
                             </MenuBarItem>
 
                         </MenuBar>

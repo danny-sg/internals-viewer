@@ -39,6 +39,7 @@ public static class ArgumentValue
         ["LatchBase::LATCH_TYPE"] = new(GetEnumNames<LatchMode>),
         ["LatchBase::LatchClass"] = new(GetEnumNames<LatchClass>),
         ["BTreeMgr::VR_STATUS"] = new(GetEnumNames<BTreeRootStatus>),
+        ["BTreeMgr::BTREE_SEEK_OPTION"] = new(GetEnumNames<BTreeSeekOption>),
         ["LCK_MODE"] = new(GetEnumNames<LockMode>),
         ["LCK_RESULT"] = new(GetEnumNames<LockResult>),
         ["LockRes::LockResourceType"] = new(GetEnumNames<LockResourceType>),
@@ -77,7 +78,6 @@ public static class ArgumentValue
         "ACCESSTYPE",
         "AccessMode",
         "BPool::ShortageOption",
-        "BTreeMgr::BTREE_SEEK_OPTION",
         "BTreeMgr::BTREE_TRAVERSAL_MODE",
         "LatchBase::AcquireResult",
         "std::align_val_t"
@@ -191,6 +191,34 @@ public static class ArgumentValue
         }
 
         return Read(type, raw, withHex: true) ?? $"0x{raw:X}";
+    }
+
+    public static Int128 ToInteger(string type, ulong raw)
+    {
+        if (type == "this" || IsPointer(type))
+        {
+            return raw;
+        }
+
+        var normalised = Normalise(type);
+
+        if (normalised.StartsWith(FunctionSignature.EnumPrefix, StringComparison.Ordinal))
+        {
+            return (int)raw;
+        }
+
+        return normalised switch
+        {
+            "bool" or "unsigned char" or "unsigned __int8" => (byte)raw,
+            "char" or "signed char" or "__int8" => (sbyte)raw,
+            "short" or "__int16" => (short)raw,
+            "unsigned short" or "unsigned __int16" or "wchar_t" => (ushort)raw,
+            "int" or "long" or "__int32" or "enum" => (int)raw,
+            "unsigned int" or "unsigned long" or "unsigned __int32" => (uint)raw,
+            "__int64" or "long long" => (long)raw,
+            HoBtIdType => (Int128)raw << HoBtIdShift,
+            _ => raw
+        };
     }
 
     public static string? Decode(string type, ulong raw)

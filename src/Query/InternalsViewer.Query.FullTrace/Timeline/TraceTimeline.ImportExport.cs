@@ -1,5 +1,4 @@
 using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.Events;
 using InternalsViewer.Query.FullTrace.Export;
 using InternalsViewer.Query.FullTrace.Memory;
 
@@ -92,58 +91,5 @@ public sealed partial class TraceTimeline
         }
 
         Memory.Write(writer);
-    }
-
-    internal void WriteEventLinks(BinaryWriter writer, Func<CallStackNode, int> idOf)
-    {
-        writer.Write(EventLinks.Count);
-
-        foreach (var link in EventLinks)
-        {
-            writer.Write(link.Event.SequenceId);
-
-            writer.Write(link.Node is { } node ? idOf(node) : -1);
-
-            writer.Write(link.ThreadId);
-
-            writer.Write(link.Position);
-
-            writer.Write(link.Instructions);
-        }
-    }
-
-    internal static List<TraceEventLink> ReadEventLinks(BinaryReader reader,
-                                                        IReadOnlyList<CallStackNode> nodesById,
-                                                        IEnumerable<EngineEvent> events)
-    {
-        var bySequence = events.BySequence();
-
-        var count = reader.ReadInt32();
-
-        var links = new List<TraceEventLink>(count);
-
-        for (var index = 0; index < count; index++)
-        {
-            var sequence = reader.ReadInt32();
-
-            var node = reader.ReadInt32();
-
-            var thread = reader.ReadUInt32();
-
-            var position = reader.ReadDouble();
-
-            var instructions = reader.ReadDouble();
-
-            if (bySequence.TryGetValue(sequence, out var engineEvent))
-            {
-                links.Add(new TraceEventLink(engineEvent,
-                                             node >= 0 && node < nodesById.Count ? nodesById[node] : null,
-                                             thread,
-                                             position,
-                                             instructions));
-            }
-        }
-
-        return links;
     }
 }

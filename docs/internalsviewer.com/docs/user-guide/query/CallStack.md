@@ -5,7 +5,7 @@ Enable **Call Stack** in the [Events menu](/docs/user-guide/query#events-menu) a
 The tree decodes one row per frame:
 
 - **Module** badge - which part of SQL Server the frame belongs to (Storage Engine, Query Processor, SQL OS, etc.)
-- **Category** badge - what the frame is doing, classified by Internals Viewer (Query Operator, Row Access, Index Access, Page Access, Latching, Buffer Pool, etc.)
+- **Category** badge - what the frame is doing, classified by Internals Viewer (Query Operator, Rowset, B-Tree Navigation, Page Access, Latching, Buffer Pool, etc.)
 - **Symbol** - the function itself as `module!Class::Method`, resolved from SQL Server's debugging symbols, with the offset of the call within the function
 - **Target** badge - on an operator's frames, the table or index the operator works on, so two scans or seeks running the same code can be told apart. Its tooltip names the operator and its node in the plan
 
@@ -31,11 +31,9 @@ Turning Focus off shows the full call tree for the whole query, from the top-lev
 
 ## Search and navigation
 
-The search box filters the tree to matching frames and the calls that lead to them. A match keeps everything beneath it, collapsed, so its callees are still there to open. The tree opens down to each match, and further only where there is a deeper match. Clearing the search keeps the selected frame, with the tree open down to it.
+The search box filters the tree to matching frames and the calls that lead to them. A match keeps everything beneath it, collapsed, so its callees are still there to open. The tree opens down to each match, and further only where there is a deeper match. The number of matching frames shows beside the box, or **No Results** when nothing matches. Clearing the search keeps the selected frame, with the tree open down to it.
 
-For a [Full Trace](/docs/user-guide/query/FullTrace) run, **Batches** and **Rows** beside the search box filter the tree to the frames that handed back [batches](#batches) or rows, and the calls that lead to them. With both on the tree keeps either, and with both off it is whole again. They work alongside the search, keeping only the frames that pass both.
-
-Going to a call - from **Arguments**, a **Find** tab or the [Flame Chart](/docs/user-guide/query/FlameChart) - turns Focus off, selects the frame and opens the tree down to it. Nothing else is hidden, so the rest of the tree stays where it was. A frame the tree does not normally show because its category is hidden is shown dimmed along with the calls that lead to it. The dimmed frames go again when you select something outside them. With **Crop To Query** on, the tree stays cropped. A call that ran outside the query, such as one found by **Find** during compilation, opens in **Arguments** but is not added to the tree.
+Going to a call - from **Arguments**, a **Find** tab or the [Trace Timeline](/docs/user-guide/query/TraceTimeline) - turns Focus off, selects the frame and opens the tree down to it. Nothing else is hidden, so the rest of the tree stays where it was. A frame the tree does not normally show because its category is hidden is shown dimmed along with the calls that lead to it. The dimmed frames go again when you select something outside them. With **Crop To Query** on, the tree stays cropped. A call that ran outside the query, such as one found by **Find** during compilation, opens in **Arguments** but is not added to the tree.
 
 Right-clicking a node gives:
 
@@ -50,7 +48,7 @@ A frame whose symbol did not resolve is copied as `module+offset`. Right-clickin
 
 ## Filtering by category
 
-The filter button beside the search box opens a row of category badges, one for each category found in the tree. Click a badge to hide or show that category, **All** to show or hide every one at once, and **Defaults** to go back to the categories hidden by default. Those are the infrastructure categories - Compilation, Execution Tree, Expression Evaluation, Metadata, Networking, Query Binding, Query Store, Security, Tracing and Transaction Management - so the frames doing the query's work stand out. The choice is remembered between sessions, and the [Flame Chart](/docs/user-guide/query/FlameChart#search)'s search bar shares it.
+The filter button at the right of the Call Tree's command bar opens a row of category badges beneath the search box, one for each category found in the tree. Click a badge to hide or show that category, **All** to show or hide every one at once, and **Defaults** to go back to the categories hidden by default. Those are the infrastructure categories - Compilation, Execution Tree, Expression Evaluation, Metadata, Networking, Query Binding, Query Store, Security, Tracing and Transaction Management - so the frames doing the query's work stand out. The choice is remembered between sessions, and the [Trace Timeline](/docs/user-guide/query/TraceTimeline#search)'s filter button shares it.
 
 ![The category badges open beneath the search box, with the hidden categories struck through](/docs/user-guide/images/call-stack-category-filter.png)
 
@@ -72,7 +70,7 @@ A [Full Trace](/docs/user-guide/query/FullTrace) logs every call it replays, wit
 
 The header gives the function's signature, with its return type. Below it a table lists every call - **Call**, **Thread**, a column for each argument named from the signature (`this` first for a member function) and **Return**. Each argument's column header gives its type and the register it was read from. An iterator's calls are kept apart per object, so that two operators of the same class stay separate, and for an iterator method the table holds the calls on that frame's object only.
 
-Selecting a call outlines it in the [Flame Chart](/docs/user-guide/query/FlameChart), and clicking a bar in the Flame Chart, or choosing **Open Call Tree** on its right-click menu, selects its call here.
+Selecting a call outlines it in the [Trace Timeline](/docs/user-guide/query/TraceTimeline), and clicking a bar in the Trace Timeline, or choosing **Open Call Tree** on its right-click menu, selects its call here.
 
 ![The Arguments tab beside a Full Trace call tree, listing the calls of CQueryScan::GetRow on one iterator](/docs/user-guide/images/call-stack-arguments.png)
 
@@ -85,6 +83,7 @@ Some values are read further than the register:
 - **Pages, rows and columnstore objects** - an argument that points at a page id, a row id or a columnstore object key, or at a handle or reference to a page in the buffer pool, shows the page, row or object instead of the address. Click a page to open it.
 - **Log sequence numbers** - an argument that points at an `LSN` shows the LSN, such as `(37:152:2)`, in the same form as a page header's `m_lsn`.
 - **Strings** - a `char const *` or `wchar_t const *` argument shows the text it points at, such as `dbo.Orders`, in the string colour the query editor uses. Only the start of a long string is read, and it is marked **Truncated**. Text the recording never read is taken from the SQL Server file it was compiled into, such as a source file name passed to an allocation. Any other text the recording had not seen shows as the address.
+- **Variants** - an argument that points at a `CXVariant`, the slot SQL Server holds a single value in while a query runs, is read when the call returns, so an output variant shows the value the call wrote. It shows `NULL`, a value held in the variant itself with its decimal reading, such as `0x2A (42)`, or the address of the data when it is held elsewhere.
 - **Data types** - an argument that points at a `CTypeInfo`, SQL Server's description of a column or expression type, shows the type as it is written in T-SQL, such as `nvarchar(128)`, `decimal(38,0)` or `int NOT NULL`.
 - **Values behind a pointer** - a pointer or reference to a simple value, such as a number, a flag or an enum, shows the value it points at rather than the address.
 - **Tables and indexes** - a HoBt id is followed by the table and index it belongs to. So is the address of a `HoBtAccess`, the object SQL Server uses to read one table or index, whether it is the `this` of a call or passed as an argument. The trace knows which HoBt each one was set up for, from its `Init` call to its destructor, and `HoBtAccess::Init`'s full HoBt id parameter is named **hobt_id**.
@@ -102,11 +101,9 @@ Right-click the signature above the table and choose **Copy Signature** to copy 
 
 Right-click a cell for what can be done with its call and value:
 
-- **Go To Call** - shows the call in the call tree and the Flame Chart
-- **Call Stack** - opens a tab beside **Arguments** listing the calls in progress at the start of the call, on every thread, as the Flame Chart's [Call Stack](/docs/user-guide/query/FlameChart#call-stack) does. The tab stays at that point, so several can be open side by side. Clicking a call in it selects the call in the Flame Chart without leaving the tab
-- **Row Buffers** - for a function that handed back rows, opens its **Row Buffers** tab, the same as the red square beside it in the call tree
-- **Batches** - for a batch mode operator that handed back batches, opens its **Batches** tab, the same as the blue square beside it in the call tree
-- **Scope** - scopes the Flame Chart to the call's function
+- **Go To Call** - shows the call in the call tree and the Trace Timeline
+- **Call Stack** - opens a tab beside **Arguments** listing the calls in progress at the start of the call, on every thread, laid out like the Trace Timeline's [Call Stack](/docs/user-guide/query/TraceTimeline#call-stack). The tab stays at that point, so several can be open side by side. Clicking a call in it selects the call in the Trace Timeline without leaving the tab
+- **Scope** - scopes the Trace Timeline to the call's function
 - **Custom Hook** - for an argument, or the value the call returned, saves a hook that reads the bytes it points to on later runs - see [Custom Hooks](/docs/user-guide/query/FullTrace#custom-hooks)
 - **Go To Origin** - for an object in the trace's map, goes to the call that created it, the same as clicking the link
 - **Open In The Columnstore Viewer** - for a columnstore object
@@ -114,22 +111,6 @@ Right-click a cell for what can be done with its call and value:
 - **Open The Index** - for a HoBt id or a `HoBtAccess`, opens the index it belongs to
 - **Show The** iterator - for an iterator's address, names the operator it was matched to, such as **Show The Clustered Index Seek (Node 3) Iterator**, or the iterator's class when it was not matched, and selects it in the call tree and the plan. So the `this` of a `GetRow` call says which operator it belongs to
 - **Find** - for a pointer, a `this` or a large value, searches the whole log for it
-
-## Batches
-
-A batch mode operator hands each batch to the operator above it through `BpGetBatchData`. Full Trace reads the batch at that point, so the same batch is read again by each operator it passes through, and each read shows what that operator handed on. A Filter's read has the narrower selection, and a Compute Scalar's read has the vector it added. An operator fills a batch in its `BpGetNextBatch` call and hands it over in the `BpGetBatchData` call that follows, so the `BpGetNextBatch` frame shows the same batch.
-
-A blue square beside a call tree frame means the operator handed back batches. Click it, or choose **Batches** from the frame's or a call's right-click menu, to open the operator's **Batches** tab. It lists one row per batch: the **Call** that handed it back, the **Thread**, the **Batch Size** - the most rows the batch can hold - and how many **Vectors** and **Selected** rows it held. A batch is one object for its whole journey up the plan, so each operator's read is linked to the read of the operator below it, and **Selected** shows the rows it kept out of the rows it was given, such as **10/525** for a Filter that kept 10. Selecting a row selects its call, the same as an **Arguments** row, and right-clicking it gives **Call Stack**.
-
-Selecting a row also shows its batch beneath the list, laid out like the batch view in a simulation. Drag the splitter between them to change their heights. A batch is only read when its row is selected:
-
-- **Data Vectors** - a column per vector, in the order the operator above asked for them, with a row for every row the operator was given. Each column header shows the vector's number, and below it the operator's output column it holds, or **Column** and its number when it could not be found. Rows the operator removed from the selection are tinted red, and rows that were not selected when it was given the batch are shaded. A row past the last one the operator kept is read from the read of the operator below it, which the cell's details say
-- **Selection Vector** - the row numbers the batch has selected, in order. A Filter narrows a batch by shortening this list rather than moving any data, so its read of a batch has fewer entries than the read from the operator below it
-- **Deep Data** - every value too large to fit its slot, with the vector and row it belongs to, its address, length and bytes
-
-A vector holding one value for every row has a green **Pure** badge in its header and its cells are tinted. Only the first row holds the value, so the others are dimmed.
-
-Each cell shows the normalized slot as it was read, or with **Decode** on, the value it stands for. A NULL shows as `NULL`, a value read from deep data shows as that value, and a dictionary reference shows as its dictionary and entry, such as **Dictionary 128 Entry 230**. Dictionary 0 is the query's own dictionary, and from 128 up they are the column store's dictionaries. Click a cell for its details beneath the table: the slot in hex and as a number, its type, the column's data type and normalization domain, and the decoded value, plus the dictionary and entry, or the deep data bytes.
 
 ## Finding a value
 
@@ -146,7 +127,7 @@ Each call reads as the function's signature with the values it was passed in pla
 
 **Decode** works here as it does in the Arguments table, and the two share the setting. Decoded readings are in the normal font and hex in monospace, and hovering over a value shows its other form.
 
-Right-click a value in a call and choose **Find** to open a tab for that value in turn. Clicking a call shows it in the call tree and the [Flame Chart](/docs/user-guide/query/FlameChart), and selects it in **Arguments**. Following a pointer like this traces an object through the query - what created it, what was done to it and what it was handed to - and then the same for every object it met along the way. When nothing matches, the heading reads **No References To** and the value.
+Right-click a value in a call and choose **Find** to open a tab for that value in turn. Clicking a call shows it in the call tree and the [Trace Timeline](/docs/user-guide/query/TraceTimeline), and selects it in **Arguments**. Following a pointer like this traces an object through the query - what created it, what was done to it and what it was handed to - and then the same for every object it met along the way. When nothing matches, the heading reads **No References To** and the value.
 
 <!-- Screenshot (new): a Find tab beside Arguments - Type, Called by and Referenced by, with one function expanded to its calls, each a signature with its values in place -->
 

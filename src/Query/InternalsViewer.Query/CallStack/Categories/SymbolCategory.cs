@@ -27,17 +27,17 @@ public enum SymbolCategory : byte
 
     [Category(
         "SQL OS Scheduling",
-        Description = "Schedulers, tasks and execution scheduling",
+        Description = "Schedulers, tasks, workers and the points where a task yields or sleeps",
         ForegroundColor = "#7030A0",
         IsInfrastructure = true)]
     Scheduling,
 
     [Category(
-        "Worker Management",
-        Description = "Workers and thread execution infrastructure",
-        ForegroundColor = "#8064A2",
+        "SQL OS Synchronisation",
+        Description = "Mutexes, semaphores, events, spinlocks and the waits on them",
+        ForegroundColor = "#7030A0",
         IsInfrastructure = true)]
-    WorkerManagement,
+    Synchronisation,
 
     [Category(
         "I/O Infrastructure",
@@ -48,7 +48,7 @@ public enum SymbolCategory : byte
 
     [Category(
         "Query Execution",
-        Description = "Statement and execution context processing",
+        Description = "Statement and execution context processing and the execution tree",
         ForegroundColor = "#5B9BD5")]
     QueryExecution,
 
@@ -60,21 +60,21 @@ public enum SymbolCategory : byte
 
     [Category(
         "Query Operator",
-        Description = "Query plan operators such as compute scalar, joins and sorts",
+        Description = "Query plan operators such as scans, seeks, joins, sorts and hash matches",
         ForegroundColor = "#00B050")]
     QueryOperator,
 
     [Category(
-        "Physical Operator",
-        Description = "Query plan physical operators such as scans and seeks",
+        "Batch Operator",
+        Description = "Batch mode operators, their hash tables, aggregation and spills",
         ForegroundColor = "#01873e")]
-    PhysicalOperator,
+    BatchOperator,
 
     [Category(
-        "Row Access",
-        Description = "Rowset and row retrieval infrastructure",
+        "Rowset",
+        Description = "The rowset interface operators call, the heap and index sessions behind it, and record decoding",
         ForegroundColor = "#70AD47")]
-    RowAccess,
+    Rowset,
 
     [Category(
         "Expression Evaluation",
@@ -83,22 +83,10 @@ public enum SymbolCategory : byte
     ExpressionEvaluation,
 
     [Category(
-        "Execution Tree",
-        Description = "Context execution tree",
-        ForegroundColor = "#9966CC")]
-    ExecutionTree,
-
-    [Category(
-        "Dataset",
-        Description = "Dataset and session abstractions",
-        ForegroundColor = "#92D050")]
-    Dataset,
-
-    [Category(
-        "Index Access",
-        Description = "B-Tree navigation and index access",
+        "B-Tree Navigation",
+        Description = "B-tree navigation from the root to the page holding a key",
         ForegroundColor = "#4472C4")]
-    IndexAccess,
+    BTreeNavigation,
 
     [Category(
         "Page Access",
@@ -107,22 +95,10 @@ public enum SymbolCategory : byte
     PageAccess,
 
     [Category(
-        "Buffer Manager",
-        Description = "Buffer access and page management",
-        ForegroundColor = "#1F497D")]
-    BufferManager,
-
-    [Category(
         "Buffer Pool",
-        Description = "Buffer cache management",
-        ForegroundColor = "#17375E")]
+        Description = "Buffer cache management, buffer descriptors and dirty pages",
+        ForegroundColor = "#0026E4")]
     BufferPool,
-
-    [Category(
-        "File Control Block",
-        Description = "Storage engine file and object access structures",
-        ForegroundColor = "#76923C")]
-    FileControlBlock,
 
     [Category(
         "Locking",
@@ -146,14 +122,14 @@ public enum SymbolCategory : byte
     [Category(
         "Memory",
         Description = "Memory objects, allocators, clerks and query memory grants",
-        ForegroundColor = "#A05EB5",
+        ForegroundColor = "#B2BEC3",
         IsInfrastructure = true)]
     Memory,
 
     [Category(
-    "LOB Storage",
-    Description = "Large object (LOB) and off-row data access",
-    ForegroundColor = "#4BACC6")]
+        "LOB Storage",
+        Description = "Large object (LOB) and off-row data access",
+        ForegroundColor = "#4BACC6")]
     LargeObjectStorage,
 
     [Category(
@@ -233,7 +209,7 @@ public enum SymbolCategory : byte
 
     [Category(
         "Storage",
-        Description = "Storage/Recovery context",
+        Description = "Storage and recovery context, HoBts, worktables and file control blocks",
         ForegroundColor = "#76923C")]
     Storage,
 

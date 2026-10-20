@@ -1,5 +1,8 @@
 ﻿using InternalsViewer.Query.FullTrace.CustomHooks;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.UI.App.Services.Query.Simulation;
+using InternalsViewer.UI.App.ViewModels.Query.OperatorTracks;
+using InternalsViewer.UI.App.Services.Query;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Memory;
@@ -18,10 +21,8 @@ using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Query;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace;
-using InternalsViewer.Query.FullTrace.RowBuffers;
-using InternalsViewer.Query.FullTrace.RowBuffers.HashRows;
 using InternalsViewer.Query.FullTrace.Arguments;
-using InternalsViewer.Query.FullTrace.Batches;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Events.Latches;
@@ -31,6 +32,7 @@ using InternalsViewer.Query.Events.Properties;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Controls.SqlEditor;
+using InternalsViewer.UI.App.Controls.Trace;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Columnstore;
@@ -80,6 +82,7 @@ using System.Text.Json;
 using InternalsViewer.Query.Export;
 using InternalsViewer.UI.App.Helpers;
 using Windows.Storage.Pickers;
+using SkiaSharp;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
@@ -94,7 +97,8 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                           PageTabViewModelFactory pageTabViewModelFactory,
                                           TraceDirectoryService traceDirectoryService,
                                           IBufferPoolInfoProvider bufferPoolInfoProvider,
-                                          SimulationTabViewModelFactory simulationTabViewModelFactory)
+                                          SimulationTabViewModelFactory simulationTabViewModelFactory,
+                                          TraceTickTrackStore tickTrackStore)
 {
     public QueryViewModel Create(DatabaseSource database) => new(logger,
                                                                  queryRunner,
@@ -108,6 +112,7 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                                                  traceDirectoryService,
                                                                  bufferPoolInfoProvider,
                                                                  simulationTabViewModelFactory,
+                                                                 tickTrackStore,
                                                                  database);
 }
 
@@ -185,9 +190,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private PfsChain _pfsChain = new();
 
     [ObservableProperty]
-    private bool _isTimelinePlaying;
-
-    [ObservableProperty]
     private bool _showBufferPool;
 
     [ObservableProperty]
@@ -258,25 +260,25 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private bool _isSqlHistoryVisible;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowFlameChartHint))]
+    [NotifyPropertyChangedFor(nameof(ShowTraceTimelineHint))]
     [NotifyCanExecuteChangedFor(nameof(ExportRunCommand))]
     private bool _isTraceLoading;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowFlameChartHint))]
-    private TraceTimeline? _flameChart;
+    [NotifyPropertyChangedFor(nameof(ShowTraceTimelineHint))]
+    private TraceTimeline? _traceTimeline;
 
     [ObservableProperty]
-    private TraceTimeline? _fullFlameChart;
-
-    [ObservableProperty]
-    private TraceRowBufferMarks? _rowBufferMarks;
+    private TraceTimeline? _fullTraceTimeline;
 
     [ObservableProperty]
     private TraceRowReturnMarks? _rowReturnMarks;
 
     [ObservableProperty]
-    private TraceEventLink? _currentEventLink;
+    private IReadOnlyList<TraceTickTrack> _tickTracks = [];
+
+    [ObservableProperty]
+    private string? _statementName;
 
     [ObservableProperty]
     private CallStackNode? _selectedCallNode;
@@ -343,6 +345,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                           TraceDirectoryService traceDirectoryService,
                           IBufferPoolInfoProvider bufferPoolInfoProvider,
                           SimulationTabViewModelFactory simulationTabViewModelFactory,
+                          TraceTickTrackStore tickTrackStore,
                           DatabaseSource database)
     {
         _simulationTabViewModelFactory = simulationTabViewModelFactory;
@@ -352,6 +355,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         Arguments = new ArgumentsViewModel(logger, Symbols, GetHoBtName);
 
         CustomHooks = new CustomHooksViewModel(settingsViewModel, OpenCallTree);
+
+        TickTrackStore = tickTrackStore;
+
+        OperatorTracks = new OperatorTracksViewModel(tickTrackStore, GetTickCount, message => AddMessage(message));
+
+        TickTrackStore.PropertyChanged += OnTickTrackStoreChanged;
 
         Logger = logger;
         QueryRunner = queryRunner;
@@ -409,8 +418,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         Schema = SchemaHelper.ToSqlSchema(database);
 
         Layout = new QueryLayoutViewModel(this);
-
-        Layout.HasTraceEvents = QueryOptions.RecordTraceEvents;
 
         Layout.Changed += OnLayoutChanged;
         Layout.SelectionChanged += ScheduleSaveLayout;
@@ -639,7 +646,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    public bool ShowFlameChartHint => FlameChart is null && !IsTraceLoading;
+    public bool ShowTraceTimelineHint => TraceTimeline is null && !IsTraceLoading;
 
     private IBufferPoolInfoProvider BufferPoolInfoProvider { get; }
 
@@ -761,14 +768,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         SyncIndexPage(timeUs);
     }
 
-    public void SetCurrentEvent(EngineEvent? engineEvent)
-    {
-        if (engineEvent is not null && FlameChart?.EventLinkOf(engineEvent) is { } link)
-        {
-            CurrentEventLink = link;
-        }
-    }
-
     public void SelectPlanNode(PlanNodeIdentifier identifier)
     {
         SelectedPlanNode = ResolvePlanNode(identifier);
@@ -808,20 +807,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         NavigateToCall(node, call);
     }
 
-    public void OpenRowBuffers(CallStackNode node, int call, bool isBatch)
-    {
-        Layout.ShowCallTree();
-
-        if (isBatch)
-        {
-            CallTreeTab.ShowBatches(node, call);
-        }
-        else
-        {
-            CallTreeTab.ShowRowBuffers(node, call);
-        }
-    }
-
     /// <summary>
     /// Opens the Call Tree document's detail pane on the symbol search
     /// </summary>
@@ -843,14 +828,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [RelayCommand]
     private void ShowCustomHooks() => Layout.ShowCustomHooks();
 
-    partial void OnSelectedEventChanged(EngineEvent? value)
-    {
-        SelectedEventProperties = value?.GetProperties() ?? [];
-
-        SetCurrentEvent(value);
-    }
-
-    partial void OnFlameChartChanged(TraceTimeline? value) => CurrentEventLink = null;
+    partial void OnSelectedEventChanged(EngineEvent? value) => SelectedEventProperties = value?.GetProperties() ?? [];
 
     partial void OnCallStackChanged(CallStackTree? value)
     {
@@ -1018,15 +996,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             PrepareTrace();
         }
-        else if (e.PropertyName == nameof(QueryOptionsViewModel.RecordTraceEvents))
-        {
-            Layout.HasTraceEvents = QueryOptions.RecordTraceEvents;
-        }
         else if (e.PropertyName == nameof(QueryOptionsViewModel.CropToQuery)
                  && Trace is { } trace
                  && ReferenceEquals(trace.CallStack, CallStack))
         {
-            FlameChart = ApplyCrop(trace);
+            TraceTimeline = ApplyCrop(trace);
         }
     }
 
@@ -1080,13 +1054,15 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         CancelTraceLoad();
 
-        FlameChart = null;
+        TraceTimeline = null;
 
-        FullFlameChart = null;
-
-        RowBufferMarks = null;
+        FullTraceTimeline = null;
 
         RowReturnMarks = null;
+
+        ResetTickTracks();
+
+        StatementName = null;
 
         CreatedCallTreeTab?.Dispose();
 
@@ -1095,6 +1071,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         Arguments.Dispose();
 
         CustomHooks.Dispose();
+
+        OperatorTracks.Dispose();
+
+        TickTrackStore.PropertyChanged -= OnTickTrackStoreChanged;
 
         Layout.Dispose();
 
@@ -1379,19 +1359,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         return min == long.MaxValue ? 0 : min;
     }
-
-    private IReadOnlyList<ColumnReference>? GetOutputColumns(IteratorTarget? iterator)
-        => iterator?.Operator?.PlanNodeIdentifier is { } identifier ? ResolvePlanNode(identifier)?.OutputColumns : null;
-
-    private IReadOnlyList<ColumnReference>? GetBuildColumns(IteratorTarget? iterator)
-        => iterator?.Operator?.PlanNodeIdentifier is { } identifier && ResolvePlanNode(identifier) is { } node
-            ? HashTableColumns.Get(node)
-            : null;
-
-    private int GetBuildKeyCount(IteratorTarget? iterator)
-        => iterator?.Operator?.PlanNodeIdentifier is { } identifier && ResolvePlanNode(identifier) is { } node
-            ? HashTableColumns.GetKeyCount(node)
-            : 0;
 
     private PlanNode? ResolvePlanNode(PlanNodeIdentifier identifier)
     {
@@ -2237,8 +2204,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         if (run.ExtraOf<TraceResult>() is { } fullTrace)
         {
-            Layout.HasTraceEvents = run.EventOptions.RecordTraceEvents;
-
             Layout.IsTrace = true;
 
             ShowTrace(fullTrace);
@@ -2272,39 +2237,35 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     {
         Trace = result;
 
-        var flameChart = ApplyCrop(result);
+        var traceTimeline = ApplyCrop(result);
 
         CallStack = result.CallStack;
 
         var iterators = IteratorTarget.Build(result.CallStack, Events, result.PlanLink);
 
-        var batchDecoder = new BatchDecoder(Database, i => GetOutputColumns(iterators.GetValueOrDefault(i)));
+        Arguments.SetSource(result.CallStore, result.CallStack, iterators, result.HoBtAccess, result.MemoryMap);
 
-        var buildDecoder = new BatchDecoder(Database, i => GetBuildColumns(iterators.GetValueOrDefault(i)));
-
-        result.RowBuffers.ApplyRecordLayouts(buildDecoder.GetColumn, i => GetBuildKeyCount(iterators.GetValueOrDefault(i)));
-
-        Arguments.SetSource(result.CallStore,
-                            result.CallStack,
-                            iterators,
-                            result.HoBtAccess,
-                            result.MemoryMap,
-                            result.RowBuffers,
-                            new RowBufferDecoder(Database,
-                                                 i => iterators.GetValueOrDefault(i)?.Operator,
-                                                 (i, o) => batchDecoder.GetColumn(result.Batches.GetProducer(i) ?? i, o)),
-                            result.Batches,
-                            batchDecoder);
-
-        FullFlameChart = result.Timeline;
-
-        RowBufferMarks = result.RowBufferMarks;
+        FullTraceTimeline = result.Timeline;
 
         RowReturnMarks = result.RowReturnMarks;
 
-        FlameChart = flameChart;
+        CustomTickTracks.Clear();
+
+        RefreshTickTracks();
+
+        StatementName = GetStatementOperator(result.Timeline)?.Name;
+
+        TraceTimeline = traceTimeline;
 
         ExecutionPlans = [.. ExecutionPlans];
+    }
+
+    private ExecutionOperatorEvent? GetStatementOperator(TraceTimeline timeline)
+    {
+        var planHandle = timeline.Lifetimes.Select(l => l.Operator.PlanNodeIdentifier?.PlanHandleId).FirstOrDefault(h => h is not null);
+
+        return Events.OfType<ExecutionOperatorEvent>()
+                     .FirstOrDefault(o => o.NodeLevel == 0 && (planHandle is null || o.PlanNodeIdentifier?.PlanHandleId == planHandle));
     }
 
     private TraceTimeline ApplyCrop(TraceResult result)
@@ -2422,13 +2383,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         LastRun = null;
 
-        FlameChart = null;
+        TraceTimeline = null;
 
-        FullFlameChart = null;
-
-        RowBufferMarks = null;
+        FullTraceTimeline = null;
 
         RowReturnMarks = null;
+
+        ResetTickTracks();
 
         SelectedCallNode = null;
 
@@ -2438,7 +2399,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         SequenceFrom = 0;
         SequenceTo = 0;
         PlayheadTimeUs = 0;
-        IsTimelinePlaying = false;
         SelectedPlanNode = null;
         ActivePlanNodes = [];
         EmittingPlanNodes = [];

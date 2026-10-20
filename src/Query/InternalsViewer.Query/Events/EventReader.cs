@@ -28,7 +28,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
     /// Due to the potentially high volume of events that could be read the reader is optimized for minimal memory allocations via
     /// a buffer based read.
     /// </remarks>
-    public async Task<(List<EngineEvent>, List<ExecutionPlan>, CallStackTree, List<RawEvent>)>
+    public async Task<(List<EngineEvent>, List<ExecutionPlan>, CallStackTree, HashSet<uint>)>
         GetEvents(string filePath,
                   string connectionString,
                   DatabaseSource? database,
@@ -43,7 +43,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         var executionPlans = new List<ExecutionPlan>();
 
-        var rawEvents = new List<RawEvent>();
+        var threadIds = new HashSet<uint>();
 
         // Map plan handles to PlanHandleId
         var planHandles = new PlanHandleRegistry();
@@ -114,15 +114,9 @@ public sealed class EventReader(ILogger<EventReader> logger)
                         engineEvent.SequenceId = sequenceId += 100;
                     }
 
-                    if (eventResult is not null)
+                    if (eventResult?.GetUlongAction("system_thread_id") is ulong threadId and > 0 and <= uint.MaxValue)
                     {
-                        var threadId = eventResult.GetUlongAction("system_thread_id");
-
-                        rawEvents.Add(new RawEvent(new string(nameBuffer, 0, nameLength),
-                                                   threadId is > 0 and <= uint.MaxValue and var id ? (uint?)id : null,
-                                                   eventResult.GetUlongAction("worker_address"),
-                                                   eventResult.GetUlongAction("task_address"),
-                                                   engineEvent?.SequenceId));
+                        threadIds.Add((uint)threadId);
                     }
 
                     if (engineEvent is not null)
@@ -173,7 +167,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         consolidatedEvents.AddRange(operatorEvents);
 
-        return (consolidatedEvents, executionPlans, callStack, rawEvents);
+        return (consolidatedEvents, executionPlans, callStack, threadIds);
     }
 
     /// <summary>

@@ -5,9 +5,11 @@ using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory;
-using InternalsViewer.Query.FullTrace.Batches;
-using InternalsViewer.Query.FullTrace.RowBuffers;
+using InternalsViewer.Query.FullTrace.Output;
+using InternalsViewer.Query.FullTrace.RowSources;
 using InternalsViewer.Query.FullTrace.Timeline;
+using InternalsViewer.Query.FullTrace.Timeline.Ticks;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.Query.Memory;
 
 namespace InternalsViewer.Query.FullTrace;
@@ -16,27 +18,35 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
 {
     public IteratorPlanLink PlanLink { get; init; } = IteratorPlanLink.Empty;
 
+    internal IReadOnlyList<IteratorPlanNode> PlanNodes { get; init; } = [];
+
+    internal IReadOnlyList<QueryTeardown> Teardowns { get; init; } = [];
+
     public HoBtAccessMap HoBtAccess { get; init; } = HoBtAccessMap.Empty;
 
     public MemoryMap MemoryMap { get; init; } = MemoryMap.Empty;
 
     public ObjectPoolSnapshot ObjectPool { get; init; } = ObjectPoolSnapshot.Empty;
 
-    public RowBufferStore RowBuffers { get; init; } = RowBufferStore.Empty;
-
-    public BatchStore Batches { get; init; } = BatchStore.Empty;
-
     public CustomHookStore CustomHooks { get; init; } = CustomHookStore.Empty;
 
-    public TraceRowBufferMarks RowBufferMarks { get; init; } = TraceRowBufferMarks.Empty;
+    internal IReadOnlyList<TraceOutputStructure> OutputStructures { get; init; } = [];
 
     public TraceRowReturnMarks RowReturnMarks { get; init; } = TraceRowReturnMarks.Empty;
+
+    public TraceTickSeries Reads { get; init; } = TraceTickSeries.Empty;
+
+    public TraceTickSeries Evaluations { get; init; } = TraceTickSeries.Empty;
 
     public IReadOnlyList<CallStackNode> QueryRoots => Roots ??= QueryExecutionCropper.GetRoots(CallStack);
 
     public TraceTimeline QueryTimeline => CroppedTimeline ??= GetQueryTimeline();
 
+    public IReadOnlyList<TraceOutputRowSource> OutputSources => Sources ??= TraceOutputLineage.GetSources(Timeline, OutputStructures);
+
     private IReadOnlyList<CallStackNode>? Roots { get; set; }
+
+    private IReadOnlyList<TraceOutputRowSource>? Sources { get; set; }
 
     private TraceTimeline? CroppedTimeline { get; set; }
 

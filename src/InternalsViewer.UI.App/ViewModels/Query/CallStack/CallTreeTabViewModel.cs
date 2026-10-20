@@ -149,78 +149,6 @@ public sealed class CallTreeTabViewModel : IDisposable
         _ = references.LoadAsync();
     }
 
-    public void ShowRowBuffers(CallStackNode node, int? call = null)
-    {
-        if (Arguments.Lookup is not { } lookup || node.Frame is not { } frame)
-        {
-            return;
-        }
-
-        if (AddedDocuments.FirstOrDefault(f => f.Content is RowBuffersViewModel shown && shown.IsShowing(node)) is { } existing)
-        {
-            Dock.Activate(existing);
-
-            if (call is { } selected && existing.Content is RowBuffersViewModel shown)
-            {
-                shown.SelectCall(selected);
-            }
-
-            return;
-        }
-
-        var rowBuffers = new RowBuffersViewModel(node, lookup, this, Logger, Settings.DecodeValues);
-
-        if (call is { } requested)
-        {
-            rowBuffers.SelectCall(requested);
-        }
-
-        AddDocument(new DocumentViewModel(rowBuffers.Title,
-                                          rowBuffers,
-                                          static () => new CallTreeRowBuffersPanelView(),
-                                          keepAlive: true,
-                                          key: $"RowBuffers{frame.Address:X}{frame.Instance:X}",
-                                          persist: false));
-
-        _ = rowBuffers.LoadAsync();
-    }
-
-    public void ShowBatches(CallStackNode node, int? call = null)
-    {
-        if (Arguments.Lookup is not { } lookup || node.Frame is not { } frame)
-        {
-            return;
-        }
-
-        if (AddedDocuments.FirstOrDefault(f => f.Content is BatchesViewModel shown && shown.IsShowing(node)) is { } existing)
-        {
-            Dock.Activate(existing);
-
-            if (call is { } selected && existing.Content is BatchesViewModel shown)
-            {
-                shown.SelectCall(selected);
-            }
-
-            return;
-        }
-
-        var batches = new BatchesViewModel(node, lookup, this, Settings.DecodeValues);
-
-        if (call is { } requested)
-        {
-            batches.SelectCall(requested);
-        }
-
-        AddDocument(new DocumentViewModel(batches.Title,
-                                          batches,
-                                          static () => new CallTreeBatchesPanelView(),
-                                          keepAlive: true,
-                                          key: $"Batches{frame.Address:X}{frame.Instance:X}",
-                                          persist: false));
-
-        _ = batches.LoadAsync();
-    }
-
     public void ShowCallStack(CallStackNode node, int call)
     {
         if (AddedDocuments.FirstOrDefault(d => d.Content is CallStackViewModel shown && shown.IsShowing(node, call)) is { } existing)
@@ -247,9 +175,11 @@ public sealed class CallTreeTabViewModel : IDisposable
     {
         if (locator.ValueType == LocatorValueType.ColumnStoreObject)
         {
-            var target = new ColumnstoreObjectTarget(locator.ObjectType, locator.ColumnId, locator.ObjectId);
+            var columnStore = new ColumnStoreObjectLocator(locator);
 
-            Query.OpenColumnstoreObject(locator.HobtId, target);
+            var target = new ColumnstoreObjectTarget(columnStore.ObjectType, columnStore.ColumnId, columnStore.ObjectId);
+
+            Query.OpenColumnstoreObject(columnStore.HobtId, target);
 
             return;
         }
@@ -408,16 +338,6 @@ public sealed class CallTreeTabViewModel : IDisposable
         {
             case nameof(SettingsViewModel.DecodeValues):
                 Arguments.SetDecoded(Settings.DecodeValues);
-
-                foreach (var rowBuffers in AddedDocuments.Select(d => d.Content).OfType<RowBuffersViewModel>())
-                {
-                    rowBuffers.SetDecoded(Settings.DecodeValues);
-                }
-
-                foreach (var batches in AddedDocuments.Select(d => d.Content).OfType<BatchesViewModel>())
-                {
-                    batches.SetDecoded(Settings.DecodeValues);
-                }
 
                 break;
 

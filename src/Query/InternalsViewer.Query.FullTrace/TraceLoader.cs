@@ -9,9 +9,10 @@ using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Iterators;
-using InternalsViewer.Query.FullTrace.PublishedEvents;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Timeline;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.Query.Helpers;
 using Microsoft.Extensions.Logging;
 using InternalsViewer.Query.Recording;
@@ -152,17 +153,13 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         CallStackNode?[] mapped = [.. replayed.Select(node => collapsed.GetValueOrDefault(node))];
 
-        var planLink = IteratorPlanLinker.Link(replay.CallStore, mapped, events);
+        var planLink = IteratorPlanLinker.Link(replay.PlanNodes, events);
 
         var hobtAccess = HoBtAccessMap.Build(replay.CallStore, mapped);
 
         replay.CallStore.MapNodes(mapped);
 
         replay.CallStore.AnnotateNodes();
-
-        replay.RowBuffers.AnnotateCallStackNodes(replay.CallStore);
-
-        replay.Batches.AnnotateNodes(replay.CallStore);
 
         replay.Timeline.MapNodes(mapped);
 
@@ -173,7 +170,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         var timeline = replay.Timeline.WithoutCallsUnder(IsInstrumentation);
 
         Logger.LogInformation("{Calls} call(s) after removing Extended Events and tracing, {Spans} call span(s) on {Threads} "
-                              + "thread(s) in the flame chart",
+                              + "thread(s) in the trace timeline",
                               callStack.Nodes().Sum(n => n.Calls),
                               timeline.SpanCount,
                               timeline.Threads.Count);
@@ -197,27 +194,24 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         var memory = AllocationMapper.Map(replay.CallStore, functions.MemoryFunctions, timeline, request.MemoryClerks);
 
-        var lifetimes = IteratorLifetimeBuilder.Build(timeline, operators);
+        var lifetimes = IteratorLifetimeBuilder.Build(timeline, operators, replay.PlanNodes, replay.Teardowns);
 
         timeline.SetLifetimes(lifetimes);
 
-        var expanded = events.ExpandOwned();
+        LogOperators(operators, replay.PlanNodes, lifetimes);
 
-        var linked = PublishedEventLinker.Link(replay.PublishedEvents,
-                                               functions.PublishedEvents.Publishers,
-                                               request.RawEvents,
-                                               expanded,
-                                               timeline);
+        var allocations = IteratorAllocations.Build(timeline,
+                                                    replay.CallStore,
+                                                    timeline.GetOperatorsByInstance().Keys.ToHashSet(),
+                                                    replay.PlanNodes);
 
-        timeline.SetEventLinks(linked.Links);
+        List<TraceOutputStructure> outputStructures = [.. replay.OutputAddresses.Select(a => TraceOutputStructure.Resolve(a, allocations, timeline))];
 
-        Logger.LogInformation("{Linked} of {Events} event(s) linked to their trace position: {Written} of {Published} published "
-                              + "event(s) written to the session, {Paired} paired with an event",
-                              timeline.EventLinks.Count,
-                              request.RawEvents.Count,
-                              linked.Written,
-                              linked.Published,
-                              linked.Paired);
+        Logger.LogInformation("{Structures} output structure(s) resolved through {Blocks} allocation(s), {Owned} of {Columns} column(s) owned",
+                              outputStructures.Count,
+                              allocations.Count,
+                              outputStructures.Sum(s => s.Owners.Count(o => o != 0)),
+                              outputStructures.Sum(s => s.Owners.Count));
 
         Logger.LogInformation("{Matched} of {Operators} operator(s) matched to recorded iterators, {Allocations} allocation(s) of "
                               + "{Bytes}, {Lifetimes} operator lifetime(s) on {Threads} thread(s)",
@@ -239,24 +233,50 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         Logger.LogInformation("{Entries} memory map entr(ies) from allocations, constructors and member calls", memoryMap.Count);
 
-        Logger.LogInformation("{Rows} row buffer(s) read from iterator GetRow calls", replay.RowBuffers.Count);
-
-        Logger.LogInformation("{Batches} batch(es) read from iterator BpGetBatchData calls", replay.Batches.Count);
-
         Logger.LogInformation("{Captures} custom hook capture(s) read from {Hooks} hook(s)", replay.CustomHooks.Count, customHooks.Count);
 
         return new TraceResult(callStack, replay.CallStore, timeline)
         {
             PlanLink = planLink,
+            PlanNodes = replay.PlanNodes,
+            Teardowns = replay.Teardowns,
             HoBtAccess = hobtAccess,
             MemoryMap = memoryMap,
             ObjectPool = request.ObjectPool,
-            RowBuffers = replay.RowBuffers,
-            Batches = replay.Batches,
             CustomHooks = replay.CustomHooks,
-            RowBufferMarks = TraceRowBufferMarks.Build(timeline, replay.RowBuffers, replay.Batches),
-            RowReturnMarks = TraceRowReturnMarks.Build(timeline, replay.CallStore)
+            OutputStructures = outputStructures,
+            RowReturnMarks = TraceRowReturnMarks.Build(timeline, replay.CallStore),
+            Reads = TraceReads.Build(timeline, replay.CallStore),
+            Evaluations = TraceEvaluations.Build(timeline, replay.CallStore)
         };
+    }
+
+    private void LogOperators(IReadOnlyList<ExecutionOperatorEvent> operators,
+                              IReadOnlyList<IteratorPlanNode> planNodes,
+                              IReadOnlyList<TraceOperatorLifetime> lifetimes)
+    {
+        if (!Logger.IsEnabled(LogLevel.Debug))
+        {
+            return;
+        }
+
+        foreach (var planNode in planNodes)
+        {
+            Logger.LogDebug($"Plan node: iterator 0x{planNode.Iterator:X} node {planNode.NodeId} query 0x{planNode.Query:X}"
+                            + (planNode.IsBatchHelper ? " batch helper" : string.Empty));
+        }
+
+        foreach (var operatorEvent in operators)
+        {
+            Logger.LogDebug($"Operator: {operatorEvent.OperatorDescription} node {operatorEvent.PlanNodeIdentifier} instances "
+                            + string.Join(", ", operatorEvent.Instances.Select(i => $"0x{i:X}")));
+        }
+
+        foreach (var lifetime in lifetimes)
+        {
+            Logger.LogDebug($"Operator lifetime: {lifetime.Operator.OperatorDescription} on thread {lifetime.Thread} instances "
+                            + string.Join(", ", lifetime.Operator.Instances.Select(i => $"0x{i:X}")));
+        }
     }
 
     private void LogUnknownSymbols(string[] unknownSymbols)

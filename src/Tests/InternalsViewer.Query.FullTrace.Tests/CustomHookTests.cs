@@ -1,7 +1,7 @@
 using System.Text;
 using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Hooks;
-using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Arguments;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -66,7 +66,7 @@ public class CustomHookTests
     {
         var replay = new FakeTraceReplay().Write(Pointer, "REF"u8);
 
-        var hook = Hook(Definition(register: LocatorReadResolver.ReturnRegister, length: 3, isReadAtReturn: true));
+        var hook = Hook(Definition(register: ArgumentLayout.ReturnRegister, length: 3, isReadAtReturn: true));
 
         hook.OnEntry(Call(), replay);
 

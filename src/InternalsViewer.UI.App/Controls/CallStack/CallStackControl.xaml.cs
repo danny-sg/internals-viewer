@@ -24,18 +24,6 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
 
     private const double DetailsShare = 1;
 
-    public static readonly DependencyProperty DisplayRowBufferProperty =
-        DependencyProperty.Register(nameof(DisplayRowBuffer),
-                                    typeof(bool),
-                                    typeof(CallStackControl),
-                                    new PropertyMetadata(false));
-
-    public bool DisplayRowBuffer
-    {
-        get => (bool)GetValue(DisplayRowBufferProperty);
-        set => SetValue(DisplayRowBufferProperty, value);
-    }
-
     public CallStackControl()
     {
         InitializeComponent();
@@ -65,8 +53,6 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
 
     private bool IsBuilding { get; set; }
 
-    private (PlayheadCallRow Row, bool IsDecoded)? DisplayedRowBuffer { get; set; }
-
     public static Brush? RowBackground(bool isCurrent)
         => isCurrent ? AppResources.Get<Brush>("SolidBackgroundFillColorQuarternaryBrush") : null;
 
@@ -89,8 +75,8 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
 
     private Visibility IsEmpty(IReadOnlyList<PlayheadThreadRow>? threads) => GetVisibility(threads is not { Count: > 0 });
 
-    private Visibility IsFunctionVisible(PlayheadCallRow? row, CallSignaturePart? selected, PlayheadCallRow? rowBuffer)
-        => GetVisibility(row is not null && selected is null && rowBuffer is null);
+    private Visibility IsFunctionVisible(PlayheadCallRow? row, CallSignaturePart? selected)
+        => GetVisibility(row is not null && selected is null);
 
     private Visibility AreArgumentsVisible(PlayheadCallRow? row) => GetVisibility(row is { Arguments.Count: > 0 });
 
@@ -148,12 +134,18 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
         {
             case nameof(CallStackViewModel.Threads):
                 Rebuild();
+
+                SelectRow();
                 break;
 
             case nameof(CallStackViewModel.SelectedValue):
-            case nameof(CallStackViewModel.SelectedCall):
-            case nameof(CallStackViewModel.RowBufferCall):
                 ShowDetails();
+                break;
+
+            case nameof(CallStackViewModel.SelectedCall):
+                ShowDetails();
+
+                SelectRow();
                 break;
         }
     }
@@ -199,9 +191,27 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
         }
     }
 
+    private void SelectRow()
+    {
+        if (Attached?.SelectedCall is not { } selected)
+        {
+            return;
+        }
+
+        foreach (var node in StackTree.RootNodes.SelectMany(r => r.Children))
+        {
+            if (ReferenceEquals(node.Content, selected))
+            {
+                StackTree.SelectedNode = node;
+
+                return;
+            }
+        }
+    }
+
     private void ShowDetails()
     {
-        var isVisible = Attached is { SelectedValue: not null } or { SelectedCall: not null } or { RowBufferCall: not null };
+        var isVisible = Attached is { SelectedValue: not null } or { SelectedCall: not null };
 
         if (isVisible != (DetailsPane.Visibility == Visibility.Visible))
         {
@@ -219,8 +229,6 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
         ShowDetailsTitle();
 
         ShowValueDetails();
-
-        ShowRowBuffer();
     }
 
     private void ShowDetailsTitle()
@@ -292,93 +300,6 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
         ValueDecodedCopyButton.Tag = GetText(ValueDecodedText);
 
         ValueDecodedCopyButton.Visibility = GetVisibility(ValueDecodedText.Inlines.Count > 0);
-    }
-
-    private void ShowRowBuffer()
-    {
-        var row = Attached?.RowBufferCall;
-
-        RowBufferPanel.Visibility = GetVisibility(row is not null);
-
-        if (row is null || Attached is not { } viewModel)
-        {
-            DisplayedRowBuffer = null;
-
-            ClearRowBuffer();
-
-            return;
-        }
-
-        var isDecoded = Settings.DecodeValues;
-
-        if (DisplayedRowBuffer is { } current && ReferenceEquals(current.Row, row) && current.IsDecoded == isDecoded)
-        {
-            return;
-        }
-
-        DisplayedRowBuffer = (row, isDecoded);
-
-        ClearRowBuffer();
-
-        var details = viewModel.GetRowBufferDetails(row, isDecoded);
-
-        if (details.Message is { } message)
-        {
-            var text = new TextBlock { Text = message, Style = GetStyle("DetailValueStyle") };
-
-            Grid.SetColumnSpan(text, 3);
-
-            RowBufferGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-
-            RowBufferGrid.Children.Add(text);
-
-            return;
-        }
-
-        for (var index = 0; index < details.Columns.Count; index++)
-        {
-            AddRowBufferColumn(index, details.Columns[index]);
-        }
-    }
-
-    private void ClearRowBuffer()
-    {
-        RowBufferGrid.Children.Clear();
-
-        RowBufferGrid.RowDefinitions.Clear();
-    }
-
-    private void AddRowBufferColumn(int index, ResultDetail column)
-    {
-        var text = column.Value?.ToString() ?? string.Empty;
-
-        var label = new TextBlock { Text = column.Label, Style = GetStyle("DetailLabelStyle") };
-
-        var value = new TextBlock { Style = GetStyle("DetailValueStyle") };
-
-        HexText.Apply(value, text);
-
-        var copy = new CopyButton { Style = GetStyle("ValueCopyButtonStyle"), Tag = text };
-
-        copy.Click += OnCopyValueClick;
-
-        Grid.SetRow(label, index);
-
-        Grid.SetRow(value, index);
-
-        Grid.SetColumn(value, 1);
-
-        Grid.SetRow(copy, index);
-
-        Grid.SetColumn(copy, 2);
-
-        RowBufferGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-
-        RowBufferGrid.Children.Add(label);
-
-        RowBufferGrid.Children.Add(value);
-
-        RowBufferGrid.Children.Add(copy);
     }
 
     private Style GetStyle(string key) => (Style)Resources[key];
@@ -488,18 +409,6 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
         }
     }
 
-    private void OnRowBufferTapped(object sender, TappedRoutedEventArgs e)
-    {
-        if (!DisplayRowBuffer || (sender as FrameworkElement)?.DataContext is not TreeViewNode { Content: PlayheadCallRow row })
-        {
-            return;
-        }
-
-        e.Handled = true;
-
-        Attached?.ShowRowBuffer(row);
-    }
-
     private void OnCallRowRightTapped(object sender, RightTappedRoutedEventArgs e)
         => ContextRow = (sender as FrameworkElement)?.DataContext is TreeViewNode { Content: PlayheadCallRow row } ? row : null;
 
@@ -565,8 +474,6 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
         if (e.PropertyName == nameof(SettingsViewModel.DecodeValues))
         {
             Bindings.Update();
-
-            ShowRowBuffer();
         }
     }
 }

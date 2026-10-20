@@ -1,18 +1,14 @@
 using System.Collections.Immutable;
 using System.Reflection.PortableExecutable;
-using System.Text;
 
 namespace InternalsViewer.Query.FullTrace.Locators;
 
 internal sealed class ImageText(IReadOnlyList<TraceModule> modules) : IDisposable
 {
-    private const int MaximumCharacters = 260;
-
     private Dictionary<string, ModuleImage?> Images { get; } = new(StringComparer.OrdinalIgnoreCase);
 
-    public string? Read(ulong address, bool isWide) => GetImage(address, out var rva)?.ReadText(rva, isWide);
-
-    public int Read(ulong address, Span<byte> destination) => GetImage(address, out var rva)?.Read(rva, destination) ?? 0;
+    public int Read(ulong address, Span<byte> destination, bool isReadOnly = false)
+        => GetImage(address, out var rva)?.Read(rva, destination, isReadOnly) ?? 0;
 
     public void Dispose()
     {
@@ -76,7 +72,7 @@ internal sealed class ImageText(IReadOnlyList<TraceModule> modules) : IDisposabl
             }
         }
 
-        public string? ReadText(uint rva, bool isWide)
+        public int Read(uint rva, Span<byte> destination, bool isReadOnly)
         {
             foreach (var section in Sections)
             {
@@ -87,42 +83,9 @@ internal sealed class ImageText(IReadOnlyList<TraceModule> modules) : IDisposabl
                     continue;
                 }
 
-                if ((section.SectionCharacteristics & SectionCharacteristics.MemWrite) != 0)
+                if (isReadOnly && (section.SectionCharacteristics & SectionCharacteristics.MemWrite) != 0)
                 {
-                    return null;
-                }
-
-                var width = isWide ? 2 : 1;
-
-                var buffer = new byte[(int)Math.Min(MaximumCharacters * width, section.SizeOfRawData - offset)];
-
-                Stream.Position = section.PointerToRawData + offset;
-
-                var read = Stream.ReadAtLeast(buffer, buffer.Length, throwOnEndOfStream: false);
-
-                for (var index = 0; index + width <= read; index += width)
-                {
-                    if (buffer[index] == 0 && (width == 1 || buffer[index + 1] == 0))
-                    {
-                        return isWide ? Encoding.Unicode.GetString(buffer, 0, index) : Encoding.Latin1.GetString(buffer, 0, index);
-                    }
-                }
-
-                return null;
-            }
-
-            return null;
-        }
-
-        public int Read(uint rva, Span<byte> destination)
-        {
-            foreach (var section in Sections)
-            {
-                var offset = (long)rva - section.VirtualAddress;
-
-                if (offset < 0 || offset >= section.SizeOfRawData)
-                {
-                    continue;
+                    return 0;
                 }
 
                 Stream.Position = section.PointerToRawData + offset;

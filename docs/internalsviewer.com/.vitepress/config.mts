@@ -48,7 +48,7 @@ export default defineConfig({
               },
               { text: "Call Stack", link: "docs/user-guide/query/CallStack" },
               { text: "Full Trace", link: "docs/user-guide/query/FullTrace" },
-              { text: "Flame Chart", link: "docs/user-guide/query/FlameChart" },
+              { text: "Trace Timeline", link: "docs/user-guide/query/TraceTimeline" },
               { text: "Simulation", link: "docs/user-guide/query/Simulation" },
               {
                 text: "Execution Plan",

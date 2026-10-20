@@ -28,6 +28,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using LaunchActivatedEventArgs = Microsoft.UI.Xaml.LaunchActivatedEventArgs;
 using InternalsViewer.Query.FullTrace.Interfaces.Recording;
+using InternalsViewer.UI.App.Services.Query;
 
 namespace InternalsViewer.UI.App;
 
@@ -84,6 +85,8 @@ public partial class App
 
             services.AddSingleton<AppLogViewModel>();
             services.AddSingleton<SettingsViewModel>();
+
+            services.AddSingleton<TraceTickTrackStore>();
 
             services.AddTransient<MainViewModel>();
 

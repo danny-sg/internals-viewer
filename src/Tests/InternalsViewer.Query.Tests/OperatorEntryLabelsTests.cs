@@ -19,7 +19,7 @@ public class OperatorEntryLabelsTests
 
         Assert.True(open.HasTarget);
         Assert.Equal("HeapTable.ix_HeapTable_Id", open.TargetLabel);
-        Assert.Equal("Physical Operator · Index Scan (Node 1) HeapTable.ix_HeapTable_Id", open.TargetDetail);
+        Assert.Equal("Query Operator · Index Scan (Node 1) HeapTable.ix_HeapTable_Id", open.TargetDetail);
     }
 
     [Fact]
@@ -86,7 +86,7 @@ public class OperatorEntryLabelsTests
         {
             ClassName = className,
             MethodName = method,
-            SymbolCategory = SymbolCategory.PhysicalOperator
+            SymbolCategory = SymbolCategory.QueryOperator
         }
     };
 }

@@ -94,7 +94,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         List<EngineEvent>? events;
         List<ExecutionPlan>? executionPlans;
         CallStackTree callStack;
-        List<RawEvent> rawEvents;
+        HashSet<uint> threadIds;
         List<QueryResultSet> resultSets;
         List<LogRecord> logRecords;
 
@@ -238,7 +238,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             steps.Begin(ReadingEventsStep);
 
-            (events, executionPlans, callStack, rawEvents) = await EventReader.GetEvents(filePath,
+            (events, executionPlans, callStack, threadIds) = await EventReader.GetEvents(filePath,
                                                                                           connectionString,
                                                                                           database,
                                                                                           eventOptions.IncludeSystemObjects,
@@ -390,7 +390,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             CropEndUs = cropEnd,
             TraceRequest = fullTrace is null
                 ? null
-                : new TraceRequest(fullTrace, events, symbolsPath, memoryClerks, objectPool, rawEvents)
+                : new TraceRequest(fullTrace, events, symbolsPath, memoryClerks, objectPool, threadIds)
         };
     }
 

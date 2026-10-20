@@ -42,7 +42,6 @@
         <results:ResultsGridControl Grid.Row="1"
                                     ResultSet="{x:Bind ViewModel.Arguments.CallTable, Mode=OneWay}"
                                     SelectedRow="{x:Bind ViewModel.Arguments.SelectedCall, Mode=TwoWay}"
-                                    RowDetails="{x:Bind ViewModel.Arguments.RowDetails, Mode=OneWay}"
                                     Version="{x:Bind ViewModel.Arguments.CallTableVersion, Mode=OneWay}"
                                     PageClicked="OnArgumentPageClicked"
                                     ObjectClicked="OnArgumentObjectClicked"

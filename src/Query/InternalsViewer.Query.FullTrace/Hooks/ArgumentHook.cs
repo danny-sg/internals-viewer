@@ -1,16 +1,36 @@
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
-using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Hooks;
 
+/// <summary>
+/// Call Argument Hook
+/// </summary>
+/// <remarks>
+/// Reads the arguments named by the function and read pairs it is built with. Functions lists those addresses for the bridge,
+/// adding the Return event when any read on that function has IsReadAtReturn set.
+///
+/// Argument values are always taken at entry, because the argument registers are not preserved across the call.
+/// 
+/// IsReadAtReturn only delays the read through the value, so an out parameter is read after the call has filled it.
+///
+/// Arguments are indexed 0-16.
+///
+/// - 0-3 are registers, captured by the native bridge at entry:
+///     0 = RCX
+///     1 = RDX
+///     2 = R8
+///     3 = R9
+///
+/// - 4-15 are stack slots, read past the return address and the 0x20 home space (RSP + 0x28, RSP + 0x30, etc.)
+///
+/// - 16 is the return value (RAX), only available at return
+/// </remarks>
 internal abstract class ArgumentHook<TRead>(IEnumerable<(ulong Function, TRead Read)> reads) : ITraceHook
     where TRead : IArgumentRead
 {
-    private const int RegisterCount = 4;
-    private const int SlotCount = 16;
-
     public IEnumerable<TraceHookFunction> Functions
         => Reads.Select(r => new TraceHookFunction(r.Key, r.Value.Any(f => f.IsReadAtReturn)
                                                           ? TraceHookEvents.Entry | TraceHookEvents.Return
@@ -34,12 +54,12 @@ internal abstract class ArgumentHook<TRead>(IEnumerable<(ulong Function, TRead R
 
         foreach (var read in functionReads)
         {
-            isStackRead |= read.Register is >= RegisterCount and < SlotCount;
+            isStackRead |= read.Register is >= ArgumentLayout.RegisterCount and < ArgumentLayout.CapturedSlots;
 
             isReadAtReturn |= read.IsReadAtReturn;
         }
 
-        Span<ulong> arguments = stackalloc ulong[SlotCount];
+        Span<ulong> arguments = stackalloc ulong[ArgumentLayout.CapturedSlots];
 
         LoadArguments(call, replay, arguments, isStackRead);
 
@@ -81,7 +101,7 @@ internal abstract class ArgumentHook<TRead>(IEnumerable<(ulong Function, TRead R
     {
         call.Arguments.CopyTo(arguments);
 
-        var stack = arguments[RegisterCount..];
+        var stack = arguments[ArgumentLayout.RegisterCount..];
 
         stack.Clear();
 
@@ -90,11 +110,7 @@ internal abstract class ArgumentHook<TRead>(IEnumerable<(ulong Function, TRead R
             return;
         }
 
-        var homeSpace = replay.TryRead(call.StackPointer, out ulong top) && top == call.ReturnAddress
-                        ? call.StackPointer + sizeof(ulong)
-                        : call.StackPointer;
-
-        var read = replay.Read(homeSpace + RegisterCount * sizeof(ulong), MemoryMarshal.AsBytes(stack)) / sizeof(ulong);
+        var read = replay.Read(replay.GetStackArguments(call), MemoryMarshal.AsBytes(stack)) / sizeof(ulong);
 
         stack[read..].Clear();
     }
@@ -102,9 +118,9 @@ internal abstract class ArgumentHook<TRead>(IEnumerable<(ulong Function, TRead R
     private static ulong GetArgument(ReadOnlySpan<ulong> arguments, in TraceHookCall call, int register)
         => register switch
         {
-            LocatorReadResolver.ReturnRegister
+            ArgumentLayout.ReturnRegister
                 => call.ReturnValue,
-            >= 0 and < SlotCount
+            >= 0 and < ArgumentLayout.CapturedSlots
                 => arguments[register],
             _ => 0
         };

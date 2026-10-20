@@ -7,18 +7,6 @@ namespace InternalsViewer.Query.FullTrace.Tests;
 public class FunctionClassificationTests
 {
     [Fact]
-    public void Keeps_An_Event_Every_Symbol_At_The_Address_Agrees_On()
-        => Assert.Equal("lock_acquired", Fold(Publishing("lock_acquired"), Publishing("lock_acquired")).PublishEventName);
-
-    [Fact]
-    public void Drops_An_Event_The_Symbols_Disagree_On()
-        => Assert.Null(Fold(Publishing("lock_released"), Publishing("wait_info")).PublishEventName);
-
-    [Fact]
-    public void Drops_An_Event_Where_A_Folded_Symbol_Has_None()
-        => Assert.Null(Fold(Publishing("lock_released"), Classification()).PublishEventName);
-
-    [Fact]
     public void Keeps_A_Memory_Function_Every_Symbol_Agrees_On()
     {
         var function = MemoryFunction.Classify(0x10, "CMemObj::Alloc");
@@ -53,15 +41,15 @@ public class FunctionClassificationTests
     {
         var functions = new Dictionary<uint, FunctionClassification>();
 
-        ModuleSymbols.Add(functions, 0x10, Publishing("latch_acquired"));
+        ModuleSymbols.Add(functions, 0x10, Classification(excluded: true));
 
-        ModuleSymbols.Add(functions, 0x20, Publishing("lock_released"));
+        ModuleSymbols.Add(functions, 0x20, Classification(excluded: true));
 
         ModuleSymbols.Add(functions, 0x20, Classification());
 
-        Assert.Equal("latch_acquired", functions[0x10].PublishEventName);
+        Assert.True(functions[0x10].IsExcluded);
 
-        Assert.Null(functions[0x20].PublishEventName);
+        Assert.False(functions[0x20].IsExcluded);
     }
 
     private static FunctionClassification Fold(params FunctionClassification[] classifications)
@@ -79,9 +67,6 @@ public class FunctionClassificationTests
     private static FunctionClassification Classification(bool excluded = false,
                                                          bool method = false,
                                                          bool instanceClass = false,
-                                                         string? publishEventName = null,
                                                          MemoryFunction? memory = null)
-        => new(excluded, method, instanceClass, IsEventWriter: false, publishEventName, memory);
-
-    private static FunctionClassification Publishing(string eventName) => Classification(publishEventName: eventName);
+        => new(excluded, method, instanceClass, memory);
 }

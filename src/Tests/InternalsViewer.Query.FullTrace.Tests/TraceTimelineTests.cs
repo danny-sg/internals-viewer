@@ -3,8 +3,6 @@ using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
-using InternalsViewer.Query.Events.Latches;
-using InternalsViewer.Query.Events.Reads;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -474,31 +472,6 @@ public class TraceTimelineTests
 
         Assert.Equal([1, 0, 0, 2], activity[root]);
         Assert.Equal([0, 1, 0, 0], activity[child]);
-    }
-
-    [Fact]
-    public void Event_Link_Of_A_Linked_Event_Is_Its_Own_Link()
-    {
-        var timeline = Build(Span(node: 0, start: 0, end: 40));
-
-        LatchEvent[] latches = [new() { SequenceId = 1 }, new() { SequenceId = 2 }];
-
-        timeline.SetEventLinks([new TraceEventLink(latches[0], null, 7, 10, 10), new TraceEventLink(latches[1], null, 7, 20, 20)]);
-
-        Assert.Equal(20d, timeline.EventLinkOf(latches[1])?.Position);
-        Assert.Null(timeline.EventLinkOf(new LatchEvent { SequenceId = 3 }));
-    }
-
-    [Fact]
-    public void Event_Link_Of_A_Group_Is_The_Link_Of_An_Event_It_Owns()
-    {
-        var timeline = Build(Span(node: 0, start: 0, end: 40));
-
-        var latch = new LatchEvent { SequenceId = 1 };
-
-        timeline.SetEventLinks([new TraceEventLink(latch, null, 7, 10, 10)]);
-
-        Assert.Same(latch, timeline.EventLinkOf(new ReadEventGroup { SequenceId = 2, Events = [latch] })?.Event);
     }
 
     [Fact]

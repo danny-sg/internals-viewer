@@ -5,13 +5,11 @@ namespace InternalsViewer.Query.FullTrace.Locators;
 
 internal readonly record struct LocatorType(LocatorValueType ValueType, bool IsIndirect, bool IsConst, int Offset = 0, int[]? Path = null)
 {
-    private const int AllocationPageIdOffset = 8;
-
-    private const int PageHeaderPageIdOffset = 0x20;
+    private const int AllocationPageIdOffset = 0x8;
 
     private const int BufferPageIdOffset = 0x70;
 
-    public static readonly int[] PageHandlePath = [0, 0x18, 0];
+    public static readonly int[] PageHandlePath = [0, 0x18];
 
     public static readonly int[] PageRefPath = [0];
 
@@ -72,15 +70,25 @@ internal readonly record struct LocatorType(LocatorValueType ValueType, bool IsI
 
     private static (LocatorValueType ValueType, int Offset, int[]? Path)? KnownLocator(ReadOnlySpan<char> name) => name switch
     {
-        "PageId" => (LocatorValueType.Page, 0, null),
-        "AllocationPageId" => (LocatorValueType.Page, AllocationPageIdOffset, null),
-        "HPageHandle" => (LocatorValueType.Page, PageHeaderPageIdOffset, PageHandlePath),
+        "PageId"
+            => (LocatorValueType.Page, 0, null),
+        "AllocationPageId"
+            => (LocatorValueType.Page, AllocationPageIdOffset, null),
+        "HPageHandle"
+            => (LocatorValueType.Page, BufferPageIdOffset, PageHandlePath),
         "PageRef" or "BTreeHPage" or "IndexPageRef" or "HeapPageRef" or "TextPageRef" or "IAMPageRef" or "GAMPageRef"
-            or "SGAMPageRef" or "PFSPageRef" or "PSPageRef" => (LocatorValueType.Page, BufferPageIdOffset, PageRefPath),
-        "RowId" => (LocatorValueType.Row, 0, null),
-        "ColumnStoreObjectKey" => (LocatorValueType.ColumnStoreObject, 0, null),
-        "LSN" => (LocatorValueType.LogSequenceNumber, 0, null),
-        "CTypeInfo" => (LocatorValueType.TypeInfo, 0, null),
+            or "SGAMPageRef" or "PFSPageRef" or "PSPageRef"
+            => (LocatorValueType.Page, BufferPageIdOffset, PageRefPath),
+        "RowId"
+            => (LocatorValueType.Row, 0, null),
+        "ColumnStoreObjectKey"
+            => (LocatorValueType.ColumnStoreObject, 0, null),
+        "LSN"
+            => (LocatorValueType.LogSequenceNumber, 0, null),
+        "CTypeInfo"
+            => (LocatorValueType.TypeInfo, 0, null),
+        "CXVariant"
+            => (LocatorValueType.Variant, 0, null),
         _ => null
     };
 

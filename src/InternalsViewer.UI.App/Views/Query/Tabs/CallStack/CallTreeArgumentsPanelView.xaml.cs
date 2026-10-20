@@ -3,7 +3,7 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.CustomHooks;
-using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.UI.App.Controls.Dialogs;
 using InternalsViewer.UI.App.Controls;
 using InternalsViewer.UI.App.Controls.CallStack;
@@ -13,6 +13,7 @@ using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using InternalsViewer.UI.App.ViewModels.Query.CallStack;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System.Threading.Tasks;
 
@@ -71,9 +72,10 @@ public sealed partial class CallTreeArgumentsPanelView : UserControl, IDocumentC
             return;
         }
 
-        var dialog = new CustomHookDialog(node.Symbol, argument.Name, argument.Register == LocatorReadResolver.ReturnRegister)
+        var dialog = new CustomHookDialog(node.Symbol, argument.Name, argument.Register == ArgumentLayout.ReturnRegister)
         {
-            XamlRoot = XamlRoot
+            XamlRoot = XamlRoot,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
         };
 
         if (await dialog.ShowAsync() != ContentDialogResult.Primary)
@@ -110,16 +112,6 @@ public sealed partial class CallTreeArgumentsPanelView : UserControl, IDocumentC
             e.Menu.Items.Add(MenuItems.Create("Go To Call", () => viewModel.Tree.GoToCall(node)));
 
             e.Menu.Items.Add(MenuItems.Create("Call Stack", () => viewModel.ShowCallStack(node, index)));
-
-            if (node.Frame is { } frame && arguments.Lookup?.RowBuffers.HasRows(frame.Address, frame.Instance) == true)
-            {
-                e.Menu.Items.Add(MenuItems.Create("Row Buffers", () => viewModel.ShowRowBuffers(node)));
-            }
-
-            if (node.Frame is { } batchFrame && arguments.Lookup?.Batches.HasBatches(batchFrame.Address, batchFrame.Instance) == true)
-            {
-                e.Menu.Items.Add(MenuItems.Create("Batches", () => viewModel.ShowBatches(node)));
-            }
 
             e.Menu.Items.Add(MenuItems.Create("Scope", () => viewModel.Query.PlayheadStack.Scope(node)));
 

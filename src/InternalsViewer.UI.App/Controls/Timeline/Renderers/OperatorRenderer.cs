@@ -21,10 +21,6 @@ internal sealed class OperatorRenderer(RenderResource resources, CurrentSelectio
     // Top-lit sheen: the bar's top edge is lightened and its bottom darkened by this fraction.
     private const float GradientLift = 0.04f;
 
-    // A bar only gets a label when it is at least this tall and wide.
-    private const float MinLabelBarHeight = 11f;
-    private const float MinLabelBarWidth = 26f;
-
     // Below this per-worker lane height the thread overlay falls back to a concurrency-density shade.
     private const float MinThreadTrackHeight = 2.5f;
     private const float ThreadTrackGap = 1f;
@@ -32,11 +28,6 @@ internal sealed class OperatorRenderer(RenderResource resources, CurrentSelectio
     private const float ObjectMarkerMargin = 3f;
     private const float ObjectMarkerRadius = 6f;
     private const float ObjectMarkerStripWidth = 12f;
-
-    private const float OperatorMaxFont = 12f;
-    private const float OperatorMinFont = 7f;
-    private const float TwoLineGap = 2f;
-    private const float OperatorLabelGapFraction = 0.5f;
 
     private static readonly SKColor ConsumeShadeColour = new(0, 0, 0, 115);
     private static readonly SKColor OperatorLabelColour = new(235, 235, 235);
@@ -92,10 +83,7 @@ internal sealed class OperatorRenderer(RenderResource resources, CurrentSelectio
 
             DrawConsumeShade(canvas, frame, b);
 
-            if (b.LineWidth >= MinLabelBarHeight && b.EndX - b.StartX >= MinLabelBarWidth)
-            {
-                DrawLabel(canvas, b.Op, b.StartX + 4, b.EndX - 4, b.BarCentreY, b.LineWidth);
-            }
+            DrawLabel(canvas, b.Op, b.StartX, b.EndX, b.BarCentreY, b.LineWidth);
 
             DrawObjectColourMarker(canvas, frame, b);
 
@@ -381,10 +369,6 @@ internal sealed class OperatorRenderer(RenderResource resources, CurrentSelectio
                              _outline);
     }
 
-    /// <summary>
-    /// Draws the operator label, choosing a layout by available width and height: two lines (name over object), one line
-    /// (name + object), one line (name alone), or none
-    /// </summary>
     private void DrawLabel(SKCanvas canvas,
                            ExecutionOperatorEvent planOperator,
                            float startX,
@@ -405,99 +389,9 @@ internal sealed class OperatorRenderer(RenderResource resources, CurrentSelectio
 
         var typeSpan = BuildTypeSpan(opName, dop, charBuffer);
 
-        if (typeSpan.Length == 0 && target.Length == 0)
-        {
-            return;
-        }
-
-        const float textPadX = 14f;
-
-        var availableWidth = endX - startX - textPadX * 2;
-
-        if (availableWidth <= 0)
-        {
-            return;
-        }
-
-        // Widths scale linearly with font size, so measure once at the cap and derive each layout's width-bound size.
-        _boldFont.Size = OperatorMaxFont;
-        _font.Size = OperatorMaxFont;
-
-        var typeWidth = typeSpan.Length > 0 ? _boldFont.MeasureText(typeSpan) : 0f;
-        var targetWidth = target.Length > 0 ? _font.MeasureText((ReadOnlySpan<char>)target) : 0f;
-
-        var hasBoth = typeSpan.Length > 0 && target.Length > 0;
-
         _text.Color = OperatorLabelColour;
 
-        // 1. Two lines: type above the object name, left aligned.
-        if (hasBoth)
-        {
-            var widerAtMax = Math.Max(typeWidth, targetWidth);
-
-            var sizeByWidth = widerAtMax <= 0 ? OperatorMaxFont : OperatorMaxFont * availableWidth / widerAtMax;
-
-            var sizeByHeight = (barHeight - 2f - TwoLineGap) / 2f;
-
-            var size = Math.Min(OperatorMaxFont, Math.Min(sizeByWidth, sizeByHeight));
-
-            if (size >= OperatorMinFont)
-            {
-                _boldFont.Size = size;
-                _font.Size = size;
-
-                var x = startX + textPadX;
-                var halfGap = (size + TwoLineGap) / 2f;
-
-                DrawTextSpan(canvas, typeSpan, x, y - halfGap + size * 0.35f, _boldFont, _text);
-                DrawTextSpan(canvas, target, x, y + halfGap + size * 0.35f, _font, _text);
-                return;
-            }
-        }
-
-        // 2. Single line: type then object name, left aligned.
-        if (hasBoth)
-        {
-            var widthAtMax = typeWidth + targetWidth + OperatorMaxFont * OperatorLabelGapFraction;
-
-            var sizeByWidth = widthAtMax <= 0 ? OperatorMaxFont : OperatorMaxFont * availableWidth / widthAtMax;
-
-            var sizeByHeight = barHeight - 2f;
-
-            var size = Math.Min(OperatorMaxFont, Math.Min(sizeByWidth, sizeByHeight));
-
-            if (size >= OperatorMinFont)
-            {
-                _boldFont.Size = size;
-                _font.Size = size;
-
-                var baseline = y + size * 0.35f;
-                var x = startX + textPadX;
-
-                DrawTextSpan(canvas, typeSpan, x, baseline, _boldFont, _text);
-
-                x += _boldFont.MeasureText(typeSpan, null) + size * OperatorLabelGapFraction;
-
-                DrawTextSpan(canvas, target, x, baseline, _font, _text);
-
-                return;
-            }
-        }
-
-        // 3. Single line: the operator type alone (or whichever single label is present).
-        var isPrimaryType = typeSpan.Length > 0;
-        var primarySpan = isPrimaryType ? typeSpan : (ReadOnlySpan<char>)target;
-        var primaryFont = isPrimaryType ? _boldFont : _font;
-        var primaryWAtMax = isPrimaryType ? typeWidth : targetWidth;
-
-        var nameSizeByWidth = primaryWAtMax <= 0 ? OperatorMaxFont : OperatorMaxFont * availableWidth / primaryWAtMax;
-        var nameSize = Math.Min(OperatorMaxFont, Math.Min(nameSizeByWidth, barHeight - 2f));
-
-        if (nameSize >= OperatorMinFont)
-        {
-            primaryFont.Size = nameSize;
-            DrawTextSpan(canvas, primarySpan, startX + textPadX, y + nameSize * 0.35f, primaryFont, _text);
-        }
+        OperatorLabelRenderer.Draw(canvas, typeSpan, target, startX, endX, y, barHeight, _boldFont, _font, _text);
     }
 
     private static ReadOnlySpan<char> BuildTypeSpan(string operatorName, int dop, Span<char> charBuffer)
@@ -522,20 +416,5 @@ internal sealed class OperatorRenderer(RenderResource resources, CurrentSelectio
         }
 
         return charBuffer[..position];
-    }
-
-    private static void DrawTextSpan(SKCanvas canvas,
-                                     ReadOnlySpan<char> text,
-                                     float x,
-                                     float y,
-                                     SKFont font,
-                                     SKPaint paint)
-    {
-        using var blob = SKTextBlob.Create(text, font, SKPoint.Empty);
-
-        if (blob is not null)
-        {
-            canvas.DrawText(blob, x, y, paint);
-        }
     }
 }

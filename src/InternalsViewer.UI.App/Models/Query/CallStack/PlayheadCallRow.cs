@@ -45,8 +45,6 @@ public sealed partial class PlayheadCallRow(CallStackNode node,
 
     public string CurrentText { get; set; } = string.Empty;
 
-    public bool HasRowBuffer { get; set; }
-
     public long Instructions => (long)stackCall.Instructions;
 
     public IReadOnlyList<CallSignaturePart> Arguments

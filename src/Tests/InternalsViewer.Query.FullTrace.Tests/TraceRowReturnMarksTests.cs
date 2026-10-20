@@ -6,6 +6,9 @@ using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
+using InternalsViewer.Query.Plans.Model;
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRows;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
@@ -17,9 +20,12 @@ public class TraceRowReturnMarksTests
 
     private const ulong Helper = 0x1000;
 
+    private const ulong OpenFunction = 0x1100;
+
     private const ulong JoinIterator = 0x1F4_0000_1000;
 
     private const ulong ScanIterator = 0x1F4_0000_2000;
+
 
     private const ulong RowStatus = 0;
 
@@ -29,14 +35,17 @@ public class TraceRowReturnMarksTests
     {
         Name = "Merge Join",
         OperatorDescription = "Merge Join",
-        Instances = [JoinIterator]
+        Instances = [JoinIterator],
+        PlanNodeIdentifier = new PlanNodeIdentifier(1, 0)
     };
 
     private static readonly ExecutionOperatorEvent Scan = new()
     {
         Name = "Index Scan",
         OperatorDescription = "Index Scan",
-        Instances = [ScanIterator]
+        Instances = [ScanIterator],
+        PlanNodeIdentifier = new PlanNodeIdentifier(1, 1),
+        ParentNodeId = 0
     };
 
     private static readonly CallNode[] Nodes =
@@ -52,7 +61,7 @@ public class TraceRowReturnMarksTests
 
         Assert.Equal((1, 1, 1),
                      (marks.GetCount(Scan, Thread, RowReturnType.PassedUp),
-                      marks.GetCount(Scan, Thread, RowReturnType.NotPassedUp),
+                      marks.GetCount(Scan, Thread, RowReturnType.Skipped),
                       marks.GetCount(Scan, Thread, RowReturnType.End)));
     }
 
@@ -63,7 +72,7 @@ public class TraceRowReturnMarksTests
 
         Assert.Equal((1, 0, 1),
                      (marks.GetCount(Join, Thread, RowReturnType.PassedUp),
-                      marks.GetCount(Join, Thread, RowReturnType.NotPassedUp),
+                      marks.GetCount(Join, Thread, RowReturnType.Skipped),
                       marks.GetCount(Join, Thread, RowReturnType.End)));
     }
 
@@ -74,7 +83,63 @@ public class TraceRowReturnMarksTests
                           [(12, 15, RowStatus), (20, 25, RowStatus), (30, 35, EndStatus)]);
 
         Assert.Equal((0, 2),
-                     (marks.GetCount(Scan, Thread, RowReturnType.PassedUp), marks.GetCount(Scan, Thread, RowReturnType.NotPassedUp)));
+                     (marks.GetCount(Scan, Thread, RowReturnType.PassedUp), marks.GetCount(Scan, Thread, RowReturnType.Skipped)));
+    }
+
+    [Fact]
+    public void Rows_A_Filter_Reads_Without_Returning_Are_Rejected()
+    {
+        var filter = new ExecutionOperatorEvent
+        {
+            Name = "Filter",
+            OperatorDescription = "Filter",
+            Instances = [JoinIterator],
+            PlanNodeIdentifier = new PlanNodeIdentifier(1, 0)
+        };
+
+        var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)],
+                          [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)],
+                          top: filter);
+
+        Assert.Equal((1, 1, 0),
+                     (marks.GetCount(Scan, Thread, RowReturnType.PassedUp),
+                      marks.GetCount(Scan, Thread, RowReturnType.Rejected),
+                      marks.GetCount(Scan, Thread, RowReturnType.Skipped)));
+    }
+
+    [Fact]
+    public void A_Batch_Passed_Up_Is_Marked_On_A_Batch_Operator()
+    {
+        var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)],
+                          [(12, 15, RowStatus), (55, 60, EndStatus)],
+                          childMethod: "BpGetNextBatch");
+
+        Assert.Equal((true, false, 1), (marks.IsBatch(Scan), marks.IsBatch(Join), marks.GetCount(Scan, Thread, RowReturnType.PassedUp)));
+    }
+
+    [Fact]
+    public void Each_GetRow_Call_Is_Linked_To_The_Operator_That_Made_It()
+    {
+        var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)], [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)]);
+
+        var calls = marks.Ticks.GetTicks(Scan, Thread)!.All.OrderBy(t => t.Instructions.Start).ToList();
+
+        Assert.All(calls, t => Assert.Same(Join, t.Caller));
+        Assert.Equal([12d, 20d, 55d], calls.Select(t => t.Instructions.Start));
+        Assert.Equal([15d, 25d, 60d], calls.Select(t => t.Instructions.End));
+        Assert.All(marks.Ticks.GetTicks(Join, Thread)!.All, t => Assert.Null(t.Caller));
+    }
+
+    [Fact]
+    public void Rows_Read_Inside_An_Operators_Open_Are_Called_By_It_But_Not_Passed_Up()
+    {
+        var marks = Build([(50, 60, RowStatus), (70, 80, EndStatus)],
+                          [(12, 15, RowStatus), (20, 25, RowStatus), (30, 35, EndStatus)],
+                          joinOpens: [(10, 40)]);
+
+        Assert.Equal((0, 2),
+                     (marks.GetCount(Scan, Thread, RowReturnType.PassedUp), marks.GetCount(Scan, Thread, RowReturnType.Skipped)));
+        Assert.All(marks.Ticks.GetTicks(Scan, Thread)!.All, t => Assert.Same(Join, t.Caller));
     }
 
     [Fact]
@@ -82,13 +147,29 @@ public class TraceRowReturnMarksTests
     {
         var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)], [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)]);
 
-        var mark = marks.GetNearestMark(Scan, Thread, TraceTimelineAxis.Instructions, 24);
+        var mark = marks.Ticks.GetTicks(Scan, Thread)!.GetNearest(TraceTimelineAxis.Instructions, 24, 0);
 
-        Assert.Equal((1, RowReturnType.PassedUp), (mark?.Call, mark?.Type));
+        Assert.Equal((1, (byte)RowReturnType.PassedUp), (mark?.Call, mark?.Value));
+    }
+
+    [Fact]
+    public void A_Point_Inside_A_GetRow_Call_Finds_That_Call()
+    {
+        var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)], [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)]);
+
+        var ticks = marks.Ticks.GetTicks(Scan, Thread)!;
+
+        var call = ticks.GetNearest(TraceTimelineAxis.Instructions, 22, 0);
+
+        Assert.Equal((1, 20d, 25d), (call?.Call, call?.Instructions.Start, call?.Instructions.End));
+        Assert.Null(ticks.GetNearest(TraceTimelineAxis.Instructions, 17, 0));
     }
 
     private static TraceRowReturnMarks Build((ulong Start, ulong End, ulong Status)[] joinCalls,
-                                             (ulong Start, ulong End, ulong Status)[] scanCalls)
+                                             (ulong Start, ulong End, ulong Status)[] scanCalls,
+                                             ExecutionOperatorEvent? top = null,
+                                             string childMethod = "GetRowOrReQualifyHelper",
+                                             (ulong Start, ulong End)[]? joinOpens = null)
     {
         CallSpan[] spans = [.. joinCalls.Select((c, i) => Span(0, c.Start, c.End, (uint)i)),
                             .. scanCalls.Select((c, i) => Span(1, c.Start, c.End, (uint)i))];
@@ -103,11 +184,13 @@ public class TraceRowReturnMarksTests
 
         var join = tree.AddCall(tree.Root, Frame(JoinIterator), 1);
 
-        var scan = tree.AddCall(join, Frame(ScanIterator), 1);
+        var scan = tree.AddCall(join, Frame(ScanIterator, childMethod), 1);
 
         CallStackNode[] nodes = [join, scan];
 
         timeline.MapNodes(nodes);
+
+        var open = tree.AddCall(tree.Root, Frame(JoinIterator, "Open"), 1);
 
         var store = new TraceCallStore.Builder();
 
@@ -115,13 +198,20 @@ public class TraceRowReturnMarksTests
 
         store.Add(Helper, ScanIterator, Chunk([.. scanCalls.Select(c => Call(c, node: 1))]), scanCalls.Length);
 
+        if (joinOpens is not null)
+        {
+            ulong[][] opens = [.. joinOpens.Select(c => Call((c.Start, c.End, RowStatus), node: 2))];
+
+            store.Add(OpenFunction, JoinIterator, Chunk(opens), opens.Length);
+        }
+
         var calls = store.Build();
 
-        calls.MapNodes(nodes);
+        calls.MapNodes([join, scan, open]);
 
         timeline.SetCalls(calls);
 
-        timeline.SetLifetimes([new TraceOperatorLifetime(Thread, Join, 0, [Whole()], [Whole()], MemoryInUseCurve.Empty),
+        timeline.SetLifetimes([new TraceOperatorLifetime(Thread, top ?? Join, 0, [Whole()], [Whole()], MemoryInUseCurve.Empty),
                                new TraceOperatorLifetime(Thread, Scan, 1, [Whole()], [Whole()], MemoryInUseCurve.Empty)]);
 
         return TraceRowReturnMarks.Build(timeline, calls);
@@ -130,7 +220,7 @@ public class TraceRowReturnMarksTests
     private static ulong[] Call((ulong Start, ulong End, ulong Status) call, int node)
         => Row(call.Start, flags: Thread | TraceCallColumns.ReturnedFlag, returnValue: call.Status, node: node, endSequence: call.End);
 
-    private static CallstackFrame Frame(ulong instance) => new()
+    private static CallstackFrame Frame(ulong instance, string method = "GetRowOrReQualifyHelper") => new()
     {
         Module = "sqlmin",
         Rva = 0x10,
@@ -139,7 +229,7 @@ public class TraceRowReturnMarksTests
         Resolved = new ResolvedCallstackFrame
         {
             ClassName = "CQScanNew",
-            MethodName = "GetRowOrReQualifyHelper",
+            MethodName = method,
             SymbolCategory = SymbolCategory.Unknown
         }
     };

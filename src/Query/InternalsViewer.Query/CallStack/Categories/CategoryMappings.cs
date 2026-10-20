@@ -8,21 +8,27 @@ public sealed class CategoryMappings
 
     private readonly IReadOnlyList<SymbolCategoryRule> _rules;
 
+    private readonly IReadOnlyList<SymbolCategoryRule> _fallbacks;
+
     private readonly IReadOnlyList<OperatorRule> _operators;
 
     private readonly IReadOnlyList<FramePattern> _barriers;
 
     private CategoryMappings(IReadOnlyDictionary<string, ModuleCategory> modules,
                              IReadOnlyList<SymbolCategoryRule> rules,
+                             IReadOnlyList<SymbolCategoryRule> fallbacks,
                              IReadOnlyList<OperatorRule> operators,
                              IReadOnlyList<FramePattern> barriers)
     {
         _modules = modules;
         _rules = rules;
+        _fallbacks = fallbacks;
         _operators = operators;
         _barriers = barriers;
 
         RuleIndex = new RuleIndex([.. rules.Select(r => (r.Class, r.Function))]);
+
+        FallbackIndex = new RuleIndex([.. fallbacks.Select(r => (r.Class, r.Function))]);
 
         OperatorIndex = new RuleIndex([.. operators.Select(o => (o.Class, o.Function))]);
     }
@@ -39,6 +45,8 @@ public sealed class CategoryMappings
 
     private RuleIndex RuleIndex { get; }
 
+    private RuleIndex FallbackIndex { get; }
+
     private RuleIndex OperatorIndex { get; }
 
     public ModuleCategory GetModuleCategory(string? module) =>
@@ -47,23 +55,9 @@ public sealed class CategoryMappings
             : ModuleCategory.Unknown;
 
     public SymbolCategory Classify(string? module, ReadOnlySpan<char> className, ReadOnlySpan<char> methodName)
-    {
-        var best = -1;
-
-        var bestScore = default(RuleScore);
-
-        foreach (var index in RuleIndex.Candidates(className, methodName))
-        {
-            if (_rules[index].TryScore(module, className, methodName, out var score) && Improves(index, score, best, bestScore))
-            {
-                best = index;
-
-                bestScore = score;
-            }
-        }
-
-        return best >= 0 ? _rules[best].Category : SymbolCategory.Unknown;
-    }
+        => Classify(_rules, RuleIndex, module, className, methodName)
+           ?? Classify(_fallbacks, FallbackIndex, module, className, methodName)
+           ?? SymbolCategory.Unknown;
 
     /// <summary>
     /// The plan operator a frame belongs to: its badge, and the operators it is the entry point of
@@ -119,7 +113,8 @@ public sealed class CategoryMappings
                                         TextReader? operators = null,
                                         TextReader? barriers = null,
                                         TextReader? overrideModules = null,
-                                        TextReader? overrideSymbols = null)
+                                        TextReader? overrideSymbols = null,
+                                        TextReader? fallbacks = null)
     {
         var moduleMap = new Dictionary<string, ModuleCategory>(StringComparer.OrdinalIgnoreCase);
 
@@ -147,6 +142,7 @@ public sealed class CategoryMappings
 
         return new CategoryMappings(moduleMap,
                                     rules,
+                                    fallbacks is null ? [] : [.. MappingParser.ParseSymbols(fallbacks)],
                                     operators is null ? [] : [.. MappingParser.ParseOperators(operators)],
                                     barriers is null ? [] : [.. MappingParser.ParseBarriers(barriers)]);
     }
@@ -166,6 +162,8 @@ public sealed class CategoryMappings
 
     private const string BarriersFile = "Barriers.txt";
 
+    private const string FallbacksFile = "FallbackCategories.txt";
+
     private static CategoryMappings LoadDefault()
     {
         var assembly = typeof(CategoryMappings).Assembly;
@@ -178,7 +176,32 @@ public sealed class CategoryMappings
 
         using var barriers = OpenResource(assembly, BarriersFile);
 
-        return Load(modules, symbols, operators, barriers);
+        using var fallbacks = OpenResource(assembly, FallbacksFile);
+
+        return Load(modules, symbols, operators, barriers, fallbacks: fallbacks);
+    }
+
+    private static SymbolCategory? Classify(IReadOnlyList<SymbolCategoryRule> rules,
+                                            RuleIndex index,
+                                            string? module,
+                                            ReadOnlySpan<char> className,
+                                            ReadOnlySpan<char> methodName)
+    {
+        var best = -1;
+
+        var bestScore = default(RuleScore);
+
+        foreach (var candidate in index.Candidates(className, methodName))
+        {
+            if (rules[candidate].TryScore(module, className, methodName, out var score) && Improves(candidate, score, best, bestScore))
+            {
+                best = candidate;
+
+                bestScore = score;
+            }
+        }
+
+        return best >= 0 ? rules[best].Category : null;
     }
 
     private static bool Improves(int index, RuleScore score, int best, RuleScore bestScore)

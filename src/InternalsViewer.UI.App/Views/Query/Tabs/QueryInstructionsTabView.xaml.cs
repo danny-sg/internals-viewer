@@ -32,11 +32,11 @@ public sealed partial class QueryInstructionsTabView : UserControl
         ["Events"] = q => q.Layout.IsEventsVisible = true,
         ["CallTree"] = q => q.Layout.IsCallTreeVisible = true,
         ["Timeline"] = q => q.Layout.IsTimelineVisible = true,
-        ["FlameChart"] = q =>
+        ["TraceTimeline"] = q =>
         {
             if (q.Layout.IsTrace)
             {
-                q.Layout.IsFlameChartVisible = true;
+                q.Layout.IsTraceTimelineVisible = true;
             }
         },
         ["Simulation"] = q => q.IsSimulationVisible = true

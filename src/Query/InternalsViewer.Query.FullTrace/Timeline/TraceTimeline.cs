@@ -6,7 +6,6 @@ using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
-using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
 
 namespace InternalsViewer.Query.FullTrace.Timeline;
@@ -44,8 +43,6 @@ public sealed partial class TraceTimeline
         Memory = source.Memory;
         Calls = source.Calls;
         Lifetimes = source.Lifetimes;
-        EventLinks = source.EventLinks;
-        EventLinksBySequence = source.EventLinksBySequence;
 
         if (!fit || threads.Count == 0)
         {
@@ -68,8 +65,6 @@ public sealed partial class TraceTimeline
 
     public IReadOnlyList<TraceOperatorLifetime> Lifetimes { get; private set; } = [];
 
-    public IReadOnlyList<TraceEventLink> EventLinks { get; private set; } = [];
-
     internal CallStackNode?[] MappedNodes => Nodes;
 
     private double PositionStart { get; }
@@ -85,8 +80,6 @@ public sealed partial class TraceTimeline
     private int[] Parents { get; }
 
     private CallStackNode?[] Nodes { get; set; } = [];
-
-    private Dictionary<int, TraceEventLink> EventLinksBySequence { get; set; } = [];
 
     private TraceCallStore? Calls { get; set; }
 
@@ -176,19 +169,6 @@ public sealed partial class TraceTimeline
         }
 
         return stacks;
-    }
-
-    public TraceEventLink? EventLinkOf(EngineEvent engineEvent)
-    {
-        foreach (var owned in engineEvent.SelfAndOwned())
-        {
-            if (EventLinksBySequence.TryGetValue(owned.SequenceId, out var link))
-            {
-                return link;
-            }
-        }
-
-        return null;
     }
 
     public IEnumerable<TraceSpanLocation> GetSpanLocations()
@@ -432,18 +412,6 @@ public sealed partial class TraceTimeline
         }
 
         return depth;
-    }
-
-    internal void SetEventLinks(IReadOnlyList<TraceEventLink> links)
-    {
-        EventLinks = links;
-
-        EventLinksBySequence = [];
-
-        foreach (var link in links)
-        {
-            EventLinksBySequence.TryAdd(link.Event.SequenceId, link);
-        }
     }
 
     public double PositionOf(TracePosition position)

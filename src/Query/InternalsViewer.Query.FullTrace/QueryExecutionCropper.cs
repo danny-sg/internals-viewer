@@ -7,7 +7,7 @@ internal static class QueryExecutionCropper
 {
     private const string Module = "sqllang";
 
-    private const string Function = "CMsqlExecContext::FExecute";
+    private const string Function = "CXStmtQuery::ErsqExecuteQuery";
 
     public static bool IsQueryExecution(CallStackNode node)
         => node.Frame is { } frame
@@ -35,7 +35,7 @@ internal static class QueryExecutionCropper
         => node.Parent is { IsRoot: true } && !executing.Contains(node) && working.Contains(node);
 
     private static bool IsIterator(CallStackNode node)
-        => node.Frame?.Resolved?.SymbolCategory is SymbolCategory.QueryOperator or SymbolCategory.PhysicalOperator;
+        => node.Frame?.Resolved?.SymbolCategory is SymbolCategory.QueryOperator or SymbolCategory.BatchOperator;
 
     private static bool IsOutermostExecution(CallStackNode node)
         => IsQueryExecution(node) && node.Parent?.Ancestors().Any(IsQueryExecution) != true;

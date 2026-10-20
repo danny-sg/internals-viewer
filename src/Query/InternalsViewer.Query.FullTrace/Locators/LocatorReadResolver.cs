@@ -10,14 +10,13 @@ namespace InternalsViewer.Query.FullTrace.Locators;
 
 public static partial class LocatorReadResolver
 {
-    public const int ReturnRegister = 16;
-
     private const int StackCandidateParameters = 4;
 
     private static readonly SearchValues<string> DecoratedTypes =
         SearchValues.Create(["VPageId@@", "VAllocationPageId@@", "VHPageHandle@@", "VPageRef@@", "VBTreeHPage@@", "VIndexPageRef@@",
                              "VHeapPageRef@@", "VTextPageRef@@", "VIAMPageRef@@", "VGAMPageRef@@", "VSGAMPageRef@@", "VPFSPageRef@@",
-                             "VPSPageRef@@", "URowId@@", "VColumnStoreObjectKey@@", "ULSN@@", "VLSN@@", "PEBD", "PEB_W", "VCTypeInfo@@"],
+                             "VPSPageRef@@", "URowId@@", "VColumnStoreObjectKey@@", "ULSN@@", "VLSN@@", "PEBD", "PEB_W", "VCTypeInfo@@",
+                             "VCXVariant@@"],
                             StringComparison.Ordinal);
 
     internal static IEnumerable<LocatorRead> GetReads(ulong function, FunctionSignature signature)
@@ -40,7 +39,7 @@ public static partial class LocatorReadResolver
 
         if (signature.ReturnType is { } returnType && LocatorType.GetLocatorType(returnType) is { } returned)
         {
-            foreach (var read in CreateReads(function, ReturnRegister, returned, returned: true))
+            foreach (var read in CreateReads(function, ArgumentLayout.ReturnRegister, returned, returned: true))
             {
                 yield return read;
             }
@@ -106,7 +105,7 @@ public static partial class LocatorReadResolver
 
     private static IEnumerable<LocatorRead> CreateReads(ulong function, int register, LocatorType type, bool returned)
     {
-        bool[] ends = returned ? [true] : type.IsInOut ? [false, true] : [type.IsOutput];
+        bool[] ends = returned || type.ValueType == LocatorValueType.Variant ? [true] : type.IsInOut ? [false, true] : [type.IsOutput];
 
         return ends.Select(e => new LocatorRead(function, register, e, type.ValueType, type.Offset, type.Path));
     }

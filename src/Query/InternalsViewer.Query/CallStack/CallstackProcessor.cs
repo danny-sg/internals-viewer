@@ -56,14 +56,9 @@ internal static class CallstackProcessor
             {
                 frame.Resolved = ResolvedCallstackFrameParser.Parse(frame.Module, result);
 
-                if (frame.Resolved.ModuleCategory == ModuleCategory.Unknown)
+                if (frame.Resolved.ModuleCategory == ModuleCategory.Unknown || frame.Resolved.SymbolCategory == SymbolCategory.Unknown)
                 {
-                    unknown.Add(result);
-                }
-
-                if (frame.Resolved.SymbolCategory == SymbolCategory.Unknown)
-                {
-                    unknown.Add(result);
+                    unknown.Add($"{frame.Module}!{result}");
                 }
             }
         }

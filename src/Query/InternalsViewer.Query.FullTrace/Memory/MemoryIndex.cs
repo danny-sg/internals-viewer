@@ -5,11 +5,15 @@ namespace InternalsViewer.Query.FullTrace.Memory;
 
 public sealed partial class MemoryIndex
 {
-    private MemoryIndex(Dictionary<uint, ThreadMemory> threads, MemoryInUseCurve inUse, MemoryInUseCurve workspace)
+    private MemoryIndex(Dictionary<uint, ThreadMemory> threads,
+                        MemoryInUseCurve inUse,
+                        MemoryInUseCurve workspace,
+                        IReadOnlyList<MemoryBlock>? blocks = null)
     {
         Threads = threads;
         InUse = inUse;
         Workspace = workspace;
+        Blocks = blocks ?? [];
     }
 
     public static MemoryIndex Empty { get; } = new([], MemoryInUseCurve.Empty, MemoryInUseCurve.Empty);
@@ -17,6 +21,8 @@ public sealed partial class MemoryIndex
     public bool HasAllocations => Threads.Count > 0;
 
     public bool HasWorkspace => !Workspace.IsEmpty;
+
+    internal IReadOnlyList<MemoryBlock> Blocks { get; }
 
     private Dictionary<uint, ThreadMemory> Threads { get; }
 
@@ -112,9 +118,13 @@ public sealed partial class MemoryIndex
 
         var memory = threads.ToDictionary(t => t.Key, t => new ThreadMemory([.. t.Value.Allocations], [.. t.Value.Frees]));
 
+        MemoryBlock[] blocks = [.. kept.Select((a, index) => new MemoryBlock(a.Pointer, a.Bytes, a.Thread, a.Start, freedAt[index]))
+                                       .Where(b => b.Pointer != 0)];
+
         return new MemoryIndex(memory,
                                new MemoryInUseCurve([.. positions], [.. values]),
-                               new MemoryInUseCurve([.. workspacePositions], [.. workspaceValues]));
+                               new MemoryInUseCurve([.. workspacePositions], [.. workspaceValues]),
+                               blocks);
     }
 
     public (ulong Bytes, int Count) AllocatedDuring(uint thread, double start, double end)

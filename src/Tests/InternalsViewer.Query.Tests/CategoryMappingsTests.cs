@@ -8,11 +8,11 @@ public class CategoryMappingsTests
     // Migrated from the old SymbolCategoryDictionaryTests, now resolved through the embedded default mappings.
     [Theory]
     [InlineData("CAutoQdsDBLock", "CreateTransactionAndAcquireQdsDBLock", SymbolCategory.QueryStore)]
-    [InlineData("SOSHost_EventAuto", "Wait", SymbolCategory.Scheduling)]
+    [InlineData("SOSHost_EventAuto", "Wait", SymbolCategory.Synchronisation)]
     [InlineData("CQDSManager", "SomeUncategorizedMethod", SymbolCategory.QueryStore)]
     [InlineData("SomeUnknownClass", "AcquireGenericQdsDbAndProcess", SymbolCategory.QueryStore)]
     [InlineData(null, "ExecuteCommandsInAutoTransaction", SymbolCategory.QueryExecution)]
-    [InlineData("CSyncPoint", "Wait", SymbolCategory.Scheduling)]
+    [InlineData("CSyncPoint", "Wait", SymbolCategory.Synchronisation)]
     [InlineData("CacheProbabilisticAlgorithm", "EntryReInitCost", SymbolCategory.SqlOs)]
     [InlineData("RbpCompile", "CompileFilter", SymbolCategory.ColumnStore)]
     [InlineData("RbpEarlyFilterTransform", "ReportFilterReplacedWithBitmapFilter", SymbolCategory.ColumnStore)]
@@ -26,11 +26,18 @@ public class CategoryMappingsTests
     [InlineData("CMemo", "OptimizeQuery", SymbolCategory.Optimization)]
     [InlineData("CMIterStatsMemory", "GetNextStatForLeadingColumn", SymbolCategory.Optimization)]
     [InlineData("CVDManager", "CLoadDependentViews", SymbolCategory.QueryBinding)]
-    [InlineData("CBpXte", "InitializeBatchIterators", SymbolCategory.ExecutionTree)]
-    [InlineData("SOS_Mutex", "Wait", SymbolCategory.Scheduling)]
-    [InlineData("SOS::Event<SOS::Events::AutoReset>", "ExecutePreWaitSteps", SymbolCategory.Scheduling)]
+    [InlineData("CBpXte", "InitializeBatchIterators", SymbolCategory.QueryExecution)]
+    [InlineData("SOS_Mutex", "Wait", SymbolCategory.Synchronisation)]
+    [InlineData("SOS::Event<SOS::Events::AutoReset>", "ExecutePreWaitSteps", SymbolCategory.Synchronisation)]
+    [InlineData("SOS_Task", "Sleep", SymbolCategory.Scheduling)]
+    [InlineData("SOS_Scheduler", "SwitchContext", SymbolCategory.Scheduling)]
+    [InlineData("WaitStats", "Record", SymbolCategory.SqlOs)]
+    [InlineData("BUF", "AcquireLatch", SymbolCategory.BufferPool)]
+    [InlineData("FCB", "Open", SymbolCategory.Storage)]
     [InlineData("CSession", "ReturnBlobHandleFactory", SymbolCategory.LargeObjectStorage)]
-    [InlineData(null, "ConstructCXVariantRowAccessor", SymbolCategory.RowAccess)]
+    [InlineData(null, "ConstructCXVariantRowAccessor", SymbolCategory.Rowset)]
+    [InlineData("HeapDataSetSession", "GetNextRowValuesInternal", SymbolCategory.Rowset)]
+    [InlineData("BTreeMgr", "Seek", SymbolCategory.BTreeNavigation)]
     [InlineData("CIDMgr", "Acquire", SymbolCategory.SqlOs)]
     [InlineData("CMemoryFeedbackMonitor", "CreateMemoryFeedbackInfoForRowMode", SymbolCategory.Memory)]
     [InlineData("CQueryResourceGrantManager", "GetGrant", SymbolCategory.Memory)]
@@ -136,15 +143,23 @@ public class CategoryMappingsTests
     public void Module_Pinned_Operator_Rule_Beats_Generic_Function_Rule()
     {
         // sqlmin|CQScanHash*|* outranks the generic *|*|GetRow* rule, which would otherwise make this RowAccess.
-        Assert.Equal(SymbolCategory.PhysicalOperator,
+        Assert.Equal(SymbolCategory.QueryOperator,
                      CategoryMappings.Default.Classify("sqlmin", "CQScanHashNew", "GetRow"));
     }
+
+    [Fact]
+    public void Batch_Mode_Operators_Are_Batch_Operators()
+        => Assert.Equal(SymbolCategory.BatchOperator, CategoryMappings.Default.Classify("sqlmin", "CBpQScanHashJoin", "GetBatch"));
+
+    [Fact]
+    public void Batches_Are_Part_Of_Batch_Operators()
+        => Assert.Equal(SymbolCategory.BatchOperator, CategoryMappings.Default.Classify("sqlmin", "CBpBatch", "Reset"));
 
     [Fact]
     public void Most_Specific_Rule_Wins()
     {
         var symbols = string.Join('\n',
-            "*|*|*|RowAccess",                          // matches anything, lowest specificity
+            "*|*|*|Rowset",                          // matches anything, lowest specificity
             "sqlmin|CQScan*|*|QueryOperator",           // module + class glob
             "sqlmin|CQScanTopNew|GetRow|Compilation");  // fully exact
 
@@ -152,7 +167,7 @@ public class CategoryMappingsTests
 
         Assert.Equal(SymbolCategory.Compilation, mappings.Classify("sqlmin", "CQScanTopNew", "GetRow"));
         Assert.Equal(SymbolCategory.QueryOperator, mappings.Classify("sqlmin", "CQScanHashNew", "GetRow"));
-        Assert.Equal(SymbolCategory.RowAccess, mappings.Classify("other", "Whatever", "Anything"));
+        Assert.Equal(SymbolCategory.Rowset, mappings.Classify("other", "Whatever", "Anything"));
     }
 
     [Fact]
@@ -190,6 +205,36 @@ public class CategoryMappingsTests
     }
 
     [Fact]
+    public void A_Fallback_Only_Applies_When_No_Rule_Matches()
+    {
+        var mappings = CategoryMappings.Load(new StringReader(""),
+                                             new StringReader("SqlTsEs|CEsExec|*|ExpressionEvaluation"),
+                                             fallbacks: new StringReader("SqlTsEs|*|*|Security"));
+
+        Assert.Equal((SymbolCategory.ExpressionEvaluation, SymbolCategory.Security, SymbolCategory.Unknown),
+                     (mappings.Classify("SqlTsEs", "CEsExec", "GeneralEval"),
+                      mappings.Classify("SqlTsEs", "CUnmapped", "Run"),
+                      mappings.Classify("sqlmin", "CUnmapped", "Run")));
+    }
+
+    [Fact]
+    public void The_Most_Specific_Fallback_Wins()
+    {
+        var fallbacks = string.Join('\n', "SqlTsEs|*|*|ExpressionEvaluation", "SqlTsEs|*Enclave*|*|Security");
+
+        var mappings = CategoryMappings.Load(new StringReader(""), new StringReader(""), fallbacks: new StringReader(fallbacks));
+
+        Assert.Equal((SymbolCategory.Security, SymbolCategory.ExpressionEvaluation),
+                     (mappings.Classify("SqlTsEs", "CSGXEnclave", "Call"), mappings.Classify("SqlTsEs", "CKLLSketch<long>", "Compress")));
+    }
+
+    [Fact]
+    public void Default_Treats_Unmapped_Expression_Services_Symbols_As_Expression_Evaluation()
+        => Assert.Equal((SymbolCategory.ExpressionEvaluation, SymbolCategory.Security),
+                        (CategoryMappings.Default.Classify("SqlTsEs", null, "BlLikeStrStr"),
+                         CategoryMappings.Default.Classify("SqlTsEs", "CEnclave", "CallEnclaveAsync")));
+
+    [Fact]
     public void Default_Recognises_An_Access_Barrier()
     {
         // Where a page fetch begins, and so where an individual read's own stack starts.
@@ -209,7 +254,7 @@ public class CategoryMappingsTests
     {
         // The file is optional on Load, and an empty barrier set must match nothing — matching everything would cut
         // every event's stack at its own leaf.
-        var mappings = CategoryMappings.Load(new StringReader(""), new StringReader("*|*|*|RowAccess"));
+        var mappings = CategoryMappings.Load(new StringReader(""), new StringReader("*|*|*|Rowset"));
 
         Assert.False(mappings.IsAccessBarrier("sqlmin", "BPool", "Get"));
     }
