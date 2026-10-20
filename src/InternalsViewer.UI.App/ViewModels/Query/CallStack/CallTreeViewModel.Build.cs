@@ -41,6 +41,8 @@ public sealed partial class CallTreeViewModel
 
     private HashSet<CallTreeRow> SearchHits { get; } = [];
 
+    private HashSet<CallTreeRow> SearchMatches { get; } = [];
+
     private string? SelectedPath { get; set; }
 
     private string? FilterPath { get; set; }
@@ -75,7 +77,11 @@ public sealed partial class CallTreeViewModel
     }
 
     private void Publish()
-        => Layout = new CallTreeLayout([.. Roots], [.. Expanded], ExpandRoots, Selected, FocusCurrent, FocusParent, FilterCurrent);
+    {
+        SearchMatchCount = IsFiltering ? SearchMatches.Count : null;
+
+        Layout = new CallTreeLayout([.. Roots], [.. Expanded], ExpandRoots, Selected, FocusCurrent, FocusParent, FilterCurrent);
+    }
 
     private void ApplyFocus(EngineEvent? selected, bool keepSelection = false)
     {
@@ -336,6 +342,8 @@ public sealed partial class CallTreeViewModel
         HiddenOnly.Clear();
 
         SearchHits.Clear();
+
+        SearchMatches.Clear();
     }
 
     private void RevealPath(CallStackNode target)
@@ -468,6 +476,11 @@ public sealed partial class CallTreeViewModel
         if (IsFiltering && (isHit || row.Children.Any(SearchHits.Contains)))
         {
             SearchHits.Add(row);
+        }
+
+        if (IsFiltering && isHit)
+        {
+            SearchMatches.Add(row);
         }
     }
 

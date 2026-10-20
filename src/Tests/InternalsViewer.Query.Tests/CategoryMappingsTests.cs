@@ -205,6 +205,36 @@ public class CategoryMappingsTests
     }
 
     [Fact]
+    public void A_Fallback_Only_Applies_When_No_Rule_Matches()
+    {
+        var mappings = CategoryMappings.Load(new StringReader(""),
+                                             new StringReader("SqlTsEs|CEsExec|*|ExpressionEvaluation"),
+                                             fallbacks: new StringReader("SqlTsEs|*|*|Security"));
+
+        Assert.Equal((SymbolCategory.ExpressionEvaluation, SymbolCategory.Security, SymbolCategory.Unknown),
+                     (mappings.Classify("SqlTsEs", "CEsExec", "GeneralEval"),
+                      mappings.Classify("SqlTsEs", "CUnmapped", "Run"),
+                      mappings.Classify("sqlmin", "CUnmapped", "Run")));
+    }
+
+    [Fact]
+    public void The_Most_Specific_Fallback_Wins()
+    {
+        var fallbacks = string.Join('\n', "SqlTsEs|*|*|ExpressionEvaluation", "SqlTsEs|*Enclave*|*|Security");
+
+        var mappings = CategoryMappings.Load(new StringReader(""), new StringReader(""), fallbacks: new StringReader(fallbacks));
+
+        Assert.Equal((SymbolCategory.Security, SymbolCategory.ExpressionEvaluation),
+                     (mappings.Classify("SqlTsEs", "CSGXEnclave", "Call"), mappings.Classify("SqlTsEs", "CKLLSketch<long>", "Compress")));
+    }
+
+    [Fact]
+    public void Default_Treats_Unmapped_Expression_Services_Symbols_As_Expression_Evaluation()
+        => Assert.Equal((SymbolCategory.ExpressionEvaluation, SymbolCategory.Security),
+                        (CategoryMappings.Default.Classify("SqlTsEs", null, "BlLikeStrStr"),
+                         CategoryMappings.Default.Classify("SqlTsEs", "CEnclave", "CallEnclaveAsync")));
+
+    [Fact]
     public void Default_Recognises_An_Access_Barrier()
     {
         // Where a page fetch begins, and so where an individual read's own stack starts.

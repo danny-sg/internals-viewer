@@ -2,13 +2,12 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.Dia;
 using InternalsViewer.Query.Helpers;
+using InternalsViewer.Query.FullTrace.Arguments;
 
 namespace InternalsViewer.Query.FullTrace.Iterators;
 
 internal static class InstanceMethodCollector
 {
-    private const int RegisterCount = 4;
-
     private static readonly string[] ClassPrefixes = ["CQScan", "CBpQScan", "CQueryScan"];
 
     private static readonly string[] PlanObjectPrefixes = ["CXte", "CBpXte"];
@@ -78,7 +77,7 @@ internal static class InstanceMethodCollector
 
     private static int? KeyedParameter(IReadOnlyList<string> parameters)
     {
-        for (var index = 0; index < Math.Min(parameters.Count, RegisterCount); index++)
+        for (var index = 0; index < Math.Min(parameters.Count, ArgumentLayout.RegisterCount); index++)
         {
             var parameter = parameters[index].TrimEnd();
 

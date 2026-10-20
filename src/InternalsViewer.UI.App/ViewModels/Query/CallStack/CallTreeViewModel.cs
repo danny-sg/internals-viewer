@@ -41,6 +41,9 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _highlight = string.Empty;
 
+    [ObservableProperty]
+    private int? _searchMatchCount;
+
     public CallTreeViewModel(CallTreeTabViewModel owner, SettingsViewModel settings)
     {
         Owner = owner;

@@ -33,16 +33,29 @@ public sealed partial class TraceTimelineControl
         private set => SetValue(HasSearchMatchesProperty, value);
     }
 
+    public static readonly DependencyProperty SearchMatchCountProperty =
+        DependencyProperty.Register(nameof(SearchMatchCount), typeof(int?), typeof(TraceTimelineControl), new PropertyMetadata(null));
+
+    public int? SearchMatchCount
+    {
+        get => (int?)GetValue(SearchMatchCountProperty);
+        private set => SetValue(SearchMatchCountProperty, value);
+    }
+
     private bool[]? _searchMatches;
 
     private bool[]? _nodeMatches;
 
     public void StepSearch(bool forward)
     {
-        if (_searchMatches is { } matches)
+        if (GetAdjacentSearchMatch(forward) is not { } hit || SpanOf(hit) is not { } span)
         {
-            StepTo(forward, matches, allRows: true);
+            return;
         }
+
+        _playhead = span.Start;
+
+        SelectAndShow(hit);
     }
 
     private void FindSearchMatches()
@@ -51,28 +64,123 @@ public sealed partial class TraceTimelineControl
 
         _searchMatches = null;
 
-        HasSearchMatches = false;
-
         var terms = SearchText?.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
 
-        if (terms.Length == 0 || _timeline is not { } timeline)
+        if (terms.Length > 0 && _timeline is { } timeline)
         {
+            var matches = new bool[timeline.NodeCount];
+
+            for (var node = 0; node < matches.Length; node++)
+            {
+                var label = LabelOf(node);
+
+                matches[node] = terms.All(t => label.Contains(t, StringComparison.OrdinalIgnoreCase));
+            }
+
+            _searchMatches = matches;
+        }
+
+        CountSearchMatches();
+    }
+
+    private void CountSearchMatches()
+    {
+        if (_searchMatches is not { } matches || _visible is not { } timeline)
+        {
+            SearchMatchCount = _searchMatches is null ? null : 0;
+
+            HasSearchMatches = false;
+
             return;
         }
 
-        var matches = new bool[timeline.NodeCount];
+        var count = 0;
 
-        for (var node = 0; node < matches.Length; node++)
+        foreach (var thread in timeline.Threads)
         {
-            var label = LabelOf(node);
-
-            matches[node] = terms.All(t => label.Contains(t, StringComparison.OrdinalIgnoreCase));
+            foreach (var row in thread.Rows)
+            {
+                for (var index = 0; index < row.Count; index++)
+                {
+                    if (IsSearchMatch(matches, row.NodeAt(index)))
+                    {
+                        count++;
+                    }
+                }
+            }
         }
 
-        _searchMatches = matches;
+        SearchMatchCount = count;
 
-        HasSearchMatches = Array.IndexOf(matches, true) >= 0;
+        HasSearchMatches = count > 0;
     }
+
+    private FlameHit? GetAdjacentSearchMatch(bool forward)
+    {
+        if (_searchMatches is not { } matches || _visible is not { } timeline)
+        {
+            return null;
+        }
+
+        var current = _selected is { } selected && SpanOf(selected) is { } span
+            ? new SearchPosition(span.Start, selected.Lane, selected.Depth)
+            : new SearchPosition(_playhead ?? _viewStart, forward ? int.MaxValue : -1, 0);
+
+        FlameHit? best = null;
+
+        var bestStart = 0d;
+
+        for (var lane = 0; lane < timeline.Threads.Count; lane++)
+        {
+            var rows = timeline.Threads[lane].Rows;
+
+            for (var depth = 0; depth < rows.Count; depth++)
+            {
+                var row = rows[depth];
+
+                var starts = row.Starts(_axis);
+
+                var order = (lane, depth).CompareTo((current.Lane, current.Depth));
+
+                if (forward)
+                {
+                    var first = order > 0 ? row.FirstStartingFrom(_axis, current.Start, 0) : row.FirstStartingAfter(_axis, current.Start);
+
+                    for (var index = first; index < row.Count && (best is null || starts[index] < bestStart); index++)
+                    {
+                        if (IsSearchMatch(matches, row.NodeAt(index)))
+                        {
+                            best = new FlameHit(lane, depth, index);
+
+                            bestStart = starts[index];
+
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    var last = (order < 0 ? row.FirstStartingAfter(_axis, current.Start) : row.FirstStartingFrom(_axis, current.Start, 0)) - 1;
+
+                    for (var index = last; index >= 0 && (best is null || starts[index] >= bestStart); index--)
+                    {
+                        if (IsSearchMatch(matches, row.NodeAt(index)))
+                        {
+                            best = new FlameHit(lane, depth, index);
+
+                            bestStart = starts[index];
+
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        return best;
+    }
+
+    private static bool IsSearchMatch(bool[] matches, int node) => node >= 0 && node < matches.Length && matches[node];
 
     private void FindNodeMatches(CallStackNode? selected)
     {
@@ -128,4 +236,6 @@ public sealed partial class TraceTimelineControl
 
         control.Redraw();
     }
+
+    private readonly record struct SearchPosition(double Start, int Lane, int Depth);
 }

@@ -193,6 +193,34 @@ public static class ArgumentValue
         return Read(type, raw, withHex: true) ?? $"0x{raw:X}";
     }
 
+    public static Int128 ToInteger(string type, ulong raw)
+    {
+        if (type == "this" || IsPointer(type))
+        {
+            return raw;
+        }
+
+        var normalised = Normalise(type);
+
+        if (normalised.StartsWith(FunctionSignature.EnumPrefix, StringComparison.Ordinal))
+        {
+            return (int)raw;
+        }
+
+        return normalised switch
+        {
+            "bool" or "unsigned char" or "unsigned __int8" => (byte)raw,
+            "char" or "signed char" or "__int8" => (sbyte)raw,
+            "short" or "__int16" => (short)raw,
+            "unsigned short" or "unsigned __int16" or "wchar_t" => (ushort)raw,
+            "int" or "long" or "__int32" or "enum" => (int)raw,
+            "unsigned int" or "unsigned long" or "unsigned __int32" => (uint)raw,
+            "__int64" or "long long" => (long)raw,
+            HoBtIdType => (Int128)raw << HoBtIdShift,
+            _ => raw
+        };
+    }
+
     public static string? Decode(string type, ulong raw)
     {
         if (type == "this" || IsPointer(type))

@@ -18,30 +18,34 @@
             <RowDefinition x:Name="StackRow" Height="0"/>
         </Grid.RowDefinitions>
 
-        <Grid x:Name="SearchRow"
-              Grid.Row="0"
-              Visibility="Collapsed">
-            <callStack:CallSearchBar x:Name="SearchBar"
-                                     CallStack="{x:Bind ViewModel.CallStack, Mode=OneWay}"
-                                     KeyDown="OnSearchKeyDown">
-                <callStack:CallSearchBar.Commands>
-                    <StackPanel Orientation="Horizontal" Spacing="2">
-                        <Button Style="{StaticResource TabCommandButtonStyle}"
-                                ToolTipService.ToolTip="Previous Match"
-                                IsEnabled="{x:Bind TraceTimeline.HasSearchMatches, Mode=OneWay}"
-                                Click="OnPreviousMatchClick">
-                            <FontIcon Glyph="&#xE892;" FontSize="12"/>
-                        </Button>
-                        <Button Style="{StaticResource TabCommandButtonStyle}"
-                                ToolTipService.ToolTip="Next Match"
-                                IsEnabled="{x:Bind TraceTimeline.HasSearchMatches, Mode=OneWay}"
-                                Click="OnNextMatchClick">
-                            <FontIcon Glyph="&#xE893;" FontSize="12"/>
-                        </Button>
-                    </StackPanel>
-                </callStack:CallSearchBar.Commands>
-            </callStack:CallSearchBar>
-        </Grid>
+        <StackPanel Grid.Row="0">
+            <Grid x:Name="SearchRow"
+                  Visibility="Collapsed">
+                <callStack:CallSearchBar x:Name="SearchBar"
+                                         MatchCount="{x:Bind TraceTimeline.SearchMatchCount, Mode=OneWay}"
+                                         KeyDown="OnSearchKeyDown">
+                    <callStack:CallSearchBar.Commands>
+                        <StackPanel Orientation="Horizontal" Spacing="2">
+                            <Button Style="{StaticResource TabCommandButtonStyle}"
+                                    ToolTipService.ToolTip="Previous Match (Shift+Enter)"
+                                    IsEnabled="{x:Bind TraceTimeline.HasSearchMatches, Mode=OneWay}"
+                                    Click="OnPreviousMatchClick">
+                                <FontIcon Glyph="&#xE892;" FontSize="12"/>
+                            </Button>
+                            <Button Style="{StaticResource TabCommandButtonStyle}"
+                                    ToolTipService.ToolTip="Next Match (Enter)"
+                                    IsEnabled="{x:Bind TraceTimeline.HasSearchMatches, Mode=OneWay}"
+                                    Click="OnNextMatchClick">
+                                <FontIcon Glyph="&#xE893;" FontSize="12"/>
+                            </Button>
+                        </StackPanel>
+                    </callStack:CallSearchBar.Commands>
+                </callStack:CallSearchBar>
+            </Grid>
+
+            <callStack:CategoryFilterPanel x:Name="CategoryFilter"
+                                           CallStack="{x:Bind ViewModel.CallStack, Mode=OneWay}"/>
+        </StackPanel>
 
         <trace:TraceTimelineControl x:Name="TraceTimeline"
                                       Grid.Row="1"
@@ -51,8 +55,8 @@
                                       Timeline="{x:Bind ViewModel.TraceTimeline, Mode=OneWay}"
                                       FullTimeline="{x:Bind ViewModel.FullTraceTimeline, Mode=OneWay}"
                                       RowReturnMarks="{x:Bind ViewModel.RowReturnMarks, Mode=OneWay}"
-                                      Reads="{x:Bind ViewModel.TraceReads, Mode=OneWay}"
-                                      Evaluations="{x:Bind ViewModel.TraceEvaluations, Mode=OneWay}"
+                                      TickTracks="{x:Bind ViewModel.TickTracks, Mode=OneWay}"
+                                      HiddenTickTracks="{x:Bind Settings.TraceTimelineHiddenTickTrackSet, Mode=OneWay}"
                                       OutputColumnNames="{x:Bind ViewModel.OutputColumnNames, Mode=OneWay}"
                                       ColourProvider="{x:Bind ViewModel.EventColours, Mode=OneWay}"
                                       HiddenCategories="{x:Bind Settings.CallTreeHiddenCategorySet, Mode=OneWay}"

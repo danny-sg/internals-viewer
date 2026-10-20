@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using InternalsViewer.Query.FullTrace.Calls;
-using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.Results;
 using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.FullTrace.Arguments;
@@ -35,8 +34,6 @@ public static class ArgumentRowBuilder
     private const string ReturnName = "Return";
 
     private static readonly Color ReturnTint = Color.FromArgb(0x12, 0x4C, 0xA3, 0xE0);
-
-    private static readonly string[] Registers = ["RCX", "RDX", "R8", "R9"];
 
     public static QueryResultSet BuildTable(ArgumentLayout layout,
                                             IReadOnlyList<TraceArgumentCall> calls,
@@ -112,7 +109,7 @@ public static class ArgumentRowBuilder
         }
 
         return position == slots.Count && layout.ReturnType is { } returnType && HasReturn(returnType)
-            ? (ReturnName, LocatorReadResolver.ReturnRegister)
+            ? (ReturnName, ArgumentLayout.ReturnRegister)
             : null;
     }
 
@@ -129,7 +126,7 @@ public static class ArgumentRowBuilder
 
         if (position == slots.Count && layout.ReturnType is { } returnType && HasReturn(returnType) && call.Returned)
         {
-            return new ArgumentCell(call.ReturnValue, AddressAt(call, LocatorReadResolver.ReturnRegister), returnType);
+            return new ArgumentCell(call.ReturnValue, AddressAt(call, ArgumentLayout.ReturnRegister), returnType);
         }
 
         return default;
@@ -157,11 +154,11 @@ public static class ArgumentRowBuilder
 
         if (layout is null)
         {
-            for (var index = 0; index < Registers.Length; index++)
+            for (var index = 0; index < ArgumentLayout.RegisterCount; index++)
             {
                 AddSeparator(parts, index);
 
-                parts.Add(RawPart(call.Slot(index), Registers[index]));
+                parts.Add(RawPart(call.Slot(index), ArgumentLayout.Registers[index]));
             }
 
             parts.Add(new CallSignaturePart(")", CallSignaturePartKind.Punctuation));
@@ -385,15 +382,15 @@ public static class ArgumentRowBuilder
     }
 
     private static ArgumentSlot BuildReturnSlot(string returnType)
-        => new(ReturnName, returnType, ArgumentLocation.Register, LocatorReadResolver.ReturnRegister, GetReturnSource(returnType));
+        => new(ReturnName, returnType, ArgumentLocation.Register, ArgumentLayout.ReturnRegister, GetReturnSource(returnType));
 
     private static object GetDisplayValue(string type, Locator locator) => locator.ValueType switch
     {
         LocatorValueType.Row
             => locator.Row,
         LocatorValueType.Text or LocatorValueType.WideText
-            => new StringValue(locator.Text ?? string.Empty, locator.Detail != 0),
-        LocatorValueType.ColumnStoreObject or LocatorValueType.LogSequenceNumber or LocatorValueType.TypeInfo
+            => new StringValue(new TextLocator(locator).Text, new TextLocator(locator).IsTruncated),
+        LocatorValueType.ColumnStoreObject or LocatorValueType.LogSequenceNumber or LocatorValueType.TypeInfo or LocatorValueType.Variant
             => locator.ToString(),
         LocatorValueType.Referenced => ArgumentValue.FormatReferenced(type, locator.Value),
         _ => locator.Page

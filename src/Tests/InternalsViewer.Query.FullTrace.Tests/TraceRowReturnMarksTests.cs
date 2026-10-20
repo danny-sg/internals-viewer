@@ -209,12 +209,12 @@ public class TraceRowReturnMarksTests
     {
         var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)], [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)]);
 
-        var links = marks.GetCallLinks(Scan, Thread, TraceTimelineAxis.Instructions);
+        var calls = marks.Ticks.GetTicks(Scan, Thread)!.All.OrderBy(t => t.Instructions.Start).ToList();
 
-        Assert.Same(Join, links?.Caller);
-        Assert.Equal([12d, 20d, 55d], links!.Starts);
-        Assert.Equal([15d, 25d, 60d], links.Ends);
-        Assert.Null(marks.GetCallLinks(Join, Thread, TraceTimelineAxis.Instructions));
+        Assert.All(calls, t => Assert.Same(Join, t.Caller));
+        Assert.Equal([12d, 20d, 55d], calls.Select(t => t.Instructions.Start));
+        Assert.Equal([15d, 25d, 60d], calls.Select(t => t.Instructions.End));
+        Assert.All(marks.Ticks.GetTicks(Join, Thread)!.All, t => Assert.Null(t.Caller));
     }
 
     [Fact]
@@ -226,7 +226,7 @@ public class TraceRowReturnMarksTests
 
         Assert.Equal((0, 2),
                      (marks.GetCount(Scan, Thread, RowReturnType.PassedUp), marks.GetCount(Scan, Thread, RowReturnType.NotPassedUp)));
-        Assert.Same(Join, marks.GetCallLinks(Scan, Thread, TraceTimelineAxis.Instructions)?.Caller);
+        Assert.All(marks.Ticks.GetTicks(Scan, Thread)!.All, t => Assert.Same(Join, t.Caller));
     }
 
     [Fact]
@@ -234,9 +234,9 @@ public class TraceRowReturnMarksTests
     {
         var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)], [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)]);
 
-        var mark = marks.GetNearestMark(Scan, Thread, TraceTimelineAxis.Instructions, 24);
+        var mark = marks.Ticks.GetTicks(Scan, Thread)!.GetNearest(TraceTimelineAxis.Instructions, 24, 0);
 
-        Assert.Equal((1, RowReturnType.PassedUp), (mark?.Call, mark?.Type));
+        Assert.Equal((1, (byte)RowReturnType.PassedUp), (mark?.Call, mark?.Value));
     }
 
     [Fact]
@@ -244,10 +244,12 @@ public class TraceRowReturnMarksTests
     {
         var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)], [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)]);
 
-        var call = marks.GetCall(Scan, Thread, TraceTimelineAxis.Instructions, 22);
+        var ticks = marks.Ticks.GetTicks(Scan, Thread)!;
 
-        Assert.Equal((1, 20d, 25d), (call?.Call, call?.Start, call?.End));
-        Assert.Null(marks.GetCall(Scan, Thread, TraceTimelineAxis.Instructions, 17));
+        var call = ticks.GetNearest(TraceTimelineAxis.Instructions, 22, 0);
+
+        Assert.Equal((1, 20d, 25d), (call?.Call, call?.Instructions.Start, call?.Instructions.End));
+        Assert.Null(ticks.GetNearest(TraceTimelineAxis.Instructions, 17, 0));
     }
 
     [Fact]

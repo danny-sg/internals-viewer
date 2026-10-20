@@ -1,12 +1,11 @@
 using InternalsViewer.Query.CallStack.Locators;
+using InternalsViewer.Query.FullTrace.Arguments;
 
 namespace InternalsViewer.Query.FullTrace.Calls;
 
 internal readonly struct TraceCallColumns(ulong[] values, int calls)
 {
     public const int ValueCount = 11;
-
-    public const int RegisterCount = 4;
 
     public const int FromSequenceIndex = 0;
 
@@ -46,7 +45,7 @@ internal readonly struct TraceCallColumns(ulong[] values, int calls)
 
     public TraceArgumentCall GetCall(int call, IReadOnlyList<Locator>? locators = null)
     {
-        var registers = new ulong[RegisterCount];
+        var registers = new ulong[ArgumentLayout.RegisterCount];
 
         for (var slot = 0; slot < registers.Length; slot++)
         {

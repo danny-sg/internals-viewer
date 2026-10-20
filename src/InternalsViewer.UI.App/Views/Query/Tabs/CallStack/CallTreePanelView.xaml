@@ -467,9 +467,13 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <callStack:CallSearchBar x:Name="SearchBar"
-                                 Grid.Row="0"
-                                 CallStack="{x:Bind ViewModel.Query.CallStack, Mode=OneWay}"/>
+        <StackPanel Grid.Row="0">
+            <callStack:CallSearchBar x:Name="SearchBar"
+                                     MatchCount="{x:Bind ViewModel.Tree.SearchMatchCount, Mode=OneWay}"/>
+
+            <callStack:CategoryFilterPanel x:Name="CategoryFilter"
+                                           CallStack="{x:Bind ViewModel.Query.CallStack, Mode=OneWay}"/>
+        </StackPanel>
 
         <Grid x:Name="FilterHeader"
               Grid.Row="1"

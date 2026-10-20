@@ -10,5 +10,6 @@ public enum LocatorValueType : byte
     LogSequenceNumber,
     Text,
     WideText,
-    TypeInfo
+    TypeInfo,
+    Variant
 }

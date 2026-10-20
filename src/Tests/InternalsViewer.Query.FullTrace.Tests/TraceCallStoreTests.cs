@@ -4,7 +4,7 @@ using System.Text;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.FullTrace.Calls;
-using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.CallStack.Locators;
 
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRows;
@@ -305,7 +305,7 @@ public class TraceCallStoreTests
 
         var bytes = written[sizeof(int)..];
 
-        byte[] returned = [(byte)LocatorReadResolver.ReturnRegister, 0, 0, 0, (byte)LocatorValueType.Page];
+        byte[] returned = [(byte)ArgumentLayout.ReturnRegister, 0, 0, 0, (byte)LocatorValueType.Page];
 
         var register = bytes.AsSpan().LastIndexOf(returned);
 

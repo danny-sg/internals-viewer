@@ -1,7 +1,7 @@
+using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
-using InternalsViewer.Query.FullTrace.Native;
 
-namespace InternalsViewer.Query.FullTrace.Hooks;
+namespace InternalsViewer.Query.FullTrace.Native;
 
 internal sealed unsafe class ReplayView : ITraceReplay
 {

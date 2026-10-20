@@ -132,16 +132,14 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
         {
             for (var track = 0; track < Rows[row].Lifetimes.Length; track++)
             {
-                var lifetime = Rows[row].Lifetimes[track];
-
                 if (GetLifespanRect(row, track, width, scale) is { } lifespan)
                 {
-                    DrawLifespan(canvas, Rows[row], lifetime, lifespan);
+                    DrawLifespan(canvas, row, track, lifespan);
                 }
 
                 if (GetTrackRect(row, track, width, scale) is { } rect)
                 {
-                    DrawOperatorBar(canvas, Rows[row], lifetime, rect, scale);
+                    DrawOperatorBar(canvas, row, track, rect, scale);
                 }
             }
         }
@@ -177,9 +175,7 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
             }
         }
 
-        DrawReadHover(canvas, scale);
-
-        DrawEvaluationHover(canvas, scale);
+        DrawTickHover(canvas, scale);
 
         DrawOutputRowLineage(canvas, width, scale);
 
@@ -197,25 +193,13 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
         var outputRow = GetOutputRow(position);
 
-        var returnStrip = outputRow is null ? GetReturnStripAt(position) : null;
-
-        var isInStrips = outputRow is null && returnStrip is null;
-
-        var read = isInStrips ? GetReadAt(position) : null;
-
-        var readStrip = isInStrips && read is null ? GetReadStripAt(position) : null;
-
-        var evaluation = isInStrips && read is null && readStrip is null ? GetEvaluationAt(position) : null;
-
-        var evaluationStrip = isInStrips && read is null && readStrip is null && evaluation is null ? GetEvaluationStripAt(position) : null;
-
-        var isOnMarks = read is not null || readStrip is not null || evaluation is not null || evaluationStrip is not null;
+        var tick = outputRow is null ? GetTickHit(position) : null;
 
         var callLink = outputRow is null ? GetCallLinkAt(position) : null;
 
-        var operatorHit = isInStrips && !isOnMarks ? GetOperatorAt(position) : null;
+        var operatorHit = outputRow is null && tick is null ? GetOperatorAt(position) : null;
 
-        return new TraceOperatorsHover(operatorHit, returnStrip, callLink, outputRow, read, readStrip, evaluation, evaluationStrip);
+        return new TraceOperatorsHover(operatorHit, callLink, outputRow, tick);
     }
 
     public string? GetToolTip(TraceOperatorsHover hover, Point position)
@@ -230,29 +214,9 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
             return null;
         }
 
-        if (hover.ReturnStrip is { } strip)
+        if (hover.Tick is { } tick)
         {
-            return GetReturnStripToolTip(strip);
-        }
-
-        if (hover.Read is { } read)
-        {
-            return GetReadToolTip(read);
-        }
-
-        if (hover.ReadStrip is { } readStrip)
-        {
-            return GetReadStripToolTip(readStrip);
-        }
-
-        if (hover.Evaluation is { } evaluation)
-        {
-            return GetEvaluationToolTip(evaluation);
-        }
-
-        if (hover.EvaluationStrip is { } evaluationStrip)
-        {
-            return GetEvaluationStripToolTip(evaluationStrip);
+            return GetTickToolTip(tick);
         }
 
         return Contains(position) ? ToolTipTitle : null;
@@ -282,8 +246,7 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
             : null;
     }
 
-    public bool IsBackground(Point position)
-        => GetOperatorAt(position) is null && GetOutputRow(position) is null && GetReturnStripAt(position) is null;
+    public bool IsBackground(Point position) => GetOperatorAt(position) is null && GetOutputRow(position) is null;
 
     public (double Start, double End) GetActiveRange(TraceOperatorHit hit)
     {
@@ -301,17 +264,9 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
         {
             Host.MovePlayhead(outputRow.Return.GetValue(Axis));
         }
-        else if (GetReturnStripAt(position) is { } strip)
+        else if (GetTickAt(position) is { } tick)
         {
-            ClickReturnStrip(strip, position);
-        }
-        else if (GetReadAt(position) is { } read)
-        {
-            Host.ClickCall(read.Node, read.Call);
-        }
-        else if (GetEvaluationAt(position) is { } evaluation)
-        {
-            Host.ClickCall(evaluation.Node, evaluation.Call);
+            Host.ClickCall(tick.Node, tick.Call);
         }
         else
         {
@@ -367,9 +322,9 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
         return new TraceOperatorRow(operatorEvent, lifetimes, operatorEvent.Name, target, title);
     }
 
-    private void DrawOperatorBar(SKCanvas canvas, TraceOperatorRow row, TraceOperatorLifetime lifetime, SKRect rect, double scale)
+    private void DrawOperatorBar(SKCanvas canvas, int row, int track, SKRect rect, double scale)
     {
-        var colour = GetOperatorColour(row.Operator, lifetime);
+        var colour = GetOperatorColour(Rows[row].Operator, Rows[row].Lifetimes[track]);
 
         var radius = Math.Min(rect.Height / 2, OperatorCornerRadius);
 
@@ -393,24 +348,14 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
         canvas.Restore();
 
-        DrawReturnStrip(canvas, row, lifetime, rect, colour, scale);
+        var label = DrawStrips(canvas, row, track, rect, colour, scale);
 
-        DrawReadStrip(canvas, row, lifetime, rect, colour, scale);
-
-        DrawEvaluationStrip(canvas, row, lifetime, rect, colour, scale);
-
-        var stripHeight = HasReturnStrip(row, lifetime) ? GetReturnStripHeight(rect) : 0;
-
-        var bottomStrips = (HasReadStrip(row, lifetime) ? 1 : 0) + (HasEvaluationStrip(row, lifetime) ? 1 : 0);
-
-        var bottom = rect.Bottom - GetReturnStripHeight(rect) * bottomStrips;
-
-        DrawOperatorLabel(canvas, row, rect with { Top = rect.Top + stripHeight, Bottom = bottom });
+        DrawOperatorLabel(canvas, Rows[row], label);
     }
 
-    private void DrawLifespan(SKCanvas canvas, TraceOperatorRow row, TraceOperatorLifetime lifetime, SKRect rect)
+    private void DrawLifespan(SKCanvas canvas, int row, int track, SKRect rect)
     {
-        var colour = GetOperatorColour(row.Operator, lifetime);
+        var colour = GetOperatorColour(Rows[row].Operator, Rows[row].Lifetimes[track]);
 
         var radius = Math.Min(rect.Height / 2, OperatorCornerRadius);
 
@@ -424,23 +369,7 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
         canvas.DrawRect(rect, Paints.Fill);
 
-        var stripHeight = GetReturnStripHeight(rect);
-
-        if (stripHeight > 0 && HasReturnStrip(row, lifetime))
-        {
-            Paints.Fill.Color = TimelineColours.Scale(colour, ReturnStripShade);
-
-            canvas.DrawRect(rect.Left, rect.Top, rect.Width, stripHeight, Paints.Fill);
-        }
-
-        var bottomStrips = (HasReadStrip(row, lifetime) ? 1 : 0) + (HasEvaluationStrip(row, lifetime) ? 1 : 0);
-
-        if (stripHeight > 0 && bottomStrips > 0)
-        {
-            Paints.Fill.Color = TimelineColours.Scale(colour, ReturnStripShade);
-
-            canvas.DrawRect(rect.Left, rect.Bottom - stripHeight * bottomStrips, rect.Width, stripHeight * bottomStrips, Paints.Fill);
-        }
+        DrawStripShades(canvas, row, track, rect, colour);
 
         canvas.Restore();
     }

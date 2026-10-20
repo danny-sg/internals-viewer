@@ -25,6 +25,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     private const string TimelineKey = "Timeline";
     private const string TraceTimelineKey = "FlameChart";
     private const string CustomHooksKey = "CustomHooks";
+    private const string OperatorTracksKey = "OperatorTracks";
 
     private readonly Dictionary<string, DocumentViewModel> _documentsByKey;
 
@@ -69,6 +70,9 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private bool _isCustomHooksVisible;
+
+    [ObservableProperty]
+    private bool _isOperatorTracksVisible;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanShowEventViews))]
@@ -125,7 +129,12 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
             [CustomHooksKey] = DocumentViewModel.Create<QueryCustomHooksTabView>("Custom Hooks",
                                                                                  content,
                                                                                  keepAlive: true,
-                                                                                 key: CustomHooksKey)
+                                                                                 key: CustomHooksKey),
+
+            [OperatorTracksKey] = DocumentViewModel.Create<QueryOperatorTracksTabView>("Operator Tracks",
+                                                                                       content,
+                                                                                       keepAlive: true,
+                                                                                       key: OperatorTracksKey)
         };
 
         Dock = new DockLayoutViewModel(DefaultRoot(TimelineKey));
@@ -232,6 +241,13 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         Show(_documentsByKey[CustomHooksKey]);
     }
 
+    public void ShowOperatorTracks()
+    {
+        IsOperatorTracksVisible = true;
+
+        Show(_documentsByKey[OperatorTracksKey]);
+    }
+
     public bool IsVisible(string key) 
         => _documentsByKey.TryGetValue(key, out var document) && Dock.Contains(document);
 
@@ -286,6 +302,9 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
     partial void OnIsCustomHooksVisibleChanged(bool value)
         => SetDocumentVisible(_documentsByKey[CustomHooksKey], value);
+
+    partial void OnIsOperatorTracksVisibleChanged(bool value)
+        => SetDocumentVisible(_documentsByKey[OperatorTracksKey], value);
 
     partial void OnIsTraceChanged(bool value)
     {
@@ -406,6 +425,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         IsTimelineVisible = Dock.Contains(_documentsByKey[TimelineKey]);
         IsTraceTimelineVisible = Dock.Contains(_documentsByKey[TraceTimelineKey]);
         IsCustomHooksVisible = Dock.Contains(_documentsByKey[CustomHooksKey]);
+        IsOperatorTracksVisible = Dock.Contains(_documentsByKey[OperatorTracksKey]);
 
         _suppressVisibilitySync = false;
     }

@@ -66,10 +66,10 @@ public class ColumnStoreLocatorTests
     {
         var segment = Key(ColumnStoreObjectType.ColumnSegment, 2, 3);
 
-        Assert.True(LocatorSearch.ForColumnStore(3, null).Matches(segment));
-        Assert.True(LocatorSearch.ForColumnStore(3, 2).Matches(segment));
-        Assert.False(LocatorSearch.ForColumnStore(3, 1).Matches(segment));
-        Assert.False(LocatorSearch.ForColumnStore(3, null).Matches(Key(ColumnStoreObjectType.SecondaryDictionary, 2, 3)));
+        Assert.True(LocatorSearch.ForColumnStore(3, null).Matches(segment.Locator));
+        Assert.True(LocatorSearch.ForColumnStore(3, 2).Matches(segment.Locator));
+        Assert.False(LocatorSearch.ForColumnStore(3, 1).Matches(segment.Locator));
+        Assert.False(LocatorSearch.ForColumnStore(3, null).Matches(Key(ColumnStoreObjectType.SecondaryDictionary, 2, 3).Locator));
     }
 
     [Fact]
@@ -77,12 +77,12 @@ public class ColumnStoreLocatorTests
     {
         var set = new LocatorSet();
 
-        set.Add(Key(ColumnStoreObjectType.ColumnSegment, 2, 3));
-        set.Add(Key(ColumnStoreObjectType.ColumnSegment, 2, 3));
+        set.Add(Key(ColumnStoreObjectType.ColumnSegment, 2, 3).Locator);
+        set.Add(Key(ColumnStoreObjectType.ColumnSegment, 2, 3).Locator);
 
         Assert.Equal("Segment (Rowgroup 3, Column 2)", set.Label);
 
-        set.Add(Key(ColumnStoreObjectType.PrimaryDictionary, 2, 0));
+        set.Add(Key(ColumnStoreObjectType.PrimaryDictionary, 2, 0).Locator);
 
         Assert.Equal("2 Columnstore Objects", set.Label);
         Assert.True(set.Contains(LocatorSearch.ForColumnStore(3, 2)));
@@ -124,11 +124,11 @@ public class ColumnStoreLocatorTests
             "?Fix@ColumnStoreObjectRef@@QEAAPEAVColumnStoreObject@@AEBVColumnStoreObjectKey@@_NPEAVHoBtAccess@@PEAVXDES@@"
             + "PEAUDeserializeFromDiskConstructor@@@Z")!;
 
-    private static Locator Key(ColumnStoreObjectType type, int column, int objectId)
+    private static ColumnStoreObjectLocator Key(ColumnStoreObjectType type, int column, int objectId)
     {
         var (first, second, third) = Words(type, column, objectId);
 
-        return Locator.ColumnStoreObject(1, first, second, third);
+        return new ColumnStoreObjectLocator(ColumnStoreObjectLocator.Create(1, first, second, third));
     }
 
     private static (ulong First, ulong Second, ulong Third) Words(ColumnStoreObjectType type, int column, int objectId)

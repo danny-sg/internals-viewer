@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Helpers;
@@ -64,64 +65,28 @@ public sealed partial class TraceTimelineControl
         set => SetValue(RowReturnMarksProperty, value);
     }
 
-    public static readonly DependencyProperty ShowIteratorCallsProperty =
-        DependencyProperty.Register(nameof(ShowIteratorCalls),
-                                    typeof(bool),
+    public static readonly DependencyProperty TickTracksProperty =
+        DependencyProperty.Register(nameof(TickTracks),
+                                    typeof(IReadOnlyList<TraceTickTrack>),
                                     typeof(TraceTimelineControl),
-                                    new PropertyMetadata(true, OnRowReturnsChanged));
+                                    new PropertyMetadata(null, OnTickTracksChanged));
 
-    public bool ShowIteratorCalls
+    public IReadOnlyList<TraceTickTrack>? TickTracks
     {
-        get => (bool)GetValue(ShowIteratorCallsProperty);
-        set => SetValue(ShowIteratorCallsProperty, value);
+        get => (IReadOnlyList<TraceTickTrack>?)GetValue(TickTracksProperty);
+        set => SetValue(TickTracksProperty, value);
     }
 
-    public static readonly DependencyProperty ShowReadsProperty =
-        DependencyProperty.Register(nameof(ShowReads),
-                                    typeof(bool),
+    public static readonly DependencyProperty HiddenTickTracksProperty =
+        DependencyProperty.Register(nameof(HiddenTickTracks),
+                                    typeof(IReadOnlySet<string>),
                                     typeof(TraceTimelineControl),
-                                    new PropertyMetadata(true, OnReadsChanged));
+                                    new PropertyMetadata(null, OnTickTracksChanged));
 
-    public bool ShowReads
+    public IReadOnlySet<string>? HiddenTickTracks
     {
-        get => (bool)GetValue(ShowReadsProperty);
-        set => SetValue(ShowReadsProperty, value);
-    }
-
-    public static readonly DependencyProperty ReadsProperty =
-        DependencyProperty.Register(nameof(Reads),
-                                    typeof(TraceReads),
-                                    typeof(TraceTimelineControl),
-                                    new PropertyMetadata(null, OnReadsChanged));
-
-    public TraceReads? Reads
-    {
-        get => (TraceReads?)GetValue(ReadsProperty);
-        set => SetValue(ReadsProperty, value);
-    }
-
-    public static readonly DependencyProperty ShowEvaluationsProperty =
-        DependencyProperty.Register(nameof(ShowEvaluations),
-                                    typeof(bool),
-                                    typeof(TraceTimelineControl),
-                                    new PropertyMetadata(true, OnReadsChanged));
-
-    public bool ShowEvaluations
-    {
-        get => (bool)GetValue(ShowEvaluationsProperty);
-        set => SetValue(ShowEvaluationsProperty, value);
-    }
-
-    public static readonly DependencyProperty EvaluationsProperty =
-        DependencyProperty.Register(nameof(Evaluations),
-                                    typeof(TraceEvaluations),
-                                    typeof(TraceTimelineControl),
-                                    new PropertyMetadata(null, OnReadsChanged));
-
-    public TraceEvaluations? Evaluations
-    {
-        get => (TraceEvaluations?)GetValue(EvaluationsProperty);
-        set => SetValue(EvaluationsProperty, value);
+        get => (IReadOnlySet<string>?)GetValue(HiddenTickTracksProperty);
+        set => SetValue(HiddenTickTracksProperty, value);
     }
 
     public static readonly DependencyProperty OutputColumnNamesProperty =
@@ -161,6 +126,12 @@ public sealed partial class TraceTimelineControl
     public event Action<PlanNodeIdentifier>? PlanNodeSelected;
 
     public event Action<PlanNodeIdentifier?>? ExecutionPlanRequested;
+
+    public event Action<string, bool>? TickTrackVisibilityChanged;
+
+    public event Action<CallStackNode?>? TickTrackAddRequested;
+
+    public event Action? TickTracksClearRequested;
 
     private bool ShowsOperators => ShowOperators && _operators.HasRows;
 
@@ -352,15 +323,29 @@ public sealed partial class TraceTimelineControl
 
         flyout.Items.Add(new MenuFlyoutSeparator());
 
-        var iteratorCalls = MenuItems.Toggle("Iterator Calls", ShowIteratorCalls, isChecked => ShowIteratorCalls = isChecked);
-
-        var reads = MenuItems.Toggle("Reads", ShowReads, isChecked => ShowReads = isChecked);
-
-        var evaluations = MenuItems.Toggle("Evaluations", ShowEvaluations, isChecked => ShowEvaluations = isChecked);
-
-        flyout.Items.Add(MenuItems.SubMenu("View", iteratorCalls, reads, evaluations));
+        flyout.Items.Add(MenuItems.SubMenu("View", [.. CreateTickTrackItems()]));
 
         return flyout;
+    }
+
+    internal IEnumerable<MenuFlyoutItemBase> CreateTickTrackItems()
+    {
+        foreach (var track in TickTracks ?? [])
+        {
+            yield return MenuItems.Toggle(track.Name,
+                                          HiddenTickTracks?.Contains(track.Name) != true,
+                                          isChecked => TickTrackVisibilityChanged?.Invoke(track.Name, isChecked));
+        }
+
+        yield return new MenuFlyoutSeparator();
+
+        yield return MenuItems.Create("Custom...", () => TickTrackAddRequested?.Invoke(null));
+
+        var clear = MenuItems.Create("Clear All", () => TickTracksClearRequested?.Invoke());
+
+        clear.IsEnabled = TickTracks?.Any(t => t.IsCustom) == true;
+
+        yield return clear;
     }
 
     private void ZoomToOperator(TraceOperatorHit hit)
@@ -397,19 +382,11 @@ public sealed partial class TraceTimelineControl
         control.Relayout();
     }
 
-    private static void OnReadsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    private static void OnTickTracksChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var control = (TraceTimelineControl)d;
 
-        control._operators.Reads = control.Reads;
-
-        control._operators.ShowReads = control.ShowReads;
-
-        control._operators.Evaluations = control.Evaluations;
-
-        control._operators.ShowEvaluations = control.ShowEvaluations;
-
-        control._operators.Hover = TraceOperatorsHover.None;
+        control._operators.SetTracks(control.TickTracks, control.HiddenTickTracks);
 
         control.Redraw();
     }
@@ -419,8 +396,6 @@ public sealed partial class TraceTimelineControl
         var control = (TraceTimelineControl)d;
 
         control._operators.RowReturnMarks = control.RowReturnMarks;
-
-        control._operators.ShowIteratorCalls = control.ShowIteratorCalls;
 
         control.Relayout();
     }

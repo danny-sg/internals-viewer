@@ -5,7 +5,6 @@ using InternalsViewer.Internals.Engine.Loading;
 using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.CallStack.Dia;
 using InternalsViewer.Query.CallStack.Symbols;
-using InternalsViewer.Query.FullTrace.Evaluations;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory;
@@ -221,16 +220,12 @@ internal static class ReplayFunctionResolver
 
         var output = new OutputFunctions.Collector();
 
-        var evaluations = new EvaluationFunctions.Collector();
-
         var functions = ModuleSymbols.Load(resolver,
                                            (rva, name) =>
                                            {
                                                rowSources.VisitFunction(rva, name);
 
                                                output.VisitFunction(rva, name);
-
-                                               evaluations.VisitFunction(rva, name);
 
                                                return ClassifyFunction(mappings, moduleName, rva, name);
                                            },
@@ -259,8 +254,7 @@ internal static class ReplayFunctionResolver
                                    [.. functions.Values.Select(f => f.MemoryFunction).OfType<MemoryFunction>()],
                                    [.. MemoryMapFunctionResolver.Find(resolver, kept)],
                                    rowSources.Build(),
-                                   output.Build(),
-                                   evaluations.Build());
+                                   output.Build());
     }
 
     private static FunctionClassification ClassifyFunction(CategoryMappings mappings, string module, uint rva, ReadOnlySpan<char> symbol)

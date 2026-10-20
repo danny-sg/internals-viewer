@@ -31,7 +31,7 @@ Turning Focus off shows the full call tree for the whole query, from the top-lev
 
 ## Search and navigation
 
-The search box filters the tree to matching frames and the calls that lead to them. A match keeps everything beneath it, collapsed, so its callees are still there to open. The tree opens down to each match, and further only where there is a deeper match. Clearing the search keeps the selected frame, with the tree open down to it.
+The search box filters the tree to matching frames and the calls that lead to them. A match keeps everything beneath it, collapsed, so its callees are still there to open. The tree opens down to each match, and further only where there is a deeper match. The number of matching frames shows beside the box, or **No Results** when nothing matches. Clearing the search keeps the selected frame, with the tree open down to it.
 
 Going to a call - from **Arguments**, a **Find** tab or the [Trace Timeline](/docs/user-guide/query/TraceTimeline) - turns Focus off, selects the frame and opens the tree down to it. Nothing else is hidden, so the rest of the tree stays where it was. A frame the tree does not normally show because its category is hidden is shown dimmed along with the calls that lead to it. The dimmed frames go again when you select something outside them. With **Crop To Query** on, the tree stays cropped. A call that ran outside the query, such as one found by **Find** during compilation, opens in **Arguments** but is not added to the tree.
 
@@ -48,7 +48,7 @@ A frame whose symbol did not resolve is copied as `module+offset`. Right-clickin
 
 ## Filtering by category
 
-The filter button beside the search box opens a row of category badges, one for each category found in the tree. Click a badge to hide or show that category, **All** to show or hide every one at once, and **Defaults** to go back to the categories hidden by default. Those are the infrastructure categories - Compilation, Execution Tree, Expression Evaluation, Metadata, Networking, Query Binding, Query Store, Security, Tracing and Transaction Management - so the frames doing the query's work stand out. The choice is remembered between sessions, and the [Trace Timeline](/docs/user-guide/query/TraceTimeline#search)'s search bar shares it.
+The filter button at the right of the Call Tree's command bar opens a row of category badges beneath the search box, one for each category found in the tree. Click a badge to hide or show that category, **All** to show or hide every one at once, and **Defaults** to go back to the categories hidden by default. Those are the infrastructure categories - Compilation, Execution Tree, Expression Evaluation, Metadata, Networking, Query Binding, Query Store, Security, Tracing and Transaction Management - so the frames doing the query's work stand out. The choice is remembered between sessions, and the [Trace Timeline](/docs/user-guide/query/TraceTimeline#search)'s filter button shares it.
 
 ![The category badges open beneath the search box, with the hidden categories struck through](/docs/user-guide/images/call-stack-category-filter.png)
 
@@ -83,6 +83,7 @@ Some values are read further than the register:
 - **Pages, rows and columnstore objects** - an argument that points at a page id, a row id or a columnstore object key, or at a handle or reference to a page in the buffer pool, shows the page, row or object instead of the address. Click a page to open it.
 - **Log sequence numbers** - an argument that points at an `LSN` shows the LSN, such as `(37:152:2)`, in the same form as a page header's `m_lsn`.
 - **Strings** - a `char const *` or `wchar_t const *` argument shows the text it points at, such as `dbo.Orders`, in the string colour the query editor uses. Only the start of a long string is read, and it is marked **Truncated**. Text the recording never read is taken from the SQL Server file it was compiled into, such as a source file name passed to an allocation. Any other text the recording had not seen shows as the address.
+- **Variants** - an argument that points at a `CXVariant`, the slot SQL Server holds a single value in while a query runs, is read when the call returns, so an output variant shows the value the call wrote. It shows `NULL`, a value held in the variant itself with its decimal reading, such as `0x2A (42)`, or the address of the data when it is held elsewhere.
 - **Data types** - an argument that points at a `CTypeInfo`, SQL Server's description of a column or expression type, shows the type as it is written in T-SQL, such as `nvarchar(128)`, `decimal(38,0)` or `int NOT NULL`.
 - **Values behind a pointer** - a pointer or reference to a simple value, such as a number, a flag or an enum, shows the value it points at rather than the address.
 - **Tables and indexes** - a HoBt id is followed by the table and index it belongs to. So is the address of a `HoBtAccess`, the object SQL Server uses to read one table or index, whether it is the `this` of a call or passed as an argument. The trace knows which HoBt each one was set up for, from its `Init` call to its destructor, and `HoBtAccess::Init`'s full HoBt id parameter is named **hobt_id**.

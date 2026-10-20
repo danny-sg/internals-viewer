@@ -152,6 +152,8 @@
                                                 Command="{x:Bind ViewModel.SearchSymbolsCommand}"/>
                                 <MenuFlyoutItem Text="Custom Hooks"
                                                 Command="{x:Bind ViewModel.ShowCustomHooksCommand}"/>
+                                <MenuFlyoutItem Text="Operator Tracks"
+                                                Command="{x:Bind ViewModel.ShowOperatorTracksCommand}"/>
                             </MenuBarItem>
 
                         </MenuBar>

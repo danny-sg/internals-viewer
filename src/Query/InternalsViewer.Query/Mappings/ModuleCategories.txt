@@ -12,6 +12,8 @@ ntdll|System
 # Loaded alongside the engine and reached by recorded calls (time travel traces) rather than by event stacks.
 KERNELBASE|System
 ucrtbase|System
+vcruntime140|System
+msvcp140|System
 combase|System
 rpcrt4|System
 sechost|System

@@ -61,7 +61,7 @@ public sealed class SettingsService
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error saving setting {Key} - {value}", key, value);
+            Logger.LogError(ex, "Error saving setting: {Message}, {Key} - {value}", ex.ToString(), key, value);
         }   
     }
 

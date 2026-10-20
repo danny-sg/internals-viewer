@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using InternalsViewer.Query.FullTrace.Timeline;
+using InternalsViewer.Query.Helpers;
 using SkiaSharp;
 using Windows.Foundation;
 
@@ -18,6 +19,8 @@ internal sealed partial class TraceOperatorsPane
     private const float LineageJoinOffset = 1.5f;
 
     private const float OutputRowHitWidth = 4f;
+
+    private const float OutputRowMarkWidth = 2f;
 
     private const float LineageMarkWidth = 3f;
 
@@ -61,6 +64,8 @@ internal sealed partial class TraceOperatorsPane
 
     public IReadOnlyList<string>? OutputColumnNames { get; set; }
 
+    public TraceRowReturnMarks? RowReturnMarks { get; set; }
+
     public TraceOutputRows? OutputRows => RowReturnMarks?.OutputRows is { Count: > 0 } rows ? rows : null;
 
     public bool IsLineageVisible => GetVisibleLineageRow(Host.Width) is not null;
@@ -84,7 +89,23 @@ internal sealed partial class TraceOperatorsPane
     {
         if (ShowsOutputRows && OutputRows is { } rows)
         {
-            DrawMarks(canvas, rows.GetMarks(Axis), OutputRowsTop, OutputRowStripHeight, scale, OutputRowColour);
+            DrawOutputRowMarks(canvas, rows.GetMarks(Axis), scale);
+        }
+    }
+
+    private void DrawOutputRowMarks(SKCanvas canvas, ReadOnlySpan<double> values, double scale)
+    {
+        Paints.Fill.Color = OutputRowColour;
+
+        var index = SortedSearch.FirstAtOrAfter(values, Host.ViewStart);
+
+        while (index < values.Length && values[index] <= Host.ViewEnd)
+        {
+            var x = (float)((values[index] - Host.ViewStart) * scale);
+
+            canvas.DrawRect(x, OutputRowsTop + 1, OutputRowMarkWidth, OutputRowStripHeight - 2, Paints.Fill);
+
+            index = SortedSearch.FirstAtOrAfter(values, Host.ViewStart + (Math.Floor(x) + OutputRowMarkWidth) / scale, index + 1);
         }
     }
 
@@ -482,7 +503,7 @@ internal sealed partial class TraceOperatorsPane
     private double GetScale(int width) => width / Math.Max(Host.ViewEnd - Host.ViewStart, double.Epsilon);
 
     private float GetCentre(TraceRowReturn rowReturn, double scale)
-        => (float)((rowReturn.GetValue(Axis) - Host.ViewStart) * scale) + ReturnMarkWidth / 2;
+        => (float)((rowReturn.GetValue(Axis) - Host.ViewStart) * scale) + OutputRowMarkWidth / 2;
 
     private LineageTick? GetTick(TraceRowReturn rowReturn)
     {
@@ -502,7 +523,7 @@ internal sealed partial class TraceOperatorsPane
 
         var (top, height) = GetTrackBounds(row, track);
 
-        return new LineageTick(row, top, Math.Max(GetReturnStripHeight(new SKRect(0, top, 0, top + height)), MinimumLineageMarkHeight));
+        return new LineageTick(row, top, Math.Max(GetStripHeight(new SKRect(0, top, 0, top + height)), MinimumLineageMarkHeight));
     }
 
     private float GapAbove(int row)

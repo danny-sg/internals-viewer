@@ -1,14 +1,10 @@
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Query.Events.BatchMode;
-using InternalsViewer.Query.Events.BatchMode.Enums;
 
 namespace InternalsViewer.Query.CallStack.Locators;
 
 public readonly record struct Locator(int Register, LocatorValueType ValueType, ulong Value, ulong Detail = 0, string? Text = null)
 {
     private const ulong PageMask = 0xFFFF_FFFF_FFFF;
-
-    private const ulong ObjectTypeMask = 0xFFFF;
 
     public PageAddress Page => new((short)(Value >> 32), (int)(uint)Value);
 
@@ -18,61 +14,22 @@ public readonly record struct Locator(int Register, LocatorValueType ValueType, 
 
     public RowIdentifier Row => new(Page, Slot);
 
-    public ulong HobtId => Value & ~ObjectTypeMask;
-
-    public ColumnStoreObjectType ObjectType => (ColumnStoreObjectType)(Value & ObjectTypeMask);
-
-    public LogSequenceNumber Lsn => new((int)(uint)Value, (int)(Value >> 32), (short)(ushort)Detail);
-
-    public SqlTypeInfo TypeInfo => SqlTypeInfo.From(Value, Detail);
-
-    public int ColumnId => (int)(uint)Detail;
-
-    public int ObjectId => (int)(Detail >> 32);
-
-    public int? RowGroupId => ObjectType is ColumnStoreObjectType.ColumnSegment or ColumnStoreObjectType.DeleteBitmap
-        ? ObjectId
-        : null;
-
-    public string SearchText => ValueType switch
-    {
-        LocatorValueType.ColumnStoreObject when RowGroupId is { } rowGroup && ColumnId >= 0 
-            => $"rowgroup:{rowGroup} column:{ColumnId}",
-        LocatorValueType.ColumnStoreObject when RowGroupId is { } rowGroup 
-            => $"rowgroup:{rowGroup}",
-        LocatorValueType.ColumnStoreObject 
-            => $"column:{ColumnId}",
-        _ => ToString()
-    };
-
-    public static Locator CreateLogSequenceNumber(int register, ulong first, ulong second)
-        => new(register, LocatorValueType.LogSequenceNumber, first, (ushort)second);
-
-    public static Locator ColumnStoreObject(int register, ulong first, ulong second, ulong third)
-    {
-        var hobtId = (((ulong)(ushort)second << 32) | (uint)(first >> 32)) << 16;
-
-        var objectType = (ushort)(third >> 32);
-
-        var detail = ((ulong)(uint)third << 32) | (uint)(second >> 32);
-
-        return new Locator(register, LocatorValueType.ColumnStoreObject, hobtId | objectType, detail);
-    }
+    public string SearchText => ColumnStoreObjectLocator.From(this) is { } columnStore ? columnStore.SearchText : ToString();
 
     public override string ToString() => ValueType switch
     {
-        LocatorValueType.Row 
+        LocatorValueType.Row
             => $"({Page.FileId}:{Page.PageId}:{Slot})",
-        LocatorValueType.ColumnStoreObject 
-            => ObjectLabel(),
+        LocatorValueType.ColumnStoreObject
+            => new ColumnStoreObjectLocator(this).ToString(),
         LocatorValueType.LogSequenceNumber
-            => Lsn.ToString(),
+            => new LogSequenceNumberLocator(this).ToString(),
         LocatorValueType.Text or LocatorValueType.WideText
-            => Detail == 0 ? Text ?? string.Empty : $"{Text} (Truncated)",
+            => new TextLocator(this).ToString(),
         LocatorValueType.TypeInfo
-            => TypeInfo.ToString(),
+            => new TypeInfoLocator(this).ToString(),
+        LocatorValueType.Variant
+            => new VariantLocator(this).ToString(),
         _ => Page.ToString()
     };
-
-    private string ObjectLabel() => ColumnStoreObjectLabel.Get(ObjectType, ColumnId, ObjectId);
 }

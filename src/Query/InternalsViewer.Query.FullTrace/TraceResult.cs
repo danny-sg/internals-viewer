@@ -31,9 +31,9 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
 
     public TraceRowReturnMarks RowReturnMarks { get; init; } = TraceRowReturnMarks.Empty;
 
-    public TraceReads Reads { get; init; } = TraceReads.Empty;
+    public TraceTickSeries Reads { get; init; } = TraceTickSeries.Empty;
 
-    public TraceEvaluations Evaluations { get; init; } = TraceEvaluations.Empty;
+    public TraceTickSeries Evaluations { get; init; } = TraceTickSeries.Empty;
 
     public IReadOnlyList<CallStackNode> QueryRoots => Roots ??= QueryExecutionCropper.GetRoots(CallStack);
 

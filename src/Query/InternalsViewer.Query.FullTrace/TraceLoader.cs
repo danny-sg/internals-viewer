@@ -246,7 +246,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                                                        replay.CallStore,
                                                        TraceOutputLineage.GetSources(timeline, outputStructures)),
             Reads = TraceReads.Build(timeline, replay.CallStore),
-            Evaluations = TraceEvaluations.Build(timeline, replay.CallStore, replay.Evaluations)
+            Evaluations = TraceEvaluations.Build(timeline, replay.CallStore)
         };
     }
 

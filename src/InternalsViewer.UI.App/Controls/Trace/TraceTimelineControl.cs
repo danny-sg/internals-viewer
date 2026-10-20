@@ -991,6 +991,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
         FindSelectedCall(selectedCall, bringIntoView: false);
 
+        CountSearchMatches();
+
         _version++;
     }
 

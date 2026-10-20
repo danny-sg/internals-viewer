@@ -1,5 +1,5 @@
-using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Native;
 
 namespace InternalsViewer.Query.FullTrace.Stubs;
 

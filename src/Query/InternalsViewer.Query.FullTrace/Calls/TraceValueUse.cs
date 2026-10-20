@@ -1,5 +1,6 @@
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
+using InternalsViewer.Query.FullTrace.Arguments;
 
 namespace InternalsViewer.Query.FullTrace.Calls;
 
@@ -12,9 +13,9 @@ public sealed record TraceValueUse(ulong Address,
 {
     public TraceValueRole GetRole(FunctionType? type) => Location switch
     {
-        "RCX" when type == FunctionType.Member 
+        ArgumentLayout.ThisRegisterName when type == FunctionType.Member 
             => TraceValueRole.CalledOn,
-        "RAX" 
+        ArgumentLayout.ReturnRegisterName
             => TraceValueRole.Returned,
         _ => TraceValueRole.Passed
     };

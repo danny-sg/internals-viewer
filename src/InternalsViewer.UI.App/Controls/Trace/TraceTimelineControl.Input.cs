@@ -166,9 +166,9 @@ public sealed partial class TraceTimelineControl
 
         if (inOperators && isDoubleClick)
         {
-            if ((_operators.GetReadAt(position) ?? (ITraceMark?)_operators.GetEvaluationAt(position)) is { } mark)
+            if (_operators.GetTickAt(position) is { } tick)
             {
-                ZoomTo(mark.Of(_axis).Start, mark.Of(_axis).End);
+                ZoomTo(tick.Of(_axis).Start, tick.Of(_axis).End);
             }
             else if (_operators.GetOperatorAt(position) is { } operatorHit)
             {
@@ -294,15 +294,11 @@ public sealed partial class TraceTimelineControl
                              ? InputSystemCursorShape.SizeAll
                              : _operators.IsOnOutputRows(position)
                                  ? InputSystemCursorShape.Cross
-                                 : operatorsHover is not { ReturnStrip: null, Read: null, Evaluation: null }
+                                 : operatorsHover.Tick is not null
                                      ? InputSystemCursorShape.Hand
                                      : InputSystemCursorShape.Arrow);
 
-        var hit = found?.Call
-                  ?? HitTest(position)
-                  ?? GetDurationHit(operatorsHover, position)
-                  ?? GetMarkHit(operatorsHover.Read?.Node, operatorsHover.Read?.Call)
-                  ?? GetMarkHit(operatorsHover.Evaluation?.Node, operatorsHover.Evaluation?.Call);
+        var hit = found?.Call ?? HitTest(position) ?? GetMarkHit(operatorsHover.Tick?.Tick?.Node, operatorsHover.Tick?.Tick?.Call);
 
         if (hit != _hover
             || !Nullable.Equals(found, _hoverBlock)
@@ -317,7 +313,7 @@ public sealed partial class TraceTimelineControl
             _canvas.Invalidate();
         }
 
-        if (hit is { } hovered && operatorsHover is { Read: null, Evaluation: null })
+        if (hit is { } hovered && operatorsHover.Tick?.Tick is null)
         {
             ShowToolTip(hovered, position);
         }
@@ -330,11 +326,6 @@ public sealed partial class TraceTimelineControl
             HideToolTip();
         }
     }
-
-    private FlameHit? GetDurationHit(TraceOperatorsHover hover, Point position)
-        => hover.ReturnStrip is { } strip && _operators.GetCallDuration(strip, position) is { } duration && _visible is { } timeline
-            ? FindCall(timeline, duration.Node, duration.Call)
-            : null;
 
     private FlameHit? GetMarkHit(CallStackNode? node, int? call)
         => node is not null && call is { } index && _visible is { } timeline ? FindCall(timeline, node, index) : null;
@@ -630,6 +621,8 @@ public sealed partial class TraceTimelineControl
         if (node is not null)
         {
             flyout.Items.Add(MenuItems.Create("Scope", () => SetRoot(node)));
+
+            flyout.Items.Add(MenuItems.Create("Add to Operators", () => TickTrackAddRequested?.Invoke(node)));
         }
 
         if (_root is not null)

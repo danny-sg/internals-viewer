@@ -1,5 +1,7 @@
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Locators.Parsers;
+using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.CallStack.Locators;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
@@ -36,8 +38,8 @@ public class LocatorReadResolverTests
     {
         var reads = Reads("IndexPageManager::ReleaseHPage(HPageHandle &)", "?ReleaseHPage@IndexPageManager@@QEAAXAEAVHPageHandle@@@Z");
 
-        Assert.Equal([new LocatorRead(Function, 1, false, LocatorValueType.Page, 0x70, LocatorType.PageHandlePath),
-                      new LocatorRead(Function, 1, true, LocatorValueType.Page, 0x70, LocatorType.PageHandlePath)],
+        Assert.Equal([new LocatorRead(Function, 1, false, LocatorValueType.Page, 0x70, PageLocatorParser.PageHandlePath),
+                      new LocatorRead(Function, 1, true, LocatorValueType.Page, 0x70, PageLocatorParser.PageHandlePath)],
                      reads);
     }
 
@@ -46,8 +48,8 @@ public class LocatorReadResolverTests
     {
         var reads = Reads("SMOLockOrder::Add(PageRef &)", "?Add@SMOLockOrder@@QEAAXAEAVPageRef@@@Z");
 
-        Assert.Equal([new LocatorRead(Function, 1, false, LocatorValueType.Page, 0x70, LocatorType.PageRefPath),
-                      new LocatorRead(Function, 1, true, LocatorValueType.Page, 0x70, LocatorType.PageRefPath)],
+        Assert.Equal([new LocatorRead(Function, 1, false, LocatorValueType.Page, 0x70, PageLocatorParser.PageRefPath),
+                      new LocatorRead(Function, 1, true, LocatorValueType.Page, 0x70, PageLocatorParser.PageRefPath)],
                      reads);
     }
 
@@ -57,10 +59,10 @@ public class LocatorReadResolverTests
         var reads = Reads("BTreeMgr::HandleRoot(BTreeMgr::BTREE_TRAVERSAL_MODE,int,int &,PageRef &,BTreeHPage *)",
                           "?HandleRoot@BTreeMgr@@AEAA?AW4VR_STATUS@1@W4BTREE_TRAVERSAL_MODE@1@HAEAHAEAVPageRef@@PEAVBTreeHPage@@@Z");
 
-        Assert.Equal([new LocatorRead(Function, 4, false, LocatorValueType.Page, 0x70, LocatorType.PageRefPath),
-                      new LocatorRead(Function, 4, true, LocatorValueType.Page, 0x70, LocatorType.PageRefPath),
-                      new LocatorRead(Function, 5, false, LocatorValueType.Page, 0x70, LocatorType.PageRefPath),
-                      new LocatorRead(Function, 5, true, LocatorValueType.Page, 0x70, LocatorType.PageRefPath)],
+        Assert.Equal([new LocatorRead(Function, 4, false, LocatorValueType.Page, 0x70, PageLocatorParser.PageRefPath),
+                      new LocatorRead(Function, 4, true, LocatorValueType.Page, 0x70, PageLocatorParser.PageRefPath),
+                      new LocatorRead(Function, 5, false, LocatorValueType.Page, 0x70, PageLocatorParser.PageRefPath),
+                      new LocatorRead(Function, 5, true, LocatorValueType.Page, 0x70, PageLocatorParser.PageRefPath)],
                      reads.Where(r => r.ValueType == LocatorValueType.Page));
     }
 
@@ -104,7 +106,7 @@ public class LocatorReadResolverTests
     {
         var reads = Reads("BlobNode::ChildPID(int)", "?ChildPID@BlobNode@@QEBA?AVPageId@@H@Z");
 
-        Assert.Equal([new LocatorRead(Function, LocatorReadResolver.ReturnRegister, true, LocatorValueType.Page)], reads);
+        Assert.Equal([new LocatorRead(Function, ArgumentLayout.ReturnRegister, true, LocatorValueType.Page)], reads);
     }
 
     [Fact]
@@ -112,7 +114,7 @@ public class LocatorReadResolverTests
     {
         var reads = Reads("Record::GetBackPtr(void)", "?GetBackPtr@Record@@QEBAPEFBURowId@@XZ");
 
-        Assert.Equal([new LocatorRead(Function, LocatorReadResolver.ReturnRegister, true, LocatorValueType.Row)], reads);
+        Assert.Equal([new LocatorRead(Function, ArgumentLayout.ReturnRegister, true, LocatorValueType.Row)], reads);
     }
 
     [Fact]
@@ -143,8 +145,8 @@ public class LocatorReadResolverTests
                           "?GetPageWithKey@IndexPageManager@@QEAAXPEBVSEBindings@@W4BTREE_SEEK_OPTION@BTreeMgr@@W4AccessMode@@"
                           + "AEAVHPageHandle@@AEAVSearchInfo@@PEAV2@PEAEKPEAVHPageIdVersionId@@_N@Z");
 
-        Assert.Equal([new LocatorRead(Function, 4, false, LocatorValueType.Page, 0x70, LocatorType.PageHandlePath),
-                      new LocatorRead(Function, 4, true, LocatorValueType.Page, 0x70, LocatorType.PageHandlePath)],
+        Assert.Equal([new LocatorRead(Function, 4, false, LocatorValueType.Page, 0x70, PageLocatorParser.PageHandlePath),
+                      new LocatorRead(Function, 4, true, LocatorValueType.Page, 0x70, PageLocatorParser.PageHandlePath)],
                      reads);
     }
 
@@ -157,6 +159,26 @@ public class LocatorReadResolverTests
         Assert.Equal([new LocatorRead(Function, 2, false, LocatorValueType.LogSequenceNumber),
                       new LocatorRead(Function, 5, true, LocatorValueType.LogSequenceNumber)],
                      reads.Where(r => r.ValueType == LocatorValueType.LogSequenceNumber));
+    }
+
+    [Fact]
+    public void An_Output_Variant_Is_Read_On_Return()
+    {
+        var reads = Reads("CEsExec::FastCompare1(unsigned __int64 *,CEsExec *,CXVariant *)",
+                          "?FastCompare1@CEsExec@@CAXPEA_KPEAV1@PEAVCXVariant@@@Z");
+
+        Assert.Equal([new LocatorRead(Function, 2, true, LocatorValueType.Variant)],
+                     reads.Where(r => r.ValueType == LocatorValueType.Variant));
+    }
+
+    [Fact]
+    public void A_Const_Variant_Is_Also_Read_On_Return()
+    {
+        var reads = Reads("CompareVariants(CXVariant const &,CXVariant const &)", "?CompareVariants@@YAHAEBVCXVariant@@0@Z");
+
+        Assert.Equal([new LocatorRead(Function, 0, true, LocatorValueType.Variant),
+                      new LocatorRead(Function, 1, true, LocatorValueType.Variant)],
+                     reads);
     }
 
     [Fact]
@@ -225,6 +247,8 @@ public class LocatorReadResolverTests
     [InlineData("AllocationPageId const *", LocatorValueType.Page, true, true, 8)]
     [InlineData("CTypeInfo const *", LocatorValueType.TypeInfo, true, true)]
     [InlineData("class CTypeInfo const &", LocatorValueType.TypeInfo, true, true)]
+    [InlineData("CXVariant *", LocatorValueType.Variant, true, false)]
+    [InlineData("class CXVariant const &", LocatorValueType.Variant, true, true)]
     public void A_Page_Or_Row_Type_Is_Recognised(string type, LocatorValueType valueType, bool indirect, bool isConst, int offset = 0)
         => Assert.Equal(new LocatorType(valueType, indirect, isConst, offset), LocatorType.GetLocatorType(type));
 
@@ -241,7 +265,7 @@ public class LocatorReadResolverTests
     [InlineData("PSPageRef &")]
     public void A_Page_Reference_Is_Read_Through_Its_Buffer(string type)
         => Assert.True(LocatorType.GetLocatorType(type) is { ValueType: LocatorValueType.Page, Offset: 0x70, IsIndirect: true, IsConst: false } found
-                       && ReferenceEquals(found.Path, LocatorType.PageRefPath));
+                       && ReferenceEquals(found.Path, PageLocatorParser.PageRefPath));
 
     [Theory]
     [InlineData("int &", true, false)]

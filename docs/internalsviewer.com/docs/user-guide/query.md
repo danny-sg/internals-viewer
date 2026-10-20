@@ -79,6 +79,8 @@ Pages and indexes opened from the trace - by double-clicking a timeline event, c
 
 **Custom Hooks** opens the Custom Hooks tab - see [Custom Hooks](/docs/user-guide/query/FullTrace#custom-hooks).
 
+**Operator Tracks** opens the Operator Tracks tab, which lists the tracks you have added to the Trace Timeline's operators - see [Operator tracks](/docs/user-guide/query/TraceTimeline#operator-tracks).
+
 ## Layout
 
 Panes are tabs that can be dragged into any layout - drop a tab beside or below another pane to split the space, or onto a pane to stack them. While dragging, the drop zones highlight to show where the tab will land. Right-click a tab for **Close All**, which closes every tab in its group, and **Close Others**, which closes every tab in the group except that one. Tabs that cannot be closed are left open. The default layout is the SQL Editor above the Timeline.

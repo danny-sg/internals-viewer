@@ -1,8 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.UI.App.Controls.Dialogs;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Controls.Trace;
 using InternalsViewer.UI.App.Helpers;
@@ -13,6 +16,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Windows.System;
+using Windows.UI;
 
 namespace InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 
@@ -27,6 +31,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
     private const string PlayGlyph = "";
 
     private const string PauseGlyph = "";
+
+    private const string FilterGlyph = "";
 
     private const double StackStar = 0.5;
 
@@ -65,11 +71,19 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         TraceTimeline.ExecutionPlanRequested += OnExecutionPlanRequested;
 
+        TraceTimeline.TickTrackVisibilityChanged += OnTickTrackVisibilityChanged;
+
+        TraceTimeline.TickTrackAddRequested += OnTickTrackAddRequested;
+
+        TraceTimeline.TickTracksClearRequested += OnTickTracksClearRequested;
+
         TraceTimeline.PlayStateChanged += OnPlayStateChanged;
 
         TraceTimeline.CallStackChanged += OnCallStackChanged;
 
         SearchBar.SearchTextChanged += OnSearchTextChanged;
+
+        SearchBar.StepRequested += OnSearchStepRequested;
 
         Settings.PropertyChanged += OnSettingsPropertyChanged;
     }
@@ -101,6 +115,11 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
                                            "Search function names",
                                            (sender, _) => SetSearchVisible(TabCommands.IsChecked(sender)));
 
+        var categoryToggle = TabCommands.Toggle(TabCommands.Glyph(FilterGlyph),
+                                                CategoryFilter.IsPanelVisible,
+                                                "Filter by Category",
+                                                (sender, _) => CategoryFilter.SetPanelVisible(TabCommands.IsChecked(sender)));
+
         return TabCommands.Panel(CommandSpacing,
                                  TabCommands.Menu("View", "Choose the chart's scale and the lanes it shows", CreateViewMenu()),
                                  _memoryToggle,
@@ -118,7 +137,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
                                  TabCommands.Button(TabCommands.Glyph(StepBackGlyph), "Previous Frame", (_, _) => Step(forward: false)),
                                  TabCommands.Button(TabCommands.Glyph(StepForwardGlyph), "Next Frame", (_, _) => Step(forward: true)),
                                  TabCommands.Separator(),
-                                 _searchToggle);
+                                 _searchToggle,
+                                 categoryToggle);
     }
 
     public void Dispose()
@@ -138,11 +158,19 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         TraceTimeline.ExecutionPlanRequested -= OnExecutionPlanRequested;
 
+        TraceTimeline.TickTrackVisibilityChanged -= OnTickTrackVisibilityChanged;
+
+        TraceTimeline.TickTrackAddRequested -= OnTickTrackAddRequested;
+
+        TraceTimeline.TickTracksClearRequested -= OnTickTracksClearRequested;
+
         TraceTimeline.PlayStateChanged -= OnPlayStateChanged;
 
         TraceTimeline.CallStackChanged -= OnCallStackChanged;
 
         SearchBar.SearchTextChanged -= OnSearchTextChanged;
+
+        SearchBar.StepRequested -= OnSearchStepRequested;
 
         Settings.PropertyChanged -= OnSettingsPropertyChanged;
 
@@ -191,16 +219,6 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         var operators = MenuItems.Toggle("Operators", TraceTimeline.ShowOperators, isChecked => TraceTimeline.ShowOperators = isChecked);
 
-        var iteratorCalls = MenuItems.Toggle("Iterator Calls",
-                                             TraceTimeline.ShowIteratorCalls,
-                                             isChecked => TraceTimeline.ShowIteratorCalls = isChecked);
-
-        var reads = MenuItems.Toggle("Reads", TraceTimeline.ShowReads, isChecked => TraceTimeline.ShowReads = isChecked);
-
-        var evaluations = MenuItems.Toggle("Evaluations",
-                                           TraceTimeline.ShowEvaluations,
-                                           isChecked => TraceTimeline.ShowEvaluations = isChecked);
-
         var flameChart = MenuItems.Toggle("Flame Chart",
                                           TraceTimeline.ShowFlameChart,
                                           isChecked => TraceTimeline.ShowFlameChart = isChecked);
@@ -215,11 +233,7 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         menu.Items.Add(operators);
 
-        menu.Items.Add(iteratorCalls);
-
-        menu.Items.Add(reads);
-
-        menu.Items.Add(evaluations);
+        List<MenuFlyoutItemBase> tracks = [];
 
         menu.Items.Add(flameChart);
 
@@ -233,11 +247,19 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         {
             operators.IsChecked = TraceTimeline.ShowOperators;
 
-            iteratorCalls.IsChecked = TraceTimeline.ShowIteratorCalls;
+            foreach (var item in tracks)
+            {
+                menu.Items.Remove(item);
+            }
 
-            reads.IsChecked = TraceTimeline.ShowReads;
+            tracks = [.. TraceTimeline.CreateTickTrackItems()];
 
-            evaluations.IsChecked = TraceTimeline.ShowEvaluations;
+            var index = menu.Items.IndexOf(operators) + 1;
+
+            foreach (var item in tracks)
+            {
+                menu.Items.Insert(index++, item);
+            }
 
             flameChart.IsChecked = TraceTimeline.ShowFlameChart;
 
@@ -333,6 +355,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
     private void OnSearchTextChanged(string text) => TraceTimeline.SearchText = text;
 
+    private void OnSearchStepRequested(bool forward) => TraceTimeline.StepSearch(forward);
+
     private void OnSearchKeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (e.Key != VirtualKey.Escape)
@@ -351,6 +375,32 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
 
     private void OnCallStackOpenRequested() => Settings.TraceTimelineShowCallStack = true;
+
+    private void OnTickTrackVisibilityChanged(string name, bool isVisible)
+    {
+        var hidden = new HashSet<string>(Settings.TraceTimelineHiddenTickTrackSet, StringComparer.Ordinal);
+
+        if (isVisible)
+        {
+            hidden.Remove(name);
+        }
+        else
+        {
+            hidden.Add(name);
+        }
+
+        Settings.TraceTimelineHiddenTickTracks = string.Join(SettingsViewModel.CategorySeparator, hidden.Order(StringComparer.Ordinal));
+    }
+
+    private async void OnTickTrackAddRequested(CallStackNode? node)
+    {
+        if (ViewModel is { } viewModel && await OperatorTrackEditor.ShowAsync(XamlRoot, viewModel, null, node) is { } definition)
+        {
+            viewModel.AddTickTrack(definition);
+        }
+    }
+
+    private void OnTickTracksClearRequested() => ViewModel?.ClearTickTracks();
 
     private void OnSelectionCleared()
     {

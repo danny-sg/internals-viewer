@@ -96,8 +96,6 @@ internal sealed class TraceTimelinePaints : IDisposable
         PathEffect = SKPathEffect.CreateDash([2f, 2f], 0)
     };
 
-    public SKPaint ConnectorNotch { get; } = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 1f };
-
     public SKPaint OutputRowLink { get; } = new()
     {
         Style = SKPaintStyle.Stroke,
@@ -190,7 +188,6 @@ internal sealed class TraceTimelinePaints : IDisposable
         HoverCallLink.Dispose();
         HoverDottedCallLink.PathEffect?.Dispose();
         HoverDottedCallLink.Dispose();
-        ConnectorNotch.Dispose();
         OutputRowLink.Dispose();
         LineageShadow.MaskFilter?.Dispose();
         LineageShadow.Dispose();

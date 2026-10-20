@@ -6,8 +6,6 @@ namespace InternalsViewer.Query.FullTrace.Calls;
 
 public sealed class TraceValueSearch(TraceCallStore store)
 {
-    private static readonly string[] Registers = ["RCX", "RDX", "R8", "R9"];
-
     public Task<IReadOnlyList<TraceValueUse>> GetValueUsesAsync(ulong value,
                                                                 CancellationToken cancellationToken,
                                                                 Func<CallStackNode?, bool>? include = null)
@@ -117,13 +115,11 @@ public sealed class TraceValueSearch(TraceCallStore store)
         return valueCalls;
     }
 
-    private static string GetStackLocation(int position) => $"[RSP+0x{ArgumentLayout.StackOffset(position):X}]";
-
     private static int? GetStackPosition(string location)
     {
-        for (var position = TraceCallColumns.RegisterCount; position < ArgumentLayout.CapturedSlots; position++)
+        for (var position = ArgumentLayout.RegisterCount; position < ArgumentLayout.CapturedSlots; position++)
         {
-            if (location == GetStackLocation(position))
+            if (location == ArgumentLayout.GetStackLocation(position))
             {
                 return position;
             }
@@ -157,7 +153,7 @@ public sealed class TraceValueSearch(TraceCallStore store)
                     continue;
                 }
 
-                var location = GetStackLocation(locator.Register);
+                var location = ArgumentLayout.GetStackLocation(locator.Register);
 
                 var use = new TraceValueUse(address, instance, location, 1, valueCall, valueCall);
 
@@ -242,17 +238,17 @@ public sealed class TraceValueSearch(TraceCallStore store)
 
     private static IEnumerable<string> GetLocations(TraceCallColumns columns, int call, ulong value)
     {
-        for (var slot = 0; slot < TraceCallColumns.RegisterCount; slot++)
+        for (var slot = 0; slot < ArgumentLayout.RegisterCount; slot++)
         {
             if (columns.GetRegister(call, slot) == value)
             {
-                yield return Registers[slot];
+                yield return ArgumentLayout.Registers[slot];
             }
         }
 
         if (columns.IsReturned(call) && columns.GetReturnValue(call) == value)
         {
-            yield return "RAX";
+            yield return ArgumentLayout.ReturnRegisterName;
         }
     }
 }

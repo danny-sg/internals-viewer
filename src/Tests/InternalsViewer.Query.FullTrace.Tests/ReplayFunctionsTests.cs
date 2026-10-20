@@ -1,5 +1,4 @@
 using InternalsViewer.Query.FullTrace;
-using InternalsViewer.Query.FullTrace.Evaluations;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory;
@@ -28,8 +27,7 @@ public class ReplayFunctionsTests
                                            [new MemoryMapFunction(0xA0, MemoryMapOperation.Visited)],
                                            new RowSourceFunctions(Map(0x150, RowSourceFunctionType.Constructor), Map(0x158, PlanObjectClass.Row)),
                                            new OutputFunctions(Map(0x110, OutputFunctionType.Send),
-                                                               Map(0x120, OutputValueClass.OutputRow)),
-                                           new EvaluationFunctions([0x170]));
+                                                               Map(0x120, OutputValueClass.OutputRow)));
 
         var rebased = relative.Rebase(Base);
 
@@ -42,7 +40,6 @@ public class ReplayFunctionsTests
         Assert.Equal((Base + 0x158, PlanObjectClass.Row), Pair(Assert.Single(rebased.RowSources.PlanObjects)));
         Assert.Equal((Base + 0x110, OutputFunctionType.Send), Pair(Assert.Single(rebased.Output.Functions)));
         Assert.Equal((Base + 0x120, OutputValueClass.OutputRow), Pair(Assert.Single(rebased.Output.Classes)));
-        Assert.Equal([Base + 0x170], rebased.Evaluations.Functions);
     }
 
     private static (ulong, T) Pair<T>(KeyValuePair<ulong, T> entry) => (entry.Key, entry.Value);

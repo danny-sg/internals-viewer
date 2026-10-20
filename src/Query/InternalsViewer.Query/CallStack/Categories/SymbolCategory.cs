@@ -122,7 +122,7 @@ public enum SymbolCategory : byte
     [Category(
         "Memory",
         Description = "Memory objects, allocators, clerks and query memory grants",
-        ForegroundColor = "#A05EB5",
+        ForegroundColor = "#B2BEC3",
         IsInfrastructure = true)]
     Memory,
 

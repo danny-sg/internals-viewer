@@ -80,6 +80,22 @@ Additional conventions for this repository:
 - Never use "..." in prose or display strings — write "etc." instead. "Loading..." messages are an exeption to this rule.
 - Prefer short sentences over semicolons in prose.
 
+## Line endings and encoding
+
+Source files use **CRLF** line endings. Nothing in the repository enforces this (there is no `.editorconfig` or
+`.gitattributes`), so every edit has to keep it:
+
+- **Keep each file's existing line endings and BOM.** Most files are CRLF. A few are LF, and those stay LF. The UTF-8
+  BOM is mixed across the repository, so a file keeps whatever it already has.
+- **New files are CRLF.** The `Write` tool writes LF, so convert a file to CRLF after writing it, or create it from a
+  script that writes `\r\n`.
+- **`Edit` keeps line endings.** Prefer it for changes to existing files.
+- **Never use `sed -i` or `perl` with `\n` in Git Bash on a CRLF file.** They leave mixed or LF endings behind.
+- **For scripted edits use Python** with `open(path, encoding="utf-8", newline="")`. Normalise to `\n` to match text,
+  then write back with the file's original ending and BOM.
+- **Check before finishing.** `file <path>` reports `with CRLF line terminators` for a CRLF file. A file it reports
+  without that, and that was CRLF before, has been broken.
+
 ## Known environmental build failures
 
 These are tooling problems on some machines, not code regressions — do not chase them:

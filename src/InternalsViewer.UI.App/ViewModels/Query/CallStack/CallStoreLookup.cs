@@ -9,7 +9,6 @@ using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
-using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
@@ -157,7 +156,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
     {
         var uses = await Search.GetValueUsesAsync(value, cancellationToken);
 
-        var functionTypes = await ResolveFunctionTypesAsync(uses.Where(u => u.Location == "RCX"));
+        var functionTypes = await ResolveFunctionTypesAsync(uses.Where(u => u.Location == ArgumentLayout.ThisRegisterName));
 
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -210,7 +209,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
     private static string? GetAllocationName(MemoryMapEntry entry) => entry.Allocator is { } allocator ? $"{allocator} Allocation" : null;
 
     private static TracePosition GetPosition(ArgumentSlot slot, TraceArgumentCall call)
-        => slot.Index == LocatorReadResolver.ReturnRegister ? call.ToPosition : call.FromPosition;
+        => slot.Index == ArgumentLayout.ReturnRegister ? call.ToPosition : call.FromPosition;
 
     private static string IteratorLabel(IteratorTarget iterator)
         => $"{iterator.Label} {(iterator.IsPlanObject ? "Plan Object" : "Iterator")}";

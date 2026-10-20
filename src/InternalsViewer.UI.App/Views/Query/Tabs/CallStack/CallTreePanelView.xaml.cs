@@ -30,6 +30,8 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
 
     private const string ForwardGlyph = "";
 
+    private const string FilterGlyph = "\uE71C";
+
     public CallTreePanelView()
     {
         InitializeComponent();
@@ -116,7 +118,19 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
                                              "Show each frame's function signature, with its parameter types, from the symbols.",
                                              OnSignatureClick);
 
-        return TabCommands.Panel(CommandSpacing, BackButton, ForwardButton, FocusToggle, ActivityToggle, SignatureToggle);
+        var categoryToggle = TabCommands.Toggle(TabCommands.Glyph(FilterGlyph),
+                                                CategoryFilter.IsPanelVisible,
+                                                "Filter by Category",
+                                                (sender, _) => CategoryFilter.SetPanelVisible(TabCommands.IsChecked(sender)));
+
+        return TabCommands.Panel(CommandSpacing,
+                                 BackButton,
+                                 ForwardButton,
+                                 FocusToggle,
+                                 ActivityToggle,
+                                 SignatureToggle,
+                                 TabCommands.Separator(),
+                                 categoryToggle);
     }
 
     public void OnTypeInvoked(string typeName) => ViewModel?.ListMembers(typeName);

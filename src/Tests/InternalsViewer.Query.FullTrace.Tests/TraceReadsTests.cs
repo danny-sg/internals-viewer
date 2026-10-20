@@ -62,33 +62,38 @@ public class TraceReadsTests
     [Fact]
     public void A_Buffer_Pool_Get_Is_A_One_Page_Read_Over_Its_Call()
     {
-        var read = Assert.Single(Build().All, r => r.Type == TraceReadType.Page && r.Operator is not null);
+        var (reads, calls) = Build();
 
-        Assert.Equal((new PageAddress(1, 1056), 1, 20d, 25d), (read.Page, read.PageCount, read.Position.Start, read.Position.End));
+        var read = Assert.Single(reads.All, r => r.Value == (byte)TraceReadType.Page && r.Operator is not null);
+
+        Assert.Equal(((new PageAddress(1, 1056), 1), 20d, 25d),
+                     (GetRead(calls, read, TraceReadType.Page), read.Position.Start, read.Position.End));
     }
 
     [Fact]
     public void A_Read_Ahead_Reads_The_Page_Count_In_Its_Third_Argument()
     {
-        var read = Assert.Single(Build().All, r => r.Type == TraceReadType.ReadAhead);
+        var (reads, calls) = Build();
 
-        Assert.Equal((new PageAddress(1, 1536), 40), (read.Page, read.PageCount));
+        var read = Assert.Single(reads.All, r => r.Value == (byte)TraceReadType.ReadAhead);
+
+        Assert.Equal((new PageAddress(1, 1536), 40), GetRead(calls, read, TraceReadType.ReadAhead));
     }
 
     [Fact]
     public void A_Read_Belongs_To_The_Innermost_Operator_Call_Around_It()
     {
-        var reads = Build();
+        var reads = Build().Reads;
 
-        Assert.Same(Scan, reads.All.Single(r => r.Type == TraceReadType.Page && r.Operator is not null).Operator);
+        Assert.Same(Scan, reads.All.Single(r => r.Value == (byte)TraceReadType.Page && r.Operator is not null).Operator);
 
-        Assert.Same(Join, reads.All.Single(r => r.Type == TraceReadType.ReadAhead).Operator);
+        Assert.Same(Join, reads.All.Single(r => r.Value == (byte)TraceReadType.ReadAhead).Operator);
     }
 
     [Fact]
     public void A_Read_Outside_Every_Operator_Call_Has_No_Operator()
     {
-        var read = Assert.Single(Build().All, r => r.Position.Start == 70);
+        var read = Assert.Single(Build().Reads.All, r => r.Position.Start == 70);
 
         Assert.Null(read.Operator);
     }
@@ -96,29 +101,29 @@ public class TraceReadsTests
     [Fact]
     public void Buffer_Pool_Functions_Other_Than_Get_And_ReadAhead_Are_Not_Reads()
     {
-        Assert.Equal(3, Build().Count);
+        Assert.Equal(3, Build().Reads.Count);
     }
 
     [Fact]
     public void Reads_Are_Indexed_By_The_Operator_And_Thread_That_Made_Them()
     {
-        var reads = Build();
+        var reads = Build().Reads;
 
         Assert.Equal((1, 1, null),
-                     (reads.GetReads(Scan, Thread)?.Count, reads.GetReads(Join, Thread)?.Count, reads.GetReads(Scan, Thread + 1)?.Count));
+                     (reads.GetTicks(Scan, Thread)?.Count, reads.GetTicks(Join, Thread)?.Count, reads.GetTicks(Scan, Thread + 1)?.Count));
     }
 
     [Fact]
     public void The_Nearest_Read_Of_An_Operator_Within_The_Tolerance_Is_Found()
     {
-        var reads = Build().GetReads(Scan, Thread)!;
+        var reads = Build().Reads.GetTicks(Scan, Thread)!;
 
         Assert.Equal((20d, null),
                      (reads.GetNearest(TraceTimelineAxis.Position, 28, 5)?.Position.Start,
                       reads.GetNearest(TraceTimelineAxis.Position, 40, 5)?.Position.Start));
     }
 
-    private static TraceReads Build()
+    private static (TraceTickSeries Reads, TraceCallStore Calls) Build()
     {
         CallSpan[] spans =
         [
@@ -183,8 +188,11 @@ public class TraceReadsTests
         timeline.SetLifetimes([new TraceOperatorLifetime(Thread, Join, 0, [Whole()], [Whole()], MemoryInUseCurve.Empty),
                                new TraceOperatorLifetime(Thread, Scan, 1, [Whole()], [Whole()], MemoryInUseCurve.Empty)]);
 
-        return TraceReads.Build(timeline, calls);
+        return (TraceReads.Build(timeline, calls), calls);
     }
+
+    private static (PageAddress Page, int PageCount)? GetRead(TraceCallStore calls, TraceTick read, TraceReadType type)
+        => TraceReads.GetRead(calls.GetCallList(read.Function, read.Instance)![read.Index], type);
 
     private static ulong[] Call(ulong start, ulong end, int node, ulong pageCount = 0)
     {

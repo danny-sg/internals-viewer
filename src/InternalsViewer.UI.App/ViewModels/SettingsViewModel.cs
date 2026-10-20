@@ -38,6 +38,8 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     private const string TraceTimelineShowMemoryKey = "FlameChartShowMemory";
     private const string TraceTimelineShowCallStackKey = "FlameChartShowCallStack";
     private const string TraceTimelineMemoryModeKey = "FlameChartMemoryMode";
+
+    private const string TraceTimelineHiddenTickTracksKey = "TraceTimelineHiddenTickTracks";
     private const string DecodeValuesKey = "DecodeValues";
     private const string CustomHooksKey = "CustomHooks";
 
@@ -100,6 +102,10 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     private TraceTimelineMemoryMode _traceTimelineMemoryMode;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TraceTimelineHiddenTickTrackSet))]
+    private string _traceTimelineHiddenTickTracks = string.Empty;
+
+    [ObservableProperty]
     private bool _decodeValues = true;
 
     [ObservableProperty]
@@ -114,6 +120,8 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     public IReadOnlySet<string> CallTreeHiddenCategorySet { get; private set; } = SplitCategories(DefaultCallTreeHiddenCategories);
 
     public IReadOnlySet<string> CallTreePrunedCategorySet { get; private set; } = SplitCategories(string.Empty);
+
+    public IReadOnlySet<string> TraceTimelineHiddenTickTrackSet { get; private set; } = SplitCategories(string.Empty);
 
     private SettingsService SettingsService { get; } = settingsService;
 
@@ -197,6 +205,8 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
         TraceTimelineMemoryMode = await SettingsService.ReadSettingAsync<TraceTimelineMemoryMode?>(TraceTimelineMemoryModeKey)
                                ?? TraceTimelineMemoryMode.Allocated;
 
+        TraceTimelineHiddenTickTracks = await SettingsService.ReadSettingAsync<string>(TraceTimelineHiddenTickTracksKey) ?? string.Empty;
+
         DecodeValues = await SettingsService.ReadSettingAsync<bool?>(DecodeValuesKey) ?? true;
 
         CustomHooks = await SettingsService.ReadSettingAsync<List<CustomHookDefinition>>(CustomHooksKey) ?? [];
@@ -249,6 +259,13 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
         CallTreePrunedCategorySet = SplitCategories(value);
 
         _ = SettingsService.SaveSettingAsync(CallTreePrunedCategoriesKey, value);
+    }
+
+    partial void OnTraceTimelineHiddenTickTracksChanged(string value)
+    {
+        TraceTimelineHiddenTickTrackSet = SplitCategories(value);
+
+        _ = SettingsService.SaveSettingAsync(TraceTimelineHiddenTickTracksKey, value);
     }
 
     partial void OnTraceTimelineShowMemoryChanged(bool value)

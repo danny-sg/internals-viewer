@@ -1,5 +1,7 @@
 ﻿using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.UI.App.Services.Query.Simulation;
+using InternalsViewer.UI.App.ViewModels.Query.OperatorTracks;
+using InternalsViewer.UI.App.Services.Query;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Memory;
@@ -19,6 +21,7 @@ using InternalsViewer.Query;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Arguments;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Events.Latches;
@@ -28,6 +31,7 @@ using InternalsViewer.Query.Events.Properties;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Controls.SqlEditor;
+using InternalsViewer.UI.App.Controls.Trace;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Columnstore;
@@ -77,6 +81,7 @@ using System.Text.Json;
 using InternalsViewer.Query.Export;
 using InternalsViewer.UI.App.Helpers;
 using Windows.Storage.Pickers;
+using SkiaSharp;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
@@ -91,7 +96,8 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                           PageTabViewModelFactory pageTabViewModelFactory,
                                           TraceDirectoryService traceDirectoryService,
                                           IBufferPoolInfoProvider bufferPoolInfoProvider,
-                                          SimulationTabViewModelFactory simulationTabViewModelFactory)
+                                          SimulationTabViewModelFactory simulationTabViewModelFactory,
+                                          TraceTickTrackStore tickTrackStore)
 {
     public QueryViewModel Create(DatabaseSource database) => new(logger,
                                                                  queryRunner,
@@ -105,6 +111,7 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                                                  traceDirectoryService,
                                                                  bufferPoolInfoProvider,
                                                                  simulationTabViewModelFactory,
+                                                                 tickTrackStore,
                                                                  database);
 }
 
@@ -267,10 +274,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private TraceRowReturnMarks? _rowReturnMarks;
 
     [ObservableProperty]
-    private TraceReads? _traceReads;
-
-    [ObservableProperty]
-    private TraceEvaluations? _traceEvaluations;
+    private IReadOnlyList<TraceTickTrack> _tickTracks = [];
 
     [ObservableProperty]
     private IReadOnlyList<string> _outputColumnNames = [];
@@ -340,6 +344,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                           TraceDirectoryService traceDirectoryService,
                           IBufferPoolInfoProvider bufferPoolInfoProvider,
                           SimulationTabViewModelFactory simulationTabViewModelFactory,
+                          TraceTickTrackStore tickTrackStore,
                           DatabaseSource database)
     {
         _simulationTabViewModelFactory = simulationTabViewModelFactory;
@@ -349,6 +354,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         Arguments = new ArgumentsViewModel(logger, Symbols, GetHoBtName);
 
         CustomHooks = new CustomHooksViewModel(settingsViewModel, OpenCallTree);
+
+        TickTrackStore = tickTrackStore;
+
+        OperatorTracks = new OperatorTracksViewModel(tickTrackStore, GetTickCount, message => AddMessage(message));
+
+        TickTrackStore.PropertyChanged += OnTickTrackStoreChanged;
 
         Logger = logger;
         QueryRunner = queryRunner;
@@ -1048,9 +1059,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         RowReturnMarks = null;
 
-        TraceReads = null;
-
-        TraceEvaluations = null;
+        ResetTickTracks();
 
         OutputColumnNames = [];
 
@@ -1061,6 +1070,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         Arguments.Dispose();
 
         CustomHooks.Dispose();
+
+        OperatorTracks.Dispose();
+
+        TickTrackStore.PropertyChanged -= OnTickTrackStoreChanged;
 
         Layout.Dispose();
 
@@ -2235,9 +2248,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         RowReturnMarks = result.RowReturnMarks;
 
-        TraceReads = result.Reads;
+        CustomTickTracks.Clear();
 
-        TraceEvaluations = result.Evaluations;
+        RefreshTickTracks();
 
         OutputColumnNames = GetOutputColumnNames(result.RowReturnMarks.OutputRows);
 
@@ -2376,9 +2389,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         RowReturnMarks = null;
 
-        TraceReads = null;
-
-        TraceEvaluations = null;
+        ResetTickTracks();
 
         OutputColumnNames = [];
 

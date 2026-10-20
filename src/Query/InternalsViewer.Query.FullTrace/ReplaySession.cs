@@ -1,7 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Text;
 using InternalsViewer.Query.FullTrace.Calls;
-using InternalsViewer.Query.FullTrace.Evaluations;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -157,15 +156,12 @@ internal sealed class ReplaySession : IDisposable
 
         var output = new OutputHook(functions.Output);
 
-        var evaluations = new EvaluationHook(functions.Evaluations);
-
         var customHook = new CustomHook(Resolve(customHooks));
 
         var hooks = new TraceHooks([rowSources,
                                     new LocatorHook(functions.LocatorReads, store, images),
                                     memoryMap,
                                     output,
-                                    evaluations,
                                     customHook]);
 
         ReplayBridge.HookCallback onHook = hooks.OnHook;
@@ -237,7 +233,6 @@ internal sealed class ReplaySession : IDisposable
                                         memoryMap.Build(),
                                         customHook.Build(),
                                         output.Build(),
-                                        evaluations.Build(),
                                         rowSources.GetPlanNodes(),
                                         rowSources.GetTeardowns());
             }

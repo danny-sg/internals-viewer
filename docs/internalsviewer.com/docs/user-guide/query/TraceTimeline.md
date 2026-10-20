@@ -97,9 +97,11 @@ The Call Tree's [category filter](/docs/user-guide/query/CallStack#filtering-by-
 
 ## Search
 
-The **Search** toggle opens a bar above the chart. Calls whose function name does not contain every word typed are dimmed, so the matches stand out. **Escape** closes it.
+The **Search** toggle opens a bar above the chart. Calls whose function name does not contain every word typed are dimmed, so the matches stand out. The number of matching calls shows beside the box, or **No Results** when nothing matches. **Escape** closes it.
 
-The filter button beside the box opens the same category badges as the Call Tree's [category filter](/docs/user-guide/query/CallStack#filtering-by-category), and they are one setting - hiding a category here hides it in the Call Tree too. The arrows after it move to the previous or next matching call, and are greyed out while nothing matches.
+The arrows after the box select the previous or next matching call and bring it into view, and are greyed out while nothing matches. **Enter** in the box moves to the next match and **Shift+Enter** to the previous one. Stepping starts from the selected call, or from the playhead when nothing is selected.
+
+The filter button beside the **Search** toggle opens the same category badges as the Call Tree's [category filter](/docs/user-guide/query/CallStack#filtering-by-category), beneath the search bar. They are one setting, so hiding a category here hides it in the Call Tree too.
 
 ## Operators
 
@@ -114,25 +116,53 @@ This shows something the lanes cannot. An operator is only on a thread's stack w
 
 ![The Operators pane above the thread lanes, with the Table Scan selected and every call outside it dimmed](/docs/user-guide/images/flame-chart-operator-selected.png)
 
-## Reads
+## Operator tracks
 
-**View > Reads** adds a strip along the bottom of each operator that asked the buffer pool for pages, on the track for the thread it asked on. It is the same height as the strip of `GetRow` calls along the top. Each read is drawn as in the Timeline's Read lane, a faint bar across the call with a solid tick at its end, in the operator's colour. A call to `BPool::Get` asks for a single page. A call to `BPool::ReadAhead` asks for a run of pages ahead of the scan. Pages already in memory and pages read from disk are drawn the same way. The calls beneath a read in the lanes below show which it was, such as `BPool::GetFromDisk` when the page had to be read. Reads made outside every operator, such as metadata lookups while the query is set up, are not shown.
+Each operator bar can carry thin strips of ticks, one strip per track. A tick is one call, drawn as a faint bar across the call with a solid tick at its end. A strip only appears on an operator that has ticks on it, so an operator the track has nothing to say about keeps its full height for its name. Three tracks are built in:
 
-- Hovering over the strip shows how many page reads and read aheads the operator made on that thread
-- Hovering over a read highlights its call in the lanes below, and shows its page, or the first page and page count of a read ahead, with its function, thread and position
-- **Click** a read to select its call in the chart
-- **Double-click** a read to zoom to it
+- **GetRow Returns** - along the top, a tick for every `GetRow` call the operator answered, coloured by what happened to the row (see below)
+- **Reads** - along the bottom, the operator's requests to the buffer pool
+- **Evaluations** - above the reads, the predicates the operator evaluated
 
-## Evaluations
+Each track has a toggle in the **View** menu, and in the **View** menu of the Operators pane's right-click menu. Turning a built-in track off is remembered between sessions.
 
-**View > Evaluations** adds a strip above the reads, or along the bottom of an operator that made none, with a tick for each predicate the operator evaluated. SQL Server evaluates a predicate with `CEsExec::FastCompare` or `CEsExec::GeneralEval`, which write the result into a value passed in by the caller. Each tick is coloured by that result - green for true, red for false and grey for NULL, where a comparison against a NULL could not be decided.
+You can add your own tracks for any function. **Add to Operators**, in the right-click menu of any call in the chart, adds one for that call's function. **Custom...**, in either **View** menu, adds one for a function you pick. A custom track has a tick on the operator each call was made inside, on a lighter strip so it stands apart from the built-in tracks. A call made outside every operator has no tick. The dialog sets:
 
-A scan with a predicate pushed down into it evaluates every row it reads but only passes up the rows that match, so the strip shows the rows it skipped as well as the ones it returned. Comparisons an operator makes for its own work are included too, such as a Stream Aggregate checking whether a row starts a new group. Evaluations that produce a value rather than true, false or NULL are not shown.
+- **Function** - the function whose calls are ticked. Type part of its name to pick it from the functions in the trace
+- **Name** - the track's name in the **View** menu and its tooltips, the function's name to start with
+- **Colour** - the colour of its ticks, the function's category colour to start with
+- **Height** and **Width** - how tall the strip is and how wide each tick is, as a multiple of the built-in tracks, so **1.5** is half as tall or wide again
+- **Conditions** - which calls get a tick. A call gets a tick only when every condition matches, and with no conditions every call does. Each condition is one of:
+  - **An argument or the return value**, an operator and a value. A number, such as `0`, `-1` or `0x1F`, is compared with the argument's value at its own size. Anything else is compared with the value as the **Arguments** table shows it, such as `true`, a page like `1:1536` or `NULL`.
+  - **Called By** a function, anywhere up the call stack, or **Called Directly By** a function, the call's immediate caller. The value is a function name, matched the same way as in the Call Tree's search, so `*Scan*::GetRow` matches any scan's `GetRow` and `sqlmin!` limits it to one module. Use **!=** to tick calls that were not made from it.
+  - **Operator** - the operator the tick lands on, such as `Filter` or `Table Scan (Node 3)`.
 
-- Hovering over the strip shows how many evaluations were true, false and NULL
-- Hovering over an evaluation highlights its call in the lanes below, and shows its result, function, thread and position
-- **Click** an evaluation to select its call in the chart
-- **Double-click** an evaluation to zoom to it
+For example, `CEsExec::FastCompare1` with **Called By** `CQScanTableScanNew::GetRow` ticks the predicates a scan evaluated itself, while **Operator** `Filter` ticks only a Filter's. A scan below a Filter is also called by the Filter, so **Called By** the Filter's `GetRow` would include the scan's too. Use **Called Directly By** or **Operator** to pick out the Filter alone.
+
+The same function can be added more than once, such as one track for `GetRow` calls that returned a row and another for those that did not. Custom tracks last until Internals Viewer is closed, and every trace you open shows them. Turning one off in the **View** menu hides it like a built-in track. **Clear All** in the **View** menu removes every custom track.
+
+**Operator Tracks**, on the Trace menu, opens a tab listing the custom tracks with their function, conditions, colour, height, width and how many ticks each has in the current trace. **Add** opens the same dialog, **Edit** and **Delete** change or remove a track, and **Export** and **Import** save the tracks to a file and load them back, into this or any later session.
+
+- Hovering over a strip shows the track and how many ticks of each kind the operator has on that thread
+- Hovering over a tick highlights its call in the lanes below, and shows what kind of tick it is, its function, thread and position
+- **Click** a tick to select its call in the chart
+- **Double-click** a tick to zoom to it
+
+### GetRow returns
+
+A tick is a call to the operator's `GetRow`, or `BpGetNextBatch` for a batch mode operator. It ends at the return and is coloured by what happened to the row. **Passed Up** rows went on to the operator that asked for them. **Not Passed Up** rows were taken by the operator that asked for them without it returning a row before it asked again, such as the rows a Stream Aggregate folds into a group. **Stored** rows were kept by a blocking operator, such as the build input of a Hash Match. **Rejected** rows failed a Filter. **End** is the call that reported there were no more rows.
+
+A line runs from each call up to the operator that made it. The dotted line is the call and the solid line is the return. Both take the colour of the call's marker, and the return line meets the marker's edge. The lines are drawn only once the calls are wide enough to tell apart, and hovering over a call highlights its line.
+
+### Reads
+
+A call to `BPool::Get` asks for a single page. A call to `BPool::ReadAhead` asks for a run of pages ahead of the scan. Each read is drawn in the operator's colour, and its tooltip shows the page, or the first page and page count of a read ahead. Pages already in memory and pages read from disk are drawn the same way. The calls beneath a read in the lanes below show which it was, such as `BPool::GetFromDisk` when the page had to be read. Reads made outside every operator, such as metadata lookups while the query is set up, are not shown.
+
+### Evaluations
+
+SQL Server evaluates a predicate with `CEsExec::FastCompare` or `CEsExec::GeneralEval`, which write the result into a value passed in by the caller. Each tick is coloured by that result - green for true, red for false and grey for NULL, where a comparison against a NULL could not be decided.
+
+A scan with a predicate pushed down into it evaluates every row it reads but only passes up the rows that match, so the strip shows the rows it skipped as well as the ones it returned. Comparisons an operator makes for its own work are included too, such as a Stream Aggregate checking whether a row starts a new group. Evaluations that produce a value rather than true, false or NULL are not shown, and neither are the three-way comparisons a Merge Join makes between its inputs.
 
 ## Memory
 
