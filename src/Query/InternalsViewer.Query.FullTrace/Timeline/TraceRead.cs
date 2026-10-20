@@ -12,7 +12,7 @@ public sealed record TraceRead(TraceReadType Type,
                                CallStackNode Node,
                                int Call,
                                TraceSpan Position,
-                               TraceSpan Instructions)
+                               TraceSpan Instructions) : ITraceMark
 {
     public ExecutionOperatorEvent? Operator { get; init; }
 

@@ -179,6 +179,8 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
         DrawReadHover(canvas, scale);
 
+        DrawEvaluationHover(canvas, scale);
+
         DrawOutputRowLineage(canvas, width, scale);
 
         DrawHoverCallLink(canvas, scale);
@@ -197,13 +199,23 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
         var returnStrip = outputRow is null ? GetReturnStripAt(position) : null;
 
-        var read = outputRow is null && returnStrip is null ? GetReadAt(position) : null;
+        var isInStrips = outputRow is null && returnStrip is null;
+
+        var read = isInStrips ? GetReadAt(position) : null;
+
+        var readStrip = isInStrips && read is null ? GetReadStripAt(position) : null;
+
+        var evaluation = isInStrips && read is null && readStrip is null ? GetEvaluationAt(position) : null;
+
+        var evaluationStrip = isInStrips && read is null && readStrip is null && evaluation is null ? GetEvaluationStripAt(position) : null;
+
+        var isOnMarks = read is not null || readStrip is not null || evaluation is not null || evaluationStrip is not null;
 
         var callLink = outputRow is null ? GetCallLinkAt(position) : null;
 
-        var operatorHit = returnStrip is null && outputRow is null && read is null ? GetOperatorAt(position) : null;
+        var operatorHit = isInStrips && !isOnMarks ? GetOperatorAt(position) : null;
 
-        return new TraceOperatorsHover(operatorHit, returnStrip, callLink, outputRow, read);
+        return new TraceOperatorsHover(operatorHit, returnStrip, callLink, outputRow, read, readStrip, evaluation, evaluationStrip);
     }
 
     public string? GetToolTip(TraceOperatorsHover hover, Point position)
@@ -226,6 +238,21 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
         if (hover.Read is { } read)
         {
             return GetReadToolTip(read);
+        }
+
+        if (hover.ReadStrip is { } readStrip)
+        {
+            return GetReadStripToolTip(readStrip);
+        }
+
+        if (hover.Evaluation is { } evaluation)
+        {
+            return GetEvaluationToolTip(evaluation);
+        }
+
+        if (hover.EvaluationStrip is { } evaluationStrip)
+        {
+            return GetEvaluationStripToolTip(evaluationStrip);
         }
 
         return Contains(position) ? ToolTipTitle : null;
@@ -281,6 +308,10 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
         else if (GetReadAt(position) is { } read)
         {
             Host.ClickCall(read.Node, read.Call);
+        }
+        else if (GetEvaluationAt(position) is { } evaluation)
+        {
+            Host.ClickCall(evaluation.Node, evaluation.Call);
         }
         else
         {
@@ -366,11 +397,15 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
         DrawReadStrip(canvas, row, lifetime, rect, colour, scale);
 
+        DrawEvaluationStrip(canvas, row, lifetime, rect, colour, scale);
+
         var stripHeight = HasReturnStrip(row, lifetime) ? GetReturnStripHeight(rect) : 0;
 
-        var readsHeight = HasReadStrip(row, lifetime) ? GetReturnStripHeight(rect) : 0;
+        var bottomStrips = (HasReadStrip(row, lifetime) ? 1 : 0) + (HasEvaluationStrip(row, lifetime) ? 1 : 0);
 
-        DrawOperatorLabel(canvas, row, rect with { Top = rect.Top + stripHeight, Bottom = rect.Bottom - readsHeight });
+        var bottom = rect.Bottom - GetReturnStripHeight(rect) * bottomStrips;
+
+        DrawOperatorLabel(canvas, row, rect with { Top = rect.Top + stripHeight, Bottom = bottom });
     }
 
     private void DrawLifespan(SKCanvas canvas, TraceOperatorRow row, TraceOperatorLifetime lifetime, SKRect rect)
@@ -398,11 +433,13 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
             canvas.DrawRect(rect.Left, rect.Top, rect.Width, stripHeight, Paints.Fill);
         }
 
-        if (stripHeight > 0 && HasReadStrip(row, lifetime))
+        var bottomStrips = (HasReadStrip(row, lifetime) ? 1 : 0) + (HasEvaluationStrip(row, lifetime) ? 1 : 0);
+
+        if (stripHeight > 0 && bottomStrips > 0)
         {
             Paints.Fill.Color = TimelineColours.Scale(colour, ReturnStripShade);
 
-            canvas.DrawRect(rect.Left, rect.Bottom - stripHeight, rect.Width, stripHeight, Paints.Fill);
+            canvas.DrawRect(rect.Left, rect.Bottom - stripHeight * bottomStrips, rect.Width, stripHeight * bottomStrips, Paints.Fill);
         }
 
         canvas.Restore();

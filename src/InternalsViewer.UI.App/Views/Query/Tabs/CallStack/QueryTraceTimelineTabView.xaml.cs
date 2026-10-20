@@ -197,6 +197,10 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         var reads = MenuItems.Toggle("Reads", TraceTimeline.ShowReads, isChecked => TraceTimeline.ShowReads = isChecked);
 
+        var evaluations = MenuItems.Toggle("Evaluations",
+                                           TraceTimeline.ShowEvaluations,
+                                           isChecked => TraceTimeline.ShowEvaluations = isChecked);
+
         var flameChart = MenuItems.Toggle("Flame Chart",
                                           TraceTimeline.ShowFlameChart,
                                           isChecked => TraceTimeline.ShowFlameChart = isChecked);
@@ -215,6 +219,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         menu.Items.Add(reads);
 
+        menu.Items.Add(evaluations);
+
         menu.Items.Add(flameChart);
 
         menu.Items.Add(highlightRegions);
@@ -230,6 +236,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
             iteratorCalls.IsChecked = TraceTimeline.ShowIteratorCalls;
 
             reads.IsChecked = TraceTimeline.ShowReads;
+
+            evaluations.IsChecked = TraceTimeline.ShowEvaluations;
 
             flameChart.IsChecked = TraceTimeline.ShowFlameChart;
 

@@ -1,5 +1,6 @@
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.CustomHooks;
+using InternalsViewer.Query.FullTrace.Evaluations;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Native;
@@ -29,6 +30,7 @@ internal sealed record ReplayResult(CallNode[] Nodes,
                                     TraceTimeline Timeline,
                                     AddressEntry[] MemoryMap,
                                     CustomHookStore CustomHooks,
-                                    List<TraceOutputStructure> OutputStructures,
+                                    List<OutputAddresses> OutputAddresses,
+                                    EvaluationCapture[] Evaluations,
                                     IReadOnlyList<IteratorPlanNode> PlanNodes,
                                     IReadOnlyList<QueryTeardown> Teardowns);

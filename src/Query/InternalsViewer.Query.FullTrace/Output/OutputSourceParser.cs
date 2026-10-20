@@ -4,65 +4,75 @@ using InternalsViewer.Query.FullTrace.Output.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Output;
 
+/// <summary>
+/// Gets the address an output column of the query reads its data from
+/// </summary>
+/// <remarks>
+/// For the iterator model GetRow doesn't actually return rows. Instead a reference based path is defined for the query which can point
+/// to different structures. As the query iterates pointers in these addresses can be updated so when the row is output all of the
+/// references are pointing to results that have been collected throughout the operators, e.g. row buffers, hash table entries etc.
+///
+/// This parser follows the path for each output column of the query and returns the address at its end, so the iterator each column
+/// comes from can be found.
+/// </remarks>
 internal static class OutputSourceParser
 {
     private const int MaximumDepth = 4;
 
-    private const ulong TableSlotOffset = 0x10;
-
+    private const ulong RowBufferVariantOffset = 0x08;
+    private const ulong TableRowsetOffset = 0x08;
     private const ulong HashSlotOffset = 0x2C;
-
     private const ulong VariantTableSlotOffset = 0x08;
-
+    private const ulong VariantTableOrdinalOffset = 0x0C;
     private const ulong BatchRedirectHelperOffset = 0x10;
-
     private const ulong HashSwitchInnerOffset = 0x10;
-
     private const ulong HashCachedSwitchInnerOffset = 0x08;
 
-    public static OutputSource Parse(ITraceReplay replay,
-                                     IReadOnlyDictionary<ulong, OutputValueClass> classes,
-                                     ulong value,
-                                     ulong context,
-                                     int depth = 0)
+    public static ulong GetAddress(ITraceReplay replay,
+                                   IReadOnlyDictionary<ulong, OutputValueClass> classes,
+                                   ulong value,
+                                   ulong context,
+                                   int depth = 0)
     {
         if (depth > MaximumDepth || !replay.TryRead(value, out ulong vtable) || !classes.TryGetValue(vtable, out var valueClass))
         {
-            return OutputSource.Unknown;
-        }
-
-        if (GetInner(replay, value, valueClass) is { } inner)
-        {
-            return Parse(replay, classes, inner, context, depth + 1) with { Value = value };
+            return 0;
         }
 
         return valueClass switch
         {
-            OutputValueClass.Table => GetSlotSource(replay, value, context, TableSlotOffset),
-            OutputValueClass.Hash => GetSlotSource(replay, value, context, HashSlotOffset),
-            OutputValueClass.VariantTable => GetSlotSource(replay, value, context, VariantTableSlotOffset),
-            OutputValueClass.BatchRedirect => replay.TryRead(value + BatchRedirectHelperOffset, out ulong helper)
-                ? new OutputSource(value) { Owner = helper }
-                : OutputSource.Unknown,
-            OutputValueClass.Constant => new OutputSource(value),
-            _ => OutputSource.Unknown
+            OutputValueClass.RowBuffer
+                => Read(replay, value + RowBufferVariantOffset),
+            OutputValueClass.Table
+                => Read(replay, value + TableRowsetOffset),
+            OutputValueClass.Hash
+                => GetSlotRow(replay, value + HashSlotOffset, context),
+            OutputValueClass.VariantTable
+                => GetVariantRow(replay, value, context),
+            OutputValueClass.HashSwitch
+                => GetAddress(replay, classes, Read(replay, value + HashSwitchInnerOffset), context, depth + 1),
+            OutputValueClass.HashCachedSwitch
+                => GetAddress(replay, classes, Read(replay, value + HashCachedSwitchInnerOffset), context, depth + 1),
+            OutputValueClass.BatchRedirect
+                => Read(replay, value + BatchRedirectHelperOffset),
+            _ => 0
         };
     }
 
-    private static ulong? GetInner(ITraceReplay replay, ulong value, OutputValueClass valueClass)
-    {
-        var offset = valueClass switch
-        {
-            OutputValueClass.HashSwitch => HashSwitchInnerOffset,
-            OutputValueClass.HashCachedSwitch => HashCachedSwitchInnerOffset,
-            _ => 0UL
-        };
+    private static ulong GetVariantRow(ITraceReplay replay, ulong value, ulong context)
+        => GetSlotRow(replay, value + VariantTableSlotOffset, context) is not 0 and var row
+           && replay.TryRead(value + VariantTableOrdinalOffset, out int ordinal)
+           && ordinal >= 0
+            ? row + (ulong)ordinal * VariantLayout.Size
+            : 0;
 
-        return offset != 0 && replay.TryRead(value + offset, out ulong inner) ? inner : null;
-    }
+    private static ulong GetSlotRow(ITraceReplay replay, ulong slotAddress, ulong context)
+        => context >= TraceAddress.Smallest
+           && replay.TryRead(slotAddress, out int slot)
+           && slot >= 0
+            ? Read(replay, context + (ulong)slot * sizeof(ulong))
+            : 0;
 
-    private static OutputSource GetSlotSource(ITraceReplay replay, ulong value, ulong context, ulong slotOffset)
-        => replay.TryRead(value + slotOffset, out int slot)
-            ? new OutputSource(value) { Slot = slot, Context = context }
-            : OutputSource.Unknown;
+    private static ulong Read(ITraceReplay replay, ulong address)
+        => address >= TraceAddress.Smallest && replay.TryRead(address, out ulong value) && value >= TraceAddress.Smallest ? value : 0;
 }

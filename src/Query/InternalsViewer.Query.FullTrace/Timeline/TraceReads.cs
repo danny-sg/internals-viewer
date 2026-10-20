@@ -24,28 +24,7 @@ public sealed class TraceReads
     {
         Reads = reads;
 
-        var grouped = new Dictionary<ExecutionOperatorEvent, Dictionary<uint, List<TraceRead>>>(ReferenceEqualityComparer.Instance);
-
-        foreach (var read in reads)
-        {
-            if (read.Operator is not { } operatorEvent)
-            {
-                continue;
-            }
-
-            ref var threads = ref CollectionsMarshal.GetValueRefOrAddDefault(grouped, operatorEvent, out _);
-
-            threads ??= [];
-
-            ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(threads, read.Thread, out _);
-
-            (list ??= []).Add(read);
-        }
-
-        foreach (var (operatorEvent, threads) in grouped)
-        {
-            ByOperator[operatorEvent] = threads.ToDictionary(t => t.Key, t => new TraceReadIndex([.. t.Value]));
-        }
+        ByOperator = OperatorMarks<TraceRead>.Build(reads, r => r.Operator, r => r.Thread);
     }
 
     public static TraceReads Empty { get; } = new([]);
@@ -56,10 +35,9 @@ public sealed class TraceReads
 
     private TraceRead[] Reads { get; }
 
-    private Dictionary<ExecutionOperatorEvent, Dictionary<uint, TraceReadIndex>> ByOperator { get; } = new(ReferenceEqualityComparer.Instance);
+    private OperatorMarks<TraceRead> ByOperator { get; }
 
-    public TraceReadIndex? GetReads(ExecutionOperatorEvent operatorEvent, uint thread)
-        => ByOperator.TryGetValue(operatorEvent, out var threads) ? threads.GetValueOrDefault(thread) : null;
+    public TraceMarkIndex<TraceRead>? GetReads(ExecutionOperatorEvent operatorEvent, uint thread) => ByOperator.Get(operatorEvent, thread);
 
     internal static TraceReads Build(TraceTimeline timeline, TraceCallStore calls)
     {
@@ -101,7 +79,9 @@ public sealed class TraceReads
             }
         }
 
-        var operators = GetOperators(calls, timeline.GetOperatorsByInstance(), reads, froms);
+        var operators = OperatorMarks<TraceRead>.GetEnclosing(calls,
+                                                              timeline.GetOperatorsByInstance(),
+                                                              [.. reads.Select((r, i) => (r.Thread, froms[i]))]);
 
         return new TraceReads([.. reads.Select((r, i) => operators[i] is { } found ? r with { Operator = found } : r)]);
     }
@@ -128,74 +108,4 @@ public sealed class TraceReads
 
         return null;
     }
-
-    private static ExecutionOperatorEvent?[] GetOperators(TraceCallStore calls,
-                                                          Dictionary<ulong, ExecutionOperatorEvent> owners,
-                                                          List<TraceRead> reads,
-                                                          List<TracePosition> froms)
-    {
-        var operators = new ExecutionOperatorEvent?[reads.Count];
-
-        if (owners.Count == 0)
-        {
-            return operators;
-        }
-
-        var threads = new Dictionary<uint, List<SweepEntry>>();
-
-        foreach (var (address, instance) in calls.FunctionKeys)
-        {
-            if (!owners.ContainsKey(instance) || calls.GetCallList(address, instance) is not { Count: > 0 } list)
-            {
-                continue;
-            }
-
-            for (var index = 0; index < list.Count; index++)
-            {
-                Add(list.GetThread(index), new SweepEntry(list.GetFromPosition(index), list.GetToPosition(index), instance, -1));
-            }
-        }
-
-        for (var index = 0; index < reads.Count; index++)
-        {
-            Add(reads[index].Thread, new SweepEntry(froms[index], froms[index], 0, index));
-        }
-
-        var open = new Stack<SweepEntry>();
-
-        foreach (var thread in threads.Values)
-        {
-            thread.Sort((left, right) => left.From != right.From ? left.From.CompareTo(right.From) : right.To.CompareTo(left.To));
-
-            open.Clear();
-
-            foreach (var entry in thread)
-            {
-                while (open.TryPeek(out var outer) && outer.To <= entry.From)
-                {
-                    open.Pop();
-                }
-
-                if (entry.Read >= 0)
-                {
-                    operators[entry.Read] = open.TryPeek(out var enclosing) ? owners[enclosing.Instance] : null;
-
-                    continue;
-                }
-
-                open.Push(entry);
-            }
-        }
-
-        return operators;
-
-        void Add(uint thread, SweepEntry entry)
-        {
-            ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(threads, thread, out _);
-
-            (list ??= []).Add(entry);
-        }
-    }
-
-    private readonly record struct SweepEntry(TracePosition From, TracePosition To, ulong Instance, int Read);
 }

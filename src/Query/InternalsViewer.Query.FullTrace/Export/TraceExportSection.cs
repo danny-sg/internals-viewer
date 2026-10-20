@@ -29,6 +29,8 @@ internal sealed class TraceExportSection : IQueryExportSection
 
     internal const string TeardownsEntry = "fulltrace/teardowns.bin";
 
+    internal const string EvaluationsEntry = "fulltrace/evaluations.bin";
+
     public bool CanExport(QueryExportContent content) => content.ExtraOf<TraceResult>() is not null;
 
     public void Collect(QueryExportCollector collector, QueryExportContent content)
@@ -57,6 +59,8 @@ internal sealed class TraceExportSection : IQueryExportSection
         writer.WriteBinary(PlanNodesEntry, CompressionLevel.Fastest, w => IteratorPlanNode.Write(w, fullTrace.PlanNodes));
 
         writer.WriteBinary(TeardownsEntry, CompressionLevel.Fastest, w => QueryTeardown.Write(w, fullTrace.Teardowns));
+
+        writer.WriteBinary(EvaluationsEntry, CompressionLevel.Fastest, fullTrace.Evaluations.Write);
     }
 
     public IRunExtra? Read(QueryExportReader reader)
@@ -106,7 +110,10 @@ internal sealed class TraceExportSection : IQueryExportSection
                 : ObjectPoolSnapshot.Empty,
             OutputStructures = outputStructures,
             RowReturnMarks = TraceRowReturnMarks.Build(timeline, callStore, TraceOutputLineage.GetSources(timeline, outputStructures)),
-            Reads = TraceReads.Build(timeline, callStore)
+            Reads = TraceReads.Build(timeline, callStore),
+            Evaluations = reader.HasEntry(EvaluationsEntry)
+                ? TraceEvaluations.Build(timeline, callStore, reader.ReadBinary(EvaluationsEntry, TraceEvaluations.ReadCaptures))
+                : TraceEvaluations.Empty
         };
     }
 }

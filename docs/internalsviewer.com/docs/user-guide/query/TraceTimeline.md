@@ -118,9 +118,21 @@ This shows something the lanes cannot. An operator is only on a thread's stack w
 
 **View > Reads** adds a strip along the bottom of each operator that asked the buffer pool for pages, on the track for the thread it asked on. It is the same height as the strip of `GetRow` calls along the top. Each read is drawn as in the Timeline's Read lane, a faint bar across the call with a solid tick at its end, in the operator's colour. A call to `BPool::Get` asks for a single page. A call to `BPool::ReadAhead` asks for a run of pages ahead of the scan. Pages already in memory and pages read from disk are drawn the same way. The calls beneath a read in the lanes below show which it was, such as `BPool::GetFromDisk` when the page had to be read. Reads made outside every operator, such as metadata lookups while the query is set up, are not shown.
 
+- Hovering over the strip shows how many page reads and read aheads the operator made on that thread
 - Hovering over a read highlights its call in the lanes below, and shows its page, or the first page and page count of a read ahead, with its function, thread and position
 - **Click** a read to select its call in the chart
 - **Double-click** a read to zoom to it
+
+## Evaluations
+
+**View > Evaluations** adds a strip above the reads, or along the bottom of an operator that made none, with a tick for each predicate the operator evaluated. SQL Server evaluates a predicate with `CEsExec::FastCompare` or `CEsExec::GeneralEval`, which write the result into a value passed in by the caller. Each tick is coloured by that result - green for true, red for false and grey for NULL, where a comparison against a NULL could not be decided.
+
+A scan with a predicate pushed down into it evaluates every row it reads but only passes up the rows that match, so the strip shows the rows it skipped as well as the ones it returned. Comparisons an operator makes for its own work are included too, such as a Stream Aggregate checking whether a row starts a new group. Evaluations that produce a value rather than true, false or NULL are not shown.
+
+- Hovering over the strip shows how many evaluations were true, false and NULL
+- Hovering over an evaluation highlights its call in the lanes below, and shows its result, function, thread and position
+- **Click** an evaluation to select its call in the chart
+- **Double-click** an evaluation to zoom to it
 
 ## Memory
 

@@ -5,7 +5,6 @@ internal enum RowSourceFunctionType : byte
     Iterator,
     BatchIterator,
     BatchFactory,
-    Creator,
     Constructor,
     Teardown
 }

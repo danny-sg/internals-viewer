@@ -100,6 +100,30 @@ public sealed partial class TraceTimelineControl
         set => SetValue(ReadsProperty, value);
     }
 
+    public static readonly DependencyProperty ShowEvaluationsProperty =
+        DependencyProperty.Register(nameof(ShowEvaluations),
+                                    typeof(bool),
+                                    typeof(TraceTimelineControl),
+                                    new PropertyMetadata(true, OnReadsChanged));
+
+    public bool ShowEvaluations
+    {
+        get => (bool)GetValue(ShowEvaluationsProperty);
+        set => SetValue(ShowEvaluationsProperty, value);
+    }
+
+    public static readonly DependencyProperty EvaluationsProperty =
+        DependencyProperty.Register(nameof(Evaluations),
+                                    typeof(TraceEvaluations),
+                                    typeof(TraceTimelineControl),
+                                    new PropertyMetadata(null, OnReadsChanged));
+
+    public TraceEvaluations? Evaluations
+    {
+        get => (TraceEvaluations?)GetValue(EvaluationsProperty);
+        set => SetValue(EvaluationsProperty, value);
+    }
+
     public static readonly DependencyProperty OutputColumnNamesProperty =
         DependencyProperty.Register(nameof(OutputColumnNames),
                                     typeof(IReadOnlyList<string>),
@@ -332,7 +356,9 @@ public sealed partial class TraceTimelineControl
 
         var reads = MenuItems.Toggle("Reads", ShowReads, isChecked => ShowReads = isChecked);
 
-        flyout.Items.Add(MenuItems.SubMenu("View", iteratorCalls, reads));
+        var evaluations = MenuItems.Toggle("Evaluations", ShowEvaluations, isChecked => ShowEvaluations = isChecked);
+
+        flyout.Items.Add(MenuItems.SubMenu("View", iteratorCalls, reads, evaluations));
 
         return flyout;
     }
@@ -378,6 +404,10 @@ public sealed partial class TraceTimelineControl
         control._operators.Reads = control.Reads;
 
         control._operators.ShowReads = control.ShowReads;
+
+        control._operators.Evaluations = control.Evaluations;
+
+        control._operators.ShowEvaluations = control.ShowEvaluations;
 
         control._operators.Hover = TraceOperatorsHover.None;
 

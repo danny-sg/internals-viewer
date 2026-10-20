@@ -1,8 +1,6 @@
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Output.Enums;
-using InternalsViewer.Query.FullTrace.RowSources;
-using InternalsViewer.Query.FullTrace.RowSources.Enums;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
@@ -19,10 +17,6 @@ public class OutputHookTests
     private const ulong VariantRead = 0x2100;
 
     private const ulong Send = 0x2200;
-
-    private const ulong CreateValue = 0x3000;
-
-    private const ulong GetRow = 0x4000;
 
     private const ulong OutputRowTable = 0x7000;
 
@@ -56,9 +50,9 @@ public class OutputHookTests
 
     private const ulong ScanValue = 0x1F4_0000_5300;
 
-    private const ulong HashIterator = 0x1F4_0000_7000;
+    private const ulong Rowset = 0x1F4_0000_6000;
 
-    private const ulong ScanIterator = 0x1F4_0000_8000;
+    private const ulong HashIterator = 0x1F4_0000_7000;
 
     private const ulong SortBuffer = 0x1F4_0000_B000;
 
@@ -70,8 +64,6 @@ public class OutputHookTests
 
     private const ulong VariantRow = 0x1F4_0000_D000;
 
-    private const ulong AggregateIterator = 0x1F4_0000_E000;
-
     private const int VariantSlot = 5;
 
     private const ulong Record = 0x1F4_0001_0000;
@@ -81,12 +73,24 @@ public class OutputHookTests
     private const int Slot = 2;
 
     [Fact]
-    public void A_Column_Read_Through_A_Hash_Switch_Is_Owned_By_The_Iterator_That_Set_Its_Slot()
-        => Assert.Equal(HashIterator, Assert.Single(Capture(CreateReplay())).Owners[0]);
+    public void A_Column_Read_Through_A_Hash_Switch_Points_Where_Its_Primary_Value_Reads()
+        => Assert.Equal(Record, Assert.Single(Capture(CreateReplay())).Columns[0]);
 
     [Fact]
-    public void A_Column_Read_From_A_Scan_Is_Owned_By_The_Scan_That_Created_It()
-        => Assert.Equal(ScanIterator, Assert.Single(Capture(CreateReplay())).Owners[1]);
+    public void A_Column_Read_From_A_Table_Points_At_Its_Rowset()
+        => Assert.Equal(Rowset, Assert.Single(Capture(CreateReplay())).Columns[1]);
+
+    [Fact]
+    public void A_Column_Read_From_A_Hash_Record_Points_At_The_Record_In_Its_Slot()
+    {
+        var replay = CreateReplay().Write(Values + 0x08, HashValue);
+
+        Assert.Equal(Record, Assert.Single(Capture(replay)).Columns[0]);
+    }
+
+    [Fact]
+    public void The_Structure_Is_Placed_At_The_Evaluation_It_Was_Learned_From()
+        => Assert.Equal(At(10), Assert.Single(Capture(CreateReplay())).Position);
 
     [Fact]
     public void The_Structure_Belongs_To_The_Output_Row_It_Was_Read_For()
@@ -101,25 +105,19 @@ public class OutputHookTests
 
         Evaluation(hook, CreateReplay().Write(Values + 0x10, SwitchValue), 20);
 
-        Assert.Equal(ScanIterator, Assert.Single(hook.Build()).Owners[1]);
+        Assert.Equal(Rowset, Assert.Single(hook.Build()).Columns[1]);
     }
 
     [Fact]
-    public void A_Row_Sent_Directly_Is_Owned_By_The_Iterator_That_Sent_It()
+    public void A_Row_Sent_Directly_Points_At_The_Values_It_Was_Sent_From()
     {
-        var replay = CreateReplay();
+        var hook = CreateHook();
 
-        var rowSources = CreateRowSources();
-
-        var hook = CreateHook(rowSources);
-
-        rowSources.OnEntry(Call(GetRow, 29, [ScanIterator, Context]), replay);
-
-        hook.OnEntry(Call(Send, 30, [OutputRowValue, Context, SortBuffer]), replay);
+        hook.OnEntry(Call(Send, 30, [OutputRowValue, Context, SortBuffer]), CreateReplay());
 
         var structure = Assert.Single(hook.Build());
 
-        Assert.Equal((OutputRowValue, ScanIterator, 0), (structure.OutputRow, structure.DirectSelectOwner, structure.Owners.Count));
+        Assert.Equal((OutputRowValue, SortBuffer, 0), (structure.OutputRow, structure.DirectSelect, structure.Columns.Count));
     }
 
     [Fact]
@@ -137,11 +135,11 @@ public class OutputHookTests
 
         hook.OnReturn(Call(Evaluate, 10, [Context, Executor]), replay);
 
-        Assert.Equal(0UL, Assert.Single(hook.Build()).DirectSelectOwner);
+        Assert.Equal(0UL, Assert.Single(hook.Build()).DirectSelect);
     }
 
     [Fact]
-    public void A_Column_Read_From_A_Variant_Has_No_Owner()
+    public void A_Column_Read_From_A_Variant_Points_At_The_Variant()
     {
         var replay = CreateReplay().Write(Variants + 0x08, SortBuffer + 0x20);
 
@@ -153,11 +151,11 @@ public class OutputHookTests
 
         hook.OnReturn(Call(Evaluate, 10, [Context, Executor]), replay);
 
-        Assert.Equal(0UL, Assert.Single(Assert.Single(hook.Build()).Owners));
+        Assert.Equal(SortBuffer + 0x20, Assert.Single(Assert.Single(hook.Build()).Columns));
     }
 
     [Fact]
-    public void A_Column_Redirected_To_A_Batch_Row_Is_Owned_By_The_Batch_Helper()
+    public void A_Column_Redirected_To_A_Batch_Row_Points_At_The_Batch_Helper()
     {
         var replay = CreateReplay().Write(Values + 0x08, RedirectValue)
                                    .Write(RedirectValue, RedirectTable)
@@ -172,11 +170,11 @@ public class OutputHookTests
 
         hook.OnReturn(Call(Evaluate, 10, [Context, Executor]), replay);
 
-        Assert.Equal(BatchHelper, Assert.Single(Assert.Single(hook.Build()).Owners));
+        Assert.Equal(BatchHelper, Assert.Single(Assert.Single(hook.Build()).Columns));
     }
 
     [Fact]
-    public void A_Column_Read_From_A_Variant_Table_Is_Owned_By_The_Iterator_That_Set_Its_Slot()
+    public void A_Column_Read_From_A_Variant_Table_Points_At_Its_Variant_In_The_Row_In_Its_Slot()
     {
         var replay = CreateReplay().Write(Values + 0x08, VariantValue)
                                    .Write(VariantValue, VariantTable)
@@ -192,7 +190,7 @@ public class OutputHookTests
 
         hook.OnReturn(Call(Evaluate, 10, [Context, Executor]), replay);
 
-        Assert.Equal(AggregateIterator, Assert.Single(Assert.Single(hook.Build()).Owners));
+        Assert.Equal(VariantRow + 0x20, Assert.Single(Assert.Single(hook.Build()).Columns));
     }
 
     [Fact]
@@ -208,7 +206,7 @@ public class OutputHookTests
 
         Evaluation(hook, CreateReplay(), 20);
 
-        Assert.Equal(2, Assert.Single(hook.Build()).Owners.Count);
+        Assert.Equal(2, Assert.Single(hook.Build()).Columns.Count);
     }
 
     [Fact]
@@ -230,15 +228,14 @@ public class OutputHookTests
 
         hook.OnReturn(Call(Evaluate, 10, [Context, Executor]), replay);
 
-        Assert.Single(Assert.Single(hook.Build()).Owners);
+        Assert.Single(Assert.Single(hook.Build()).Columns);
     }
 
     [Fact]
     public void Functions_Without_The_Output_Row_Class_Hook_Nothing()
-        => Assert.Empty(new OutputHook(new OutputFunctions(CreateFunctions(), new Dictionary<ulong, OutputValueClass>()),
-                                       new RowSourceHook(RowSourceFunctions.Empty)).Functions);
+        => Assert.Empty(new OutputHook(new OutputFunctions(CreateFunctions(), new Dictionary<ulong, OutputValueClass>())).Functions);
 
-    private static IReadOnlyList<TraceOutputStructure> Capture(FakeTraceReplay replay)
+    private static IReadOnlyList<OutputAddresses> Capture(FakeTraceReplay replay)
     {
         var hook = CreateHook();
 
@@ -247,7 +244,7 @@ public class OutputHookTests
         return hook.Build();
     }
 
-    private static OutputHook CreateHook(RowSourceHook? rowSources = null)
+    private static OutputHook CreateHook()
         => new(new OutputFunctions(CreateFunctions(),
                                    new Dictionary<ulong, OutputValueClass>
                                    {
@@ -257,40 +254,7 @@ public class OutputHookTests
                                        [ScanTable] = OutputValueClass.Table,
                                        [RedirectTable] = OutputValueClass.BatchRedirect,
                                        [VariantTable] = OutputValueClass.VariantTable
-                                   }),
-               rowSources ?? CreateRowSources());
-
-    private static RowSourceHook CreateRowSources()
-    {
-        var rowSources = new RowSourceHook(new RowSourceFunctions(new Dictionary<ulong, RowSourceFunctionType>
-                                                                  {
-                                                                      [CreateValue] = RowSourceFunctionType.Creator,
-                                                                      [GetRow] = RowSourceFunctionType.Iterator
-                                                                  }, RowSourceFunctions.Empty.PlanObjects));
-
-        var replay = new FakeTraceReplay();
-
-        rowSources.OnEntry(Call(CreateValue, 1, [ScanIterator, 0]), replay);
-
-        rowSources.OnReturn(Call(CreateValue, 1, [ScanIterator, 0], returnValue: ScanValue), replay);
-
-        (ulong Iterator, int Slot, ulong Row)[] sources = [(HashIterator, Slot, Record), (AggregateIterator, VariantSlot, VariantRow)];
-
-        for (var index = 0; index < sources.Length; index++)
-        {
-            var (iterator, slot, row) = sources[index];
-
-            replay.Write(Context + (ulong)slot * sizeof(ulong), 0UL);
-
-            rowSources.OnEntry(Call(GetRow, (ulong)index + 2, [iterator, Context]), replay);
-
-            replay.Write(Context + (ulong)slot * sizeof(ulong), row);
-
-            rowSources.OnReturn(Call(GetRow, (ulong)index + 2, [iterator, Context]), replay);
-        }
-
-        return rowSources;
-    }
+                                   }));
 
     private static Dictionary<ulong, OutputFunctionType> CreateFunctions()
         => new()
@@ -341,7 +305,7 @@ public class OutputHookTests
                                 .Write(HashValue, HashTable)
                                 .Write(HashValue + 0x2C, Slot)
                                 .Write(ScanValue, ScanTable)
-                                .Write(ScanValue + 0x10, 1)
+                                .Write(ScanValue + 0x08, Rowset)
                                 .Write(Context + Slot * sizeof(ulong), Record)
                                 .Write(Variant, (byte)0)
                                 .Write(Variant + 0x08, 5UL)

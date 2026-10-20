@@ -29,8 +29,6 @@ internal sealed record RowSourceFunctions(IReadOnlyDictionary<ulong, RowSourceFu
 
         private const string BatchFactoryMethod = "PbpqsGet";
 
-        private const string CreatorPrefix = "CreateVal";
-
         private const string PlanObjectPrefix = "CXte";
 
         private const string BatchPlanObjectPrefix = "CBpXte";
@@ -70,10 +68,6 @@ internal sealed record RowSourceFunctions(IReadOnlyDictionary<ulong, RowSourceFu
             else if (methodName is "GetRow" or "GetRowOrReQualifyHelper" or "Open")
             {
                 Candidates.TryAdd(rva, RowSourceFunctionType.Iterator);
-            }
-            else if (methodName.StartsWith(CreatorPrefix, StringComparison.Ordinal))
-            {
-                Candidates.TryAdd(rva, RowSourceFunctionType.Creator);
             }
             else if (methodName.SequenceEqual(className))
             {

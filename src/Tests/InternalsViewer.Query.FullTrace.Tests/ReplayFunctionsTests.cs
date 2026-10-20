@@ -1,4 +1,5 @@
 using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.FullTrace.Evaluations;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory;
@@ -25,9 +26,10 @@ public class ReplayFunctionsTests
                                            [new LocatorRead(0x60, 2, false, LocatorValueType.Page)],
                                            [new MemoryFunction(0x90, AllocationOperation.Allocate, 1, -1, 1)],
                                            [new MemoryMapFunction(0xA0, MemoryMapOperation.Visited)],
-                                           new RowSourceFunctions(Map(0x150, RowSourceFunctionType.Creator), Map(0x158, PlanObjectClass.Row)),
+                                           new RowSourceFunctions(Map(0x150, RowSourceFunctionType.Constructor), Map(0x158, PlanObjectClass.Row)),
                                            new OutputFunctions(Map(0x110, OutputFunctionType.Send),
-                                                               Map(0x120, OutputValueClass.OutputRow)));
+                                                               Map(0x120, OutputValueClass.OutputRow)),
+                                           new EvaluationFunctions([0x170]));
 
         var rebased = relative.Rebase(Base);
 
@@ -36,10 +38,11 @@ public class ReplayFunctionsTests
         Assert.Equal(new LocatorRead(Base + 0x60, 2, false, LocatorValueType.Page), rebased.LocatorReads[0]);
         Assert.Equal(Base + 0x90, Assert.Single(rebased.MemoryFunctions).Address);
         Assert.Equal(Base + 0xA0, Assert.Single(rebased.MemoryMapFunctions).Address);
-        Assert.Equal((Base + 0x150, RowSourceFunctionType.Creator), Pair(Assert.Single(rebased.RowSources.Functions)));
+        Assert.Equal((Base + 0x150, RowSourceFunctionType.Constructor), Pair(Assert.Single(rebased.RowSources.Functions)));
         Assert.Equal((Base + 0x158, PlanObjectClass.Row), Pair(Assert.Single(rebased.RowSources.PlanObjects)));
         Assert.Equal((Base + 0x110, OutputFunctionType.Send), Pair(Assert.Single(rebased.Output.Functions)));
         Assert.Equal((Base + 0x120, OutputValueClass.OutputRow), Pair(Assert.Single(rebased.Output.Classes)));
+        Assert.Equal([Base + 0x170], rebased.Evaluations.Functions);
     }
 
     private static (ulong, T) Pair<T>(KeyValuePair<ulong, T> entry) => (entry.Key, entry.Value);

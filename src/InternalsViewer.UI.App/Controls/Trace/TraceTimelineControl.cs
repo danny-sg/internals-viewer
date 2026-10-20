@@ -1106,7 +1106,9 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
     }
 
     private CallReference? GetCallReference(FlameHit? hit)
-        => hit is { } at && SpanOf(at) is { } span && _visible?.NodeOf(span.Node) is { } node ? new CallReference(node, span.Call, true) : null;
+        => hit is { } at && SpanOf(at) is { } span && _visible?.NodeOf(span.Node) is { } node
+               ? new CallReference(node, span.Call, true)
+               : null;
 
     private bool IsCall(FlameHit? hit, CallReference reference)
         => hit is { } at

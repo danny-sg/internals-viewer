@@ -10,6 +10,7 @@ using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Helpers;
 using Microsoft.Extensions.Logging;
@@ -196,6 +197,19 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         timeline.SetLifetimes(lifetimes);
 
+        var allocations = IteratorAllocations.Build(timeline,
+                                                    replay.CallStore,
+                                                    timeline.GetOperatorsByInstance().Keys.ToHashSet(),
+                                                    replay.PlanNodes);
+
+        List<TraceOutputStructure> outputStructures = [.. replay.OutputAddresses.Select(a => TraceOutputStructure.Resolve(a, allocations, timeline))];
+
+        Logger.LogInformation("{Structures} output structure(s) resolved through {Blocks} allocation(s), {Owned} of {Columns} column(s) owned",
+                              outputStructures.Count,
+                              allocations.Count,
+                              outputStructures.Sum(s => s.Owners.Count(o => o != 0)),
+                              outputStructures.Sum(s => s.Owners.Count));
+
         Logger.LogInformation("{Matched} of {Operators} operator(s) matched to recorded iterators, {Allocations} allocation(s) of "
                               + "{Bytes}, {Lifetimes} operator lifetime(s) on {Threads} thread(s)",
                               matched,
@@ -227,11 +241,12 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
             MemoryMap = memoryMap,
             ObjectPool = request.ObjectPool,
             CustomHooks = replay.CustomHooks,
-            OutputStructures = replay.OutputStructures,
+            OutputStructures = outputStructures,
             RowReturnMarks = TraceRowReturnMarks.Build(timeline,
                                                        replay.CallStore,
-                                                       TraceOutputLineage.GetSources(timeline, replay.OutputStructures)),
-            Reads = TraceReads.Build(timeline, replay.CallStore)
+                                                       TraceOutputLineage.GetSources(timeline, outputStructures)),
+            Reads = TraceReads.Build(timeline, replay.CallStore),
+            Evaluations = TraceEvaluations.Build(timeline, replay.CallStore, replay.Evaluations)
         };
     }
 

@@ -45,7 +45,7 @@ internal sealed record OutputFunctions(IReadOnlyDictionary<ulong, OutputFunction
         private static readonly Dictionary<string, OutputValueClass> ValueClasses = new(StringComparer.Ordinal)
         {
             ["CValOdsRow"] = OutputValueClass.OutputRow,
-            ["CValConstXVar"] = OutputValueClass.Constant,
+            ["CValConstXVar"] = OutputValueClass.RowBuffer,
             ["CValSSTable"] = OutputValueClass.Table,
             ["CValHash"] = OutputValueClass.Hash,
             ["CValHashSwitch"] = OutputValueClass.HashSwitch,

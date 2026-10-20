@@ -424,7 +424,9 @@ internal sealed partial class TraceOperatorsPane
 
         var index = SortedSearch.FirstAtOrAfter(links.Ends, value - tolerance);
 
-        return index < links.Starts.Length && links.Starts[index] - tolerance <= value ? new TraceCallLinkHit(hit.Row, hit.Track, index) : null;
+        return index < links.Starts.Length && links.Starts[index] - tolerance <= value
+                   ? new TraceCallLinkHit(hit.Row, hit.Track, index)
+                   : null;
     }
 
     private TraceCallLinks? GetCallLinks(int row, int track)

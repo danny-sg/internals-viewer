@@ -270,6 +270,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private TraceReads? _traceReads;
 
     [ObservableProperty]
+    private TraceEvaluations? _traceEvaluations;
+
+    [ObservableProperty]
     private IReadOnlyList<string> _outputColumnNames = [];
 
     [ObservableProperty]
@@ -1046,6 +1049,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         RowReturnMarks = null;
 
         TraceReads = null;
+
+        TraceEvaluations = null;
 
         OutputColumnNames = [];
 
@@ -2232,6 +2237,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         TraceReads = result.Reads;
 
+        TraceEvaluations = result.Evaluations;
+
         OutputColumnNames = GetOutputColumnNames(result.RowReturnMarks.OutputRows);
 
         TraceTimeline = traceTimeline;
@@ -2370,6 +2377,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         RowReturnMarks = null;
 
         TraceReads = null;
+
+        TraceEvaluations = null;
 
         OutputColumnNames = [];
 
