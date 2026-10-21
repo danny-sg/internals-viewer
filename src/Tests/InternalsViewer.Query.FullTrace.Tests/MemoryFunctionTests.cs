@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Query.FullTrace.Calls;
+﻿using InternalsViewer.Query.CallStack.Locators;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.Memory;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
@@ -129,10 +130,42 @@ public class MemoryFunctionTests
     }
 
     [Fact]
+    public void A_Site_Is_The_File_Name_And_Line_Of_The_Caller()
+    {
+        var call = Site(@"sql\ntdbms\storeng\drs\oledb\openrst.cpp", isTruncated: false);
+
+        Assert.Equal("openrst.cpp:1135", TrackingNew().GetSite(call));
+    }
+
+    [Fact]
+    public void A_Truncated_File_Is_Not_A_Site()
+    {
+        var call = Site(@"sql\ntdbms\storeng\drs\oledb\open", isTruncated: true);
+
+        Assert.Null(TrackingNew().GetSite(call));
+    }
+
+    [Fact]
+    public void An_Allocator_Without_A_File_Has_No_Site()
+    {
+        var call = Site(@"sql\ntdbms\storeng\drs\oledb\openrst.cpp", isTruncated: false);
+
+        Assert.Null(MemoryFunction.Classify(0x1000, "operator new")!.GetSite(call));
+    }
+
+    [Fact]
     public void An_Impossible_Size_Counts_As_Nothing()
     {
         var call = new TraceArgumentCall(At(1), 1, true, [0xA0, ulong.MaxValue, 0, 0], 0);
 
         Assert.Equal(0ul, MemoryFunction.Classify(0x1000, "CMemObj::Alloc")!.GetByteCount(call));
     }
+
+    private static MemoryFunction TrackingNew() => MemoryFunction.Classify(0x1000, "operator new")! with { FileSlot = 2, LineSlot = 3 };
+
+    private static TraceArgumentCall Site(string file, bool isTruncated)
+        => new(At(1), 1, true, [616, 0x21C0BE9A040, 0x7FF8_0000_1000, 1135], 0x21C0BEAB8E0)
+        {
+            Locators = [new Locator(2, LocatorValueType.Text, (ulong)file.Length, isTruncated ? 1ul : 0, file)]
+        };
 }

@@ -21,6 +21,8 @@ internal sealed record ReplayFunctions(ulong[] ExcludedFunctions,
                                                        PlanNodeFunctions.Empty,
                                                        OutputFunctions.Empty);
 
+    public IReadOnlyDictionary<ulong, string> Vtables { get; init; } = new Dictionary<ulong, string>();
+
     public static ReplayFunctions Merge(IReadOnlyList<ReplayFunctions> functions)
         => new([.. functions.SelectMany(f => f.ExcludedFunctions)],
                [.. functions.SelectMany(f => f.InstanceMethods)],
@@ -28,7 +30,10 @@ internal sealed record ReplayFunctions(ulong[] ExcludedFunctions,
                [.. functions.SelectMany(f => f.MemoryFunctions)],
                [.. functions.SelectMany(f => f.MemoryMapFunctions)],
                PlanNodeFunctions.Merge(functions.Select(f => f.PlanNodeFunctions)),
-               OutputFunctions.Merge(functions.Select(f => f.Output)));
+               OutputFunctions.Merge(functions.Select(f => f.Output)))
+        {
+            Vtables = AddressMap.Merge(functions.Select(f => f.Vtables))
+        };
 
     public ReplayFunctions Rebase(ulong address)
         => new([.. ExcludedFunctions.Select(f => f + address)],
@@ -37,5 +42,8 @@ internal sealed record ReplayFunctions(ulong[] ExcludedFunctions,
                [.. MemoryFunctions.Select(f => f with { Address = f.Address + address })],
                [.. MemoryMapFunctions.Select(f => f with { Address = f.Address + address })],
                PlanNodeFunctions.Rebase(address),
-               Output.Rebase(address));
+               Output.Rebase(address))
+        {
+            Vtables = AddressMap.Rebase(Vtables, address)
+        };
 }

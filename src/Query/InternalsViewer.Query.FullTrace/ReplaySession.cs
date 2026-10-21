@@ -150,7 +150,7 @@ internal sealed class ReplaySession : IDisposable
                                                               .Where(f => f is { IsAllocation: true, IsVirtual: false })
                                                               .Select(f => new MemoryMapFunction(f.Address, MemoryMapOperation.Allocated))];
 
-        var memoryMap = new MemoryMapHook(memoryMapFunctions);
+        var memoryMap = new MemoryMapHook(memoryMapFunctions, functions.Vtables);
 
         var planNodeHook = new PlanNodeHook(functions.PlanNodeFunctions);
 

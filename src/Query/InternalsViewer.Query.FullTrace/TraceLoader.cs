@@ -10,6 +10,7 @@ using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.Enums;
 using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Helpers;
@@ -98,6 +99,10 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         Logger.LogInformation("{Entries} memory map entr(ies) from allocations, constructors, member calls and declared types",
                               result.MemoryMap.Count);
+
+        Logger.LogInformation("{Sites} allocation(s) labelled with their source line, {Vtables} named by their vtable",
+                              result.MemoryMap.GetEntries().Count(e => e is { Operation: MemoryMapOperation.Allocated, Site: not null }),
+                              replay.MemoryMap.Count(e => e is { Operation: MemoryMapOperation.Allocated, ClassName: not null }));
 
         Logger.LogInformation("{Captures} custom hook capture(s) read from {Hooks} hook(s)", result.CustomHooks.Count, customHooks.Count);
 
@@ -228,7 +233,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         var builder = new TraceResultBuilder(callStack, replay.CallStore, timeline, events, replay.PlanNodes, replay.Teardowns)
         {
             Memory = memory,
-            MemoryMap = MemoryMap.Build(replay.MemoryMap, timeline.NodeOf, GetAllocationBytes(replay.CallStore, functions.MemoryFunctions)),
+            MemoryMap = MemoryMap.Build(replay.MemoryMap, timeline.NodeOf, GetAllocation(replay.CallStore, functions.MemoryFunctions)),
             ObjectPool = request.ObjectPool,
             CustomHooks = replay.CustomHooks
         };
@@ -372,8 +377,8 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         }
     }
 
-    private static Func<AddressEntry, CallStackNode?, ulong> GetAllocationBytes(TraceCallStore store,
-                                                                                IReadOnlyList<MemoryFunction> functions)
+    private static Func<AddressEntry, CallStackNode?, (ulong Bytes, string? Site)> GetAllocation(TraceCallStore store,
+                                                                                                IReadOnlyList<MemoryFunction> functions)
     {
         var allocators = new Dictionary<ulong, MemoryFunction>();
 
@@ -382,13 +387,21 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
             allocators.TryAdd(function.Address, function);
         }
 
-        return (entry, node) => node?.Frame is { } frame
-                                && allocators.TryGetValue(frame.Address, out var allocator)
-                                && store.GetCallList(frame.Address, frame.Instance) is { } calls
-                                && entry.CallIndex >= 0
-                                && entry.CallIndex < calls.Count
-            ? allocator.GetByteCount(calls[entry.CallIndex])
-            : 0;
+        return (entry, node) =>
+        {
+            if (node?.Frame is not { } frame
+                || !allocators.TryGetValue(frame.Address, out var allocator)
+                || store.GetCallList(frame.Address, frame.Instance) is not { } calls
+                || entry.CallIndex < 0
+                || entry.CallIndex >= calls.Count)
+            {
+                return (0, null);
+            }
+
+            var call = calls[entry.CallIndex];
+
+            return (allocator.GetByteCount(call), allocator.GetSite(call));
+        };
     }
 
     private static string Size(ulong bytes)

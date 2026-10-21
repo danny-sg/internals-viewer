@@ -16,6 +16,53 @@ public class ArgumentLayoutTests
         Assert.Equal(["RCX", "RDX"], layout.Slots.Select(s => s.Source));
     }
 
+    [Theory]
+    [InlineData("RCX", true)]
+    [InlineData("RDX", false)]
+    [InlineData("R8", false)]
+    public void A_Member_Function_Without_Arguments_Declares_Only_This(string location, bool isDeclared)
+    {
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature([], FunctionType.Member, "void"));
+
+        Assert.Equal(isDeclared, layout.IsDeclared(location));
+    }
+
+    [Fact]
+    public void A_Floating_Argument_Leaves_Its_Integer_Register_Undeclared()
+    {
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["int", "double"], FunctionType.Free, "void"));
+
+        Assert.Equal((true, false), (layout.IsDeclared("RCX"), layout.IsDeclared("RDX")));
+    }
+
+    [Fact]
+    public void A_Stack_Argument_Is_Declared_At_Its_Stack_Location()
+    {
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["int", "int", "int", "int", "void *"], FunctionType.Free, "void"));
+
+        Assert.Equal((true, false), (layout.IsDeclared("[RSP+0x28]"), layout.IsDeclared("[RSP+0x30]")));
+    }
+
+    [Fact]
+    public void Variadic_Arguments_Fill_The_Remaining_Registers()
+    {
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["char const *", "..."], FunctionType.Free, "int"));
+
+        Assert.Equal((true, true, true), (layout.IsDeclared("RDX"), layout.IsDeclared("R8"), layout.IsDeclared("R9")));
+    }
+
+    [Theory]
+    [InlineData("void", false)]
+    [InlineData("double", false)]
+    [InlineData("AccBindings *", true)]
+    [InlineData(null, true)]
+    public void The_Return_Register_Is_Declared_When_A_Value_Is_Returned_In_It(string? returnType, bool isDeclared)
+    {
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature([], FunctionType.Free, returnType));
+
+        Assert.Equal(isDeclared, layout.IsDeclared(ArgumentLayout.ReturnRegisterName));
+    }
+
     [Fact]
     public void A_Class_Returned_By_Value_Takes_The_Register_After_This()
     {

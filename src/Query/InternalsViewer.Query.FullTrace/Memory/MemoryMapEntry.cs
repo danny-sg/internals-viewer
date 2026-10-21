@@ -12,4 +12,5 @@ public sealed record MemoryMapEntry(ulong Address,
                                     int CallNodeIndex,
                                     string? ClassName,
                                     string? Allocator,
-                                    ulong Bytes = 0);
+                                    ulong Bytes = 0,
+                                    string? Site = null);

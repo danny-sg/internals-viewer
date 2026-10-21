@@ -165,9 +165,30 @@ public class MemoryMapTests
         var map = MemoryMap.Build([Entry(MemoryMapOperation.Allocated, call: 10, OperatorNew),
                                    Entry(MemoryMapOperation.Constructed, call: 20, ScanConstructor)],
                                   NodeOf,
-                                  (_, node) => node?.Symbol == "OperatorNew" ? 0x80ul : 0);
+                                  (_, node) => node?.Symbol == "OperatorNew" ? (0x80ul, null) : (0ul, null));
 
         Assert.Equal((0x80ul, 0x80ul), (map.GetEntry(Address, At(15))?.Bytes, map.GetEntry(Address, At(25))?.Bytes));
+    }
+
+    [Fact]
+    public void An_Allocation_Carries_The_Site_That_Asked_For_It()
+    {
+        var map = MemoryMap.Build([Entry(MemoryMapOperation.Allocated, call: 10, OperatorNew),
+                                   Entry(MemoryMapOperation.Declared, call: 20, Factory, className: "AccBindings")],
+                                  NodeOf,
+                                  (_, _) => (0x268ul, "openrst.cpp:1135"));
+
+        Assert.Equal(("openrst.cpp:1135", "openrst.cpp:1135"), (map.GetEntry(Address, At(15))?.Site, map.GetEntry(Address, At(25))?.Site));
+    }
+
+    [Fact]
+    public void A_Class_Read_From_The_Vtable_Stays_With_Its_Allocation()
+    {
+        var map = Build(Entry(MemoryMapOperation.Allocated, call: 10, OperatorNew, className: "CQScanTableScanNew"));
+
+        var entry = map.GetEntry(Address, At(15));
+
+        Assert.Equal(("CQScanTableScanNew", "OperatorNew"), (entry?.ClassName, entry?.Allocator));
     }
 
     [Fact]
@@ -190,7 +211,7 @@ public class MemoryMapTests
     [Fact]
     public void Declared_Types_And_Lengths_Are_Rebuilt_From_What_Is_Written()
     {
-        var map = Build(Entry(MemoryMapOperation.Allocated, call: 10, OperatorNew, bytes: 0x40),
+        var map = Build(Entry(MemoryMapOperation.Allocated, call: 10, OperatorNew, bytes: 0x40, site: "openrst.cpp:1135"),
                         Entry(MemoryMapOperation.Declared, call: 20, Factory, className: "AccBindings"));
 
         using var stream = new MemoryStream();
@@ -206,7 +227,8 @@ public class MemoryMapTests
 
         var entry = MemoryMap.Read(reader, NodeOf).GetEntry(Address, At(25));
 
-        Assert.Equal(("OperatorNew", "AccBindings", 0x40ul), (entry?.Allocator, entry?.ClassName, entry?.Bytes));
+        Assert.Equal(("OperatorNew", "AccBindings", 0x40ul, "openrst.cpp:1135"),
+                     (entry?.Allocator, entry?.ClassName, entry?.Bytes, entry?.Site));
     }
 
     [Fact]
@@ -223,7 +245,7 @@ public class MemoryMapTests
 
         using var reader = new BinaryReader(stream);
 
-        Assert.False(MemoryMap.IsCurrent(reader));
+        Assert.False(MemoryMap.IsSupported(reader));
     }
 
     private static MemoryMap Build(params AddressEntry[] entries) => MemoryMap.Build(entries, NodeOf);
@@ -235,8 +257,20 @@ public class MemoryMapTests
                                       ulong until = 0,
                                       string? className = null,
                                       ulong bytes = 0,
-                                      ulong address = Address)
-        => new(address, call, 0, owner, At(call), until == 0 ? TracePosition.Unknown : At(until), callNodeIndex, 7, operation, className, bytes);
+                                      ulong address = Address,
+                                      string? site = null)
+        => new(address,
+               call,
+               0,
+               owner,
+               At(call),
+               until == 0 ? TracePosition.Unknown : At(until),
+               callNodeIndex,
+               7,
+               operation,
+               className,
+               bytes,
+               site);
 
     private static CallStackNode? NodeOf(int callNodeIndex) => callNodeIndex >= 0 && callNodeIndex < Nodes.Length ? Nodes[callNodeIndex] : null;
 

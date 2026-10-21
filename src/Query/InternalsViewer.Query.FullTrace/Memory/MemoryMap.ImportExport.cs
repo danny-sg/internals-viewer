@@ -5,25 +5,29 @@ namespace InternalsViewer.Query.FullTrace.Memory;
 
 public sealed partial class MemoryMap
 {
-    private const int FormatVersion = 1;
+    private const int FormatVersion = 2;
 
-    private const int NoClass = -1;
+    private const int FirstVersion = 1;
 
-    internal static bool IsCurrent(BinaryReader reader) => reader.ReadInt32() == -FormatVersion;
+    private const int SiteVersion = 2;
+
+    private const int NoName = -1;
+
+    internal static bool IsSupported(BinaryReader reader) => ReadVersion(reader) is >= FirstVersion and <= FormatVersion;
 
     internal void Write(BinaryWriter writer)
     {
         writer.Write(-FormatVersion);
 
-        var entries = Entries.Values.SelectMany(e => e).ToList();
+        var entries = GetEntries().ToList();
 
-        var classes = entries.Select(e => e.ClassName).OfType<string>().Distinct(StringComparer.Ordinal).ToList();
+        var names = entries.SelectMany(e => new[] { e.ClassName, e.Site }).OfType<string>().Distinct(StringComparer.Ordinal).ToList();
 
-        var classIndexes = classes.Select((name, index) => (name, index)).ToDictionary(c => c.name, c => c.index, StringComparer.Ordinal);
+        var nameIndexes = names.Select((name, index) => (name, index)).ToDictionary(n => n.name, n => n.index, StringComparer.Ordinal);
 
-        writer.Write(classes.Count);
+        writer.Write(names.Count);
 
-        foreach (var name in classes)
+        foreach (var name in names)
         {
             writer.Write(name);
         }
@@ -52,25 +56,29 @@ public sealed partial class MemoryMap
 
             writer.Write((byte)entry.Operation);
 
-            writer.Write(entry.ClassName is { } className ? classIndexes[className] : NoClass);
+            writer.Write(entry.ClassName is { } className ? nameIndexes[className] : NoName);
 
             writer.Write(entry.Bytes);
+
+            writer.Write(entry.Site is { } site ? nameIndexes[site] : NoName);
         }
     }
 
     internal static MemoryMap Read(BinaryReader reader, Func<int, CallStackNode?> nodeOf)
     {
-        if (!IsCurrent(reader))
+        var version = ReadVersion(reader);
+
+        if (version is < FirstVersion or > FormatVersion)
         {
             throw new InvalidDataException("The memory map was exported before declared types and lengths were recorded and must be "
                                            + "re-recorded");
         }
 
-        var classes = new string[reader.ReadInt32()];
+        var names = new string[reader.ReadInt32()];
 
-        for (var index = 0; index < classes.Length; index++)
+        for (var index = 0; index < names.Length; index++)
         {
-            classes[index] = reader.ReadString();
+            names[index] = reader.ReadString();
         }
 
         var entries = new AddressEntry[reader.ReadInt32()];
@@ -86,17 +94,20 @@ public sealed partial class MemoryMap
                                               CallNodeIndex: reader.ReadInt32(),
                                               Thread: reader.ReadUInt32(),
                                               Operation: (MemoryMapOperation)reader.ReadByte(),
-                                              ClassName: ReadClassName(reader, classes),
-                                              Bytes: reader.ReadUInt64());
+                                              ClassName: ReadName(reader, names),
+                                              Bytes: reader.ReadUInt64(),
+                                              Site: version >= SiteVersion ? ReadName(reader, names) : null);
         }
 
         return Build(entries, nodeOf);
     }
 
-    private static string? ReadClassName(BinaryReader reader, string[] classes)
+    private static int ReadVersion(BinaryReader reader) => -reader.ReadInt32();
+
+    private static string? ReadName(BinaryReader reader, string[] names)
     {
         var index = reader.ReadInt32();
 
-        return index == NoClass ? null : classes[index];
+        return index == NoName ? null : names[index];
     }
 }

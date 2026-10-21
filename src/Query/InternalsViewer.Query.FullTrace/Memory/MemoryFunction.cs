@@ -1,4 +1,6 @@
 ﻿using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.CallStack.Locators;
+using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
@@ -23,6 +25,8 @@ internal sealed record MemoryFunction(ulong Address,
     private const ulong MemRelease = 0x8000;
 
     private const string MemoryObjectFactory = "MemoryObjectFactory";
+
+    private static readonly char[] PathSeparators = ['\\', '/'];
 
     private static readonly HashSet<string> MemoryObjects = new(StringComparer.Ordinal)
     {
@@ -51,6 +55,10 @@ internal sealed record MemoryFunction(ulong Address,
 
     public ulong FlagMask { get; init; }
 
+    public int FileSlot { get; init; } = -1;
+
+    public int LineSlot { get; init; } = -1;
+
     public bool IsAllocation => Operation is AllocationOperation.Allocate or AllocationOperation.Reallocate;
 
     public static bool IsMemoryObjectClass(string? className)
@@ -61,6 +69,25 @@ internal sealed record MemoryFunction(ulong Address,
     public ulong GetObject(TraceArgumentCall call) => Operation == AllocationOperation.Create ? call.ReturnedValue : call.Slot(0);
 
     public ulong GetPointer(TraceArgumentCall call) => call.Slot(PointerSlot);
+
+    public string? GetSite(TraceArgumentCall call)
+    {
+        if (FileSlot < 0 || LineSlot < 0 || call.GetLocator(FileSlot) is not { ValueType: LocatorValueType.Text } locator)
+        {
+            return null;
+        }
+
+        var file = new TextLocator(locator);
+
+        ulong? line = LineSlot < ArgumentLayout.RegisterCount ? call.Slot(LineSlot) : call.GetStackValue(LineSlot);
+
+        if (file.IsTruncated || file.Text.Length == 0 || line is not { } number)
+        {
+            return null;
+        }
+
+        return $"{file.Text[(file.Text.LastIndexOfAny(PathSeparators) + 1)..]}:{(int)number}";
+    }
 
     public ulong GetByteCount(TraceArgumentCall call)
     {

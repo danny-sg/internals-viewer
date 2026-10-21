@@ -102,7 +102,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
             return new ValueDescription(address, declared) { Origin = entry };
         }
 
-        return entry?.Allocator is { } allocator ? new ValueDescription(address, allocator) { Origin = entry } : null;
+        return (entry?.Site ?? entry?.Allocator) is { } allocation ? new ValueDescription(address, allocation) { Origin = entry } : null;
     }
 
     public async Task<CallSignature?> GetSignatureAsync(CallStackNode node, int callIndex)
@@ -161,7 +161,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
 
     public async Task<ValueReferences> GetReferencesAsync(ulong value, CancellationToken cancellationToken)
     {
-        var uses = await Search.GetValueUsesAsync(value, cancellationToken);
+        var uses = await GetDeclaredUsesAsync(await Search.GetValueUsesAsync(value, cancellationToken));
 
         var functionTypes = await ResolveFunctionTypesAsync(uses.Where(u => u.Location == ArgumentLayout.ThisRegisterName));
 
@@ -213,7 +213,8 @@ public sealed class CallStoreLookup(TraceCallStore store,
         return frame is null ? $"0x{address:X}" : QualifiedSymbol.Of(frame);
     }
 
-    private static string? GetAllocationName(MemoryMapEntry entry) => entry.Allocator is { } allocator ? $"{allocator} Allocation" : null;
+    private static string? GetAllocationName(MemoryMapEntry entry)
+        => (entry.Site ?? entry.Allocator) is { } allocation ? $"{allocation} Allocation" : null;
 
     private static TracePosition GetPosition(ArgumentSlot slot, TraceArgumentCall call)
         => slot.Index == ArgumentLayout.ReturnRegister ? call.ToPosition : call.FromPosition;
@@ -257,6 +258,21 @@ public sealed class CallStoreLookup(TraceCallStore store,
         var layout = KnownParameters.Apply(ArgumentLayout.LayoutOf(parsed), frame.Resolved?.ClassName, frame.Resolved?.MethodName);
 
         return new ResolvedSignature(parsed, signature, layout);
+    }
+
+    private async Task<List<TraceValueUse>> GetDeclaredUsesAsync(IReadOnlyList<TraceValueUse> uses)
+    {
+        var declared = new List<TraceValueUse>(uses.Count);
+
+        foreach (var use in uses)
+        {
+            if (GetFrame(use) is not { } frame || await GetLayoutAsync(frame) is not { } layout || layout.IsDeclared(use.Location))
+            {
+                declared.Add(use);
+            }
+        }
+
+        return declared;
     }
 
     private async Task<Dictionary<ulong, FunctionType?>> ResolveFunctionTypesAsync(IEnumerable<TraceValueUse> uses)

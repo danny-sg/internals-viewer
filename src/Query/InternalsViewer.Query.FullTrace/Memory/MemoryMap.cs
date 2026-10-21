@@ -19,6 +19,8 @@ public sealed partial class MemoryMap
 
     public int Count => Entries.Values.Sum(e => e.Length);
 
+    internal IEnumerable<MemoryMapEntry> GetEntries() => Entries.Values.SelectMany(e => e);
+
     private Dictionary<ulong, MemoryMapEntry[]> Entries { get; }
 
     private ulong[] BlockAddresses { get; }
@@ -67,20 +69,24 @@ public sealed partial class MemoryMap
 
     internal static MemoryMap Build(IEnumerable<AddressEntry> entries,
                                     Func<int, CallStackNode?> nodeOf,
-                                    Func<AddressEntry, CallStackNode?, ulong>? bytesOf = null)
-        => new(entries.Select(e => GetEntry(e, nodeOf, bytesOf))
+                                    Func<AddressEntry, CallStackNode?, (ulong Bytes, string? Site)>? getAllocation = null)
+        => new(entries.Select(e => GetEntry(e, nodeOf, getAllocation))
                       .GroupBy(e => e.Address)
                       .ToDictionary(g => g.Key, g => Link([.. g.OrderBy(e => e.FromPosition)])));
 
     private static MemoryMapEntry GetEntry(AddressEntry entry,
                                            Func<int, CallStackNode?> nodeOf,
-                                           Func<AddressEntry, CallStackNode?, ulong>? bytesOf)
+                                           Func<AddressEntry, CallStackNode?, (ulong Bytes, string? Site)>? getAllocation)
     {
         var operation = entry.Operation;
 
         var node = nodeOf(entry.CallNodeIndex);
 
         var allocates = operation == MemoryMapOperation.Allocated;
+
+        var (bytes, site) = allocates && entry.Bytes == 0 && getAllocation is not null
+            ? getAllocation(entry, node)
+            : (entry.Bytes, entry.Site);
 
         return new MemoryMapEntry(entry.Address,
                                   operation,
@@ -92,7 +98,8 @@ public sealed partial class MemoryMap
                                   entry.CallNodeIndex,
                                   entry.ClassName ?? (allocates ? null : GetName(node?.Frame?.Resolved?.ClassName)),
                                   allocates ? GetName(node?.Symbol) : null,
-                                  allocates && entry.Bytes == 0 && bytesOf is not null ? bytesOf(entry, node) : entry.Bytes);
+                                  bytes,
+                                  site);
     }
 
     private static MemoryMapEntry[] Link(MemoryMapEntry[] entries)
@@ -120,12 +127,12 @@ public sealed partial class MemoryMap
 
             if (previous.Operation == MemoryMapOperation.Allocated)
             {
-                entries[index] = previous with { ClassName = next.ClassName };
+                entries[index] = previous with { ClassName = next.ClassName ?? previous.ClassName };
             }
 
             if (previous.Allocator is not null && IsLiveAt(previous, next.FromPosition))
             {
-                entries[index + 1] = next with { Allocator = previous.Allocator, Bytes = previous.Bytes };
+                entries[index + 1] = next with { Allocator = previous.Allocator, Bytes = previous.Bytes, Site = previous.Site };
             }
         }
 

@@ -1,3 +1,4 @@
+using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
@@ -5,7 +6,8 @@ using InternalsViewer.Query.FullTrace.Memory.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Memory;
 
-internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions) : ITraceHook
+internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions, IReadOnlyDictionary<ulong, string>? vtables = null)
+    : ITraceHook
 {
     private const int InstanceArgument = 0;
 
@@ -14,11 +16,15 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions) : 
     private Dictionary<ulong, MemoryMapFunction> Operations { get; }
         = functions.GroupBy(f => f.Address).ToDictionary(g => g.Key, Combine);
 
+    private IReadOnlyDictionary<ulong, string> Vtables { get; } = vtables ?? new Dictionary<ulong, string>();
+
     private List<AddressEntry> Entries { get; } = [];
 
     private Dictionary<ulong, int> LatestEntries { get; } = [];
 
     private Dictionary<ulong, List<int>> OwnedEntries { get; } = [];
+
+    private HashSet<int> ReadEntries { get; } = [];
 
     public AddressEntry[] Build() => [.. Entries];
 
@@ -27,6 +33,11 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions) : 
         if (!Operations.TryGetValue(call.Function, out var function))
         {
             return;
+        }
+
+        foreach (var argument in call.Arguments)
+        {
+            ReadVtable(argument, replay);
         }
 
         if (function.Operation is MemoryMapOperation.Constructed or MemoryMapOperation.Visited)
@@ -123,6 +134,23 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions) : 
         return false;
     }
 
+    private void ReadVtable(ulong address, ITraceReplay replay)
+    {
+        if (Vtables.Count == 0
+            || address < TraceAddress.MinAddress
+            || !LatestEntries.TryGetValue(address, out var latest)
+            || Entries[latest] is not { Operation: MemoryMapOperation.Allocated, ClassName: null, IsAlive: true } entry
+            || !ReadEntries.Add(latest))
+        {
+            return;
+        }
+
+        if (replay.TryRead(address, out ulong vtable) && Vtables.TryGetValue(vtable, out var className))
+        {
+            Entries[latest] = entry with { ClassName = className };
+        }
+    }
+
     private void Record(MemoryMapOperation operation,
                         ulong address,
                         in TraceHookCall call,
@@ -140,13 +168,15 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions) : 
 
             var existing = entry.Operation;
 
+            var isNamedAllocation = existing == MemoryMapOperation.Allocated && entry.ClassName is not null;
+
             if (operation == MemoryMapOperation.Visited
-                && existing is not (MemoryMapOperation.Allocated or MemoryMapOperation.Declared))
+                && (isNamedAllocation || existing is not (MemoryMapOperation.Allocated or MemoryMapOperation.Declared)))
             {
                 return;
             }
 
-            if (operation == MemoryMapOperation.Declared && existing != MemoryMapOperation.Allocated)
+            if (operation == MemoryMapOperation.Declared && (isNamedAllocation || existing != MemoryMapOperation.Allocated))
             {
                 return;
             }
@@ -160,7 +190,13 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions) : 
 
             if (operation == MemoryMapOperation.Allocated && existing == MemoryMapOperation.Allocated && entry.Frame > call.Id)
             {
-                Entries[latest] = entry with { Frame = call.Id, CallIndex = (int)call.CallIndex, FromPosition = call.Position, CallNodeIndex = call.CallNodeIndex };
+                Entries[latest] = entry with
+                {
+                    Frame = call.Id,
+                    CallIndex = (int)call.CallIndex,
+                    FromPosition = call.Position,
+                    CallNodeIndex = call.CallNodeIndex
+                };
 
                 return;
             }

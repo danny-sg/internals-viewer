@@ -21,6 +21,10 @@ public sealed record ArgumentLayout(IReadOnlyList<ArgumentSlot> Slots, string? R
 
     public const string ReturnBuffer = "Return Buffer";
 
+    private const string VoidType = "void";
+
+    private const string VariadicType = "...";
+
     public static IReadOnlyList<string> Registers { get; } = [ThisRegisterName, "RDX", "R8", "R9"];
 
     public static ArgumentLayout LayoutOf(FunctionSignature signature)
@@ -38,7 +42,7 @@ public sealed record ArgumentLayout(IReadOnlyList<ArgumentSlot> Slots, string? R
 
         if (signature.HasReturnBuffer)
         {
-            slots.Add(GetSlot(ReturnBuffer, $"{signature.ReturnType ?? "void"} *", position));
+            slots.Add(GetSlot(ReturnBuffer, $"{signature.ReturnType ?? VoidType} *", position));
 
             position++;
         }
@@ -53,11 +57,47 @@ public sealed record ArgumentLayout(IReadOnlyList<ArgumentSlot> Slots, string? R
 
     public static string GetStackLocation(int position) => $"[RSP+0x{GetStackOffset(position):X}]";
 
+    public bool IsDeclared(string location)
+    {
+        if (location == ReturnRegisterName)
+        {
+            return ReturnType is not { } returnType || (returnType != VoidType && !ArgumentValue.IsFloating(returnType));
+        }
+
+        foreach (var slot in Slots)
+        {
+            if (slot.Type == VariadicType && GetRegisterIndex(location) >= slot.Index)
+            {
+                return true;
+            }
+
+            if (slot.Location is ArgumentLocation.Register or ArgumentLocation.Stack && slot.Source == location)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static int GetStackOffset(int position) => StackArgumentOffset + (position - RegisterCount) * sizeof(ulong);
+
+    private static int GetRegisterIndex(string location)
+    {
+        for (var index = 0; index < RegisterCount; index++)
+        {
+            if (Registers[index] == location)
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
 
     private static ArgumentSlot GetSlot(string name, string type, int position)
     {
-        if (position >= CapturedSlots || type == "...")
+        if (position >= CapturedSlots || type == VariadicType)
         {
             var location = position >= RegisterCount ? GetStackLocation(position) : "Stack";
 

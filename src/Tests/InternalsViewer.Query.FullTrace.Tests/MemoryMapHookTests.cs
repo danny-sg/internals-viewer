@@ -26,6 +26,8 @@ public class MemoryMapHookTests
 
     private const ulong HeapObject = 0x21C_0BB4_C180;
 
+    private const ulong Vtable = 0x7FF8_0090_0000;
+
     private const ulong StackPointer = 0x55_47EF_B200;
 
     private const uint Thread = 9;
@@ -156,6 +158,68 @@ public class MemoryMapHookTests
                      (events[Consumer], events[Factory], events[Getter]));
     }
 
+    [Fact]
+    public void An_Unnamed_Allocation_Is_Named_By_Its_Vtable()
+    {
+        var (hook, replay) = Create();
+
+        hook.OnReturn(Call(OperatorNew, 20, returnValue: HeapObject), replay);
+
+        replay.Write(HeapObject, Vtable);
+
+        hook.OnEntry(Call(Method, 21, arguments: [0, HeapObject, 0, 0]), replay);
+
+        var entry = Assert.Single(hook.Build());
+
+        Assert.Equal((MemoryMapOperation.Allocated, "CQScanTableScanNew"), (entry.Operation, entry.ClassName));
+    }
+
+    [Fact]
+    public void A_Vtable_Outranks_Later_Member_Calls_And_Declared_Types()
+    {
+        var (hook, replay) = Create();
+
+        hook.OnReturn(Call(OperatorNew, 20, returnValue: HeapObject), replay);
+
+        replay.Write(HeapObject, Vtable);
+
+        hook.OnEntry(Call(Method, 21, arguments: [HeapObject, 0, 0, 0]), replay);
+
+        hook.OnEntry(Call(Consumer, 22, arguments: [0, HeapObject, 0, 0]), replay);
+
+        Assert.Equal("CQScanTableScanNew", Assert.Single(hook.Build()).ClassName);
+    }
+
+    [Fact]
+    public void An_Allocation_Is_Read_Once()
+    {
+        var (hook, replay) = Create();
+
+        hook.OnReturn(Call(OperatorNew, 20, returnValue: HeapObject), replay);
+
+        replay.Write(HeapObject, 0x1234ul);
+
+        hook.OnEntry(Call(Method, 21, arguments: [0, HeapObject, 0, 0]), replay);
+
+        replay.Write(HeapObject, Vtable);
+
+        hook.OnEntry(Call(Method, 22, arguments: [0, HeapObject, 0, 0]), replay);
+
+        Assert.Null(Assert.Single(hook.Build()).ClassName);
+    }
+
+    [Fact]
+    public void Memory_With_No_Allocation_Is_Not_Read()
+    {
+        var (hook, replay) = Create();
+
+        replay.Write(HeapObject, Vtable);
+
+        hook.OnEntry(Call(Method, 21, arguments: [0, HeapObject, 0, 0]), replay);
+
+        Assert.Empty(hook.Build());
+    }
+
     private static (MemoryMapHook Hook, FakeTraceReplay Replay) Create()
         => (new MemoryMapHook([new MemoryMapFunction(Constructor, MemoryMapOperation.Constructed),
                                new MemoryMapFunction(Method, MemoryMapOperation.Visited),
@@ -171,7 +235,8 @@ public class MemoryMapHookTests
                                new MemoryMapFunction(Getter, MemoryMapOperation.Visited)
                                {
                                    Declared = [new DeclaredClass(ArgumentLayout.ReturnRegister, "CTypeInfo")]
-                               }]),
+                               }],
+                              new Dictionary<ulong, string> { [Vtable] = "CQScanTableScanNew" }),
             new FakeTraceReplay { Frames = Frames });
 
     private static TraceHookCall Call(ulong function, ulong id, ulong[]? arguments = null, ulong returnValue = 0)

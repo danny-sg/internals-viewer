@@ -41,6 +41,19 @@ public class ReplayFunctionsTests
         Assert.Equal((Base + 0x120, OutputValueClass.OutputRow), Pair(Assert.Single(rebased.Output.Classes)));
     }
 
+    [Fact]
+    public void Vtables_Move_To_The_Module_Base_And_Merge()
+    {
+        var first = ReplayFunctions.Empty with { Vtables = Map(0x200, "CQScanTableScanNew") };
+
+        var second = ReplayFunctions.Empty with { Vtables = Map(0x300, "CQScanRangeNew") };
+
+        var merged = ReplayFunctions.Merge([first.Rebase(Base), second]);
+
+        Assert.Equal([(0x300ul, "CQScanRangeNew"), (Base + 0x200, "CQScanTableScanNew")],
+                     merged.Vtables.Select(v => (v.Key, v.Value)).OrderBy(v => v.Key));
+    }
+
     private static (ulong, T) Pair<T>(KeyValuePair<ulong, T> entry) => (entry.Key, entry.Value);
 
     private static Dictionary<ulong, T> Map<T>(ulong address, T value) => new() { [address] = value };

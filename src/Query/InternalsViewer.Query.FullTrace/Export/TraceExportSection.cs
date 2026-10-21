@@ -96,7 +96,7 @@ internal sealed class TraceExportSection : IQueryExportSection
         var builder = new TraceResultBuilder(tree, callStore, timeline, reader.Events, planNodes, teardowns)
         {
             Memory = memory,
-            MemoryMap = reader.HasEntry(MemoryMapEntry) && reader.ReadBinary(MemoryMapEntry, MemoryMap.IsCurrent)
+            MemoryMap = reader.HasEntry(MemoryMapEntry) && reader.ReadBinary(MemoryMapEntry, MemoryMap.IsSupported)
                 ? reader.ReadBinary(MemoryMapEntry, r => MemoryMap.Read(r, timeline.NodeOf))
                 : MemoryMap.Empty,
             ObjectPool = reader.HasEntry(ObjectPoolSnapshotEntry)
