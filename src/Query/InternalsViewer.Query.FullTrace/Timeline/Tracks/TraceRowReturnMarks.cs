@@ -259,7 +259,7 @@ public sealed class TraceRowReturnMarks
         => group.Calls[index].Status switch
         {
             null => null,
-            RowStatus when parent is null || IsPassedUp(group, index, parent) => RowReturnType.PassedUp,
+            RowStatus when parent is null || IsPassedUp(group, index, parent) => RowReturnType.Returned,
             RowStatus => isFiltered ? RowReturnType.Rejected : RowReturnType.Skipped,
             EndStatus => RowReturnType.End,
             FakeRowStatus => RowReturnType.FakeRow,

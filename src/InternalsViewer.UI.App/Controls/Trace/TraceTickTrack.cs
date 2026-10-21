@@ -15,6 +15,8 @@ public sealed record TraceTickTrack(string Name, TraceTickLocation Location, int
 
     public SKColor? Colour { get; init; }
 
+    public Func<ExecutionOperatorEvent, SKColor?>? GetTrackColour { get; init; }
+
     public SKColor? Background { get; init; }
 
     public bool HasCallReturnLine { get; init; }

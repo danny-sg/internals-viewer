@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Categories;
+using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
@@ -28,6 +29,8 @@ public static class TraceTickTracks
 
     private static readonly SKColor PassedUpColour = SKColor.Parse(SymbolCategory.QueryOperator.GetCategoryMetadata()!.ForegroundColor);
 
+    private static readonly SKColor BatchColour = SKColor.Parse(SymbolCategory.ColumnStore.GetCategoryMetadata()!.ForegroundColor);
+
     private static readonly SKColor ReadColour = SKColor.Parse(SymbolCategory.BufferPool.GetCategoryMetadata()!.ForegroundColor);
 
     private static readonly SKColor FalseColour = new(0xF0, 0x48, 0x48);
@@ -36,12 +39,11 @@ public static class TraceTickTracks
 
     private static readonly SKColor NullColour = new(0x9E, 0x9E, 0x9E);
 
-
     private static readonly Dictionary<RowReturnType, SKColor> ReturnColours = new()
     {
         [RowReturnType.Skipped] = new SKColor(0xC8, 0xC8, 0xC8),
         [RowReturnType.Rejected] = new SKColor(0xF0, 0x48, 0x48),
-        [RowReturnType.PassedUp] = PassedUpColour,
+        [RowReturnType.Returned] = PassedUpColour,
         [RowReturnType.FakeRow] = new SKColor(0xFF, 0xC8, 0x57),
         [RowReturnType.Other] = new SKColor(0xC0, 0x84, 0xFC),
         [RowReturnType.End] = new SKColor(0xF0, 0xF0, 0xF0)
@@ -55,13 +57,16 @@ public static class TraceTickTracks
         [
             Value(RowReturnType.Skipped, "Skipped"),
             Value(RowReturnType.Rejected, "Rejected"),
-            Value(RowReturnType.PassedUp, "Passed Up"),
+            Value(RowReturnType.Returned, "Returned"),
             Value(RowReturnType.FakeRow, "Fake Row"),
             Value(RowReturnType.Other, "Other Status"),
             Value(RowReturnType.End, "End")
         ],
-            GetColour = t => ReturnColours.GetValueOrDefault((RowReturnType)t.Value, PassedUpColour),
+            GetColour = t => (RowReturnType)t.Value == RowReturnType.Returned && t.Operator is { } o
+                                 ? GetPassedUpColour(marks, o)
+                                 : ReturnColours.GetValueOrDefault((RowReturnType)t.Value, PassedUpColour),
             Colour = PassedUpColour,
+            GetTrackColour = o => GetPassedUpColour(marks, o),
             HasCallReturnLine = true,
             IsStatementTrack = true,
             TickWidth = 2f,
@@ -117,6 +122,9 @@ public static class TraceTickTracks
     public static SKColor ParseColour(string colour) => SKColor.TryParse(colour, out var parsed) ? parsed : DefaultColour;
 
     public static SKColor GetCategoryColour(CallStackNode node) => node.CategoryColour is { } hex ? ParseColour(hex) : DefaultColour;
+
+    private static SKColor GetPassedUpColour(TraceRowReturnMarks marks, ExecutionOperatorEvent operatorEvent)
+        => marks.IsBatch(operatorEvent) ? BatchColour : PassedUpColour;
 
     private static TraceTickValue Value<T>(T value, string label) where T : System.Enum
         => new(System.Convert.ToByte(value), label);

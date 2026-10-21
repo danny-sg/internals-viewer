@@ -600,7 +600,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         {
             foreach (var lifetime in row.Lifetimes)
             {
-                var values = marks.GetMarks(row.Operator, lifetime.Thread, _axis, RowReturnType.PassedUp);
+                var values = marks.GetMarks(row.Operator, lifetime.Thread, _axis, RowReturnType.Returned);
 
                 next = forward ? FindMarkAfter(values, from, next) : FindMarkBefore(values, from, next);
             }

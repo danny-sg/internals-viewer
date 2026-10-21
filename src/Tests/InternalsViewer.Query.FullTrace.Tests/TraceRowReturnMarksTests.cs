@@ -60,7 +60,7 @@ public class TraceRowReturnMarksTests
         var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)], [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)]);
 
         Assert.Equal((1, 1, 1),
-                     (marks.GetCount(Scan, Thread, RowReturnType.PassedUp),
+                     (marks.GetCount(Scan, Thread, RowReturnType.Returned),
                       marks.GetCount(Scan, Thread, RowReturnType.Skipped),
                       marks.GetCount(Scan, Thread, RowReturnType.End)));
     }
@@ -71,7 +71,7 @@ public class TraceRowReturnMarksTests
         var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)], [(12, 15, RowStatus), (55, 60, EndStatus)]);
 
         Assert.Equal((1, 0, 1),
-                     (marks.GetCount(Join, Thread, RowReturnType.PassedUp),
+                     (marks.GetCount(Join, Thread, RowReturnType.Returned),
                       marks.GetCount(Join, Thread, RowReturnType.Skipped),
                       marks.GetCount(Join, Thread, RowReturnType.End)));
     }
@@ -83,7 +83,7 @@ public class TraceRowReturnMarksTests
                           [(12, 15, RowStatus), (20, 25, RowStatus), (30, 35, EndStatus)]);
 
         Assert.Equal((0, 2),
-                     (marks.GetCount(Scan, Thread, RowReturnType.PassedUp), marks.GetCount(Scan, Thread, RowReturnType.Skipped)));
+                     (marks.GetCount(Scan, Thread, RowReturnType.Returned), marks.GetCount(Scan, Thread, RowReturnType.Skipped)));
     }
 
     [Fact]
@@ -102,7 +102,7 @@ public class TraceRowReturnMarksTests
                           top: filter);
 
         Assert.Equal((1, 1, 0),
-                     (marks.GetCount(Scan, Thread, RowReturnType.PassedUp),
+                     (marks.GetCount(Scan, Thread, RowReturnType.Returned),
                       marks.GetCount(Scan, Thread, RowReturnType.Rejected),
                       marks.GetCount(Scan, Thread, RowReturnType.Skipped)));
     }
@@ -114,7 +114,7 @@ public class TraceRowReturnMarksTests
                           [(12, 15, RowStatus), (55, 60, EndStatus)],
                           childMethod: "BpGetNextBatch");
 
-        Assert.Equal((true, false, 1), (marks.IsBatch(Scan), marks.IsBatch(Join), marks.GetCount(Scan, Thread, RowReturnType.PassedUp)));
+        Assert.Equal((true, false, 1), (marks.IsBatch(Scan), marks.IsBatch(Join), marks.GetCount(Scan, Thread, RowReturnType.Returned)));
     }
 
     [Fact]
@@ -138,7 +138,7 @@ public class TraceRowReturnMarksTests
                           joinOpens: [(10, 40)]);
 
         Assert.Equal((0, 2),
-                     (marks.GetCount(Scan, Thread, RowReturnType.PassedUp), marks.GetCount(Scan, Thread, RowReturnType.Skipped)));
+                     (marks.GetCount(Scan, Thread, RowReturnType.Returned), marks.GetCount(Scan, Thread, RowReturnType.Skipped)));
         Assert.All(marks.Ticks.GetTicks(Scan, Thread)!.All, t => Assert.Same(Join, t.Caller));
     }
 
@@ -149,7 +149,7 @@ public class TraceRowReturnMarksTests
 
         var mark = marks.Ticks.GetTicks(Scan, Thread)!.GetNearest(TraceTimelineAxis.Instructions, 24, 0);
 
-        Assert.Equal((1, (byte)RowReturnType.PassedUp), (mark?.Call, mark?.Value));
+        Assert.Equal((1, (byte)RowReturnType.Returned), (mark?.Call, mark?.Value));
     }
 
     [Fact]

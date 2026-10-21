@@ -95,14 +95,22 @@ internal sealed partial class TraceOperatorsPane
     private static string GetValueLabel(TraceTickTrack track, byte value)
         => track.Values.FirstOrDefault(v => v.Value == value).Label ?? value.ToString();
 
-    private static SKColor GetStripBackground(TraceTickTrack track, SKColor colour, bool isHovered)
-        => GetBackground(track) is { } background
+    private static SKColor GetStripBackground(TraceTickTrack track,
+                                              ExecutionOperatorEvent operatorEvent,
+                                              SKColor colour,
+                                              bool isHovered)
+        => GetBackground(track, operatorEvent) is { } background
             ? isHovered ? background.WithAlpha((byte)Math.Min(background.Alpha * BackgroundHoverAlpha, byte.MaxValue)) : background
             : TimelineColours.Scale(colour, isHovered ? StripHoverShade : StripShade);
 
-    private static SKColor? GetBackground(TraceTickTrack track)
+    private static SKColor? GetBackground(TraceTickTrack track, ExecutionOperatorEvent operatorEvent)
         => track.Background
-           ?? (track.Colour is { } trackColour && TimelineColours.IsDark(trackColour) ? TraceTickTracks.LightBackground : null);
+           ?? (GetTrackColour(track, operatorEvent) is { } trackColour && TimelineColours.IsDark(trackColour)
+                   ? TraceTickTracks.LightBackground
+                   : null);
+
+    private static SKColor? GetTrackColour(TraceTickTrack track, ExecutionOperatorEvent operatorEvent)
+        => track.GetTrackColour?.Invoke(operatorEvent) ?? track.Colour;
 
     private static float GetTickWidth(TraceTickTrack track, int count)
         => (count < SparseTickCount ? Math.Max(SparseTickWidth, track.TickWidth) : track.TickWidth) * track.WidthFactor;
@@ -191,7 +199,7 @@ internal sealed partial class TraceOperatorsPane
                             && hover.Track == track
                             && ReferenceEquals(hover.TickTrack, strip.Track);
 
-            Paints.Fill.Color = GetStripBackground(strip.Track, colour, isHovered);
+            Paints.Fill.Color = GetStripBackground(strip.Track, Rows[row].TickOperator, colour, isHovered);
 
             canvas.DrawRect(bar.Left, strip.Top, bar.Width, strip.Height, Paints.Fill);
 
@@ -212,7 +220,7 @@ internal sealed partial class TraceOperatorsPane
     {
         foreach (var strip in GetStrips(row, track, rect))
         {
-            Paints.Fill.Color = GetStripBackground(strip.Track, colour, false);
+            Paints.Fill.Color = GetStripBackground(strip.Track, Rows[row].TickOperator, colour, false);
 
             canvas.DrawRect(rect.Left, strip.Top, rect.Width, strip.Height, Paints.Fill);
         }
@@ -514,7 +522,8 @@ internal sealed partial class TraceOperatorsPane
 
         var calleeRow = Rows[callee.Row];
 
-        Paints.DottedCallLink.Color = tickTrack.Colour ?? GetOperatorColour(calleeRow.Operator, calleeRow.Lifetimes[callee.Track]);
+        Paints.DottedCallLink.Color = GetTrackColour(tickTrack, calleeRow.TickOperator)
+                                      ?? GetOperatorColour(calleeRow.Operator, calleeRow.Lifetimes[callee.Track]);
 
         Paints.CallLink.Color = GetTickColour(tickTrack, tick, callee.Row, callee.Track);
 
