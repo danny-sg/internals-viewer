@@ -13,9 +13,33 @@ internal static class VtableResolver
         return end > 0 ? name[..end].ToString() : null;
     }
 
+    internal static Dictionary<ulong, string> GetUniqueClasses(IReadOnlyDictionary<ulong, string[]> vtables)
+        => vtables.Where(v => v.Value.Length == 1).ToDictionary(v => v.Key, v => v.Value[0]);
+
+    internal static Dictionary<ulong, T> GetFirstMatches<T>(IReadOnlyDictionary<ulong, string[]> vtables, Func<string, T?> match)
+        where T : struct
+    {
+        var matches = new Dictionary<ulong, T>();
+
+        foreach (var (address, classes) in vtables)
+        {
+            foreach (var className in classes)
+            {
+                if (match(className) is { } value)
+                {
+                    matches[address] = value;
+
+                    break;
+                }
+            }
+        }
+
+        return matches;
+    }
+
     internal sealed class Collector
     {
-        private Dictionary<uint, string?> Classes { get; } = [];
+        private Dictionary<uint, List<string>> Classes { get; } = [];
 
         public void VisitData(uint rva, ReadOnlySpan<char> name)
         {
@@ -24,12 +48,16 @@ internal static class VtableResolver
                 return;
             }
 
-            ref var existing = ref CollectionsMarshal.GetValueRefOrAddDefault(Classes, rva, out var exists);
+            ref var classes = ref CollectionsMarshal.GetValueRefOrAddDefault(Classes, rva, out _);
 
-            existing = !exists || existing == className ? className : null;
+            classes ??= [];
+
+            if (!classes.Contains(className))
+            {
+                classes.Add(className);
+            }
         }
 
-        public Dictionary<ulong, string> Build()
-            => Classes.Where(c => c.Value is not null).ToDictionary(c => (ulong)c.Key, c => c.Value!);
+        public Dictionary<ulong, string[]> Build() => Classes.ToDictionary(c => (ulong)c.Key, c => c.Value.ToArray());
     }
 }

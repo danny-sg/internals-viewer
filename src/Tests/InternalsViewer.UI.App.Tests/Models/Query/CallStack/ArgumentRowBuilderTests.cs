@@ -399,6 +399,40 @@ public class ArgumentRowBuilderTests
     }
 
     [Fact]
+    public void An_Integer_That_Is_A_Known_Object_Takes_The_Object_Class()
+    {
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["unsigned __int64"], FunctionType.Member, "void"));
+
+        ValueDescription? Describe(ArgumentSlot slot, ulong value, TraceArgumentCall _)
+            => slot.Type == "this" ? null : new ValueDescription($"0x{value:X}", "AccBindings");
+
+        var parts = ArgumentRowBuilder.GetSignature("F", layout, Call(0x1_0000, 0x1788267AA40), Describe);
+
+        Assert.Equal("F(this 0x10000, AccBindings 0x1788267AA40)", Text(parts));
+        Assert.Equal("unsigned __int64", parts.Single(p => p.Value == 0x1788267AA40).DeclaredType);
+    }
+
+    [Fact]
+    public void An_Integer_That_Is_No_Known_Object_Stays_A_Number()
+    {
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["unsigned __int64"], FunctionType.Member, "void"));
+
+        var parts = ArgumentRowBuilder.GetSignature("F", layout, Call(0x1_0000, 1617095535168), (_, _, _) => null);
+
+        Assert.Equal("F(this 0x10000, 1617095535168)", Text(parts));
+    }
+
+    [Fact]
+    public void Bindings_Are_Shown_In_Place_Of_Their_Pointer()
+    {
+        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["tagDBBINDING const *"], FunctionType.Member, "void"));
+
+        var call = Call(0x1_0000, 0x2_0000) with { Locators = [new Locator(1, LocatorValueType.Bindings, 1, 1, "1,3,1,0,0,0")] };
+
+        Assert.Equal("F(this 0x10000, #1 I4 Value +0x0)", Text(ArgumentRowBuilder.GetSignature("F", layout, call)));
+    }
+
+    [Fact]
     public void This_Is_Decoded_Without_Its_Class()
     {
         var layout = ArgumentLayout.LayoutOf(new FunctionSignature([], FunctionType.Member, "void"));

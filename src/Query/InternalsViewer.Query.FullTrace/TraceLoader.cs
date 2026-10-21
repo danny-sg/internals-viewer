@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using System.Diagnostics;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Loading;

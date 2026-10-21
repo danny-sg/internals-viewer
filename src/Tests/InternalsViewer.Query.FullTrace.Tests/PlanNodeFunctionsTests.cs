@@ -1,5 +1,5 @@
-using InternalsViewer.Query.FullTrace.Iterators;
-using InternalsViewer.Query.FullTrace.Iterators.Enums;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -16,7 +16,7 @@ public class PlanNodeFunctionsTests
         collector.VisitFunction(0x30, "CBpQScanFilter::BpOpen");
         collector.VisitFunction(0x40, "CBpXteFilter::PbpqsGet");
 
-        var functions = collector.Build().Functions.OrderBy(f => f.Key).Select(f => (f.Key, f.Value));
+        var functions = collector.Build(NoVtables).Functions.OrderBy(f => f.Key).Select(f => (f.Key, f.Value));
 
         (ulong, PlanNodeFunctionType)[] expected =
         [
@@ -37,7 +37,7 @@ public class PlanNodeFunctionsTests
         collector.VisitFunction(0x20, "CQScanBatchHelper::Open");
         collector.VisitFunction(0x30, "CQScanHash::GetRow");
 
-        var functions = collector.Build().Functions.OrderBy(f => f.Key).Select(f => (f.Key, f.Value));
+        var functions = collector.Build(NoVtables).Functions.OrderBy(f => f.Key).Select(f => (f.Key, f.Value));
 
         (ulong, PlanNodeFunctionType)[] expected =
         [
@@ -58,7 +58,7 @@ public class PlanNodeFunctionsTests
         collector.VisitFunction(0x20, "CQueryScan::DestroyQuery");
         collector.VisitFunction(0x30, "CQueryScan::GetRow");
 
-        var functions = collector.Build().Functions.OrderBy(f => f.Key).Select(f => (f.Key, f.Value));
+        var functions = collector.Build(NoVtables).Functions.OrderBy(f => f.Key).Select(f => (f.Key, f.Value));
 
         (ulong, PlanNodeFunctionType)[] expected =
         [
@@ -72,16 +72,27 @@ public class PlanNodeFunctionsTests
     [Fact]
     public void Plan_Objects_Are_Known_By_Their_VTables()
     {
-        var collector = new PlanNodeFunctions.Collector();
+        var vtables = new Dictionary<ulong, string[]>
+        {
+            [0x7000] = ["CXteHash"],
+            [0x7100] = ["CBpXteFilter"],
+            [0x7200] = ["CQScanHash"]
+        };
 
-        collector.VisitData(0x7000, "CXteHash::`vftable'");
-        collector.VisitData(0x7100, "CBpXteFilter::`vftable'");
-        collector.VisitData(0x7200, "CQScanHash::`vftable'");
-
-        var planObjects = collector.Build().PlanObjects.OrderBy(p => p.Key).Select(p => (p.Key, p.Value));
+        var planObjects = new PlanNodeFunctions.Collector().Build(vtables).PlanObjects.OrderBy(p => p.Key).Select(p => (p.Key, p.Value));
 
         (ulong, PlanObjectClass)[] expected = [(0x7000, PlanObjectClass.Row), (0x7100, PlanObjectClass.Batch)];
 
         Assert.Equal(expected, planObjects);
     }
+
+    [Fact]
+    public void A_Shared_Vtable_Is_A_Plan_Object_When_Any_Of_Its_Classes_Is()
+    {
+        var vtables = new Dictionary<ulong, string[]> { [0x7000] = ["CQScanHash", "CXteHash"] };
+
+        Assert.Equal(PlanObjectClass.Row, new PlanNodeFunctions.Collector().Build(vtables).PlanObjects[0x7000]);
+    }
+
+    private static Dictionary<ulong, string[]> NoVtables => [];
 }

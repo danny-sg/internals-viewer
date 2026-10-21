@@ -1,5 +1,6 @@
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Plans.Operators;
 

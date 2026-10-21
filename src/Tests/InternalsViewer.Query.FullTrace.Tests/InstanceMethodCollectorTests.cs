@@ -1,4 +1,5 @@
-using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.Query.FullTrace.Functions;
+
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 

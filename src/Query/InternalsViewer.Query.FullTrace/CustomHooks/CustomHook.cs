@@ -11,7 +11,11 @@ internal sealed class CustomHook(IEnumerable<(ulong Address, CustomHookDefinitio
 
     public CustomHookStore Build() => new([.. Captures]);
 
-    protected override void Read(ITraceReplay replay, in TraceHookCall call, CustomHookDefinition definition, ulong pointer)
+    protected override void Read(ITraceReplay replay,
+                                 in TraceHookCall call,
+                                 CustomHookDefinition definition,
+                                 ulong pointer,
+                                 ReadOnlySpan<ulong> arguments)
     {
         if (pointer == 0)
         {

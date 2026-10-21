@@ -1,6 +1,6 @@
 using InternalsViewer.Query.FullTrace.Hooks;
-using InternalsViewer.Query.FullTrace.Iterators;
-using InternalsViewer.Query.FullTrace.Iterators.Enums;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
 namespace InternalsViewer.Query.FullTrace.Tests;

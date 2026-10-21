@@ -70,7 +70,21 @@ public static class ArgumentValue
 
     private static readonly Dictionary<string, Lazy<Dictionary<int, string>>> KnownFlags = new(StringComparer.Ordinal)
     {
-        ["BPool::StealOption"] = new(GetEnumNames<StealOptions>)
+        ["BPool::StealOption"] = new(GetEnumNames<StealOptions>),
+        ["DBACCESSORFLAGS"] = new(() => new Dictionary<int, string>
+        {
+            [0x0] = "INVALID",
+            [0x1] = "PASSBYREF",
+            [0x2] = "ROWDATA",
+            [0x4] = "PARAMETERDATA",
+            [0x8] = "OPTIMIZED",
+            [0x10] = "INHERITED"
+        })
+    };
+
+    private static readonly HashSet<string> UnnamedFlags = new(StringComparer.Ordinal)
+    {
+        "AccessorFlagEx"
     };
 
     private static readonly HashSet<string> UnnamedEnums = new(StringComparer.Ordinal)
@@ -94,6 +108,11 @@ public static class ArgumentValue
         "void", "char", "signed char", "unsigned char", "wchar_t", "char8_t", "char16_t", "char32_t", "__int8", "unsigned __int8"
     };
 
+    private static readonly HashSet<string> AddressSizedTypes = new(StringComparer.Ordinal)
+    {
+        "__int64", "long long", "unsigned __int64", "unsigned long long"
+    };
+
     private static readonly string[] ClassKeywords = ["class ", "struct "];
 
     private static readonly Dictionary<string, Lazy<Dictionary<int, string>>>.AlternateLookup<ReadOnlySpan<char>> KnownEnumLookup =
@@ -105,11 +124,21 @@ public static class ArgumentValue
     private static readonly HashSet<string>.AlternateLookup<ReadOnlySpan<char>> ReadableTypeLookup =
         ReadableTypes.GetAlternateLookup<ReadOnlySpan<char>>();
 
+    private static readonly HashSet<string>.AlternateLookup<ReadOnlySpan<char>> AddressSizedTypeLookup =
+        AddressSizedTypes.GetAlternateLookup<ReadOnlySpan<char>>();
+
     public static bool IsFloating(string type)
     {
         Span<char> buffer = type.Length <= MaximumStackType ? stackalloc char[type.Length] : new char[type.Length];
 
         return Normalise(type, buffer) is "float" or "double" or "long double";
+    }
+
+    public static bool IsAddressSized(string type)
+    {
+        Span<char> buffer = type.Length <= MaximumStackType ? stackalloc char[type.Length] : new char[type.Length];
+
+        return AddressSizedTypeLookup.Contains(Normalise(type, buffer));
     }
 
     public static bool IsPointer(string type) => type.TrimEnd() is { Length: > 0 } trimmed && trimmed[^1] is '*' or '&';
@@ -166,7 +195,9 @@ public static class ArgumentValue
 
         var name = target[FunctionSignature.EnumPrefix.Length..];
 
-        return KnownEnums.ContainsKey(name) || KnownFlags.ContainsKey(name) || UnnamedEnums.Contains(name) ? null : name;
+        return KnownEnums.ContainsKey(name) || KnownFlags.ContainsKey(name) || UnnamedEnums.Contains(name) || UnnamedFlags.Contains(name)
+            ? null
+            : name;
     }
 
     public static string FormatReferenced(string type, ulong raw)
@@ -242,6 +273,11 @@ public static class ArgumentValue
             if (KnownFlags.TryGetValue(enumName, out var flags))
             {
                 return FlagsOf(flags.Value, (int)raw);
+            }
+
+            if (UnnamedFlags.Contains(enumName))
+            {
+                return $"0x{(uint)raw:X}";
             }
 
             return KnownEnums.TryGetValue(enumName, out var names) && names.Value.TryGetValue((int)raw, out var name)

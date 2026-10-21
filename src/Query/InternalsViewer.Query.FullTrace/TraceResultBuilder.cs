@@ -5,6 +5,7 @@ using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Timeline;

@@ -57,11 +57,15 @@ public sealed class CallStoreLookup(TraceCallStore store,
 
     public ValueDescription? Describe(ArgumentSlot slot, ulong value, TraceArgumentCall call)
     {
-        var isObject = slot.Type == ThisType || ArgumentValue.IsPointer(slot.Type);
+        var isPointer = slot.Type == ThisType || ArgumentValue.IsPointer(slot.Type);
 
-        var entry = isObject && value != 0 ? memoryMap.GetEntry(value, GetPosition(slot, call)) : null;
+        var isAddress = value != 0 && (isPointer || ArgumentValue.IsAddressSized(slot.Type));
 
-        var containing = isObject && value != 0 && entry is null ? memoryMap.GetContaining(value, GetPosition(slot, call)) : null;
+        var entry = isAddress ? memoryMap.GetEntry(value, GetPosition(slot, call)) : null;
+
+        var isObject = isPointer || entry is not null;
+
+        var containing = isPointer && value != 0 && entry is null ? memoryMap.GetContaining(value, GetPosition(slot, call)) : null;
 
         if (GetHoBtId(slot, value, call) is { } hobtId && getHoBtName(hobtId) is { } name)
         {

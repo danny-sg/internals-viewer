@@ -16,13 +16,17 @@ public static partial class LocatorReadResolver
         SearchValues.Create(["VPageId@@", "VAllocationPageId@@", "VHPageHandle@@", "VPageRef@@", "VBTreeHPage@@", "VIndexPageRef@@",
                              "VHeapPageRef@@", "VTextPageRef@@", "VIAMPageRef@@", "VGAMPageRef@@", "VSGAMPageRef@@", "VPFSPageRef@@",
                              "VPSPageRef@@", "URowId@@", "VColumnStoreObjectKey@@", "ULSN@@", "VLSN@@", "PEBD", "PEB_W", "VCTypeInfo@@",
-                             "VCXVariant@@"],
+                             "VCXVariant@@", "UtagDBBINDING@@"],
                             StringComparison.Ordinal);
 
     internal static IEnumerable<LocatorRead> GetReads(ulong function, FunctionSignature signature)
     {
-        foreach (var slot in ArgumentLayout.LayoutOf(signature).Slots)
+        var slots = ArgumentLayout.LayoutOf(signature).Slots;
+
+        for (var index = 0; index < slots.Count; index++)
         {
+            var slot = slots[index];
+
             if (slot.Location is not (ArgumentLocation.Register or ArgumentLocation.Stack)
                 || slot.Name == ArgumentLayout.ReturnBuffer
                 || LocatorType.GetLocatorType(slot.Type) is not { } type
@@ -31,7 +35,11 @@ public static partial class LocatorReadResolver
                 continue;
             }
 
-            foreach (var read in CreateReads(function, slot.Index, type, returned: false))
+            var count = type.ValueType == LocatorValueType.Bindings ? BindingArguments.GetCountIndex(slots, index) : -1;
+
+            var countRegister = count < 0 ? -1 : slots[count].Index;
+
+            foreach (var read in CreateReads(function, slot.Index, type, returned: false, countRegister))
             {
                 yield return read;
             }
@@ -55,11 +63,15 @@ public static partial class LocatorReadResolver
     private static bool ReadsLocators(ReadOnlySpan<char> decoratedName)
         => decoratedName.ContainsAny(DecoratedTypes) || ReferencedType().IsMatch(decoratedName);
 
-    private static IEnumerable<LocatorRead> CreateReads(ulong function, int register, LocatorType type, bool returned)
+    private static IEnumerable<LocatorRead> CreateReads(ulong function,
+                                                        int register,
+                                                        LocatorType type,
+                                                        bool returned,
+                                                        int countRegister = -1)
     {
         bool[] ends = returned || type.ValueType == LocatorValueType.Variant ? [true] : type.IsInOut ? [false, true] : [type.IsOutput];
 
-        return ends.Select(e => new LocatorRead(function, register, e, type.ValueType, type.Offset, type.Path));
+        return ends.Select(e => new LocatorRead(function, register, e, type.ValueType, type.Offset, type.Path, countRegister));
     }
 
     [GeneratedRegex("[PQA]E[AB](?:[FGHIJKMN]|_[JKN]|W4|VHoBtId@@)")]

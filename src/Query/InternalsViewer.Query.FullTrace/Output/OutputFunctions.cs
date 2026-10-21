@@ -1,6 +1,5 @@
 using InternalsViewer.Query.FullTrace.Functions;
 using InternalsViewer.Query.FullTrace.Output.Enums;
-using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Output;
 
@@ -29,8 +28,6 @@ internal sealed record OutputFunctions(IReadOnlyDictionary<ulong, OutputFunction
 
     internal sealed class Collector
     {
-        private const string VTableName = "`vftable'";
-
         private static readonly Dictionary<string, OutputFunctionType> FunctionTypes = new(StringComparer.Ordinal)
         {
             ["CEsExec::GeneralEval"] = OutputFunctionType.Evaluation,
@@ -57,12 +54,7 @@ internal sealed record OutputFunctions(IReadOnlyDictionary<ulong, OutputFunction
         private static Dictionary<string, OutputFunctionType>.AlternateLookup<ReadOnlySpan<char>> FunctionLookup { get; }
             = FunctionTypes.GetAlternateLookup<ReadOnlySpan<char>>();
 
-        private static Dictionary<string, OutputValueClass>.AlternateLookup<ReadOnlySpan<char>> ClassLookup { get; }
-            = ValueClasses.GetAlternateLookup<ReadOnlySpan<char>>();
-
         private Dictionary<ulong, OutputFunctionType> Functions { get; } = [];
-
-        private Dictionary<ulong, OutputValueClass> Classes { get; } = [];
 
         public void VisitFunction(uint rva, ReadOnlySpan<char> name)
         {
@@ -72,16 +64,10 @@ internal sealed record OutputFunctions(IReadOnlyDictionary<ulong, OutputFunction
             }
         }
 
-        public void VisitData(uint rva, ReadOnlySpan<char> name)
-        {
-            SymbolsHelper.Split(name, out var className, out var memberName);
+        public OutputFunctions Build(IReadOnlyDictionary<ulong, string[]> vtables)
+            => new(Functions, VtableResolver.GetFirstMatches(vtables, GetValueClass));
 
-            if (memberName.StartsWith(VTableName, StringComparison.Ordinal) && ClassLookup.TryGetValue(className, out var valueClass))
-            {
-                Classes.TryAdd(rva, valueClass);
-            }
-        }
-
-        public OutputFunctions Build() => new(Functions, Classes);
+        private static OutputValueClass? GetValueClass(string className)
+            => ValueClasses.TryGetValue(className, out var valueClass) ? valueClass : null;
     }
 }

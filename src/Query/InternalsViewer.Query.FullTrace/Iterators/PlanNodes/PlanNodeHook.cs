@@ -1,9 +1,9 @@
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
-using InternalsViewer.Query.FullTrace.Iterators.Enums;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
 using InternalsViewer.Query.Extensions;
 
-namespace InternalsViewer.Query.FullTrace.Iterators;
+namespace InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 
 internal sealed class PlanNodeHook(PlanNodeFunctions functions) : ITraceHook
 {

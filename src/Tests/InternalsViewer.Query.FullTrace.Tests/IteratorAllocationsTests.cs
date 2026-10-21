@@ -1,8 +1,9 @@
 ﻿using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.FullTrace.Calls;
-using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Output;
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRows;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 

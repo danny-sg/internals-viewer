@@ -1,10 +1,11 @@
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.Dia;
+using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.FullTrace.Arguments;
 
-namespace InternalsViewer.Query.FullTrace.Iterators;
+namespace InternalsViewer.Query.FullTrace.Functions;
 
 internal static class InstanceMethodCollector
 {

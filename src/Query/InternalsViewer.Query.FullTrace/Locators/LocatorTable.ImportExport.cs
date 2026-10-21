@@ -21,7 +21,7 @@ internal sealed partial class LocatorTable
 
             var detail = reader.ReadUInt64();
 
-            var text = valueType is LocatorValueType.Text or LocatorValueType.WideText ? reader.ReadString() : null;
+            var text = HasText(valueType) ? reader.ReadString() : null;
 
             locators[index] = new Locator(register, valueType, value, detail, text);
         }
@@ -43,10 +43,13 @@ internal sealed partial class LocatorTable
 
             writer.Write(locator.Detail);
 
-            if (locator.ValueType is LocatorValueType.Text or LocatorValueType.WideText)
+            if (HasText(locator.ValueType))
             {
                 writer.Write(locator.Text ?? string.Empty);
             }
         }
     }
+
+    private static bool HasText(LocatorValueType valueType)
+        => valueType is LocatorValueType.Text or LocatorValueType.WideText or LocatorValueType.Bindings;
 }

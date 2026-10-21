@@ -1,7 +1,7 @@
+using InternalsViewer.Query.FullTrace.Functions;
 using System.Runtime.InteropServices;
 using System.Text;
 using InternalsViewer.Query.FullTrace.Hooks;
-using InternalsViewer.Query.FullTrace.Iterators;
 
 namespace InternalsViewer.Query.FullTrace.Native;
 

@@ -1,11 +1,11 @@
 ﻿using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using InternalsViewer.Internals.Engine.Loading;
 using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.CallStack.Dia;
 using InternalsViewer.Query.CallStack.Symbols;
-using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Output;
@@ -228,14 +228,7 @@ internal static class ReplayFunctionResolver
 
                                                return ClassifyFunction(mappings, moduleName, rva, name);
                                            },
-                                           (rva, name) =>
-                                           {
-                                               planNodes.VisitData(rva, name);
-
-                                               output.VisitData(rva, name);
-
-                                               vtables.VisitData(rva, name);
-                                           });
+                                           vtables.VisitData);
 
         var iterates = string.Equals(moduleName, IteratorModule, StringComparison.OrdinalIgnoreCase);
 
@@ -264,15 +257,17 @@ internal static class ReplayFunctionResolver
 
         ulong[] excluded = [.. functions.Where(f => f.Value.IsExcluded).Select(f => (ulong)f.Key)];
 
+        var classes = vtables.Build();
+
         return new ReplayFunctions(excluded,
                                    instanceMethods,
                                    reads.Build(),
                                    [.. functions.Values.Select(f => f.MemoryFunction).OfType<MemoryFunction>().Select(sites.Apply)],
                                    memoryMapFunctions.Build(),
-                                   planNodes.Build(),
-                                   output.Build())
+                                   planNodes.Build(classes),
+                                   output.Build(classes))
         {
-            Vtables = vtables.Build()
+            Vtables = classes
         };
     }
 

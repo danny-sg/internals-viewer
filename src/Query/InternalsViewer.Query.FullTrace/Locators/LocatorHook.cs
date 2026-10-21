@@ -11,11 +11,13 @@ internal sealed class LocatorHook(IEnumerable<LocatorRead> reads, TraceCallStore
 {
     private ImageFallbackMemory? Memory { get; set; }
 
-    protected override void Read(ITraceReplay replay, in TraceHookCall call, LocatorRead read, ulong pointer)
+    protected override void Read(ITraceReplay replay, in TraceHookCall call, LocatorRead read, ulong pointer, ReadOnlySpan<ulong> arguments)
     {
+        var count = read.CountRegister < 0 ? 1 : GetArgument(arguments, call, read.CountRegister);
+
         var locator = read.ValueType == LocatorValueType.Argument
             ? new Locator(read.Register, read.ValueType, pointer)
-            : ReadValue(replay, read, pointer);
+            : ReadValue(replay, read, pointer, count);
 
         if (locator is { } found)
         {
@@ -38,14 +40,14 @@ internal sealed class LocatorHook(IEnumerable<LocatorRead> reads, TraceCallStore
         return true;
     }
 
-    private Locator? ReadValue(ITraceReplay replay, LocatorRead read, ulong pointer)
+    private Locator? ReadValue(ITraceReplay replay, LocatorRead read, ulong pointer, ulong count)
     {
         if (pointer == 0 || !TryFollow(replay, read.Path, ref pointer))
         {
             return null;
         }
 
-        return Locator.Read(read.ValueType, GetMemory(replay), read.Register, pointer + (uint)read.Offset);
+        return Locator.Read(read.ValueType, GetMemory(replay), read.Register, pointer + (uint)read.Offset, count);
     }
 
     private IMemoryReader GetMemory(ITraceReplay replay)

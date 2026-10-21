@@ -1,5 +1,5 @@
 using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;

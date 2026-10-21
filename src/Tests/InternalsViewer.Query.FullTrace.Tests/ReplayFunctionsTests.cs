@@ -1,5 +1,5 @@
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace;
-using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.CallStack.Locators;
@@ -7,7 +7,7 @@ using InternalsViewer.Query.FullTrace.Functions;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
 using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Output.Enums;
-using InternalsViewer.Query.FullTrace.Iterators.Enums;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -44,14 +44,14 @@ public class ReplayFunctionsTests
     [Fact]
     public void Vtables_Move_To_The_Module_Base_And_Merge()
     {
-        var first = ReplayFunctions.Empty with { Vtables = Map(0x200, "CQScanTableScanNew") };
+        var first = ReplayFunctions.Empty with { Vtables = Map(0x200, new[] { "CQScanTableScanNew" }) };
 
-        var second = ReplayFunctions.Empty with { Vtables = Map(0x300, "CQScanRangeNew") };
+        var second = ReplayFunctions.Empty with { Vtables = Map(0x300, new[] { "CQScanRangeNew" }) };
 
         var merged = ReplayFunctions.Merge([first.Rebase(Base), second]);
 
         Assert.Equal([(0x300ul, "CQScanRangeNew"), (Base + 0x200, "CQScanTableScanNew")],
-                     merged.Vtables.Select(v => (v.Key, v.Value)).OrderBy(v => v.Key));
+                     merged.Vtables.Select(v => (v.Key, v.Value[0])).OrderBy(v => v.Key));
     }
 
     private static (ulong, T) Pair<T>(KeyValuePair<ulong, T> entry) => (entry.Key, entry.Value);

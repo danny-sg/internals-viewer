@@ -292,14 +292,27 @@ public static class ArgumentRowBuilder
 
         if (describe?.Invoke(slot, value, call) is { } description)
         {
-            return (description.Text,
-                    value != 0 && ArgumentValue.IsPointer(slot.Type) ? description.ClassName ?? GetClassName(slot.Type) : null,
-                    description.Origin);
+            return (description.Text, GetDescribedClass(slot, value, description), description.Origin);
         }
 
         return locator is { } referenced
             ? (GetDisplayValue(slot.Type, referenced).ToString(), null, null)
             : (ArgumentValue.Decode(slot.Type, value), null, null);
+    }
+
+    private static string? GetDescribedClass(ArgumentSlot slot, ulong value, ValueDescription description)
+    {
+        if (value == 0)
+        {
+            return null;
+        }
+
+        if (ArgumentValue.IsPointer(slot.Type))
+        {
+            return description.ClassName ?? GetClassName(slot.Type);
+        }
+
+        return ArgumentValue.IsAddressSized(slot.Type) ? description.ClassName : null;
     }
 
     private static string GetClassName(string type)
@@ -391,6 +404,7 @@ public static class ArgumentRowBuilder
         LocatorValueType.Text or LocatorValueType.WideText
             => new StringValue(new TextLocator(locator).Text, new TextLocator(locator).IsTruncated),
         LocatorValueType.ColumnStoreObject or LocatorValueType.LogSequenceNumber or LocatorValueType.TypeInfo or LocatorValueType.Variant
+            or LocatorValueType.Bindings
             => locator.ToString(),
         LocatorValueType.Referenced => ArgumentValue.FormatReferenced(type, locator.Value),
         _ => locator.Page

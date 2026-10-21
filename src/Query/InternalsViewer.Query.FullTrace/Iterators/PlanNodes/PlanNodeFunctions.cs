@@ -1,8 +1,8 @@
 using InternalsViewer.Query.FullTrace.Functions;
-using InternalsViewer.Query.FullTrace.Iterators.Enums;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
 using InternalsViewer.Query.Helpers;
 
-namespace InternalsViewer.Query.FullTrace.Iterators;
+namespace InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 
 internal sealed record PlanNodeFunctions(IReadOnlyDictionary<ulong, PlanNodeFunctionType> Functions,
                                           IReadOnlyDictionary<ulong, PlanObjectClass> PlanObjects)
@@ -21,13 +21,9 @@ internal sealed record PlanNodeFunctions(IReadOnlyDictionary<ulong, PlanNodeFunc
 
     internal sealed class Collector
     {
-        private const string VTableName = "`vftable'";
-
         private Dictionary<uint, PlanNodeFunctionType> Candidates { get; } = [];
 
         private HashSet<uint> Others { get; } = [];
-
-        private Dictionary<ulong, PlanObjectClass> PlanObjects { get; } = [];
 
         public void VisitFunction(uint rva, ReadOnlySpan<char> name)
         {
@@ -65,26 +61,18 @@ internal sealed record PlanNodeFunctions(IReadOnlyDictionary<ulong, PlanNodeFunc
             }
         }
 
-        public void VisitData(uint rva, ReadOnlySpan<char> name)
+        public PlanNodeFunctions Build(IReadOnlyDictionary<ulong, string[]> vtables)
+            => new(Candidates.Where(c => !Others.Contains(c.Key)).ToDictionary(c => (ulong)c.Key, c => c.Value),
+                   VtableResolver.GetFirstMatches(vtables, GetPlanObjectClass));
+
+        private static PlanObjectClass? GetPlanObjectClass(string className)
         {
-            SymbolsHelper.Split(name, out var className, out var memberName);
-
-            if (memberName is not VTableName)
-            {
-                return;
-            }
-
             if (IteratorSymbols.IsBatchPlanObject(className))
             {
-                PlanObjects.TryAdd(rva, PlanObjectClass.Batch);
+                return PlanObjectClass.Batch;
             }
-            else if (IteratorSymbols.IsRowPlanObject(className))
-            {
-                PlanObjects.TryAdd(rva, PlanObjectClass.Row);
-            }
-        }
 
-        public PlanNodeFunctions Build()
-            => new(Candidates.Where(c => !Others.Contains(c.Key)).ToDictionary(c => (ulong)c.Key, c => c.Value), PlanObjects);
+            return IteratorSymbols.IsRowPlanObject(className) ? PlanObjectClass.Row : null;
+        }
     }
 }

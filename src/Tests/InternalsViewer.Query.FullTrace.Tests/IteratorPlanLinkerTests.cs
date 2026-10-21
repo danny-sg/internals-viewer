@@ -1,5 +1,6 @@
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.Plans.Model;
 
 namespace InternalsViewer.Query.FullTrace.Tests;

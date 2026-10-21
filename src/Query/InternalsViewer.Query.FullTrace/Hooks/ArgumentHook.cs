@@ -67,7 +67,7 @@ internal abstract class ArgumentHook<TRead>(IEnumerable<(ulong Function, TRead R
         {
             if (!read.IsReadAtReturn)
             {
-                Read(replay, call, read, GetArgument(arguments, call, read.Register));
+                Read(replay, call, read, GetArgument(arguments, call, read.Register), arguments);
             }
         }
 
@@ -88,14 +88,24 @@ internal abstract class ArgumentHook<TRead>(IEnumerable<(ulong Function, TRead R
         {
             if (read.IsReadAtReturn)
             {
-                Read(replay, call, read, GetArgument(arguments, call, read.Register));
+                Read(replay, call, read, GetArgument(arguments, call, read.Register), arguments);
             }
         }
     }
 
     public void OnAbandoned(in TraceHookCall call) => Starts.Remove(call.Id);
 
-    protected abstract void Read(ITraceReplay replay, in TraceHookCall call, TRead read, ulong pointer);
+    protected static ulong GetArgument(ReadOnlySpan<ulong> arguments, in TraceHookCall call, int register)
+        => register switch
+        {
+            ArgumentLayout.ReturnRegister
+                => call.ReturnValue,
+            >= 0 and < ArgumentLayout.CapturedSlots
+                => arguments[register],
+            _ => 0
+        };
+
+    protected abstract void Read(ITraceReplay replay, in TraceHookCall call, TRead read, ulong pointer, ReadOnlySpan<ulong> arguments);
 
     private static void LoadArguments(in TraceHookCall call, ITraceReplay replay, Span<ulong> arguments, bool isStackRead)
     {
@@ -121,14 +131,4 @@ internal abstract class ArgumentHook<TRead>(IEnumerable<(ulong Function, TRead R
 
         return call.StackPointer + (ulong)(hasReturnAddress ? ArgumentLayout.StackArgumentOffset : ArgumentLayout.HomeSpaceSize);
     }
-
-    private static ulong GetArgument(ReadOnlySpan<ulong> arguments, in TraceHookCall call, int register)
-        => register switch
-        {
-            ArgumentLayout.ReturnRegister
-                => call.ReturnValue,
-            >= 0 and < ArgumentLayout.CapturedSlots
-                => arguments[register],
-            _ => 0
-        };
 }

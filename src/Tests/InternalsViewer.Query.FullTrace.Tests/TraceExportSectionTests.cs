@@ -7,7 +7,6 @@ using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Export;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Export;
-using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Native;

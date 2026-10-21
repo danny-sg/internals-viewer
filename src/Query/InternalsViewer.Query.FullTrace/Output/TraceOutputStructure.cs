@@ -1,4 +1,3 @@
-using InternalsViewer.Query.FullTrace.Iterators;
 
 namespace InternalsViewer.Query.FullTrace.Output;
 

@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.FullTrace.Iterators.Enums;
+namespace InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
 
 internal enum PlanNodeFunctionType : byte
 {

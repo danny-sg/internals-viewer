@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using System.Runtime.InteropServices;
 using System.Text;
 using InternalsViewer.Query.FullTrace.Calls;
@@ -10,7 +11,6 @@ using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Output;
-using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Stubs;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
 
@@ -150,7 +150,7 @@ internal sealed class ReplaySession : IDisposable
                                                               .Where(f => f is { IsAllocation: true, IsVirtual: false })
                                                               .Select(f => new MemoryMapFunction(f.Address, MemoryMapOperation.Allocated))];
 
-        var memoryMap = new MemoryMapHook(memoryMapFunctions, functions.Vtables);
+        var memoryMap = new MemoryMapHook(memoryMapFunctions, VtableResolver.GetUniqueClasses(functions.Vtables));
 
         var planNodeHook = new PlanNodeHook(functions.PlanNodeFunctions);
 

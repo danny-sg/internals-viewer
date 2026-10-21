@@ -8,4 +8,5 @@ internal readonly record struct LocatorRead(ulong Function,
                                             bool IsReadAtReturn,
                                             LocatorValueType ValueType,
                                             int Offset = 0,
-                                            int[]? Path = null) : IArgumentRead;
+                                            int[]? Path = null,
+                                            int CountRegister = -1) : IArgumentRead;

@@ -1,9 +1,10 @@
 using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory;
-using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Helpers;
 
-namespace InternalsViewer.Query.FullTrace.Iterators;
+namespace InternalsViewer.Query.FullTrace.Timeline;
 
 internal static class IteratorLifetimeBuilder
 {

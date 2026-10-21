@@ -165,6 +165,31 @@ public class TraceCallStoreTests
     }
 
     [Fact]
+    public void Bindings_Are_Kept_When_Written()
+    {
+        var builder = new TraceCallStore.Builder();
+
+        builder.Add(0x1000, 0, Chunk(Row(1)), 1);
+
+        builder.AddLocator(0x1000, 0, 0, new Locator(3, LocatorValueType.Bindings, 1, 1, "1,3,1,0,0,0"), false);
+
+        using var stream = new MemoryStream();
+
+        using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
+        {
+            builder.Build().Write(writer);
+        }
+
+        stream.Position = 0;
+
+        using var reader = new BinaryReader(stream);
+
+        var locator = TraceCallStore.Read(reader).GetCallList(0x1000, 0)![0].GetLocator(3);
+
+        Assert.Equal((LocatorValueType.Bindings, "#1 I4 Value +0x0"), (locator?.ValueType, locator?.ToString()));
+    }
+
+    [Fact]
     public async Task A_Stack_Argument_Is_Kept_As_A_Value_Beside_The_Page_It_Points_To()
     {
         var builder = new TraceCallStore.Builder();

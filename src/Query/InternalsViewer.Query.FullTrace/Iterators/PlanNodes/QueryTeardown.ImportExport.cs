@@ -1,6 +1,6 @@
 using InternalsViewer.Query.FullTrace.Export;
 
-namespace InternalsViewer.Query.FullTrace.Iterators;
+namespace InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 
 internal readonly partial record struct QueryTeardown
 {

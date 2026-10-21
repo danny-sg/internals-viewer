@@ -248,6 +248,7 @@ public class LocatorReadResolverTests
     [InlineData("CTypeInfo const *", LocatorValueType.TypeInfo, true, true)]
     [InlineData("class CTypeInfo const &", LocatorValueType.TypeInfo, true, true)]
     [InlineData("CXVariant *", LocatorValueType.Variant, true, false)]
+    [InlineData("tagDBBINDING const * const", LocatorValueType.Bindings, true, true)]
     [InlineData("class CXVariant const &", LocatorValueType.Variant, true, true)]
     public void A_Page_Or_Row_Type_Is_Recognised(string type, LocatorValueType valueType, bool indirect, bool isConst, int offset = 0)
         => Assert.Equal(new LocatorType(valueType, indirect, isConst, offset), LocatorType.GetLocatorType(type));
@@ -320,6 +321,47 @@ public class LocatorReadResolverTests
 
         Assert.Empty(collector.Build());
     }
+
+    [Fact]
+    public void A_Binding_Array_Takes_Its_Count_From_The_Argument_Before_It()
+    {
+        var signature = new FunctionSignature(["unsigned long",
+                                               "unsigned __int64",
+                                               "tagDBBINDING const * const",
+                                               "unsigned __int64",
+                                               "unsigned __int64 *",
+                                               "unsigned long * const"],
+                                              FunctionType.Member,
+                                              "long");
+
+        Assert.Equal(new LocatorRead(Function, 3, false, LocatorValueType.Bindings, CountRegister: 2), BindingRead(signature));
+    }
+
+    [Fact]
+    public void A_Binding_Array_On_The_Stack_Takes_Its_Count_From_The_Stack()
+    {
+        var signature = new FunctionSignature(["XDES *",
+                                               "HoBtAccess *",
+                                               "unsigned long",
+                                               "enum AccessorFlagEx",
+                                               "unsigned __int64",
+                                               "tagDBBINDING const * const"],
+                                              FunctionType.Member,
+                                              "AccBindings *");
+
+        Assert.Equal(new LocatorRead(Function, 6, false, LocatorValueType.Bindings, CountRegister: 5), BindingRead(signature));
+    }
+
+    [Fact]
+    public void A_Binding_Without_A_Count_Before_It_Is_One_Binding()
+    {
+        var signature = new FunctionSignature(["tagDBBINDING const *", "HoBtAccess const *"], FunctionType.Member, "void");
+
+        Assert.Equal(new LocatorRead(Function, 1, false, LocatorValueType.Bindings), BindingRead(signature));
+    }
+
+    private static LocatorRead BindingRead(FunctionSignature signature)
+        => Assert.Single(LocatorReadResolver.GetReads(Function, signature), r => r.ValueType == LocatorValueType.Bindings);
 
     private static List<LocatorRead> Reads(string signature, string decoratedName)
         => [.. LocatorReadResolver.GetReads(Function, FunctionSignature.Parse(signature, decoratedName)!)];

@@ -120,4 +120,36 @@ public class ArgumentValueTests
     {
         Assert.Equal(expected, ArgumentValue.GetPointeeClass(type));
     }
+
+    [Theory]
+    [InlineData("unsigned __int64", true)]
+    [InlineData("__int64", true)]
+    [InlineData("unsigned __int64 const", true)]
+    [InlineData("long long", true)]
+    [InlineData("unsigned long", false)]
+    [InlineData("int", false)]
+    [InlineData("unsigned __int64 *", false)]
+    public void Only_A_64_Bit_Integer_Can_Hold_An_Address(string type, bool expected)
+    {
+        Assert.Equal(expected, ArgumentValue.IsAddressSized(type));
+    }
+
+    [Theory]
+    [InlineData(0x2ul, "ROWDATA")]
+    [InlineData(0xAul, "ROWDATA | OPTIMIZED")]
+    [InlineData(0x0ul, "INVALID")]
+    [InlineData(0x42ul, "ROWDATA | 0x40")]
+    public void Accessor_Flags_Use_The_OLE_DB_Names(ulong raw, string expected)
+    {
+        Assert.Equal(expected, ArgumentValue.Decode(BindingArguments.AccessorFlagsType, raw));
+    }
+
+    [Fact]
+    public void Extended_Accessor_Flags_Are_Shown_In_Hex()
+    {
+        Assert.Equal(("0x5", "0x5", (string?)null),
+                     (ArgumentValue.Decode("enum AccessorFlagEx", 0xFFFF_FFFF_0000_0005),
+                      ArgumentValue.Format("enum AccessorFlagEx", 5),
+                      ArgumentValue.GetUnknownEnum("enum AccessorFlagEx")));
+    }
 }

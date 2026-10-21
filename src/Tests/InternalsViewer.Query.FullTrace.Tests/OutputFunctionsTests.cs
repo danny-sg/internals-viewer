@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Functions;
 using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Output.Enums;
 
@@ -19,7 +20,7 @@ public class OutputFunctionsTests
 
         collector.VisitFunction(0x40, "CEsRuntime::GeneralEval4");
 
-        var functions = collector.Build().Functions.OrderBy(f => f.Key).Select(f => (f.Key, f.Value));
+        var functions = collector.Build(new Dictionary<ulong, string[]>()).Functions.OrderBy(f => f.Key).Select(f => (f.Key, f.Value));
 
         (ulong, OutputFunctionType)[] expected =
         [
@@ -34,13 +35,15 @@ public class OutputFunctionsTests
     [Fact]
     public void Value_Classes_Come_From_Their_Virtual_Function_Tables()
     {
-        var collector = new OutputFunctions.Collector();
+        var vtables = new VtableResolver.Collector();
 
-        collector.VisitData(0x100, "CValHashSwitch::`vftable'");
+        vtables.VisitData(0x100, "CValHashSwitch::`vftable'");
 
-        collector.VisitData(0x200, "CValHashSwitch::`RTTI Complete Object Locator'");
+        vtables.VisitData(0x200, "CValHashSwitch::`RTTI Complete Object Locator'");
 
-        Assert.Equal(OutputValueClass.HashSwitch, Assert.Single(collector.Build().Classes, c => c.Key == 0x100).Value);
-        Assert.Single(collector.Build().Classes);
+        var classes = new OutputFunctions.Collector().Build(vtables.Build()).Classes;
+
+        Assert.Equal(OutputValueClass.HashSwitch, Assert.Single(classes, c => c.Key == 0x100).Value);
+        Assert.Single(classes);
     }
 }

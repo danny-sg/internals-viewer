@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Reflection.PortableExecutable;
 using System.Text;
 using InternalsViewer.Internals.Engine.Address;
@@ -237,6 +238,59 @@ public class LocatorHookTests
         var replay = new FakeTraceReplay().Write(Pointer + 8, 1ul);
 
         Assert.Null(Replay(new LocatorRead(Function, 1, false, LocatorValueType.Variant), replay).GetLocator(1));
+    }
+
+    [Fact]
+    public void Bindings_Are_Read_For_The_Count_Before_Them()
+    {
+        var replay = new FakeTraceReplay().Write(Pointer, Binding(1, 3, 0x1, 0x0))
+                                          .Write(Pointer + BindingLocator.Size, Binding(2, 130, 0x7, 0x8, 0x108, 0x110));
+
+        var read = new LocatorRead(Function, 2, false, LocatorValueType.Bindings, CountRegister: 1);
+
+        var locator = Replay(read, replay, [0, 2, Pointer, 0]).GetLocator(2);
+
+        Assert.Equal("#1 I4 Value +0x0 | #2 WSTR Value +0x8 Length +0x108 Status +0x110", locator?.ToString());
+    }
+
+    [Fact]
+    public void Bindings_The_Trace_Never_Read_Are_Counted()
+    {
+        var replay = new FakeTraceReplay().Write(Pointer, Binding(1, 3, 0x1, 0x0));
+
+        var read = new LocatorRead(Function, 2, false, LocatorValueType.Bindings, CountRegister: 1);
+
+        Assert.Equal("#1 I4 Value +0x0 | 2 More", Replay(read, replay, [0, 3, Pointer, 0]).GetLocator(2)?.ToString());
+    }
+
+    [Fact]
+    public void A_Binding_Without_A_Count_Is_Read_Alone()
+    {
+        var replay = new FakeTraceReplay().Write(Pointer, Binding(1, 3, 0x1, 0x0))
+                                          .Write(Pointer + BindingLocator.Size, Binding(2, 3, 0x1, 0x4));
+
+        var locator = Replay(new LocatorRead(Function, 1, false, LocatorValueType.Bindings), replay).GetLocator(1);
+
+        Assert.Equal("#1 I4 Value +0x0", locator?.ToString());
+    }
+
+    private static byte[] Binding(ulong ordinal, ushort type, uint parts, ulong value, ulong length = 0, ulong status = 0)
+    {
+        var bytes = new byte[BindingLocator.Size];
+
+        BinaryPrimitives.WriteUInt64LittleEndian(bytes, ordinal);
+
+        BinaryPrimitives.WriteUInt64LittleEndian(bytes.AsSpan(0x08), value);
+
+        BinaryPrimitives.WriteUInt64LittleEndian(bytes.AsSpan(0x10), length);
+
+        BinaryPrimitives.WriteUInt64LittleEndian(bytes.AsSpan(0x18), status);
+
+        BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(0x38), parts);
+
+        BinaryPrimitives.WriteUInt16LittleEndian(bytes.AsSpan(0x54), type);
+
+        return bytes;
     }
 
     private static TraceArgumentCall Replay(LocatorRead read,
