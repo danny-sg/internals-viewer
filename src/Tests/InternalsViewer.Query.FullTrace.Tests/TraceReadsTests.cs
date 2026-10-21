@@ -13,6 +13,7 @@ using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.Query.Plans.Model;
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRows;
+using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -69,8 +70,8 @@ public class TraceReadsTests
 
         var read = Assert.Single(reads.All, r => r.Value == (byte)TraceReadType.Page && r.Operator is not null);
 
-        Assert.Equal(((new PageAddress(1, 1056), 1), 20d, 25d),
-                     (GetRead(calls, read, TraceReadType.Page), read.Position.Start, read.Position.End));
+        Assert.Equal(((new PageAddress(1, 1056), 1), At(20), At(25)),
+                     (GetRead(calls, read, TraceReadType.Page), read.Span.From.Position, read.Span.To.Position));
     }
 
     [Fact]
@@ -96,7 +97,7 @@ public class TraceReadsTests
     [Fact]
     public void A_Read_Outside_Every_Operator_Call_Has_No_Operator()
     {
-        var read = Assert.Single(Build().Reads.All, r => r.Position.Start == 70);
+        var read = Assert.Single(Build().Reads.All, r => r.Span.From.Position == At(70));
 
         Assert.Null(read.Operator);
     }
@@ -121,9 +122,9 @@ public class TraceReadsTests
     {
         var reads = Build().Reads.GetTicks(Scan, Thread)!;
 
-        Assert.Equal((20d, null),
-                     (reads.GetNearest(TraceTimelineAxis.Position, 28, 5)?.Position.Start,
-                      reads.GetNearest(TraceTimelineAxis.Position, 40, 5)?.Position.Start));
+        Assert.Equal((At(20), (TracePosition?)null),
+                     (reads.GetNearest(TraceTimelineAxis.Position, 28, 5)?.Span.From.Position,
+                      reads.GetNearest(TraceTimelineAxis.Position, 40, 5)?.Span.From.Position));
     }
 
     private static (TraceTickSeries Reads, TraceCallStore Calls) Build()
@@ -190,8 +191,8 @@ public class TraceReadsTests
 
         TraceOperatorLifetime[] lifetimes =
         [
-            new(Thread, Join, 0, [Whole()], [Whole()], MemoryInUseCurve.Empty),
-            new(Thread, Scan, 1, [Whole()], [Whole()], MemoryInUseCurve.Empty)
+            new(Thread, Join, 0, [Whole()], MemoryInUseCurve.Empty, timeline.Scale),
+            new(Thread, Scan, 1, [Whole()], MemoryInUseCurve.Empty, timeline.Scale)
         ];
 
         return (TraceReads.Build(timeline, calls, new TraceOperatorLifetimes(lifetimes)), calls);
@@ -225,7 +226,7 @@ public class TraceReadsTests
         }
     };
 
-    private static TraceSpan Whole() => new(0, 1000, 0, 0, TraceSpanFlags.None);
+    private static TraceSpan Whole() => new(new TracePoint(At(0), 0), new TracePoint(At(1000), 1000), 0, 0, TraceSpanFlags.None);
 
     private static CallSpan Span(int node, ulong start, ulong end, uint call = 0) => new(start, 0, end, 0, start, end, node, Thread, call, 1);
 }

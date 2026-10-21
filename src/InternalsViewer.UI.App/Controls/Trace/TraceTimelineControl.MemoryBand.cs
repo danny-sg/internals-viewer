@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.UI.App.Helpers;
 using SkiaSharp;
@@ -190,17 +191,17 @@ public sealed partial class TraceTimelineControl
 
     private string InUseLabel => ShowsGrantUse ? "Grant In Use" : "In Use";
 
-    private ulong BandInUse(double start, double end)
+    private ulong BandInUse(TracePosition start, TracePosition end)
         => ShowsGrantUse ? Memory.PeakWorkspaceDuring(start, end) : Memory.PeakInUseDuring(start, end);
 
-    private ulong AllocatedDuring(TraceTimeline timeline, double start, double end)
+    private ulong AllocatedDuring(TraceTimeline timeline, TracePosition start, TracePosition end)
         => timeline.Threads.Aggregate(0ul, (total, t) => total + Memory.AllocatedDuring(t.ThreadId, start, end).Bytes);
 
-    private (double Start, double End) BucketRange(int bucket, double scale)
+    private (TracePosition Start, TracePosition End) BucketRange(int bucket, double scale)
     {
         var start = _viewStart + bucket * MemoryBucketWidth / scale;
 
-        return (start, start + MemoryBucketWidth / scale);
+        return (TraceScale.GetPosition(start), TraceScale.GetPosition(start + MemoryBucketWidth / scale));
     }
 
     private static float BandY(ulong bytes, ulong peak, float bottom, float rowHeight)

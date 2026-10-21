@@ -246,7 +246,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         LogOperators(operators, replay.PlanNodes, lifetimes);
 
-        var outputStructures = ResolveOutputStructures(replay, timeline, memory, lifetimes);
+        var outputStructures = ResolveOutputStructures(replay, memory, lifetimes);
 
         Logger.LogInformation("{Matched} of {Operators} operator(s) matched to recorded iterators, {Allocations} allocation(s) of "
                               + "{Bytes}, {Lifetimes} operator lifetime(s) on {Threads} thread(s)",
@@ -265,19 +265,14 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         return builder.Build(outputStructures);
     }
 
-    private List<TraceOutputStructure> ResolveOutputStructures(ReplayResult replay,
-                                                               TraceTimeline timeline,
-                                                               MemoryIndex memory,
-                                                               TraceOperatorLifetimes lifetimes)
+    private List<TraceOutputStructure> ResolveOutputStructures(ReplayResult replay, MemoryIndex memory, TraceOperatorLifetimes lifetimes)
     {
-        var allocations = IteratorAllocations.Build(timeline,
-                                                    memory,
+        var allocations = IteratorAllocations.Build(memory,
                                                     replay.CallStore,
                                                     lifetimes.OperatorsByInstance.Keys.ToHashSet(),
                                                     replay.PlanNodes);
 
-        List<TraceOutputStructure> structures =
-            [.. replay.OutputAddresses.Select(a => TraceOutputStructure.Resolve(a, allocations, timeline))];
+        List<TraceOutputStructure> structures = [.. replay.OutputAddresses.Select(a => TraceOutputStructure.Resolve(a, allocations))];
 
         Logger.LogInformation("{Structures} output structure(s) resolved through {Blocks} allocation(s), "
                               + "{Owned} of {Columns} column(s) owned",

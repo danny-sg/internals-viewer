@@ -66,7 +66,9 @@ internal sealed class TraceExportSection : IQueryExportSection
 
     public IRunExtra? Read(QueryExportReader reader)
     {
-        if (reader.CallTree(CallTreeName) is not { } tree || !reader.ReadBinary(CallStoreEntry, TraceCallStore.IsCurrent))
+        if (reader.CallTree(CallTreeName) is not { } tree
+            || !reader.ReadBinary(CallStoreEntry, TraceCallStore.IsCurrent)
+            || !reader.ReadBinary(TimelineEntry, TraceTimeline.IsCurrent))
         {
             return null;
         }

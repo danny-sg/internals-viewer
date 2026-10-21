@@ -15,7 +15,10 @@ internal sealed class OperatorMarks<T> where T : ITraceMark
 
     private Dictionary<ExecutionOperatorEvent, Dictionary<uint, TraceMarkIndex<T>>> Marks { get; }
 
-    public static OperatorMarks<T> Build(IEnumerable<T> marks, Func<T, ExecutionOperatorEvent?> getOperator, Func<T, uint> getThread)
+    public static OperatorMarks<T> Build(IEnumerable<T> marks,
+                                         TraceScale scale,
+                                         Func<T, ExecutionOperatorEvent?> getOperator,
+                                         Func<T, uint> getThread)
     {
         var grouped = new Dictionary<ExecutionOperatorEvent, Dictionary<uint, List<T>>>(ReferenceEqualityComparer.Instance);
 
@@ -39,7 +42,7 @@ internal sealed class OperatorMarks<T> where T : ITraceMark
 
         foreach (var (operatorEvent, threads) in grouped)
         {
-            indexed[operatorEvent] = threads.ToDictionary(t => t.Key, t => new TraceMarkIndex<T>([.. t.Value]));
+            indexed[operatorEvent] = threads.ToDictionary(t => t.Key, t => new TraceMarkIndex<T>(t.Value, scale));
         }
 
         return new OperatorMarks<T>(indexed);

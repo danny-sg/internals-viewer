@@ -43,7 +43,7 @@ public sealed class PlayheadCallStackViewModel(QueryViewModel query) : CallStack
         }
     }
 
-    public override void Zoom(PlayheadCallRow row) => Chart?.ZoomTo(row.Start, row.End);
+    public override void Zoom(PlayheadCallRow row) => Chart?.ZoomTo(row.Span);
 
     protected override void ShowCall(PlayheadCallRow row) => Query.NavigateToCall(row.Node, row.Call);
 

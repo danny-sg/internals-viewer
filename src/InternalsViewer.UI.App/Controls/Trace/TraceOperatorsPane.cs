@@ -77,6 +77,8 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
     private Func<(float Top, float Height)> GetBounds { get; } = getBounds;
 
+    private TraceScale TraceScale { get; set; } = TraceScale.Default;
+
     private Dictionary<TraceOperatorLifetime, string> Details { get; } = new(ReferenceEqualityComparer.Instance);
 
     private Dictionary<SKColor, SKShader> Gradients { get; } = [];
@@ -99,6 +101,8 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
     public void Rebuild(TraceTimeline? timeline, TraceOperatorLifetimes lifetimes)
     {
+        TraceScale = timeline?.Scale ?? TraceScale.Default;
+
         Rows = AddStatementRow(GetOperatorRows(timeline, lifetimes));
 
         Details.Clear();
@@ -243,7 +247,7 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
     {
         var lifetime = Rows[hit.Row].Lifetimes[hit.Track];
 
-        return (lifetime.StartOf(Axis), lifetime.EndOf(Axis));
+        return (lifetime.GetStart(Axis), lifetime.GetEnd(Axis));
     }
 
     public PlanNodeIdentifier? GetPlanNode(Point position)
@@ -291,7 +295,7 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
                             .GroupBy(l => l.Operator, ReferenceEqualityComparer.Instance)
                             .Select(g => CreateRow((ExecutionOperatorEvent)g.Key!, [.. g.OrderBy(l => lanes[l.Thread])]))
                             .OrderBy(r => r.Operator.NodeLevel)
-                            .ThenBy(r => r.Lifetimes.Min(l => l.StartOf(TraceTimelineAxis.Position)))
+                            .ThenBy(r => r.Lifetimes.Min(l => l.Start.Position))
                             .ThenBy(r => r.Operator.PlanNodeIdentifier?.NodeId ?? 0)];
     }
 
@@ -440,7 +444,7 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
     {
         var lifetime = Rows[row].Lifetimes[track];
 
-        return GetSpanRect(row, track, lifetime.StartOf(Axis), lifetime.EndOf(Axis), width, scale);
+        return GetSpanRect(row, track, lifetime.GetStart(Axis), lifetime.GetEnd(Axis), width, scale);
     }
 
     private SKRect? GetLifespanRect(int row, int track, int width, double scale)
@@ -662,9 +666,9 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
         var methods = new Dictionary<string, int>();
 
-        var active = 0d;
+        var active = 0ul;
 
-        foreach (var call in lifetime.InstructionCalls)
+        foreach (var call in lifetime.Calls)
         {
             var label = Host.GetLabel(call.Node);
 
@@ -674,16 +678,16 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
             methods[method] = methods.GetValueOrDefault(method) + 1;
 
-            active += call.End - call.Start;
+            active += call.Instructions;
         }
 
-        var instructions = lifetime.EndOf(TraceTimelineAxis.Instructions) - lifetime.StartOf(TraceTimelineAxis.Instructions);
+        var instructions = lifetime.End.Instructions - lifetime.Start.Instructions;
 
         var origin = Host.GetOrigin(TraceTimelineAxis.Position);
 
-        var start = lifetime.StartOf(TraceTimelineAxis.Position) - origin;
+        var start = lifetime.GetStart(TraceTimelineAxis.Position) - origin;
 
-        var end = lifetime.EndOf(TraceTimelineAxis.Position) - origin;
+        var end = lifetime.GetEnd(TraceTimelineAxis.Position) - origin;
 
         var lines = new List<string>
         {
@@ -696,12 +700,14 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
         if (instructions > 0)
         {
-            lines.Add($"Inside Calls {active / instructions:P1} (Including Child Operators)");
+            lines.Add($"Inside Calls {(double)active / instructions:P1} (Including Child Operators)");
         }
 
         if (!lifetime.InUse.IsEmpty)
         {
-            lines.Add($"Peak In Use {SizeFormat.Format((long)lifetime.InUse.PeakDuring(start, end))}");
+            var peak = lifetime.InUse.PeakDuring(lifetime.Start.Position, lifetime.End.Position);
+
+            lines.Add($"Peak In Use {SizeFormat.Format((long)peak)}");
         }
 
         details = string.Join(Environment.NewLine, lines);

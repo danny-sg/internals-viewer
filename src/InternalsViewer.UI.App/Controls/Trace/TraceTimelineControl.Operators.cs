@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
@@ -231,19 +232,21 @@ public sealed partial class TraceTimelineControl
 
             var regions = selected.Regions;
 
-            var index = SortedSearch.FirstAfter(selected.Ends(_axis), _viewStart);
+            var index = TraceScale.GetFirstAfter(selected.Ends, _axis, _viewStart);
 
-            while (index < regions.Length && regions[index].Of(_axis).Start <= _viewEnd)
+            while (index < regions.Length && TraceScale.GetValue(regions[index].Span.From, _axis) <= _viewEnd)
             {
-                var span = regions[index].Of(_axis);
+                var span = regions[index].Span;
 
-                var left = Math.Max((float)((span.Start - _viewStart) * scale), -1f);
+                var left = Math.Max((float)((TraceScale.GetValue(span.From, _axis) - _viewStart) * scale), -1f);
 
-                var right = Math.Min(Math.Max((float)((span.End - _viewStart) * scale), left + NarrowSpan), width + 1f);
+                var end = TraceScale.GetValue(span.To, _axis);
+
+                var right = Math.Min(Math.Max((float)((end - _viewStart) * scale), left + NarrowSpan), width + 1f);
 
                 _pathBuilder.AddRect(new SKRect(left, rowsTop + regions[index].Depth * _rowHeight, right, rowsBottom));
 
-                index = SortedSearch.FirstAfter(selected.Ends(_axis), _viewStart + (MathF.Floor(right) + 1f) / scale, index + 1);
+                index = TraceScale.GetFirstAfter(selected.Ends, _axis, _viewStart + (MathF.Floor(right) + 1f) / scale, index + 1);
             }
         }
 
@@ -289,18 +292,14 @@ public sealed partial class TraceTimelineControl
                 found[span.ThreadIndex] = regions;
             }
 
-            regions.Add(new SelectedRegion(span.Depth,
-                                           span.Span(TraceTimelineAxis.Position),
-                                           span.Span(TraceTimelineAxis.Instructions)));
+            regions.Add(new SelectedRegion(span.Depth, span.Span));
         }
 
         foreach (var (lane, regions) in found)
         {
-            var outermost = Outermost.Of(regions, r => r.Position.Start, r => r.Position.End);
+            var outermost = Outermost.Of(regions, r => r.Span.From.Position, r => r.Span.To.Position);
 
-            _selectedLanes[lane] = new SelectedLane([.. outermost],
-                                                    [.. outermost.Select(r => r.Position.End)],
-                                                    [.. outermost.Select(r => r.Instructions.End)]);
+            _selectedLanes[lane] = new SelectedLane([.. outermost], [.. outermost.Select(r => r.Span.To)]);
         }
     }
 
@@ -419,14 +418,7 @@ public sealed partial class TraceTimelineControl
         control.Redraw();
     }
 
-    private readonly record struct SelectedRegion(int Depth, TraceSpan Position, TraceSpan Instructions)
-    {
-        public TraceSpan Of(TraceTimelineAxis axis) => axis == TraceTimelineAxis.Position ? Position : Instructions;
-    }
+    private readonly record struct SelectedRegion(int Depth, TraceSpan Span);
 
-    private sealed record SelectedLane(SelectedRegion[] Regions, double[] PositionEnds, double[] InstructionEnds)
-    {
-        public ReadOnlySpan<double> Ends(TraceTimelineAxis axis)
-            => axis == TraceTimelineAxis.Position ? PositionEnds : InstructionEnds;
-    }
+    private sealed record SelectedLane(SelectedRegion[] Regions, TracePoint[] Ends);
 }

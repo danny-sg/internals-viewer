@@ -64,12 +64,10 @@ public class IteratorLifetimeBuilderTests
 
         var lifetime = Assert.Single(IteratorLifetimeBuilder.Build(timeline, MemoryIndex.Empty, [hashMatch], [], []));
 
-        var calls = lifetime.Calls(TraceTimelineAxis.Instructions);
-
         var axis = TraceTimelineAxis.Instructions;
 
         Assert.Same(hashMatch, lifetime.Operator);
-        Assert.Equal((0d, 45d, 4), (lifetime.StartOf(axis), lifetime.EndOf(axis), calls.Count));
+        Assert.Equal((0d, 45d, 4), (lifetime.GetStart(axis), lifetime.GetEnd(axis), lifetime.Calls.Count));
     }
 
     [Fact]
@@ -99,7 +97,7 @@ public class IteratorLifetimeBuilderTests
 
         timeline.MapNodes([caller, open, getRow, scanRow, close]);
 
-        var memory = MemoryIndex.Build([new(7, 5, 6, 100, 0xA), new(7, 22, 23, 50, 0xB)], [new(7, 41, 42, 0xA)]);
+        var memory = MemoryIndex.Build([new(7, At(5), At(6), 100, 0xA), new(7, At(22), At(23), 50, 0xB)], [new(7, At(41), At(42), 0xA)]);
 
         var hashMatch = Operator("Hash Match", 1, Hash);
 
@@ -112,7 +110,9 @@ public class IteratorLifetimeBuilderTests
         var scanLifetime = lifetimes.Single(l => ReferenceEquals(l.Operator, scan));
 
         Assert.Equal((100ul, 0ul, 50ul),
-                     (hashLifetime.InUse.PeakDuring(0, 40), hashLifetime.InUse.PeakDuring(42, 45), scanLifetime.InUse.PeakDuring(21, 24)));
+                     (hashLifetime.InUse.PeakDuring(At(0), At(40)),
+                      hashLifetime.InUse.PeakDuring(At(42), At(45)),
+                      scanLifetime.InUse.PeakDuring(At(21), At(24))));
     }
 
     [Fact]
@@ -192,8 +192,8 @@ public class IteratorLifetimeBuilderTests
                       lifetime.GetDestroyed(TraceTimelineAxis.Position),
                       lifetime.GetConstructed(TraceTimelineAxis.Instructions),
                       lifetime.GetDestroyed(TraceTimelineAxis.Instructions),
-                      lifetime.StartOf(TraceTimelineAxis.Instructions),
-                      lifetime.EndOf(TraceTimelineAxis.Instructions)));
+                      lifetime.GetStart(TraceTimelineAxis.Instructions),
+                      lifetime.GetEnd(TraceTimelineAxis.Instructions)));
     }
 
     [Fact]

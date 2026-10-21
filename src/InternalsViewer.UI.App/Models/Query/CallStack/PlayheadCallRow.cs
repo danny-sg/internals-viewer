@@ -8,7 +8,7 @@ using InternalsViewer.Query.FullTrace.Timeline;
 namespace InternalsViewer.UI.App.Models.Query.CallStack;
 
 public sealed partial class PlayheadCallRow(CallStackNode node,
-                                            TraceStackCall stackCall,
+                                            TraceSpan span,
                                             CallSignature signature,
                                             TracePosition fromPosition,
                                             TracePosition toPosition,
@@ -21,6 +21,8 @@ public sealed partial class PlayheadCallRow(CallStackNode node,
 
     public CallStackNode Node { get; } = node;
 
+    public TraceSpan Span { get; } = span;
+
     public TracePosition FromPosition { get; } = fromPosition;
 
     public TracePosition ToPosition { get; } = toPosition;
@@ -29,11 +31,7 @@ public sealed partial class PlayheadCallRow(CallStackNode node,
 
     public uint Thread { get; } = thread;
 
-    public int Call => stackCall.Span.Call;
-
-    public double Start => stackCall.Span.Start;
-
-    public double End => stackCall.Span.End;
+    public int Call => Span.Call;
 
     public IReadOnlyList<CallSignaturePart> Signature => signature.Parts;
 
@@ -45,7 +43,7 @@ public sealed partial class PlayheadCallRow(CallStackNode node,
 
     public string CurrentText { get; set; } = string.Empty;
 
-    public long Instructions => (long)stackCall.Instructions;
+    public long Instructions => (long)Span.Instructions;
 
     public IReadOnlyList<CallSignaturePart> Arguments
         => field ??= [.. Signature.Where(p => p.Kind == CallSignaturePartKind.Value && !p.IsThis)];

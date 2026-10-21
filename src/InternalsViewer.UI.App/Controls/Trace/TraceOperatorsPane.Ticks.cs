@@ -5,7 +5,6 @@ using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
-using InternalsViewer.Query.Helpers;
 using InternalsViewer.UI.App.Controls.Timeline;
 using InternalsViewer.UI.App.Controls.Trace.Enums;
 using SkiaSharp;
@@ -121,10 +120,12 @@ internal sealed partial class TraceOperatorsPane
 
     private (float Left, float Right) GetTickEdges(TraceSpan span, float width, double scale)
     {
-        var left = (float)((span.Start - Host.ViewStart) * scale);
+        var left = (float)((TraceScale.GetValue(span.From, Axis) - Host.ViewStart) * scale);
 
-        return (left, Math.Max((float)((span.End - Host.ViewStart) * scale), left + width));
+        return (left, Math.Max((float)((TraceScale.GetValue(span.To, Axis) - Host.ViewStart) * scale), left + width));
     }
+
+    private double GetLength(TraceSpan span) => TraceScale.GetValue(span.To, Axis) - TraceScale.GetValue(span.From, Axis);
 
     private List<TickStrip> GetStrips(int row, int track, SKRect bar)
     {
@@ -230,28 +231,26 @@ internal sealed partial class TraceOperatorsPane
     {
         var ticks = strip.Ticks;
 
-        var starts = ticks.GetStarts(Axis);
-
         var top = strip.Top + 1;
 
         var height = strip.Height - 2;
 
         var nextPixel = float.MinValue;
 
-        for (var index = ticks.GetFirstEndingFrom(Axis, Host.ViewStart); index < starts.Length && starts[index] <= Host.ViewEnd; index++)
+        var first = ticks.GetFirstEndingFrom(Axis, Host.ViewStart);
+
+        for (var index = first; index < ticks.Count && ticks.GetStart(Axis, index) <= Host.ViewEnd; index++)
         {
-            var tick = ticks.Get(Axis, index);
+            var tick = ticks.Get(index);
 
             if (tick.Value != value)
             {
                 continue;
             }
 
-            var span = tick.Of(Axis);
+            var (left, right) = GetTickEdges(tick.Span, width, scale);
 
-            var (left, right) = GetTickEdges(span, width, scale);
-
-            var spanPixels = (span.End - span.Start) * scale;
+            var spanPixels = GetLength(tick.Span) * scale;
 
             var isThinned = spanPixels <= width;
 
@@ -333,7 +332,7 @@ internal sealed partial class TraceOperatorsPane
 
         var strip = hovered.Strip;
 
-        var (left, right) = GetTickEdges(tick.Of(Axis), GetTickWidth(strip.Track, strip.Ticks.Count), scale);
+        var (left, right) = GetTickEdges(tick.Span, GetTickWidth(strip.Track, strip.Ticks.Count), scale);
 
         Paints.Outline.Color = TickHoverColour;
 
@@ -432,16 +431,20 @@ internal sealed partial class TraceOperatorsPane
 
         lines.Add($"Thread {tick.Thread}  ·  Call {tick.Call + 1:N0}");
 
-        lines.Add(GetPositionLabel(tick.Position));
+        lines.Add(GetPositionLabel(tick.Span));
 
         return string.Join(Environment.NewLine, lines);
     }
 
-    private string GetPositionLabel(TraceSpan position)
+    private string GetPositionLabel(TraceSpan span)
     {
         var origin = Host.GetOrigin(TraceTimelineAxis.Position);
 
-        return $"Position {Math.Floor(position.Start - origin):N0} to {Math.Floor(position.End - origin):N0}";
+        var start = TraceScale.GetValue(span.From.Position) - origin;
+
+        var end = TraceScale.GetValue(span.To.Position) - origin;
+
+        return $"Position {Math.Floor(start):N0} to {Math.Floor(end):N0}";
     }
 
     private void DrawCallLinks(SKCanvas canvas, double scale)
@@ -474,7 +477,7 @@ internal sealed partial class TraceOperatorsPane
 
                     for (var index = visible.First; index < visible.End; index++)
                     {
-                        var tick = ticks.Get(Axis, index);
+                        var tick = ticks.Get(index);
 
                         if (GetCallerTrack(tick, row, thread) is { } callerTrack)
                         {
@@ -490,7 +493,7 @@ internal sealed partial class TraceOperatorsPane
     {
         var first = ticks.GetFirstEndingFrom(Axis, Host.ViewStart);
 
-        var end = SortedSearch.FirstAfter(ticks.GetStarts(Axis), Host.ViewEnd);
+        var end = ticks.GetFirstStartingAfter(Axis, Host.ViewEnd);
 
         if (end <= first || end - first > (Host.ViewEnd - Host.ViewStart) * scale / MinimumCallLinkWidth + 2)
         {
@@ -499,9 +502,7 @@ internal sealed partial class TraceOperatorsPane
 
         for (var index = first; index < end; index++)
         {
-            var span = ticks.Get(Axis, index).Of(Axis);
-
-            if ((span.End - span.Start) * scale < MinimumCallLinkWidth)
+            if (GetLength(ticks.Get(index).Span) * scale < MinimumCallLinkWidth)
             {
                 return null;
             }
@@ -539,7 +540,7 @@ internal sealed partial class TraceOperatorsPane
 
     private (float CallX, float ReturnX) GetCallLinkPositions(TraceTick tick, float width, double scale)
     {
-        var (left, right) = GetTickEdges(tick.Of(Axis), width, scale);
+        var (left, right) = GetTickEdges(tick.Span, width, scale);
 
         return (GetFirstPixelCentre(left), GetLastPixelCentre(right));
     }

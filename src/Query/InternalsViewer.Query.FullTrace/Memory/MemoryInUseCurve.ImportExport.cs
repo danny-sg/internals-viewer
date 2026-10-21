@@ -5,7 +5,7 @@ namespace InternalsViewer.Query.FullTrace.Memory;
 public sealed partial class MemoryInUseCurve
 {
     internal static MemoryInUseCurve Read(BinaryReader reader)
-        => new(ExportBinary.ReadArray<double>(reader), ExportBinary.ReadArray<ulong>(reader));
+        => new(ExportBinary.ReadArray<TracePosition>(reader), ExportBinary.ReadArray<ulong>(reader));
 
     internal void Write(BinaryWriter writer)
     {

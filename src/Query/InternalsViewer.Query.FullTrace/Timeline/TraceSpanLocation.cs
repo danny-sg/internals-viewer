@@ -1,5 +1,4 @@
 using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.FullTrace.Timeline.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Timeline;
 
@@ -12,9 +11,9 @@ public readonly record struct TraceSpanLocation(int ThreadIndex,
 {
     public int Call => Row.CallAt(Index);
 
-    public double StartOf(TraceTimelineAxis axis) => Row.Starts(axis)[Index];
+    public TracePoint From => Row.GetFrom(Index);
 
-    public double EndOf(TraceTimelineAxis axis) => Row.Ends(axis)[Index];
+    public TracePoint To => Row.GetTo(Index);
 
-    public TraceSpan Span(TraceTimelineAxis axis) => Row.Span(axis, Index);
+    public TraceSpan Span => Row.GetSpan(Index);
 }

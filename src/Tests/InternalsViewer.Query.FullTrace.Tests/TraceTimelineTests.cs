@@ -3,6 +3,7 @@ using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
+using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -39,7 +40,7 @@ public class TraceTimelineTests
 
         var row = Assert.Single(timeline.Threads).Rows[1];
 
-        Assert.Equal([10d, 50d], row.Starts(Instructions).ToArray());
+        Assert.Equal([10d, 50d], Starts(row));
     }
 
     [Fact]
@@ -47,9 +48,9 @@ public class TraceTimelineTests
     {
         var row = Build(Span(node: 0, start: 0, end: 10), Span(node: 0, start: 20, end: 30, sequence: 2)).Threads[0].Rows[0];
 
-        Assert.Equal(1, row.IndexAt(Instructions, 25, 0));
-        Assert.Equal(-1, row.IndexAt(Instructions, 15, 0));
-        Assert.Equal(1, row.IndexAt(Instructions, 19.5, 1));
+        Assert.Equal(1, row.GetIndex(Instructions, 25, 0));
+        Assert.Equal(-1, row.GetIndex(Instructions, 15, 0));
+        Assert.Equal(1, row.GetIndex(Instructions, 19.5, 1));
     }
 
     [Fact]
@@ -58,17 +59,17 @@ public class TraceTimelineTests
         var timeline = Build(Span(node: 0, start: 0, end: 40, call: 4),
                              Span(node: 1, start: 5, end: 30, call: 5),
                              Span(node: 2, start: 10, end: 20, call: 6),
-                             Span(node: 0, start: 0, end: 40, thread: 9, sequence: 2, call: 7));
+                             Span(node: 0, start: 20, end: 60, thread: 9, call: 7));
 
-        var stacks = timeline.StackAt(Instructions, 25);
+        var stacks = timeline.GetStack(At(1, 25));
 
         Assert.Equal([(7u, "0:4 1:5"), (9u, "0:7")],
-                     stacks.Select(s => (s.ThreadId, string.Join(' ', s.Calls.Select(c => $"{c.Span.Node}:{c.Span.Call}")))));
+                     stacks.Select(s => (s.ThreadId, string.Join(' ', s.Calls.Select(c => $"{c.Node}:{c.Call}")))));
     }
 
     [Fact]
     public void A_Position_No_Call_Covers_Has_No_Stack()
-        => Assert.Empty(Build(Span(node: 0, start: 0, end: 10)).StackAt(Instructions, 15));
+        => Assert.Empty(Build(Span(node: 0, start: 0, end: 10)).GetStack(At(1, 15)));
 
     [Fact]
     public void Each_Thread_Has_Its_Own_Lane_In_The_Order_It_Started()
@@ -77,13 +78,13 @@ public class TraceTimelineTests
                              Span(node: 0, start: 0, end: 10, thread: 4, sequence: 2));
 
         Assert.Equal([4u, 9u], timeline.Threads.Select(t => t.ThreadId));
-        Assert.Equal(10, timeline.EndOf(Instructions));
+        Assert.Equal(10, timeline.GetEnd(Instructions));
     }
 
     [Fact]
     public void A_Call_Without_A_Logged_Call_Reads_As_No_Call()
     {
-        var span = Build(Span(node: 0, start: 0, end: 10, call: uint.MaxValue, flags: 2)).Threads[0].Rows[0].Span(Instructions, 0);
+        var span = Build(Span(node: 0, start: 0, end: 10, call: uint.MaxValue, flags: 2)).Threads[0].Rows[0].GetSpan(0);
 
         Assert.Equal(-1, span.Call);
         Assert.Equal(TraceSpanFlags.StartUnknown, span.Flags);
@@ -145,8 +146,8 @@ public class TraceTimelineTests
         var thread = Assert.Single(cropped.Threads);
 
         Assert.Equal([1, 2], thread.Rows.Select(r => r.NodeAt(0)));
-        Assert.Equal((5d, 30d), (cropped.StartOf(Instructions), cropped.EndOf(Instructions)));
-        Assert.Equal((0d, 40d), (timeline.StartOf(Instructions), timeline.EndOf(Instructions)));
+        Assert.Equal((5d, 30d), (cropped.GetStart(Instructions), cropped.GetEnd(Instructions)));
+        Assert.Equal((0d, 40d), (timeline.GetStart(Instructions), timeline.GetEnd(Instructions)));
     }
 
     [Fact]
@@ -184,7 +185,7 @@ public class TraceTimelineTests
         var thread = Assert.Single(cropped.Threads);
 
         Assert.Equal([1, 2, 3], thread.Rows.Select(r => r.NodeAt(0)));
-        Assert.Equal((10d, 90d), (cropped.StartOf(Instructions), cropped.EndOf(Instructions)));
+        Assert.Equal((10d, 90d), (cropped.GetStart(Instructions), cropped.GetEnd(Instructions)));
     }
 
     [Fact]
@@ -200,10 +201,10 @@ public class TraceTimelineTests
 
         var rows = Assert.Single(cropped.Threads).Rows;
 
-        Assert.Equal([[20d], [25d, 35d]], rows.Select(r => r.Starts(Instructions).ToArray()));
+        Assert.Equal([[20d], [25d, 35d]], rows.Select(r => Starts(r)));
         Assert.Equal([2, 3, 3], rows.SelectMany(r => Enumerable.Range(0, r.Count).Select(r.NodeAt)));
-        Assert.True(rows[0].Starts(Instructions).Overlaps(source[0].Starts(Instructions)));
-        Assert.True(rows[1].Starts(Instructions).Overlaps(source[1].Starts(Instructions)));
+        Assert.True(rows[0].Froms.Overlaps(source[0].Froms));
+        Assert.True(rows[1].Froms.Overlaps(source[1].Froms));
     }
 
     [Fact]
@@ -224,9 +225,9 @@ public class TraceTimelineTests
 
         using var reader = new BinaryReader(stream);
 
-        var read = TraceTimelineRow.Read(reader);
+        var read = TraceTimelineRow.Read(reader, TraceScale.Default);
 
-        Assert.Equal([25d, 35d], read.Starts(Instructions).ToArray());
+        Assert.Equal([25d, 35d], Starts(read));
         Assert.Equal([3, 3], Enumerable.Range(0, read.Count).Select(read.NodeAt));
     }
 
@@ -385,8 +386,11 @@ public class TraceTimelineTests
     [Fact]
     public void Positions_Order_By_Sequence_Then_Steps()
     {
-        Assert.True(TraceTimeline.PositionOf(5, 1, 1000) > TraceTimeline.PositionOf(5, 0, 1000));
-        Assert.True(TraceTimeline.PositionOf(6, 0, 1000) > TraceTimeline.PositionOf(5, 999, 1000));
+        var scale = new TraceScale(1000);
+
+        Assert.True(scale.GetValue(At(5, 1)) > scale.GetValue(At(5, 0)));
+        Assert.True(scale.GetValue(At(6, 0)) > scale.GetValue(At(5, 999)));
+        Assert.Equal(At(5, 999), scale.GetPosition(scale.GetValue(At(5, 999))));
     }
 
     [Fact]
@@ -396,9 +400,9 @@ public class TraceTimelineTests
                              Span(node: 0, start: 100_020, end: 100_030),
                              Span(node: 0, start: 999_990, end: 999_999));
 
-        var starts = timeline.Threads[0].Rows[0].Starts(TraceTimelineAxis.Position).ToArray();
+        var starts = Starts(timeline.Threads[0].Rows[0], TraceTimelineAxis.Position);
 
-        var step = timeline.StepOf(TraceTimelineAxis.Position);
+        var step = timeline.Scale.GetStep(TraceTimelineAxis.Position);
 
         Assert.Equal(20, (starts[1] - starts[0]) / step, 6);
         Assert.Equal(899_990, (starts[2] - starts[0]) / step, 3);
@@ -411,18 +415,9 @@ public class TraceTimelineTests
                              Span(node: 1, start: 5, end: 30),
                              Span(node: 0, start: 0, end: 40));
 
-        var rows = timeline.Threads[0].Rows;
-
-        var outer = rows[0].Span(TraceTimelineAxis.Position, 0);
-        var middle = rows[1].Span(TraceTimelineAxis.Position, 0);
-        var inner = rows[2].Span(TraceTimelineAxis.Position, 0);
-
-        var inMiddle = (inner.End + middle.End) / 2;
-        var inOuter = (middle.End + outer.End) / 2;
-
-        var memory = MemoryIndex.Build([new(7, inner.Start, inner.Start + 1e-6, 100, 0xA),
-                                        new(7, inMiddle, inMiddle + 1e-6, 30, 0xB),
-                                        new(7, inOuter, inOuter + 1e-6, 50, 0xC)],
+        var memory = MemoryIndex.Build([new(7, At(1, 10), At(1, 11), 100, 0xA),
+                                        new(7, At(1, 25), At(1, 26), 30, 0xB),
+                                        new(7, At(1, 35), At(1, 36), 50, 0xC)],
                                        []);
 
         Assert.Equal([(0, 50ul), (1, 30ul), (2, 100ul)],
@@ -536,6 +531,9 @@ public class TraceTimelineTests
 
         return (timeline, execute);
     }
+
+    private static double[] Starts(TraceTimelineRow row, TraceTimelineAxis axis = Instructions)
+        => [.. Enumerable.Range(0, row.Count).Select(i => row.GetStart(axis, i))];
 
     private static TraceTimeline Build(params CallSpan[] spans)
     {

@@ -53,7 +53,7 @@ public sealed partial class TraceTimelineControl
             return;
         }
 
-        _playhead = span.Start;
+        _playhead = TraceScale.GetValue(span.From, _axis);
 
         SelectAndShow(hit);
     }
@@ -123,7 +123,7 @@ public sealed partial class TraceTimelineControl
         }
 
         var current = _selected is { } selected && SpanOf(selected) is { } span
-            ? new SearchPosition(span.Start, selected.Lane, selected.Depth)
+            ? new SearchPosition(TraceScale.GetValue(span.From, _axis), selected.Lane, selected.Depth)
             : new SearchPosition(_playhead ?? _viewStart, forward ? int.MaxValue : -1, 0);
 
         FlameHit? best = null;
@@ -138,21 +138,21 @@ public sealed partial class TraceTimelineControl
             {
                 var row = rows[depth];
 
-                var starts = row.Starts(_axis);
-
                 var order = (lane, depth).CompareTo((current.Lane, current.Depth));
 
                 if (forward)
                 {
-                    var first = order > 0 ? row.FirstStartingFrom(_axis, current.Start, 0) : row.FirstStartingAfter(_axis, current.Start);
+                    var first = order > 0
+                        ? row.GetFirstStartingFrom(_axis, current.Start, 0)
+                        : row.GetFirstStartingAfter(_axis, current.Start);
 
-                    for (var index = first; index < row.Count && (best is null || starts[index] < bestStart); index++)
+                    for (var index = first; index < row.Count && (best is null || row.GetStart(_axis, index) < bestStart); index++)
                     {
                         if (IsSearchMatch(matches, row.NodeAt(index)))
                         {
                             best = new FlameHit(lane, depth, index);
 
-                            bestStart = starts[index];
+                            bestStart = row.GetStart(_axis, index);
 
                             break;
                         }
@@ -160,15 +160,17 @@ public sealed partial class TraceTimelineControl
                 }
                 else
                 {
-                    var last = (order < 0 ? row.FirstStartingAfter(_axis, current.Start) : row.FirstStartingFrom(_axis, current.Start, 0)) - 1;
+                    var last = (order < 0
+                        ? row.GetFirstStartingAfter(_axis, current.Start)
+                        : row.GetFirstStartingFrom(_axis, current.Start, 0)) - 1;
 
-                    for (var index = last; index >= 0 && (best is null || starts[index] >= bestStart); index--)
+                    for (var index = last; index >= 0 && (best is null || row.GetStart(_axis, index) >= bestStart); index--)
                     {
                         if (IsSearchMatch(matches, row.NodeAt(index)))
                         {
                             best = new FlameHit(lane, depth, index);
 
-                            bestStart = starts[index];
+                            bestStart = row.GetStart(_axis, index);
 
                             break;
                         }

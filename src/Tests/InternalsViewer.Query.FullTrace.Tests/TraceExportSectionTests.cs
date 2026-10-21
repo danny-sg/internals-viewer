@@ -13,6 +13,7 @@ using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Plans.Model;
+using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -62,7 +63,7 @@ public class TraceExportSectionTests
         Assert.Equal(new PageAddress(1, 336), calls[1].GetLocator(2)?.Page);
         Assert.Equal("(1:336), (1:336:4)", getRow.LocatorsDetail);
         Assert.Equal(3, fullTrace.Timeline.SpanCount);
-        Assert.Equal(100ul, fullTrace.Memory.PeakInUseDuring(0, 100));
+        Assert.Equal(100ul, fullTrace.Memory.PeakInUseDuring(At(0), At(100)));
         Assert.Single(fullTrace.Lifetimes);
     }
 
@@ -224,7 +225,7 @@ public class TraceExportSectionTests
 
         var timeline = replayed.WithoutCallsUnder(node => node.IsExtendedEvents);
 
-        var memory = MemoryIndex.Build([new MemoryAllocation(7, 22, 23, 100, 0xA)], [new MemoryFree(7, 31, 32, 0xA)]);
+        var memory = MemoryIndex.Build([new MemoryAllocation(7, At(22), At(23), 100, 0xA)], [new MemoryFree(7, At(31), At(32), 0xA)]);
 
         var lifetimes = IteratorLifetimeBuilder.Build(timeline, memory, [scan], [], []);
 

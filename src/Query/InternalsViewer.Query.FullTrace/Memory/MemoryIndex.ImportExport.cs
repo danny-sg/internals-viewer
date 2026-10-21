@@ -40,7 +40,11 @@ public sealed partial class MemoryIndex
 
     private sealed partial class ThreadMemory
     {
-        private ThreadMemory(double[] allocationStarts, ulong[] allocationBytes, double[] freedAt, double[] freeStarts, ulong[] freeTotals)
+        private ThreadMemory(TracePosition[] allocationStarts,
+                             ulong[] allocationBytes,
+                             TracePosition[] freedAt,
+                             TracePosition[] freeStarts,
+                             ulong[] freeTotals)
         {
             AllocationStarts = allocationStarts;
             AllocationBytes = allocationBytes;
@@ -51,10 +55,10 @@ public sealed partial class MemoryIndex
         }
 
         public static ThreadMemory Read(BinaryReader reader)
-            => new(ExportBinary.ReadArray<double>(reader),
+            => new(ExportBinary.ReadArray<TracePosition>(reader),
                    ExportBinary.ReadArray<ulong>(reader),
-                   ExportBinary.ReadArray<double>(reader),
-                   ExportBinary.ReadArray<double>(reader),
+                   ExportBinary.ReadArray<TracePosition>(reader),
+                   ExportBinary.ReadArray<TracePosition>(reader),
                    ExportBinary.ReadArray<ulong>(reader));
 
         public void Write(BinaryWriter writer)

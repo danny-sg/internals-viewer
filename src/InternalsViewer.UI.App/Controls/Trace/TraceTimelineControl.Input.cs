@@ -177,7 +177,7 @@ public sealed partial class TraceTimelineControl
         {
             if (_operators.GetTickAt(position) is { } tick)
             {
-                ZoomTo(tick.Of(_axis).Start, tick.Of(_axis).End);
+                ZoomTo(tick.Span);
             }
             else if (_operators.GetOperatorAt(position) is { } operatorHit)
             {
@@ -202,7 +202,7 @@ public sealed partial class TraceTimelineControl
         {
             if (HitTest(position) is { } hit && SpanOf(hit) is { } span)
             {
-                ZoomTo(span.Start, span.End);
+                ZoomTo(span);
             }
             else
             {
@@ -516,9 +516,9 @@ public sealed partial class TraceTimelineControl
 
         var row = rows[hit.Depth];
 
-        var middle = (row.Starts(_axis)[hit.Index] + row.Ends(_axis)[hit.Index]) / 2;
+        var middle = (row.GetStart(_axis, hit.Index) + row.GetEnd(_axis, hit.Index)) / 2;
 
-        var index = rows[hit.Depth - 1].IndexAt(_axis, middle, 0);
+        var index = rows[hit.Depth - 1].GetIndex(_axis, middle, 0);
 
         return index < 0 ? null : hit with { Depth = hit.Depth - 1, Index = index };
     }
@@ -534,9 +534,9 @@ public sealed partial class TraceTimelineControl
 
         var callees = rows[hit.Depth + 1];
 
-        var first = callees.FirstStartingFrom(_axis, row.Starts(_axis)[hit.Index], 0);
+        var first = callees.GetFirstStartingFrom(_axis, row.GetStart(_axis, hit.Index), 0);
 
-        return first < callees.Count && callees.Ends(_axis)[first] <= row.Ends(_axis)[hit.Index]
+        return first < callees.Count && callees.GetEnd(_axis, first) <= row.GetEnd(_axis, hit.Index)
             ? hit with { Depth = hit.Depth + 1, Index = first }
             : null;
     }
@@ -815,7 +815,7 @@ public sealed partial class TraceTimelineControl
 
         BringIntoView(selected);
 
-        ZoomTo(span.Start, span.End);
+        ZoomTo(span);
     }
 
     private void RootAt(FlameHit? hit)
@@ -937,7 +937,7 @@ public sealed partial class TraceTimelineControl
 
             var scale = PixelsPerUnit((int)_overlay.ActualWidth);
 
-            var index = thread.Rows[depth].IndexAt(_axis, _viewStart + position.X / scale, HitTolerance / scale);
+            var index = thread.Rows[depth].GetIndex(_axis, _viewStart + position.X / scale, HitTolerance / scale);
 
             return index < 0 ? null : new FlameHit(lane, depth, index);
         }
@@ -976,7 +976,7 @@ public sealed partial class TraceTimelineControl
 
         var row = timeline.Threads[hit.Lane].Rows[hit.Depth];
 
-        return hit.Index < row.Count ? row.Span(_axis, hit.Index) : null;
+        return hit.Index < row.Count ? row.GetSpan(hit.Index) : null;
     }
 
     private void ShowToolTip(FlameHit hit, Point position)
@@ -990,25 +990,25 @@ public sealed partial class TraceTimelineControl
 
         var row = thread.Rows[hit.Depth];
 
-        var instructions = row.Span(TraceTimelineAxis.Instructions, hit.Index);
+        var span = row.GetSpan(hit.Index);
 
-        var positions = row.Span(TraceTimelineAxis.Position, hit.Index);
+        var node = timeline.NodeOf(span.Node);
 
-        var node = timeline.NodeOf(instructions.Node);
+        var origin = OriginOf(TraceTimelineAxis.Position);
 
         var lines = new List<string>
         {
-            LabelOf(instructions.Node),
+            LabelOf(span.Node),
             node?.Category is { Length: > 0 } category ? category : "Unknown",
-            instructions.Call >= 0
-                ? $"Thread {thread.ThreadId}  ·  Call {instructions.Call + 1:N0}  ·  Depth {hit.Depth}"
+            span.Call >= 0
+                ? $"Thread {thread.ThreadId}  ·  Call {span.Call + 1:N0}  ·  Depth {hit.Depth}"
                 : $"Thread {thread.ThreadId}  ·  Depth {hit.Depth}",
-            $"Instructions {instructions.End - instructions.Start:N0}",
-            $"Position {Math.Floor(positions.Start - OriginOf(TraceTimelineAxis.Position)):N0} "
-            + $"to {Math.Floor(positions.End - OriginOf(TraceTimelineAxis.Position)):N0}"
+            $"Instructions {span.Instructions:N0}",
+            $"Position {Math.Floor(TraceScale.GetValue(span.From.Position) - origin):N0} "
+            + $"to {Math.Floor(TraceScale.GetValue(span.To.Position) - origin):N0}"
         };
 
-        var (allocatedBytes, allocations) = Memory.AllocatedDuring(thread.ThreadId, positions.Start, positions.End);
+        var (allocatedBytes, allocations) = Memory.AllocatedDuring(thread.ThreadId, span.From.Position, span.To.Position);
 
         if (allocations > 0)
         {
@@ -1016,24 +1016,24 @@ public sealed partial class TraceTimelineControl
                       + (allocations == 1 ? "Allocation" : "Allocations"));
         }
 
-        if (Memory.FreedDuring(thread.ThreadId, positions.Start, positions.End) is > 0 and var freed)
+        if (Memory.FreedDuring(thread.ThreadId, span.From.Position, span.To.Position) is > 0 and var freed)
         {
             lines.Add($"Freed {SizeFormat.Format((long)freed)}");
         }
 
         if (allocations > 0)
         {
-            var retained = Memory.RetainedBy(thread.ThreadId, positions.Start, positions.End);
+            var retained = Memory.RetainedBy(thread.ThreadId, span.From.Position, span.To.Position);
 
             lines.Add($"Retained At Return {SizeFormat.Format((long)retained)}");
         }
 
-        if (instructions.Flags.HasFlag(TraceSpanFlags.StartUnknown))
+        if (span.Flags.HasFlag(TraceSpanFlags.StartUnknown))
         {
             lines.Add("Started Before The Recorded Call");
         }
 
-        if (!instructions.Flags.HasFlag(TraceSpanFlags.Returned))
+        if (!span.Flags.HasFlag(TraceSpanFlags.Returned))
         {
             lines.Add("Did Not Return");
         }

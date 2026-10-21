@@ -248,7 +248,7 @@ public class SourcePathTests
             parts.Add(value);
         }
 
-        var call = new TraceStackCall(new TraceSpan(0, 1, 0, 0, default), 0);
+        var call = new TraceSpan(default, new TracePoint(default, 1), 0, 0, default);
 
         return new PlayheadCallRow(node, call, new CallSignature(parts, self, null), At(id), TracePosition.Unknown, 1, false);
     }

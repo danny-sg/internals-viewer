@@ -1,5 +1,3 @@
-using InternalsViewer.Query.FullTrace.Timeline.Enums;
-
 namespace InternalsViewer.Query.FullTrace.Timeline;
 
 public sealed class TraceTimelineThread(uint threadId, IReadOnlyList<TraceTimelineRow> rows, long calls)
@@ -26,11 +24,11 @@ public sealed class TraceTimelineThread(uint threadId, IReadOnlyList<TraceTimeli
         }
     }
 
-    public double StartOf(TraceTimelineAxis axis)
-        => Rows.Where(r => r.Count > 0).Select(r => r.Starts(axis)[0]).DefaultIfEmpty(0).Min();
+    public TracePoint Start
+        => Rows.Where(r => r.Count > 0).Select(r => r.GetFrom(0)).DefaultIfEmpty(default).MinBy(p => p.Position);
 
-    public double EndOf(TraceTimelineAxis axis)
-        => Rows.Where(r => r.Count > 0).Select(r => r.Ends(axis)[^1]).DefaultIfEmpty(0).Max();
+    public TracePoint End
+        => Rows.Where(r => r.Count > 0).Select(r => r.GetTo(r.Count - 1)).DefaultIfEmpty(default).MaxBy(p => p.Position);
 
     public TraceTimelineThread Where(Func<int, bool> include)
     {

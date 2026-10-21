@@ -2,20 +2,19 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Helpers;
-using InternalsViewer.Query.FullTrace.Timeline.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Timeline.Ticks;
 
 public sealed class TraceTickSeries
 {
-    private TraceTickSeries(TraceTick[] ticks)
+    private TraceTickSeries(TraceTick[] ticks, TraceScale scale)
     {
         Ticks = ticks;
 
-        ByOperator = OperatorMarks<TraceTick>.Build(ticks, t => t.Operator, t => t.Thread);
+        ByOperator = OperatorMarks<TraceTick>.Build(ticks, scale, t => t.Operator, t => t.Thread);
     }
 
-    public static TraceTickSeries Empty { get; } = new([]);
+    public static TraceTickSeries Empty { get; } = new([], TraceScale.Default);
 
     public int Count => Ticks.Length;
 
@@ -50,7 +49,7 @@ public sealed class TraceTickSeries
                      definition.MatchesOperator);
     }
 
-    internal static TraceTickSeries Create(IEnumerable<TraceTick> ticks) => new([.. ticks]);
+    internal static TraceTickSeries Create(IEnumerable<TraceTick> ticks, TraceScale scale) => new([.. ticks], scale);
 
     private static TraceTickSeries Build(TraceTimeline timeline,
                                          TraceCallStore calls,
@@ -84,12 +83,7 @@ public sealed class TraceTickSeries
                     continue;
                 }
 
-                ticks.Add(new TraceTick(value,
-                                        call.ThreadId,
-                                        location.Node,
-                                        location.Call,
-                                        location.Span(TraceTimelineAxis.Position),
-                                        location.Span(TraceTimelineAxis.Instructions))
+                ticks.Add(new TraceTick(value, call.ThreadId, location.Node, location.Call, location.Span)
                 {
                     Function = address,
                     Instance = instance,
@@ -103,7 +97,8 @@ public sealed class TraceTickSeries
         var operators = GetEnclosingOperators(calls, lifetimes.OperatorsByInstance, points);
 
         return new TraceTickSeries([.. ticks.Select((t, i) => operators[i] is { } found ? t with { Operator = found } : t)
-                                            .Where(t => isOperator is null || isOperator(t.Operator))]);
+                                            .Where(t => isOperator is null || isOperator(t.Operator))],
+                                   timeline.Scale);
     }
 
     private static ExecutionOperatorEvent?[] GetEnclosingOperators(TraceCallStore calls,

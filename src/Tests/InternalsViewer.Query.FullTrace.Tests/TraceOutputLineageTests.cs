@@ -4,6 +4,7 @@ using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Plans.Model;
+using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -81,9 +82,9 @@ public class TraceOutputLineageTests
     private static TraceOperatorLifetimes GetLifetimes(ExecutionOperatorEvent child) => new([Lifetime(Join, 0), Lifetime(child, 1)]);
 
     private static TraceOperatorLifetime Lifetime(ExecutionOperatorEvent operatorEvent, int index)
-        => new(Thread, operatorEvent, index, [Whole()], [Whole()], MemoryInUseCurve.Empty);
+        => new(Thread, operatorEvent, index, [Whole()], MemoryInUseCurve.Empty, TraceScale.Default);
 
     private static TraceOutputStructure ScanColumns() => new(OutputRow, [ScanIterator, ScanIterator], 0);
 
-    private static TraceSpan Whole() => new(0, 1000, 0, 0, TraceSpanFlags.None);
+    private static TraceSpan Whole() => new(new TracePoint(At(0), 0), new TracePoint(At(1000), 1000), 0, 0, TraceSpanFlags.None);
 }

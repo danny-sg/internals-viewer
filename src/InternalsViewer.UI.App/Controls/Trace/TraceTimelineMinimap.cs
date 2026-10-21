@@ -249,9 +249,9 @@ public sealed class TraceTimelineMinimap : UserControl, IDisposable
 
         canvas.DrawPicture(_picture);
 
-        var start = timeline.StartOf(Axis);
+        var start = timeline.GetStart(Axis);
 
-        var unit = width / Math.Max(timeline.EndOf(Axis) - start, double.Epsilon);
+        var unit = width / Math.Max(timeline.GetEnd(Axis) - start, double.Epsilon);
 
         if (!double.IsNaN(WindowStart) && !double.IsNaN(WindowEnd))
         {
@@ -315,19 +315,15 @@ public sealed class TraceTimelineMinimap : UserControl, IDisposable
 
     private void DrawWindowRuns(SKCanvas canvas, TraceTimelineRow row, double start, double unit, float top, float height)
     {
-        var starts = row.Starts(Axis);
-
-        var ends = row.Ends(Axis);
-
         var runLeft = 0f;
 
         var runRight = -1f;
 
-        for (var index = row.FirstEndingAfter(Axis, WindowStart); index < row.Count && starts[index] < WindowEnd; index++)
+        for (var index = row.GetFirstEndingAfter(Axis, WindowStart); index < row.Count && row.GetStart(Axis, index) < WindowEnd; index++)
         {
-            var left = (float)((Math.Max(starts[index], WindowStart) - start) * unit);
+            var left = (float)((Math.Max(row.GetStart(Axis, index), WindowStart) - start) * unit);
 
-            var right = Math.Max((float)((Math.Min(ends[index], WindowEnd) - start) * unit), left + MinimumWindowWidth);
+            var right = Math.Max((float)((Math.Min(row.GetEnd(Axis, index), WindowEnd) - start) * unit), left + MinimumWindowWidth);
 
             if (runRight >= 0 && left <= runRight + RunGap)
             {
@@ -365,9 +361,9 @@ public sealed class TraceTimelineMinimap : UserControl, IDisposable
             return recorder.EndRecording();
         }
 
-        var start = timeline.StartOf(Axis);
+        var start = timeline.GetStart(Axis);
 
-        var unit = width / Math.Max(timeline.EndOf(Axis) - start, double.Epsilon);
+        var unit = width / Math.Max(timeline.GetEnd(Axis) - start, double.Epsilon);
 
         var laneHeight = height / threads.Count;
 
@@ -397,10 +393,6 @@ public sealed class TraceTimelineMinimap : UserControl, IDisposable
                          double start,
                          double unit)
     {
-        var starts = row.Starts(Axis);
-
-        var ends = row.Ends(Axis);
-
         var runLeft = 0f;
 
         var runRight = 0f;
@@ -411,9 +403,9 @@ public sealed class TraceTimelineMinimap : UserControl, IDisposable
 
         for (var index = 0; index < row.Count; index++)
         {
-            var left = (float)((starts[index] - start) * unit);
+            var left = (float)((row.GetStart(Axis, index) - start) * unit);
 
-            var right = (float)((ends[index] - start) * unit);
+            var right = (float)((row.GetEnd(Axis, index) - start) * unit);
 
             var node = row.NodeAt(index);
 

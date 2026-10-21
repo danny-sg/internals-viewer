@@ -60,11 +60,12 @@ public sealed partial class TraceTimelineControl
     {
         if (RevealSpan(node, call) is { } span)
         {
-            ZoomTo(span.Start, span.End);
+            ZoomTo(span);
         }
     }
 
-    private double? RevealCall(CallStackNode node, int call) => RevealSpan(node, call)?.Start;
+    private double? RevealCall(CallStackNode node, int call)
+        => RevealSpan(node, call) is { } span ? TraceScale.GetValue(span.From, _axis) : null;
 
     private TraceSpan? RevealSpan(CallStackNode node, int call)
     {
@@ -97,7 +98,7 @@ public sealed partial class TraceTimelineControl
             return;
         }
 
-        var x = (float)((marked.Span.Start - _viewStart) * PixelsPerUnit(width));
+        var x = (float)((TraceScale.GetValue(marked.Span.From, _axis) - _viewStart) * PixelsPerUnit(width));
 
         if (x < 0 || x > width || GetMarkedTop(marked) is not { } rowTop)
         {
@@ -133,7 +134,7 @@ public sealed partial class TraceTimelineControl
             {
                 var row = thread.Rows[depth];
 
-                var index = row.IndexAt(_axis, marked.Span.Start, 0);
+                var index = row.GetIndex(marked.Span.From.Position);
 
                 if (index < 0 || row.CallAt(index) != marked.Span.Call || row.NodeAt(index) != marked.Span.Node)
                 {
@@ -179,7 +180,7 @@ public sealed partial class TraceTimelineControl
                 markers.Add(new MinimapMarker(current, CurrentColour));
             }
 
-            markers.Add(new MinimapMarker(call.Span.Start, MarkedColour, call.Lane, call.Depth));
+            markers.Add(new MinimapMarker(TraceScale.GetValue(call.Span.From, _axis), MarkedColour, call.Lane, call.Depth));
 
             _minimap.Markers = markers;
 
@@ -224,7 +225,7 @@ public sealed partial class TraceTimelineControl
     {
         var thread = timeline.Threads[hit.Lane];
 
-        return new MarkedCall(thread.Rows[hit.Depth].Span(_axis, hit.Index), thread.ThreadId, hit.Lane, hit.Depth);
+        return new MarkedCall(thread.Rows[hit.Depth].GetSpan(hit.Index), thread.ThreadId, hit.Lane, hit.Depth);
     }
 
     private readonly record struct MarkedCall(TraceSpan Span, uint ThreadId, int Lane, int Depth);

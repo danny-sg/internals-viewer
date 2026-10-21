@@ -41,17 +41,17 @@ public sealed partial class MemoryIndex
                          .OrderBy(e => e.Start)
                          .ThenBy(e => e.IsFree ? 0 : 1);
 
-        var freedAt = kept.Select(a => a.Pointer == 0 ? a.Start : double.PositiveInfinity).ToArray();
+        var freedAt = kept.Select(a => a.Pointer == 0 ? a.Start : TracePosition.Unknown).ToArray();
 
         var threads = new Dictionary<uint, ThreadLists>();
 
         var live = new Dictionary<ulong, int>();
 
-        var positions = new List<double>();
+        var positions = new List<TracePosition>();
 
         var values = new List<ulong>();
 
-        var workspacePositions = new List<double>();
+        var workspacePositions = new List<TracePosition>();
 
         var workspaceValues = new List<ulong>();
 
@@ -127,19 +127,19 @@ public sealed partial class MemoryIndex
                                blocks);
     }
 
-    public (ulong Bytes, int Count) AllocatedDuring(uint thread, double start, double end)
+    public (ulong Bytes, int Count) AllocatedDuring(uint thread, TracePosition start, TracePosition end)
         => Threads.TryGetValue(thread, out var memory) ? memory.AllocatedDuring(start, end) : (0, 0);
 
-    public ulong FreedDuring(uint thread, double start, double end)
+    public ulong FreedDuring(uint thread, TracePosition start, TracePosition end)
         => Threads.TryGetValue(thread, out var memory) ? memory.FreedDuring(start, end) : 0;
 
-    public ulong RetainedBy(uint thread, double start, double end)
+    public ulong RetainedBy(uint thread, TracePosition start, TracePosition end)
         => Threads.TryGetValue(thread, out var memory) ? memory.RetainedBy(start, end) : 0;
 
-    public IEnumerable<(double Position, ulong Bytes)> GetAllocations(uint thread)
+    public IEnumerable<(TracePosition Position, ulong Bytes)> GetAllocations(uint thread)
         => Threads.TryGetValue(thread, out var memory) ? memory.Allocations() : [];
 
-    public MemoryInUseCurve InUseWithin(uint thread, double start, double end)
+    public MemoryInUseCurve InUseWithin(uint thread, TracePosition start, TracePosition end)
         => Threads.TryGetValue(thread, out var memory) ? memory.InUseWithin(start, end) : MemoryInUseCurve.Empty;
 
     public IReadOnlyList<MemoryInUseCurve> InUseOwnedBy(uint thread, IReadOnlyList<IReadOnlyList<TraceSpan>> owners)
@@ -147,9 +147,9 @@ public sealed partial class MemoryIndex
             ? memory.InUseOwnedBy(owners)
             : [.. owners.Select(_ => MemoryInUseCurve.Empty)];
 
-    public ulong PeakInUseDuring(double start, double end) => InUse.PeakDuring(start, end);
+    public ulong PeakInUseDuring(TracePosition start, TracePosition end) => InUse.PeakDuring(start, end);
 
-    public ulong PeakWorkspaceDuring(double start, double end) => Workspace.PeakDuring(start, end);
+    public ulong PeakWorkspaceDuring(TracePosition start, TracePosition end) => Workspace.PeakDuring(start, end);
 
     private static ThreadLists GetLists(Dictionary<uint, ThreadLists> threads, uint thread)
     {
@@ -165,14 +165,14 @@ public sealed partial class MemoryIndex
 
     private sealed class ThreadLists
     {
-        public List<(MemoryAllocation Allocation, double FreedAt)> Allocations { get; } = [];
+        public List<(MemoryAllocation Allocation, TracePosition FreedAt)> Allocations { get; } = [];
 
-        public List<(double Start, ulong Bytes)> Frees { get; } = [];
+        public List<(TracePosition Start, ulong Bytes)> Frees { get; } = [];
     }
 
     private sealed partial class ThreadMemory
     {
-        public ThreadMemory((MemoryAllocation Allocation, double FreedAt)[] allocations, (double Start, ulong Bytes)[] frees)
+        public ThreadMemory((MemoryAllocation Allocation, TracePosition FreedAt)[] allocations, (TracePosition Start, ulong Bytes)[] frees)
         {
             AllocationStarts = [.. allocations.Select(a => a.Allocation.Start)];
             AllocationBytes = [.. allocations.Select(a => a.Allocation.Bytes)];
@@ -182,50 +182,50 @@ public sealed partial class MemoryIndex
             FreeTotals = GetRunningTotals([.. frees.Select(f => f.Bytes)]);
         }
 
-        private double[] AllocationStarts { get; }
+        private TracePosition[] AllocationStarts { get; }
 
         private ulong[] AllocationBytes { get; }
 
-        private double[] FreedAt { get; }
+        private TracePosition[] FreedAt { get; }
 
         private ulong[] AllocationTotals { get; }
 
-        private double[] FreeStarts { get; }
+        private TracePosition[] FreeStarts { get; }
 
         private ulong[] FreeTotals { get; }
 
-        public (ulong Bytes, int Count) AllocatedDuring(double start, double end)
+        public (ulong Bytes, int Count) AllocatedDuring(TracePosition start, TracePosition end)
         {
-            var first = SortedSearch.FirstAtOrAfter(AllocationStarts, start);
+            var first = SortedSearch.FirstAtOrAfter<TracePosition>(AllocationStarts, start);
 
-            var last = SortedSearch.FirstAtOrAfter(AllocationStarts, end);
+            var last = SortedSearch.FirstAtOrAfter<TracePosition>(AllocationStarts, end);
 
             return last > first ? (AllocationTotals[last] - AllocationTotals[first], last - first) : (0, 0);
         }
 
-        public ulong FreedDuring(double start, double end)
+        public ulong FreedDuring(TracePosition start, TracePosition end)
         {
-            var first = SortedSearch.FirstAtOrAfter(FreeStarts, start);
+            var first = SortedSearch.FirstAtOrAfter<TracePosition>(FreeStarts, start);
 
-            var last = SortedSearch.FirstAtOrAfter(FreeStarts, end);
+            var last = SortedSearch.FirstAtOrAfter<TracePosition>(FreeStarts, end);
 
             return last > first ? FreeTotals[last] - FreeTotals[first] : 0;
         }
 
-        public IEnumerable<(double Position, ulong Bytes)> Allocations() => AllocationStarts.Zip(AllocationBytes);
+        public IEnumerable<(TracePosition Position, ulong Bytes)> Allocations() => AllocationStarts.Zip(AllocationBytes);
 
-        public MemoryInUseCurve InUseWithin(double start, double end)
+        public MemoryInUseCurve InUseWithin(TracePosition start, TracePosition end)
         {
-            var first = SortedSearch.FirstAtOrAfter(AllocationStarts, start);
+            var first = SortedSearch.FirstAtOrAfter<TracePosition>(AllocationStarts, start);
 
-            var last = SortedSearch.FirstAtOrAfter(AllocationStarts, end);
+            var last = SortedSearch.FirstAtOrAfter<TracePosition>(AllocationStarts, end);
 
             if (last <= first)
             {
                 return MemoryInUseCurve.Empty;
             }
 
-            var changes = new List<(double Position, long Bytes)>((last - first) * 2);
+            var changes = new List<(TracePosition Position, long Bytes)>((last - first) * 2);
 
             for (var index = first; index < last; index++)
             {
@@ -246,27 +246,27 @@ public sealed partial class MemoryIndex
 
             Array.Fill(ownerOf, -1);
 
-            var ownerStarts = new double[AllocationStarts.Length];
+            var ownerStarts = new TracePosition[AllocationStarts.Length];
 
             for (var owner = 0; owner < owners.Count; owner++)
             {
                 foreach (var call in owners[owner])
                 {
-                    for (var index = SortedSearch.FirstAtOrAfter(AllocationStarts, call.Start);
-                         index < AllocationStarts.Length && AllocationStarts[index] < call.End;
+                    for (var index = SortedSearch.FirstAtOrAfter<TracePosition>(AllocationStarts, call.From.Position);
+                         index < AllocationStarts.Length && AllocationStarts[index] < call.To.Position;
                          index++)
                     {
-                        if (ownerOf[index] < 0 || call.Start > ownerStarts[index])
+                        if (ownerOf[index] < 0 || call.From.Position > ownerStarts[index])
                         {
                             ownerOf[index] = owner;
 
-                            ownerStarts[index] = call.Start;
+                            ownerStarts[index] = call.From.Position;
                         }
                     }
                 }
             }
 
-            var changes = new List<(double Position, long Bytes)>[owners.Count];
+            var changes = new List<(TracePosition Position, long Bytes)>[owners.Count];
 
             for (var owner = 0; owner < owners.Count; owner++)
             {
@@ -282,7 +282,7 @@ public sealed partial class MemoryIndex
 
                 changes[ownerOf[index]].Add((AllocationStarts[index], (long)AllocationBytes[index]));
 
-                if (!double.IsPositiveInfinity(FreedAt[index]))
+                if (FreedAt[index].IsKnown)
                 {
                     changes[ownerOf[index]].Add((FreedAt[index], -(long)AllocationBytes[index]));
                 }
@@ -291,11 +291,11 @@ public sealed partial class MemoryIndex
             return [.. changes.Select(GetCurve)];
         }
 
-        public ulong RetainedBy(double start, double end)
+        public ulong RetainedBy(TracePosition start, TracePosition end)
         {
             ulong retained = 0;
 
-            for (var index = SortedSearch.FirstAtOrAfter(AllocationStarts, start);
+            for (var index = SortedSearch.FirstAtOrAfter<TracePosition>(AllocationStarts, start);
                  index < AllocationStarts.Length && AllocationStarts[index] < end;
                  index++)
             {
@@ -308,7 +308,7 @@ public sealed partial class MemoryIndex
             return retained;
         }
 
-        private static MemoryInUseCurve GetCurve(List<(double Position, long Bytes)> changes)
+        private static MemoryInUseCurve GetCurve(List<(TracePosition Position, long Bytes)> changes)
         {
             if (changes.Count == 0)
             {
@@ -317,7 +317,7 @@ public sealed partial class MemoryIndex
 
             changes.Sort();
 
-            var positions = new List<double>(changes.Count);
+            var positions = new List<TracePosition>(changes.Count);
 
             var values = new List<ulong>(changes.Count);
 

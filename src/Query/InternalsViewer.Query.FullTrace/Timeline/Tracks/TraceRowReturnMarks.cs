@@ -4,11 +4,9 @@ using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Iterators;
-using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.Query.Helpers;
-using InternalsViewer.Query.Plans.Operators;
 
 namespace InternalsViewer.Query.FullTrace.Timeline.Tracks;
 
@@ -51,11 +49,11 @@ public sealed class TraceRowReturnMarks
 
     public bool IsBatch(ExecutionOperatorEvent operatorEvent) => BatchOperators.Contains(operatorEvent);
 
-    public ReadOnlySpan<double> GetMarks(ExecutionOperatorEvent operatorEvent, uint thread, TraceTimelineAxis axis, RowReturnType type)
-        => GetReturns(operatorEvent, thread) is { } returns ? returns.Of(axis).GetValues(type) : [];
+    public ReadOnlySpan<TracePoint> GetMarks(ExecutionOperatorEvent operatorEvent, uint thread, RowReturnType type)
+        => GetReturns(operatorEvent, thread) is { } returns ? returns.GetPoints(type) : [];
 
     public int GetCount(ExecutionOperatorEvent operatorEvent, uint thread, RowReturnType type)
-        => GetReturns(operatorEvent, thread) is { } returns ? returns.Positions.GetValues(type).Length : 0;
+        => GetReturns(operatorEvent, thread) is { } returns ? returns.GetPoints(type).Length : 0;
 
     internal static TraceRowReturnMarks Build(TraceTimeline timeline, TraceCallStore calls, TraceOperatorLifetimes lifetimes)
     {
@@ -105,14 +103,9 @@ public sealed class TraceRowReturnMarks
 
                 ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(marks, (operatorEvent, group.Thread), out _);
 
-                (list ??= []).Add(new Mark(location.EndOf(TraceTimelineAxis.Position), location.EndOf(TraceTimelineAxis.Instructions), type));
+                (list ??= []).Add(new Mark(location.To, type));
 
-                ticks.Add(new TraceTick((byte)type,
-                                        group.Thread,
-                                        location.Node,
-                                        location.Call,
-                                        location.Span(TraceTimelineAxis.Position),
-                                        location.Span(TraceTimelineAxis.Instructions))
+                ticks.Add(new TraceTick((byte)type, group.Thread, location.Node, location.Call, location.Span)
                 {
                     Operator = operatorEvent,
                     Caller = ReferenceEquals(caller, operatorEvent) ? null : caller,
@@ -132,7 +125,7 @@ public sealed class TraceRowReturnMarks
             (threads ??= [])[thread] = OperatorReturns.Build(list);
         }
 
-        return new TraceRowReturnMarks(operators, batchOperators, TraceTickSeries.Create(ticks));
+        return new TraceRowReturnMarks(operators, batchOperators, TraceTickSeries.Create(ticks, timeline.Scale));
     }
 
     private static List<CallGroup> GetCallGroups(TraceCallStore calls, IReadOnlyDictionary<ulong, ExecutionOperatorEvent> owners)
@@ -237,7 +230,7 @@ public sealed class TraceRowReturnMarks
     {
         var next = index + 1 < group.Calls.Length ? group.Calls[index + 1].FromPosition : TracePosition.Unknown;
 
-        var returned = SortedSearch.FirstAtOrAfter(parent.RowEnds, group.Calls[index].ToPosition, p => p);
+        var returned = SortedSearch.FirstAtOrAfter<TracePosition>(parent.RowEnds, group.Calls[index].ToPosition);
 
         return returned < parent.RowEnds.Length && parent.RowEnds[returned] < next;
     }
@@ -247,7 +240,7 @@ public sealed class TraceRowReturnMarks
 
     private readonly record struct GetRowCall(ulong Function, int Call, TracePosition FromPosition, TracePosition ToPosition, uint? Status);
 
-    private readonly record struct Mark(double Position, double Instructions, RowReturnType Type);
+    private readonly record struct Mark(TracePoint Point, RowReturnType Type);
 
     private sealed class CallGroup(ulong instance, uint thread, GetRowCall[] calls, bool isBatch)
     {
@@ -264,25 +257,6 @@ public sealed class TraceRowReturnMarks
         public ulong[] Enclosing { get; } = new ulong[calls.Length];
     }
 
-    private sealed record AxisReturns(double[] Values, double[][] TypeValues)
-    {
-        public ReadOnlySpan<double> GetValues(RowReturnType type) => TypeValues[(int)type];
-
-        public static AxisReturns Build(List<Mark> marks, Func<Mark, double> getValue)
-        {
-            Mark[] ordered = [.. marks.OrderBy(getValue)];
-
-            var typeValues = new double[TypeCount][];
-
-            for (var type = 0; type < TypeCount; type++)
-            {
-                typeValues[type] = [.. ordered.Where(m => (int)m.Type == type).Select(getValue)];
-            }
-
-            return new AxisReturns([.. ordered.Select(getValue)], typeValues);
-        }
-    }
-
     private sealed class OperatorThreadComparer : IEqualityComparer<(ExecutionOperatorEvent Operator, uint Thread)>
     {
         public static OperatorThreadComparer Instance { get; } = new();
@@ -294,13 +268,24 @@ public sealed class TraceRowReturnMarks
             => HashCode.Combine(RuntimeHelpers.GetHashCode(value.Operator), value.Thread);
     }
 
-    private sealed record OperatorReturns(AxisReturns Positions, AxisReturns Instructions)
+    private sealed class OperatorReturns(TracePoint[][] typePoints)
     {
-        public int Count => Positions.Values.Length;
+        public int Count { get; } = typePoints.Sum(p => p.Length);
 
-        public AxisReturns Of(TraceTimelineAxis axis) => axis == TraceTimelineAxis.Position ? Positions : Instructions;
+        private TracePoint[][] TypePoints { get; } = typePoints;
+
+        public ReadOnlySpan<TracePoint> GetPoints(RowReturnType type) => TypePoints[(int)type];
 
         public static OperatorReturns Build(List<Mark> marks)
-            => new(AxisReturns.Build(marks, m => m.Position), AxisReturns.Build(marks, m => m.Instructions));
+        {
+            var typePoints = new TracePoint[TypeCount][];
+
+            for (var type = 0; type < TypeCount; type++)
+            {
+                typePoints[type] = [.. marks.Where(m => (int)m.Type == type).OrderBy(m => m.Point.Position).Select(m => m.Point)];
+            }
+
+            return new OperatorReturns(typePoints);
+        }
     }
 }

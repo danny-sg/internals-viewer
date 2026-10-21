@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using SkiaSharp;
@@ -145,20 +146,22 @@ public sealed partial class TraceTimelineControl
         canvas.Restore();
     }
 
-    private double PositionAt(TraceTimelineRow row, int index, double value)
+    private TracePosition GetPosition(TraceTimelineRow row, int index, double value)
     {
-        var positions = row.Span(TraceTimelineAxis.Position, index);
+        var span = row.GetSpan(index);
+
+        var end = TraceScale.GetValue(span.To.Position);
 
         if (_axis == TraceTimelineAxis.Position)
         {
-            return Math.Min(value, positions.End);
+            return TraceScale.GetPosition(Math.Min(value, end));
         }
 
-        var instructions = row.Span(TraceTimelineAxis.Instructions, index);
+        var start = TraceScale.GetValue(span.From.Position);
 
-        var fraction = instructions.End > instructions.Start ? (value - instructions.Start) / (instructions.End - instructions.Start) : 1;
+        var fraction = span.Instructions > 0 ? (value - span.From.Instructions) / span.Instructions : 1;
 
-        return positions.Start + Math.Clamp(fraction, 0, 1) * (positions.End - positions.Start);
+        return TraceScale.GetPosition(start + Math.Clamp(fraction, 0, 1) * (end - start));
     }
 
     private void DrawSpikeHighlight(SKCanvas canvas, FlameHit? hit, SKPaint paint)
@@ -200,7 +203,7 @@ public sealed partial class TraceTimelineControl
 
         var row = visible.Row;
 
-        var first = Array.BinarySearch(raised.Indexes, row.FirstEndingAfter(_axis, from));
+        var first = Array.BinarySearch(raised.Indexes, row.GetFirstEndingAfter(_axis, from));
 
         var rowStart = _spikes.Count;
 
@@ -208,16 +211,16 @@ public sealed partial class TraceTimelineControl
         {
             var index = raised.Indexes[item];
 
-            var span = row.Span(_axis, index);
+            var start = row.GetStart(_axis, index);
 
-            if (span.Start > to)
+            if (start > to)
             {
                 break;
             }
 
-            var left = (float)((span.Start - _viewStart) * scale);
+            var left = (float)((start - _viewStart) * scale);
 
-            var right = Math.Max((float)((span.End - _viewStart) * scale), left + SpikeMinimumWidth);
+            var right = Math.Max((float)((row.GetEnd(_axis, index) - _viewStart) * scale), left + SpikeMinimumWidth);
 
             var spike = Raised(new FlameHit(visible.Lane, visible.Depth, index),
                                row.NodeAt(index),
@@ -274,19 +277,17 @@ public sealed partial class TraceTimelineControl
     {
         var row = visible.Row;
 
-        var index = row.FirstEndingAfter(_axis, _viewStart + firstPixel / scale);
+        var index = row.GetFirstEndingAfter(_axis, _viewStart + firstPixel / scale);
 
-        while (index < row.Count && row.Starts(_axis)[index] <= _viewStart + lastPixel / scale)
+        while (index < row.Count && row.GetStart(_axis, index) <= _viewStart + lastPixel / scale)
         {
-            var span = row.Span(_axis, index);
+            var left = (float)((row.GetStart(_axis, index) - _viewStart) * scale);
 
-            var left = (float)((span.Start - _viewStart) * scale);
-
-            var right = (float)((span.End - _viewStart) * scale);
+            var right = (float)((row.GetEnd(_axis, index) - _viewStart) * scale);
 
             if (right - left < SurfaceBucketWidth)
             {
-                index = row.FirstEndingAfter(_axis, _viewStart + (MathF.Floor(right) + 1) / scale, index + 1);
+                index = row.GetFirstEndingAfter(_axis, _viewStart + (MathF.Floor(right) + 1) / scale, index + 1);
 
                 continue;
             }
@@ -340,11 +341,9 @@ public sealed partial class TraceTimelineControl
                             float right,
                             double scale)
     {
-        var positions = row.Span(TraceTimelineAxis.Position, source.Index);
-
         if (!_inUseCurves.TryGetValue(source, out var curve))
         {
-            curve = Memory.InUseWithin(threadId, positions.Start, positions.End);
+            curve = Memory.InUseWithin(threadId, row.GetFrom(source.Index).Position, row.GetTo(source.Index).Position);
 
             _inUseCurves[source] = curve;
         }
@@ -362,8 +361,8 @@ public sealed partial class TraceTimelineControl
         {
             var end = Math.Min(x + SurfaceBucketWidth, right);
 
-            var bytes = curve.PeakDuring(PositionAt(row, source.Index, _viewStart + x / scale),
-                                         PositionAt(row, source.Index, _viewStart + end / scale));
+            var bytes = curve.PeakDuring(GetPosition(row, source.Index, _viewStart + x / scale),
+                                         GetPosition(row, source.Index, _viewStart + end / scale));
 
             var last = _spikes.Count - 1;
 

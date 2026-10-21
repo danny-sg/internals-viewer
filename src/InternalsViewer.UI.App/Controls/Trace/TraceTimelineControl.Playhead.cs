@@ -72,7 +72,7 @@ public sealed partial class TraceTimelineControl
 
         var sequence = Math.Floor(relative);
 
-        return $"{sequence:N0}:{Math.Round((relative - sequence) / timeline.StepOf(_axis)):N0}";
+        return $"{sequence:N0}:{Math.Round((relative - sequence) / timeline.Scale.GetStep(_axis)):N0}";
     }
 
     private static SKPath PlayheadTriangle()

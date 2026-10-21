@@ -464,7 +464,7 @@
                                              Tag="{x:Bind ReturnText(ViewModel.SelectedCall), Mode=OneWay}"
                                              Click="OnCopyValueClick"/>
 
-                        <TextBlock Grid.Row="4" Text="TTD Position" Style="{StaticResource DetailLabelStyle}"/>
+                        <TextBlock Grid.Row="4" Text="Position" Style="{StaticResource DetailLabelStyle}"/>
                         <TextBlock Grid.Row="4"
                                    Grid.Column="1"
                                    Style="{StaticResource DetailValueStyle}"

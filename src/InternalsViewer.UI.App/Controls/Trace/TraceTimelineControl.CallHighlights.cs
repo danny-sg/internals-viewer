@@ -78,17 +78,14 @@ public sealed partial class TraceTimelineControl
                         continue;
                     }
 
-                    regions.Add(new HighlightRegion(depth,
-                                                    highlights[node],
-                                                    row.Span(TraceTimelineAxis.Position, index),
-                                                    row.Span(TraceTimelineAxis.Instructions, index)));
+                    regions.Add(new HighlightRegion(depth, highlights[node], row.GetSpan(index)));
                 }
             }
         }
 
-        _positionHighlights = BandOf(regions, TraceTimelineAxis.Position);
+        _positionHighlights = BandOf(regions, TraceTimelineAxis.Position, timeline.Scale);
 
-        _instructionHighlights = BandOf(regions, TraceTimelineAxis.Instructions);
+        _instructionHighlights = BandOf(regions, TraceTimelineAxis.Instructions, timeline.Scale);
     }
 
     private void DrawCallHighlights(SKCanvas canvas, float top, float bottom, int width, double scale)
@@ -129,22 +126,20 @@ public sealed partial class TraceTimelineControl
         return -1;
     }
 
-    private static HighlightBand BandOf(List<HighlightRegion> regions, TraceTimelineAxis axis)
+    private static HighlightBand BandOf(List<HighlightRegion> regions, TraceTimelineAxis axis, TraceScale scale)
     {
         var boundaries = new double[regions.Count * 2];
 
         for (var index = 0; index < regions.Count; index++)
         {
-            var span = regions[index].Of(axis);
+            boundaries[index * 2] = scale.GetValue(regions[index].Span.From, axis);
 
-            boundaries[index * 2] = span.Start;
-
-            boundaries[index * 2 + 1] = span.End;
+            boundaries[index * 2 + 1] = scale.GetValue(regions[index].Span.To, axis);
         }
 
         Array.Sort(boundaries);
 
-        regions.Sort((a, b) => a.Of(axis).Start.CompareTo(b.Of(axis).Start));
+        regions.Sort((a, b) => a.Span.From.CompareTo(b.Span.From, axis));
 
         var active = new List<HighlightRegion>();
 
@@ -167,7 +162,7 @@ public sealed partial class TraceTimelineControl
                 continue;
             }
 
-            while (next < regions.Count && regions[next].Of(axis).Start <= from)
+            while (next < regions.Count && scale.GetValue(regions[next].Span.From, axis) <= from)
             {
                 active.Add(regions[next]);
 
@@ -176,7 +171,7 @@ public sealed partial class TraceTimelineControl
 
             for (var position = active.Count - 1; position >= 0; position--)
             {
-                if (active[position].Of(axis).End <= from)
+                if (scale.GetValue(active[position].Span.To, axis) <= from)
                 {
                     active.RemoveAt(position);
                 }
@@ -226,10 +221,7 @@ public sealed partial class TraceTimelineControl
 
     private readonly record struct CallHighlight(string Name, SKColor Colour);
 
-    private readonly record struct HighlightRegion(int Depth, int Highlight, TraceSpan Position, TraceSpan Instructions)
-    {
-        public TraceSpan Of(TraceTimelineAxis axis) => axis == TraceTimelineAxis.Position ? Position : Instructions;
-    }
+    private readonly record struct HighlightRegion(int Depth, int Highlight, TraceSpan Span);
 
     private sealed record HighlightBand(double[] Starts, double[] Ends, int[] Highlights)
     {

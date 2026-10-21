@@ -5,28 +5,38 @@ namespace InternalsViewer.Query.FullTrace.Timeline;
 
 public sealed partial class TraceTimeline
 {
+    private const int FormatVersion = 1;
+
     private TraceTimeline(IReadOnlyList<TraceTimelineThread> threads,
                           int[] parents,
                           CallStackNode?[] nodes,
-                          double stepsPerSequence,
-                          (double PositionStart, double PositionEnd, double InstructionStart, double InstructionEnd) bounds)
+                          TraceScale scale,
+                          TracePoint start,
+                          TracePoint end)
     {
         Threads = threads;
         Parents = parents;
         Nodes = nodes;
-        StepsPerSequence = stepsPerSequence;
+        Scale = scale;
         SpanCount = threads.Sum(t => t.Calls);
-        PositionStart = bounds.PositionStart;
-        PositionEnd = bounds.PositionEnd;
-        InstructionStart = bounds.InstructionStart;
-        InstructionEnd = bounds.InstructionEnd;
+        Start = start;
+        End = end;
     }
+
+    internal static bool IsCurrent(BinaryReader reader) => reader.ReadInt32() == -FormatVersion;
 
     internal static TraceTimeline Read(BinaryReader reader, IReadOnlyList<CallStackNode> nodesById)
     {
-        var stepsPerSequence = reader.ReadDouble();
+        if (!IsCurrent(reader))
+        {
+            throw new InvalidDataException("The trace timeline was exported in an earlier format and must be re-recorded");
+        }
 
-        var bounds = (reader.ReadDouble(), reader.ReadDouble(), reader.ReadDouble(), reader.ReadDouble());
+        var scale = new TraceScale(reader.ReadDouble());
+
+        var start = TracePointExport.Read(reader);
+
+        var end = TracePointExport.Read(reader);
 
         var parents = ExportBinary.ReadArray<int>(reader);
 
@@ -44,26 +54,24 @@ public sealed partial class TraceTimeline
 
             for (var depth = 0; depth < rows.Length; depth++)
             {
-                rows[depth] = TraceTimelineRow.Read(reader);
+                rows[depth] = TraceTimelineRow.Read(reader, scale);
             }
 
             threads[index] = new TraceTimelineThread(threadId, rows, calls);
         }
 
-        return new TraceTimeline(threads, parents, nodes, stepsPerSequence, bounds);
+        return new TraceTimeline(threads, parents, nodes, scale, start, end);
     }
 
     internal void Write(BinaryWriter writer, Func<CallStackNode, int> idOf)
     {
-        writer.Write(StepsPerSequence);
+        writer.Write(-FormatVersion);
 
-        writer.Write(PositionStart);
+        writer.Write(Scale.StepsPerSequence);
 
-        writer.Write(PositionEnd);
+        TracePointExport.Write(writer, Start);
 
-        writer.Write(InstructionStart);
-
-        writer.Write(InstructionEnd);
+        TracePointExport.Write(writer, End);
 
         ExportBinary.WriteArray(writer, Parents);
 

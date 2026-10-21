@@ -14,6 +14,7 @@ using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.Query.Plans.Model;
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRows;
+using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -76,15 +77,15 @@ public class TraceEvaluationsTests
     [Fact]
     public void An_Evaluation_Spans_Its_Call_And_Keeps_Its_Result()
     {
-        var evaluation = Build().All.Single(e => e.Position.Start == 20);
+        var evaluation = Build().All.Single(e => e.Span.From.Position == At(20));
 
-        Assert.Equal((TraceEvaluationResult.False, 22d), ((TraceEvaluationResult)evaluation.Value, evaluation.Position.End));
+        Assert.Equal((TraceEvaluationResult.False, At(22)), ((TraceEvaluationResult)evaluation.Value, evaluation.Span.To.Position));
     }
 
     [Fact]
     public void An_Evaluation_Belongs_To_The_Innermost_Operator_Call_Around_It()
     {
-        Assert.Equal([Scan, Scan, Filter], Build().All.OrderBy(e => e.Position.Start).Select(e => e.Operator));
+        Assert.Equal([Scan, Scan, Filter], Build().All.OrderBy(e => e.Span.From.Position).Select(e => e.Operator));
     }
 
     [Fact]
@@ -212,8 +213,8 @@ public class TraceEvaluationsTests
 
         TraceOperatorLifetime[] lifetimes =
         [
-            new(Thread, Filter, 0, [Whole()], [Whole()], MemoryInUseCurve.Empty),
-            new(Thread, Scan, 1, [Whole()], [Whole()], MemoryInUseCurve.Empty)
+            new(Thread, Filter, 0, [Whole()], MemoryInUseCurve.Empty, timeline.Scale),
+            new(Thread, Scan, 1, [Whole()], MemoryInUseCurve.Empty, timeline.Scale)
         ];
 
         return (timeline, calls, new TraceOperatorLifetimes(lifetimes));
@@ -236,7 +237,7 @@ public class TraceEvaluationsTests
         }
     };
 
-    private static TraceSpan Whole() => new(0, 1000, 0, 0, TraceSpanFlags.None);
+    private static TraceSpan Whole() => new(new TracePoint(At(0), 0), new TracePoint(At(1000), 1000), 0, 0, TraceSpanFlags.None);
 
     private static CallSpan Span(int node, ulong start, ulong end, uint call = 0)
         => new(start, 0, end, 0, start, end, node, Thread, call, 1);

@@ -262,9 +262,7 @@ public sealed partial class TraceTimelineControl
 
             return index =>
             {
-                var positions = row.Span(TraceTimelineAxis.Position, index);
-
-                return Memory.AllocatedDuring(thread.ThreadId, positions.Start, positions.End).Count > 0;
+                return Memory.AllocatedDuring(thread.ThreadId, row.GetFrom(index).Position, row.GetTo(index).Position).Count > 0;
             };
         }
 
@@ -277,23 +275,19 @@ public sealed partial class TraceTimelineControl
 
         var top = visible.Top;
 
-        var starts = row.Starts(_axis);
-
-        var ends = row.Ends(_axis);
-
         var runStart = -1f;
 
         var runEnd = -1f;
 
         var runColour = SKColors.Transparent;
 
-        var index = row.FirstEndingAfter(_axis, _viewStart, 0);
+        var index = row.GetFirstEndingAfter(_axis, _viewStart, 0);
 
-        while (index < row.Count && starts[index] <= _viewEnd)
+        while (index < row.Count && row.GetStart(_axis, index) <= _viewEnd)
         {
-            var left = (float)((starts[index] - _viewStart) * scale);
+            var left = (float)((row.GetStart(_axis, index) - _viewStart) * scale);
 
-            var right = (float)((ends[index] - _viewStart) * scale);
+            var right = (float)((row.GetEnd(_axis, index) - _viewStart) * scale);
 
             if (right - left >= NarrowSpan)
             {
@@ -327,7 +321,7 @@ public sealed partial class TraceTimelineControl
 
             runEnd = boundary;
 
-            index = row.FirstEndingAfter(_axis, _viewStart + boundary / scale, index + 1);
+            index = row.GetFirstEndingAfter(_axis, _viewStart + boundary / scale, index + 1);
         }
 
         DrawRun(canvas, runStart, runEnd, runColour, top);
@@ -513,9 +507,9 @@ public sealed partial class TraceTimelineControl
 
         var scale = PixelsPerUnit(width);
 
-        var left = (float)((row.Starts(_axis)[hit.Index] - _viewStart) * scale);
+        var left = (float)((row.GetStart(_axis, hit.Index) - _viewStart) * scale);
 
-        var right = (float)((row.Ends(_axis)[hit.Index] - _viewStart) * scale);
+        var right = (float)((row.GetEnd(_axis, hit.Index) - _viewStart) * scale);
 
         var top = ContentTop + _laneTops[hit.Lane] - (float)_scrollY + LaneHeaderHeight + hit.Depth * _rowHeight;
 

@@ -6,7 +6,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline;
-using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 
@@ -152,7 +151,7 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
         {
             if (timeline.FindCall(node, call) is { } location)
             {
-                return timeline.StackAt(TraceTimelineAxis.Position, location.StartOf(TraceTimelineAxis.Position));
+                return timeline.GetStack(location.From.Position);
             }
         }
 
@@ -264,17 +263,17 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
     {
         var timeline = Query.TraceTimeline;
 
-        var origin = (ulong)Math.Floor(timeline?.StartOf(TraceTimelineAxis.Position) ?? 0);
+        var origin = timeline?.Start.Position.Sequence ?? 0;
 
         var threads = new List<PlayheadThreadRow>();
 
         foreach (var stack in stacks)
         {
-            var found = new List<(TraceStackCall Call, CallStackNode Node)>();
+            var found = new List<(TraceSpan Call, CallStackNode Node)>();
 
             foreach (var call in stack.Calls)
             {
-                if (timeline?.NodeOf(call.Span.Node) is { } node)
+                if (timeline?.NodeOf(call.Node) is { } node)
                 {
                     found.Add((call, node));
                 }
@@ -296,9 +295,9 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
         return threads;
     }
 
-    private async Task<PlayheadCallRow> BuildRowAsync(CallStackNode node, TraceStackCall call, uint thread, bool isCurrent, ulong origin)
+    private async Task<PlayheadCallRow> BuildRowAsync(CallStackNode node, TraceSpan call, uint thread, bool isCurrent, ulong origin)
     {
-        var index = call.Span.Call;
+        var index = call.Call;
 
         var lookup = index >= 0 ? Query.Arguments.Lookup : null;
 

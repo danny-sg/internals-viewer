@@ -2,11 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
-using InternalsViewer.Query.Helpers;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.CallStack;
 using InternalsViewer.UI.App.ViewModels.Query.CallStack;
@@ -434,7 +434,9 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     private double FullEnd => Math.Max(_fitEnd, FullStart + MinimumRange);
 
-    private double MinimumRange => MinimumRangeSteps * (_timeline?.StepOf(_axis) ?? 1);
+    private double MinimumRange => MinimumRangeSteps * TraceScale.GetStep(_axis);
+
+    private TraceScale TraceScale => _timeline?.Scale ?? TraceScale.Default;
 
     private double ViewportHeight => Math.Max(0, _overlay.ActualHeight - ContentTop - BandHeight);
 
@@ -462,6 +464,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         SetView(start - margin, end + margin);
     }
 
+    public void ZoomTo(TraceSpan span) => ZoomTo(TraceScale.GetValue(span.From, _axis), TraceScale.GetValue(span.To, _axis));
+
     public void ScopeTo(CallStackNode node) => SetRoot(node);
 
     public IReadOnlyList<TraceThreadStack> GetCallStack()
@@ -475,15 +479,11 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
         var thread = timeline.Threads[path[0].Lane];
 
-        var calls = new List<TraceStackCall>(path.Count);
+        var calls = new List<TraceSpan>(path.Count);
 
         foreach (var hit in path)
         {
-            var row = thread.Rows[hit.Depth];
-
-            var instructions = row.Span(TraceTimelineAxis.Instructions, hit.Index);
-
-            calls.Add(new TraceStackCall(row.Span(_axis, hit.Index), instructions.End - instructions.Start));
+            calls.Add(thread.Rows[hit.Depth].GetSpan(hit.Index));
         }
 
         return [new TraceThreadStack(thread.ThreadId, calls)];
@@ -580,7 +580,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         _parsedColours.Clear();
     }
 
-    private double OriginOf(TraceTimelineAxis axis) => _timeline?.StartOf(axis) ?? 0;
+    private double OriginOf(TraceTimelineAxis axis) => _timeline?.GetStart(axis) ?? 0;
 
     private void StepTo(bool forward, bool[]? matches, bool allRows)
     {
@@ -624,7 +624,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         {
             foreach (var lifetime in row.Lifetimes)
             {
-                var values = marks.GetMarks(row.Operator, lifetime.Thread, _axis, RowReturnType.Returned);
+                var values = marks.GetMarks(row.Operator, lifetime.Thread, RowReturnType.Returned);
 
                 next = forward ? FindMarkAfter(values, from, next) : FindMarkBefore(values, from, next);
             }
@@ -636,44 +636,46 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         }
     }
 
-    private static double? FindMarkAfter(ReadOnlySpan<double> values, double from, double? best)
+    private double? FindMarkAfter(ReadOnlySpan<TracePoint> marks, double from, double? best)
     {
-        var index = SortedSearch.FirstAfter(values, from);
+        var index = TraceScale.GetFirstAfter(marks, _axis, from);
 
-        if (index >= values.Length)
+        if (index >= marks.Length)
         {
             return best;
         }
 
-        return best is { } limit && values[index] >= limit ? best : values[index];
+        var value = TraceScale.GetValue(marks[index], _axis);
+
+        return best is { } limit && value >= limit ? best : value;
     }
 
-    private static double? FindMarkBefore(ReadOnlySpan<double> values, double from, double? best)
+    private double? FindMarkBefore(ReadOnlySpan<TracePoint> marks, double from, double? best)
     {
-        var index = SortedSearch.FirstAtOrAfter(values, from) - 1;
+        var index = TraceScale.GetFirstAtOrAfter(marks, _axis, from) - 1;
 
         if (index < 0)
         {
             return best;
         }
 
-        return best is { } limit && values[index] <= limit ? best : values[index];
+        var value = TraceScale.GetValue(marks[index], _axis);
+
+        return best is { } limit && value <= limit ? best : value;
     }
 
     private double? FindStartAfter(TraceTimelineRow row, bool[]? matches, double from, double? best)
     {
-        var starts = row.Starts(_axis);
-
-        for (var index = row.FirstStartingAfter(_axis, from); index >= 0 && index < row.Count; index++)
+        for (var index = row.GetFirstStartingAfter(_axis, from); index >= 0 && index < row.Count; index++)
         {
-            if (best is { } limit && starts[index] >= limit)
+            if (best is { } limit && row.GetStart(_axis, index) >= limit)
             {
                 return null;
             }
 
             if (!Excludes(matches, row.NodeAt(index)))
             {
-                return starts[index];
+                return row.GetStart(_axis, index);
             }
         }
 
@@ -682,18 +684,16 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     private double? FindStartBefore(TraceTimelineRow row, bool[]? matches, double from, double? best)
     {
-        var starts = row.Starts(_axis);
-
-        for (var index = row.FirstStartingFrom(_axis, from, 0) - 1; index >= 0 && index < row.Count; index--)
+        for (var index = row.GetFirstStartingFrom(_axis, from, 0) - 1; index >= 0 && index < row.Count; index--)
         {
-            if (best is { } limit && starts[index] <= limit)
+            if (best is { } limit && row.GetStart(_axis, index) <= limit)
             {
                 return null;
             }
 
             if (!Excludes(matches, row.NodeAt(index)))
             {
-                return starts[index];
+                return row.GetStart(_axis, index);
             }
         }
 
@@ -750,16 +750,16 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
     {
         if (_rooted is { Threads.Count: > 0 } rooted)
         {
-            _fitStart = rooted.Threads.Min(t => t.StartOf(_axis));
+            _fitStart = rooted.Threads.Min(t => TraceScale.GetValue(t.Start, _axis));
 
-            _fitEnd = rooted.Threads.Max(t => t.EndOf(_axis));
+            _fitEnd = rooted.Threads.Max(t => TraceScale.GetValue(t.End, _axis));
 
             return;
         }
 
-        _fitStart = _timeline?.StartOf(_axis) ?? 0;
+        _fitStart = _timeline?.GetStart(_axis) ?? 0;
 
-        _fitEnd = _timeline?.EndOf(_axis) ?? 1;
+        _fitEnd = _timeline?.GetEnd(_axis) ?? 1;
     }
 
     private void SetView(double start, double end)
@@ -1003,7 +1003,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         _inUseCurves.Clear();
 
         _inUseMaximum = _visible is { } visible && Memory.HasAllocations
-            ? Memory.PeakInUseDuring(visible.StartOf(TraceTimelineAxis.Position), visible.EndOf(TraceTimelineAxis.Position))
+            ? Memory.PeakInUseDuring(visible.Start.Position, visible.End.Position)
             : 0;
 
         var selfAllocations = _visible?.GetSelfAllocations(Memory) ?? [];
@@ -1168,13 +1168,17 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
             _scrollY = top - ViewportHeight / 3;
         }
 
-        if (span.End - span.Start > _viewEnd - _viewStart)
+        var start = TraceScale.GetValue(span.From, _axis);
+
+        var end = TraceScale.GetValue(span.To, _axis);
+
+        if (end - start > _viewEnd - _viewStart)
         {
-            ZoomTo(span.Start, span.End);
+            ZoomTo(start, end);
         }
-        else if (span.End < _viewStart || span.Start > _viewEnd)
+        else if (end < _viewStart || start > _viewEnd)
         {
-            CentreViewOn((span.Start + span.End) / 2);
+            CentreViewOn((start + end) / 2);
         }
         else
         {

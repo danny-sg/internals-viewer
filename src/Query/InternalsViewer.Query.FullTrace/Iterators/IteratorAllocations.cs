@@ -2,7 +2,6 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Memory;
-using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Iterators;
@@ -36,16 +35,15 @@ internal sealed class IteratorAllocations
 
     private ulong MaximumBytes { get; }
 
-    public static IteratorAllocations Build(TraceTimeline timeline,
-                                            MemoryIndex memory,
+    public static IteratorAllocations Build(MemoryIndex memory,
                                             TraceCallStore calls,
                                             IReadOnlySet<ulong> iterators,
                                             IReadOnlyList<IteratorPlanNode> planNodes)
     {
         MemoryBlock[] blocks = [.. memory.Blocks.OrderBy(b => b.Pointer)];
 
-        var owners = EnclosingSweep.GetEnclosing(GetCalls(timeline, calls, iterators, GetBuilders(planNodes)),
-                                                 [.. blocks.Select(b => new SweepSpan<double>(b.Thread, b.Start, b.Start, 0))]);
+        var owners = EnclosingSweep.GetEnclosing(GetCalls(calls, iterators, GetBuilders(planNodes)),
+                                                 [.. blocks.Select(b => new SweepSpan<TracePosition>(b.Thread, b.Start, b.Start, 0))]);
 
         for (var index = 0; index < blocks.Length; index++)
         {
@@ -58,7 +56,7 @@ internal sealed class IteratorAllocations
         return new IteratorAllocations(blocks, owners, iterators);
     }
 
-    public ulong GetOwner(ulong address, double position)
+    public ulong GetOwner(ulong address, TracePosition position)
     {
         if (address == 0)
         {
@@ -100,12 +98,11 @@ internal sealed class IteratorAllocations
         return builders;
     }
 
-    private static List<SweepSpan<double>> GetCalls(TraceTimeline timeline,
-                                                    TraceCallStore calls,
-                                                    IReadOnlySet<ulong> iterators,
-                                                    Dictionary<ulong, ulong> builders)
+    private static List<SweepSpan<TracePosition>> GetCalls(TraceCallStore calls,
+                                                           IReadOnlySet<ulong> iterators,
+                                                           Dictionary<ulong, ulong> builders)
     {
-        var spans = new List<SweepSpan<double>>();
+        var spans = new List<SweepSpan<TracePosition>>();
 
         foreach (var (address, instance) in calls.FunctionKeys)
         {
@@ -125,7 +122,7 @@ internal sealed class IteratorAllocations
 
                 for (var index = 0; index < list.Count; index++)
                 {
-                    spans.Add(GetSpan(timeline, list, index, owner));
+                    spans.Add(GetSpan(list, index, owner));
                 }
             }
             else if (IsConstructor(calls.GetNode(list.GetNodeIndex(0))?.Frame))
@@ -134,7 +131,7 @@ internal sealed class IteratorAllocations
                 {
                     if (list[index].IntegerSlots is { Length: > InstanceSlot } slots && iterators.Contains(slots[InstanceSlot]))
                     {
-                        spans.Add(GetSpan(timeline, list, index, slots[InstanceSlot]));
+                        spans.Add(GetSpan(list, index, slots[InstanceSlot]));
                     }
                 }
             }
@@ -143,15 +140,8 @@ internal sealed class IteratorAllocations
         return spans;
     }
 
-    private static SweepSpan<double> GetSpan(TraceTimeline timeline, TraceCallList list, int index, ulong iterator)
-    {
-        var to = list.GetToPosition(index);
-
-        return new SweepSpan<double>(list.GetThread(index),
-                                     timeline.PositionOf(list.GetFromPosition(index)),
-                                     to.IsKnown ? timeline.PositionOf(to) : double.PositiveInfinity,
-                                     iterator);
-    }
+    private static SweepSpan<TracePosition> GetSpan(TraceCallList list, int index, ulong iterator)
+        => new(list.GetThread(index), list.GetFromPosition(index), list.GetToPosition(index), iterator);
 
     private static bool IsConstructor(CallstackFrame? frame)
         => frame?.Resolved is { ClassName: { } className } resolved

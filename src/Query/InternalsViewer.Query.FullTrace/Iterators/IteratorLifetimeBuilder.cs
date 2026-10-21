@@ -1,7 +1,6 @@
+using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Timeline;
-using InternalsViewer.Query.FullTrace.Timeline.Enums;
-using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Iterators;
@@ -58,7 +57,7 @@ internal static class IteratorLifetimeBuilder
 
             operatorCalls.Instances.Add(frame.Instance);
 
-            operatorCalls.Calls.Add(new InstanceCall(span.Span(TraceTimelineAxis.Position), span.Span(TraceTimelineAxis.Instructions)));
+            operatorCalls.Calls.Add(span.Span);
         }
 
         foreach (var thread in timeline.Threads)
@@ -68,9 +67,9 @@ internal static class IteratorLifetimeBuilder
                 continue;
             }
 
-            var merged = calls.Select(c => (Operator: c.Key, c.Value.Instances, Calls: Merged(c.Value.Calls))).ToList();
+            var merged = calls.Select(c => (Operator: c.Key, c.Value.Instances, Calls: GetOutermost(c.Value.Calls))).ToList();
 
-            var curves = memory.InUseOwnedBy(thread.ThreadId, [.. merged.Select(m => m.Calls.Positions)]);
+            var curves = memory.InUseOwnedBy(thread.ThreadId, [.. merged.Select(m => m.Calls)]);
 
             TracePoint[] threadTeardowns = [.. teardowns.Where(t => t.Thread == thread.ThreadId)
                                                         .Select(t => t.End)
@@ -78,33 +77,18 @@ internal static class IteratorLifetimeBuilder
 
             for (var index = 0; index < merged.Count; index++)
             {
-                var (owner, instances, (positions, instructions)) = merged[index];
+                var (owner, instances, spans) = merged[index];
 
                 var constructed = instances.Where(constructions.ContainsKey).Select(i => constructions[i]).OrderBy(c => c.Position).ToList();
 
-                var lastEnd = positions[^1].End;
+                var lastEnd = spans[^1].To;
 
-                var destroyed = threadTeardowns.Where(t => timeline.PositionOf(t.Position) >= lastEnd).ToList();
+                var destroyed = threadTeardowns.Where(t => t.Position >= lastEnd.Position).ToList();
 
-                lifetimes.Add(new TraceOperatorLifetime(thread.ThreadId,
-                                                        owner,
-                                                        positions[0].Node,
-                                                        positions,
-                                                        instructions,
-                                                        curves[index])
+                lifetimes.Add(new TraceOperatorLifetime(thread.ThreadId, owner, spans[0].Node, spans, curves[index], timeline.Scale)
                 {
-                    ConstructedPosition = constructed.Count > 0
-                        ? Math.Min(timeline.PositionOf(constructed[0].Position), positions[0].Start)
-                        : timeline.StartOf(TraceTimelineAxis.Position),
-                    ConstructedInstructions = constructed.Count > 0
-                        ? Math.Min(constructed[0].Instructions, instructions[0].Start)
-                        : timeline.StartOf(TraceTimelineAxis.Instructions),
-                    DestroyedPosition = destroyed.Count > 0
-                        ? timeline.PositionOf(destroyed[0].Position)
-                        : timeline.EndOf(TraceTimelineAxis.Position),
-                    DestroyedInstructions = destroyed.Count > 0
-                        ? Math.Max(destroyed[0].Instructions, instructions[^1].End)
-                        : timeline.EndOf(TraceTimelineAxis.Instructions)
+                    Constructed = constructed.Count > 0 ? GetEarliest(constructed[0], spans[0].From) : timeline.Start,
+                    Destroyed = destroyed.Count > 0 ? destroyed[0] : timeline.End
                 });
             }
         }
@@ -112,19 +96,14 @@ internal static class IteratorLifetimeBuilder
         return new TraceOperatorLifetimes(lifetimes);
     }
 
-    private static (TraceSpan[] Positions, TraceSpan[] Instructions) Merged(List<InstanceCall> calls)
-    {
-        var outermost = Outermost.Of(calls, c => c.Position.Start, c => c.Position.End);
+    private static TraceSpan[] GetOutermost(List<TraceSpan> calls) => [.. Outermost.Of(calls, c => c.From.Position, c => c.To.Position)];
 
-        return ([.. outermost.Select(c => c.Position)], [.. outermost.Select(c => c.Instructions)]);
-    }
-
-    private readonly record struct InstanceCall(TraceSpan Position, TraceSpan Instructions);
+    private static TracePoint GetEarliest(TracePoint left, TracePoint right) => left.Position <= right.Position ? left : right;
 
     private sealed class OperatorCalls
     {
         public HashSet<ulong> Instances { get; } = [];
 
-        public List<InstanceCall> Calls { get; } = [];
+        public List<TraceSpan> Calls { get; } = [];
     }
 }

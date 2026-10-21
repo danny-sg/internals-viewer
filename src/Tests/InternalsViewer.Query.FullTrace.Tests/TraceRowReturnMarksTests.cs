@@ -10,6 +10,7 @@ using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.Query.Plans.Model;
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRows;
+using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -122,11 +123,11 @@ public class TraceRowReturnMarksTests
     {
         var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)], [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)]);
 
-        var calls = marks.Ticks.GetTicks(Scan, Thread)!.All.OrderBy(t => t.Instructions.Start).ToList();
+        var calls = marks.Ticks.GetTicks(Scan, Thread)!.All.OrderBy(t => t.Span.From.Position).ToList();
 
         Assert.All(calls, t => Assert.Same(Join, t.Caller));
-        Assert.Equal([12d, 20d, 55d], calls.Select(t => t.Instructions.Start));
-        Assert.Equal([15d, 25d, 60d], calls.Select(t => t.Instructions.End));
+        Assert.Equal([12ul, 20ul, 55ul], calls.Select(t => t.Span.From.Instructions));
+        Assert.Equal([15ul, 25ul, 60ul], calls.Select(t => t.Span.To.Instructions));
         Assert.All(marks.Ticks.GetTicks(Join, Thread)!.All, t => Assert.Null(t.Caller));
     }
 
@@ -161,7 +162,7 @@ public class TraceRowReturnMarksTests
 
         var call = ticks.GetNearest(TraceTimelineAxis.Instructions, 22, 0);
 
-        Assert.Equal((1, 20d, 25d), (call?.Call, call?.Instructions.Start, call?.Instructions.End));
+        Assert.Equal((1, 20ul, 25ul), (call?.Call, call?.Span.From.Instructions, call?.Span.To.Instructions));
         Assert.Null(ticks.GetNearest(TraceTimelineAxis.Instructions, 17, 0));
     }
 
@@ -213,8 +214,8 @@ public class TraceRowReturnMarksTests
 
         TraceOperatorLifetime[] lifetimes =
         [
-            new(Thread, top ?? Join, 0, [Whole()], [Whole()], MemoryInUseCurve.Empty),
-            new(Thread, Scan, 1, [Whole()], [Whole()], MemoryInUseCurve.Empty)
+            new(Thread, top ?? Join, 0, [Whole()], MemoryInUseCurve.Empty, timeline.Scale),
+            new(Thread, Scan, 1, [Whole()], MemoryInUseCurve.Empty, timeline.Scale)
         ];
 
         return TraceRowReturnMarks.Build(timeline, calls, new TraceOperatorLifetimes(lifetimes));
@@ -237,7 +238,7 @@ public class TraceRowReturnMarksTests
         }
     };
 
-    private static TraceSpan Whole() => new(0, 1000, 0, 0, TraceSpanFlags.None);
+    private static TraceSpan Whole() => new(new TracePoint(At(0), 0), new TracePoint(At(1000), 1000), 0, 0, TraceSpanFlags.None);
 
     private static CallSpan Span(int node, ulong start, ulong end, uint call)
         => new(start, 0, end, 0, start, end, node, Thread, call, 1);

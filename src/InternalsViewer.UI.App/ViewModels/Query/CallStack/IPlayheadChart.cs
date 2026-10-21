@@ -1,10 +1,11 @@
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Timeline;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.CallStack;
 
 public interface IPlayheadChart
 {
-    void ZoomTo(double start, double end);
+    void ZoomTo(TraceSpan span);
 
     void ZoomToCall(CallStackNode node, int call);
 

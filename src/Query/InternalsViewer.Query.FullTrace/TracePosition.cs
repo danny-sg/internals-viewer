@@ -17,6 +17,8 @@ public readonly record struct TracePosition(ulong Sequence, ulong Steps) : IComp
 
     public bool IsKnown => Sequence != UnknownSequence;
 
+    public TracePosition Next => new(Sequence, Steps + 1);
+
     public static bool operator <(TracePosition left, TracePosition right) 
         => left.CompareTo(right) < 0;
 

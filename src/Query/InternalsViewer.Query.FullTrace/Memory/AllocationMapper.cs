@@ -1,7 +1,6 @@
 ﻿using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Timeline;
-using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.Memory;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
@@ -120,9 +119,9 @@ internal static class AllocationMapper
                 continue;
             }
 
-            var start = span.StartOf(TraceTimelineAxis.Position);
+            var start = span.From.Position;
 
-            var end = span.EndOf(TraceTimelineAxis.Position);
+            var end = span.To.Position;
 
             if (!threads.TryGetValue(span.Thread.ThreadId, out var thread))
             {
@@ -168,7 +167,7 @@ internal static class AllocationMapper
                     objectClerks.TryAdd(memoryObject, thread.Pages[page].Clerk);
                 }
 
-                if (FirstWithin(thread.ObjectStarts, Math.BitIncrement(start), end) is >= 0 and var nested
+                if (FirstWithin(thread.ObjectStarts, start.Next, end) is >= 0 and var nested
                     && thread.Objects[nested].Object != memoryObject)
                 {
                     objectParents.TryAdd(memoryObject, thread.Objects[nested].Object);
@@ -239,9 +238,9 @@ internal static class AllocationMapper
         return null;
     }
 
-    private static int FirstWithin(double[] starts, double start, double end)
+    private static int FirstWithin(TracePosition[] starts, TracePosition start, TracePosition end)
     {
-        var index = SortedSearch.FirstAtOrAfter(starts, start);
+        var index = SortedSearch.FirstAtOrAfter<TracePosition>(starts, start);
 
         return index < starts.Length && starts[index] < end ? index : -1;
     }
@@ -336,15 +335,15 @@ internal static class AllocationMapper
     {
         public uint ThreadId { get; } = threadId;
 
-        public List<(ulong Address, int Call, double Start, double End)> Calls { get; } = [];
+        public List<(ulong Address, int Call, TracePosition Start, TracePosition End)> Calls { get; } = [];
 
-        public List<(double Start, ulong Clerk)> Pages { get; } = [];
+        public List<(TracePosition Start, ulong Clerk)> Pages { get; } = [];
 
-        public List<(double Start, double End, ulong Object)> Objects { get; } = [];
+        public List<(TracePosition Start, TracePosition End, ulong Object)> Objects { get; } = [];
 
-        public double[] PageStarts { get; private set; } = [];
+        public TracePosition[] PageStarts { get; private set; } = [];
 
-        public double[] ObjectStarts { get; private set; } = [];
+        public TracePosition[] ObjectStarts { get; private set; } = [];
 
         public void Sort()
         {
