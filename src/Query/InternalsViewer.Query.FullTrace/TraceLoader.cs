@@ -10,6 +10,7 @@ using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
 using InternalsViewer.Query.FullTrace.Output;
@@ -29,6 +30,8 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
     private const string ReplayStep = "Replaying Threads";
 
+    private const string WatchStep = "Watching Memory";
+
     private const string CallTreeStep = "Building Call Tree";
 
     private const string OperatorsStep = "Matching Operators";
@@ -38,6 +41,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         new(OpeningStep, 25),
         new(SymbolsStep, 5),
         new(ReplayStep, 50),
+        new(WatchStep, 40),
         new(CallTreeStep, 15),
         new(OperatorsStep, 5)
     ];
@@ -80,7 +84,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
             return null;
         }
 
-        var (replay, functions) = replayed.Value;
+        var (replay, functions, allocations, writes) = replayed.Value;
 
         steps.Begin(CallTreeStep);
 
@@ -92,7 +96,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         steps.Begin(OperatorsStep);
 
-        var result = BuildResult(replay, functions, request, callStack, timeline);
+        var result = BuildResult(replay, functions, allocations, writes, request, callStack, timeline);
 
         steps.Complete();
 
@@ -110,12 +114,14 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         return result;
     }
 
-    private async Task<(ReplayResult Replay, ReplayFunctions Functions)?> ReplayAsync(TraceRequest request,
-                                                                                      IReadOnlyList<CustomHookDefinition> customHooks,
-                                                                                      StepProgress steps,
-                                                                                      StepLoggerProgress messages,
-                                                                                      IProgress<ProgressDetail>? progress,
-                                                                                      CancellationToken cancellationToken)
+    private async Task<(ReplayResult Replay, ReplayFunctions Functions, MemoryHistoryAllocation[] Allocations, WatchResult Writes)?>
+        ReplayAsync(
+        TraceRequest request,
+        IReadOnlyList<CustomHookDefinition> customHooks,
+        StepProgress steps,
+        StepLoggerProgress messages,
+        IProgress<ProgressDetail>? progress,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -150,7 +156,25 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
             steps.Complete();
 
-            return (replay, functions);
+            steps.Begin(WatchStep);
+
+            var allocations = MemoryHistoryBuilder.GetAllocations(replay.CallStore, functions.MemoryFunctions);
+
+            var writes = allocations.Length == 0
+                ? WatchResult.Empty
+                : await session.WatchAsync(MemoryHistoryBuilder.GetRanges(allocations.Select(a => a.Block)),
+                                           allocations.Min(a => a.Block.Start),
+                                           steps,
+                                           cancellationToken);
+
+            Logger.LogInformation("{Writes} write(s) to {Allocations} allocation(s) watched in {Ranges} range(s)",
+                                  writes.Hits.Length,
+                                  allocations.Length,
+                                  writes.WatchedRanges);
+
+            steps.Complete();
+
+            return (replay, functions, allocations, writes);
         }
         catch (Exception exception) when (exception is InvalidOperationException or DllNotFoundException)
         {
@@ -218,6 +242,8 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
     private TraceResult BuildResult(ReplayResult replay,
                                     ReplayFunctions functions,
+                                    MemoryHistoryAllocation[] allocations,
+                                    WatchResult writes,
                                     TraceRequest request,
                                     CallStackTree callStack,
                                     TraceTimeline timeline)
@@ -256,6 +282,8 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         var outputStructures = ResolveOutputStructures(replay, memory, lifetimes);
 
+        builder.MemoryHistory = BuildMemoryHistory(replay, allocations, writes, lifetimes, timeline);
+
         Logger.LogInformation("{Matched} of {Operators} operator(s) matched to recorded iterators, {Allocations} allocation(s) of "
                               + "{Bytes}, {Lifetimes} operator lifetime(s) on {Threads} thread(s)",
                               matched,
@@ -271,6 +299,33 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         }
 
         return builder.Build(outputStructures);
+    }
+
+    private MemoryHistoryStore BuildMemoryHistory(ReplayResult replay,
+                                                  MemoryHistoryAllocation[] allocations,
+                                                  WatchResult writes,
+                                                  TraceOperatorLifetimes lifetimes,
+                                                  TraceTimeline timeline)
+    {
+        HashSet<ulong> iterators = [.. lifetimes.OperatorsByInstance.Keys, .. replay.PlanNodes.Select(p => p.Iterator)];
+
+        var owners = IteratorAllocations.GetOwners([.. allocations.Select(a => a.Block)], replay.CallStore, iterators, replay.PlanNodes);
+
+        var history = MemoryHistoryBuilder.Build(allocations,
+                                               owners,
+                                               MemoryHistoryBuilder.GetFirstPositions(replay.CallStore, iterators),
+                                               writes,
+                                               timeline);
+
+        Logger.LogInformation("{Writes} change(s) to {Blocks} of {Allocations} watched allocation(s), {Owned} owned by an iterator, "
+                              + "{BufferPool} from the buffer pool",
+                              history.WriteCount,
+                              history.Blocks.Count,
+                              allocations.Length,
+                              history.Blocks.Count(b => b.Iterator != 0),
+                              history.Blocks.Count(b => b.IsBufferPool));
+
+        return history;
     }
 
     private List<TraceOutputStructure> ResolveOutputStructures(ReplayResult replay, MemoryIndex memory, TraceOperatorLifetimes lifetimes)

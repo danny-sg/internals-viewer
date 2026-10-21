@@ -1,5 +1,6 @@
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using SkiaSharp;
 
@@ -56,6 +57,8 @@ public sealed partial class TraceTimelineControl : ITraceTimelineHost
     }
 
     void ITraceTimelineHost.OpenCallTree(CallStackNode node, int callIndex) => CallTreeOpenRequested?.Invoke(node, callIndex);
+
+    void ITraceTimelineHost.SelectMemoryWrite(int block, TracePosition? position) => MemoryWriteSelected?.Invoke(block, position);
 
     void ITraceTimelineHost.OnSelectedOperatorChanged(ExecutionOperatorEvent? selected)
     {

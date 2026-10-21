@@ -139,7 +139,9 @@ public sealed partial class HexViewControl
 
         foreach (var changeSpan in spans)
         {
-            var borderBrush = ReferenceEquals(changeSpan, SelectedChangeSpan) ? selectedBrush : defaultBrush;
+            var borderBrush = changeSpan.OutlineColour is { } outline
+                ? GetBrush(outline)
+                : ReferenceEquals(changeSpan, SelectedChangeSpan) ? selectedBrush : defaultBrush;
 
             var start = changeSpan.Offset;
             var end = changeSpan.Offset + changeSpan.Length - 1;
@@ -197,6 +199,11 @@ public sealed partial class HexViewControl
 
             void Add(Shape shape)
             {
+                if (changeSpan.IsDashed)
+                {
+                    shape.StrokeDashArray = [2, 2];
+                }
+
                 ToolTipService.SetToolTip(shape, changeSpan.Description);
 
                 HexOverlayCanvas.Children.Add(shape);

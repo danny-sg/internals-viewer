@@ -429,7 +429,7 @@ public class ArgumentRowBuilderTests
 
         var call = Call(0x1_0000, 0x2_0000) with { Locators = [new Locator(1, LocatorValueType.Bindings, 1, 1, "1,3,1,0,0,0")] };
 
-        Assert.Equal("F(this 0x10000, #1 I4 Value +0x0)", Text(ArgumentRowBuilder.GetSignature("F", layout, call)));
+        Assert.Equal("F(this 0x10000, 1: I4 Value +0x0)", Text(ArgumentRowBuilder.GetSignature("F", layout, call)));
     }
 
     [Fact]

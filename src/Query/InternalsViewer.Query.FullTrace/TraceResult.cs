@@ -5,6 +5,7 @@ using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
+using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -33,6 +34,8 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
     public ObjectPoolSnapshot ObjectPool { get; init; } = ObjectPoolSnapshot.Empty;
 
     public CustomHookStore CustomHooks { get; init; } = CustomHookStore.Empty;
+
+    public MemoryHistoryStore MemoryHistory { get; init; } = MemoryHistoryStore.Empty;
 
     internal IReadOnlyList<TraceOutputStructure> OutputStructures { get; init; } = [];
 

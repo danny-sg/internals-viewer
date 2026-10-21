@@ -46,6 +46,33 @@ public sealed partial class MemoryMap
         return entry.ToPosition.IsKnown && position > entry.ToPosition ? null : entry;
     }
 
+    public string? GetLabel(ulong address, TracePosition from, TracePosition to)
+    {
+        if (!Entries.TryGetValue(address, out var entries))
+        {
+            return null;
+        }
+
+        string? site = null;
+
+        foreach (var entry in entries)
+        {
+            if (entry.FromPosition < from || entry.FromPosition >= to)
+            {
+                continue;
+            }
+
+            if (entry.ClassName is { } className)
+            {
+                return className;
+            }
+
+            site ??= entry.Site;
+        }
+
+        return site;
+    }
+
     public (MemoryMapEntry Entry, ulong Offset)? GetContaining(ulong address, TracePosition position)
     {
         (MemoryMapEntry Entry, ulong Offset)? innermost = null;

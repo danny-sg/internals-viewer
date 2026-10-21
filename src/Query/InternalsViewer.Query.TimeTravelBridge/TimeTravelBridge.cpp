@@ -1216,6 +1216,163 @@ namespace
 
         return Success;
     }
+
+    constexpr size_t WatchChunkHits = 65536;
+    constexpr size_t WatchChunkBytes = 1 << 20;
+    constexpr uint64_t MaximumWatchBytes = 4096;
+    constexpr uint32_t MaximumMergedWatchBytes = 65536;
+
+    struct WatchSession
+    {
+        WatchHitCallback      OnHits = nullptr;
+        std::vector<WatchHit> Hits;
+        std::vector<uint8_t>  Data;
+
+        void Flush()
+        {
+            if (!Hits.empty())
+            {
+                OnHits(Hits.data(), static_cast<int32_t>(Hits.size()), Data.data(), static_cast<int32_t>(Data.size()));
+            }
+
+            Hits.clear();
+
+            Data.clear();
+        }
+    };
+
+    bool __fastcall OnWatchpoint(uintptr_t context, ICursorView::MemoryWatchpointResult const& result, IThreadView const* thread)
+    {
+        auto& session = *reinterpret_cast<WatchSession*>(context);
+
+        auto const address = static_cast<uint64_t>(result.Address);
+
+        auto const programCounter = static_cast<uint64_t>(thread->GetProgramCounter());
+
+        auto const threadId = static_cast<uint32_t>(thread->GetThreadInfo().Id);
+
+        auto const type = static_cast<uint32_t>(result.AccessType);
+
+        auto const size = static_cast<size_t>(std::min(result.Size, MaximumWatchBytes));
+
+        auto const offset = session.Data.size();
+
+        session.Data.resize(offset + size);
+
+        auto const read = ReadMemory(*thread, address, session.Data.data() + offset, size);
+
+        session.Data.resize(offset + read);
+
+        if (!session.Hits.empty())
+        {
+            auto& last = session.Hits.back();
+
+            if (last.Thread == threadId
+                && last.ProgramCounter == programCounter
+                && last.Type == type
+                && last.Address + last.Size == address
+                && last.Offset + last.Size == offset
+                && last.Size + read <= MaximumMergedWatchBytes)
+            {
+                last.Size += static_cast<uint32_t>(read);
+
+                return false;
+            }
+        }
+
+        auto const& position = thread->GetPosition();
+
+        session.Hits.push_back(WatchHit{ static_cast<uint64_t>(position.Sequence),
+                                         static_cast<uint64_t>(position.Steps),
+                                         address,
+                                         programCounter,
+                                         threadId,
+                                         static_cast<uint32_t>(read),
+                                         static_cast<uint32_t>(offset),
+                                         type });
+
+        if (session.Hits.size() >= WatchChunkHits || session.Data.size() >= WatchChunkBytes)
+        {
+            session.Flush();
+        }
+
+        return false;
+    }
+
+    ReadResult ReplayWatch(IReplayEngine&    engine,
+                           WatchRange const* ranges,
+                           int32_t           rangeCount,
+                           DataAccessMask    access,
+                           Position const&   start,
+                           Position const&   end,
+                           WatchSession&     session,
+                           ProgressCallback  progress,
+                           volatile int32_t* cancel,
+                           int32_t&          watched)
+    {
+        std::unique_ptr<ICursor, Deleter<ICursor>> cursor{ engine.NewCursor() };
+
+        if (!cursor)
+        {
+            return CursorNotCreated;
+        }
+
+        ReplayState state{ cursor.get(), progress, cancel, {} };
+
+        state.Threads.push_back(ThreadProgress{ 0,
+                                                static_cast<uint64_t>(start.Sequence),
+                                                static_cast<uint64_t>(end.Sequence),
+                                                -1 });
+
+        for (int32_t index = 0; index < rangeCount; index++)
+        {
+            if (cursor->AddMemoryWatchpoint(MemoryWatchpointData{ static_cast<GuestAddress>(ranges[index].Address),
+                                                                  ranges[index].Size,
+                                                                  access }))
+            {
+                watched++;
+            }
+        }
+
+        cursor->SetEventMask(EventMask::MemoryWatchpoint);
+        cursor->SetExceptionMask(ExceptionMask::None);
+        cursor->SetMemoryWatchpointCallback(OnWatchpoint, reinterpret_cast<uintptr_t>(&session));
+        cursor->SetReplayProgressCallback(OnProgress, reinterpret_cast<uintptr_t>(&state));
+        cursor->SetReplayFlags(ReplayFlags::ReplaySegmentsSequentially | ReplayFlags::ReplayAllSegmentsWithoutFiltering);
+        cursor->SetPosition(start);
+
+        while (true)
+        {
+            auto const result = cursor->ReplayForward(end);
+
+            if (result.StopReason == EventType::Error)
+            {
+                return ReplayFailed;
+            }
+
+            if (result.StopReason == EventType::Interrupted)
+            {
+                return Cancelled;
+            }
+
+            if (result.StopReason == EventType::Position
+                || result.StopReason == EventType::StepCount
+                || result.StopReason == EventType::Process
+                || result.StepsExecuted == StepCount::Zero)
+            {
+                break;
+            }
+        }
+
+        session.Flush();
+
+        if (progress != nullptr && state.Threads[0].LastPercent != 100)
+        {
+            progress(0, 100);
+        }
+
+        return Success;
+    }
 }
 
 extern "C"
@@ -1400,6 +1557,49 @@ extern "C"
         *tree = result.release();
 
         return Success;
+    }
+
+    int32_t WatchMemory(void*             trace,
+                        const WatchRange* ranges,
+                        int32_t           rangeCount,
+                        uint32_t          accessMask,
+                        uint64_t          startSequence,
+                        uint64_t          endSequence,
+                        WatchHitCallback  onHits,
+                        ProgressCallback  progress,
+                        volatile int32_t* cancel,
+                        int32_t*          watched)
+    {
+        *watched = 0;
+
+        auto& engine = *static_cast<Trace*>(trace)->Engine;
+
+        auto const first = engine.GetFirstPosition();
+
+        auto const last = engine.GetLastPosition();
+
+        auto const start = startSequence == 0
+                           ? first
+                           : Position{ static_cast<SequenceId>(startSequence), StepCount::Zero };
+
+        auto const end = endSequence == 0 || endSequence >= static_cast<uint64_t>(last.Sequence)
+                         ? last
+                         : Position{ static_cast<SequenceId>(endSequence), StepCount::Zero };
+
+        WatchSession session;
+
+        session.OnHits = onHits;
+
+        return ReplayWatch(engine,
+                           ranges,
+                           rangeCount,
+                           static_cast<DataAccessMask>(accessMask),
+                           start,
+                           end,
+                           session,
+                           progress,
+                           cancel,
+                           *watched);
     }
 
     uint64_t ReadTraceMemory(const void* view, uint64_t address, void* destination, uint64_t size)

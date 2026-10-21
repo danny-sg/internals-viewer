@@ -186,7 +186,7 @@ public class TraceCallStoreTests
 
         var locator = TraceCallStore.Read(reader).GetCallList(0x1000, 0)![0].GetLocator(3);
 
-        Assert.Equal((LocatorValueType.Bindings, "#1 I4 Value +0x0"), (locator?.ValueType, locator?.ToString()));
+        Assert.Equal((LocatorValueType.Bindings, "1: I4 Value +0x0"), (locator?.ValueType, locator?.ToString()));
     }
 
     [Fact]

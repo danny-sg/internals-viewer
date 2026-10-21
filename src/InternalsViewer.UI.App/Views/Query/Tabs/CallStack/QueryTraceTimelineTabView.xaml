@@ -61,6 +61,7 @@
                                       HiddenTickTracks="{x:Bind Settings.TraceTimelineHiddenTickTrackSet, Mode=OneWay}"
                                       ColourProvider="{x:Bind ViewModel.EventColours, Mode=OneWay}"
                                       StatementName="{x:Bind ViewModel.StatementName, Mode=OneWay}"
+                                      MemoryBlocks="{x:Bind ViewModel.MemoryHistory.MemoryBlocks, Mode=OneWay}"
                                       HiddenCategories="{x:Bind Settings.CallTreeHiddenCategorySet, Mode=OneWay}"
                                       PrunedCategories="{x:Bind Settings.CallTreePrunedCategorySet, Mode=OneWay}"
                                       GrantedMemory="{x:Bind ViewModel.GrantedMemory, Mode=OneWay}"

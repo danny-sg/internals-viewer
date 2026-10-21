@@ -250,7 +250,7 @@ public class LocatorHookTests
 
         var locator = Replay(read, replay, [0, 2, Pointer, 0]).GetLocator(2);
 
-        Assert.Equal("#1 I4 Value +0x0 | #2 WSTR Value +0x8 Length +0x108 Status +0x110", locator?.ToString());
+        Assert.Equal("1: I4 Value +0x0 | 2: WSTR Value +0x8 Length +0x108 Status +0x110", locator?.ToString());
     }
 
     [Fact]
@@ -260,7 +260,7 @@ public class LocatorHookTests
 
         var read = new LocatorRead(Function, 2, false, LocatorValueType.Bindings, CountRegister: 1);
 
-        Assert.Equal("#1 I4 Value +0x0 | 2 More", Replay(read, replay, [0, 3, Pointer, 0]).GetLocator(2)?.ToString());
+        Assert.Equal("1: I4 Value +0x0 | 2 More", Replay(read, replay, [0, 3, Pointer, 0]).GetLocator(2)?.ToString());
     }
 
     [Fact]
@@ -271,7 +271,7 @@ public class LocatorHookTests
 
         var locator = Replay(new LocatorRead(Function, 1, false, LocatorValueType.Bindings), replay).GetLocator(1);
 
-        Assert.Equal("#1 I4 Value +0x0", locator?.ToString());
+        Assert.Equal("1: I4 Value +0x0", locator?.ToString());
     }
 
     private static byte[] Binding(ulong ordinal, ushort type, uint parts, ulong value, ulong length = 0, ulong status = 0)

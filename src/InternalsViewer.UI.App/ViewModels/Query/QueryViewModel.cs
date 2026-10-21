@@ -45,6 +45,7 @@ using InternalsViewer.UI.App.ViewModels.Allocation;
 using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.ViewModels.Query.CallStack;
 using InternalsViewer.UI.App.ViewModels.Query.CustomHooks;
+using InternalsViewer.UI.App.ViewModels.Query.MemoryHistory;
 using InternalsViewer.UI.App.ViewModels.Query.Simulation;
 using InternalsViewer.UI.App.ViewModels.Columnstore;
 using InternalsViewer.UI.App.Controls.Timeline.Definition;
@@ -363,6 +364,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         CustomHooks = new CustomHooksViewModel(settingsViewModel, OpenCallTree);
 
+        MemoryHistory = new MemoryHistoryViewModel(OpenCallTree);
+
         TickTrackStore = tickTrackStore;
 
         OperatorTracks = new OperatorTracksViewModel(tickTrackStore, GetTickCount, message => AddMessage(message));
@@ -464,6 +467,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public ArgumentsViewModel Arguments { get; }
 
     public CustomHooksViewModel CustomHooks { get; }
+
+    public MemoryHistoryViewModel MemoryHistory { get; }
 
     public CallTreeTabViewModel CallTreeTab => CreatedCallTreeTab ??= new CallTreeTabViewModel(this, _settingsViewModel, Logger);
 
@@ -639,6 +644,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             field = value;
 
             CustomHooks.SetTrace(value);
+
+            MemoryHistory.SetTrace(value, Events);
         }
     }
 
@@ -834,6 +841,18 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     [RelayCommand]
     private void ShowCustomHooks() => Layout.ShowCustomHooks();
+
+    [RelayCommand]
+    private void ShowMemoryHistory() => Layout.ShowMemoryHistory();
+
+    public void ShowMemoryWrite(int block, TracePosition? position)
+    {
+        MemoryHistory.Select(block, position);
+
+        Layout.ShowMemoryHistory();
+    }
+
+    partial void OnTraceTimelineChanged(TraceTimeline? value) => MemoryHistory.SetWindow(value);
 
     partial void OnSelectedEventChanged(EngineEvent? value) => SelectedEventProperties = value?.GetProperties() ?? [];
 

@@ -31,6 +31,22 @@ public sealed partial class TraceTimelineControl
 
     private const float MinimumLanesHeight = 60f;
 
+    private const float MemoryShare = 0.25f;
+
+    private const float MinimumMemoryHeight = 24f;
+
+    public static readonly DependencyProperty MemoryBlocksProperty =
+        DependencyProperty.Register(nameof(MemoryBlocks),
+                                    typeof(IReadOnlyList<TraceMemoryBlock>),
+                                    typeof(TraceTimelineControl),
+                                    new PropertyMetadata(null, OnMemoryBlocksChanged));
+
+    public IReadOnlyList<TraceMemoryBlock>? MemoryBlocks
+    {
+        get => (IReadOnlyList<TraceMemoryBlock>?)GetValue(MemoryBlocksProperty);
+        set => SetValue(MemoryBlocksProperty, value);
+    }
+
     public static readonly DependencyProperty ShowOperatorsProperty =
         DependencyProperty.Register(nameof(ShowOperators),
                                     typeof(bool),
@@ -125,6 +141,14 @@ public sealed partial class TraceTimelineControl
 
     private float _resizeStartHeight;
 
+    private float? _memoryHeight;
+
+    private bool _isResizingMemory;
+
+    private double _memoryResizePressY;
+
+    private float _memoryResizeStartHeight;
+
     public event Action<PlanNodeIdentifier>? PlanNodeSelected;
 
     public event Action<PlanNodeIdentifier?>? ExecutionPlanRequested;
@@ -135,17 +159,42 @@ public sealed partial class TraceTimelineControl
 
     public event Action? TickTracksClearRequested;
 
+    public event Action<int, TracePosition?>? MemoryWriteSelected;
+
     private bool ShowsOperators => ShowOperators && _operators.HasRows;
 
     private float OperatorsTop => RulerTop + RulerHeight + PlayheadStripHeight;
 
     private bool ShowsFlameChart => ShowFlameChart || !ShowsOperators;
 
-    private bool ShowsSplitter => ShowsOperators && ShowsFlameChart;
+    private bool ShowsSplitter => ShowsOperators && (ShowsFlameChart || ShowsMemory);
 
-    private float PanesArea => OperatorsHeight + (ShowsSplitter ? SplitterHeight : 0);
+    private bool ShowsMemory => _memory.HasBlocks;
 
-    private float ChartHeight => (float)_overlay.ActualHeight - OperatorsTop - BandHeight - SplitterHeight;
+    private float PanesArea => OperatorsHeight + (ShowsSplitter ? SplitterHeight : 0) + MemoryArea;
+
+    private float ChartHeight => (float)_overlay.ActualHeight - OperatorsTop - BandHeight - SplitterHeight - MemoryArea;
+
+    private float MemoryTop => OperatorsTop + OperatorsHeight + (ShowsSplitter ? SplitterHeight : 0);
+
+    private float MemoryArea => ShowsMemory ? MemoryHeight + SplitterHeight : 0;
+
+    private float MemoryHeight
+    {
+        get
+        {
+            if (!ShowsMemory)
+            {
+                return 0;
+            }
+
+            var available = (float)_overlay.ActualHeight - OperatorsTop - BandHeight - SplitterHeight * 2;
+
+            var room = Math.Max(MinimumMemoryHeight, available - MinimumLanesHeight - (ShowsOperators ? MinimumOperatorsHeight : 0));
+
+            return Math.Clamp(_memoryHeight ?? available * MemoryShare, MinimumMemoryHeight, room);
+        }
+    }
 
     private float OperatorsRoom => Math.Max(MinimumOperatorsHeight, ChartHeight - MinimumLanesHeight);
 
@@ -160,7 +209,7 @@ public sealed partial class TraceTimelineControl
 
             if (!ShowsFlameChart)
             {
-                return ChartHeight + SplitterHeight;
+                return ChartHeight + (ShowsSplitter ? 0 : SplitterHeight);
             }
 
             var wanted = _operatorsHeight ?? ChartHeight * OperatorsShare;
@@ -180,6 +229,13 @@ public sealed partial class TraceTimelineControl
         {
             DrawSplitter(canvas, OperatorsTop + OperatorsHeight, width);
         }
+
+        if (ShowsMemory)
+        {
+            _memory.Draw(canvas, width, scale);
+
+            DrawSplitter(canvas, MemoryTop + MemoryHeight, width);
+        }
     }
 
     private void DrawPaneOverlays(SKCanvas canvas, int width)
@@ -189,6 +245,11 @@ public sealed partial class TraceTimelineControl
         if (ShowsOperators)
         {
             _operators.DrawOverlay(canvas, width, scale);
+        }
+
+        if (ShowsMemory)
+        {
+            _memory.DrawOverlay(canvas, width, scale);
         }
     }
 
@@ -315,6 +376,18 @@ public sealed partial class TraceTimelineControl
         return position.Y >= top - SplitterHitMargin && position.Y < top + SplitterHeight + SplitterHitMargin;
     }
 
+    private bool IsOnMemorySplitter(Point position)
+    {
+        if (!ShowsMemory)
+        {
+            return false;
+        }
+
+        var top = MemoryTop + MemoryHeight;
+
+        return position.Y >= top - SplitterHitMargin && position.Y < top + SplitterHeight + SplitterHitMargin;
+    }
+
     private MenuFlyout CreateOperatorsMenu(PlanNodeIdentifier? identifier)
     {
         var flyout = new MenuFlyout();
@@ -369,6 +442,31 @@ public sealed partial class TraceTimelineControl
         _operatorsHeight = Math.Clamp(_resizeStartHeight + (float)(position.Y - _resizePressY), MinimumOperatorsHeight, OperatorsRoom);
 
         Relayout();
+    }
+
+    private void BeginMemoryResize(Point position)
+    {
+        _isResizingMemory = true;
+
+        _memoryResizePressY = position.Y;
+
+        _memoryResizeStartHeight = MemoryHeight;
+    }
+
+    private void ResizeMemory(Point position)
+    {
+        _memoryHeight = Math.Max(MinimumMemoryHeight, _memoryResizeStartHeight + (float)(position.Y - _memoryResizePressY));
+
+        Relayout();
+    }
+
+    private static void OnMemoryBlocksChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (TraceTimelineControl)d;
+
+        control._memory.SetBlocks(e.NewValue as IReadOnlyList<TraceMemoryBlock>);
+
+        control.Relayout();
     }
 
     private static void OnPaneVisibilityChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

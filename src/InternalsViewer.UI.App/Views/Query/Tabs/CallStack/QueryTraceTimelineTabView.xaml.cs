@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.Dialogs;
@@ -68,6 +69,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         TraceTimeline.PlanNodeSelected += OnPlanNodeSelected;
 
         TraceTimeline.ExecutionPlanRequested += OnExecutionPlanRequested;
+
+        TraceTimeline.MemoryWriteSelected += OnMemoryWriteSelected;
 
         TraceTimeline.TickTrackVisibilityChanged += OnTickTrackVisibilityChanged;
 
@@ -155,6 +158,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         TraceTimeline.PlanNodeSelected -= OnPlanNodeSelected;
 
         TraceTimeline.ExecutionPlanRequested -= OnExecutionPlanRequested;
+
+        TraceTimeline.MemoryWriteSelected -= OnMemoryWriteSelected;
 
         TraceTimeline.TickTrackVisibilityChanged -= OnTickTrackVisibilityChanged;
 
@@ -413,6 +418,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
     }
 
     private void OnPlanNodeSelected(PlanNodeIdentifier identifier) => ViewModel?.SelectPlanNode(identifier);
+
+    private void OnMemoryWriteSelected(int block, TracePosition? position) => ViewModel?.ShowMemoryWrite(block, position);
 
     private void OnExecutionPlanRequested(PlanNodeIdentifier? identifier)
     {

@@ -1,5 +1,6 @@
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using SkiaSharp;
 
@@ -40,4 +41,6 @@ internal interface ITraceTimelineHost
     void OpenCallTree(CallStackNode node, int callIndex);
 
     void OnSelectedOperatorChanged(ExecutionOperatorEvent? selected);
+
+    void SelectMemoryWrite(int block, TracePosition? position);
 }

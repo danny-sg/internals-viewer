@@ -154,6 +154,8 @@
                                                 Command="{x:Bind ViewModel.ShowCustomHooksCommand}"/>
                                 <MenuFlyoutItem Text="Operator Tracks"
                                                 Command="{x:Bind ViewModel.ShowOperatorTracksCommand}"/>
+                                <MenuFlyoutItem Text="Memory History"
+                                                Command="{x:Bind ViewModel.ShowMemoryHistoryCommand}"/>
                             </MenuBarItem>
 
                         </MenuBar>

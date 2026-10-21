@@ -81,6 +81,26 @@ extern "C"
 
     typedef int32_t(__stdcall* StubCallback)(const void* view, uint64_t address, uint64_t* registers, uint64_t* target);
 
+    struct WatchRange
+    {
+        uint64_t Address;
+        uint64_t Size;
+    };
+
+    struct WatchHit
+    {
+        uint64_t Sequence;
+        uint64_t Steps;
+        uint64_t Address;
+        uint64_t ProgramCounter;
+        uint32_t Thread;
+        uint32_t Size;
+        uint32_t Offset;
+        uint32_t Type;
+    };
+
+    typedef void(__stdcall* WatchHitCallback)(const WatchHit* hits, int32_t count, const uint8_t* data, int32_t length);
+
     __declspec(dllexport) int32_t OpenTrace(const wchar_t* replayLibraryPath, const wchar_t* tracePath, void** trace);
 
     __declspec(dllexport) int32_t GetModuleCount(void* trace);
@@ -111,6 +131,17 @@ extern "C"
                                                void**                 tree);
 
     __declspec(dllexport) uint64_t ReadTraceMemory(const void* view, uint64_t address, void* destination, uint64_t size);
+
+    __declspec(dllexport) int32_t WatchMemory(void*             trace,
+                                              const WatchRange* ranges,
+                                              int32_t           rangeCount,
+                                              uint32_t          accessMask,
+                                              uint64_t          startSequence,
+                                              uint64_t          endSequence,
+                                              WatchHitCallback  onHits,
+                                              ProgressCallback  progress,
+                                              volatile int32_t* cancel,
+                                              int32_t*          watched);
 
     __declspec(dllexport) bool WatchFrame(void* session, uint32_t thread, uint64_t frame);
 

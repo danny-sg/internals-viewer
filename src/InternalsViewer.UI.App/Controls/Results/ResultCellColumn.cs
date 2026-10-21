@@ -21,6 +21,10 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 
     private const double BadgeFontSize = 9;
 
+    private const double SwatchSize = 20;
+
+    private const string SwatchText = "00";
+
     private static readonly Thickness CellPadding = new(8, 0, 4, 0);
 
     private static readonly Thickness ClassMargin = new(0, 0, 4, 0);
@@ -59,6 +63,7 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
         var block = new TextBlock { Padding = CellPadding, FontSize = fontSize };
 
         var text = value is PageAddress or RowIdentifier or ObjectValue or StringValue or CallValue or ActionLinks or BadgeText
+                            or ColouredText
             ? value.ToString()
             : ResultRowConverter.FormatValue(value);
 
@@ -147,6 +152,10 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 
             case BadgeText badgeText:
                 ApplyBadges(host, badgeText);
+                break;
+
+            case ColouredText colouredText:
+                ApplyColoured(host, colouredText);
                 break;
 
             default:
@@ -388,6 +397,46 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
                 Foreground = AppResources.Get<Brush>("TextFillColorTertiaryBrush")
             });
         }
+
+        host.Content = panel;
+    }
+
+    private static void ApplyColoured(ContentControl host, ColouredText value)
+    {
+        if (host.Content is StackPanel { Tag: ColouredText current } && current == value)
+        {
+            return;
+        }
+
+        var swatch = new Grid
+        {
+            Width = SwatchSize,
+            Height = SwatchSize,
+            Background = CreateBrush(value.Colour),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        swatch.Children.Add(new TextBlock
+        {
+            Text = SwatchText,
+            Style = AppResources.Get<Style>("HexTextBlockStyle"),
+            Foreground = BadgeForeground,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        });
+
+        var panel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = BadgeSpacing,
+            Padding = CellPadding,
+            VerticalAlignment = VerticalAlignment.Center,
+            Tag = value
+        };
+
+        panel.Children.Add(swatch);
+
+        panel.Children.Add(new TextBlock { Text = value.Text, VerticalAlignment = VerticalAlignment.Center });
 
         host.Content = panel;
     }

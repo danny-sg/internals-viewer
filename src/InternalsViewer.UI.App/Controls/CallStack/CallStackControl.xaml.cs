@@ -84,14 +84,13 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
 
     private string PositionText(PlayheadCallRow? row) => row is { FromPosition.IsKnown: true } ? row.FromPosition.ToString() : "None";
 
-    private string StartText(PlayheadCallRow? row) => row is null ? string.Empty : GetRulerText(row.FromPosition, row.OriginSequence);
+    private string StartText(PlayheadCallRow? row)
+        => row is null ? string.Empty : TracePositionText.GetRulerText(row.FromPosition, row.OriginSequence);
 
-    private string EndText(PlayheadCallRow? row) => row is null ? string.Empty : GetRulerText(row.ToPosition, row.OriginSequence);
+    private string EndText(PlayheadCallRow? row)
+        => row is null ? string.Empty : TracePositionText.GetRulerText(row.ToPosition, row.OriginSequence);
 
     private string InstructionsText(PlayheadCallRow? row) => row is null ? string.Empty : $"{row.Instructions}";
-
-    private static string GetRulerText(TracePosition position, ulong originSequence)
-        => position.IsKnown ? $"{(long)position.Sequence - (long)originSequence}:{position.Steps}" : "None";
 
     private Brush? CategoryBrush(PlayheadCallRow? row) => row is null ? null : HexColorToBrushConverter.ToBrush(row.Node.CategoryColour);
 

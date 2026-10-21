@@ -222,6 +222,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     private readonly TraceOperatorsPane _operators;
 
+    private readonly TraceMemoryPane _memory;
+
     private readonly SKPathBuilder _pathBuilder = new();
 
     private readonly SKPath _playheadTriangle = PlayheadTriangle();
@@ -287,6 +289,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
     public TraceTimelineControl()
     {
         _operators = new TraceOperatorsPane(this, () => (OperatorsTop, OperatorsHeight));
+
+        _memory = new TraceMemoryPane(this, () => (MemoryTop, MemoryHeight));
 
 
         Background = new SolidColorBrush(Colors.Transparent);
@@ -571,6 +575,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         _playheadTriangle.Dispose();
 
         _operators.Dispose();
+
+        _memory.Dispose();
 
         _timeline = null;
         _rooted = null;
@@ -994,6 +1000,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
         _operators.Rebuild(_visible, Lifetimes);
 
+        _memory.SetScale(_visible?.Scale ?? TraceScale.Default);
+
         FindSelectedRegions();
 
         UpdateFitRange();
@@ -1301,6 +1309,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         control._hoverBlock = null;
 
         control._operators.Hover = TraceOperatorsHover.None;
+
+        control._memory.Hover = null;
 
         control.Redraw();
     }

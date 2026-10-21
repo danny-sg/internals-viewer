@@ -41,6 +41,16 @@ internal sealed record MemoryFunction(ulong Address,
     private static readonly HashSet<string>.AlternateLookup<ReadOnlySpan<char>> MemoryObjectLookup =
         MemoryObjects.GetAlternateLookup<ReadOnlySpan<char>>();
 
+    private static readonly HashSet<string> AllocatorFunctions = new(StringComparer.Ordinal)
+    {
+        "OperatorNew",
+        "malloc",
+        "calloc",
+        "_aligned_malloc"
+    };
+
+    private static readonly string[] AllocatorClassPrefixes = ["CMemPartitioned<", "TVarPageMgr<"];
+
     public bool IsPage { get; init; }
 
     public bool CarriesClerk { get; init; }
@@ -63,6 +73,23 @@ internal sealed record MemoryFunction(ulong Address,
 
     public static bool IsMemoryObjectClass(string? className)
         => className is not null && (className == MemoryObjectFactory || IsMemoryObject(className));
+
+    public static bool IsAllocatorFrame(CallstackFrame? frame)
+    {
+        if (frame?.Resolved is not { } resolved)
+        {
+            return false;
+        }
+
+        if (resolved.ClassName is not { Length: > 0 } className)
+        {
+            return AllocatorFunctions.Contains(resolved.MethodName) || Classify(0, resolved.MethodName) is not null;
+        }
+
+        return IsMemoryObjectClass(className)
+               || AllocatorClassPrefixes.Any(p => className.StartsWith(p, StringComparison.Ordinal))
+               || Classify(0, $"{className}::{resolved.MethodName}") is not null;
+    }
 
     public bool IsCounted(TraceArgumentCall call) => FlagSlot < 0 || (call.Slot(FlagSlot) & FlagMask) != 0;
 

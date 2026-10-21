@@ -44,10 +44,18 @@ internal sealed class IteratorAllocations
     {
         MemoryBlock[] blocks = [.. memory.Blocks.OrderBy(b => b.Pointer)];
 
+        return new IteratorAllocations(blocks, GetOwners(blocks, calls, iterators, planNodes), iterators);
+    }
+
+    public static ulong[] GetOwners(IReadOnlyList<MemoryBlock> blocks,
+                                    TraceCallStore calls,
+                                    IReadOnlySet<ulong> iterators,
+                                    IReadOnlyList<IteratorPlanNode> planNodes)
+    {
         var owners = EnclosingSweep.GetEnclosing(GetCalls(calls, iterators, GetBuilders(planNodes)),
                                                  [.. blocks.Select(b => new SweepSpan<TracePosition>(b.Thread, b.Start, b.Start, 0))]);
 
-        for (var index = 0; index < blocks.Length; index++)
+        for (var index = 0; index < blocks.Count; index++)
         {
             if (iterators.Contains(blocks[index].Pointer))
             {
@@ -55,7 +63,7 @@ internal sealed class IteratorAllocations
             }
         }
 
-        return new IteratorAllocations(blocks, owners, iterators);
+        return owners;
     }
 
     public ulong GetOwner(ulong address, TracePosition position)

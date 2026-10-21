@@ -164,6 +164,9 @@ internal static class ReplayBridge
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     public delegate int StubCallback(IntPtr view, ulong address, IntPtr registers, IntPtr target);
 
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    public delegate void WatchHitCallback(IntPtr hits, int count, IntPtr data, int length);
+
     [DllImport(Library, CharSet = CharSet.Unicode)]
     public static extern int OpenTrace(string replayLibraryPath, string tracePath, out TraceHandle trace);
 
@@ -200,6 +203,18 @@ internal static class ReplayBridge
 
     [DllImport(Library)]
     public static extern unsafe ulong ReadTraceMemory(IntPtr view, ulong address, byte* destination, ulong size);
+
+    [DllImport(Library)]
+    public static extern int WatchMemory(TraceHandle trace,
+                                         WatchRange[] ranges,
+                                         int rangeCount,
+                                         uint accessMask,
+                                         ulong startSequence,
+                                         ulong endSequence,
+                                         WatchHitCallback onHits,
+                                         ProgressCallback? progress,
+                                         IntPtr cancel,
+                                         out int watched);
 
     [DllImport(Library)]
     [return: MarshalAs(UnmanagedType.U1)]

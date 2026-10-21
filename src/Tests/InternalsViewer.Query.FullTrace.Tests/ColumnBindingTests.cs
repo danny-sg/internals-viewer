@@ -18,6 +18,6 @@ public class ColumnBindingTests
     [Fact]
     public void Only_The_Bound_Parts_Show_Their_Offsets()
     {
-        Assert.Equal("#4 I8 Status +0x20", new ColumnBinding(4, 20, 0x4, 0x10, 0x18, 0x20).ToString());
+        Assert.Equal("4: I8 Status +0x20", new ColumnBinding(4, 20, 0x4, 0x10, 0x18, 0x20).ToString());
     }
 }

@@ -122,6 +122,27 @@ public sealed partial class TraceTimeline
         return null;
     }
 
+    public TraceSpan? GetInnermostCall(uint thread, TracePosition position)
+    {
+        foreach (var lane in Threads)
+        {
+            if (lane.ThreadId != thread)
+            {
+                continue;
+            }
+
+            for (var row = lane.Rows.Count - 1; row >= 0; row--)
+            {
+                if (lane.Rows[row].GetIndex(position) is >= 0 and var index)
+                {
+                    return lane.Rows[row].GetSpan(index);
+                }
+            }
+        }
+
+        return null;
+    }
+
     public IReadOnlyList<TraceThreadStack> GetStack(TracePosition position)
     {
         var stacks = new List<TraceThreadStack>();

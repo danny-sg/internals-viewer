@@ -29,8 +29,11 @@ public static class TraceReads
                                      f => GetReadType(f) is not null,
                                      (f, c) => GetReadType(f) is { } type && GetPage(c) is not null ? (byte)type : null);
 
+    internal static bool IsBufferPool(CallstackFrame? frame)
+        => frame is { Resolved.ClassName: BufferPool } && frame.Module.Equals(Module, StringComparison.OrdinalIgnoreCase);
+
     private static TraceReadType? GetReadType(CallstackFrame frame)
-        => frame is { Resolved: { ClassName: BufferPool } resolved } && frame.Module.Equals(Module, StringComparison.OrdinalIgnoreCase)
+        => IsBufferPool(frame) && frame.Resolved is { } resolved
             ? resolved.MethodName switch
             {
                 GetMethod => TraceReadType.Page,

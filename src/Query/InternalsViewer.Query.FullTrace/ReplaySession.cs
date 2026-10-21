@@ -46,6 +46,8 @@ internal sealed class ReplaySession : IDisposable
 {
     private const int NameLength = 1024;
 
+    private const uint WriteAccess = 2;
+
     private ReplaySession(TimeTravelTraceFile trace, TraceHandle handle)
     {
         TraceFile = trace;
@@ -81,6 +83,23 @@ internal sealed class ReplaySession : IDisposable
         try
         {
             return await Task.Run(() => Replay([.. threadIds], functions, customHooks, progress, cancellationToken), cancellationToken);
+        }
+        finally
+        {
+            Gate.Release();
+        }
+    }
+
+    public async Task<WatchResult> WatchAsync(IReadOnlyCollection<WatchRange> ranges,
+                                              TracePosition start,
+                                              IProgress<double>? progress,
+                                              CancellationToken cancellationToken)
+    {
+        await Gate.WaitAsync(cancellationToken);
+
+        try
+        {
+            return await Task.Run(() => Watch([.. ranges], start, progress, cancellationToken), cancellationToken);
         }
         finally
         {
@@ -240,6 +259,69 @@ internal sealed class ReplaySession : IDisposable
             {
                 ReplayBridge.CloseCallTree(tree);
             }
+        }
+        finally
+        {
+            registration.Dispose();
+
+            Marshal.FreeHGlobal(cancel);
+        }
+    }
+
+    private unsafe WatchResult Watch(WatchRange[] ranges,
+                                     TracePosition start,
+                                     IProgress<double>? progress,
+                                     CancellationToken cancellationToken)
+    {
+        var cancel = Marshal.AllocHGlobal(sizeof(int));
+
+        Marshal.WriteInt32(cancel, 0);
+
+        var registration = cancellationToken.Register(() => Marshal.WriteInt32(cancel, 1));
+
+        var hits = new List<WatchHit>();
+
+        var data = new List<byte>();
+
+        ReplayBridge.WatchHitCallback onHits = (pointer, count, bytes, length) =>
+        {
+            var offset = (uint)data.Count;
+
+            foreach (var hit in new ReadOnlySpan<WatchHit>((void*)pointer, count))
+            {
+                hits.Add(hit with { Offset = hit.Offset + offset });
+            }
+
+            data.AddRange(new ReadOnlySpan<byte>((void*)bytes, length));
+        };
+
+        ReplayBridge.ProgressCallback onProgress = (_, percent) => progress?.Report(percent);
+
+        try
+        {
+            var result = ReplayBridge.WatchMemory(Handle,
+                                                  ranges,
+                                                  ranges.Length,
+                                                  WriteAccess,
+                                                  start.Sequence,
+                                                  0,
+                                                  onHits,
+                                                  onProgress,
+                                                  cancel,
+                                                  out var watched);
+
+            GC.KeepAlive(onHits);
+
+            GC.KeepAlive(onProgress);
+
+            if (result != 0)
+            {
+                throw new InvalidOperationException(Describe(result, TraceFile));
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            return new WatchResult([.. hits], [.. data], watched);
         }
         finally
         {

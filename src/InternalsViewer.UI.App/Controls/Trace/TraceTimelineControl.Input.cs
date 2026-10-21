@@ -41,6 +41,8 @@ public sealed partial class TraceTimelineControl
 
     private bool _pressedOperators;
 
+    private bool _pressedMemory;
+
     private bool _isDragging;
 
     private bool _isPanning;
@@ -153,6 +155,15 @@ public sealed partial class TraceTimelineControl
             return;
         }
 
+        if (IsOnMemorySplitter(position))
+        {
+            BeginMemoryResize(position);
+
+            _overlay.CapturePointer(e.Pointer);
+
+            return;
+        }
+
         if (GetPaneResizeHandle(position) is { } handle)
         {
             _operators.BeginResize(handle, position.Y);
@@ -172,6 +183,13 @@ public sealed partial class TraceTimelineControl
         }
 
         var inOperators = _operators.Contains(position);
+
+        var inMemory = ShowsMemory && _memory.Contains(position);
+
+        if (inMemory && isDoubleClick)
+        {
+            return;
+        }
 
         if (inOperators && isDoubleClick)
         {
@@ -198,7 +216,7 @@ public sealed partial class TraceTimelineControl
             return;
         }
 
-        if (!inOperators && isDoubleClick)
+        if (!inOperators && !inMemory && isDoubleClick)
         {
             if (HitTest(position) is { } hit && SpanOf(hit) is { } span)
             {
@@ -215,6 +233,7 @@ public sealed partial class TraceTimelineControl
         _isPressed = true;
         _isSelecting = false;
         _pressedOperators = inOperators;
+        _pressedMemory = inMemory;
         _isShiftPressed = e.KeyModifiers.HasFlag(VirtualKeyModifiers.Shift);
         _pressPoint = position;
         _dragPoint = position;
@@ -246,6 +265,13 @@ public sealed partial class TraceTimelineControl
         if (_isResizingOperators)
         {
             ResizeOperators(position);
+
+            return;
+        }
+
+        if (_isResizingMemory)
+        {
+            ResizeMemory(position);
 
             return;
         }
@@ -306,11 +332,13 @@ public sealed partial class TraceTimelineControl
 
         var operatorsHover = found is null ? _operators.GetHover(position) : TraceOperatorsHover.None;
 
-        UpdateCursor(IsOnSplitter(position) || GetPaneResizeHandle(position) is not null
+        var memoryHover = found is null && ShowsMemory ? _memory.GetHit(position) : null;
+
+        UpdateCursor(IsOnSplitter(position) || IsOnMemorySplitter(position) || GetPaneResizeHandle(position) is not null
                          ? InputSystemCursorShape.SizeNorthSouth
                          : found is not null
                              ? InputSystemCursorShape.SizeAll
-                             : operatorsHover.Tick is not null
+                             : operatorsHover.Tick is not null || memoryHover is { Write: >= 0 }
                                  ? InputSystemCursorShape.Hand
                                  : InputSystemCursorShape.Arrow);
 
@@ -318,7 +346,8 @@ public sealed partial class TraceTimelineControl
 
         if (hit != _hover
             || !Nullable.Equals(found, _hoverBlock)
-            || operatorsHover != _operators.Hover)
+            || operatorsHover != _operators.Hover
+            || memoryHover != _memory.Hover)
         {
             _hover = hit;
 
@@ -326,10 +355,23 @@ public sealed partial class TraceTimelineControl
 
             _operators.Hover = operatorsHover;
 
+            _memory.Hover = memoryHover;
+
             _canvas.Invalidate();
         }
 
-        if (hit is { } hovered && operatorsHover.Tick?.Tick is null)
+        if (ShowsMemory && _memory.Contains(position))
+        {
+            if (_memory.GetToolTip(memoryHover, position) is { } memoryText)
+            {
+                OpenToolTip(memoryText, position);
+            }
+            else
+            {
+                HideToolTip();
+            }
+        }
+        else if (hit is { } hovered && operatorsHover.Tick?.Tick is null)
         {
             ShowToolTip(hovered, position);
         }
@@ -358,6 +400,10 @@ public sealed partial class TraceTimelineControl
 
             ZoomToSelection();
         }
+        else if (_isPressed && !_isDragging && _pressedMemory)
+        {
+            _memory.Click(position);
+        }
         else if (_isPressed && !_isDragging && _pressedOperators)
         {
             _operators.Click(position);
@@ -384,7 +430,7 @@ public sealed partial class TraceTimelineControl
 
     private void OnPointerExited(object sender, PointerRoutedEventArgs e)
     {
-        if (_isPressed || _isPanning || _isScrubbing || _isStretching || _isResizingOperators || _operators.IsResizing)
+        if (_isPressed || _isPanning || _isScrubbing || _isStretching || _isResizingOperators || _isResizingMemory || _operators.IsResizing)
         {
             return;
         }
@@ -393,13 +439,15 @@ public sealed partial class TraceTimelineControl
 
         UpdateCursor(InputSystemCursorShape.Arrow);
 
-        if (_hover is not null || _hoverBlock is not null || _operators.Hover != TraceOperatorsHover.None)
+        if (_hover is not null || _hoverBlock is not null || _operators.Hover != TraceOperatorsHover.None || _memory.Hover is not null)
         {
             _hover = null;
 
             _hoverBlock = null;
 
             _operators.Hover = TraceOperatorsHover.None;
+
+            _memory.Hover = null;
 
             _canvas.Invalidate();
         }
@@ -741,6 +789,8 @@ public sealed partial class TraceTimelineControl
         _isScrubbing = false;
         _isStretching = false;
         _isResizingOperators = false;
+        _isResizingMemory = false;
+        _pressedMemory = false;
 
         _operators.EndResize();
 
