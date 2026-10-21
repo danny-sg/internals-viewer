@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.FullTrace.Hooks;
+namespace InternalsViewer.Query.FullTrace;
 
 internal static class TraceAddress
 {

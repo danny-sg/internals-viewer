@@ -1,6 +1,6 @@
-using System.Runtime.InteropServices;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Calls;
+using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Helpers;
@@ -9,10 +9,6 @@ namespace InternalsViewer.Query.FullTrace.Iterators;
 
 internal sealed class IteratorAllocations
 {
-    private const string IteratorPrefix = "CQScan";
-
-    private const string BatchIteratorPrefix = "CBpQScan";
-
     private const int InstanceSlot = 0;
 
     private IteratorAllocations(MemoryBlock[] blocks, ulong[] owners, IReadOnlySet<ulong> iterators)
@@ -41,53 +37,21 @@ internal sealed class IteratorAllocations
     private ulong MaximumBytes { get; }
 
     public static IteratorAllocations Build(TraceTimeline timeline,
+                                            MemoryIndex memory,
                                             TraceCallStore calls,
                                             IReadOnlySet<ulong> iterators,
                                             IReadOnlyList<IteratorPlanNode> planNodes)
     {
-        MemoryBlock[] blocks = [.. timeline.Memory.Blocks.OrderBy(b => b.Pointer)];
+        MemoryBlock[] blocks = [.. memory.Blocks.OrderBy(b => b.Pointer)];
 
-        var owners = new ulong[blocks.Length];
-
-        var threads = GetCalls(timeline, calls, iterators, GetBuilders(planNodes));
+        var owners = EnclosingSweep.GetEnclosing(GetCalls(timeline, calls, iterators, GetBuilders(planNodes)),
+                                                 [.. blocks.Select(b => new SweepSpan<double>(b.Thread, b.Start, b.Start, 0))]);
 
         for (var index = 0; index < blocks.Length; index++)
         {
             if (iterators.Contains(blocks[index].Pointer))
             {
                 owners[index] = blocks[index].Pointer;
-
-                continue;
-            }
-
-            ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(threads, blocks[index].Thread, out _);
-
-            (list ??= []).Add(new SweepEntry(blocks[index].Start, blocks[index].Start, 0, index));
-        }
-
-        var open = new Stack<SweepEntry>();
-
-        foreach (var thread in threads.Values)
-        {
-            thread.Sort((left, right) => left.From != right.From ? left.From.CompareTo(right.From) : right.To.CompareTo(left.To));
-
-            open.Clear();
-
-            foreach (var entry in thread)
-            {
-                while (open.TryPeek(out var outer) && outer.To <= entry.From)
-                {
-                    open.Pop();
-                }
-
-                if (entry.Block >= 0)
-                {
-                    owners[entry.Block] = open.TryPeek(out var enclosing) ? enclosing.Iterator : 0;
-
-                    continue;
-                }
-
-                open.Push(entry);
             }
         }
 
@@ -136,12 +100,12 @@ internal sealed class IteratorAllocations
         return builders;
     }
 
-    private static Dictionary<uint, List<SweepEntry>> GetCalls(TraceTimeline timeline,
-                                                               TraceCallStore calls,
-                                                               IReadOnlySet<ulong> iterators,
-                                                               Dictionary<ulong, ulong> builders)
+    private static List<SweepSpan<double>> GetCalls(TraceTimeline timeline,
+                                                    TraceCallStore calls,
+                                                    IReadOnlySet<ulong> iterators,
+                                                    Dictionary<ulong, ulong> builders)
     {
-        var threads = new Dictionary<uint, List<SweepEntry>>();
+        var spans = new List<SweepSpan<double>>();
 
         foreach (var (address, instance) in calls.FunctionKeys)
         {
@@ -161,7 +125,7 @@ internal sealed class IteratorAllocations
 
                 for (var index = 0; index < list.Count; index++)
                 {
-                    Add(list.GetThread(index), Span(timeline, list, index, owner));
+                    spans.Add(GetSpan(timeline, list, index, owner));
                 }
             }
             else if (IsConstructor(calls.GetNode(list.GetNodeIndex(0))?.Frame))
@@ -170,36 +134,27 @@ internal sealed class IteratorAllocations
                 {
                     if (list[index].IntegerSlots is { Length: > InstanceSlot } slots && iterators.Contains(slots[InstanceSlot]))
                     {
-                        Add(list.GetThread(index), Span(timeline, list, index, slots[InstanceSlot]));
+                        spans.Add(GetSpan(timeline, list, index, slots[InstanceSlot]));
                     }
                 }
             }
         }
 
-        return threads;
-
-        void Add(uint thread, SweepEntry entry)
-        {
-            ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(threads, thread, out _);
-
-            (list ??= []).Add(entry);
-        }
+        return spans;
     }
 
-    private static SweepEntry Span(TraceTimeline timeline, TraceCallList list, int index, ulong iterator)
+    private static SweepSpan<double> GetSpan(TraceTimeline timeline, TraceCallList list, int index, ulong iterator)
     {
         var to = list.GetToPosition(index);
 
-        return new SweepEntry(timeline.PositionOf(list.GetFromPosition(index)),
-                              to.IsKnown ? timeline.PositionOf(to) : double.PositiveInfinity,
-                              iterator,
-                              -1);
+        return new SweepSpan<double>(list.GetThread(index),
+                                     timeline.PositionOf(list.GetFromPosition(index)),
+                                     to.IsKnown ? timeline.PositionOf(to) : double.PositiveInfinity,
+                                     iterator);
     }
 
     private static bool IsConstructor(CallstackFrame? frame)
         => frame?.Resolved is { ClassName: { } className } resolved
-           && (className.StartsWith(IteratorPrefix, StringComparison.Ordinal) || className.StartsWith(BatchIteratorPrefix, StringComparison.Ordinal))
+           && IteratorSymbols.IsIterator(className)
            && resolved.MethodName == className;
-
-    private readonly record struct SweepEntry(double From, double To, ulong Iterator, int Block);
 }

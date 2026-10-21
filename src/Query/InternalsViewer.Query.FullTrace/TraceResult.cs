@@ -6,7 +6,6 @@ using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Output;
-using InternalsViewer.Query.FullTrace.RowSources;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
@@ -23,6 +22,10 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
     internal IReadOnlyList<QueryTeardown> Teardowns { get; init; } = [];
 
     public HoBtAccessMap HoBtAccess { get; init; } = HoBtAccessMap.Empty;
+
+    public MemoryIndex Memory { get; init; } = MemoryIndex.Empty;
+
+    public TraceOperatorLifetimes Lifetimes { get; init; } = TraceOperatorLifetimes.Empty;
 
     public MemoryMap MemoryMap { get; init; } = MemoryMap.Empty;
 
@@ -42,7 +45,7 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
 
     public TraceTimeline QueryTimeline => CroppedTimeline ??= GetQueryTimeline();
 
-    public IReadOnlyList<TraceOutputRowSource> OutputSources => Sources ??= TraceOutputLineage.GetSources(Timeline, OutputStructures);
+    public IReadOnlyList<TraceOutputRowSource> OutputSources => Sources ??= TraceOutputLineage.GetSources(Lifetimes, OutputStructures);
 
     private IReadOnlyList<CallStackNode>? Roots { get; set; }
 

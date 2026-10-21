@@ -1,6 +1,5 @@
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Export;
-using InternalsViewer.Query.FullTrace.Memory;
 
 namespace InternalsViewer.Query.FullTrace.Timeline;
 
@@ -10,8 +9,7 @@ public sealed partial class TraceTimeline
                           int[] parents,
                           CallStackNode?[] nodes,
                           double stepsPerSequence,
-                          (double PositionStart, double PositionEnd, double InstructionStart, double InstructionEnd) bounds,
-                          MemoryIndex memory)
+                          (double PositionStart, double PositionEnd, double InstructionStart, double InstructionEnd) bounds)
     {
         Threads = threads;
         Parents = parents;
@@ -22,7 +20,6 @@ public sealed partial class TraceTimeline
         PositionEnd = bounds.PositionEnd;
         InstructionStart = bounds.InstructionStart;
         InstructionEnd = bounds.InstructionEnd;
-        Memory = memory;
     }
 
     internal static TraceTimeline Read(BinaryReader reader, IReadOnlyList<CallStackNode> nodesById)
@@ -53,9 +50,7 @@ public sealed partial class TraceTimeline
             threads[index] = new TraceTimelineThread(threadId, rows, calls);
         }
 
-        var memory = MemoryIndex.Read(reader);
-
-        return new TraceTimeline(threads, parents, nodes, stepsPerSequence, bounds, memory);
+        return new TraceTimeline(threads, parents, nodes, stepsPerSequence, bounds);
     }
 
     internal void Write(BinaryWriter writer, Func<CallStackNode, int> idOf)
@@ -89,7 +84,5 @@ public sealed partial class TraceTimeline
                 row.Write(writer);
             }
         }
-
-        Memory.Write(writer);
     }
 }

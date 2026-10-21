@@ -1,7 +1,6 @@
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Output;
-using InternalsViewer.Query.FullTrace.RowSources;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Plans.Model;
@@ -74,19 +73,12 @@ public class TraceOutputLineageTests
 
     [Fact]
     public void Output_Rows_Without_A_Structure_Have_No_Sources()
-        => Assert.Empty(TraceOutputLineage.GetSources(GetTimeline(Scan), []));
+        => Assert.Empty(TraceOutputLineage.GetSources(GetLifetimes(Scan), []));
 
     private static IReadOnlyList<TraceOutputRowSource> GetSources(TraceOutputStructure structure, ExecutionOperatorEvent? child = null)
-        => TraceOutputLineage.GetSources(GetTimeline(child ?? Scan), [structure]);
+        => TraceOutputLineage.GetSources(GetLifetimes(child ?? Scan), [structure]);
 
-    private static TraceTimeline GetTimeline(ExecutionOperatorEvent child)
-    {
-        var timeline = new TraceTimeline.Builder().Build([]);
-
-        timeline.SetLifetimes([Lifetime(Join, 0), Lifetime(child, 1)]);
-
-        return timeline;
-    }
+    private static TraceOperatorLifetimes GetLifetimes(ExecutionOperatorEvent child) => new([Lifetime(Join, 0), Lifetime(child, 1)]);
 
     private static TraceOperatorLifetime Lifetime(ExecutionOperatorEvent operatorEvent, int index)
         => new(Thread, operatorEvent, index, [Whole()], [Whole()], MemoryInUseCurve.Empty);

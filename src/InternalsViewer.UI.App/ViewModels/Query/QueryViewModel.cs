@@ -24,6 +24,7 @@ using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
@@ -270,6 +271,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     [ObservableProperty]
     private TraceTimeline? _fullTraceTimeline;
+
+    [ObservableProperty]
+    private MemoryIndex _traceMemory = MemoryIndex.Empty;
+
+    [ObservableProperty]
+    private TraceOperatorLifetimes _traceLifetimes = TraceOperatorLifetimes.Empty;
 
     [ObservableProperty]
     private TraceRowReturnMarks? _rowReturnMarks;
@@ -1057,6 +1064,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         TraceTimeline = null;
 
         FullTraceTimeline = null;
+
+        TraceMemory = MemoryIndex.Empty;
+
+        TraceLifetimes = TraceOperatorLifetimes.Empty;
 
         RowReturnMarks = null;
 
@@ -2247,22 +2258,26 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         FullTraceTimeline = result.Timeline;
 
+        TraceMemory = result.Memory;
+
+        TraceLifetimes = result.Lifetimes;
+
         RowReturnMarks = result.RowReturnMarks;
 
         CustomTickTracks.Clear();
 
         RefreshTickTracks();
 
-        StatementName = GetStatementOperator(result.Timeline)?.Name;
+        StatementName = GetStatementOperator(result.Lifetimes)?.Name;
 
         TraceTimeline = traceTimeline;
 
         ExecutionPlans = [.. ExecutionPlans];
     }
 
-    private ExecutionOperatorEvent? GetStatementOperator(TraceTimeline timeline)
+    private ExecutionOperatorEvent? GetStatementOperator(TraceOperatorLifetimes lifetimes)
     {
-        var planHandle = timeline.Lifetimes.Select(l => l.Operator.PlanNodeIdentifier?.PlanHandleId).FirstOrDefault(h => h is not null);
+        var planHandle = lifetimes.Select(l => l.Operator.PlanNodeIdentifier?.PlanHandleId).FirstOrDefault(h => h is not null);
 
         return Events.OfType<ExecutionOperatorEvent>()
                      .FirstOrDefault(o => o.NodeLevel == 0 && (planHandle is null || o.PlanNodeIdentifier?.PlanHandleId == planHandle));
@@ -2386,6 +2401,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         TraceTimeline = null;
 
         FullTraceTimeline = null;
+
+        TraceMemory = MemoryIndex.Empty;
+
+        TraceLifetimes = TraceOperatorLifetimes.Empty;
 
         RowReturnMarks = null;
 

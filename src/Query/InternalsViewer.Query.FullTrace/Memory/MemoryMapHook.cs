@@ -1,5 +1,4 @@
 using InternalsViewer.Query.FullTrace.Hooks;
-using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
 
@@ -7,8 +6,6 @@ namespace InternalsViewer.Query.FullTrace.Memory;
 
 internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions) : ITraceHook
 {
-    private const ulong SmallestAddress = 0x10000;
-
     private const int InstanceArgument = 0;
 
     public IEnumerable<TraceHookFunction> Functions
@@ -85,7 +82,7 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions) : 
 
     private void Record(MemoryMapOperation operation, ulong address, in TraceHookCall call, ITraceReplay replay)
     {
-        if (address < SmallestAddress)
+        if (address < TraceAddress.MinAddress)
         {
             return;
         }

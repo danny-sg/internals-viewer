@@ -37,7 +37,7 @@ public class AllocationMapperTests
 
         store.MapNodes([caller, allocator]);
 
-        var (allocations, bytes) = AllocationMapper.Map(store, [Function(Allocator)], null);
+        var (_, allocations, bytes) = AllocationMapper.Map(store, [Function(Allocator)], null);
 
         Assert.Equal((300ul, 2L), (bytes, allocations));
         Assert.Equal((300L, 2L), (allocator.AllocatedBytes, allocator.Allocations));
@@ -63,7 +63,7 @@ public class AllocationMapperTests
 
         store.MapNodes([caller, outer, inner]);
 
-        var (_, bytes) = AllocationMapper.Map(store, [Function(Allocator), Function(Inner)], null);
+        var (_, _, bytes) = AllocationMapper.Map(store, [Function(Allocator), Function(Inner)], null);
 
         Assert.Equal(64ul, bytes);
         Assert.Equal(64L, caller.AllocatedBytesIncludingChildren);
@@ -87,7 +87,7 @@ public class AllocationMapperTests
 
         store.MapNodes([caller, create, objectPages, workspacePages]);
 
-        var (_, bytes) = AllocationMapper.Map(store, [ClerkPages()], null);
+        var (_, _, bytes) = AllocationMapper.Map(store, [ClerkPages()], null);
 
         Assert.Equal(16384ul, bytes);
     }
@@ -120,13 +120,16 @@ public class AllocationMapperTests
 
         timeline.MapNodes([caller, allocator, pages]);
 
-        AllocationMapper.Map(store, [Function(Allocator), ClerkPages()], timeline, Snapshot(clerks: new() { [0xC1] = clerk }));
+        var (memory, _, _) = AllocationMapper.Map(store,
+                                                  [Function(Allocator), ClerkPages()],
+                                                  timeline,
+                                                  Snapshot(clerks: new() { [0xC1] = clerk }));
 
         var start = timeline.StartOf(TraceTimelineAxis.Position);
 
         var end = timeline.EndOf(TraceTimelineAxis.Position) + 1;
 
-        Assert.Equal((64ul, expected), (timeline.Memory.PeakInUseDuring(start, end), timeline.Memory.PeakWorkspaceDuring(start, end)));
+        Assert.Equal((64ul, expected), (memory.PeakInUseDuring(start, end), memory.PeakWorkspaceDuring(start, end)));
     }
 
     [Fact]
@@ -153,12 +156,12 @@ public class AllocationMapperTests
 
         timeline.MapNodes([caller, allocator]);
 
-        AllocationMapper.Map(store,
-                         [new(Allocator, AllocationOperation.Allocate, 1, -1, 1) { IsObjectCall = true }],
-                         timeline,
-                         Snapshot(objects: new() { [0xB0] = WorkspaceClerk }));
+        var (memory, _, _) = AllocationMapper.Map(store,
+                                                  [new(Allocator, AllocationOperation.Allocate, 1, -1, 1) { IsObjectCall = true }],
+                                                  timeline,
+                                                  Snapshot(objects: new() { [0xB0] = WorkspaceClerk }));
 
-        Assert.Equal(48ul, PeakWorkspace(timeline));
+        Assert.Equal(48ul, PeakWorkspace(timeline, memory));
     }
 
     [Fact]
@@ -194,14 +197,14 @@ public class AllocationMapperTests
 
         timeline.MapNodes([caller, allocator, child, parent]);
 
-        var (_, bytes) = AllocationMapper.Map(store,
-                                          [Function(Allocator),
-                                           new(Inner, AllocationOperation.Allocate, 1, -1, 1) { IsObjectCall = true },
-                                           new(Parent, AllocationOperation.Allocate, 1, -1, 1) { IsObjectCall = true }],
-                                          timeline,
-                                          Snapshot(objects: new() { [0xB0] = WorkspaceClerk }));
+        var (memory, _, bytes) = AllocationMapper.Map(store,
+                                                      [Function(Allocator),
+                                                       new(Inner, AllocationOperation.Allocate, 1, -1, 1) { IsObjectCall = true },
+                                                       new(Parent, AllocationOperation.Allocate, 1, -1, 1) { IsObjectCall = true }],
+                                                      timeline,
+                                                      Snapshot(objects: new() { [0xB0] = WorkspaceClerk }));
 
-        Assert.Equal((64ul, 64ul), (PeakWorkspace(timeline), bytes));
+        Assert.Equal((64ul, 64ul), (PeakWorkspace(timeline, memory), bytes));
     }
 
     [Fact]
@@ -221,9 +224,8 @@ public class AllocationMapperTests
     private static CallSpan Span(int node, ulong start, ulong end, uint call)
         => new(1, start, 1, end, start, end, node, 7, call, 1);
 
-    private static ulong PeakWorkspace(TraceTimeline timeline)
-        => timeline.Memory.PeakWorkspaceDuring(timeline.StartOf(TraceTimelineAxis.Position),
-                                               timeline.EndOf(TraceTimelineAxis.Position) + 1);
+    private static ulong PeakWorkspace(TraceTimeline timeline, MemoryIndex memory)
+        => memory.PeakWorkspaceDuring(timeline.StartOf(TraceTimelineAxis.Position), timeline.EndOf(TraceTimelineAxis.Position) + 1);
 
     private static CallstackFrame Resolved(ulong address,
                                            string module,

@@ -2,7 +2,6 @@ using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Hooks;
-using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
 using InternalsViewer.Query.Interfaces;
 
 namespace InternalsViewer.Query.FullTrace.Locators;

@@ -264,7 +264,7 @@ public sealed partial class TraceTimelineControl
             {
                 var positions = row.Span(TraceTimelineAxis.Position, index);
 
-                return timeline.Memory.AllocatedDuring(thread.ThreadId, positions.Start, positions.End).Count > 0;
+                return Memory.AllocatedDuring(thread.ThreadId, positions.Start, positions.End).Count > 0;
             };
         }
 

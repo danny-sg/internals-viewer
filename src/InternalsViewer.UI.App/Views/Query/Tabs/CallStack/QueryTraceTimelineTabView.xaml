@@ -54,6 +54,8 @@
                                       Background="{ThemeResource LayerFillColorDefaultBrush}"
                                       Timeline="{x:Bind ViewModel.TraceTimeline, Mode=OneWay}"
                                       FullTimeline="{x:Bind ViewModel.FullTraceTimeline, Mode=OneWay}"
+                                      Memory="{x:Bind ViewModel.TraceMemory, Mode=OneWay}"
+                                      Lifetimes="{x:Bind ViewModel.TraceLifetimes, Mode=OneWay}"
                                       RowReturnMarks="{x:Bind ViewModel.RowReturnMarks, Mode=OneWay}"
                                       TickTracks="{x:Bind ViewModel.TickTracks, Mode=OneWay}"
                                       HiddenTickTracks="{x:Bind Settings.TraceTimelineHiddenTickTrackSet, Mode=OneWay}"

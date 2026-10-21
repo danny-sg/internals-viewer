@@ -1008,7 +1008,7 @@ public sealed partial class TraceTimelineControl
             + $"to {Math.Floor(positions.End - OriginOf(TraceTimelineAxis.Position)):N0}"
         };
 
-        var (allocatedBytes, allocations) = timeline.Memory.AllocatedDuring(thread.ThreadId, positions.Start, positions.End);
+        var (allocatedBytes, allocations) = Memory.AllocatedDuring(thread.ThreadId, positions.Start, positions.End);
 
         if (allocations > 0)
         {
@@ -1016,14 +1016,14 @@ public sealed partial class TraceTimelineControl
                       + (allocations == 1 ? "Allocation" : "Allocations"));
         }
 
-        if (timeline.Memory.FreedDuring(thread.ThreadId, positions.Start, positions.End) is > 0 and var freed)
+        if (Memory.FreedDuring(thread.ThreadId, positions.Start, positions.End) is > 0 and var freed)
         {
             lines.Add($"Freed {SizeFormat.Format((long)freed)}");
         }
 
         if (allocations > 0)
         {
-            var retained = timeline.Memory.RetainedBy(thread.ThreadId, positions.Start, positions.End);
+            var retained = Memory.RetainedBy(thread.ThreadId, positions.Start, positions.End);
 
             lines.Add($"Retained At Return {SizeFormat.Format((long)retained)}");
         }

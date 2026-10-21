@@ -2,22 +2,22 @@ namespace InternalsViewer.Query.Helpers;
 
 public static class Outermost
 {
-    public static List<T> Of<T>(IEnumerable<T> items, Func<T, double> startOf, Func<T, double> endOf)
+    public static List<T> Of<T, TKey>(IEnumerable<T> items, Func<T, TKey> getStart, Func<T, TKey> getEnd) where TKey : IComparable<TKey>
     {
         var kept = new List<T>();
 
-        var end = double.MinValue;
+        var end = default(TKey)!;
 
-        foreach (var item in items.OrderBy(startOf))
+        foreach (var item in items.OrderBy(getStart))
         {
-            if (startOf(item) < end)
+            if (kept.Count > 0 && getStart(item).CompareTo(end) < 0)
             {
                 continue;
             }
 
             kept.Add(item);
 
-            end = endOf(item);
+            end = getEnd(item);
         }
 
         return kept;

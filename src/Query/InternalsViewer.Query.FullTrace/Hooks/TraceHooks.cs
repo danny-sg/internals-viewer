@@ -1,4 +1,3 @@
-using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Native.Enums;
@@ -87,10 +86,6 @@ internal sealed class TraceHooks
     {
         switch (type)
         {
-            case HookEventType.Call:
-                hook.OnCall(call, Replay);
-                break;
-
             case HookEventType.Entry:
                 hook.OnEntry(call, Replay);
                 break;
@@ -105,10 +100,6 @@ internal sealed class TraceHooks
 
             case HookEventType.FrameEnded:
                 hook.OnFrameEnded(call);
-                break;
-
-            case HookEventType.StackUnwound:
-                hook.OnStackUnwound(call);
                 break;
         }
     }

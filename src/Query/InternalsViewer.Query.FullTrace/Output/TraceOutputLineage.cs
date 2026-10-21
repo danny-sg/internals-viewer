@@ -1,14 +1,14 @@
 using InternalsViewer.Query.Events.Operators;
-using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Timeline;
 
-namespace InternalsViewer.Query.FullTrace.RowSources;
+namespace InternalsViewer.Query.FullTrace.Output;
 
 internal static class TraceOutputLineage
 {
-    public static IReadOnlyList<TraceOutputRowSource> GetSources(TraceTimeline timeline, IReadOnlyList<TraceOutputStructure> structures)
+    public static IReadOnlyList<TraceOutputRowSource> GetSources(TraceOperatorLifetimes lifetimes,
+                                                                 IReadOnlyList<TraceOutputStructure> structures)
     {
-        var owners = timeline.GetOperatorsByInstance();
+        var owners = lifetimes.OperatorsByInstance;
 
         var structure = structures.Where(s => s.Owners.Append(s.DirectSelectOwner).Any(owners.ContainsKey)).MaxBy(s => s.Owners.Count);
 

@@ -54,6 +54,30 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         set => SetValue(FullTimelineProperty, value);
     }
 
+    public static readonly DependencyProperty MemoryProperty =
+        DependencyProperty.Register(nameof(Memory),
+                                    typeof(MemoryIndex),
+                                    typeof(TraceTimelineControl),
+                                    new PropertyMetadata(null, OnMemoryChanged));
+
+    public MemoryIndex Memory
+    {
+        get => (MemoryIndex?)GetValue(MemoryProperty) ?? MemoryIndex.Empty;
+        set => SetValue(MemoryProperty, value);
+    }
+
+    public static readonly DependencyProperty LifetimesProperty =
+        DependencyProperty.Register(nameof(Lifetimes),
+                                    typeof(TraceOperatorLifetimes),
+                                    typeof(TraceTimelineControl),
+                                    new PropertyMetadata(null, OnLifetimesChanged));
+
+    public TraceOperatorLifetimes Lifetimes
+    {
+        get => (TraceOperatorLifetimes?)GetValue(LifetimesProperty) ?? TraceOperatorLifetimes.Empty;
+        set => SetValue(LifetimesProperty, value);
+    }
+
     public static readonly DependencyProperty AxisProperty =
         DependencyProperty.Register(nameof(Axis),
                                     typeof(TraceTimelineAxis),
@@ -420,7 +444,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     private bool ShowsSpikes => ShowMemory && MemoryMode == TraceTimelineMemoryMode.Allocated;
 
-    private bool ShowsMemoryBand => ShowMemory && _axis == TraceTimelineAxis.Position && _visible is { Memory.HasAllocations: true };
+    private bool ShowsMemoryBand => ShowMemory && _axis == TraceTimelineAxis.Position && _visible is not null && Memory.HasAllocations;
 
     private float BandHeight => ShowsMemoryBand ? MemoryBandHeight : 0;
 
@@ -968,7 +992,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
                 : pruned;
         }
 
-        _operators.Rebuild(_visible);
+        _operators.Rebuild(_visible, Lifetimes);
 
         FindSelectedRegions();
 
@@ -978,11 +1002,11 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
         _inUseCurves.Clear();
 
-        _inUseMaximum = _visible is { Memory.HasAllocations: true } visible
-            ? visible.Memory.PeakInUseDuring(visible.StartOf(TraceTimelineAxis.Position), visible.EndOf(TraceTimelineAxis.Position))
+        _inUseMaximum = _visible is { } visible && Memory.HasAllocations
+            ? Memory.PeakInUseDuring(visible.StartOf(TraceTimelineAxis.Position), visible.EndOf(TraceTimelineAxis.Position))
             : 0;
 
-        var selfAllocations = _visible?.SelfAllocations() ?? [];
+        var selfAllocations = _visible?.GetSelfAllocations(Memory) ?? [];
 
         _selfMaximum = selfAllocations.Count == 0 ? 0 : selfAllocations.Max(s => s.Bytes);
 
@@ -1178,6 +1202,24 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         control.ReleaseMinimap();
 
         control._canvas.Invalidate();
+    }
+
+    private static void OnMemoryChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (TraceTimelineControl)d;
+
+        control.RebuildVisible();
+
+        control.Redraw();
+    }
+
+    private static void OnLifetimesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (TraceTimelineControl)d;
+
+        control.RebuildVisible();
+
+        control.Redraw();
     }
 
     private static void OnAxisChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

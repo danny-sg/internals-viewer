@@ -50,7 +50,7 @@ public sealed partial class TraceTimelineControl
 
             allocated[bucket] = AllocatedDuring(timeline, start, end);
 
-            inUse[bucket] = BandInUse(timeline, start, end);
+            inUse[bucket] = BandInUse(start, end);
 
             _bandPeak = Math.Max(_bandPeak, allocated[bucket]);
 
@@ -67,7 +67,7 @@ public sealed partial class TraceTimelineControl
 
         if (_inUsePeak > 0)
         {
-            canvas.DrawText($"{InUseLabel(timeline)}, Peak {SizeFormat.Format((long)_inUsePeak)}",
+            canvas.DrawText($"{InUseLabel}, Peak {SizeFormat.Format((long)_inUsePeak)}",
                             legendRight,
                             Baseline(inUseTop, MemoryBandLabelHeight),
                             SKTextAlign.Right,
@@ -148,12 +148,12 @@ public sealed partial class TraceTimelineControl
 
         if (_inUsePeak > 0)
         {
-            var inUse = BandInUse(timeline, start, end);
+            var inUse = BandInUse(start, end);
 
             DrawMarker(canvas,
                        x,
                        BandY(inUse, _inUseScale, height - 1f, InUseBandHeight),
-                       $"{InUseLabel(timeline)} {SizeFormat.Format((long)inUse)}",
+                       $"{InUseLabel} {SizeFormat.Format((long)inUse)}",
                        _paints.InUseLine.Color,
                        inUseTop,
                        height,
@@ -186,15 +186,15 @@ public sealed partial class TraceTimelineControl
                         _paints.Label);
     }
 
-    private bool ShowsGrantUse(TraceTimeline timeline) => GrantedMemory > 0 && timeline.Memory.HasWorkspace;
+    private bool ShowsGrantUse => GrantedMemory > 0 && Memory.HasWorkspace;
 
-    private ulong BandInUse(TraceTimeline timeline, double start, double end)
-        => ShowsGrantUse(timeline) ? timeline.Memory.PeakWorkspaceDuring(start, end) : timeline.Memory.PeakInUseDuring(start, end);
+    private string InUseLabel => ShowsGrantUse ? "Grant In Use" : "In Use";
 
-    private string InUseLabel(TraceTimeline timeline) => ShowsGrantUse(timeline) ? "Grant In Use" : "In Use";
+    private ulong BandInUse(double start, double end)
+        => ShowsGrantUse ? Memory.PeakWorkspaceDuring(start, end) : Memory.PeakInUseDuring(start, end);
 
-    private static ulong AllocatedDuring(TraceTimeline timeline, double start, double end)
-        => timeline.Threads.Aggregate(0ul, (total, t) => total + timeline.Memory.AllocatedDuring(t.ThreadId, start, end).Bytes);
+    private ulong AllocatedDuring(TraceTimeline timeline, double start, double end)
+        => timeline.Threads.Aggregate(0ul, (total, t) => total + Memory.AllocatedDuring(t.ThreadId, start, end).Bytes);
 
     private (double Start, double End) BucketRange(int bucket, double scale)
     {

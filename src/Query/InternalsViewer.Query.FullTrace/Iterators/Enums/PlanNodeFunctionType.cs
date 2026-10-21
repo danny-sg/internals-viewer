@@ -1,6 +1,6 @@
-namespace InternalsViewer.Query.FullTrace.RowSources.Enums;
+namespace InternalsViewer.Query.FullTrace.Iterators.Enums;
 
-internal enum RowSourceFunctionType : byte
+internal enum PlanNodeFunctionType : byte
 {
     Iterator,
     BatchHelper,

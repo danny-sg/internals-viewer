@@ -1,5 +1,6 @@
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
@@ -61,7 +62,7 @@ public class IteratorLifetimeBuilderTests
             Instances = [Hash]
         };
 
-        var lifetime = Assert.Single(IteratorLifetimeBuilder.Build(timeline, [hashMatch], [], []));
+        var lifetime = Assert.Single(IteratorLifetimeBuilder.Build(timeline, MemoryIndex.Empty, [hashMatch], [], []));
 
         var calls = lifetime.Calls(TraceTimelineAxis.Instructions);
 
@@ -98,13 +99,13 @@ public class IteratorLifetimeBuilderTests
 
         timeline.MapNodes([caller, open, getRow, scanRow, close]);
 
-        timeline.SetMemory([new(7, 5, 6, 100, 0xA), new(7, 22, 23, 50, 0xB)], [new(7, 41, 42, 0xA)]);
+        var memory = MemoryIndex.Build([new(7, 5, 6, 100, 0xA), new(7, 22, 23, 50, 0xB)], [new(7, 41, 42, 0xA)]);
 
         var hashMatch = Operator("Hash Match", 1, Hash);
 
         var scan = Operator("Index Scan", 2, Scan);
 
-        var lifetimes = IteratorLifetimeBuilder.Build(timeline, [hashMatch, scan], [], []);
+        var lifetimes = IteratorLifetimeBuilder.Build(timeline, memory, [hashMatch, scan], [], []);
 
         var hashLifetime = lifetimes.Single(l => ReferenceEquals(l.Operator, hashMatch));
 
@@ -135,7 +136,7 @@ public class IteratorLifetimeBuilderTests
 
         IteratorPlanNode[] planNodes = [new(BatchHelper, 0xA0, 0, Query, 2, IsBatchHelper: true)];
 
-        var lifetimes = IteratorLifetimeBuilder.Build(timeline, [scan], planNodes, []);
+        var lifetimes = IteratorLifetimeBuilder.Build(timeline, MemoryIndex.Empty, [scan], planNodes, []);
 
         var adapter = Assert.Single(lifetimes, l => l.Operator.Instances.Contains(BatchHelper)).Operator;
 
@@ -168,7 +169,7 @@ public class IteratorLifetimeBuilderTests
 
         IteratorPlanNode[] planNodes = [new(BatchHelper, 0xA0, 0, Query, 1, IsBatchHelper: true)];
 
-        var lifetimes = IteratorLifetimeBuilder.Build(timeline, [scan], planNodes, []);
+        var lifetimes = IteratorLifetimeBuilder.Build(timeline, MemoryIndex.Empty, [scan], planNodes, []);
 
         var adapter = Assert.Single(lifetimes, l => l.Operator.Instances.Contains(BatchHelper)).Operator;
 
@@ -184,7 +185,7 @@ public class IteratorLifetimeBuilderTests
 
         QueryTeardown[] teardowns = [new(Thread, new TracePoint(At(15), 15)), new(Thread, new TracePoint(At(70), 70))];
 
-        var lifetime = Assert.Single(IteratorLifetimeBuilder.Build(timeline, [hashMatch], planNodes, teardowns));
+        var lifetime = Assert.Single(IteratorLifetimeBuilder.Build(timeline, MemoryIndex.Empty, [hashMatch], planNodes, teardowns));
 
         Assert.Equal((5d, 70d, 5d, 70d, 20d, 45d),
                      (lifetime.GetConstructed(TraceTimelineAxis.Position),
@@ -200,7 +201,7 @@ public class IteratorLifetimeBuilderTests
     {
         var (timeline, hashMatch) = BuildHashTimeline();
 
-        var lifetime = Assert.Single(IteratorLifetimeBuilder.Build(timeline, [hashMatch], [], []));
+        var lifetime = Assert.Single(IteratorLifetimeBuilder.Build(timeline, MemoryIndex.Empty, [hashMatch], [], []));
 
         Assert.Equal((0d, 100d),
                      (lifetime.GetConstructed(TraceTimelineAxis.Instructions), lifetime.GetDestroyed(TraceTimelineAxis.Instructions)));

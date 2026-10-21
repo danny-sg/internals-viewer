@@ -1,13 +1,12 @@
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Iterators;
-using InternalsViewer.Query.FullTrace.RowSources;
-using InternalsViewer.Query.FullTrace.RowSources.Enums;
+using InternalsViewer.Query.FullTrace.Iterators.Enums;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
 [Trait("Category", "Unit")]
-public class RowSourceHookTests
+public class PlanNodeHookTests
 {
     private const uint Thread = 7;
 
@@ -161,15 +160,15 @@ public class RowSourceHookTests
                       .Write(BatchPlanObject, BatchPlanObjectTable)
                       .Write(BatchPlanObject + 0x10, PlanObject);
 
-    private static RowSourceHook CreateHook()
-        => new(new RowSourceFunctions(new Dictionary<ulong, RowSourceFunctionType>
+    private static PlanNodeHook CreateHook()
+        => new(new PlanNodeFunctions(new Dictionary<ulong, PlanNodeFunctionType>
                                       {
-                                          [GetRow] = RowSourceFunctionType.Iterator,
-                                          [BatchHelperGetRow] = RowSourceFunctionType.BatchHelper,
-                                          [BatchGetData] = RowSourceFunctionType.BatchIterator,
-                                          [BatchFactory] = RowSourceFunctionType.BatchFactory,
-                                          [Constructor] = RowSourceFunctionType.Constructor,
-                                          [Teardown] = RowSourceFunctionType.Teardown
+                                          [GetRow] = PlanNodeFunctionType.Iterator,
+                                          [BatchHelperGetRow] = PlanNodeFunctionType.BatchHelper,
+                                          [BatchGetData] = PlanNodeFunctionType.BatchIterator,
+                                          [BatchFactory] = PlanNodeFunctionType.BatchFactory,
+                                          [Constructor] = PlanNodeFunctionType.Constructor,
+                                          [Teardown] = PlanNodeFunctionType.Teardown
                                       },
                                       new Dictionary<ulong, PlanObjectClass>
                                       {

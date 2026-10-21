@@ -120,9 +120,13 @@ public class IteratorAllocationsTests
 
         timeline.SetCalls(calls);
 
-        timeline.SetMemory(allocations, frees ?? []);
+        var memory = MemoryIndex.Build(allocations, frees ?? []);
 
-        return IteratorAllocations.Build(timeline, calls, new HashSet<ulong> { Parent, Child }, [new IteratorPlanNode(Child, PlanObject, 0, 0, 1)]);
+        return IteratorAllocations.Build(timeline,
+                                         memory,
+                                         calls,
+                                         new HashSet<ulong> { Parent, Child },
+                                         [new IteratorPlanNode(Child, PlanObject, 0, 0, 1)]);
     }
 
     private static ulong[] Call(ulong start, ulong end, int node, ulong instance = 0)

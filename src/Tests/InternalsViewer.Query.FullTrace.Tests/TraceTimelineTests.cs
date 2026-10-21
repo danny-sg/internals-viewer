@@ -405,29 +405,6 @@ public class TraceTimelineTests
     }
 
     [Fact]
-    public void Memory_Allocated_During_A_Call_Is_The_Sum_Of_The_Allocations_Inside_It()
-    {
-        var timeline = Build(Span(node: 0, start: 0, end: 10));
-
-        timeline.SetMemory([new(7, 10, 15, 100, 0xA), new(7, 12, 13, 40, 0xB), new(7, 20, 25, 50, 0xC), new(9, 10, 11, 5, 0xD)], []);
-
-        Assert.Equal((150ul, 2), timeline.Memory.AllocatedDuring(7, 0, 30));
-        Assert.Equal((50ul, 1), timeline.Memory.AllocatedDuring(7, 15, 30));
-        Assert.Equal((100ul, 1), timeline.Memory.AllocatedDuring(7, 10, 15));
-        Assert.Equal((0ul, 0), timeline.Memory.AllocatedDuring(8, 0, 30));
-    }
-
-    [Fact]
-    public void A_Filtered_Timeline_Keeps_Its_Allocations()
-    {
-        var timeline = Build(Span(node: 0, start: 0, end: 10));
-
-        timeline.SetMemory([new(7, 1, 2, 64, 0xA)], []);
-
-        Assert.Equal((64ul, 1), timeline.Where(_ => true).Memory.AllocatedDuring(7, 0, 5));
-    }
-
-    [Fact]
     public void Self_Allocations_Belong_To_The_Deepest_Call_Running_At_The_Time()
     {
         var timeline = Build(Span(node: 2, start: 10, end: 20),
@@ -443,13 +420,13 @@ public class TraceTimelineTests
         var inMiddle = (inner.End + middle.End) / 2;
         var inOuter = (middle.End + outer.End) / 2;
 
-        timeline.SetMemory([new(7, inner.Start, inner.Start + 1e-6, 100, 0xA),
-                            new(7, inMiddle, inMiddle + 1e-6, 30, 0xB),
-                            new(7, inOuter, inOuter + 1e-6, 50, 0xC)],
-                           []);
+        var memory = MemoryIndex.Build([new(7, inner.Start, inner.Start + 1e-6, 100, 0xA),
+                                        new(7, inMiddle, inMiddle + 1e-6, 30, 0xB),
+                                        new(7, inOuter, inOuter + 1e-6, 50, 0xC)],
+                                       []);
 
         Assert.Equal([(0, 50ul), (1, 30ul), (2, 100ul)],
-                     timeline.SelfAllocations().OrderBy(s => s.Depth).Select(s => (s.Depth, s.Bytes)));
+                     timeline.GetSelfAllocations(memory).OrderBy(s => s.Depth).Select(s => (s.Depth, s.Bytes)));
     }
 
     [Fact]

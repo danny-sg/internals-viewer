@@ -14,7 +14,7 @@ public class ReplayFunctionResolverTests
     [InlineData(SymbolCategory.Tracing, "Profiling", false)]
     [InlineData(SymbolCategory.QueryOperator, null, false)]
     public void Tracing_Is_Left_Out_Of_The_Replay_Unless_It_Is_An_Iterator(SymbolCategory category, string? iterator, bool excluded)
-        => Assert.Equal(excluded, ReplayFunctionResolver.IsExcluded(category, iterator));
+        => Assert.Equal(excluded, Instrumentation.IsExcluded(category, iterator));
 
     [Theory]
     [InlineData("CQScanProfileNew", "GetRow")]
@@ -27,6 +27,6 @@ public class ReplayFunctionResolverTests
         var iterator = CategoryMappings.Default.ClassifyOperator("sqlmin", className, methodName).Iterator;
 
         Assert.Equal(SymbolCategory.Tracing, category);
-        Assert.False(ReplayFunctionResolver.IsExcluded(category, iterator));
+        Assert.False(Instrumentation.IsExcluded(category, iterator));
     }
 }

@@ -1,4 +1,4 @@
-using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
+using InternalsViewer.Query.FullTrace.Hooks;
 
 namespace InternalsViewer.Query.FullTrace.CustomHooks;
 

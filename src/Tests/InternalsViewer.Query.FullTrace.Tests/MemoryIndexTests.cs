@@ -91,6 +91,18 @@ public class MemoryIndexTests
     }
 
     [Fact]
+    public void Memory_Allocated_During_A_Range_Is_The_Sum_Of_The_Allocations_Inside_It()
+    {
+        var index = MemoryIndex.Build([new(7, 10, 15, 100, 0xA), new(7, 12, 13, 40, 0xB), new(7, 20, 25, 50, 0xC), new(9, 10, 11, 5, 0xD)],
+                                      []);
+
+        Assert.Equal((150ul, 2), index.AllocatedDuring(7, 0, 30));
+        Assert.Equal((50ul, 1), index.AllocatedDuring(7, 15, 30));
+        Assert.Equal((100ul, 1), index.AllocatedDuring(7, 10, 15));
+        Assert.Equal((0ul, 0), index.AllocatedDuring(8, 0, 30));
+    }
+
+    [Fact]
     public void A_Reallocation_In_Place_Frees_Before_It_Allocates()
     {
         var index = MemoryIndex.Build([new(7, 10, 11, 100, 0xA), new(7, 20, 21, 200, 0xA)], [new(7, 20, 21, 0xA)]);

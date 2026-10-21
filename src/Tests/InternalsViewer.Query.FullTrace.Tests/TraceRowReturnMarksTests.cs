@@ -211,10 +211,13 @@ public class TraceRowReturnMarksTests
 
         timeline.SetCalls(calls);
 
-        timeline.SetLifetimes([new TraceOperatorLifetime(Thread, top ?? Join, 0, [Whole()], [Whole()], MemoryInUseCurve.Empty),
-                               new TraceOperatorLifetime(Thread, Scan, 1, [Whole()], [Whole()], MemoryInUseCurve.Empty)]);
+        TraceOperatorLifetime[] lifetimes =
+        [
+            new(Thread, top ?? Join, 0, [Whole()], [Whole()], MemoryInUseCurve.Empty),
+            new(Thread, Scan, 1, [Whole()], [Whole()], MemoryInUseCurve.Empty)
+        ];
 
-        return TraceRowReturnMarks.Build(timeline, calls);
+        return TraceRowReturnMarks.Build(timeline, calls, new TraceOperatorLifetimes(lifetimes));
     }
 
     private static ulong[] Call((ulong Start, ulong End, ulong Status) call, int node)

@@ -188,10 +188,13 @@ public class TraceReadsTests
 
         timeline.SetCalls(calls);
 
-        timeline.SetLifetimes([new TraceOperatorLifetime(Thread, Join, 0, [Whole()], [Whole()], MemoryInUseCurve.Empty),
-                               new TraceOperatorLifetime(Thread, Scan, 1, [Whole()], [Whole()], MemoryInUseCurve.Empty)]);
+        TraceOperatorLifetime[] lifetimes =
+        [
+            new(Thread, Join, 0, [Whole()], [Whole()], MemoryInUseCurve.Empty),
+            new(Thread, Scan, 1, [Whole()], [Whole()], MemoryInUseCurve.Empty)
+        ];
 
-        return (TraceReads.Build(timeline, calls), calls);
+        return (TraceReads.Build(timeline, calls, new TraceOperatorLifetimes(lifetimes)), calls);
     }
 
     private static (PageAddress Page, int PageCount)? GetRead(TraceCallStore calls, TraceTick read, TraceReadType type)

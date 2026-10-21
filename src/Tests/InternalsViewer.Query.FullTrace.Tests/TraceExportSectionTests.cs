@@ -62,8 +62,8 @@ public class TraceExportSectionTests
         Assert.Equal(new PageAddress(1, 336), calls[1].GetLocator(2)?.Page);
         Assert.Equal("(1:336), (1:336:4)", getRow.LocatorsDetail);
         Assert.Equal(3, fullTrace.Timeline.SpanCount);
-        Assert.Equal(100ul, fullTrace.Timeline.Memory.PeakInUseDuring(0, 100));
-        Assert.Single(fullTrace.Timeline.Lifetimes);
+        Assert.Equal(100ul, fullTrace.Memory.PeakInUseDuring(0, 100));
+        Assert.Single(fullTrace.Lifetimes);
     }
 
     [Fact]
@@ -224,9 +224,9 @@ public class TraceExportSectionTests
 
         var timeline = replayed.WithoutCallsUnder(node => node.IsExtendedEvents);
 
-        timeline.SetMemory([new MemoryAllocation(7, 22, 23, 100, 0xA)], [new MemoryFree(7, 31, 32, 0xA)]);
+        var memory = MemoryIndex.Build([new MemoryAllocation(7, 22, 23, 100, 0xA)], [new MemoryFree(7, 31, 32, 0xA)]);
 
-        timeline.SetLifetimes(IteratorLifetimeBuilder.Build(timeline, [scan], [], []));
+        var lifetimes = IteratorLifetimeBuilder.Build(timeline, memory, [scan], [], []);
 
         var storeBuilder = new TraceCallStore.Builder();
 
@@ -238,7 +238,7 @@ public class TraceExportSectionTests
 
         callStore.MapNodes([caller, getRow, publish]);
 
-        return new TraceResult(tree, callStore, timeline);
+        return new TraceResult(tree, callStore, timeline) { Memory = memory, Lifetimes = lifetimes };
     }
 
     private static CallstackFrame Frame(ulong rva, string symbol, ulong instance = 0) => new()

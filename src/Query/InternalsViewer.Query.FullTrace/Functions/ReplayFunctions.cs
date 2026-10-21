@@ -2,7 +2,6 @@
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Output;
-using InternalsViewer.Query.FullTrace.RowSources;
 
 namespace InternalsViewer.Query.FullTrace.Functions;
 
@@ -11,7 +10,7 @@ internal sealed record ReplayFunctions(ulong[] ExcludedFunctions,
                                        LocatorRead[] LocatorReads,
                                        MemoryFunction[] MemoryFunctions,
                                        MemoryMapFunction[] MemoryMapFunctions,
-                                       RowSourceFunctions RowSources,
+                                       PlanNodeFunctions PlanNodeFunctions,
                                        OutputFunctions Output)
 {
     public static ReplayFunctions Empty { get; } = new([],
@@ -19,7 +18,7 @@ internal sealed record ReplayFunctions(ulong[] ExcludedFunctions,
                                                        [],
                                                        [],
                                                        [],
-                                                       RowSourceFunctions.Empty,
+                                                       PlanNodeFunctions.Empty,
                                                        OutputFunctions.Empty);
 
     public static ReplayFunctions Merge(IReadOnlyList<ReplayFunctions> functions)
@@ -28,7 +27,7 @@ internal sealed record ReplayFunctions(ulong[] ExcludedFunctions,
                [.. functions.SelectMany(f => f.LocatorReads)],
                [.. functions.SelectMany(f => f.MemoryFunctions)],
                [.. functions.SelectMany(f => f.MemoryMapFunctions)],
-               RowSourceFunctions.Merge(functions.Select(f => f.RowSources)),
+               PlanNodeFunctions.Merge(functions.Select(f => f.PlanNodeFunctions)),
                OutputFunctions.Merge(functions.Select(f => f.Output)));
 
     public ReplayFunctions Rebase(ulong address)
@@ -37,6 +36,6 @@ internal sealed record ReplayFunctions(ulong[] ExcludedFunctions,
                [.. LocatorReads.Select(l => l with { Function = l.Function + address })],
                [.. MemoryFunctions.Select(f => f with { Address = f.Address + address })],
                [.. MemoryMapFunctions.Select(f => f with { Address = f.Address + address })],
-               RowSources.Rebase(address),
+               PlanNodeFunctions.Rebase(address),
                Output.Rebase(address));
 }

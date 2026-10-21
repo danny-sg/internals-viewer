@@ -2,6 +2,8 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
+using InternalsViewer.Query.FullTrace.Helpers;
+using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
@@ -17,8 +19,6 @@ public sealed class TraceRowReturnMarks
     private const uint EndStatus = 0x40EC6;
 
     private const uint FakeRowStatus = 0x4FFFF;
-
-    private const string BatchMethod = "BpGetNextBatch";
 
     private const string FilterOperator = "Filter";
 
@@ -51,17 +51,15 @@ public sealed class TraceRowReturnMarks
 
     public bool IsBatch(ExecutionOperatorEvent operatorEvent) => BatchOperators.Contains(operatorEvent);
 
-    public bool HasMarks(ExecutionOperatorEvent operatorEvent, uint thread) => GetReturns(operatorEvent, thread) is not null;
-
     public ReadOnlySpan<double> GetMarks(ExecutionOperatorEvent operatorEvent, uint thread, TraceTimelineAxis axis, RowReturnType type)
         => GetReturns(operatorEvent, thread) is { } returns ? returns.Of(axis).GetValues(type) : [];
 
     public int GetCount(ExecutionOperatorEvent operatorEvent, uint thread, RowReturnType type)
         => GetReturns(operatorEvent, thread) is { } returns ? returns.Positions.GetValues(type).Length : 0;
 
-    internal static TraceRowReturnMarks Build(TraceTimeline timeline, TraceCallStore calls)
+    internal static TraceRowReturnMarks Build(TraceTimeline timeline, TraceCallStore calls, TraceOperatorLifetimes lifetimes)
     {
-        var owners = timeline.GetOperatorsByInstance();
+        var owners = lifetimes.OperatorsByInstance;
 
         if (owners.Count == 0)
         {
@@ -137,7 +135,7 @@ public sealed class TraceRowReturnMarks
         return new TraceRowReturnMarks(operators, batchOperators, TraceTickSeries.Create(ticks));
     }
 
-    private static List<CallGroup> GetCallGroups(TraceCallStore calls, Dictionary<ulong, ExecutionOperatorEvent> owners)
+    private static List<CallGroup> GetCallGroups(TraceCallStore calls, IReadOnlyDictionary<ulong, ExecutionOperatorEvent> owners)
     {
         var grouped = new Dictionary<(ulong Instance, uint Thread), List<GetRowCall>>();
 
@@ -148,7 +146,7 @@ public sealed class TraceRowReturnMarks
             if (!owners.ContainsKey(instance)
                 || calls.GetCallList(address, instance) is not { Count: > 0 } list
                 || calls.GetNode(list.GetNodeIndex(0))?.Frame?.Resolved?.MethodName is not { } method
-                || !IsIteratorCall(method))
+                || !IteratorSymbols.IsRowReturnMethod(method))
             {
                 continue;
             }
@@ -157,7 +155,7 @@ public sealed class TraceRowReturnMarks
             {
                 var key = (instance, list.GetThread(index));
 
-                if (method == BatchMethod)
+                if (method == IteratorSymbols.GetNextBatchMethod)
                 {
                     batches.Add(key);
                 }
@@ -175,83 +173,52 @@ public sealed class TraceRowReturnMarks
         return [.. grouped.Select(g => new CallGroup(g.Key.Instance, g.Key.Thread, GetOutermost(g.Value), batches.Contains(g.Key)))];
     }
 
-    private static GetRowCall[] GetOutermost(List<GetRowCall> calls)
+    private static GetRowCall[] GetOutermost(List<GetRowCall> calls) => [.. Outermost.Of(calls, c => c.FromPosition, c => c.ToPosition)];
+
+    private static void SetEnclosing(TraceCallStore calls,
+                                     IReadOnlyDictionary<ulong, ExecutionOperatorEvent> owners,
+                                     List<CallGroup> groups)
     {
-        calls.Sort((left, right) => left.FromPosition.CompareTo(right.FromPosition));
-
-        var outermost = new List<GetRowCall>(calls.Count);
-
-        foreach (var call in calls)
-        {
-            if (outermost.Count > 0 && call.FromPosition < outermost[^1].ToPosition)
-            {
-                continue;
-            }
-
-            outermost.Add(call);
-        }
-
-        return [.. outermost];
-    }
-
-    private static void SetEnclosing(TraceCallStore calls, Dictionary<ulong, ExecutionOperatorEvent> owners, List<CallGroup> groups)
-    {
-        var threads = new Dictionary<uint, List<SweepCall>>();
+        var points = new List<SweepSpan<TracePosition>>();
 
         foreach (var group in groups)
         {
-            for (var index = 0; index < group.Calls.Length; index++)
+            foreach (var call in group.Calls)
             {
-                var call = group.Calls[index];
-
-                Add(group.Thread, new SweepCall(call.FromPosition, call.ToPosition, group.Instance, group, index));
+                points.Add(new SweepSpan<TracePosition>(group.Thread, call.FromPosition, call.ToPosition, group.Instance));
             }
         }
+
+        var spans = new List<SweepSpan<TracePosition>>();
 
         foreach (var (address, instance) in calls.FunctionKeys)
         {
             if (!owners.ContainsKey(instance)
                 || calls.GetCallList(address, instance) is not { Count: > 0 } list
-                || IsIteratorCall(calls.GetNode(list.GetNodeIndex(0))?.Frame?.Resolved?.MethodName ?? string.Empty))
+                || IteratorSymbols.IsRowReturnMethod(calls.GetNode(list.GetNodeIndex(0))?.Frame?.Resolved?.MethodName))
             {
                 continue;
             }
 
             for (var index = 0; index < list.Count; index++)
             {
-                Add(list.GetThread(index), new SweepCall(list.GetFromPosition(index), list.GetToPosition(index), instance, null, -1));
+                spans.Add(new SweepSpan<TracePosition>(list.GetThread(index),
+                                                       list.GetFromPosition(index),
+                                                       list.GetToPosition(index),
+                                                       instance));
             }
         }
 
-        var open = new Stack<SweepCall>();
+        var enclosing = EnclosingSweep.GetEnclosing(spans, points);
 
-        foreach (var thread in threads.Values)
+        var point = 0;
+
+        foreach (var group in groups)
         {
-            thread.Sort((left, right) => left.From != right.From ? left.From.CompareTo(right.From) : right.To.CompareTo(left.To));
-
-            open.Clear();
-
-            foreach (var call in thread)
+            for (var index = 0; index < group.Calls.Length; index++)
             {
-                while (open.TryPeek(out var outer) && outer.To <= call.From)
-                {
-                    open.Pop();
-                }
-
-                if (call.Group is { } group)
-                {
-                    group.Enclosing[call.Index] = open.TryPeek(out var enclosing) ? enclosing.Instance : 0;
-                }
-
-                open.Push(call);
+                group.Enclosing[index] = enclosing[point++];
             }
-        }
-
-        void Add(uint thread, SweepCall call)
-        {
-            ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(threads, thread, out _);
-
-            (list ??= []).Add(call);
         }
     }
 
@@ -275,8 +242,6 @@ public sealed class TraceRowReturnMarks
         return returned < parent.RowEnds.Length && parent.RowEnds[returned] < next;
     }
 
-    private static bool IsIteratorCall(string method) => method is "GetRow" or "GetRowOrReQualifyHelper" or BatchMethod;
-
     private OperatorReturns? GetReturns(ExecutionOperatorEvent operatorEvent, uint thread)
         => Operators.TryGetValue(operatorEvent, out var threads) ? threads.GetValueOrDefault(thread) : null;
 
@@ -298,8 +263,6 @@ public sealed class TraceRowReturnMarks
 
         public ulong[] Enclosing { get; } = new ulong[calls.Length];
     }
-
-    private readonly record struct SweepCall(TracePosition From, TracePosition To, ulong Instance, CallGroup? Group, int Index);
 
     private sealed record AxisReturns(double[] Values, double[][] TypeValues)
     {

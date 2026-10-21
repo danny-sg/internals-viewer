@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.FullTrace.Interfaces.Hooks;
+namespace InternalsViewer.Query.FullTrace.Hooks;
 
 internal interface IArgumentRead
 {

@@ -7,8 +7,7 @@ using InternalsViewer.Query.FullTrace.Functions;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
 using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Output.Enums;
-using InternalsViewer.Query.FullTrace.RowSources;
-using InternalsViewer.Query.FullTrace.RowSources.Enums;
+using InternalsViewer.Query.FullTrace.Iterators.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -25,7 +24,7 @@ public class ReplayFunctionsTests
                                            [new LocatorRead(0x60, 2, false, LocatorValueType.Page)],
                                            [new MemoryFunction(0x90, AllocationOperation.Allocate, 1, -1, 1)],
                                            [new MemoryMapFunction(0xA0, MemoryMapOperation.Visited)],
-                                           new RowSourceFunctions(Map(0x150, RowSourceFunctionType.Constructor), Map(0x158, PlanObjectClass.Row)),
+                                           new PlanNodeFunctions(Map(0x150, PlanNodeFunctionType.Constructor), Map(0x158, PlanObjectClass.Row)),
                                            new OutputFunctions(Map(0x110, OutputFunctionType.Send),
                                                                Map(0x120, OutputValueClass.OutputRow)));
 
@@ -36,8 +35,8 @@ public class ReplayFunctionsTests
         Assert.Equal(new LocatorRead(Base + 0x60, 2, false, LocatorValueType.Page), rebased.LocatorReads[0]);
         Assert.Equal(Base + 0x90, Assert.Single(rebased.MemoryFunctions).Address);
         Assert.Equal(Base + 0xA0, Assert.Single(rebased.MemoryMapFunctions).Address);
-        Assert.Equal((Base + 0x150, RowSourceFunctionType.Constructor), Pair(Assert.Single(rebased.RowSources.Functions)));
-        Assert.Equal((Base + 0x158, PlanObjectClass.Row), Pair(Assert.Single(rebased.RowSources.PlanObjects)));
+        Assert.Equal((Base + 0x150, PlanNodeFunctionType.Constructor), Pair(Assert.Single(rebased.PlanNodeFunctions.Functions)));
+        Assert.Equal((Base + 0x158, PlanObjectClass.Row), Pair(Assert.Single(rebased.PlanNodeFunctions.PlanObjects)));
         Assert.Equal((Base + 0x110, OutputFunctionType.Send), Pair(Assert.Single(rebased.Output.Functions)));
         Assert.Equal((Base + 0x120, OutputValueClass.OutputRow), Pair(Assert.Single(rebased.Output.Classes)));
     }

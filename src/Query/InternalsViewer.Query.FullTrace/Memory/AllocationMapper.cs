@@ -16,10 +16,10 @@ internal static class AllocationMapper
 
     private const string WorkspaceClerk = "MEMORYCLERK_SQLQERESERVATIONS";
 
-    public static (long Allocations, ulong Bytes) Map(TraceCallStore store,
-                                                      IReadOnlyList<MemoryFunction> functions,
-                                                      TraceTimeline? timeline,
-                                                      MemoryClerkSnapshot? clerks = null)
+    public static (MemoryIndex Memory, long Allocations, ulong Bytes) Map(TraceCallStore store,
+                                                                          IReadOnlyList<MemoryFunction> functions,
+                                                                          TraceTimeline? timeline,
+                                                                          MemoryClerkSnapshot? clerks = null)
     {
         var byAddress = functions.ToDictionary(f => f.Address);
 
@@ -92,14 +92,9 @@ internal static class AllocationMapper
             values[function.Address] = callValues;
         }
 
-        if (timeline is not null)
-        {
-            var (allocations, frees) = scanned.MemoryOf(values);
+        var (allocations, frees) = scanned.MemoryOf(values);
 
-            timeline.SetMemory(allocations, frees);
-        }
-
-        return (count, bytes);
+        return (MemoryIndex.Build(allocations, frees), count, bytes);
 
         TraceCallList? GetCalls(ulong address)
             => lists.TryGetValue(address, out var list) ? list : lists[address] = store.GetCallList(address, 0);

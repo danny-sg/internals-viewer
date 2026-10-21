@@ -10,7 +10,7 @@ using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Output;
-using InternalsViewer.Query.FullTrace.RowSources;
+using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Stubs;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
 
@@ -152,13 +152,13 @@ internal sealed class ReplaySession : IDisposable
 
         var memoryMap = new MemoryMapHook(memoryMapFunctions);
 
-        var rowSources = new RowSourceHook(functions.RowSources);
+        var planNodeHook = new PlanNodeHook(functions.PlanNodeFunctions);
 
         var output = new OutputHook(functions.Output);
 
         var customHook = new CustomHook(Resolve(customHooks));
 
-        var hooks = new TraceHooks([rowSources,
+        var hooks = new TraceHooks([planNodeHook,
                                     new LocatorHook(functions.LocatorReads, store, images),
                                     memoryMap,
                                     output,
@@ -233,8 +233,8 @@ internal sealed class ReplaySession : IDisposable
                                         memoryMap.Build(),
                                         customHook.Build(),
                                         output.Build(),
-                                        rowSources.GetPlanNodes(),
-                                        rowSources.GetTeardowns());
+                                        planNodeHook.GetPlanNodes(),
+                                        planNodeHook.GetTeardowns());
             }
             finally
             {

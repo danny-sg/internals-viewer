@@ -6,13 +6,11 @@ using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.Symbols;
 using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Arguments;
-using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Timeline;
-using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.Query.Helpers;
 using Microsoft.Extensions.Logging;
 using InternalsViewer.Query.Recording;
@@ -68,20 +66,49 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                                               IProgress<ProgressDetail>? progress,
                                               CancellationToken cancellationToken)
     {
-        var events = request.Events;
-
-        var operators = events.OfType<ExecutionOperatorEvent>().ToList();
-
         var messages = new StepLoggerProgress(progress, Logger);
 
         var steps = new StepProgress(messages, Steps);
 
-        var details = new LoggerProgress(Logger);
+        var replayed = await ReplayAsync(request, customHooks, steps, messages, progress, cancellationToken);
 
-        ReplayResult replay;
+        if (replayed is null)
+        {
+            return null;
+        }
 
-        ReplayFunctions functions;
+        var (replay, functions) = replayed.Value;
 
+        steps.Begin(CallTreeStep);
+
+        var (callStack, mapped) = await BuildCallStackAsync(replay, request.SymbolsPath, messages, cancellationToken);
+
+        var timeline = BuildTimeline(replay, callStack, mapped);
+
+        steps.Complete();
+
+        steps.Begin(OperatorsStep);
+
+        var result = BuildResult(replay, functions, request, callStack, timeline);
+
+        steps.Complete();
+
+        Logger.LogInformation("{Objects} HoBt access object(s) linked to their HoBt", result.HoBtAccess.Count);
+
+        Logger.LogInformation("{Entries} memory map entr(ies) from allocations, constructors and member calls", result.MemoryMap.Count);
+
+        Logger.LogInformation("{Captures} custom hook capture(s) read from {Hooks} hook(s)", result.CustomHooks.Count, customHooks.Count);
+
+        return result;
+    }
+
+    private async Task<(ReplayResult Replay, ReplayFunctions Functions)?> ReplayAsync(TraceRequest request,
+                                                                                      IReadOnlyList<CustomHookDefinition> customHooks,
+                                                                                      StepProgress steps,
+                                                                                      StepLoggerProgress messages,
+                                                                                      IProgress<ProgressDetail>? progress,
+                                                                                      CancellationToken cancellationToken)
+    {
         try
         {
             steps.Begin(OpeningStep);
@@ -94,11 +121,11 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
             steps.Begin(SymbolsStep);
 
-            functions = await ReplayFunctionResolver.ResolveAsync(session.Modules,
-                                                                  request.SymbolsPath,
-                                                                  Logger,
-                                                                  messages,
-                                                                  cancellationToken);
+            var functions = await ReplayFunctionResolver.ResolveAsync(session.Modules,
+                                                                      request.SymbolsPath,
+                                                                      Logger,
+                                                                      messages,
+                                                                      cancellationToken);
 
             Logger.LogInformation("{Excluded} Extended Events and tracing function(s) excluded from the replay, {Memory} memory "
                                   + "function(s) tracked",
@@ -111,9 +138,11 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
             Logger.LogInformation("Replaying Full Trace for {Threads} thread(s)", request.ThreadIds.Count);
 
-            replay = await session.ReplayAsync(request.ThreadIds, functions, customHooks, steps, cancellationToken);
+            var replay = await session.ReplayAsync(request.ThreadIds, functions, customHooks, steps, cancellationToken);
 
             steps.Complete();
+
+            return (replay, functions);
         }
         catch (Exception exception) when (exception is InvalidOperationException or DllNotFoundException)
         {
@@ -125,27 +154,29 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
             return null;
         }
+    }
 
-        steps.Begin(CallTreeStep);
-
+    private async Task<(CallStackTree CallStack, CallStackNode?[] Mapped)> BuildCallStackAsync(ReplayResult replay,
+                                                                                               string symbolsPath,
+                                                                                               StepLoggerProgress messages,
+                                                                                               CancellationToken cancellationToken)
+    {
         var (callStack, replayed) = CallTreeBuilder.Build(replay.Nodes, replay.Modules);
-
-        var nodes = replay.Nodes;
 
         Logger.LogInformation("{Calls} call(s) on {Paths} call path(s) replayed, {Logged} call(s) of {Functions} function(s) logged in "
                               + "{Size} MB, {Locators} page and row id(s) read",
-                              nodes.Sum(n => (long)n.Calls),
-                              nodes.Length,
+                              replay.Nodes.Sum(n => (long)n.Calls),
+                              replay.Nodes.Length,
                               replay.CallStore.Calls,
                               replay.CallStore.FunctionCount,
                               replay.CallStore.Size / (1024 * 1024),
                               replay.CallStore.LocatorCount);
 
-        var unknownSymbols = await CallstackProcessor.Process(callStack, request.SymbolsPath, messages, cancellationToken);
+        var unknownSymbols = await CallstackProcessor.Process(callStack, symbolsPath, messages, cancellationToken);
 
         LogUnknownSymbols(unknownSymbols);
 
-        LogUnknownEnums(callStack, request.SymbolsPath);
+        LogUnknownEnums(callStack, symbolsPath);
 
         var collapsed = new Dictionary<CallStackNode, CallStackNode>(ReferenceEqualityComparer.Instance);
 
@@ -153,21 +184,20 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         CallStackNode?[] mapped = [.. replayed.Select(node => collapsed.GetValueOrDefault(node))];
 
-        var planLink = IteratorPlanLinker.Link(replay.PlanNodes, events);
+        return (callStack, mapped);
+    }
 
-        var hobtAccess = HoBtAccessMap.Build(replay.CallStore, mapped);
-
+    private TraceTimeline BuildTimeline(ReplayResult replay, CallStackTree callStack, CallStackNode?[] mapped)
+    {
         replay.CallStore.MapNodes(mapped);
 
         replay.CallStore.AnnotateNodes();
 
         replay.Timeline.MapNodes(mapped);
 
-        replay.Timeline.SetCalls(replay.CallStore);
+        callStack.RemoveCallsUnder(Instrumentation.IsExcluded);
 
-        callStack.RemoveCallsUnder(IsInstrumentation);
-
-        var timeline = replay.Timeline.WithoutCallsUnder(IsInstrumentation);
+        var timeline = replay.Timeline.WithoutCallsUnder(Instrumentation.IsExcluded);
 
         Logger.LogInformation("{Calls} call(s) after removing Extended Events and tracing, {Spans} call span(s) on {Threads} "
                               + "thread(s) in the trace timeline",
@@ -175,50 +205,55 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                               timeline.SpanCount,
                               timeline.Threads.Count);
 
-        var memoryMap = MemoryMap.Build(replay.MemoryMap, replay.Timeline.NodeOf);
+        return timeline;
+    }
 
-        steps.Complete();
+    private TraceResult BuildResult(ReplayResult replay,
+                                    ReplayFunctions functions,
+                                    TraceRequest request,
+                                    CallStackTree callStack,
+                                    TraceTimeline timeline)
+    {
+        var events = request.Events;
 
-        steps.Begin(OperatorsStep);
+        var operators = events.OfType<ExecutionOperatorEvent>().ToList();
 
-        var matched = IteratorInstanceMatcher.Match(callStack, events, planLink);
+        var (memory, allocationCount, allocatedBytes) = AllocationMapper.Map(replay.CallStore,
+                                                                             functions.MemoryFunctions,
+                                                                             timeline,
+                                                                             request.MemoryClerks);
+
+        var builder = new TraceResultBuilder(callStack, replay.CallStore, timeline, events, replay.PlanNodes, replay.Teardowns)
+        {
+            Memory = memory,
+            MemoryMap = MemoryMap.Build(replay.MemoryMap, timeline.NodeOf),
+            ObjectPool = request.ObjectPool,
+            CustomHooks = replay.CustomHooks
+        };
+
+        var matched = IteratorInstanceMatcher.Match(callStack, events, builder.PlanLink);
 
         OperatorEntryLabels.Apply(events);
 
         Logger.LogInformation("{PlanObjects} plan object(s) linked to {PlanNodes} of {Operators} plan node(s), {Instances} iterator "
                               + "instance(s) linked to their plan node",
-                              planLink.PlanObjects.Count,
-                              planLink.PlanObjects.Values.Distinct().Count(),
+                              builder.PlanLink.PlanObjects.Count,
+                              builder.PlanLink.PlanObjects.Values.Distinct().Count(),
                               operators.Count(o => o.PlanNodeIdentifier is { NodeId: >= 0 }),
-                              planLink.Instances.Count);
+                              builder.PlanLink.Instances.Count);
 
-        var memory = AllocationMapper.Map(replay.CallStore, functions.MemoryFunctions, timeline, request.MemoryClerks);
-
-        var lifetimes = IteratorLifetimeBuilder.Build(timeline, operators, replay.PlanNodes, replay.Teardowns);
-
-        timeline.SetLifetimes(lifetimes);
+        var lifetimes = builder.BuildLifetimes();
 
         LogOperators(operators, replay.PlanNodes, lifetimes);
 
-        var allocations = IteratorAllocations.Build(timeline,
-                                                    replay.CallStore,
-                                                    timeline.GetOperatorsByInstance().Keys.ToHashSet(),
-                                                    replay.PlanNodes);
-
-        List<TraceOutputStructure> outputStructures = [.. replay.OutputAddresses.Select(a => TraceOutputStructure.Resolve(a, allocations, timeline))];
-
-        Logger.LogInformation("{Structures} output structure(s) resolved through {Blocks} allocation(s), {Owned} of {Columns} column(s) owned",
-                              outputStructures.Count,
-                              allocations.Count,
-                              outputStructures.Sum(s => s.Owners.Count(o => o != 0)),
-                              outputStructures.Sum(s => s.Owners.Count));
+        var outputStructures = ResolveOutputStructures(replay, timeline, memory, lifetimes);
 
         Logger.LogInformation("{Matched} of {Operators} operator(s) matched to recorded iterators, {Allocations} allocation(s) of "
                               + "{Bytes}, {Lifetimes} operator lifetime(s) on {Threads} thread(s)",
                               matched,
                               operators.Count(o => o.PlanNodeIdentifier is { NodeId: >= 0 }),
-                              memory.Allocations,
-                              Size(memory.Bytes),
+                              allocationCount,
+                              Size(allocatedBytes),
                               lifetimes.Count,
                               lifetimes.Select(l => l.Thread).Distinct().Count());
 
@@ -227,28 +262,31 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
             callStack.ComputeActivity(events.Min(e => e.TimeUs), events.Max(e => e.TimeUs), QueryRunner.ActivityBuckets);
         }
 
-        steps.Complete();
+        return builder.Build(outputStructures);
+    }
 
-        Logger.LogInformation("{Objects} HoBt access object(s) linked to their HoBt", hobtAccess.Count);
+    private List<TraceOutputStructure> ResolveOutputStructures(ReplayResult replay,
+                                                               TraceTimeline timeline,
+                                                               MemoryIndex memory,
+                                                               TraceOperatorLifetimes lifetimes)
+    {
+        var allocations = IteratorAllocations.Build(timeline,
+                                                    memory,
+                                                    replay.CallStore,
+                                                    lifetimes.OperatorsByInstance.Keys.ToHashSet(),
+                                                    replay.PlanNodes);
 
-        Logger.LogInformation("{Entries} memory map entr(ies) from allocations, constructors and member calls", memoryMap.Count);
+        List<TraceOutputStructure> structures =
+            [.. replay.OutputAddresses.Select(a => TraceOutputStructure.Resolve(a, allocations, timeline))];
 
-        Logger.LogInformation("{Captures} custom hook capture(s) read from {Hooks} hook(s)", replay.CustomHooks.Count, customHooks.Count);
+        Logger.LogInformation("{Structures} output structure(s) resolved through {Blocks} allocation(s), "
+                              + "{Owned} of {Columns} column(s) owned",
+                              structures.Count,
+                              allocations.Count,
+                              structures.Sum(s => s.Owners.Count(o => o != 0)),
+                              structures.Sum(s => s.Owners.Count));
 
-        return new TraceResult(callStack, replay.CallStore, timeline)
-        {
-            PlanLink = planLink,
-            PlanNodes = replay.PlanNodes,
-            Teardowns = replay.Teardowns,
-            HoBtAccess = hobtAccess,
-            MemoryMap = memoryMap,
-            ObjectPool = request.ObjectPool,
-            CustomHooks = replay.CustomHooks,
-            OutputStructures = outputStructures,
-            RowReturnMarks = TraceRowReturnMarks.Build(timeline, replay.CallStore),
-            Reads = TraceReads.Build(timeline, replay.CallStore),
-            Evaluations = TraceEvaluations.Build(timeline, replay.CallStore)
-        };
+        return structures;
     }
 
     private void LogOperators(IReadOnlyList<ExecutionOperatorEvent> operators,
@@ -337,24 +375,6 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         }
     }
 
-    private static bool IsInstrumentation(CallStackNode node) => node.IsExtendedEvents || (node.IsTracing && !node.HasOperator);
-
     private static string Size(ulong bytes)
         => bytes >= 1024 * 1024 ? $"{bytes / (1024.0 * 1024.0):N1} MB" : $"{bytes / 1024.0:N1} KB";
-
-    private void DeleteTimeTravelTrace(TimeTravelTraceFile trace, IProgress<ProgressDetail>? progress)
-    {
-        try
-        {
-            var size = new FileInfo(trace.Path).Length;
-
-            File.Delete(trace.Path);
-
-            progress?.Report($"Time travel trace deleted ({size / (1024.0 * 1024.0):N0} MB)");
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            Logger.LogWarning(exception, "Time travel trace {TracePath} could not be deleted", trace.Path);
-        }
-    }
 }

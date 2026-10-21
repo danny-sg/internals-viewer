@@ -8,7 +8,7 @@ using InternalsViewer.Query.XEvents;
 using InternalsViewer.UI.App.Controls.Trace;
 using InternalsViewer.UI.App.Services;
 using InternalsViewer.Query.FullTrace.CustomHooks;
-using InternalsViewer.Query.FullTrace.Interfaces.Recording;
+using InternalsViewer.Query.FullTrace.Recording;
 
 namespace InternalsViewer.UI.App.ViewModels;
 

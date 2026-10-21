@@ -1,13 +1,11 @@
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
-using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
-using InternalsViewer.Query.FullTrace.Iterators;
-using InternalsViewer.Query.FullTrace.RowSources.Enums;
+using InternalsViewer.Query.FullTrace.Iterators.Enums;
 using InternalsViewer.Query.Extensions;
 
-namespace InternalsViewer.Query.FullTrace.RowSources;
+namespace InternalsViewer.Query.FullTrace.Iterators;
 
-internal sealed class RowSourceHook(RowSourceFunctions functions) : ITraceHook
+internal sealed class PlanNodeHook(PlanNodeFunctions functions) : ITraceHook
 {
     private const int IteratorArgument = 0;
 
@@ -49,31 +47,31 @@ internal sealed class RowSourceHook(RowSourceFunctions functions) : ITraceHook
 
         var iterator = call.Arguments[IteratorArgument];
 
-        if (type is not (RowSourceFunctionType.Iterator or RowSourceFunctionType.BatchHelper))
+        if (type is not (PlanNodeFunctionType.Iterator or PlanNodeFunctionType.BatchHelper))
         {
             ResolvePlanNodes(replay);
         }
 
         switch (type)
         {
-            case RowSourceFunctionType.BatchFactory:
+            case PlanNodeFunctionType.BatchFactory:
                 Factories[call.Id] = new PendingFactory(iterator, new TracePoint(call.Position, call.Instructions));
                 return;
 
-            case RowSourceFunctionType.Teardown:
+            case PlanNodeFunctionType.Teardown:
                 TearingDown.Add(call.Id);
                 return;
 
-            case RowSourceFunctionType.Constructor:
+            case PlanNodeFunctionType.Constructor:
                 Constructions[iterator] = new TracePoint(call.Position, call.Instructions);
                 return;
 
-            case RowSourceFunctionType.BatchHelper:
+            case PlanNodeFunctionType.BatchHelper:
                 BatchHelpers.Add(iterator);
                 AddPlanNode(replay, iterator);
                 return;
 
-            case RowSourceFunctionType.Iterator or RowSourceFunctionType.BatchIterator:
+            case PlanNodeFunctionType.Iterator or PlanNodeFunctionType.BatchIterator:
                 AddPlanNode(replay, iterator);
                 return;
         }
@@ -111,7 +109,7 @@ internal sealed class RowSourceHook(RowSourceFunctions functions) : ITraceHook
 
     public IReadOnlyList<QueryTeardown> GetTeardowns() => Teardowns;
 
-    private static bool HasReturn(RowSourceFunctionType type) => type is RowSourceFunctionType.BatchFactory or RowSourceFunctionType.Teardown;
+    private static bool HasReturn(PlanNodeFunctionType type) => type is PlanNodeFunctionType.BatchFactory or PlanNodeFunctionType.Teardown;
 
     private void AddPlanNode(ITraceReplay replay, ulong iterator)
     {

@@ -4,7 +4,6 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using InternalsViewer.Query.Recording;
 using InternalsViewer.Query.Server;
-using InternalsViewer.Query.FullTrace.Interfaces.Recording;
 
 namespace InternalsViewer.Query.FullTrace.Recording;
 

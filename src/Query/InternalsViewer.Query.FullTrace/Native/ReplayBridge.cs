@@ -206,9 +206,6 @@ internal static class ReplayBridge
     public static extern bool WatchFrame(IntPtr session, uint thread, ulong frame);
 
     [DllImport(Library)]
-    public static extern void WatchStack(IntPtr session, uint thread, ulong stackPointer);
-
-    [DllImport(Library)]
     public static extern unsafe uint GetHookFrames(IntPtr session, uint thread, TraceHookFrame* frames, uint capacity);
 
     [DllImport(Library)]

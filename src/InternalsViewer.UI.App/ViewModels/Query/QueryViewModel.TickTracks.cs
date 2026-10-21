@@ -41,7 +41,7 @@ public sealed partial class QueryViewModel
         => Arguments.Lookup is { } lookup ? await lookup.GetLayoutAsync(function.Frame) : null;
 
     public IReadOnlyList<string> GetOperatorChoices()
-        => [.. Events.OfType<ExecutionOperatorEvent>().Select(TraceCallCondition.GetOperatorLabel).Distinct()];
+        => [.. Events.OfType<ExecutionOperatorEvent>().Select(o => o.Label).Distinct()];
 
     public int? GetTickCount(TraceTickDefinition definition)
         => CustomTickTracks.TryGetValue(definition, out var track) ? track.Series.Count : null;
@@ -90,7 +90,9 @@ public sealed partial class QueryViewModel
 
             if (!CustomTickTracks.TryGetValue(definition, out var track))
             {
-                track = TraceTickTracks.Custom(definition, TraceTickSeries.FromDefinition(trace.Timeline, trace.CallStore, definition));
+                var series = TraceTickSeries.FromDefinition(trace.Timeline, trace.CallStore, trace.Lifetimes, definition);
+
+                track = TraceTickTracks.Custom(definition, series);
 
                 CustomTickTracks[definition] = track;
             }

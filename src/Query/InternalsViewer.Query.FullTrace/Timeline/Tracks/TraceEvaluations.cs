@@ -21,9 +21,10 @@ public static class TraceEvaluations
         "GeneralEval4"
     };
 
-    internal static TraceTickSeries Build(TraceTimeline timeline, TraceCallStore calls)
+    internal static TraceTickSeries Build(TraceTimeline timeline, TraceCallStore calls, TraceOperatorLifetimes lifetimes)
         => TraceTickSeries.FromCalls(timeline,
                                      calls,
+                                     lifetimes,
                                      IsEvaluation,
                                      (_, c) => c.GetLocator(ResultRegister) is { ValueType: LocatorValueType.Variant } locator
                                                && GetResult(new VariantLocator(locator)) is { } result

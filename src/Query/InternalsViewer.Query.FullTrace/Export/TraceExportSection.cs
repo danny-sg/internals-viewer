@@ -1,13 +1,10 @@
 using System.IO.Compression;
-using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Export;
-using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Output;
-using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.Query.Memory;
 
 namespace InternalsViewer.Query.FullTrace.Export;
@@ -47,7 +44,14 @@ internal sealed class TraceExportSection : IQueryExportSection
 
         writer.WriteBinary(CallStoreEntry, CompressionLevel.NoCompression, fullTrace.CallStore.Write);
 
-        writer.WriteBinary(TimelineEntry, CompressionLevel.Fastest, w => fullTrace.Timeline.Write(w, writer.IdOf));
+        writer.WriteBinary(TimelineEntry,
+                           CompressionLevel.Fastest,
+                           w =>
+                           {
+                               fullTrace.Timeline.Write(w, writer.IdOf);
+
+                               fullTrace.Memory.Write(w);
+                           });
 
         writer.WriteBinary(MemoryMapEntry, CompressionLevel.Fastest, fullTrace.MemoryMap.Write);
 
@@ -69,15 +73,11 @@ internal sealed class TraceExportSection : IQueryExportSection
 
         var nodes = reader.Nodes;
 
-        var events = reader.Events;
-
         var callStore = reader.ReadBinary(CallStoreEntry, TraceCallStore.Read);
 
-        var timeline = reader.ReadBinary(TimelineEntry, r => TraceTimeline.Read(r, nodes));
+        var (timeline, memory) = reader.ReadBinary(TimelineEntry, r => (TraceTimeline.Read(r, nodes), MemoryIndex.Read(r)));
 
         callStore.MapNodes(timeline.MappedNodes);
-
-        timeline.SetCalls(callStore);
 
         List<TraceOutputStructure> outputStructures = reader.HasEntry(OutputStructuresEntry)
             ? reader.ReadBinary(OutputStructuresEntry, TraceOutputStructure.Read)
@@ -91,24 +91,17 @@ internal sealed class TraceExportSection : IQueryExportSection
             ? reader.ReadBinary(TeardownsEntry, QueryTeardown.Read)
             : [];
 
-        timeline.SetLifetimes(IteratorLifetimeBuilder.Build(timeline, [.. events.OfType<ExecutionOperatorEvent>()], planNodes, teardowns));
-
-        return new TraceResult(tree, callStore, timeline)
+        var builder = new TraceResultBuilder(tree, callStore, timeline, reader.Events, planNodes, teardowns)
         {
-            PlanLink = IteratorPlanLinker.Link(planNodes, events),
-            PlanNodes = planNodes,
-            Teardowns = teardowns,
-            HoBtAccess = HoBtAccessMap.Build(callStore, timeline.MappedNodes),
+            Memory = memory,
             MemoryMap = reader.HasEntry(MemoryMapEntry)
                 ? reader.ReadBinary(MemoryMapEntry, r => MemoryMap.Read(r, timeline.NodeOf))
                 : MemoryMap.Empty,
             ObjectPool = reader.HasEntry(ObjectPoolSnapshotEntry)
                 ? reader.ReadBinary(ObjectPoolSnapshotEntry, ObjectPoolSnapshot.Read)
-                : ObjectPoolSnapshot.Empty,
-            OutputStructures = outputStructures,
-            RowReturnMarks = TraceRowReturnMarks.Build(timeline, callStore),
-            Reads = TraceReads.Build(timeline, callStore),
-            Evaluations = TraceEvaluations.Build(timeline, callStore)
+                : ObjectPoolSnapshot.Empty
         };
+
+        return builder.Build(outputStructures);
     }
 }

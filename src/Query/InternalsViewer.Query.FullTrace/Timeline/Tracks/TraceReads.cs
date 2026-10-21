@@ -22,9 +22,10 @@ public static class TraceReads
     public static (PageAddress Page, int PageCount)? GetRead(TraceArgumentCall call, TraceReadType type)
         => GetPage(call) is { } page ? (page, GetPageCount(call, type)) : null;
 
-    internal static TraceTickSeries Build(TraceTimeline timeline, TraceCallStore calls)
+    internal static TraceTickSeries Build(TraceTimeline timeline, TraceCallStore calls, TraceOperatorLifetimes lifetimes)
         => TraceTickSeries.FromCalls(timeline,
                                      calls,
+                                     lifetimes,
                                      f => GetReadType(f) is not null,
                                      (f, c) => GetReadType(f) is { } type && GetPage(c) is not null ? (byte)type : null);
 

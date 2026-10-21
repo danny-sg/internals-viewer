@@ -113,11 +113,11 @@ public class TraceEvaluationsTests
     [Fact]
     public void A_Definition_Ticks_Only_The_Calls_Made_Under_Its_Caller()
     {
-        var (timeline, calls) = BuildTrace();
+        var (timeline, calls, lifetimes) = BuildTrace();
 
         var definition = Definition(TraceConditionTarget.CalledBy, "CQScanTableScanNew::GetRow");
 
-        var ticks = TraceTickSeries.FromDefinition(timeline, calls, definition);
+        var ticks = TraceTickSeries.FromDefinition(timeline, calls, lifetimes, definition);
 
         Assert.Equal((3, true), (ticks.Count, ticks.All.All(t => ReferenceEquals(t.Operator, Scan))));
     }
@@ -125,9 +125,9 @@ public class TraceEvaluationsTests
     [Fact]
     public void A_Definition_Ticks_Only_The_Calls_Inside_Its_Operator()
     {
-        var (timeline, calls) = BuildTrace();
+        var (timeline, calls, lifetimes) = BuildTrace();
 
-        var ticks = TraceTickSeries.FromDefinition(timeline, calls, Definition(TraceConditionTarget.Operator, "Filter"));
+        var ticks = TraceTickSeries.FromDefinition(timeline, calls, lifetimes, Definition(TraceConditionTarget.Operator, "Filter"));
 
         Assert.Equal((2, true), (ticks.Count, ticks.All.All(t => ReferenceEquals(t.Operator, Filter))));
     }
@@ -143,12 +143,12 @@ public class TraceEvaluationsTests
 
     private static TraceTickSeries Build()
     {
-        var (timeline, calls) = BuildTrace();
+        var (timeline, calls, lifetimes) = BuildTrace();
 
-        return TraceEvaluations.Build(timeline, calls);
+        return TraceEvaluations.Build(timeline, calls, lifetimes);
     }
 
-    private static (TraceTimeline Timeline, TraceCallStore Calls) BuildTrace()
+    private static (TraceTimeline Timeline, TraceCallStore Calls, TraceOperatorLifetimes Lifetimes) BuildTrace()
     {
         CallSpan[] spans =
         [
@@ -210,10 +210,13 @@ public class TraceEvaluationsTests
 
         timeline.SetCalls(calls);
 
-        timeline.SetLifetimes([new TraceOperatorLifetime(Thread, Filter, 0, [Whole()], [Whole()], MemoryInUseCurve.Empty),
-                               new TraceOperatorLifetime(Thread, Scan, 1, [Whole()], [Whole()], MemoryInUseCurve.Empty)]);
+        TraceOperatorLifetime[] lifetimes =
+        [
+            new(Thread, Filter, 0, [Whole()], [Whole()], MemoryInUseCurve.Empty),
+            new(Thread, Scan, 1, [Whole()], [Whole()], MemoryInUseCurve.Empty)
+        ];
 
-        return (timeline, calls);
+        return (timeline, calls, new TraceOperatorLifetimes(lifetimes));
     }
 
     private static ulong[] Call(ulong start, ulong end, int node)

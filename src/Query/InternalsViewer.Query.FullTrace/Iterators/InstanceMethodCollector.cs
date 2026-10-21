@@ -8,25 +8,6 @@ namespace InternalsViewer.Query.FullTrace.Iterators;
 
 internal static class InstanceMethodCollector
 {
-    private static readonly string[] ClassPrefixes = ["CQScan", "CBpQScan", "CQueryScan"];
-
-    private static readonly string[] PlanObjectPrefixes = ["CXte", "CBpXte"];
-
-    private static readonly HashSet<string> Methods = new(StringComparer.Ordinal)
-    {
-        "Open",
-        "GetRow",
-        "GetRowOrReQualifyHelper",
-        "Close",
-        "BpOpen",
-        "BpGetNextBatch",
-        "BpGetBatchData",
-        "BpClose"
-    };
-
-    private static readonly HashSet<string>.AlternateLookup<ReadOnlySpan<char>> MethodLookup =
-        Methods.GetAlternateLookup<ReadOnlySpan<char>>();
-
     public static int? InstanceRegister(string? signature, string? decoratedName)
     {
         if (signature is null || decoratedName is null)
@@ -42,23 +23,28 @@ internal static class InstanceMethodCollector
         };
     }
 
-    public static bool IsIteratorMethod(ReadOnlySpan<char> symbol)
+    public static bool IsPlanObjectMethod(ReadOnlySpan<char> symbol)
     {
-        var separator = SymbolsHelper.FindClassMethodSeparator(symbol);
+        SymbolsHelper.Split(symbol, out var className, out _);
 
-        return separator > 0
-               && IsIteratorClass(symbol)
-               && MethodLookup.Contains(symbol[(separator + 2)..]);
+        return className.Length > 0 && IteratorSymbols.IsPlanObject(className);
     }
 
-    public static bool IsPlanObjectMethod(ReadOnlySpan<char> symbol)
-        => SymbolsHelper.FindClassMethodSeparator(symbol) > 0 && IsPlanObjectClass(symbol);
+    public static bool IsInstanceMethod(ReadOnlySpan<char> symbol)
+    {
+        SymbolsHelper.Split(symbol, out var className, out var methodName);
 
-    public static bool IsPlanObjectClass(ReadOnlySpan<char> className) => StartsWithAny(className, PlanObjectPrefixes);
+        if (className.Length == 0)
+        {
+            return false;
+        }
 
-    public static bool IsInstanceMethod(ReadOnlySpan<char> symbol) => IsIteratorMethod(symbol) || IsPlanObjectMethod(symbol);
+        return IteratorSymbols.IsPlanObject(className)
+               || ((IteratorSymbols.IsIterator(className) || IteratorSymbols.IsQueryScan(className))
+                   && IteratorSymbols.IsIteratorMethod(methodName));
+    }
 
-    public static bool IsInstanceClass(ReadOnlySpan<char> symbol) => IsIteratorClass(symbol) || IsPlanObjectClass(symbol);
+    public static bool IsInstanceClass(ReadOnlySpan<char> symbol) => IteratorSymbols.IsInstanceClass(symbol);
 
     public static List<InstanceMethod> FindInstanceMethods(IEnumerable<uint> addresses, DiaResolver resolver)
     {
@@ -81,27 +67,12 @@ internal static class InstanceMethodCollector
         {
             var parameter = parameters[index].TrimEnd();
 
-            if (IsInstanceClass(parameter) && parameter.EndsWith('*'))
+            if (IteratorSymbols.IsInstanceClass(parameter) && parameter.EndsWith('*'))
             {
                 return index;
             }
         }
 
         return null;
-    }
-
-    private static bool IsIteratorClass(ReadOnlySpan<char> symbol) => StartsWithAny(symbol, ClassPrefixes);
-
-    private static bool StartsWithAny(ReadOnlySpan<char> value, string[] prefixes)
-    {
-        foreach (var prefix in prefixes)
-        {
-            if (value.StartsWith(prefix, StringComparison.Ordinal))
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

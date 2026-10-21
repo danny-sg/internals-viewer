@@ -97,9 +97,9 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
     private int LayoutVersion { get; set; }
 
-    public void Rebuild(TraceTimeline? timeline)
+    public void Rebuild(TraceTimeline? timeline, TraceOperatorLifetimes lifetimes)
     {
-        Rows = AddStatementRow(GetOperatorRows(timeline));
+        Rows = AddStatementRow(GetOperatorRows(timeline, lifetimes));
 
         Details.Clear();
 
@@ -273,7 +273,7 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
         Gradients.Clear();
     }
 
-    private static TraceOperatorRow[] GetOperatorRows(TraceTimeline? timeline)
+    private static TraceOperatorRow[] GetOperatorRows(TraceTimeline? timeline, TraceOperatorLifetimes lifetimes)
     {
         if (timeline is null)
         {
@@ -287,13 +287,12 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
             lanes[timeline.Threads[lane].ThreadId] = lane;
         }
 
-        return [.. timeline.Lifetimes
-                           .Where(l => lanes.ContainsKey(l.Thread))
-                           .GroupBy(l => l.Operator, ReferenceEqualityComparer.Instance)
-                           .Select(g => CreateRow((ExecutionOperatorEvent)g.Key!, [.. g.OrderBy(l => lanes[l.Thread])]))
-                           .OrderBy(r => r.Operator.NodeLevel)
-                           .ThenBy(r => r.Lifetimes.Min(l => l.StartOf(TraceTimelineAxis.Position)))
-                           .ThenBy(r => r.Operator.PlanNodeIdentifier?.NodeId ?? 0)];
+        return [.. lifetimes.Where(l => lanes.ContainsKey(l.Thread))
+                            .GroupBy(l => l.Operator, ReferenceEqualityComparer.Instance)
+                            .Select(g => CreateRow((ExecutionOperatorEvent)g.Key!, [.. g.OrderBy(l => lanes[l.Thread])]))
+                            .OrderBy(r => r.Operator.NodeLevel)
+                            .ThenBy(r => r.Lifetimes.Min(l => l.StartOf(TraceTimelineAxis.Position)))
+                            .ThenBy(r => r.Operator.PlanNodeIdentifier?.NodeId ?? 0)];
     }
 
     private TraceOperatorRow[] AddStatementRow(TraceOperatorRow[] rows)
@@ -341,11 +340,7 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
             ? operatorEvent.ObjectName
             : operatorEvent.LogicalOperator != operatorEvent.Name ? operatorEvent.LogicalOperator : string.Empty;
 
-        var title = operatorEvent.PlanNodeIdentifier is { } identifier
-            ? $"{operatorEvent.OperatorDescription} (Node {identifier.NodeId})"
-            : operatorEvent.OperatorDescription;
-
-        return new TraceOperatorRow(operatorEvent, lifetimes, operatorEvent.Name, target, title);
+        return new TraceOperatorRow(operatorEvent, lifetimes, operatorEvent.Name, target, operatorEvent.Label);
     }
 
     private void DrawOperatorBar(SKCanvas canvas, int row, int track, SKRect rect, double scale)

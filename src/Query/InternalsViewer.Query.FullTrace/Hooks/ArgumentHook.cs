@@ -1,5 +1,5 @@
 using System.Runtime.InteropServices;
-using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
+using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
 
@@ -110,9 +110,16 @@ internal abstract class ArgumentHook<TRead>(IEnumerable<(ulong Function, TRead R
             return;
         }
 
-        var read = replay.Read(replay.GetStackArguments(call), MemoryMarshal.AsBytes(stack)) / sizeof(ulong);
+        var read = replay.Read(GetStackArguments(replay, call), MemoryMarshal.AsBytes(stack)) / sizeof(ulong);
 
         stack[read..].Clear();
+    }
+
+    private static ulong GetStackArguments(ITraceReplay replay, in TraceHookCall call)
+    {
+        var hasReturnAddress = replay.TryRead(call.StackPointer, out ulong top) && top == call.ReturnAddress;
+
+        return call.StackPointer + (ulong)(hasReturnAddress ? ArgumentLayout.StackArgumentOffset : ArgumentLayout.HomeSpaceSize);
     }
 
     private static ulong GetArgument(ReadOnlySpan<ulong> arguments, in TraceHookCall call, int register)

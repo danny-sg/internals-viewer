@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Events.Operators;
@@ -7,10 +8,11 @@ namespace InternalsViewer.Query.FullTrace.Iterators;
 
 internal static class IteratorLifetimeBuilder
 {
-    public static IReadOnlyList<TraceOperatorLifetime> Build(TraceTimeline timeline,
-                                                             IReadOnlyList<ExecutionOperatorEvent> operators,
-                                                             IReadOnlyList<IteratorPlanNode> planNodes,
-                                                             IReadOnlyList<QueryTeardown> teardowns)
+    public static TraceOperatorLifetimes Build(TraceTimeline timeline,
+                                               MemoryIndex memory,
+                                               IReadOnlyList<ExecutionOperatorEvent> operators,
+                                               IReadOnlyList<IteratorPlanNode> planNodes,
+                                               IReadOnlyList<QueryTeardown> teardowns)
     {
         var owners = new Dictionary<ulong, ExecutionOperatorEvent>();
 
@@ -26,7 +28,7 @@ internal static class IteratorLifetimeBuilder
 
         if (owners.Count == 0)
         {
-            return lifetimes;
+            return TraceOperatorLifetimes.Empty;
         }
 
         var constructions = planNodes.Where(n => n.Constructed is not null).ToDictionary(n => n.Iterator, n => n.Constructed!.Value);
@@ -68,7 +70,7 @@ internal static class IteratorLifetimeBuilder
 
             var merged = calls.Select(c => (Operator: c.Key, c.Value.Instances, Calls: Merged(c.Value.Calls))).ToList();
 
-            var curves = timeline.Memory.InUseOwnedBy(thread.ThreadId, [.. merged.Select(m => m.Calls.Positions)]);
+            var curves = memory.InUseOwnedBy(thread.ThreadId, [.. merged.Select(m => m.Calls.Positions)]);
 
             TracePoint[] threadTeardowns = [.. teardowns.Where(t => t.Thread == thread.ThreadId)
                                                         .Select(t => t.End)
@@ -107,7 +109,7 @@ internal static class IteratorLifetimeBuilder
             }
         }
 
-        return lifetimes;
+        return new TraceOperatorLifetimes(lifetimes);
     }
 
     private static (TraceSpan[] Positions, TraceSpan[] Instructions) Merged(List<InstanceCall> calls)

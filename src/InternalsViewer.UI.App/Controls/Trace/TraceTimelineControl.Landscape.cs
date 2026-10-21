@@ -344,7 +344,7 @@ public sealed partial class TraceTimelineControl
 
         if (!_inUseCurves.TryGetValue(source, out var curve))
         {
-            curve = timeline.Memory.InUseWithin(threadId, positions.Start, positions.End);
+            curve = Memory.InUseWithin(threadId, positions.Start, positions.End);
 
             _inUseCurves[source] = curve;
         }

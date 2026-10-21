@@ -6,7 +6,6 @@ using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
-using InternalsViewer.Query.Events.Operators;
 
 namespace InternalsViewer.Query.FullTrace.Timeline;
 
@@ -40,9 +39,7 @@ public sealed partial class TraceTimeline
         PositionEnd = source.PositionEnd;
         InstructionStart = source.InstructionStart;
         InstructionEnd = source.InstructionEnd;
-        Memory = source.Memory;
         Calls = source.Calls;
-        Lifetimes = source.Lifetimes;
 
         if (!fit || threads.Count == 0)
         {
@@ -60,10 +57,6 @@ public sealed partial class TraceTimeline
     public int NodeCount => Parents.Length;
 
     public long SpanCount { get; }
-
-    public MemoryIndex Memory { get; private set; } = MemoryIndex.Empty;
-
-    public IReadOnlyList<TraceOperatorLifetime> Lifetimes { get; private set; } = [];
 
     internal CallStackNode?[] MappedNodes => Nodes;
 
@@ -192,7 +185,7 @@ public sealed partial class TraceTimeline
         }
     }
 
-    public IReadOnlyList<TraceSelfAllocation> SelfAllocations()
+    public IReadOnlyList<TraceSelfAllocation> GetSelfAllocations(MemoryIndex memory)
     {
         var totals = new Dictionary<(int Thread, int Depth, int Index), ulong>();
 
@@ -200,7 +193,7 @@ public sealed partial class TraceTimeline
         {
             var rows = Threads[thread].Rows;
 
-            foreach (var (position, bytes) in Memory.GetAllocations(Threads[thread].ThreadId))
+            foreach (var (position, bytes) in memory.GetAllocations(Threads[thread].ThreadId))
             {
                 for (var depth = rows.Count - 1; depth >= 0; depth--)
                 {
@@ -369,29 +362,9 @@ public sealed partial class TraceTimeline
 
     public static double PositionOf(ulong sequence, ulong steps, double stepsPerSequence) => sequence + steps / stepsPerSequence;
 
-    internal void SetMemory(IEnumerable<MemoryAllocation> allocations, IEnumerable<MemoryFree> frees)
-        => Memory = MemoryIndex.Build(allocations, frees);
-
     internal void MapNodes(CallStackNode?[] nodes) => Nodes = nodes;
 
-    internal void SetLifetimes(IReadOnlyList<TraceOperatorLifetime> lifetimes) => Lifetimes = lifetimes;
-
     internal void SetCalls(TraceCallStore calls) => Calls = calls;
-
-    internal Dictionary<ulong, ExecutionOperatorEvent> GetOperatorsByInstance()
-    {
-        var owners = new Dictionary<ulong, ExecutionOperatorEvent>();
-
-        foreach (var lifetime in Lifetimes)
-        {
-            foreach (var instance in lifetime.Operator.Instances)
-            {
-                owners.TryAdd(instance, lifetime.Operator);
-            }
-        }
-
-        return owners;
-    }
 
     private static int IndexOf(TraceTimelineRow row, double start, int node, int call)
     {

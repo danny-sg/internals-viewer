@@ -9,7 +9,6 @@ using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Output;
-using InternalsViewer.Query.FullTrace.RowSources;
 using Microsoft.Extensions.Logging;
 using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.Helpers;
@@ -114,9 +113,6 @@ internal static class ReplayFunctionResolver
         return ReplayFunctions.Merge([.. found, .. heap]);
     }
 
-    internal static bool IsExcluded(SymbolCategory category, string? iterator)
-        => category is SymbolCategory.XEventInfrastructure || (category is SymbolCategory.Tracing && iterator is null);
-
     private static ReplayFunctions GetHeapFunctions(TraceModule module)
     {
         MemoryFunction[] memory = [.. ModuleExportReader.Read(module.Path)
@@ -216,14 +212,14 @@ internal static class ReplayFunctionResolver
 
         var moduleName = module.Name;
 
-        var rowSources = new RowSourceFunctions.Collector();
+        var planNodes = new PlanNodeFunctions.Collector();
 
         var output = new OutputFunctions.Collector();
 
         var functions = ModuleSymbols.Load(resolver,
                                            (rva, name) =>
                                            {
-                                               rowSources.VisitFunction(rva, name);
+                                               planNodes.VisitFunction(rva, name);
 
                                                output.VisitFunction(rva, name);
 
@@ -231,7 +227,7 @@ internal static class ReplayFunctionResolver
                                            },
                                            (rva, name) =>
                                            {
-                                               rowSources.VisitData(rva, name);
+                                               planNodes.VisitData(rva, name);
 
                                                output.VisitData(rva, name);
                                            });
@@ -253,7 +249,7 @@ internal static class ReplayFunctionResolver
                                    locators,
                                    [.. functions.Values.Select(f => f.MemoryFunction).OfType<MemoryFunction>()],
                                    [.. MemoryMapFunctionResolver.Find(resolver, kept)],
-                                   rowSources.Build(),
+                                   planNodes.Build(),
                                    output.Build());
     }
 
@@ -269,7 +265,7 @@ internal static class ReplayFunctionResolver
     {
         SymbolsHelper.Split(symbol, out var className, out var methodName);
 
-        return IsExcluded(mappings.Classify(module, className, methodName),
-                          mappings.ClassifyOperator(module, className, methodName).Iterator);
+        return Instrumentation.IsExcluded(mappings.Classify(module, className, methodName),
+                                          mappings.ClassifyOperator(module, className, methodName).Iterator);
     }
 }

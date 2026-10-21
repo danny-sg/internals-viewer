@@ -1,6 +1,4 @@
-using InternalsViewer.Query.FullTrace.Hooks;
-
-namespace InternalsViewer.Query.FullTrace.Interfaces.Hooks;
+namespace InternalsViewer.Query.FullTrace.Hooks;
 
 /// <summary>
 /// Trace Hook definition interface
@@ -17,13 +15,6 @@ namespace InternalsViewer.Query.FullTrace.Interfaces.Hooks;
 internal interface ITraceHook
 {
     IEnumerable<TraceHookFunction> Functions { get; }
-
-    /// <summary>
-    /// When a function call is found before any tracking
-    /// </summary>
-    void OnCall(in TraceHookCall call, ITraceReplay replay)
-    {
-    }
 
     /// <summary>
     /// When a function call is found, tracked and has been added as a CallNode
@@ -50,10 +41,6 @@ internal interface ITraceHook
     /// When a specific watched frame has ended
     /// </summary>
     void OnFrameEnded(in TraceHookCall call)
-    {
-    }
-
-    void OnStackUnwound(in TraceHookCall call)
     {
     }
 }
