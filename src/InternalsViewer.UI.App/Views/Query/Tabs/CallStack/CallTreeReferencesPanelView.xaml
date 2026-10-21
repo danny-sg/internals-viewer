@@ -118,8 +118,7 @@
                        Background="{ThemeResource LayerFillColorDefaultBrush}"
                        Expanding="OnValueTreeExpanding"
                        ItemInvoked="OnValueTreeItemInvoked"
-                       ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                       ScrollViewer.HorizontalScrollMode="Enabled">
+                       Loaded="OnValueTreeLoaded">
             <muxc:TreeView.ItemContainerStyle>
                 <Style TargetType="muxc:TreeViewItem">
                     <Setter Property="HorizontalContentAlignment" Value="Left"/>

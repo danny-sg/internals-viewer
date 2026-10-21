@@ -297,14 +297,14 @@ public sealed partial class TraceTimelineControl
 
                 var labelled = raised is null || !raised(index);
 
-                DrawSpan(canvas, row.NodeAt(index), left, right, top, width, labelled);
+                DrawSpan(canvas, row.GetCallNodeIndex(index), left, right, top, width, labelled);
 
                 index++;
 
                 continue;
             }
 
-            var colour = ColourOf(row.NodeAt(index));
+            var colour = ColourOf(row.GetCallNodeIndex(index));
 
             var isContiguous = runStart >= 0 && left <= runEnd + NarrowSpan;
 
@@ -339,9 +339,9 @@ public sealed partial class TraceTimelineControl
         canvas.DrawRect(start, top, Math.Max(end - start, NarrowSpan), BarHeight, _paints.Fill);
     }
 
-    private void DrawSpan(SKCanvas canvas, int node, float left, float right, float top, int width, bool labelled)
+    private void DrawSpan(SKCanvas canvas, int callNodeIndex, float left, float right, float top, int width, bool labelled)
     {
-        var colour = ColourOf(node);
+        var colour = ColourOf(callNodeIndex);
 
         var visibleLeft = Math.Max(left, -1f);
 
@@ -364,7 +364,7 @@ public sealed partial class TraceTimelineControl
 
         canvas.ClipRect(rect);
 
-        canvas.DrawText(LabelOf(node),
+        canvas.DrawText(LabelOf(callNodeIndex),
                         Math.Max(rect.Left, 0) + LabelPadding,
                         Baseline(top, BarHeight),
                         SKTextAlign.Left,
@@ -523,21 +523,21 @@ public sealed partial class TraceTimelineControl
         return top + (height - (metrics.Descent - metrics.Ascent)) / 2 - metrics.Ascent;
     }
 
-    private SKColor ColourOf(int node)
+    private SKColor ColourOf(int callNodeIndex)
     {
-        if (_colours.TryGetValue(node, out var colour))
+        if (_colours.TryGetValue(callNodeIndex, out var colour))
         {
             return colour;
         }
 
-        colour = _timeline?.NodeOf(node)?.CategoryColour is { } hex ? Parse(hex) : _paints.Unknown;
+        colour = _timeline?.NodeOf(callNodeIndex)?.CategoryColour is { } hex ? Parse(hex) : _paints.Unknown;
 
-        if (IsDimmed(node))
+        if (IsDimmed(callNodeIndex))
         {
             colour = Dimmed(colour);
         }
 
-        _colours[node] = colour;
+        _colours[callNodeIndex] = colour;
 
         return colour;
     }
@@ -554,13 +554,13 @@ public sealed partial class TraceTimelineControl
         return colour;
     }
 
-    private string LabelOf(int node)
+    private string LabelOf(int callNodeIndex)
     {
-        if (!_labels.TryGetValue(node, out var label))
+        if (!_labels.TryGetValue(callNodeIndex, out var label))
         {
-            label = _timeline?.NodeOf(node)?.Symbol is { Length: > 0 } symbol ? symbol : "Unknown";
+            label = _timeline?.NodeOf(callNodeIndex)?.Symbol is { Length: > 0 } symbol ? symbol : "Unknown";
 
-            _labels[node] = label;
+            _labels[callNodeIndex] = label;
         }
 
         return label;

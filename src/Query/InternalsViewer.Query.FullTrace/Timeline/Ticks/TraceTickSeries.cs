@@ -66,7 +66,7 @@ public sealed class TraceTickSeries
         foreach (var (address, instance) in calls.FunctionKeys)
         {
             if (calls.GetCallList(address, instance) is not { Count: > 0 } list
-                || calls.GetNode(list.GetNodeIndex(0)) is not { Frame: { } frame } first
+                || calls.GetNode(list.GetCallNodeIndex(0)) is not { Frame: { } frame } first
                 || !isFunction(first))
             {
                 continue;
@@ -83,7 +83,7 @@ public sealed class TraceTickSeries
                     continue;
                 }
 
-                ticks.Add(new TraceTick(value, call.ThreadId, location.Node, location.Call, location.Span)
+                ticks.Add(new TraceTick(value, call.ThreadId, location.Node, location.CallIndex, location.Span)
                 {
                     Function = address,
                     Instance = instance,

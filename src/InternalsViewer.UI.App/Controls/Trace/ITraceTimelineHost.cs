@@ -27,17 +27,17 @@ internal interface ITraceTimelineHost
 
     double GetOrigin(TraceTimelineAxis axis);
 
-    SKColor GetColour(int node);
+    SKColor GetColour(int callNodeIndex);
 
-    string GetLabel(int node);
+    string GetLabel(int callNodeIndex);
 
     void Invalidate();
 
     void MovePlayhead(double position);
 
-    void ClickCall(CallStackNode node, int call);
+    void ClickCall(CallStackNode node, int callIndex);
 
-    void OpenCallTree(CallStackNode node, int call);
+    void OpenCallTree(CallStackNode node, int callIndex);
 
     void OnSelectedOperatorChanged(ExecutionOperatorEvent? selected);
 }

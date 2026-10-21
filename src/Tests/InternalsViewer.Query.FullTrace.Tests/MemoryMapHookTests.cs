@@ -1,4 +1,6 @@
+using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Hooks;
+using InternalsViewer.Query.FullTrace.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
@@ -13,6 +15,12 @@ public class MemoryMapHookTests
     private const ulong Method = 0x7FF8_0070_1000;
 
     private const ulong OperatorNew = 0x7FF8_0070_2000;
+
+    private const ulong Factory = 0x7FF8_0070_3000;
+
+    private const ulong Consumer = 0x7FF8_0070_4000;
+
+    private const ulong Getter = 0x7FF8_0070_5000;
 
     private const ulong StackObject = 0x55_47EF_B300;
 
@@ -88,10 +96,82 @@ public class MemoryMapHookTests
         Assert.Single(hook.Build());
     }
 
+    [Fact]
+    public void A_Declared_Parameter_Names_Memory_Nothing_Else_Has()
+    {
+        var (hook, replay) = Create();
+
+        hook.OnEntry(Call(Consumer, 10, arguments: [0, HeapObject, 0, 0]), replay);
+
+        var entry = Assert.Single(hook.Build());
+
+        Assert.Equal((HeapObject, MemoryMapOperation.Declared, "BaseXact"), (entry.Address, entry.Operation, entry.ClassName));
+    }
+
+    [Fact]
+    public void A_Declared_Return_Is_Recorded_When_The_Call_Returns()
+    {
+        var (hook, replay) = Create();
+
+        hook.OnReturn(Call(Factory, 20, returnValue: HeapObject), replay);
+
+        var entry = Assert.Single(hook.Build());
+
+        Assert.Equal((HeapObject, At(20), MemoryMapOperation.Declared, "AccBindings"),
+                     (entry.Address, entry.FromPosition, entry.Operation, entry.ClassName));
+    }
+
+    [Fact]
+    public void A_Declared_Type_Never_Replaces_A_Member_Call()
+    {
+        var (hook, replay) = Create();
+
+        hook.OnEntry(Call(Method, 10, arguments: [HeapObject, 0, 0, 0]), replay);
+
+        hook.OnEntry(Call(Consumer, 11, arguments: [0, HeapObject, 0, 0]), replay);
+
+        Assert.Equal(MemoryMapOperation.Visited, Assert.Single(hook.Build()).Operation);
+    }
+
+    [Fact]
+    public void A_Member_Call_Follows_A_Declared_Type()
+    {
+        var (hook, replay) = Create();
+
+        hook.OnEntry(Call(Consumer, 10, arguments: [0, HeapObject, 0, 0]), replay);
+
+        hook.OnEntry(Call(Method, 11, arguments: [HeapObject, 0, 0, 0]), replay);
+
+        Assert.Equal([MemoryMapOperation.Declared, MemoryMapOperation.Visited], hook.Build().Select(e => e.Operation));
+    }
+
+    [Fact]
+    public void A_Function_Is_Hooked_For_Every_Event_Its_Types_Need()
+    {
+        var (hook, _) = Create();
+
+        var events = hook.Functions.ToDictionary(f => f.Address, f => f.Events);
+
+        Assert.Equal((TraceHookEvents.Entry, TraceHookEvents.Return, TraceHookEvents.Entry | TraceHookEvents.Return),
+                     (events[Consumer], events[Factory], events[Getter]));
+    }
+
     private static (MemoryMapHook Hook, FakeTraceReplay Replay) Create()
         => (new MemoryMapHook([new MemoryMapFunction(Constructor, MemoryMapOperation.Constructed),
                                new MemoryMapFunction(Method, MemoryMapOperation.Visited),
-                               new MemoryMapFunction(OperatorNew, MemoryMapOperation.Allocated)]),
+                               new MemoryMapFunction(OperatorNew, MemoryMapOperation.Allocated),
+                               new MemoryMapFunction(Factory, MemoryMapOperation.Declared)
+                               {
+                                   Declared = [new DeclaredClass(ArgumentLayout.ReturnRegister, "AccBindings")]
+                               },
+                               new MemoryMapFunction(Consumer, MemoryMapOperation.Declared)
+                               {
+                                   Declared = [new DeclaredClass(1, "BaseXact")]
+                               },
+                               new MemoryMapFunction(Getter, MemoryMapOperation.Visited)
+                               {
+                                   Declared = [new DeclaredClass(ArgumentLayout.ReturnRegister, "CTypeInfo")]
+                               }]),
             new FakeTraceReplay { Frames = Frames });
 
     private static TraceHookCall Call(ulong function, ulong id, ulong[]? arguments = null, ulong returnValue = 0)
@@ -101,7 +181,7 @@ public class MemoryMapHookTests
             Id = id,
             Position = At(id),
             Thread = Thread,
-            Node = 7,
+            CallNodeIndex = 7,
             Arguments = arguments ?? [0, 0, 0, 0],
             ReturnValue = returnValue,
             StackPointer = StackPointer

@@ -70,11 +70,11 @@ public sealed partial class TraceTimelineControl
         {
             var matches = new bool[timeline.NodeCount];
 
-            for (var node = 0; node < matches.Length; node++)
+            for (var callNodeIndex = 0; callNodeIndex < matches.Length; callNodeIndex++)
             {
-                var label = LabelOf(node);
+                var label = LabelOf(callNodeIndex);
 
-                matches[node] = terms.All(t => label.Contains(t, StringComparison.OrdinalIgnoreCase));
+                matches[callNodeIndex] = terms.All(t => label.Contains(t, StringComparison.OrdinalIgnoreCase));
             }
 
             _searchMatches = matches;
@@ -102,7 +102,7 @@ public sealed partial class TraceTimelineControl
             {
                 for (var index = 0; index < row.Count; index++)
                 {
-                    if (IsSearchMatch(matches, row.NodeAt(index)))
+                    if (IsSearchMatch(matches, row.GetCallNodeIndex(index)))
                     {
                         count++;
                     }
@@ -148,7 +148,7 @@ public sealed partial class TraceTimelineControl
 
                     for (var index = first; index < row.Count && (best is null || row.GetStart(_axis, index) < bestStart); index++)
                     {
-                        if (IsSearchMatch(matches, row.NodeAt(index)))
+                        if (IsSearchMatch(matches, row.GetCallNodeIndex(index)))
                         {
                             best = new FlameHit(lane, depth, index);
 
@@ -166,7 +166,7 @@ public sealed partial class TraceTimelineControl
 
                     for (var index = last; index >= 0 && (best is null || row.GetStart(_axis, index) >= bestStart); index--)
                     {
-                        if (IsSearchMatch(matches, row.NodeAt(index)))
+                        if (IsSearchMatch(matches, row.GetCallNodeIndex(index)))
                         {
                             best = new FlameHit(lane, depth, index);
 
@@ -182,7 +182,7 @@ public sealed partial class TraceTimelineControl
         return best;
     }
 
-    private static bool IsSearchMatch(bool[] matches, int node) => node >= 0 && node < matches.Length && matches[node];
+    private static bool IsSearchMatch(bool[] matches, int callNodeIndex) => callNodeIndex >= 0 && callNodeIndex < matches.Length && matches[callNodeIndex];
 
     private void FindNodeMatches(CallStackNode? selected)
     {
@@ -207,21 +207,21 @@ public sealed partial class TraceTimelineControl
 
         var any = false;
 
-        for (var node = 0; node < under.Length; node++)
+        for (var callNodeIndex = 0; callNodeIndex < under.Length; callNodeIndex++)
         {
-            var parent = timeline.ParentOf(node);
+            var parent = timeline.ParentOf(callNodeIndex);
 
-            under[node] = (parent >= 0 && under[parent]) || (timeline.NodeOf(node) is { } callNode && isSelected(callNode));
+            under[callNodeIndex] = (parent >= 0 && under[parent]) || (timeline.NodeOf(callNodeIndex) is { } callNode && isSelected(callNode));
 
-            any |= under[node];
+            any |= under[callNodeIndex];
         }
 
         return any ? under : null;
     }
 
-    private bool IsDimmed(int node) => Excludes(_searchMatches, node);
+    private bool IsDimmed(int callNodeIndex) => Excludes(_searchMatches, callNodeIndex);
 
-    private static bool Excludes(bool[]? matches, int node) => matches is not null && node >= 0 && node < matches.Length && !matches[node];
+    private static bool Excludes(bool[]? matches, int callNodeIndex) => matches is not null && callNodeIndex >= 0 && callNodeIndex < matches.Length && !matches[callNodeIndex];
 
     private static SKColor Dimmed(SKColor colour)
     {

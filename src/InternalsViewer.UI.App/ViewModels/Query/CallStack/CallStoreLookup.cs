@@ -61,6 +61,8 @@ public sealed class CallStoreLookup(TraceCallStore store,
 
         var entry = isObject && value != 0 ? memoryMap.GetEntry(value, GetPosition(slot, call)) : null;
 
+        var containing = isObject && value != 0 && entry is null ? memoryMap.GetContaining(value, GetPosition(slot, call)) : null;
+
         if (GetHoBtId(slot, value, call) is { } hobtId && getHoBtName(hobtId) is { } name)
         {
             return new ValueDescription(name) { Origin = entry };
@@ -85,6 +87,11 @@ public sealed class CallStoreLookup(TraceCallStore store,
             return new ValueDescription(address, className) { Origin = entry };
         }
 
+        if (containing is ({ } inside, var offset) && (inside.ClassName ?? GetAllocationName(inside)) is { } container)
+        {
+            return new ValueDescription($"0x{inside.Address:X} + 0x{offset:X}", container) { Origin = inside };
+        }
+
         if (slot.Type == ThisType || value == 0)
         {
             return entry is null ? null : new ValueDescription(address) { Origin = entry };
@@ -98,9 +105,9 @@ public sealed class CallStoreLookup(TraceCallStore store,
         return entry?.Allocator is { } allocator ? new ValueDescription(address, allocator) { Origin = entry } : null;
     }
 
-    public async Task<CallSignature?> GetSignatureAsync(CallStackNode node, int call)
+    public async Task<CallSignature?> GetSignatureAsync(CallStackNode node, int callIndex)
     {
-        if (node.Frame is not { } frame || CallsOf(node) is not { } calls || call < 0 || call >= calls.Count)
+        if (node.Frame is not { } frame || CallsOf(node) is not { } calls || callIndex < 0 || callIndex >= calls.Count)
         {
             return null;
         }
@@ -111,7 +118,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
 
         return await Task.Run(() =>
         {
-            var logged = calls[call];
+            var logged = calls[callIndex];
 
             return new CallSignature(ArgumentRowBuilder.GetSignature(function,
                                                                   layout,
@@ -125,17 +132,17 @@ public sealed class CallStoreLookup(TraceCallStore store,
         });
     }
 
-    public (TracePosition FromPosition, TracePosition ToPosition) GetPositions(CallStackNode node, int call)
-        => CallsOf(node) is { } calls && call >= 0 && call < calls.Count
-            ? (calls.GetFromPosition(call), calls.GetToPosition(call))
+    public (TracePosition FromPosition, TracePosition ToPosition) GetPositions(CallStackNode node, int callIndex)
+        => CallsOf(node) is { } calls && callIndex >= 0 && callIndex < calls.Count
+            ? (calls.GetFromPosition(callIndex), calls.GetToPosition(callIndex))
             : (TracePosition.Unknown, TracePosition.Unknown);
 
     public int GetEnclosingCall(CallStackNode node, TracePosition position, uint thread)
         => CallsOf(node)?.IndexOfEnclosing(position, thread) ?? -1;
 
     public CallReference? GetOrigin(MemoryMapEntry origin)
-        => Store.GetNode(origin.Node) is { Frame: not null } node && CallsOf(node) is { } calls
-            ? new CallReference(node, origin.Call < calls.Count ? origin.Call : -1)
+        => Store.GetNode(origin.CallNodeIndex) is { Frame: not null } node && CallsOf(node) is { } calls
+            ? new CallReference(node, origin.CallIndex < calls.Count ? origin.CallIndex : -1)
             : null;
 
     public Task<ResolvedSignature?> ResolveAsync(CallstackFrame frame)
@@ -219,7 +226,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
                                     string function,
                                     ArgumentLayout? layout,
                                     TraceCallList calls)
-        => new(valueCall, use, ArgumentRowBuilder.GetSignature(function, layout, calls[valueCall.Call], Describe));
+        => new(valueCall, use, ArgumentRowBuilder.GetSignature(function, layout, calls[valueCall.CallIndex], Describe, includeTypes: true));
 
     private static Dictionary<ulong, CallstackFrame> GetFrames(CallStackTree? tree)
     {
@@ -287,15 +294,21 @@ public sealed class CallStoreLookup(TraceCallStore store,
 
         if (firstUse is not null
             && Store.GetCallList(firstUse.Address, firstUse.Instance) is { } calls
-            && firstUse.First.Call < calls.Count)
+            && firstUse.First.CallIndex < calls.Count)
         {
-            var call = calls[firstUse.First.Call];
+            var call = calls[firstUse.First.CallIndex];
 
             var moment = firstUse.Location == ReturnLocation ? call.ToPosition : call.FromPosition;
 
             if (memoryMap.GetEntry(value, moment) is { } entry && (entry.ClassName ?? GetAllocationName(entry)) is { } typeName)
             {
                 return typeName;
+            }
+
+            if (memoryMap.GetContaining(value, moment) is ({ } inside, var offset)
+                && (inside.ClassName ?? GetAllocationName(inside)) is { } container)
+            {
+                return $"{container} + 0x{offset:X}";
             }
         }
 

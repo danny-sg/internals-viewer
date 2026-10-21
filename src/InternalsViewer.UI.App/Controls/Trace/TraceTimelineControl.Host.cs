@@ -27,9 +27,9 @@ public sealed partial class TraceTimelineControl : ITraceTimelineHost
 
     double ITraceTimelineHost.GetOrigin(TraceTimelineAxis axis) => OriginOf(axis);
 
-    SKColor ITraceTimelineHost.GetColour(int node) => ColourOf(node);
+    SKColor ITraceTimelineHost.GetColour(int callNodeIndex) => ColourOf(callNodeIndex);
 
-    string ITraceTimelineHost.GetLabel(int node) => LabelOf(node);
+    string ITraceTimelineHost.GetLabel(int callNodeIndex) => LabelOf(callNodeIndex);
 
     void ITraceTimelineHost.Invalidate() => _canvas.Invalidate();
 
@@ -40,9 +40,9 @@ public sealed partial class TraceTimelineControl : ITraceTimelineHost
         PlacePlayhead(position);
     }
 
-    void ITraceTimelineHost.ClickCall(CallStackNode node, int call)
+    void ITraceTimelineHost.ClickCall(CallStackNode node, int callIndex)
     {
-        if (_visible is not { } timeline || FindCall(timeline, node, call) is not { } hit)
+        if (_visible is not { } timeline || FindCall(timeline, node, callIndex) is not { } hit)
         {
             return;
         }
@@ -55,7 +55,7 @@ public sealed partial class TraceTimelineControl : ITraceTimelineHost
         }
     }
 
-    void ITraceTimelineHost.OpenCallTree(CallStackNode node, int call) => CallTreeOpenRequested?.Invoke(node, call);
+    void ITraceTimelineHost.OpenCallTree(CallStackNode node, int callIndex) => CallTreeOpenRequested?.Invoke(node, callIndex);
 
     void ITraceTimelineHost.OnSelectedOperatorChanged(ExecutionOperatorEvent? selected)
     {

@@ -5,15 +5,15 @@ namespace InternalsViewer.Query.FullTrace.Timeline;
 
 public sealed partial class TraceTimelineRow
 {
-    internal TraceTimelineRow(TraceScale scale, TracePoint[] fromPoints, TracePoint[] toPoints, int[] nodes, uint[] calls, byte[] flags)
-        : this(scale, fromPoints, toPoints, nodes, calls, flags, 0, nodes.Length)
+    internal TraceTimelineRow(TraceScale scale, TracePoint[] fromPoints, TracePoint[] toPoints, int[] callNodeIndexes, uint[] calls, byte[] flags)
+        : this(scale, fromPoints, toPoints, callNodeIndexes, calls, flags, 0, callNodeIndexes.Length)
     {
     }
 
     private TraceTimelineRow(TraceScale scale,
                              TracePoint[] fromPoints,
                              TracePoint[] toPoints,
-                             int[] nodes,
+                             int[] callNodeIndexes,
                              uint[] calls,
                              byte[] flags,
                              int offset,
@@ -22,7 +22,7 @@ public sealed partial class TraceTimelineRow
         Scale = scale;
         FromPoints = fromPoints;
         ToPoints = toPoints;
-        Nodes = nodes;
+        CallNodeIndexes = callNodeIndexes;
         Calls = calls;
         Flags = flags;
         Offset = offset;
@@ -39,7 +39,7 @@ public sealed partial class TraceTimelineRow
 
     private TracePoint[] ToPoints { get; }
 
-    private int[] Nodes { get; }
+    private int[] CallNodeIndexes { get; }
 
     private uint[] Calls { get; }
 
@@ -57,13 +57,13 @@ public sealed partial class TraceTimelineRow
 
     public double GetEnd(TraceTimelineAxis axis, int index) => Scale.GetValue(GetTo(index), axis);
 
-    public int NodeAt(int index) => Nodes[Offset + index];
+    public int GetCallNodeIndex(int index) => CallNodeIndexes[Offset + index];
 
-    public int CallAt(int index) => Calls[Offset + index] is var call && call == uint.MaxValue ? -1 : (int)call;
+    public int GetCallIndex(int index) => Calls[Offset + index] is var callIndex && callIndex == uint.MaxValue ? -1 : (int)callIndex;
 
     public TraceSpanFlags FlagsAt(int index) => (TraceSpanFlags)Flags[Offset + index];
 
-    public TraceSpan GetSpan(int index) => new(GetFrom(index), GetTo(index), NodeAt(index), CallAt(index), FlagsAt(index));
+    public TraceSpan GetSpan(int index) => new(GetFrom(index), GetTo(index), GetCallNodeIndex(index), GetCallIndex(index), FlagsAt(index));
 
     public TraceTimelineRow Where(Func<int, bool> include)
     {
@@ -71,7 +71,7 @@ public sealed partial class TraceTimelineRow
 
         for (var index = 0; index < Count; index++)
         {
-            if (include(NodeAt(index)))
+            if (include(GetCallNodeIndex(index)))
             {
                 kept.Add(index);
             }
@@ -85,7 +85,7 @@ public sealed partial class TraceTimelineRow
         return new TraceTimelineRow(Scale,
                                     [.. kept.Select(i => FromPoints[Offset + i])],
                                     [.. kept.Select(i => ToPoints[Offset + i])],
-                                    [.. kept.Select(i => Nodes[Offset + i])],
+                                    [.. kept.Select(i => CallNodeIndexes[Offset + i])],
                                     [.. kept.Select(i => Calls[Offset + i])],
                                     [.. kept.Select(i => Flags[Offset + i])]);
     }
@@ -111,15 +111,15 @@ public sealed partial class TraceTimelineRow
         return index < Count && GetFrom(index).Position <= position ? index : -1;
     }
 
-    internal int GetIndex(TracePosition from, int node, int call)
+    internal int GetIndex(TracePosition from, int callNodeIndex, int callIndex)
     {
         var index = SortedSearch.FirstAtOrAfter(Froms, from, p => p.Position);
 
-        return index < Count && GetFrom(index).Position == from && NodeAt(index) == node && CallAt(index) == call ? index : -1;
+        return index < Count && GetFrom(index).Position == from && GetCallNodeIndex(index) == callNodeIndex && GetCallIndex(index) == callIndex ? index : -1;
     }
 
     internal TraceTimelineRow Slice(int start, int count)
         => start == 0 && count == Count
             ? this
-            : new TraceTimelineRow(Scale, FromPoints, ToPoints, Nodes, Calls, Flags, Offset + start, count);
+            : new TraceTimelineRow(Scale, FromPoints, ToPoints, CallNodeIndexes, Calls, Flags, Offset + start, count);
 }

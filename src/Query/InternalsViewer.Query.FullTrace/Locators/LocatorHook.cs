@@ -19,7 +19,7 @@ internal sealed class LocatorHook(IEnumerable<LocatorRead> reads, TraceCallStore
 
         if (locator is { } found)
         {
-            store.AddLocator(call.Function, call.Instance, (int)call.Call, found, read.IsReadAtReturn);
+            store.AddLocator(call.Function, call.Instance, (int)call.CallIndex, found, read.IsReadAtReturn);
         }
     }
 

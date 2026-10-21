@@ -257,7 +257,7 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
     {
         if (GetTickAt(position) is { } tick)
         {
-            Host.ClickCall(tick.Node, tick.Call);
+            Host.ClickCall(tick.Node, tick.CallIndex);
         }
         else
         {
@@ -548,7 +548,7 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
             ? StatementColour
             : ColourProvider is { } colours
                 ? colours.GetColour(operatorEvent).ToSkColor()
-                : Host.GetColour(lifetime.Node);
+                : Host.GetColour(lifetime.CallNodeIndex);
 
     private bool IsStatement(ExecutionOperatorEvent operatorEvent)
         => Rows.Length > 0 && Rows[0].IsStatement && ReferenceEquals(Rows[0].Operator, operatorEvent);
@@ -670,7 +670,7 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
         foreach (var call in lifetime.Calls)
         {
-            var label = Host.GetLabel(call.Node);
+            var label = Host.GetLabel(call.CallNodeIndex);
 
             var separator = label.LastIndexOf("::", StringComparison.Ordinal);
 

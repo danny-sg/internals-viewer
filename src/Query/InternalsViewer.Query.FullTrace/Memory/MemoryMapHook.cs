@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
@@ -8,13 +9,10 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions) : 
 {
     private const int InstanceArgument = 0;
 
-    public IEnumerable<TraceHookFunction> Functions
-        => Operations.Select(o => new TraceHookFunction(o.Key, o.Value == MemoryMapOperation.Allocated
-                                                                   ? TraceHookEvents.Return
-                                                                   : TraceHookEvents.Entry));
+    public IEnumerable<TraceHookFunction> Functions => Operations.Select(o => new TraceHookFunction(o.Key, GetEvents(o.Value)));
 
-    private Dictionary<ulong, MemoryMapOperation> Operations { get; }
-        = functions.GroupBy(f => f.Address).ToDictionary(g => g.Key, g => g.Last().Operation);
+    private Dictionary<ulong, MemoryMapFunction> Operations { get; }
+        = functions.GroupBy(f => f.Address).ToDictionary(g => g.Key, Combine);
 
     private List<AddressEntry> Entries { get; } = [];
 
@@ -26,18 +24,43 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions) : 
 
     public void OnEntry(in TraceHookCall call, ITraceReplay replay)
     {
-        if (Operations.TryGetValue(call.Function, out var operation)
-            && operation is MemoryMapOperation.Constructed or MemoryMapOperation.Visited)
+        if (!Operations.TryGetValue(call.Function, out var function))
         {
-            Record(operation, call.Arguments[InstanceArgument], call, replay);
+            return;
+        }
+
+        if (function.Operation is MemoryMapOperation.Constructed or MemoryMapOperation.Visited)
+        {
+            Record(function.Operation, call.Arguments[InstanceArgument], call, replay);
+        }
+
+        foreach (var declared in function.Declared)
+        {
+            if (declared.Slot < ArgumentLayout.RegisterCount)
+            {
+                Record(MemoryMapOperation.Declared, call.Arguments[declared.Slot], call, replay, declared.Name);
+            }
         }
     }
 
     public void OnReturn(in TraceHookCall call, ITraceReplay replay)
     {
-        if (Operations.TryGetValue(call.Function, out var operation) && operation == MemoryMapOperation.Allocated)
+        if (!Operations.TryGetValue(call.Function, out var function))
         {
-            Record(operation, call.ReturnValue, call, replay);
+            return;
+        }
+
+        if (function.Operation == MemoryMapOperation.Allocated)
+        {
+            Record(MemoryMapOperation.Allocated, call.ReturnValue, call, replay);
+        }
+
+        foreach (var declared in function.Declared)
+        {
+            if (declared.Slot == ArgumentLayout.ReturnRegister)
+            {
+                Record(MemoryMapOperation.Declared, call.ReturnValue, call, replay, declared.Name);
+            }
         }
     }
 
@@ -52,6 +75,26 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions) : 
         {
             Entries[index] = Entries[index] with { ToPosition = call.Position };
         }
+    }
+
+    private static MemoryMapFunction Combine(IGrouping<ulong, MemoryMapFunction> functions)
+        => functions.Last() with { Declared = [.. functions.SelectMany(f => f.Declared).Distinct()] };
+
+    private static TraceHookEvents GetEvents(MemoryMapFunction function)
+    {
+        var events = function.Operation switch
+        {
+            MemoryMapOperation.Allocated => TraceHookEvents.Return,
+            MemoryMapOperation.Constructed or MemoryMapOperation.Visited => TraceHookEvents.Entry,
+            _ => TraceHookEvents.None
+        };
+
+        foreach (var declared in function.Declared)
+        {
+            events |= declared.Slot == ArgumentLayout.ReturnRegister ? TraceHookEvents.Return : TraceHookEvents.Entry;
+        }
+
+        return events;
     }
 
     private static ulong GetOwner(ReadOnlySpan<TraceHookFrame> frames, ulong address)
@@ -80,7 +123,11 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions) : 
         return false;
     }
 
-    private void Record(MemoryMapOperation operation, ulong address, in TraceHookCall call, ITraceReplay replay)
+    private void Record(MemoryMapOperation operation,
+                        ulong address,
+                        in TraceHookCall call,
+                        ITraceReplay replay,
+                        string? className = null)
     {
         if (address < TraceAddress.MinAddress)
         {
@@ -93,7 +140,13 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions) : 
 
             var existing = entry.Operation;
 
-            if (operation == MemoryMapOperation.Visited && existing != MemoryMapOperation.Allocated)
+            if (operation == MemoryMapOperation.Visited
+                && existing is not (MemoryMapOperation.Allocated or MemoryMapOperation.Declared))
+            {
+                return;
+            }
+
+            if (operation == MemoryMapOperation.Declared && existing != MemoryMapOperation.Allocated)
             {
                 return;
             }
@@ -107,7 +160,7 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions) : 
 
             if (operation == MemoryMapOperation.Allocated && existing == MemoryMapOperation.Allocated && entry.Frame > call.Id)
             {
-                Entries[latest] = entry with { Frame = call.Id, Call = (int)call.Call, FromPosition = call.Position, Node = call.Node };
+                Entries[latest] = entry with { Frame = call.Id, CallIndex = (int)call.CallIndex, FromPosition = call.Position, CallNodeIndex = call.CallNodeIndex };
 
                 return;
             }
@@ -133,12 +186,13 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions) : 
 
         Entries.Add(new AddressEntry(address,
                                      call.Id,
-                                     (int)call.Call,
-                                     call.Position,
+                                     (int)call.CallIndex,
                                      owner,
+                                     call.Position,
                                      TracePosition.Unknown,
-                                     call.Node,
+                                     call.CallNodeIndex,
                                      call.Thread,
-                                     operation));
+                                     operation,
+                                     className));
     }
 }

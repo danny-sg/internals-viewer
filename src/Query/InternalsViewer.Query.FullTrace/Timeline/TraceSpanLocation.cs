@@ -9,7 +9,7 @@ public readonly record struct TraceSpanLocation(int ThreadIndex,
                                                 int Index,
                                                 CallStackNode Node)
 {
-    public int Call => Row.CallAt(Index);
+    public int CallIndex => Row.GetCallIndex(Index);
 
     public TracePoint From => Row.GetFrom(Index);
 

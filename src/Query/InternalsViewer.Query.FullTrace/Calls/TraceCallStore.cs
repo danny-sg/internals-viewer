@@ -44,9 +44,9 @@ public sealed partial class TraceCallStore
             ? new TraceCallList(address, instance, chunks, Columns, Locators.GetValueOrDefault((address, instance)))
             : null;
 
-    public CallStackNode? GetNode(TraceArgumentCall call) => GetNode(call.Node);
+    public CallStackNode? GetNode(TraceArgumentCall call) => GetNode(call.CallNodeIndex);
 
-    public CallStackNode? GetNode(int node) => node >= 0 && node < Nodes.Length ? Nodes[node] : null;
+    public CallStackNode? GetNode(int callNodeIndex) => callNodeIndex >= 0 && callNodeIndex < Nodes.Length ? Nodes[callNodeIndex] : null;
 
     public IReadOnlyList<int> GetIncludedCalls(TraceCallList calls, Func<CallStackNode?, bool> include, CancellationToken cancellationToken)
     {
@@ -59,7 +59,7 @@ public sealed partial class TraceCallStore
                 cancellationToken.ThrowIfCancellationRequested();
             }
 
-            if (include(GetNode(calls.GetNodeIndex(index))))
+            if (include(GetNode(calls.GetCallNodeIndex(index))))
             {
                 included.Add(index);
             }
@@ -81,14 +81,14 @@ public sealed partial class TraceCallStore
                 continue;
             }
 
-            foreach (var (call, locator) in table.Entries())
+            foreach (var (callIndex, locator) in table.Entries())
             {
                 if (locator.ValueType is not (LocatorValueType.Page or LocatorValueType.Row or LocatorValueType.ColumnStoreObject))
                 {
                     continue;
                 }
 
-                if (call < calls.Count && GetNode(calls.GetNodeIndex(call)) is { } node)
+                if (callIndex < calls.Count && GetNode(calls.GetCallNodeIndex(callIndex)) is { } node)
                 {
                     (node.Locators ??= new LocatorSet()).Add(locator);
                 }

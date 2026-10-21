@@ -125,7 +125,7 @@ internal sealed class IteratorAllocations
                     spans.Add(GetSpan(list, index, owner));
                 }
             }
-            else if (IsConstructor(calls.GetNode(list.GetNodeIndex(0))?.Frame))
+            else if (IsConstructor(calls.GetNode(list.GetCallNodeIndex(0))?.Frame))
             {
                 for (var index = 0; index < list.Count; index++)
                 {

@@ -14,7 +14,7 @@ public sealed partial class SourceStep(CallStackNode node,
                                        int depth,
                                        MemoryMapOperation? creation = null,
                                        bool isOnStack = false,
-                                       int call = -1) : ObservableObject
+                                       int callIndex = -1) : ObservableObject
 {
     private const int IndentWidth = 12;
 
@@ -35,7 +35,7 @@ public sealed partial class SourceStep(CallStackNode node,
 
     public bool IsOnStack { get; } = isOnStack;
 
-    public int Call { get; } = call;
+    public int CallIndex { get; } = callIndex;
 
     public bool IsCreation => Creation is not null;
 

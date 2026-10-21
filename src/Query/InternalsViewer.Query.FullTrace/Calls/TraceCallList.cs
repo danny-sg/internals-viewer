@@ -48,9 +48,9 @@ public sealed class TraceCallList : IReadOnlyList<TraceArgumentCall>
     {
         get
         {
-            var (columns, call) = GetLocation(index);
+            var (columns, callIndex) = GetLocation(index);
 
-            return columns.GetCall(call, Locators?.GetLocators(index));
+            return columns.GetCall(callIndex, Locators?.GetLocators(index));
         }
     }
 
@@ -79,40 +79,40 @@ public sealed class TraceCallList : IReadOnlyList<TraceArgumentCall>
 
     public TracePosition GetFromPosition(int index)
     {
-        var (columns, call) = GetLocation(index);
+        var (columns, callIndex) = GetLocation(index);
 
-        return columns.GetFromPosition(call);
+        return columns.GetFromPosition(callIndex);
     }
 
     public TracePosition GetToPosition(int index)
     {
-        var (columns, call) = GetLocation(index);
+        var (columns, callIndex) = GetLocation(index);
 
-        return columns.GetToPosition(call);
+        return columns.GetToPosition(callIndex);
     }
 
     public uint GetThread(int index)
     {
-        var (columns, call) = GetLocation(index);
+        var (columns, callIndex) = GetLocation(index);
 
-        return columns.GetThread(call);
+        return columns.GetThread(callIndex);
     }
 
     public ulong? GetReturnValue(int index)
     {
-        var (columns, call) = GetLocation(index);
+        var (columns, callIndex) = GetLocation(index);
 
-        return columns.IsReturned(call) ? columns.GetReturnValue(call) : null;
+        return columns.IsReturned(callIndex) ? columns.GetReturnValue(callIndex) : null;
     }
 
-    internal int GetNodeIndex(int index)
+    internal int GetCallNodeIndex(int index)
     {
-        var (columns, call) = GetLocation(index);
+        var (columns, callIndex) = GetLocation(index);
 
-        return columns.GetNodeIndex(call);
+        return columns.GetCallNodeIndex(callIndex);
     }
 
-    private (TraceCallColumns Columns, int Call) GetLocation(int index)
+    private (TraceCallColumns Columns, int CallIndex) GetLocation(int index)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(index);
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, Count);

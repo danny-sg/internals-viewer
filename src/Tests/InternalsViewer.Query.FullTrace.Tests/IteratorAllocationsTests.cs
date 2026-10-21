@@ -111,8 +111,8 @@ public class IteratorAllocationsTests
                                          [new IteratorPlanNode(Child, PlanObject, 0, 0, 1)]);
     }
 
-    private static ulong[] Call(ulong start, ulong end, int node, ulong instance = 0)
-        => Row(start, flags: Thread | TraceCallColumns.ReturnedFlag, rcx: instance, node: node, endSequence: end);
+    private static ulong[] Call(ulong start, ulong end, int callNodeIndex, ulong instance = 0)
+        => Row(start, flags: Thread | TraceCallColumns.ReturnedFlag, rcx: instance, callNodeIndex: callNodeIndex, endSequence: end);
 
     private static CallstackFrame Frame(string className, string method, uint rva) => new()
     {

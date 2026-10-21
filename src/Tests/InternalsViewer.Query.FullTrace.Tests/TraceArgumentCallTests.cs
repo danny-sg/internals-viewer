@@ -27,7 +27,7 @@ public class TraceArgumentCallTests
     [Fact]
     public void A_Call_Records_The_Call_Tree_Node_It_Was_Made_On()
     {
-        Assert.Equal(7, Decode(Row(1, node: 7)).Node);
+        Assert.Equal(7, Decode(Row(1, callNodeIndex: 7)).CallNodeIndex);
     }
 
     [Fact]

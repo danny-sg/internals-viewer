@@ -453,13 +453,12 @@ public class ArgumentRowBuilderTests
         var origin = new MemoryMapEntry(0x1_0000,
                                         MemoryMapOperation.Constructed,
                                         5,
-                                        new TracePosition(5, 0),
                                         0,
+                                        new TracePosition(5, 0),
                                         TracePosition.Unknown,
                                         1,
                                         3,
-                                        "CQScanNew",
-                                        null);
+                                        "CQScanNew", null);
 
         var call = Call(0x1_0000, 0);
 

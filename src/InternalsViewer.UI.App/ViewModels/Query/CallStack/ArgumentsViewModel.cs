@@ -151,18 +151,18 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
         SelectQuietly(null);
     }
 
-    public Task ShowAsync(CallStackNode node, int? call)
+    public Task ShowAsync(CallStackNode node, int? callIndex)
     {
         if (!IsShowing(node) || IsLoading || CallTable is not { } table)
         {
-            return LoadAsync(node, call);
+            return LoadAsync(node, callIndex);
         }
 
-        var row = GetRow(table, call);
+        var row = GetRow(table, callIndex);
 
-        if (row is null && call is >= 0)
+        if (row is null && callIndex is >= 0)
         {
-            return LoadAsync(node, call);
+            return LoadAsync(node, callIndex);
         }
 
         Shown = node;
@@ -307,9 +307,9 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
     private TraceArgumentCall? GetCall(int index) => index >= 0 && index < LoggedCalls.Count ? LoggedCalls[index] : null;
 
-    private static IReadOnlyList<int> Include(IReadOnlyList<int> included, int? call)
+    private static IReadOnlyList<int> Include(IReadOnlyList<int> included, int? callIndex)
     {
-        if (call is not { } index || index < 0)
+        if (callIndex is not { } index || index < 0)
         {
             return included;
         }
@@ -326,9 +326,9 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
         return calls;
     }
 
-    private static ResultRow<long>? GetRow(QueryResultSet table, int? call)
+    private static ResultRow<long>? GetRow(QueryResultSet table, int? callIndex)
     {
-        if (call is not { } target || target < 0)
+        if (callIndex is not { } target || target < 0)
         {
             return null;
         }

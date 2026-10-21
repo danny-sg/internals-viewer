@@ -80,7 +80,7 @@ public sealed partial class CustomHooksViewModel : ObservableObject, IDisposable
         Refresh();
     }
 
-    public void ShowCall(CallValue value) => OpenCall(value.Node, value.Call);
+    public void ShowCall(CallValue value) => OpenCall(value.Node, value.CallIndex);
 
     public void Dispose() => Settings.PropertyChanged -= OnSettingsPropertyChanged;
 
@@ -194,13 +194,13 @@ public sealed partial class CustomHooksViewModel : ObservableObject, IDisposable
     {
         if (Trace?.CallStore is { } store
             && store.GetCallList(capture.Function, capture.Instance) is { } calls
-            && capture.Call < calls.Count
-            && store.GetNode(calls[capture.Call]) is { } node)
+            && capture.CallIndex < calls.Count
+            && store.GetNode(calls[capture.CallIndex]) is { } node)
         {
-            return new CallValue(node, capture.Call);
+            return new CallValue(node, capture.CallIndex);
         }
 
-        return (long)capture.Call + 1;
+        return (long)capture.CallIndex + 1;
     }
 
     private static string FormatOffset(int offset)

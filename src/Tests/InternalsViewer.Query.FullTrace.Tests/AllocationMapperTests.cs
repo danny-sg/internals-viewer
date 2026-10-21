@@ -30,7 +30,7 @@ public class AllocationMapperTests
 
         var builder = new TraceCallStore.Builder();
 
-        builder.Add(Allocator, 0, Chunk(Row(1, size: 100, node: 1), Row(2, size: 200, node: 1)), 2);
+        builder.Add(Allocator, 0, Chunk(Row(1, size: 100, callNodeIndex: 1), Row(2, size: 200, callNodeIndex: 1)), 2);
 
         var store = builder.Build();
 
@@ -55,8 +55,8 @@ public class AllocationMapperTests
 
         var builder = new TraceCallStore.Builder();
 
-        builder.Add(Allocator, 0, Chunk(Row(1, size: 64, node: 1)), 1);
-        builder.Add(Inner, 0, Chunk(Row(2, size: 8192, node: 2)), 1);
+        builder.Add(Allocator, 0, Chunk(Row(1, size: 64, callNodeIndex: 1)), 1);
+        builder.Add(Inner, 0, Chunk(Row(2, size: 8192, callNodeIndex: 2)), 1);
 
         var store = builder.Build();
 
@@ -80,7 +80,7 @@ public class AllocationMapperTests
 
         var builder = new TraceCallStore.Builder();
 
-        builder.Add(Inner, 0, Chunk(Row(1, size: 1, node: 2), Row(2, size: 2, node: 3)), 2);
+        builder.Add(Inner, 0, Chunk(Row(1, size: 1, callNodeIndex: 2), Row(2, size: 2, callNodeIndex: 3)), 2);
 
         var store = builder.Build();
 
@@ -104,8 +104,8 @@ public class AllocationMapperTests
 
         var builder = new TraceCallStore.Builder();
 
-        builder.Add(Allocator, 0, Chunk(Row(1, size: 64, node: 1, returned: 0xA0)), 1);
-        builder.Add(Inner, 0, Chunk(Row(2, size: 1, node: 2, receiver: 0xC1)), 1);
+        builder.Add(Allocator, 0, Chunk(Row(1, size: 64, callNodeIndex: 1, returned: 0xA0)), 1);
+        builder.Add(Inner, 0, Chunk(Row(2, size: 1, callNodeIndex: 2, receiver: 0xC1)), 1);
 
         var store = builder.Build();
 
@@ -141,7 +141,7 @@ public class AllocationMapperTests
 
         var builder = new TraceCallStore.Builder();
 
-        builder.Add(Allocator, 0, Chunk(Row(1, size: 48, node: 1, returned: 0xA0, receiver: 0xB0)), 1);
+        builder.Add(Allocator, 0, Chunk(Row(1, size: 48, callNodeIndex: 1, returned: 0xA0, receiver: 0xB0)), 1);
 
         var store = builder.Build();
 
@@ -177,9 +177,9 @@ public class AllocationMapperTests
 
         var builder = new TraceCallStore.Builder();
 
-        builder.Add(Allocator, 0, Chunk(Row(1, size: 64, node: 1, returned: 0xA0)), 1);
-        builder.Add(Inner, 0, Chunk(Row(2, size: 64, node: 2, receiver: 0xB1)), 1);
-        builder.Add(Parent, 0, Chunk(Row(3, size: 64, node: 3, receiver: 0xB0)), 1);
+        builder.Add(Allocator, 0, Chunk(Row(1, size: 64, callNodeIndex: 1, returned: 0xA0)), 1);
+        builder.Add(Inner, 0, Chunk(Row(2, size: 64, callNodeIndex: 2, receiver: 0xB1)), 1);
+        builder.Add(Parent, 0, Chunk(Row(3, size: 64, callNodeIndex: 3, receiver: 0xB0)), 1);
 
         var store = builder.Build();
 
@@ -220,8 +220,8 @@ public class AllocationMapperTests
     private static MemoryFunction ClerkPages()
         => new(Inner, AllocationOperation.Allocate, 1, -1, 8192) { IsPage = true, CarriesClerk = true };
 
-    private static CallSpan Span(int node, ulong start, ulong end, uint call)
-        => new(1, start, 1, end, start, end, node, 7, call, 1);
+    private static CallSpan Span(int callNodeIndex, ulong start, ulong end, uint callIndex)
+        => new(1, start, 1, end, start, end, callNodeIndex, 7, callIndex, 1);
 
     private static ulong PeakWorkspace(TraceTimeline timeline, MemoryIndex memory)
         => memory.PeakWorkspaceDuring(timeline.Start.Position, timeline.End.Position.Next);
@@ -251,13 +251,13 @@ public class AllocationMapperTests
 
     private static CallstackFrame Frame(ulong address) => new() { Module = "sqldk", Rva = (uint)address, Address = address };
 
-    private static ulong[] Row(ulong sequence, ulong size, int node, ulong returned = 0, ulong receiver = 0)
+    private static ulong[] Row(ulong sequence, ulong size, int callNodeIndex, ulong returned = 0, ulong receiver = 0)
         => TraceCallRows.Row(sequence,
                              flags: returned != 0 ? ReturnedFlag : 0,
                              rcx: receiver,
                              rdx: size,
                              returnValue: returned,
-                             node: node);
+                             callNodeIndex: callNodeIndex);
 
     private static ulong[] Chunk(params ulong[][] rows) => TraceCallRows.Chunk(rows);
 }

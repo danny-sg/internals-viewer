@@ -29,24 +29,24 @@ public sealed partial class TraceTimelineControl
         Visibility = Visibility.Collapsed
     };
 
-    private readonly Dictionary<(CallStackNode Node, int Call, TraceTimelineAxis Axis), MarkedCall?> _markedCalls = [];
+    private readonly Dictionary<(CallStackNode Node, int CallIndex, TraceTimelineAxis Axis), MarkedCall?> _markedCalls = [];
 
-    private (CallStackNode Node, int Call)? _marked;
+    private (CallStackNode Node, int CallIndex)? _marked;
 
     private (double Current, MarkedCall Marked)? _minimapMarkers;
 
     private TraceTimeline? Overview => FullTimeline ?? _timeline;
 
-    public void MarkCall(CallStackNode? node, int call)
+    public void MarkCall(CallStackNode? node, int callIndex)
     {
-        _marked = node is not null && call >= 0 ? (node, call) : null;
+        _marked = node is not null && callIndex >= 0 ? (node, callIndex) : null;
 
         _canvas.Invalidate();
     }
 
-    public void MovePlayheadTo(CallStackNode node, int call)
+    public void MovePlayheadTo(CallStackNode node, int callIndex)
     {
-        if (RevealCall(node, call) is not { } start)
+        if (RevealCall(node, callIndex) is not { } start)
         {
             return;
         }
@@ -56,20 +56,20 @@ public sealed partial class TraceTimelineControl
         PlacePlayhead(start);
     }
 
-    public void ZoomToCall(CallStackNode node, int call)
+    public void ZoomToCall(CallStackNode node, int callIndex)
     {
-        if (RevealSpan(node, call) is { } span)
+        if (RevealSpan(node, callIndex) is { } span)
         {
             ZoomTo(span);
         }
     }
 
-    private double? RevealCall(CallStackNode node, int call)
-        => RevealSpan(node, call) is { } span ? TraceScale.GetValue(span.From, _axis) : null;
+    private double? RevealCall(CallStackNode node, int callIndex)
+        => RevealSpan(node, callIndex) is { } span ? TraceScale.GetValue(span.From, _axis) : null;
 
-    private TraceSpan? RevealSpan(CallStackNode node, int call)
+    private TraceSpan? RevealSpan(CallStackNode node, int callIndex)
     {
-        if (GetCall(node, call) is not { } found)
+        if (GetCall(node, callIndex) is not { } found)
         {
             return null;
         }
@@ -136,7 +136,7 @@ public sealed partial class TraceTimelineControl
 
                 var index = row.GetIndex(marked.Span.From.Position);
 
-                if (index < 0 || row.CallAt(index) != marked.Span.Call || row.NodeAt(index) != marked.Span.Node)
+                if (index < 0 || row.GetCallIndex(index) != marked.Span.CallIndex || row.GetCallNodeIndex(index) != marked.Span.CallNodeIndex)
                 {
                     continue;
                 }
@@ -200,20 +200,20 @@ public sealed partial class TraceTimelineControl
         _minimapMarkers = null;
     }
 
-    private MarkedCall? GetMarkedCall() => _marked is { } marked ? GetCall(marked.Node, marked.Call) : null;
+    private MarkedCall? GetMarkedCall() => _marked is { } marked ? GetCall(marked.Node, marked.CallIndex) : null;
 
-    private MarkedCall? GetCall(CallStackNode node, int call)
+    private MarkedCall? GetCall(CallStackNode node, int callIndex)
     {
-        if (call < 0 || Overview is not { } timeline)
+        if (callIndex < 0 || Overview is not { } timeline)
         {
             return null;
         }
 
-        var key = (node, call, _axis);
+        var key = (node, callIndex, _axis);
 
         if (!_markedCalls.TryGetValue(key, out var found))
         {
-            found = FindCall(timeline, node, call) is { } hit ? MarkedCallAt(timeline, hit) : null;
+            found = FindCall(timeline, node, callIndex) is { } hit ? MarkedCallAt(timeline, hit) : null;
 
             _markedCalls[key] = found;
         }

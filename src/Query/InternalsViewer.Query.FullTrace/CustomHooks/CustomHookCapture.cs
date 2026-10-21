@@ -3,7 +3,7 @@ namespace InternalsViewer.Query.FullTrace.CustomHooks;
 public sealed record CustomHookCapture(string Name,
                                        ulong Function,
                                        ulong Instance,
-                                       int Call,
+                                       int CallIndex,
                                        TracePosition Position,
                                        uint Thread,
                                        ulong Address,

@@ -23,7 +23,7 @@ public class CustomHookTests
 
         var capture = Assert.Single(Replay(Definition(register: 1, offset: 0x24, length: 4), replay));
 
-        Assert.Equal((Pointer + 0x24, 3, 9u), (capture.Address, capture.Call, capture.Thread));
+        Assert.Equal((Pointer + 0x24, 3, 9u), (capture.Address, capture.CallIndex, capture.Thread));
         Assert.Equal([0x84, 0x03, 0, 0], capture.Data);
     }
 
@@ -105,7 +105,7 @@ public class CustomHookTests
         {
             Function = Function,
             Id = 40,
-            Call = 3,
+            CallIndex = 3,
             Thread = 9,
             Arguments = new[] { 0ul, Pointer, Pointer, 0ul },
             ReturnValue = returnValue,

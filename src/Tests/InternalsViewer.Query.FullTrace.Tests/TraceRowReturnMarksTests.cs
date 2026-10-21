@@ -150,7 +150,7 @@ public class TraceRowReturnMarksTests
 
         var mark = marks.Ticks.GetTicks(Scan, Thread)!.GetNearest(TraceTimelineAxis.Instructions, 24, 0);
 
-        Assert.Equal((1, (byte)RowReturnType.Returned), (mark?.Call, mark?.Value));
+        Assert.Equal((1, (byte)RowReturnType.Returned), (mark?.CallIndex, mark?.Value));
     }
 
     [Fact]
@@ -162,7 +162,7 @@ public class TraceRowReturnMarksTests
 
         var call = ticks.GetNearest(TraceTimelineAxis.Instructions, 22, 0);
 
-        Assert.Equal((1, 20ul, 25ul), (call?.Call, call?.Span.From.Instructions, call?.Span.To.Instructions));
+        Assert.Equal((1, 20ul, 25ul), (call?.CallIndex, call?.Span.From.Instructions, call?.Span.To.Instructions));
         Assert.Null(ticks.GetNearest(TraceTimelineAxis.Instructions, 17, 0));
     }
 
@@ -195,13 +195,13 @@ public class TraceRowReturnMarksTests
 
         var store = new TraceCallStore.Builder();
 
-        store.Add(Helper, JoinIterator, Chunk([.. joinCalls.Select(c => Call(c, node: 0))]), joinCalls.Length);
+        store.Add(Helper, JoinIterator, Chunk([.. joinCalls.Select(c => Call(c, callNodeIndex: 0))]), joinCalls.Length);
 
-        store.Add(Helper, ScanIterator, Chunk([.. scanCalls.Select(c => Call(c, node: 1))]), scanCalls.Length);
+        store.Add(Helper, ScanIterator, Chunk([.. scanCalls.Select(c => Call(c, callNodeIndex: 1))]), scanCalls.Length);
 
         if (joinOpens is not null)
         {
-            ulong[][] opens = [.. joinOpens.Select(c => Call((c.Start, c.End, RowStatus), node: 2))];
+            ulong[][] opens = [.. joinOpens.Select(c => Call((c.Start, c.End, RowStatus), callNodeIndex: 2))];
 
             store.Add(OpenFunction, JoinIterator, Chunk(opens), opens.Length);
         }
@@ -221,8 +221,8 @@ public class TraceRowReturnMarksTests
         return TraceRowReturnMarks.Build(timeline, calls, new TraceOperatorLifetimes(lifetimes));
     }
 
-    private static ulong[] Call((ulong Start, ulong End, ulong Status) call, int node)
-        => Row(call.Start, flags: Thread | TraceCallColumns.ReturnedFlag, returnValue: call.Status, node: node, endSequence: call.End);
+    private static ulong[] Call((ulong Start, ulong End, ulong Status) call, int callNodeIndex)
+        => Row(call.Start, flags: Thread | TraceCallColumns.ReturnedFlag, returnValue: call.Status, callNodeIndex: callNodeIndex, endSequence: call.End);
 
     private static CallstackFrame Frame(ulong instance, string method = "GetRowOrReQualifyHelper") => new()
     {
@@ -240,6 +240,6 @@ public class TraceRowReturnMarksTests
 
     private static TraceSpan Whole() => new(new TracePoint(At(0), 0), new TracePoint(At(1000), 1000), 0, 0, TraceSpanFlags.None);
 
-    private static CallSpan Span(int node, ulong start, ulong end, uint call)
-        => new(start, 0, end, 0, start, end, node, Thread, call, 1);
+    private static CallSpan Span(int callNodeIndex, ulong start, ulong end, uint callIndex)
+        => new(start, 0, end, 0, start, end, callNodeIndex, Thread, callIndex, 1);
 }

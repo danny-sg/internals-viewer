@@ -407,9 +407,9 @@ public sealed class TraceTimelineMinimap : UserControl, IDisposable
 
             var right = (float)((row.GetEnd(Axis, index) - start) * unit);
 
-            var node = row.NodeAt(index);
+            var callNodeIndex = row.GetCallNodeIndex(index);
 
-            var isGrey = included is not null && (node < 0 || node >= included.Length || !included[node]);
+            var isGrey = included is not null && (callNodeIndex < 0 || callNodeIndex >= included.Length || !included[callNodeIndex]);
 
             if (runNode >= 0 && isGrey == runGrey && left <= runRight + RunGap)
             {
@@ -427,7 +427,7 @@ public sealed class TraceTimelineMinimap : UserControl, IDisposable
 
             runRight = right;
 
-            runNode = node;
+            runNode = callNodeIndex;
 
             runGrey = isGrey;
         }
@@ -448,11 +448,11 @@ public sealed class TraceTimelineMinimap : UserControl, IDisposable
             {
                 for (var index = 0; index < row.Count; index++)
                 {
-                    var node = row.NodeAt(index);
+                    var callNodeIndex = row.GetCallNodeIndex(index);
 
-                    if (node >= 0 && node < included.Length)
+                    if (callNodeIndex >= 0 && callNodeIndex < included.Length)
                     {
-                        included[node] = true;
+                        included[callNodeIndex] = true;
                     }
                 }
             }
@@ -463,14 +463,14 @@ public sealed class TraceTimelineMinimap : UserControl, IDisposable
 
     private void FillRun(SKCanvas canvas,
                          TraceTimeline timeline,
-                         int node,
+                         int callNodeIndex,
                          bool isGrey,
                          float left,
                          float right,
                          float top,
                          float height)
     {
-        _run.Color = ColourOf(timeline.NodeOf(node)?.CategoryColour, isGrey);
+        _run.Color = ColourOf(timeline.NodeOf(callNodeIndex)?.CategoryColour, isGrey);
 
         canvas.DrawRect(new SKRect(left, top, Math.Max(right, left + RunGap), top + height), _run);
     }

@@ -17,6 +17,8 @@ public class MemoryMapTests
 
     private const int ScanMethod = 2;
 
+    private const int Factory = 3;
+
     private static readonly CallStackNode[] Nodes = GetNodes();
 
     [Fact]
@@ -110,12 +112,133 @@ public class MemoryMapTests
         Assert.Equal((2, "OperatorNew"), (read.Count, read.GetEntry(Address, At(15))?.Allocator));
     }
 
+    [Fact]
+    public void A_Declared_Type_Names_Memory_Nothing_Else_Has()
+    {
+        var map = Build(Entry(MemoryMapOperation.Declared, call: 10, Factory, className: "AccBindings"));
+
+        Assert.Equal("AccBindings", map.GetEntry(Address, At(15))?.ClassName);
+    }
+
+    [Fact]
+    public void A_Declared_Type_Takes_The_Class_Of_The_Member_Call_That_Follows()
+    {
+        var map = Build(Entry(MemoryMapOperation.Declared, call: 10, Factory, className: "BaseXact"),
+                        Entry(MemoryMapOperation.Visited, call: 20, ScanMethod));
+
+        Assert.Equal(("CQScanRangeNew", "CQScanRangeNew"),
+                     (map.GetEntry(Address, At(15))?.ClassName, map.GetEntry(Address, At(25))?.ClassName));
+    }
+
+    [Fact]
+    public void A_Declared_Type_Keeps_Its_Class_When_The_Next_Object_Is_Another()
+    {
+        var map = Build(Entry(MemoryMapOperation.Declared, call: 10, Factory, owner: 5, until: 15, className: "BaseXact"),
+                        Entry(MemoryMapOperation.Visited, call: 20, ScanMethod));
+
+        Assert.Equal("BaseXact", map.GetEntry(Address, At(12))?.ClassName);
+    }
+
+    [Fact]
+    public void An_Allocation_Takes_Its_Class_Through_A_Declared_Type()
+    {
+        var map = Build(Entry(MemoryMapOperation.Allocated, call: 10, OperatorNew, bytes: 0x40),
+                        Entry(MemoryMapOperation.Declared, call: 20, Factory, className: "AccBindings"));
+
+        var declared = map.GetEntry(Address, At(25));
+
+        Assert.Equal(("AccBindings", "OperatorNew", 0x40ul),
+                     (map.GetEntry(Address, At(15))?.ClassName, declared?.Allocator, declared?.Bytes));
+    }
+
+    [Fact]
+    public void Memory_Declared_First_Held_Its_Object_Before_The_Call()
+    {
+        var map = Build(Entry(MemoryMapOperation.Declared, call: 50, Factory, className: "AccBindings"));
+
+        Assert.Equal("AccBindings", map.GetEntry(Address, At(10))?.ClassName);
+    }
+
+    [Fact]
+    public void An_Allocation_Is_Measured_By_Its_Call()
+    {
+        var map = MemoryMap.Build([Entry(MemoryMapOperation.Allocated, call: 10, OperatorNew),
+                                   Entry(MemoryMapOperation.Constructed, call: 20, ScanConstructor)],
+                                  NodeOf,
+                                  (_, node) => node?.Symbol == "OperatorNew" ? 0x80ul : 0);
+
+        Assert.Equal((0x80ul, 0x80ul), (map.GetEntry(Address, At(15))?.Bytes, map.GetEntry(Address, At(25))?.Bytes));
+    }
+
+    [Fact]
+    public void An_Address_Inside_An_Object_Finds_The_Innermost_Object_That_Holds_It()
+    {
+        var map = Build(Entry(MemoryMapOperation.Allocated, call: 10, OperatorNew, bytes: 0x100),
+                        Entry(MemoryMapOperation.Constructed, call: 11, ScanConstructor),
+                        Entry(MemoryMapOperation.Allocated, call: 12, OperatorNew, bytes: 0x10, address: Address + 0x20));
+
+        var inner = map.GetContaining(Address + 0x28, At(15));
+
+        var outer = map.GetContaining(Address + 0x80, At(15));
+
+        Assert.Equal((Address + 0x20, 8ul), (inner?.Entry.Address, inner?.Offset));
+        Assert.Equal(("CQScanRangeNew", 0x80ul), (outer?.Entry.ClassName, outer?.Offset));
+        Assert.Null(map.GetContaining(Address + 0x100, At(15)));
+        Assert.Null(map.GetContaining(Address + 0x80, At(5)));
+    }
+
+    [Fact]
+    public void Declared_Types_And_Lengths_Are_Rebuilt_From_What_Is_Written()
+    {
+        var map = Build(Entry(MemoryMapOperation.Allocated, call: 10, OperatorNew, bytes: 0x40),
+                        Entry(MemoryMapOperation.Declared, call: 20, Factory, className: "AccBindings"));
+
+        using var stream = new MemoryStream();
+
+        using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
+        {
+            map.Write(writer);
+        }
+
+        stream.Position = 0;
+
+        using var reader = new BinaryReader(stream);
+
+        var entry = MemoryMap.Read(reader, NodeOf).GetEntry(Address, At(25));
+
+        Assert.Equal(("OperatorNew", "AccBindings", 0x40ul), (entry?.Allocator, entry?.ClassName, entry?.Bytes));
+    }
+
+    [Fact]
+    public void A_Map_Written_Before_Declared_Types_Is_Not_Current()
+    {
+        using var stream = new MemoryStream();
+
+        using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
+        {
+            writer.Write(2);
+        }
+
+        stream.Position = 0;
+
+        using var reader = new BinaryReader(stream);
+
+        Assert.False(MemoryMap.IsCurrent(reader));
+    }
+
     private static MemoryMap Build(params AddressEntry[] entries) => MemoryMap.Build(entries, NodeOf);
 
-    private static AddressEntry Entry(MemoryMapOperation operation, ulong call, int node, ulong owner = 0, ulong until = 0)
-        => new(Address, call, 0, At(call), owner, until == 0 ? TracePosition.Unknown : At(until), node, 7, operation);
+    private static AddressEntry Entry(MemoryMapOperation operation,
+                                      ulong call,
+                                      int callNodeIndex,
+                                      ulong owner = 0,
+                                      ulong until = 0,
+                                      string? className = null,
+                                      ulong bytes = 0,
+                                      ulong address = Address)
+        => new(address, call, 0, owner, At(call), until == 0 ? TracePosition.Unknown : At(until), callNodeIndex, 7, operation, className, bytes);
 
-    private static CallStackNode? NodeOf(int node) => node >= 0 && node < Nodes.Length ? Nodes[node] : null;
+    private static CallStackNode? NodeOf(int callNodeIndex) => callNodeIndex >= 0 && callNodeIndex < Nodes.Length ? Nodes[callNodeIndex] : null;
 
     private static CallStackNode[] GetNodes()
     {
@@ -123,7 +246,8 @@ public class MemoryMapTests
 
         return [tree.AddCall(tree.Root, Frame(0x10, null, "OperatorNew"), 1),
                 tree.AddCall(tree.Root, Frame(0x20, "CQScanRangeNew", "CQScanRangeNew"), 1),
-                tree.AddCall(tree.Root, Frame(0x30, "CQScanRangeNew", "SetRange"), 1)];
+                tree.AddCall(tree.Root, Frame(0x30, "CQScanRangeNew", "SetRange"), 1),
+                tree.AddCall(tree.Root, Frame(0x40, "AccessorCache", "CreateAccessor"), 1)];
     }
 
     private static CallstackFrame Frame(uint rva, string? className, string methodName) => new()

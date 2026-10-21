@@ -71,9 +71,9 @@ internal static class BatchToRowOperators
 
         var pending = new Queue<CallStackNode>();
 
-        for (var node = 0; node < timeline.NodeCount; node++)
+        for (var callNodeIndex = 0; callNodeIndex < timeline.NodeCount; callNodeIndex++)
         {
-            if (timeline.NodeOf(node) is { Frame.Instance: var instance } callNode && helpers.Contains(instance) && seen.Add(callNode))
+            if (timeline.NodeOf(callNodeIndex) is { Frame.Instance: var instance } callNode && helpers.Contains(instance) && seen.Add(callNode))
             {
                 pending.Enqueue(callNode);
             }

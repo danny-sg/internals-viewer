@@ -67,12 +67,12 @@ public sealed partial class TraceTimelineControl
 
         if (_axis != TraceTimelineAxis.Position || _timeline is not { } timeline)
         {
-            return $"{relative:N0}";
+            return $"{relative}";
         }
 
         var sequence = Math.Floor(relative);
 
-        return $"{sequence:N0}:{Math.Round((relative - sequence) / timeline.Scale.GetStep(_axis)):N0}";
+        return $"{sequence}:{Math.Round((relative - sequence) / timeline.Scale.GetStep(_axis))}";
     }
 
     private static SKPath PlayheadTriangle()

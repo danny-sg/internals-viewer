@@ -4,6 +4,7 @@ using InternalsViewer.Internals.Engine.Loading;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.Symbols;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.Events.Operators;
@@ -95,7 +96,8 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         Logger.LogInformation("{Objects} HoBt access object(s) linked to their HoBt", result.HoBtAccess.Count);
 
-        Logger.LogInformation("{Entries} memory map entr(ies) from allocations, constructors and member calls", result.MemoryMap.Count);
+        Logger.LogInformation("{Entries} memory map entr(ies) from allocations, constructors, member calls and declared types",
+                              result.MemoryMap.Count);
 
         Logger.LogInformation("{Captures} custom hook capture(s) read from {Hooks} hook(s)", result.CustomHooks.Count, customHooks.Count);
 
@@ -226,7 +228,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         var builder = new TraceResultBuilder(callStack, replay.CallStore, timeline, events, replay.PlanNodes, replay.Teardowns)
         {
             Memory = memory,
-            MemoryMap = MemoryMap.Build(replay.MemoryMap, timeline.NodeOf),
+            MemoryMap = MemoryMap.Build(replay.MemoryMap, timeline.NodeOf, GetAllocationBytes(replay.CallStore, functions.MemoryFunctions)),
             ObjectPool = request.ObjectPool,
             CustomHooks = replay.CustomHooks
         };
@@ -368,6 +370,25 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         {
             Logger.LogDebug($"Unknown enum: {name} ({function})");
         }
+    }
+
+    private static Func<AddressEntry, CallStackNode?, ulong> GetAllocationBytes(TraceCallStore store,
+                                                                                IReadOnlyList<MemoryFunction> functions)
+    {
+        var allocators = new Dictionary<ulong, MemoryFunction>();
+
+        foreach (var function in functions)
+        {
+            allocators.TryAdd(function.Address, function);
+        }
+
+        return (entry, node) => node?.Frame is { } frame
+                                && allocators.TryGetValue(frame.Address, out var allocator)
+                                && store.GetCallList(frame.Address, frame.Instance) is { } calls
+                                && entry.CallIndex >= 0
+                                && entry.CallIndex < calls.Count
+            ? allocator.GetByteCount(calls[entry.CallIndex])
+            : 0;
     }
 
     private static string Size(ulong bytes)

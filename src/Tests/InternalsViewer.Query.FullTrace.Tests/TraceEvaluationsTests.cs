@@ -156,10 +156,10 @@ public class TraceEvaluationsTests
             Span(0, 10, 60),
             Span(1, 15, 30),
             Span(2, 20, 22),
-            Span(2, 24, 26, call: 1),
-            Span(2, 27, 28, call: 2),
-            Span(3, 40, 42, call: 3),
-            Span(3, 44, 46, call: 4),
+            Span(2, 24, 26, callIndex: 1),
+            Span(2, 27, 28, callIndex: 2),
+            Span(3, 40, 42, callIndex: 3),
+            Span(3, 44, 46, callIndex: 4),
             Span(4, 16, 17)
         ];
 
@@ -220,8 +220,8 @@ public class TraceEvaluationsTests
         return (timeline, calls, new TraceOperatorLifetimes(lifetimes));
     }
 
-    private static ulong[] Call(ulong start, ulong end, int node)
-        => Row(start, flags: Thread | TraceCallColumns.ReturnedFlag, node: node, endSequence: end);
+    private static ulong[] Call(ulong start, ulong end, int callNodeIndex)
+        => Row(start, flags: Thread | TraceCallColumns.ReturnedFlag, callNodeIndex: callNodeIndex, endSequence: end);
 
     private static CallstackFrame Frame(ulong instance, string className, string method, uint rva) => new()
     {
@@ -239,6 +239,6 @@ public class TraceEvaluationsTests
 
     private static TraceSpan Whole() => new(new TracePoint(At(0), 0), new TracePoint(At(1000), 1000), 0, 0, TraceSpanFlags.None);
 
-    private static CallSpan Span(int node, ulong start, ulong end, uint call = 0)
-        => new(start, 0, end, 0, start, end, node, Thread, call, 1);
+    private static CallSpan Span(int callNodeIndex, ulong start, ulong end, uint callIndex = 0)
+        => new(start, 0, end, 0, start, end, callNodeIndex, Thread, callIndex, 1);
 }

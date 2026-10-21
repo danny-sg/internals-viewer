@@ -1,65 +1,95 @@
+using System.Text.RegularExpressions;
 using InternalsViewer.Query.CallStack.Arguments;
-using InternalsViewer.Query.CallStack.Dia;
+using InternalsViewer.Query.FullTrace.Arguments;
+using InternalsViewer.Query.FullTrace.Arguments.Enums;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Functions;
 
-internal static class MemoryMapFunctionResolver
+internal static partial class MemoryMapFunctionResolver
 {
     private const string ConstructorPrefix = "??0";
 
-    public static List<MemoryMapFunction> Find(DiaResolver resolver, IEnumerable<uint> functions)
+    internal static DeclaredClass[] GetDeclared(FunctionSignature signature)
     {
-        var found = new List<MemoryMapFunction>();
+        var declared = new List<DeclaredClass>();
 
-        Span<char> buffer = stackalloc char[DiaResolver.MaximumNameLength];
-
-        foreach (var rva in functions)
+        foreach (var slot in ArgumentLayout.LayoutOf(signature).Slots)
         {
-            if (!resolver.TryGetDecoratedName(rva, buffer, out var name)
-                || FunctionSignature.GetFunctionType(name) != FunctionType.Member)
+            if (slot.Location == ArgumentLocation.Register
+                && slot.Name != ArgumentLayout.ReturnBuffer
+                && ArgumentValue.GetPointeeClass(slot.Type) is { } className)
             {
-                continue;
+                declared.Add(new DeclaredClass(slot.Index, className));
             }
-
-            var operation = name.StartsWith(ConstructorPrefix, StringComparison.Ordinal) && !IsFolded(resolver, rva)
-                ? MemoryMapOperation.Constructed
-                : MemoryMapOperation.Visited;
-
-            found.Add(new MemoryMapFunction(rva, operation));
         }
 
-        return found;
+        if (signature.ReturnType is { } returnType && ArgumentValue.GetPointeeClass(returnType) is { } returned)
+        {
+            declared.Add(new DeclaredClass(ArgumentLayout.ReturnRegister, returned));
+        }
+
+        return [.. declared];
     }
 
-    private static bool IsFolded(DiaResolver resolver, uint rva)
+    [GeneratedRegex("[PQA]E[A-D][UVT]")]
+    private static partial Regex ClassPointer();
+
+    internal sealed class Collector
     {
-        Span<char> first = stackalloc char[DiaResolver.MaximumNameLength];
+        private Dictionary<uint, MemoryMapFunction> Found { get; } = [];
 
-        var firstLength = -1;
-
-        using var symbols = resolver.ReadSymbolsAtRva(rva, includeSignature: false);
-
-        while (symbols.MoveNext())
+        public void Visit(FunctionSymbol symbol)
         {
-            if (!symbols.IsFunction)
+            if (!symbol.IsFirst)
             {
-                continue;
+                Revisit(symbol);
+
+                return;
             }
 
-            if (firstLength < 0)
-            {
-                symbols.Name.CopyTo(first);
+            var declared = ClassPointer().IsMatch(symbol.DecoratedName) && symbol.Parsed is { } signature ? GetDeclared(signature) : [];
 
-                firstLength = symbols.Name.Length;
-            }
-            else if (!symbols.Name.SequenceEqual(first[..firstLength]))
+            var operation = FunctionSignature.GetFunctionType(symbol.DecoratedName) == FunctionType.Member
+                ? symbol.DecoratedName.StartsWith(ConstructorPrefix, StringComparison.Ordinal)
+                    ? MemoryMapOperation.Constructed
+                    : MemoryMapOperation.Visited
+                : MemoryMapOperation.Declared;
+
+            if (operation != MemoryMapOperation.Declared || declared.Length > 0)
             {
-                return true;
+                Found[symbol.Rva] = new MemoryMapFunction(symbol.Rva, operation) { Declared = declared };
             }
         }
 
-        return false;
+        public MemoryMapFunction[] Build() => [.. Found.Values];
+
+        private void Revisit(FunctionSymbol symbol)
+        {
+            if (!Found.TryGetValue(symbol.Rva, out var function))
+            {
+                return;
+            }
+
+            if (!symbol.HasSameName && function.Operation == MemoryMapOperation.Constructed)
+            {
+                function = function with { Operation = MemoryMapOperation.Visited };
+            }
+
+            if (!symbol.HasSameParameters)
+            {
+                function = function with { Declared = [] };
+            }
+
+            if (function.Operation == MemoryMapOperation.Declared && function.Declared.Count == 0)
+            {
+                Found.Remove(symbol.Rva);
+            }
+            else
+            {
+                Found[symbol.Rva] = function;
+            }
+        }
     }
 }

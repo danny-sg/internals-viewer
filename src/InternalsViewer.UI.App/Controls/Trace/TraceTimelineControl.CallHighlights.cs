@@ -49,11 +49,11 @@ public sealed partial class TraceTimelineControl
 
         var any = false;
 
-        for (var node = 0; node < highlights.Length; node++)
+        for (var callNodeIndex = 0; callNodeIndex < highlights.Length; callNodeIndex++)
         {
-            highlights[node] = timeline.NodeOf(node) is { } callNode ? HighlightOf(callNode.Symbol) : -1;
+            highlights[callNodeIndex] = timeline.NodeOf(callNodeIndex) is { } callNode ? HighlightOf(callNode.Symbol) : -1;
 
-            any |= highlights[node] >= 0;
+            any |= highlights[callNodeIndex] >= 0;
         }
 
         if (!any)
@@ -71,14 +71,14 @@ public sealed partial class TraceTimelineControl
 
                 for (var index = 0; index < row.Count; index++)
                 {
-                    var node = row.NodeAt(index);
+                    var callNodeIndex = row.GetCallNodeIndex(index);
 
-                    if (node < 0 || node >= highlights.Length || highlights[node] < 0)
+                    if (callNodeIndex < 0 || callNodeIndex >= highlights.Length || highlights[callNodeIndex] < 0)
                     {
                         continue;
                     }
 
-                    regions.Add(new HighlightRegion(depth, highlights[node], row.GetSpan(index)));
+                    regions.Add(new HighlightRegion(depth, highlights[callNodeIndex], row.GetSpan(index)));
                 }
             }
         }

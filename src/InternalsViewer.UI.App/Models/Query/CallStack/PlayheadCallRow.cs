@@ -31,7 +31,7 @@ public sealed partial class PlayheadCallRow(CallStackNode node,
 
     public uint Thread { get; } = thread;
 
-    public int Call => Span.Call;
+    public int CallIndex => Span.CallIndex;
 
     public IReadOnlyList<CallSignaturePart> Signature => signature.Parts;
 

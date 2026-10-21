@@ -149,7 +149,7 @@ internal static class ReplayBridge
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     public delegate void CallEndCallback(ulong address,
                                          ulong instance,
-                                         uint call,
+                                         uint callIndex,
                                          ulong endSequence,
                                          ulong endSteps,
                                          ulong returnValue,

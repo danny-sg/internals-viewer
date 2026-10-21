@@ -4,11 +4,12 @@ namespace InternalsViewer.Query.FullTrace.Memory;
 
 public sealed record MemoryMapEntry(ulong Address,
                                     MemoryMapOperation Operation,
-                                    int Call,
-                                    TracePosition FromPosition,
+                                    int CallIndex,
                                     ulong Owner,
+                                    TracePosition FromPosition,
                                     TracePosition ToPosition,
                                     uint Thread,
-                                    int Node,
+                                    int CallNodeIndex,
                                     string? ClassName,
-                                    string? Allocator);
+                                    string? Allocator,
+                                    ulong Bytes = 0);

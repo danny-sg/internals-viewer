@@ -208,7 +208,7 @@ public class SourcePathTests
 
         var step = Assert.Single(steps);
 
-        Assert.Equal(3, step.Call);
+        Assert.Equal(3, step.CallIndex);
         Assert.True(step.CanExpand);
         Assert.Equal(["IndexDataSetSession::GetRowByKeyValue"], step.Stack.Select(f => f.Symbol));
         Assert.All(step.Stack, f => Assert.Equal(At(15), f.Position));
@@ -220,7 +220,7 @@ public class SourcePathTests
     }
 
     private static MemoryMapEntry Origin(MemoryMapOperation operation, ulong call)
-        => new(Address, operation, 0, At(call), 0, TracePosition.Unknown, 1, 0, "SEBindings", null);
+        => new(Address, operation, 0, 0, At(call), TracePosition.Unknown, 1, 0, "SEBindings", null);
 
     private static CallSignaturePart Value(MemoryMapEntry? origin = null, bool other = false)
         => new($"0x{Address:X}",

@@ -96,7 +96,7 @@ public sealed class TraceRowReturnMarks
                 var parent = enclosing == 0 ? null : groupsByInstance.GetValueOrDefault((enclosing, group.Thread));
 
                 if (GetReturnType(group, index, parent, caller?.Name == FilterOperator) is not { } type
-                    || timeline.FindCall(call.Function, group.Instance, call.Call) is not { } location)
+                    || timeline.FindCall(call.Function, group.Instance, call.CallIndex) is not { } location)
                 {
                     continue;
                 }
@@ -105,13 +105,13 @@ public sealed class TraceRowReturnMarks
 
                 (list ??= []).Add(new Mark(location.To, type));
 
-                ticks.Add(new TraceTick((byte)type, group.Thread, location.Node, location.Call, location.Span)
+                ticks.Add(new TraceTick((byte)type, group.Thread, location.Node, location.CallIndex, location.Span)
                 {
                     Operator = operatorEvent,
                     Caller = ReferenceEquals(caller, operatorEvent) ? null : caller,
                     Function = call.Function,
                     Instance = group.Instance,
-                    Index = call.Call
+                    Index = call.CallIndex
                 });
             }
         }
@@ -138,7 +138,7 @@ public sealed class TraceRowReturnMarks
         {
             if (!owners.ContainsKey(instance)
                 || calls.GetCallList(address, instance) is not { Count: > 0 } list
-                || calls.GetNode(list.GetNodeIndex(0))?.Frame?.Resolved?.MethodName is not { } method
+                || calls.GetNode(list.GetCallNodeIndex(0))?.Frame?.Resolved?.MethodName is not { } method
                 || !IteratorSymbols.IsRowReturnMethod(method))
             {
                 continue;
@@ -188,7 +188,7 @@ public sealed class TraceRowReturnMarks
         {
             if (!owners.ContainsKey(instance)
                 || calls.GetCallList(address, instance) is not { Count: > 0 } list
-                || IteratorSymbols.IsRowReturnMethod(calls.GetNode(list.GetNodeIndex(0))?.Frame?.Resolved?.MethodName))
+                || IteratorSymbols.IsRowReturnMethod(calls.GetNode(list.GetCallNodeIndex(0))?.Frame?.Resolved?.MethodName))
             {
                 continue;
             }
@@ -238,7 +238,7 @@ public sealed class TraceRowReturnMarks
     private OperatorReturns? GetReturns(ExecutionOperatorEvent operatorEvent, uint thread)
         => Operators.TryGetValue(operatorEvent, out var threads) ? threads.GetValueOrDefault(thread) : null;
 
-    private readonly record struct GetRowCall(ulong Function, int Call, TracePosition FromPosition, TracePosition ToPosition, uint? Status);
+    private readonly record struct GetRowCall(ulong Function, int CallIndex, TracePosition FromPosition, TracePosition ToPosition, uint? Status);
 
     private readonly record struct Mark(TracePoint Point, RowReturnType Type);
 

@@ -71,30 +71,30 @@ public sealed partial class TraceTimeline
 
     public double GetEnd(TraceTimelineAxis axis) => Scale.GetValue(End, axis);
 
-    public CallStackNode? NodeOf(int node) => node >= 0 && node < Nodes.Length ? Nodes[node] : null;
+    public CallStackNode? NodeOf(int callNodeIndex) => callNodeIndex >= 0 && callNodeIndex < Nodes.Length ? Nodes[callNodeIndex] : null;
 
-    public TraceSpanLocation? FindCall(CallStackNode node, int call)
-        => node.Frame is { } frame ? FindCall(frame.Address, frame.Instance, call) : null;
+    public TraceSpanLocation? FindCall(CallStackNode node, int callIndex)
+        => node.Frame is { } frame ? FindCall(frame.Address, frame.Instance, callIndex) : null;
 
-    public TraceSpanLocation? FindCall(ulong address, ulong instance, int call)
+    public TraceSpanLocation? FindCall(ulong address, ulong instance, int callIndex)
     {
-        if (Calls?.GetCallList(address, instance) is not { } calls || call < 0 || call >= calls.Count)
+        if (Calls?.GetCallList(address, instance) is not { } calls || callIndex < 0 || callIndex >= calls.Count)
         {
             return null;
         }
 
-        var node = calls.GetNodeIndex(call);
+        var callNodeIndex = calls.GetCallNodeIndex(callIndex);
 
-        if (NodeOf(node) is not { } callNode)
+        if (NodeOf(callNodeIndex) is not { } callNode)
         {
             return null;
         }
 
-        var thread = calls.GetThread(call);
+        var thread = calls.GetThread(callIndex);
 
-        var from = calls.GetFromPosition(call);
+        var from = calls.GetFromPosition(callIndex);
 
-        var depth = DepthOf(node);
+        var depth = DepthOf(callNodeIndex);
 
         for (var lane = 0; lane < Threads.Count; lane++)
         {
@@ -105,14 +105,14 @@ public sealed partial class TraceTimeline
 
             var rows = Threads[lane].Rows;
 
-            if (depth < rows.Count && rows[depth].GetIndex(from, node, call) is >= 0 and var expected)
+            if (depth < rows.Count && rows[depth].GetIndex(from, callNodeIndex, callIndex) is >= 0 and var expected)
             {
                 return new TraceSpanLocation(lane, Threads[lane], depth, rows[depth], expected, callNode);
             }
 
             for (var row = 0; row < rows.Count; row++)
             {
-                if (row != depth && rows[row].GetIndex(from, node, call) is >= 0 and var index)
+                if (row != depth && rows[row].GetIndex(from, callNodeIndex, callIndex) is >= 0 and var index)
                 {
                     return new TraceSpanLocation(lane, Threads[lane], row, rows[row], index, callNode);
                 }
@@ -161,7 +161,7 @@ public sealed partial class TraceTimeline
 
                 for (var index = 0; index < row.Count; index++)
                 {
-                    if (NodeOf(row.NodeAt(index)) is { } node)
+                    if (NodeOf(row.GetCallNodeIndex(index)) is { } node)
                     {
                         yield return new TraceSpanLocation(threadIndex, thread, depth, row, index, node);
                     }
@@ -201,7 +201,7 @@ public sealed partial class TraceTimeline
         return [.. totals.OrderBy(t => t.Key).Select(t => new TraceSelfAllocation(t.Key.Thread, t.Key.Depth, t.Key.Index, t.Value))];
     }
 
-    public int ParentOf(int node) => node >= 0 && node < Parents.Length ? Parents[node] : -1;
+    public int ParentOf(int callNodeIndex) => callNodeIndex >= 0 && callNodeIndex < Parents.Length ? Parents[callNodeIndex] : -1;
 
     public TraceTimeline Where(Func<int, bool> include) => new([.. Threads.Select(t => t.Where(include))], this);
 
@@ -213,17 +213,17 @@ public sealed partial class TraceTimeline
 
         var any = false;
 
-        for (var node = 0; node < depths.Length; node++)
+        for (var callNodeIndex = 0; callNodeIndex < depths.Length; callNodeIndex++)
         {
-            var parent = Parents[node];
+            var parent = Parents[callNodeIndex];
 
-            depths[node] = parent >= 0 ? depths[parent] + 1 : 0;
+            depths[callNodeIndex] = parent >= 0 ? depths[parent] + 1 : 0;
 
-            rootDepths[node] = parent >= 0 && rootDepths[parent] >= 0
+            rootDepths[callNodeIndex] = parent >= 0 && rootDepths[parent] >= 0
                 ? rootDepths[parent]
-                : NodeOf(node) is { } callNode && isRoot(callNode) ? depths[node] : -1;
+                : NodeOf(callNodeIndex) is { } callNode && isRoot(callNode) ? depths[callNodeIndex] : -1;
 
-            any |= rootDepths[node] >= 0;
+            any |= rootDepths[callNodeIndex] >= 0;
         }
 
         if (!any)
@@ -231,7 +231,7 @@ public sealed partial class TraceTimeline
             return null;
         }
 
-        var rooted = Threads.Select(t => Regroup(t, (_, row, index) => row.NodeAt(index) is var n
+        var rooted = Threads.Select(t => Regroup(t, (_, row, index) => row.GetCallNodeIndex(index) is var n
                                                                        && n >= 0
                                                                        && n < depths.Length
                                                                        && rootDepths[n] >= 0
@@ -262,9 +262,9 @@ public sealed partial class TraceTimeline
 
         var depths = new int[NodeCount];
 
-        for (var node = 0; node < depths.Length; node++)
+        for (var callNodeIndex = 0; callNodeIndex < depths.Length; callNodeIndex++)
         {
-            depths[node] = NodeOf(node) is { } callNode ? DepthUnder(roots, callNode, known) : -1;
+            depths[callNodeIndex] = NodeOf(callNodeIndex) is { } callNode ? DepthUnder(roots, callNode, known) : -1;
         }
 
         List<TraceTimelineThread> threads = [.. Threads.Select(t => Regroup(t, (_, row, index) => DepthOf(row, index)))
@@ -273,7 +273,7 @@ public sealed partial class TraceTimeline
         return threads.Count > 0 ? new TraceTimeline(threads, this, fit: true) : null;
 
         int DepthOf(TraceTimelineRow row, int index)
-            => row.NodeAt(index) is var node && node >= 0 && node < depths.Length ? depths[node] : -1;
+            => row.GetCallNodeIndex(index) is var callNodeIndex && callNodeIndex >= 0 && callNodeIndex < depths.Length ? depths[callNodeIndex] : -1;
     }
 
     public TraceTimeline WithoutCallsUnder(Func<CallStackNode, bool> boundary)
@@ -282,13 +282,13 @@ public sealed partial class TraceTimeline
 
         var any = false;
 
-        for (var node = 0; node < removed.Length; node++)
+        for (var callNodeIndex = 0; callNodeIndex < removed.Length; callNodeIndex++)
         {
-            var parent = Parents[node];
+            var parent = Parents[callNodeIndex];
 
-            removed[node] = (parent >= 0 && removed[parent]) || (NodeOf(node) is { } callNode && boundary(callNode));
+            removed[callNodeIndex] = (parent >= 0 && removed[parent]) || (NodeOf(callNodeIndex) is { } callNode && boundary(callNode));
 
-            any |= removed[node];
+            any |= removed[callNodeIndex];
         }
 
         return any ? Where(n => n < 0 || n >= removed.Length || !removed[n]) : this;
@@ -300,11 +300,11 @@ public sealed partial class TraceTimeline
 
         var any = false;
 
-        for (var node = 0; node < folded.Length; node++)
+        for (var callNodeIndex = 0; callNodeIndex < folded.Length; callNodeIndex++)
         {
-            folded[node] = NodeOf(node) is { } callNode && isFolded(callNode);
+            folded[callNodeIndex] = NodeOf(callNodeIndex) is { } callNode && isFolded(callNode);
 
-            any |= folded[node];
+            any |= folded[callNodeIndex];
         }
 
         if (!any)
@@ -314,21 +314,21 @@ public sealed partial class TraceTimeline
 
         var lifts = new int[NodeCount];
 
-        int LiftOf(int node, int depth)
+        int LiftOf(int callNodeIndex, int depth)
         {
-            if (depth == 0 || node < 0 || node >= lifts.Length)
+            if (depth == 0 || callNodeIndex < 0 || callNodeIndex >= lifts.Length)
             {
                 return 0;
             }
 
-            if (lifts[node] < 0)
+            if (lifts[callNodeIndex] < 0)
             {
-                var parent = Parents[node];
+                var parent = Parents[callNodeIndex];
 
-                lifts[node] = parent < 0 ? 0 : LiftOf(parent, depth - 1) + (folded[parent] ? 1 : 0);
+                lifts[callNodeIndex] = parent < 0 ? 0 : LiftOf(parent, depth - 1) + (folded[parent] ? 1 : 0);
             }
 
-            return lifts[node];
+            return lifts[callNodeIndex];
         }
 
         var threads = new List<TraceTimelineThread>(Threads.Count);
@@ -337,7 +337,7 @@ public sealed partial class TraceTimeline
         {
             Array.Fill(lifts, -1);
 
-            threads.Add(Regroup(thread, (depth, row, index) => row.NodeAt(index) is var n && n >= 0 && n < folded.Length && folded[n]
+            threads.Add(Regroup(thread, (depth, row, index) => row.GetCallNodeIndex(index) is var n && n >= 0 && n < folded.Length && folded[n]
                                                                    ? -1
                                                                    : depth - LiftOf(n, depth)));
         }
@@ -381,11 +381,11 @@ public sealed partial class TraceTimeline
         return activity;
     }
 
-    private int DepthOf(int node)
+    private int DepthOf(int callNodeIndex)
     {
         var depth = 0;
 
-        for (var current = node >= 0 && node < Parents.Length ? Parents[node] : -1; current >= 0; current = Parents[current])
+        for (var current = callNodeIndex >= 0 && callNodeIndex < Parents.Length ? Parents[callNodeIndex] : -1; current >= 0; current = Parents[current])
         {
             depth++;
         }
@@ -463,7 +463,7 @@ public sealed partial class TraceTimeline
         }
 
         int DepthOf(TraceTimelineRow row, int index)
-            => row.NodeAt(index) is var node && node >= 0 && node < depths.Length ? depths[node] : 0;
+            => row.GetCallNodeIndex(index) is var callNodeIndex && callNodeIndex >= 0 && callNodeIndex < depths.Length ? depths[callNodeIndex] : 0;
 
         var shallowest = int.MaxValue;
 
@@ -536,12 +536,12 @@ public sealed partial class TraceTimeline
                     continue;
                 }
 
-                var call = row.CallAt(index);
+                var callIndex = row.GetCallIndex(index);
 
                 copy.Add(row.GetFrom(index),
                          row.GetTo(index),
-                         row.NodeAt(index),
-                         call < 0 ? uint.MaxValue : (uint)call,
+                         row.GetCallNodeIndex(index),
+                         callIndex < 0 ? uint.MaxValue : (uint)callIndex,
                          (byte)row.FlagsAt(index));
             }
         }
@@ -648,9 +648,9 @@ public sealed partial class TraceTimeline
 
             for (var index = 0; index < count; index++)
             {
-                var node = Chunks[index >> ChunkShift]![index & ChunkMask].Node;
+                var callNodeIndex = Chunks[index >> ChunkShift]![index & ChunkMask].CallNodeIndex;
 
-                var depth = node >= 0 && node < depths.Length ? depths[node] : 0;
+                var depth = callNodeIndex >= 0 && callNodeIndex < depths.Length ? depths[callNodeIndex] : 0;
 
                 while (rowCounts.Count <= depth)
                 {
@@ -680,7 +680,7 @@ public sealed partial class TraceTimeline
 
                     var to = new TracePoint(new TracePosition(span.EndSequence, span.EndSteps), span.EndInstructions);
 
-                    rows[rowOf[first + offset]].Add(from, to, span.Node, span.Call, (byte)span.Flags);
+                    rows[rowOf[first + offset]].Add(from, to, span.CallNodeIndex, span.CallIndex, (byte)span.Flags);
                 }
 
                 Chunks[chunk] = null;
@@ -700,7 +700,7 @@ public sealed partial class TraceTimeline
 
         private TracePoint[] Tos { get; } = new TracePoint[count];
 
-        private int[] Nodes { get; } = new int[count];
+        private int[] CallNodeIndexes { get; } = new int[count];
 
         private uint[] Calls { get; } = new uint[count];
 
@@ -708,12 +708,12 @@ public sealed partial class TraceTimeline
 
         private int Filled { get; set; }
 
-        public void Add(TracePoint from, TracePoint to, int node, uint call, byte flags)
+        public void Add(TracePoint from, TracePoint to, int callNodeIndex, uint callIndex, byte flags)
         {
             Froms[Filled] = from;
             Tos[Filled] = to;
-            Nodes[Filled] = node;
-            Calls[Filled] = call;
+            CallNodeIndexes[Filled] = callNodeIndex;
+            Calls[Filled] = callIndex;
             Flags[Filled] = flags;
 
             Filled++;
@@ -731,12 +731,12 @@ public sealed partial class TraceTimeline
 
                 Reorder(Froms, order);
                 Reorder(Tos, order);
-                Reorder(Nodes, order);
+                Reorder(CallNodeIndexes, order);
                 Reorder(Calls, order);
                 Reorder(Flags, order);
             }
 
-            return new TraceTimelineRow(scale, Froms, Tos, Nodes, Calls, Flags);
+            return new TraceTimelineRow(scale, Froms, Tos, CallNodeIndexes, Calls, Flags);
         }
 
         private bool IsSorted()

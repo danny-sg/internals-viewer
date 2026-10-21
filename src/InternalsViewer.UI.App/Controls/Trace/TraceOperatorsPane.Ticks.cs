@@ -429,7 +429,7 @@ internal sealed partial class TraceOperatorsPane
 
         lines.Add(tick.Node.Symbol);
 
-        lines.Add($"Thread {tick.Thread}  ·  Call {tick.Call + 1:N0}");
+        lines.Add($"Thread {tick.Thread}  ·  Call {tick.CallIndex + 1:N0}");
 
         lines.Add(GetPositionLabel(tick.Span));
 

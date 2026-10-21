@@ -51,7 +51,7 @@ namespace InternalsViewer.Query.FullTrace.Functions;
 ///
 /// Locators
 ///
-///     Functions that read page/row id via their arguments.
+///     Functions that reference known structures their arguments.
 ///     
 ///     
 /// </remarks>
@@ -238,17 +238,26 @@ internal static class ReplayFunctionResolver
             ? [.. InstanceMethodCollector.FindInstanceMethods(functions.Where(f => f.Value.IsInstanceMethod).Select(f => f.Key), resolver)]
             : [];
 
-        uint[] kept = [.. functions.Where(f => !f.Value.IsExcluded).Select(f => f.Key)];
+        var reads = new LocatorReadResolver.Collector();
 
-        LocatorRead[] locators = [.. LocatorReadResolver.FindReads(resolver, kept), .. LocatorReadResolver.FindStackReads(resolver, kept)];
+        var memoryMapFunctions = new MemoryMapFunctionResolver.Collector();
+
+        ModuleSymbols.VisitFunctions(resolver,
+                                     functions.Where(f => !f.Value.IsExcluded).Select(f => f.Key).ToHashSet(),
+                                     symbol =>
+                                     {
+                                         reads.Visit(symbol);
+
+                                         memoryMapFunctions.Visit(symbol);
+                                     });
 
         ulong[] excluded = [.. functions.Where(f => f.Value.IsExcluded).Select(f => (ulong)f.Key)];
 
         return new ReplayFunctions(excluded,
                                    instanceMethods,
-                                   locators,
+                                   reads.Build(),
                                    [.. functions.Values.Select(f => f.MemoryFunction).OfType<MemoryFunction>()],
-                                   [.. MemoryMapFunctionResolver.Find(resolver, kept)],
+                                   memoryMapFunctions.Build(),
                                    planNodes.Build(),
                                    output.Build());
     }

@@ -149,9 +149,9 @@ public sealed class CallTreeTabViewModel : IDisposable
         _ = references.LoadAsync();
     }
 
-    public void ShowCallStack(CallStackNode node, int call)
+    public void ShowCallStack(CallStackNode node, int callIndex)
     {
-        if (AddedDocuments.FirstOrDefault(d => d.Content is CallStackViewModel shown && shown.IsShowing(node, call)) is { } existing)
+        if (AddedDocuments.FirstOrDefault(d => d.Content is CallStackViewModel shown && shown.IsShowing(node, callIndex)) is { } existing)
         {
             Dock.Activate(existing);
 
@@ -160,13 +160,13 @@ public sealed class CallTreeTabViewModel : IDisposable
 
         var stack = new CallStackViewModel(Query);
 
-        _ = stack.OpenAsync(node, call);
+        _ = stack.OpenAsync(node, callIndex);
 
         AddDocument(new DocumentViewModel(stack.Title,
                                           stack,
                                           static () => new CallStackControl(),
                                           keepAlive: true,
-                                          key: $"CallStack{node.Frame?.Address:X}{node.Frame?.Instance:X}{call}",
+                                          key: $"CallStack{node.Frame?.Address:X}{node.Frame?.Instance:X}{callIndex}",
                                           persist: false,
                                           commandsFactory: static () => TabCommands.Panel(0, new DecodeToggle())));
     }

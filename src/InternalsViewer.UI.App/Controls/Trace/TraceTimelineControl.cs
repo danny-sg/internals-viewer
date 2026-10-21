@@ -673,7 +673,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
                 return null;
             }
 
-            if (!Excludes(matches, row.NodeAt(index)))
+            if (!Excludes(matches, row.GetCallNodeIndex(index)))
             {
                 return row.GetStart(_axis, index);
             }
@@ -691,7 +691,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
                 return null;
             }
 
-            if (!Excludes(matches, row.NodeAt(index)))
+            if (!Excludes(matches, row.GetCallNodeIndex(index)))
             {
                 return row.GetStart(_axis, index);
             }
@@ -1014,7 +1014,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
                                      .ToDictionary(g => g.Key,
                                                    g => new RaisedRow([.. g.Select(s => s.Index)], [.. g.Select(s => s.Bytes)]));
 
-        _stackFrame = stackFrame is not null && _visible is { } rebuilt ? FindCall(rebuilt, stackFrame.Node, stackFrame.Call) : null;
+        _stackFrame = stackFrame is not null && _visible is { } rebuilt ? FindCall(rebuilt, stackFrame.Node, stackFrame.CallIndex) : null;
 
         FindSelectedCall(selectedCall, bringIntoView: false);
 
@@ -1075,21 +1075,21 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
         var any = false;
 
-        for (var node = 0; node < hidden.Length; node++)
+        for (var callNodeIndex = 0; callNodeIndex < hidden.Length; callNodeIndex++)
         {
-            var parent = timeline.ParentOf(node);
+            var parent = timeline.ParentOf(callNodeIndex);
 
-            hidden[node] = (parent >= 0 && hidden[parent])
-                           || (timeline.NodeOf(node) is { Frame: not null } callNode && categories.Contains(callNode.Category));
+            hidden[callNodeIndex] = (parent >= 0 && hidden[parent])
+                           || (timeline.NodeOf(callNodeIndex) is { Frame: not null } callNode && categories.Contains(callNode.Category));
 
-            any |= hidden[node];
+            any |= hidden[callNodeIndex];
         }
 
         return any ? hidden : null;
     }
 
-    private static FlameHit? FindCall(TraceTimeline timeline, CallStackNode node, int call)
-        => timeline.FindCall(node, call) is { } location ? new FlameHit(location.ThreadIndex, location.Depth, location.Index) : null;
+    private static FlameHit? FindCall(TraceTimeline timeline, CallStackNode node, int callIndex)
+        => timeline.FindCall(node, callIndex) is { } location ? new FlameHit(location.ThreadIndex, location.Depth, location.Index) : null;
 
     private void FindSelectedCall(CallReference? reference, bool bringIntoView)
     {
@@ -1098,7 +1098,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
             return;
         }
 
-        var found = IsCall(_selected, reference) ? _selected : FindCall(visible, reference.Node, reference.Call);
+        var found = IsCall(_selected, reference) ? _selected : FindCall(visible, reference.Node, reference.CallIndex);
 
         if (found is not { } hit)
         {
@@ -1135,15 +1135,15 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
     }
 
     private CallReference? GetCallReference(FlameHit? hit)
-        => hit is { } at && SpanOf(at) is { } span && _visible?.NodeOf(span.Node) is { } node
-               ? new CallReference(node, span.Call, true)
+        => hit is { } at && SpanOf(at) is { } span && _visible?.NodeOf(span.CallNodeIndex) is { } node
+               ? new CallReference(node, span.CallIndex, true)
                : null;
 
     private bool IsCall(FlameHit? hit, CallReference reference)
         => hit is { } at
            && SpanOf(at) is { } span
-           && span.Call == reference.Call
-           && ReferenceEquals(_visible?.NodeOf(span.Node), reference.Node);
+           && span.CallIndex == reference.CallIndex
+           && ReferenceEquals(_visible?.NodeOf(span.CallNodeIndex), reference.Node);
 
     private void BringIntoView(FlameHit hit)
     {

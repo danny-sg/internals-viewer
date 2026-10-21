@@ -136,7 +136,7 @@ public sealed partial class TraceTimelineControl
 
         canvas.ClipRect(front);
 
-        canvas.DrawText(LabelOf(block.Node),
+        canvas.DrawText(LabelOf(block.CallNodeIndex),
                         Math.Max(front.Left, 0) + LabelPadding,
                         Baseline(front.Top, block.Height),
                         SKTextAlign.Left,
@@ -223,7 +223,7 @@ public sealed partial class TraceTimelineControl
             var right = Math.Max((float)((row.GetEnd(_axis, index) - _viewStart) * scale), left + SpikeMinimumWidth);
 
             var spike = Raised(new FlameHit(visible.Lane, visible.Depth, index),
-                               row.NodeAt(index),
+                               row.GetCallNodeIndex(index),
                                left,
                                right,
                                visible.Top,
@@ -238,7 +238,7 @@ public sealed partial class TraceTimelineControl
                 var dominant = spike.Bytes > _spikes[last].Bytes ? spike : _spikes[last];
 
                 _spikes[last] = Raised(dominant.Call,
-                                       dominant.Node,
+                                       dominant.CallNodeIndex,
                                        _spikes[last].Left,
                                        Math.Max(_spikes[last].Right, right),
                                        visible.Top,
@@ -353,7 +353,7 @@ public sealed partial class TraceTimelineControl
             return;
         }
 
-        var node = row.NodeAt(source.Index);
+        var callNodeIndex = row.GetCallNodeIndex(source.Index);
 
         var first = _spikes.Count;
 
@@ -372,7 +372,7 @@ public sealed partial class TraceTimelineControl
             }
             else
             {
-                _spikes.Add(Raised(source, node, x, end, top, BarHeight, bytes, _inUseMaximum));
+                _spikes.Add(Raised(source, callNodeIndex, x, end, top, BarHeight, bytes, _inUseMaximum));
             }
         }
 
@@ -512,7 +512,7 @@ public sealed partial class TraceTimelineControl
 
     private Block? NamedSlab(int first, int end)
     {
-        var needed = _paints.Font.MeasureText(LabelOf(_spikes[first].Node)) + LabelPadding * 2;
+        var needed = _paints.Font.MeasureText(LabelOf(_spikes[first].CallNodeIndex)) + LabelPadding * 2;
 
         var devicePixel = 1f / (float)Math.Max(_canvas.Dpi, 1);
 
@@ -580,7 +580,7 @@ public sealed partial class TraceTimelineControl
             return;
         }
 
-        var text = LabelOf(run.Node);
+        var text = LabelOf(run.CallNodeIndex);
 
         var textWidth = _paints.Font.MeasureText(text);
 

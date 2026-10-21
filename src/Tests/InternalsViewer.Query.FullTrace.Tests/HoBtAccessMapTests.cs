@@ -145,7 +145,7 @@ public class HoBtAccessMapTests
                 Functions[method] = function;
             }
 
-            function.Rows.Add(TraceCallRows.Row(sequence, flags: 1, rcx: rcx, rdx: rdx, r8: r8, node: Nodes.Count - 1));
+            function.Rows.Add(TraceCallRows.Row(sequence, flags: 1, rcx: rcx, rdx: rdx, r8: r8, callNodeIndex: Nodes.Count - 1));
 
             return this;
         }

@@ -316,7 +316,7 @@ public class OutputHookTests
         {
             Function = function,
             Id = id,
-            Call = (uint)id,
+            CallIndex = (uint)id,
             Position = At(id),
             Thread = Thread,
             Arguments = arguments,

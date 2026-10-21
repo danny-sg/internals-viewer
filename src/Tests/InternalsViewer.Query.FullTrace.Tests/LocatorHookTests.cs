@@ -258,7 +258,7 @@ public class LocatorHookTests
         {
             Function = Function,
             Id = 40,
-            Call = 0,
+            CallIndex = 0,
             Arguments = arguments,
             ReturnValue = returnValue,
             StackPointer = StackPointer,

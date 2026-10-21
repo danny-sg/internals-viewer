@@ -185,8 +185,8 @@ public class TraceCallStoreTests
 
         var use = Assert.Single(await search.GetValueUsesAsync(0x5_0000, CancellationToken.None));
 
-        Assert.Equal(("[RSP+0x28]", 1), (use.Location, use.First.Call));
-        Assert.Equal([1], (await search.GetTraceValueCallsAsync(use, 0x5_0000, CancellationToken.None)).Select(c => c.Call));
+        Assert.Equal(("[RSP+0x28]", 1), (use.Location, use.First.CallIndex));
+        Assert.Equal([1], (await search.GetTraceValueCallsAsync(use, 0x5_0000, CancellationToken.None)).Select(c => c.CallIndex));
     }
 
     [Fact]
@@ -199,7 +199,7 @@ public class TraceCallStoreTests
 
         var builder = new TraceCallStore.Builder();
 
-        builder.Add(0x1000, 0, Chunk(Row(1, rcx: 0xA0, node: 1), Row(2, node: -1)), 2);
+        builder.Add(0x1000, 0, Chunk(Row(1, rcx: 0xA0, callNodeIndex: 1), Row(2, callNodeIndex: -1)), 2);
 
         var store = builder.Build();
 
@@ -257,7 +257,7 @@ public class TraceCallStoreTests
 
         var builder = new TraceCallStore.Builder();
 
-        builder.Add(0x1000, 0, Chunk(Row(10, node: 0)), 1);
+        builder.Add(0x1000, 0, Chunk(Row(10, callNodeIndex: 0)), 1);
 
         builder.AddLocator(0x1000, 0, 0, new Locator(1, LocatorValueType.Referenced, 3), false);
 
@@ -280,7 +280,7 @@ public class TraceCallStoreTests
 
         var builder = new TraceCallStore.Builder();
 
-        builder.Add(0x1000, 0, Chunk(Row(10, node: 0), Row(11, node: 1), Row(12, node: 1)), 3);
+        builder.Add(0x1000, 0, Chunk(Row(10, callNodeIndex: 0), Row(11, callNodeIndex: 1), Row(12, callNodeIndex: 1)), 3);
 
         builder.AddLocator(0x1000, 0, 0, new Locator(2, LocatorValueType.Page, Page336), false);
         builder.AddLocator(0x1000, 0, 1, new Locator(2, LocatorValueType.Page, Page336 + 1), false);

@@ -27,7 +27,7 @@ internal sealed class CustomHook(IEnumerable<(ulong Address, CustomHookDefinitio
         Captures.Add(new CustomHookCapture(definition.Name,
                                            call.Function,
                                            call.Instance,
-                                           (int)call.Call,
+                                           (int)call.CallIndex,
                                            call.Position,
                                            call.Thread,
                                            address,

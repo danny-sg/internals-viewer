@@ -7,13 +7,13 @@ public interface IPlayheadChart
 {
     void ZoomTo(TraceSpan span);
 
-    void ZoomToCall(CallStackNode node, int call);
+    void ZoomToCall(CallStackNode node, int callIndex);
 
     void ScopeTo(CallStackNode node);
 
     void SelectAdjacentCall(bool forward);
 
-    void MarkCall(CallStackNode? node, int call);
+    void MarkCall(CallStackNode? node, int callIndex);
 
-    void MovePlayheadTo(CallStackNode node, int call);
+    void MovePlayheadTo(CallStackNode node, int callIndex);
 }

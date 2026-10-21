@@ -314,7 +314,7 @@ public sealed partial class TraceTimelineControl
                                  ? InputSystemCursorShape.Hand
                                  : InputSystemCursorShape.Arrow);
 
-        var hit = found?.Call ?? HitTest(position) ?? GetMarkHit(operatorsHover.Tick?.Tick?.Node, operatorsHover.Tick?.Tick?.Call);
+        var hit = found?.Call ?? HitTest(position) ?? GetMarkHit(operatorsHover.Tick?.Tick?.Node, operatorsHover.Tick?.Tick?.CallIndex);
 
         if (hit != _hover
             || !Nullable.Equals(found, _hoverBlock)
@@ -345,8 +345,8 @@ public sealed partial class TraceTimelineControl
 
     private TraceResizeHandle? GetPaneResizeHandle(Point position) => ShowsOperators ? _operators.GetResizeHandle(position) : null;
 
-    private FlameHit? GetMarkHit(CallStackNode? node, int? call)
-        => node is not null && call is { } index && _visible is { } timeline ? FindCall(timeline, node, index) : null;
+    private FlameHit? GetMarkHit(CallStackNode? node, int? callIndex)
+        => node is not null && callIndex is { } index && _visible is { } timeline ? FindCall(timeline, node, index) : null;
 
     private void OnPointerReleased(object sender, PointerRoutedEventArgs e)
     {
@@ -612,14 +612,14 @@ public sealed partial class TraceTimelineControl
     {
         CallStackNode? node = null;
 
-        var call = -1;
+        var callIndex = -1;
 
         var span = hit is { } target ? SpanOf(target) : null;
 
         if (span is { } found)
         {
-            node = _visible?.NodeOf(found.Node);
-            call = found.Call;
+            node = _visible?.NodeOf(found.CallNodeIndex);
+            callIndex = found.CallIndex;
         }
 
         var flyout = new MenuFlyout();
@@ -650,7 +650,7 @@ public sealed partial class TraceTimelineControl
 
         flyout.Items.Add(new MenuFlyoutSeparator());
 
-        flyout.Items.Add(MenuItems.Create("Open Call Tree", () => CallTreeOpenRequested?.Invoke(node, call)));
+        flyout.Items.Add(MenuItems.Create("Open Call Tree", () => CallTreeOpenRequested?.Invoke(node, callIndex)));
 
         if (hit is { } opened && span is not null)
         {
@@ -682,7 +682,7 @@ public sealed partial class TraceTimelineControl
 
         _canvas.Invalidate();
 
-        if (hit is not { } selected || SpanOf(selected) is not { } span || _visible?.NodeOf(span.Node) is not { } node)
+        if (hit is not { } selected || SpanOf(selected) is not { } span || _visible?.NodeOf(span.CallNodeIndex) is not { } node)
         {
             return;
         }
@@ -692,7 +692,7 @@ public sealed partial class TraceTimelineControl
             ZoomToSelectedCall();
         }
 
-        CallSelected?.Invoke(node, span.Call);
+        CallSelected?.Invoke(node, span.CallIndex);
     }
 
     private void Deselect()
@@ -819,7 +819,7 @@ public sealed partial class TraceTimelineControl
     }
 
     private void RootAt(FlameHit? hit)
-        => SetRoot(hit is { } at && SpanOf(at) is { } span ? _visible?.NodeOf(span.Node) : null);
+        => SetRoot(hit is { } at && SpanOf(at) is { } span ? _visible?.NodeOf(span.CallNodeIndex) : null);
 
     private void Click(FlameHit? hit)
     {
@@ -992,20 +992,20 @@ public sealed partial class TraceTimelineControl
 
         var span = row.GetSpan(hit.Index);
 
-        var node = timeline.NodeOf(span.Node);
+        var node = timeline.NodeOf(span.CallNodeIndex);
 
         var origin = OriginOf(TraceTimelineAxis.Position);
 
         var lines = new List<string>
         {
-            LabelOf(span.Node),
+            LabelOf(span.CallNodeIndex),
             node?.Category is { Length: > 0 } category ? category : "Unknown",
-            span.Call >= 0
-                ? $"Thread {thread.ThreadId}  ·  Call {span.Call + 1:N0}  ·  Depth {hit.Depth}"
+            span.CallIndex >= 0
+                ? $"Thread {thread.ThreadId}  ·  Call {span.CallIndex + 1}  ·  Depth {hit.Depth}"
                 : $"Thread {thread.ThreadId}  ·  Depth {hit.Depth}",
-            $"Instructions {span.Instructions:N0}",
-            $"Position {Math.Floor(TraceScale.GetValue(span.From.Position) - origin):N0} "
-            + $"to {Math.Floor(TraceScale.GetValue(span.To.Position) - origin):N0}"
+            $"Instructions {span.Instructions}",
+            $"Position {Math.Floor(TraceScale.GetValue(span.From.Position) - origin)} "
+            + $"to {Math.Floor(TraceScale.GetValue(span.To.Position) - origin)}"
         };
 
         var (allocatedBytes, allocations) = Memory.AllocatedDuring(thread.ThreadId, span.From.Position, span.To.Position);

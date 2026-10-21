@@ -3,7 +3,7 @@ using InternalsViewer.Query.Events.Operators;
 
 namespace InternalsViewer.Query.FullTrace.Timeline.Ticks;
 
-public sealed record TraceTick(byte Value, uint Thread, CallStackNode Node, int Call, TraceSpan Span) : ITraceMark
+public sealed record TraceTick(byte Value, uint Thread, CallStackNode Node, int CallIndex, TraceSpan Span) : ITraceMark
 {
     public ExecutionOperatorEvent? Operator { get; init; }
 

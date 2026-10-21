@@ -17,25 +17,25 @@ internal sealed partial class LocatorTable
 
     private Locator[] Locators { get; }
 
-    public static LocatorTable Build(List<(int Call, Locator Locator)> found)
+    public static LocatorTable Build(List<(int CallIndex, Locator Locator)> found)
     {
-        found.Sort((left, right) => left.Call != right.Call
-                                        ? left.Call.CompareTo(right.Call)
+        found.Sort((left, right) => left.CallIndex != right.CallIndex
+                                        ? left.CallIndex.CompareTo(right.CallIndex)
                                         : left.Locator.Register.CompareTo(right.Locator.Register));
 
-        return new LocatorTable([.. found.Select(f => f.Call)], [.. found.Select(f => f.Locator)]);
+        return new LocatorTable([.. found.Select(f => f.CallIndex)], [.. found.Select(f => f.Locator)]);
     }
 
-    public IReadOnlyList<Locator> GetLocators(int call)
+    public IReadOnlyList<Locator> GetLocators(int callIndex)
     {
-        var first = SortedSearch.FirstAtOrAfter(Calls, call);
+        var first = SortedSearch.FirstAtOrAfter(Calls, callIndex);
 
-        var end = SortedSearch.FirstAfter(Calls, call, first);
+        var end = SortedSearch.FirstAfter(Calls, callIndex, first);
 
         return end == first ? [] : Locators[first..end];
     }
 
-    public IEnumerable<(int Call, Locator Locator)> Entries()
+    public IEnumerable<(int CallIndex, Locator Locator)> Entries()
     {
         for (var index = 0; index < Locators.Length; index++)
         {

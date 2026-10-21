@@ -12,12 +12,12 @@ public sealed partial class TraceCallStore
     {
         private Dictionary<(ulong Address, ulong Instance), List<Task<Chunk>>> Pending { get; } = new();
 
-        private Dictionary<(ulong Address, ulong Instance), List<(int Call, Locator Locator, bool IsReadAtReturn)>> Found { get; }
+        private Dictionary<(ulong Address, ulong Instance), List<(int CallIndex, Locator Locator, bool IsReadAtReturn)>> Found { get; }
             = new();
 
         private SemaphoreSlim Compressing { get; } = new(Math.Max(2, Environment.ProcessorCount));
 
-        private Dictionary<(ulong Address, ulong Instance), List<(uint Call, TracePosition ToPosition, ulong ReturnValue, bool Returned)>>
+        private Dictionary<(ulong Address, ulong Instance), List<(uint CallIndex, TracePosition ToPosition, ulong ReturnValue, bool Returned)>>
             ToPositions { get; } = new();
 
         public void Add(ulong address, ulong instance, IntPtr columns, int calls)
@@ -52,7 +52,7 @@ public sealed partial class TraceCallStore
 
         public void AddToPosition(ulong address,
                                   ulong instance,
-                                  uint call,
+                                  uint callIndex,
                                   ulong toSequence,
                                   ulong toSteps,
                                   ulong returnValue,
@@ -60,11 +60,11 @@ public sealed partial class TraceCallStore
         {
             ref var positions = ref CollectionsMarshal.GetValueRefOrAddDefault(ToPositions, (address, instance), out _);
 
-            (positions ??= []).Add((call, new TracePosition(toSequence, toSteps), returnValue, returned != 0));
+            (positions ??= []).Add((callIndex, new TracePosition(toSequence, toSteps), returnValue, returned != 0));
         }
 
-        public void AddLocator(ulong address, ulong instance, int call, Locator locator, bool isReadAtReturn)
-            => GetFound(address, instance).Add((call, locator, isReadAtReturn));
+        public void AddLocator(ulong address, ulong instance, int callIndex, Locator locator, bool isReadAtReturn)
+            => GetFound(address, instance).Add((callIndex, locator, isReadAtReturn));
 
         public TraceCallStore Build()
         {
@@ -84,7 +84,7 @@ public sealed partial class TraceCallStore
         }
 
         private static void ApplyToPositions(Chunk[] chunks,
-                                             List<(uint Call, TracePosition ToPosition, ulong ReturnValue, bool Returned)> positions)
+                                             List<(uint CallIndex, TracePosition ToPosition, ulong ReturnValue, bool Returned)> positions)
         {
             var first = 0;
 
@@ -92,15 +92,15 @@ public sealed partial class TraceCallStore
             {
                 var calls = chunks[index].Calls;
 
-                var inChunk = positions.Where(p => p.Call >= first && p.Call < first + calls).ToArray();
+                var inChunk = positions.Where(p => p.CallIndex >= first && p.CallIndex < first + calls).ToArray();
 
                 if (inChunk.Length > 0)
                 {
                     var columns = Decompress(chunks[index]);
 
-                    foreach (var (call, toPosition, returnValue, returned) in inChunk)
+                    foreach (var (callIndex, toPosition, returnValue, returned) in inChunk)
                     {
-                        columns.SetToPosition((int)call - first, toPosition, returnValue, returned);
+                        columns.SetToPosition((int)callIndex - first, toPosition, returnValue, returned);
                     }
 
                     chunks[index] = Compress(columns.Values, calls);
@@ -110,12 +110,12 @@ public sealed partial class TraceCallStore
             }
         }
 
-        private static List<(int Call, Locator Locator)> GetPreferred(List<(int Call, Locator Locator, bool IsReadAtReturn)> found)
+        private static List<(int CallIndex, Locator Locator)> GetPreferred(List<(int CallIndex, Locator Locator, bool IsReadAtReturn)> found)
         {
-            var returned = found.Where(f => f.IsReadAtReturn).Select(f => (f.Call, f.Locator.Register, f.Locator.ValueType)).ToHashSet();
+            var returned = found.Where(f => f.IsReadAtReturn).Select(f => (f.CallIndex, f.Locator.Register, f.Locator.ValueType)).ToHashSet();
 
-            return [.. found.Where(f => f.IsReadAtReturn || !returned.Contains((f.Call, f.Locator.Register, f.Locator.ValueType)))
-                            .Select(f => (f.Call, f.Locator))];
+            return [.. found.Where(f => f.IsReadAtReturn || !returned.Contains((f.CallIndex, f.Locator.Register, f.Locator.ValueType)))
+                            .Select(f => (f.CallIndex, f.Locator))];
         }
 
         private static Chunk Compress(ReadOnlySpan<ulong> columns, int calls)
@@ -130,7 +130,7 @@ public sealed partial class TraceCallStore
             return new Chunk(calls, compressed.ToArray());
         }
 
-        private List<(int Call, Locator Locator, bool IsReadAtReturn)> GetFound(ulong address, ulong instance)
+        private List<(int CallIndex, Locator Locator, bool IsReadAtReturn)> GetFound(ulong address, ulong instance)
         {
             ref var found = ref CollectionsMarshal.GetValueRefOrAddDefault(Found, (address, instance), out _);
 

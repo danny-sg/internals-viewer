@@ -367,9 +367,9 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         e.Handled = true;
     }
 
-    private void OnCallSelected(CallStackNode node, int call) => ViewModel?.NavigateToCall(node, call);
+    private void OnCallSelected(CallStackNode node, int callIndex) => ViewModel?.NavigateToCall(node, callIndex);
 
-    private void OnCallTreeOpenRequested(CallStackNode? node, int call) => ViewModel?.OpenCallTree(node, call);
+    private void OnCallTreeOpenRequested(CallStackNode? node, int callIndex) => ViewModel?.OpenCallTree(node, callIndex);
 
 
     private void OnCallStackOpenRequested() => Settings.TraceTimelineShowCallStack = true;

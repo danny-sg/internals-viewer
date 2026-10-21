@@ -800,7 +800,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    public void OpenCallTree(CallStackNode? node, int call)
+    public void OpenCallTree(CallStackNode? node, int callIndex)
     {
         Layout.ShowCallTree();
 
@@ -811,7 +811,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         _ = CallTreeTab;
 
-        NavigateToCall(node, call);
+        NavigateToCall(node, callIndex);
     }
 
     /// <summary>
@@ -1996,18 +1996,18 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    public void NavigateToCall(CallStackNode node, int call)
+    public void NavigateToCall(CallStackNode node, int callIndex)
     {
         SelectedCallNode = node;
 
         if (CallNavigationRequested is { } handler)
         {
-            handler(node, call);
+            handler(node, callIndex);
 
             return;
         }
 
-        _ = call >= 0 ? Arguments.ShowAsync(node, call) : Arguments.ShowAsync(node);
+        _ = callIndex >= 0 ? Arguments.ShowAsync(node, callIndex) : Arguments.ShowAsync(node);
     }
 
     [RelayCommand]

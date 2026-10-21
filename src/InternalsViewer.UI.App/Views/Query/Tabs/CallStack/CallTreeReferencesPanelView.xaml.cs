@@ -86,6 +86,8 @@ public sealed partial class CallTreeReferencesPanelView : UserControl, IReferenc
         }
     }
 
+    private void OnValueTreeLoaded(object sender, RoutedEventArgs e) => LayoutHelpers.EnableHorizontalScrolling(ValueTree);
+
     private void BuildTree()
     {
         ValueTree.RootNodes.Clear();
@@ -136,7 +138,7 @@ public sealed partial class CallTreeReferencesPanelView : UserControl, IReferenc
         switch (node.Content)
         {
             case ValueCallRow { ValueCall.Node: { } callNode } call:
-                references.Owner.Tree.ShowCall(callNode, call.ValueCall.Call);
+                references.Owner.Tree.ShowCall(callNode, call.ValueCall.CallIndex);
                 break;
 
             case ValueTypeRow { Iterator: { } iterator }:

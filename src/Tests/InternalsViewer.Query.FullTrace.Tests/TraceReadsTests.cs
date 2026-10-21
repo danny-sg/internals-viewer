@@ -135,7 +135,7 @@ public class TraceReadsTests
             Span(1, 15, 30),
             Span(2, 20, 25),
             Span(3, 35, 45),
-            Span(4, 70, 72, call: 1),
+            Span(4, 70, 72, callIndex: 1),
             Span(5, 21, 24)
         ];
 
@@ -201,9 +201,9 @@ public class TraceReadsTests
     private static (PageAddress Page, int PageCount)? GetRead(TraceCallStore calls, TraceTick read, TraceReadType type)
         => TraceReads.GetRead(calls.GetCallList(read.Function, read.Instance)![read.Index], type);
 
-    private static ulong[] Call(ulong start, ulong end, int node, ulong pageCount = 0)
+    private static ulong[] Call(ulong start, ulong end, int callNodeIndex, ulong pageCount = 0)
     {
-        var row = Row(start, flags: Thread | TraceCallColumns.ReturnedFlag, rcx: BufferPool, node: node, endSequence: end);
+        var row = Row(start, flags: Thread | TraceCallColumns.ReturnedFlag, rcx: BufferPool, callNodeIndex: callNodeIndex, endSequence: end);
 
         row[TraceCallColumns.IntegerOffset + 3] = pageCount;
 
@@ -228,5 +228,5 @@ public class TraceReadsTests
 
     private static TraceSpan Whole() => new(new TracePoint(At(0), 0), new TracePoint(At(1000), 1000), 0, 0, TraceSpanFlags.None);
 
-    private static CallSpan Span(int node, ulong start, ulong end, uint call = 0) => new(start, 0, end, 0, start, end, node, Thread, call, 1);
+    private static CallSpan Span(int callNodeIndex, ulong start, ulong end, uint callIndex = 0) => new(start, 0, end, 0, start, end, callNodeIndex, Thread, callIndex, 1);
 }

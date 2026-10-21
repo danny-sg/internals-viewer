@@ -78,9 +78,9 @@ public static class ArgumentRowBuilder
 
         for (var index = 0; index < rows.Length; index++)
         {
-            var call = included?[index] ?? index;
+            var callIndex = included?[index] ?? index;
 
-            rows[index] = new ResultRow<long>(source, call) { Id = call };
+            rows[index] = new ResultRow<long>(source, callIndex) { Id = callIndex };
         }
 
         return new QueryResultSet { Columns = columns, Rows = rows, Source = source };

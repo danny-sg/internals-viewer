@@ -112,9 +112,9 @@ internal static class AllocationMapper
         {
             if (span.Node.Frame is not { } frame
                 || !functions.TryGetValue(frame.Address, out var function)
-                || span.Call is not (>= 0 and var call)
+                || span.CallIndex is not (>= 0 and var callIndex)
                 || getCalls(function.Address) is not { } logged
-                || call >= logged.Count)
+                || callIndex >= logged.Count)
             {
                 continue;
             }
@@ -132,14 +132,14 @@ internal static class AllocationMapper
                 scanned.Threads.Add(thread);
             }
 
-            thread.Calls.Add((function.Address, call, start, end));
+            thread.Calls.Add((function.Address, callIndex, start, end));
 
             if (function is { CarriesClerk: false, IsObjectCall: false })
             {
                 continue;
             }
 
-            var arguments = logged[call];
+            var arguments = logged[callIndex];
 
             if (function.CarriesClerk)
             {
@@ -177,7 +177,7 @@ internal static class AllocationMapper
 
         foreach (var thread in scanned.Threads)
         {
-            foreach (var (address, call, start, end) in thread.Calls)
+            foreach (var (address, callIndex, start, end) in thread.Calls)
             {
                 if (!functions[address].IsAllocation)
                 {
@@ -205,7 +205,7 @@ internal static class AllocationMapper
                     scanned.Kinds[address] = kinds;
                 }
 
-                kinds[call] = kind;
+                kinds[callIndex] = kind;
             }
         }
 
@@ -301,28 +301,28 @@ internal static class AllocationMapper
 
             foreach (var thread in Threads)
             {
-                foreach (var (address, call, start, end) in thread.Calls)
+                foreach (var (address, callIndex, start, end) in thread.Calls)
                 {
                     if (!values.TryGetValue(address, out var callValues))
                     {
                         continue;
                     }
 
-                    if (call < callValues.Bytes.Length && callValues.Bytes[call] > 0)
+                    if (callIndex < callValues.Bytes.Length && callValues.Bytes[callIndex] > 0)
                     {
-                        var workspace = Kinds.TryGetValue(address, out var kinds) && kinds[call] == WorkspaceClerk;
+                        var workspace = Kinds.TryGetValue(address, out var kinds) && kinds[callIndex] == WorkspaceClerk;
 
                         allocations.Add(new MemoryAllocation(thread.ThreadId,
                                                              start,
                                                              end,
-                                                             callValues.Bytes[call],
-                                                             callValues.Returned[call],
+                                                             callValues.Bytes[callIndex],
+                                                             callValues.Returned[callIndex],
                                                              workspace));
                     }
 
-                    if (call < callValues.Released.Length && callValues.Released[call] != 0)
+                    if (callIndex < callValues.Released.Length && callValues.Released[callIndex] != 0)
                     {
-                        frees.Add(new MemoryFree(thread.ThreadId, start, end, callValues.Released[call]));
+                        frees.Add(new MemoryFree(thread.ThreadId, start, end, callValues.Released[callIndex]));
                     }
                 }
             }
@@ -335,7 +335,7 @@ internal static class AllocationMapper
     {
         public uint ThreadId { get; } = threadId;
 
-        public List<(ulong Address, int Call, TracePosition Start, TracePosition End)> Calls { get; } = [];
+        public List<(ulong Address, int CallIndex, TracePosition Start, TracePosition End)> Calls { get; } = [];
 
         public List<(TracePosition Start, ulong Clerk)> Pages { get; } = [];
 

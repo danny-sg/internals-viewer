@@ -85,7 +85,7 @@ internal static class IteratorLifetimeBuilder
 
                 var destroyed = threadTeardowns.Where(t => t.Position >= lastEnd.Position).ToList();
 
-                lifetimes.Add(new TraceOperatorLifetime(thread.ThreadId, owner, spans[0].Node, spans, curves[index], timeline.Scale)
+                lifetimes.Add(new TraceOperatorLifetime(thread.ThreadId, owner, spans[0].CallNodeIndex, spans, curves[index], timeline.Scale)
                 {
                     Constructed = constructed.Count > 0 ? GetEarliest(constructed[0], spans[0].From) : timeline.Start,
                     Destroyed = destroyed.Count > 0 ? destroyed[0] : timeline.End

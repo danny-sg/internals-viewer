@@ -18,7 +18,7 @@ public class TraceValueSearchTests
 
         var uses = await new TraceValueSearch(builder.Build()).GetValueUsesAsync(0xB0, CancellationToken.None);
 
-        Assert.Equal([(0x1000ul, "RCX", 1), (0x2000ul, "RCX", 0)], uses.Select(u => (u.Address, u.Location, u.First.Call)));
+        Assert.Equal([(0x1000ul, "RCX", 1), (0x2000ul, "RCX", 0)], uses.Select(u => (u.Address, u.Location, u.First.CallIndex)));
     }
 
     [Fact]
@@ -30,7 +30,7 @@ public class TraceValueSearchTests
 
         var use = Assert.Single(await new TraceValueSearch(builder.Build()).GetValueUsesAsync(0xD0, CancellationToken.None));
 
-        Assert.Equal(("RAX", 1, 1), (use.Location, use.Calls, use.First.Call));
+        Assert.Equal(("RAX", 1, 1), (use.Location, use.Calls, use.First.CallIndex));
     }
 
     [Fact]
@@ -44,8 +44,8 @@ public class TraceValueSearchTests
         var use = Assert.Single(await new TraceValueSearch(builder.Build()).GetValueUsesAsync(0xA0, CancellationToken.None));
 
         Assert.Equal(20, use.Calls);
-        Assert.Equal((0, At(100)), (use.First.Call, use.First.Position));
-        Assert.Equal((19, At(119)), (use.Last.Call, use.Last.Position));
+        Assert.Equal((0, At(100)), (use.First.CallIndex, use.First.Position));
+        Assert.Equal((19, At(119)), (use.Last.CallIndex, use.Last.Position));
     }
 
     [Fact]
@@ -62,7 +62,7 @@ public class TraceValueSearchTests
 
         var calls = await search.GetTraceValueCallsAsync(use, 0xA0, CancellationToken.None);
 
-        Assert.Equal([(0, At(10), 7u), (2, At(12), 8u)], calls.Select(c => (c.Call, c.Position, c.Thread)));
+        Assert.Equal([(0, At(10), 7u), (2, At(12), 8u)], calls.Select(c => (c.CallIndex, c.Position, c.Thread)));
     }
 
     [Fact]
@@ -75,7 +75,7 @@ public class TraceValueSearchTests
 
         var builder = new TraceCallStore.Builder();
 
-        builder.Add(0x1000, 0, Chunk(Row(1, rcx: 0xA0, node: 0), Row(2, rcx: 0xA0, node: 1), Row(3, rcx: 0xA0, node: 0)), 3);
+        builder.Add(0x1000, 0, Chunk(Row(1, rcx: 0xA0, callNodeIndex: 0), Row(2, rcx: 0xA0, callNodeIndex: 1), Row(3, rcx: 0xA0, callNodeIndex: 0)), 3);
 
         var store = builder.Build();
 
@@ -90,7 +90,7 @@ public class TraceValueSearchTests
         var calls = await search.GetTraceValueCallsAsync(use, 0xA0, CancellationToken.None, Include);
 
         Assert.Equal(2, use.Calls);
-        Assert.Equal([0, 2], calls.Select(c => c.Call));
+        Assert.Equal([0, 2], calls.Select(c => c.CallIndex));
         Assert.Equal([0, 2], store.GetIncludedCalls(store.GetCallList(0x1000, 0)!, Include, CancellationToken.None));
     }
 

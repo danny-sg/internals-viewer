@@ -182,7 +182,7 @@ public class PlanNodeHookTests
             Function = function,
             Instance = iterator,
             Id = id,
-            Call = (uint)id,
+            CallIndex = (uint)id,
             Position = At(at ?? id),
             Instructions = at ?? id,
             Thread = Thread,

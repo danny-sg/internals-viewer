@@ -1,4 +1,5 @@
 using InternalsViewer.Query.CallStack.Arguments;
+using InternalsViewer.Query.FullTrace.Functions;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.CallStack.Locators;
@@ -288,6 +289,54 @@ public class LocatorReadResolverTests
     [InlineData("int * *")]
     public void Other_Types_Are_Not_Read(string type) => Assert.Null(LocatorType.GetLocatorType(type));
 
+    [Fact]
+    public void Folded_Functions_That_Agree_Keep_Their_Reads_And_Stack_Reads()
+    {
+        var collector = new LocatorReadResolver.Collector();
+
+        const string signature = "BPool::Get(RecoveryUnit &,PageId const &,int &,LatchBase::LATCH_TYPE,LatchSuspendInfo *,bool)";
+
+        const string decoratedName = "?Get@BPool@@QEAAPEAUBUF@@AEAVRecoveryUnit@@AEBVPageId@@AEAHW4LATCH_TYPE@LatchBase@@"
+                                     + "PEAVLatchSuspendInfo@@_N@Z";
+
+        collector.Visit(Symbol(signature, decoratedName, isFirst: true));
+
+        collector.Visit(Symbol(signature, decoratedName, isFirst: false, hasSameName: false));
+
+        var reads = collector.Build();
+
+        Assert.Contains(new LocatorRead(Function, 2, false, LocatorValueType.Page), reads);
+        Assert.Contains(new LocatorRead(Function, 5, false, LocatorValueType.Argument), reads);
+    }
+
+    [Fact]
+    public void Folded_Functions_That_Disagree_On_Parameters_Read_Nothing()
+    {
+        var collector = new LocatorReadResolver.Collector();
+
+        collector.Visit(Symbol("SMOLockOrder::Add(PageRef &)", "?Add@SMOLockOrder@@QEAAXAEAVPageRef@@@Z", isFirst: true));
+
+        collector.Visit(Symbol("SMOLockOrder::Add(int)", "?Add@SMOLockOrder@@QEAAXH@Z", isFirst: false, hasSameParameters: false));
+
+        Assert.Empty(collector.Build());
+    }
+
     private static List<LocatorRead> Reads(string signature, string decoratedName)
         => [.. LocatorReadResolver.GetReads(Function, FunctionSignature.Parse(signature, decoratedName)!)];
+
+    private static FunctionSymbol Symbol(string signature,
+                                        string decoratedName,
+                                        bool isFirst,
+                                        bool hasSameName = true,
+                                        bool hasSameParameters = true)
+        => new()
+        {
+            Rva = (uint)Function,
+            Name = signature[..signature.IndexOf('(')],
+            Signature = signature,
+            DecoratedName = decoratedName,
+            IsFirst = isFirst,
+            HasSameName = hasSameName,
+            HasSameParameters = hasSameParameters
+        };
 }

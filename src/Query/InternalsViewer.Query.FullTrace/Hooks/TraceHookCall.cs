@@ -8,11 +8,11 @@ internal readonly ref struct TraceHookCall
 
     public ulong Id { get; init; }
 
-    public uint Call { get; init; }
+    public uint CallIndex { get; init; }
 
     public uint Thread { get; init; }
 
-    public int Node { get; init; }
+    public int CallNodeIndex { get; init; }
 
     public ReadOnlySpan<ulong> Arguments { get; init; }
 

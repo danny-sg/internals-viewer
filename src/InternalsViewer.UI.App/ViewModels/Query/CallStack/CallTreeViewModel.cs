@@ -163,18 +163,18 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
 
     public void ListMembers(CallStackNode node) => Owner.ListMembers(node);
 
-    public void ShowArguments(CallStackNode node, int? call = null)
+    public void ShowArguments(CallStackNode node, int? callIndex = null)
     {
         Owner.ShowArguments();
 
-        _ = call is { } index ? Query.Arguments.ShowAsync(node, index) : Query.Arguments.ShowAsync(node);
+        _ = callIndex is { } index ? Query.Arguments.ShowAsync(node, index) : Query.Arguments.ShowAsync(node);
     }
 
-    public void ShowCall(CallStackNode node, int call)
+    public void ShowCall(CallStackNode node, int callIndex)
     {
-        VisitCall(node, call);
+        VisitCall(node, callIndex);
 
-        _ = Query.Arguments.ShowAsync(node, call);
+        _ = Query.Arguments.ShowAsync(node, callIndex);
     }
 
     public void GoToCall(CallStackNode node)
@@ -193,9 +193,9 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
             return;
         }
 
-        if (reference.Call >= 0)
+        if (reference.CallIndex >= 0)
         {
-            ShowCall(reference.Node, reference.Call);
+            ShowCall(reference.Node, reference.CallIndex);
         }
         else
         {
@@ -284,9 +284,9 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
         Settings.PropertyChanged -= OnSettingsPropertyChanged;
     }
 
-    private void OnCallNavigationRequested(CallStackNode node, int call)
+    private void OnCallNavigationRequested(CallStackNode node, int callIndex)
     {
-        int? index = call >= 0 ? call : null;
+        int? index = callIndex >= 0 ? callIndex : null;
 
         VisitCall(node, index);
 
@@ -296,13 +296,13 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
         }
     }
 
-    private void VisitCall(CallStackNode node, int? call)
+    private void VisitCall(CallStackNode node, int? callIndex)
     {
         LeaveLocation();
 
         NavigateTo(node);
 
-        PushLocation(new CallTreeLocation(Query.SelectedEvent, node, IsFocused, node, call));
+        PushLocation(new CallTreeLocation(Query.SelectedEvent, node, IsFocused, node, callIndex));
     }
 
     private void OnArgumentCallSelected(CallReference reference)
@@ -320,7 +320,7 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
             NavigatedNode = reference.Node;
         }
 
-        PushLocation(new CallTreeLocation(Query.SelectedEvent, reference.Node, IsFocused, Query.Arguments.Shown, reference.Call));
+        PushLocation(new CallTreeLocation(Query.SelectedEvent, reference.Node, IsFocused, Query.Arguments.Shown, reference.CallIndex));
     }
 
     private void OnQueryPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -430,7 +430,7 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
 
         if (location.Function is { } function)
         {
-            _ = Query.Arguments.ShowAsync(function, location.Call);
+            _ = Query.Arguments.ShowAsync(function, location.CallIndex);
         }
     }
 
@@ -479,7 +479,7 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
     }
 
     private CallTreeLocation CurrentLocation()
-        => new(Query.SelectedEvent, NavigatedNode, IsFocused, Query.Arguments.Shown, Query.Arguments.SelectedCallReference?.Call);
+        => new(Query.SelectedEvent, NavigatedNode, IsFocused, Query.Arguments.Shown, Query.Arguments.SelectedCallReference?.CallIndex);
 
     private void SnapshotLocation()
     {
@@ -492,7 +492,7 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
         {
             Focus = IsFocused,
             Function = Query.Arguments.Shown,
-            Call = Query.Arguments.SelectedCallReference?.Call,
+            CallIndex = Query.Arguments.SelectedCallReference?.CallIndex,
             Expanded = State is { } state ? [.. state.ExpandedRows.Select(GetRowPath)] : null,
             Selected = State?.SelectedRow is { } selected ? GetRowPath(selected) : null
         };

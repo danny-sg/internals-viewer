@@ -21,7 +21,7 @@ public static class SourcePath
 
         var origin = value.Origin;
 
-        var creation = origin is { Operation: not MemoryMapOperation.Visited } ? origin : null;
+        var creation = origin is { Operation: MemoryMapOperation.Allocated or MemoryMapOperation.Constructed } ? origin : null;
 
         if (creation is not null && IsCall(creation, originNode, call))
         {
@@ -50,7 +50,7 @@ public static class SourcePath
                                      steps.Count,
                                      isCreation ? creation!.Operation : null,
                                      isOnStack: true,
-                                     caller.Call));
+                                     caller.CallIndex));
 
             if (isCreation)
             {
@@ -62,14 +62,14 @@ public static class SourcePath
 
         if (origin is not null && originNode is not null && origin.FromPosition < latest)
         {
-            steps.Add(new SourceStep(originNode, origin.FromPosition, origin.Thread, steps.Count, creation?.Operation, call: originCall));
+            steps.Add(new SourceStep(originNode, origin.FromPosition, origin.Thread, steps.Count, creation?.Operation, callIndex: originCall));
         }
 
         return steps;
     }
 
     private static bool IsCall(MemoryMapEntry entry, CallStackNode? entryNode, PlayheadCallRow row)
-        => ReferenceEquals(entryNode, row.Node) && entry.Call == row.Call && entry.Thread == row.Thread;
+        => ReferenceEquals(entryNode, row.Node) && entry.CallIndex == row.CallIndex && entry.Thread == row.Thread;
 
     private static bool Receives(PlayheadCallRow row, ulong value)
         => row.This?.Value == value || row.Signature.Any(p => p.Kind == CallSignaturePartKind.Value && p.Value == value);

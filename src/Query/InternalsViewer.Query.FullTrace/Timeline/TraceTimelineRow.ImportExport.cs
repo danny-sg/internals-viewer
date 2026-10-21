@@ -18,7 +18,7 @@ public sealed partial class TraceTimelineRow
 
         ExportBinary.WriteArray(writer, Tos);
 
-        ExportBinary.WriteArray<int>(writer, Nodes.AsSpan(Offset, Count));
+        ExportBinary.WriteArray<int>(writer, CallNodeIndexes.AsSpan(Offset, Count));
 
         ExportBinary.WriteArray<uint>(writer, Calls.AsSpan(Offset, Count));
 

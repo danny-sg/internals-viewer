@@ -109,8 +109,8 @@ public class ColumnStoreLocatorTests
 
         var hook = new LocatorHook(LocatorReadResolver.GetReads(0x1000, Fix()), builder);
 
-        hook.OnEntry(new TraceHookCall { Function = 0x1000, Call = 0, Arguments = new[] { 0ul, complete, 0ul, 0ul } }, replay);
-        hook.OnEntry(new TraceHookCall { Function = 0x1000, Call = 1, Arguments = new[] { 0ul, partial, 0ul, 0ul } }, replay);
+        hook.OnEntry(new TraceHookCall { Function = 0x1000, CallIndex = 0, Arguments = new[] { 0ul, complete, 0ul, 0ul } }, replay);
+        hook.OnEntry(new TraceHookCall { Function = 0x1000, CallIndex = 1, Arguments = new[] { 0ul, partial, 0ul, 0ul } }, replay);
 
         var calls = builder.Build().GetCallList(0x1000, 0)!;
 

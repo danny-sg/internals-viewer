@@ -11,7 +11,7 @@ public sealed class ValueCallRow(TraceValueCall valueCall, TraceValueUse use, IR
 
     public IReadOnlyList<CallSignaturePart> Signature { get; } = signature;
 
-    public string Call => $"Call {ValueCall.Call + 1:N0}";
+    public string Call => $"Call {ValueCall.CallIndex + 1}";
 
     public string Thread => $"Thread {ValueCall.Thread}";
 }
