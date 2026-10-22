@@ -39,7 +39,7 @@ public class CallTreeBuilderTests
 
         var children = Assert.Single(tree.Root.ChildNodes).ChildNodes.OrderBy(c => c.Order).ToList();
 
-        Assert.Equal([0xA0ul, 0xB0ul], children.Select(c => c.Frame!.Instance));
+        Assert.Equal([0xA0ul, 0xB0ul], children.Select(c => c.Frame!.InstanceAddress));
         Assert.Equal([3L, 4L], children.Select(c => c.Calls));
     }
 

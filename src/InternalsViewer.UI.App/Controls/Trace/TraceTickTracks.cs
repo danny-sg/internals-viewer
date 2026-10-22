@@ -131,9 +131,9 @@ public static class TraceTickTracks
 
     private static IEnumerable<string> GetReadDetails(TraceTick tick, TraceCallStore calls)
     {
-        if (calls.GetCallList(tick.Function, tick.Instance) is not { } list
-            || tick.Index >= list.Count
-            || TraceReads.GetRead(list[tick.Index], (TraceReadType)tick.Value) is not { } read)
+        if (calls.GetCallList(tick.FunctionAddress, tick.InstanceAddress) is not { } list
+            || tick.CallIndex >= list.Count
+            || TraceReads.GetRead(list[tick.CallIndex], (TraceReadType)tick.Value) is not { } read)
         {
             yield break;
         }

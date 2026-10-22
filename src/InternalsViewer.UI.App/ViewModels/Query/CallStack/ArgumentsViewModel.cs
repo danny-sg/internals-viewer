@@ -209,7 +209,15 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
             : null;
     }
 
-    public void Dispose() => Cancel();
+    public void Dispose()
+    {
+        Cancel();
+
+        Lookup = null;
+        Shown = null;
+        SelectedCallReference = null;
+        Clear();
+    }
 
     private async Task LoadAsync(CallStackNode node, int? select)
     {
@@ -251,7 +259,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
             Signature = GetHeader(resolved.Parsed, resolved.Text ?? node.Symbol);
 
-            if (lookup.Store.GetCallList(frame.Address, frame.Instance) is not { Count: > 0 } calls)
+            if (lookup.Store.GetCallList(frame.Address, frame.InstanceAddress) is not { Count: > 0 } calls)
             {
                 Message = "The function was not called on the query's threads";
 
@@ -380,7 +388,10 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
     }
 
     private bool IsShowing(CallStackNode node)
-        => Shown?.Frame is { } shown && node.Frame is { } frame && shown.Address == frame.Address && shown.Instance == frame.Instance;
+        => Shown?.Frame is { } shown
+           && node.Frame is { } frame
+           && shown.Address == frame.Address
+           && shown.InstanceAddress == frame.InstanceAddress;
 
     private static string GetHeader(FunctionSignature parsed, string signature)
     {

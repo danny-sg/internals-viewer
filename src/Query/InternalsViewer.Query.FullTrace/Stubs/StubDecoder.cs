@@ -67,7 +67,7 @@ internal static class StubDecoder
                     return null;
 
                 case true:
-                    return new Stub(address, operations);
+                    return new Stub(address, [.. operations]);
             }
         }
 

@@ -59,7 +59,7 @@ public class ValueUseGroupTests
         Assert.Equal(500, more.From);
     }
 
-    private static FunctionType? GetFunctionType(TraceValueUse use) => use.Address switch
+    private static FunctionType? GetFunctionType(TraceValueUse use) => use.FunctionAddress switch
     {
         Member => FunctionType.Member,
         Static => FunctionType.Static,

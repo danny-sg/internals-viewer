@@ -8,8 +8,8 @@ extern "C"
     {
         int32_t  Parent;
         uint32_t Reserved;
-        uint64_t Address;
-        uint64_t Instance;
+        uint64_t FunctionAddress;
+        uint64_t InstanceAddress;
         uint64_t Calls;
     };
 
@@ -29,10 +29,10 @@ extern "C"
 
     typedef void(__stdcall* ProgressCallback)(uint32_t thread, int32_t percent);
 
-    typedef void(__stdcall* CallChunkCallback)(uint64_t address, uint64_t instance, const uint64_t* columns, int32_t calls);
+    typedef void(__stdcall* CallChunkCallback)(uint64_t functionAddress, uint64_t instanceAddress, const uint64_t* columns, int32_t calls);
 
-    typedef void(__stdcall* CallEndCallback)(uint64_t address,
-                                             uint64_t instance,
+    typedef void(__stdcall* CallEndCallback)(uint64_t functionAddress,
+                                             uint64_t instanceAddress,
                                              uint32_t call,
                                              uint64_t endSequence,
                                              uint64_t endSteps,
@@ -52,15 +52,15 @@ extern "C"
     {
         uint64_t Id;
         uint64_t StackPointer;
-        uint64_t Instance;
+        uint64_t InstanceAddress;
         int32_t  Node;
         uint32_t Reserved;
     };
 
     struct HookEvent
     {
-        uint64_t         Function;
-        uint64_t         Instance;
+        uint64_t         FunctionAddress;
+        uint64_t         InstanceAddress;
         uint64_t         Id;
         uint64_t         Arguments[4];
         uint64_t         ReturnValue;

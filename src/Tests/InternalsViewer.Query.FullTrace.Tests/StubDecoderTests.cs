@@ -21,7 +21,7 @@ public class StubDecoderTests
 
         Assert.Equal([new StubOperation(StubOperationType.Load, Rax, Rcx, 0, 0),
                       new StubOperation(StubOperationType.JumpMemory, 0, Rax, 0x58, 0)],
-                     stub?.Operations);
+                     stub!.Operations);
     }
 
     [Fact]
@@ -33,7 +33,7 @@ public class StubDecoderTests
                       new StubOperation(StubOperationType.Load, Rax, Rcx, 0, 0),
                       new StubOperation(StubOperationType.Load, R10, Rax, 0x50, 0),
                       new StubOperation(StubOperationType.JumpRegister, 0, R10, 0, 0)],
-                     stub?.Operations);
+                     stub!.Operations);
     }
 
     [Fact]
@@ -41,7 +41,7 @@ public class StubDecoderTests
     {
         var stub = Decode(0xFF, 0xE0);
 
-        Assert.Equal([new StubOperation(StubOperationType.JumpRegister, 0, Rax, 0, 0)], stub?.Operations);
+        Assert.Equal([new StubOperation(StubOperationType.JumpRegister, 0, Rax, 0, 0)], stub!.Operations);
     }
 
     [Fact]
@@ -61,7 +61,7 @@ public class StubDecoderTests
 
         Assert.Equal([new StubOperation(StubOperationType.Add, Rcx, Rcx, -16, 0),
                       new StubOperation(StubOperationType.JumpDirect, 0, StubOperation.AbsoluteSource, 0, Address + 9 + 0x10)],
-                     stub?.Operations);
+                     stub!.Operations);
     }
 
     [Fact]

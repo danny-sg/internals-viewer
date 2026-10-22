@@ -44,6 +44,25 @@ public class TraceTimelineTests
     }
 
     [Fact]
+    public void Instructions_Come_From_The_Thread_Clock()
+    {
+        var timeline = Build(new CallSpan(1, 0, 5, 20, 0, 1020, 0, 7, 0, 1),
+                             new CallSpan(3, 40, 3, 60, 340, 360, 1, 7, 0, 1));
+
+        var thread = Assert.Single(timeline.Threads);
+
+        var outer = thread.Rows[0];
+
+        var inner = thread.Rows[1];
+
+        Assert.Equal(3, thread.Clock.Count);
+        Assert.Equal((0ul, 1020ul), (outer.GetFrom(0).Instructions, outer.GetTo(0).Instructions));
+        Assert.Equal((340ul, 360ul), (inner.GetFrom(0).Instructions, inner.GetTo(0).Instructions));
+        Assert.Equal(0, inner.GetIndex(Instructions, 350, 0));
+        Assert.Equal(-1, inner.GetIndex(Instructions, 361, 0));
+    }
+
+    [Fact]
     public void A_Call_Is_Found_By_Where_It_Ran()
     {
         var row = Build(Span(callNodeIndex: 0, start: 0, end: 10), Span(callNodeIndex: 0, start: 20, end: 30, sequence: 2)).Threads[0].Rows[0];
@@ -119,7 +138,9 @@ public class TraceTimelineTests
 
         timeline.MapNodes([root, publish, inner]);
 
-        var thread = Assert.Single(timeline.WithoutCallsUnder(n => ReferenceEquals(n, publish)).Threads);
+        timeline.RemoveCallsUnder(n => ReferenceEquals(n, publish));
+
+        var thread = Assert.Single(timeline.Threads);
 
         Assert.Equal([1, 0, 0], thread.Rows.Select(r => r.Count));
         Assert.Equal(1, thread.Calls);
@@ -214,18 +235,20 @@ public class TraceTimelineTests
 
         var cropped = timeline.CroppedTo(new HashSet<CallStackNode>(ReferenceEqualityComparer.Instance) { execute });
 
+        var thread = Assert.Single(cropped!.Threads);
+
         using var stream = new MemoryStream();
 
         using (var writer = new BinaryWriter(stream, System.Text.Encoding.UTF8, leaveOpen: true))
         {
-            Assert.Single(cropped!.Threads).Rows[1].Write(writer);
+            thread.Rows[1].Write(writer);
         }
 
         stream.Position = 0;
 
         using var reader = new BinaryReader(stream);
 
-        var read = TraceTimelineRow.Read(reader, TraceScale.Default);
+        var read = TraceTimelineRow.Read(reader, TraceScale.Default, thread.Clock);
 
         Assert.Equal([25d, 35d], Starts(read));
         Assert.Equal([3, 3], Enumerable.Range(0, read.Count).Select(read.GetCallNodeIndex));

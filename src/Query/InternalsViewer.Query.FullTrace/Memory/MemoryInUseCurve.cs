@@ -8,6 +8,8 @@ public sealed partial class MemoryInUseCurve(TracePosition[] positions, ulong[] 
 
     public bool IsEmpty => Positions.Length == 0;
 
+    internal long Bytes => Positions.Length * (long)sizeof(ulong) + Values.Length * (long)sizeof(ulong);
+
     private TracePosition[] Positions { get; } = positions;
 
     private ulong[] Values { get; } = values;

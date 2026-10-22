@@ -248,6 +248,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     private TraceTimeline? _visible;
 
+    private (TraceTimeline Timeline, CallStackNode? Root, IReadOnlySet<string>? Pruned, IReadOnlySet<string>? Hidden)? _visibleFor;
+
     private TraceTimelineAxis _axis = TraceTimelineAxis.Position;
 
     private float[] _laneTops = [];
@@ -598,6 +600,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         _timeline = null;
         _rooted = null;
         _visible = null;
+        _visibleFor = null;
         _colours.Clear();
         _labels.Clear();
         _parsedColours.Clear();
@@ -992,16 +995,22 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
         var stackFrame = GetCallReference(_stackFrame);
 
-        _rooted = null;
-        _visible = null;
         _hover = null;
         _selected = null;
         _stackFrame = null;
 
         ReleaseMinimap();
 
-        if (_timeline is { } timeline)
+        if (_timeline is not { } timeline)
         {
+            _rooted = null;
+            _visible = null;
+            _visibleFor = null;
+        }
+        else if (_visibleFor != (timeline, _root, PrunedCategories, HiddenCategories))
+        {
+            _visibleFor = (timeline, _root, PrunedCategories, HiddenCategories);
+
             _rooted = _root is { } root ? timeline.RootedAt(n => ReferenceEquals(n, root)) : null;
 
             var source = _rooted ?? timeline;

@@ -137,18 +137,18 @@ internal static class MemoryHistoryBuilder
     {
         var positions = new Dictionary<ulong, TracePosition>();
 
-        foreach (var (address, instance) in calls.FunctionKeys)
+        foreach (var (functionAddress, instanceAddress) in calls.FunctionKeys)
         {
-            if (!iterators.Contains(instance) || calls.GetCallList(address, instance) is not { Count: > 0 } list)
+            if (!iterators.Contains(instanceAddress) || calls.GetCallList(functionAddress, instanceAddress) is not { Count: > 0 } list)
             {
                 continue;
             }
 
             var position = list.GetFromPosition(0);
 
-            if (!positions.TryGetValue(instance, out var first) || position < first)
+            if (!positions.TryGetValue(instanceAddress, out var first) || position < first)
             {
-                positions[instance] = position;
+                positions[instanceAddress] = position;
             }
         }
 
@@ -481,7 +481,7 @@ internal static class MemoryHistoryBuilder
         {
             if (!Iterators.TryGetValue(callNodeIndex, out var iterator))
             {
-                iterator = timeline?.NodeOf(callNodeIndex)?.Ancestors().FirstOrDefault(IsIteratorCall)?.Frame!.Instance ?? 0;
+                iterator = timeline?.NodeOf(callNodeIndex)?.Ancestors().FirstOrDefault(IsIteratorCall)?.Frame!.InstanceAddress ?? 0;
 
                 Iterators[callNodeIndex] = iterator;
             }
@@ -490,7 +490,7 @@ internal static class MemoryHistoryBuilder
         }
 
         private static bool IsIteratorCall(CallStackNode node)
-            => node.Frame is { Instance: not 0, Resolved.ClassName: { } className } && IteratorSymbols.IsIterator(className);
+            => node.Frame is { InstanceAddress: not 0, Resolved.ClassName: { } className } && IteratorSymbols.IsIterator(className);
     }
 
     private sealed class WatchedBlock(ulong iterator,

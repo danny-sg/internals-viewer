@@ -20,8 +20,11 @@ public static partial class LocatorReadResolver
                             StringComparison.Ordinal);
 
     internal static IEnumerable<LocatorRead> GetReads(ulong function, FunctionSignature signature)
+        => GetReads(function, signature, ArgumentLayout.LayoutOf(signature));
+
+    internal static IEnumerable<LocatorRead> GetReads(ulong function, FunctionSignature signature, ArgumentLayout layout)
     {
-        var slots = ArgumentLayout.LayoutOf(signature).Slots;
+        var slots = layout.Slots;
 
         for (var index = 0; index < slots.Count; index++)
         {
@@ -55,10 +58,12 @@ public static partial class LocatorReadResolver
     }
 
     internal static IEnumerable<LocatorRead> GetStackReads(ulong function, FunctionSignature signature)
-        => ArgumentLayout.LayoutOf(signature)
-                         .Slots
-                         .Where(s => s.Location == ArgumentLocation.Stack)
-                         .Select(s => new LocatorRead(function, s.Index, false, LocatorValueType.Argument));
+        => GetStackReads(function, ArgumentLayout.LayoutOf(signature));
+
+    internal static IEnumerable<LocatorRead> GetStackReads(ulong function, ArgumentLayout layout)
+        => layout.Slots
+                 .Where(s => s.Location == ArgumentLocation.Stack)
+                 .Select(s => new LocatorRead(function, s.Index, false, LocatorValueType.Argument));
 
     private static bool ReadsLocators(ReadOnlySpan<char> decoratedName)
         => decoratedName.ContainsAny(DecoratedTypes) || ReferencedType().IsMatch(decoratedName);
@@ -95,14 +100,14 @@ public static partial class LocatorReadResolver
                 return;
             }
 
-            if (FunctionSignature.CountParameters(symbol.Signature) is >= StackCandidateParameters && symbol.Parsed is { } stacked)
+            if (FunctionSignature.CountParameters(symbol.Signature) is >= StackCandidateParameters && symbol.Layout is { } stacked)
             {
                 StackReads.AddRange(GetStackReads(symbol.Rva, stacked));
             }
 
-            if (ReadsLocators(symbol.DecoratedName) && symbol.Parsed is { } signature)
+            if (ReadsLocators(symbol.DecoratedName) && symbol.Parsed is { } signature && symbol.Layout is { } layout)
             {
-                Reads[symbol.Rva] = [.. GetReads(symbol.Rva, signature)];
+                Reads[symbol.Rva] = [.. GetReads(symbol.Rva, signature, layout)];
             }
         }
 

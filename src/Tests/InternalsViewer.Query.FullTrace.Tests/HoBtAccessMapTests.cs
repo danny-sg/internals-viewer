@@ -113,7 +113,7 @@ public class HoBtAccessMapTests
 
             foreach (var (frame, rows) in Functions.Values)
             {
-                builder.Add(frame.Address, frame.Instance, TraceCallRows.Chunk([.. rows]), rows.Count);
+                builder.Add(frame.Address, frame.InstanceAddress, TraceCallRows.Chunk([.. rows]), rows.Count);
             }
 
             return HoBtAccessMap.Build(builder.Build(), Nodes);

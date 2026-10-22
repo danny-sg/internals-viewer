@@ -1,12 +1,16 @@
 namespace InternalsViewer.Query.FullTrace.Timeline;
 
-public sealed class TraceTimelineThread(uint threadId, IReadOnlyList<TraceTimelineRow> rows, long calls)
+public sealed class TraceTimelineThread(uint threadId, TraceThreadClock clock, IReadOnlyList<TraceTimelineRow> rows, long calls)
 {
     public uint ThreadId { get; } = threadId;
 
+    public TraceThreadClock Clock { get; } = clock;
+
     public IReadOnlyList<TraceTimelineRow> Rows { get; } = rows;
 
-    public long Calls { get; } = calls;
+    public long Calls { get; private set; } = calls;
+
+    internal long Bytes => Clock.Bytes + Rows.Sum(r => r.Bytes);
 
     public int Depth
     {
@@ -34,6 +38,14 @@ public sealed class TraceTimelineThread(uint threadId, IReadOnlyList<TraceTimeli
     {
         TraceTimelineRow[] kept = [.. Rows.Select(r => r.Where(include))];
 
-        return new TraceTimelineThread(ThreadId, kept, kept.Sum(r => (long)r.Count));
+        return new TraceTimelineThread(ThreadId, Clock, kept, kept.Sum(r => (long)r.Count));
+    }
+
+    internal void RemoveAll(Func<int, bool> isRemoved)
+    {
+        foreach (var row in Rows)
+        {
+            Calls -= row.RemoveAll(isRemoved);
+        }
     }
 }

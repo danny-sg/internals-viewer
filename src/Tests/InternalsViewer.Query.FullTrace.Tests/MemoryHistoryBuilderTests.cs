@@ -400,7 +400,7 @@ public class MemoryHistoryBuilderTests
         Module = "sqlmin",
         Rva = rva,
         Address = rva,
-        Instance = instance,
+        InstanceAddress = instance,
         Resolved = new ResolvedCallstackFrame
         {
             ClassName = className,

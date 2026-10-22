@@ -46,7 +46,7 @@ internal static class TraceCallRows
                                                        endSequence: s.EndSequence,
                                                        endSteps: s.EndSteps))];
 
-            builder.Add(nodes[calls.Key].Address, nodes[calls.Key].Instance, Chunk(rows), rows.Length);
+            builder.Add(nodes[calls.Key].FunctionAddress, nodes[calls.Key].InstanceAddress, Chunk(rows), rows.Length);
         }
 
         return builder.Build();

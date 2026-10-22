@@ -234,7 +234,7 @@ public class IteratorLifetimeBuilderTests
     };
 
     private static CallstackFrame Frame(ulong address, ulong instance)
-        => new() { Module = "sqlmin", Rva = (uint)address, Address = address, Instance = instance };
+        => new() { Module = "sqlmin", Rva = (uint)address, Address = address, InstanceAddress = instance };
 
     private static CallSpan Span(int callNodeIndex, ulong start, ulong end)
         => new(start, 0, end, 0, start, end, callNodeIndex, Thread, uint.MaxValue, 1);

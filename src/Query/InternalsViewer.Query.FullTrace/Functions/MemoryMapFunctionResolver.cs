@@ -11,11 +11,13 @@ internal static partial class MemoryMapFunctionResolver
 {
     private const string ConstructorPrefix = "??0";
 
-    internal static DeclaredClass[] GetDeclared(FunctionSignature signature)
+    internal static DeclaredClass[] GetDeclared(FunctionSignature signature) => GetDeclared(signature, ArgumentLayout.LayoutOf(signature));
+
+    internal static DeclaredClass[] GetDeclared(FunctionSignature signature, ArgumentLayout layout)
     {
         var declared = new List<DeclaredClass>();
 
-        foreach (var slot in ArgumentLayout.LayoutOf(signature).Slots)
+        foreach (var slot in layout.Slots)
         {
             if (slot.Location == ArgumentLocation.Register
                 && slot.Name != ArgumentLayout.ReturnBuffer
@@ -49,7 +51,9 @@ internal static partial class MemoryMapFunctionResolver
                 return;
             }
 
-            var declared = ClassPointer().IsMatch(symbol.DecoratedName) && symbol.Parsed is { } signature ? GetDeclared(signature) : [];
+            var declared = ClassPointer().IsMatch(symbol.DecoratedName) && symbol.Parsed is { } signature && symbol.Layout is { } layout
+                ? GetDeclared(signature, layout)
+                : [];
 
             var operation = FunctionSignature.GetFunctionType(symbol.DecoratedName) == FunctionType.Member
                 ? symbol.DecoratedName.StartsWith(ConstructorPrefix, StringComparison.Ordinal)
@@ -82,7 +86,7 @@ internal static partial class MemoryMapFunctionResolver
                 function = function with { Declared = [] };
             }
 
-            if (function.Operation == MemoryMapOperation.Declared && function.Declared.Count == 0)
+            if (function.Operation == MemoryMapOperation.Declared && function.Declared.Length == 0)
             {
                 Found.Remove(symbol.Rva);
             }

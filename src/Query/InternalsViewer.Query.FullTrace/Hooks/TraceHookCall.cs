@@ -2,9 +2,9 @@ namespace InternalsViewer.Query.FullTrace.Hooks;
 
 internal readonly ref struct TraceHookCall
 {
-    public ulong Function { get; init; }
+    public ulong FunctionAddress { get; init; }
 
-    public ulong Instance { get; init; }
+    public ulong InstanceAddress { get; init; }
 
     public ulong Id { get; init; }
 

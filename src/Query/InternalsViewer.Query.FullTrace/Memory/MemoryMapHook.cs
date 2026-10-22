@@ -1,8 +1,10 @@
+using System.Runtime.InteropServices;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
+using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Memory;
 
@@ -13,12 +15,11 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions, IR
 
     public IEnumerable<TraceHookFunction> Functions => Operations.Select(o => new TraceHookFunction(o.Key, GetEvents(o.Value)));
 
-    private Dictionary<ulong, MemoryMapFunction> Operations { get; }
-        = functions.GroupBy(f => f.Address).ToDictionary(g => g.Key, Combine);
+    private Dictionary<ulong, MemoryMapFunction> Operations { get; } = GetOperations(functions);
 
     private IReadOnlyDictionary<ulong, string> Vtables { get; } = vtables ?? new Dictionary<ulong, string>();
 
-    private List<AddressEntry> Entries { get; } = [];
+    private ChunkedList<AddressEntry> Entries { get; } = new();
 
     private Dictionary<ulong, int> LatestEntries { get; } = [];
 
@@ -26,11 +27,11 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions, IR
 
     private HashSet<int> ReadEntries { get; } = [];
 
-    public AddressEntry[] Build() => [.. Entries];
+    public IReadOnlyList<AddressEntry> Build() => Entries;
 
     public void OnEntry(in TraceHookCall call, ITraceReplay replay)
     {
-        if (!Operations.TryGetValue(call.Function, out var function))
+        if (!Operations.TryGetValue(call.FunctionAddress, out var function))
         {
             return;
         }
@@ -56,7 +57,7 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions, IR
 
     public void OnReturn(in TraceHookCall call, ITraceReplay replay)
     {
-        if (!Operations.TryGetValue(call.Function, out var function))
+        if (!Operations.TryGetValue(call.FunctionAddress, out var function))
         {
             return;
         }
@@ -88,8 +89,21 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions, IR
         }
     }
 
-    private static MemoryMapFunction Combine(IGrouping<ulong, MemoryMapFunction> functions)
-        => functions.Last() with { Declared = [.. functions.SelectMany(f => f.Declared).Distinct()] };
+    private static Dictionary<ulong, MemoryMapFunction> GetOperations(IEnumerable<MemoryMapFunction> functions)
+    {
+        var operations = functions.TryGetNonEnumeratedCount(out var count)
+            ? new Dictionary<ulong, MemoryMapFunction>(count)
+            : new Dictionary<ulong, MemoryMapFunction>();
+
+        foreach (var function in functions)
+        {
+            ref var operation = ref CollectionsMarshal.GetValueRefOrAddDefault(operations, function.Address, out var exists);
+
+            operation = exists ? function with { Declared = [.. operation.Declared.Union(function.Declared)] } : function;
+        }
+
+        return operations;
+    }
 
     private static TraceHookEvents GetEvents(MemoryMapFunction function)
     {

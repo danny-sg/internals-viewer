@@ -4,10 +4,11 @@ namespace InternalsViewer.Query.FullTrace.Timeline;
 
 public sealed partial class TraceTimelineRow
 {
-    internal static TraceTimelineRow Read(BinaryReader reader, TraceScale scale)
+    internal static TraceTimelineRow Read(BinaryReader reader, TraceScale scale, TraceThreadClock clock)
         => new(scale,
-               ExportBinary.ReadArray<TracePoint>(reader),
-               ExportBinary.ReadArray<TracePoint>(reader),
+               clock,
+               ExportBinary.ReadArray<TracePosition>(reader),
+               ExportBinary.ReadArray<TracePosition>(reader),
                ExportBinary.ReadArray<int>(reader),
                ExportBinary.ReadArray<uint>(reader),
                ExportBinary.ReadArray<byte>(reader));

@@ -29,8 +29,8 @@ internal sealed class CustomHook(IEnumerable<(ulong Address, CustomHookDefinitio
         var read = replay.Read(address, data);
 
         Captures.Add(new CustomHookCapture(definition.Name,
-                                           call.Function,
-                                           call.Instance,
+                                           call.FunctionAddress,
+                                           call.InstanceAddress,
                                            (int)call.CallIndex,
                                            call.Position,
                                            call.Thread,

@@ -9,7 +9,7 @@ public sealed class ValueUseRow(TraceValueUse use, ulong value = 0, CallstackFra
 
     public ulong Value { get; } = value;
 
-    public string Function => frame is null ? $"0x{Use.Address:X}" : QualifiedSymbol.Of(frame);
+    public string Function => frame is null ? $"0x{Use.FunctionAddress:X}" : QualifiedSymbol.Of(frame);
 
     public string Location => Use.Location;
 

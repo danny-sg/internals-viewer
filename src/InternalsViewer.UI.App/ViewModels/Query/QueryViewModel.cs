@@ -1100,7 +1100,19 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         StatementName = null;
 
+        LastRun = null;
+
+        Trace = null;
+
+        ExecutionPlans = [];
+
+        ResultSets = [];
+
+        CreatedPlayheadStack = null;
+
         CreatedCallTreeTab?.Dispose();
+
+        CreatedCallTreeTab = null;
 
         Symbols.Dispose();
 

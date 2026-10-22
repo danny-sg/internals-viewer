@@ -48,7 +48,7 @@ internal sealed class OutputHook(OutputFunctions functions) : ITraceHook
 
     public void OnEntry(in TraceHookCall call, ITraceReplay replay)
     {
-        if (!functions.Functions.TryGetValue(call.Function, out var type))
+        if (!functions.Functions.TryGetValue(call.FunctionAddress, out var type))
         {
             return;
         }

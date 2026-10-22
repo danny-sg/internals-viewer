@@ -193,7 +193,7 @@ public sealed partial class CustomHooksViewModel : ObservableObject, IDisposable
     private object GetCallValue(CustomHookCapture capture)
     {
         if (Trace?.CallStore is { } store
-            && store.GetCallList(capture.Function, capture.Instance) is { } calls
+            && store.GetCallList(capture.FunctionAddress, capture.InstanceAddress) is { } calls
             && capture.CallIndex < calls.Count
             && store.GetNode(calls[capture.CallIndex]) is { } node)
         {

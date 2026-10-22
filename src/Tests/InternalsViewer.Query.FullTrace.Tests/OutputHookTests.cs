@@ -314,7 +314,7 @@ public class OutputHookTests
     private static TraceHookCall Call(ulong function, ulong id, ulong[] arguments, ulong returnValue = 0)
         => new()
         {
-            Function = function,
+            FunctionAddress = function,
             Id = id,
             CallIndex = (uint)id,
             Position = At(id),

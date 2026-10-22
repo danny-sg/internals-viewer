@@ -147,17 +147,17 @@ public class TraceReadsTests
 
         var tree = new CallStackTree();
 
-        var join = tree.AddCall(tree.Root, Frame(JoinIterator, "CQScanNLJoinNew", "GetRow"), 1);
+        var join = tree.AddCall(tree.Root, Frame(Helper, JoinIterator, "CQScanNLJoinNew", "GetRow"), 1);
 
-        var scan = tree.AddCall(join, Frame(ScanIterator, "CQScanTableScanNew", "GetRow"), 1);
+        var scan = tree.AddCall(join, Frame(Helper, ScanIterator, "CQScanTableScanNew", "GetRow"), 1);
 
-        var scanGet = tree.AddCall(scan, Frame(BufferPool, "BPool", "Get"), 1);
+        var scanGet = tree.AddCall(scan, Frame(GetFunction, BufferPool, "BPool", "Get"), 1);
 
-        var readAhead = tree.AddCall(join, Frame(BufferPool, "BPool", "ReadAhead"), 1);
+        var readAhead = tree.AddCall(join, Frame(ReadAheadFunction, BufferPool, "BPool", "ReadAhead"), 1);
 
-        var rootGet = tree.AddCall(tree.Root, Frame(BufferPool, "BPool", "Get"), 1);
+        var rootGet = tree.AddCall(tree.Root, Frame(GetFunction, BufferPool, "BPool", "Get"), 1);
 
-        var fromDisk = tree.AddCall(scanGet, Frame(BufferPool, "BPool", "GetFromDisk"), 1);
+        var fromDisk = tree.AddCall(scanGet, Frame(GetFromDiskFunction, BufferPool, "BPool", "GetFromDisk"), 1);
 
         CallStackNode[] nodes = [join, scan, scanGet, readAhead, rootGet, fromDisk];
 
@@ -199,7 +199,7 @@ public class TraceReadsTests
     }
 
     private static (PageAddress Page, int PageCount)? GetRead(TraceCallStore calls, TraceTick read, TraceReadType type)
-        => TraceReads.GetRead(calls.GetCallList(read.Function, read.Instance)![read.Index], type);
+        => TraceReads.GetRead(calls.GetCallList(read.FunctionAddress, read.InstanceAddress)![read.CallIndex], type);
 
     private static ulong[] Call(ulong start, ulong end, int callNodeIndex, ulong pageCount = 0)
     {
@@ -212,12 +212,12 @@ public class TraceReadsTests
 
     private static Locator Page(short file, int page) => new(2, LocatorValueType.Page, ((ulong)(ushort)file << 32) | (uint)page);
 
-    private static CallstackFrame Frame(ulong instance, string className, string method) => new()
+    private static CallstackFrame Frame(ulong address, ulong instance, string className, string method) => new()
     {
         Module = "sqlmin",
         Rva = 0x10,
-        Address = Helper,
-        Instance = instance,
+        Address = address,
+        InstanceAddress = instance,
         Resolved = new ResolvedCallstackFrame
         {
             ClassName = className,

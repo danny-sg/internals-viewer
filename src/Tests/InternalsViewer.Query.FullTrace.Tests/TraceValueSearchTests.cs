@@ -18,7 +18,7 @@ public class TraceValueSearchTests
 
         var uses = await new TraceValueSearch(builder.Build()).GetValueUsesAsync(0xB0, CancellationToken.None);
 
-        Assert.Equal([(0x1000ul, "RCX", 1), (0x2000ul, "RCX", 0)], uses.Select(u => (u.Address, u.Location, u.First.CallIndex)));
+        Assert.Equal([(0x1000ul, "RCX", 1), (0x2000ul, "RCX", 0)], uses.Select(u => (u.FunctionAddress, u.Location, u.First.CallIndex)));
     }
 
     [Fact]

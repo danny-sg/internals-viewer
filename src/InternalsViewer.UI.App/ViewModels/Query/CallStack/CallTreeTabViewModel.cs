@@ -166,7 +166,7 @@ public sealed class CallTreeTabViewModel : IDisposable
                                           stack,
                                           static () => new CallStackControl(),
                                           keepAlive: true,
-                                          key: $"CallStack{node.Frame?.Address:X}{node.Frame?.Instance:X}{callIndex}",
+                                          key: $"CallStack{node.Frame?.Address:X}{node.Frame?.InstanceAddress:X}{callIndex}",
                                           persist: false,
                                           commandsFactory: static () => TabCommands.Panel(0, new DecodeToggle())));
     }

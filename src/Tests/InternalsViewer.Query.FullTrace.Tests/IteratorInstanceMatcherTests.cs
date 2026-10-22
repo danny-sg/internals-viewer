@@ -28,7 +28,7 @@ public class IteratorInstanceMatcherTests
         Assert.Equal(3, matched);
         Assert.Equal([0x500ul], outer.Instances);
         Assert.Equal([0x300ul], inner.Instances);
-        Assert.Equal(0x300ul, Assert.Single(inner.EntryFrames).Frame?.Instance);
+        Assert.Equal(0x300ul, Assert.Single(inner.EntryFrames).Frame?.InstanceAddress);
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public class IteratorInstanceMatcherTests
               (0x300, 1),
               (0x500, 2));
 
-        Assert.Equal([0x300ul, 0x500ul], loops.ExitFrames.Select(f => f.Frame!.Instance).Order());
+        Assert.Equal([0x300ul, 0x500ul], loops.ExitFrames.Select(f => f.Frame!.InstanceAddress).Order());
     }
 
     [Fact]
@@ -93,8 +93,8 @@ public class IteratorInstanceMatcherTests
 
         Match(tree, [gather, tableScan], (0x100, 0), (0x200, 0), (0x400, 0), (0x300, 1), (0x500, 1));
 
-        Assert.Equal([0x100ul, 0x200ul, 0x400ul], gather.EntryFrames.Select(f => f.Frame!.Instance).Order());
-        Assert.Equal([0x300ul, 0x500ul], tableScan.EntryFrames.Select(f => f.Frame!.Instance).Order());
+        Assert.Equal([0x100ul, 0x200ul, 0x400ul], gather.EntryFrames.Select(f => f.Frame!.InstanceAddress).Order());
+        Assert.Equal([0x300ul, 0x500ul], tableScan.EntryFrames.Select(f => f.Frame!.InstanceAddress).Order());
     }
 
     [Fact]
@@ -110,7 +110,7 @@ public class IteratorInstanceMatcherTests
         Match(tree, [compute, scan], (0x100, 1));
 
         Assert.Empty(compute.EntryFrames);
-        Assert.Equal(0x100ul, Assert.Single(scan.EntryFrames).Frame?.Instance);
+        Assert.Equal(0x100ul, Assert.Single(scan.EntryFrames).Frame?.InstanceAddress);
     }
 
     [Fact]
@@ -130,7 +130,7 @@ public class IteratorInstanceMatcherTests
         Match(tree, [select, seek], (0x100, 0));
 
         Assert.Equal("CXStmtQuery::ErsqExecuteQuery", Assert.Single(select.EntryFrames).Symbol);
-        Assert.Equal(0x100ul, Assert.Single(select.ExitFrames).Frame?.Instance);
+        Assert.Equal(0x100ul, Assert.Single(select.ExitFrames).Frame?.InstanceAddress);
     }
 
     [Fact]
@@ -201,16 +201,17 @@ public class IteratorInstanceMatcherTests
 
         Match(tree, [Operator(0, "Nested Loops"), outer, inner], (0x100, 0), (0x300, 1), (0x500, 2));
 
-        Assert.DoesNotContain(0x900ul, outer.EntryFrames.Concat(inner.EntryFrames).Select(f => f.Frame!.Instance));
+        Assert.DoesNotContain(0x900ul, outer.EntryFrames.Concat(inner.EntryFrames).Select(f => f.Frame!.InstanceAddress));
     }
 
     private static int Match(CallStackTree tree,
                              IReadOnlyList<ExecutionOperatorEvent> operators,
-                             params (ulong Instance, int Node)[] links)
+                             params (ulong InstanceAddress, int Node)[] links)
         => IteratorInstanceMatcher.Match(tree.CollapseToFunctions(), operators, LinkOf(links));
 
-    private static IteratorPlanLink LinkOf(params (ulong Instance, int Node)[] links)
-        => new(new Dictionary<ulong, PlanNodeIdentifier>(), links.ToDictionary(l => l.Instance, l => new PlanNodeIdentifier(1, l.Node)));
+    private static IteratorPlanLink LinkOf(params (ulong InstanceAddress, int Node)[] links)
+        => new(new Dictionary<ulong, PlanNodeIdentifier>(),
+               links.ToDictionary(l => l.InstanceAddress, l => new PlanNodeIdentifier(1, l.Node)));
 
     private static void Seek(CallStackTree tree, CallStackNode parent, ulong profile, ulong seek, long rows)
     {
@@ -250,7 +251,7 @@ public class IteratorInstanceMatcherTests
     {
         Module = module,
         Rva = (uint)StringComparer.Ordinal.GetHashCode($"{className}::{method}"),
-        Instance = instance,
+        InstanceAddress = instance,
         Resolved = new ResolvedCallstackFrame
         {
             ClassName = className,

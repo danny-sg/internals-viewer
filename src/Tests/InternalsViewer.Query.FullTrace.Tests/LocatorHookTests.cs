@@ -310,7 +310,7 @@ public class LocatorHookTests
     private static TraceHookCall Call(ulong[] arguments, ulong returnValue = 0)
         => new()
         {
-            Function = Function,
+            FunctionAddress = Function,
             Id = 40,
             CallIndex = 0,
             Arguments = arguments,

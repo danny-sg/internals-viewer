@@ -41,9 +41,11 @@ internal abstract class ArgumentHook<TRead>(IEnumerable<(ulong Function, TRead R
 
     private Dictionary<ulong, ulong[]> Starts { get; } = [];
 
+    private Stack<ulong[]> FreeArguments { get; } = [];
+
     public void OnEntry(in TraceHookCall call, ITraceReplay replay)
     {
-        if (!Reads.TryGetValue(call.Function, out var functionReads))
+        if (!Reads.TryGetValue(call.FunctionAddress, out var functionReads))
         {
             return;
         }
@@ -73,27 +75,42 @@ internal abstract class ArgumentHook<TRead>(IEnumerable<(ulong Function, TRead R
 
         if (isReadAtReturn)
         {
-            Starts[call.Id] = [.. arguments];
+            var saved = FreeArguments.TryPop(out var free) ? free : new ulong[ArgumentLayout.CapturedSlots];
+
+            arguments.CopyTo(saved);
+
+            Starts[call.Id] = saved;
         }
     }
 
     public void OnReturn(in TraceHookCall call, ITraceReplay replay)
     {
-        if (!Starts.Remove(call.Id, out var arguments) || !Reads.TryGetValue(call.Function, out var functionReads))
+        if (!Starts.Remove(call.Id, out var arguments))
         {
             return;
         }
 
-        foreach (var read in functionReads)
+        if (Reads.TryGetValue(call.FunctionAddress, out var functionReads))
         {
-            if (read.IsReadAtReturn)
+            foreach (var read in functionReads)
             {
-                Read(replay, call, read, GetArgument(arguments, call, read.Register), arguments);
+                if (read.IsReadAtReturn)
+                {
+                    Read(replay, call, read, GetArgument(arguments, call, read.Register), arguments);
+                }
             }
         }
+
+        FreeArguments.Push(arguments);
     }
 
-    public void OnAbandoned(in TraceHookCall call) => Starts.Remove(call.Id);
+    public void OnAbandoned(in TraceHookCall call)
+    {
+        if (Starts.Remove(call.Id, out var arguments))
+        {
+            FreeArguments.Push(arguments);
+        }
+    }
 
     protected static ulong GetArgument(ReadOnlySpan<ulong> arguments, in TraceHookCall call, int register)
         => register switch

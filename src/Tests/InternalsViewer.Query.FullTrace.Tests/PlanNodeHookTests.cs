@@ -179,8 +179,8 @@ public class PlanNodeHookTests
     private static TraceHookCall Call(ulong function, ulong id, ulong iterator, ulong returnValue = 0, ulong? at = null)
         => new()
         {
-            Function = function,
-            Instance = iterator,
+            FunctionAddress = function,
+            InstanceAddress = iterator,
             Id = id,
             CallIndex = (uint)id,
             Position = At(at ?? id),

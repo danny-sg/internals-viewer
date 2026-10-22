@@ -8,42 +8,37 @@ internal static class ModuleSymbols
 {
     public static void VisitFunctions(DiaResolver resolver, IReadOnlySet<uint> functions, Action<FunctionSymbol> visit)
     {
-        var found = new List<(uint Rva, string Name, string Signature)>();
-
-        using (var symbols = resolver.ReadSymbols())
-        {
-            while (symbols.MoveNext())
-            {
-                if (symbols.IsFunction && functions.Contains(symbols.Rva))
-                {
-                    found.Add((symbols.Rva, symbols.Name.ToString(), symbols.Signature.ToString()));
-                }
-            }
-        }
-
         var first = new Dictionary<uint, (int Name, int? Parameters)>();
+
+        var cache = new FunctionSymbol.SignatureCache();
 
         Span<char> buffer = stackalloc char[DiaResolver.MaximumNameLength];
 
-        foreach (var (rva, symbolName, signature) in found)
+        using var symbols = resolver.ReadSymbols();
+
+        while (symbols.MoveNext())
         {
-            var exists = first.TryGetValue(rva, out var seen);
+            var rva = symbols.Rva;
 
-            var decoratedName = string.Empty;
-
-            if (!exists)
+            if (!symbols.IsFunction || !functions.Contains(rva))
             {
-                if (!resolver.TryGetDecoratedName(rva, buffer, out var decorated))
-                {
-                    continue;
-                }
-
-                decoratedName = decorated.ToString();
+                continue;
             }
 
-            var name = string.GetHashCode(symbolName);
+            var exists = first.TryGetValue(rva, out var seen);
 
-            int? parameters = signature.Length == 0 ? null : FunctionSignature.HashParameters(signature);
+            scoped ReadOnlySpan<char> decoratedName = default;
+
+            if (!exists && !resolver.TryGetDecoratedName(rva, buffer, out decoratedName))
+            {
+                continue;
+            }
+
+            var signature = symbols.Signature;
+
+            var name = string.GetHashCode(symbols.Name);
+
+            int? parameters = signature.IsEmpty ? null : FunctionSignature.HashParameters(signature);
 
             if (!exists)
             {
@@ -56,15 +51,18 @@ internal static class ModuleSymbols
 
             first[rva] = seen;
 
+            cache.Reset();
+
             visit(new FunctionSymbol
             {
                 Rva = rva,
-                Name = symbolName,
+                Name = symbols.Name,
                 Signature = signature,
                 DecoratedName = decoratedName,
                 IsFirst = !exists,
                 HasSameName = seen.Name == name,
-                HasSameParameters = parameters is null || seen.Parameters == parameters
+                HasSameParameters = parameters is null || seen.Parameters == parameters,
+                Cache = cache
             });
         }
     }

@@ -76,14 +76,14 @@ internal sealed record TraceModule
     /// RVA (Relative Virtual Address) is calculated from the given address minus the module's base address (as RVA is relative to the
     /// module).
     /// </remarks>
-    internal CallstackFrame Frame(ulong address, ulong instance) => new()
+    internal CallstackFrame Frame(ulong functionAddress, ulong instanceAddress) => new()
     {
         Module = Name,
-        Address = address,
-        Rva = (uint)(address - StartAddress),
+        Address = functionAddress,
+        Rva = (uint)(functionAddress - StartAddress),
         Pdb = Pdb,
         Guid = Guid,
         Age = Age,
-        Instance = instance
+        InstanceAddress = instanceAddress
     };
 }

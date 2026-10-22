@@ -5,17 +5,17 @@ namespace InternalsViewer.Query.FullTrace.Calls;
 
 public sealed partial class TraceCallStore
 {
-    private const int FormatVersion = 3;
+    private const int FormatVersion = 5;
 
     internal static bool IsCurrent(BinaryReader reader) => reader.ReadInt32() == -FormatVersion;
 
     internal static TraceCallStore Read(BinaryReader reader)
     {
-        var functions = new Dictionary<(ulong Address, ulong Instance), Chunk[]>();
+        var functions = new Dictionary<(ulong FunctionAddress, ulong InstanceAddress), Chunk[]>();
 
         if (!IsCurrent(reader))
         {
-            throw new InvalidDataException("The call log was exported before positions were recorded and must be re-recorded");
+            throw new InvalidDataException("The call log was exported by an earlier version and must be re-recorded");
         }
 
         var functionCount = reader.ReadInt32();
@@ -36,7 +36,9 @@ public sealed partial class TraceCallStore
             functions[key] = chunks;
         }
 
-        var locators = new Dictionary<(ulong Address, ulong Instance), LocatorTable>();
+        var locators = new Dictionary<(ulong FunctionAddress, ulong InstanceAddress), LocatorTable>();
+
+        var uniqueLocators = LocatorTable.ReadLocators(reader);
 
         var tableCount = reader.ReadInt32();
 
@@ -44,10 +46,10 @@ public sealed partial class TraceCallStore
         {
             var key = (reader.ReadUInt64(), reader.ReadUInt64());
 
-            locators[key] = LocatorTable.Read(reader);
+            locators[key] = LocatorTable.Read(reader, uniqueLocators);
         }
 
-        return new TraceCallStore(functions, locators);
+        return new TraceCallStore(functions, locators, uniqueLocators);
     }
 
     internal void Write(BinaryWriter writer)
@@ -56,11 +58,11 @@ public sealed partial class TraceCallStore
 
         writer.Write(Functions.Count);
 
-        foreach (var ((address, instance), chunks) in Functions)
+        foreach (var ((functionAddress, instanceAddress), chunks) in Functions)
         {
-            writer.Write(address);
+            writer.Write(functionAddress);
 
-            writer.Write(instance);
+            writer.Write(instanceAddress);
 
             writer.Write(chunks.Length);
 
@@ -72,13 +74,15 @@ public sealed partial class TraceCallStore
             }
         }
 
+        LocatorTable.WriteLocators(writer, UniqueLocators);
+
         writer.Write(Locators.Count);
 
-        foreach (var ((address, instance), table) in Locators)
+        foreach (var ((functionAddress, instanceAddress), table) in Locators)
         {
-            writer.Write(address);
+            writer.Write(functionAddress);
 
-            writer.Write(instance);
+            writer.Write(instanceAddress);
 
             table.Write(writer);
         }

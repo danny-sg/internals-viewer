@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
 using InternalsViewer.Query.Helpers;
@@ -8,20 +10,26 @@ public sealed partial class MemoryMap
 {
     private MemoryMap(Dictionary<ulong, MemoryMapEntry[]> entries)
     {
-        Entries = entries;
+        var labels = new Dictionary<Label, int>();
 
-        BlockAddresses = [.. entries.Where(e => e.Value.Any(entry => entry.Bytes > 0)).Select(e => e.Key).Order()];
+        Entries = entries.ToDictionary(e => e.Key, e => Array.ConvertAll(e.Value, entry => Store(entry, labels)));
 
-        MaximumBytes = entries.Values.SelectMany(e => e).Select(e => e.Bytes).DefaultIfEmpty(0ul).Max();
+        Labels = [.. labels.OrderBy(l => l.Value).Select(l => l.Key)];
+
+        BlockAddresses = [.. Entries.Where(e => e.Value.Any(entry => entry.Bytes > 0)).Select(e => e.Key).Order()];
+
+        MaximumBytes = Entries.Values.SelectMany(e => e).Select(e => e.Bytes).DefaultIfEmpty(0ul).Max();
     }
 
     public static MemoryMap Empty { get; } = new([]);
 
     public int Count => Entries.Values.Sum(e => e.Length);
 
-    internal IEnumerable<MemoryMapEntry> GetEntries() => Entries.Values.SelectMany(e => e);
+    internal long Bytes => Count * (long)Unsafe.SizeOf<StoredEntry>() + Labels.Length * (long)Unsafe.SizeOf<Label>();
 
-    private Dictionary<ulong, MemoryMapEntry[]> Entries { get; }
+    private Dictionary<ulong, StoredEntry[]> Entries { get; }
+
+    private Label[] Labels { get; }
 
     private ulong[] BlockAddresses { get; }
 
@@ -34,16 +42,9 @@ public sealed partial class MemoryMap
             return null;
         }
 
-        var index = SortedSearch.FirstAfter(entries, position, e => e.FromPosition) - 1;
+        var index = GetEntryIndex(entries, position);
 
-        if (index < 0)
-        {
-            return entries[0] is { Operation: MemoryMapOperation.Visited or MemoryMapOperation.Declared, Owner: 0 } first ? first : null;
-        }
-
-        var entry = entries[index];
-
-        return entry.ToPosition.IsKnown && position > entry.ToPosition ? null : entry;
+        return index < 0 ? null : ToEntry(address, entries[index]);
     }
 
     public string? GetLabel(ulong address, TracePosition from, TracePosition to)
@@ -62,12 +63,14 @@ public sealed partial class MemoryMap
                 continue;
             }
 
-            if (entry.ClassName is { } className)
+            var label = Labels[entry.Label];
+
+            if (label.ClassName is { } className)
             {
                 return className;
             }
 
-            site ??= entry.Site;
+            site ??= label.Site;
         }
 
         return site;
@@ -75,24 +78,39 @@ public sealed partial class MemoryMap
 
     public (MemoryMapEntry Entry, ulong Offset)? GetContaining(ulong address, TracePosition position)
     {
-        (MemoryMapEntry Entry, ulong Offset)? innermost = null;
+        if (!position.IsKnown)
+        {
+            return null;
+        }
+
+        (ulong Address, StoredEntry Entry, ulong Offset)? innermost = null;
 
         for (var index = SortedSearch.FirstAtOrAfter(BlockAddresses, address) - 1;
              index >= 0 && address - BlockAddresses[index] < MaximumBytes;
              index--)
         {
-            var offset = address - BlockAddresses[index];
+            var block = BlockAddresses[index];
 
-            if (GetEntry(BlockAddresses[index], position) is { Bytes: > 0 } entry
+            var offset = address - block;
+
+            var entries = Entries[block];
+
+            if (GetEntryIndex(entries, position) is >= 0 and var found
+                && entries[found] is { Bytes: > 0 } entry
                 && offset < entry.Bytes
                 && (innermost is null || entry.Bytes < innermost.Value.Entry.Bytes))
             {
-                innermost = (entry, offset);
+                innermost = (block, entry, offset);
             }
         }
 
-        return innermost;
+        return innermost is { } containing ? (ToEntry(containing.Address, containing.Entry), containing.Offset) : null;
     }
+
+    internal IEnumerable<MemoryMapEntry> GetEntries() => Entries.SelectMany(e => e.Value.Select(entry => ToEntry(e.Key, entry)));
+
+    internal int GetSiteCount()
+        => Entries.Values.Sum(e => e.Count(entry => Labels[entry.Label] is { Operation: MemoryMapOperation.Allocated, Site: not null }));
 
     internal static MemoryMap Build(IEnumerable<AddressEntry> entries,
                                     Func<int, CallStackNode?> nodeOf,
@@ -169,4 +187,69 @@ public sealed partial class MemoryMap
     private static bool IsLiveAt(MemoryMapEntry entry, TracePosition position) => !entry.ToPosition.IsKnown || position <= entry.ToPosition;
 
     private static string? GetName(string? name) => name is { Length: > 0 } ? name : null;
+
+    private static StoredEntry Store(MemoryMapEntry entry, Dictionary<Label, int> labels)
+    {
+        var label = new Label(entry.Operation, entry.ClassName, entry.Allocator, entry.Site);
+
+        ref var index = ref CollectionsMarshal.GetValueRefOrAddDefault(labels, label, out var exists);
+
+        if (!exists)
+        {
+            index = labels.Count - 1;
+        }
+
+        return new StoredEntry(entry.Owner,
+                               entry.FromPosition,
+                               entry.ToPosition,
+                               entry.Bytes,
+                               entry.CallIndex,
+                               entry.Thread,
+                               entry.CallNodeIndex,
+                               index);
+    }
+
+    private int GetEntryIndex(StoredEntry[] entries, TracePosition position)
+    {
+        var index = SortedSearch.FirstAfter(entries, position, static e => e.FromPosition) - 1;
+
+        if (index < 0)
+        {
+            return entries[0].Owner == 0
+                   && Labels[entries[0].Label].Operation is MemoryMapOperation.Visited or MemoryMapOperation.Declared
+                ? 0
+                : -1;
+        }
+
+        return entries[index].ToPosition.IsKnown && position > entries[index].ToPosition ? -1 : index;
+    }
+
+    private MemoryMapEntry ToEntry(ulong address, StoredEntry entry)
+    {
+        var label = Labels[entry.Label];
+
+        return new MemoryMapEntry(address,
+                                  label.Operation,
+                                  entry.CallIndex,
+                                  entry.Owner,
+                                  entry.FromPosition,
+                                  entry.ToPosition,
+                                  entry.Thread,
+                                  entry.CallNodeIndex,
+                                  label.ClassName,
+                                  label.Allocator,
+                                  entry.Bytes,
+                                  label.Site);
+    }
+
+    private readonly record struct StoredEntry(ulong Owner,
+                                               TracePosition FromPosition,
+                                               TracePosition ToPosition,
+                                               ulong Bytes,
+                                               int CallIndex,
+                                               uint Thread,
+                                               int CallNodeIndex,
+                                               int Label);
+
+    private readonly record struct Label(MemoryMapOperation Operation, string? ClassName, string? Allocator, string? Site);
 }

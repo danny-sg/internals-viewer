@@ -103,7 +103,7 @@ public class CustomHookTests
     private static TraceHookCall Call(ulong returnValue = 0)
         => new()
         {
-            Function = Function,
+            FunctionAddress = Function,
             Id = 40,
             CallIndex = 3,
             Thread = 9,

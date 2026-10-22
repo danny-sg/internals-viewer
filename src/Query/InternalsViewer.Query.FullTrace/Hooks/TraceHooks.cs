@@ -14,7 +14,7 @@ internal sealed class TraceHooks
                           .GroupBy(r => r.Function.Address)
                           .ToArray();
 
-        Hooks = [.. groups.Select(g => g.Select(r => r.Hook).Distinct().ToArray())];
+        Hooks = [.. groups.Select(GetHooks)];
 
         Functions = [.. groups.Select((g, index) => new HookFunction(g.Key, (uint)GetEvents(g), (uint)index))];
     }
@@ -42,8 +42,8 @@ internal sealed class TraceHooks
 
         var call = new TraceHookCall
         {
-            Function = source->Function,
-            Instance = source->Instance,
+            FunctionAddress = source->FunctionAddress,
+            InstanceAddress = source->InstanceAddress,
             Id = source->Id,
             CallIndex = source->CallIndex,
             Thread = source->Thread,
@@ -77,6 +77,21 @@ internal sealed class TraceHooks
 
             Replay.Session = IntPtr.Zero;
         }
+    }
+
+    private static ITraceHook[] GetHooks(IEnumerable<(TraceHookFunction Function, ITraceHook Hook)> registrations)
+    {
+        ITraceHook[] hooks = [];
+
+        foreach (var (_, hook) in registrations)
+        {
+            if (Array.IndexOf(hooks, hook) < 0)
+            {
+                hooks = [.. hooks, hook];
+            }
+        }
+
+        return hooks;
     }
 
     private static TraceHookEvents GetEvents(IEnumerable<(TraceHookFunction Function, ITraceHook Hook)> registrations)

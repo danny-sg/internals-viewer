@@ -31,7 +31,7 @@ public sealed class TraceTickSeries
                                             TraceOperatorLifetimes lifetimes,
                                             Func<CallstackFrame, bool> isFunction,
                                             Func<CallstackFrame, TraceArgumentCall, byte?> getValue)
-        => Build(timeline, calls, lifetimes, n => n.Frame is { } frame && isFunction(frame), getValue, null, null);
+        => FromCalls(timeline, calls, lifetimes, isFunction, getValue, EnclosingOperatorCalls.Build(calls, lifetimes.OperatorsByInstance));
 
     public static TraceTickSeries FromDefinition(TraceTimeline timeline,
                                                  TraceCallStore calls,
@@ -43,17 +43,27 @@ public sealed class TraceTickSeries
         return Build(timeline,
                      calls,
                      lifetimes,
+                     EnclosingOperatorCalls.Build(calls, lifetimes.OperatorsByInstance),
                      definition.IsFunction,
                      (_, call) => definition.MatchesCall(call) ? (byte)0 : null,
                      node => nodes.TryGetValue(node, out var isMatch) ? isMatch : nodes[node] = definition.MatchesNode(node),
                      definition.MatchesOperator);
     }
 
+    internal static TraceTickSeries FromCalls(TraceTimeline timeline,
+                                              TraceCallStore calls,
+                                              TraceOperatorLifetimes lifetimes,
+                                              Func<CallstackFrame, bool> isFunction,
+                                              Func<CallstackFrame, TraceArgumentCall, byte?> getValue,
+                                              EnclosingOperatorCalls enclosing)
+        => Build(timeline, calls, lifetimes, enclosing, n => n.Frame is { } frame && isFunction(frame), getValue, null, null);
+
     internal static TraceTickSeries Create(IEnumerable<TraceTick> ticks, TraceScale scale) => new([.. ticks], scale);
 
     private static TraceTickSeries Build(TraceTimeline timeline,
                                          TraceCallStore calls,
                                          TraceOperatorLifetimes lifetimes,
+                                         EnclosingOperatorCalls enclosing,
                                          Func<CallStackNode, bool> isFunction,
                                          Func<CallstackFrame, TraceArgumentCall, byte?> getValue,
                                          Func<CallStackNode, bool>? isNode,
@@ -63,9 +73,9 @@ public sealed class TraceTickSeries
 
         var points = new List<SweepSpan<TracePosition>>();
 
-        foreach (var (address, instance) in calls.FunctionKeys)
+        foreach (var (functionAddress, instanceAddress) in calls.FunctionKeys)
         {
-            if (calls.GetCallList(address, instance) is not { Count: > 0 } list
+            if (calls.GetCallList(functionAddress, instanceAddress) is not { Count: > 0 } list
                 || calls.GetNode(list.GetCallNodeIndex(0)) is not { Frame: { } frame } first
                 || !isFunction(first))
             {
@@ -77,57 +87,26 @@ public sealed class TraceTickSeries
                 var call = list[index];
 
                 if (getValue(frame, call) is not { } value
-                    || timeline.FindCall(address, instance, index) is not { } location
+                    || timeline.FindCall(functionAddress, instanceAddress, index) is not { } location
                     || (isNode is not null && !isNode(location.Node)))
                 {
                     continue;
                 }
 
-                ticks.Add(new TraceTick(value, call.ThreadId, location.Node, location.CallIndex, location.Span)
-                {
-                    Function = address,
-                    Instance = instance,
-                    Index = index
-                });
+                ticks.Add(new TraceTick(value, call.ThreadId, location.Node, location.Row, location.Index));
 
                 points.Add(new SweepSpan<TracePosition>(call.ThreadId, call.FromPosition, call.FromPosition, 0));
             }
         }
 
-        var operators = GetEnclosingOperators(calls, lifetimes.OperatorsByInstance, points);
+        var owners = lifetimes.OperatorsByInstance;
 
-        return new TraceTickSeries([.. ticks.Select((t, i) => operators[i] is { } found ? t with { Operator = found } : t)
+        var instances = enclosing.GetEnclosing(points, includeRowReturns: true);
+
+        return new TraceTickSeries([.. ticks.Select((t, i) => owners.GetValueOrDefault(instances[i]) is { } found
+                                                                  ? t with { Operator = found }
+                                                                  : t)
                                             .Where(t => isOperator is null || isOperator(t.Operator))],
                                    timeline.Scale);
-    }
-
-    private static ExecutionOperatorEvent?[] GetEnclosingOperators(TraceCallStore calls,
-                                                                   IReadOnlyDictionary<ulong, ExecutionOperatorEvent> owners,
-                                                                   IReadOnlyList<SweepSpan<TracePosition>> points)
-    {
-        if (owners.Count == 0)
-        {
-            return new ExecutionOperatorEvent?[points.Count];
-        }
-
-        var spans = new List<SweepSpan<TracePosition>>();
-
-        foreach (var (address, instance) in calls.FunctionKeys)
-        {
-            if (!owners.ContainsKey(instance) || calls.GetCallList(address, instance) is not { Count: > 0 } list)
-            {
-                continue;
-            }
-
-            for (var index = 0; index < list.Count; index++)
-            {
-                spans.Add(new SweepSpan<TracePosition>(list.GetThread(index),
-                                                       list.GetFromPosition(index),
-                                                       list.GetToPosition(index),
-                                                       instance));
-            }
-        }
-
-        return [.. EnclosingSweep.GetEnclosing(spans, points).Select(instance => owners.GetValueOrDefault(instance))];
     }
 }

@@ -343,7 +343,7 @@ public sealed partial class TraceTimelineControl
 
         foreach (var span in timeline.GetSpanLocations())
         {
-            if (span.Node.Frame is not { Instance: not 0 } frame || !instances.Contains(frame.Instance))
+            if (span.Node.Frame is not { InstanceAddress: not 0 } frame || !instances.Contains(frame.InstanceAddress))
             {
                 continue;
             }

@@ -144,11 +144,11 @@ internal static class ReplayBridge
     public delegate void ProgressCallback(uint thread, int percent);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    public delegate void CallChunkCallback(ulong address, ulong instance, IntPtr columns, int calls);
+    public delegate void CallChunkCallback(ulong functionAddress, ulong instanceAddress, IntPtr columns, int calls);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    public delegate void CallEndCallback(ulong address,
-                                         ulong instance,
+    public delegate void CallEndCallback(ulong functionAddress,
+                                         ulong instanceAddress,
                                          uint callIndex,
                                          ulong endSequence,
                                          ulong endSteps,

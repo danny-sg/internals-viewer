@@ -9,6 +9,7 @@ using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Timeline;
+using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.Query.Memory;
 
@@ -70,6 +71,8 @@ internal sealed class TraceResultBuilder
     {
         var lifetimes = Lifetimes ?? BuildLifetimes();
 
+        var enclosing = EnclosingOperatorCalls.Build(CallStore, lifetimes.OperatorsByInstance);
+
         return new TraceResult(CallStack, CallStore, Timeline)
         {
             PlanLink = PlanLink,
@@ -82,9 +85,9 @@ internal sealed class TraceResultBuilder
             ObjectPool = ObjectPool,
             CustomHooks = CustomHooks,
             OutputStructures = outputStructures,
-            RowReturnMarks = TraceRowReturnMarks.Build(Timeline, CallStore, lifetimes),
-            Reads = TraceReads.Build(Timeline, CallStore, lifetimes),
-            Evaluations = TraceEvaluations.Build(Timeline, CallStore, lifetimes)
+            RowReturnMarks = TraceRowReturnMarks.Build(Timeline, CallStore, lifetimes, enclosing),
+            Reads = TraceReads.Build(Timeline, CallStore, lifetimes, enclosing),
+            Evaluations = TraceEvaluations.Build(Timeline, CallStore, lifetimes, enclosing)
         };
     }
 }

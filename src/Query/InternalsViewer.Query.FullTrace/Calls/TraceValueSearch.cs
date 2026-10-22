@@ -19,17 +19,17 @@ public sealed class TraceValueSearch(TraceCallStore store)
 
     private List<TraceValueUse> GetValueUses(ulong value, Func<CallStackNode?, bool>? include, CancellationToken cancellationToken)
     {
-        var uses = new Dictionary<(ulong Address, ulong Instance, string Location), TraceValueUse>();
+        var uses = new Dictionary<(ulong FunctionAddress, ulong InstanceAddress, string Location), TraceValueUse>();
 
         var sync = new Lock();
 
         var options = new ParallelOptions { CancellationToken = cancellationToken };
 
-        Parallel.ForEach(GetScans(), options, scan =>
+        Parallel.ForEach(GetScans(), options, () => Array.Empty<ulong>(), (scan, _, buffer) =>
         {
-            var (address, instance, start, chunk) = scan;
+            var (functionAddress, instanceAddress, start, chunk) = scan;
 
-            var columns = TraceCallStore.Decompress(chunk);
+            var columns = TraceCallStore.Decompress(chunk, ref buffer);
 
             var found = new Dictionary<string, (int Calls, int First, int Last)>();
 
@@ -50,26 +50,29 @@ public sealed class TraceValueSearch(TraceCallStore store)
 
             if (found.Count == 0)
             {
-                return;
+                return buffer;
             }
 
             lock (sync)
             {
                 foreach (var (location, (calls, first, last)) in found)
                 {
-                    var use = new TraceValueUse(address,
-                                                instance,
+                    var use = new TraceValueUse(functionAddress,
+                                                instanceAddress,
                                                 location,
                                                 calls,
                                                 GetValueCall(columns, first, start),
                                                 GetValueCall(columns, last, start));
 
-                    uses[(address, instance, location)] = uses.TryGetValue((address, instance, location), out var existing)
-                        ? MergeValueUse(existing, use)
-                        : use;
+                    uses[(functionAddress, instanceAddress, location)]
+                        = uses.TryGetValue((functionAddress, instanceAddress, location), out var existing)
+                            ? MergeValueUse(existing, use)
+                            : use;
                 }
             }
-        });
+
+            return buffer;
+        }, static _ => { });
 
         AddStackUses(uses, value, include, cancellationToken);
 
@@ -88,18 +91,20 @@ public sealed class TraceValueSearch(TraceCallStore store)
 
         var valueCalls = new List<TraceValueCall>();
 
-        if (!store.Functions.TryGetValue((use.Address, use.Instance), out var chunks))
+        if (!store.Functions.TryGetValue((use.FunctionAddress, use.InstanceAddress), out var chunks))
         {
             return valueCalls;
         }
 
         var start = 0;
 
+        ulong[] buffer = [];
+
         foreach (var chunk in chunks)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var columns = TraceCallStore.Decompress(chunk);
+            var columns = TraceCallStore.Decompress(chunk, ref buffer);
 
             for (var callIndex = 0; callIndex < chunk.Calls; callIndex++)
             {
@@ -128,12 +133,12 @@ public sealed class TraceValueSearch(TraceCallStore store)
         return null;
     }
 
-    private void AddStackUses(Dictionary<(ulong Address, ulong Instance, string Location), TraceValueUse> uses,
+    private void AddStackUses(Dictionary<(ulong FunctionAddress, ulong InstanceAddress, string Location), TraceValueUse> uses,
                               ulong value,
                               Func<CallStackNode?, bool>? include,
                               CancellationToken cancellationToken)
     {
-        foreach (var ((address, instance), table) in store.Locators)
+        foreach (var ((functionAddress, instanceAddress), table) in store.Locators)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -146,7 +151,7 @@ public sealed class TraceValueSearch(TraceCallStore store)
                     continue;
                 }
 
-                calls ??= store.GetCallList(address, instance);
+                calls ??= store.GetCallList(functionAddress, instanceAddress);
 
                 if (GetStackValueCall(calls, callIndex, include) is not { } valueCall)
                 {
@@ -155,11 +160,12 @@ public sealed class TraceValueSearch(TraceCallStore store)
 
                 var location = ArgumentLayout.GetStackLocation(locator.Register);
 
-                var use = new TraceValueUse(address, instance, location, 1, valueCall, valueCall);
+                var use = new TraceValueUse(functionAddress, instanceAddress, location, 1, valueCall, valueCall);
 
-                uses[(address, instance, location)] = uses.TryGetValue((address, instance, location), out var existing)
-                    ? MergeValueUse(existing, use)
-                    : use;
+                uses[(functionAddress, instanceAddress, location)]
+                    = uses.TryGetValue((functionAddress, instanceAddress, location), out var existing)
+                        ? MergeValueUse(existing, use)
+                        : use;
             }
         }
     }
@@ -172,8 +178,8 @@ public sealed class TraceValueSearch(TraceCallStore store)
     {
         var valueCalls = new List<TraceValueCall>();
 
-        if (!store.Locators.TryGetValue((use.Address, use.Instance), out var table)
-            || store.GetCallList(use.Address, use.Instance) is not { } calls)
+        if (!store.Locators.TryGetValue((use.FunctionAddress, use.InstanceAddress), out var table)
+            || store.GetCallList(use.FunctionAddress, use.InstanceAddress) is not { } calls)
         {
             return valueCalls;
         }
@@ -221,15 +227,15 @@ public sealed class TraceValueSearch(TraceCallStore store)
         Last = use.Last.Position > existing.Last.Position ? use.Last : existing.Last
     };
 
-    private IEnumerable<(ulong Address, ulong Instance, int Start, TraceCallStore.Chunk Chunk)> GetScans()
+    private IEnumerable<(ulong FunctionAddress, ulong InstanceAddress, int Start, TraceCallStore.Chunk Chunk)> GetScans()
     {
-        foreach (var ((address, instance), chunks) in store.Functions)
+        foreach (var ((functionAddress, instanceAddress), chunks) in store.Functions)
         {
             var start = 0;
 
             foreach (var chunk in chunks)
             {
-                yield return (address, instance, start, chunk);
+                yield return (functionAddress, instanceAddress, start, chunk);
 
                 start += chunk.Calls;
             }

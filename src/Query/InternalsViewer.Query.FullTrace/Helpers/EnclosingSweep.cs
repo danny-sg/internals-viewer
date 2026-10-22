@@ -38,7 +38,7 @@ internal static class EnclosingSweep
 
                 if (entry.Point >= 0)
                 {
-                    enclosing[entry.Point] = open.TryPeek(out var inner) ? inner.Span.Instance : 0;
+                    enclosing[entry.Point] = open.TryPeek(out var inner) ? inner.Span.InstanceAddress : 0;
                 }
 
                 open.Push(entry);

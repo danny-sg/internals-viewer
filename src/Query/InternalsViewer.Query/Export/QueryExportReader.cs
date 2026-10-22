@@ -261,7 +261,7 @@ public sealed class QueryExportReader
         Guid = frame.Guid,
         Age = frame.Age,
         Rva = frame.Rva,
-        Instance = frame.Instance,
+        InstanceAddress = frame.Instance,
         Signature = frame.Signature,
         Resolved = frame.Symbol is { } symbol ? ResolvedCallstackFrameParser.Parse(frame.SymbolModule ?? frame.Module, symbol) : null
     };

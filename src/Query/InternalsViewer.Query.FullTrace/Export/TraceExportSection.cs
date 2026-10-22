@@ -109,11 +109,15 @@ internal sealed class TraceExportSection : IQueryExportSection
                 : ObjectPoolSnapshot.Empty
         };
 
-        return builder.Build(outputStructures) with
+        var result = builder.Build(outputStructures) with
         {
             MemoryHistory = reader.HasEntry(MemoryHistoryEntry) && reader.ReadBinary(MemoryHistoryEntry, MemoryHistoryStore.IsSupported)
                 ? reader.ReadBinary(MemoryHistoryEntry, MemoryHistoryStore.Read)
                 : MemoryHistoryStore.Empty
         };
+
+        callStore.ReleaseColumns();
+
+        return result;
     }
 }

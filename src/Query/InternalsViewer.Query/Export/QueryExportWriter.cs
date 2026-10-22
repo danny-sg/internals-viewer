@@ -397,7 +397,7 @@ public sealed class QueryExportWriter
         Guid = frame.Guid,
         Age = frame.Age,
         Rva = frame.Rva,
-        Instance = frame.Instance,
+        Instance = frame.InstanceAddress,
         Signature = frame.Signature,
         Symbol = frame.Resolved?.RawSymbol,
         SymbolModule = frame.Resolved is { } resolved && resolved.Module != frame.Module ? resolved.Module : null

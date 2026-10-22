@@ -257,6 +257,85 @@ public class TraceCallStoreTests
     }
 
     [Fact]
+    public void Identical_Locators_Are_Stored_Once()
+    {
+        var builder = new TraceCallStore.Builder();
+
+        builder.Add(0x1000, 0, Chunk(Row(1), Row(2), Row(3)), 3);
+        builder.Add(0x2000, 0, Chunk(Row(4)), 1);
+
+        builder.AddLocator(0x1000, 0, 0, new Locator(1, LocatorValueType.Referenced, 1), false);
+        builder.AddLocator(0x1000, 0, 1, new Locator(1, LocatorValueType.Referenced, 1), false);
+        builder.AddLocator(0x1000, 0, 2, new Locator(1, LocatorValueType.Referenced, 0), false);
+        builder.AddLocator(0x2000, 0, 0, new Locator(1, LocatorValueType.Referenced, 1), false);
+
+        var store = builder.Build();
+
+        var calls = store.GetCallList(0x1000, 0)!;
+
+        Assert.Equal(4, store.LocatorCount);
+        Assert.Equal(2, store.UniqueLocatorCount);
+        Assert.Equal([1ul, 1ul, 0ul], calls.Select(c => Assert.Single(c.Locators).Value));
+        Assert.Equal(1ul, Assert.Single(store.GetCallList(0x2000, 0)![0].Locators).Value);
+    }
+
+    [Fact]
+    public void A_Replaced_Value_Is_Not_Kept_In_The_Unique_Locators()
+    {
+        var builder = new TraceCallStore.Builder();
+
+        builder.Add(0x1000, 0, Chunk(Row(1)), 1);
+
+        builder.AddLocator(0x1000, 0, 0, new Locator(1, LocatorValueType.Referenced, 7), false);
+        builder.AddLocator(0x1000, 0, 0, new Locator(1, LocatorValueType.Referenced, 9), true);
+
+        var store = builder.Build();
+
+        Assert.Equal(1, store.UniqueLocatorCount);
+        Assert.Equal(9ul, Assert.Single(store.GetCallList(0x1000, 0)![0].Locators).Value);
+    }
+
+    [Fact]
+    public void Positions_Survive_Delta_Encoding()
+    {
+        var builder = new TraceCallStore.Builder();
+
+        builder.Add(0x1000, 0, Chunk(Row(50, endSequence: 60, endSteps: 4), Row(40), Row(70, steps: 9, endSequence: 70, endSteps: 12)), 3);
+
+        var calls = builder.Build().GetCallList(0x1000, 0)!;
+
+        Assert.Equal([At(50), At(40), At(70, 9)], Enumerable.Range(0, 3).Select(calls.GetFromPosition));
+        Assert.Equal([At(60, 4), TracePosition.Unknown, At(70, 12)], Enumerable.Range(0, 3).Select(calls.GetToPosition));
+    }
+
+    [Fact]
+    public void A_Recycled_Column_Buffer_Reads_Its_Own_Chunk()
+    {
+        var builder = new TraceCallStore.Builder();
+
+        builder.Add(0x1000, 0, Chunk(Row(1), Row(2)), 2);
+        builder.Add(0x2000, 0, Chunk(Row(3), Row(4)), 2);
+        builder.Add(0x3000, 0, Chunk(Row(5), Row(6)), 2);
+
+        var store = builder.Build();
+
+        var first = store.Functions[(0x1000, 0)][0];
+
+        var second = store.Functions[(0x2000, 0)][0];
+
+        var third = store.Functions[(0x3000, 0)][0];
+
+        var cache = new TraceCallStore.ChunkCache(2 * 2 * TraceCallColumns.ValueCount + 6);
+
+        Assert.Equal(At(1), cache.Read(first, 0, static (columns, index) => columns.GetFromPosition(index)));
+        Assert.Equal(At(4), cache.Read(second, 1, static (columns, index) => columns.GetFromPosition(index)));
+        Assert.Equal(At(5), cache.Read(third, 0, static (columns, index) => columns.GetFromPosition(index)));
+        Assert.Equal(At(2), cache.Read(first, 1, static (columns, index) => columns.GetFromPosition(index)));
+        Assert.Equal(At(3), cache.Read(second, 0, static (columns, index) => columns.GetFromPosition(index)));
+        Assert.Equal(At(6), cache.Read(third, 1, static (columns, index) => columns.GetFromPosition(index)));
+    }
+
+    [Fact]
     public void A_Value_Read_On_Return_Replaces_The_One_Read_When_Called()
     {
         var builder = new TraceCallStore.Builder();

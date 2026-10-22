@@ -54,7 +54,7 @@ public sealed class IteratorTarget(CallStackNode node, ExecutionOperatorEvent? o
 
         foreach (var node in tree?.Nodes() ?? [])
         {
-            if (node.Frame is not { Instance: not 0 and var instance })
+            if (node.Frame is not { InstanceAddress: not 0 and var instance })
             {
                 continue;
             }

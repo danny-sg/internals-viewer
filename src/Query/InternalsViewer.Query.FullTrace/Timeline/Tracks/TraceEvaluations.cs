@@ -21,7 +21,10 @@ public static class TraceEvaluations
         "GeneralEval4"
     };
 
-    internal static TraceTickSeries Build(TraceTimeline timeline, TraceCallStore calls, TraceOperatorLifetimes lifetimes)
+    internal static TraceTickSeries Build(TraceTimeline timeline,
+                                          TraceCallStore calls,
+                                          TraceOperatorLifetimes lifetimes,
+                                          EnclosingOperatorCalls? enclosing = null)
         => TraceTickSeries.FromCalls(timeline,
                                      calls,
                                      lifetimes,
@@ -29,7 +32,8 @@ public static class TraceEvaluations
                                      (_, c) => c.GetLocator(ResultRegister) is { ValueType: LocatorValueType.Variant } locator
                                                && GetResult(new VariantLocator(locator)) is { } result
                                                    ? (byte)result
-                                                   : null);
+                                                   : null,
+                                     enclosing ?? EnclosingOperatorCalls.Build(calls, lifetimes.OperatorsByInstance));
 
     private static bool IsEvaluation(CallstackFrame frame)
         => frame.Resolved is { ClassName: ExpressionService, MethodName: { } method } && Methods.Contains(method);

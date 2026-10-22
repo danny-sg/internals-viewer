@@ -114,16 +114,16 @@ internal sealed class IteratorAllocations
     {
         var spans = new List<SweepSpan<TracePosition>>();
 
-        foreach (var (address, instance) in calls.FunctionKeys)
+        foreach (var (functionAddress, instanceAddress) in calls.FunctionKeys)
         {
-            if (calls.GetCallList(address, instance) is not { Count: > 0 } list)
+            if (calls.GetCallList(functionAddress, instanceAddress) is not { Count: > 0 } list)
             {
                 continue;
             }
 
-            if (instance != 0)
+            if (instanceAddress != 0)
             {
-                var owner = iterators.Contains(instance) ? instance : builders.GetValueOrDefault(instance);
+                var owner = iterators.Contains(instanceAddress) ? instanceAddress : builders.GetValueOrDefault(instanceAddress);
 
                 if (owner == 0)
                 {

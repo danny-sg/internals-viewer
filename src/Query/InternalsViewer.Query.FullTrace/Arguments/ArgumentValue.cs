@@ -127,6 +127,9 @@ public static class ArgumentValue
     private static readonly HashSet<string>.AlternateLookup<ReadOnlySpan<char>> AddressSizedTypeLookup =
         AddressSizedTypes.GetAlternateLookup<ReadOnlySpan<char>>();
 
+    private static readonly HashSet<string>.AlternateLookup<ReadOnlySpan<char>> BufferTypeLookup =
+        BufferTypes.GetAlternateLookup<ReadOnlySpan<char>>();
+
     public static bool IsFloating(string type)
     {
         Span<char> buffer = type.Length <= MaximumStackType ? stackalloc char[type.Length] : new char[type.Length];
@@ -143,16 +146,20 @@ public static class ArgumentValue
 
     public static bool IsPointer(string type) => type.TrimEnd() is { Length: > 0 } trimmed && trimmed[^1] is '*' or '&';
 
-    public static string? GetPointeeClass(string type)
+    public static string? GetPointeeClass(ReadOnlySpan<char> type)
     {
-        var indirection = type.IndexOfAny(['*', '&']);
+        var indirection = type.IndexOfAny('*', '&');
 
-        if (indirection <= 0 || type.AsSpan(indirection + 1).IndexOfAny('*', '&') >= 0 || type.Contains('('))
+        if (indirection <= 0 || type[(indirection + 1)..].IndexOfAny('*', '&') >= 0 || type.Contains('('))
         {
             return null;
         }
 
-        var target = Normalise(type[..indirection]);
+        var pointee = type[..indirection];
+
+        Span<char> buffer = pointee.Length <= MaximumStackType ? stackalloc char[pointee.Length] : new char[pointee.Length];
+
+        var target = Normalise(pointee, buffer);
 
         foreach (var keyword in ClassKeywords)
         {
@@ -162,12 +169,12 @@ public static class ArgumentValue
             }
         }
 
-        return target.Length == 0
+        return target.IsEmpty
                || target.StartsWith(FunctionSignature.EnumPrefix, StringComparison.Ordinal)
-               || ReadableTypes.Contains(target)
-               || BufferTypes.Contains(target)
+               || ReadableTypeLookup.Contains(target)
+               || BufferTypeLookup.Contains(target)
             ? null
-            : target;
+            : target.ToString();
     }
 
     public static bool IsReadable(ReadOnlySpan<char> type)

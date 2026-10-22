@@ -229,7 +229,7 @@ public class TraceRowReturnMarksTests
         Module = "sqlmin",
         Rva = 0x10,
         Address = Helper,
-        Instance = instance,
+        InstanceAddress = instance,
         Resolved = new ResolvedCallstackFrame
         {
             ClassName = "CQScanNew",

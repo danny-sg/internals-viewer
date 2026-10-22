@@ -85,7 +85,7 @@ public sealed partial class ValueReferencesViewModel(ulong value,
 
     public Task<IReadOnlyList<ValueCallRow>> CallRowsAsync(TraceValueUse use, IReadOnlyList<TraceValueCall> valueCalls, int from)
         => ReadAsync(token => Lookup.CallRowsAsync(use, valueCalls, from, CallPage, token),
-                     exception => logger.LogWarning(exception, "Reading the calls of 0x{Function:X} failed", use.Address));
+                     exception => logger.LogWarning(exception, "Reading the calls of 0x{Function:X} failed", use.FunctionAddress));
 
     public void Dispose()
     {

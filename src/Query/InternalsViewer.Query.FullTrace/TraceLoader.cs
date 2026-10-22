@@ -110,10 +110,14 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                               result.MemoryMap.Count);
 
         Logger.LogInformation("{Sites} allocation(s) labelled with their source line, {Vtables} named by their vtable",
-                              result.MemoryMap.GetEntries().Count(e => e is { Operation: MemoryMapOperation.Allocated, Site: not null }),
+                              result.MemoryMap.GetSiteCount(),
                               replay.MemoryMap.Count(e => e is { Operation: MemoryMapOperation.Allocated, ClassName: not null }));
 
         Logger.LogInformation("{Captures} custom hook capture(s) read from {Hooks} hook(s)", result.CustomHooks.Count, customHooks.Count);
+
+        result.CallStore.ReleaseColumns();
+
+        LogComponentSizes(result);
 
         return result;
     }
@@ -226,13 +230,14 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         var (callStack, replayed) = CallTreeBuilder.Build(replay.Nodes, replay.Modules);
 
         Logger.LogInformation("{Calls} call(s) on {Paths} call path(s) replayed, {Logged} call(s) of {Functions} function(s) logged in "
-                              + "{Size} MB, {Locators} page and row id(s) read",
+                              + "{Size} MB, {Locators} page and row id(s) read, {UniqueLocators} unique",
                               replay.Nodes.Sum(n => (long)n.Calls),
                               replay.Nodes.Length,
                               replay.CallStore.Calls,
                               replay.CallStore.FunctionCount,
                               replay.CallStore.Size / (1024 * 1024),
-                              replay.CallStore.LocatorCount);
+                              replay.CallStore.LocatorCount,
+                              replay.CallStore.UniqueLocatorCount);
 
         var unknownSymbols = await CallstackProcessor.Process(callStack, symbolsPath, messages, cancellationToken);
 
@@ -249,6 +254,27 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         return (callStack, mapped);
     }
 
+    private void LogComponentSizes(TraceResult result)
+    {
+        long measured = 0;
+
+        foreach (var (component, items, bytes) in result.GetComponentSizes())
+        {
+            if (bytes is { } size)
+            {
+                measured += size;
+
+                Logger.LogInformation("{Component}: {Items:N0} in {Size:N1} MB", component, items, size / (1024d * 1024));
+            }
+            else
+            {
+                Logger.LogInformation("{Component}: {Items:N0}", component, items);
+            }
+        }
+
+        Logger.LogInformation("Measured components: {Size:N1} MB", measured / (1024d * 1024));
+    }
+
     private TraceTimeline BuildTimeline(ReplayResult replay, CallStackTree callStack, CallStackNode?[] mapped)
     {
         replay.CallStore.MapNodes(mapped);
@@ -259,7 +285,9 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         callStack.RemoveCallsUnder(Instrumentation.IsExcluded);
 
-        var timeline = replay.Timeline.WithoutCallsUnder(Instrumentation.IsExcluded);
+        replay.Timeline.RemoveCallsUnder(Instrumentation.IsExcluded);
+
+        var timeline = replay.Timeline;
 
         Logger.LogInformation("{Calls} call(s) after removing Extended Events and tracing, {Spans} call span(s) on {Threads} "
                               + "thread(s) in the trace timeline",
@@ -471,7 +499,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         {
             if (node?.Frame is not { } frame
                 || !allocators.TryGetValue(frame.Address, out var allocator)
-                || store.GetCallList(frame.Address, frame.Instance) is not { } calls
+                || store.GetCallList(frame.Address, frame.InstanceAddress) is not { } calls
                 || entry.CallIndex < 0
                 || entry.CallIndex >= calls.Count)
             {

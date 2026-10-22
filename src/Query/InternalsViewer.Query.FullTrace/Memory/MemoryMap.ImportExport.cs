@@ -19,9 +19,7 @@ public sealed partial class MemoryMap
     {
         writer.Write(-FormatVersion);
 
-        var entries = GetEntries().ToList();
-
-        var names = entries.SelectMany(e => new[] { e.ClassName, e.Site }).OfType<string>().Distinct(StringComparer.Ordinal).ToList();
+        var names = Labels.SelectMany(l => new[] { l.ClassName, l.Site }).OfType<string>().Distinct(StringComparer.Ordinal).ToList();
 
         var nameIndexes = names.Select((name, index) => (name, index)).ToDictionary(n => n.name, n => n.index, StringComparer.Ordinal);
 
@@ -32,35 +30,40 @@ public sealed partial class MemoryMap
             writer.Write(name);
         }
 
-        writer.Write(entries.Count);
+        writer.Write(Count);
 
-        foreach (var entry in entries)
+        foreach (var (address, entries) in Entries)
         {
-            writer.Write(entry.Address);
+            foreach (var entry in entries)
+            {
+                var label = Labels[entry.Label];
 
-            writer.Write(entry.CallIndex);
+                writer.Write(address);
 
-            writer.Write(entry.Owner);
+                writer.Write(entry.CallIndex);
 
-            writer.Write(entry.FromPosition.Sequence);
+                writer.Write(entry.Owner);
 
-            writer.Write(entry.FromPosition.Steps);
+                writer.Write(entry.FromPosition.Sequence);
 
-            writer.Write(entry.ToPosition.Sequence);
+                writer.Write(entry.FromPosition.Steps);
 
-            writer.Write(entry.ToPosition.Steps);
+                writer.Write(entry.ToPosition.Sequence);
 
-            writer.Write(entry.CallNodeIndex);
+                writer.Write(entry.ToPosition.Steps);
 
-            writer.Write(entry.Thread);
+                writer.Write(entry.CallNodeIndex);
 
-            writer.Write((byte)entry.Operation);
+                writer.Write(entry.Thread);
 
-            writer.Write(entry.ClassName is { } className ? nameIndexes[className] : NoName);
+                writer.Write((byte)label.Operation);
 
-            writer.Write(entry.Bytes);
+                writer.Write(label.ClassName is { } className ? nameIndexes[className] : NoName);
 
-            writer.Write(entry.Site is { } site ? nameIndexes[site] : NoName);
+                writer.Write(entry.Bytes);
+
+                writer.Write(label.Site is { } site ? nameIndexes[site] : NoName);
+            }
         }
     }
 

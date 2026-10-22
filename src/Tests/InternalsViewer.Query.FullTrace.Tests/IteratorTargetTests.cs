@@ -77,6 +77,6 @@ public class IteratorTargetTests
     {
         Module = "sqlmin",
         Rva = rva,
-        Instance = instance
+        InstanceAddress = instance
     };
 }

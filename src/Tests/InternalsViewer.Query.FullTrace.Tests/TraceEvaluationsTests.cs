@@ -97,7 +97,7 @@ public class TraceEvaluationsTests
     [Fact]
     public void Expression_Service_Functions_Other_Than_The_Evaluations_Are_Not_Read()
     {
-        Assert.DoesNotContain(Build().All, e => e.Function == TupleCompare);
+        Assert.DoesNotContain(Build().All, e => e.FunctionAddress == TupleCompare);
     }
 
     [Fact]
@@ -228,7 +228,7 @@ public class TraceEvaluationsTests
         Module = "SqlTsEs",
         Rva = rva,
         Address = Helper,
-        Instance = instance,
+        InstanceAddress = instance,
         Resolved = new ResolvedCallstackFrame
         {
             ClassName = className,

@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
@@ -19,6 +20,10 @@ public sealed partial class MemoryHistoryStore(MemoryHistoryBlock[] blocks,
     public int WriteCount => Writes.Length;
 
     public int ChangeCount => Changes.Length;
+
+    internal long Bytes => Writes.Length * (long)Unsafe.SizeOf<MemoryHistoryWrite>()
+                           + Changes.Length * (long)Unsafe.SizeOf<MemoryHistoryChange>()
+                           + Data.Length;
 
     private MemoryHistoryBlock[] BlockArray { get; } = blocks;
 

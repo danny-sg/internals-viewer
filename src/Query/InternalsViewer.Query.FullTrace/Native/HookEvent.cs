@@ -8,9 +8,9 @@ internal unsafe struct HookEvent
 {
     public const int ArgumentCount = 4;
 
-    public ulong Function;
+    public ulong FunctionAddress;
 
-    public ulong Instance;
+    public ulong InstanceAddress;
 
     public ulong Id;
 

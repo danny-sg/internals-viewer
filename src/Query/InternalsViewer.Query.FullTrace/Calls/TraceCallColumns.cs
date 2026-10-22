@@ -25,6 +25,8 @@ internal readonly struct TraceCallColumns(ulong[] values, int calls)
 
     public const ulong ReturnedFlag = 1ul << 32;
 
+    private const ulong UnknownSequence = ulong.MaxValue;
+
     public ulong[] Values => values;
 
     public int Calls => calls;
@@ -75,6 +77,46 @@ internal readonly struct TraceCallColumns(ulong[] values, int calls)
             Set(ReturnValueIndex, callIndex, returnValue);
 
             Set(FlagsIndex, callIndex, Get(FlagsIndex, callIndex) | ReturnedFlag);
+        }
+    }
+
+    public static void Encode(Span<ulong> values, int calls)
+    {
+        var fromSequences = values.Slice(FromSequenceIndex * calls, calls);
+
+        var toSequences = values.Slice(ToSequenceIndex * calls, calls);
+
+        for (var callIndex = calls - 1; callIndex >= 0; callIndex--)
+        {
+            if (toSequences[callIndex] != UnknownSequence)
+            {
+                toSequences[callIndex] -= fromSequences[callIndex];
+            }
+
+            if (callIndex > 0)
+            {
+                fromSequences[callIndex] -= fromSequences[callIndex - 1];
+            }
+        }
+    }
+
+    public static void Decode(Span<ulong> values, int calls)
+    {
+        var fromSequences = values.Slice(FromSequenceIndex * calls, calls);
+
+        var toSequences = values.Slice(ToSequenceIndex * calls, calls);
+
+        for (var callIndex = 0; callIndex < calls; callIndex++)
+        {
+            if (callIndex > 0)
+            {
+                fromSequences[callIndex] += fromSequences[callIndex - 1];
+            }
+
+            if (toSequences[callIndex] != UnknownSequence)
+            {
+                toSequences[callIndex] += fromSequences[callIndex];
+            }
         }
     }
 

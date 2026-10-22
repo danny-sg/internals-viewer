@@ -26,7 +26,7 @@ public sealed record CallstackFrame
     /// </summary>
     public uint Rva { get; set; }
 
-    public ulong Instance { get; set; }
+    public ulong InstanceAddress { get; set; }
 
     public string? Signature { get; set; }
 

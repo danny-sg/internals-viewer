@@ -121,12 +121,12 @@ namespace
     struct NodeKey
     {
         int32_t  Parent;
-        uint64_t Address;
-        uint64_t Instance;
+        uint64_t FunctionAddress;
+        uint64_t InstanceAddress;
 
         bool operator==(NodeKey const& other) const noexcept
         {
-            return Parent == other.Parent && Address == other.Address && Instance == other.Instance;
+            return Parent == other.Parent && FunctionAddress == other.FunctionAddress && InstanceAddress == other.InstanceAddress;
         }
     };
 
@@ -134,7 +134,7 @@ namespace
     {
         size_t operator()(NodeKey const& key) const noexcept
         {
-            auto const mixed = (key.Address * 0x9E3779B97F4A7C15ull) ^ (key.Instance * 0xC2B2AE3D27D4EB4Full);
+            auto const mixed = (key.FunctionAddress * 0x9E3779B97F4A7C15ull) ^ (key.InstanceAddress * 0xC2B2AE3D27D4EB4Full);
 
             return std::hash<uint64_t>{}(mixed ^ static_cast<uint32_t>(key.Parent));
         }
@@ -142,12 +142,12 @@ namespace
 
     struct FunctionKey
     {
-        uint64_t Address;
-        uint64_t Instance;
+        uint64_t FunctionAddress;
+        uint64_t InstanceAddress;
 
         bool operator==(FunctionKey const& other) const noexcept
         {
-            return Address == other.Address && Instance == other.Instance;
+            return FunctionAddress == other.FunctionAddress && InstanceAddress == other.InstanceAddress;
         }
     };
 
@@ -155,14 +155,14 @@ namespace
     {
         size_t operator()(FunctionKey const& key) const noexcept
         {
-            return std::hash<uint64_t>{}((key.Address * 0x9E3779B97F4A7C15ull) ^ (key.Instance * 0xC2B2AE3D27D4EB4Full));
+            return std::hash<uint64_t>{}((key.FunctionAddress * 0x9E3779B97F4A7C15ull) ^ (key.InstanceAddress * 0xC2B2AE3D27D4EB4Full));
         }
     };
 
     struct LoggedFunction
     {
-        uint64_t              Address = 0;
-        uint64_t              Instance = 0;
+        uint64_t              FunctionAddress = 0;
+        uint64_t              InstanceAddress = 0;
         std::vector<uint64_t> Values;
         int64_t               InFlight = 0;
         uint32_t              Chunk = 0;
@@ -348,9 +348,11 @@ namespace
                     continue;
                 }
 
-                auto const instance = frame->Node >= 0 && static_cast<size_t>(frame->Node) < Nodes.size() ? Nodes[frame->Node].Instance : 0;
+                auto const instanceAddress = frame->Node >= 0 && static_cast<size_t>(frame->Node) < Nodes.size()
+                                                 ? Nodes[frame->Node].InstanceAddress
+                                                 : 0;
 
-                frames[index] = HookFrame{ frame->Id, frame->StackPointer, instance, frame->Node, 0 };
+                frames[index] = HookFrame{ frame->Id, frame->StackPointer, instanceAddress, frame->Node, 0 };
             }
 
             return index;
@@ -380,7 +382,7 @@ namespace
         {
             HookEvent hookEvent{};
 
-            hookEvent.Function = target;
+            hookEvent.FunctionAddress = target;
             hookEvent.Arguments[0] = registers.Rcx;
             hookEvent.Arguments[1] = registers.Rdx;
             hookEvent.Arguments[2] = registers.R8;
@@ -411,8 +413,8 @@ namespace
         {
             HookEvent hookEvent{};
 
-            hookEvent.Function = function.Address;
-            hookEvent.Instance = function.Instance;
+            hookEvent.FunctionAddress = function.FunctionAddress;
+            hookEvent.InstanceAddress = function.InstanceAddress;
             hookEvent.Id = id;
             hookEvent.Arguments[0] = registers.Rcx;
             hookEvent.Arguments[1] = registers.Rdx;
@@ -445,8 +447,8 @@ namespace
                 hookEvent.ReturnValue = context.Amd64Context.Rax;
             }
 
-            hookEvent.Function = frame.Function->Address;
-            hookEvent.Instance = frame.Function->Instance;
+            hookEvent.FunctionAddress = frame.Function->FunctionAddress;
+            hookEvent.InstanceAddress = frame.Function->InstanceAddress;
             hookEvent.Id = frame.Id;
             hookEvent.StackPointer = stackPointer;
             hookEvent.ReturnAddress = frame.ReturnAddress;
@@ -548,14 +550,14 @@ namespace
             WatchedStackCount++;
         }
 
-        int32_t Child(int32_t parent, uint64_t address, uint64_t instance)
+        int32_t Child(int32_t parent, uint64_t functionAddress, uint64_t instanceAddress)
         {
-            auto [entry, added] = Index.try_emplace(NodeKey{ parent, address, instance },
+            auto [entry, added] = Index.try_emplace(NodeKey{ parent, functionAddress, instanceAddress },
                                                     static_cast<int32_t>(Nodes.size()));
 
             if (added)
             {
-                Nodes.push_back(CallNode{ parent, 0, address, instance, 0 });
+                Nodes.push_back(CallNode{ parent, 0, functionAddress, instanceAddress, 0 });
             }
 
             return entry->second;
@@ -664,7 +666,7 @@ namespace
                        Position const&      position,
                        uint32_t             threadId,
                        uint64_t             target,
-                       uint64_t             instance,
+                       uint64_t             instanceAddress,
                        int32_t              node)
     {
         if (tree.LogCalls == nullptr)
@@ -672,10 +674,10 @@ namespace
             return { nullptr, -1, NoCall };
         }
 
-        auto& function = tree.Log[FunctionKey{ target, instance }];
+        auto& function = tree.Log[FunctionKey{ target, instanceAddress }];
 
-        function.Address = target;
-        function.Instance = instance;
+        function.FunctionAddress = target;
+        function.InstanceAddress = instanceAddress;
 
         auto const call = function.Values.size() / ValuesPerCall;
 
@@ -722,7 +724,7 @@ namespace
             }
         }
 
-        tree.LogCalls(function.Address, function.Instance, tree.Columns.data(), static_cast<int32_t>(calls));
+        tree.LogCalls(function.FunctionAddress, function.InstanceAddress, tree.Columns.data(), static_cast<int32_t>(calls));
 
         function.Values.clear();
         function.InFlight = 0;
@@ -778,8 +780,8 @@ namespace
         {
             if (tree.LogCallEnds != nullptr)
             {
-                tree.LogCallEnds(frame.Function->Address,
-                                 frame.Function->Instance,
+                tree.LogCallEnds(frame.Function->FunctionAddress,
+                                 frame.Function->InstanceAddress,
                                  frame.LoggedCall,
                                  static_cast<uint64_t>(clock.Last.Sequence),
                                  static_cast<uint64_t>(clock.Last.Steps),
@@ -926,9 +928,9 @@ namespace
 
             uint64_t const arguments[ArgumentRegisters] = { registers.Rcx, registers.Rdx, registers.R8, registers.R9 };
 
-            auto const instance = method == tree.InstanceMethods.end() ? 0 : arguments[method->second % ArgumentRegisters];
+            auto const instanceAddress = method == tree.InstanceMethods.end() ? 0 : arguments[method->second % ArgumentRegisters];
 
-            auto const node = tree.Child(parent, callee, instance);
+            auto const node = tree.Child(parent, callee, instanceAddress);
 
             tree.Nodes[node].Calls++;
 
@@ -939,7 +941,7 @@ namespace
                                         position,
                                         threadId,
                                         callee,
-                                        instance,
+                                        instanceAddress,
                                         node);
 
             auto const frameEvents = logged.Function != nullptr ? hooked.Events : 0;

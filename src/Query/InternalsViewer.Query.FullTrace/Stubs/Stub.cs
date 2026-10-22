@@ -3,7 +3,7 @@ using InternalsViewer.Query.FullTrace.Stubs.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Stubs;
 
-internal sealed record Stub(ulong Address, IReadOnlyList<StubOperation> Operations)
+internal sealed record Stub(ulong Address, StubOperation[] Operations)
 {
     public bool TryResolve(Span<ulong> registers, ITraceReplay replay, StubMemory memory, out ulong target)
     {

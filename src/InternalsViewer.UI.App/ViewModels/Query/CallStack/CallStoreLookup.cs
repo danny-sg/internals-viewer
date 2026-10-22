@@ -38,7 +38,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
     public IteratorTarget? GetIterator(ulong value) => iterators.GetValueOrDefault(value);
 
     public CallstackFrame? GetFrame(TraceValueUse use)
-        => use.First.Node?.Frame is { Resolved: not null } frame ? frame : Frames.Value.GetValueOrDefault(use.Address);
+        => use.First.Node?.Frame is { Resolved: not null } frame ? frame : Frames.Value.GetValueOrDefault(use.FunctionAddress);
 
     public ulong? GetHoBtId(ArgumentSlot slot, ulong value, TraceArgumentCall call)
     {
@@ -171,7 +171,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        var groups = ValueUseGroup.Build(uses, u => functionTypes.GetValueOrDefault(u.Address), GetFrame, value);
+        var groups = ValueUseGroup.Build(uses, u => functionTypes.GetValueOrDefault(u.FunctionAddress), GetFrame, value);
 
         var iterator = GetIterator(value);
 
@@ -187,7 +187,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
                                                                  int count,
                                                                  CancellationToken cancellationToken)
     {
-        if (Store.GetCallList(use.Address, use.Instance) is not { } calls)
+        if (Store.GetCallList(use.FunctionAddress, use.InstanceAddress) is not { } calls)
         {
             return [];
         }
@@ -196,7 +196,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
 
         var layout = frame is null ? null : await GetLayoutAsync(frame);
 
-        var function = FunctionName(frame, use.Address);
+        var function = FunctionName(frame, use.FunctionAddress);
 
         var end = Math.Min(from + count, valueCalls.Count);
 
@@ -205,7 +205,8 @@ public sealed class CallStoreLookup(TraceCallStore store,
             cancellationToken);
     }
 
-    private TraceCallList? CallsOf(CallStackNode node) => node.Frame is { } frame ? Store.GetCallList(frame.Address, frame.Instance) : null;
+    private TraceCallList? CallsOf(CallStackNode node)
+        => node.Frame is { } frame ? Store.GetCallList(frame.Address, frame.InstanceAddress) : null;
 
     private static string FunctionName(CallstackFrame? frame, ulong address)
     {
@@ -285,14 +286,14 @@ public sealed class CallStoreLookup(TraceCallStore store,
 
         foreach (var use in uses)
         {
-            if (functionTypes.ContainsKey(use.Address) || GetFrame(use) is not { } frame)
+            if (functionTypes.ContainsKey(use.FunctionAddress) || GetFrame(use) is not { } frame)
             {
                 continue;
             }
 
             var decoratedName = await symbols.ResolveFrameDecoratedNameAsync(frame);
 
-            functionTypes[use.Address] = decoratedName is null ? null : FunctionSignature.GetFunctionType(decoratedName);
+            functionTypes[use.FunctionAddress] = decoratedName is null ? null : FunctionSignature.GetFunctionType(decoratedName);
         }
 
         return functionTypes;
@@ -313,7 +314,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
         var firstUse = groups.SelectMany(g => g.Rows).Select(r => r.Use).MinBy(u => u.First.Position);
 
         if (firstUse is not null
-            && Store.GetCallList(firstUse.Address, firstUse.Instance) is { } calls
+            && Store.GetCallList(firstUse.FunctionAddress, firstUse.InstanceAddress) is { } calls
             && firstUse.First.CallIndex < calls.Count)
         {
             var call = calls[firstUse.First.CallIndex];

@@ -3,15 +3,17 @@ using InternalsViewer.Query.Events.Operators;
 
 namespace InternalsViewer.Query.FullTrace.Timeline.Ticks;
 
-public sealed record TraceTick(byte Value, uint Thread, CallStackNode Node, int CallIndex, TraceSpan Span) : ITraceMark
+public sealed record TraceTick(byte Value, uint Thread, CallStackNode Node, TraceTimelineRow Row, int RowIndex) : ITraceMark
 {
     public ExecutionOperatorEvent? Operator { get; init; }
 
     public ExecutionOperatorEvent? Caller { get; init; }
 
-    public ulong Function { get; init; }
+    public TraceSpan Span => Row.GetSpan(RowIndex);
 
-    public ulong Instance { get; init; }
+    public int CallIndex => Row.GetCallIndex(RowIndex);
 
-    public int Index { get; init; }
+    public ulong FunctionAddress => Node.Frame?.Address ?? 0;
+
+    public ulong InstanceAddress => Node.Frame?.InstanceAddress ?? 0;
 }

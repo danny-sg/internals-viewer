@@ -216,13 +216,13 @@ public class TraceExportSectionTests
 
         builder.Add([Span(0, 0, 100), Span(1, 20, 25), Span(1, 30, 35), Span(2, 40, 41)]);
 
-        var replayed = builder.Build([new(-1, 0, 0x10, 0, 1), new(0, 0, 0x30, Scan, 2), new(0, 0, 0x50, 0, 1)]);
+        var timeline = builder.Build([new(-1, 0, 0x10, 0, 1), new(0, 0, 0x30, Scan, 2), new(0, 0, 0x50, 0, 1)]);
 
-        replayed.MapNodes([caller, getRow, publish]);
+        timeline.MapNodes([caller, getRow, publish]);
 
         tree.RemoveCallsUnder(node => node.IsExtendedEvents);
 
-        var timeline = replayed.WithoutCallsUnder(node => node.IsExtendedEvents);
+        timeline.RemoveCallsUnder(node => node.IsExtendedEvents);
 
         var memory = MemoryIndex.Build([new MemoryAllocation(7, At(22), At(23), 100, 0xA)], [new MemoryFree(7, At(31), At(32), 0xA)]);
 
@@ -249,7 +249,7 @@ public class TraceExportSectionTests
         Age = 2,
         Rva = (uint)rva,
         Address = 0x7FF0_0000_0000 + rva,
-        Instance = instance,
+        InstanceAddress = instance,
         Resolved = ResolvedCallstackFrameParser.Parse("sqlmin", symbol)
     };
 

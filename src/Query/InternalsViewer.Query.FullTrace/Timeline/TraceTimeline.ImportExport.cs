@@ -5,7 +5,7 @@ namespace InternalsViewer.Query.FullTrace.Timeline;
 
 public sealed partial class TraceTimeline
 {
-    private const int FormatVersion = 1;
+    private const int FormatVersion = 3;
 
     private TraceTimeline(IReadOnlyList<TraceTimelineThread> threads,
                           int[] parents,
@@ -50,14 +50,16 @@ public sealed partial class TraceTimeline
 
             var calls = reader.ReadInt64();
 
+            var clock = TraceThreadClock.Read(reader);
+
             var rows = new TraceTimelineRow[reader.ReadInt32()];
 
             for (var depth = 0; depth < rows.Length; depth++)
             {
-                rows[depth] = TraceTimelineRow.Read(reader, scale);
+                rows[depth] = TraceTimelineRow.Read(reader, scale, clock);
             }
 
-            threads[index] = new TraceTimelineThread(threadId, rows, calls);
+            threads[index] = new TraceTimelineThread(threadId, clock, rows, calls);
         }
 
         return new TraceTimeline(threads, parents, nodes, scale, start, end);
@@ -84,6 +86,8 @@ public sealed partial class TraceTimeline
             writer.Write(thread.ThreadId);
 
             writer.Write(thread.Calls);
+
+            thread.Clock.Write(writer);
 
             writer.Write(thread.Rows.Count);
 

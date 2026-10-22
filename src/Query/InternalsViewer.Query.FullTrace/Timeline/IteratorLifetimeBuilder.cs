@@ -37,7 +37,7 @@ internal static class IteratorLifetimeBuilder
 
         foreach (var span in timeline.GetSpanLocations())
         {
-            if (span.Node.Frame is not { Instance: not 0 } frame || !owners.TryGetValue(frame.Instance, out var owner))
+            if (span.Node.Frame is not { InstanceAddress: not 0 } frame || !owners.TryGetValue(frame.InstanceAddress, out var owner))
             {
                 continue;
             }
@@ -56,7 +56,7 @@ internal static class IteratorLifetimeBuilder
                 calls[owner] = operatorCalls;
             }
 
-            operatorCalls.Instances.Add(frame.Instance);
+            operatorCalls.Instances.Add(frame.InstanceAddress);
 
             operatorCalls.Calls.Add(span.Span);
         }

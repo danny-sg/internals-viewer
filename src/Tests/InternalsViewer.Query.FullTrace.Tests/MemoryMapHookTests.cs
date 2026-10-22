@@ -242,7 +242,7 @@ public class MemoryMapHookTests
     private static TraceHookCall Call(ulong function, ulong id, ulong[]? arguments = null, ulong returnValue = 0)
         => new()
         {
-            Function = function,
+            FunctionAddress = function,
             Id = id,
             Position = At(id),
             Thread = Thread,

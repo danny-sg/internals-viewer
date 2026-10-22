@@ -62,6 +62,24 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
     private Dictionary<TraceTimeline, Dictionary<CallStackNode, int[]>> ActivityByWindow { get; } =
         new(ReferenceEqualityComparer.Instance);
 
+    internal IEnumerable<(string Component, long Items, long? Bytes)> GetComponentSizes()
+    {
+        yield return ("Timeline Spans", Timeline.SpanCount, Timeline.Bytes);
+        yield return ("Call Log Calls", CallStore.Calls, CallStore.Size);
+        yield return ("Locator Entries", CallStore.LocatorCount, CallStore.LocatorTableBytes);
+        yield return ("Unique Locators", CallStore.UniqueLocatorCount, CallStore.UniqueLocatorBytes);
+        yield return ("Memory Map Entries", MemoryMap.Count, MemoryMap.Bytes);
+        yield return ("Memory Allocations", Memory.AllocationCount, Memory.Bytes);
+        yield return ("Memory History Writes", MemoryHistory.WriteCount, MemoryHistory.Bytes);
+        yield return ("Call Tree Nodes", CallStack.Nodes().LongCount(), null);
+        yield return ("Operator Lifetimes", Lifetimes.Count, null);
+        yield return ("Read Ticks", Reads.Count, null);
+        yield return ("Evaluation Ticks", Evaluations.Count, null);
+        yield return ("Row Return Marks", RowReturnMarks.Count, null);
+        yield return ("HoBt Accesses", HoBtAccess.Count, null);
+        yield return ("Custom Hook Captures", CustomHooks.Count, null);
+    }
+
     public void SetActivityWindow(TraceTimeline window)
     {
         if (ReferenceEquals(ActivityWindow, window))

@@ -74,7 +74,9 @@ internal static class BatchToRowOperators
 
         for (var callNodeIndex = 0; callNodeIndex < timeline.NodeCount; callNodeIndex++)
         {
-            if (timeline.NodeOf(callNodeIndex) is { Frame.Instance: var instance } callNode && helpers.Contains(instance) && seen.Add(callNode))
+            if (timeline.NodeOf(callNodeIndex) is { Frame.InstanceAddress: var instance } callNode
+                && helpers.Contains(instance)
+                && seen.Add(callNode))
             {
                 pending.Enqueue(callNode);
             }
@@ -84,7 +86,7 @@ internal static class BatchToRowOperators
         {
             foreach (var child in callNode.ChildNodes)
             {
-                if (child.Frame is { Instance: not 0 } frame && owners.TryGetValue(frame.Instance, out var owner))
+                if (child.Frame is { InstanceAddress: not 0 } frame && owners.TryGetValue(frame.InstanceAddress, out var owner))
                 {
                     return owner;
                 }
