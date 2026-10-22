@@ -27,7 +27,7 @@ public sealed record ArgumentLayout(IReadOnlyList<ArgumentSlot> Slots, string? R
 
     public static IReadOnlyList<string> Registers { get; } = [ThisRegisterName, "RDX", "R8", "R9"];
 
-    public static ArgumentLayout LayoutOf(FunctionSignature signature)
+    public static ArgumentLayout GetLayout(FunctionSignature signature)
     {
         var slots = new List<ArgumentSlot>();
 

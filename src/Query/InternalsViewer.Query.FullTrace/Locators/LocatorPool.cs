@@ -8,7 +8,7 @@ internal sealed class LocatorPool
 {
     private Dictionary<Locator, int> Indexes { get; } = [];
 
-    private ChunkedList<Locator> Locators { get; } = new();
+    private ChunkedList<Locator> Locators { get; } = [];
 
     public int Count => Locators.Count;
 

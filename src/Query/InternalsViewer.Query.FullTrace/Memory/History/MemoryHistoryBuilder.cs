@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Calls;
+using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
@@ -155,11 +156,11 @@ internal static class MemoryHistoryBuilder
         return positions;
     }
 
-    public static MemoryHistoryStore Build(IReadOnlyList<MemoryHistoryAllocation> allocations,
-                                           IReadOnlyList<ulong> owners,
-                                           IReadOnlyDictionary<ulong, TracePosition> iterators,
-                                           WatchResult watched,
-                                           TraceTimeline? timeline)
+    public static (MemoryHistoryStore Store, MemoryHistoryHitCounts Counts) Build(IReadOnlyList<MemoryHistoryAllocation> allocations,
+                                                                                  IReadOnlyList<ulong> owners,
+                                                                                  IReadOnlyDictionary<ulong, TracePosition> iterators,
+                                                                                  WatchResult watched,
+                                                                                  TraceTimeline? timeline)
     {
         var blocks = new List<WatchedBlock>(allocations.Count);
 
@@ -192,18 +193,14 @@ internal static class MemoryHistoryBuilder
                                  && (block.IsClerkPage || stacks.IsBufferPool(stacks.GetCallNodeIndex(block.Thread, block.FromPosition)));
         }
 
-        var writes = new ChunkedList<(int Block, MemoryHistoryWrite Write)>();
-
-        var changes = new ChunkedList<MemoryHistoryChange>();
-
-        var data = new List<byte>();
+        var recorder = new WriteRecorder(lookup, stacks);
 
         foreach (var (hit, bytes) in GetOrdered(watched))
         {
-            Apply(lookup, stacks, hit, bytes.AsSpan(hit.DataOffset, hit.Size), writes, changes, data);
+            recorder.Apply(hit, bytes.AsSpan(hit.DataOffset, hit.Size));
         }
 
-        return Compact(blocks, stacks, writes, changes, data);
+        return (Compact(blocks, stacks, recorder), recorder.Counts);
     }
 
     private static IEnumerable<(WatchedHit Hit, byte[] Data)> GetOrdered(WatchResult watched)
@@ -340,99 +337,6 @@ internal static class MemoryHistoryBuilder
         => !function.IsVirtual
            && (function.IsAllocation || function is { Operation: AllocationOperation.Free, PointerSlot: >= 0 });
 
-    private static void Apply(BlockIndex lookup,
-                              StackLookup stacks,
-                              WatchedHit hit,
-                              ReadOnlySpan<byte> bytes,
-                              ChunkedList<(int Block, MemoryHistoryWrite Write)> writes,
-                              ChunkedList<MemoryHistoryChange> changes,
-                              List<byte> data)
-    {
-        var address = hit.Address;
-
-        (int CallNodeIndex, int CallIndex, ulong Instructions)? writer = null;
-
-        while (bytes.Length > 0)
-        {
-            var pageEnd = (address & ~(PageSize - 1)) + PageSize;
-
-            if (lookup.GetInnermost(address, hit.Position) is not { } found)
-            {
-                var skip = lookup.HasPage(address) ? 1 : (int)Math.Min((ulong)bytes.Length, pageEnd - address);
-
-                address += (ulong)skip;
-
-                bytes = bytes[skip..];
-
-                continue;
-            }
-
-            var block = lookup.Blocks[found];
-
-            var end = Math.Min(Math.Min(block.Address + block.Size, pageEnd), lookup.GetNextInner(found, address, hit.Position));
-
-            var length = (int)Math.Min((ulong)bytes.Length, end - address);
-
-            var first = changes.Count;
-
-            if (!block.IsBufferPool)
-            {
-                AddChanges(block, (int)(address - block.Address), bytes[..length], changes, data);
-            }
-
-            if (changes.Count > first)
-            {
-                var (callNodeIndex, callIndex, instructions) = writer ??= stacks.GetWriter(hit.Thread, hit.Position);
-
-                writes.Add((found, new MemoryHistoryWrite(hit.Position, instructions, callNodeIndex, callIndex, first, changes.Count - first)));
-            }
-
-            address += (ulong)length;
-
-            bytes = bytes[length..];
-        }
-    }
-
-    private static void AddChanges(WatchedBlock block,
-                                   int offset,
-                                   ReadOnlySpan<byte> bytes,
-                                   ChunkedList<MemoryHistoryChange> changes,
-                                   List<byte> data)
-    {
-        block.Image ??= new byte[block.Size];
-
-        block.Known ??= new bool[block.Size];
-
-        var position = 0;
-
-        while (position < bytes.Length)
-        {
-            if (GetChangeType(block, offset + position, bytes[position]) is not { } type)
-            {
-                position++;
-
-                continue;
-            }
-
-            var start = position;
-
-            while (position < bytes.Length && GetChangeType(block, offset + position, bytes[position]) == type)
-            {
-                position++;
-            }
-
-            var run = bytes[start..position];
-
-            run.CopyTo(block.Image.AsSpan(offset + start));
-
-            block.Known.AsSpan(offset + start, run.Length).Fill(true);
-
-            changes.Add(new MemoryHistoryChange(offset + start, data.Count, (ushort)run.Length, type));
-
-            data.AddRange(run);
-        }
-    }
-
     private static MemoryHistoryChangeType? GetChangeType(WatchedBlock block, int offset, byte value)
     {
         if (!block.Known![offset])
@@ -443,17 +347,17 @@ internal static class MemoryHistoryBuilder
         return block.Image![offset] != value ? MemoryHistoryChangeType.Changed : null;
     }
 
-    private static MemoryHistoryStore Compact(List<WatchedBlock> blocks,
-                                              StackLookup stacks,
-                                              ChunkedList<(int Block, MemoryHistoryWrite Write)> writes,
-                                              ChunkedList<MemoryHistoryChange> changes,
-                                              List<byte> data)
+    private static MemoryHistoryStore Compact(List<WatchedBlock> blocks, StackLookup stacks, WriteRecorder recorder)
     {
+        var writes = recorder.Writes;
+
+        var writeBlocks = recorder.WriteBlocks;
+
         var written = new int[blocks.Count];
 
-        for (var index = 0; index < writes.Count; index++)
+        for (var index = 0; index < writeBlocks.Count; index++)
         {
-            written[writes[index].Block]++;
+            written[writeBlocks[index].Block]++;
         }
 
         var next = new int[blocks.Count];
@@ -494,13 +398,24 @@ internal static class MemoryHistoryBuilder
 
         var grouped = new MemoryHistoryWrite[writes.Count];
 
+        var highs = recorder.HasHighInstructions ? new uint[writes.Count] : null;
+
         var iterators = new Dictionary<int, ulong>();
 
         for (var index = 0; index < writes.Count; index++)
         {
-            var (block, write) = writes[index];
+            var (block, high) = writeBlocks[index];
 
-            grouped[next[block]++] = write;
+            var target = next[block]++;
+
+            var write = writes[index];
+
+            grouped[target] = write;
+
+            if (highs is not null)
+            {
+                highs[target] = high;
+            }
 
             if (write.CallNodeIndex >= 0 && stacks.GetIterator(write.CallNodeIndex) is not 0 and var iterator)
             {
@@ -508,7 +423,11 @@ internal static class MemoryHistoryBuilder
             }
         }
 
-        return new MemoryHistoryStore([.. kept], grouped, changes.ToArray(), [.. data], iterators);
+        return new MemoryHistoryStore([.. kept],
+                                      grouped,
+                                      highs is null ? HighWordRuns.Empty : HighWordRuns.Build(highs),
+                                      [.. recorder.Data],
+                                      iterators);
     }
 
     private sealed class StackLookup(TraceTimeline? timeline)
@@ -825,6 +744,129 @@ internal static class MemoryHistoryBuilder
 
                 list.Add(index);
             }
+        }
+    }
+
+    private sealed class WriteRecorder(BlockIndex lookup, StackLookup stacks)
+    {
+        public ChunkedList<MemoryHistoryWrite> Writes { get; } = new();
+
+        public ChunkedList<(int Block, uint HighInstructions)> WriteBlocks { get; } = new();
+
+        public List<byte> Data { get; } = [];
+
+        public MemoryHistoryHitCounts Counts { get; } = new();
+
+        public bool HasHighInstructions { get; private set; }
+
+        private (int CallNodeIndex, int CallIndex, ulong Instructions)? Writer { get; set; }
+
+        public void Apply(WatchedHit hit, ReadOnlySpan<byte> bytes)
+        {
+            var address = hit.Address;
+
+            var first = Writes.Count;
+
+            var isInBlock = false;
+
+            var isBufferPool = false;
+
+            Writer = null;
+
+            while (bytes.Length > 0)
+            {
+                var pageEnd = (address & ~(PageSize - 1)) + PageSize;
+
+                if (lookup.GetInnermost(address, hit.Position) is not { } found)
+                {
+                    var skip = lookup.HasPage(address) ? 1 : (int)Math.Min((ulong)bytes.Length, pageEnd - address);
+
+                    address += (ulong)skip;
+
+                    bytes = bytes[skip..];
+
+                    continue;
+                }
+
+                var block = lookup.Blocks[found];
+
+                var end = Math.Min(Math.Min(block.Address + block.Size, pageEnd), lookup.GetNextInner(found, address, hit.Position));
+
+                var length = (int)Math.Min((ulong)bytes.Length, end - address);
+
+                isInBlock = true;
+
+                isBufferPool |= block.IsBufferPool;
+
+                if (!block.IsBufferPool)
+                {
+                    AddChanges(hit, found, (int)(address - block.Address), bytes[..length]);
+                }
+
+                address += (ulong)length;
+
+                bytes = bytes[length..];
+            }
+
+            Counts.Add(Writes.Count > first, isBufferPool, isInBlock);
+        }
+
+        private void AddChanges(WatchedHit hit, int found, int offset, ReadOnlySpan<byte> bytes)
+        {
+            var block = lookup.Blocks[found];
+
+            block.Image ??= new byte[block.Size];
+
+            block.Known ??= new bool[block.Size];
+
+            var position = 0;
+
+            while (position < bytes.Length)
+            {
+                if (GetChangeType(block, offset + position, bytes[position]) is not { } type)
+                {
+                    position++;
+
+                    continue;
+                }
+
+                var start = position;
+
+                while (position < bytes.Length && GetChangeType(block, offset + position, bytes[position]) == type)
+                {
+                    position++;
+                }
+
+                var run = bytes[start..position];
+
+                run.CopyTo(block.Image.AsSpan(offset + start));
+
+                block.Known.AsSpan(offset + start, run.Length).Fill(true);
+
+                Add(hit, found, offset + start, run, type);
+            }
+        }
+
+        private void Add(WatchedHit hit, int block, int offset, ReadOnlySpan<byte> run, MemoryHistoryChangeType type)
+        {
+            var (callNodeIndex, callIndex, instructions) = Writer ??= stacks.GetWriter(hit.Thread, hit.Position);
+
+            var high = (uint)(instructions >> 32);
+
+            HasHighInstructions |= high != 0;
+
+            Writes.Add(new MemoryHistoryWrite(hit.Position,
+                                              (uint)instructions,
+                                              callNodeIndex,
+                                              callIndex,
+                                              offset,
+                                              Data.Count,
+                                              (ushort)run.Length,
+                                              type));
+
+            WriteBlocks.Add((block, high));
+
+            Data.AddRange(run);
         }
     }
 }

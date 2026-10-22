@@ -468,13 +468,13 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
                     continue;
                 }
 
-                var after = GetLowerBound(lane.Values, value, 0);
+                var after = GetLowerBound(structure, lane, value, 0);
 
                 for (var index = Math.Max(after - 1, 0); index <= after && index < lane.Writes.Length; index++)
                 {
                     var write = lane.Writes[index];
 
-                    var dx = Math.Abs((lane.Values[index] - value) * scale);
+                    var dx = Math.Abs((GetValue(structure, lane, index) - value) * scale);
 
                     if (dx > HitWidth)
                     {
@@ -541,13 +541,11 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
         var row = (y - (int)MathF.Floor(key.Top)) * columns;
 
-        var values = lane.Values;
+        var index = GetLowerBound(structure, lane, start - size / scale, 0);
 
-        var index = GetLowerBound(values, start - size / scale, 0);
-
-        while (index < values.Length)
+        while (index < lane.Writes.Length)
         {
-            var value = values[index];
+            var value = GetValue(structure, lane, index);
 
             if (value > end)
             {
@@ -566,7 +564,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
                 marks.Add((column * size, y, writes[lane.Writes[index]].CallNodeIndex));
             }
 
-            index = GetLowerBound(values, start + (column + 1) * size / scale, index + 1);
+            index = GetLowerBound(structure, lane, start + (column + 1) * size / scale, index + 1);
         }
     }
 
@@ -587,15 +585,17 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
         return true;
     }
 
-    private static int GetLowerBound(double[] values, double value, int from)
+    private static int GetLowerBound(Structure structure, Lane lane, double value, int from)
     {
+        var count = lane.Writes.Length;
+
         var low = from;
 
         var bound = from;
 
         var step = 1;
 
-        while (bound < values.Length && values[bound] < value)
+        while (bound < count && GetValue(structure, lane, bound) < value)
         {
             low = bound + 1;
 
@@ -604,13 +604,13 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
             step <<= 1;
         }
 
-        var high = Math.Min(bound, values.Length);
+        var high = Math.Min(bound, count);
 
         while (low < high)
         {
             var middle = (low + high) / 2;
 
-            if (values[middle] < value)
+            if (GetValue(structure, lane, middle) < value)
             {
                 low = middle + 1;
             }
@@ -623,18 +623,24 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
         return low;
     }
 
-    private static int GetCount(Lane lane, double from, double to)
-    {
-        var first = GetLowerBound(lane.Values, from, 0);
+    private static double GetValue(Structure structure, Lane lane, int index)
+        => GetValue(structure.Blocks[lane.Block].Writes, lane.Writes[index], structure.TraceScale, structure.Axis);
 
-        return GetLowerBound(lane.Values, Math.BitIncrement(to), first) - first;
+    private static double GetValue(TraceMemoryWrites writes, int write, TraceScale traceScale, TraceTimelineAxis axis)
+        => traceScale.GetValue(writes.GetPoint(write), axis);
+
+    private static int GetCount(Structure structure, Lane lane, double from, double to)
+    {
+        var first = GetLowerBound(structure, lane, from, 0);
+
+        return GetLowerBound(structure, lane, Math.BitIncrement(to), first) - first;
     }
 
-    private static bool HasWriteBetween(Lane lane, double from, double to)
+    private static bool HasWriteBetween(Structure structure, Lane lane, double from, double to)
     {
-        var index = GetLowerBound(lane.Values, from, 0);
+        var index = GetLowerBound(structure, lane, from, 0);
 
-        return index < lane.Values.Length && lane.Values[index] <= to;
+        return index < lane.Writes.Length && GetValue(structure, lane, index) <= to;
     }
 
     private static float GetX(TracePoint point, FrameKey key)
@@ -652,7 +658,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
         var blocks = key.Blocks;
 
-        var drafts = new List<(ulong Address, int Length, int[] Writes, double[] Values)>[blocks.Count];
+        var drafts = new List<(ulong Address, int Length, int[] Writes)>[blocks.Count];
 
         for (var block = 0; block < blocks.Count; block++)
         {
@@ -713,8 +719,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
                                                                   d.Address,
                                                                   d.Length,
                                                                   GetRunAt(runs, firstRun, runs.Count, d.Address),
-                                                                  d.Writes,
-                                                                  d.Values)));
+                                                                  d.Writes)));
             }
 
             index++;
@@ -741,9 +746,9 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
         return structure;
     }
 
-    private static List<(ulong Address, int Length, int[] Writes, double[] Values)> GetLaneDrafts(TraceMemoryBlock block,
-                                                                                                    TraceScale traceScale,
-                                                                                                    TraceTimelineAxis axis)
+    private static List<(ulong Address, int Length, int[] Writes)> GetLaneDrafts(TraceMemoryBlock block,
+                                                                                  TraceScale traceScale,
+                                                                                  TraceTimelineAxis axis)
     {
         var writes = block.Writes;
 
@@ -778,37 +783,39 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
             last.Add(index);
         }
 
-        var drafts = new List<(ulong Address, int Length, int[] Writes, double[] Values)>(byExtent.Count);
+        var drafts = new List<(ulong Address, int Length, int[] Writes)>(byExtent.Count);
 
         foreach (var ((offset, length), list) in byExtent.OrderBy(e => e.Key))
         {
             var lane = list.ToArray();
 
-            var values = new double[lane.Length];
+            SortByValue(writes, lane, traceScale, axis);
 
-            for (var index = 0; index < lane.Length; index++)
-            {
-                values[index] = traceScale.GetValue(writes[lane[index]].Point, axis);
-            }
-
-            SortByValue(values, lane);
-
-            drafts.Add((block.Address + (ulong)offset, length, lane, values));
+            drafts.Add((block.Address + (ulong)offset, length, lane));
         }
 
         return drafts;
     }
 
-    private static void SortByValue(double[] values, int[] lane)
+    private static void SortByValue(TraceMemoryWrites writes, int[] lane, TraceScale traceScale, TraceTimelineAxis axis)
     {
-        for (var index = 1; index < values.Length; index++)
+        for (var index = 1; index < lane.Length; index++)
         {
-            if (values[index] < values[index - 1])
+            if (GetValue(writes, lane[index], traceScale, axis) >= GetValue(writes, lane[index - 1], traceScale, axis))
             {
-                Array.Sort(values, lane);
-
-                return;
+                continue;
             }
+
+            var values = new double[lane.Length];
+
+            for (var at = 0; at < lane.Length; at++)
+            {
+                values[at] = GetValue(writes, lane[at], traceScale, axis);
+            }
+
+            Array.Sort(values, lane);
+
+            return;
         }
     }
 
@@ -826,7 +833,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
         {
             foreach (var lane in structure.RunLanes[run])
             {
-                if (HasWriteBetween(structure.Lanes[lane], start - margin, end + margin))
+                if (HasWriteBetween(structure, structure.Lanes[lane], start - margin, end + margin))
                 {
                     active.Add(run);
 
@@ -841,7 +848,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
         {
             foreach (var lane in structure.RunLanes[run])
             {
-                densest = Math.Max(densest, GetCount(structure.Lanes[lane], start, end));
+                densest = Math.Max(densest, GetCount(structure, structure.Lanes[lane], start, end));
             }
         }
 
@@ -1028,7 +1035,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
     private sealed record Run(ulong Start, ulong End, int Segment);
 
-    private sealed record Lane(int Block, ulong Address, int Length, int Run, int[] Writes, double[] Values);
+    private sealed record Lane(int Block, ulong Address, int Length, int Run, int[] Writes);
 
     private sealed record Structure(IReadOnlyList<TraceMemoryBlock> Blocks,
                                     TraceScale TraceScale,

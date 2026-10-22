@@ -20,7 +20,7 @@ public static partial class LocatorReadResolver
                             StringComparison.Ordinal);
 
     internal static IEnumerable<LocatorRead> GetReads(ulong function, FunctionSignature signature)
-        => GetReads(function, signature, ArgumentLayout.LayoutOf(signature));
+        => GetReads(function, signature, ArgumentLayout.GetLayout(signature));
 
     internal static IEnumerable<LocatorRead> GetReads(ulong function, FunctionSignature signature, ArgumentLayout layout)
     {
@@ -58,7 +58,7 @@ public static partial class LocatorReadResolver
     }
 
     internal static IEnumerable<LocatorRead> GetStackReads(ulong function, FunctionSignature signature)
-        => GetStackReads(function, ArgumentLayout.LayoutOf(signature));
+        => GetStackReads(function, ArgumentLayout.GetLayout(signature));
 
     internal static IEnumerable<LocatorRead> GetStackReads(ulong function, ArgumentLayout layout)
         => layout.Slots

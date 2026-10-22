@@ -260,7 +260,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
             return null;
         }
 
-        var layout = KnownParameters.Apply(ArgumentLayout.LayoutOf(parsed), frame.Resolved?.ClassName, frame.Resolved?.MethodName);
+        var layout = KnownParameters.Apply(ArgumentLayout.GetLayout(parsed), frame.Resolved?.ClassName, frame.Resolved?.MethodName);
 
         return new ResolvedSignature(parsed, signature, layout);
     }

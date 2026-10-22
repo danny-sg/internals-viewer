@@ -76,7 +76,7 @@ public class HoBtAccessMapTests
     {
         var signature = new FunctionSignature(["enum ACCESSTYPE", "unsigned __int64", "XDES *"], FunctionType.Member, "void");
 
-        var layout = KnownParameters.Apply(ArgumentLayout.LayoutOf(signature), "HoBtAccess", "Init");
+        var layout = KnownParameters.Apply(ArgumentLayout.GetLayout(signature), "HoBtAccess", "Init");
 
         Assert.Equal(["this", string.Empty, "hobt_id", string.Empty], layout.Slots.Select(s => s.Name));
         Assert.Equal([false, false, true, false], layout.Slots.Select(s => s.IsHoBtId));
@@ -89,8 +89,8 @@ public class HoBtAccessMapTests
 
         var other = new FunctionSignature(["unsigned __int64"], FunctionType.Member, "void");
 
-        Assert.DoesNotContain(KnownParameters.Apply(ArgumentLayout.LayoutOf(packed), "HoBtAccess", "Init").Slots, s => s.IsHoBtId);
-        Assert.DoesNotContain(KnownParameters.Apply(ArgumentLayout.LayoutOf(other), "HoBtAccess", "GetDbId").Slots, s => s.IsHoBtId);
+        Assert.DoesNotContain(KnownParameters.Apply(ArgumentLayout.GetLayout(packed), "HoBtAccess", "Init").Slots, s => s.IsHoBtId);
+        Assert.DoesNotContain(KnownParameters.Apply(ArgumentLayout.GetLayout(other), "HoBtAccess", "GetDbId").Slots, s => s.IsHoBtId);
     }
 
     private sealed class Recording

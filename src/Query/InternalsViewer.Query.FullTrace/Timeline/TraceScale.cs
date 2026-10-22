@@ -34,20 +34,6 @@ public sealed class TraceScale(double stepsPerSequence)
     public int GetFirstAfter(ReadOnlySpan<TracePoint> points, TraceTimelineAxis axis, double value, int from = 0)
         => GetLowerBound(points, axis, value, from, strict: true);
 
-    public int GetFirstAtOrAfter(ReadOnlySpan<TracePosition> positions,
-                                 TraceThreadClock clock,
-                                 TraceTimelineAxis axis,
-                                 double value,
-                                 int from = 0)
-        => GetLowerBound(positions, clock, axis, value, from, strict: false);
-
-    public int GetFirstAfter(ReadOnlySpan<TracePosition> positions,
-                             TraceThreadClock clock,
-                             TraceTimelineAxis axis,
-                             double value,
-                             int from = 0)
-        => GetLowerBound(positions, clock, axis, value, from, strict: true);
-
     private int GetLowerBound(ReadOnlySpan<TracePoint> points, TraceTimelineAxis axis, double value, int from, bool strict)
     {
         var low = from;
@@ -59,36 +45,6 @@ public sealed class TraceScale(double stepsPerSequence)
             var middle = low + (high - low) / 2;
 
             var probe = GetValue(points[middle], axis);
-
-            if (strict ? probe <= value : probe < value)
-            {
-                low = middle + 1;
-            }
-            else
-            {
-                high = middle;
-            }
-        }
-
-        return low;
-    }
-
-    private int GetLowerBound(ReadOnlySpan<TracePosition> positions,
-                              TraceThreadClock clock,
-                              TraceTimelineAxis axis,
-                              double value,
-                              int from,
-                              bool strict)
-    {
-        var low = from;
-
-        var high = positions.Length;
-
-        while (low < high)
-        {
-            var middle = low + (high - low) / 2;
-
-            var probe = GetValue(positions[middle], clock, axis);
 
             if (strict ? probe <= value : probe < value)
             {

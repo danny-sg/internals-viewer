@@ -46,5 +46,5 @@ public class BindingArgumentsTests
     }
 
     private static ArgumentLayout Apply(params string[] parameters)
-        => KnownParameters.Apply(ArgumentLayout.LayoutOf(new FunctionSignature(parameters, FunctionType.Member, "long")), null, null);
+        => KnownParameters.Apply(ArgumentLayout.GetLayout(new FunctionSignature(parameters, FunctionType.Member, "long")), null, null);
 }

@@ -181,8 +181,10 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                                            steps,
                                            cancellationToken);
 
-            Logger.LogInformation("{Writes} write(s) to {Allocations} allocation(s) watched in {Ranges} range(s)",
+            Logger.LogInformation("{Writes} of {Received} watched write(s) were to {Allocations} allocation(s) while live, "
+                                  + "watched in {Ranges} range(s)",
                                   writes.HitCount,
+                                  writes.ReceivedHitCount,
                                   allocations.Length,
                                   writes.WatchedRanges);
 
@@ -365,11 +367,18 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         var owners = IteratorAllocations.GetOwners([.. allocations.Select(a => a.Block)], replay.CallStore, iterators, replay.PlanNodes);
 
-        var history = MemoryHistoryBuilder.Build(allocations,
-                                               owners,
-                                               MemoryHistoryBuilder.GetFirstPositions(replay.CallStore, iterators),
-                                               writes,
-                                               timeline);
+        var (history, counts) = MemoryHistoryBuilder.Build(allocations,
+                                                           owners,
+                                                           MemoryHistoryBuilder.GetFirstPositions(replay.CallStore, iterators),
+                                                           writes,
+                                                           timeline);
+
+        Logger.LogInformation("{Recorded} kept write(s) recorded a change, {Unchanged} left values unchanged, {BufferPool} were to "
+                              + "buffer pool memory, {Outside} were outside a live block",
+                              counts.Recorded,
+                              counts.Unchanged,
+                              counts.BufferPool,
+                              counts.Outside);
 
         Logger.LogInformation("{Writes} change(s) to {Blocks} of {Allocations} watched allocation(s), {Owned} owned by an iterator",
                               history.WriteCount,

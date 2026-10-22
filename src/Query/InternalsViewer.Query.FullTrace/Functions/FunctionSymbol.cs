@@ -25,7 +25,7 @@ internal readonly ref struct FunctionSymbol
         => Cache is { } cache ? cache.Get(Signature, DecoratedName) : FunctionSignature.Parse(Signature, DecoratedName);
 
     public ArgumentLayout? Layout
-        => Cache is { } cache ? cache.GetLayout(Signature, DecoratedName) : Parsed is { } parsed ? ArgumentLayout.LayoutOf(parsed) : null;
+        => Cache is { } cache ? cache.GetLayout(Signature, DecoratedName) : Parsed is { } parsed ? ArgumentLayout.GetLayout(parsed) : null;
 
     internal sealed class SignatureCache
     {
@@ -57,6 +57,6 @@ internal readonly ref struct FunctionSymbol
         }
 
         public ArgumentLayout? GetLayout(ReadOnlySpan<char> signature, ReadOnlySpan<char> decoratedName)
-            => Layout ??= Get(signature, decoratedName) is { } parsed ? ArgumentLayout.LayoutOf(parsed) : null;
+            => Layout ??= Get(signature, decoratedName) is { } parsed ? ArgumentLayout.GetLayout(parsed) : null;
     }
 }

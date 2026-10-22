@@ -1,10 +1,11 @@
+using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Memory.History;
 
 public sealed partial class MemoryHistoryStore
 {
-    private const int FormatVersion = 7;
+    private const int FormatVersion = 8;
 
     internal static bool IsSupported(BinaryReader reader) => reader.ReadInt32() == -FormatVersion;
 
@@ -45,19 +46,25 @@ public sealed partial class MemoryHistoryStore
 
         writer.Write(Writes.Length);
 
-        foreach (var write in Writes)
+        for (var index = 0; index < Writes.Length; index++)
         {
+            var write = Writes[index];
+
             WritePosition(writer, write.Position);
 
-            writer.Write(write.Instructions);
+            writer.Write(GetInstructions(index));
 
             writer.Write(write.CallNodeIndex);
 
             writer.Write(write.CallIndex);
 
-            writer.Write(write.FirstChange);
+            writer.Write(write.Offset);
 
-            writer.Write(write.ChangeCount);
+            writer.Write((byte)write.Type);
+
+            writer.Write((int)write.Length);
+
+            writer.Write(GetBytes(write));
         }
 
         writer.Write(Iterators.Count);
@@ -67,19 +74,6 @@ public sealed partial class MemoryHistoryStore
             writer.Write(callNodeIndex);
 
             writer.Write(iterator);
-        }
-
-        writer.Write(Changes.Length);
-
-        foreach (var change in Changes)
-        {
-            writer.Write(change.Offset);
-
-            writer.Write((byte)change.Type);
-
-            writer.Write((int)change.Length);
-
-            writer.Write(GetBytes(change));
         }
     }
 
@@ -111,14 +105,43 @@ public sealed partial class MemoryHistoryStore
 
         var writes = new MemoryHistoryWrite[reader.ReadInt32()];
 
+        uint[]? highs = null;
+
+        var data = new List<byte>();
+
         for (var index = 0; index < writes.Length; index++)
         {
-            writes[index] = new MemoryHistoryWrite(Position: ReadPosition(reader),
-                                                     Instructions: reader.ReadUInt64(),
-                                                     CallNodeIndex: reader.ReadInt32(),
-                                                     CallIndex: reader.ReadInt32(),
-                                                     FirstChange: reader.ReadInt32(),
-                                                     ChangeCount: reader.ReadInt32());
+            var position = ReadPosition(reader);
+
+            var instructions = reader.ReadUInt64();
+
+            var callNodeIndex = reader.ReadInt32();
+
+            var callIndex = reader.ReadInt32();
+
+            var offset = reader.ReadInt32();
+
+            var type = (MemoryHistoryChangeType)reader.ReadByte();
+
+            var bytes = reader.ReadBytes(reader.ReadInt32());
+
+            if (instructions > uint.MaxValue)
+            {
+                highs ??= new uint[writes.Length];
+
+                highs[index] = (uint)(instructions >> 32);
+            }
+
+            writes[index] = new MemoryHistoryWrite(position,
+                                                   (uint)instructions,
+                                                   callNodeIndex,
+                                                   callIndex,
+                                                   offset,
+                                                   data.Count,
+                                                   (ushort)bytes.Length,
+                                                   type);
+
+            data.AddRange(bytes);
         }
 
         var iterators = new Dictionary<int, ulong>();
@@ -128,24 +151,11 @@ public sealed partial class MemoryHistoryStore
             iterators[reader.ReadInt32()] = reader.ReadUInt64();
         }
 
-        var changes = new MemoryHistoryChange[reader.ReadInt32()];
-
-        var data = new List<byte>();
-
-        for (var index = 0; index < changes.Length; index++)
-        {
-            var offset = reader.ReadInt32();
-
-            var type = (MemoryHistoryChangeType)reader.ReadByte();
-
-            var bytes = reader.ReadBytes(reader.ReadInt32());
-
-            changes[index] = new MemoryHistoryChange(offset, data.Count, (ushort)bytes.Length, type);
-
-            data.AddRange(bytes);
-        }
-
-        return new MemoryHistoryStore(blocks, writes, changes, [.. data], iterators);
+        return new MemoryHistoryStore(blocks,
+                                      writes,
+                                      highs is null ? HighWordRuns.Empty : HighWordRuns.Build(highs),
+                                      [.. data],
+                                      iterators);
     }
 
     private static void WritePosition(BinaryWriter writer, TracePosition position)

@@ -30,10 +30,21 @@ public class MemoryHistoryBuilderTests
 
         var writes = store.GetWrites(0);
 
-        Assert.Equal([MemoryHistoryChangeType.Initialised, MemoryHistoryChangeType.Changed],
-                     writes.Select(m => store.GetChanges(m)[0].Type));
-        Assert.Equal(2, store.GetChanges(writes[1])[0].Offset);
-        Assert.Equal([5], store.GetBytes(store.GetChanges(writes[1])[0]).ToArray());
+        Assert.Equal([MemoryHistoryChangeType.Initialised, MemoryHistoryChangeType.Changed], writes.Select(m => m.Type));
+        Assert.Equal(2, writes[1].Offset);
+        Assert.Equal([5], store.GetBytes(writes[1]).ToArray());
+    }
+
+    [Fact]
+    public void A_Write_That_Changes_Two_Separate_Runs_Records_Each_At_Its_Position()
+    {
+        var store = Build([Block(Owned, 0x10, from: 1)], [Write(2, Owned, new byte[4]), Write(3, Owned, 1, 0, 1, 0)]);
+
+        Assert.Equal([(At(2), 0, 4, MemoryHistoryChangeType.Initialised),
+                      (At(3), 0, 1, MemoryHistoryChangeType.Changed),
+                      (At(3), 2, 1, MemoryHistoryChangeType.Changed)],
+                     store.GetWrites(0).Select(w => (w.Position, w.Offset, (int)w.Length, w.Type)));
+        Assert.Equal(new byte[] { 1, 0, 1, 0 }, store.GetImage(0, store.GetWriteCount(0, At(3)) - 1).Data[..4]);
     }
 
     [Fact]
@@ -51,7 +62,7 @@ public class MemoryHistoryBuilderTests
                           [Write(3, Page + 0x108, 1), Write(4, Page + 0x10, 2)]);
 
         Assert.Equal([(Page, 0x10), (Page + 0x100, 8)],
-                     store.Blocks.Select((b, index) => (b.Address, store.GetChanges(Assert.Single(store.GetWrites(index)))[0].Offset)));
+                     store.Blocks.Select((b, index) => (b.Address, Assert.Single(store.GetWrites(index)).Offset)));
     }
 
     [Fact]
@@ -60,8 +71,7 @@ public class MemoryHistoryBuilderTests
         var store = Build([Block(Owned, 8, from: 1), Block(Owned + 8, 8, from: 1)], [Write(2, Owned + 6, 1, 2, 3, 4)]);
 
         Assert.Equal([(6, 2), (0, 2)],
-                     store.Blocks.Select((_, index) => store.GetChanges(Assert.Single(store.GetWrites(index)))[0])
-                          .Select(c => (c.Offset, c.Length)));
+                     store.Blocks.Select((_, index) => Assert.Single(store.GetWrites(index))).Select(w => (w.Offset, (int)w.Length)));
     }
 
     [Fact]
@@ -312,6 +322,36 @@ public class MemoryHistoryBuilderTests
     }
 
     [Fact]
+    public void Instructions_Past_32_Bits_Are_Kept_And_Exported()
+    {
+        var start = 5ul << 32;
+
+        var builder = new TraceTimeline.Builder();
+
+        builder.Add([new CallSpan(0, 0, 100, 0, start, start + 100, 0, Thread, 0, 1)]);
+
+        var timeline = builder.Build([new(-1, 0, 0x10, 0, 1)]);
+
+        var built = Build([Block(Owned, 0x10, from: 1)], [Write(50, Owned, 1)], timeline: timeline);
+
+        using var stream = new MemoryStream();
+
+        using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
+        {
+            built.Write(writer);
+        }
+
+        stream.Position = 0;
+
+        using var reader = new BinaryReader(stream);
+
+        var store = MemoryHistoryStore.Read(reader);
+
+        Assert.Equal(start + 50, built.GetInstructions(0));
+        Assert.Equal(new TracePoint(At(50), start + 50), store.GetPoint(0));
+    }
+
+    [Fact]
     public void A_Pointer_Finds_The_Innermost_Block_Live_At_The_Position()
     {
         var store = Build([Block(Page, 0x2000, from: 1, to: 9), Block(Page + 0x100, 0x20, from: 2, to: 6)],
@@ -342,14 +382,14 @@ public class MemoryHistoryBuilderTests
                                        new WatchBatch([WatchedHit.From(Hit(3, Owned, 1), 0)], [1])],
                                       1);
 
-        var store = MemoryHistoryBuilder.Build([new MemoryHistoryAllocation(Block(Owned, 0x10, from: 1), false)],
-                                               [0],
-                                               new Dictionary<ulong, TracePosition>(),
-                                               watched,
-                                               null);
+        var (store, _) = MemoryHistoryBuilder.Build([new MemoryHistoryAllocation(Block(Owned, 0x10, from: 1), false)],
+                                                    [0],
+                                                    new Dictionary<ulong, TracePosition>(),
+                                                    watched,
+                                                    null);
 
         Assert.Equal([(At(3), MemoryHistoryChangeType.Initialised), (At(5), MemoryHistoryChangeType.Changed)],
-                     store.GetWrites(0).Select(w => (w.Position, store.GetChanges(w)[0].Type)));
+                     store.GetWrites(0).Select(w => (w.Position, w.Type)));
     }
 
     [Fact]
@@ -361,14 +401,34 @@ public class MemoryHistoryBuilderTests
                                        new WatchBatch([WatchedHit.From(other, 0)], [2])],
                                       1);
 
-        var store = MemoryHistoryBuilder.Build([new MemoryHistoryAllocation(Block(Owned, 0x10, from: 1), false)],
-                                               [0],
-                                               new Dictionary<ulong, TracePosition>(),
-                                               watched,
-                                               null);
+        var (store, _) = MemoryHistoryBuilder.Build([new MemoryHistoryAllocation(Block(Owned, 0x10, from: 1), false)],
+                                                    [0],
+                                                    new Dictionary<ulong, TracePosition>(),
+                                                    watched,
+                                                    null);
 
         Assert.Equal([At(2), At(4), At(6)], store.GetWrites(0).Select(w => w.Position));
         Assert.Equal(new byte[] { 3, 2 }, store.GetImage(0, 2).Data[..2]);
+    }
+
+    [Fact]
+    public void Each_Watched_Write_Is_Counted_By_What_Became_Of_It()
+    {
+        var watched = new WatchResult([new WatchBatch([WatchedHit.From(Hit(2, Owned, 1), 0),
+                                                       WatchedHit.From(Hit(3, Owned, 1), 1),
+                                                       WatchedHit.From(Hit(4, Page, 1), 2),
+                                                       WatchedHit.From(Hit(5, Owned + 0x500, 1), 3)],
+                                                      [1, 1, 1, 1])],
+                                      2);
+
+        var (_, counts) = MemoryHistoryBuilder.Build([new MemoryHistoryAllocation(Block(Owned, 0x10, from: 1), false),
+                                                      new MemoryHistoryAllocation(Block(Page, 0x2000, from: 1), true)],
+                                                     [0, 0],
+                                                     new Dictionary<ulong, TracePosition>(),
+                                                     watched,
+                                                     null);
+
+        Assert.Equal((1, 1, 1, 1), (counts.Recorded, counts.Unchanged, counts.BufferPool, counts.Outside));
     }
 
     [Fact]
@@ -463,6 +523,6 @@ public class MemoryHistoryBuilderTests
                                           owners ?? new ulong[blocks.Length],
                                           iterators ?? new Dictionary<ulong, TracePosition>(),
                                           new WatchResult([new WatchBatch([.. hits], [.. data])], 1),
-                                          timeline);
+                                          timeline).Store;
     }
 }

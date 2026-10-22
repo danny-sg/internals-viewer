@@ -14,7 +14,7 @@ public class TraceArgumentCallTests
     {
         var call = Decode(Row(99, flags: 1234u | TraceCallColumns.ReturnedFlag, rcx: 0xA0, r8: 0xC0, returnValue: 42));
 
-        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["unsigned __int64 *", "int", "int"], FunctionType.Static, "int"));
+        var layout = ArgumentLayout.GetLayout(new FunctionSignature(["unsigned __int64 *", "int", "int"], FunctionType.Static, "int"));
 
         Assert.Equal(At(99), call.FromPosition);
         Assert.Equal(1234u, call.ThreadId);
@@ -35,7 +35,7 @@ public class TraceArgumentCallTests
     {
         var call = Decode(Row(0));
 
-        var layout = ArgumentLayout.LayoutOf(new FunctionSignature(["double", "int", "int", "int", "int"], FunctionType.Free, null));
+        var layout = ArgumentLayout.GetLayout(new FunctionSignature(["double", "int", "int", "int", "int"], FunctionType.Free, null));
 
         Assert.Equal([false, true, true, true, true], layout.Slots.Select(TraceArgumentCall.IsCaptured));
         Assert.Null(call.GetValue(layout.Slots[0]));

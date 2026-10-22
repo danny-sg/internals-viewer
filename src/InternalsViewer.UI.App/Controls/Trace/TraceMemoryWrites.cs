@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Memory.History;
 
 namespace InternalsViewer.UI.App.Controls.Trace;
@@ -40,7 +41,9 @@ public sealed class TraceMemoryWrites
 
             var (offset, length) = store.GetChangedExtent(write);
 
-            return new TraceMemoryWrite(write.Point, offset, length, write.CallNodeIndex);
+            return new TraceMemoryWrite(store.GetPoint(Indexes[index]), offset, length, write.CallNodeIndex);
         }
     }
+
+    public TracePoint GetPoint(int index) => Store is { } store ? store.GetPoint(Indexes[index]) : Writes[index].Point;
 }

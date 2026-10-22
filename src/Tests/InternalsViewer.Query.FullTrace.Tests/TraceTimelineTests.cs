@@ -218,14 +218,95 @@ public class TraceTimelineTests
 
         Assert.NotNull(cropped);
 
-        var source = Assert.Single(timeline.Threads).Rows;
+        var source = Assert.Single(timeline.Threads);
 
-        var rows = Assert.Single(cropped.Threads).Rows;
+        var thread = Assert.Single(cropped.Threads);
+
+        var rows = thread.Rows;
 
         Assert.Equal([[20d], [25d, 35d]], rows.Select(r => Starts(r)));
         Assert.Equal([2, 3, 3], rows.SelectMany(r => Enumerable.Range(0, r.Count).Select(r.GetCallNodeIndex)));
-        Assert.True(rows[0].Froms.Overlaps(source[0].Froms));
-        Assert.True(rows[1].Froms.Overlaps(source[1].Froms));
+        Assert.Same(source.Store, thread.Store);
+        Assert.Equal(0, rows.Sum(r => r.Bytes));
+    }
+
+    [Fact]
+    public void A_Folded_Row_Reads_The_Calls_It_Merges_From_Its_Threads_Store()
+    {
+        var (timeline, _) = BuildAroundExecute();
+
+        var source = Assert.Single(timeline.Threads);
+
+        var thread = Assert.Single(timeline.Folded(n => n.Frame?.Rva == 0x10).Threads);
+
+        var row = thread.Rows[0];
+
+        Assert.Equal([2d, 20d, 72d], Starts(row));
+        Assert.Equal([8d, 60d, 78d], Ends(row));
+        Assert.Equal([1, 2, 1], Enumerable.Range(0, row.Count).Select(row.GetCallNodeIndex));
+        Assert.Same(source.Store, thread.Store);
+        Assert.Equal(3 * sizeof(int), row.Bytes);
+        Assert.Equal(0, thread.Rows[1].Bytes);
+    }
+
+    [Fact]
+    public void A_Filtered_Row_Reads_The_Calls_It_Keeps_From_Its_Threads_Store()
+    {
+        var (timeline, _) = BuildAroundExecute();
+
+        var source = Assert.Single(timeline.Threads);
+
+        var thread = Assert.Single(timeline.Where(n => n != 2).Threads);
+
+        Assert.Equal([[0d, 70d], [2d, 25d, 35d, 72d]], thread.Rows.Select(r => Starts(r)));
+        Assert.Equal([[10d, 80d], [8d, 30d, 40d, 78d]], thread.Rows.Select(r => Ends(r)));
+        Assert.Same(source.Store, thread.Store);
+        Assert.Same(source.Rows[1], thread.Rows[1]);
+        Assert.Equal(2 * sizeof(int), thread.Rows[0].Bytes);
+    }
+
+    [Fact]
+    public void Calls_Removed_From_Between_Kept_Calls_Close_Up_In_Their_Row()
+    {
+        var (timeline, execute) = BuildAroundExecute();
+
+        timeline.RemoveCallsUnder(n => ReferenceEquals(n, execute));
+
+        var thread = Assert.Single(timeline.Threads);
+
+        Assert.Equal([[0d, 70d], [2d, 72d]], thread.Rows.Select(r => Starts(r)));
+        Assert.Equal([[10d, 80d], [8d, 78d]], thread.Rows.Select(r => Ends(r)));
+        Assert.Equal([0, 0, 1, 1], thread.Rows.SelectMany(r => Enumerable.Range(0, r.Count).Select(r.GetCallNodeIndex)));
+        Assert.Equal(4, thread.Calls);
+    }
+
+    [Fact]
+    public void An_Exported_Timeline_Reads_Each_Row_Back_Into_One_Store_Per_Thread()
+    {
+        var (timeline, execute) = BuildAroundExecute();
+
+        timeline.RemoveCallsUnder(n => ReferenceEquals(n, execute));
+
+        CallStackNode[] nodes = [.. Enumerable.Range(0, 4).Select(i => timeline.NodeOf(i)!)];
+
+        using var stream = new MemoryStream();
+
+        using (var writer = new BinaryWriter(stream, System.Text.Encoding.UTF8, leaveOpen: true))
+        {
+            timeline.Write(writer, n => Array.IndexOf(nodes, n));
+        }
+
+        stream.Position = 0;
+
+        using var reader = new BinaryReader(stream);
+
+        var thread = Assert.Single(TraceTimeline.Read(reader, nodes).Threads);
+
+        Assert.Equal([[0d, 70d], [2d, 72d]], thread.Rows.Select(r => Starts(r)));
+        Assert.Equal([[10d, 80d], [8d, 78d]], thread.Rows.Select(r => Ends(r)));
+        Assert.Equal([0, 0, 1, 1], thread.Rows.SelectMany(r => Enumerable.Range(0, r.Count).Select(r.GetCallNodeIndex)));
+        Assert.Equal(4, thread.Calls);
+        Assert.Equal(0, thread.Rows.Sum(r => r.Bytes));
     }
 
     [Fact]
@@ -248,7 +329,7 @@ public class TraceTimelineTests
 
         using var reader = new BinaryReader(stream);
 
-        var read = TraceTimelineRow.Read(reader, TraceScale.Default, thread.Clock);
+        var read = TraceTimelineRow.Read(reader, TraceScale.Default, thread.Clock, new TraceSpanStore(2), 0);
 
         Assert.Equal([25d, 35d], Starts(read));
         Assert.Equal([3, 3], Enumerable.Range(0, read.Count).Select(read.GetCallNodeIndex));
@@ -600,6 +681,8 @@ public class TraceTimelineTests
 
     private static double[] Starts(TraceTimelineRow row, TraceTimelineAxis axis = Instructions)
         => [.. Enumerable.Range(0, row.Count).Select(i => row.GetStart(axis, i))];
+
+    private static double[] Ends(TraceTimelineRow row) => [.. Enumerable.Range(0, row.Count).Select(i => row.GetEnd(Instructions, i))];
 
     private static TraceTimeline Build(params CallSpan[] spans)
     {

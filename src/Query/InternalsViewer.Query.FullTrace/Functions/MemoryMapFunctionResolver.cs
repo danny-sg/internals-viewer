@@ -11,7 +11,7 @@ internal static partial class MemoryMapFunctionResolver
 {
     private const string ConstructorPrefix = "??0";
 
-    internal static DeclaredClass[] GetDeclared(FunctionSignature signature) => GetDeclared(signature, ArgumentLayout.LayoutOf(signature));
+    internal static DeclaredClass[] GetDeclared(FunctionSignature signature) => GetDeclared(signature, ArgumentLayout.GetLayout(signature));
 
     internal static DeclaredClass[] GetDeclared(FunctionSignature signature, ArgumentLayout layout)
     {

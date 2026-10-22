@@ -285,10 +285,14 @@ internal sealed class ReplaySession : IDisposable
 
         var batches = new List<WatchBatch>();
 
+        var received = 0L;
+
         var selected = Array.Empty<bool>();
 
         ReplayBridge.WatchHitCallback onHits = (pointer, count, bytes, length) =>
         {
+            received += count;
+
             var source = new ReadOnlySpan<WatchHit>((void*)pointer, count);
 
             var chunk = new ReadOnlySpan<byte>((void*)bytes, length);
@@ -372,7 +376,7 @@ internal sealed class ReplaySession : IDisposable
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            return new WatchResult([.. batches], watched);
+            return new WatchResult([.. batches], watched, received);
         }
         finally
         {

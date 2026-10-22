@@ -52,14 +52,20 @@ public sealed partial class TraceTimeline
 
             var clock = TraceThreadClock.Read(reader);
 
+            var store = new TraceSpanStore(checked((int)calls));
+
             var rows = new TraceTimelineRow[reader.ReadInt32()];
+
+            var offset = 0;
 
             for (var depth = 0; depth < rows.Length; depth++)
             {
-                rows[depth] = TraceTimelineRow.Read(reader, scale, clock);
+                rows[depth] = TraceTimelineRow.Read(reader, scale, clock, store, offset);
+
+                offset += rows[depth].Count;
             }
 
-            threads[index] = new TraceTimelineThread(threadId, clock, rows, calls);
+            threads[index] = new TraceTimelineThread(threadId, clock, store, rows, calls);
         }
 
         return new TraceTimeline(threads, parents, nodes, scale, start, end);

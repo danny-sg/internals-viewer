@@ -13,7 +13,7 @@ internal static class AllocationSiteResolver
 
     internal static (int File, int Line)? GetSiteSlots(FunctionSignature signature)
     {
-        var slots = ArgumentLayout.LayoutOf(signature).Slots;
+        var slots = ArgumentLayout.GetLayout(signature).Slots;
 
         for (var index = 0; index + 1 < slots.Count; index++)
         {
