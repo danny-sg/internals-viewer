@@ -319,7 +319,7 @@ internal sealed class ReplaySession : IDisposable
                 return;
             }
 
-            var hits = new WatchHit[hitCount];
+            var hits = new WatchedHit[hitCount];
 
             var data = new byte[byteCount];
 
@@ -338,7 +338,7 @@ internal sealed class ReplaySession : IDisposable
 
                 chunk.Slice((int)hit.Offset, (int)hit.Size).CopyTo(data.AsSpan(offset));
 
-                hits[kept++] = hit with { Offset = (uint)offset };
+                hits[kept++] = WatchedHit.From(hit, offset);
 
                 offset += (int)hit.Size;
             }

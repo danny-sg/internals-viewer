@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Native.Enums;
@@ -10,13 +11,40 @@ internal sealed class TraceHooks
     {
         All = [.. hooks];
 
-        var groups = hooks.SelectMany(h => h.Functions.Select(f => (Function: f, Hook: h)))
-                          .GroupBy(r => r.Function.Address)
-                          .ToArray();
+        var indexes = new Dictionary<ulong, int>();
 
-        Hooks = [.. groups.Select(GetHooks)];
+        var functions = new List<HookFunction>();
 
-        Functions = [.. groups.Select((g, index) => new HookFunction(g.Key, (uint)GetEvents(g), (uint)index))];
+        var registered = new List<ITraceHook[]>();
+
+        foreach (var hook in hooks)
+        {
+            ITraceHook[] single = [hook];
+
+            foreach (var function in hook.Functions)
+            {
+                ref var index = ref CollectionsMarshal.GetValueRefOrAddDefault(indexes, function.Address, out var exists);
+
+                if (!exists)
+                {
+                    index = functions.Count;
+
+                    functions.Add(new HookFunction(function.Address, 0, (uint)index));
+
+                    registered.Add(single);
+                }
+                else if (Array.IndexOf(registered[index], hook) < 0)
+                {
+                    registered[index] = [.. registered[index], hook];
+                }
+
+                functions[index] = functions[index] with { Events = functions[index].Events | (uint)function.Events };
+            }
+        }
+
+        Hooks = [.. registered];
+
+        Functions = [.. functions];
     }
 
     public HookFunction[] Functions { get; }
@@ -78,24 +106,6 @@ internal sealed class TraceHooks
             Replay.Session = IntPtr.Zero;
         }
     }
-
-    private static ITraceHook[] GetHooks(IEnumerable<(TraceHookFunction Function, ITraceHook Hook)> registrations)
-    {
-        ITraceHook[] hooks = [];
-
-        foreach (var (_, hook) in registrations)
-        {
-            if (Array.IndexOf(hooks, hook) < 0)
-            {
-                hooks = [.. hooks, hook];
-            }
-        }
-
-        return hooks;
-    }
-
-    private static TraceHookEvents GetEvents(IEnumerable<(TraceHookFunction Function, ITraceHook Hook)> registrations)
-        => registrations.Aggregate(TraceHookEvents.None, (events, r) => events | r.Function.Events);
 
     private void Dispatch(ITraceHook hook, HookEventType type, in TraceHookCall call)
     {

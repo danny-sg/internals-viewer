@@ -112,7 +112,9 @@ internal sealed class IteratorAllocations
                                                            IReadOnlySet<ulong> iterators,
                                                            Dictionary<ulong, ulong> builders)
     {
-        var spans = new List<SweepSpan<TracePosition>>();
+        var owned = new List<(TraceCallList List, ulong Owner)>();
+
+        var capacity = 0;
 
         foreach (var (functionAddress, instanceAddress) in calls.FunctionKeys)
         {
@@ -121,37 +123,45 @@ internal sealed class IteratorAllocations
                 continue;
             }
 
-            if (instanceAddress != 0)
+            var owner = instanceAddress == 0
+                ? 0
+                : iterators.Contains(instanceAddress) ? instanceAddress : builders.GetValueOrDefault(instanceAddress);
+
+            if (owner != 0 || (instanceAddress == 0 && IsConstructor(calls.GetNode(list.GetCallNodeIndex(0))?.Frame)))
             {
-                var owner = iterators.Contains(instanceAddress) ? instanceAddress : builders.GetValueOrDefault(instanceAddress);
+                owned.Add((list, owner));
 
-                if (owner == 0)
-                {
-                    continue;
-                }
-
-                for (var index = 0; index < list.Count; index++)
-                {
-                    spans.Add(GetSpan(list, index, owner));
-                }
+                capacity += list.Count;
             }
-            else if (IsConstructor(calls.GetNode(list.GetCallNodeIndex(0))?.Frame))
+        }
+
+        var spans = new List<SweepSpan<TracePosition>>(capacity);
+
+        var buffer = new TraceCallStore.ColumnBuffer();
+
+        foreach (var (list, owner) in owned)
+        {
+            foreach (var (columns, _) in list.ReadChunks(buffer))
             {
-                for (var index = 0; index < list.Count; index++)
+                for (var callIndex = 0; callIndex < columns.Calls; callIndex++)
                 {
-                    if (list[index].IntegerSlots is { Length: > InstanceSlot } slots && iterators.Contains(slots[InstanceSlot]))
+                    var iterator = owner != 0 ? owner : columns.GetRegister(callIndex, InstanceSlot);
+
+                    if (owner == 0 && !iterators.Contains(iterator))
                     {
-                        spans.Add(GetSpan(list, index, slots[InstanceSlot]));
+                        continue;
                     }
+
+                    spans.Add(new SweepSpan<TracePosition>(columns.GetThread(callIndex),
+                                                           columns.GetFromPosition(callIndex),
+                                                           columns.GetToPosition(callIndex),
+                                                           iterator));
                 }
             }
         }
 
         return spans;
     }
-
-    private static SweepSpan<TracePosition> GetSpan(TraceCallList list, int index, ulong iterator)
-        => new(list.GetThread(index), list.GetFromPosition(index), list.GetToPosition(index), iterator);
 
     private static bool IsConstructor(CallstackFrame? frame)
         => frame?.Resolved is { ClassName: { } className } resolved

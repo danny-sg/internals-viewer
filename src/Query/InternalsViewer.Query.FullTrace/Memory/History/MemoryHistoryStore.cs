@@ -37,6 +37,7 @@ public sealed partial class MemoryHistoryStore(MemoryHistoryBlock[] blocks,
 
     private AddressIndex Addresses => field ??= GetAddressIndex();
 
+
     public IReadOnlyList<MemoryHistoryWrite> GetWrites(int block)
         => block >= 0 && block < BlockArray.Length
             ? new ArraySegment<MemoryHistoryWrite>(Writes, BlockArray[block].FirstWrite, BlockArray[block].WriteCount)
@@ -193,13 +194,91 @@ public sealed partial class MemoryHistoryStore(MemoryHistoryBlock[] blocks,
         return [GetAllocationCall(block, timeline, firstListed), .. ordered.Select(c => c.Build()).OrderBy(c => c.Position)];
     }
 
-    public MemoryHistorySummary GetSummary(int block, TracePosition from, TracePosition to)
+    public MemoryHistorySummary GetSummary(int block, TracePosition from, TracePosition to) => GetSummaries([block], from, to)[0];
+
+    public MemoryHistorySummary[] GetSummaries(int[] blocks, TracePosition from, TracePosition to)
     {
-        var operators = new Dictionary<ulong, int>();
+        var summaries = new MemoryHistorySummary[blocks.Length];
 
         var calls = new HashSet<(int CallNodeIndex, int CallIndex)>();
 
-        var changing = new bool[BlockArray[block].Size];
+        var changing = Array.Empty<bool>();
+
+        for (var index = 0; index < blocks.Length; index++)
+        {
+            var size = BlockArray[blocks[index]].Size;
+
+            if (changing.Length < size)
+            {
+                changing = new bool[size];
+            }
+
+            changing.AsSpan(0, size).Clear();
+
+            calls.Clear();
+
+            summaries[index] = GetSummary(blocks[index], from, to, calls, changing.AsSpan(0, size));
+        }
+
+        return summaries;
+    }
+
+    public MemoryHistoryWrite GetWrite(int index) => Writes[index];
+
+    public int[] GetChangedWriteIndexes(int block, TracePosition from, TracePosition to)
+    {
+        var writes = GetBlockWrites(block);
+
+        var count = 0;
+
+        foreach (var write in writes)
+        {
+            count += IsChange(write, from, to) ? 1 : 0;
+        }
+
+        var indexes = new int[count];
+
+        var at = 0;
+
+        for (var index = 0; index < writes.Length; index++)
+        {
+            if (IsChange(writes[index], from, to))
+            {
+                indexes[at] = BlockArray[block].FirstWrite + index;
+
+                at++;
+            }
+        }
+
+        return indexes;
+    }
+
+    public (int Offset, int Length) GetChangedExtent(MemoryHistoryWrite write)
+    {
+        var start = int.MaxValue;
+
+        var end = 0;
+
+        foreach (var change in GetChanges(write))
+        {
+            if (change.Type == MemoryHistoryChangeType.Changed)
+            {
+                start = Math.Min(start, change.Offset);
+
+                end = Math.Max(end, change.Offset + change.Length);
+            }
+        }
+
+        return (start, end - start);
+    }
+
+    private MemoryHistorySummary GetSummary(int block,
+                                            TracePosition from,
+                                            TracePosition to,
+                                            HashSet<(int CallNodeIndex, int CallIndex)> calls,
+                                            Span<bool> changing)
+    {
+        var operators = new Dictionary<ulong, int>();
 
         var changeCount = 0;
 
@@ -237,11 +316,8 @@ public sealed partial class MemoryHistoryStore(MemoryHistoryBlock[] blocks,
         return new MemoryHistorySummary([.. operators.OrderByDescending(o => o.Value).Select(o => o.Key)],
                                         calls.Count,
                                         changeCount,
-                                        changing.Count(c => c));
+                                        changing.Count(true));
     }
-
-    public IEnumerable<MemoryHistoryWrite> GetChangedWrites(int block, TracePosition from, TracePosition to)
-        => GetWrites(block).Where(m => IsChange(m, from, to));
 
     public TracePosition GetCreatedPosition(int block)
         => BlockArray[block] is { IsInline: true, WriteCount: > 0 } inline ? Writes[inline.FirstWrite].Position : BlockArray[block].FromPosition;
@@ -318,7 +394,7 @@ public sealed partial class MemoryHistoryStore(MemoryHistoryBlock[] blocks,
     private bool IsLiveAt(int block, ulong address, TracePosition position)
         => address < BlockArray[block].Address + (ulong)BlockArray[block].Size && IsLive(block, position);
 
-    private bool MarkChanged(MemoryHistoryWrite write, bool[] changing)
+    private bool MarkChanged(MemoryHistoryWrite write, Span<bool> changing)
     {
         var isChanged = false;
 
@@ -326,7 +402,7 @@ public sealed partial class MemoryHistoryStore(MemoryHistoryBlock[] blocks,
         {
             if (change.Type == MemoryHistoryChangeType.Changed)
             {
-                changing.AsSpan(change.Offset, change.Length).Fill(true);
+                changing.Slice(change.Offset, change.Length).Fill(true);
 
                 isChanged = true;
             }

@@ -8,4 +8,4 @@ public sealed record TraceMemoryBlock(int Block,
                                       int Size,
                                       TracePoint From,
                                       TracePoint? To,
-                                      TraceMemoryWrite[] Writes);
+                                      TraceMemoryWrites Writes);

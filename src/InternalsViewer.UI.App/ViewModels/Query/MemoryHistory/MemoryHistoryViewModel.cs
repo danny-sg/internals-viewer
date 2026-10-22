@@ -221,10 +221,11 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
             return new QueryResultSet { Columns = columns, Rows = [] };
         }
 
-        var rows = Store.Blocks
-                        .Select((block, index) => (Block: block, Index: index))
-                        .Where(b => IsTracked(b.Index))
-                        .Select(b => (b.Block, b.Index, Summary: Store.GetSummary(b.Index, WindowStart, WindowEnd)))
+        int[] tracked = [.. Enumerable.Range(0, Store.Blocks.Count).Where(IsTracked)];
+
+        var summaries = Store.GetSummaries(tracked, WindowStart, WindowEnd);
+
+        var rows = tracked.Select((index, at) => (Block: Store.Blocks[index], Index: index, Summary: summaries[at]))
                         .Where(b => b.Summary.ChangeCount > 0)
                         .Select(b => (b.Block, b.Index, b.Summary, Operator: GetOperatorLabels(b.Summary.Operators)))
                         .OrderBy(b => Store.GetCreatedPosition(b.Index))
@@ -262,7 +263,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
                 continue;
             }
 
-            TraceMemoryWrite[] writes = [.. Store.GetChangedWrites(index, WindowStart, WindowEnd).Select(GetTraceWrite)];
+            var writes = Store.GetChangedWriteIndexes(index, WindowStart, WindowEnd);
 
             if (writes.Length == 0)
             {
@@ -277,32 +278,13 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
                                             block.Size,
                                             block.From,
                                             block.To,
-                                            writes));
+                                            new TraceMemoryWrites(Store, writes)));
         }
 
         return blocks;
     }
 
     private bool IsTracked(int block) => Store.IsCreatedWithin(block, WindowStart, WindowEnd);
-
-    private TraceMemoryWrite GetTraceWrite(MemoryHistoryWrite write)
-    {
-        var start = int.MaxValue;
-
-        var end = 0;
-
-        foreach (var change in Store.GetChanges(write))
-        {
-            if (change.Type == MemoryHistoryChangeType.Changed)
-            {
-                start = Math.Min(start, change.Offset);
-
-                end = Math.Max(end, change.Offset + change.Length);
-            }
-        }
-
-        return new TraceMemoryWrite(write.Point, start, end - start, write.CallNodeIndex);
-    }
 
     private void ShowBlock(int block)
     {

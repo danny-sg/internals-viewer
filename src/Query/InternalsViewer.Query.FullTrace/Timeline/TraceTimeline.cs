@@ -558,27 +558,43 @@ public sealed partial class TraceTimeline
 
     private static void Copy(TraceTimelineThread thread, Func<int, TraceTimelineRow, int, int> depthOf, RowArrays?[] copies)
     {
-        for (var source = 0; source < thread.Rows.Count; source++)
+        var rows = thread.Rows;
+
+        var cursors = new PriorityQueue<(int Source, int Index), TracePosition>(rows.Count);
+
+        for (var source = 0; source < rows.Count; source++)
         {
-            var row = thread.Rows[source];
-
-            for (var index = 0; index < row.Count; index++)
+            if (rows[source].Count > 0)
             {
-                var depth = depthOf(source, row, index);
-
-                if (depth < 0 || copies[depth] is not { } copy)
-                {
-                    continue;
-                }
-
-                var callIndex = row.GetCallIndex(index);
-
-                copy.Add(row.GetFromPosition(index),
-                         row.GetToPosition(index),
-                         row.GetCallNodeIndex(index),
-                         callIndex < 0 ? uint.MaxValue : (uint)callIndex,
-                         (byte)row.FlagsAt(index));
+                cursors.Enqueue((source, 0), rows[source].GetFromPosition(0));
             }
+        }
+
+        while (cursors.TryDequeue(out var cursor, out _))
+        {
+            var (source, index) = cursor;
+
+            var row = rows[source];
+
+            if (index + 1 < row.Count)
+            {
+                cursors.Enqueue((source, index + 1), row.GetFromPosition(index + 1));
+            }
+
+            var depth = depthOf(source, row, index);
+
+            if (depth < 0 || copies[depth] is not { } copy)
+            {
+                continue;
+            }
+
+            var callIndex = row.GetCallIndex(index);
+
+            copy.Add(row.GetFromPosition(index),
+                     row.GetToPosition(index),
+                     row.GetCallNodeIndex(index),
+                     callIndex < 0 ? uint.MaxValue : (uint)callIndex,
+                     (byte)row.FlagsAt(index));
         }
     }
 
@@ -748,17 +764,7 @@ public sealed partial class TraceTimeline
         {
             if (!IsSorted())
             {
-                var order = Enumerable.Range(0, Filled).ToArray();
-
-                var keys = (TracePosition[])Froms.Clone();
-
-                Array.Sort(keys, order);
-
-                Reorder(Froms, order);
-                Reorder(Tos, order);
-                Reorder(CallNodeIndexes, order);
-                Reorder(Calls, order);
-                Reorder(Flags, order);
+                Sort();
             }
 
             return new TraceTimelineRow(scale, clock, Froms, Tos, CallNodeIndexes, Calls, Flags);
@@ -777,14 +783,50 @@ public sealed partial class TraceTimeline
             return true;
         }
 
-        private static void Reorder<T>(T[] values, int[] order)
+        private void Sort()
         {
-            var copy = (T[])values.Clone();
-
-            for (var index = 0; index < order.Length; index++)
+            for (var root = Filled / 2 - 1; root >= 0; root--)
             {
-                values[index] = copy[order[index]];
+                SiftDown(root, Filled);
             }
+
+            for (var end = Filled - 1; end > 0; end--)
+            {
+                Swap(0, end);
+
+                SiftDown(0, end);
+            }
+        }
+
+        private void SiftDown(int root, int end)
+        {
+            while (2 * root + 1 < end)
+            {
+                var child = 2 * root + 1;
+
+                if (child + 1 < end && Froms[child] < Froms[child + 1])
+                {
+                    child++;
+                }
+
+                if (Froms[root] >= Froms[child])
+                {
+                    return;
+                }
+
+                Swap(root, child);
+
+                root = child;
+            }
+        }
+
+        private void Swap(int left, int right)
+        {
+            (Froms[left], Froms[right]) = (Froms[right], Froms[left]);
+            (Tos[left], Tos[right]) = (Tos[right], Tos[left]);
+            (CallNodeIndexes[left], CallNodeIndexes[right]) = (CallNodeIndexes[right], CallNodeIndexes[left]);
+            (Calls[left], Calls[right]) = (Calls[right], Calls[left]);
+            (Flags[left], Flags[right]) = (Flags[right], Flags[left]);
         }
     }
 

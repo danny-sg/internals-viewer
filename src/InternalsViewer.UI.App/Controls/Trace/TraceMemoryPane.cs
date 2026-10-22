@@ -753,9 +753,11 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
         List<int>? last = null;
 
-        for (var index = 0; index < writes.Length; index++)
+        for (var index = 0; index < writes.Count; index++)
         {
-            var extent = (writes[index].Offset, writes[index].Length);
+            var write = writes[index];
+
+            var extent = (write.Offset, write.Length);
 
             if (extent.Length <= 0)
             {

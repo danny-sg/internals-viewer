@@ -200,16 +200,97 @@ internal static class MemoryHistoryBuilder
 
         foreach (var (hit, bytes) in GetOrdered(watched))
         {
-            Apply(lookup, stacks, hit, bytes.AsSpan((int)hit.Offset, (int)hit.Size), writes, changes, data);
+            Apply(lookup, stacks, hit, bytes.AsSpan(hit.DataOffset, hit.Size), writes, changes, data);
         }
 
         return Compact(blocks, stacks, writes, changes, data);
     }
 
-    private static IEnumerable<(WatchHit Hit, byte[] Data)> GetOrdered(WatchResult watched)
-        => IsOrdered(watched) ? watched.Batches.SelectMany(b => b.Hits.Select(h => (Hit: h, b.Data))) : GetSorted(watched);
+    private static IEnumerable<(WatchedHit Hit, byte[] Data)> GetOrdered(WatchResult watched)
+        => IsOrdered(watched) ? watched.Batches.SelectMany(b => b.Hits.Select(h => (Hit: h, b.Data))) : GetMerged(watched);
 
-    private static IEnumerable<(WatchHit Hit, byte[] Data)> GetSorted(WatchResult watched)
+    private static IEnumerable<(WatchedHit Hit, byte[] Data)> GetMerged(WatchResult watched)
+    {
+        var batches = watched.Batches;
+
+        var starts = new int[batches.Count];
+
+        var total = 0;
+
+        for (var batch = 0; batch < batches.Count; batch++)
+        {
+            starts[batch] = total;
+
+            total += batches[batch].Hits.Length;
+        }
+
+        var next = new int[total];
+
+        var lasts = new Dictionary<uint, (int Index, TracePosition Position)>();
+
+        var queue = new PriorityQueue<int, TracePosition>();
+
+        for (var batch = 0; batch < batches.Count; batch++)
+        {
+            var hits = batches[batch].Hits;
+
+            for (var index = 0; index < hits.Length; index++)
+            {
+                var hit = hits[index];
+
+                var global = starts[batch] + index;
+
+                next[global] = -1;
+
+                if (lasts.TryGetValue(hit.Thread, out var last))
+                {
+                    if (hit.Position < last.Position)
+                    {
+                        return GetSorted(watched);
+                    }
+
+                    next[last.Index] = global;
+                }
+                else
+                {
+                    queue.Enqueue(global, hit.Position);
+                }
+
+                lasts[hit.Thread] = (global, hit.Position);
+            }
+        }
+
+        return Merge(batches, starts, next, queue);
+    }
+
+    private static IEnumerable<(WatchedHit Hit, byte[] Data)> Merge(IReadOnlyList<WatchBatch> batches,
+                                                                     int[] starts,
+                                                                     int[] next,
+                                                                     PriorityQueue<int, TracePosition> queue)
+    {
+        while (queue.TryDequeue(out var global, out _))
+        {
+            var batch = GetBatch(starts, global);
+
+            yield return (batches[batch].Hits[global - starts[batch]], batches[batch].Data);
+
+            if (next[global] is >= 0 and var following)
+            {
+                var followingBatch = GetBatch(starts, following);
+
+                queue.Enqueue(following, batches[followingBatch].Hits[following - starts[followingBatch]].Position);
+            }
+        }
+    }
+
+    private static int GetBatch(int[] starts, int global)
+    {
+        var index = Array.BinarySearch(starts, global);
+
+        return index >= 0 ? index : ~index - 1;
+    }
+
+    private static IEnumerable<(WatchedHit Hit, byte[] Data)> GetSorted(WatchResult watched)
     {
         var keys = new (TracePosition Position, long Location)[watched.HitCount];
 
@@ -261,7 +342,7 @@ internal static class MemoryHistoryBuilder
 
     private static void Apply(BlockIndex lookup,
                               StackLookup stacks,
-                              WatchHit hit,
+                              WatchedHit hit,
                               ReadOnlySpan<byte> bytes,
                               ChunkedList<(int Block, MemoryHistoryWrite Write)> writes,
                               ChunkedList<MemoryHistoryChange> changes,
@@ -346,7 +427,7 @@ internal static class MemoryHistoryBuilder
 
             block.Known.AsSpan(offset + start, run.Length).Fill(true);
 
-            changes.Add(new MemoryHistoryChange(offset + start, run.Length, data.Count, type));
+            changes.Add(new MemoryHistoryChange(offset + start, data.Count, (ushort)run.Length, type));
 
             data.AddRange(run);
         }

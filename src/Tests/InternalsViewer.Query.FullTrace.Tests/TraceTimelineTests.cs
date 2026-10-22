@@ -298,6 +298,49 @@ public class TraceTimelineTests
     }
 
     [Fact]
+    public void Calls_Lifted_Between_Kept_Calls_Stay_In_Start_Order()
+    {
+        var builder = new TraceTimeline.Builder();
+
+        builder.Add([Span(callNodeIndex: 0, start: 0, end: 100),
+                     Span(callNodeIndex: 3, start: 5, end: 8, callIndex: 7),
+                     Span(callNodeIndex: 1, start: 10, end: 40),
+                     Span(callNodeIndex: 2, start: 20, end: 30, callIndex: 8),
+                     Span(callNodeIndex: 3, start: 50, end: 60, callIndex: 9)]);
+
+        var timeline = builder.Build([new(-1, 0, 0x1000, 0, 1), new(0, 0, 0x2000, 0, 1), new(1, 0, 0x3000, 0, 1), new(0, 0, 0x4000, 0, 2)]);
+
+        var tree = new CallStackTree();
+
+        var root = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x10 }, 1);
+        var folded = tree.AddCall(root, new CallstackFrame { Module = "sqlmin", Rva = 0x20 }, 1);
+        var inner = tree.AddCall(folded, new CallstackFrame { Module = "sqlmin", Rva = 0x30 }, 1);
+        var sibling = tree.AddCall(root, new CallstackFrame { Module = "sqlmin", Rva = 0x40 }, 2);
+
+        timeline.MapNodes([root, folded, inner, sibling]);
+
+        var row = Assert.Single(timeline.Folded(n => ReferenceEquals(n, folded)).Threads).Rows[1];
+
+        Assert.Equal([3, 2, 3], Enumerable.Range(0, row.Count).Select(row.GetCallNodeIndex));
+        Assert.Equal([7, 8, 9], Enumerable.Range(0, row.Count).Select(row.GetCallIndex));
+        Assert.Equal([5d, 20d, 50d], Starts(row));
+    }
+
+    [Fact]
+    public void Overlapping_Calls_In_One_Row_Are_Sorted_With_Their_Columns()
+    {
+        var timeline = Build(Span(callNodeIndex: 0, start: 30, end: 40, callIndex: 1),
+                             Span(callNodeIndex: 0, start: 10, end: 50, callIndex: 2),
+                             Span(callNodeIndex: 0, start: 20, end: 25, callIndex: 3));
+
+        var row = Assert.Single(timeline.Threads).Rows[0];
+
+        Assert.Equal([10d, 20d, 30d], Starts(row));
+        Assert.Equal([2, 3, 1], Enumerable.Range(0, row.Count).Select(row.GetCallIndex));
+        Assert.Equal([50d, 25d, 40d], Enumerable.Range(0, row.Count).Select(i => row.GetEnd(Instructions, i)));
+    }
+
+    [Fact]
     public void Folding_A_Root_Lifts_Its_Callees_To_The_Top()
     {
         var timeline = Build(Span(callNodeIndex: 2, start: 10, end: 20),

@@ -27,7 +27,7 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions, IR
 
     private HashSet<int> ReadEntries { get; } = [];
 
-    public IReadOnlyList<AddressEntry> Build() => Entries;
+    public ChunkedList<AddressEntry> Build() => Entries;
 
     public void OnEntry(in TraceHookCall call, ITraceReplay replay)
     {

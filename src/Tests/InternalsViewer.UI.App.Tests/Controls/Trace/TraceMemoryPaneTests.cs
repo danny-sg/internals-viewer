@@ -184,7 +184,7 @@ public class TraceMemoryPaneTests
     }
 
     private static TraceMemoryBlock Block(int id, ulong address, int size, params TraceMemoryWrite[] writes)
-        => new(id, $"Object {id}", address, size, Point(1), null, writes);
+        => new(id, $"Object {id}", address, size, Point(1), null, new TraceMemoryWrites(writes));
 
     private static TraceMemoryWrite Write(int offset, int length) => new(Point(20), offset, length, WriterNode);
 

@@ -77,7 +77,7 @@ public sealed partial class MemoryHistoryStore
 
             writer.Write((byte)change.Type);
 
-            writer.Write(change.Length);
+            writer.Write((int)change.Length);
 
             writer.Write(GetBytes(change));
         }
@@ -140,7 +140,7 @@ public sealed partial class MemoryHistoryStore
 
             var bytes = reader.ReadBytes(reader.ReadInt32());
 
-            changes[index] = new MemoryHistoryChange(offset, bytes.Length, data.Count, type);
+            changes[index] = new MemoryHistoryChange(offset, data.Count, (ushort)bytes.Length, type);
 
             data.AddRange(bytes);
         }

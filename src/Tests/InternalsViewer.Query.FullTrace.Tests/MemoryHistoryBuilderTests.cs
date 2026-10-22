@@ -338,7 +338,9 @@ public class MemoryHistoryBuilderTests
     [Fact]
     public void Writes_From_Later_Batches_Are_Applied_In_Position_Order()
     {
-        var watched = new WatchResult([new WatchBatch([Hit(5, Owned, 1)], [2]), new WatchBatch([Hit(3, Owned, 1)], [1])], 1);
+        var watched = new WatchResult([new WatchBatch([WatchedHit.From(Hit(5, Owned, 1), 0)], [2]),
+                                       new WatchBatch([WatchedHit.From(Hit(3, Owned, 1), 0)], [1])],
+                                      1);
 
         var store = MemoryHistoryBuilder.Build([new MemoryHistoryAllocation(Block(Owned, 0x10, from: 1), false)],
                                                [0],
@@ -348,6 +350,25 @@ public class MemoryHistoryBuilderTests
 
         Assert.Equal([(At(3), MemoryHistoryChangeType.Initialised), (At(5), MemoryHistoryChangeType.Changed)],
                      store.GetWrites(0).Select(w => (w.Position, store.GetChanges(w)[0].Type)));
+    }
+
+    [Fact]
+    public void Writes_From_Interleaved_Threads_Are_Merged_In_Position_Order()
+    {
+        var other = new WatchHit(4, 0, Owned + 1, Writer, Thread + 1, 1, 0, 1);
+
+        var watched = new WatchResult([new WatchBatch([WatchedHit.From(Hit(2, Owned, 1), 0), WatchedHit.From(Hit(6, Owned, 1), 1)], [1, 3]),
+                                       new WatchBatch([WatchedHit.From(other, 0)], [2])],
+                                      1);
+
+        var store = MemoryHistoryBuilder.Build([new MemoryHistoryAllocation(Block(Owned, 0x10, from: 1), false)],
+                                               [0],
+                                               new Dictionary<ulong, TracePosition>(),
+                                               watched,
+                                               null);
+
+        Assert.Equal([At(2), At(4), At(6)], store.GetWrites(0).Select(w => w.Position));
+        Assert.Equal(new byte[] { 3, 2 }, store.GetImage(0, 2).Data[..2]);
     }
 
     [Fact]
@@ -429,11 +450,11 @@ public class MemoryHistoryBuilderTests
     {
         var data = new List<byte>();
 
-        var hits = new List<WatchHit>();
+        var hits = new List<WatchedHit>();
 
         foreach (var (sequence, address, bytes) in writes)
         {
-            hits.Add(new WatchHit(sequence, 0, address, Writer, Thread, (uint)bytes.Length, (uint)data.Count, 1));
+            hits.Add(WatchedHit.From(new WatchHit(sequence, 0, address, Writer, Thread, (uint)bytes.Length, 0, 1), data.Count));
 
             data.AddRange(bytes);
         }
