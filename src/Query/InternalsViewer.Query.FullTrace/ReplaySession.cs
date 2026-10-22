@@ -13,6 +13,7 @@ using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Stubs;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
+using InternalsViewer.Query.FullTrace.Memory.History.Watches;
 
 namespace InternalsViewer.Query.FullTrace;
 
@@ -283,7 +284,7 @@ internal sealed class ReplaySession : IDisposable
 
         var registration = cancellationToken.Register(() => Marshal.WriteInt32(cancel, 1));
 
-        var batches = new List<WatchBatch>();
+        var chunks = new List<WatchChunk>();
 
         var received = 0L;
 
@@ -323,7 +324,7 @@ internal sealed class ReplaySession : IDisposable
                 return;
             }
 
-            var hits = new WatchedHit[hitCount];
+            var hits = new ChunkHit[hitCount];
 
             var data = new byte[byteCount];
 
@@ -342,12 +343,12 @@ internal sealed class ReplaySession : IDisposable
 
                 chunk.Slice((int)hit.Offset, (int)hit.Size).CopyTo(data.AsSpan(offset));
 
-                hits[kept++] = WatchedHit.From(hit, offset);
+                hits[kept++] = ChunkHit.From(hit, offset);
 
                 offset += (int)hit.Size;
             }
 
-            batches.Add(new WatchBatch(hits, data));
+            chunks.Add(new WatchChunk(hits, data));
         };
 
         ReplayBridge.ProgressCallback onProgress = (_, percent) => progress?.Report(percent);
@@ -376,7 +377,7 @@ internal sealed class ReplaySession : IDisposable
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            return new WatchResult([.. batches], watched, received);
+            return new WatchResult([.. chunks], watched, received);
         }
         finally
         {

@@ -8,16 +8,15 @@ public sealed class TraceMemoryWrites
     public TraceMemoryWrites(TraceMemoryWrite[] writes)
     {
         Writes = writes;
-        Indexes = [];
         Count = writes.Length;
     }
 
-    public TraceMemoryWrites(MemoryHistoryStore store, int[] indexes)
+    public TraceMemoryWrites(MemoryHistoryStore store, int first, int count)
     {
         Store = store;
         Writes = [];
-        Indexes = indexes;
-        Count = indexes.Length;
+        First = first;
+        Count = count;
     }
 
     public int Count { get; }
@@ -26,7 +25,7 @@ public sealed class TraceMemoryWrites
 
     private TraceMemoryWrite[] Writes { get; }
 
-    private int[] Indexes { get; }
+    private int First { get; }
 
     public TraceMemoryWrite this[int index]
     {
@@ -37,13 +36,16 @@ public sealed class TraceMemoryWrites
                 return Writes[index];
             }
 
-            var write = store.GetWrite(Indexes[index]);
+            var write = store.GetWrite(First + index);
 
             var (offset, length) = store.GetChangedExtent(write);
 
-            return new TraceMemoryWrite(store.GetPoint(Indexes[index]), offset, length, write.CallNodeIndex);
+            return new TraceMemoryWrite(store.GetPoint(First + index), offset, length, write.CallNodeIndex);
         }
     }
 
-    public TracePoint GetPoint(int index) => Store is { } store ? store.GetPoint(Indexes[index]) : Writes[index].Point;
+    public TracePoint GetPoint(int index) => Store is { } store ? store.GetPoint(First + index) : Writes[index].Point;
+
+    public int GetCallNodeIndex(int index)
+        => Store is { } store ? store.GetWrite(First + index).CallNodeIndex : Writes[index].CallNodeIndex;
 }

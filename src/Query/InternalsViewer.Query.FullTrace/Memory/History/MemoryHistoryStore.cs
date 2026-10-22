@@ -209,32 +209,25 @@ public sealed partial class MemoryHistoryStore
 
     public MemoryHistoryWrite GetWrite(int index) => Writes[index];
 
-    public int[] GetChangedWriteIndexes(int block, TracePosition from, TracePosition to)
+    public (int First, int Count) GetChangedWriteRange(int block, TracePosition from, TracePosition to)
     {
         var writes = GetBlockWrites(block);
 
-        var count = 0;
+        var start = SortedSearch.FirstAtOrAfter<MemoryHistoryWrite, TracePosition>(writes, from, w => w.Position);
 
-        foreach (var write in writes)
+        var end = SortedSearch.FirstAfter<MemoryHistoryWrite, TracePosition>(writes, to, w => w.Position, start);
+
+        while (start < end && writes[start].Type != MemoryHistoryChangeType.Changed)
         {
-            count += IsChange(write, from, to) ? 1 : 0;
+            start++;
         }
 
-        var indexes = new int[count];
-
-        var at = 0;
-
-        for (var index = 0; index < writes.Length; index++)
+        while (end > start && writes[end - 1].Type != MemoryHistoryChangeType.Changed)
         {
-            if (IsChange(writes[index], from, to))
-            {
-                indexes[at] = BlockArray[block].FirstWrite + index;
-
-                at++;
-            }
+            end--;
         }
 
-        return indexes;
+        return (BlockArray[block].FirstWrite + start, end - start);
     }
 
     public (int Offset, int Length) GetChangedExtent(MemoryHistoryWrite write)

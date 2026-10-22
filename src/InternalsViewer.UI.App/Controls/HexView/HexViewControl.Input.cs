@@ -2,7 +2,6 @@
 using Windows.Foundation;
 using InternalsViewer.UI.App.Models;
 using Microsoft.UI.Input;
-using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Input;
 
 namespace InternalsViewer.UI.App.Controls.HexView;
@@ -27,27 +26,6 @@ public sealed partial class HexViewControl
     }
 
     private Point? _pressPoint;
-
-    private void HexRichTextBlock_SelectionChanged(object sender, RoutedEventArgs e)
-    {
-        var rect = HexRichTextBlock.SelectionEnd.GetCharacterRect(LogicalDirection.Forward);
-
-        SelectionInfoPopup.HorizontalOffset = rect.X + 4;
-        SelectionInfoPopup.VerticalOffset = rect.Y;
-
-        ViewModel.StartOffset = HexLayout.FromRunPosition(HexRichTextBlock.SelectionStart.Offset,
-                                                          HexLayout.CharactersPerLine);
-
-        ViewModel.EndOffset = HexLayout.FromRunPosition(HexRichTextBlock.SelectionEnd.Offset,
-                                                        HexLayout.CharactersPerLine);
-
-        ViewModel.SelectedText = HexRichTextBlock.SelectedText;
-    }
-
-    private void HexRichTextBlock_LostFocus(object sender, RoutedEventArgs e)
-    {
-        SelectionInfoPopup.IsOpen = false;
-    }
 
     private void HexRichTextBlock_PointerMoved(object sender, PointerRoutedEventArgs e)
     {

@@ -178,6 +178,8 @@ public sealed partial class HexViewControl
         target.DrawChangeSpans();
 
         target.DrawSelectionMask();
+
+        target.RefreshTips();
     }
 
     private static void OnBaseAddressChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

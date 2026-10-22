@@ -29,6 +29,13 @@ internal static class TimelineColours
 
     public static bool IsDark(SKColor colour) => GetLuminance(colour) < DarkLuminance;
 
+    public static SKColor ToGrey(SKColor colour)
+    {
+        var luminance = (byte)Math.Round(GetLuminance(colour));
+
+        return new SKColor(luminance, luminance, luminance, colour.Alpha);
+    }
+
     public static SKColor TintByCategory(SKColor colour, int category) => Scale(colour, CategoryShade[category]);
 
     /// <summary>

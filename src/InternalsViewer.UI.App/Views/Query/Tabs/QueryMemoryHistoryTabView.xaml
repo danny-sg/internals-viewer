@@ -63,7 +63,8 @@
                                         Data="{x:Bind ViewModel.MemoryHistory.Data, Mode=OneWay}"
                                         Markers="{x:Bind ViewModel.MemoryHistory.Markers, Mode=OneWay}"
                                         ChangeSpans="{x:Bind ViewModel.MemoryHistory.ChangeSpans, Mode=OneWay}"
-                                        SelectedChangeSpan="{x:Bind ViewModel.MemoryHistory.SelectedChangeSpan, Mode=OneWay}"/>
+                                        SelectedChangeSpan="{x:Bind ViewModel.MemoryHistory.SelectedChangeSpan, Mode=OneWay}"
+                                        Watches="{x:Bind ViewModel.MemoryHistory.Watches, Mode=TwoWay}"/>
             </Grid>
         </Grid>
     </Grid>

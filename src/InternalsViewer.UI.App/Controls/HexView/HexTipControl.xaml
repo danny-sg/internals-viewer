@@ -1,0 +1,117 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Controls.HexView.HexTipControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:winUi="using:CommunityToolkit.WinUI"
+    xmlns:controls="using:InternalsViewer.UI.App.Controls"
+    xmlns:hexView="using:InternalsViewer.UI.App.Controls.HexView"
+    xmlns:page="using:InternalsViewer.UI.App.ViewModels.Page">
+    <UserControl.Resources>
+        <Style TargetType="Border">
+            <Setter Property="Margin" Value="0" />
+        </Style>
+
+        <Style x:Key="TipLabelTextBoxStyle" TargetType="TextBox">
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Padding" Value="2,0,2,0" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="IsSpellCheckEnabled" Value="False" />
+        </Style>
+
+        <Style x:Key="TipButtonStyle" TargetType="Button" BasedOn="{StaticResource TabCommandButtonStyle}">
+            <Setter Property="Padding" Value="4,1,4,1" />
+            <Setter Property="AllowFocusOnInteraction" Value="False" />
+        </Style>
+    </UserControl.Resources>
+    <Grid>
+        <Border x:Name="ShadowTarget" />
+        <Border CornerRadius="4"
+                Background="{ThemeResource TeachingTipBackgroundBrush}"
+                BorderBrush="{ThemeResource TeachingTipBorderBrush}"
+                BorderThickness="1">
+            <StackPanel Padding="{x:Bind GetPadding(Tip.IsValueTip), Mode=OneWay}">
+                <Grid ColumnSpacing="4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="LabelTextBox"
+                             Grid.Column="0"
+                             Style="{StaticResource TipLabelTextBoxStyle}"
+                             FontSize="{x:Bind GetTextSize(Tip.IsValueTip), Mode=OneWay}"
+                             Text="{x:Bind Tip.Label, Mode=OneWay}"
+                             AutomationProperties.Name="Label"
+                             GettingFocus="LabelTextBox_GettingFocus"
+                             KeyDown="LabelTextBox_KeyDown"
+                             LostFocus="LabelTextBox_LostFocus">
+                        <TextBox.Resources>
+                            <SolidColorBrush x:Key="TextControlBackground" Color="Transparent" />
+                            <SolidColorBrush x:Key="TextControlBorderBrush" Color="Transparent" />
+                        </TextBox.Resources>
+                    </TextBox>
+                    <TextBlock Grid.Column="1"
+                               MaxWidth="300"
+                               VerticalAlignment="Center"
+                               FontSize="12"
+                               TextTrimming="CharacterEllipsis"
+                               Text="{x:Bind Tip.Value, Mode=OneWay}"
+                               Visibility="{x:Bind GetVisibility(Tip.IsValueTip), Mode=OneWay}" />
+                    <Button Grid.Column="3"
+                            Style="{StaticResource TipButtonStyle}"
+                            ToolTipService.ToolTip="{x:Bind hexView:HexTipPin.GetLabel(Tip.IsPinned), Mode=OneWay}"
+                            AutomationProperties.Name="{x:Bind hexView:HexTipPin.GetLabel(Tip.IsPinned), Mode=OneWay}"
+                            Click="PinButton_Click">
+                        <FontIcon Glyph="{x:Bind hexView:HexTipPin.GetGlyph(Tip.IsPinned), Mode=OneWay}" FontSize="10" />
+                    </Button>
+                </Grid>
+                <ItemsControl Width="400"
+                              ItemsSource="{x:Bind Tip.Values, Mode=OneWay}"
+                              Visibility="{x:Bind IsValuesVisible(Tip.IsValueTip), Mode=OneWay}">
+                    <ItemsControl.ItemContainerTransitions>
+                        <TransitionCollection />
+                    </ItemsControl.ItemContainerTransitions>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="page:HexTipValue">
+                            <Grid Height="30" Padding="10,0,0,0" ColumnSpacing="4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="70" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0"
+                                           VerticalAlignment="Center"
+                                           Text="{x:Bind DataType}" />
+                                <TextBlock Grid.Column="1"
+                                           VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"
+                                           Text="{x:Bind Value, Mode=OneWay}" />
+                                <controls:CopyButton Grid.Column="2" />
+                                <Button Grid.Column="3"
+                                        Style="{StaticResource TipButtonStyle}"
+                                        ToolTipService.ToolTip="{x:Bind hexView:HexTipPin.GetLabel(IsPinned), Mode=OneWay}"
+                                        AutomationProperties.Name="{x:Bind hexView:HexTipPin.GetLabel(IsPinned), Mode=OneWay}"
+                                        Click="ValuePinButton_Click">
+                                    <FontIcon Glyph="{x:Bind hexView:HexTipPin.GetGlyph(IsPinned), Mode=OneWay}" FontSize="10" />
+                                </Button>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <winUi:Effects.Shadow>
+                    <winUi:AttachedDropShadow CastTo="{x:Bind ShadowTarget}"
+                                              CornerRadius="4"
+                                              BlurRadius="10"
+                                              Opacity="0.2"
+                                              Offset="4,4" />
+                </winUi:Effects.Shadow>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

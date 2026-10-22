@@ -110,6 +110,8 @@ public sealed partial class HexViewControl
     /// </remarks>
     private void OnScrollViewerViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
     {
+        PlaceTips();
+
         if (IsVirtualized)
         {
             return;

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
+using InternalsViewer.UI.App.Controls.Timeline;
 using SkiaSharp;
 using Windows.Foundation;
 
@@ -68,6 +69,8 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
     private Dictionary<SKColor, List<SKPoint>> PointsByColour { get; } = [];
 
+    private List<SKPoint> SelectedPoints { get; } = [];
+
     private SKPaint PointPaint { get; } = new() { StrokeWidth = 1, StrokeCap = SKStrokeCap.Square };
 
     public void SetBlocks(IReadOnlyList<TraceMemoryBlock>? blocks)
@@ -99,7 +102,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
         canvas.DrawRect(0, Top, width, Height, Paints.Fill);
 
-        var key = new FrameKey(Blocks, TraceScale, Host.Axis, width, Top, Height, Host.ViewStart, Host.ViewEnd, scale);
+        var key = GetKey(width, scale);
 
         if (CurrentFrame is { } frame && frame.Key == key)
         {
@@ -113,7 +116,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
     public void Render(int width, double scale)
     {
-        var key = new FrameKey(Blocks, TraceScale, Host.Axis, width, Top, Height, Host.ViewStart, Host.ViewEnd, scale);
+        var key = GetKey(width, scale);
 
         CancelRendering();
 
@@ -321,8 +324,12 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
            && frame.Key.Height == Height
            && frame.Key.Start == Host.ViewStart
            && frame.Key.End == Host.ViewEnd
+           && frame.Key.SelectedCallNodeIndex == Host.SelectedCallNodeIndex
             ? frame
             : null;
+
+    private FrameKey GetKey(int width, double scale)
+        => new(Blocks, TraceScale, Host.Axis, width, Top, Height, Host.ViewStart, Host.ViewEnd, scale, Host.SelectedCallNodeIndex);
 
     private TraceMemoryHit? GetClickHit(Point position)
     {
@@ -347,18 +354,20 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
             DrawLifetime(canvas, key, rendered.View, block);
         }
 
-        DrawPoints(canvas, rendered.Marks, rendered.View.MarkSize);
+        DrawPoints(canvas, rendered.Marks, rendered.View.MarkSize, key.SelectedCallNodeIndex);
 
         CurrentFrame?.Picture.Dispose();
 
         CurrentFrame = new Frame(key, rendered.Structure, rendered.View, recorder.EndRecording());
     }
 
-    private void DrawPoints(SKCanvas canvas, List<(int X, int Y, int CallNodeIndex)> marks, int size)
+    private void DrawPoints(SKCanvas canvas, List<(int X, int Y, int CallNodeIndex)> marks, int size, int? selected)
     {
         PointPaint.StrokeWidth = size;
 
         Colours.Clear();
+
+        SelectedPoints.Clear();
 
         foreach (var points in PointsByColour.Values)
         {
@@ -367,7 +376,16 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
         foreach (var (x, y, callNodeIndex) in marks)
         {
-            var colour = GetColour(callNodeIndex);
+            var point = new SKPoint(x + size / 2f, y + size / 2f);
+
+            if (callNodeIndex == selected)
+            {
+                SelectedPoints.Add(point);
+
+                continue;
+            }
+
+            var colour = selected is null ? GetColour(callNodeIndex) : TimelineColours.ToGrey(GetColour(callNodeIndex));
 
             if (!PointsByColour.TryGetValue(colour, out var points))
             {
@@ -376,7 +394,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
                 PointsByColour[colour] = points;
             }
 
-            points.Add(new SKPoint(x + size / 2f, y + size / 2f));
+            points.Add(point);
         }
 
         foreach (var (colour, points) in PointsByColour)
@@ -389,6 +407,13 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
             PointPaint.Color = colour;
 
             canvas.DrawPoints(SKPointMode.Points, [.. points], PointPaint);
+        }
+
+        if (selected is { } callNode && SelectedPoints.Count > 0)
+        {
+            PointPaint.Color = GetColour(callNode);
+
+            canvas.DrawPoints(SKPointMode.Points, [.. SelectedPoints], PointPaint);
         }
     }
 
@@ -508,11 +533,21 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
         var marks = new List<(int X, int Y, int CallNodeIndex)>();
 
+        if (key.SelectedCallNodeIndex is { } selected)
+        {
+            foreach (var lane in structure.Lanes)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                AddMarks(lane, structure, view, key, columns, stamps, marks, selected);
+            }
+        }
+
         foreach (var lane in structure.Lanes)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            AddMarks(lane, structure, view, key, columns, stamps, marks);
+            AddMarks(lane, structure, view, key, columns, stamps, marks, null);
         }
 
         return new Rendered(structure, view, marks);
@@ -524,7 +559,8 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
                                  FrameKey key,
                                  int columns,
                                  bool[] stamps,
-                                 List<(int X, int Y, int CallNodeIndex)> marks)
+                                 List<(int X, int Y, int CallNodeIndex)> marks,
+                                 int? writer)
     {
         if (view.GetRows(structure, lane.Run, lane.Address, lane.Length) is not { } rows)
         {
@@ -559,13 +595,33 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
                 break;
             }
 
-            if (column >= 0 && IsFirstAt(stamps, row + column))
+            var next = GetLowerBound(structure, lane, start + (column + 1) * size / scale, index + 1);
+
+            if (column >= 0 && GetMarkWriter(writes, lane, index, next, writer) is { } callNodeIndex && IsFirstAt(stamps, row + column))
             {
-                marks.Add((column * size, y, writes[lane.Writes[index]].CallNodeIndex));
+                marks.Add((column * size, y, callNodeIndex));
             }
 
-            index = GetLowerBound(structure, lane, start + (column + 1) * size / scale, index + 1);
+            index = next;
         }
+    }
+
+    private static int? GetMarkWriter(TraceMemoryWrites writes, Lane lane, int from, int to, int? writer)
+    {
+        if (writer is null)
+        {
+            return writes.GetCallNodeIndex(lane.Writes[from]);
+        }
+
+        for (var index = from; index < to; index++)
+        {
+            if (writes.GetCallNodeIndex(lane.Writes[index]) == writer)
+            {
+                return writer;
+            }
+        }
+
+        return null;
     }
 
     private static bool IsFirstAt(bool[] stamps, int cell)
@@ -636,11 +692,21 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
         return GetLowerBound(structure, lane, Math.BitIncrement(to), first) - first;
     }
 
-    private static bool HasWriteBetween(Structure structure, Lane lane, double from, double to)
+    private static bool HasWriteBetween(Structure structure, Lane lane, double from, double to, int? writer)
     {
-        var index = GetLowerBound(structure, lane, from, 0);
+        var writes = structure.Blocks[lane.Block].Writes;
 
-        return index < lane.Writes.Length && GetValue(structure, lane, index) <= to;
+        for (var index = GetLowerBound(structure, lane, from, 0);
+             index < lane.Writes.Length && GetValue(structure, lane, index) <= to;
+             index++)
+        {
+            if (writer is null || writes.GetCallNodeIndex(lane.Writes[index]) == writer)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static float GetX(TracePoint point, FrameKey key)
@@ -833,7 +899,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
         {
             foreach (var lane in structure.RunLanes[run])
             {
-                if (HasWriteBetween(structure, structure.Lanes[lane], start - margin, end + margin))
+                if (HasWriteBetween(structure, structure.Lanes[lane], start - margin, end + margin, key.SelectedCallNodeIndex))
                 {
                     active.Add(run);
 
@@ -1054,7 +1120,8 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
                                             float Height,
                                             double Start,
                                             double End,
-                                            double Scale);
+                                            double Scale,
+                                            int? SelectedCallNodeIndex);
 
     private sealed record Frame(FrameKey Key, Structure Structure, View View, SKPicture Picture);
 

@@ -46,12 +46,9 @@
                                 VerticalAlignment="Stretch"
                                 Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
                                 Data="{x:Bind ViewModel.Data, Mode=OneWay}"
-                                Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"/>
-
-        <TextBlock Grid.Row="1"
-                   Text="{x:Bind ViewModel.EmptyText, Mode=OneWay}"
-                   FontSize="12"
-                   Margin="12,8,12,8"
-                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
+                                Watches="{x:Bind ViewModel.Watches, Mode=TwoWay}"
+                                IsChangeNavigationEnabled="True"
+                                ChangeNavigationRequested="OnChangeNavigationRequested"/>
     </Grid>
 </UserControl>

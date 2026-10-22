@@ -83,6 +83,9 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
     private ObservableCollection<Marker>? _markers;
 
     [ObservableProperty]
+    private ObservableCollection<HexWatch>? _watches;
+
+    [ObservableProperty]
     private IReadOnlyList<TraceMemoryBlock>? _memoryBlocks;
 
     [ObservableProperty]
@@ -109,6 +112,8 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
     private IReadOnlyList<MemoryHistoryCall> Calls { get; set; } = [];
 
     private Dictionary<CallStackNode, Colour> Colours { get; } = new(ReferenceEqualityComparer.Instance);
+
+    private HexWatchStore WatchStore { get; } = new();
 
     private TracePosition WindowStart => Window?.Start.Position ?? default;
 
@@ -175,6 +180,19 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
     public int GetBlock(ulong address, TracePosition position) => Store.GetBlock(address, position);
 
     public string GetObjectName(int block) => GetObjectLabel(Store.Blocks[block]) is { Length: > 0 } name ? name : UnknownObject;
+
+    public CallStackNode? GetWriter(int callNodeIndex) => callNodeIndex >= 0 ? Trace?.Timeline.NodeOf(callNodeIndex) : null;
+
+    public string GetWriterLabel(int callNodeIndex) => GetWriterLabel(GetWriter(callNodeIndex));
+
+    public ObservableCollection<HexWatch> GetWatches(int block)
+    {
+        var label = GetObjectLabel(Store.Blocks[block]);
+
+        var name = label.Length > 0 && label != IteratorObject ? label : $"0x{Store.Blocks[block].Address:X16}";
+
+        return WatchStore.GetWatches(name);
+    }
 
     partial void OnSelectedBlockRowChanged(ResultRow<long>? value)
         => ShowBlock(value is { Id: var index } && index < Store.Blocks.Count ? (int)index : -1);
@@ -263,9 +281,9 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
                 continue;
             }
 
-            var writes = Store.GetChangedWriteIndexes(index, WindowStart, WindowEnd);
+            var (first, count) = Store.GetChangedWriteRange(index, WindowStart, WindowEnd);
 
-            if (writes.Length == 0)
+            if (count == 0)
             {
                 continue;
             }
@@ -278,7 +296,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
                                             block.Size,
                                             block.From,
                                             block.To,
-                                            new TraceMemoryWrites(Store, writes)));
+                                            new TraceMemoryWrites(Store, first, count)));
         }
 
         return blocks;
@@ -299,6 +317,8 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
         SetColours();
 
         Markers = block >= 0 ? new ObservableCollection<Marker>(GetRegionMarkers()) : null;
+
+        Watches = block >= 0 ? GetWatches(block) : null;
 
         CallsTable = BuildCallsTable();
 

@@ -23,6 +23,8 @@ internal interface ITraceTimelineHost
 
     bool ShowCallStack { get; }
 
+    int? SelectedCallNodeIndex { get; }
+
     TraceTimelinePaints Paints { get; }
 
     SKPathBuilder PathBuilder { get; }

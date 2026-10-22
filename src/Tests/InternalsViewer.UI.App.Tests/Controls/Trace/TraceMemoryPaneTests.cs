@@ -2,6 +2,7 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
+using InternalsViewer.UI.App.Controls.Timeline;
 using InternalsViewer.UI.App.Controls.Trace;
 using SkiaSharp;
 using Windows.Foundation;
@@ -19,7 +20,11 @@ public class TraceMemoryPaneTests
 
     private const int WriterNode = 7;
 
+    private const int OtherNode = 8;
+
     private static readonly SKColor WriterColour = new(200, 40, 40);
+
+    private static readonly SKColor OtherColour = new(40, 160, 40);
 
     [Fact]
     public void Only_Bytes_That_Change_Take_Rows()
@@ -170,6 +175,49 @@ public class TraceMemoryPaneTests
         Assert.Equal(WriterColour, bitmap.GetPixel(40, (int)PaneTop + 24));
     }
 
+    [Fact]
+    public void Selecting_A_Call_Turns_Other_Writers_Grey_In_The_Bands_It_Writes()
+    {
+        var (pane, host) = Create([Block(0, 0x1000_0000, 0x40, Write(0x20, 8), new TraceMemoryWrite(Point(60), 0x20, 8, OtherNode))]);
+
+        using var _ = host;
+
+        host.SelectedCallNodeIndex = WriterNode;
+
+        var writerSelected = GetDrawnColours(pane, host);
+
+        host.SelectedCallNodeIndex = OtherNode;
+
+        var otherSelected = GetDrawnColours(pane, host);
+
+        Assert.Equal((true, false, true),
+                     (writerSelected.Contains(WriterColour),
+                      writerSelected.Contains(OtherColour),
+                      writerSelected.Contains(TimelineColours.ToGrey(OtherColour))));
+        Assert.Equal((false, true, true),
+                     (otherSelected.Contains(WriterColour),
+                      otherSelected.Contains(OtherColour),
+                      otherSelected.Contains(TimelineColours.ToGrey(WriterColour))));
+    }
+
+    [Fact]
+    public void Selecting_A_Call_Hides_The_Bands_It_Does_Not_Write_And_Gives_Their_Rows_To_The_Rest()
+    {
+        var (pane, host) = Create([Block(0, 0x1000_0000, 0x40, Write(0, 0x20), new TraceMemoryWrite(Point(60), 0x30, 0x10, OtherNode))]);
+
+        using var _ = host;
+
+        var before = pane.GetHit(new Point(10, PaneTop + 95))!.Value.Offset;
+
+        host.SelectedCallNodeIndex = WriterNode;
+
+        pane.Render(Width, host.Scale);
+
+        var after = pane.GetHit(new Point(10, PaneTop + 95))!.Value.Offset;
+
+        Assert.Equal((true, true), (before >= 0x30, after < 0x20));
+    }
+
     private static (TraceMemoryPane Pane, FakeHost Host) Create(TraceMemoryBlock[] blocks)
     {
         var host = new FakeHost();
@@ -181,6 +229,22 @@ public class TraceMemoryPaneTests
         pane.Render(Width, host.Scale);
 
         return (pane, host);
+    }
+
+    private static HashSet<SKColor> GetDrawnColours(TraceMemoryPane pane, FakeHost host)
+    {
+        using var bitmap = new SKBitmap(Width, (int)(PaneTop + PaneHeight));
+
+        using (var canvas = new SKCanvas(bitmap))
+        {
+            canvas.Clear(SKColors.Black);
+
+            pane.Render(Width, host.Scale);
+
+            pane.Draw(canvas, Width, host.Scale);
+        }
+
+        return [.. bitmap.Pixels];
     }
 
     private static TraceMemoryBlock Block(int id, ulong address, int size, params TraceMemoryWrite[] writes)
@@ -206,6 +270,8 @@ public class TraceMemoryPaneTests
 
         public bool ShowCallStack => false;
 
+        public int? SelectedCallNodeIndex { get; set; }
+
         public TraceTimelinePaints Paints { get; } = new();
 
         public SKPathBuilder PathBuilder { get; } = new();
@@ -222,7 +288,12 @@ public class TraceMemoryPaneTests
 
         public double GetOrigin(TraceTimelineAxis axis) => 0;
 
-        public SKColor GetColour(int callNodeIndex) => callNodeIndex == WriterNode ? WriterColour : SKColors.Gray;
+        public SKColor GetColour(int callNodeIndex) => callNodeIndex switch
+        {
+            WriterNode => WriterColour,
+            OtherNode => OtherColour,
+            _ => SKColors.Gray
+        };
 
         public string GetLabel(int callNodeIndex) => $"Writer {callNodeIndex}";
 

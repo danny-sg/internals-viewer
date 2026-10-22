@@ -153,51 +153,7 @@ public sealed partial class HexViewControl
 
             var border = metrics.GetSpanBorder(start, end, lineHeight);
 
-            foreach (var box in border.Boxes)
-            {
-                Add(CreateBox(box));
-            }
-
-            if (border.Outline.Count > 0)
-            {
-                var polygon = new Polygon
-                {
-                    Stroke = borderBrush,
-                    StrokeThickness = 2,
-                    StrokeLineJoin = PenLineJoin.Round,
-                    IsHitTestVisible = false
-                };
-
-                foreach (var point in border.Outline)
-                {
-                    polygon.Points.Add(point);
-                }
-
-                Add(polygon);
-            }
-
-            continue;
-
-            Rectangle CreateBox(Rect bounds)
-            {
-                var box = new Rectangle
-                {
-                    Width = bounds.Width,
-                    Height = bounds.Height,
-                    Stroke = borderBrush,
-                    StrokeThickness = 2,
-                    RadiusX = 2,
-                    RadiusY = 2,
-                    IsHitTestVisible = false,
-                };
-
-                Canvas.SetLeft(box, bounds.Left);
-                Canvas.SetTop(box, bounds.Top);
-
-                return box;
-            }
-
-            void Add(Shape shape)
+            foreach (var shape in CreateOutline(border, borderBrush))
             {
                 if (changeSpan.IsDashed)
                 {
@@ -209,6 +165,50 @@ public sealed partial class HexViewControl
                 HexOverlayCanvas.Children.Add(shape);
             }
         }
+    }
+
+    private static List<Shape> CreateOutline(SpanBorder border, Brush? brush)
+    {
+        var shapes = new List<Shape>();
+
+        foreach (var bounds in border.Boxes)
+        {
+            var box = new Rectangle
+            {
+                Width = bounds.Width,
+                Height = bounds.Height,
+                Stroke = brush,
+                StrokeThickness = 2,
+                RadiusX = 2,
+                RadiusY = 2,
+                IsHitTestVisible = false,
+            };
+
+            Canvas.SetLeft(box, bounds.Left);
+            Canvas.SetTop(box, bounds.Top);
+
+            shapes.Add(box);
+        }
+
+        if (border.Outline.Count > 0)
+        {
+            var polygon = new Polygon
+            {
+                Stroke = brush,
+                StrokeThickness = 2,
+                StrokeLineJoin = PenLineJoin.Round,
+                IsHitTestVisible = false
+            };
+
+            foreach (var point in border.Outline)
+            {
+                polygon.Points.Add(point);
+            }
+
+            shapes.Add(polygon);
+        }
+
+        return shapes;
     }
 
     /// <summary>

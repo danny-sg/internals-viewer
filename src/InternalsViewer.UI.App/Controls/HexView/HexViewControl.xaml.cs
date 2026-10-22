@@ -54,9 +54,26 @@ public sealed partial class HexViewControl
             DrawChangeSpans();
 
             DrawSelectionMask();
+
+            DrawPinOutlines();
+
+            PlaceTips();
         };
 
-        ScrollViewer.SizeChanged += (_, _) => UpdateVirtualization();
+        ScrollViewer.SizeChanged += (_, _) =>
+        {
+            UpdateVirtualization();
+
+            PlaceTips();
+        };
+
+        ViewModel.Tips.CollectionChanged += OnTipsChanged;
+
+        Loaded += OnTipsLoaded;
+
+        Unloaded += OnTipsUnloaded;
+
+        RegisterPropertyChangedCallback(VisibilityProperty, (_, _) => PlaceTips());
 
         ScrollViewer.ViewChanged += OnScrollViewerViewChanged;
 
@@ -70,6 +87,10 @@ public sealed partial class HexViewControl
         HexRichTextBlock.AddHandler(PointerPressedEvent, new PointerEventHandler(OnHexPointerPressed), true);
 
         HexRichTextBlock.AddHandler(PointerReleasedEvent, new PointerEventHandler(OnHexPointerReleased), true);
+
+        HexRichTextBlock.AddHandler(PointerPressedEvent, new PointerEventHandler(OnChangePointerPressed), true);
+
+        HexRichTextBlock.AddHandler(PointerReleasedEvent, new PointerEventHandler(OnChangePointerReleased), true);
     }
 
     public HexControlViewModel ViewModel { get; } = new();

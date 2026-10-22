@@ -1,62 +1,237 @@
 ﻿using System.Collections.ObjectModel;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using InternalsViewer.Internals.Converters.Decoder;
+using System.Collections.Specialized;
+using InternalsViewer.UI.App.Models;
 
 namespace InternalsViewer.UI.App.ViewModels.Page;
 
-public sealed partial class HexControlViewModel : ObservableObject
+public sealed class HexControlViewModel
 {
-    [ObservableProperty]
-    private bool _isDataTipOpen;
-
-    [ObservableProperty]
-    private ObservableCollection<DecodeResult> _decodeResults = [];
-
-    [ObservableProperty]
-    private int _startOffset;
-
-    [ObservableProperty]
-    private int _endOffset;
-
-    [ObservableProperty]
-    private string _selectedText = string.Empty;
-
-    [ObservableProperty]
-    private string _dataTipTitle = string.Empty;
-
-    partial void OnSelectedTextChanged(string value)
+    public HexControlViewModel()
     {
-        DecodeResults = new ObservableCollection<DecodeResult>(DataDecoder.Decode(value));
-
-        IsDataTipOpen = DecodeResults.Count > 0;
+        Watches.CollectionChanged += OnWatchesChanged;
     }
 
-    partial void OnStartOffsetChanged(int value)
+    public ObservableCollection<HexTipViewModel> Tips { get; } = [];
+
+    public ObservableCollection<HexWatch> Watches { get; private set; } = [];
+
+    public HexTipViewModel? SelectionTip { get; private set; }
+
+    public bool HasPins => Watches.Count > 0;
+
+    private byte[] Data { get; set; } = [];
+
+    private int BaseAddress { get; set; }
+
+    public void SetWatches(ObservableCollection<HexWatch> watches)
     {
-        SetDataTipTitle();
+        Watches.CollectionChanged -= OnWatchesChanged;
+
+        Watches = watches;
+
+        Attach();
     }
 
-    partial void OnEndOffsetChanged(int value)
+    public void Attach()
     {
-        SetDataTipTitle();
+        Watches.CollectionChanged -= OnWatchesChanged;
+
+        Watches.CollectionChanged += OnWatchesChanged;
+
+        SyncWatches();
     }
 
-    private void SetDataTipTitle()
+    public void Detach()
     {
-        if (StartOffset == EndOffset)
+        Watches.CollectionChanged -= OnWatchesChanged;
+
+        Dismiss();
+    }
+
+    public void SetData(byte[] data, int baseAddress)
+    {
+        Data = data;
+
+        BaseAddress = baseAddress;
+
+        foreach (var tip in Tips)
         {
-            DataTipTitle = $"  {StartOffset - 1} (0x{StartOffset - 1:X8})";
-        }
-        else
-        {
-            DataTipTitle = $" {StartOffset - 1} (0x{StartOffset - 1:X8}) - {EndOffset - 1} (0x{EndOffset - 1:X8})";
+            Decode(tip);
         }
     }
 
-    [RelayCommand]
-    private void CloseDataTip()
+    public void Select(int start, int end)
     {
-        IsDataTipOpen = false;
+        if (GetWatch(start, end, null) is not null || GetBytes(start, end) is not { } bytes)
+        {
+            Dismiss();
+
+            return;
+        }
+
+        var tip = SelectionTip ?? new HexTipViewModel();
+
+        tip.Describe(start, end, bytes);
+
+        if (tip.Values.Count == 0)
+        {
+            Dismiss();
+
+            return;
+        }
+
+        SetValuePins(tip);
+
+        if (SelectionTip is null)
+        {
+            SelectionTip = tip;
+
+            Tips.Add(tip);
+        }
+    }
+
+    public void Dismiss()
+    {
+        if (SelectionTip is not { } tip)
+        {
+            return;
+        }
+
+        SelectionTip = null;
+
+        Tips.Remove(tip);
+    }
+
+    public void Pin(HexTipViewModel tip)
+    {
+        if (tip.IsPinned)
+        {
+            return;
+        }
+
+        if (ReferenceEquals(tip, SelectionTip))
+        {
+            SelectionTip = null;
+        }
+
+        var watch = new HexWatch(tip.Start, tip.End - tip.Start + 1, tip.DataType) { Label = tip.CustomLabel };
+
+        tip.Watch = watch;
+
+        Watches.Add(watch);
+    }
+
+    public void TogglePin(HexTipViewModel tip)
+    {
+        if (tip.Watch is { } watch)
+        {
+            Watches.Remove(watch);
+
+            return;
+        }
+
+        Pin(tip);
+    }
+
+    public void TogglePinnedValue(HexTipViewModel tip, HexTipValue value)
+    {
+        if (GetWatch(tip.Start, tip.End, value.DataType) is { } watch)
+        {
+            Watches.Remove(watch);
+
+            return;
+        }
+
+        Watches.Add(new HexWatch(tip.Start, tip.End - tip.Start + 1, value.DataType));
+    }
+
+    public void ClearPins() => Watches.Clear();
+
+    private void OnWatchesChanged(object? sender, NotifyCollectionChangedEventArgs e) => SyncWatches();
+
+    private void SyncWatches()
+    {
+        for (var i = Tips.Count - 1; i >= 0; i--)
+        {
+            if (Tips[i].Watch is { } watch && !Watches.Contains(watch))
+            {
+                Tips.RemoveAt(i);
+            }
+        }
+
+        foreach (var watch in Watches)
+        {
+            if (GetTip(watch) is not null)
+            {
+                continue;
+            }
+
+            var tip = new HexTipViewModel(watch);
+
+            Decode(tip);
+
+            Tips.Add(tip);
+        }
+
+        if (SelectionTip is { } selection && GetWatch(selection.Start, selection.End, null) is not null)
+        {
+            Dismiss();
+        }
+
+        foreach (var tip in Tips)
+        {
+            SetValuePins(tip);
+        }
+    }
+
+    private void Decode(HexTipViewModel tip)
+    {
+        if (GetBytes(tip.Start, tip.End) is { } bytes)
+        {
+            tip.Decode(bytes);
+        }
+    }
+
+    private byte[]? GetBytes(int start, int end)
+    {
+        var first = start - BaseAddress;
+
+        var last = end - BaseAddress;
+
+        return first >= 0 && first <= last && last < Data.Length ? Data[first..(last + 1)] : null;
+    }
+
+    private HexTipViewModel? GetTip(HexWatch watch)
+    {
+        foreach (var tip in Tips)
+        {
+            if (ReferenceEquals(tip.Watch, watch))
+            {
+                return tip;
+            }
+        }
+
+        return null;
+    }
+
+    private HexWatch? GetWatch(int start, int end, string? dataType)
+    {
+        foreach (var watch in Watches)
+        {
+            if (watch.Offset == start && watch.End == end && watch.DataType == dataType)
+            {
+                return watch;
+            }
+        }
+
+        return null;
+    }
+
+    private void SetValuePins(HexTipViewModel tip)
+    {
+        foreach (var value in tip.Values)
+        {
+            value.IsPinned = GetWatch(tip.Start, tip.End, value.DataType) is not null;
+        }
     }
 }

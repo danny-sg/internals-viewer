@@ -5,9 +5,6 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:winUi="using:CommunityToolkit.WinUI"
-    xmlns:decoder="using:InternalsViewer.Internals.Converters.Decoder"
-    xmlns:controls="using:InternalsViewer.UI.App.Controls"
     xmlns:converters="using:CommunityToolkit.WinUI.Converters"
     xmlns:page="using:InternalsViewer.UI.App.Controls.Page"
     mc:Ignorable="d">
@@ -33,26 +30,9 @@
             <Setter Property="LineHeight" Value="16"/>
         </Style>
 
-        <Style TargetType="ListViewItem" BasedOn="{StaticResource RowListViewItemStyle}">
-            <Setter Property="Padding" Value="10,4,0,0" />
-        </Style>
-
         <Style TargetType="Paragraph">
             <Setter Property="Margin" Value="0" />
         </Style>
-
-        <DataTemplate x:DataType="decoder:DecodeResult" x:Key="DecodeResultTemplate">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="70"/>
-                    <ColumnDefinition Width="300"/>
-                    <ColumnDefinition Width="40"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="{x:Bind DataType}" Margin="10,0,0,0"/>
-                <TextBlock Grid.Column="1" Text="{x:Bind Value}" Margin="10,0,0,0"/>
-                <controls:CopyButton Grid.Column="2"/>
-            </Grid>
-        </DataTemplate>
     </Control.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -102,10 +82,31 @@
                            PointerExited="HexRichTextBlock_PointerExited"
                            SelectionChanged="HexRichTextBlock_SelectionChanged"
                            LostFocus="HexRichTextBlock_LostFocus"
-                           Style="{StaticResource HexRichTextBlockStyle}"/>
+                           Style="{StaticResource HexRichTextBlockStyle}">
+                        <RichTextBlock.ContextFlyout>
+                            <MenuFlyout Opening="HexMenu_Opening">
+                                <MenuFlyoutItem x:Name="NextChangeMenuItem"
+                                                Text="Next Change"
+                                                KeyboardAcceleratorTextOverride="Click"
+                                                Click="NextChangeMenuItem_Click" />
+                                <MenuFlyoutItem x:Name="PreviousChangeMenuItem"
+                                                Text="Previous Change"
+                                                KeyboardAcceleratorTextOverride="Shift+Click"
+                                                Click="PreviousChangeMenuItem_Click" />
+                                <MenuFlyoutSeparator x:Name="ChangeMenuSeparator" />
+                                <MenuFlyoutItem x:Name="CopyMenuItem" Text="Copy" Click="CopyMenuItem_Click" />
+                                <MenuFlyoutItem Text="Select All" Click="SelectAllMenuItem_Click" />
+                                <MenuFlyoutSeparator />
+                                <MenuFlyoutItem x:Name="ClearPinsMenuItem" Text="Clear Pins" Click="ClearPinsMenuItem_Click" />
+                            </MenuFlyout>
+                        </RichTextBlock.ContextFlyout>
+                    </RichTextBlock>
                     <Canvas x:Name="HexOverlayCanvas"
                             IsHitTestVisible="False"
                             Canvas.ZIndex="10" />
+                    <Canvas x:Name="PinOutlineCanvas"
+                            IsHitTestVisible="False"
+                            Canvas.ZIndex="12" />
                     <Canvas x:Name="SelectionMaskCanvas"
                             IsHitTestVisible="False"
                             Canvas.ZIndex="15" />
@@ -113,38 +114,12 @@
                           IsHitTestVisible="False"
                           Canvas.ZIndex="20"
                           Visibility="Collapsed"/>
-                    <Popup x:Name="SelectionInfoPopup" 
-                           PlacementTarget="{x:Bind HexRichTextBlock}"
-                           IsOpen="{x:Bind ViewModel.IsDataTipOpen, Mode=OneWay}">
-                        <Grid>
-                            <Border x:Name="ShadowTarget" />
-                            <Border x:Name="SelectionInfoPopupBorder"
-                                    CornerRadius="4"
-                                    Background="{ThemeResource TeachingTipBackgroundBrush}"
-                                    BorderBrush="{ThemeResource TeachingTipBorderBrush}" BorderThickness="1">
-                                <StackPanel Padding="4">
-                                    <TextBlock x:Name="PopupTextBox" 
-                                               Style="{ThemeResource BodyStrongTextBlockStyle}"
-                                               Text="{x:Bind ViewModel.DataTipTitle, Mode=OneWay}"/>
-                                    <ListView ItemsSource="{x:Bind ViewModel.DecodeResults, Mode=OneWay}" 
-                                              ItemTemplate="{StaticResource DecodeResultTemplate}" 
-                                              MaxHeight="200"
-                                              Width="400" />
-
-                                    <winUi:Effects.Shadow>
-                                        <winUi:AttachedDropShadow CastTo="{x:Bind ShadowTarget}"
-                                                                  CornerRadius="4"
-                                                                  BlurRadius="10"
-                                                                  Opacity="0.2"
-                                                                  Offset="4,4" />
-                                    </winUi:Effects.Shadow>
-                                </StackPanel>
-                            </Border>
-                        </Grid>
-                    </Popup>
                 </Grid>
             </Grid>
         </ScrollViewer>
+        <Grid x:Name="TipLayer"
+              Grid.Row="0"
+              Grid.Column="0" />
         <Grid Grid.Row="1" Grid.ColumnSpan="2"       
               BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" 
               Background="{ThemeResource LayerFillColorDefaultBrush}"

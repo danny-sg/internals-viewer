@@ -1,19 +1,18 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.FullTrace;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
+using InternalsViewer.UI.App.ViewModels.Query.MemoryHistory.Enums;
 using Microsoft.UI;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.MemoryHistory;
 
 public sealed partial class PlayheadMemoryViewModel(MemoryHistoryViewModel history) : ObservableObject
 {
-    private const string NotAllocated = "Not Allocated At This Position";
-
-    private const string Changed = "Changed";
-
-    private static readonly Windows.UI.Color ChangedColour = Windows.UI.Color.FromArgb(255, 255, 246, 196);
+    private const string NotYetChanged = "Not Yet Changed";
 
     [ObservableProperty]
     private bool _isOpen;
@@ -25,6 +24,9 @@ public sealed partial class PlayheadMemoryViewModel(MemoryHistoryViewModel histo
     private ObservableCollection<Marker>? _markers;
 
     [ObservableProperty]
+    private ObservableCollection<HexWatch>? _watches;
+
+    [ObservableProperty]
     private string _objectName = string.Empty;
 
     [ObservableProperty]
@@ -32,6 +34,8 @@ public sealed partial class PlayheadMemoryViewModel(MemoryHistoryViewModel histo
 
     [ObservableProperty]
     private string _emptyText = string.Empty;
+
+    public event EventHandler<TracePoint>? PlayheadRequested;
 
     private MemoryHistoryViewModel History { get; } = history;
 
@@ -62,6 +66,8 @@ public sealed partial class PlayheadMemoryViewModel(MemoryHistoryViewModel histo
 
         ObjectName = History.GetObjectName(block);
 
+        Watches = History.GetWatches(block);
+
         ObjectDetail = offset == 0
             ? $"0x{opened.Address:X16}, {opened.Size} Bytes"
             : $"0x{opened.Address:X16} + 0x{offset:X}, {opened.Size} Bytes";
@@ -79,9 +85,34 @@ public sealed partial class PlayheadMemoryViewModel(MemoryHistoryViewModel histo
 
         Markers = null;
 
+        Watches = null;
+
         EmptyText = string.Empty;
 
         IsOpen = false;
+    }
+
+    public void GoToChange(int offset, bool isForward)
+    {
+        if (!IsOpen)
+        {
+            return;
+        }
+
+        var store = History.Store;
+
+        var writes = store.GetWrites(Block);
+
+        var position = Playhead ?? OpenedAt;
+
+        var index = isForward
+            ? MemoryChangeNavigation.GetNextChange(writes, offset, position)
+            : MemoryChangeNavigation.GetPreviousChange(writes, offset, position);
+
+        if (index >= 0)
+        {
+            PlayheadRequested?.Invoke(this, store.GetPoint(store.Blocks[Block].FirstWrite + index));
+        }
     }
 
     public void SetPlayhead(TracePosition? position)
@@ -106,8 +137,6 @@ public sealed partial class PlayheadMemoryViewModel(MemoryHistoryViewModel histo
 
         var count = isLive ? store.GetWriteCount(Block, position) : -1;
 
-        EmptyText = isLive ? string.Empty : NotAllocated;
-
         if (count == WriteCount)
         {
             return;
@@ -119,34 +148,30 @@ public sealed partial class PlayheadMemoryViewModel(MemoryHistoryViewModel histo
 
         Data = image?.Data;
 
-        Markers = image is null ? null : new ObservableCollection<Marker>(GetChangedMarkers(image.Changed));
+        Markers = image is null ? null : new ObservableCollection<Marker>(GetChangeMarkers(count, image.Data.Length));
     }
 
-    private static IEnumerable<Marker> GetChangedMarkers(bool[] changed)
+    private IEnumerable<Marker> GetChangeMarkers(int count, int size)
     {
-        var start = -1;
-
-        for (var offset = 0; offset <= changed.Length; offset++)
+        foreach (var run in MemoryChangeRuns.GetRuns(History.Store.GetWrites(Block), count, size))
         {
-            var isChanged = offset < changed.Length && changed[offset];
+            var isPending = run.State == MemoryChangeState.Pending;
 
-            if (isChanged && start < 0)
+            yield return new Marker
             {
-                start = offset;
-            }
-            else if (!isChanged && start >= 0)
-            {
-                yield return new Marker
-                {
-                    Name = Changed,
-                    StartPosition = start,
-                    EndPosition = offset - 1,
-                    BackColour = ChangedColour,
-                    ForeColour = Colors.Black
-                };
-
-                start = -1;
-            }
+                Name = isPending ? NotYetChanged : History.GetWriterLabel(run.CallNodeIndex),
+                StartPosition = run.Start,
+                EndPosition = run.End,
+                BackColour = isPending ? Colors.WhiteSmoke : GetWriterColour(run.CallNodeIndex),
+                ForeColour = Colors.Black
+            };
         }
+    }
+
+    private Windows.UI.Color GetWriterColour(int callNodeIndex)
+    {
+        var colour = ColourHelpers.FromHex(History.GetWriter(callNodeIndex)?.CategoryColour) ?? Colors.Gray;
+
+        return ColourHelpers.Lighten(colour.ToColor()).ToWindowsColor();
     }
 }

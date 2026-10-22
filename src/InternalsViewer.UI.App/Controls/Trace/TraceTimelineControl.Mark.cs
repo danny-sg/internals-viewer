@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using SkiaSharp;
@@ -54,6 +55,13 @@ public sealed partial class TraceTimelineControl
         StopPlay();
 
         PlacePlayhead(start);
+    }
+
+    public void MovePlayheadTo(TracePoint point)
+    {
+        StopPlay();
+
+        PlacePlayhead(TraceScale.GetValue(point, _axis));
     }
 
     public void ZoomToCall(CallStackNode node, int callIndex)

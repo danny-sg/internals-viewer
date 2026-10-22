@@ -235,6 +235,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         if (Memory is { } previous)
         {
             previous.PropertyChanged -= OnMemoryPropertyChanged;
+
+            previous.PlayheadRequested -= OnMemoryPlayheadRequested;
         }
 
         Memory = memory;
@@ -242,6 +244,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         if (memory is not null)
         {
             memory.PropertyChanged += OnMemoryPropertyChanged;
+
+            memory.PlayheadRequested += OnMemoryPlayheadRequested;
 
             memory.SetPlayhead(TraceTimeline.GetPlayheadPosition());
         }
@@ -349,6 +353,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
     }
 
     private void OnPlayheadChanged() => Memory?.SetPlayhead(TraceTimeline.GetPlayheadPosition());
+
+    private void OnMemoryPlayheadRequested(object? sender, TracePoint point) => TraceTimeline.MovePlayheadTo(point);
 
     private void OnMemoryPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {

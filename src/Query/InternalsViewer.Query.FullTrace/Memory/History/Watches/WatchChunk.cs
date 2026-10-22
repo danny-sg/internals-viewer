@@ -1,3 +1,3 @@
-namespace InternalsViewer.Query.FullTrace;
+namespace InternalsViewer.Query.FullTrace.Memory.History.Watches;
 
-internal sealed record WatchBatch(WatchedHit[] Hits, byte[] Data);
+internal sealed record WatchChunk(ChunkHit[] Hits, byte[] Data);

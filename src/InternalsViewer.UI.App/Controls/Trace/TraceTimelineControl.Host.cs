@@ -24,6 +24,8 @@ public sealed partial class TraceTimelineControl : ITraceTimelineHost
 
     bool ITraceTimelineHost.ShowCallStack => ShowCallStack;
 
+    int? ITraceTimelineHost.SelectedCallNodeIndex => _selected is { } selected ? SpanOf(selected)?.CallNodeIndex : null;
+
     TraceTimelinePaints ITraceTimelineHost.Paints => _paints;
 
     SKPathBuilder ITraceTimelineHost.PathBuilder => _pathBuilder;

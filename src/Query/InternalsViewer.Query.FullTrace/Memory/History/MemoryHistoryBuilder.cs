@@ -5,10 +5,10 @@ using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
+using InternalsViewer.Query.FullTrace.Memory.History.Watches;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
-using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Memory.History;
 
@@ -195,142 +195,25 @@ internal static class MemoryHistoryBuilder
 
         var recorder = new WriteRecorder(lookup, stacks);
 
-        foreach (var (hit, bytes) in GetOrdered(watched))
+        var order = HitOrder.Get(watched);
+
+        foreach (var (hit, bytes) in order.GetHits())
         {
-            recorder.Apply(hit, bytes.AsSpan(hit.DataOffset, hit.Size));
+            recorder.Count(hit, bytes.AsSpan(hit.DataOffset, hit.Size));
         }
 
-        return (Compact(blocks, stacks, recorder), recorder.Counts);
-    }
+        var (kept, firstWrites) = GetKeptBlocks(blocks, stacks, recorder.Written);
 
-    private static IEnumerable<(WatchedHit Hit, byte[] Data)> GetOrdered(WatchResult watched)
-        => IsOrdered(watched) ? watched.Batches.SelectMany(b => b.Hits.Select(h => (Hit: h, b.Data))) : GetMerged(watched);
+        recorder.BeginWriting(firstWrites);
 
-    private static IEnumerable<(WatchedHit Hit, byte[] Data)> GetMerged(WatchResult watched)
-    {
-        var batches = watched.Batches;
-
-        var starts = new int[batches.Count];
-
-        var total = 0;
-
-        for (var batch = 0; batch < batches.Count; batch++)
+        foreach (var (hit, bytes) in order.GetHits())
         {
-            starts[batch] = total;
-
-            total += batches[batch].Hits.Length;
+            recorder.Write(hit, bytes.AsSpan(hit.DataOffset, hit.Size));
         }
 
-        var next = new int[total];
+        var store = new MemoryHistoryStore(kept, recorder.Writes, recorder.GetInstructionHighs(), recorder.Data, recorder.Iterators);
 
-        var lasts = new Dictionary<uint, (int Index, TracePosition Position)>();
-
-        var queue = new PriorityQueue<int, TracePosition>();
-
-        for (var batch = 0; batch < batches.Count; batch++)
-        {
-            var hits = batches[batch].Hits;
-
-            for (var index = 0; index < hits.Length; index++)
-            {
-                var hit = hits[index];
-
-                var global = starts[batch] + index;
-
-                next[global] = -1;
-
-                if (lasts.TryGetValue(hit.Thread, out var last))
-                {
-                    if (hit.Position < last.Position)
-                    {
-                        return GetSorted(watched);
-                    }
-
-                    next[last.Index] = global;
-                }
-                else
-                {
-                    queue.Enqueue(global, hit.Position);
-                }
-
-                lasts[hit.Thread] = (global, hit.Position);
-            }
-        }
-
-        return Merge(batches, starts, next, queue);
-    }
-
-    private static IEnumerable<(WatchedHit Hit, byte[] Data)> Merge(IReadOnlyList<WatchBatch> batches,
-                                                                     int[] starts,
-                                                                     int[] next,
-                                                                     PriorityQueue<int, TracePosition> queue)
-    {
-        while (queue.TryDequeue(out var global, out _))
-        {
-            var batch = GetBatch(starts, global);
-
-            yield return (batches[batch].Hits[global - starts[batch]], batches[batch].Data);
-
-            if (next[global] is >= 0 and var following)
-            {
-                var followingBatch = GetBatch(starts, following);
-
-                queue.Enqueue(following, batches[followingBatch].Hits[following - starts[followingBatch]].Position);
-            }
-        }
-    }
-
-    private static int GetBatch(int[] starts, int global)
-    {
-        var index = Array.BinarySearch(starts, global);
-
-        return index >= 0 ? index : ~index - 1;
-    }
-
-    private static IEnumerable<(WatchedHit Hit, byte[] Data)> GetSorted(WatchResult watched)
-    {
-        var keys = new (TracePosition Position, long Location)[watched.HitCount];
-
-        var at = 0;
-
-        for (var batch = 0; batch < watched.Batches.Count; batch++)
-        {
-            var hits = watched.Batches[batch].Hits;
-
-            for (var index = 0; index < hits.Length; index++)
-            {
-                keys[at++] = (hits[index].Position, (long)batch << 32 | (uint)index);
-            }
-        }
-
-        Array.Sort(keys);
-
-        foreach (var (_, location) in keys)
-        {
-            var batch = watched.Batches[(int)(location >> 32)];
-
-            yield return (batch.Hits[(int)location], batch.Data);
-        }
-    }
-
-    private static bool IsOrdered(WatchResult watched)
-    {
-        var last = default(TracePosition);
-
-        foreach (var batch in watched.Batches)
-        {
-            foreach (var hit in batch.Hits)
-            {
-                if (hit.Position < last)
-                {
-                    return false;
-                }
-
-                last = hit.Position;
-            }
-        }
-
-        return true;
+        return (store, recorder.Counts);
     }
 
     private static bool IsWatched(MemoryFunction function)
@@ -347,20 +230,11 @@ internal static class MemoryHistoryBuilder
         return block.Image![offset] != value ? MemoryHistoryChangeType.Changed : null;
     }
 
-    private static MemoryHistoryStore Compact(List<WatchedBlock> blocks, StackLookup stacks, WriteRecorder recorder)
+    private static (MemoryHistoryBlock[] Kept, int[] FirstWrites) GetKeptBlocks(List<WatchedBlock> blocks,
+                                                                                StackLookup stacks,
+                                                                                int[] written)
     {
-        var writes = recorder.Writes;
-
-        var writeBlocks = recorder.WriteBlocks;
-
-        var written = new int[blocks.Count];
-
-        for (var index = 0; index < writeBlocks.Count; index++)
-        {
-            written[writeBlocks[index].Block]++;
-        }
-
-        var next = new int[blocks.Count];
+        var firstWrites = new int[blocks.Count];
 
         var kept = new List<MemoryHistoryBlock>();
 
@@ -373,7 +247,7 @@ internal static class MemoryHistoryBuilder
                 continue;
             }
 
-            next[index] = firstWrite;
+            firstWrites[index] = firstWrite;
 
             var block = blocks[index];
 
@@ -396,38 +270,7 @@ internal static class MemoryHistoryBuilder
             firstWrite += written[index];
         }
 
-        var grouped = new MemoryHistoryWrite[writes.Count];
-
-        var highs = recorder.HasHighInstructions ? new uint[writes.Count] : null;
-
-        var iterators = new Dictionary<int, ulong>();
-
-        for (var index = 0; index < writes.Count; index++)
-        {
-            var (block, high) = writeBlocks[index];
-
-            var target = next[block]++;
-
-            var write = writes[index];
-
-            grouped[target] = write;
-
-            if (highs is not null)
-            {
-                highs[target] = high;
-            }
-
-            if (write.CallNodeIndex >= 0 && stacks.GetIterator(write.CallNodeIndex) is not 0 and var iterator)
-            {
-                iterators[write.CallNodeIndex] = iterator;
-            }
-        }
-
-        return new MemoryHistoryStore([.. kept],
-                                      grouped,
-                                      highs is null ? HighWordRuns.Empty : HighWordRuns.Build(highs),
-                                      [.. recorder.Data],
-                                      iterators);
+        return ([.. kept], firstWrites);
     }
 
     private sealed class StackLookup(TraceTimeline? timeline)
@@ -749,29 +592,74 @@ internal static class MemoryHistoryBuilder
 
     private sealed class WriteRecorder(BlockIndex lookup, StackLookup stacks)
     {
-        public ChunkedList<MemoryHistoryWrite> Writes { get; } = new();
-
-        public ChunkedList<(int Block, uint HighInstructions)> WriteBlocks { get; } = new();
-
-        public List<byte> Data { get; } = [];
-
         public MemoryHistoryHitCounts Counts { get; } = new();
 
-        public bool HasHighInstructions { get; private set; }
+        public int[] Written { get; } = new int[lookup.Blocks.Count];
+
+        public MemoryHistoryWrite[] Writes { get; private set; } = [];
+
+        public byte[] Data { get; private set; } = [];
+
+        public Dictionary<int, ulong> Iterators { get; } = [];
+
+        private int WriteCount { get; set; }
+
+        private int DataLength { get; set; }
+
+        private int[] Next { get; set; } = [];
+
+        private int DataAt { get; set; }
+
+        private uint[]? Highs { get; set; }
+
+        private bool IsWriting { get; set; }
 
         private (int CallNodeIndex, int CallIndex, ulong Instructions)? Writer { get; set; }
 
-        public void Apply(WatchedHit hit, ReadOnlySpan<byte> bytes)
+        public void Count(ChunkHit hit, ReadOnlySpan<byte> bytes)
+        {
+            var first = WriteCount;
+
+            var (isInBlock, isBufferPool) = Apply(hit, bytes);
+
+            Counts.Add(WriteCount > first, isBufferPool, isInBlock);
+        }
+
+        public void BeginWriting(int[] firstWrites)
+        {
+            foreach (var block in lookup.Blocks)
+            {
+                if (block.Known is { } known)
+                {
+                    Array.Clear(known);
+                }
+            }
+
+            Writes = new MemoryHistoryWrite[WriteCount];
+
+            Data = new byte[DataLength];
+
+            Next = firstWrites;
+
+            IsWriting = true;
+        }
+
+        public void Write(ChunkHit hit, ReadOnlySpan<byte> bytes)
+        {
+            Writer = null;
+
+            Apply(hit, bytes);
+        }
+
+        public HighWordRuns GetInstructionHighs() => Highs is null ? HighWordRuns.Empty : HighWordRuns.Build(Highs);
+
+        private (bool IsInBlock, bool IsBufferPool) Apply(ChunkHit hit, ReadOnlySpan<byte> bytes)
         {
             var address = hit.Address;
-
-            var first = Writes.Count;
 
             var isInBlock = false;
 
             var isBufferPool = false;
-
-            Writer = null;
 
             while (bytes.Length > 0)
             {
@@ -808,10 +696,10 @@ internal static class MemoryHistoryBuilder
                 bytes = bytes[length..];
             }
 
-            Counts.Add(Writes.Count > first, isBufferPool, isInBlock);
+            return (isInBlock, isBufferPool);
         }
 
-        private void AddChanges(WatchedHit hit, int found, int offset, ReadOnlySpan<byte> bytes)
+        private void AddChanges(ChunkHit hit, int found, int offset, ReadOnlySpan<byte> bytes)
         {
             var block = lookup.Blocks[found];
 
@@ -843,30 +731,228 @@ internal static class MemoryHistoryBuilder
 
                 block.Known.AsSpan(offset + start, run.Length).Fill(true);
 
-                Add(hit, found, offset + start, run, type);
+                if (IsWriting)
+                {
+                    Add(hit, found, offset + start, run, type);
+                }
+                else
+                {
+                    Written[found]++;
+
+                    WriteCount++;
+
+                    DataLength += run.Length;
+                }
             }
         }
 
-        private void Add(WatchedHit hit, int block, int offset, ReadOnlySpan<byte> run, MemoryHistoryChangeType type)
+        private void Add(ChunkHit hit, int block, int offset, ReadOnlySpan<byte> run, MemoryHistoryChangeType type)
         {
-            var (callNodeIndex, callIndex, instructions) = Writer ??= stacks.GetWriter(hit.Thread, hit.Position);
+            var (callNodeIndex, callIndex, instructions) = Writer ??= GetWriter(hit);
+
+            var target = Next[block]++;
+
+            Writes[target] = new MemoryHistoryWrite(hit.Position,
+                                                    (uint)instructions,
+                                                    callNodeIndex,
+                                                    callIndex,
+                                                    offset,
+                                                    DataAt,
+                                                    (ushort)run.Length,
+                                                    type);
 
             var high = (uint)(instructions >> 32);
 
-            HasHighInstructions |= high != 0;
+            if (high != 0)
+            {
+                Highs ??= new uint[Writes.Length];
 
-            Writes.Add(new MemoryHistoryWrite(hit.Position,
-                                              (uint)instructions,
-                                              callNodeIndex,
-                                              callIndex,
-                                              offset,
-                                              Data.Count,
-                                              (ushort)run.Length,
-                                              type));
+                Highs[target] = high;
+            }
 
-            WriteBlocks.Add((block, high));
+            run.CopyTo(Data.AsSpan(DataAt));
 
-            Data.AddRange(run);
+            DataAt += run.Length;
+        }
+
+        private (int CallNodeIndex, int CallIndex, ulong Instructions) GetWriter(ChunkHit hit)
+        {
+            var writer = stacks.GetWriter(hit.Thread, hit.Position);
+
+            if (writer.CallNodeIndex >= 0 && stacks.GetIterator(writer.CallNodeIndex) is not 0 and var iterator)
+            {
+                Iterators[writer.CallNodeIndex] = iterator;
+            }
+
+            return writer;
+        }
+    }
+
+    private sealed class HitOrder
+    {
+        private HitOrder(WatchResult watched, int[] starts, int[] next, int[] heads, (TracePosition Position, long Location)[] sorted)
+        {
+            Watched = watched;
+            Starts = starts;
+            Next = next;
+            Heads = heads;
+            Sorted = sorted;
+        }
+
+        private WatchResult Watched { get; }
+
+        private int[] Starts { get; }
+
+        private int[] Next { get; }
+
+        private int[] Heads { get; }
+
+        private (TracePosition Position, long Location)[] Sorted { get; }
+
+        public static HitOrder Get(WatchResult watched) => IsOrdered(watched) ? new HitOrder(watched, [], [], [], []) : GetMerged(watched);
+
+        public IEnumerable<(ChunkHit Hit, byte[] Data)> GetHits()
+        {
+            if (Sorted.Length > 0)
+            {
+                return GetSortedHits();
+            }
+
+            return Heads.Length > 0 ? GetMergedHits() : Watched.Chunks.SelectMany(c => c.Hits.Select(h => (Hit: h, c.Data)));
+        }
+
+        private static HitOrder GetMerged(WatchResult watched)
+        {
+            var chunks = watched.Chunks;
+
+            var starts = new int[chunks.Count];
+
+            var total = 0;
+
+            for (var chunk = 0; chunk < chunks.Count; chunk++)
+            {
+                starts[chunk] = total;
+
+                total += chunks[chunk].Hits.Length;
+            }
+
+            var next = new int[total];
+
+            var lasts = new Dictionary<uint, (int Index, TracePosition Position)>();
+
+            var heads = new List<int>();
+
+            for (var chunk = 0; chunk < chunks.Count; chunk++)
+            {
+                var hits = chunks[chunk].Hits;
+
+                for (var index = 0; index < hits.Length; index++)
+                {
+                    var hit = hits[index];
+
+                    var global = starts[chunk] + index;
+
+                    next[global] = -1;
+
+                    if (lasts.TryGetValue(hit.Thread, out var last))
+                    {
+                        if (hit.Position < last.Position)
+                        {
+                            return GetSorted(watched);
+                        }
+
+                        next[last.Index] = global;
+                    }
+                    else
+                    {
+                        heads.Add(global);
+                    }
+
+                    lasts[hit.Thread] = (global, hit.Position);
+                }
+            }
+
+            return new HitOrder(watched, starts, next, [.. heads], []);
+        }
+
+        private static HitOrder GetSorted(WatchResult watched)
+        {
+            var keys = new (TracePosition Position, long Location)[watched.HitCount];
+
+            var at = 0;
+
+            for (var chunk = 0; chunk < watched.Chunks.Count; chunk++)
+            {
+                var hits = watched.Chunks[chunk].Hits;
+
+                for (var index = 0; index < hits.Length; index++)
+                {
+                    keys[at++] = (hits[index].Position, (long)chunk << 32 | (uint)index);
+                }
+            }
+
+            Array.Sort(keys);
+
+            return new HitOrder(watched, [], [], [], keys);
+        }
+
+        private static bool IsOrdered(WatchResult watched)
+        {
+            var last = default(TracePosition);
+
+            foreach (var chunk in watched.Chunks)
+            {
+                foreach (var hit in chunk.Hits)
+                {
+                    if (hit.Position < last)
+                    {
+                        return false;
+                    }
+
+                    last = hit.Position;
+                }
+            }
+
+            return true;
+        }
+
+        private IEnumerable<(ChunkHit Hit, byte[] Data)> GetMergedHits()
+        {
+            var queue = new PriorityQueue<int, TracePosition>(Heads.Length);
+
+            foreach (var head in Heads)
+            {
+                queue.Enqueue(head, GetHit(head).Hit.Position);
+            }
+
+            while (queue.TryDequeue(out var global, out _))
+            {
+                yield return GetHit(global);
+
+                if (Next[global] is >= 0 and var following)
+                {
+                    queue.Enqueue(following, GetHit(following).Hit.Position);
+                }
+            }
+        }
+
+        private IEnumerable<(ChunkHit Hit, byte[] Data)> GetSortedHits()
+        {
+            foreach (var (_, location) in Sorted)
+            {
+                var chunk = Watched.Chunks[(int)(location >> 32)];
+
+                yield return (chunk.Hits[(int)location], chunk.Data);
+            }
+        }
+
+        private (ChunkHit Hit, byte[] Data) GetHit(int global)
+        {
+            var index = Array.BinarySearch(Starts, global);
+
+            var chunk = index >= 0 ? index : ~index - 1;
+
+            return (Watched.Chunks[chunk].Hits[global - Starts[chunk]], Watched.Chunks[chunk].Data);
         }
     }
 }

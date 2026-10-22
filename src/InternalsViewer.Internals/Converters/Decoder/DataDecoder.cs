@@ -7,11 +7,11 @@ namespace InternalsViewer.Internals.Converters.Decoder;
 
 public static class DataDecoder
 {
-    public static List<DecodeResult> Decode(string value)
+    public static List<DecodeResult> Decode(string value) => Decode(value.CleanHex().ToByteArray());
+
+    public static List<DecodeResult> Decode(byte[] binaryData)
     {
         var decodeResults = new List<DecodeResult>();
-
-        var binaryData = value.CleanHex().ToByteArray();
 
         switch (binaryData.Length)
         {

@@ -4,6 +4,7 @@ using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
+using InternalsViewer.Query.FullTrace.Memory.History.Watches;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
@@ -72,6 +73,19 @@ public class MemoryHistoryBuilderTests
 
         Assert.Equal([(6, 2), (0, 2)],
                      store.Blocks.Select((_, index) => Assert.Single(store.GetWrites(index))).Select(w => (w.Offset, (int)w.Length)));
+    }
+
+    [Fact]
+    public void Writes_Interleaved_Across_Allocations_Are_Grouped_By_Allocation_In_Position_Order()
+    {
+        var store = Build([Block(Owned, 8, from: 1), Block(Owned + 0x100, 8, from: 1)],
+                          [Write(2, Owned, 1, 2), Write(3, Owned + 0x100, 3), Write(4, Owned, 4), Write(5, Owned + 0x100, 5)]);
+
+        Assert.Equal([[At(2), At(4)], [At(3), At(5)]],
+                     store.Blocks.Select((_, index) => store.GetWrites(index).Select(w => w.Position)));
+        Assert.Equal([[1, 2], [4], [3], [5]],
+                     store.Blocks.SelectMany((_, index) => store.GetWrites(index))
+                          .Select(w => store.GetBytes(w).ToArray().Select(b => (int)b)));
     }
 
     [Fact]
@@ -352,6 +366,17 @@ public class MemoryHistoryBuilderTests
     }
 
     [Fact]
+    public void The_Changes_In_A_Window_Are_One_Range_Of_The_Blocks_Writes()
+    {
+        var store = Build([Block(Owned, 0x10, from: 1)],
+                          [Write(2, Owned, 0, 0), Write(3, Owned, 1), Write(4, Owned + 4, 7), Write(5, Owned, 2), Write(6, Owned + 6, 7)]);
+
+        Assert.Equal([(1, 3), (3, 1)],
+                     [store.GetChangedWriteRange(0, default, TracePosition.Unknown), store.GetChangedWriteRange(0, At(4), At(6))]);
+        Assert.Equal(0, store.GetChangedWriteRange(0, At(6), At(9)).Count);
+    }
+
+    [Fact]
     public void A_Pointer_Finds_The_Innermost_Block_Live_At_The_Position()
     {
         var store = Build([Block(Page, 0x2000, from: 1, to: 9), Block(Page + 0x100, 0x20, from: 2, to: 6)],
@@ -376,10 +401,10 @@ public class MemoryHistoryBuilderTests
     }
 
     [Fact]
-    public void Writes_From_Later_Batches_Are_Applied_In_Position_Order()
+    public void Writes_From_Later_Chunks_Are_Applied_In_Position_Order()
     {
-        var watched = new WatchResult([new WatchBatch([WatchedHit.From(Hit(5, Owned, 1), 0)], [2]),
-                                       new WatchBatch([WatchedHit.From(Hit(3, Owned, 1), 0)], [1])],
+        var watched = new WatchResult([new WatchChunk([ChunkHit.From(Hit(5, Owned, 1), 0)], [2]),
+                                       new WatchChunk([ChunkHit.From(Hit(3, Owned, 1), 0)], [1])],
                                       1);
 
         var (store, _) = MemoryHistoryBuilder.Build([new MemoryHistoryAllocation(Block(Owned, 0x10, from: 1), false)],
@@ -397,8 +422,8 @@ public class MemoryHistoryBuilderTests
     {
         var other = new WatchHit(4, 0, Owned + 1, Writer, Thread + 1, 1, 0, 1);
 
-        var watched = new WatchResult([new WatchBatch([WatchedHit.From(Hit(2, Owned, 1), 0), WatchedHit.From(Hit(6, Owned, 1), 1)], [1, 3]),
-                                       new WatchBatch([WatchedHit.From(other, 0)], [2])],
+        var watched = new WatchResult([new WatchChunk([ChunkHit.From(Hit(2, Owned, 1), 0), ChunkHit.From(Hit(6, Owned, 1), 1)], [1, 3]),
+                                       new WatchChunk([ChunkHit.From(other, 0)], [2])],
                                       1);
 
         var (store, _) = MemoryHistoryBuilder.Build([new MemoryHistoryAllocation(Block(Owned, 0x10, from: 1), false)],
@@ -414,10 +439,10 @@ public class MemoryHistoryBuilderTests
     [Fact]
     public void Each_Watched_Write_Is_Counted_By_What_Became_Of_It()
     {
-        var watched = new WatchResult([new WatchBatch([WatchedHit.From(Hit(2, Owned, 1), 0),
-                                                       WatchedHit.From(Hit(3, Owned, 1), 1),
-                                                       WatchedHit.From(Hit(4, Page, 1), 2),
-                                                       WatchedHit.From(Hit(5, Owned + 0x500, 1), 3)],
+        var watched = new WatchResult([new WatchChunk([ChunkHit.From(Hit(2, Owned, 1), 0),
+                                                       ChunkHit.From(Hit(3, Owned, 1), 1),
+                                                       ChunkHit.From(Hit(4, Page, 1), 2),
+                                                       ChunkHit.From(Hit(5, Owned + 0x500, 1), 3)],
                                                       [1, 1, 1, 1])],
                                       2);
 
@@ -510,11 +535,11 @@ public class MemoryHistoryBuilderTests
     {
         var data = new List<byte>();
 
-        var hits = new List<WatchedHit>();
+        var hits = new List<ChunkHit>();
 
         foreach (var (sequence, address, bytes) in writes)
         {
-            hits.Add(WatchedHit.From(new WatchHit(sequence, 0, address, Writer, Thread, (uint)bytes.Length, 0, 1), data.Count));
+            hits.Add(ChunkHit.From(new WatchHit(sequence, 0, address, Writer, Thread, (uint)bytes.Length, 0, 1), data.Count));
 
             data.AddRange(bytes);
         }
@@ -522,7 +547,7 @@ public class MemoryHistoryBuilderTests
         return MemoryHistoryBuilder.Build([.. blocks.Select(b => new MemoryHistoryAllocation(b, clerkPages?.Contains(b.Pointer) ?? false))],
                                           owners ?? new ulong[blocks.Length],
                                           iterators ?? new Dictionary<ulong, TracePosition>(),
-                                          new WatchResult([new WatchBatch([.. hits], [.. data])], 1),
+                                          new WatchResult([new WatchChunk([.. hits], [.. data])], 1),
                                           timeline).Store;
     }
 }
