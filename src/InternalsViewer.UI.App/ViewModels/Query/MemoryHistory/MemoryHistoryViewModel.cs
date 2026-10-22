@@ -91,13 +91,16 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
     [ObservableProperty]
     private string _objectDetail = string.Empty;
 
+    [ObservableProperty]
+    private bool _isAvailable;
+
+    public MemoryHistoryStore Store => Trace?.MemoryHistory ?? MemoryHistoryStore.Empty;
+
     private Action<CallStackNode, int> OpenCall { get; } = openCall;
 
     private TraceResult? Trace { get; set; }
 
     private TraceTimeline? Window { get; set; }
-
-    private MemoryHistoryStore Store => Trace?.MemoryHistory ?? MemoryHistoryStore.Empty;
 
     private IReadOnlyDictionary<ulong, IteratorTarget> Iterators { get; set; } = new Dictionary<ulong, IteratorTarget>();
 
@@ -114,6 +117,8 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
     public void SetTrace(TraceResult? trace, IReadOnlyList<EngineEvent> events)
     {
         Trace = trace;
+
+        IsAvailable = Store.Blocks.Count > 0;
 
         Iterators = trace is null ? new Dictionary<ulong, IteratorTarget>() : IteratorTarget.Build(trace.CallStack, events, trace.PlanLink);
 
@@ -166,6 +171,10 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
             }
         }
     }
+
+    public int GetBlock(ulong address, TracePosition position) => Store.GetBlock(address, position);
+
+    public string GetObjectName(int block) => GetObjectLabel(Store.Blocks[block]) is { Length: > 0 } name ? name : UnknownObject;
 
     partial void OnSelectedBlockRowChanged(ResultRow<long>? value)
         => ShowBlock(value is { Id: var index } && index < Store.Blocks.Count ? (int)index : -1);
@@ -274,7 +283,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
         return blocks;
     }
 
-    private bool IsTracked(int block) => !Store.Blocks[block].IsBufferPool && Store.IsCreatedWithin(block, WindowStart, WindowEnd);
+    private bool IsTracked(int block) => Store.IsCreatedWithin(block, WindowStart, WindowEnd);
 
     private TraceMemoryWrite GetTraceWrite(MemoryHistoryWrite write)
     {
@@ -288,7 +297,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
             {
                 start = Math.Min(start, change.Offset);
 
-                end = Math.Max(end, change.Offset + change.Bytes.Length);
+                end = Math.Max(end, change.Offset + change.Length);
             }
         }
 
@@ -299,7 +308,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
     {
         SelectedBlock = block;
 
-        ObjectName = block >= 0 ? GetObjectLabel(Store.Blocks[block]) is { Length: > 0 } name ? name : UnknownObject : string.Empty;
+        ObjectName = block >= 0 ? GetObjectName(block) : string.Empty;
 
         ObjectDetail = block >= 0 ? $"0x{Store.Blocks[block].Address:X16}, {Store.Blocks[block].Size} Bytes" : string.Empty;
 

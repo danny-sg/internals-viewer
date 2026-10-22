@@ -35,6 +35,8 @@ public sealed partial class TraceTimelineControl
 
     private const float MinimumMemoryHeight = 24f;
 
+    private const double MemoryProgressSize = 28;
+
     public static readonly DependencyProperty MemoryBlocksProperty =
         DependencyProperty.Register(nameof(MemoryBlocks),
                                     typeof(IReadOnlyList<TraceMemoryBlock>),
@@ -161,6 +163,8 @@ public sealed partial class TraceTimelineControl
 
     public event Action<int, TracePosition?>? MemoryWriteSelected;
 
+    public event Action<int, ulong, TracePosition>? MemoryBlockSelected;
+
     private bool ShowsOperators => ShowOperators && _operators.HasRows;
 
     private float OperatorsTop => RulerTop + RulerHeight + PlayheadStripHeight;
@@ -232,8 +236,6 @@ public sealed partial class TraceTimelineControl
 
         if (ShowsMemory)
         {
-            _memory.Draw(canvas, width, scale);
-
             DrawSplitter(canvas, MemoryTop + MemoryHeight, width);
         }
     }

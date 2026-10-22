@@ -366,6 +366,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         MemoryHistory = new MemoryHistoryViewModel(OpenCallTree);
 
+        PlayheadMemory = new PlayheadMemoryViewModel(MemoryHistory);
+
         TickTrackStore = tickTrackStore;
 
         OperatorTracks = new OperatorTracksViewModel(tickTrackStore, GetTickCount, message => AddMessage(message));
@@ -469,6 +471,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public CustomHooksViewModel CustomHooks { get; }
 
     public MemoryHistoryViewModel MemoryHistory { get; }
+
+    public PlayheadMemoryViewModel PlayheadMemory { get; }
 
     public CallTreeTabViewModel CallTreeTab => CreatedCallTreeTab ??= new CallTreeTabViewModel(this, _settingsViewModel, Logger);
 
@@ -646,6 +650,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             CustomHooks.SetTrace(value);
 
             MemoryHistory.SetTrace(value, Events);
+
+            PlayheadMemory.Close();
         }
     }
 

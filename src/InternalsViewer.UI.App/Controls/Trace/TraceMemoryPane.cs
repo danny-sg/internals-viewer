@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
@@ -20,6 +23,12 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
     private const float HitWidth = 4f;
 
     private const float HitHeight = 3f;
+
+    private const int LargeMarkSize = 2;
+
+    private const int MarkDensity = 4;
+
+    private const int DebounceMilliseconds = 120;
 
     private const string ToolTipTitle = "Memory";
 
@@ -47,40 +56,39 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
     private float Height => GetBounds().Height;
 
-    private Layout? CachedLayout { get; set; }
+    private Structure? CachedStructure { get; set; }
 
-    private AxisIndex? CachedIndex { get; set; }
+    private Frame? CurrentFrame { get; set; }
 
-    private List<(int X, int Y, SKColor Colour)> Marks { get; } = [];
+    private FrameKey? RequestedKey { get; set; }
+
+    private CancellationTokenSource? Rendering { get; set; }
 
     private Dictionary<int, SKColor> Colours { get; } = [];
 
-    private int[] Stamps { get; set; } = [];
+    private Dictionary<SKColor, List<SKPoint>> PointsByColour { get; } = [];
 
-    private int Stamp { get; set; }
-
-    private SKImage? PointImage { get; set; }
-
-    private SKImage PointSprite => PointImage ??= CreatePointSprite();
-
-    private SKPaint PointPaint { get; } = new();
+    private SKPaint PointPaint { get; } = new() { StrokeWidth = 1, StrokeCap = SKStrokeCap.Square };
 
     public void SetBlocks(IReadOnlyList<TraceMemoryBlock>? blocks)
     {
         Blocks = blocks is null ? [] : [.. blocks.OrderBy(b => b.Address)];
 
-        CachedLayout = null;
-
-        CachedIndex = null;
+        Reset();
 
         Hover = null;
     }
 
     public void SetScale(TraceScale scale)
     {
+        if (ReferenceEquals(TraceScale, scale))
+        {
+            return;
+        }
+
         TraceScale = scale;
 
-        CachedIndex = null;
+        Reset();
     }
 
     public bool Contains(Point position) => HasBlocks && position.Y >= Top && position.Y < Top + Height;
@@ -91,36 +99,37 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
         canvas.DrawRect(0, Top, width, Height, Paints.Fill);
 
-        var layout = GetLayout();
+        var key = new FrameKey(Blocks, TraceScale, Host.Axis, width, Top, Height, Host.ViewStart, Host.ViewEnd, scale);
 
-        var index = GetIndex();
-
-        canvas.Save();
-
-        canvas.ClipRect(new SKRect(0, Top, width, Top + Height));
-
-        PrepareMarks(width);
-
-        for (var block = 0; block < Blocks.Count; block++)
+        if (CurrentFrame is { } frame && frame.Key == key)
         {
-            DrawLifetime(canvas, block, layout, width, scale);
+            canvas.DrawPicture(frame.Picture);
 
-            AddMarks(block, layout, index, width, scale);
+            return;
         }
 
-        DrawPoints(canvas, Marks);
+        RequestFrame(key);
+    }
 
-        canvas.Restore();
+    public void Render(int width, double scale)
+    {
+        var key = new FrameKey(Blocks, TraceScale, Host.Axis, width, Top, Height, Host.ViewStart, Host.ViewEnd, scale);
+
+        CancelRendering();
+
+        RequestedKey = key;
+
+        SetFrame(key, Build(key, CancellationToken.None));
+
+        Host.ShowMemoryProgress(false);
     }
 
     public void DrawOverlay(SKCanvas canvas, int width, double scale)
     {
-        if (Hover is not { } hit || hit.Block >= Blocks.Count)
+        if (Hover is not { } hit || hit.Block >= Blocks.Count || GetCurrentFrame() is not { } frame)
         {
             return;
         }
-
-        var layout = GetLayout();
 
         var block = Blocks[hit.Block];
 
@@ -128,29 +137,17 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
         canvas.ClipRect(new SKRect(0, Top, width, Top + Height));
 
-        if (hit.Write >= 0)
+        if (frame.View.BlockRows[hit.Block] is { } rows)
         {
-            var (top, bottom) = layout.WriteRows[hit.Block][hit.Write];
+            var left = Math.Max(GetX(block.From, frame.Key), -1f);
 
-            List<(int X, int Y, SKColor Colour)> mark = [((int)MathF.Floor(GetX(block.Writes[hit.Write].Point, scale)),
-                                                         (int)MathF.Floor(Top + (top + bottom) / 2),
-                                                         HoverColour)];
-
-            DrawPoints(canvas, mark);
-        }
-        else
-        {
-            var left = Math.Max(GetX(block.From, scale), -1f);
-
-            var right = block.To is { } to ? Math.Min(GetX(to, scale), width + 1f) : width + 1f;
-
-            var (top, bottom) = layout.BlockRows[hit.Block];
+            var right = block.To is { } to ? Math.Min(GetX(to, frame.Key), width + 1f) : width + 1f;
 
             Paints.Outline.Color = HoverColour;
 
             Paints.Outline.StrokeWidth = 1f;
 
-            canvas.DrawRect(new SKRect(left, Top + top, right, Top + bottom), Paints.Outline);
+            canvas.DrawRect(new SKRect(left, Top + rows.Top, right, Top + rows.Bottom), Paints.Outline);
         }
 
         canvas.Restore();
@@ -158,28 +155,19 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
     public TraceMemoryHit? GetHit(Point position)
     {
-        if (!Contains(position))
+        if (!Contains(position) || GetCurrentFrame() is not { } frame)
         {
             return null;
         }
-
-        var layout = GetLayout();
-
-        var y = (float)(position.Y - Top);
 
         var scale = Host.Scale;
 
-        if (GetNearestWrite(layout, GetIndex(), position.X, y, scale) is { } write)
-        {
-            return write;
-        }
-
-        if (layout.GetSegmentAt(y) is not { } segment || layout.Segments[segment].GetAddressAt(y) is not { } address)
+        if (frame.View.GetAddressAt(frame.Structure, (float)(position.Y - Top)) is not { } address)
         {
             return null;
         }
 
-        var value = Host.ViewStart + position.X / scale;
+        var value = frame.Key.Start + position.X / scale;
 
         var tolerance = HitWidth / scale;
 
@@ -187,14 +175,14 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
         {
             var block = Blocks[index];
 
-            if (layout.BlockSegments[index] != segment || address < block.Address || address >= block.Address + (ulong)block.Size)
+            if (frame.View.BlockRows[index] is null || address < block.Address || address >= block.Address + (ulong)block.Size)
             {
                 continue;
             }
 
-            var from = TraceScale.GetValue(block.From, Host.Axis);
+            var from = TraceScale.GetValue(block.From, frame.Key.Axis);
 
-            var to = block.To is { } end ? TraceScale.GetValue(end, Host.Axis) : double.MaxValue;
+            var to = block.To is { } end ? TraceScale.GetValue(end, frame.Key.Axis) : double.MaxValue;
 
             if (value >= from - tolerance && value <= to + tolerance)
             {
@@ -214,19 +202,31 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
         var block = Blocks[found.Block];
 
-        var lines = new List<string> { block.Label, $"0x{block.Address:X16} +0x{found.Offset:X}, {block.Size} Bytes" };
-
-        if (found.Write >= 0)
-        {
-            lines.Add(Host.GetLabel(block.Writes[found.Write].CallNodeIndex));
-        }
-
-        return string.Join(Environment.NewLine, lines);
+        return string.Join(Environment.NewLine, block.Label, $"0x{block.Address:X16} +0x{found.Offset:X}, {block.Size} Bytes");
     }
 
     public void Click(Point position)
     {
-        if (GetHit(position) is not { } hit)
+        if (GetClickHit(position) is not { } hit)
+        {
+            return;
+        }
+
+        var block = Blocks[hit.Block];
+
+        if (hit.Write >= 0)
+        {
+            Host.MovePlayhead(TraceScale.GetValue(block.Writes[hit.Write].Point, Host.Axis));
+        }
+
+        Host.ShowMemory(block.Block,
+                        block.Address + (ulong)hit.Offset,
+                        hit.Write >= 0 ? block.Writes[hit.Write].Point.Position : block.From.Position);
+    }
+
+    public void DoubleClick(Point position)
+    {
+        if (GetClickHit(position) is not { } hit)
         {
             return;
         }
@@ -238,78 +238,174 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
     public void Dispose()
     {
-        PointImage?.Dispose();
+        Reset();
 
         PointPaint.Dispose();
     }
 
-    private static SKImage CreatePointSprite()
+    private void Reset()
     {
-        using var bitmap = new SKBitmap(new SKImageInfo(1, 1, SKColorType.Rgba8888, SKAlphaType.Premul));
+        CancelRendering();
 
-        bitmap.SetPixel(0, 0, SKColors.White);
+        RequestedKey = null;
 
-        return SKImage.FromPixelCopy(bitmap.PeekPixels());
+        CachedStructure = null;
+
+        CurrentFrame?.Picture.Dispose();
+
+        CurrentFrame = null;
+
+        Host.ShowMemoryProgress(false);
     }
 
-    private void DrawPoints(SKCanvas canvas, List<(int X, int Y, SKColor Colour)> marks)
+    private void CancelRendering()
     {
-        if (marks.Count == 0)
+        Rendering?.Cancel();
+
+        Rendering?.Dispose();
+
+        Rendering = null;
+    }
+
+    private void RequestFrame(FrameKey key)
+    {
+        if (RequestedKey == key)
         {
             return;
         }
 
-        var bounds = new SKRect(0, 0, 1, 1);
+        RequestedKey = key;
 
-        var sprites = new SKRect[marks.Count];
+        CancelRendering();
 
-        var transforms = new SKRotationScaleMatrix[marks.Count];
+        Rendering = new CancellationTokenSource();
 
-        var colours = new SKColor[marks.Count];
+        Host.ShowMemoryProgress(true);
 
-        for (var index = 0; index < marks.Count; index++)
-        {
-            var (x, y, colour) = marks[index];
-
-            sprites[index] = bounds;
-
-            transforms[index] = SKRotationScaleMatrix.Create(1, 0, x, y, 0, 0);
-
-            colours[index] = colour;
-        }
-
-        canvas.DrawAtlas(PointSprite, sprites, transforms, colours, SKBlendMode.Modulate, PointPaint);
+        _ = RenderAsync(key, Rendering.Token);
     }
 
-    private void PrepareMarks(int width)
+    private async Task RenderAsync(FrameKey key, CancellationToken cancellationToken)
     {
-        Marks.Clear();
+        try
+        {
+            await Task.Delay(DebounceMilliseconds, cancellationToken).ConfigureAwait(false);
+
+            var rendered = Build(key, cancellationToken);
+
+            Host.Post(() =>
+            {
+                if (cancellationToken.IsCancellationRequested || RequestedKey != key)
+                {
+                    return;
+                }
+
+                SetFrame(key, rendered);
+
+                Host.ShowMemoryProgress(false);
+
+                Host.Invalidate();
+            });
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private Frame? GetCurrentFrame()
+        => CurrentFrame is { } frame
+           && ReferenceEquals(frame.Key.Blocks, Blocks)
+           && ReferenceEquals(frame.Key.TraceScale, TraceScale)
+           && frame.Key.Axis == Host.Axis
+           && frame.Key.Top == Top
+           && frame.Key.Height == Height
+           && frame.Key.Start == Host.ViewStart
+           && frame.Key.End == Host.ViewEnd
+            ? frame
+            : null;
+
+    private TraceMemoryHit? GetClickHit(Point position)
+    {
+        if (!Contains(position) || GetCurrentFrame() is not { } frame)
+        {
+            return null;
+        }
+
+        return GetNearestWrite(frame, position.X, (float)(position.Y - Top), Host.Scale) ?? GetHit(position);
+    }
+
+    private void SetFrame(FrameKey key, Rendered rendered)
+    {
+        using var recorder = new SKPictureRecorder();
+
+        var canvas = recorder.BeginRecording(new SKRect(0, key.Top, key.Width, key.Top + key.Height));
+
+        canvas.ClipRect(new SKRect(0, key.Top, key.Width, key.Top + key.Height));
+
+        for (var block = 0; block < key.Blocks.Count; block++)
+        {
+            DrawLifetime(canvas, key, rendered.View, block);
+        }
+
+        DrawPoints(canvas, rendered.Marks, rendered.View.MarkSize);
+
+        CurrentFrame?.Picture.Dispose();
+
+        CurrentFrame = new Frame(key, rendered.Structure, rendered.View, recorder.EndRecording());
+    }
+
+    private void DrawPoints(SKCanvas canvas, List<(int X, int Y, int CallNodeIndex)> marks, int size)
+    {
+        PointPaint.StrokeWidth = size;
 
         Colours.Clear();
 
-        var cells = Math.Max(width, 1) * ((int)MathF.Ceiling(Height) + 1);
-
-        if (Stamps.Length < cells)
+        foreach (var points in PointsByColour.Values)
         {
-            Stamps = new int[cells];
-
-            Stamp = 0;
+            points.Clear();
         }
 
-        Stamp++;
+        foreach (var (x, y, callNodeIndex) in marks)
+        {
+            var colour = GetColour(callNodeIndex);
+
+            if (!PointsByColour.TryGetValue(colour, out var points))
+            {
+                points = [];
+
+                PointsByColour[colour] = points;
+            }
+
+            points.Add(new SKPoint(x + size / 2f, y + size / 2f));
+        }
+
+        foreach (var (colour, points) in PointsByColour)
+        {
+            if (points.Count == 0)
+            {
+                continue;
+            }
+
+            PointPaint.Color = colour;
+
+            canvas.DrawPoints(SKPointMode.Points, [.. points], PointPaint);
+        }
     }
 
-    private void DrawLifetime(SKCanvas canvas, int index, Layout layout, int width, double scale)
+    private void DrawLifetime(SKCanvas canvas, FrameKey key, View view, int index)
     {
-        var block = Blocks[index];
+        if (view.BlockRows[index] is not { } rows)
+        {
+            return;
+        }
 
-        var left = GetX(block.From, scale);
+        var block = key.Blocks[index];
 
-        var right = block.To is { } to ? GetX(to, scale) : width;
+        var left = GetX(block.From, key);
 
-        var (top, bottom) = layout.BlockRows[index];
+        var right = block.To is { } to ? GetX(to, key) : key.Width;
 
-        if (right < 0 || left > width || bottom <= top)
+        if (right < 0 || left > key.Width)
         {
             return;
         }
@@ -318,52 +414,11 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
         Paints.Fill.Color = LifetimeColour;
 
-        canvas.DrawRect(barLeft, Top + top, Math.Max(1f, Math.Min(right, width + 1f) - barLeft), bottom - top, Paints.Fill);
-    }
-
-    private void AddMarks(int block, Layout layout, AxisIndex index, int width, double scale)
-    {
-        var values = index.Values[block];
-
-        var order = index.Order[block];
-
-        var rows = layout.WriteRows[block];
-
-        var writes = Blocks[block].Writes;
-
-        var margin = 1 / scale;
-
-        var end = Host.ViewEnd + margin;
-
-        var paneTop = (int)MathF.Floor(Top);
-
-        for (var position = GetLowerBound(values, Host.ViewStart - margin); position < values.Length && values[position] <= end; position++)
-        {
-            var write = order[position];
-
-            var x = (int)Math.Floor((values[position] - Host.ViewStart) * scale);
-
-            var y = (int)MathF.Floor(Top + (rows[write].Top + rows[write].Bottom) / 2);
-
-            if (x < 0 || x >= width || y < paneTop)
-            {
-                continue;
-            }
-
-            var cell = (y - paneTop) * width + x;
-
-            if (cell < Stamps.Length)
-            {
-                if (Stamps[cell] == Stamp)
-                {
-                    continue;
-                }
-
-                Stamps[cell] = Stamp;
-            }
-
-            Marks.Add((x, y, GetColour(writes[write].CallNodeIndex)));
-        }
+        canvas.DrawRect(barLeft,
+                        key.Top + rows.Top,
+                        Math.Max(1f, Math.Min(right, key.Width + 1f) - barLeft),
+                        rows.Bottom - rows.Top,
+                        Paints.Fill);
     }
 
     private SKColor GetColour(int callNodeIndex)
@@ -378,51 +433,62 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
         return colour;
     }
 
-    private TraceMemoryHit? GetNearestWrite(Layout layout, AxisIndex index, double x, float y, double scale)
+    private TraceMemoryHit? GetNearestWrite(Frame frame, double x, float y, double scale)
     {
         TraceMemoryHit? found = null;
 
         var nearest = double.MaxValue;
 
-        var value = Host.ViewStart + x / scale;
+        var value = frame.Key.Start + x / scale;
 
-        var tolerance = HitWidth / scale;
+        var (structure, view) = (frame.Structure, frame.View);
 
         for (var block = 0; block < Blocks.Count; block++)
         {
-            var (blockTop, blockBottom) = layout.BlockRows[block];
-
-            if (y < blockTop - HitHeight || y > blockBottom + HitHeight)
+            if (view.BlockRows[block] is not { } blockRows || y < blockRows.Top - HitHeight || y > blockRows.Bottom + HitHeight)
             {
                 continue;
             }
 
-            var values = index.Values[block];
+            var writes = Blocks[block].Writes;
 
-            var rows = layout.WriteRows[block];
-
-            for (var position = GetLowerBound(values, value - tolerance);
-                 position < values.Length && values[position] <= value + tolerance;
-                 position++)
+            foreach (var laneIndex in structure.BlockLanes[block])
             {
-                var write = index.Order[block][position];
+                var lane = structure.Lanes[laneIndex];
 
-                var dx = Math.Abs((values[position] - value) * scale);
-
-                var dy = Math.Abs((rows[write].Top + rows[write].Bottom) / 2 - y);
-
-                if (dy > HitHeight + (rows[write].Bottom - rows[write].Top) / 2)
+                if (view.GetRows(structure, lane.Run, lane.Address, lane.Length) is not { } rows)
                 {
                     continue;
                 }
 
-                var distance = dx * dx + dy * dy;
+                var dy = Math.Abs((rows.Top + rows.Bottom) / 2 - y);
 
-                if (distance < nearest)
+                if (dy > HitHeight + (rows.Bottom - rows.Top) / 2)
                 {
-                    nearest = distance;
+                    continue;
+                }
 
-                    found = new TraceMemoryHit(block, write, Blocks[block].Writes[write].Offset);
+                var after = GetLowerBound(lane.Values, value, 0);
+
+                for (var index = Math.Max(after - 1, 0); index <= after && index < lane.Writes.Length; index++)
+                {
+                    var write = lane.Writes[index];
+
+                    var dx = Math.Abs((lane.Values[index] - value) * scale);
+
+                    if (dx > HitWidth)
+                    {
+                        continue;
+                    }
+
+                    var distance = dx * dx + dy * dy;
+
+                    if (distance < nearest)
+                    {
+                        nearest = distance;
+
+                        found = new TraceMemoryHit(block, write, writes[write].Offset);
+                    }
                 }
             }
         }
@@ -430,11 +496,115 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
         return found;
     }
 
-    private static int GetLowerBound(double[] values, double value)
+    private Rendered Build(FrameKey key, CancellationToken cancellationToken)
     {
-        var low = 0;
+        var structure = GetStructure(key, cancellationToken);
 
-        var high = values.Length;
+        var view = GetView(structure, key);
+
+        var columns = Math.Max(key.Width, 1) / view.MarkSize + 1;
+
+        var stamps = new bool[columns * ((int)MathF.Ceiling(key.Height) + view.MarkSize + 1)];
+
+        var marks = new List<(int X, int Y, int CallNodeIndex)>();
+
+        foreach (var lane in structure.Lanes)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            AddMarks(lane, structure, view, key, columns, stamps, marks);
+        }
+
+        return new Rendered(structure, view, marks);
+    }
+
+    private static void AddMarks(Lane lane,
+                                 Structure structure,
+                                 View view,
+                                 FrameKey key,
+                                 int columns,
+                                 bool[] stamps,
+                                 List<(int X, int Y, int CallNodeIndex)> marks)
+    {
+        if (view.GetRows(structure, lane.Run, lane.Address, lane.Length) is not { } rows)
+        {
+            return;
+        }
+
+        var writes = structure.Blocks[lane.Block].Writes;
+
+        var (start, scale, size) = (key.Start, key.Scale, view.MarkSize);
+
+        var end = key.End + 1 / scale;
+
+        var y = (int)MathF.Floor(key.Top + (rows.Top + rows.Bottom - size) / 2);
+
+        var row = (y - (int)MathF.Floor(key.Top)) * columns;
+
+        var values = lane.Values;
+
+        var index = GetLowerBound(values, start - size / scale, 0);
+
+        while (index < values.Length)
+        {
+            var value = values[index];
+
+            if (value > end)
+            {
+                break;
+            }
+
+            var column = (int)Math.Floor((value - start) * scale / size);
+
+            if (column * size >= key.Width)
+            {
+                break;
+            }
+
+            if (column >= 0 && IsFirstAt(stamps, row + column))
+            {
+                marks.Add((column * size, y, writes[lane.Writes[index]].CallNodeIndex));
+            }
+
+            index = GetLowerBound(values, start + (column + 1) * size / scale, index + 1);
+        }
+    }
+
+    private static bool IsFirstAt(bool[] stamps, int cell)
+    {
+        if (cell < 0 || cell >= stamps.Length)
+        {
+            return true;
+        }
+
+        if (stamps[cell])
+        {
+            return false;
+        }
+
+        stamps[cell] = true;
+
+        return true;
+    }
+
+    private static int GetLowerBound(double[] values, double value, int from)
+    {
+        var low = from;
+
+        var bound = from;
+
+        var step = 1;
+
+        while (bound < values.Length && values[bound] < value)
+        {
+            low = bound + 1;
+
+            bound = low + step;
+
+            step <<= 1;
+        }
+
+        var high = Math.Min(bound, values.Length);
 
         while (low < high)
         {
@@ -453,129 +623,343 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
         return low;
     }
 
-    private float GetX(TracePoint point, double scale) => (float)((TraceScale.GetValue(point, Host.Axis) - Host.ViewStart) * scale);
-
-    private AxisIndex GetIndex()
+    private static int GetCount(Lane lane, double from, double to)
     {
-        if (CachedIndex is { } cached && cached.Axis == Host.Axis)
+        var first = GetLowerBound(lane.Values, from, 0);
+
+        return GetLowerBound(lane.Values, Math.BitIncrement(to), first) - first;
+    }
+
+    private static bool HasWriteBetween(Lane lane, double from, double to)
+    {
+        var index = GetLowerBound(lane.Values, from, 0);
+
+        return index < lane.Values.Length && lane.Values[index] <= to;
+    }
+
+    private static float GetX(TracePoint point, FrameKey key)
+        => (float)((key.TraceScale.GetValue(point, key.Axis) - key.Start) * key.Scale);
+
+    private Structure GetStructure(FrameKey key, CancellationToken cancellationToken)
+    {
+        if (CachedStructure is { } cached
+            && ReferenceEquals(cached.Blocks, key.Blocks)
+            && ReferenceEquals(cached.TraceScale, key.TraceScale)
+            && cached.Axis == key.Axis)
         {
             return cached;
         }
 
-        var values = new double[Blocks.Count][];
+        var blocks = key.Blocks;
 
-        var order = new int[Blocks.Count][];
+        var drafts = new List<(ulong Address, int Length, int[] Writes, double[] Values)>[blocks.Count];
 
-        for (var block = 0; block < Blocks.Count; block++)
+        for (var block = 0; block < blocks.Count; block++)
         {
-            var writes = Blocks[block].Writes;
+            cancellationToken.ThrowIfCancellationRequested();
 
-            values[block] = [.. writes.Select(w => TraceScale.GetValue(w.Point, Host.Axis))];
-
-            order[block] = [.. Enumerable.Range(0, writes.Length)];
-
-            Array.Sort(values[block], order[block]);
+            drafts[block] = GetLaneDrafts(blocks[block], key.TraceScale, key.Axis);
         }
 
-        return CachedIndex = new AxisIndex(Host.Axis, values, order);
+        var runs = new List<Run>();
+
+        var blockRuns = new (int First, int Last)[blocks.Count];
+
+        var lanes = new List<Lane>();
+
+        var blockLanes = new int[blocks.Count][];
+
+        var segment = -1;
+
+        var index = 0;
+
+        while (index < blocks.Count)
+        {
+            var first = index;
+
+            var end = blocks[index].Address + (ulong)blocks[index].Size;
+
+            while (index + 1 < blocks.Count && blocks[index + 1].Address < end)
+            {
+                index++;
+
+                end = Math.Max(end, blocks[index].Address + (ulong)blocks[index].Size);
+            }
+
+            segment++;
+
+            var firstRun = runs.Count;
+
+            var extents = new List<(ulong Start, ulong End)>();
+
+            for (var block = first; block <= index; block++)
+            {
+                extents.AddRange(drafts[block].Select(d => (d.Address, d.Address + (ulong)d.Length)));
+            }
+
+            runs.AddRange(Merge(extents).Select(e => new Run(e.Start, e.End, segment)));
+
+            for (var block = first; block <= index; block++)
+            {
+                var start = blocks[block].Address;
+
+                var stop = start + (ulong)blocks[block].Size;
+
+                blockRuns[block] = (GetRunAt(runs, firstRun, runs.Count, start), GetRunAt(runs, firstRun, runs.Count, stop) - 1);
+
+                blockLanes[block] = [.. Enumerable.Range(lanes.Count, drafts[block].Count)];
+
+                lanes.AddRange(drafts[block].Select(d => new Lane(block,
+                                                                  d.Address,
+                                                                  d.Length,
+                                                                  GetRunAt(runs, firstRun, runs.Count, d.Address),
+                                                                  d.Writes,
+                                                                  d.Values)));
+            }
+
+            index++;
+        }
+
+        var runLanes = runs.Select(_ => new List<int>()).ToArray();
+
+        for (var lane = 0; lane < lanes.Count; lane++)
+        {
+            runLanes[lanes[lane].Run].Add(lane);
+        }
+
+        var structure = new Structure(blocks,
+                                      key.TraceScale,
+                                      key.Axis,
+                                      [.. runs],
+                                      blockRuns,
+                                      [.. lanes],
+                                      blockLanes,
+                                      [.. runLanes.Select(l => l.ToArray())]);
+
+        CachedStructure = structure;
+
+        return structure;
     }
 
-    private Layout GetLayout()
+    private static List<(ulong Address, int Length, int[] Writes, double[] Values)> GetLaneDrafts(TraceMemoryBlock block,
+                                                                                                    TraceScale traceScale,
+                                                                                                    TraceTimelineAxis axis)
     {
-        var height = Height;
+        var writes = block.Writes;
 
-        if (CachedLayout is { } cached && cached.Height == height)
+        var byExtent = new Dictionary<(int Offset, int Length), List<int>>();
+
+        (int Offset, int Length) lastExtent = (-1, -1);
+
+        List<int>? last = null;
+
+        for (var index = 0; index < writes.Length; index++)
         {
-            return cached;
-        }
+            var extent = (writes[index].Offset, writes[index].Length);
 
-        var segments = new List<(ulong Start, ulong End, List<(ulong Start, ulong End)> Runs)>();
-
-        var blockSegments = new int[Blocks.Count];
-
-        for (var index = 0; index < Blocks.Count; index++)
-        {
-            var block = Blocks[index];
-
-            var end = block.Address + (ulong)block.Size;
-
-            if (segments.Count == 0 || segments[^1].End <= block.Address)
+            if (extent.Length <= 0)
             {
-                segments.Add((block.Address, end, []));
-            }
-            else if (end > segments[^1].End)
-            {
-                segments[^1] = segments[^1] with { End = end };
+                continue;
             }
 
-            blockSegments[index] = segments.Count - 1;
-
-            segments[^1].Runs.AddRange(block.Writes.Where(w => w.Length > 0)
-                                            .Select(w => (block.Address + (ulong)w.Offset, block.Address + (ulong)(w.Offset + w.Length))));
-        }
-
-        var runs = segments.Select(s => Merge(s.Runs)).ToList();
-
-        var heights = GetRunHeights([.. runs.SelectMany(r => r).Select(r => r.End - r.Start)],
-                                    height - BlockGap * Math.Max(segments.Count - 1, 0));
-
-        var built = new Segment[segments.Count];
-
-        var top = 0f;
-
-        var next = 0;
-
-        for (var index = 0; index < segments.Count; index++)
-        {
-            var placed = new List<Run>();
-
-            var y = top;
-
-            foreach (var (start, end) in runs[index])
+            if (last is null || extent != lastExtent)
             {
-                placed.Add(new Run(start, end, y, heights[next] / (end - start)));
+                ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(byExtent, extent, out _);
 
-                y += heights[next++];
+                list ??= [];
+
+                last = list;
+
+                lastExtent = extent;
             }
 
-            built[index] = new Segment(top, y, [.. placed]);
-
-            top = y + BlockGap;
+            last.Add(index);
         }
 
-        var blockRows = new (float Top, float Bottom)[Blocks.Count];
+        var drafts = new List<(ulong Address, int Length, int[] Writes, double[] Values)>(byExtent.Count);
 
-        var writeRows = new (float Top, float Bottom)[Blocks.Count][];
-
-        for (var index = 0; index < Blocks.Count; index++)
+        foreach (var ((offset, length), list) in byExtent.OrderBy(e => e.Key))
         {
-            var block = Blocks[index];
+            var lane = list.ToArray();
 
-            var segment = built[blockSegments[index]];
+            var values = new double[lane.Length];
 
-            blockRows[index] = (segment.GetY(block.Address), segment.GetY(block.Address + (ulong)block.Size));
+            for (var index = 0; index < lane.Length; index++)
+            {
+                values[index] = traceScale.GetValue(writes[lane[index]].Point, axis);
+            }
 
-            writeRows[index] = [.. block.Writes.Select(w => (segment.GetY(block.Address + (ulong)w.Offset),
-                                                             segment.GetY(block.Address + (ulong)(w.Offset + w.Length))))];
+            SortByValue(values, lane);
+
+            drafts.Add((block.Address + (ulong)offset, length, lane, values));
         }
 
-        return CachedLayout = new Layout(height, built, blockSegments, blockRows, writeRows);
+        return drafts;
     }
 
-    private static List<(ulong Start, ulong End)> Merge(List<(ulong Start, ulong End)> runs)
+    private static void SortByValue(double[] values, int[] lane)
+    {
+        for (var index = 1; index < values.Length; index++)
+        {
+            if (values[index] < values[index - 1])
+            {
+                Array.Sort(values, lane);
+
+                return;
+            }
+        }
+    }
+
+    private static View GetView(Structure structure, FrameKey key)
+    {
+        var (height, start, end, scale) = (key.Height, key.Start, key.End, key.Scale);
+
+        var margin = 1 / scale;
+
+        var runs = structure.Runs;
+
+        var active = new List<int>();
+
+        for (var run = 0; run < runs.Length; run++)
+        {
+            foreach (var lane in structure.RunLanes[run])
+            {
+                if (HasWriteBetween(structure.Lanes[lane], start - margin, end + margin))
+                {
+                    active.Add(run);
+
+                    break;
+                }
+            }
+        }
+
+        var densest = 0;
+
+        foreach (var run in active)
+        {
+            foreach (var lane in structure.RunLanes[run])
+            {
+                densest = Math.Max(densest, GetCount(structure.Lanes[lane], start, end));
+            }
+        }
+
+        var markSize = densest / MarkDensity < (end - start) * scale ? LargeMarkSize : 1;
+
+        var segments = new List<List<int>>();
+
+        foreach (var run in active)
+        {
+            if (segments.Count == 0 || runs[segments[^1][0]].Segment != runs[run].Segment)
+            {
+                segments.Add([]);
+            }
+
+            segments[^1].Add(run);
+        }
+
+        var gap = segments.Count > 1
+            ? Math.Clamp((height - segments.Count * MinimumRunHeight) / (segments.Count - 1), 0, BlockGap)
+            : 0;
+
+        var segmentHeights = GetRunHeights([.. segments.Select(s => s.Aggregate(0ul, (total, r) => total + runs[r].End - runs[r].Start))],
+                                           height - gap * Math.Max(segments.Count - 1, 0));
+
+        var tops = new float[runs.Length];
+
+        var bytePixels = new float[runs.Length];
+
+        Array.Fill(tops, float.NaN);
+
+        var y = 0f;
+
+        for (var segment = 0; segment < segments.Count; segment++)
+        {
+            if (segment > 0)
+            {
+                y += gap;
+            }
+
+            var members = segments[segment];
+
+            var heights = GetRunHeights([.. members.Select(r => runs[r].End - runs[r].Start)], segmentHeights[segment]);
+
+            for (var index = 0; index < members.Count; index++)
+            {
+                var run = members[index];
+
+                tops[run] = y;
+
+                bytePixels[run] = heights[index] / (runs[run].End - runs[run].Start);
+
+                y += heights[index];
+            }
+        }
+
+        var blockRows = new (float Top, float Bottom)?[structure.BlockRuns.Length];
+
+        for (var block = 0; block < blockRows.Length; block++)
+        {
+            var (firstRun, lastRun) = structure.BlockRuns[block];
+
+            float? top = null;
+
+            var bottom = 0f;
+
+            for (var run = firstRun; run <= lastRun; run++)
+            {
+                if (float.IsNaN(tops[run]))
+                {
+                    continue;
+                }
+
+                top ??= tops[run];
+
+                bottom = tops[run] + (runs[run].End - runs[run].Start) * bytePixels[run];
+            }
+
+            blockRows[block] = top is { } value ? (value, bottom) : null;
+        }
+
+        return new View(markSize, [.. active], tops, bytePixels, blockRows);
+    }
+
+    private static int GetRunAt(IReadOnlyList<Run> runs, int from, int to, ulong address)
+    {
+        var low = from;
+
+        var high = to;
+
+        while (low < high)
+        {
+            var middle = (low + high) / 2;
+
+            if (runs[middle].End <= address)
+            {
+                low = middle + 1;
+            }
+            else
+            {
+                high = middle;
+            }
+        }
+
+        return low;
+    }
+
+    private static List<(ulong Start, ulong End)> Merge(List<(ulong Start, ulong End)> extents)
     {
         var merged = new List<(ulong Start, ulong End)>();
 
-        foreach (var run in runs.OrderBy(r => r.Start))
+        foreach (var extent in extents.OrderBy(e => e.Start))
         {
-            if (merged.Count > 0 && merged[^1].End >= run.Start)
+            if (merged.Count > 0 && merged[^1].End >= extent.Start)
             {
-                merged[^1] = (merged[^1].Start, Math.Max(merged[^1].End, run.End));
+                merged[^1] = (merged[^1].Start, Math.Max(merged[^1].End, extent.End));
 
                 continue;
             }
 
-            merged.Add(run);
+            merged.Add(extent);
         }
 
         return merged;
@@ -640,53 +1024,65 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
         }
     }
 
-    private sealed record AxisIndex(TraceTimelineAxis Axis, double[][] Values, int[][] Order);
+    private sealed record Run(ulong Start, ulong End, int Segment);
 
-    private sealed record Run(ulong Start, ulong End, float Top, float BytePixels);
+    private sealed record Lane(int Block, ulong Address, int Length, int Run, int[] Writes, double[] Values);
 
-    private sealed record Segment(float Top, float Bottom, Run[] Runs)
+    private sealed record Structure(IReadOnlyList<TraceMemoryBlock> Blocks,
+                                    TraceScale TraceScale,
+                                    TraceTimelineAxis Axis,
+                                    Run[] Runs,
+                                    (int First, int Last)[] BlockRuns,
+                                    Lane[] Lanes,
+                                    int[][] BlockLanes,
+                                    int[][] RunLanes);
+
+    private readonly record struct FrameKey(IReadOnlyList<TraceMemoryBlock> Blocks,
+                                            TraceScale TraceScale,
+                                            TraceTimelineAxis Axis,
+                                            int Width,
+                                            float Top,
+                                            float Height,
+                                            double Start,
+                                            double End,
+                                            double Scale);
+
+    private sealed record Frame(FrameKey Key, Structure Structure, View View, SKPicture Picture);
+
+    private sealed record Rendered(Structure Structure, View View, List<(int X, int Y, int CallNodeIndex)> Marks);
+
+    private sealed record View(int MarkSize,
+                               int[] Active,
+                               float[] Tops,
+                               float[] BytePixels,
+                               (float Top, float Bottom)?[] BlockRows)
     {
-        public float GetY(ulong address)
+        public (float Top, float Bottom)? GetRows(Structure structure, ulong address, int length)
+            => GetRows(structure, GetRunAt(structure.Runs, 0, structure.Runs.Length, address), address, length);
+
+        public (float Top, float Bottom)? GetRows(Structure structure, int run, ulong address, int length)
         {
-            var low = 0;
-
-            var high = Runs.Length;
-
-            while (low < high)
+            if (run >= Tops.Length || float.IsNaN(Tops[run]) || address < structure.Runs[run].Start)
             {
-                var middle = (low + high) / 2;
-
-                if (Runs[middle].End <= address)
-                {
-                    low = middle + 1;
-                }
-                else
-                {
-                    high = middle;
-                }
+                return null;
             }
 
-            if (low == Runs.Length)
-            {
-                return Bottom;
-            }
+            var top = Tops[run] + (address - structure.Runs[run].Start) * BytePixels[run];
 
-            var run = Runs[low];
-
-            return address < run.Start ? run.Top : run.Top + (address - run.Start) * run.BytePixels;
+            return (top, top + Math.Max(MinimumRunHeight, length * BytePixels[run]));
         }
 
-        public ulong? GetAddressAt(float y)
+        public ulong? GetAddressAt(Structure structure, float y)
         {
             var low = 0;
 
-            var high = Runs.Length;
+            var high = Active.Length;
 
             while (low < high)
             {
                 var middle = (low + high) / 2;
 
-                if (Runs[middle].Top <= y)
+                if (Tops[Active[middle]] <= y)
                 {
                     low = middle + 1;
                 }
@@ -701,31 +1097,15 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
                 return null;
             }
 
-            var run = Runs[low - 1];
+            var run = structure.Runs[Active[low - 1]];
 
-            var bottom = run.Top + (run.End - run.Start) * run.BytePixels;
+            var bytePixels = BytePixels[Active[low - 1]];
 
-            return y < bottom ? run.Start + Math.Min((ulong)((y - run.Top) / run.BytePixels), run.End - run.Start - 1) : null;
-        }
-    }
+            var top = Tops[Active[low - 1]];
 
-    private sealed record Layout(float Height,
-                                 Segment[] Segments,
-                                 int[] BlockSegments,
-                                 (float Top, float Bottom)[] BlockRows,
-                                 (float Top, float Bottom)[][] WriteRows)
-    {
-        public int? GetSegmentAt(float y)
-        {
-            for (var index = 0; index < Segments.Length; index++)
-            {
-                if (y >= Segments[index].Top && y < Segments[index].Bottom)
-                {
-                    return index;
-                }
-            }
-
-            return null;
+            return y < top + (run.End - run.Start) * bytePixels
+                ? run.Start + Math.Min((ulong)((y - top) / bytePixels), run.End - run.Start - 1)
+                : null;
         }
     }
 }

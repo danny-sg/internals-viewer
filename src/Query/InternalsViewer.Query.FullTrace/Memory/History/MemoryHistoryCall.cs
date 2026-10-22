@@ -5,7 +5,6 @@ namespace InternalsViewer.Query.FullTrace.Memory.History;
 public sealed record MemoryHistoryCall(CallStackNode? Node,
                                        ulong Iterator,
                                        int CallIndex,
-                                       uint Thread,
                                        TracePosition Position,
                                        int LastWrite,
                                        int ChangeCount,

@@ -28,6 +28,12 @@
             <Setter Property="Foreground" Value="{ThemeResource CardBackgroundFillColorSecondaryBrush}"/>
         </Style>
 
+        <Style x:Key="MemoryButtonStyle" TargetType="Button" BasedOn="{StaticResource TabCommandButtonStyle}">
+            <Setter Property="Padding" Value="6,0,6,0"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+            <Setter Property="ToolTipService.ToolTip" Value="Show Memory"/>
+        </Style>
+
         <MenuFlyout x:Key="CallMenu">
             <MenuFlyoutItem Text="Open In Call Tree" Click="OnOpenInCallTreeClick"/>
             <MenuFlyoutItem Text="Zoom" Click="OnZoomClick"/>
@@ -82,7 +88,8 @@
                                              TextSize="12"
                                              Parts="{x:Bind ((members:PlayheadCallRow)Content).Signature}"
                                              HighlightedPart="{x:Bind ((members:PlayheadCallRow)Content).Highlighted, Mode=OneWay}"
-                                             ValueSelected="OnValueSelected"/>
+                                             ValueSelected="OnValueSelected"
+                                             MemorySelected="OnSignatureMemorySelected"/>
 
                 <controls:CopyButton Grid.Column="3"
                                      Style="{StaticResource ValueCopyButtonStyle}"
@@ -108,10 +115,25 @@
                            FontSize="12"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
 
-                <TextBlock Grid.Column="1"
-                           FontSize="12"
-                           TextWrapping="Wrap"
-                           callStack:SignatureRuns.Argument="{x:Bind}"/>
+                <Grid Grid.Column="1" ColumnSpacing="4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock FontSize="12"
+                               TextWrapping="Wrap"
+                               callStack:SignatureRuns.Argument="{x:Bind}"/>
+
+                    <Button Grid.Column="1"
+                            Style="{StaticResource MemoryButtonStyle}"
+                            Tag="{x:Bind}"
+                            Visibility="{x:Bind IsMemoryTracked, Converter={StaticResource BoolToVisibilityConverter}}"
+                            Tapped="OnMemoryTapped"
+                            Click="OnMemoryClick">
+                        <FontIcon Glyph="&#xE950;" FontSize="12"/>
+                    </Button>
+                </Grid>
 
                 <controls:CopyButton Grid.Column="2"
                                      Style="{StaticResource ValueCopyButtonStyle}"
@@ -440,11 +462,26 @@
                                    Text="This"
                                    Style="{StaticResource DetailLabelStyle}"
                                    Visibility="{x:Bind IsVisible(ViewModel.SelectedCall.This), Mode=OneWay}"/>
-                        <TextBlock Grid.Row="2"
-                                   Grid.Column="1"
-                                   Style="{StaticResource DetailValueStyle}"
-                                   controls:HexText.Text="{x:Bind ThisText(ViewModel.SelectedCall), Mode=OneWay}"
-                                   Visibility="{x:Bind IsVisible(ViewModel.SelectedCall.This), Mode=OneWay}"/>
+                        <Grid Grid.Row="2"
+                              Grid.Column="1"
+                              ColumnSpacing="4"
+                              Visibility="{x:Bind IsVisible(ViewModel.SelectedCall.This), Mode=OneWay}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Style="{StaticResource DetailValueStyle}"
+                                       controls:HexText.Text="{x:Bind ThisText(ViewModel.SelectedCall), Mode=OneWay}"/>
+
+                            <Button Grid.Column="1"
+                                    Style="{StaticResource MemoryButtonStyle}"
+                                    Tag="{x:Bind ViewModel.SelectedCall.This, Mode=OneWay}"
+                                    Visibility="{x:Bind IsMemoryVisible(ViewModel.SelectedCall.This), Mode=OneWay}"
+                                    Click="OnMemoryClick">
+                                <FontIcon Glyph="&#xE950;" FontSize="12"/>
+                            </Button>
+                        </Grid>
                         <controls:CopyButton Grid.Row="2"
                                              Grid.Column="2"
                                              Style="{StaticResource ValueCopyButtonStyle}"

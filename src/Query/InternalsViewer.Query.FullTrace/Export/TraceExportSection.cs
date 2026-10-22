@@ -1,10 +1,10 @@
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
-using InternalsViewer.Query.FullTrace.Memory.History;
 using System.IO.Compression;
 using InternalsViewer.Query.Export;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.Memory;
 
@@ -106,12 +106,14 @@ internal sealed class TraceExportSection : IQueryExportSection
                 : MemoryMap.Empty,
             ObjectPool = reader.HasEntry(ObjectPoolSnapshotEntry)
                 ? reader.ReadBinary(ObjectPoolSnapshotEntry, ObjectPoolSnapshot.Read)
-                : ObjectPoolSnapshot.Empty,
+                : ObjectPoolSnapshot.Empty
+        };
+
+        return builder.Build(outputStructures) with
+        {
             MemoryHistory = reader.HasEntry(MemoryHistoryEntry) && reader.ReadBinary(MemoryHistoryEntry, MemoryHistoryStore.IsSupported)
                 ? reader.ReadBinary(MemoryHistoryEntry, MemoryHistoryStore.Read)
                 : MemoryHistoryStore.Empty
         };
-
-        return builder.Build(outputStructures);
     }
 }

@@ -73,6 +73,8 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
 
     private Visibility IsVisible(object? value) => GetVisibility(value is not null);
 
+    private Visibility IsMemoryVisible(CallSignaturePart? part) => GetVisibility(part is { IsMemoryTracked: true });
+
     private Visibility IsEmpty(IReadOnlyList<PlayheadThreadRow>? threads) => GetVisibility(threads is not { Count: > 0 });
 
     private Visibility IsFunctionVisible(PlayheadCallRow? row, CallSignaturePart? selected)
@@ -449,6 +451,24 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
     }
 
     private void OnCopyTapped(object sender, TappedRoutedEventArgs e) => e.Handled = true;
+
+    private void OnMemoryClick(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is CallSignaturePart part)
+        {
+            ViewModel?.ShowMemory(part);
+        }
+    }
+
+    private void OnMemoryTapped(object sender, TappedRoutedEventArgs e) => e.Handled = true;
+
+    private void OnSignatureMemorySelected(object? sender, CallSignaturePart part)
+    {
+        if ((sender as FrameworkElement)?.DataContext is TreeViewNode { Content: PlayheadCallRow row })
+        {
+            ViewModel?.ShowMemory(row, part);
+        }
+    }
 
     private string DisplayText(PlayheadCallRow row) => string.Concat(row.Signature.Select(p => p.GetDisplayText(Settings.DecodeValues)));
 

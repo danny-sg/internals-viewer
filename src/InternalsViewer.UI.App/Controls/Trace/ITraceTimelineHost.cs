@@ -1,3 +1,4 @@
+using System;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace;
@@ -34,6 +35,10 @@ internal interface ITraceTimelineHost
 
     void Invalidate();
 
+    void Post(Action action);
+
+    void ShowMemoryProgress(bool isVisible);
+
     void MovePlayhead(double position);
 
     void ClickCall(CallStackNode node, int callIndex);
@@ -43,4 +48,6 @@ internal interface ITraceTimelineHost
     void OnSelectedOperatorChanged(ExecutionOperatorEvent? selected);
 
     void SelectMemoryWrite(int block, TracePosition? position);
+
+    void ShowMemory(int block, ulong address, TracePosition position);
 }

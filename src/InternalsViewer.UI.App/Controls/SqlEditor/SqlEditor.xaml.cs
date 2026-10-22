@@ -35,6 +35,8 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
 
     private const string DisableReadAheadSettingKey = "SqlEditorDisableReadAhead";
 
+    private const string MemoryHistorySettingKey = "SqlEditorMemoryHistory";
+
     public static readonly DependencyProperty ExecuteCommandProperty =
         DependencyProperty.Register(
             nameof(ExecuteCommand),
@@ -132,6 +134,16 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
     {
         get => (bool)GetValue(StayOnMessagesProperty);
         set => SetValue(StayOnMessagesProperty, value);
+    }
+
+    public static readonly DependencyProperty IsFullTraceProperty =
+        DependencyProperty.Register(nameof(IsFullTrace), typeof(bool), typeof(SqlEditorControl),
+            new PropertyMetadata(false));
+
+    public bool IsFullTrace
+    {
+        get => (bool)GetValue(IsFullTraceProperty);
+        set => SetValue(IsFullTraceProperty, value);
     }
 
     public static readonly DependencyProperty IsErrorProperty =
@@ -573,7 +585,14 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
 
         var disableReadAhead = await settings.ReadSettingAsync<bool?>(DisableReadAheadSettingKey) ?? QueryOptions.DisableReadAhead;
 
-        QueryOptions = QueryOptions with { ClearBufferPool = clearBufferPool, DisableReadAhead = disableReadAhead };
+        var memoryHistory = await settings.ReadSettingAsync<bool?>(MemoryHistorySettingKey) ?? QueryOptions.RecordMemoryHistory;
+
+        QueryOptions = QueryOptions with
+        {
+            ClearBufferPool = clearBufferPool,
+            DisableReadAhead = disableReadAhead,
+            RecordMemoryHistory = memoryHistory
+        };
 
         Bindings.Update();
     }
@@ -584,6 +603,7 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
 
         _ = settings.SaveSettingAsync(ClearBufferPoolSettingKey, QueryOptions.ClearBufferPool);
         _ = settings.SaveSettingAsync(DisableReadAheadSettingKey, QueryOptions.DisableReadAhead);
+        _ = settings.SaveSettingAsync(MemoryHistorySettingKey, QueryOptions.RecordMemoryHistory);
     }
 
     private async Task ApplySavedHistoryVisibilityAsync()

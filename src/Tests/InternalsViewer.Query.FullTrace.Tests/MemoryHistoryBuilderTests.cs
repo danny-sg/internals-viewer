@@ -1,9 +1,9 @@
 using System.Text;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Categories;
+using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
-using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
@@ -33,8 +33,7 @@ public class MemoryHistoryBuilderTests
         Assert.Equal([MemoryHistoryChangeType.Initialised, MemoryHistoryChangeType.Changed],
                      writes.Select(m => store.GetChanges(m)[0].Type));
         Assert.Equal(2, store.GetChanges(writes[1])[0].Offset);
-        Assert.Equal([5], store.GetChanges(writes[1])[0].Bytes);
-        Assert.Equal((Writer, Thread), (writes[1].ProgramCounter, writes[1].Thread));
+        Assert.Equal([5], store.GetBytes(store.GetChanges(writes[1])[0]).ToArray());
     }
 
     [Fact]
@@ -62,7 +61,7 @@ public class MemoryHistoryBuilderTests
 
         Assert.Equal([(6, 2), (0, 2)],
                      store.Blocks.Select((_, index) => store.GetChanges(Assert.Single(store.GetWrites(index)))[0])
-                          .Select(c => (c.Offset, c.Bytes.Length)));
+                          .Select(c => (c.Offset, c.Length)));
     }
 
     [Fact]
@@ -258,16 +257,19 @@ public class MemoryHistoryBuilderTests
     }
 
     [Fact]
-    public void Pages_From_A_Memory_Clerk_And_Allocations_Under_The_Buffer_Pool_Are_Buffer_Pool()
+    public void Writes_To_Clerk_Pages_And_Allocations_Under_The_Buffer_Pool_Are_Not_Kept()
     {
         var (timeline, _) = BuildTimeline();
 
-        var store = Build([Block(Owned, 0x10, from: 1), Block(Page, 0x2000, from: 1), Block(Owned + 0x100, 0x10, from: 62)],
-                          [Write(2, Owned, 1), Write(3, Page, 1), Write(63, Owned + 0x100, 1)],
+        var store = Build([Block(Owned, 0x10, from: 1),
+                           Block(Page, 0x2000, from: 1),
+                           Block(Page + 0x100, 0x20, from: 2),
+                           Block(Owned + 0x100, 0x10, from: 62)],
+                          [Write(2, Owned, 1), Write(3, Page, 1), Write(4, Page + 0x108, 1), Write(63, Owned + 0x100, 1)],
                           timeline: timeline,
                           clerkPages: [Page]);
 
-        Assert.Equal([false, true, true], store.Blocks.Select(b => b.IsBufferPool));
+        Assert.Equal([Owned, Page + 0x100], store.Blocks.Select(b => b.Address));
     }
 
     [Fact]
@@ -305,8 +307,60 @@ public class MemoryHistoryBuilderTests
         var write = store.GetWrites(0)[1];
 
         Assert.Equal((1, 2, (byte)7), (store.Blocks.Count, store.WriteCount, store.GetImage(0, 1).Data[8]));
-        Assert.Equal((Writer, 2, 0, Iterator), (write.ProgramCounter, write.CallNodeIndex, write.CallIndex, write.Iterator));
+        Assert.Equal((2, 0, Iterator), (write.CallNodeIndex, write.CallIndex, store.GetIterator(write)));
         Assert.Equal((built.Blocks[0].CallNodeIndex, Thread), (store.Blocks[0].CallNodeIndex, store.Blocks[0].Thread));
+    }
+
+    [Fact]
+    public void A_Pointer_Finds_The_Innermost_Block_Live_At_The_Position()
+    {
+        var store = Build([Block(Page, 0x2000, from: 1, to: 9), Block(Page + 0x100, 0x20, from: 2, to: 6)],
+                          [Write(3, Page + 0x108, 1), Write(4, Page + 0x10, 2)]);
+
+        Assert.Equal([1, 0, 0, -1, -1, -1],
+                     [store.GetBlock(Page + 0x110, At(3)),
+                      store.GetBlock(Page + 0x110, At(7)),
+                      store.GetBlock(Page + 0x10, At(3)),
+                      store.GetBlock(Page + 0x2000, At(3)),
+                      store.GetBlock(Page + 0x10, At(0)),
+                      store.GetBlock(Page + 0x10, At(9))]);
+    }
+
+    [Fact]
+    public void The_Image_At_A_Position_Includes_The_Writes_Made_At_It()
+    {
+        var store = Build([Block(Owned, 0x10, from: 1)], [Write(2, Owned, 1), Write(4, Owned, 2), Write(6, Owned, 3)]);
+
+        Assert.Equal([0, 1, 2, 3], [.. new ulong[] { 1, 2, 5, 9 }.Select(s => store.GetWriteCount(0, At(s)))]);
+        Assert.Equal(2, store.GetImage(0, store.GetWriteCount(0, At(5)) - 1).Data[0]);
+    }
+
+    [Fact]
+    public void Writes_From_Later_Batches_Are_Applied_In_Position_Order()
+    {
+        var watched = new WatchResult([new WatchBatch([Hit(5, Owned, 1)], [2]), new WatchBatch([Hit(3, Owned, 1)], [1])], 1);
+
+        var store = MemoryHistoryBuilder.Build([new MemoryHistoryAllocation(Block(Owned, 0x10, from: 1), false)],
+                                               [0],
+                                               new Dictionary<ulong, TracePosition>(),
+                                               watched,
+                                               null);
+
+        Assert.Equal([(At(3), MemoryHistoryChangeType.Initialised), (At(5), MemoryHistoryChangeType.Changed)],
+                     store.GetWrites(0).Select(w => (w.Position, store.GetChanges(w)[0].Type)));
+    }
+
+    [Fact]
+    public void The_Watch_Keeps_Only_Writes_That_Touch_A_Live_Allocation()
+    {
+        var keep = MemoryHistoryBuilder.GetWatchFilter([new MemoryHistoryAllocation(Block(Owned, 0x10, from: 2, to: 6), false)]);
+
+        Assert.Equal([false, true, true, false, false],
+                     [keep(Hit(1, Owned, 4)),
+                      keep(Hit(3, Owned + 0xC, 4)),
+                      keep(Hit(3, Owned - 2, 4)),
+                      keep(Hit(3, Owned + 0x10, 4)),
+                      keep(Hit(6, Owned, 4))]);
     }
 
     private static (TraceTimeline Timeline, (CallStackNode Query, CallStackNode GetRow, CallStackNode Scanner) Nodes) BuildTimeline()
@@ -361,6 +415,8 @@ public class MemoryHistoryBuilderTests
     private static MemoryBlock Block(ulong pointer, ulong bytes, ulong from, ulong? to = null)
         => new(pointer, bytes, Thread, At(from), to is { } end ? At(end) : TracePosition.Unknown);
 
+    private static WatchHit Hit(ulong sequence, ulong address, uint size) => new(sequence, 0, address, Writer, Thread, size, 0, 1);
+
     private static (ulong Sequence, ulong Address, byte[] Bytes) Write(ulong sequence, ulong address, params byte[] bytes)
         => (sequence, address, bytes);
 
@@ -385,7 +441,7 @@ public class MemoryHistoryBuilderTests
         return MemoryHistoryBuilder.Build([.. blocks.Select(b => new MemoryHistoryAllocation(b, clerkPages?.Contains(b.Pointer) ?? false))],
                                           owners ?? new ulong[blocks.Length],
                                           iterators ?? new Dictionary<ulong, TracePosition>(),
-                                          new WatchResult([.. hits], [.. data], 1),
+                                          new WatchResult([new WatchBatch([.. hits], [.. data])], 1),
                                           timeline);
     }
 }

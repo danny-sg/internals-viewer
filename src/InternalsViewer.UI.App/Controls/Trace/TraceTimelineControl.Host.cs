@@ -1,7 +1,9 @@
+using System;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
+using Microsoft.UI.Xaml.Controls;
 using SkiaSharp;
 
 namespace InternalsViewer.UI.App.Controls.Trace;
@@ -34,6 +36,22 @@ public sealed partial class TraceTimelineControl : ITraceTimelineHost
 
     void ITraceTimelineHost.Invalidate() => _canvas.Invalidate();
 
+    void ITraceTimelineHost.Post(Action action) => DispatcherQueue.TryEnqueue(() => action());
+
+    void ITraceTimelineHost.ShowMemoryProgress(bool isVisible)
+    {
+        _memoryProgress.IsActive = isVisible;
+
+        _memoryProgress.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+
+        if (isVisible)
+        {
+            Canvas.SetLeft(_memoryProgress, (_overlay.ActualWidth - MemoryProgressSize) / 2);
+
+            Canvas.SetTop(_memoryProgress, MemoryTop + (MemoryHeight - MemoryProgressSize) / 2);
+        }
+    }
+
     void ITraceTimelineHost.MovePlayhead(double position)
     {
         StopPlay();
@@ -59,6 +77,9 @@ public sealed partial class TraceTimelineControl : ITraceTimelineHost
     void ITraceTimelineHost.OpenCallTree(CallStackNode node, int callIndex) => CallTreeOpenRequested?.Invoke(node, callIndex);
 
     void ITraceTimelineHost.SelectMemoryWrite(int block, TracePosition? position) => MemoryWriteSelected?.Invoke(block, position);
+
+    void ITraceTimelineHost.ShowMemory(int block, ulong address, TracePosition position)
+        => MemoryBlockSelected?.Invoke(block, address, position);
 
     void ITraceTimelineHost.OnSelectedOperatorChanged(ExecutionOperatorEvent? selected)
     {

@@ -64,6 +64,8 @@ public sealed partial class TraceTimelineControl
     {
         ReportCallStack();
 
+        ReportPlayhead();
+
         var canvas = e.Surface.Canvas;
 
         canvas.Clear(SKColors.Transparent);
@@ -108,6 +110,11 @@ public sealed partial class TraceTimelineControl
             }
 
             canvas.DrawPicture(_landscapeLayer);
+        }
+
+        if (_visible is not null && ShowsMemory)
+        {
+            _memory.Draw(canvas, width, PixelsPerUnit(width));
         }
 
         DrawOverlay(canvas, width, height);

@@ -33,6 +33,8 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
 
     protected virtual string CurrentText => "Running At This Position";
 
+    protected virtual bool ShowsMemory => false;
+
     private IReadOnlyList<TraceThreadStack>? Pending { get; set; }
 
     private bool IsUpdating { get; set; }
@@ -128,6 +130,22 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
         Query.Layout.ShowCallTree();
 
         Query.CallTreeTab.FindReferences(value);
+    }
+
+    public void ShowMemory(CallSignaturePart part)
+    {
+        if (SelectedCall is { } call)
+        {
+            ShowMemory(call, part);
+        }
+    }
+
+    public void ShowMemory(PlayheadCallRow row, CallSignaturePart part)
+    {
+        if (part is { IsMemoryTracked: true, Value: { } address })
+        {
+            Query.PlayheadMemory.Open(part.MemoryBlock, address, row.FromPosition);
+        }
     }
 
     protected virtual void UseChart(Action<IPlayheadChart> action) => Query.PlayheadStack.RequestChart(action);
@@ -295,6 +313,17 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
         return threads;
     }
 
+    private void SetMemoryBlocks(CallSignature signature, TracePosition position)
+    {
+        foreach (var part in signature.Parts.Append(signature.This))
+        {
+            if (part is { Kind: CallSignaturePartKind.Value, Value: { } value and not 0 })
+            {
+                part.MemoryBlock = Query.MemoryHistory.GetBlock(value, position);
+            }
+        }
+    }
+
     private async Task<PlayheadCallRow> BuildRowAsync(CallStackNode node, TraceSpan call, uint thread, bool isCurrent, ulong origin)
     {
         var index = call.CallIndex;
@@ -306,6 +335,11 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
         signature ??= new CallSignature([new CallSignaturePart(node.Symbol, CallSignaturePartKind.Function)], null, null);
 
         var (from, to) = lookup?.GetPositions(node, index) ?? (TracePosition.Unknown, TracePosition.Unknown);
+
+        if (ShowsMemory && from.IsKnown)
+        {
+            SetMemoryBlocks(signature, from);
+        }
 
         return new PlayheadCallRow(node, call, signature, from, to, thread, isCurrent, origin)
         {

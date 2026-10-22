@@ -5,13 +5,14 @@ public sealed record MemoryHistoryBlock(ulong Iterator,
                                         int Size,
                                         bool IsIterator,
                                         bool IsInline,
-                                        bool IsBufferPool,
                                         uint Thread,
                                         int CallNodeIndex,
                                         TracePosition FromPosition,
                                         TracePosition ToPosition,
                                         ulong FromInstructions,
-                                        ulong ToInstructions)
+                                        ulong ToInstructions,
+                                        int FirstWrite,
+                                        int WriteCount)
 {
     public TracePoint From => new(FromPosition, FromInstructions);
 

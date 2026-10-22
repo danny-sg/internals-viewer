@@ -210,6 +210,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     private readonly Popup _toolTip;
 
+    private readonly ProgressRing _memoryProgress;
+
     private readonly DropDownButton _memoryModeButton;
 
     private readonly RadioMenuFlyoutItem _allocatedItem;
@@ -265,6 +267,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
     private int _reportedVersion = -1;
 
     private TraceTimelineAxis _reportedAxis;
+
+    private double? _reportedPlayhead;
 
     private ulong _selfMaximum;
 
@@ -368,6 +372,17 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
         _overlay.Children.Add(_toolTip);
 
+        _memoryProgress = new ProgressRing
+        {
+            Width = MemoryProgressSize,
+            Height = MemoryProgressSize,
+            IsActive = false,
+            IsHitTestVisible = false,
+            Visibility = Visibility.Collapsed
+        };
+
+        _overlay.Children.Add(_memoryProgress);
+
         _allocatedItem = new RadioMenuFlyoutItem
         {
             Text = "Allocated",
@@ -431,6 +446,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
     public event Action? CallStackOpenRequested;
 
     public event Action? CallStackChanged;
+
+    public event Action? PlayheadChanged;
 
     public bool HasCallStack => GetStackPath().Count > 0;
 
@@ -1140,6 +1157,18 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         _reportedAxis = _axis;
 
         DispatcherQueue.TryEnqueue(() => CallStackChanged?.Invoke());
+    }
+
+    private void ReportPlayhead()
+    {
+        if (_playhead == _reportedPlayhead)
+        {
+            return;
+        }
+
+        _reportedPlayhead = _playhead;
+
+        DispatcherQueue.TryEnqueue(() => PlayheadChanged?.Invoke());
     }
 
     private CallReference? GetCallReference(FlameHit? hit)

@@ -54,6 +54,57 @@ public class TraceMemoryPaneTests
     }
 
     [Fact]
+    public void Bands_With_No_Writes_In_View_Give_Their_Rows_To_The_Active_Ones()
+    {
+        var (pane, host) = Create([Block(0, 0x1000_0000, 0x40, Write(0, 0x40)),
+                                   Block(1, 0x2000_0000, 0x40, new TraceMemoryWrite(Point(90), 0, 0x40, WriterNode))]);
+
+        using var _ = host;
+
+        var before = pane.Blocks[pane.GetHit(new Point(10, PaneTop + 95))!.Value.Block].Block;
+
+        host.ViewEnd = 50;
+
+        pane.Render(Width, host.Scale);
+
+        var after = pane.Blocks[pane.GetHit(new Point(10, PaneTop + 95))!.Value.Block].Block;
+
+        Assert.Equal((1, 0), (before, after));
+    }
+
+    [Fact]
+    public void More_Blocks_Than_Rows_Still_All_Fit_In_The_Pane()
+    {
+        var (pane, host) = Create([.. Enumerable.Range(0, 300).Select(b => Block(b, 0x1000_0000 + (ulong)b * 0x100, 8, Write(0, 8)))]);
+
+        using var _ = host;
+
+        Assert.True(pane.Blocks[pane.GetHit(new Point(41, PaneTop + PaneHeight - 0.5))!.Value.Block].Block >= 290);
+    }
+
+    [Fact]
+    public async Task A_View_Change_Is_Blank_Until_The_Background_Frame_Arrives()
+    {
+        var (pane, host) = Create([Block(0, 0x1000_0000, 0x40, Write(0x20, 8))]);
+
+        using var _ = host;
+
+        host.ViewEnd = 50;
+
+        using (var bitmap = new SKBitmap(Width, (int)(PaneTop + PaneHeight)))
+        using (var canvas = new SKCanvas(bitmap))
+        {
+            pane.Draw(canvas, Width, host.Scale);
+        }
+
+        var before = (pane.GetHit(new Point(41, PaneTop + 20)).HasValue, host.IsProgressVisible);
+
+        (await host.WaitForPost().WaitAsync(TimeSpan.FromSeconds(10)))();
+
+        Assert.Equal(((false, true), (true, false)), (before, (pane.GetHit(new Point(41, PaneTop + 20)).HasValue, host.IsProgressVisible)));
+    }
+
+    [Fact]
     public void A_Small_Block_Keeps_A_Row()
     {
         var (pane, host) = Create([Block(0, 0x1000_0000, 0x10000, Write(0, 0x10000)), Block(1, 0x2000_0000, 8, Write(0, 8))]);
@@ -64,23 +115,35 @@ public class TraceMemoryPaneTests
     }
 
     [Fact]
-    public void A_Write_Under_The_Pointer_Is_Hit()
+    public void Hovering_A_Write_Finds_Only_Its_Block()
     {
         var (pane, host) = Create([Block(0, 0x1000_0000, 0x40, Write(0x20, 8))]);
 
         using var _ = host;
 
-        Assert.Equal(new TraceMemoryHit(0, 0, 0x20), pane.GetHit(new Point(41, PaneTop + 20)));
+        Assert.Equal((0, -1), pane.GetHit(new Point(41, PaneTop + 20)) is { } hit ? (hit.Block, hit.Write) : (-1, -1));
     }
 
     [Fact]
-    public void Clicking_A_Write_Selects_Its_Block_And_Position()
+    public void Clicking_A_Write_Shows_Its_Block_At_The_Write()
     {
         var (pane, host) = Create([Block(3, 0x1000_0000, 0x40, Write(0x20, 8))]);
 
         using var _ = host;
 
         pane.Click(new Point(41, PaneTop + 20));
+
+        Assert.Equal(((3, 0x1000_0020ul, new TracePosition(20, 0)), (double?)20), (host.Shown, host.MovedTo));
+    }
+
+    [Fact]
+    public void Double_Clicking_A_Write_Selects_Its_Block_And_Position()
+    {
+        var (pane, host) = Create([Block(3, 0x1000_0000, 0x40, Write(0x20, 8))]);
+
+        using var _ = host;
+
+        pane.DoubleClick(new Point(41, PaneTop + 20));
 
         Assert.Equal((3, (TracePosition?)new TracePosition(20, 0)), host.Selected);
     }
@@ -115,6 +178,8 @@ public class TraceMemoryPaneTests
 
         pane.SetBlocks(blocks);
 
+        pane.Render(Width, host.Scale);
+
         return (pane, host);
     }
 
@@ -129,9 +194,9 @@ public class TraceMemoryPaneTests
     {
         public TraceTimelineAxis Axis => TraceTimelineAxis.Position;
 
-        public double ViewStart => 0;
+        public double ViewStart { get; set; }
 
-        public double ViewEnd => 100;
+        public double ViewEnd { get; set; } = 100;
 
         public int Width => TraceMemoryPaneTests.Width;
 
@@ -147,6 +212,14 @@ public class TraceMemoryPaneTests
 
         public (int Block, TracePosition? Position)? Selected { get; private set; }
 
+        public (int Block, ulong Address, TracePosition Position)? Shown { get; private set; }
+
+        private TaskCompletionSource<Action> Posted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public double? MovedTo { get; private set; }
+
+        public bool IsProgressVisible { get; private set; }
+
         public double GetOrigin(TraceTimelineAxis axis) => 0;
 
         public SKColor GetColour(int callNodeIndex) => callNodeIndex == WriterNode ? WriterColour : SKColors.Gray;
@@ -157,9 +230,13 @@ public class TraceMemoryPaneTests
         {
         }
 
-        public void MovePlayhead(double position)
-        {
-        }
+        public void Post(Action action) => Posted.TrySetResult(action);
+
+        public Task<Action> WaitForPost() => Posted.Task;
+
+        public void ShowMemoryProgress(bool isVisible) => IsProgressVisible = isVisible;
+
+        public void MovePlayhead(double position) => MovedTo = position;
 
         public void ClickCall(CallStackNode node, int callIndex)
         {
@@ -174,6 +251,8 @@ public class TraceMemoryPaneTests
         }
 
         public void SelectMemoryWrite(int block, TracePosition? position) => Selected = (block, position);
+
+        public void ShowMemory(int block, ulong address, TracePosition position) => Shown = (block, address, position);
 
         public void Dispose()
         {

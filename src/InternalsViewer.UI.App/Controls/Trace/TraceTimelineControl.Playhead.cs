@@ -1,4 +1,5 @@
 using System;
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using SkiaSharp;
 
@@ -9,6 +10,42 @@ public sealed partial class TraceTimelineControl
     private const float PlayheadHalfWidth = 9f;
 
     private const float PlayheadBadgePadding = 4f;
+
+    public TracePosition? GetPlayheadPosition()
+    {
+        if (_playhead is not { } value)
+        {
+            return null;
+        }
+
+        if (_axis == TraceTimelineAxis.Position)
+        {
+            return TraceScale.GetPosition(value);
+        }
+
+        if (_visible is not { } timeline)
+        {
+            return null;
+        }
+
+        var path = GetStackPath();
+
+        for (var index = path.Count - 1; index >= 0; index--)
+        {
+            var hit = path[index];
+
+            var row = timeline.Threads[hit.Lane].Rows[hit.Depth];
+
+            var span = row.GetSpan(hit.Index);
+
+            if (span.From.Instructions <= value && value <= span.To.Instructions)
+            {
+                return GetPosition(row, hit.Index, value);
+            }
+        }
+
+        return null;
+    }
 
     private void DrawPlayhead(SKCanvas canvas, int width, int height)
     {

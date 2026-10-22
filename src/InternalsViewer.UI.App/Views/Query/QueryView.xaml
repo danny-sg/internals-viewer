@@ -155,7 +155,8 @@
                                 <MenuFlyoutItem Text="Operator Tracks"
                                                 Command="{x:Bind ViewModel.ShowOperatorTracksCommand}"/>
                                 <MenuFlyoutItem Text="Memory History"
-                                                Command="{x:Bind ViewModel.ShowMemoryHistoryCommand}"/>
+                                                Command="{x:Bind ViewModel.ShowMemoryHistoryCommand}"
+                                                Visibility="{x:Bind ViewModel.MemoryHistory.IsAvailable, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
                             </MenuBarItem>
 
                         </MenuBar>

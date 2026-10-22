@@ -17,6 +17,7 @@
                                 IsHistoryVisible="{x:Bind ViewModel.IsSqlHistoryVisible, Mode=TwoWay}"
                                 Messages="{x:Bind ViewModel.Messages}"
                                 StayOnMessages="{x:Bind ViewModel.QueryOptions.RecordTimeTravel, Mode=OneWay}"
+                                IsFullTrace="{x:Bind ViewModel.QueryOptions.RecordTimeTravel, Mode=OneWay}"
                                 IsError="{x:Bind ViewModel.IsError, Mode=OneWay}"
                                 Schema="{x:Bind ViewModel.Schema, Mode=OneWay}"
                                 ResultSet="{x:Bind ViewModel.ActiveResultSet, Mode=OneWay}"

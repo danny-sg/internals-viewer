@@ -92,6 +92,8 @@ internal sealed class ReplaySession : IDisposable
 
     public async Task<WatchResult> WatchAsync(IReadOnlyCollection<WatchRange> ranges,
                                               TracePosition start,
+                                              TracePosition end,
+                                              Func<WatchHit, bool> keep,
                                               IProgress<double>? progress,
                                               CancellationToken cancellationToken)
     {
@@ -99,7 +101,7 @@ internal sealed class ReplaySession : IDisposable
 
         try
         {
-            return await Task.Run(() => Watch([.. ranges], start, progress, cancellationToken), cancellationToken);
+            return await Task.Run(() => Watch([.. ranges], start, end, keep, progress, cancellationToken), cancellationToken);
         }
         finally
         {
@@ -270,6 +272,8 @@ internal sealed class ReplaySession : IDisposable
 
     private unsafe WatchResult Watch(WatchRange[] ranges,
                                      TracePosition start,
+                                     TracePosition end,
+                                     Func<WatchHit, bool> keep,
                                      IProgress<double>? progress,
                                      CancellationToken cancellationToken)
     {
@@ -279,20 +283,67 @@ internal sealed class ReplaySession : IDisposable
 
         var registration = cancellationToken.Register(() => Marshal.WriteInt32(cancel, 1));
 
-        var hits = new List<WatchHit>();
+        var batches = new List<WatchBatch>();
 
-        var data = new List<byte>();
+        var selected = Array.Empty<bool>();
 
         ReplayBridge.WatchHitCallback onHits = (pointer, count, bytes, length) =>
         {
-            var offset = (uint)data.Count;
+            var source = new ReadOnlySpan<WatchHit>((void*)pointer, count);
 
-            foreach (var hit in new ReadOnlySpan<WatchHit>((void*)pointer, count))
+            var chunk = new ReadOnlySpan<byte>((void*)bytes, length);
+
+            if (selected.Length < count)
             {
-                hits.Add(hit with { Offset = hit.Offset + offset });
+                selected = new bool[count];
             }
 
-            data.AddRange(new ReadOnlySpan<byte>((void*)bytes, length));
+            var hitCount = 0;
+
+            var byteCount = 0;
+
+            for (var index = 0; index < count; index++)
+            {
+                selected[index] = keep(source[index]);
+
+                if (selected[index])
+                {
+                    hitCount++;
+
+                    byteCount += (int)source[index].Size;
+                }
+            }
+
+            if (hitCount == 0)
+            {
+                return;
+            }
+
+            var hits = new WatchHit[hitCount];
+
+            var data = new byte[byteCount];
+
+            var kept = 0;
+
+            var offset = 0;
+
+            for (var index = 0; index < count; index++)
+            {
+                if (!selected[index])
+                {
+                    continue;
+                }
+
+                var hit = source[index];
+
+                chunk.Slice((int)hit.Offset, (int)hit.Size).CopyTo(data.AsSpan(offset));
+
+                hits[kept++] = hit with { Offset = (uint)offset };
+
+                offset += (int)hit.Size;
+            }
+
+            batches.Add(new WatchBatch(hits, data));
         };
 
         ReplayBridge.ProgressCallback onProgress = (_, percent) => progress?.Report(percent);
@@ -304,7 +355,7 @@ internal sealed class ReplaySession : IDisposable
                                                   ranges.Length,
                                                   WriteAccess,
                                                   start.Sequence,
-                                                  0,
+                                                  end.IsKnown ? end.Sequence + 1 : 0,
                                                   onHits,
                                                   onProgress,
                                                   cancel,
@@ -321,7 +372,7 @@ internal sealed class ReplaySession : IDisposable
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            return new WatchResult([.. hits], [.. data], watched);
+            return new WatchResult([.. batches], watched);
         }
         finally
         {

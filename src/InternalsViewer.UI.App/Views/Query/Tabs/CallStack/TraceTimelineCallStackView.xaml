@@ -23,6 +23,7 @@
                             HorizontalAlignment="Right"
                             VerticalAlignment="Center"
                             Spacing="2">
+                    <callStack:DecodeToggle Margin="0,0,6,0"/>
                     <Button Style="{StaticResource TabCommandButtonStyle}"
                             ToolTipService.ToolTip="Previous Frame"
                             Click="OnStepBackClick">

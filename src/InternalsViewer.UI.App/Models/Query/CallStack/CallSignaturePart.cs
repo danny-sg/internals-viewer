@@ -44,6 +44,10 @@ public sealed class CallSignaturePart(string text,
 
     public string? Location { get; } = location;
 
+    public int MemoryBlock { get; set; } = -1;
+
+    public bool IsMemoryTracked => MemoryBlock >= 0;
+
     public bool IsThis => Label == ThisLabel;
 
     public bool IsDecodedFor(bool decode) => decode && Decoded is not null;

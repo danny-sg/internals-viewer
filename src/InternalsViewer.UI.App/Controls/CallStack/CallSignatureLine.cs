@@ -60,6 +60,8 @@ public sealed partial class CallSignatureLine : UserControl
 
     public event EventHandler<CallSignaturePart>? ValueSelected;
 
+    public event EventHandler<CallSignaturePart>? MemorySelected;
+
     private StackPanel Line { get; } = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
 
     private SettingsViewModel Settings { get; } = App.GetService<SettingsViewModel>();
@@ -75,6 +77,11 @@ public sealed partial class CallSignatureLine : UserControl
         foreach (var part in Parts ?? [])
         {
             Line.Children.Add(Element(part));
+
+            if (part.IsMemoryTracked)
+            {
+                Line.Children.Add(MemoryIcon(part));
+            }
         }
     }
 
@@ -140,6 +147,29 @@ public sealed partial class CallSignatureLine : UserControl
         }
 
         return text;
+    }
+
+    private FontIcon MemoryIcon(CallSignaturePart part)
+    {
+        var icon = new FontIcon
+        {
+            Glyph = "\uE950",
+            FontSize = TextSize,
+            Margin = new Thickness(3, 0, 1, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Foreground = AppResources.Get<Brush>("TextFillColorSecondaryBrush")
+        };
+
+        ToolTipService.SetToolTip(icon, "Show Memory");
+
+        icon.Tapped += (_, e) =>
+        {
+            e.Handled = true;
+
+            MemorySelected?.Invoke(this, part);
+        };
+
+        return icon;
     }
 
     private MenuFlyout ValueMenu(CallSignaturePart part, ulong value)

@@ -188,6 +188,8 @@ public sealed partial class TraceTimelineControl
 
         if (inMemory && isDoubleClick)
         {
+            _memory.DoubleClick(position);
+
             return;
         }
 
@@ -338,7 +340,7 @@ public sealed partial class TraceTimelineControl
                          ? InputSystemCursorShape.SizeNorthSouth
                          : found is not null
                              ? InputSystemCursorShape.SizeAll
-                             : operatorsHover.Tick is not null || memoryHover is { Write: >= 0 }
+                             : operatorsHover.Tick is not null || memoryHover is not null
                                  ? InputSystemCursorShape.Hand
                                  : InputSystemCursorShape.Arrow);
 

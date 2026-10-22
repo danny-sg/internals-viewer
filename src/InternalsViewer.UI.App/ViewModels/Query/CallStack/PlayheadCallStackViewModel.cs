@@ -25,6 +25,8 @@ public sealed class PlayheadCallStackViewModel(QueryViewModel query) : CallStack
 
     protected override string CurrentText => "Innermost Selected Call";
 
+    protected override bool ShowsMemory => true;
+
     private Action<IPlayheadChart>? ChartRequest { get; set; }
 
     public void Step(bool forward) => Chart?.SelectAdjacentCall(forward);

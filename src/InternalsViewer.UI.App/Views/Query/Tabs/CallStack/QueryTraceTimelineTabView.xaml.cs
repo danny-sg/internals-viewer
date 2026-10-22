@@ -13,6 +13,7 @@ using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Query;
 using InternalsViewer.UI.App.ViewModels.Query.CallStack;
+using InternalsViewer.UI.App.ViewModels.Query.MemoryHistory;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
@@ -51,6 +52,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
     private PlayheadStepMode _stepMode = PlayheadStepMode.Call;
 
+    private (bool Stack, bool Memory) _stackArea;
+
     public QueryTraceTimelineTabView()
     {
         InitializeComponent();
@@ -72,6 +75,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         TraceTimeline.MemoryWriteSelected += OnMemoryWriteSelected;
 
+        TraceTimeline.MemoryBlockSelected += OnMemoryBlockSelected;
+
         TraceTimeline.TickTrackVisibilityChanged += OnTickTrackVisibilityChanged;
 
         TraceTimeline.TickTrackAddRequested += OnTickTrackAddRequested;
@@ -81,6 +86,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         TraceTimeline.PlayStateChanged += OnPlayStateChanged;
 
         TraceTimeline.CallStackChanged += OnCallStackChanged;
+
+        TraceTimeline.PlayheadChanged += OnPlayheadChanged;
 
         SearchBar.SearchTextChanged += OnSearchTextChanged;
 
@@ -94,6 +101,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
     private SettingsViewModel Settings { get; } = App.GetService<SettingsViewModel>();
 
     private PlayheadCallStackViewModel? Stack { get; set; }
+
+    private PlayheadMemoryViewModel? Memory { get; set; }
 
     public FrameworkElement CreateCommands()
     {
@@ -161,6 +170,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         TraceTimeline.MemoryWriteSelected -= OnMemoryWriteSelected;
 
+        TraceTimeline.MemoryBlockSelected -= OnMemoryBlockSelected;
+
         TraceTimeline.TickTrackVisibilityChanged -= OnTickTrackVisibilityChanged;
 
         TraceTimeline.TickTrackAddRequested -= OnTickTrackAddRequested;
@@ -171,6 +182,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         TraceTimeline.CallStackChanged -= OnCallStackChanged;
 
+        TraceTimeline.PlayheadChanged -= OnPlayheadChanged;
+
         SearchBar.SearchTextChanged -= OnSearchTextChanged;
 
         SearchBar.StepRequested -= OnSearchStepRequested;
@@ -178,6 +191,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         Settings.PropertyChanged -= OnSettingsPropertyChanged;
 
         AttachStack(null);
+
+        AttachMemory(null);
 
         TraceTimeline.Dispose();
 
@@ -189,6 +204,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         Bindings.Update();
 
         AttachStack(ViewModel?.PlayheadStack);
+
+        AttachMemory(ViewModel?.PlayheadMemory);
     }
 
     private void AttachStack(PlayheadCallStackViewModel? stack)
@@ -206,6 +223,30 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         Stack = stack;
 
         Stack?.Chart = TraceTimeline;
+    }
+
+    private void AttachMemory(PlayheadMemoryViewModel? memory)
+    {
+        if (ReferenceEquals(Memory, memory))
+        {
+            return;
+        }
+
+        if (Memory is { } previous)
+        {
+            previous.PropertyChanged -= OnMemoryPropertyChanged;
+        }
+
+        Memory = memory;
+
+        if (memory is not null)
+        {
+            memory.PropertyChanged += OnMemoryPropertyChanged;
+
+            memory.SetPlayhead(TraceTimeline.GetPlayheadPosition());
+        }
+
+        UpdateStackArea();
     }
 
     private MenuFlyout CreateViewMenu()
@@ -295,17 +336,57 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
     {
         var isVisible = Settings.TraceTimelineShowCallStack && TraceTimeline.HasCallStack;
 
-        SetStackVisible(isVisible);
+        StackView.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+
+        UpdateStackArea();
 
         if (isVisible)
         {
             ViewModel?.PlayheadStack.SetStack(TraceTimeline.GetCallStack(), TraceTimeline.GetSelectedCall());
         }
+
+        OnPlayheadChanged();
     }
 
-    private void SetStackVisible(bool isVisible)
+    private void OnPlayheadChanged() => Memory?.SetPlayhead(TraceTimeline.GetPlayheadPosition());
+
+    private void OnMemoryPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (isVisible == (StackView.Visibility == Visibility.Visible))
+        if (e.PropertyName == nameof(PlayheadMemoryViewModel.IsOpen))
+        {
+            UpdateStackArea();
+        }
+    }
+
+    private void UpdateStackArea()
+    {
+        var state = (Stack: StackView.Visibility == Visibility.Visible, Memory: Memory is { IsOpen: true });
+
+        if (state == _stackArea)
+        {
+            return;
+        }
+
+        _stackArea = state;
+
+        var isBoth = state.Stack && state.Memory;
+
+        MemoryView.Visibility = state.Memory ? Visibility.Visible : Visibility.Collapsed;
+
+        MemorySplitter.Visibility = isBoth ? Visibility.Visible : Visibility.Collapsed;
+
+        StackColumn.Width = state.Stack ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+
+        MemorySplitterColumn.Width = isBoth ? GridLength.Auto : new GridLength(0);
+
+        MemoryColumn.Width = state.Memory ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+
+        SetStackAreaVisible(state.Stack || state.Memory);
+    }
+
+    private void SetStackAreaVisible(bool isVisible)
+    {
+        if (isVisible == (StackArea.Visibility == Visibility.Visible))
         {
             return;
         }
@@ -315,9 +396,9 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
             _stackHeight = StackRow.Height;
         }
 
-        StackView.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+        StackArea.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
 
-        StackSplitter.Visibility = StackView.Visibility;
+        StackSplitter.Visibility = StackArea.Visibility;
 
         StackSplitterRow.Height = isVisible ? GridLength.Auto : new GridLength(0);
 
@@ -420,6 +501,9 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
     private void OnPlanNodeSelected(PlanNodeIdentifier identifier) => ViewModel?.SelectPlanNode(identifier);
 
     private void OnMemoryWriteSelected(int block, TracePosition? position) => ViewModel?.ShowMemoryWrite(block, position);
+
+    private void OnMemoryBlockSelected(int block, ulong address, TracePosition position)
+        => ViewModel?.PlayheadMemory.Open(block, address, position);
 
     private void OnExecutionPlanRequested(PlanNodeIdentifier? identifier)
     {

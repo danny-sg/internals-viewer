@@ -78,10 +78,32 @@
                               ResizeBehavior="PreviousAndNext"
                               Visibility="Collapsed"/>
 
-        <local:TraceTimelineCallStackView x:Name="StackView"
-                                       Grid.Row="3"
-                                       Visibility="Collapsed"
-                                       DataContext="{x:Bind ViewModel.PlayheadStack, Mode=OneWay}"/>
+        <Grid x:Name="StackArea"
+              Grid.Row="3"
+              Visibility="Collapsed">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="StackColumn" Width="*"/>
+                <ColumnDefinition x:Name="MemorySplitterColumn" Width="0"/>
+                <ColumnDefinition x:Name="MemoryColumn" Width="0"/>
+            </Grid.ColumnDefinitions>
+
+            <local:TraceTimelineCallStackView x:Name="StackView"
+                                           Grid.Column="0"
+                                           Visibility="Collapsed"
+                                           DataContext="{x:Bind ViewModel.PlayheadStack, Mode=OneWay}"/>
+
+            <toolkit:GridSplitter x:Name="MemorySplitter"
+                                  Grid.Column="1"
+                                  Width="4"
+                                  ResizeDirection="Columns"
+                                  ResizeBehavior="PreviousAndNext"
+                                  Visibility="Collapsed"/>
+
+            <local:TraceTimelineMemoryView x:Name="MemoryView"
+                                        Grid.Column="2"
+                                        Visibility="Collapsed"
+                                        DataContext="{x:Bind ViewModel.PlayheadMemory, Mode=OneWay}"/>
+        </Grid>
 
         <StackPanel Grid.Row="1"
                     Orientation="Vertical"
