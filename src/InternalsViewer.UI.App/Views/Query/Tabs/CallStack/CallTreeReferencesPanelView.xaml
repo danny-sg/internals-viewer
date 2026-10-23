@@ -6,7 +6,7 @@
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
     xmlns:controls="using:InternalsViewer.UI.App.Controls"
     xmlns:callStack="using:InternalsViewer.UI.App.Controls.CallStack"
-    xmlns:members="using:InternalsViewer.UI.App.Models.Query.CallStack"
+    xmlns:values="using:InternalsViewer.UI.App.Models.Query.CallStack.Values"
     xmlns:selectors="using:InternalsViewer.UI.App.Helpers.Selectors">
 
     <UserControl.Resources>
@@ -15,12 +15,12 @@
             <StackPanel Orientation="Horizontal"
                         Spacing="6"
                         VerticalAlignment="Center"
-                        ToolTipService.ToolTip="{x:Bind ((members:ValueTypeRow)Content).ToolTip}">
+                        ToolTipService.ToolTip="{x:Bind ((values:ValueTypeRow)Content).ToolTip}">
                 <TextBlock Text="Type"
                            FontSize="11"
                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                            VerticalAlignment="Center"/>
-                <TextBlock Text="{x:Bind ((members:ValueTypeRow)Content).Name}"
+                <TextBlock Text="{x:Bind ((values:ValueTypeRow)Content).Name}"
                            FontFamily="{StaticResource MonospaceFontFamily}"
                            FontSize="11"
                            Foreground="{ThemeResource CppClassBrush}"
@@ -30,11 +30,11 @@
 
         <DataTemplate x:Key="ValueGroupTemplate" x:DataType="muxc:TreeViewNode">
             <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                <TextBlock Text="{x:Bind ((members:ValueUseGroup)Content).Title}"
+                <TextBlock Text="{x:Bind ((values:ValueUseGroup)Content).Title}"
                            FontSize="11"
                            FontWeight="SemiBold"
                            VerticalAlignment="Center"/>
-                <TextBlock Text="{x:Bind ((members:ValueUseGroup)Content).CountLabel}"
+                <TextBlock Text="{x:Bind ((values:ValueUseGroup)Content).CountLabel}"
                            FontSize="11"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            VerticalAlignment="Center"/>
@@ -43,15 +43,15 @@
 
         <DataTemplate x:Key="ValueFunctionTemplate" x:DataType="muxc:TreeViewNode">
             <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                <TextBlock Text="{x:Bind ((members:ValueUseRow)Content).Function}"
+                <TextBlock Text="{x:Bind ((values:ValueUseRow)Content).Function}"
                            FontFamily="{StaticResource MonospaceFontFamily}"
                            FontSize="11"
                            VerticalAlignment="Center"/>
-                <TextBlock Text="{x:Bind ((members:ValueUseRow)Content).Location}"
+                <TextBlock Text="{x:Bind ((values:ValueUseRow)Content).Location}"
                            FontSize="11"
                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                            VerticalAlignment="Center"/>
-                <TextBlock Text="{x:Bind ((members:ValueUseRow)Content).Calls}"
+                <TextBlock Text="{x:Bind ((values:ValueUseRow)Content).Calls}"
                            FontSize="11"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            VerticalAlignment="Center"/>
@@ -60,21 +60,21 @@
 
         <DataTemplate x:Key="ValueCallTemplate" x:DataType="muxc:TreeViewNode">
             <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                <TextBlock Text="{x:Bind ((members:ValueCallRow)Content).Call}"
+                <TextBlock Text="{x:Bind ((values:ValueCallRow)Content).Call}"
                            FontSize="11"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            VerticalAlignment="Center"
                            ToolTipService.ToolTip="Show this call in the call tree and the Trace Timeline"/>
-                <TextBlock Text="{x:Bind ((members:ValueCallRow)Content).Thread}"
+                <TextBlock Text="{x:Bind ((values:ValueCallRow)Content).Thread}"
                            FontSize="11"
                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                            VerticalAlignment="Center"/>
-                <callStack:CallSignatureLine Parts="{x:Bind ((members:ValueCallRow)Content).Signature}"/>
+                <callStack:CallSignatureLine Parts="{x:Bind ((values:ValueCallRow)Content).Signature}"/>
             </StackPanel>
         </DataTemplate>
 
         <DataTemplate x:Key="ValueNoteTemplate" x:DataType="muxc:TreeViewNode">
-            <TextBlock Text="{x:Bind ((members:ValueNoteRow)Content).Label}"
+            <TextBlock Text="{x:Bind ((values:ValueNoteRow)Content).Label}"
                        FontSize="11"
                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                        VerticalAlignment="Center"/>

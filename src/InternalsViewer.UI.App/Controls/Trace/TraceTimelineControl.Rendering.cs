@@ -5,6 +5,7 @@ using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using SkiaSharp;
 using SkiaSharp.Views.Windows;
 using InternalsViewer.UI.App.Controls.Timeline;
+using InternalsViewer.UI.App.Controls.Trace.Enums;
 
 namespace InternalsViewer.UI.App.Controls.Trace;
 
@@ -138,7 +139,7 @@ public sealed partial class TraceTimelineControl
 
             canvas.ClipRect(new SKRect(0, ContentTop, width, lanesBottom));
 
-            DrawCallHighlights(canvas, ContentTop, lanesBottom, width, scale);
+            DrawCallHighlights(canvas, visible, lanesBottom, width, scale);
 
             DrawLanes(canvas, visible, lanesBottom, width, scale);
 

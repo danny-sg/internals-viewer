@@ -10,8 +10,8 @@ using InternalsViewer.UI.App.Controls.CallStack;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Controls.Results;
 using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.Models.Query.CallStack.Arguments;
 using InternalsViewer.UI.App.Models;
-using InternalsViewer.UI.App.Models.Query.CallStack;
 using InternalsViewer.UI.App.ViewModels.Query.CallStack;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -113,7 +113,7 @@ public sealed partial class CallTreeArgumentsPanelView : UserControl, IDocumentC
 
             e.Menu.Items.Add(MenuItems.Create("Call Stack", () => viewModel.ShowCallStack(node, index)));
 
-            e.Menu.Items.Add(MenuItems.Create("Scope", () => viewModel.Query.PlayheadStack.Scope(node)));
+            e.Menu.Items.Add(MenuItems.Create("Scope", () => viewModel.Query.TraceTimelineTab.PlayheadStack.Scope(node)));
 
             if (node.Frame is { Guid.Length: > 0 } && arguments.GetHookArgument(e.Ordinal) is { } argument)
             {

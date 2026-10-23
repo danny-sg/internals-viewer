@@ -7,7 +7,8 @@
     xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
     xmlns:controls="using:InternalsViewer.UI.App.Controls"
     xmlns:callStack="using:InternalsViewer.UI.App.Controls.CallStack"
-    xmlns:members="using:InternalsViewer.UI.App.Models.Query.CallStack"
+    xmlns:signatures="using:InternalsViewer.UI.App.Models.Query.CallStack.Signatures"
+    xmlns:stack="using:InternalsViewer.UI.App.Models.Query.CallStack.Stack"
     xmlns:selectors="using:InternalsViewer.UI.App.Helpers.Selectors">
 
     <UserControl.Resources>
@@ -47,7 +48,7 @@
         </MenuFlyout>
 
         <DataTemplate x:Key="ThreadTemplate" x:DataType="muxc:TreeViewNode">
-            <TextBlock Text="{x:Bind ((members:PlayheadThreadRow)Content).Label}"
+            <TextBlock Text="{x:Bind ((stack:PlayheadThreadRow)Content).Label}"
                        FontSize="12"
                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                        VerticalAlignment="Center"/>
@@ -57,7 +58,7 @@
             <Grid Padding="0,3,0,3"
                   RightTapped="OnCallRowRightTapped"
                   ContextFlyout="{StaticResource CallMenu}"
-                  Background="{x:Bind callStack:CallStackControl.RowBackground(((members:PlayheadCallRow)Content).IsCurrent)}"
+                  Background="{x:Bind callStack:CallStackControl.RowBackground(((stack:PlayheadCallRow)Content).IsCurrent)}"
                   BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
                   BorderThickness="0,0,0,1">
                 <Grid.ColumnDefinitions>
@@ -73,21 +74,21 @@
                            FontWeight="Bold"
                            Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                            VerticalAlignment="Center"
-                           ToolTipService.ToolTip="{x:Bind ((members:PlayheadCallRow)Content).CurrentText}"
-                           Visibility="{x:Bind ((members:PlayheadCallRow)Content).IsCurrent, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                           ToolTipService.ToolTip="{x:Bind ((stack:PlayheadCallRow)Content).CurrentText}"
+                           Visibility="{x:Bind ((stack:PlayheadCallRow)Content).IsCurrent, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
                 <Ellipse Grid.Column="1"
                          Width="8"
                          Height="8"
                          Margin="0,6,6,6"
                          VerticalAlignment="Center"
-                         Fill="{x:Bind ((members:PlayheadCallRow)Content).Node.CategoryColour, Converter={StaticResource HexColorToBrushConverter}}"
-                         ToolTipService.ToolTip="{x:Bind ((members:PlayheadCallRow)Content).Node.Category}"/>
+                         Fill="{x:Bind ((stack:PlayheadCallRow)Content).Node.CategoryColour, Converter={StaticResource HexColorToBrushConverter}}"
+                         ToolTipService.ToolTip="{x:Bind ((stack:PlayheadCallRow)Content).Node.Category}"/>
 
                 <callStack:CallSignatureLine Grid.Column="2"
                                              TextSize="12"
-                                             Parts="{x:Bind ((members:PlayheadCallRow)Content).Signature}"
-                                             HighlightedPart="{x:Bind ((members:PlayheadCallRow)Content).Highlighted, Mode=OneWay}"
+                                             Parts="{x:Bind ((stack:PlayheadCallRow)Content).Signature}"
+                                             HighlightedPart="{x:Bind ((stack:PlayheadCallRow)Content).Highlighted, Mode=OneWay}"
                                              ValueSelected="OnValueSelected"
                                              MemorySelected="OnSignatureMemorySelected"/>
 
@@ -99,7 +100,7 @@
             </Grid>
         </DataTemplate>
 
-        <DataTemplate x:Key="ArgumentTemplate" x:DataType="members:CallSignaturePart">
+        <DataTemplate x:Key="ArgumentTemplate" x:DataType="signatures:CallSignaturePart">
             <Grid ColumnSpacing="8"
                   Padding="0,1,0,1"
                   Background="Transparent"
@@ -150,7 +151,7 @@
             <MenuFlyoutItem Text="Go To" Click="OnSourceFrameGoToClick"/>
         </MenuFlyout>
 
-        <DataTemplate x:Key="SourceStepTemplate" x:DataType="members:SourceStep">
+        <DataTemplate x:Key="SourceStepTemplate" x:DataType="stack:SourceStep">
             <StackPanel Margin="{x:Bind Indent}">
                 <Grid MinHeight="22"
                       Background="Transparent"
@@ -197,7 +198,7 @@
 
                 <ItemsControl ItemsSource="{x:Bind VisibleStack, Mode=OneWay}" Margin="20,0,0,0">
                     <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="members:SourceFrame">
+                        <DataTemplate x:DataType="stack:SourceFrame">
                             <Grid Background="Transparent"
                                   PointerEntered="OnSourceFramePointerEntered"
                                   PointerExited="OnSourcePointerExited"

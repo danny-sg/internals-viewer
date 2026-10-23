@@ -10,7 +10,7 @@ using InternalsViewer.UI.App.Controls.CallStack;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models.Columnstore;
-using InternalsViewer.UI.App.Models.Query.CallStack;
+using InternalsViewer.UI.App.Models.Query.CallStack.Tree;
 using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 using Microsoft.Extensions.Logging;

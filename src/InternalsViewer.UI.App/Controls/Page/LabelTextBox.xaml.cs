@@ -1,4 +1,5 @@
 namespace InternalsViewer.UI.App.Controls.Page;
+
 public sealed partial class LabelTextBox
 {
     public static readonly DependencyProperty LabelProperty = DependencyProperty

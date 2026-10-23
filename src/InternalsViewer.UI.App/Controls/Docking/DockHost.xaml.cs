@@ -14,6 +14,8 @@ namespace InternalsViewer.UI.App.Controls.Docking;
 /// </summary>
 public sealed partial class DockHost : UserControl
 {
+    private const double SplitterSize = 4;
+
     public static readonly DependencyProperty LayoutProperty =
         DependencyProperty.Register(nameof(Layout), typeof(DockLayoutViewModel), typeof(DockHost),
             new PropertyMetadata(null, OnLayoutPropertyChanged));
@@ -22,6 +24,16 @@ public sealed partial class DockHost : UserControl
     {
         get => (DockLayoutViewModel?)GetValue(LayoutProperty);
         set => SetValue(LayoutProperty, value);
+    }
+
+    public static readonly DependencyProperty FixedContentProperty =
+        DependencyProperty.Register(nameof(FixedContent), typeof(FrameworkElement), typeof(DockHost),
+            new PropertyMetadata(null, OnFixedContentPropertyChanged));
+
+    public FrameworkElement? FixedContent
+    {
+        get => (FrameworkElement?)GetValue(FixedContentProperty);
+        set => SetValue(FixedContentProperty, value);
     }
 
     private readonly Dictionary<SplitNode, (Grid Grid, bool Horizontal)> grids = new();
@@ -34,6 +46,8 @@ public sealed partial class DockHost : UserControl
     private static Brush SplitterBrush =>
         Application.Current.Resources["ControlStrokeColorDefaultBrush"] as Brush
         ?? new SolidColorBrush(Microsoft.UI.Colors.Gray);
+
+    private FixedPaneView? FixedPane { get; set; }
 
     /// <summary>Writes the live splitter star sizes back into the model (e.g. before persisting the layout)</summary>
     public void CaptureSizes()
@@ -78,15 +92,15 @@ public sealed partial class DockHost : UserControl
 
     private void Rebuild()
     {
-        if (Layout is null)
-        {
-            RootHost.Child = null;
-            return;
-        }
-
         CaptureSizes();
+
         grids.Clear();
-        RootHost.Child = BuildNode(Layout.Root);
+
+        FixedPane?.Release();
+
+        FixedPane = null;
+
+        RootHost.Child = Layout is null ? null : BuildNode(Layout.Root);
     }
 
     private FrameworkElement BuildNode(LayoutNode node)
@@ -96,6 +110,19 @@ public sealed partial class DockHost : UserControl
             var view = new TabGroupView();
             view.Initialize(group, Layout!);
             return view;
+        }
+
+        if (node is FixedNode fixedNode)
+        {
+            var pane = new FixedPaneView();
+
+            fixedNode.MinWidth = FixedContent?.MinWidth ?? 0;
+
+            pane.Initialize(fixedNode, Layout!, FixedContent);
+
+            FixedPane = pane;
+
+            return pane;
         }
 
         var split = (SplitNode)node;
@@ -117,15 +144,19 @@ public sealed partial class DockHost : UserControl
 
         if (horizontal)
         {
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = firstLength });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = firstLength, MinWidth = split.First.GetMinWidth(SplitterSize) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(split.SecondStar, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition
+            {
+                Width = new GridLength(split.SecondStar, GridUnitType.Star),
+                MinWidth = split.Second.GetMinWidth(SplitterSize)
+            });
 
             Grid.SetColumn(first, 0);
             Grid.SetColumn(splitter, 1);
             Grid.SetColumn(second, 2);
 
-            splitter.Width = 4;
+            splitter.Width = SplitterSize;
             splitter.ResizeDirection = GridSplitter.GridResizeDirection.Columns;
             splitter.HorizontalAlignment = HorizontalAlignment.Center;
             splitter.VerticalAlignment = VerticalAlignment.Stretch;
@@ -140,7 +171,7 @@ public sealed partial class DockHost : UserControl
             Grid.SetRow(splitter, 1);
             Grid.SetRow(second, 2);
 
-            splitter.Height = 4;
+            splitter.Height = SplitterSize;
             splitter.ResizeDirection = GridSplitter.GridResizeDirection.Rows;
             splitter.VerticalAlignment = VerticalAlignment.Center;
             splitter.HorizontalAlignment = HorizontalAlignment.Stretch;
@@ -171,4 +202,7 @@ public sealed partial class DockHost : UserControl
 
         host.Rebuild();
     }
+
+    private static void OnFixedContentPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((DockHost)d).Rebuild();
 }

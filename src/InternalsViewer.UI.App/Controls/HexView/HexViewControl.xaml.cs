@@ -7,6 +7,8 @@ namespace InternalsViewer.UI.App.Controls.HexView;
 
 public sealed partial class HexViewControl
 {
+    public const double StandardWidth = 455;
+
     private const int BytesPerLine = HexLayout.BytesPerLine;
 
     // Matches the RichTextBlock LineHeight the hex is laid out with
@@ -65,6 +67,8 @@ public sealed partial class HexViewControl
             UpdateVirtualization();
 
             PlaceTips();
+
+            DrawMarkerMap();
         };
 
         ViewModel.Tips.CollectionChanged += OnTipsChanged;

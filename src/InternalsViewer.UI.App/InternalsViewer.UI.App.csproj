@@ -562,6 +562,8 @@
       <Folder Include="Controls\Columnstore\Segment\" />
       <Folder Include="Controls\Logging\" />
       <Folder Include="Controls\Dialogs\" />
+      <Folder Include="Controls\Trace\Memory\" />
+      <Folder Include="Controls\Trace\Operators\" />
       <Folder Include="ViewModels\Columnstore\Segment\" />
       <Folder Include="Views\Query\Tabs\Index\" />
       <Folder Include="Views\Query\Tabs\Plan\" />

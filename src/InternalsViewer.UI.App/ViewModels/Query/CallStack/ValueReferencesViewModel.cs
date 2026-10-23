@@ -5,7 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.FullTrace.Calls;
-using InternalsViewer.UI.App.Models.Query.CallStack;
+using InternalsViewer.UI.App.Models.Query.CallStack.Values;
 using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.CallStack;

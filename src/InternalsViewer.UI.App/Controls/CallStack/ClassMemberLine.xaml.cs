@@ -1,6 +1,6 @@
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.UI.App.Helpers;
-using InternalsViewer.UI.App.Models.Query.CallStack;
+using InternalsViewer.UI.App.Models.Query.CallStack.Symbols;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Controls.CallStack;

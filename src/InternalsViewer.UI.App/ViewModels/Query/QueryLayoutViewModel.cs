@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.UI.App.ViewModels.Docking;
+using InternalsViewer.UI.App.Views.Query.Tabs.Trace;
 using InternalsViewer.UI.App.Views.Query.Tabs;
 using InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
 using InternalsViewer.UI.App.Views.Query.Tabs.Timeline;

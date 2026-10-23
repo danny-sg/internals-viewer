@@ -13,7 +13,7 @@ using InternalsViewer.Query.FullTrace.Calls.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Models;
-using InternalsViewer.UI.App.Services.Query;
+using InternalsViewer.UI.App.Services.Query.Trace;
 using Windows.Storage.Pickers;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.OperatorTracks;

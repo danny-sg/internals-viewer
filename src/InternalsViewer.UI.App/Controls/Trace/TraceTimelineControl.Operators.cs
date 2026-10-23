@@ -8,7 +8,9 @@ using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.UI.App.Controls.Trace.Operators;
 using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.Models.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -71,6 +73,30 @@ public sealed partial class TraceTimelineControl
     {
         get => (bool)GetValue(ShowFlameChartProperty);
         set => SetValue(ShowFlameChartProperty, value);
+    }
+
+    public static readonly DependencyProperty ShowMemoryHistoryProperty =
+        DependencyProperty.Register(nameof(ShowMemoryHistory),
+                                    typeof(bool),
+                                    typeof(TraceTimelineControl),
+                                    new PropertyMetadata(true, OnPaneVisibilityChanged));
+
+    public bool ShowMemoryHistory
+    {
+        get => (bool)GetValue(ShowMemoryHistoryProperty);
+        set => SetValue(ShowMemoryHistoryProperty, value);
+    }
+
+    public static readonly DependencyProperty HighlightMemoryWritersProperty =
+        DependencyProperty.Register(nameof(HighlightMemoryWriters),
+                                    typeof(bool),
+                                    typeof(TraceTimelineControl),
+                                    new PropertyMetadata(true, OnHighlightMemoryWritersChanged));
+
+    public bool HighlightMemoryWriters
+    {
+        get => (bool)GetValue(HighlightMemoryWritersProperty);
+        set => SetValue(HighlightMemoryWritersProperty, value);
     }
 
     public static readonly DependencyProperty RowReturnMarksProperty =
@@ -159,21 +185,21 @@ public sealed partial class TraceTimelineControl
 
     public event Action<CallStackNode?>? TickTrackAddRequested;
 
-    public event Action? TickTracksClearRequested;
-
     public event Action<int, TracePosition?>? MemoryWriteSelected;
 
     public event Action<int, ulong, TracePosition>? MemoryBlockSelected;
+
+    public event Action? PaneVisibilityChanged;
 
     private bool ShowsOperators => ShowOperators && _operators.HasRows;
 
     private float OperatorsTop => RulerTop + RulerHeight + PlayheadStripHeight;
 
-    private bool ShowsFlameChart => ShowFlameChart || !ShowsOperators;
+    private bool ShowsFlameChart => ShowFlameChart || (!ShowsOperators && !ShowsMemory);
 
     private bool ShowsSplitter => ShowsOperators && (ShowsFlameChart || ShowsMemory);
 
-    private bool ShowsMemory => _memory.HasBlocks;
+    private bool ShowsMemory => ShowMemoryHistory && _memory.HasBlocks;
 
     private float PanesArea => OperatorsHeight + (ShowsSplitter ? SplitterHeight : 0) + MemoryArea;
 
@@ -193,6 +219,11 @@ public sealed partial class TraceTimelineControl
             }
 
             var available = (float)_overlay.ActualHeight - OperatorsTop - BandHeight - SplitterHeight * 2;
+
+            if (!ShowsFlameChart && !ShowsOperators)
+            {
+                return Math.Max(MinimumMemoryHeight, available);
+            }
 
             var room = Math.Max(MinimumMemoryHeight, available - MinimumLanesHeight - (ShowsOperators ? MinimumOperatorsHeight : 0));
 
@@ -398,7 +429,18 @@ public sealed partial class TraceTimelineControl
 
         flyout.Items.Add(new MenuFlyoutSeparator());
 
-        flyout.Items.Add(MenuItems.SubMenu("View", [.. CreateTickTrackItems()]));
+        AddPaneItems(flyout);
+
+        flyout.Items.Add(new MenuFlyoutSeparator());
+
+        foreach (var item in CreateTickTrackItems())
+        {
+            flyout.Items.Add(item);
+        }
+
+        flyout.Items.Add(new MenuFlyoutSeparator());
+
+        flyout.Items.Add(CallStackItem());
 
         return flyout;
     }
@@ -407,7 +449,7 @@ public sealed partial class TraceTimelineControl
     {
         foreach (var track in TickTracks ?? [])
         {
-            yield return MenuItems.Toggle(track.Name,
+            yield return MenuItems.Toggle(track.MenuText,
                                           HiddenTickTracks?.Contains(track.Name) != true,
                                           isChecked => TickTrackVisibilityChanged?.Invoke(track.Name, isChecked));
         }
@@ -415,12 +457,15 @@ public sealed partial class TraceTimelineControl
         yield return new MenuFlyoutSeparator();
 
         yield return MenuItems.Create("Custom...", () => TickTrackAddRequested?.Invoke(null));
+    }
 
-        var clear = MenuItems.Create("Clear All", () => TickTracksClearRequested?.Invoke());
+    public void ResetLayout()
+    {
+        _operatorsHeight = null;
 
-        clear.IsEnabled = TickTracks?.Any(t => t.IsCustom) == true;
+        _memoryHeight = null;
 
-        yield return clear;
+        Relayout();
     }
 
     private void ZoomToOperator(TraceOperatorHit hit)
@@ -481,8 +526,17 @@ public sealed partial class TraceTimelineControl
 
         control._operators.Hover = TraceOperatorsHover.None;
 
+        control._memory.Hover = null;
+
+        control.SetMemoryWriters(null);
+
         control.Relayout();
+
+        control.PaneVisibilityChanged?.Invoke();
     }
+
+    private static void OnHighlightMemoryWritersChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((TraceTimelineControl)d).SetMemoryWriters(null);
 
     private static void OnTickTracksChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {

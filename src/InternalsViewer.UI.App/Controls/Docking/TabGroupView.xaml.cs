@@ -15,8 +15,6 @@ namespace InternalsViewer.UI.App.Controls.Docking;
 
 public sealed partial class TabGroupView : UserControl
 {
-    private const double EdgeFraction = 0.25;
-
     // Height of the tab strip the overlay sits over; drops here move into the group rather than split it.
     private const double TabStripReserve = 44;
 
@@ -460,65 +458,10 @@ public sealed partial class TabGroupView : UserControl
             return DropZone.Center;
         }
 
-        var left = point.X / w;
-        var right = 1 - left;
-        var top = point.Y / h;
-        var bottom = 1 - top;
-
-        var min = Math.Min(Math.Min(left, right), Math.Min(top, bottom));
-
-        if (min > EdgeFraction)
-        {
-            return DropZone.Center;
-        }
-
-        if (min == left)
-        {
-            return DropZone.Left;
-        }
-
-        if (min == right)
-        {
-            return DropZone.Right;
-        }
-
-        return min == top ? DropZone.Top : DropZone.Bottom;
+        return DockDropZones.GetZone(point, w, h);
     }
 
-    private void UpdateHighlight(DropZone zone)
-    {
-        var w = RootArea.ActualWidth;
-        var h = RootArea.ActualHeight;
-
-        DropHighlight.Visibility = Visibility.Visible;
-
-        switch (zone)
-        {
-            case DropZone.Left:
-                Set(HorizontalAlignment.Left, VerticalAlignment.Stretch, w / 2, double.NaN);
-                break;
-            case DropZone.Right:
-                Set(HorizontalAlignment.Right, VerticalAlignment.Stretch, w / 2, double.NaN);
-                break;
-            case DropZone.Top:
-                Set(HorizontalAlignment.Stretch, VerticalAlignment.Top, double.NaN, h / 2);
-                break;
-            case DropZone.Bottom:
-                Set(HorizontalAlignment.Stretch, VerticalAlignment.Bottom, double.NaN, h / 2);
-                break;
-            default:
-                Set(HorizontalAlignment.Stretch, VerticalAlignment.Stretch, double.NaN, double.NaN);
-                break;
-        }
-    }
-
-    private void Set(HorizontalAlignment horizontal, VerticalAlignment vertical, double width, double height)
-    {
-        DropHighlight.HorizontalAlignment = horizontal;
-        DropHighlight.VerticalAlignment = vertical;
-        DropHighlight.Width = width;
-        DropHighlight.Height = height;
-    }
+    private void UpdateHighlight(DropZone zone) => DockDropZones.Place(DropHighlight, zone, RootArea.ActualWidth, RootArea.ActualHeight);
 
     private void HideHighlight() => DropHighlight.Visibility = Visibility.Collapsed;
 }

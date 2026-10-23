@@ -11,6 +11,8 @@
     <Control.Resources>
         <converters:StringFormatConverter x:Key="StringFormatConverter" />
 
+        <x:Double x:Key="ScrollBarSize">16</x:Double>
+
         <Style x:Key="AddressStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="14" />
             <Setter Property="FontFamily" Value="{StaticResource MonospaceFontFamily}"/>
@@ -120,6 +122,15 @@
         <Grid x:Name="TipLayer"
               Grid.Row="0"
               Grid.Column="0" />
+        <Canvas x:Name="MarkerMapCanvas"
+                Grid.Row="0"
+                Grid.Column="0"
+                Grid.ColumnSpan="2"
+                Width="{StaticResource ScrollBarSize}"
+                Margin="0,1,1,1"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Stretch"
+                IsHitTestVisible="False"/>
         <Grid Grid.Row="1" Grid.ColumnSpan="2"       
               BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" 
               Background="{ThemeResource LayerFillColorDefaultBrush}"

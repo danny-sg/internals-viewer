@@ -11,9 +11,12 @@ The Call Tree merges every call down the same path into one row with a count. Th
 From top to bottom:
 
 - **The ruler** - how far through the recording, in trace positions or instructions - see [Position and instructions](#position-and-instructions). Click it to put down the [playhead](#playhead)
-- **The Operators pane** - with **View > Operators** on, a row per plan operator - see [Operators](#operators)
+- **The Operators pane** - with **Operators** on, a row per plan operator - see [Operators](#operators)
+- **The Memory History lane** - with **Memory** on, the memory blocks the query wrote to and the writes to each
 - **A lane per thread** - headed **Thread** and the operating system thread id
-- **The memory band** - with **Memory** on, the memory allocated and in use along the bottom - see [Memory](#memory)
+- **The memory band** - with a view chosen under **View > Flame Chart > Memory**, the memory allocated and in use along the bottom - see [Memory](#memory)
+
+**Operators**, **Memory** and **Calls** on the tab strip show and hide the Operators pane, the Memory History lane and the thread lanes. The last of the three left on cannot be turned off. **View > Flame Chart > Highlight Regions** shades the stretches of the lanes where the query was compiled, started and shut down, as **Compilation**, **Setup** and **Shutdown**, each with its own toggle. **View > Memory History > Call Highlight Hover** dims every call except the ones that wrote to the block under the pointer while you hover over the Memory History lane. **View > Reset Layout** puts the pane heights back and docks the Call Stack and memory tabs beneath the chart again. Right-clicking any of the three areas offers the same three toggles, with the only area still showing greyed out, then that area's own view settings and **Call Stack**, so the View menu's settings are a click away wherever you are.
 
 In a lane, each call is a bar running from where it started to where it ended. The calls it made sit directly beneath it, inside its width, so the outermost call is at the top of the lane and each row down is one level deeper in the stack. That is the reverse of a classic flame graph, which grows upwards, but it reads the same way as the Call Tree. A bar is coloured by its function's category and labelled with the function's name once it is wide enough to read.
 
@@ -105,7 +108,7 @@ The filter button beside the **Search** toggle opens the same category badges as
 
 ## Operators
 
-**View > Operators** adds a pane above the threads, with a row per plan operator in the same order and colours as the Timeline's Plan band. A Batch To Row adapter between batch and row mode operators is grey. Each row runs from the operator's first call to its last. The stretches where one of its methods was on the stack are drawn in full colour and the rest shaded, and an operator that ran on several threads gets a track per thread. Either side of that, a fainter bar shows how long the operator's iterator existed. It starts at the iterator's constructor, or for a batch mode operator the call that built it, and ends with the query's `CQueryScan::DestroyQuery`, where SQL Server frees all of a query's iterators together. When the recording started after an iterator was built, or stopped before the query was torn down, the fainter bar runs to the edge of the recording.
+**Operators** on the tab strip adds a pane above the threads, with a row per plan operator in the same order and colours as the Timeline's Plan band. A Batch To Row adapter between batch and row mode operators is grey. Each row runs from the operator's first call to its last. The stretches where one of its methods was on the stack are drawn in full colour and the rest shaded, and an operator that ran on several threads gets a track per thread. Either side of that, a fainter bar shows how long the operator's iterator existed. It starts at the iterator's constructor, or for a batch mode operator the call that built it, and ends with the query's `CQueryScan::DestroyQuery`, where SQL Server frees all of a query's iterators together. When the recording started after an iterator was built, or stopped before the query was torn down, the fainter bar runs to the edge of the recording.
 
 The top row is the statement, such as **SELECT**, in grey. Its **GetRow Returns** strip has a tick for each call the statement made to the plan's top operator, with a line down to it, so its **Passed Up** ticks are the rows the query returned.
 
@@ -123,13 +126,13 @@ This shows something the lanes cannot. An operator is only on a thread's stack w
 
 Each operator bar can carry thin strips of ticks, one strip per track. A tick is one call, drawn as a faint bar across the call with a solid tick at its end. A strip only appears on an operator that has ticks on it, so an operator the track has nothing to say about keeps its full height for its name. Three tracks are built in:
 
-- **GetRow Returns** - along the top, a tick for every `GetRow` call the operator answered, coloured by what happened to the row (see below)
+- **GetRow/GetBatch** - along the top, a tick for every `GetRow` or `GetBatch` call the operator answered, coloured by what happened to the row (see below)
 - **Reads** - along the bottom, the operator's requests to the buffer pool
 - **Evaluations** - above the reads, the predicates the operator evaluated
 
-Each track has a toggle in the **View** menu, and in the **View** menu of the Operators pane's right-click menu. Turning a built-in track off is remembered between sessions.
+Each track has a toggle under **View > Operators**, and in the Operators pane's right-click menu. Turning a built-in track off is remembered between sessions.
 
-You can add your own tracks for any function. **Add to Operators**, in the right-click menu of any call in the chart, adds one for that call's function. **Custom...**, in either **View** menu, adds one for a function you pick. A custom track has a tick on the operator each call was made inside, on a lighter strip so it stands apart from the built-in tracks. A call made outside every operator has no tick. The dialog sets:
+You can add your own tracks for any function. **Add to Operators**, in the right-click menu of any call in the chart, adds one for that call's function. **Custom...**, under **View > Operators** or in the pane's right-click menu, adds one for a function you pick. A custom track has a tick on the operator each call was made inside, on a lighter strip so it stands apart from the built-in tracks. A call made outside every operator has no tick. The dialog sets:
 
 - **Function** - the function whose calls are ticked. Type part of its name to pick it from the functions in the trace
 - **Name** - the track's name in the **View** menu and its tooltips, the function's name to start with
@@ -169,7 +172,7 @@ A scan with a predicate pushed down into it evaluates every row it reads but onl
 
 ## Memory
 
-The **Memory** toggle shows where the query allocated memory:
+**View > Flame Chart > Memory** shows where the query allocated memory, as **Allocated** or **In Use**, with **None** turning it off:
 
 - **The memory band** - along the bottom of the chart, **Allocated** is the memory allocated in each sliver of the recording, and **In Use** is the memory allocated and not yet freed, with its peak in the label. When the plan had a memory grant, the grant is drawn as a box labelled **Granted** and the line becomes **Grant In Use**, counting only the query's workspace memory so the two compare like for like. The band needs the Position axis, since each thread counts its instructions separately and they cannot be added together.
 - **Raised calls** - the calls rise off the chart in 3D. A dropdown above the ruler picks **Memory: Allocated**, which raises each call by the memory it allocated itself, or **Memory: In Use**, which raises a surface along each call showing what it had allocated and not yet freed as it ran. Hover over a raised call to see its size, and drag one to change the angle and depth of the extrusion.
@@ -178,7 +181,7 @@ The **Memory** toggle shows where the query allocated memory:
 
 ![Memory: In Use - a surface along each call showing the memory it held as it ran](/docs/user-guide/images/flame-chart-memory-in-use.png)
 
-The **Memory** toggle and the **Allocated** or **In Use** choice are remembered between sessions, and shared by every Trace Timeline.
+The choice is remembered between sessions, and shared by every Trace Timeline.
 
 ## Playhead
 
@@ -186,7 +189,7 @@ Click the ruler to put a playhead on the chart, and drag along the ruler to move
 
 **Play** moves the playhead steadily along the chart, scrolling the view on when it reaches the edge, and stops at the end of the recording. It starts from the playhead, or from the left of the view when there is none or the playhead is already at the end. Click it again to pause.
 
-With **Memory** and **Call Stack** off, the calls under the playhead pop out of the chart, each raised by the memory it allocated, so scrubbing along shows which part of the stack is allocating. Drag a raised call to change the angle and depth, as with the memory view. With Memory on, the band marks the memory allocated and in use at the playhead.
+With the memory view set to **None** and **Call Stack** off, the calls under the playhead pop out of the chart, each raised by the memory it allocated, so scrubbing along shows which part of the stack is allocating. Drag a raised call to change the angle and depth, as with the memory view. With a memory view on, the band marks the memory allocated and in use at the playhead.
 
 ::: details How this works
 Each bar is one call recorded during the Full Trace replay, with where it started and ended in the recording, the instructions it executed, its thread and its place in the call tree. Positions are shared by every thread, which is why that axis lines them up, while each thread counts its own instructions.
@@ -196,7 +199,11 @@ See [How Full Trace works](/docs/deep-dives/full-trace) for the details.
 
 ## Call Stack
 
-**Call Stack** on the tab strip opens a pane beneath the chart while a call is selected, listing the calls that led to it. Turned on with nothing selected, the pane opens as soon as a call is selected. **Open Call Stack** on the right-click menu selects a call and turns the pane on in one step. Its header has step back and step forward buttons, which select the previous or next call at the same depth as **Left** and **Right** do, and an **X** that closes it again. The stack sits under a row for the selected call's thread, each call shown as the function's signature with each parameter's type and the value it was passed, coloured as in the Call Tree's signatures. A dot before each call shows its category's colour, and hovering over it names the category. A value that decodes to an object shows the object's class instead of its declared type. `this` is shown without its address, unless it decodes to something such as an operator or an index, and its address is in the call's details. The innermost call comes first, highlighted and marked with a red arrow, and each call below it is the one that called it, as a debugger lists a stack. The pane selects the same call as the chart, and opens its details beside the stack. The values decode as they do in [Arguments](/docs/user-guide/query/CallStack#arguments), and the **Decode** setting is shared. Drag the splitter above the pane to resize it. The setting is remembered between sessions.
+**View > Call Stack** opens a tab beneath the chart listing the calls that led to the selected call, and **Open Call Stack** on the right-click menu selects a call and opens the tab in one step. With nothing selected the tab reads **No Call Selected**. Its tab strip has the **Decode** toggle and step back and step forward buttons, which select the previous or next call at the same depth as **Left** and **Right** do. The stack sits under a row for the selected call's thread, each call shown as the function's signature with each parameter's type and the value it was passed, coloured as in the Call Tree's signatures. A dot before each call shows its category's colour, and hovering over it names the category. A value that decodes to an object shows the object's class instead of its declared type. `this` is shown without its address, unless it decodes to something such as an operator or an index, and its address is in the call's details. The innermost call comes first, highlighted and marked with a red arrow, and each call below it is the one that called it, as a debugger lists a stack. The pane selects the same call as the chart, and opens its details beside the stack. The values decode as they do in [Arguments](/docs/user-guide/query/CallStack#arguments), and the **Decode** setting is shared. Drag the tab to dock it above, below or beside the chart, and drag the splitter between them to resize it. Its **X**, or turning **Call Stack** off, closes it.
+
+A value that points into memory the trace recorded has a **Show Memory** button, which opens that block's bytes as a tab of its own, named after the object, with the block's address and size on the tab strip. Clicking a block in the chart's memory lane opens the same tab. Each block gets one tab, and its bytes follow the playhead, with the bytes each call changed marked in the call's category colour. Memory tabs dock and resize like the Call Stack, so they can share its tab strip or sit on another side of the chart.
+
+Widen a memory tab and three tabs appear beside the bytes. **Details** gives the block's address, type and length, its lifetime as the positions it was created and destroyed at, the function that created it, and the functions that wrote to it with how many writes each made, coloured by category. **History** lists every write to the block with its position, function, address, length and the bytes written. Clicking a write moves the playhead to it, scrolls the bytes into view and outlines them, and the pin at the end of a write adds a watch on those bytes. The **Function** and **Address** boxes filter the list, and clicking a function in **Details** or a byte in the hex fills them in. **Watches** lists the pinned watches with an editable label, the type the value is decoded as and its value at the playhead, and a button to clear each one. Positions are shown as sequence and step in hex, and every position is a link that moves the playhead there. Hovering over a position marks it on the chart and shows the chart's map of the whole recording with the position on it, and hovering over a function in **Details** or **History** highlights its writes in the lanes.
 
 Selecting a call further up the stack, with **Up** or by clicking it in the pane, keeps the stack as it is and moves the selection along it, so **Down** comes back the same way. Selecting a call that is not on the stack, by clicking its bar or with **Left** and **Right**, starts a new stack ending at that call. The pane follows the [category filter](/docs/user-guide/query/CallStack#filtering-by-category) and **Scope**, so its calls are the ones drawn in the chart above it.
 

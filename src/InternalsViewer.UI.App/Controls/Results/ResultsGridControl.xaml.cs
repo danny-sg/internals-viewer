@@ -129,6 +129,8 @@ public sealed partial class ResultsGridControl : UserControl
 
     public event EventHandler<ResultCellMenuEventArgs>? CellMenuOpening;
 
+    public event EventHandler<ResultCellHoverEventArgs>? CellHovered;
+
     private TableView? ResultsTable { get; set; }
 
     private HashSet<Panel> DetailHosts { get; } = [];
@@ -164,6 +166,7 @@ public sealed partial class ResultsGridControl : UserControl
                 PageClicked = OnPageClicked,
                 ObjectClicked = ObjectClicked is null ? null : OnObjectClicked,
                 CallClicked = CallClicked is null ? null : OnCallClicked,
+                Hovered = CellHovered is null ? null : OnCellHovered,
             };
 
             if (CreateHeaderStyle(column) is { } headerStyle)
@@ -529,6 +532,8 @@ public sealed partial class ResultsGridControl : UserControl
     private void OnObjectClicked(ObjectValue value) => ObjectClicked?.Invoke(this, value);
 
     private void OnCallClicked(CallValue value) => CallClicked?.Invoke(this, value);
+
+    private void OnCellHovered(ResultCellHoverEventArgs e) => CellHovered?.Invoke(this, e);
 
     private void OnContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
     {

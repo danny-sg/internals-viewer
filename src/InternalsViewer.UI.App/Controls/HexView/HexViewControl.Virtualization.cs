@@ -112,6 +112,8 @@ public sealed partial class HexViewControl
     {
         PlaceTips();
 
+        DrawMarkerMap();
+
         if (IsVirtualized)
         {
             return;
@@ -257,6 +259,8 @@ public sealed partial class HexViewControl
         var line = (int)e.NewValue / BytesPerLine;
 
         control.VirtualScrollBar.Value = Math.Clamp(line, 0, (int)control.VirtualScrollBar.Maximum);
+
+        control.DrawMarkerMap();
     }
 
     private static void OnVirtualizationChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

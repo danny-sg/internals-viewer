@@ -6,7 +6,7 @@
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
     xmlns:symbols="using:InternalsViewer.Query.CallStack.Symbols"
     xmlns:callStack="using:InternalsViewer.UI.App.Controls.CallStack"
-    xmlns:members="using:InternalsViewer.UI.App.Models.Query.CallStack"
+    xmlns:callStackSymbols="using:InternalsViewer.UI.App.Models.Query.CallStack.Symbols"
     xmlns:selectors="using:InternalsViewer.UI.App.Helpers.Selectors">
 
     <UserControl.Resources>
@@ -21,12 +21,12 @@
                         <MenuFlyoutItem Text="Clear module exclusions" Click="OnClearModuleExclusionsClick"/>
                     </MenuFlyout>
                 </StackPanel.ContextFlyout>
-                <TextBlock Text="{x:Bind ((members:SymbolModuleRow)Content).Module}"
+                <TextBlock Text="{x:Bind ((callStackSymbols:SymbolModuleRow)Content).Module}"
                            FontFamily="{StaticResource MonospaceFontFamily}"
                            FontSize="11"
                            Foreground="{ThemeResource SqlKeywordBrush}"
                            VerticalAlignment="Center"/>
-                <TextBlock Text="{x:Bind ((members:SymbolModuleRow)Content).CountLabel}"
+                <TextBlock Text="{x:Bind ((callStackSymbols:SymbolModuleRow)Content).CountLabel}"
                            FontSize="11"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            VerticalAlignment="Center"/>
@@ -41,20 +41,20 @@
                         <MenuFlyoutItem Text="Collapse All" Click="OnCollapseSymbolsClick"/>
                     </MenuFlyout>
                 </StackPanel.ContextFlyout>
-                <TextBlock Text="{x:Bind ((members:SymbolGroupRow)Content).Label}"
-                           callStack:SearchHighlight.Search="{x:Bind ((members:SymbolGroupRow)Content).Highlight}"
+                <TextBlock Text="{x:Bind ((callStackSymbols:SymbolGroupRow)Content).Label}"
+                           callStack:SearchHighlight.Search="{x:Bind ((callStackSymbols:SymbolGroupRow)Content).Highlight}"
                            FontFamily="{StaticResource MonospaceFontFamily}"
                            FontSize="11"
                            Foreground="{ThemeResource CppClassBrush}"
                            VerticalAlignment="Center"/>
-                <TextBlock Text="{x:Bind ((members:SymbolGroupRow)Content).CountLabel}"
+                <TextBlock Text="{x:Bind ((callStackSymbols:SymbolGroupRow)Content).CountLabel}"
                            FontSize="11"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            VerticalAlignment="Center"/>
             </StackPanel>
         </DataTemplate>
 
-        <DataTemplate x:Key="MemberRowTemplate" x:DataType="members:ClassMemberRow">
+        <DataTemplate x:Key="MemberRowTemplate" x:DataType="callStackSymbols:ClassMemberRow">
             <callStack:ClassMemberLine/>
         </DataTemplate>
 
@@ -63,8 +63,8 @@
         </DataTemplate>
 
         <DataTemplate x:Key="SymbolExclusionsTemplate" x:DataType="muxc:TreeViewNode">
-            <HyperlinkButton Content="{x:Bind ((members:SymbolExclusionsRow)Content).Label}"
-                             ToolTipService.ToolTip="{x:Bind ((members:SymbolExclusionsRow)Content).Detail}"
+            <HyperlinkButton Content="{x:Bind ((callStackSymbols:SymbolExclusionsRow)Content).Label}"
+                             ToolTipService.ToolTip="{x:Bind ((callStackSymbols:SymbolExclusionsRow)Content).Detail}"
                              FontSize="11"
                              Padding="0,2,0,2"
                              Click="OnClearModuleExclusionsClick"/>

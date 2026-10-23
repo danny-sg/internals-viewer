@@ -10,7 +10,10 @@ using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory;
-using InternalsViewer.UI.App.Models.Query.CallStack;
+using InternalsViewer.UI.App.Models.Query.CallStack.Arguments;
+using InternalsViewer.UI.App.Models.Query.CallStack.Signatures;
+using InternalsViewer.UI.App.Models.Query.CallStack.Stack;
+using InternalsViewer.UI.App.Models.Query.CallStack.Values;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.CallStack;

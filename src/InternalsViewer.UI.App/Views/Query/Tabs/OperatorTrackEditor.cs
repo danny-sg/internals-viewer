@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.UI.App.Controls.Dialogs;
-using InternalsViewer.UI.App.Controls.Trace;
+using InternalsViewer.UI.App.Services.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;

@@ -7,14 +7,14 @@
     xmlns:selectors="using:InternalsViewer.UI.App.Helpers.Selectors"
     xmlns:model="using:InternalsViewer.Query.CallStack"
     xmlns:callStack="using:InternalsViewer.UI.App.Controls.CallStack"
-    xmlns:members="using:InternalsViewer.UI.App.Models.Query.CallStack"
+    xmlns:tree="using:InternalsViewer.UI.App.Models.Query.CallStack.Tree"
     xmlns:converters1="using:InternalsViewer.UI.App.Helpers.Converters.CallStack"
     xmlns:helpers="using:InternalsViewer.UI.App.Helpers">
 
     <UserControl.Resources>
-        <members:ActivityColumnLayout x:Key="ActivityColumn"/>
+        <tree:ActivityColumnLayout x:Key="ActivityColumn"/>
 
-        <members:CallTreeHighlight x:Key="TreeHighlight"/>
+        <tree:CallTreeHighlight x:Key="TreeHighlight"/>
 
         <Style x:Key="PlainItemStyle" TargetType="muxc:TreeViewItem">
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
@@ -362,16 +362,16 @@
              Its children are the operator's own call tree followed by its child operators. -->
         <DataTemplate x:Key="OperatorNodeTemplate" x:DataType="muxc:TreeViewNode">
             <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                <Border Background="{x:Bind ((members:OperatorRow)Content).Operator.Category, Converter={StaticResource OperatorCategoryToBrushConverter}}"
+                <Border Background="{x:Bind ((tree:OperatorRow)Content).Operator.Category, Converter={StaticResource OperatorCategoryToBrushConverter}}"
                         CornerRadius="3"
                         Padding="6,2,6,3">
-                    <TextBlock Text="{x:Bind ((members:OperatorRow)Content).Operator.OperatorDescription}"
+                    <TextBlock Text="{x:Bind ((tree:OperatorRow)Content).Operator.OperatorDescription}"
                                callStack:SearchHighlight.Search="{Binding Text, Source={StaticResource TreeHighlight}, Mode=OneWay}"
                                Foreground="White"
                                FontSize="10"
                                FontWeight="SemiBold"/>
                 </Border>
-                <TextBlock Text="{x:Bind ((members:OperatorRow)Content).Operator.TargetLabel}"
+                <TextBlock Text="{x:Bind ((tree:OperatorRow)Content).Operator.TargetLabel}"
                            callStack:SearchHighlight.Search="{Binding Text, Source={StaticResource TreeHighlight}, Mode=OneWay}"
                            FontSize="11"
                            VerticalAlignment="Center"/>
@@ -380,7 +380,7 @@
                         Padding="5,2,5,3"
                         Background="#4A4A55"
                         ToolTipService.ToolTip="No call-stack frames could be located for this operator — it is inlined, captured no events of its own, or its iterator class is not in the mappings. It keeps its place in the plan but shows nothing."
-                        Visibility="{x:Bind ((members:OperatorRow)Content).Unsegmented, Converter={StaticResource BoolToVisibilityConverter}}">
+                        Visibility="{x:Bind ((tree:OperatorRow)Content).Unsegmented, Converter={StaticResource BoolToVisibilityConverter}}">
                     <TextBlock Text="no stack"
                                Foreground="#B0B0B8"
                                FontSize="9"
@@ -392,20 +392,20 @@
         <DataTemplate x:Key="OperatorLinkTemplate" x:DataType="muxc:TreeViewNode">
             <StackPanel Orientation="Vertical" Spacing="2" HorizontalAlignment="Left" Opacity="0.75">
                 <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                    <TextBlock Text="{x:Bind ((members:OperatorLink)Content).Glyph}"
+                    <TextBlock Text="{x:Bind ((tree:OperatorLink)Content).Glyph}"
                                FontFamily="{ThemeResource SymbolThemeFontFamily}"
                                FontSize="11"
                                VerticalAlignment="Center"/>
-                    <Border Background="{x:Bind ((members:OperatorLink)Content).Operator.Category, Converter={StaticResource OperatorCategoryToBrushConverter}}"
+                    <Border Background="{x:Bind ((tree:OperatorLink)Content).Operator.Category, Converter={StaticResource OperatorCategoryToBrushConverter}}"
                             CornerRadius="3"
                             Padding="6,2,6,3">
-                        <TextBlock Text="{x:Bind ((members:OperatorLink)Content).Operator.OperatorDescription}"
+                        <TextBlock Text="{x:Bind ((tree:OperatorLink)Content).Operator.OperatorDescription}"
                                    callStack:SearchHighlight.Search="{Binding Text, Source={StaticResource TreeHighlight}, Mode=OneWay}"
                                    Foreground="White"
                                    FontSize="10"
                                    FontWeight="SemiBold"/>
                     </Border>
-                    <TextBlock Text="{x:Bind ((members:OperatorLink)Content).Operator.TargetLabel}"
+                    <TextBlock Text="{x:Bind ((tree:OperatorLink)Content).Operator.TargetLabel}"
                                callStack:SearchHighlight.Search="{Binding Text, Source={StaticResource TreeHighlight}, Mode=OneWay}"
                                FontSize="11"
                                VerticalAlignment="Center"/>
@@ -423,12 +423,12 @@
                 <Border Background="#4A4A55"
                         CornerRadius="3"
                         Padding="6,2,6,3">
-                    <TextBlock Text="{x:Bind ((members:EventRow)Content).Event.Name}"
+                    <TextBlock Text="{x:Bind ((tree:EventRow)Content).Event.Name}"
                                Foreground="White"
                                FontSize="10"
                                FontWeight="SemiBold"/>
                 </Border>
-                <TextBlock Text="{x:Bind ((members:EventRow)Content).Event.Description}"
+                <TextBlock Text="{x:Bind ((tree:EventRow)Content).Event.Description}"
                            FontSize="11"
                            VerticalAlignment="Center" />
             </StackPanel>

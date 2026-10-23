@@ -4,7 +4,7 @@ using System.Linq;
 using Windows.Foundation;
 using Windows.UI;
 using InternalsViewer.Query.CallStack;
-using InternalsViewer.UI.App.Models.Query.CallStack;
+using InternalsViewer.UI.App.Models.Query.CallStack.Tree;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;

@@ -56,6 +56,8 @@ public sealed partial class TraceTimelineControl
 
     private int? _memoryWritersBlock;
 
+    private bool[]? _highlightedCalls;
+
     public void StepSearch(bool forward)
     {
         if (GetAdjacentSearchMatch(forward) is not { } hit || SpanOf(hit) is null)
@@ -64,6 +66,15 @@ public sealed partial class TraceTimelineControl
         }
 
         SelectAndShow(hit);
+    }
+
+    public void HighlightCalls(IReadOnlyCollection<CallStackNode>? nodes)
+    {
+        _highlightedCalls = nodes is { Count: > 0 } && _timeline is { } timeline ? CallsOf(timeline, nodes) : null;
+
+        _colours.Clear();
+
+        Redraw();
     }
 
     private void FindSearchMatches()
@@ -247,8 +258,28 @@ public sealed partial class TraceTimelineControl
         return any ? under : null;
     }
 
+    private static bool[]? CallsOf(TraceTimeline timeline, IReadOnlyCollection<CallStackNode> nodes)
+    {
+        var wanted = new HashSet<CallStackNode>(nodes, ReferenceEqualityComparer.Instance);
+
+        var calls = new bool[timeline.NodeCount];
+
+        var any = false;
+
+        for (var callNodeIndex = 0; callNodeIndex < calls.Length; callNodeIndex++)
+        {
+            calls[callNodeIndex] = timeline.NodeOf(callNodeIndex) is { } callNode && wanted.Contains(callNode);
+
+            any |= calls[callNodeIndex];
+        }
+
+        return any ? calls : null;
+    }
+
     private bool IsDimmed(int callNodeIndex)
-        => _memoryWriters is { } writers ? Excludes(writers, callNodeIndex) : Excludes(_searchMatches, callNodeIndex);
+        => _highlightedCalls is { } highlighted
+            ? Excludes(highlighted, callNodeIndex)
+            : _memoryWriters is { } writers ? Excludes(writers, callNodeIndex) : Excludes(_searchMatches, callNodeIndex);
 
     private void SetMemoryWriters(int? block)
     {

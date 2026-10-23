@@ -2,7 +2,7 @@ using System;
 using System.ComponentModel;
 using InternalsViewer.UI.App.Controls.CallStack;
 using InternalsViewer.UI.App.Helpers;
-using InternalsViewer.UI.App.Models.Query.CallStack;
+using InternalsViewer.UI.App.Models.Query.CallStack.Symbols;
 using InternalsViewer.UI.App.ViewModels.Query.CallStack;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;

@@ -6,8 +6,11 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline;
+using InternalsViewer.UI.App.Models.Query.CallStack.Signatures.Enums;
+using InternalsViewer.UI.App.Models.Query.CallStack.Signatures;
+using InternalsViewer.UI.App.Models.Query.CallStack.Stack;
 using InternalsViewer.UI.App.Models;
-using InternalsViewer.UI.App.Models.Query.CallStack;
+using InternalsViewer.UI.App.ViewModels.Query.Trace;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.CallStack;
 
@@ -115,11 +118,12 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
 
     public void Scope(PlayheadCallRow row) => Scope(row.Node);
 
-    public void Scope(CallStackNode node) => Query.PlayheadStack.RequestChart(c => c.ScopeTo(node));
+    public void Scope(CallStackNode node) => Query.TraceTimelineTab.PlayheadStack.RequestChart(c => c.ScopeTo(node));
 
-    public void Mark(SourceStep? step) => Query.PlayheadStack.Chart?.MarkCall(step?.Node, step?.CallIndex ?? -1);
+    public void Mark(SourceStep? step) => Query.TraceTimelineTab.PlayheadStack.Chart?.MarkCall(step?.Node, step?.CallIndex ?? -1);
 
-    public void MarkFrame(SourceFrame frame) => Query.PlayheadStack.Chart?.MarkCall(frame.Node, GetEnclosingCall(frame));
+    public void MarkFrame(SourceFrame frame)
+        => Query.TraceTimelineTab.PlayheadStack.Chart?.MarkCall(frame.Node, GetEnclosingCall(frame));
 
     public void GoTo(SourceStep step) => UseChart(c => c.MovePlayheadTo(step.Node, step.CallIndex));
 
@@ -144,11 +148,11 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
     {
         if (part is { IsMemoryTracked: true, Value: { } address })
         {
-            Query.PlayheadMemory.Open(part.MemoryBlock, address, row.FromPosition);
+            Query.TraceTimelineTab.OpenMemory(part.MemoryBlock, address, row.FromPosition);
         }
     }
 
-    protected virtual void UseChart(Action<IPlayheadChart> action) => Query.PlayheadStack.RequestChart(action);
+    protected virtual void UseChart(Action<IPlayheadChart> action) => Query.TraceTimelineTab.PlayheadStack.RequestChart(action);
 
     protected virtual void ShowCall(PlayheadCallRow row) => _ = Query.Arguments.ShowAsync(row.Node, row.CallIndex);
 

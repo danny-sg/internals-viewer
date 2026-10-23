@@ -62,6 +62,11 @@ public sealed partial class SplitNode : LayoutNode
         }
     }
 
+    public override double GetMinWidth(double splitterSize)
+        => Orientation == Orientation.Horizontal
+            ? First.GetMinWidth(splitterSize) + splitterSize + Second.GetMinWidth(splitterSize)
+            : System.Math.Max(First.GetMinWidth(splitterSize), Second.GetMinWidth(splitterSize));
+
     partial void OnFirstChanged(LayoutNode value) => value.Parent = this;
 
     partial void OnSecondChanged(LayoutNode value) => value.Parent = this;

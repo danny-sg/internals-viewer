@@ -11,6 +11,11 @@ public static class DockLayoutSerializer
 {
     public static DockNode Serialize(LayoutNode node)
     {
+        if (node is FixedNode)
+        {
+            return new DockNode { IsFixed = true };
+        }
+
         if (node is TabGroupNode group)
         {
             var persisted = group.Documents.Where(d => d.Persist).Select(d => d.Key).ToList();
@@ -44,6 +49,11 @@ public static class DockLayoutSerializer
         if (node is null)
         {
             return null;
+        }
+
+        if (node.IsFixed)
+        {
+            return new FixedNode();
         }
 
         if (!node.IsSplit)

@@ -6,7 +6,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.CallStack.Symbols;
-using InternalsViewer.UI.App.Models.Query.CallStack;
+using InternalsViewer.UI.App.Models.Query.CallStack.Signatures;
+using InternalsViewer.UI.App.Models.Query.CallStack.Symbols;
 using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.CallStack;

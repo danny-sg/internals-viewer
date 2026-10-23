@@ -5,6 +5,7 @@ using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using SkiaSharp;
 using InternalsViewer.UI.App.Controls.Timeline;
+using InternalsViewer.UI.App.Controls.Trace.Enums;
 
 namespace InternalsViewer.UI.App.Controls.Trace;
 

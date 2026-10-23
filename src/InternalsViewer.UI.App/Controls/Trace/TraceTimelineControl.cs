@@ -7,9 +7,12 @@ using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
+using InternalsViewer.UI.App.Controls.Trace.Enums;
+using InternalsViewer.UI.App.Controls.Trace.Memory;
+using InternalsViewer.UI.App.Controls.Trace.Operators;
 using InternalsViewer.UI.App.Helpers;
-using InternalsViewer.UI.App.Models.Query.CallStack;
-using InternalsViewer.UI.App.ViewModels.Query.CallStack;
+using InternalsViewer.UI.App.Models.Query.CallStack.Stack;
+using InternalsViewer.UI.App.ViewModels.Query.Trace;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -447,7 +450,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     public event Action<CallStackNode?, int>? CallTreeOpenRequested;
 
-    public event Action? CallStackOpenRequested;
+    public event Action<bool>? CallStackVisibilityRequested;
 
     public event Action? CallStackChanged;
 
@@ -745,12 +748,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         _canvas.Invalidate();
     }
 
-    private void OnLoaded(object sender, RoutedEventArgs e)
-    {
-        ApplyTheme();
-
-        WatchKeyboard();
-    }
+    private void OnLoaded(object sender, RoutedEventArgs e) => ApplyTheme();
 
     private void OnActualThemeChanged(FrameworkElement sender, object args) => ApplyTheme();
 
@@ -961,6 +959,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
         FindCallHighlights();
 
+        _highlightedCalls = null;
+
         _operatorsHeight = null;
 
         _operators.Reset();
@@ -1074,9 +1074,9 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     private MenuFlyoutSubItem CreateMemoryMenu()
         => MenuItems.SubMenu("Memory",
-                             MemoryItem("Allocated", TraceTimelineMemoryMode.Allocated),
+                             MemoryItem("None", null),
                              MemoryItem("In Use", TraceTimelineMemoryMode.InUse),
-                             MemoryItem("None", null));
+                             MemoryItem("Allocated", TraceTimelineMemoryMode.Allocated));
 
     private RadioMenuFlyoutItem MemoryItem(string text, TraceTimelineMemoryMode? mode)
     {
@@ -1092,7 +1092,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         return item;
     }
 
-    private void SetMemory(TraceTimelineMemoryMode? mode)
+    public void SetMemory(TraceTimelineMemoryMode? mode)
     {
         if (mode is { } shown)
         {

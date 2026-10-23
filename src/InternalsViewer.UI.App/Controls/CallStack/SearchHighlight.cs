@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using InternalsViewer.UI.App.Helpers;
-using InternalsViewer.UI.App.Models.Query.CallStack;
+using InternalsViewer.UI.App.Models.Query.CallStack.Signatures;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;

@@ -8,9 +8,8 @@ using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
-using InternalsViewer.UI.App.Controls.Trace;
-using InternalsViewer.UI.App.Models.Query;
-using InternalsViewer.UI.App.Services.Query;
+using InternalsViewer.UI.App.Models.Query.Trace;
+using InternalsViewer.UI.App.Services.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Query.OperatorTracks;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
@@ -27,8 +26,6 @@ public sealed partial class QueryViewModel
 
     public void ReplaceTickTrack(TraceTickDefinition existing, TraceTickDefinition definition)
         => TickTrackStore.Replace(existing, definition);
-
-    public void ClearTickTracks() => TickTrackStore.Clear();
 
     public IReadOnlyList<TraceFunctionChoice> GetFunctionChoices()
         => [.. (CallStack?.Nodes() ?? [])
@@ -101,8 +98,8 @@ public sealed partial class QueryViewModel
         }
 
         TickTracks = [TraceTickTracks.GetRows(trace.RowReturnMarks),
-                      TraceTickTracks.Reads(trace.Reads, trace.CallStore),
                       TraceTickTracks.Evaluations(trace.Evaluations),
+                      TraceTickTracks.Reads(trace.Reads, trace.CallStore),
                       .. custom];
 
         OperatorTracks.Refresh();

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
+using InternalsViewer.UI.App.Controls.Trace.Operators;
 using InternalsViewer.UI.App.Helpers;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Controls;
@@ -92,7 +93,7 @@ public sealed partial class TraceTimelineControl
 
         HideToolTip();
 
-        LogKeyboard($"press focus={_keyboardHost.Focus(FocusState.Pointer)}");
+        _keyboardHost.Focus(FocusState.Pointer);
 
         if (point.Properties.IsMiddleButtonPressed)
         {
@@ -359,7 +360,7 @@ public sealed partial class TraceTimelineControl
 
             _memory.Hover = memoryHover;
 
-            SetMemoryWriters(memoryHover?.Block);
+            SetMemoryWriters(HighlightMemoryWriters ? memoryHover?.Block : null);
 
             _canvas.Invalidate();
         }
@@ -526,8 +527,6 @@ public sealed partial class TraceTimelineControl
 
     private void OnKeyDown(object sender, KeyRoutedEventArgs e)
     {
-        LogKeyboard($"key {e.Key} selected={_selected}");
-
         if (e.Key is not (VirtualKey.Up or VirtualKey.Down or VirtualKey.Left or VirtualKey.Right)
             || _selected is not { } hit
             || _visible is not { } timeline
@@ -648,7 +647,9 @@ public sealed partial class TraceTimelineControl
 
         var flyout = hasPosition && _operators.Contains(position)
             ? CreateOperatorsMenu(_operators.GetPlanNode(position))
-            : CreateChartMenu(hasPosition ? HitTest(position) : _selected);
+            : hasPosition && ShowsMemory && _memory.Contains(position)
+                ? CreateMemoryHistoryMenu()
+                : CreateChartMenu(hasPosition ? HitTest(position) : _selected);
 
         if (hasPosition)
         {
@@ -713,12 +714,60 @@ public sealed partial class TraceTimelineControl
 
         flyout.Items.Add(new MenuFlyoutSeparator());
 
-        flyout.Items.Add(MenuItems.SubMenu("View", MenuItems.Toggle("Operators", ShowOperators, isChecked => ShowOperators = isChecked)));
+        AddPaneItems(flyout);
+
+        flyout.Items.Add(new MenuFlyoutSeparator());
 
         flyout.Items.Add(CreateMemoryMenu());
 
+        flyout.Items.Add(CreateHighlightRegionsMenu());
+
+        flyout.Items.Add(new MenuFlyoutSeparator());
+
+        flyout.Items.Add(CallStackItem());
+
         return flyout;
     }
+
+    private MenuFlyout CreateMemoryHistoryMenu()
+    {
+        var flyout = new MenuFlyout();
+
+        AddPaneItems(flyout);
+
+        flyout.Items.Add(new MenuFlyoutSeparator());
+
+        flyout.Items.Add(MenuItems.Toggle("Call Highlight Hover", HighlightMemoryWriters, isChecked => HighlightMemoryWriters = isChecked));
+
+        flyout.Items.Add(new MenuFlyoutSeparator());
+
+        flyout.Items.Add(CallStackItem());
+
+        return flyout;
+    }
+
+    private void AddPaneItems(MenuFlyout flyout)
+    {
+        flyout.Items.Add(PaneItem("Operators", ShowOperators, ShowsOperators, isChecked => ShowOperators = isChecked));
+
+        flyout.Items.Add(PaneItem("Memory History", ShowMemoryHistory, ShowsMemory, isChecked => ShowMemoryHistory = isChecked));
+
+        flyout.Items.Add(PaneItem("Flame Chart", ShowFlameChart, ShowsFlameChart, isChecked => ShowFlameChart = isChecked));
+    }
+
+    private ToggleMenuFlyoutItem PaneItem(string text, bool isChecked, bool isShowing, Action<bool> setChecked)
+    {
+        var item = MenuItems.Toggle(text, isChecked, setChecked);
+
+        item.IsEnabled = !isShowing || VisiblePaneCount > 1;
+
+        return item;
+    }
+
+    private int VisiblePaneCount => (ShowsOperators ? 1 : 0) + (ShowsMemory ? 1 : 0) + (ShowsFlameChart ? 1 : 0);
+
+    private ToggleMenuFlyoutItem CallStackItem()
+        => MenuItems.Toggle("Call Stack", ShowCallStack, isChecked => CallStackVisibilityRequested?.Invoke(isChecked));
 
     private void OpenCallStack(FlameHit hit)
     {
@@ -727,7 +776,7 @@ public sealed partial class TraceTimelineControl
             Select(hit);
         }
 
-        CallStackOpenRequested?.Invoke();
+        CallStackVisibilityRequested?.Invoke(true);
     }
 
     private void Select(FlameHit? hit)

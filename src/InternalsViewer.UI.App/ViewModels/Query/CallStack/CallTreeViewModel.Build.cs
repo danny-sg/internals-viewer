@@ -9,7 +9,7 @@ using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Interfaces.Events;
 using InternalsViewer.Query.Plans.Model;
-using InternalsViewer.UI.App.Models.Query.CallStack;
+using InternalsViewer.UI.App.Models.Query.CallStack.Tree;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.CallStack;
 

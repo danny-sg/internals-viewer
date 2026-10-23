@@ -1,8 +1,9 @@
 ﻿using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
+using InternalsViewer.UI.App.Models.Query.Trace;
 using InternalsViewer.UI.App.Services.Query.Simulation;
+using InternalsViewer.UI.App.Services.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Query.OperatorTracks;
-using InternalsViewer.UI.App.Services.Query;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Memory;
@@ -33,11 +34,9 @@ using InternalsViewer.Query.Events.Properties;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Controls.SqlEditor;
-using InternalsViewer.UI.App.Controls.Trace;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Columnstore;
-using InternalsViewer.UI.App.Models.Query.CallStack;
 using InternalsViewer.UI.App.Models.Schema;
 using InternalsViewer.UI.App.Services;
 using InternalsViewer.Query.XEvents;
@@ -52,6 +51,7 @@ using InternalsViewer.UI.App.Controls.Timeline.Definition;
 using InternalsViewer.UI.App.Services.Query.Timeline;
 using InternalsViewer.UI.App.ViewModels.Index;
 using InternalsViewer.UI.App.ViewModels.Query.Events;
+using InternalsViewer.UI.App.ViewModels.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Tabs;
 using InternalsViewer.UI.App.Views.Query.Tabs;
 using Microsoft.Extensions.Logging;
@@ -366,8 +366,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         MemoryHistory = new MemoryHistoryViewModel(OpenCallTree);
 
-        PlayheadMemory = new PlayheadMemoryViewModel(MemoryHistory);
-
         TickTrackStore = tickTrackStore;
 
         OperatorTracks = new OperatorTracksViewModel(tickTrackStore, GetTickCount, message => AddMessage(message));
@@ -472,11 +470,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public MemoryHistoryViewModel MemoryHistory { get; }
 
-    public PlayheadMemoryViewModel PlayheadMemory { get; }
-
     public CallTreeTabViewModel CallTreeTab => CreatedCallTreeTab ??= new CallTreeTabViewModel(this, _settingsViewModel, Logger);
 
-    public PlayheadCallStackViewModel PlayheadStack => CreatedPlayheadStack ??= new PlayheadCallStackViewModel(this);
+    public TraceTimelineTabViewModel TraceTimelineTab => CreatedTraceTimelineTab ??= new TraceTimelineTabViewModel(this);
 
     /// <summary>
     /// The queries run against this database, listed beside the SQL editor
@@ -651,7 +647,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             MemoryHistory.SetTrace(value, Events);
 
-            PlayheadMemory.Close();
+            CreatedTraceTimelineTab?.CloseMemory();
         }
     }
 
@@ -674,7 +670,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private CallTreeTabViewModel? CreatedCallTreeTab { get; set; }
 
-    private PlayheadCallStackViewModel? CreatedPlayheadStack { get; set; }
+    private TraceTimelineTabViewModel? CreatedTraceTimelineTab { get; set; }
 
     public void NavigateToEvent(EngineEvent engineEvent)
     {
@@ -1108,7 +1104,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         ResultSets = [];
 
-        CreatedPlayheadStack = null;
+        CreatedTraceTimelineTab?.Dispose();
+
+        CreatedTraceTimelineTab = null;
 
         CreatedCallTreeTab?.Dispose();
 

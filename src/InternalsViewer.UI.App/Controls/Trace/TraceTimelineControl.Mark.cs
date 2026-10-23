@@ -34,13 +34,22 @@ public sealed partial class TraceTimelineControl
 
     private (CallStackNode Node, int CallIndex)? _marked;
 
-    private (double Current, MarkedCall Marked)? _minimapMarkers;
+    private TracePoint? _markedPoint;
+
+    private (double Current, double Marked, int Lane, int Depth)? _minimapMarkers;
 
     private TraceTimeline? Overview => FullTimeline ?? _timeline;
 
     public void MarkCall(CallStackNode? node, int callIndex)
     {
         _marked = node is not null && callIndex >= 0 ? (node, callIndex) : null;
+
+        _canvas.Invalidate();
+    }
+
+    public void MarkPosition(TracePoint? point)
+    {
+        _markedPoint = point;
 
         _canvas.Invalidate();
     }
@@ -94,23 +103,48 @@ public sealed partial class TraceTimelineControl
     {
         _marked = null;
 
+        _markedPoint = null;
+
         _markedCalls.Clear();
     }
 
     private void DrawMark(SKCanvas canvas, int width, int height)
     {
-        if (GetMarkedCall() is not { } marked)
+        if (GetMarkedCall() is { } marked)
         {
-            ShowMinimap(null, width, height);
+            DrawMarkedCall(canvas, marked, width, height);
 
             return;
         }
 
-        var x = (float)((TraceScale.GetValue(marked.Span.From, _axis) - _viewStart) * PixelsPerUnit(width));
+        if (_markedPoint is not { } point)
+        {
+            HideMinimap();
+
+            return;
+        }
+
+        var value = TraceScale.GetValue(point, _axis);
+
+        var x = (float)((value - _viewStart) * PixelsPerUnit(width));
+
+        if (x >= 0 && x <= width)
+        {
+            canvas.DrawLine(x, ContentTop, x, height - BandHeight, _paints.Mark);
+        }
+
+        ShowMinimap(value, -1, -1, width, height);
+    }
+
+    private void DrawMarkedCall(SKCanvas canvas, MarkedCall marked, int width, int height)
+    {
+        var start = TraceScale.GetValue(marked.Span.From, _axis);
+
+        var x = (float)((start - _viewStart) * PixelsPerUnit(width));
 
         if (x < 0 || x > width || GetMarkedTop(marked) is not { } rowTop)
         {
-            ShowMinimap(marked, width, height);
+            ShowMinimap(start, marked.Lane, marked.Depth, width, height);
 
             return;
         }
@@ -119,7 +153,7 @@ public sealed partial class TraceTimelineControl
 
         canvas.DrawLine(x, Math.Max(ContentTop, Math.Min(rowTop, bottom)), x, bottom, _paints.Mark);
 
-        ShowMinimap(null, width, height);
+        HideMinimap();
     }
 
     private float? GetMarkedTop(MarkedCall marked)
@@ -158,13 +192,13 @@ public sealed partial class TraceTimelineControl
         return null;
     }
 
-    private void ShowMinimap(MarkedCall? marked, int width, int height)
+    private void ShowMinimap(double marked, int lane, int depth, int width, int height)
     {
         var fits = width >= MinimapWidth + MinimapMargin * 2 && height - BandHeight - ContentTop >= MinimapHeight + MinimapMargin * 2;
 
-        if (marked is not { } call || !fits)
+        if (!fits)
         {
-            _minimap.Visibility = Visibility.Collapsed;
+            HideMinimap();
 
             return;
         }
@@ -179,7 +213,11 @@ public sealed partial class TraceTimelineControl
 
         var current = _playhead ?? double.NaN;
 
-        if (_minimapMarkers is not { } shown || !shown.Current.Equals(current) || shown.Marked != call)
+        if (_minimapMarkers is not { } shown
+            || !shown.Current.Equals(current)
+            || !shown.Marked.Equals(marked)
+            || shown.Lane != lane
+            || shown.Depth != depth)
         {
             var markers = new List<MinimapMarker>();
 
@@ -188,15 +226,17 @@ public sealed partial class TraceTimelineControl
                 markers.Add(new MinimapMarker(current, CurrentColour));
             }
 
-            markers.Add(new MinimapMarker(TraceScale.GetValue(call.Span.From, _axis), MarkedColour, call.Lane, call.Depth));
+            markers.Add(new MinimapMarker(marked, MarkedColour, lane, depth));
 
             _minimap.Markers = markers;
 
-            _minimapMarkers = (current, call);
+            _minimapMarkers = (current, marked, lane, depth);
         }
 
         _minimap.Visibility = Visibility.Visible;
     }
+
+    private void HideMinimap() => _minimap.Visibility = Visibility.Collapsed;
 
     private void ReleaseMinimap()
     {

@@ -2,4 +2,7 @@ using System;
 
 namespace InternalsViewer.UI.App.Models;
 
-public sealed record ActionLink(string Text, Action Invoke);
+public sealed record ActionLink(string Text, Action Invoke)
+{
+    public string? Glyph { get; init; }
+}

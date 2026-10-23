@@ -129,7 +129,7 @@ public sealed partial class DockLayoutViewModel : ObservableObject
     /// drop appends it to the target group; an edge zone splits the target and places the document
     /// in a new group on that side.
     /// </summary>
-    public void Move(DocumentViewModel document, TabGroupNode target, DropZone zone)
+    public void Move(DocumentViewModel document, LayoutNode target, DropZone zone)
     {
         if (zone is DropZone.None)
         {
@@ -151,13 +151,18 @@ public sealed partial class DockLayoutViewModel : ObservableObject
 
         if (zone is DropZone.Center)
         {
-            if (ReferenceEquals(source, target))
+            if (target is not TabGroupNode group)
             {
-                target.SelectedDocument = document;
                 return;
             }
 
-            MoveToGroup(document, source, target);
+            if (ReferenceEquals(source, group))
+            {
+                group.SelectedDocument = document;
+                return;
+            }
+
+            MoveToGroup(document, source, group);
             CollapseIfEmpty(source);
             OnLayoutChanged();
             return;
@@ -246,7 +251,7 @@ public sealed partial class DockLayoutViewModel : ObservableObject
         }
     }
 
-    private void SplitInto(DocumentViewModel document, TabGroupNode source, TabGroupNode target, DropZone zone)
+    private void SplitInto(DocumentViewModel document, TabGroupNode source, LayoutNode target, DropZone zone)
     {
         source.Documents.Remove(document);
 

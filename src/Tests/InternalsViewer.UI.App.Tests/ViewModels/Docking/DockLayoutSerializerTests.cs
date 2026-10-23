@@ -75,6 +75,33 @@ public class DockLayoutSerializerTests
         Assert.Null(DockLayoutSerializer.Deserialize(saved, Resolver()));
     }
 
+    [Fact]
+    public void Round_Trips_A_Fixed_Node_Beside_A_Group()
+    {
+        var a = Document("a");
+
+        var root = new SplitNode(Orientation.Vertical, new FixedNode(), new TabGroupNode(a)) { FirstStar = 2, SecondStar = 1 };
+
+        var saved = DockLayoutSerializer.Serialize(root);
+
+        Assert.True(saved.First!.IsFixed);
+
+        var restored = Assert.IsType<SplitNode>(DockLayoutSerializer.Deserialize(saved, Resolver(a)));
+
+        Assert.IsType<FixedNode>(restored.First);
+        Assert.Same(a, Assert.Single(Assert.IsType<TabGroupNode>(restored.Second).Documents));
+        Assert.Equal(2, restored.FirstStar);
+        Assert.Equal(1, restored.SecondStar);
+    }
+
+    [Fact]
+    public void Keeps_The_Fixed_Node_When_No_Document_Resolves()
+    {
+        var saved = DockLayoutSerializer.Serialize(new SplitNode(Orientation.Vertical, new FixedNode(), new TabGroupNode(Document("a"))));
+
+        Assert.IsType<FixedNode>(DockLayoutSerializer.Deserialize(saved, Resolver()));
+    }
+
     private static DocumentViewModel Document(string key, bool persist = true)
         => new(key, content: key, viewFactory: () => null!, key: key, persist: persist);
 

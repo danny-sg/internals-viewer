@@ -9,6 +9,8 @@ public sealed class DockNode
 {
     public bool IsSplit { get; set; }
 
+    public bool IsFixed { get; set; }
+
     // Group
     public List<string> Documents { get; set; } = [];
 

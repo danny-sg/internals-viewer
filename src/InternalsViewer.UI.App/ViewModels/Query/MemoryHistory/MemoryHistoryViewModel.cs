@@ -11,8 +11,8 @@ using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Results;
-using InternalsViewer.UI.App.Controls.Trace;
 using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.Models.Query.Trace;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Logging;
 using Microsoft.UI;
@@ -184,6 +184,23 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
     public CallStackNode? GetWriter(int callNodeIndex) => callNodeIndex >= 0 ? Trace?.Timeline.NodeOf(callNodeIndex) : null;
 
     public string GetWriterLabel(int callNodeIndex) => GetWriterLabel(GetWriter(callNodeIndex));
+
+    public CallStackNode? GetAllocatingCall(int block)
+    {
+        if (Trace is not { } trace)
+        {
+            return null;
+        }
+
+        if (!Store.Blocks[block].IsInline)
+        {
+            return Store.GetAllocatingCall(block, trace.Timeline);
+        }
+
+        var writes = Store.GetWrites(block);
+
+        return writes.Count > 0 ? trace.Timeline.NodeOf(writes[0].CallNodeIndex) : null;
+    }
 
     public ObservableCollection<HexWatch> GetWatches(int block)
     {

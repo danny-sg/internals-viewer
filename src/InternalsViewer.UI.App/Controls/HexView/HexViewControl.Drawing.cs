@@ -330,6 +330,8 @@ public sealed partial class HexViewControl
                 Highlight(marker);
             }
         }
+
+        target.DrawMarkerMap();
     }
 
     /// <summary>

@@ -73,6 +73,8 @@ public sealed partial class DocumentViewModel : ObservableObject
 
     public bool CanClose { get; }
 
+    public double MinWidth { get; init; }
+
     public Microsoft.UI.Xaml.Media.Brush? Accent { get; set; }
 
     /// <summary>

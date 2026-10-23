@@ -141,6 +141,70 @@ public class DockLayoutViewModelTests
         Assert.Equal(0, layoutRaised);
     }
 
+    [Fact]
+    public void Move_Onto_A_Fixed_Node_Edge_Splits_Around_It()
+    {
+        var document = Document("stack");
+        var fixedNode = new FixedNode();
+
+        var dock = new DockLayoutViewModel(new SplitNode(Orientation.Vertical, fixedNode, new TabGroupNode(document)));
+
+        dock.Move(document, fixedNode, DropZone.Left);
+
+        var root = Assert.IsType<SplitNode>(dock.Root);
+
+        Assert.Equal(Orientation.Horizontal, root.Orientation);
+        Assert.Same(document, Assert.Single(Assert.IsType<TabGroupNode>(root.First).Documents));
+        Assert.Same(fixedNode, root.Second);
+        Assert.Same(root, fixedNode.Parent);
+    }
+
+    [Fact]
+    public void Move_Onto_A_Fixed_Node_Centre_Does_Nothing()
+    {
+        var document = Document("stack");
+        var fixedNode = new FixedNode();
+        var group = new TabGroupNode(document);
+
+        var dock = new DockLayoutViewModel(new SplitNode(Orientation.Vertical, fixedNode, group));
+
+        var raised = 0;
+
+        dock.LayoutChanged += (_, _) => raised++;
+
+        dock.Move(document, fixedNode, DropZone.Center);
+
+        Assert.Equal(0, raised);
+        Assert.Same(group, dock.FindGroup(document));
+    }
+
+    [Fact]
+    public void Close_Leaves_The_Fixed_Node_As_Root_When_Its_Only_Group_Empties()
+    {
+        var document = Document("stack");
+        var fixedNode = new FixedNode();
+
+        var dock = new DockLayoutViewModel(new SplitNode(Orientation.Vertical, fixedNode, new TabGroupNode(document)));
+
+        dock.Close(document);
+
+        Assert.Same(fixedNode, dock.Root);
+        Assert.Null(fixedNode.Parent);
+        Assert.Empty(dock.Groups());
+    }
+
+    [Fact]
+    public void Show_Adds_Nothing_When_The_Layout_Has_No_Group()
+    {
+        var document = Document("stack");
+
+        var dock = new DockLayoutViewModel(new FixedNode());
+
+        dock.Show(document);
+
+        Assert.False(dock.Contains(document));
+    }
+
     private static DocumentViewModel Document(string key, bool canClose = true)
         => new(key, content: key, viewFactory: () => null!, canClose: canClose, key: key);
 }

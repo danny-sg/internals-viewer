@@ -25,6 +25,8 @@ public sealed partial class HexViewControl
         set => SetValue(MouseOverProperty, value);
     }
 
+    public event EventHandler<int>? OffsetClicked;
+
     private Point? _pressPoint;
 
     private void HexRichTextBlock_PointerMoved(object sender, PointerRoutedEventArgs e)
@@ -51,7 +53,7 @@ public sealed partial class HexViewControl
 
         _pressPoint = null;
 
-        if (SelectedMarker is null || pressed is not { } start)
+        if (pressed is not { } start)
         {
             return;
         }
@@ -64,6 +66,11 @@ public sealed partial class HexViewControl
         }
 
         SelectedMarker = null;
+
+        if (HexRichTextBlock.GetPositionFromPoint(released) is { } position)
+        {
+            OffsetClicked?.Invoke(this, HexLayout.FromRunPosition(position.Offset, HexLayout.CharactersPerLine) - 1);
+        }
     }
 
     private void HexRichTextBlock_PointerEntered(object sender, PointerRoutedEventArgs e)

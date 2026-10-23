@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Helpers;
-using Microsoft.UI.Xaml;
+using InternalsViewer.UI.App.Helpers;
+using Microsoft.UI.Xaml.Controls;
 using SkiaSharp;
 
 namespace InternalsViewer.UI.App.Controls.Trace;
@@ -14,25 +16,40 @@ public sealed partial class TraceTimelineControl
 
     private static readonly CallHighlight[] CallHighlights =
     [
-        new("CQuery::CreateExecPlan", SKColors.LightGreen),
-        new("CXStmtQuery::ShutdownNormal", SKColors.LightCoral)
+        new("CSQLSource::Transform", "Compilation", SKColors.LightGreen),
+        new("CQuery::CreateExecPlan", "Setup", SKColors.LightSkyBlue),
+        new("CXStmtQuery::ShutdownNormal", "Shutdown", SKColors.LightCoral)
     ];
 
-    public static readonly DependencyProperty ShowHighlightRegionsProperty =
-        DependencyProperty.Register(nameof(ShowHighlightRegions),
-                                    typeof(bool),
-                                    typeof(TraceTimelineControl),
-                                    new PropertyMetadata(true, OnShowHighlightRegionsChanged));
-
-    public bool ShowHighlightRegions
-    {
-        get => (bool)GetValue(ShowHighlightRegionsProperty);
-        set => SetValue(ShowHighlightRegionsProperty, value);
-    }
+    private readonly HashSet<string> _hiddenHighlightRegions = [];
 
     private HighlightBand _positionHighlights = HighlightBand.Empty;
 
     private HighlightBand _instructionHighlights = HighlightBand.Empty;
+
+    public static IReadOnlyList<string> HighlightRegionLabels { get; } = Array.ConvertAll(CallHighlights, h => h.Label);
+
+    public bool IsHighlightRegionVisible(string label) => !_hiddenHighlightRegions.Contains(label);
+
+    public void SetHighlightRegionVisible(string label, bool isVisible)
+    {
+        var changed = isVisible ? _hiddenHighlightRegions.Remove(label) : _hiddenHighlightRegions.Add(label);
+
+        if (!changed)
+        {
+            return;
+        }
+
+        FindCallHighlights();
+
+        Redraw();
+    }
+
+    private MenuFlyoutSubItem CreateHighlightRegionsMenu()
+        => MenuItems.SubMenu("Highlight Regions",
+                             [.. HighlightRegionLabels.Select(label => MenuItems.Toggle(label,
+                                                                                        IsHighlightRegionVisible(label),
+                                                                                        isChecked => SetHighlightRegionVisible(label, isChecked)))]);
 
     private void FindCallHighlights()
     {
@@ -88,15 +105,34 @@ public sealed partial class TraceTimelineControl
         _instructionHighlights = BandOf(regions, TraceTimelineAxis.Instructions, timeline.Scale);
     }
 
-    private void DrawCallHighlights(SKCanvas canvas, float top, float bottom, int width, double scale)
+    private void DrawCallHighlights(SKCanvas canvas, TraceTimeline timeline, float bottom, int width, double scale)
     {
-        if (!ShowHighlightRegions)
+        var band = _axis == TraceTimelineAxis.Position ? _positionHighlights : _instructionHighlights;
+
+        if (band.Starts.Length == 0)
         {
             return;
         }
 
-        var band = _axis == TraceTimelineAxis.Position ? _positionHighlights : _instructionHighlights;
+        for (var lane = 0; lane < timeline.Threads.Count && lane < _laneTops.Length; lane++)
+        {
+            var laneTop = ContentTop + _laneTops[lane] - (float)_scrollY;
 
+            var rowsTop = laneTop + LaneHeaderHeight;
+
+            var laneBottom = laneTop + LaneHeight(timeline.Threads[lane]) - LaneGap;
+
+            if (laneBottom <= ContentTop || rowsTop >= bottom)
+            {
+                continue;
+            }
+
+            DrawHighlightBand(canvas, band, rowsTop, Math.Min(laneBottom, bottom), width, scale);
+        }
+    }
+
+    private void DrawHighlightBand(SKCanvas canvas, HighlightBand band, float top, float bottom, int width, double scale)
+    {
         var index = SortedSearch.FirstAfter(band.Ends, _viewStart);
 
         while (index < band.Starts.Length && band.Starts[index] <= _viewEnd)
@@ -113,13 +149,13 @@ public sealed partial class TraceTimelineControl
         }
     }
 
-    private static int HighlightOf(string symbol)
+    private int HighlightOf(string symbol)
     {
         for (var index = 0; index < CallHighlights.Length; index++)
         {
             if (CallHighlights[index].Name.Equals(symbol, StringComparison.Ordinal))
             {
-                return index;
+                return _hiddenHighlightRegions.Contains(CallHighlights[index].Label) ? -1 : index;
             }
         }
 
@@ -216,10 +252,7 @@ public sealed partial class TraceTimelineControl
         return innermost.Highlight;
     }
 
-    private static void OnShowHighlightRegionsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((TraceTimelineControl)d).Redraw();
-
-    private readonly record struct CallHighlight(string Name, SKColor Colour);
+    private readonly record struct CallHighlight(string Name, string Label, SKColor Colour);
 
     private readonly record struct HighlightRegion(int Depth, int Highlight, TraceSpan Span);
 
