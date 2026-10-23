@@ -266,6 +266,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     private FlameHit? _reportedSelected;
 
+    private List<FlameHit> _reportedPlayheadFrames = [];
+
     private int _reportedVersion = -1;
 
     private TraceTimelineAxis _reportedAxis;
@@ -451,7 +453,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     public event Action? PlayheadChanged;
 
-    public bool HasCallStack => GetStackPath().Count > 0;
+    public bool HasCallStack => GetActivePaths().Count > 0;
 
     private double FullStart => _fitStart;
 
@@ -493,23 +495,28 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     public IReadOnlyList<TraceThreadStack> GetCallStack()
     {
-        var path = GetStackPath();
+        var stacks = new List<TraceThreadStack>();
 
-        if (path.Count == 0 || _visible is not { } timeline)
+        if (_visible is not { } timeline)
         {
-            return [];
+            return stacks;
         }
 
-        var thread = timeline.Threads[path[0].Lane];
-
-        var calls = new List<TraceSpan>(path.Count);
-
-        foreach (var hit in path)
+        foreach (var path in GetActivePaths())
         {
-            calls.Add(thread.Rows[hit.Depth].GetSpan(hit.Index));
+            var thread = timeline.Threads[path[0].Lane];
+
+            var calls = new List<TraceSpan>(path.Count);
+
+            foreach (var hit in path)
+            {
+                calls.Add(thread.Rows[hit.Depth].GetSpan(hit.Index));
+            }
+
+            stacks.Add(new TraceThreadStack(thread.ThreadId, calls));
         }
 
-        return [new TraceThreadStack(thread.ThreadId, calls)];
+        return stacks;
     }
 
     public CallReference? GetSelectedCall() => GetCallReference(_selected);
@@ -615,7 +622,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
             return;
         }
 
-        var from = _playhead ?? _viewStart;
+        var from = _playhead ?? GetSelectedStart() ?? _viewStart;
 
         double? next = null;
 
@@ -642,7 +649,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
             return;
         }
 
-        var from = _playhead ?? _viewStart;
+        var from = _playhead ?? GetSelectedStart() ?? _viewStart;
 
         double? next = null;
 
@@ -728,7 +735,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     private void PlacePlayhead(double target)
     {
-        _playhead = target;
+        ShowPlayhead(target);
 
         if (target < _viewStart || target > _viewEnd)
         {
@@ -1149,13 +1156,20 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     private void ReportCallStack()
     {
+        var playheadFrames = _playhead == _reportedPlayhead && _version == _reportedVersion && _axis == _reportedAxis
+            ? _reportedPlayheadFrames
+            : GetPlayheadFrames();
+
         if (_stackFrame == _reportedStackFrame
             && _selected == _reportedSelected
             && _version == _reportedVersion
-            && _axis == _reportedAxis)
+            && _axis == _reportedAxis
+            && playheadFrames.SequenceEqual(_reportedPlayheadFrames))
         {
             return;
         }
+
+        _reportedPlayheadFrames = playheadFrames;
 
         _reportedStackFrame = _stackFrame;
 
@@ -1349,6 +1363,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         control._operators.Hover = TraceOperatorsHover.None;
 
         control._memory.Hover = null;
+
+        control.SetMemoryWriters(null);
 
         control.Redraw();
     }

@@ -88,9 +88,7 @@ public sealed partial class HexViewControl
 
         HexRichTextBlock.AddHandler(PointerReleasedEvent, new PointerEventHandler(OnHexPointerReleased), true);
 
-        HexRichTextBlock.AddHandler(PointerPressedEvent, new PointerEventHandler(OnChangePointerPressed), true);
-
-        HexRichTextBlock.AddHandler(PointerReleasedEvent, new PointerEventHandler(OnChangePointerReleased), true);
+        HexRichTextBlock.AddHandler(DoubleTappedEvent, new DoubleTappedEventHandler(OnChangeDoubleTapped), true);
     }
 
     public HexControlViewModel ViewModel { get; } = new();

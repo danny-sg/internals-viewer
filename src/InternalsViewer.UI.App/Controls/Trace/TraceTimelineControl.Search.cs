@@ -46,14 +46,22 @@ public sealed partial class TraceTimelineControl
 
     private bool[]? _nodeMatches;
 
+    private bool[]? _memoryScope;
+
+    private CallStackNode? _memoryScopeNode;
+
+    private TraceTimeline? _memoryScopeTimeline;
+
+    private bool[]? _memoryWriters;
+
+    private int? _memoryWritersBlock;
+
     public void StepSearch(bool forward)
     {
-        if (GetAdjacentSearchMatch(forward) is not { } hit || SpanOf(hit) is not { } span)
+        if (GetAdjacentSearchMatch(forward) is not { } hit || SpanOf(hit) is null)
         {
             return;
         }
-
-        _playhead = TraceScale.GetValue(span.From, _axis);
 
         SelectAndShow(hit);
     }
@@ -195,11 +203,31 @@ public sealed partial class TraceTimelineControl
             return;
         }
 
-        HashSet<CallStackNode> members = [.. selected.MergedFrom.Count > 0 ? selected.MergedFrom : [selected]];
+        var members = GetMembers(selected);
 
         _nodeMatches = CallsUnder(timeline, members.Contains)
                        ?? (selected.Frame is { } frame ? CallsUnder(timeline, n => ReferenceEquals(n.Frame, frame)) : null);
     }
+
+    private bool[]? GetMemoryScope()
+    {
+        var node = _selected is { } selected && SpanOf(selected) is { } span ? _visible?.NodeOf(span.CallNodeIndex) : null;
+
+        if (ReferenceEquals(node, _memoryScopeNode) && ReferenceEquals(_timeline, _memoryScopeTimeline))
+        {
+            return _memoryScope;
+        }
+
+        _memoryScopeNode = node;
+
+        _memoryScopeTimeline = _timeline;
+
+        _memoryScope = node is not null && _timeline is { } timeline ? CallsUnder(timeline, GetMembers(node).Contains) : null;
+
+        return _memoryScope;
+    }
+
+    private static HashSet<CallStackNode> GetMembers(CallStackNode node) => [.. node.MergedFrom.Count > 0 ? node.MergedFrom : [node]];
 
     private static bool[]? CallsUnder(TraceTimeline timeline, Func<CallStackNode, bool> isSelected)
     {
@@ -219,7 +247,24 @@ public sealed partial class TraceTimelineControl
         return any ? under : null;
     }
 
-    private bool IsDimmed(int callNodeIndex) => Excludes(_searchMatches, callNodeIndex);
+    private bool IsDimmed(int callNodeIndex)
+        => _memoryWriters is { } writers ? Excludes(writers, callNodeIndex) : Excludes(_searchMatches, callNodeIndex);
+
+    private void SetMemoryWriters(int? block)
+    {
+        if (block == _memoryWritersBlock)
+        {
+            return;
+        }
+
+        _memoryWritersBlock = block;
+
+        _memoryWriters = block is { } index && _timeline is { } timeline ? _memory.GetWriters(index, timeline.NodeCount) : null;
+
+        _colours.Clear();
+
+        Redraw();
+    }
 
     private static bool Excludes(bool[]? matches, int callNodeIndex) => matches is not null && callNodeIndex >= 0 && callNodeIndex < matches.Length && !matches[callNodeIndex];
 

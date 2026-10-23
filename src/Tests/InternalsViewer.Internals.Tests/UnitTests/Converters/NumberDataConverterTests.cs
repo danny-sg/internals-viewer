@@ -36,6 +36,46 @@ public class NumberDataConverterTests
     }
 
     [Theory]
+    [InlineData("FF", typeof(byte), "255")]
+    [InlineData("FF", typeof(sbyte), "-1")]
+    [InlineData("FF FF", typeof(ushort), "65535")]
+    [InlineData("FF FF", typeof(short), "-1")]
+    [InlineData("F3 F6 05 E0", typeof(uint), "3758487283")]
+    [InlineData("F3 F6 05 E0", typeof(int), "-536480013")]
+    [InlineData("CB E1 60 92 50 D4 9F D6", typeof(ulong), "15465313087931867595")]
+    [InlineData("CB E1 60 92 50 D4 9F D6", typeof(long), "-2981430985777684021")]
+    [InlineData("00 00 80 3F", typeof(float), "1")]
+    [InlineData("00 00 00 00 00 00 F0 3F", typeof(double), "1")]
+    public void Can_Convert_Number_From_Binary_To_String_By_Type(string bytesString, Type type, string expected)
+    {
+        var result = DataConverter.BinaryToString(bytesString.ToByteArray(), type);
+
+        Assert.Equal(expected, result);
+    }
+
+    [Fact]
+    public void Converting_To_An_Unsupported_Type_Says_So()
+    {
+        var result = DataConverter.BinaryToString("01 02".ToByteArray(), typeof(Guid));
+
+        Assert.Equal("not yet supported (Guid)", result);
+    }
+
+    [Fact]
+    public void Converting_Too_Few_Bytes_For_The_Type_Is_An_Error()
+    {
+        var result = DataConverter.BinaryToString("01 02".ToByteArray(), typeof(uint));
+
+        Assert.StartsWith("Error converting data", result);
+    }
+
+    [Fact]
+    public void Converting_No_Bytes_Is_Empty()
+    {
+        Assert.Equal(string.Empty, DataConverter.BinaryToString([], typeof(uint)));
+    }
+
+    [Theory]
     [InlineData("01 56 FC 00 00", 5, 0, "64598")]
     [InlineData("01 DA 26 01 00", 5, 0, "75482")]
 

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using SkiaSharp;
@@ -28,23 +29,123 @@ public sealed partial class TraceTimelineControl
             return null;
         }
 
-        var path = GetStackPath();
-
-        for (var index = path.Count - 1; index >= 0; index--)
+        foreach (var path in GetActivePaths())
         {
-            var hit = path[index];
-
-            var row = timeline.Threads[hit.Lane].Rows[hit.Depth];
-
-            var span = row.GetSpan(hit.Index);
-
-            if (span.From.Instructions <= value && value <= span.To.Instructions)
+            for (var index = path.Count - 1; index >= 0; index--)
             {
-                return GetPosition(row, hit.Index, value);
+                var hit = path[index];
+
+                var row = timeline.Threads[hit.Lane].Rows[hit.Depth];
+
+                var span = row.GetSpan(hit.Index);
+
+                if (span.From.Instructions <= value && value <= span.To.Instructions)
+                {
+                    return GetPosition(row, hit.Index, value);
+                }
             }
         }
 
         return null;
+    }
+
+    private void ShowPlayhead(double value)
+    {
+        _playhead = value;
+
+        _stackFrame = null;
+
+        if (_selected is not null)
+        {
+            Deselect();
+        }
+    }
+
+    private double? GetSelectedStart()
+        => _selected is { } selected && SpanOf(selected) is { } span ? TraceScale.GetValue(span.From, _axis) : null;
+
+    private List<List<FlameHit>> GetActivePaths()
+    {
+        if (_playhead is { } value)
+        {
+            return GetPlayheadPaths(value);
+        }
+
+        var path = GetStackPath();
+
+        return path.Count > 0 ? [path] : [];
+    }
+
+    private List<List<FlameHit>> GetPlayheadPaths(double value)
+    {
+        var paths = new List<List<FlameHit>>();
+
+        if (_visible is not { } timeline)
+        {
+            return paths;
+        }
+
+        for (var lane = 0; lane < timeline.Threads.Count; lane++)
+        {
+            var rows = timeline.Threads[lane].Rows;
+
+            var path = new List<FlameHit>();
+
+            for (var depth = 0; depth < rows.Count; depth++)
+            {
+                var index = rows[depth].GetIndex(_axis, value, 0);
+
+                if (index < 0)
+                {
+                    break;
+                }
+
+                path.Add(new FlameHit(lane, depth, index));
+            }
+
+            if (path.Count > 0)
+            {
+                paths.Add(path);
+            }
+        }
+
+        return paths;
+    }
+
+    private List<FlameHit> GetPlayheadFrames()
+    {
+        var frames = new List<FlameHit>();
+
+        if (_playhead is not { } value || _visible is not { } timeline)
+        {
+            return frames;
+        }
+
+        for (var lane = 0; lane < timeline.Threads.Count; lane++)
+        {
+            var rows = timeline.Threads[lane].Rows;
+
+            FlameHit? deepest = null;
+
+            for (var depth = 0; depth < rows.Count; depth++)
+            {
+                var index = rows[depth].GetIndex(_axis, value, 0);
+
+                if (index < 0)
+                {
+                    break;
+                }
+
+                deepest = new FlameHit(lane, depth, index);
+            }
+
+            if (deepest is { } frame)
+            {
+                frames.Add(frame);
+            }
+        }
+
+        return frames;
     }
 
     private void DrawPlayhead(SKCanvas canvas, int width, int height)

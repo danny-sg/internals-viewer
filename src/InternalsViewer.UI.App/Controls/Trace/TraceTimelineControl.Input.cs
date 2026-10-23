@@ -359,6 +359,8 @@ public sealed partial class TraceTimelineControl
 
             _memory.Hover = memoryHover;
 
+            SetMemoryWriters(memoryHover?.Block);
+
             _canvas.Invalidate();
         }
 
@@ -450,6 +452,8 @@ public sealed partial class TraceTimelineControl
             _operators.Hover = TraceOperatorsHover.None;
 
             _memory.Hover = null;
+
+            SetMemoryWriters(null);
 
             _canvas.Invalidate();
         }
@@ -766,6 +770,11 @@ public sealed partial class TraceTimelineControl
         _stackFrame = hit is { } selected && GetStackPath().Contains(selected) ? _stackFrame : hit;
 
         _selected = hit;
+
+        if (hit is not null)
+        {
+            _playhead = null;
+        }
     }
 
     private void ClearSelections()
@@ -806,7 +815,7 @@ public sealed partial class TraceTimelineControl
     {
         var scale = PixelsPerUnit((int)_overlay.ActualWidth);
 
-        _playhead = Math.Clamp(_viewStart + x / scale, Math.Max(_viewStart, FullStart), Math.Min(_viewEnd, FullEnd));
+        ShowPlayhead(Math.Clamp(_viewStart + x / scale, Math.Max(_viewStart, FullStart), Math.Min(_viewEnd, FullEnd)));
 
         HideToolTip();
 

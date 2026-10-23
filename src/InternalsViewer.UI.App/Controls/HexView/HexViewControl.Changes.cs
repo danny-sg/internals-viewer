@@ -1,7 +1,6 @@
 ﻿using System;
 using Windows.Foundation;
-using Windows.System;
-using Microsoft.UI.Input;
+using InternalsViewer.UI.App.Helpers;
 using Microsoft.UI.Xaml.Input;
 
 namespace InternalsViewer.UI.App.Controls.HexView;
@@ -22,39 +21,21 @@ public sealed partial class HexViewControl
 
     public event EventHandler<HexChangeNavigation>? ChangeNavigationRequested;
 
-    private Point? ChangePressPoint { get; set; }
-
     private int? MenuChangeOffset { get; set; }
 
-    private void OnChangePointerPressed(object sender, PointerRoutedEventArgs e)
-        => ChangePressPoint = e.GetCurrentPoint(HexRichTextBlock).Position;
-
-    private void OnChangePointerReleased(object sender, PointerRoutedEventArgs e)
+    private void OnChangeDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
-        var pressed = ChangePressPoint;
-
-        ChangePressPoint = null;
-
-        var released = e.GetCurrentPoint(HexRichTextBlock);
-
-        if (!IsChangeNavigationEnabled
-            || pressed is not { } start
-            || released.Properties.PointerUpdateKind != PointerUpdateKind.LeftButtonReleased
-            || Math.Abs(released.Position.X - start.X) > ClickSlop
-            || Math.Abs(released.Position.Y - start.Y) > ClickSlop
-            || GetMarkerOffset(released.Position) is not { } offset)
+        if (!IsChangeNavigationEnabled || GetMarkerOffset(e.GetPosition(HexRichTextBlock)) is not { } offset)
         {
             return;
         }
 
-        var isForward = !e.KeyModifiers.HasFlag(VirtualKeyModifiers.Shift);
-
-        if (!isForward && HexRichTextBlock.SelectionEnd is { } end)
+        if (HexRichTextBlock.SelectionEnd is { } end)
         {
             HexRichTextBlock.Select(end, end);
         }
 
-        RequestChange(offset, isForward);
+        RequestChange(offset, isForward: !KeyboardState.IsShiftDown());
     }
 
     private void NextChangeMenuItem_Click(object sender, RoutedEventArgs e)

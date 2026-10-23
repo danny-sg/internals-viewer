@@ -36,7 +36,7 @@ public sealed partial class TraceTimelineControl
 
         if (_playhead is not { } playhead || playhead >= FullEnd)
         {
-            _playhead = Math.Max(_viewStart, FullStart);
+            ShowPlayhead(_playhead is null ? GetSelectedStart() ?? Math.Max(_viewStart, FullStart) : Math.Max(_viewStart, FullStart));
         }
 
         if (_playTimer is null)

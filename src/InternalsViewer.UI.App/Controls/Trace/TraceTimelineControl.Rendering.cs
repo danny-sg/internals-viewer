@@ -537,7 +537,7 @@ public sealed partial class TraceTimelineControl
             return colour;
         }
 
-        colour = _timeline?.NodeOf(callNodeIndex)?.CategoryColour is { } hex ? Parse(hex) : _paints.Unknown;
+        colour = GetCategoryColour(callNodeIndex);
 
         if (IsDimmed(callNodeIndex))
         {
@@ -548,6 +548,16 @@ public sealed partial class TraceTimelineControl
 
         return colour;
     }
+
+    private SKColor GetPaneColour(int callNodeIndex)
+    {
+        var colour = GetCategoryColour(callNodeIndex);
+
+        return Excludes(_searchMatches, callNodeIndex) ? Dimmed(colour) : colour;
+    }
+
+    private SKColor GetCategoryColour(int callNodeIndex)
+        => _timeline?.NodeOf(callNodeIndex)?.CategoryColour is { } hex ? Parse(hex) : _paints.Unknown;
 
     private SKColor Parse(string hex)
     {

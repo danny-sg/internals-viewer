@@ -36,7 +36,6 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     private const string CallTreeHiddenCategoriesKey = "CallTreeHiddenCategories";
     private const string CallTreePrunedCategoriesKey = "CallTreePrunedCategories";
     private const string TraceTimelineShowMemoryKey = "FlameChartShowMemory";
-    private const string TraceTimelineShowCallStackKey = "FlameChartShowCallStack";
     private const string TraceTimelineMemoryModeKey = "FlameChartMemoryMode";
 
     private const string TraceTimelineHiddenTickTracksKey = "TraceTimelineHiddenTickTracks";
@@ -200,8 +199,6 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
         TraceTimelineShowMemory = await SettingsService.ReadSettingAsync<bool?>(TraceTimelineShowMemoryKey) ?? false;
 
-        TraceTimelineShowCallStack = await SettingsService.ReadSettingAsync<bool?>(TraceTimelineShowCallStackKey) ?? false;
-
         TraceTimelineMemoryMode = await SettingsService.ReadSettingAsync<TraceTimelineMemoryMode?>(TraceTimelineMemoryModeKey)
                                ?? TraceTimelineMemoryMode.Allocated;
 
@@ -271,11 +268,6 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     partial void OnTraceTimelineShowMemoryChanged(bool value)
     {
         _ = SettingsService.SaveSettingAsync(TraceTimelineShowMemoryKey, value);
-    }
-
-    partial void OnTraceTimelineShowCallStackChanged(bool value)
-    {
-        _ = SettingsService.SaveSettingAsync(TraceTimelineShowCallStackKey, value);
     }
 
     partial void OnTraceTimelineMemoryModeChanged(TraceTimelineMemoryMode value)

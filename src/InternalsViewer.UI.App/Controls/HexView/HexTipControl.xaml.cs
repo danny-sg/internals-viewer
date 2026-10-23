@@ -1,4 +1,5 @@
 ﻿using System;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels.Page;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -80,6 +81,22 @@ public sealed partial class HexTipControl : UserControl
         if (Tip is { } tip)
         {
             PinClicked?.Invoke(this, tip);
+        }
+    }
+
+    private void CopyButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (Tip is { } tip)
+        {
+            ClipboardText.Copy(tip.Value);
+        }
+    }
+
+    private void ValueCopyButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: HexTipValue value })
+        {
+            ClipboardText.Copy(value.Value);
         }
     }
 

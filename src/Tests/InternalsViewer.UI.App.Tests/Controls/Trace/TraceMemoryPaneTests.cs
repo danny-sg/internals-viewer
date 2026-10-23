@@ -182,11 +182,11 @@ public class TraceMemoryPaneTests
 
         using var _ = host;
 
-        host.SelectedCallNodeIndex = WriterNode;
+        host.MemoryScope = Scope(WriterNode);
 
         var writerSelected = GetDrawnColours(pane, host);
 
-        host.SelectedCallNodeIndex = OtherNode;
+        host.MemoryScope = Scope(OtherNode);
 
         var otherSelected = GetDrawnColours(pane, host);
 
@@ -209,13 +209,58 @@ public class TraceMemoryPaneTests
 
         var before = pane.GetHit(new Point(10, PaneTop + 95))!.Value.Offset;
 
-        host.SelectedCallNodeIndex = WriterNode;
+        host.MemoryScope = Scope(WriterNode);
 
         pane.Render(Width, host.Scale);
 
         var after = pane.GetHit(new Point(10, PaneTop + 95))!.Value.Offset;
 
         Assert.Equal((true, true), (before >= 0x30, after < 0x20));
+    }
+
+    [Fact]
+    public void Selecting_A_Call_Keeps_The_Colours_Of_The_Calls_Below_It()
+    {
+        var (pane, host) = Create([Block(0, 0x1000_0000, 0x40, Write(0x20, 8), new TraceMemoryWrite(Point(60), 0x20, 8, OtherNode))]);
+
+        using var _ = host;
+
+        host.MemoryScope = Scope(WriterNode, OtherNode);
+
+        var colours = GetDrawnColours(pane, host);
+
+        Assert.Equal((true, true, false, false),
+                     (colours.Contains(WriterColour),
+                      colours.Contains(OtherColour),
+                      colours.Contains(TimelineColours.ToGrey(WriterColour)),
+                      colours.Contains(TimelineColours.ToGrey(OtherColour))));
+    }
+
+    [Fact]
+    public void The_Writers_Of_A_Block_Are_The_Functions_That_Wrote_To_It()
+    {
+        var (pane, host) = Create([Block(0, 0x1000_0000, 0x40, Write(0x20, 8), new TraceMemoryWrite(Point(60), 0x20, 8, OtherNode)),
+                                   Block(1, 0x2000_0000, 0x40, Write(0, 8))]);
+
+        using var _ = host;
+
+        var writers = pane.GetWriters(0, OtherNode + 2);
+
+        Assert.NotNull(writers);
+
+        Assert.Equal([WriterNode, OtherNode], Enumerable.Range(0, writers.Length).Where(i => writers[i]));
+
+        Assert.Equal([WriterNode], Enumerable.Range(0, OtherNode + 2).Where(i => pane.GetWriters(1, OtherNode + 2)![i]));
+    }
+
+    [Fact]
+    public void A_Block_Outside_The_Pane_Has_No_Writers()
+    {
+        var (pane, host) = Create([Block(0, 0x1000_0000, 0x40, Write(0, 8))]);
+
+        using var _ = host;
+
+        Assert.Null(pane.GetWriters(1, OtherNode + 1));
     }
 
     private static (TraceMemoryPane Pane, FakeHost Host) Create(TraceMemoryBlock[] blocks)
@@ -254,6 +299,18 @@ public class TraceMemoryPaneTests
 
     private static TracePoint Point(ulong sequence) => new(new TracePosition(sequence, 0), sequence);
 
+    private static bool[] Scope(params int[] callNodeIndexes)
+    {
+        var scope = new bool[OtherNode + 1];
+
+        foreach (var callNodeIndex in callNodeIndexes)
+        {
+            scope[callNodeIndex] = true;
+        }
+
+        return scope;
+    }
+
     private sealed class FakeHost : ITraceTimelineHost, IDisposable
     {
         public TraceTimelineAxis Axis => TraceTimelineAxis.Position;
@@ -270,7 +327,7 @@ public class TraceMemoryPaneTests
 
         public bool ShowCallStack => false;
 
-        public int? SelectedCallNodeIndex { get; set; }
+        public bool[]? MemoryScope { get; set; }
 
         public TraceTimelinePaints Paints { get; } = new();
 

@@ -24,7 +24,7 @@ public sealed partial class TraceTimelineControl : ITraceTimelineHost
 
     bool ITraceTimelineHost.ShowCallStack => ShowCallStack;
 
-    int? ITraceTimelineHost.SelectedCallNodeIndex => _selected is { } selected ? SpanOf(selected)?.CallNodeIndex : null;
+    bool[]? ITraceTimelineHost.MemoryScope => GetMemoryScope();
 
     TraceTimelinePaints ITraceTimelineHost.Paints => _paints;
 
@@ -32,7 +32,7 @@ public sealed partial class TraceTimelineControl : ITraceTimelineHost
 
     double ITraceTimelineHost.GetOrigin(TraceTimelineAxis axis) => OriginOf(axis);
 
-    SKColor ITraceTimelineHost.GetColour(int callNodeIndex) => ColourOf(callNodeIndex);
+    SKColor ITraceTimelineHost.GetColour(int callNodeIndex) => GetPaneColour(callNodeIndex);
 
     string ITraceTimelineHost.GetLabel(int callNodeIndex) => LabelOf(callNodeIndex);
 

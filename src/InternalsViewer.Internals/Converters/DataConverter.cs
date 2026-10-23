@@ -214,6 +214,36 @@ public static class DataConverter
         }
     }
 
+    public static string BinaryToString(ReadOnlySpan<byte> data, Type type)
+    {
+        if (data.IsEmpty)
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            return Type.GetTypeCode(type) switch
+            {
+                TypeCode.Byte => data[0].ToString(CultureInfo.CurrentCulture),
+                TypeCode.SByte => ((sbyte)data[0]).ToString(CultureInfo.CurrentCulture),
+                TypeCode.Int16 => BinaryPrimitives.ReadInt16LittleEndian(data).ToString(CultureInfo.CurrentCulture),
+                TypeCode.UInt16 => BinaryPrimitives.ReadUInt16LittleEndian(data).ToString(CultureInfo.CurrentCulture),
+                TypeCode.Int32 => BinaryPrimitives.ReadInt32LittleEndian(data).ToString(CultureInfo.CurrentCulture),
+                TypeCode.UInt32 => BinaryPrimitives.ReadUInt32LittleEndian(data).ToString(CultureInfo.CurrentCulture),
+                TypeCode.Int64 => BinaryPrimitives.ReadInt64LittleEndian(data).ToString(CultureInfo.CurrentCulture),
+                TypeCode.UInt64 => BinaryPrimitives.ReadUInt64LittleEndian(data).ToString(CultureInfo.CurrentCulture),
+                TypeCode.Single => BinaryPrimitives.ReadSingleLittleEndian(data).ToString(CultureInfo.InvariantCulture),
+                TypeCode.Double => BinaryPrimitives.ReadDoubleLittleEndian(data).ToString(CultureInfo.InvariantCulture),
+                _ => string.Format(CultureInfo.CurrentCulture, "not yet supported ({0})", type.Name)
+            };
+        }
+        catch (Exception ex)
+        {
+            return $"Error converting data - {ex.Message}";
+        }
+    }
+
     /// <summary>
     /// Gets the value of a byte array in terms of a typed object (T) based on the SQL type
     /// </summary>

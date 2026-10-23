@@ -87,11 +87,11 @@
                             <MenuFlyout Opening="HexMenu_Opening">
                                 <MenuFlyoutItem x:Name="NextChangeMenuItem"
                                                 Text="Next Change"
-                                                KeyboardAcceleratorTextOverride="Click"
+                                                KeyboardAcceleratorTextOverride="Double-Click"
                                                 Click="NextChangeMenuItem_Click" />
                                 <MenuFlyoutItem x:Name="PreviousChangeMenuItem"
                                                 Text="Previous Change"
-                                                KeyboardAcceleratorTextOverride="Shift+Click"
+                                                KeyboardAcceleratorTextOverride="Shift+Double-Click"
                                                 Click="PreviousChangeMenuItem_Click" />
                                 <MenuFlyoutSeparator x:Name="ChangeMenuSeparator" />
                                 <MenuFlyoutItem x:Name="CopyMenuItem" Text="Copy" Click="CopyMenuItem_Click" />

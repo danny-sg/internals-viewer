@@ -69,7 +69,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
     private Dictionary<SKColor, List<SKPoint>> PointsByColour { get; } = [];
 
-    private List<SKPoint> SelectedPoints { get; } = [];
+    private Dictionary<SKColor, List<SKPoint>> ScopedPointsByColour { get; } = [];
 
     private SKPaint PointPaint { get; } = new() { StrokeWidth = 1, StrokeCap = SKStrokeCap.Square };
 
@@ -194,6 +194,30 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
         }
 
         return null;
+    }
+
+    public bool[]? GetWriters(int block, int nodeCount)
+    {
+        if (block < 0 || block >= Blocks.Count)
+        {
+            return null;
+        }
+
+        var writers = new bool[nodeCount];
+
+        var writes = Blocks[block].Writes;
+
+        for (var index = 0; index < writes.Count; index++)
+        {
+            var callNodeIndex = writes.GetCallNodeIndex(index);
+
+            if (callNodeIndex >= 0 && callNodeIndex < writers.Length)
+            {
+                writers[callNodeIndex] = true;
+            }
+        }
+
+        return writers;
     }
 
     public string? GetToolTip(TraceMemoryHit? hit, Point position)
@@ -324,12 +348,12 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
            && frame.Key.Height == Height
            && frame.Key.Start == Host.ViewStart
            && frame.Key.End == Host.ViewEnd
-           && frame.Key.SelectedCallNodeIndex == Host.SelectedCallNodeIndex
+           && ReferenceEquals(frame.Key.Scope, Host.MemoryScope)
             ? frame
             : null;
 
     private FrameKey GetKey(int width, double scale)
-        => new(Blocks, TraceScale, Host.Axis, width, Top, Height, Host.ViewStart, Host.ViewEnd, scale, Host.SelectedCallNodeIndex);
+        => new(Blocks, TraceScale, Host.Axis, width, Top, Height, Host.ViewStart, Host.ViewEnd, scale, Host.MemoryScope);
 
     private TraceMemoryHit? GetClickHit(Point position)
     {
@@ -354,50 +378,51 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
             DrawLifetime(canvas, key, rendered.View, block);
         }
 
-        DrawPoints(canvas, rendered.Marks, rendered.View.MarkSize, key.SelectedCallNodeIndex);
+        DrawPoints(canvas, rendered.Marks, rendered.View.MarkSize, key.Scope);
 
         CurrentFrame?.Picture.Dispose();
 
         CurrentFrame = new Frame(key, rendered.Structure, rendered.View, recorder.EndRecording());
     }
 
-    private void DrawPoints(SKCanvas canvas, List<(int X, int Y, int CallNodeIndex)> marks, int size, int? selected)
+    private void DrawPoints(SKCanvas canvas, List<(int X, int Y, int CallNodeIndex)> marks, int size, bool[]? scope)
     {
         PointPaint.StrokeWidth = size;
 
         Colours.Clear();
 
-        SelectedPoints.Clear();
+        ClearPoints(PointsByColour);
 
-        foreach (var points in PointsByColour.Values)
-        {
-            points.Clear();
-        }
+        ClearPoints(ScopedPointsByColour);
 
         foreach (var (x, y, callNodeIndex) in marks)
         {
             var point = new SKPoint(x + size / 2f, y + size / 2f);
 
-            if (callNodeIndex == selected)
+            var colour = GetColour(callNodeIndex);
+
+            if (scope is null)
             {
-                SelectedPoints.Add(point);
-
-                continue;
+                AddPoint(PointsByColour, colour, point);
             }
-
-            var colour = selected is null ? GetColour(callNodeIndex) : TimelineColours.ToGrey(GetColour(callNodeIndex));
-
-            if (!PointsByColour.TryGetValue(colour, out var points))
+            else if (IsInScope(scope, callNodeIndex))
             {
-                points = [];
-
-                PointsByColour[colour] = points;
+                AddPoint(ScopedPointsByColour, colour, point);
             }
-
-            points.Add(point);
+            else
+            {
+                AddPoint(PointsByColour, TimelineColours.ToGrey(colour), point);
+            }
         }
 
-        foreach (var (colour, points) in PointsByColour)
+        DrawPoints(canvas, PointsByColour);
+
+        DrawPoints(canvas, ScopedPointsByColour);
+    }
+
+    private void DrawPoints(SKCanvas canvas, Dictionary<SKColor, List<SKPoint>> pointsByColour)
+    {
+        foreach (var (colour, points) in pointsByColour)
         {
             if (points.Count == 0)
             {
@@ -407,13 +432,6 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
             PointPaint.Color = colour;
 
             canvas.DrawPoints(SKPointMode.Points, [.. points], PointPaint);
-        }
-
-        if (selected is { } callNode && SelectedPoints.Count > 0)
-        {
-            PointPaint.Color = GetColour(callNode);
-
-            canvas.DrawPoints(SKPointMode.Points, [.. SelectedPoints], PointPaint);
         }
     }
 
@@ -533,13 +551,13 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
         var marks = new List<(int X, int Y, int CallNodeIndex)>();
 
-        if (key.SelectedCallNodeIndex is { } selected)
+        if (key.Scope is { } scope)
         {
             foreach (var lane in structure.Lanes)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                AddMarks(lane, structure, view, key, columns, stamps, marks, selected);
+                AddMarks(lane, structure, view, key, columns, stamps, marks, scope);
             }
         }
 
@@ -560,7 +578,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
                                  int columns,
                                  bool[] stamps,
                                  List<(int X, int Y, int CallNodeIndex)> marks,
-                                 int? writer)
+                                 bool[]? scope)
     {
         if (view.GetRows(structure, lane.Run, lane.Address, lane.Length) is not { } rows)
         {
@@ -597,7 +615,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
             var next = GetLowerBound(structure, lane, start + (column + 1) * size / scale, index + 1);
 
-            if (column >= 0 && GetMarkWriter(writes, lane, index, next, writer) is { } callNodeIndex && IsFirstAt(stamps, row + column))
+            if (column >= 0 && GetMarkWriter(writes, lane, index, next, scope) is { } callNodeIndex && IsFirstAt(stamps, row + column))
             {
                 marks.Add((column * size, y, callNodeIndex));
             }
@@ -606,22 +624,47 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
         }
     }
 
-    private static int? GetMarkWriter(TraceMemoryWrites writes, Lane lane, int from, int to, int? writer)
+    private static int? GetMarkWriter(TraceMemoryWrites writes, Lane lane, int from, int to, bool[]? scope)
     {
-        if (writer is null)
+        if (scope is null)
         {
             return writes.GetCallNodeIndex(lane.Writes[from]);
         }
 
         for (var index = from; index < to; index++)
         {
-            if (writes.GetCallNodeIndex(lane.Writes[index]) == writer)
+            var callNodeIndex = writes.GetCallNodeIndex(lane.Writes[index]);
+
+            if (IsInScope(scope, callNodeIndex))
             {
-                return writer;
+                return callNodeIndex;
             }
         }
 
         return null;
+    }
+
+    private static bool IsInScope(bool[] scope, int callNodeIndex)
+        => callNodeIndex >= 0 && callNodeIndex < scope.Length && scope[callNodeIndex];
+
+    private static void AddPoint(Dictionary<SKColor, List<SKPoint>> pointsByColour, SKColor colour, SKPoint point)
+    {
+        if (!pointsByColour.TryGetValue(colour, out var points))
+        {
+            points = [];
+
+            pointsByColour[colour] = points;
+        }
+
+        points.Add(point);
+    }
+
+    private static void ClearPoints(Dictionary<SKColor, List<SKPoint>> pointsByColour)
+    {
+        foreach (var points in pointsByColour.Values)
+        {
+            points.Clear();
+        }
     }
 
     private static bool IsFirstAt(bool[] stamps, int cell)
@@ -692,7 +735,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
         return GetLowerBound(structure, lane, Math.BitIncrement(to), first) - first;
     }
 
-    private static bool HasWriteBetween(Structure structure, Lane lane, double from, double to, int? writer)
+    private static bool HasWriteBetween(Structure structure, Lane lane, double from, double to, bool[]? scope)
     {
         var writes = structure.Blocks[lane.Block].Writes;
 
@@ -700,7 +743,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
              index < lane.Writes.Length && GetValue(structure, lane, index) <= to;
              index++)
         {
-            if (writer is null || writes.GetCallNodeIndex(lane.Writes[index]) == writer)
+            if (scope is null || IsInScope(scope, writes.GetCallNodeIndex(lane.Writes[index])))
             {
                 return true;
             }
@@ -899,7 +942,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
         {
             foreach (var lane in structure.RunLanes[run])
             {
-                if (HasWriteBetween(structure, structure.Lanes[lane], start - margin, end + margin, key.SelectedCallNodeIndex))
+                if (HasWriteBetween(structure, structure.Lanes[lane], start - margin, end + margin, key.Scope))
                 {
                     active.Add(run);
 
@@ -1121,7 +1164,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
                                             double Start,
                                             double End,
                                             double Scale,
-                                            int? SelectedCallNodeIndex);
+                                            bool[]? Scope);
 
     private sealed record Frame(FrameKey Key, Structure Structure, View View, SKPicture Picture);
 

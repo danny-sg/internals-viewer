@@ -40,6 +40,10 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
     private const string ScaleGroup = "TraceTimelineScale";
 
+    private const int MemoryRefreshMilliseconds = 50;
+
+    private const int StackRefreshMilliseconds = 100;
+
     private ToggleButton? _searchToggle;
 
     private ToggleButton? _memoryToggle;
@@ -104,6 +108,12 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
     private PlayheadMemoryViewModel? Memory { get; set; }
 
+    private UiThrottle MemoryThrottle { get; }
+        = new(Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread(), TimeSpan.FromMilliseconds(MemoryRefreshMilliseconds));
+
+    private UiThrottle StackThrottle { get; }
+        = new(Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread(), TimeSpan.FromMilliseconds(StackRefreshMilliseconds));
+
     public FrameworkElement CreateCommands()
     {
         _memoryToggle = TabCommands.Toggle(TabCommands.Label("Memory"),
@@ -154,6 +164,10 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
     public void Dispose()
     {
         Bindings.StopTracking();
+
+        MemoryThrottle.Dispose();
+
+        StackThrottle.Dispose();
 
         TraceTimeline.CallSelected -= OnCallSelected;
 
@@ -346,13 +360,29 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         if (isVisible)
         {
-            ViewModel?.PlayheadStack.SetStack(TraceTimeline.GetCallStack(), TraceTimeline.GetSelectedCall());
+            StackThrottle.Run(RefreshStack);
         }
 
         OnPlayheadChanged();
     }
 
-    private void OnPlayheadChanged() => Memory?.SetPlayhead(TraceTimeline.GetPlayheadPosition());
+    private void RefreshStack()
+    {
+        if (Settings.TraceTimelineShowCallStack)
+        {
+            ViewModel?.PlayheadStack.SetStack(TraceTimeline.GetCallStack(), TraceTimeline.GetSelectedCall());
+        }
+    }
+
+    private void OnPlayheadChanged() => MemoryThrottle.Run(RefreshMemory);
+
+    private void RefreshMemory()
+    {
+        if (TraceTimeline.GetPlayheadPosition() is { } position)
+        {
+            Memory?.SetPlayhead(position);
+        }
+    }
 
     private void OnMemoryPlayheadRequested(object? sender, TracePoint point) => TraceTimeline.MovePlayheadTo(point);
 

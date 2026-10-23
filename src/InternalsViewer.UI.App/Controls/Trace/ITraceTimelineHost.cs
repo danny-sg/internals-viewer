@@ -23,7 +23,7 @@ internal interface ITraceTimelineHost
 
     bool ShowCallStack { get; }
 
-    int? SelectedCallNodeIndex { get; }
+    bool[]? MemoryScope { get; }
 
     TraceTimelinePaints Paints { get; }
 

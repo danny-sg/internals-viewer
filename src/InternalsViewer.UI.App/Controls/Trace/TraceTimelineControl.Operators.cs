@@ -468,6 +468,8 @@ public sealed partial class TraceTimelineControl
 
         control._memory.SetBlocks(e.NewValue as IReadOnlyList<TraceMemoryBlock>);
 
+        control.SetMemoryWriters(null);
+
         control.Relayout();
     }
 

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.UI.App.Helpers;
@@ -46,6 +47,8 @@ public sealed partial class PlayheadMemoryViewModel(MemoryHistoryViewModel histo
     private TracePosition? Playhead { get; set; }
 
     private int WriteCount { get; set; } = -1;
+
+    private List<MemoryChangeRun> Runs { get; set; } = [];
 
     public void Open(int block, ulong address, TracePosition position)
     {
@@ -144,16 +147,37 @@ public sealed partial class PlayheadMemoryViewModel(MemoryHistoryViewModel histo
 
         WriteCount = count;
 
-        var image = isLive ? store.GetImage(Block, count - 1) : null;
+        if (!isLive)
+        {
+            Data = null;
 
-        Data = image?.Data;
+            Markers = null;
 
-        Markers = image is null ? null : new ObservableCollection<Marker>(GetChangeMarkers(count, image.Data.Length));
+            Runs = [];
+
+            return;
+        }
+
+        var image = store.GetImage(Block, count - 1);
+
+        if (Data is not { } shown || !image.Data.AsSpan().SequenceEqual(shown))
+        {
+            Data = image.Data;
+        }
+
+        var runs = MemoryChangeRuns.GetRuns(store.GetWrites(Block), count, image.Data.Length);
+
+        if (Markers is null || !runs.SequenceEqual(Runs))
+        {
+            Runs = runs;
+
+            Markers = new ObservableCollection<Marker>(GetChangeMarkers(runs));
+        }
     }
 
-    private IEnumerable<Marker> GetChangeMarkers(int count, int size)
+    private IEnumerable<Marker> GetChangeMarkers(List<MemoryChangeRun> runs)
     {
-        foreach (var run in MemoryChangeRuns.GetRuns(History.Store.GetWrites(Block), count, size))
+        foreach (var run in runs)
         {
             var isPending = run.State == MemoryChangeState.Pending;
 
