@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.CallStack;
@@ -34,9 +35,6 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     [ObservableProperty]
     private string _objectName = string.Empty;
-
-    [ObservableProperty]
-    private string _objectDetail = string.Empty;
 
     [ObservableProperty]
     private string _emptyText = string.Empty;
@@ -83,10 +81,6 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
             return;
         }
 
-        var opened = History.Store.Blocks[block];
-
-        var offset = address - opened.Address;
-
         Block = block;
 
         OpenedAt = position;
@@ -97,9 +91,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         Watches = History.GetWatches(block);
 
-        ObjectDetail = offset == 0
-            ? $"0x{opened.Address:X16}, {opened.Size} Bytes"
-            : $"0x{opened.Address:X16} + 0x{offset:X}, {opened.Size} Bytes";
+        Watches.CollectionChanged += OnWatchesChanged;
 
         IsOpen = true;
 
@@ -112,6 +104,24 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         Writes.Load();
 
         WatchList.Attach(Watches);
+
+        ShowAddress(address);
+    }
+
+    public void ShowAddress(ulong address)
+    {
+        if (!IsOpen)
+        {
+            return;
+        }
+
+        var block = History.Store.Blocks[Block];
+
+        var offset = address - block.Address;
+
+        SelectedChangeSpan = offset > 0 && offset < (ulong)block.Size
+            ? new LogRecordAnnotation { Offset = (int)offset, Length = 1, Description = $"0x{address:X16}" }
+            : null;
     }
 
     public void Close()
@@ -127,6 +137,11 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         Data = null;
 
         Markers = null;
+
+        if (Watches is { } watches)
+        {
+            watches.CollectionChanged -= OnWatchesChanged;
+        }
 
         Watches = null;
 
@@ -146,6 +161,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
             RequestPlayhead(History.Store.GetPoint(History.Store.Blocks[Block].FirstWrite + index));
         }
     }
+
+    public void StepWrite(bool isForward) => Writes.Step(isForward, Playhead ?? OpenedAt);
 
     public void SelectWrite(int index)
     {
@@ -192,12 +209,16 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         SelectedTab = HistoryTab;
     }
 
+    public void ClearWriteSelection() => SelectedChangeSpan = null;
+
     public void ShowHistoryAt(int offset)
     {
         if (!IsOpen || offset < 0 || offset >= History.Store.Blocks[Block].Size)
         {
             return;
         }
+
+        SelectedChangeSpan = null;
 
         string? function = null;
 
@@ -255,6 +276,16 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
     public Windows.UI.Color GetCategoryColour(int callNodeIndex)
         => ColourHelpers.FromHex(History.GetWriter(callNodeIndex)?.CategoryColour) ?? Colors.Gray;
 
+    partial void OnSelectedTabChanged(int value)
+    {
+        if (value != HistoryTab)
+        {
+            SelectedChangeSpan = null;
+        }
+    }
+
+    private void OnWatchesChanged(object? sender, NotifyCollectionChangedEventArgs e) => Writes.Load();
+
     public void GoToChange(int offset, bool isForward)
     {
         if (!IsOpen)
@@ -272,10 +303,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
             ? MemoryChangeNavigation.GetNextChange(writes, offset, position)
             : MemoryChangeNavigation.GetPreviousChange(writes, offset, position);
 
-        if (index >= 0)
-        {
-            PlayheadRequested?.Invoke(this, store.GetPoint(store.Blocks[Block].FirstWrite + index));
-        }
+        GoToWrite(index);
     }
 
     public void SetPlayhead(TracePosition? position)

@@ -1,9 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Text;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
+using InternalsViewer.Internals.Converters.Decoder;
+using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.Results;
+using InternalsViewer.Query.Results.Enums;
 using InternalsViewer.UI.App.Controls.HexView;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
@@ -16,17 +20,21 @@ public sealed partial class MemoryWritesViewModel(PlayheadMemoryViewModel owner)
 
     public const int FunctionColumn = 1;
 
+    public const int AddressColumn = 2;
+
+    public const int LengthColumn = 3;
+
+    public const int ValueColumn = 4;
+
     private const int PositionWidth = 110;
 
     private const int FunctionWidth = 260;
 
-    private const int AddressWidth = 170;
+    private const int AddressWidth = 200;
 
     private const int LengthWidth = 70;
 
     private const int ValueWidth = 220;
-
-    private const int PinWidth = 50;
 
     private const int ValueBytesShown = 16;
 
@@ -46,13 +54,71 @@ public sealed partial class MemoryWritesViewModel(PlayheadMemoryViewModel owner)
 
     private PlayheadMemoryViewModel Owner { get; } = owner;
 
+    private int SortColumn { get; set; } = PositionColumn;
+
+    private ResultSortDirection SortDirection { get; set; } = ResultSortDirection.Ascending;
+
+    private List<MemoryHistoryWrite> VisibleWrites { get; set; } = [];
+
+    private List<int> VisibleIndexes { get; set; } = [];
+
     public void Load() => Rebuild();
+
+    public void Step(bool isForward, TracePosition position)
+    {
+        if (!Owner.IsOpen || Table is not { } table)
+        {
+            return;
+        }
+
+        var step = isForward
+            ? MemoryChangeNavigation.GetNextWrite(VisibleWrites, position)
+            : MemoryChangeNavigation.GetPreviousWrite(VisibleWrites, position);
+
+        if (step < 0)
+        {
+            return;
+        }
+
+        var index = VisibleIndexes[step];
+
+        SelectedRow = table.Rows.FirstOrDefault(r => r.Id == index);
+    }
+
+    public void Sort(int ordinal, ResultSortDirection? direction)
+    {
+        SortColumn = direction is null ? PositionColumn : ordinal;
+
+        SortDirection = direction ?? ResultSortDirection.Ascending;
+
+        Rebuild();
+    }
+
+    public void FilterToFunction(int index)
+    {
+        if (GetWrite(index) is { } write)
+        {
+            FunctionFilter = Owner.History.GetWriterLabel(write.CallNodeIndex);
+        }
+    }
+
+    public void FilterToAddress(int index)
+    {
+        if (GetWrite(index) is { } write)
+        {
+            AddressFilter = $"{HexPrefix}{Owner.History.Store.Blocks[Owner.Block].Address + (ulong)write.Offset:X16}";
+        }
+    }
 
     public void Clear()
     {
         SelectedRow = null;
 
         Table = null;
+
+        VisibleWrites = [];
+
+        VisibleIndexes = [];
     }
 
     public void ClearFilters()
@@ -79,22 +145,31 @@ public sealed partial class MemoryWritesViewModel(PlayheadMemoryViewModel owner)
         {
             Owner.SelectWrite((int)index);
         }
+        else
+        {
+            Owner.ClearWriteSelection();
+        }
     }
 
     private void Rebuild()
     {
+        SelectedRow = null;
+
         var columns = new List<ResultColumn>
         {
-            new(0, "Position", typeof(string), false) { Width = PositionWidth },
-            new(1, "Function", typeof(string), false) { Width = FunctionWidth },
-            new(2, "Address", typeof(string), false) { Width = AddressWidth },
-            new(3, "Length", typeof(int), false) { Width = LengthWidth, Alignment = ResultAlignment.Right },
-            new(4, "Value", typeof(string), false) { Width = ValueWidth },
-            new(5, string.Empty, typeof(string), false) { Width = PinWidth, Alignment = ResultAlignment.Center }
+            SortableColumn(PositionColumn, "Position", PositionWidth),
+            new(FunctionColumn, "Function", typeof(string), false) { Width = FunctionWidth },
+            SortableColumn(AddressColumn, "Address", AddressWidth),
+            new(LengthColumn, "Length", typeof(int), false) { Width = LengthWidth, Alignment = ResultAlignment.Right },
+            SortableColumn(ValueColumn, "Value", ValueWidth)
         };
 
         if (!Owner.IsOpen)
         {
+            VisibleWrites = [];
+
+            VisibleIndexes = [];
+
             Table = new QueryResultSet { Columns = columns, Rows = [] };
 
             return;
@@ -110,7 +185,7 @@ public sealed partial class MemoryWritesViewModel(PlayheadMemoryViewModel owner)
 
         var address = ParseAddress(AddressFilter);
 
-        var rows = new List<ResultRow<long>>();
+        var entries = new List<(int Index, ulong Start, string Value, ResultRow<long> Row)>();
 
         for (var index = 0; index < writes.Count; index++)
         {
@@ -132,20 +207,60 @@ public sealed partial class MemoryWritesViewModel(PlayheadMemoryViewModel owner)
 
             var writeIndex = index;
 
-            rows.Add(new ResultRow<long>([
+            var value = GetValueText(write, store.GetBytes(write));
+
+            var row = new ResultRow<long>([
                 new ActionLinks([new ActionLink(TracePositionText.GetHexText(write.Position), () => Owner.GoToWrite(writeIndex))]),
                 new SwatchText(label, Owner.GetCategoryColour(write.CallNodeIndex).ToColor()),
-                $"{HexPrefix}{start:X16}",
+                new ActionText($"{HexPrefix}{start:X16}",
+                               [new ActionLink("Pin", () => Owner.PinRange(write.Offset, write.Length)) { Glyph = HexTipPin.GetGlyph(false) }]),
                 (int)write.Length,
-                GetValueText(store.GetBytes(write)),
-                new ActionLinks([new ActionLink("Pin", () => Owner.PinRange(write.Offset, write.Length)) { Glyph = HexTipPin.GetGlyph(false) }])
+                value
             ])
             {
                 Id = index
-            });
+            };
+
+            entries.Add((index, start, value, row));
         }
 
-        Table = new QueryResultSet { Columns = columns, Rows = rows };
+        VisibleWrites = [.. entries.Select(e => writes[e.Index])];
+
+        VisibleIndexes = [.. entries.Select(e => e.Index)];
+
+        IEnumerable<(int Index, ulong Start, string Value, ResultRow<long> Row)> ordered = SortColumn switch
+        {
+            AddressColumn => entries.OrderBy(e => e.Start).ThenBy(e => e.Index),
+            ValueColumn => entries.OrderBy(e => e.Value, StringComparer.Ordinal).ThenBy(e => e.Index),
+            _ => entries.OrderBy(e => e.Index)
+        };
+
+        if (SortDirection == ResultSortDirection.Descending)
+        {
+            ordered = ordered.Reverse();
+        }
+
+        Table = new QueryResultSet { Columns = columns, Rows = [.. ordered.Select(e => e.Row)] };
+    }
+
+    private ResultColumn SortableColumn(int ordinal, string name, int width)
+        => new(ordinal, name, typeof(string), false)
+        {
+            Width = width,
+            IsSortable = true,
+            SortDirection = SortColumn == ordinal ? SortDirection : null
+        };
+
+    private MemoryHistoryWrite? GetWrite(int index)
+    {
+        if (!Owner.IsOpen)
+        {
+            return null;
+        }
+
+        var writes = Owner.History.Store.GetWrites(Owner.Block);
+
+        return index >= 0 && index < writes.Count ? writes[index] : null;
     }
 
     private static ulong? ParseAddress(string text)
@@ -160,25 +275,27 @@ public sealed partial class MemoryWritesViewModel(PlayheadMemoryViewModel owner)
         return ulong.TryParse(trimmed, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var address) ? address : null;
     }
 
-    private static string GetValueText(ReadOnlySpan<byte> bytes)
+    private string GetValueText(MemoryHistoryWrite write, ReadOnlySpan<byte> bytes)
     {
-        if (bytes.Length > ValueBytesShown)
+        if (GetTypedWatch(write) is { DataType: { } type }
+            && DataDecoder.Decode(bytes.ToArray()).Find(r => r.DataType == type) is { } decoded)
         {
-            return $"{bytes.Length:N0} Bytes";
+            return decoded.Value;
         }
 
-        var text = new StringBuilder(bytes.Length * 3);
+        return bytes.Length > ValueBytesShown ? $"{bytes.Length:N0} Bytes" : $"{HexPrefix}{Convert.ToHexString(bytes)}";
+    }
 
-        foreach (var value in bytes)
+    private HexWatch? GetTypedWatch(MemoryHistoryWrite write)
+    {
+        foreach (var watch in Owner.Watches ?? [])
         {
-            if (text.Length > 0)
+            if (watch.DataType is not null && watch.Offset == write.Offset && watch.Length == write.Length)
             {
-                text.Append(' ');
+                return watch;
             }
-
-            text.Append(value.ToString("X2"));
         }
 
-        return text.ToString();
+        return null;
     }
 }

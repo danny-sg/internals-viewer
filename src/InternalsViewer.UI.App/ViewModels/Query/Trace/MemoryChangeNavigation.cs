@@ -33,6 +33,32 @@ public static class MemoryChangeNavigation
         return -1;
     }
 
+    public static int GetNextWrite(IReadOnlyList<MemoryHistoryWrite> writes, TracePosition position)
+    {
+        for (var index = 0; index < writes.Count; index++)
+        {
+            if (writes[index].Position > position)
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    public static int GetPreviousWrite(IReadOnlyList<MemoryHistoryWrite> writes, TracePosition position)
+    {
+        for (var index = writes.Count - 1; index >= 0; index--)
+        {
+            if (writes[index].Position < position)
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
     private static bool IsChange(MemoryHistoryWrite write, int offset)
         => write.Type == MemoryHistoryChangeType.Changed && offset >= write.Offset && offset < write.Offset + write.Length;
 }

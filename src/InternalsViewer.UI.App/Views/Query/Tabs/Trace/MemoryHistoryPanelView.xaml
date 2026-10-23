@@ -11,42 +11,44 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <CommandBar Grid.Row="0"
-                    IsOpen="False"
-                    DefaultLabelPosition="Right"
-                    OverflowButtonVisibility="Collapsed"
-                    HorizontalAlignment="Stretch"
-                    VerticalContentAlignment="Center"
-                    MinHeight="0"
-                    Padding="8,0,0,0"
-                    BorderThickness="0,0,0,1"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    Background="Transparent">
-            <AppBarElementContainer VerticalContentAlignment="Center">
-                <TextBox Width="180"
-                         Margin="0,4,0,4"
-                         PlaceholderText="Function"
-                         Style="{StaticResource FilterTextBoxStyle}"
-                         Text="{x:Bind ViewModel.Writes.FunctionFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-            </AppBarElementContainer>
-            <AppBarElementContainer VerticalContentAlignment="Center">
-                <TextBox Width="170"
-                         Margin="6,4,0,4"
-                         PlaceholderText="Address"
-                         FontFamily="{StaticResource MonospaceFontFamily}"
-                         Style="{StaticResource FilterTextBoxStyle}"
-                         Text="{x:Bind ViewModel.Writes.AddressFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-            </AppBarElementContainer>
-            <AppBarButton Label="Clear"
-                          Margin="4,0,0,0"
-                          Click="OnClearClick">
-            </AppBarButton>
-        </CommandBar>
+        <Grid Grid.Row="0"
+              Padding="8,0,4,0"
+              ColumnSpacing="6"
+              BorderThickness="0,0,0,1"
+              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="170"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBox Grid.Column="0"
+                     Margin="0,2,0,2"
+                     VerticalAlignment="Center"
+                     PlaceholderText="Function"
+                     Style="{StaticResource FilterTextBoxStyle}"
+                     Text="{x:Bind ViewModel.Writes.FunctionFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+            <TextBox Grid.Column="1"
+                     Margin="0,2,0,2"
+                     VerticalAlignment="Center"
+                     PlaceholderText="Address"
+                     FontFamily="{StaticResource MonospaceFontFamily}"
+                     Style="{StaticResource FilterTextBoxStyle}"
+                     Text="{x:Bind ViewModel.Writes.AddressFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+            <Button Grid.Column="2"
+                    Content="Clear"
+                    Style="{StaticResource TabCommandButtonStyle}"
+                    Click="OnClearClick"/>
+        </Grid>
 
         <results:ResultsGridControl Grid.Row="1"
                                     ResultSet="{x:Bind ViewModel.Writes.Table, Mode=OneWay}"
                                     SelectedRow="{x:Bind ViewModel.Writes.SelectedRow, Mode=TwoWay}"
                                     CellHovered="OnCellHovered"
+                                    CellMenuOpening="OnCellMenuOpening"
+                                    SortRequested="OnSortRequested"
                                     RowName="write"/>
     </Grid>
 </UserControl>

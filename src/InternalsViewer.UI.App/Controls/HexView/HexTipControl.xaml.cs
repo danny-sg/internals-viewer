@@ -114,5 +114,7 @@ public sealed partial class HexTipControl : UserControl
 
     private Thickness GetPadding(bool isValueTip) => isValueTip ? new Thickness(2, 0, 0, 0) : new Thickness(4);
 
+    private Thickness GetLabelPadding(bool isValueTip) => isValueTip ? new Thickness(2, 3, 2, 0) : new Thickness(2, 1, 2, 0);
+
     private double GetTextSize(bool isValueTip) => isValueTip ? 12 : 14;
 }

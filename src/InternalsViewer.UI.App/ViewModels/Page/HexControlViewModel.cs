@@ -114,6 +114,8 @@ public sealed class HexControlViewModel
             SelectionTip = null;
         }
 
+        RemoveWatches(tip.Start, tip.End);
+
         var watch = new HexWatch(tip.Start, tip.End - tip.Start + 1, tip.DataType) { Label = tip.CustomLabel };
 
         tip.Watch = watch;
@@ -142,10 +144,23 @@ public sealed class HexControlViewModel
             return;
         }
 
+        RemoveWatches(tip.Start, tip.End);
+
         Watches.Add(new HexWatch(tip.Start, tip.End - tip.Start + 1, value.DataType));
     }
 
     public void ClearPins() => Watches.Clear();
+
+    private void RemoveWatches(int start, int end)
+    {
+        for (var index = Watches.Count - 1; index >= 0; index--)
+        {
+            if (Watches[index].Offset == start && Watches[index].End == end)
+            {
+                Watches.RemoveAt(index);
+            }
+        }
+    }
 
     private void OnWatchesChanged(object? sender, NotifyCollectionChangedEventArgs e) => SyncWatches();
 

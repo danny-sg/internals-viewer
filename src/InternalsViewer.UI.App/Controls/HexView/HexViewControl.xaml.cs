@@ -53,6 +53,8 @@ public sealed partial class HexViewControl
         // Border positions depend on the rendered text layout, so a resize/re-layout invalidates them
         HexRichTextBlock.SizeChanged += (_, _) =>
         {
+            ScrollToPendingOffset();
+
             DrawChangeSpans();
 
             DrawSelectionMask();

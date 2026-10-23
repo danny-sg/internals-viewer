@@ -11,7 +11,7 @@ namespace InternalsViewer.Internals.Converters;
 /// <summary>
 /// Utility methods for converting from raw data to SQL Server/.NET data types
 /// </summary>
-public static class DataConverter
+public static partial class DataConverter
 {
     /// <summary>
     /// Converts a binary GUID to string
@@ -150,7 +150,7 @@ public static class DataConverter
                 // String types
                 case SqlDbType.Char:
                 case SqlDbType.VarChar:
-                    return Replace(Encoding.UTF8.GetString(data), @"[^\t -~]", string.Empty);
+                    return VarcharRegEx().Replace(Encoding.UTF8.GetString(data), string.Empty);
 
                 case SqlDbType.NChar:
                 case SqlDbType.NVarChar:
@@ -411,4 +411,7 @@ public static class DataConverter
 
         return stringBuilder.ToString();
     }
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"[^\t -~]")]
+    private static partial System.Text.RegularExpressions.Regex VarcharRegEx();
 }

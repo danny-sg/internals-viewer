@@ -131,6 +131,10 @@ public sealed partial class TraceTimelineControl
         if (x >= 0 && x <= width)
         {
             canvas.DrawLine(x, ContentTop, x, height - BandHeight, _paints.Mark);
+
+            HideMinimap();
+
+            return;
         }
 
         ShowMinimap(value, -1, -1, width, height);

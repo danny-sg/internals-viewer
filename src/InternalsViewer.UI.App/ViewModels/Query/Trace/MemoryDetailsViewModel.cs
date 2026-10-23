@@ -63,9 +63,7 @@ public sealed partial class MemoryDetailsViewModel : ObservableObject
 
         Writers = [.. store.GetWrites(owner.Block)
                           .GroupBy(w => w.CallNodeIndex)
-                          .Select(g => new MemoryWriterSummary(owner.History.GetWriterLabel(g.Key), owner.GetCategoryColour(g.Key), g.Count()))
-                          .OrderByDescending(w => w.Count)
-                          .ThenBy(w => w.Label)];
+                          .Select(g => new MemoryWriterSummary(owner.History.GetWriterLabel(g.Key), owner.GetCategoryColour(g.Key), g.Count()))];
     }
 
     public void Clear()

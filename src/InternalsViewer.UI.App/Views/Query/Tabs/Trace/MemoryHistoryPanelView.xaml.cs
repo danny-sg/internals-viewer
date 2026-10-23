@@ -1,5 +1,5 @@
 using InternalsViewer.UI.App.Controls.Results;
-using InternalsViewer.UI.App.Models;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels.Query.Trace;
 using Microsoft.UI.Xaml.Controls;
 
@@ -18,22 +18,27 @@ public sealed partial class MemoryHistoryPanelView : UserControl
 
     private void OnClearClick(object sender, RoutedEventArgs e) => ViewModel?.Writes.ClearFilters();
 
-    private void OnCellHovered(object? sender, ResultCellHoverEventArgs e)
+    private void OnSortRequested(object? sender, ResultSortEventArgs e) => ViewModel?.Writes.Sort(e.Ordinal, e.Direction);
+
+    private void OnCellMenuOpening(object? sender, ResultCellMenuEventArgs e)
     {
         if (ViewModel is not { } viewModel)
         {
             return;
         }
 
-        switch (e.Ordinal)
-        {
-            case MemoryWritesViewModel.PositionColumn:
-                viewModel.MarkWrite(e.IsOver && e.Row.Id is { } index ? (int)index : null);
-                break;
+        var index = (int)e.Row.Id;
 
-            case MemoryWritesViewModel.FunctionColumn when e.Value is SwatchText function:
-                viewModel.HighlightWriter(e.IsOver ? function.Text : null);
-                break;
+        e.Menu.Items.Add(MenuItems.Create("Filter To Function", () => viewModel.Writes.FilterToFunction(index)));
+
+        e.Menu.Items.Add(MenuItems.Create("Filter To Address", () => viewModel.Writes.FilterToAddress(index)));
+    }
+
+    private void OnCellHovered(object? sender, ResultCellHoverEventArgs e)
+    {
+        if (ViewModel is { } viewModel && e.Ordinal == MemoryWritesViewModel.PositionColumn)
+        {
+            viewModel.MarkWrite(e.IsOver ? (int)e.Row.Id : null);
         }
     }
 }

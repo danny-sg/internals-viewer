@@ -7,11 +7,9 @@ using InternalsViewer.UI.App.Controls;
 using InternalsViewer.UI.App.Controls.CallStack;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Controls.HexView;
-using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.Views.Query.Tabs.Trace;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace;
 
@@ -92,6 +90,8 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, IDispo
         if (MemoryDocuments.FirstOrDefault(d => d.Key == key) is { } existing)
         {
             Dock.Activate(existing);
+
+            (existing.Content as PlayheadMemoryViewModel)?.ShowAddress(address);
 
             return;
         }
@@ -227,15 +227,13 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, IDispo
                                                 (_, _) => PlayheadStack.Step(forward: true)));
 
     private static FrameworkElement CreateMemoryCommands(PlayheadMemoryViewModel memory)
-    {
-        var detail = TabCommands.Label(string.Empty);
-
-        detail.Foreground = AppResources.Get<Brush>("TextFillColorSecondaryBrush");
-
-        HexText.Apply(detail, memory.ObjectDetail);
-
-        return TabCommands.Panel(0, detail);
-    }
+        => TabCommands.Panel(CommandSpacing,
+                             TabCommands.Button(TabCommands.Glyph(StepBackGlyph),
+                                                "Previous Update",
+                                                (_, _) => memory.StepWrite(isForward: false)),
+                             TabCommands.Button(TabCommands.Glyph(StepForwardGlyph),
+                                                "Next Update",
+                                                (_, _) => memory.StepWrite(isForward: true)));
 
     private void OnDockLayoutChanged(object? sender, EventArgs e) => IsCallStackVisible = Dock.Contains(CallStackDocument);
 

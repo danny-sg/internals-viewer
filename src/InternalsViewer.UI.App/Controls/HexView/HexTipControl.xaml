@@ -42,7 +42,7 @@
                 BorderBrush="{ThemeResource TeachingTipBorderBrush}"
                 BorderThickness="1">
             <StackPanel Padding="{x:Bind GetPadding(Tip.IsValueTip), Mode=OneWay}">
-                <Grid ColumnSpacing="4">
+                <Grid ColumnSpacing="4" Height="22">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
@@ -52,8 +52,11 @@
                     </Grid.ColumnDefinitions>
                     <TextBox x:Name="LabelTextBox"
                              Grid.Column="0"
+                             Height="22"
+                             BorderThickness="0"
                              VerticalAlignment="Center"
                              Style="{StaticResource TipLabelTextBoxStyle}"
+                             Padding="{x:Bind GetLabelPadding(Tip.IsValueTip), Mode=OneWay}"
                              FontSize="{x:Bind GetTextSize(Tip.IsValueTip), Mode=OneWay}"
                              Text="{x:Bind Tip.Label, Mode=OneWay}"
                              AutomationProperties.Name="Label"

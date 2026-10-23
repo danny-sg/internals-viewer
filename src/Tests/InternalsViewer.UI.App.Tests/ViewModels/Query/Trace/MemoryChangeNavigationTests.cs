@@ -75,6 +75,28 @@ public class MemoryChangeNavigationTests
         Assert.Equal(0, MemoryChangeNavigation.GetPreviousChange(Writes, 0, At(35)));
     }
 
+    [Fact]
+    public void Next_Write_Is_The_First_Write_To_The_Block_After_The_Playhead()
+    {
+        Assert.Equal(2, MemoryChangeNavigation.GetNextWrite(Writes, At(25)));
+
+        Assert.Equal(-1, MemoryChangeNavigation.GetNextWrite(Writes, At(50)));
+    }
+
+    [Fact]
+    public void Previous_Write_Is_The_Last_Write_To_The_Block_Before_The_Playhead()
+    {
+        Assert.Equal(2, MemoryChangeNavigation.GetPreviousWrite(Writes, At(35)));
+
+        Assert.Equal(-1, MemoryChangeNavigation.GetPreviousWrite(Writes, At(10)));
+    }
+
+    [Fact]
+    public void Stepping_Writes_Includes_Initialising_Writes()
+    {
+        Assert.Equal(2, MemoryChangeNavigation.GetNextWrite(Writes, Writes[1].Position));
+    }
+
     private static TracePosition At(ulong sequence) => new(sequence, 0);
 
     private static MemoryHistoryWrite Write(ulong sequence,
