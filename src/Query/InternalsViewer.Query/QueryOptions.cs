@@ -9,4 +9,6 @@ public sealed record QueryOptions
     public bool IncludeResults { get; set; } = true;
 
     public bool Trace { get; set; } = true;
+
+    public bool RecordMemoryHistory { get; set; } = true;
 }

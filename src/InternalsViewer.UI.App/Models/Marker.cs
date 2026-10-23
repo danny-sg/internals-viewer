@@ -45,6 +45,8 @@ public class Marker: DependencyObject
 
     public Color AlternateBackColour { get; set; }
 
+    public Color? MapColour { get; set; }
+
     public Color ForeColour { get; set; }
 
     public string Value { get; set; } = string.Empty;

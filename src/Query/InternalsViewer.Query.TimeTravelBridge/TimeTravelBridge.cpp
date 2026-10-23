@@ -121,12 +121,12 @@ namespace
     struct NodeKey
     {
         int32_t  Parent;
-        uint64_t Address;
-        uint64_t Instance;
+        uint64_t FunctionAddress;
+        uint64_t InstanceAddress;
 
         bool operator==(NodeKey const& other) const noexcept
         {
-            return Parent == other.Parent && Address == other.Address && Instance == other.Instance;
+            return Parent == other.Parent && FunctionAddress == other.FunctionAddress && InstanceAddress == other.InstanceAddress;
         }
     };
 
@@ -134,7 +134,7 @@ namespace
     {
         size_t operator()(NodeKey const& key) const noexcept
         {
-            auto const mixed = (key.Address * 0x9E3779B97F4A7C15ull) ^ (key.Instance * 0xC2B2AE3D27D4EB4Full);
+            auto const mixed = (key.FunctionAddress * 0x9E3779B97F4A7C15ull) ^ (key.InstanceAddress * 0xC2B2AE3D27D4EB4Full);
 
             return std::hash<uint64_t>{}(mixed ^ static_cast<uint32_t>(key.Parent));
         }
@@ -142,12 +142,12 @@ namespace
 
     struct FunctionKey
     {
-        uint64_t Address;
-        uint64_t Instance;
+        uint64_t FunctionAddress;
+        uint64_t InstanceAddress;
 
         bool operator==(FunctionKey const& other) const noexcept
         {
-            return Address == other.Address && Instance == other.Instance;
+            return FunctionAddress == other.FunctionAddress && InstanceAddress == other.InstanceAddress;
         }
     };
 
@@ -155,14 +155,14 @@ namespace
     {
         size_t operator()(FunctionKey const& key) const noexcept
         {
-            return std::hash<uint64_t>{}((key.Address * 0x9E3779B97F4A7C15ull) ^ (key.Instance * 0xC2B2AE3D27D4EB4Full));
+            return std::hash<uint64_t>{}((key.FunctionAddress * 0x9E3779B97F4A7C15ull) ^ (key.InstanceAddress * 0xC2B2AE3D27D4EB4Full));
         }
     };
 
     struct LoggedFunction
     {
-        uint64_t              Address = 0;
-        uint64_t              Instance = 0;
+        uint64_t              FunctionAddress = 0;
+        uint64_t              InstanceAddress = 0;
         std::vector<uint64_t> Values;
         int64_t               InFlight = 0;
         uint32_t              Chunk = 0;
@@ -348,9 +348,11 @@ namespace
                     continue;
                 }
 
-                auto const instance = frame->Node >= 0 && static_cast<size_t>(frame->Node) < Nodes.size() ? Nodes[frame->Node].Instance : 0;
+                auto const instanceAddress = frame->Node >= 0 && static_cast<size_t>(frame->Node) < Nodes.size()
+                                                 ? Nodes[frame->Node].InstanceAddress
+                                                 : 0;
 
-                frames[index] = HookFrame{ frame->Id, frame->StackPointer, instance, frame->Node, 0 };
+                frames[index] = HookFrame{ frame->Id, frame->StackPointer, instanceAddress, frame->Node, 0 };
             }
 
             return index;
@@ -380,7 +382,7 @@ namespace
         {
             HookEvent hookEvent{};
 
-            hookEvent.Function = target;
+            hookEvent.FunctionAddress = target;
             hookEvent.Arguments[0] = registers.Rcx;
             hookEvent.Arguments[1] = registers.Rdx;
             hookEvent.Arguments[2] = registers.R8;
@@ -411,8 +413,8 @@ namespace
         {
             HookEvent hookEvent{};
 
-            hookEvent.Function = function.Address;
-            hookEvent.Instance = function.Instance;
+            hookEvent.FunctionAddress = function.FunctionAddress;
+            hookEvent.InstanceAddress = function.InstanceAddress;
             hookEvent.Id = id;
             hookEvent.Arguments[0] = registers.Rcx;
             hookEvent.Arguments[1] = registers.Rdx;
@@ -445,8 +447,8 @@ namespace
                 hookEvent.ReturnValue = context.Amd64Context.Rax;
             }
 
-            hookEvent.Function = frame.Function->Address;
-            hookEvent.Instance = frame.Function->Instance;
+            hookEvent.FunctionAddress = frame.Function->FunctionAddress;
+            hookEvent.InstanceAddress = frame.Function->InstanceAddress;
             hookEvent.Id = frame.Id;
             hookEvent.StackPointer = stackPointer;
             hookEvent.ReturnAddress = frame.ReturnAddress;
@@ -548,14 +550,14 @@ namespace
             WatchedStackCount++;
         }
 
-        int32_t Child(int32_t parent, uint64_t address, uint64_t instance)
+        int32_t Child(int32_t parent, uint64_t functionAddress, uint64_t instanceAddress)
         {
-            auto [entry, added] = Index.try_emplace(NodeKey{ parent, address, instance },
+            auto [entry, added] = Index.try_emplace(NodeKey{ parent, functionAddress, instanceAddress },
                                                     static_cast<int32_t>(Nodes.size()));
 
             if (added)
             {
-                Nodes.push_back(CallNode{ parent, 0, address, instance, 0 });
+                Nodes.push_back(CallNode{ parent, 0, functionAddress, instanceAddress, 0 });
             }
 
             return entry->second;
@@ -664,7 +666,7 @@ namespace
                        Position const&      position,
                        uint32_t             threadId,
                        uint64_t             target,
-                       uint64_t             instance,
+                       uint64_t             instanceAddress,
                        int32_t              node)
     {
         if (tree.LogCalls == nullptr)
@@ -672,10 +674,10 @@ namespace
             return { nullptr, -1, NoCall };
         }
 
-        auto& function = tree.Log[FunctionKey{ target, instance }];
+        auto& function = tree.Log[FunctionKey{ target, instanceAddress }];
 
-        function.Address = target;
-        function.Instance = instance;
+        function.FunctionAddress = target;
+        function.InstanceAddress = instanceAddress;
 
         auto const call = function.Values.size() / ValuesPerCall;
 
@@ -722,7 +724,7 @@ namespace
             }
         }
 
-        tree.LogCalls(function.Address, function.Instance, tree.Columns.data(), static_cast<int32_t>(calls));
+        tree.LogCalls(function.FunctionAddress, function.InstanceAddress, tree.Columns.data(), static_cast<int32_t>(calls));
 
         function.Values.clear();
         function.InFlight = 0;
@@ -778,8 +780,8 @@ namespace
         {
             if (tree.LogCallEnds != nullptr)
             {
-                tree.LogCallEnds(frame.Function->Address,
-                                 frame.Function->Instance,
+                tree.LogCallEnds(frame.Function->FunctionAddress,
+                                 frame.Function->InstanceAddress,
                                  frame.LoggedCall,
                                  static_cast<uint64_t>(clock.Last.Sequence),
                                  static_cast<uint64_t>(clock.Last.Steps),
@@ -926,9 +928,9 @@ namespace
 
             uint64_t const arguments[ArgumentRegisters] = { registers.Rcx, registers.Rdx, registers.R8, registers.R9 };
 
-            auto const instance = method == tree.InstanceMethods.end() ? 0 : arguments[method->second % ArgumentRegisters];
+            auto const instanceAddress = method == tree.InstanceMethods.end() ? 0 : arguments[method->second % ArgumentRegisters];
 
-            auto const node = tree.Child(parent, callee, instance);
+            auto const node = tree.Child(parent, callee, instanceAddress);
 
             tree.Nodes[node].Calls++;
 
@@ -939,7 +941,7 @@ namespace
                                         position,
                                         threadId,
                                         callee,
-                                        instance,
+                                        instanceAddress,
                                         node);
 
             auto const frameEvents = logged.Function != nullptr ? hooked.Events : 0;
@@ -1216,6 +1218,163 @@ namespace
 
         return Success;
     }
+
+    constexpr size_t WatchChunkHits = 65536;
+    constexpr size_t WatchChunkBytes = 1 << 20;
+    constexpr uint64_t MaximumWatchBytes = 4096;
+    constexpr uint32_t MaximumMergedWatchBytes = 65536;
+
+    struct WatchSession
+    {
+        WatchHitCallback      OnHits = nullptr;
+        std::vector<WatchHit> Hits;
+        std::vector<uint8_t>  Data;
+
+        void Flush()
+        {
+            if (!Hits.empty())
+            {
+                OnHits(Hits.data(), static_cast<int32_t>(Hits.size()), Data.data(), static_cast<int32_t>(Data.size()));
+            }
+
+            Hits.clear();
+
+            Data.clear();
+        }
+    };
+
+    bool __fastcall OnWatchpoint(uintptr_t context, ICursorView::MemoryWatchpointResult const& result, IThreadView const* thread)
+    {
+        auto& session = *reinterpret_cast<WatchSession*>(context);
+
+        auto const address = static_cast<uint64_t>(result.Address);
+
+        auto const programCounter = static_cast<uint64_t>(thread->GetProgramCounter());
+
+        auto const threadId = static_cast<uint32_t>(thread->GetThreadInfo().Id);
+
+        auto const type = static_cast<uint32_t>(result.AccessType);
+
+        auto const size = static_cast<size_t>(std::min(result.Size, MaximumWatchBytes));
+
+        auto const offset = session.Data.size();
+
+        session.Data.resize(offset + size);
+
+        auto const read = ReadMemory(*thread, address, session.Data.data() + offset, size);
+
+        session.Data.resize(offset + read);
+
+        if (!session.Hits.empty())
+        {
+            auto& last = session.Hits.back();
+
+            if (last.Thread == threadId
+                && last.ProgramCounter == programCounter
+                && last.Type == type
+                && last.Address + last.Size == address
+                && last.Offset + last.Size == offset
+                && last.Size + read <= MaximumMergedWatchBytes)
+            {
+                last.Size += static_cast<uint32_t>(read);
+
+                return false;
+            }
+        }
+
+        auto const& position = thread->GetPosition();
+
+        session.Hits.push_back(WatchHit{ static_cast<uint64_t>(position.Sequence),
+                                         static_cast<uint64_t>(position.Steps),
+                                         address,
+                                         programCounter,
+                                         threadId,
+                                         static_cast<uint32_t>(read),
+                                         static_cast<uint32_t>(offset),
+                                         type });
+
+        if (session.Hits.size() >= WatchChunkHits || session.Data.size() >= WatchChunkBytes)
+        {
+            session.Flush();
+        }
+
+        return false;
+    }
+
+    ReadResult ReplayWatch(IReplayEngine&    engine,
+                           WatchRange const* ranges,
+                           int32_t           rangeCount,
+                           DataAccessMask    access,
+                           Position const&   start,
+                           Position const&   end,
+                           WatchSession&     session,
+                           ProgressCallback  progress,
+                           volatile int32_t* cancel,
+                           int32_t&          watched)
+    {
+        std::unique_ptr<ICursor, Deleter<ICursor>> cursor{ engine.NewCursor() };
+
+        if (!cursor)
+        {
+            return CursorNotCreated;
+        }
+
+        ReplayState state{ cursor.get(), progress, cancel, {} };
+
+        state.Threads.push_back(ThreadProgress{ 0,
+                                                static_cast<uint64_t>(start.Sequence),
+                                                static_cast<uint64_t>(end.Sequence),
+                                                -1 });
+
+        for (int32_t index = 0; index < rangeCount; index++)
+        {
+            if (cursor->AddMemoryWatchpoint(MemoryWatchpointData{ static_cast<GuestAddress>(ranges[index].Address),
+                                                                  ranges[index].Size,
+                                                                  access }))
+            {
+                watched++;
+            }
+        }
+
+        cursor->SetEventMask(EventMask::MemoryWatchpoint);
+        cursor->SetExceptionMask(ExceptionMask::None);
+        cursor->SetMemoryWatchpointCallback(OnWatchpoint, reinterpret_cast<uintptr_t>(&session));
+        cursor->SetReplayProgressCallback(OnProgress, reinterpret_cast<uintptr_t>(&state));
+        cursor->SetReplayFlags(ReplayFlags::ReplaySegmentsSequentially | ReplayFlags::ReplayAllSegmentsWithoutFiltering);
+        cursor->SetPosition(start);
+
+        while (true)
+        {
+            auto const result = cursor->ReplayForward(end);
+
+            if (result.StopReason == EventType::Error)
+            {
+                return ReplayFailed;
+            }
+
+            if (result.StopReason == EventType::Interrupted)
+            {
+                return Cancelled;
+            }
+
+            if (result.StopReason == EventType::Position
+                || result.StopReason == EventType::StepCount
+                || result.StopReason == EventType::Process
+                || result.StepsExecuted == StepCount::Zero)
+            {
+                break;
+            }
+        }
+
+        session.Flush();
+
+        if (progress != nullptr && state.Threads[0].LastPercent != 100)
+        {
+            progress(0, 100);
+        }
+
+        return Success;
+    }
 }
 
 extern "C"
@@ -1400,6 +1559,49 @@ extern "C"
         *tree = result.release();
 
         return Success;
+    }
+
+    int32_t WatchMemory(void*             trace,
+                        const WatchRange* ranges,
+                        int32_t           rangeCount,
+                        uint32_t          accessMask,
+                        uint64_t          startSequence,
+                        uint64_t          endSequence,
+                        WatchHitCallback  onHits,
+                        ProgressCallback  progress,
+                        volatile int32_t* cancel,
+                        int32_t*          watched)
+    {
+        *watched = 0;
+
+        auto& engine = *static_cast<Trace*>(trace)->Engine;
+
+        auto const first = engine.GetFirstPosition();
+
+        auto const last = engine.GetLastPosition();
+
+        auto const start = startSequence == 0
+                           ? first
+                           : Position{ static_cast<SequenceId>(startSequence), StepCount::Zero };
+
+        auto const end = endSequence == 0 || endSequence >= static_cast<uint64_t>(last.Sequence)
+                         ? last
+                         : Position{ static_cast<SequenceId>(endSequence), StepCount::Zero };
+
+        WatchSession session;
+
+        session.OnHits = onHits;
+
+        return ReplayWatch(engine,
+                           ranges,
+                           rangeCount,
+                           static_cast<DataAccessMask>(accessMask),
+                           start,
+                           end,
+                           session,
+                           progress,
+                           cancel,
+                           *watched);
     }
 
     uint64_t ReadTraceMemory(const void* view, uint64_t address, void* destination, uint64_t size)

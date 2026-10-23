@@ -3,8 +3,8 @@ using System.Data.SqlTypes;
 using System.Text;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Values;
-using InternalsViewer.Internals.BatchMode.Normalization;
 using InternalsViewer.Execution.Records;
+using InternalsViewer.Internals.BatchMode.Normalization;
 using InternalsViewer.Internals.Engine.Records;
 
 namespace InternalsViewer.Execution.BatchMode.Vectors;

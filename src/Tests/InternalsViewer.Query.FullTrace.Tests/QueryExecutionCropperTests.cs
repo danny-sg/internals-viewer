@@ -155,7 +155,7 @@ public class QueryExecutionCropperTests
         Assert.Equal([28, 30, 76], Buckets(execute));
     }
 
-    private static CallSpan Span(int node, ulong start, ulong end) => new(1, start, 1, end, start, end, node, 7, 0, 1);
+    private static CallSpan Span(int callNodeIndex, ulong start, ulong end) => new(1, start, 1, end, start, end, callNodeIndex, 7, 0, 1);
 
     private static int[] Buckets(CallStackNode node)
         => [.. Enumerable.Range(0, node.ActivityCounts.Length).Where(i => node.ActivityCounts[i] > 0)];

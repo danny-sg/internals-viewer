@@ -9,7 +9,6 @@
     xmlns:columnstore="using:InternalsViewer.UI.App.Controls.Columnstore"
     xmlns:controls="using:InternalsViewer.UI.App.Controls"
     xmlns:models="using:InternalsViewer.UI.App.Models.Columnstore.Dictionary"
-    xmlns:page="using:InternalsViewer.UI.App.Controls.Page"
     xmlns:hexView="using:InternalsViewer.UI.App.Controls.HexView"
     xmlns:dictionary="using:InternalsViewer.UI.App.Views.Columnstore.Tabs.Dictionary"
     xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
@@ -75,7 +74,7 @@
                                        VerticalAlignment="Center"
                                        FontWeight="SemiBold"
                                        FontSize="12"/>
-                            <controls:DataTypeTextBlock DataType="{x:Bind ViewModel.DataType, Mode=OneWay}"
+                            <columnstore:DataTypeTextBlock DataType="{x:Bind ViewModel.DataType, Mode=OneWay}"
                                                         Precision="{x:Bind ViewModel.Precision, Mode=OneWay}"
                                                         DataScale="{x:Bind ViewModel.Scale, Mode=OneWay}"
                                                         Length="{x:Bind ViewModel.DataLength, Mode=OneWay}"
@@ -161,7 +160,7 @@
                 </TabView>
 
                 <Grid Grid.Row="1">
-                    <page:MarkerTreeView Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedTabIndex, 0), Mode=OneWay}"
+                    <controls:MarkerTreeView Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedTabIndex, 0), Mode=OneWay}"
                                          Opacity="{x:Bind ViewModel.Hex.MarkerOpacity, Mode=OneWay}"
                                          Markers="{x:Bind ViewModel.HeaderMarkers, Mode=OneWay}"
                                          SelectedMarker="{x:Bind ViewModel.Hex.SelectedMarker, Mode=TwoWay}"/>
@@ -251,7 +250,7 @@
                             </TabView>
 
                             <Grid Grid.Row="1">
-                                <page:MarkerTreeView Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedPageTabIndex, 0), Mode=OneWay}"
+                                <controls:MarkerTreeView Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedPageTabIndex, 0), Mode=OneWay}"
                                                      Opacity="{x:Bind ViewModel.Hex.MarkerOpacity, Mode=OneWay}"
                                                      Markers="{x:Bind ViewModel.PageMarkers, Mode=OneWay}"
                                                      SelectedMarker="{x:Bind ViewModel.Hex.SelectedMarker, Mode=TwoWay}"/>
@@ -361,8 +360,8 @@
                             <tableView:TableViewTemplateColumn Header="Index" Width="320">
                                 <tableView:TableViewTemplateColumn.CellTemplate>
                                     <DataTemplate x:DataType="models:DictionaryEntryDetail">
-                                        <TextBlock controls:DerivationText.Derivation="{x:Bind Derivation, Mode=OneTime}"
-                                                   controls:DerivationText.ShowSteps="{x:Bind ShowDerivation, Mode=OneTime}"
+                                        <TextBlock columnstore:DerivationText.Derivation="{x:Bind Derivation, Mode=OneTime}"
+                                                   columnstore:DerivationText.ShowSteps="{x:Bind ShowDerivation, Mode=OneTime}"
                                                    Style="{StaticResource DerivationTextStyle}"/>
                                     </DataTemplate>
                                 </tableView:TableViewTemplateColumn.CellTemplate>

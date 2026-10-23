@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Views.Query.Trace.MemoryHistory.QueryMemoryHistoryTabView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
+    xmlns:results="using:InternalsViewer.UI.App.Controls.Results"
+    xmlns:hexView="using:InternalsViewer.UI.App.Controls.HexView">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" MinHeight="60"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="2*" MinHeight="60"/>
+        </Grid.RowDefinitions>
+
+        <results:ResultsGridControl Grid.Row="0"
+                                    ResultSet="{x:Bind ViewModel.MemoryHistory.BlocksTable, Mode=OneWay}"
+                                    SelectedRow="{x:Bind ViewModel.MemoryHistory.SelectedBlockRow, Mode=TwoWay}"
+                                    RowName="block"/>
+
+        <toolkit:GridSplitter Grid.Row="1"
+                              Height="6"
+                              HorizontalAlignment="Stretch"
+                              ResizeBehavior="PreviousAndNext"
+                              ResizeDirection="Rows"/>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <results:ResultsGridControl Grid.Column="1"
+                                        ResultSet="{x:Bind ViewModel.MemoryHistory.CallsTable, Mode=OneWay}"
+                                        SelectedRow="{x:Bind ViewModel.MemoryHistory.SelectedCallRow, Mode=TwoWay}"
+                                        CallClicked="OnCallClicked"
+                                        RowName="call"/>
+
+            <Grid Grid.Column="0"
+                  Width="455"
+                  Margin="0,0,8,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0"
+                            Orientation="Horizontal"
+                            Spacing="8"
+                            Padding="8,6,8,6">
+                    <TextBlock Text="{x:Bind ViewModel.MemoryHistory.ObjectName, Mode=OneWay}"
+                               Style="{StaticResource BodyStrongTextBlockStyle}"/>
+
+                    <TextBlock Text="{x:Bind ViewModel.MemoryHistory.ObjectDetail, Mode=OneWay}"
+                               VerticalAlignment="Center"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                </StackPanel>
+
+                <hexView:HexViewControl Grid.Row="1"
+                                        VerticalAlignment="Stretch"
+                                        Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
+                                        Data="{x:Bind ViewModel.MemoryHistory.Data, Mode=OneWay}"
+                                        Markers="{x:Bind ViewModel.MemoryHistory.Markers, Mode=OneWay}"
+                                        ChangeSpans="{x:Bind ViewModel.MemoryHistory.ChangeSpans, Mode=OneWay}"
+                                        SelectedChangeSpan="{x:Bind ViewModel.MemoryHistory.SelectedChangeSpan, Mode=OneWay}"
+                                        Watches="{x:Bind ViewModel.MemoryHistory.Watches, Mode=TwoWay}"/>
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>

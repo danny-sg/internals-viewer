@@ -1,10 +1,21 @@
-﻿using Microsoft.UI.Xaml.Controls;
+﻿using CommunityToolkit.WinUI;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 
 namespace InternalsViewer.UI.App.Helpers;
 
 public static class LayoutHelpers
 {
+    public static void EnableHorizontalScrolling(TreeView tree)
+    {
+        if (tree.FindDescendant<TreeViewList>() is { } list)
+        {
+            ScrollViewer.SetHorizontalScrollMode(list, ScrollMode.Enabled);
+
+            ScrollViewer.SetHorizontalScrollBarVisibility(list, ScrollBarVisibility.Auto);
+        }
+    }
+
     public static T? FindParent<T>(DependencyObject? source) where T : class
     {
         var target = source;

@@ -9,10 +9,10 @@ using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Events.Transactions;
 using InternalsViewer.Query.Events.Waits;
+using InternalsViewer.UI.App.Controls.Query.Timeline.Definition;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels.Query;
 using SkiaSharp;
-using InternalsViewer.UI.App.Controls.Timeline.Definition;
 
 namespace InternalsViewer.UI.App.Services.Query.Timeline;
 

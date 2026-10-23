@@ -4,7 +4,6 @@ namespace InternalsViewer.Query.FullTrace.Hooks.Enums;
 internal enum TraceHookEvents : uint
 {
     None = 0,
-    Call = 1,
     Entry = 2,
     Return = 4
 }

@@ -92,12 +92,12 @@ public sealed class HoBtAccessMap
     {
         var functions = nodes.OfType<CallStackNode>()
                              .Where(n => n.Frame?.Resolved is { ClassName: ClassName } resolved && resolved.MethodName == method)
-                             .Select(n => (n.Frame!.Address, n.Frame.Instance))
+                             .Select(n => (n.Frame!.Address, n.Frame.InstanceAddress))
                              .Distinct();
 
-        foreach (var (address, instance) in functions)
+        foreach (var (functionAddress, instanceAddress) in functions)
         {
-            if (callStore.GetCallList(address, instance) is not { } calls)
+            if (callStore.GetCallList(functionAddress, instanceAddress) is not { } calls)
             {
                 continue;
             }

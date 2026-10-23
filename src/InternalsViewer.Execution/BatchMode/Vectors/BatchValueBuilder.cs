@@ -1,8 +1,8 @@
 ﻿using System.Data;
 using System.Data.SqlTypes;
 using InternalsViewer.Execution.AccessPaths.Values;
-using InternalsViewer.Internals.BatchMode.Normalization;
 using InternalsViewer.Execution.Interfaces.BatchMode;
+using InternalsViewer.Internals.BatchMode.Normalization;
 using InternalsViewer.Internals.Engine.Records;
 
 namespace InternalsViewer.Execution.BatchMode.Vectors;

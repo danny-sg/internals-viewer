@@ -1,7 +1,6 @@
 ﻿using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Timeline;
-using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.Memory;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
@@ -16,10 +15,10 @@ internal static class AllocationMapper
 
     private const string WorkspaceClerk = "MEMORYCLERK_SQLQERESERVATIONS";
 
-    public static (long Allocations, ulong Bytes) Map(TraceCallStore store,
-                                                      IReadOnlyList<MemoryFunction> functions,
-                                                      TraceTimeline? timeline,
-                                                      MemoryClerkSnapshot? clerks = null)
+    public static (MemoryIndex Memory, long Allocations, ulong Bytes) Map(TraceCallStore store,
+                                                                          IReadOnlyList<MemoryFunction> functions,
+                                                                          TraceTimeline? timeline,
+                                                                          MemoryClerkSnapshot? clerks = null)
     {
         var byAddress = functions.ToDictionary(f => f.Address);
 
@@ -92,14 +91,9 @@ internal static class AllocationMapper
             values[function.Address] = callValues;
         }
 
-        if (timeline is not null)
-        {
-            var (allocations, frees) = scanned.MemoryOf(values);
+        var (allocations, frees) = scanned.MemoryOf(values);
 
-            timeline.SetMemory(allocations, frees);
-        }
-
-        return (count, bytes);
+        return (MemoryIndex.Build(allocations, frees), count, bytes);
 
         TraceCallList? GetCalls(ulong address)
             => lists.TryGetValue(address, out var list) ? list : lists[address] = store.GetCallList(address, 0);
@@ -118,16 +112,16 @@ internal static class AllocationMapper
         {
             if (span.Node.Frame is not { } frame
                 || !functions.TryGetValue(frame.Address, out var function)
-                || span.Call is not (>= 0 and var call)
+                || span.CallIndex is not (>= 0 and var callIndex)
                 || getCalls(function.Address) is not { } logged
-                || call >= logged.Count)
+                || callIndex >= logged.Count)
             {
                 continue;
             }
 
-            var start = span.StartOf(TraceTimelineAxis.Position);
+            var start = span.From.Position;
 
-            var end = span.EndOf(TraceTimelineAxis.Position);
+            var end = span.To.Position;
 
             if (!threads.TryGetValue(span.Thread.ThreadId, out var thread))
             {
@@ -138,14 +132,14 @@ internal static class AllocationMapper
                 scanned.Threads.Add(thread);
             }
 
-            thread.Calls.Add((function.Address, call, start, end));
+            thread.Calls.Add((function.Address, callIndex, start, end));
 
             if (function is { CarriesClerk: false, IsObjectCall: false })
             {
                 continue;
             }
 
-            var arguments = logged[call];
+            var arguments = logged[callIndex];
 
             if (function.CarriesClerk)
             {
@@ -173,7 +167,7 @@ internal static class AllocationMapper
                     objectClerks.TryAdd(memoryObject, thread.Pages[page].Clerk);
                 }
 
-                if (FirstWithin(thread.ObjectStarts, Math.BitIncrement(start), end) is >= 0 and var nested
+                if (FirstWithin(thread.ObjectStarts, start.Next, end) is >= 0 and var nested
                     && thread.Objects[nested].Object != memoryObject)
                 {
                     objectParents.TryAdd(memoryObject, thread.Objects[nested].Object);
@@ -183,7 +177,7 @@ internal static class AllocationMapper
 
         foreach (var thread in scanned.Threads)
         {
-            foreach (var (address, call, start, end) in thread.Calls)
+            foreach (var (address, callIndex, start, end) in thread.Calls)
             {
                 if (!functions[address].IsAllocation)
                 {
@@ -211,7 +205,7 @@ internal static class AllocationMapper
                     scanned.Kinds[address] = kinds;
                 }
 
-                kinds[call] = kind;
+                kinds[callIndex] = kind;
             }
         }
 
@@ -244,9 +238,9 @@ internal static class AllocationMapper
         return null;
     }
 
-    private static int FirstWithin(double[] starts, double start, double end)
+    private static int FirstWithin(TracePosition[] starts, TracePosition start, TracePosition end)
     {
-        var index = SortedSearch.FirstAtOrAfter(starts, start);
+        var index = SortedSearch.FirstAtOrAfter<TracePosition>(starts, start);
 
         return index < starts.Length && starts[index] < end ? index : -1;
     }
@@ -307,28 +301,28 @@ internal static class AllocationMapper
 
             foreach (var thread in Threads)
             {
-                foreach (var (address, call, start, end) in thread.Calls)
+                foreach (var (address, callIndex, start, end) in thread.Calls)
                 {
                     if (!values.TryGetValue(address, out var callValues))
                     {
                         continue;
                     }
 
-                    if (call < callValues.Bytes.Length && callValues.Bytes[call] > 0)
+                    if (callIndex < callValues.Bytes.Length && callValues.Bytes[callIndex] > 0)
                     {
-                        var workspace = Kinds.TryGetValue(address, out var kinds) && kinds[call] == WorkspaceClerk;
+                        var workspace = Kinds.TryGetValue(address, out var kinds) && kinds[callIndex] == WorkspaceClerk;
 
                         allocations.Add(new MemoryAllocation(thread.ThreadId,
                                                              start,
                                                              end,
-                                                             callValues.Bytes[call],
-                                                             callValues.Returned[call],
+                                                             callValues.Bytes[callIndex],
+                                                             callValues.Returned[callIndex],
                                                              workspace));
                     }
 
-                    if (call < callValues.Released.Length && callValues.Released[call] != 0)
+                    if (callIndex < callValues.Released.Length && callValues.Released[callIndex] != 0)
                     {
-                        frees.Add(new MemoryFree(thread.ThreadId, start, end, callValues.Released[call]));
+                        frees.Add(new MemoryFree(thread.ThreadId, start, end, callValues.Released[callIndex]));
                     }
                 }
             }
@@ -341,15 +335,15 @@ internal static class AllocationMapper
     {
         public uint ThreadId { get; } = threadId;
 
-        public List<(ulong Address, int Call, double Start, double End)> Calls { get; } = [];
+        public List<(ulong Address, int CallIndex, TracePosition Start, TracePosition End)> Calls { get; } = [];
 
-        public List<(double Start, ulong Clerk)> Pages { get; } = [];
+        public List<(TracePosition Start, ulong Clerk)> Pages { get; } = [];
 
-        public List<(double Start, double End, ulong Object)> Objects { get; } = [];
+        public List<(TracePosition Start, TracePosition End, ulong Object)> Objects { get; } = [];
 
-        public double[] PageStarts { get; private set; } = [];
+        public TracePosition[] PageStarts { get; private set; } = [];
 
-        public double[] ObjectStarts { get; private set; } = [];
+        public TracePosition[] ObjectStarts { get; private set; } = [];
 
         public void Sort()
         {

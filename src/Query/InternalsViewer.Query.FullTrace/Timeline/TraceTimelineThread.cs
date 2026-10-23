@@ -1,14 +1,31 @@
-using InternalsViewer.Query.FullTrace.Timeline.Enums;
-
 namespace InternalsViewer.Query.FullTrace.Timeline;
 
-public sealed class TraceTimelineThread(uint threadId, IReadOnlyList<TraceTimelineRow> rows, long calls)
+public sealed class TraceTimelineThread
 {
-    public uint ThreadId { get; } = threadId;
+    internal TraceTimelineThread(uint threadId,
+                                 TraceThreadClock clock,
+                                 TraceSpanStore store,
+                                 IReadOnlyList<TraceTimelineRow> rows,
+                                 long calls)
+    {
+        ThreadId = threadId;
+        Clock = clock;
+        Store = store;
+        Rows = rows;
+        Calls = calls;
+    }
 
-    public IReadOnlyList<TraceTimelineRow> Rows { get; } = rows;
+    public uint ThreadId { get; }
 
-    public long Calls { get; } = calls;
+    public TraceThreadClock Clock { get; }
+
+    public IReadOnlyList<TraceTimelineRow> Rows { get; }
+
+    public long Calls { get; private set; }
+
+    internal TraceSpanStore Store { get; }
+
+    internal long Bytes => Clock.Bytes + Store.Bytes + Rows.Sum(r => r.Bytes);
 
     public int Depth
     {
@@ -26,16 +43,24 @@ public sealed class TraceTimelineThread(uint threadId, IReadOnlyList<TraceTimeli
         }
     }
 
-    public double StartOf(TraceTimelineAxis axis)
-        => Rows.Where(r => r.Count > 0).Select(r => r.Starts(axis)[0]).DefaultIfEmpty(0).Min();
+    public TracePoint Start
+        => Rows.Where(r => r.Count > 0).Select(r => r.GetFrom(0)).DefaultIfEmpty(default).MinBy(p => p.Position);
 
-    public double EndOf(TraceTimelineAxis axis)
-        => Rows.Where(r => r.Count > 0).Select(r => r.Ends(axis)[^1]).DefaultIfEmpty(0).Max();
+    public TracePoint End
+        => Rows.Where(r => r.Count > 0).Select(r => r.GetTo(r.Count - 1)).DefaultIfEmpty(default).MaxBy(p => p.Position);
 
     public TraceTimelineThread Where(Func<int, bool> include)
     {
         TraceTimelineRow[] kept = [.. Rows.Select(r => r.Where(include))];
 
-        return new TraceTimelineThread(ThreadId, kept, kept.Sum(r => (long)r.Count));
+        return new TraceTimelineThread(ThreadId, Clock, Store, kept, kept.Sum(r => (long)r.Count));
+    }
+
+    internal void RemoveAll(Func<int, bool> isRemoved)
+    {
+        foreach (var row in Rows)
+        {
+            Calls -= row.RemoveAll(isRemoved);
+        }
     }
 }

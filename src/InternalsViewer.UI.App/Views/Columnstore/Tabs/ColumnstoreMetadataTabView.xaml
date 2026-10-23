@@ -6,7 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:tableView="using:WinUI.TableView"
-    xmlns:controls="using:InternalsViewer.UI.App.Controls"
+    xmlns:controlsColumnstore="using:InternalsViewer.UI.App.Controls.Columnstore"
     xmlns:columnstore="using:InternalsViewer.UI.App.Models.Columnstore"
     mc:Ignorable="d">
     <Grid>
@@ -46,9 +46,9 @@
                 <tableView:TableViewTemplateColumn Header="Segment" Width="80" CanSort="False">
                     <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="columnstore:SegmentSummary">
-                            <TextBlock controls:CellLink.Text="View"
-                                       controls:CellLink.Kind="Segment"
-                                       controls:CellLink.Parameter="{x:Bind}"
+                            <TextBlock controlsColumnstore:CellLink.Text="View"
+                                       controlsColumnstore:CellLink.Kind="Segment"
+                                       controlsColumnstore:CellLink.Parameter="{x:Bind}"
                                        Style="{StaticResource CellLinkCentredStyle}"/>
                         </DataTemplate>
                     </tableView:TableViewTemplateColumn.CellTemplate>
@@ -56,9 +56,9 @@
                 <tableView:TableViewTemplateColumn Header="Dictionary" Width="90" CanSort="False">
                     <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="columnstore:SegmentSummary">
-                            <TextBlock controls:CellLink.Text="{x:Bind DictionaryScope}"
-                                       controls:CellLink.Kind="SegmentDictionary"
-                                       controls:CellLink.Parameter="{x:Bind}"
+                            <TextBlock controlsColumnstore:CellLink.Text="{x:Bind DictionaryScope}"
+                                       controlsColumnstore:CellLink.Kind="SegmentDictionary"
+                                       controlsColumnstore:CellLink.Parameter="{x:Bind}"
                                        Visibility="{x:Bind HasDictionary, Converter={StaticResource BoolToVisibilityConverter}}"
                                        Style="{StaticResource CellLinkCentredStyle}"/>
                         </DataTemplate>
@@ -129,9 +129,9 @@
                 <tableView:TableViewTemplateColumn Header="Data Pointer" Width="130" CanSort="False">
                     <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="columnstore:SegmentSummary">
-                            <TextBlock controls:CellLink.Text="{x:Bind DataPointerDescription}"
-                                       controls:CellLink.Kind="SegmentDataPointer"
-                                       controls:CellLink.Parameter="{x:Bind}"
+                            <TextBlock controlsColumnstore:CellLink.Text="{x:Bind DataPointerDescription}"
+                                       controlsColumnstore:CellLink.Kind="SegmentDataPointer"
+                                       controlsColumnstore:CellLink.Parameter="{x:Bind}"
                                        Visibility="{x:Bind HasDataPointer, Converter={StaticResource BoolToVisibilityConverter}}"
                                        Style="{StaticResource CellLinkStyle}"/>
                         </DataTemplate>
@@ -162,9 +162,9 @@
                 <tableView:TableViewTemplateColumn Header="Dictionary" Width="90" CanSort="False">
                     <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="columnstore:DictionarySummary">
-                            <TextBlock controls:CellLink.Text="View"
-                                       controls:CellLink.Kind="Dictionary"
-                                       controls:CellLink.Parameter="{x:Bind}"
+                            <TextBlock controlsColumnstore:CellLink.Text="View"
+                                       controlsColumnstore:CellLink.Kind="Dictionary"
+                                       controlsColumnstore:CellLink.Parameter="{x:Bind}"
                                        Style="{StaticResource CellLinkCentredStyle}"/>
                         </DataTemplate>
                     </tableView:TableViewTemplateColumn.CellTemplate>
@@ -195,9 +195,9 @@
                 <tableView:TableViewTemplateColumn Header="Data Pointer" Width="130" CanSort="False">
                     <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="columnstore:DictionarySummary">
-                            <TextBlock controls:CellLink.Text="{x:Bind DataPointerDescription}"
-                                       controls:CellLink.Kind="DictionaryDataPointer"
-                                       controls:CellLink.Parameter="{x:Bind}"
+                            <TextBlock controlsColumnstore:CellLink.Text="{x:Bind DataPointerDescription}"
+                                       controlsColumnstore:CellLink.Kind="DictionaryDataPointer"
+                                       controlsColumnstore:CellLink.Parameter="{x:Bind}"
                                        Visibility="{x:Bind HasDataPointer, Converter={StaticResource BoolToVisibilityConverter}}"
                                        Style="{StaticResource CellLinkStyle}"/>
                         </DataTemplate>

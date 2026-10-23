@@ -10,7 +10,7 @@ custom SkiaSharp-drawn surfaces (timeline, plan, allocation map, columnstore str
 an `SKCanvas` and do their own hit testing rather than composing XAML elements.
 
 Documents are dockable tabs. Test folders in `InternalsViewer.UI.App.Tests` mirror this structure exactly
-(`Controls\Timeline\Renderers`, etc.), unlike the flat test projects elsewhere in the solution.
+(`Controls\Query\Timeline\Renderers`, etc.), unlike the flat test projects elsewhere in the solution.
 
 ## Grids — WinUI.TableView
 

@@ -1,4 +1,4 @@
-using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
+using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Native.Enums;
@@ -11,13 +11,40 @@ internal sealed class TraceHooks
     {
         All = [.. hooks];
 
-        var groups = hooks.SelectMany(h => h.Functions.Select(f => (Function: f, Hook: h)))
-                          .GroupBy(r => r.Function.Address)
-                          .ToArray();
+        var indexes = new Dictionary<ulong, int>();
 
-        Hooks = [.. groups.Select(g => g.Select(r => r.Hook).Distinct().ToArray())];
+        var functions = new List<HookFunction>();
 
-        Functions = [.. groups.Select((g, index) => new HookFunction(g.Key, (uint)GetEvents(g), (uint)index))];
+        var registered = new List<ITraceHook[]>();
+
+        foreach (var hook in hooks)
+        {
+            ITraceHook[] single = [hook];
+
+            foreach (var function in hook.Functions)
+            {
+                ref var index = ref CollectionsMarshal.GetValueRefOrAddDefault(indexes, function.Address, out var exists);
+
+                if (!exists)
+                {
+                    index = functions.Count;
+
+                    functions.Add(new HookFunction(function.Address, 0, (uint)index));
+
+                    registered.Add(single);
+                }
+                else if (Array.IndexOf(registered[index], hook) < 0)
+                {
+                    registered[index] = [.. registered[index], hook];
+                }
+
+                functions[index] = functions[index] with { Events = functions[index].Events | (uint)function.Events };
+            }
+        }
+
+        Hooks = [.. registered];
+
+        Functions = [.. functions];
     }
 
     public HookFunction[] Functions { get; }
@@ -43,12 +70,12 @@ internal sealed class TraceHooks
 
         var call = new TraceHookCall
         {
-            Function = source->Function,
-            Instance = source->Instance,
+            FunctionAddress = source->FunctionAddress,
+            InstanceAddress = source->InstanceAddress,
             Id = source->Id,
-            Call = source->Call,
+            CallIndex = source->CallIndex,
             Thread = source->Thread,
-            Node = source->Node,
+            CallNodeIndex = source->CallNodeIndex,
             Arguments = new ReadOnlySpan<ulong>(source->Arguments, HookEvent.ArgumentCount),
             ReturnValue = source->ReturnValue,
             StackPointer = source->StackPointer,
@@ -80,17 +107,10 @@ internal sealed class TraceHooks
         }
     }
 
-    private static TraceHookEvents GetEvents(IEnumerable<(TraceHookFunction Function, ITraceHook Hook)> registrations)
-        => registrations.Aggregate(TraceHookEvents.None, (events, r) => events | r.Function.Events);
-
     private void Dispatch(ITraceHook hook, HookEventType type, in TraceHookCall call)
     {
         switch (type)
         {
-            case HookEventType.Call:
-                hook.OnCall(call, Replay);
-                break;
-
             case HookEventType.Entry:
                 hook.OnEntry(call, Replay);
                 break;
@@ -105,10 +125,6 @@ internal sealed class TraceHooks
 
             case HookEventType.FrameEnded:
                 hook.OnFrameEnded(call);
-                break;
-
-            case HookEventType.StackUnwound:
-                hook.OnStackUnwound(call);
                 break;
         }
     }

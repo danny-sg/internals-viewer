@@ -8,8 +8,8 @@ extern "C"
     {
         int32_t  Parent;
         uint32_t Reserved;
-        uint64_t Address;
-        uint64_t Instance;
+        uint64_t FunctionAddress;
+        uint64_t InstanceAddress;
         uint64_t Calls;
     };
 
@@ -29,10 +29,10 @@ extern "C"
 
     typedef void(__stdcall* ProgressCallback)(uint32_t thread, int32_t percent);
 
-    typedef void(__stdcall* CallChunkCallback)(uint64_t address, uint64_t instance, const uint64_t* columns, int32_t calls);
+    typedef void(__stdcall* CallChunkCallback)(uint64_t functionAddress, uint64_t instanceAddress, const uint64_t* columns, int32_t calls);
 
-    typedef void(__stdcall* CallEndCallback)(uint64_t address,
-                                             uint64_t instance,
+    typedef void(__stdcall* CallEndCallback)(uint64_t functionAddress,
+                                             uint64_t instanceAddress,
                                              uint32_t call,
                                              uint64_t endSequence,
                                              uint64_t endSteps,
@@ -52,15 +52,15 @@ extern "C"
     {
         uint64_t Id;
         uint64_t StackPointer;
-        uint64_t Instance;
+        uint64_t InstanceAddress;
         int32_t  Node;
         uint32_t Reserved;
     };
 
     struct HookEvent
     {
-        uint64_t         Function;
-        uint64_t         Instance;
+        uint64_t         FunctionAddress;
+        uint64_t         InstanceAddress;
         uint64_t         Id;
         uint64_t         Arguments[4];
         uint64_t         ReturnValue;
@@ -80,6 +80,26 @@ extern "C"
     typedef void(__stdcall* HookCallback)(const HookEvent* hookEvent, const void* view, void* session);
 
     typedef int32_t(__stdcall* StubCallback)(const void* view, uint64_t address, uint64_t* registers, uint64_t* target);
+
+    struct WatchRange
+    {
+        uint64_t Address;
+        uint64_t Size;
+    };
+
+    struct WatchHit
+    {
+        uint64_t Sequence;
+        uint64_t Steps;
+        uint64_t Address;
+        uint64_t ProgramCounter;
+        uint32_t Thread;
+        uint32_t Size;
+        uint32_t Offset;
+        uint32_t Type;
+    };
+
+    typedef void(__stdcall* WatchHitCallback)(const WatchHit* hits, int32_t count, const uint8_t* data, int32_t length);
 
     __declspec(dllexport) int32_t OpenTrace(const wchar_t* replayLibraryPath, const wchar_t* tracePath, void** trace);
 
@@ -111,6 +131,17 @@ extern "C"
                                                void**                 tree);
 
     __declspec(dllexport) uint64_t ReadTraceMemory(const void* view, uint64_t address, void* destination, uint64_t size);
+
+    __declspec(dllexport) int32_t WatchMemory(void*             trace,
+                                              const WatchRange* ranges,
+                                              int32_t           rangeCount,
+                                              uint32_t          accessMask,
+                                              uint64_t          startSequence,
+                                              uint64_t          endSequence,
+                                              WatchHitCallback  onHits,
+                                              ProgressCallback  progress,
+                                              volatile int32_t* cancel,
+                                              int32_t*          watched);
 
     __declspec(dllexport) bool WatchFrame(void* session, uint32_t thread, uint64_t frame);
 

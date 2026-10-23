@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentDialog
+    x:Class="InternalsViewer.UI.App.Controls.Query.Trace.Dialogs.TimeTravelLicenceDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="Time Travel Debugging Licence"
+    PrimaryButtonText="Accept"
+    CloseButtonText="Decline"
+    DefaultButton="Close">
+
+    <Grid MaxWidth="560" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock TextWrapping="Wrap"
+                   Text="Full Trace records SQL Server with Microsoft Time Travel Debugging (TTD). TTD will not record until its licence terms have been accepted. These are the terms of the TTD installed with WinDbg."/>
+
+        <Border Grid.Row="1"
+                MaxHeight="360"
+                BorderThickness="1"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                CornerRadius="{ThemeResource ControlCornerRadius}">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl Margin="12,10,16,2" ItemsSource="{x:Bind Paragraphs}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="x:String">
+                            <TextBlock Margin="0,0,0,8"
+                                       FontSize="12"
+                                       TextWrapping="Wrap"
+                                       IsTextSelectionEnabled="True"
+                                       Text="{x:Bind}"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</ContentDialog>

@@ -1,6 +1,5 @@
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.BatchMode;
-using InternalsViewer.UI.App.Controls.Timeline;
 using InternalsViewer.UI.App.Services.Query.Timeline;
 
 namespace InternalsViewer.UI.App.Tests.Services.Query.Timeline;

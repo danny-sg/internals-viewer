@@ -1,6 +1,5 @@
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
-using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
 using InternalsViewer.Query.FullTrace.Output.Enums;
 using InternalsViewer.Query.Extensions;
 
@@ -49,7 +48,7 @@ internal sealed class OutputHook(OutputFunctions functions) : ITraceHook
 
     public void OnEntry(in TraceHookCall call, ITraceReplay replay)
     {
-        if (!functions.Functions.TryGetValue(call.Function, out var type))
+        if (!functions.Functions.TryGetValue(call.FunctionAddress, out var type))
         {
             return;
         }

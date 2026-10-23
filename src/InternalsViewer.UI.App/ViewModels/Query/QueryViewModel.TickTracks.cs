@@ -8,10 +8,9 @@ using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
-using InternalsViewer.UI.App.Controls.Trace;
-using InternalsViewer.UI.App.Models.Query;
-using InternalsViewer.UI.App.Services.Query;
-using InternalsViewer.UI.App.ViewModels.Query.OperatorTracks;
+using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
+using InternalsViewer.UI.App.Services.Query.Trace;
+using InternalsViewer.UI.App.ViewModels.Query.Trace.OperatorTracks;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
@@ -28,8 +27,6 @@ public sealed partial class QueryViewModel
     public void ReplaceTickTrack(TraceTickDefinition existing, TraceTickDefinition definition)
         => TickTrackStore.Replace(existing, definition);
 
-    public void ClearTickTracks() => TickTrackStore.Clear();
-
     public IReadOnlyList<TraceFunctionChoice> GetFunctionChoices()
         => [.. (CallStack?.Nodes() ?? [])
                .Where(n => n.Frame is { Resolved: not null } && n.Symbol.Length > 0)
@@ -41,7 +38,7 @@ public sealed partial class QueryViewModel
         => Arguments.Lookup is { } lookup ? await lookup.GetLayoutAsync(function.Frame) : null;
 
     public IReadOnlyList<string> GetOperatorChoices()
-        => [.. Events.OfType<ExecutionOperatorEvent>().Select(TraceCallCondition.GetOperatorLabel).Distinct()];
+        => [.. Events.OfType<ExecutionOperatorEvent>().Select(o => o.Label).Distinct()];
 
     public int? GetTickCount(TraceTickDefinition definition)
         => CustomTickTracks.TryGetValue(definition, out var track) ? track.Series.Count : null;
@@ -90,7 +87,9 @@ public sealed partial class QueryViewModel
 
             if (!CustomTickTracks.TryGetValue(definition, out var track))
             {
-                track = TraceTickTracks.Custom(definition, TraceTickSeries.FromDefinition(trace.Timeline, trace.CallStore, definition));
+                var series = TraceTickSeries.FromDefinition(trace.Timeline, trace.CallStore, trace.Lifetimes, definition);
+
+                track = TraceTickTracks.Custom(definition, series);
 
                 CustomTickTracks[definition] = track;
             }
@@ -99,8 +98,8 @@ public sealed partial class QueryViewModel
         }
 
         TickTracks = [TraceTickTracks.GetRows(trace.RowReturnMarks),
-                      TraceTickTracks.Reads(trace.Reads, trace.CallStore),
                       TraceTickTracks.Evaluations(trace.Evaluations),
+                      TraceTickTracks.Reads(trace.Reads, trace.CallStore),
                       .. custom];
 
         OperatorTracks.Refresh();

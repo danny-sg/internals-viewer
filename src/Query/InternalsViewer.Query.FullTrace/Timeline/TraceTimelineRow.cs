@@ -1,124 +1,217 @@
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
-using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Timeline;
 
 public sealed partial class TraceTimelineRow
 {
-    internal TraceTimelineRow(double[] positionStarts,
-                              double[] positionEnds,
-                              double[] instructionStarts,
-                              double[] instructionEnds,
-                              int[] nodes,
-                              uint[] calls,
-                              byte[] flags)
-        : this(positionStarts, positionEnds, instructionStarts, instructionEnds, nodes, calls, flags, 0, nodes.Length)
+    internal TraceTimelineRow(TraceScale scale, TraceThreadClock clock, TraceSpanStore store, int offset, int count)
+        : this(scale, clock, store, null, offset, count)
     {
     }
 
-    private TraceTimelineRow(double[] positionStarts,
-                             double[] positionEnds,
-                             double[] instructionStarts,
-                             double[] instructionEnds,
-                             int[] nodes,
-                             uint[] calls,
-                             byte[] flags,
+    internal TraceTimelineRow(TraceScale scale, TraceThreadClock clock, TraceSpanStore store, int[] indexes)
+        : this(scale, clock, store, indexes, 0, indexes.Length)
+    {
+    }
+
+    private TraceTimelineRow(TraceScale scale,
+                             TraceThreadClock clock,
+                             TraceSpanStore store,
+                             int[]? indexes,
                              int offset,
                              int count)
     {
-        PositionStarts = positionStarts;
-        PositionEnds = positionEnds;
-        InstructionStarts = instructionStarts;
-        InstructionEnds = instructionEnds;
-        Nodes = nodes;
-        Calls = calls;
-        Flags = flags;
+        Scale = scale;
+        Clock = clock;
+        Store = store;
+        Indexes = indexes;
         Offset = offset;
         Count = count;
     }
 
-    public int Count { get; }
+    public int Count { get; private set; }
+
+    public TraceScale Scale { get; }
+
+    internal long Bytes => Indexes is null ? 0 : Indexes.Length * (long)sizeof(int);
+
+    private TraceThreadClock Clock { get; }
+
+    private TraceSpanStore Store { get; }
+
+    private int[]? Indexes { get; }
 
     private int Offset { get; }
 
-    private double[] PositionStarts { get; }
+    public TracePosition GetFromPosition(int index) => Store.Froms[GetStoreIndex(index)];
 
-    private double[] PositionEnds { get; }
+    public TracePosition GetToPosition(int index) => Store.Tos[GetStoreIndex(index)];
 
-    private double[] InstructionStarts { get; }
+    public TracePoint GetFrom(int index) => GetPoint(GetFromPosition(index));
 
-    private double[] InstructionEnds { get; }
+    public TracePoint GetTo(int index) => GetPoint(GetToPosition(index));
 
-    private int[] Nodes { get; }
+    public double GetStart(TraceTimelineAxis axis, int index) => Scale.GetValue(GetFromPosition(index), Clock, axis);
 
-    private uint[] Calls { get; }
+    public double GetEnd(TraceTimelineAxis axis, int index) => Scale.GetValue(GetToPosition(index), Clock, axis);
 
-    private byte[] Flags { get; }
+    public int GetCallNodeIndex(int index) => Store.CallNodeIndexes[GetStoreIndex(index)];
 
-    public ReadOnlySpan<double> Starts(TraceTimelineAxis axis)
-        => (axis == TraceTimelineAxis.Position ? PositionStarts : InstructionStarts).AsSpan(Offset, Count);
+    public int GetCallIndex(int index)
+        => Store.Calls[GetStoreIndex(index)] is var callIndex && callIndex == uint.MaxValue ? -1 : (int)callIndex;
 
-    public ReadOnlySpan<double> Ends(TraceTimelineAxis axis)
-        => (axis == TraceTimelineAxis.Position ? PositionEnds : InstructionEnds).AsSpan(Offset, Count);
+    public TraceSpanFlags FlagsAt(int index) => (TraceSpanFlags)Store.Flags[GetStoreIndex(index)];
 
-    public int NodeAt(int index) => Nodes[Offset + index];
-
-    public int CallAt(int index) => Calls[Offset + index] is var call && call == uint.MaxValue ? -1 : (int)call;
-
-    public TraceSpanFlags FlagsAt(int index) => (TraceSpanFlags)Flags[Offset + index];
-
-    public TraceSpan Span(TraceTimelineAxis axis, int index)
-        => new(Starts(axis)[index], Ends(axis)[index], NodeAt(index), CallAt(index), FlagsAt(index));
+    public TraceSpan GetSpan(int index) => new(GetFrom(index), GetTo(index), GetCallNodeIndex(index), GetCallIndex(index), FlagsAt(index));
 
     public TraceTimelineRow Where(Func<int, bool> include)
     {
-        var kept = new List<int>(Count);
+        var indexes = new int[Count];
+
+        var kept = 0;
 
         for (var index = 0; index < Count; index++)
         {
-            if (include(NodeAt(index)))
+            var storeIndex = GetStoreIndex(index);
+
+            if (include(Store.CallNodeIndexes[storeIndex]))
             {
-                kept.Add(index);
+                indexes[kept++] = storeIndex;
             }
         }
 
-        if (kept.Count == Count)
+        if (kept == Count)
         {
             return this;
         }
 
-        return new TraceTimelineRow([.. kept.Select(i => PositionStarts[Offset + i])],
-                                    [.. kept.Select(i => PositionEnds[Offset + i])],
-                                    [.. kept.Select(i => InstructionStarts[Offset + i])],
-                                    [.. kept.Select(i => InstructionEnds[Offset + i])],
-                                    [.. kept.Select(i => Nodes[Offset + i])],
-                                    [.. kept.Select(i => Calls[Offset + i])],
-                                    [.. kept.Select(i => Flags[Offset + i])]);
+        Array.Resize(ref indexes, kept);
+
+        return new TraceTimelineRow(Scale, Clock, Store, indexes);
     }
 
-    public int FirstEndingAfter(TraceTimelineAxis axis, double x, int from = 0) => SortedSearch.FirstAfter(Ends(axis), x, from);
-
-    public int FirstStartingFrom(TraceTimelineAxis axis, double x, int from) => SortedSearch.FirstAtOrAfter(Starts(axis), x, from);
-
-    public int FirstStartingAfter(TraceTimelineAxis axis, double x) => SortedSearch.FirstAfter(Starts(axis), x);
-
-    public int IndexAt(TraceTimelineAxis axis, double x, double tolerance)
+    internal int RemoveAll(Func<int, bool> isRemoved)
     {
-        var index = FirstEndingAfter(axis, x - tolerance);
+        var kept = 0;
 
-        return index < Count && Starts(axis)[index] <= x + tolerance ? index : -1;
+        for (var index = 0; index < Count; index++)
+        {
+            var storeIndex = GetStoreIndex(index);
+
+            if (isRemoved(Store.CallNodeIndexes[storeIndex]))
+            {
+                continue;
+            }
+
+            if (Indexes is null)
+            {
+                Store.Move(storeIndex, Offset + kept);
+            }
+            else
+            {
+                Indexes[Offset + kept] = storeIndex;
+            }
+
+            kept++;
+        }
+
+        var removed = Count - kept;
+
+        Count = kept;
+
+        return removed;
     }
+
+    public int GetFirstEndingAfter(TraceTimelineAxis axis, double value, int from = 0)
+        => GetLowerBound(Store.Tos, axis, value, from, strict: true);
+
+    public int GetFirstStartingFrom(TraceTimelineAxis axis, double value, int from = 0)
+        => GetLowerBound(Store.Froms, axis, value, from, strict: false);
+
+    public int GetFirstStartingAfter(TraceTimelineAxis axis, double value) => GetLowerBound(Store.Froms, axis, value, 0, strict: true);
+
+    public int GetIndex(TraceTimelineAxis axis, double value, double tolerance)
+    {
+        var index = GetFirstEndingAfter(axis, value - tolerance);
+
+        return index < Count && GetStart(axis, index) <= value + tolerance ? index : -1;
+    }
+
+    public int GetIndex(TracePosition position)
+    {
+        var index = GetLowerBound(Store.Tos, position, strict: true);
+
+        return index < Count && GetFromPosition(index) <= position ? index : -1;
+    }
+
+    internal int GetIndex(TracePosition from, int callNodeIndex, int callIndex)
+    {
+        var index = GetLowerBound(Store.Froms, from, strict: false);
+
+        return index < Count
+               && GetFromPosition(index) == from
+               && GetCallNodeIndex(index) == callNodeIndex
+               && GetCallIndex(index) == callIndex
+            ? index
+            : -1;
+    }
+
+    internal int GetStoreIndex(int index) => Indexes is null ? Offset + index : Indexes[Offset + index];
 
     internal TraceTimelineRow Slice(int start, int count)
         => start == 0 && count == Count
             ? this
-            : new TraceTimelineRow(PositionStarts,
-                                   PositionEnds,
-                                   InstructionStarts,
-                                   InstructionEnds,
-                                   Nodes,
-                                   Calls,
-                                   Flags,
-                                   Offset + start,
-                                   count);
+            : new TraceTimelineRow(Scale, Clock, Store, Indexes, Offset + start, count);
+
+    private int GetLowerBound(TracePosition[] positions, TraceTimelineAxis axis, double value, int from, bool strict)
+    {
+        var low = from;
+
+        var high = Count;
+
+        while (low < high)
+        {
+            var middle = low + (high - low) / 2;
+
+            var probe = Scale.GetValue(positions[GetStoreIndex(middle)], Clock, axis);
+
+            if (strict ? probe <= value : probe < value)
+            {
+                low = middle + 1;
+            }
+            else
+            {
+                high = middle;
+            }
+        }
+
+        return low;
+    }
+
+    private int GetLowerBound(TracePosition[] positions, TracePosition position, bool strict)
+    {
+        var low = 0;
+
+        var high = Count;
+
+        while (low < high)
+        {
+            var middle = low + (high - low) / 2;
+
+            var probe = positions[GetStoreIndex(middle)];
+
+            if (strict ? probe <= position : probe < position)
+            {
+                low = middle + 1;
+            }
+            else
+            {
+                high = middle;
+            }
+        }
+
+        return low;
+    }
+
+    private TracePoint GetPoint(TracePosition position) => new(position, Clock.GetInstructions(position));
 }

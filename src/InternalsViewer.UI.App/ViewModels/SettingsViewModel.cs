@@ -5,10 +5,10 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.Query.XEvents;
-using InternalsViewer.UI.App.Controls.Trace;
+using InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Enums;
 using InternalsViewer.UI.App.Services;
 using InternalsViewer.Query.FullTrace.CustomHooks;
-using InternalsViewer.Query.FullTrace.Interfaces.Recording;
+using InternalsViewer.Query.FullTrace.Recording;
 
 namespace InternalsViewer.UI.App.ViewModels;
 
@@ -36,7 +36,6 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     private const string CallTreeHiddenCategoriesKey = "CallTreeHiddenCategories";
     private const string CallTreePrunedCategoriesKey = "CallTreePrunedCategories";
     private const string TraceTimelineShowMemoryKey = "FlameChartShowMemory";
-    private const string TraceTimelineShowCallStackKey = "FlameChartShowCallStack";
     private const string TraceTimelineMemoryModeKey = "FlameChartMemoryMode";
 
     private const string TraceTimelineHiddenTickTracksKey = "TraceTimelineHiddenTickTracks";
@@ -94,9 +93,6 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
     [ObservableProperty]
     private bool _traceTimelineShowMemory;
-
-    [ObservableProperty]
-    private bool _traceTimelineShowCallStack;
 
     [ObservableProperty]
     private TraceTimelineMemoryMode _traceTimelineMemoryMode;
@@ -200,8 +196,6 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
         TraceTimelineShowMemory = await SettingsService.ReadSettingAsync<bool?>(TraceTimelineShowMemoryKey) ?? false;
 
-        TraceTimelineShowCallStack = await SettingsService.ReadSettingAsync<bool?>(TraceTimelineShowCallStackKey) ?? false;
-
         TraceTimelineMemoryMode = await SettingsService.ReadSettingAsync<TraceTimelineMemoryMode?>(TraceTimelineMemoryModeKey)
                                ?? TraceTimelineMemoryMode.Allocated;
 
@@ -271,11 +265,6 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     partial void OnTraceTimelineShowMemoryChanged(bool value)
     {
         _ = SettingsService.SaveSettingAsync(TraceTimelineShowMemoryKey, value);
-    }
-
-    partial void OnTraceTimelineShowCallStackChanged(bool value)
-    {
-        _ = SettingsService.SaveSettingAsync(TraceTimelineShowCallStackKey, value);
     }
 
     partial void OnTraceTimelineMemoryModeChanged(TraceTimelineMemoryMode value)

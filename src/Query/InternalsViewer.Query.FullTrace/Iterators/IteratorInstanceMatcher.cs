@@ -114,20 +114,20 @@ internal static class IteratorInstanceMatcher
             {
                 var (node, context) = pending.Pop();
 
-                if (node.Frame is { Instance: not 0 } frame
-                    && frame.Instance != context
-                    && !InstanceMethodCollector.IsPlanObjectClass(frame.Resolved?.ClassName))
+                if (node.Frame is { InstanceAddress: not 0 } frame
+                    && frame.InstanceAddress != context
+                    && !IteratorSymbols.IsPlanObject(frame.Resolved?.ClassName))
                 {
-                    if (!instances.TryGetValue(frame.Instance, out var instance))
+                    if (!instances.TryGetValue(frame.InstanceAddress, out var instance))
                     {
-                        instance = new IteratorInstance(frame.Instance);
+                        instance = new IteratorInstance(frame.InstanceAddress);
 
-                        instances[frame.Instance] = instance;
+                        instances[frame.InstanceAddress] = instance;
                     }
 
                     instance.Entries.Add(node);
 
-                    context = frame.Instance;
+                    context = frame.InstanceAddress;
                 }
 
                 foreach (var child in node.ChildNodes)

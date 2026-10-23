@@ -89,6 +89,8 @@ internal readonly record struct LocatorType(LocatorValueType ValueType, bool IsI
             => (LocatorValueType.TypeInfo, 0, null),
         "CXVariant"
             => (LocatorValueType.Variant, 0, null),
+        "tagDBBINDING"
+            => (LocatorValueType.Bindings, 0, null),
         _ => null
     };
 

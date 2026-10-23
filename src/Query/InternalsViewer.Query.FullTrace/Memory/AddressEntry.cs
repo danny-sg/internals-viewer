@@ -4,13 +4,16 @@ namespace InternalsViewer.Query.FullTrace.Memory;
 
 internal readonly record struct AddressEntry(ulong Address,
                                              ulong Frame,
-                                             int Call,
-                                             TracePosition FromPosition,
+                                             int CallIndex,
                                              ulong Owner,
+                                             TracePosition FromPosition,
                                              TracePosition ToPosition,
-                                             int Node,
+                                             int CallNodeIndex,
                                              uint Thread,
-                                             MemoryMapOperation Operation)
+                                             MemoryMapOperation Operation,
+                                             string? ClassName = null,
+                                             ulong Bytes = 0,
+                                             string? Site = null)
 {
     public bool IsAlive => !ToPosition.IsKnown;
 }

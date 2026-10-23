@@ -11,5 +11,6 @@ public enum LocatorValueType : byte
     Text,
     WideText,
     TypeInfo,
-    Variant
+    Variant,
+    Bindings
 }

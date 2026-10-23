@@ -7,7 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:skiaSharp="using:SkiaSharp.Views.Windows"
     xmlns:tableView="using:WinUI.TableView"
-    xmlns:controls="using:InternalsViewer.UI.App.Controls"
+    xmlns:columnstore="using:InternalsViewer.UI.App.Controls.Columnstore"
     xmlns:models="using:InternalsViewer.UI.App.Models.Columnstore.Segment"
     mc:Ignorable="d">
     <Grid>
@@ -81,8 +81,8 @@
                 <tableView:TableViewTemplateColumn Header="Data Id" Width="340">
                     <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="models:BitpackValueDetail">
-                            <TextBlock controls:DerivationText.Derivation="{x:Bind Derivation, Mode=OneTime}"
-                                       controls:DerivationText.ShowSteps="{x:Bind ShowDerivation, Mode=OneTime}"
+                            <TextBlock columnstore:DerivationText.Derivation="{x:Bind Derivation, Mode=OneTime}"
+                                       columnstore:DerivationText.ShowSteps="{x:Bind ShowDerivation, Mode=OneTime}"
                                        Style="{StaticResource DerivationTextStyle}"/>
                         </DataTemplate>
                     </tableView:TableViewTemplateColumn.CellTemplate>
@@ -90,8 +90,8 @@
                 <tableView:TableViewTemplateColumn Header="Value" Width="340">
                     <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="models:BitpackValueDetail">
-                            <TextBlock controls:DerivationText.Derivation="{x:Bind ValueDerivation, Mode=OneTime}"
-                                       controls:DerivationText.ShowSteps="{x:Bind ShowDerivation, Mode=OneTime}"
+                            <TextBlock columnstore:DerivationText.Derivation="{x:Bind ValueDerivation, Mode=OneTime}"
+                                       columnstore:DerivationText.ShowSteps="{x:Bind ShowDerivation, Mode=OneTime}"
                                        Style="{StaticResource DerivationTextStyle}"/>
                         </DataTemplate>
                     </tableView:TableViewTemplateColumn.CellTemplate>

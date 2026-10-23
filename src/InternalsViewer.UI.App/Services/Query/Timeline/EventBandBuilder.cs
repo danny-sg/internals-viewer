@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using InternalsViewer.Query.Events;
-using InternalsViewer.UI.App.Controls.Timeline;
-using InternalsViewer.UI.App.Controls.Timeline.Definition;
+using InternalsViewer.UI.App.Controls.Query.Timeline.Definition;
+using InternalsViewer.UI.App.Controls.Query.Timeline;
 
 namespace InternalsViewer.UI.App.Services.Query.Timeline;
 

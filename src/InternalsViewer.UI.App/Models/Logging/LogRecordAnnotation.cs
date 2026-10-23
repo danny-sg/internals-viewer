@@ -1,4 +1,5 @@
 using InternalsViewer.Internals.Annotations;
+using Windows.UI;
 
 namespace InternalsViewer.UI.App.Models.Logging;
 
@@ -12,6 +13,10 @@ public sealed class LogRecordAnnotation
     public int Length { get; set; }
 
     public string Description { get; set; } = string.Empty;
+
+    public Color? OutlineColour { get; set; }
+
+    public bool IsDashed { get; set; }
 
     /// <summary>
     /// Page field the change updated, when it maps to a known field - used to name and style the value from the

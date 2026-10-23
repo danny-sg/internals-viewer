@@ -4,8 +4,8 @@ using InternalsViewer.Query.FullTrace.Arguments;
 
 namespace InternalsViewer.Query.FullTrace.Calls;
 
-public sealed record TraceValueUse(ulong Address,
-                                   ulong Instance,
+public sealed record TraceValueUse(ulong FunctionAddress,
+                                   ulong InstanceAddress,
                                    string Location,
                                    int Calls,
                                    TraceValueCall First,

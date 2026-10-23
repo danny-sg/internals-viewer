@@ -63,6 +63,8 @@ public sealed partial class HexViewControl
 
     private ILogger Logger => _logger ??= App.GetService<ILoggerFactory>().CreateLogger<HexViewControl>();
 
+    private int? PendingScrollOffset { get; set; }
+
     private static SolidColorBrush GetBrush(Color colour)
     {
         if (!BrushCache.TryGetValue(colour, out var brush))
@@ -139,69 +141,76 @@ public sealed partial class HexViewControl
 
         foreach (var changeSpan in spans)
         {
-            var borderBrush = ReferenceEquals(changeSpan, SelectedChangeSpan) ? selectedBrush : defaultBrush;
+            var borderBrush = changeSpan.OutlineColour is { } outline
+                ? GetBrush(outline)
+                : ReferenceEquals(changeSpan, SelectedChangeSpan) ? selectedBrush : defaultBrush;
 
             var start = changeSpan.Offset;
             var end = changeSpan.Offset + changeSpan.Length - 1;
 
-            if (changeSpan.Length <= 0 || start < 0 || end >= PageData.Size)
+            if (changeSpan.Length <= 0 || start < 0 || end >= (Data?.Length ?? PageData.Size))
             {
                 continue;
             }
 
             var border = metrics.GetSpanBorder(start, end, lineHeight);
 
-            foreach (var box in border.Boxes)
+            foreach (var shape in CreateOutline(border, borderBrush))
             {
-                Add(CreateBox(box));
-            }
-
-            if (border.Outline.Count > 0)
-            {
-                var polygon = new Polygon
+                if (changeSpan.IsDashed)
                 {
-                    Stroke = borderBrush,
-                    StrokeThickness = 2,
-                    StrokeLineJoin = PenLineJoin.Round,
-                    IsHitTestVisible = false
-                };
-
-                foreach (var point in border.Outline)
-                {
-                    polygon.Points.Add(point);
+                    shape.StrokeDashArray = [2, 2];
                 }
 
-                Add(polygon);
-            }
-
-            continue;
-
-            Rectangle CreateBox(Rect bounds)
-            {
-                var box = new Rectangle
-                {
-                    Width = bounds.Width,
-                    Height = bounds.Height,
-                    Stroke = borderBrush,
-                    StrokeThickness = 2,
-                    RadiusX = 2,
-                    RadiusY = 2,
-                    IsHitTestVisible = false,
-                };
-
-                Canvas.SetLeft(box, bounds.Left);
-                Canvas.SetTop(box, bounds.Top);
-
-                return box;
-            }
-
-            void Add(Shape shape)
-            {
                 ToolTipService.SetToolTip(shape, changeSpan.Description);
 
                 HexOverlayCanvas.Children.Add(shape);
             }
         }
+    }
+
+    private static List<Shape> CreateOutline(SpanBorder border, Brush? brush)
+    {
+        var shapes = new List<Shape>();
+
+        foreach (var bounds in border.Boxes)
+        {
+            var box = new Rectangle
+            {
+                Width = bounds.Width,
+                Height = bounds.Height,
+                Stroke = brush,
+                StrokeThickness = 2,
+                RadiusX = 2,
+                RadiusY = 2,
+                IsHitTestVisible = false,
+            };
+
+            Canvas.SetLeft(box, bounds.Left);
+            Canvas.SetTop(box, bounds.Top);
+
+            shapes.Add(box);
+        }
+
+        if (border.Outline.Count > 0)
+        {
+            var polygon = new Polygon
+            {
+                Stroke = brush,
+                StrokeThickness = 2,
+                StrokeLineJoin = PenLineJoin.Round,
+                IsHitTestVisible = false
+            };
+
+            foreach (var point in border.Outline)
+            {
+                polygon.Points.Add(point);
+            }
+
+            shapes.Add(polygon);
+        }
+
+        return shapes;
     }
 
     /// <summary>
@@ -323,6 +332,8 @@ public sealed partial class HexViewControl
                 Highlight(marker);
             }
         }
+
+        target.DrawMarkerMap();
     }
 
     /// <summary>
@@ -348,13 +359,9 @@ public sealed partial class HexViewControl
             return;
         }
 
-        const int totalLines = PageData.Size / BytesPerLine;
-
         var positionLineNumber = (position / BytesPerLine) - 1;
 
-        var heightPerLine = target.HexRichTextBlock.ActualHeight / totalLines;
-
-        var scrollPosition = positionLineNumber * heightPerLine;
+        var scrollPosition = positionLineNumber * target.GetLineHeight();
 
         // A scroll of nothing raises no view change to be told apart from one the reader made
         if (Math.Abs(scrollPosition - target.ScrollViewer.VerticalOffset) < 1)
@@ -367,6 +374,30 @@ public sealed partial class HexViewControl
         target.ScrollViewer.ScrollToVerticalOffset(scrollPosition);
     }
 
+    private void ScrollToSpan(int offset)
+    {
+        if (HexRichTextBlock.Blocks.Count == 0 || HexRichTextBlock.ActualHeight <= 0)
+        {
+            PendingScrollOffset = offset;
+
+            return;
+        }
+
+        ScrollToPosition(this, offset, isFollowingSelection: false);
+    }
+
+    private void ScrollToPendingOffset()
+    {
+        if (PendingScrollOffset is not { } offset || HexRichTextBlock.Blocks.Count == 0 || HexRichTextBlock.ActualHeight <= 0)
+        {
+            return;
+        }
+
+        PendingScrollOffset = null;
+
+        ScrollToPosition(this, offset, isFollowingSelection: false);
+    }
+
     private static void OnChangeSpansChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         ((HexViewControl)d).DrawChangeSpans();
@@ -376,9 +407,11 @@ public sealed partial class HexViewControl
     {
         var control = (HexViewControl)d;
 
+        control.PendingScrollOffset = null;
+
         if (e.NewValue is LogRecordAnnotation span)
         {
-            ScrollToPosition(control, span.Offset, isFollowingSelection: false);
+            control.ScrollToSpan(span.Offset);
         }
 
         control.DrawChangeSpans();

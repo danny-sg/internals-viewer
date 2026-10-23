@@ -25,60 +25,102 @@ internal readonly struct TraceCallColumns(ulong[] values, int calls)
 
     public const ulong ReturnedFlag = 1ul << 32;
 
+    private const ulong UnknownSequence = ulong.MaxValue;
+
     public ulong[] Values => values;
 
     public int Calls => calls;
 
-    public TracePosition GetFromPosition(int call) => new(Get(FromSequenceIndex, call), Get(FromStepsIndex, call));
+    public TracePosition GetFromPosition(int callIndex) => new(Get(FromSequenceIndex, callIndex), Get(FromStepsIndex, callIndex));
 
-    public TracePosition GetToPosition(int call) => new(Get(ToSequenceIndex, call), Get(ToStepsIndex, call));
+    public TracePosition GetToPosition(int callIndex) => new(Get(ToSequenceIndex, callIndex), Get(ToStepsIndex, callIndex));
 
-    public uint GetThread(int call) => (uint)Get(FlagsIndex, call);
+    public uint GetThread(int callIndex) => (uint)Get(FlagsIndex, callIndex);
 
-    public bool IsReturned(int call) => (Get(FlagsIndex, call) & ReturnedFlag) != 0;
+    public bool IsReturned(int callIndex) => (Get(FlagsIndex, callIndex) & ReturnedFlag) != 0;
 
-    public ulong GetRegister(int call, int slot) => Get(IntegerOffset + slot, call);
+    public ulong GetRegister(int callIndex, int slot) => Get(IntegerOffset + slot, callIndex);
 
-    public ulong GetReturnValue(int call) => Get(ReturnValueIndex, call);
+    public ulong GetReturnValue(int callIndex) => Get(ReturnValueIndex, callIndex);
 
-    public int GetNodeIndex(int call) => (int)Get(NodeIndex, call);
+    public int GetCallNodeIndex(int callIndex) => (int)Get(NodeIndex, callIndex);
 
-    public TraceArgumentCall GetCall(int call, IReadOnlyList<Locator>? locators = null)
+    public TraceArgumentCall GetCall(int callIndex, IReadOnlyList<Locator>? locators = null)
     {
         var registers = new ulong[ArgumentLayout.RegisterCount];
 
         for (var slot = 0; slot < registers.Length; slot++)
         {
-            registers[slot] = GetRegister(call, slot);
+            registers[slot] = GetRegister(callIndex, slot);
         }
 
-        return new TraceArgumentCall(GetFromPosition(call),
-                                     GetThread(call),
-                                     IsReturned(call),
+        return new TraceArgumentCall(GetFromPosition(callIndex),
+                                     GetThread(callIndex),
+                                     IsReturned(callIndex),
                                      registers,
-                                     GetReturnValue(call),
-                                     GetNodeIndex(call))
+                                     GetReturnValue(callIndex),
+                                     GetCallNodeIndex(callIndex))
         {
             Locators = locators ?? [],
-            ToPosition = GetToPosition(call)
+            ToPosition = GetToPosition(callIndex)
         };
     }
 
-    public void SetToPosition(int call, TracePosition toPosition, ulong returnValue, bool returned)
+    public void SetToPosition(int callIndex, TracePosition toPosition, ulong returnValue, bool returned)
     {
-        Set(ToSequenceIndex, call, toPosition.Sequence);
+        Set(ToSequenceIndex, callIndex, toPosition.Sequence);
 
-        Set(ToStepsIndex, call, toPosition.Steps);
+        Set(ToStepsIndex, callIndex, toPosition.Steps);
 
         if (returned)
         {
-            Set(ReturnValueIndex, call, returnValue);
+            Set(ReturnValueIndex, callIndex, returnValue);
 
-            Set(FlagsIndex, call, Get(FlagsIndex, call) | ReturnedFlag);
+            Set(FlagsIndex, callIndex, Get(FlagsIndex, callIndex) | ReturnedFlag);
         }
     }
 
-    private ulong Get(int column, int call) => values[column * calls + call];
+    public static void Encode(Span<ulong> values, int calls)
+    {
+        var fromSequences = values.Slice(FromSequenceIndex * calls, calls);
 
-    private void Set(int column, int call, ulong value) => values[column * calls + call] = value;
+        var toSequences = values.Slice(ToSequenceIndex * calls, calls);
+
+        for (var callIndex = calls - 1; callIndex >= 0; callIndex--)
+        {
+            if (toSequences[callIndex] != UnknownSequence)
+            {
+                toSequences[callIndex] -= fromSequences[callIndex];
+            }
+
+            if (callIndex > 0)
+            {
+                fromSequences[callIndex] -= fromSequences[callIndex - 1];
+            }
+        }
+    }
+
+    public static void Decode(Span<ulong> values, int calls)
+    {
+        var fromSequences = values.Slice(FromSequenceIndex * calls, calls);
+
+        var toSequences = values.Slice(ToSequenceIndex * calls, calls);
+
+        for (var callIndex = 0; callIndex < calls; callIndex++)
+        {
+            if (callIndex > 0)
+            {
+                fromSequences[callIndex] += fromSequences[callIndex - 1];
+            }
+
+            if (toSequences[callIndex] != UnknownSequence)
+            {
+                toSequences[callIndex] += fromSequences[callIndex];
+            }
+        }
+    }
+
+    private ulong Get(int column, int callIndex) => values[column * calls + callIndex];
+
+    private void Set(int column, int callIndex, ulong value) => values[column * calls + callIndex] = value;
 }

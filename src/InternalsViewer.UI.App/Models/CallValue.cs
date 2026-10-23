@@ -2,7 +2,7 @@ using InternalsViewer.Query.CallStack;
 
 namespace InternalsViewer.UI.App.Models;
 
-public sealed record CallValue(CallStackNode Node, int Call)
+public sealed record CallValue(CallStackNode Node, int CallIndex)
 {
-    public override string ToString() => $"{Call + 1}";
+    public override string ToString() => $"{CallIndex + 1}";
 }

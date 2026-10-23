@@ -1,5 +1,4 @@
 using InternalsViewer.Query.FullTrace.Hooks;
-using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
 
 namespace InternalsViewer.Query.FullTrace.Native;
 
@@ -25,14 +24,6 @@ internal sealed unsafe class ReplayView : ITraceReplay
     }
 
     public bool WatchFrame(uint thread, ulong frame) => Session != IntPtr.Zero && ReplayBridge.WatchFrame(Session, thread, frame);
-
-    public void WatchStack(uint thread, ulong stackPointer)
-    {
-        if (Session != IntPtr.Zero)
-        {
-            ReplayBridge.WatchStack(Session, thread, stackPointer);
-        }
-    }
 
     public ReadOnlySpan<TraceHookFrame> GetFrames(uint thread)
     {

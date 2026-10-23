@@ -1,4 +1,6 @@
 ﻿using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.CallStack.Locators;
+using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
@@ -24,6 +26,8 @@ internal sealed record MemoryFunction(ulong Address,
 
     private const string MemoryObjectFactory = "MemoryObjectFactory";
 
+    private static readonly char[] PathSeparators = ['\\', '/'];
+
     private static readonly HashSet<string> MemoryObjects = new(StringComparer.Ordinal)
     {
         "CMemObj",
@@ -36,6 +40,16 @@ internal sealed record MemoryFunction(ulong Address,
 
     private static readonly HashSet<string>.AlternateLookup<ReadOnlySpan<char>> MemoryObjectLookup =
         MemoryObjects.GetAlternateLookup<ReadOnlySpan<char>>();
+
+    private static readonly HashSet<string> AllocatorFunctions = new(StringComparer.Ordinal)
+    {
+        "OperatorNew",
+        "malloc",
+        "calloc",
+        "_aligned_malloc"
+    };
+
+    private static readonly string[] AllocatorClassPrefixes = ["CMemPartitioned<", "TVarPageMgr<"];
 
     public bool IsPage { get; init; }
 
@@ -51,16 +65,56 @@ internal sealed record MemoryFunction(ulong Address,
 
     public ulong FlagMask { get; init; }
 
+    public int FileSlot { get; init; } = -1;
+
+    public int LineSlot { get; init; } = -1;
+
     public bool IsAllocation => Operation is AllocationOperation.Allocate or AllocationOperation.Reallocate;
 
     public static bool IsMemoryObjectClass(string? className)
         => className is not null && (className == MemoryObjectFactory || IsMemoryObject(className));
+
+    public static bool IsAllocatorFrame(CallstackFrame? frame)
+    {
+        if (frame?.Resolved is not { } resolved)
+        {
+            return false;
+        }
+
+        if (resolved.ClassName is not { Length: > 0 } className)
+        {
+            return AllocatorFunctions.Contains(resolved.MethodName) || Classify(0, resolved.MethodName) is not null;
+        }
+
+        return IsMemoryObjectClass(className)
+               || AllocatorClassPrefixes.Any(p => className.StartsWith(p, StringComparison.Ordinal))
+               || Classify(0, $"{className}::{resolved.MethodName}") is not null;
+    }
 
     public bool IsCounted(TraceArgumentCall call) => FlagSlot < 0 || (call.Slot(FlagSlot) & FlagMask) != 0;
 
     public ulong GetObject(TraceArgumentCall call) => Operation == AllocationOperation.Create ? call.ReturnedValue : call.Slot(0);
 
     public ulong GetPointer(TraceArgumentCall call) => call.Slot(PointerSlot);
+
+    public string? GetSite(TraceArgumentCall call)
+    {
+        if (FileSlot < 0 || LineSlot < 0 || call.GetLocator(FileSlot) is not { ValueType: LocatorValueType.Text } locator)
+        {
+            return null;
+        }
+
+        var file = new TextLocator(locator);
+
+        ulong? line = LineSlot < ArgumentLayout.RegisterCount ? call.Slot(LineSlot) : call.GetStackValue(LineSlot);
+
+        if (file.IsTruncated || file.Text.Length == 0 || line is not { } number)
+        {
+            return null;
+        }
+
+        return $"{file.Text[(file.Text.LastIndexOfAny(PathSeparators) + 1)..]}:{(int)number}";
+    }
 
     public ulong GetByteCount(TraceArgumentCall call)
     {

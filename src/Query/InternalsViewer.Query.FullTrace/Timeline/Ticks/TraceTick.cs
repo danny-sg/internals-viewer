@@ -1,25 +1,19 @@
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.Operators;
-using InternalsViewer.Query.FullTrace.Timeline.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Timeline.Ticks;
 
-public sealed record TraceTick(byte Value,
-                               uint Thread,
-                               CallStackNode Node,
-                               int Call,
-                               TraceSpan Position,
-                               TraceSpan Instructions) : ITraceMark
+public sealed record TraceTick(byte Value, uint Thread, CallStackNode Node, TraceTimelineRow Row, int RowIndex) : ITraceMark
 {
     public ExecutionOperatorEvent? Operator { get; init; }
 
     public ExecutionOperatorEvent? Caller { get; init; }
 
-    public ulong Function { get; init; }
+    public TraceSpan Span => Row.GetSpan(RowIndex);
 
-    public ulong Instance { get; init; }
+    public int CallIndex => Row.GetCallIndex(RowIndex);
 
-    public int Index { get; init; }
+    public ulong FunctionAddress => Node.Frame?.Address ?? 0;
 
-    public TraceSpan Of(TraceTimelineAxis axis) => axis == TraceTimelineAxis.Position ? Position : Instructions;
+    public ulong InstanceAddress => Node.Frame?.InstanceAddress ?? 0;
 }

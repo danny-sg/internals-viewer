@@ -1,10 +1,10 @@
 using System.Buffers;
 using System.Text.RegularExpressions;
 using InternalsViewer.Query.CallStack.Arguments;
-using InternalsViewer.Query.CallStack.Dia;
 using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Arguments.Enums;
+using InternalsViewer.Query.FullTrace.Functions;
 
 namespace InternalsViewer.Query.FullTrace.Locators;
 
@@ -16,13 +16,20 @@ public static partial class LocatorReadResolver
         SearchValues.Create(["VPageId@@", "VAllocationPageId@@", "VHPageHandle@@", "VPageRef@@", "VBTreeHPage@@", "VIndexPageRef@@",
                              "VHeapPageRef@@", "VTextPageRef@@", "VIAMPageRef@@", "VGAMPageRef@@", "VSGAMPageRef@@", "VPFSPageRef@@",
                              "VPSPageRef@@", "URowId@@", "VColumnStoreObjectKey@@", "ULSN@@", "VLSN@@", "PEBD", "PEB_W", "VCTypeInfo@@",
-                             "VCXVariant@@"],
+                             "VCXVariant@@", "UtagDBBINDING@@"],
                             StringComparison.Ordinal);
 
     internal static IEnumerable<LocatorRead> GetReads(ulong function, FunctionSignature signature)
+        => GetReads(function, signature, ArgumentLayout.GetLayout(signature));
+
+    internal static IEnumerable<LocatorRead> GetReads(ulong function, FunctionSignature signature, ArgumentLayout layout)
     {
-        foreach (var slot in ArgumentLayout.LayoutOf(signature).Slots)
+        var slots = layout.Slots;
+
+        for (var index = 0; index < slots.Count; index++)
         {
+            var slot = slots[index];
+
             if (slot.Location is not (ArgumentLocation.Register or ArgumentLocation.Stack)
                 || slot.Name == ArgumentLayout.ReturnBuffer
                 || LocatorType.GetLocatorType(slot.Type) is not { } type
@@ -31,7 +38,11 @@ public static partial class LocatorReadResolver
                 continue;
             }
 
-            foreach (var read in CreateReads(function, slot.Index, type, returned: false))
+            var count = type.ValueType == LocatorValueType.Bindings ? BindingArguments.GetCountIndex(slots, index) : -1;
+
+            var countRegister = count < 0 ? -1 : slots[count].Index;
+
+            foreach (var read in CreateReads(function, slot.Index, type, returned: false, countRegister))
             {
                 yield return read;
             }
@@ -47,99 +58,59 @@ public static partial class LocatorReadResolver
     }
 
     internal static IEnumerable<LocatorRead> GetStackReads(ulong function, FunctionSignature signature)
-        => ArgumentLayout.LayoutOf(signature)
-                         .Slots
-                         .Where(s => s.Location == ArgumentLocation.Stack)
-                         .Select(s => new LocatorRead(function, s.Index, false, LocatorValueType.Argument));
+        => GetStackReads(function, ArgumentLayout.GetLayout(signature));
 
-    internal static List<LocatorRead> FindStackReads(DiaResolver resolver, IEnumerable<uint> functions)
-    {
-        var kept = functions.ToHashSet();
+    internal static IEnumerable<LocatorRead> GetStackReads(ulong function, ArgumentLayout layout)
+        => layout.Slots
+                 .Where(s => s.Location == ArgumentLocation.Stack)
+                 .Select(s => new LocatorRead(function, s.Index, false, LocatorValueType.Argument));
 
-        var reads = new List<LocatorRead>();
+    private static bool ReadsLocators(ReadOnlySpan<char> decoratedName)
+        => decoratedName.ContainsAny(DecoratedTypes) || ReferencedType().IsMatch(decoratedName);
 
-        Span<char> buffer = stackalloc char[DiaResolver.MaximumNameLength];
-
-        using var symbols = resolver.ReadSymbols();
-
-        while (symbols.MoveNext())
-        {
-            if (!symbols.IsFunction
-                || FunctionSignature.CountParameters(symbols.Signature) is not >= StackCandidateParameters
-                || !kept.Remove(symbols.Rva)
-                || !resolver.TryGetDecoratedName(symbols.Rva, buffer, out var decoratedName, symbols.Name)
-                || FunctionSignature.Parse(symbols.Signature, decoratedName) is not { } signature)
-            {
-                continue;
-            }
-
-            reads.AddRange(GetStackReads(symbols.Rva, signature));
-        }
-
-        return reads;
-    }
-
-    internal static List<LocatorRead> FindReads(DiaResolver resolver, IEnumerable<uint> functions)
-    {
-        var reads = new List<LocatorRead>();
-
-        Span<char> nameBuffer = stackalloc char[DiaResolver.MaximumNameLength];
-
-        Span<char> signatureBuffer = stackalloc char[DiaResolver.MaximumNameLength];
-
-        foreach (var rva in functions)
-        {
-            if (!resolver.TryGetDecoratedName(rva, nameBuffer, out var decoratedName)
-                || (!decoratedName.ContainsAny(DecoratedTypes) && !ReferencedType().IsMatch(decoratedName))
-                || !TryGetSignature(resolver, rva, signatureBuffer, out var text)
-                || FunctionSignature.Parse(text, decoratedName) is not { } signature)
-            {
-                continue;
-            }
-
-            reads.AddRange(GetReads(rva, signature));
-        }
-
-        return reads;
-    }
-
-    private static IEnumerable<LocatorRead> CreateReads(ulong function, int register, LocatorType type, bool returned)
+    private static IEnumerable<LocatorRead> CreateReads(ulong function,
+                                                        int register,
+                                                        LocatorType type,
+                                                        bool returned,
+                                                        int countRegister = -1)
     {
         bool[] ends = returned || type.ValueType == LocatorValueType.Variant ? [true] : type.IsInOut ? [false, true] : [type.IsOutput];
 
-        return ends.Select(e => new LocatorRead(function, register, e, type.ValueType, type.Offset, type.Path));
-    }
-
-    private static bool TryGetSignature(DiaResolver resolver, uint rva, Span<char> buffer, out ReadOnlySpan<char> signature)
-    {
-        signature = default;
-
-        using var symbols = resolver.ReadSymbolsAtRva(rva);
-
-        while (symbols.MoveNext())
-        {
-            if (!symbols.IsFunction || symbols.Signature.IsEmpty)
-            {
-                continue;
-            }
-
-            if (signature.IsEmpty)
-            {
-                symbols.Signature.CopyTo(buffer);
-
-                signature = buffer[..symbols.Signature.Length];
-            }
-            else if (!FunctionSignature.HasSameParameters(signature, symbols.Signature))
-            {
-                signature = default;
-
-                return false;
-            }
-        }
-
-        return !signature.IsEmpty;
+        return ends.Select(e => new LocatorRead(function, register, e, type.ValueType, type.Offset, type.Path, countRegister));
     }
 
     [GeneratedRegex("[PQA]E[AB](?:[FGHIJKMN]|_[JKN]|W4|VHoBtId@@)")]
     private static partial Regex ReferencedType();
+
+    internal sealed class Collector
+    {
+        private Dictionary<uint, LocatorRead[]> Reads { get; } = [];
+
+        private List<LocatorRead> StackReads { get; } = [];
+
+        public void Visit(FunctionSymbol symbol)
+        {
+            if (!symbol.IsFirst)
+            {
+                if (!symbol.HasSameParameters)
+                {
+                    Reads.Remove(symbol.Rva);
+                }
+
+                return;
+            }
+
+            if (FunctionSignature.CountParameters(symbol.Signature) is >= StackCandidateParameters && symbol.Layout is { } stacked)
+            {
+                StackReads.AddRange(GetStackReads(symbol.Rva, stacked));
+            }
+
+            if (ReadsLocators(symbol.DecoratedName) && symbol.Parsed is { } signature && symbol.Layout is { } layout)
+            {
+                Reads[symbol.Rva] = [.. GetReads(symbol.Rva, signature, layout)];
+            }
+        }
+
+        public LocatorRead[] Build() => [.. Reads.Values.SelectMany(r => r), .. StackReads];
+    }
 }

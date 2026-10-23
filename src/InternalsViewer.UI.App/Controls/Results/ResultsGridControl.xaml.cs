@@ -1,4 +1,5 @@
 ﻿using InternalsViewer.Query.Results;
+using InternalsViewer.Query.Results.Enums;
 using CommunityToolkit.WinUI;
 using InternalsViewer.UI.App.Models;
 using Microsoft.UI.Dispatching;
@@ -129,6 +130,10 @@ public sealed partial class ResultsGridControl : UserControl
 
     public event EventHandler<ResultCellMenuEventArgs>? CellMenuOpening;
 
+    public event EventHandler<ResultCellHoverEventArgs>? CellHovered;
+
+    public event EventHandler<ResultSortEventArgs>? SortRequested;
+
     private TableView? ResultsTable { get; set; }
 
     private HashSet<Panel> DetailHosts { get; } = [];
@@ -164,7 +169,14 @@ public sealed partial class ResultsGridControl : UserControl
                 PageClicked = OnPageClicked,
                 ObjectClicked = ObjectClicked is null ? null : OnObjectClicked,
                 CallClicked = CallClicked is null ? null : OnCallClicked,
+                Hovered = CellHovered is null ? null : OnCellHovered,
+                CanSort = column.IsSortable,
             };
+
+            if (column.SortDirection is { } direction)
+            {
+                resultCellColumn.SortDirection = direction == ResultSortDirection.Ascending ? SortDirection.Ascending : SortDirection.Descending;
+            }
 
             if (CreateHeaderStyle(column) is { } headerStyle)
             {
@@ -172,6 +184,15 @@ public sealed partial class ResultsGridControl : UserControl
             }
 
             table.Columns.Add(resultCellColumn);
+        }
+
+        if (SortRequested is not null)
+        {
+            table.CanSortColumns = true;
+
+            table.Sorting += OnSorting;
+
+            table.ClearSorting += OnClearSorting;
         }
 
         BuildGroups(table, columns);
@@ -287,6 +308,10 @@ public sealed partial class ResultsGridControl : UserControl
         GroupBand.Visibility = Visibility.Collapsed;
 
         TableHost.Child = null;
+
+        table.Sorting -= OnSorting;
+
+        table.ClearSorting -= OnClearSorting;
 
         table.ItemsSource = null;
 
@@ -529,6 +554,45 @@ public sealed partial class ResultsGridControl : UserControl
     private void OnObjectClicked(ObjectValue value) => ObjectClicked?.Invoke(this, value);
 
     private void OnCallClicked(CallValue value) => CallClicked?.Invoke(this, value);
+
+    private void OnCellHovered(ResultCellHoverEventArgs e) => CellHovered?.Invoke(this, e);
+
+    private void OnSorting(object? sender, TableViewSortingEventArgs e)
+    {
+        e.Handled = true;
+
+        if (e.Column is not ResultCellColumn column || FindColumn(column.Ordinal) is not { IsSortable: true } definition)
+        {
+            return;
+        }
+
+        var direction = definition.SortDirection == ResultSortDirection.Ascending
+            ? ResultSortDirection.Descending
+            : ResultSortDirection.Ascending;
+
+        SortRequested?.Invoke(this, new ResultSortEventArgs(column.Ordinal, direction));
+    }
+
+    private void OnClearSorting(object? sender, TableViewClearSortingEventArgs e)
+    {
+        if (e.Column is ResultCellColumn column)
+        {
+            SortRequested?.Invoke(this, new ResultSortEventArgs(column.Ordinal, null));
+        }
+    }
+
+    private ResultColumn? FindColumn(int ordinal)
+    {
+        foreach (var column in ResultSet?.Columns ?? [])
+        {
+            if (column.Ordinal == ordinal)
+            {
+                return column;
+            }
+        }
+
+        return null;
+    }
 
     private void OnContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
     {

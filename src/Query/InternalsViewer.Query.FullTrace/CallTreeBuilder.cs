@@ -36,14 +36,19 @@ internal static class CallTreeBuilder
 
     private static CallstackFrame CreateFrame(TraceModule[] modules, ulong[] starts, CallNode call)
     {
-        var module = FindModule(modules, starts, call.Address);
+        var module = FindModule(modules, starts, call.FunctionAddress);
 
         if (module is null)
         {
-            return new CallstackFrame { Module = $"Unknown@0x{call.Address:X}", Address = call.Address, Instance = call.Instance };
+            return new CallstackFrame
+            {
+                Module = $"Unknown@0x{call.FunctionAddress:X}",
+                Address = call.FunctionAddress,
+                InstanceAddress = call.InstanceAddress
+            };
         }
 
-        return module.Frame(call.Address, call.Instance);
+        return module.Frame(call.FunctionAddress, call.InstanceAddress);
     }
 
     /// <summary>

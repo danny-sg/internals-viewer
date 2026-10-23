@@ -1,12 +1,14 @@
 ﻿using System.Collections.ObjectModel;
 using InternalsViewer.UI.App.Models;
-using InternalsViewer.UI.App.ViewModels.Page;
+using InternalsViewer.UI.App.ViewModels.HexView;
 using Microsoft.UI.Xaml.Input;
 
 namespace InternalsViewer.UI.App.Controls.HexView;
 
 public sealed partial class HexViewControl
 {
+    public const double StandardWidth = 455;
+
     private const int BytesPerLine = HexLayout.BytesPerLine;
 
     // Matches the RichTextBlock LineHeight the hex is laid out with
@@ -51,12 +53,33 @@ public sealed partial class HexViewControl
         // Border positions depend on the rendered text layout, so a resize/re-layout invalidates them
         HexRichTextBlock.SizeChanged += (_, _) =>
         {
+            ScrollToPendingOffset();
+
             DrawChangeSpans();
 
             DrawSelectionMask();
+
+            DrawPinOutlines();
+
+            PlaceTips();
         };
 
-        ScrollViewer.SizeChanged += (_, _) => UpdateVirtualization();
+        ScrollViewer.SizeChanged += (_, _) =>
+        {
+            UpdateVirtualization();
+
+            PlaceTips();
+
+            DrawMarkerMap();
+        };
+
+        ViewModel.Tips.CollectionChanged += OnTipsChanged;
+
+        Loaded += OnTipsLoaded;
+
+        Unloaded += OnTipsUnloaded;
+
+        RegisterPropertyChangedCallback(VisibilityProperty, (_, _) => PlaceTips());
 
         ScrollViewer.ViewChanged += OnScrollViewerViewChanged;
 
@@ -70,6 +93,8 @@ public sealed partial class HexViewControl
         HexRichTextBlock.AddHandler(PointerPressedEvent, new PointerEventHandler(OnHexPointerPressed), true);
 
         HexRichTextBlock.AddHandler(PointerReleasedEvent, new PointerEventHandler(OnHexPointerReleased), true);
+
+        HexRichTextBlock.AddHandler(DoubleTappedEvent, new DoubleTappedEventHandler(OnChangeDoubleTapped), true);
     }
 
     public HexControlViewModel ViewModel { get; } = new();

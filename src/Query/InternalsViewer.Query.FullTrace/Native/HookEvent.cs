@@ -8,9 +8,9 @@ internal unsafe struct HookEvent
 {
     public const int ArgumentCount = 4;
 
-    public ulong Function;
+    public ulong FunctionAddress;
 
-    public ulong Instance;
+    public ulong InstanceAddress;
 
     public ulong Id;
 
@@ -28,9 +28,9 @@ internal unsafe struct HookEvent
 
     public ulong Instructions;
 
-    public int Node;
+    public int CallNodeIndex;
 
-    public uint Call;
+    public uint CallIndex;
 
     public uint Thread;
 

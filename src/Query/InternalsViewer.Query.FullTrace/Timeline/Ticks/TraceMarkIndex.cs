@@ -1,84 +1,73 @@
 ﻿using InternalsViewer.Query.FullTrace.Timeline.Enums;
-using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Timeline.Ticks;
 
 public sealed class TraceMarkIndex<T> where T : ITraceMark
 {
-    internal TraceMarkIndex(T[] marks)
+    internal TraceMarkIndex(IEnumerable<T> marks, TraceScale scale)
     {
-        Marks = marks;
+        Marks = [.. marks.OrderBy(m => m.Span.From.Position)];
 
-        Positions = AxisMarks.Build(marks, TraceTimelineAxis.Position);
+        Scale = scale;
 
-        Instructions = AxisMarks.Build(marks, TraceTimelineAxis.Instructions);
+        Froms = [.. Marks.Select(m => m.Span.From)];
+
+        RunningEnds = new TracePoint[Marks.Length];
+
+        for (var index = 0; index < Marks.Length; index++)
+        {
+            var to = Marks[index].Span.To;
+
+            RunningEnds[index] = index > 0 && RunningEnds[index - 1].Position > to.Position ? RunningEnds[index - 1] : to;
+        }
     }
 
     public int Count => Marks.Length;
 
     public IReadOnlyList<T> All => Marks;
 
+    public TraceScale Scale { get; }
+
     private T[] Marks { get; }
 
-    private AxisMarks Positions { get; }
+    private TracePoint[] Froms { get; }
 
-    private AxisMarks Instructions { get; }
+    private TracePoint[] RunningEnds { get; }
 
-    public ReadOnlySpan<double> GetStarts(TraceTimelineAxis axis) => Of(axis).Starts;
+    public T Get(int index) => Marks[index];
 
-    public int GetFirstEndingFrom(TraceTimelineAxis axis, double value) => SortedSearch.FirstAtOrAfter(Of(axis).RunningEnds, value);
+    public double GetStart(TraceTimelineAxis axis, int index) => Scale.GetValue(Froms[index], axis);
 
-    public T Get(TraceTimelineAxis axis, int index) => Marks[Of(axis).Order[index]];
+    public int GetFirstEndingFrom(TraceTimelineAxis axis, double value) => Scale.GetFirstAtOrAfter(RunningEnds, axis, value);
+
+    public int GetFirstStartingAfter(TraceTimelineAxis axis, double value) => Scale.GetFirstAfter(Froms, axis, value);
 
     public T? GetNearest(TraceTimelineAxis axis, double value, double tolerance)
     {
-        var marks = Of(axis);
-
         T? nearest = default;
 
         var best = double.MaxValue;
 
-        for (var index = SortedSearch.FirstAfter(marks.Starts, value + tolerance) - 1;
-             index >= 0 && marks.RunningEnds[index] >= value - tolerance;
+        for (var index = Scale.GetFirstAfter(Froms, axis, value + tolerance) - 1;
+             index >= 0 && Scale.GetValue(RunningEnds[index], axis) >= value - tolerance;
              index--)
         {
-            var mark = Marks[marks.Order[index]];
+            var span = Marks[index].Span;
 
-            var span = mark.Of(axis);
+            var start = Scale.GetValue(span.From, axis);
 
-            var distance = value < span.Start ? span.Start - value : value > span.End ? value - span.End : 0;
+            var end = Scale.GetValue(span.To, axis);
+
+            var distance = value < start ? start - value : value > end ? value - end : 0;
 
             if (distance <= tolerance && distance < best)
             {
-                nearest = mark;
+                nearest = Marks[index];
 
                 best = distance;
             }
         }
 
         return nearest;
-    }
-
-    private AxisMarks Of(TraceTimelineAxis axis) => axis == TraceTimelineAxis.Position ? Positions : Instructions;
-
-    private sealed record AxisMarks(double[] Starts, double[] RunningEnds, int[] Order)
-    {
-        public static AxisMarks Build(T[] marks, TraceTimelineAxis axis)
-        {
-            int[] order = [.. Enumerable.Range(0, marks.Length).OrderBy(i => marks[i].Of(axis).Start)];
-
-            var runningEnds = new double[order.Length];
-
-            var end = double.MinValue;
-
-            for (var index = 0; index < order.Length; index++)
-            {
-                end = Math.Max(end, marks[order[index]].Of(axis).End);
-
-                runningEnds[index] = end;
-            }
-
-            return new AxisMarks([.. order.Select(i => marks[i].Of(axis).Start)], runningEnds, order);
-        }
     }
 }

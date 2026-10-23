@@ -17,9 +17,21 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 {
     private const double ActionSpacing = 12;
 
+    private const double ActionGlyphSize = 12;
+
     private const double BadgeSpacing = 4;
 
     private const double BadgeFontSize = 9;
+
+    private const double SwatchSize = 20;
+
+    private const double MarkerSwatchSize = 8;
+
+    private const double MarkerSwatchSpacing = 6;
+
+    private const string SwatchText = "00";
+
+    private static readonly CornerRadius MarkerSwatchCorner = new(2);
 
     private static readonly Thickness CellPadding = new(8, 0, 4, 0);
 
@@ -35,6 +47,8 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 
     private static readonly SolidColorBrush BadgeForeground = new(Microsoft.UI.Colors.Black);
 
+    public int Ordinal { get; } = ordinal;
+
     public Color? BackgroundColour { get; init; }
 
     public ResultAlignment Alignment { get; init; } = ResultAlignment.Left;
@@ -48,6 +62,8 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 
     public Action<CallValue>? CallClicked { get; init; }
 
+    public Action<ResultCellHoverEventArgs>? Hovered { get; init; }
+
     private SolidColorBrush? BackgroundBrushField { get; set; }
 
     private SolidColorBrush? BackgroundBrush => BackgroundColour.HasValue
@@ -59,6 +75,7 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
         var block = new TextBlock { Padding = CellPadding, FontSize = fontSize };
 
         var text = value is PageAddress or RowIdentifier or ObjectValue or StringValue or CallValue or ActionLinks or BadgeText
+                            or ColouredText or Models.SwatchText or ActionText
             ? value.ToString()
             : ResultRowConverter.FormatValue(value);
 
@@ -82,6 +99,13 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
         if (BackgroundBrush is { } columnBrush)
         {
             cell.Background = columnBrush;
+        }
+
+        if (Hovered is not null)
+        {
+            host.PointerEntered += (_, _) => RaiseHover(host, true);
+
+            host.PointerExited += (_, _) => RaiseHover(host, false);
         }
 
         Apply(host, cell, dataItem);
@@ -109,7 +133,7 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 
     private void Apply(ContentControl host, TableViewCell cell, object? dataItem)
     {
-        if (dataItem is not ResultRow<long> row || ordinal < 0 || ordinal >= row.FieldCount)
+        if (dataItem is not ResultRow<long> row || Ordinal < 0 || Ordinal >= row.FieldCount)
         {
             host.Content = null;
             SetNullBackground(cell, false);
@@ -117,7 +141,9 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
             return;
         }
 
-        var value = row[ordinal];
+        var value = row[Ordinal];
+
+        host.Tag = row;
 
         switch (value)
         {
@@ -145,8 +171,20 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
                 ApplyActions(host, actions);
                 break;
 
+            case ActionText actionText:
+                ApplyActionText(host, actionText);
+                break;
+
             case BadgeText badgeText:
                 ApplyBadges(host, badgeText);
+                break;
+
+            case Models.SwatchText swatchText:
+                ApplySwatch(host, swatchText);
+                break;
+
+            case ColouredText colouredText:
+                ApplyColoured(host, colouredText);
                 break;
 
             default:
@@ -344,11 +382,57 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
         {
             if (panel.Children[index] is HyperlinkButton button)
             {
-                button.Content = actions.Links[index].Text;
-
-                button.Tag = actions.Links[index];
+                SetAction(button, actions.Links[index]);
             }
         }
+    }
+
+    private static void ApplyActionText(ContentControl host, ActionText value)
+    {
+        if (host.Content is not StackPanel { Tag: ActionText } panel || panel.Children.Count != value.Actions.Count + 1)
+        {
+            panel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = MarkerSwatchSpacing,
+                Padding = CellPadding,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            panel.Children.Add(new TextBlock { VerticalAlignment = VerticalAlignment.Center });
+
+            foreach (var _ in value.Actions)
+            {
+                var button = new HyperlinkButton { Style = (Style)Application.Current.Resources["ResultPointerStyle"] };
+
+                button.Click += OnActionClick;
+
+                panel.Children.Add(button);
+            }
+
+            host.Content = panel;
+        }
+
+        panel.Tag = value;
+
+        HexText.Apply((TextBlock)panel.Children[0], value.Text);
+
+        for (var index = 0; index < value.Actions.Count; index++)
+        {
+            if (panel.Children[index + 1] is HyperlinkButton button)
+            {
+                SetAction(button, value.Actions[index]);
+            }
+        }
+    }
+
+    private static void SetAction(HyperlinkButton button, ActionLink link)
+    {
+        button.Content = link.Glyph is { } glyph ? new FontIcon { Glyph = glyph, FontSize = ActionGlyphSize } : link.Text;
+
+        ToolTipService.SetToolTip(button, link.Glyph is null ? null : link.Text);
+
+        button.Tag = link;
     }
 
     private static void ApplyBadges(ContentControl host, BadgeText value)
@@ -390,6 +474,84 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
         }
 
         host.Content = panel;
+    }
+
+    private static void ApplyColoured(ContentControl host, ColouredText value)
+    {
+        if (host.Content is StackPanel { Tag: ColouredText current } && current == value)
+        {
+            return;
+        }
+
+        var swatch = new Grid
+        {
+            Width = SwatchSize,
+            Height = SwatchSize,
+            Background = CreateBrush(value.Colour),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        swatch.Children.Add(new TextBlock
+        {
+            Text = SwatchText,
+            Style = AppResources.Get<Style>("HexTextBlockStyle"),
+            Foreground = BadgeForeground,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        });
+
+        var panel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = BadgeSpacing,
+            Padding = CellPadding,
+            VerticalAlignment = VerticalAlignment.Center,
+            Tag = value
+        };
+
+        panel.Children.Add(swatch);
+
+        panel.Children.Add(new TextBlock { Text = value.Text, VerticalAlignment = VerticalAlignment.Center });
+
+        host.Content = panel;
+    }
+
+    private static void ApplySwatch(ContentControl host, Models.SwatchText value)
+    {
+        if (host.Content is StackPanel { Tag: Models.SwatchText current } && current == value)
+        {
+            return;
+        }
+
+        var panel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = MarkerSwatchSpacing,
+            Padding = CellPadding,
+            VerticalAlignment = VerticalAlignment.Center,
+            Tag = value
+        };
+
+        panel.Children.Add(new Border
+        {
+            Width = MarkerSwatchSize,
+            Height = MarkerSwatchSize,
+            CornerRadius = MarkerSwatchCorner,
+            Background = CreateBrush(value.Colour),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+
+        panel.Children.Add(new TextBlock { Text = value.Text, VerticalAlignment = VerticalAlignment.Center });
+
+        host.Content = panel;
+    }
+
+    private void RaiseHover(ContentControl host, bool isOver)
+    {
+        if (host.Tag is ResultRow<long> row && Ordinal >= 0 && Ordinal < row.FieldCount)
+        {
+            Hovered?.Invoke(new ResultCellHoverEventArgs(row, Ordinal, row[Ordinal], isOver));
+        }
     }
 
     private static Border CreateBadge(string text)

@@ -5,7 +5,6 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:page="using:InternalsViewer.UI.App.Controls.Page"
     xmlns:hexView="using:InternalsViewer.UI.App.Controls.HexView"
     xmlns:segment="using:InternalsViewer.UI.App.Views.Columnstore.Tabs.Segment"
     xmlns:columnstore="using:InternalsViewer.UI.App.Controls.Columnstore"
@@ -159,7 +158,7 @@
                                FontWeight="SemiBold"
                                FontSize="12"
                                Margin="0,0,10,0"/>
-                    <controls:DataTypeTextBlock Grid.Row="1" Grid.Column="0"
+                    <columnstore:DataTypeTextBlock Grid.Row="1" Grid.Column="0"
                                                 DataType="{x:Bind ViewModel.DataType, Mode=OneWay}"
                                                 Precision="{x:Bind ViewModel.Precision, Mode=OneWay}"
                                                 DataScale="{x:Bind ViewModel.Scale, Mode=OneWay}"
@@ -363,7 +362,7 @@
                                 <tableView:TableViewTemplateColumn Header="RLE Array Entry" Width="340">
                                     <tableView:TableViewTemplateColumn.CellTemplate>
                                         <DataTemplate x:DataType="models:BookmarkDetail">
-                                            <TextBlock controls:DerivationText.Derivation="{x:Bind Derivation, Mode=OneTime}"
+                                            <TextBlock columnstore:DerivationText.Derivation="{x:Bind Derivation, Mode=OneTime}"
                                                        Style="{StaticResource DerivationTextStyle}"/>
                                         </DataTemplate>
                                     </tableView:TableViewTemplateColumn.CellTemplate>
@@ -501,7 +500,7 @@
                                 <tableView:TableViewTemplateColumn Header="Offset" Width="340">
                                     <tableView:TableViewTemplateColumn.CellTemplate>
                                         <DataTemplate x:DataType="models:BitpackUnitRow">
-                                            <TextBlock controls:DerivationText.Derivation="{x:Bind Derivation, Mode=OneTime}"
+                                            <TextBlock columnstore:DerivationText.Derivation="{x:Bind Derivation, Mode=OneTime}"
                                                        Style="{StaticResource DerivationTextStyle}"/>
                                         </DataTemplate>
                                     </tableView:TableViewTemplateColumn.CellTemplate>
@@ -620,12 +619,12 @@
                             </TabView>
 
                             <Grid Grid.Row="1">
-                                <page:MarkerTreeView Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedVariableLengthDataTabIndex, 0), Mode=OneWay}"
+                                <controls:MarkerTreeView Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedVariableLengthDataTabIndex, 0), Mode=OneWay}"
                                                  Opacity="{x:Bind ViewModel.Hex.MarkerOpacity, Mode=OneWay}"
                                                  Markers="{x:Bind ViewModel.VariableLengthDataHeaderMarkers, Mode=OneWay}"
                                                  SelectedMarker="{x:Bind ViewModel.Hex.SelectedMarker, Mode=TwoWay}"/>
 
-                                <page:MarkerTreeView Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedVariableLengthDataTabIndex, 1), Mode=OneWay}"
+                                <controls:MarkerTreeView Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedVariableLengthDataTabIndex, 1), Mode=OneWay}"
                                                  Opacity="{x:Bind ViewModel.Hex.MarkerOpacity, Mode=OneWay}"
                                                  Markers="{x:Bind ViewModel.ValuePageMarkers, Mode=OneWay}"
                                                  SelectedMarker="{x:Bind ViewModel.Hex.SelectedMarker, Mode=TwoWay}"/>
@@ -717,8 +716,8 @@
                                 <tableView:TableViewTemplateColumn Header="Data Id" Width="340">
                                     <tableView:TableViewTemplateColumn.CellTemplate>
                                         <DataTemplate x:DataType="models:SegmentRowDetail">
-                                            <TextBlock controls:DerivationText.Derivation="{x:Bind DataIdDerivation, Mode=OneTime}"
-                                                       controls:DerivationText.ShowSteps="{x:Bind ShowDerivation, Mode=OneTime}"
+                                            <TextBlock columnstore:DerivationText.Derivation="{x:Bind DataIdDerivation, Mode=OneTime}"
+                                                       columnstore:DerivationText.ShowSteps="{x:Bind ShowDerivation, Mode=OneTime}"
                                                        Style="{StaticResource DerivationTextStyle}"/>
                                         </DataTemplate>
                                     </tableView:TableViewTemplateColumn.CellTemplate>
@@ -726,8 +725,8 @@
                                 <tableView:TableViewTemplateColumn Header="Value" Width="360">
                                     <tableView:TableViewTemplateColumn.CellTemplate>
                                         <DataTemplate x:DataType="models:SegmentRowDetail">
-                                            <TextBlock controls:DerivationText.Derivation="{x:Bind ValueDerivation, Mode=OneTime}"
-                                                       controls:DerivationText.ShowSteps="{x:Bind ShowDerivation, Mode=OneTime}"
+                                            <TextBlock columnstore:DerivationText.Derivation="{x:Bind ValueDerivation, Mode=OneTime}"
+                                                       columnstore:DerivationText.ShowSteps="{x:Bind ShowDerivation, Mode=OneTime}"
                                                        Style="{StaticResource DerivationTextStyle}"/>
                                         </DataTemplate>
                                     </tableView:TableViewTemplateColumn.CellTemplate>

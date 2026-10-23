@@ -9,7 +9,7 @@ public sealed record TraceArgumentCall(TracePosition FromPosition,
                                        bool Returned,
                                        ulong[] IntegerSlots,
                                        ulong ReturnValue,
-                                       int Node = -1)
+                                       int CallNodeIndex = -1)
 {
     public IReadOnlyList<Locator> Locators { get; init; } = [];
 

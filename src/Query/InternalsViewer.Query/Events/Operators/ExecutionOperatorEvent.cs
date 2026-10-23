@@ -37,6 +37,8 @@ public sealed partial record ExecutionOperatorEvent : EngineEvent
     [EventProperty("Operator")]
     public required string OperatorDescription { get; set; }
 
+    public string Label => PlanNodeIdentifier is { } identifier ? $"{OperatorDescription} (Node {identifier.NodeId})" : OperatorDescription;
+
     public string OperatorObjectName { get; init; } = string.Empty;
 
     public string OperatorSchemaName { get; init; } = string.Empty;

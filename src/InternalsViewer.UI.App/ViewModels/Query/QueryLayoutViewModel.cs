@@ -2,11 +2,19 @@ using System;
 using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.UI.App.ViewModels.Docking;
-using InternalsViewer.UI.App.Views.Query.Tabs;
-using InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
-using InternalsViewer.UI.App.Views.Query.Tabs.Timeline;
+using InternalsViewer.UI.App.Views.Query.Allocation;
+using InternalsViewer.UI.App.Views.Query.Events;
+using InternalsViewer.UI.App.Views.Query.Instructions;
+using InternalsViewer.UI.App.Views.Query.Plan;
+using InternalsViewer.UI.App.Views.Query.Sql;
+using InternalsViewer.UI.App.Views.Query.Timeline;
+using InternalsViewer.UI.App.Views.Query.Trace.CallStack;
+using InternalsViewer.UI.App.Views.Query.Trace.CustomHooks;
+using InternalsViewer.UI.App.Views.Query.Trace.MemoryHistory;
+using InternalsViewer.UI.App.Views.Query.Trace.OperatorTracks;
+using InternalsViewer.UI.App.Views.Query.Trace.Timeline;
 using Microsoft.UI.Xaml.Controls;
-using QueryPlanTabCommands = InternalsViewer.UI.App.Views.Query.Tabs.Plan.QueryPlanTabCommands;
+using QueryPlanTabCommands = InternalsViewer.UI.App.Views.Query.Plan.QueryPlanTabCommands;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
@@ -26,6 +34,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     private const string TraceTimelineKey = "FlameChart";
     private const string CustomHooksKey = "CustomHooks";
     private const string OperatorTracksKey = "OperatorTracks";
+    private const string MemoryHistoryKey = "MemoryHistory";
 
     private readonly Dictionary<string, DocumentViewModel> _documentsByKey;
 
@@ -73,6 +82,9 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private bool _isOperatorTracksVisible;
+
+    [ObservableProperty]
+    private bool _isMemoryHistoryVisible;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanShowEventViews))]
@@ -134,7 +146,12 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
             [OperatorTracksKey] = DocumentViewModel.Create<QueryOperatorTracksTabView>("Operator Tracks",
                                                                                        content,
                                                                                        keepAlive: true,
-                                                                                       key: OperatorTracksKey)
+                                                                                       key: OperatorTracksKey),
+
+            [MemoryHistoryKey] = DocumentViewModel.Create<QueryMemoryHistoryTabView>("Memory History",
+                                                                                     content,
+                                                                                     keepAlive: true,
+                                                                                     key: MemoryHistoryKey)
         };
 
         Dock = new DockLayoutViewModel(DefaultRoot(TimelineKey));
@@ -248,6 +265,13 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         Show(_documentsByKey[OperatorTracksKey]);
     }
 
+    public void ShowMemoryHistory()
+    {
+        IsMemoryHistoryVisible = true;
+
+        Show(_documentsByKey[MemoryHistoryKey]);
+    }
+
     public bool IsVisible(string key) 
         => _documentsByKey.TryGetValue(key, out var document) && Dock.Contains(document);
 
@@ -305,6 +329,9 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
     partial void OnIsOperatorTracksVisibleChanged(bool value)
         => SetDocumentVisible(_documentsByKey[OperatorTracksKey], value);
+
+    partial void OnIsMemoryHistoryVisibleChanged(bool value)
+        => SetDocumentVisible(_documentsByKey[MemoryHistoryKey], value);
 
     partial void OnIsTraceChanged(bool value)
     {
@@ -426,6 +453,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         IsTraceTimelineVisible = Dock.Contains(_documentsByKey[TraceTimelineKey]);
         IsCustomHooksVisible = Dock.Contains(_documentsByKey[CustomHooksKey]);
         IsOperatorTracksVisible = Dock.Contains(_documentsByKey[OperatorTracksKey]);
+        IsMemoryHistoryVisible = Dock.Contains(_documentsByKey[MemoryHistoryKey]);
 
         _suppressVisibilitySync = false;
     }

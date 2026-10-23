@@ -4,5 +4,6 @@ public enum MemoryMapOperation
 {
     Allocated,
     Constructed,
-    Visited
+    Visited,
+    Declared
 }

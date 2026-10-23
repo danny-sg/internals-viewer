@@ -18,8 +18,11 @@ public readonly record struct Locator(int Register, LocatorValueType ValueType, 
 
     public string SearchText => ValueType == LocatorValueType.ColumnStoreObject ? new ColumnStoreObjectLocator(this).SearchText : ToString();
 
-    public static Locator? Read(LocatorValueType valueType, IMemoryReader memory, int register, ulong address) => valueType switch
+    public static Locator? Read(LocatorValueType valueType, IMemoryReader memory, int register, ulong address, ulong count = 1)
+        => valueType switch
     {
+        LocatorValueType.Bindings
+            => BindingLocator.Read(memory, register, address, count),
         LocatorValueType.ColumnStoreObject
             => ColumnStoreObjectLocator.Read(memory, register, address),
         LocatorValueType.LogSequenceNumber
@@ -47,6 +50,8 @@ public readonly record struct Locator(int Register, LocatorValueType ValueType, 
             => new TypeInfoLocator(this).ToString(),
         LocatorValueType.Variant
             => new VariantLocator(this).ToString(),
+        LocatorValueType.Bindings
+            => new BindingLocator(this).ToString(),
         _ => Page.ToString()
     };
 }

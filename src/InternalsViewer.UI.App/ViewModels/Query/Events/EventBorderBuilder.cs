@@ -1,6 +1,6 @@
 ﻿using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.Events.Locks;
-using InternalsViewer.UI.App.Controls.Timeline;
+using InternalsViewer.UI.App.Controls.Query.Timeline;
 using InternalsViewer.UI.App.Models.Allocations;
 using System;
 using System.Collections.Generic;

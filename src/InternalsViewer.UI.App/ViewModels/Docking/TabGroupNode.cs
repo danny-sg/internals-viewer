@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace InternalsViewer.UI.App.ViewModels.Docking;
@@ -23,4 +24,6 @@ public sealed partial class TabGroupNode : LayoutNode
     }
 
     public ObservableCollection<DocumentViewModel> Documents { get; } = [];
+
+    public override double GetMinWidth(double splitterSize) => Documents.Count == 0 ? 0 : Documents.Max(d => d.MinWidth);
 }

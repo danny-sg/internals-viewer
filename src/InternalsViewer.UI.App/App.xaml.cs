@@ -14,6 +14,7 @@ using InternalsViewer.TransactionLog;
 using InternalsViewer.UI.App.Activation;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
+using InternalsViewer.UI.App.Services.Query.Trace;
 using InternalsViewer.UI.App.Services;
 using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Columnstore;
@@ -27,8 +28,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using LaunchActivatedEventArgs = Microsoft.UI.Xaml.LaunchActivatedEventArgs;
-using InternalsViewer.Query.FullTrace.Interfaces.Recording;
-using InternalsViewer.UI.App.Services.Query;
+using InternalsViewer.Query.FullTrace.Recording;
 
 namespace InternalsViewer.UI.App;
 

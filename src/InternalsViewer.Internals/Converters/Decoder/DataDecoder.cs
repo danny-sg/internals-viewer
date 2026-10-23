@@ -7,11 +7,11 @@ namespace InternalsViewer.Internals.Converters.Decoder;
 
 public static class DataDecoder
 {
-    public static List<DecodeResult> Decode(string value)
+    public static List<DecodeResult> Decode(string value) => Decode(value.CleanHex().ToByteArray());
+
+    public static List<DecodeResult> Decode(byte[] binaryData)
     {
         var decodeResults = new List<DecodeResult>();
-
-        var binaryData = value.CleanHex().ToByteArray();
 
         switch (binaryData.Length)
         {
@@ -20,12 +20,25 @@ public static class DataDecoder
                 break;
             case 2:
                 decodeResults.Add(GetDecodeResult(binaryData, SqlDbType.SmallInt));
+                decodeResults.Add(GetDecodeResult(binaryData, typeof(ushort)));
+                break;
+            case 3:
+                decodeResults.Add(GetDecodeResult(Extend(binaryData, sizeof(int), isSigned: true), SqlDbType.Int));
+                decodeResults.Add(GetDecodeResult(Extend(binaryData, sizeof(uint), isSigned: false), typeof(uint)));
                 break;
             case 4:
                 decodeResults.Add(GetDecodeResult(binaryData, SqlDbType.Int));
+                decodeResults.Add(GetDecodeResult(binaryData, typeof(uint)));
+                break;
+            case 5:
+            case 6:
+            case 7:
+                decodeResults.Add(GetDecodeResult(Extend(binaryData, sizeof(long), isSigned: true), SqlDbType.BigInt));
+                decodeResults.Add(GetDecodeResult(Extend(binaryData, sizeof(ulong), isSigned: false), typeof(ulong)));
                 break;
             case 8:
                 decodeResults.Add(GetDecodeResult(binaryData, SqlDbType.BigInt));
+                decodeResults.Add(GetDecodeResult(binaryData, typeof(ulong)));
                 break;
         }
 
@@ -67,5 +80,22 @@ public static class DataDecoder
         }
 
         return new DecodeResult(sqlType.ToString(), value);
+    }
+
+    private static DecodeResult GetDecodeResult(byte[] data, Type type)
+        => new(type.Name, DataConverter.BinaryToString(data, type));
+
+    private static byte[] Extend(byte[] data, int size, bool isSigned)
+    {
+        var extended = new byte[size];
+
+        data.CopyTo(extended, 0);
+
+        if (isSigned && data[^1] >= 0x80)
+        {
+            extended.AsSpan(data.Length).Fill(0xFF);
+        }
+
+        return extended;
     }
 }

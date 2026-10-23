@@ -11,7 +11,7 @@ namespace InternalsViewer.Internals.Converters;
 /// <summary>
 /// Utility methods for converting from raw data to SQL Server/.NET data types
 /// </summary>
-public static class DataConverter
+public static partial class DataConverter
 {
     /// <summary>
     /// Converts a binary GUID to string
@@ -150,7 +150,7 @@ public static class DataConverter
                 // String types
                 case SqlDbType.Char:
                 case SqlDbType.VarChar:
-                    return Replace(Encoding.UTF8.GetString(data), @"[^\t -~]", string.Empty);
+                    return VarcharRegEx().Replace(Encoding.UTF8.GetString(data), string.Empty);
 
                 case SqlDbType.NChar:
                 case SqlDbType.NVarChar:
@@ -207,6 +207,36 @@ public static class DataConverter
                                          "not yet supported ({0:G})",
                                          sqlType);
             }
+        }
+        catch (Exception ex)
+        {
+            return $"Error converting data - {ex.Message}";
+        }
+    }
+
+    public static string BinaryToString(ReadOnlySpan<byte> data, Type type)
+    {
+        if (data.IsEmpty)
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            return Type.GetTypeCode(type) switch
+            {
+                TypeCode.Byte => data[0].ToString(CultureInfo.CurrentCulture),
+                TypeCode.SByte => ((sbyte)data[0]).ToString(CultureInfo.CurrentCulture),
+                TypeCode.Int16 => BinaryPrimitives.ReadInt16LittleEndian(data).ToString(CultureInfo.CurrentCulture),
+                TypeCode.UInt16 => BinaryPrimitives.ReadUInt16LittleEndian(data).ToString(CultureInfo.CurrentCulture),
+                TypeCode.Int32 => BinaryPrimitives.ReadInt32LittleEndian(data).ToString(CultureInfo.CurrentCulture),
+                TypeCode.UInt32 => BinaryPrimitives.ReadUInt32LittleEndian(data).ToString(CultureInfo.CurrentCulture),
+                TypeCode.Int64 => BinaryPrimitives.ReadInt64LittleEndian(data).ToString(CultureInfo.CurrentCulture),
+                TypeCode.UInt64 => BinaryPrimitives.ReadUInt64LittleEndian(data).ToString(CultureInfo.CurrentCulture),
+                TypeCode.Single => BinaryPrimitives.ReadSingleLittleEndian(data).ToString(CultureInfo.InvariantCulture),
+                TypeCode.Double => BinaryPrimitives.ReadDoubleLittleEndian(data).ToString(CultureInfo.InvariantCulture),
+                _ => string.Format(CultureInfo.CurrentCulture, "not yet supported ({0})", type.Name)
+            };
         }
         catch (Exception ex)
         {
@@ -381,4 +411,7 @@ public static class DataConverter
 
         return stringBuilder.ToString();
     }
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"[^\t -~]")]
+    private static partial System.Text.RegularExpressions.Regex VarcharRegEx();
 }

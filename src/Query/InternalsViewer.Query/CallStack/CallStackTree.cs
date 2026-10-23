@@ -629,7 +629,7 @@ public sealed class CallStackTree
     }
 
     private static string RvaKey(CallstackFrame frame)
-        => frame.Instance == 0 ? $"{frame.Module}!{frame.Rva}" : $"{frame.Module}!{frame.Rva}@{frame.Instance:X}";
+        => frame.InstanceAddress == 0 ? $"{frame.Module}!{frame.Rva}" : $"{frame.Module}!{frame.Rva}@{frame.InstanceAddress:X}";
 
     private static string FunctionKey(CallstackFrame frame)
     {
@@ -640,7 +640,7 @@ public sealed class CallStackTree
 
         var function = $"{frame.Module}!{resolved.ClassName}::{resolved.MethodName}";
 
-        return frame.Instance == 0 ? function : $"{function}@{frame.Instance:X}";
+        return frame.InstanceAddress == 0 ? function : $"{function}@{frame.InstanceAddress:X}";
     }
 
     private sealed class Segmenter(CallStackTree projected,

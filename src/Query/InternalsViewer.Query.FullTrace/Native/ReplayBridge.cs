@@ -1,7 +1,7 @@
+using InternalsViewer.Query.FullTrace.Functions;
 using System.Runtime.InteropServices;
 using System.Text;
 using InternalsViewer.Query.FullTrace.Hooks;
-using InternalsViewer.Query.FullTrace.Iterators;
 
 namespace InternalsViewer.Query.FullTrace.Native;
 
@@ -144,12 +144,12 @@ internal static class ReplayBridge
     public delegate void ProgressCallback(uint thread, int percent);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    public delegate void CallChunkCallback(ulong address, ulong instance, IntPtr columns, int calls);
+    public delegate void CallChunkCallback(ulong functionAddress, ulong instanceAddress, IntPtr columns, int calls);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    public delegate void CallEndCallback(ulong address,
-                                         ulong instance,
-                                         uint call,
+    public delegate void CallEndCallback(ulong functionAddress,
+                                         ulong instanceAddress,
+                                         uint callIndex,
                                          ulong endSequence,
                                          ulong endSteps,
                                          ulong returnValue,
@@ -163,6 +163,9 @@ internal static class ReplayBridge
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     public delegate int StubCallback(IntPtr view, ulong address, IntPtr registers, IntPtr target);
+
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    public delegate void WatchHitCallback(IntPtr hits, int count, IntPtr data, int length);
 
     [DllImport(Library, CharSet = CharSet.Unicode)]
     public static extern int OpenTrace(string replayLibraryPath, string tracePath, out TraceHandle trace);
@@ -202,11 +205,20 @@ internal static class ReplayBridge
     public static extern unsafe ulong ReadTraceMemory(IntPtr view, ulong address, byte* destination, ulong size);
 
     [DllImport(Library)]
-    [return: MarshalAs(UnmanagedType.U1)]
-    public static extern bool WatchFrame(IntPtr session, uint thread, ulong frame);
+    public static extern int WatchMemory(TraceHandle trace,
+                                         WatchRange[] ranges,
+                                         int rangeCount,
+                                         uint accessMask,
+                                         ulong startSequence,
+                                         ulong endSequence,
+                                         WatchHitCallback onHits,
+                                         ProgressCallback? progress,
+                                         IntPtr cancel,
+                                         out int watched);
 
     [DllImport(Library)]
-    public static extern void WatchStack(IntPtr session, uint thread, ulong stackPointer);
+    [return: MarshalAs(UnmanagedType.U1)]
+    public static extern bool WatchFrame(IntPtr session, uint thread, ulong frame);
 
     [DllImport(Library)]
     public static extern unsafe uint GetHookFrames(IntPtr session, uint thread, TraceHookFrame* frames, uint capacity);

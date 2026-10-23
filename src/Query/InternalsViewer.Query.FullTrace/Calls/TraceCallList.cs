@@ -5,14 +5,14 @@ namespace InternalsViewer.Query.FullTrace.Calls;
 
 public sealed class TraceCallList : IReadOnlyList<TraceArgumentCall>
 {
-    internal TraceCallList(ulong address,
-                           ulong instance,
+    internal TraceCallList(ulong functionAddress,
+                           ulong instanceAddress,
                            TraceCallStore.Chunk[] chunks,
                            TraceCallStore.ChunkCache columns,
                            LocatorTable? locators = null)
     {
-        Address = address;
-        Instance = instance;
+        FunctionAddress = functionAddress;
+        InstanceAddress = instanceAddress;
         Chunks = chunks;
         Columns = columns;
         Locators = locators;
@@ -30,9 +30,9 @@ public sealed class TraceCallList : IReadOnlyList<TraceArgumentCall>
         Count = start;
     }
 
-    public ulong Address { get; }
+    public ulong FunctionAddress { get; }
 
-    public ulong Instance { get; }
+    public ulong InstanceAddress { get; }
 
     public int Count { get; }
 
@@ -48,9 +48,12 @@ public sealed class TraceCallList : IReadOnlyList<TraceArgumentCall>
     {
         get
         {
-            var (columns, call) = GetLocation(index);
+            var (chunk, callIndex) = GetLocation(index);
 
-            return columns.GetCall(call, Locators?.GetLocators(index));
+            return Columns.Read(chunk,
+                                callIndex,
+                                Locators?.GetLocators(index),
+                                static (columns, offset, locators) => columns.GetCall(offset, locators));
         }
     }
 
@@ -79,40 +82,50 @@ public sealed class TraceCallList : IReadOnlyList<TraceArgumentCall>
 
     public TracePosition GetFromPosition(int index)
     {
-        var (columns, call) = GetLocation(index);
+        var (chunk, callIndex) = GetLocation(index);
 
-        return columns.GetFromPosition(call);
+        return Columns.Read(chunk, callIndex, static (columns, offset) => columns.GetFromPosition(offset));
     }
 
     public TracePosition GetToPosition(int index)
     {
-        var (columns, call) = GetLocation(index);
+        var (chunk, callIndex) = GetLocation(index);
 
-        return columns.GetToPosition(call);
+        return Columns.Read(chunk, callIndex, static (columns, offset) => columns.GetToPosition(offset));
     }
 
     public uint GetThread(int index)
     {
-        var (columns, call) = GetLocation(index);
+        var (chunk, callIndex) = GetLocation(index);
 
-        return columns.GetThread(call);
+        return Columns.Read(chunk, callIndex, static (columns, offset) => columns.GetThread(offset));
     }
 
     public ulong? GetReturnValue(int index)
     {
-        var (columns, call) = GetLocation(index);
+        var (chunk, callIndex) = GetLocation(index);
 
-        return columns.IsReturned(call) ? columns.GetReturnValue(call) : null;
+        return Columns.Read(chunk,
+                            callIndex,
+                            static (columns, offset) => columns.IsReturned(offset) ? columns.GetReturnValue(offset) : (ulong?)null);
     }
 
-    internal int GetNodeIndex(int index)
+    internal int GetCallNodeIndex(int index)
     {
-        var (columns, call) = GetLocation(index);
+        var (chunk, callIndex) = GetLocation(index);
 
-        return columns.GetNodeIndex(call);
+        return Columns.Read(chunk, callIndex, static (columns, offset) => columns.GetCallNodeIndex(offset));
     }
 
-    private (TraceCallColumns Columns, int Call) GetLocation(int index)
+    internal IEnumerable<(TraceCallColumns Columns, int First)> ReadChunks(TraceCallStore.ColumnBuffer buffer)
+    {
+        for (var chunk = 0; chunk < Chunks.Length; chunk++)
+        {
+            yield return (buffer.Decompress(Chunks[chunk]), Starts[chunk]);
+        }
+    }
+
+    private (TraceCallStore.Chunk Chunk, int CallIndex) GetLocation(int index)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(index);
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, Count);
@@ -121,7 +134,7 @@ public sealed class TraceCallList : IReadOnlyList<TraceArgumentCall>
 
         chunk = chunk >= 0 ? chunk : ~chunk - 1;
 
-        return (Columns.Get(Chunks[chunk]), index - Starts[chunk]);
+        return (Chunks[chunk], index - Starts[chunk]);
     }
 
     private int FirstStartingAfter(TracePosition position)

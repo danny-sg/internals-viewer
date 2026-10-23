@@ -1,14 +1,11 @@
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Hooks;
-using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
 internal sealed class FakeTraceReplay : ITraceReplay
 {
     public List<(uint Thread, ulong Frame)> WatchedFrames { get; } = [];
-
-    public List<(uint Thread, ulong StackPointer)> WatchedStacks { get; } = [];
 
     public TraceHookFrame[] Frames { get; set; } = [];
 
@@ -48,8 +45,6 @@ internal sealed class FakeTraceReplay : ITraceReplay
 
         return true;
     }
-
-    public void WatchStack(uint thread, ulong stackPointer) => WatchedStacks.Add((thread, stackPointer));
 
     public ReadOnlySpan<TraceHookFrame> GetFrames(uint thread) => Frames;
 }

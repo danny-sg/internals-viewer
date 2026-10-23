@@ -10,6 +10,26 @@ public static class KnownParameters
     ];
 
     public static ArgumentLayout Apply(ArgumentLayout layout, string? className, string? methodName)
+        => ApplyHoBtIds(ApplyAccessorFlags(layout), className, methodName);
+
+    private static ArgumentLayout ApplyAccessorFlags(ArgumentLayout layout)
+    {
+        var slots = layout.Slots;
+
+        for (var index = 0; index < slots.Count; index++)
+        {
+            if (BindingArguments.IsBindings(slots[index]) && BindingArguments.GetFlagsIndex(slots, index) is var flags and >= 0)
+            {
+                var retyped = slots.Select((s, i) => i == flags ? s with { Type = BindingArguments.AccessorFlagsType } : s);
+
+                return layout with { Slots = [.. retyped] };
+            }
+        }
+
+        return layout;
+    }
+
+    private static ArgumentLayout ApplyHoBtIds(ArgumentLayout layout, string? className, string? methodName)
     {
         if (!HoBtIds.Any(h => h.ClassName == className && h.MethodName == methodName))
         {

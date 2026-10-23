@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using System.Runtime.InteropServices;
 using System.Text;
 using InternalsViewer.Query.FullTrace.Calls;
@@ -10,9 +11,9 @@ using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Output;
-using InternalsViewer.Query.FullTrace.RowSources;
 using InternalsViewer.Query.FullTrace.Stubs;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
+using InternalsViewer.Query.FullTrace.Memory.History.Watches;
 
 namespace InternalsViewer.Query.FullTrace;
 
@@ -45,6 +46,8 @@ namespace InternalsViewer.Query.FullTrace;
 internal sealed class ReplaySession : IDisposable
 {
     private const int NameLength = 1024;
+
+    private const uint WriteAccess = 2;
 
     private ReplaySession(TimeTravelTraceFile trace, TraceHandle handle)
     {
@@ -81,6 +84,25 @@ internal sealed class ReplaySession : IDisposable
         try
         {
             return await Task.Run(() => Replay([.. threadIds], functions, customHooks, progress, cancellationToken), cancellationToken);
+        }
+        finally
+        {
+            Gate.Release();
+        }
+    }
+
+    public async Task<WatchResult> WatchAsync(IReadOnlyCollection<WatchRange> ranges,
+                                              TracePosition start,
+                                              TracePosition end,
+                                              Func<WatchHit, bool> keep,
+                                              IProgress<double>? progress,
+                                              CancellationToken cancellationToken)
+    {
+        await Gate.WaitAsync(cancellationToken);
+
+        try
+        {
+            return await Task.Run(() => Watch([.. ranges], start, end, keep, progress, cancellationToken), cancellationToken);
         }
         finally
         {
@@ -150,15 +172,15 @@ internal sealed class ReplaySession : IDisposable
                                                               .Where(f => f is { IsAllocation: true, IsVirtual: false })
                                                               .Select(f => new MemoryMapFunction(f.Address, MemoryMapOperation.Allocated))];
 
-        var memoryMap = new MemoryMapHook(memoryMapFunctions);
+        var memoryMap = new MemoryMapHook(memoryMapFunctions, VtableResolver.GetUniqueClasses(functions.Vtables));
 
-        var rowSources = new RowSourceHook(functions.RowSources);
+        var planNodeHook = new PlanNodeHook(functions.PlanNodeFunctions);
 
         var output = new OutputHook(functions.Output);
 
         var customHook = new CustomHook(Resolve(customHooks));
 
-        var hooks = new TraceHooks([rowSources,
+        var hooks = new TraceHooks([planNodeHook,
                                     new LocatorHook(functions.LocatorReads, store, images),
                                     memoryMap,
                                     output,
@@ -233,13 +255,129 @@ internal sealed class ReplaySession : IDisposable
                                         memoryMap.Build(),
                                         customHook.Build(),
                                         output.Build(),
-                                        rowSources.GetPlanNodes(),
-                                        rowSources.GetTeardowns());
+                                        planNodeHook.GetPlanNodes(),
+                                        planNodeHook.GetTeardowns());
             }
             finally
             {
                 ReplayBridge.CloseCallTree(tree);
             }
+        }
+        finally
+        {
+            registration.Dispose();
+
+            Marshal.FreeHGlobal(cancel);
+        }
+    }
+
+    private unsafe WatchResult Watch(WatchRange[] ranges,
+                                     TracePosition start,
+                                     TracePosition end,
+                                     Func<WatchHit, bool> keep,
+                                     IProgress<double>? progress,
+                                     CancellationToken cancellationToken)
+    {
+        var cancel = Marshal.AllocHGlobal(sizeof(int));
+
+        Marshal.WriteInt32(cancel, 0);
+
+        var registration = cancellationToken.Register(() => Marshal.WriteInt32(cancel, 1));
+
+        var chunks = new List<WatchChunk>();
+
+        var received = 0L;
+
+        var selected = Array.Empty<bool>();
+
+        ReplayBridge.WatchHitCallback onHits = (pointer, count, bytes, length) =>
+        {
+            received += count;
+
+            var source = new ReadOnlySpan<WatchHit>((void*)pointer, count);
+
+            var chunk = new ReadOnlySpan<byte>((void*)bytes, length);
+
+            if (selected.Length < count)
+            {
+                selected = new bool[count];
+            }
+
+            var hitCount = 0;
+
+            var byteCount = 0;
+
+            for (var index = 0; index < count; index++)
+            {
+                selected[index] = keep(source[index]);
+
+                if (selected[index])
+                {
+                    hitCount++;
+
+                    byteCount += (int)source[index].Size;
+                }
+            }
+
+            if (hitCount == 0)
+            {
+                return;
+            }
+
+            var hits = new ChunkHit[hitCount];
+
+            var data = new byte[byteCount];
+
+            var kept = 0;
+
+            var offset = 0;
+
+            for (var index = 0; index < count; index++)
+            {
+                if (!selected[index])
+                {
+                    continue;
+                }
+
+                var hit = source[index];
+
+                chunk.Slice((int)hit.Offset, (int)hit.Size).CopyTo(data.AsSpan(offset));
+
+                hits[kept++] = ChunkHit.From(hit, offset);
+
+                offset += (int)hit.Size;
+            }
+
+            chunks.Add(new WatchChunk(hits, data));
+        };
+
+        ReplayBridge.ProgressCallback onProgress = (_, percent) => progress?.Report(percent);
+
+        try
+        {
+            var result = ReplayBridge.WatchMemory(Handle,
+                                                  ranges,
+                                                  ranges.Length,
+                                                  WriteAccess,
+                                                  start.Sequence,
+                                                  end.IsKnown ? end.Sequence + 1 : 0,
+                                                  onHits,
+                                                  onProgress,
+                                                  cancel,
+                                                  out var watched);
+
+            GC.KeepAlive(onHits);
+
+            GC.KeepAlive(onProgress);
+
+            if (result != 0)
+            {
+                throw new InvalidOperationException(Describe(result, TraceFile));
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            return new WatchResult([.. chunks], watched, received);
         }
         finally
         {

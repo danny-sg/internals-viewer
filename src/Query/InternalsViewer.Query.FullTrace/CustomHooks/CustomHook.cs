@@ -1,5 +1,4 @@
 using InternalsViewer.Query.FullTrace.Hooks;
-using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
 
 namespace InternalsViewer.Query.FullTrace.CustomHooks;
 
@@ -12,7 +11,11 @@ internal sealed class CustomHook(IEnumerable<(ulong Address, CustomHookDefinitio
 
     public CustomHookStore Build() => new([.. Captures]);
 
-    protected override void Read(ITraceReplay replay, in TraceHookCall call, CustomHookDefinition definition, ulong pointer)
+    protected override void Read(ITraceReplay replay,
+                                 in TraceHookCall call,
+                                 CustomHookDefinition definition,
+                                 ulong pointer,
+                                 ReadOnlySpan<ulong> arguments)
     {
         if (pointer == 0)
         {
@@ -26,9 +29,9 @@ internal sealed class CustomHook(IEnumerable<(ulong Address, CustomHookDefinitio
         var read = replay.Read(address, data);
 
         Captures.Add(new CustomHookCapture(definition.Name,
-                                           call.Function,
-                                           call.Instance,
-                                           (int)call.Call,
+                                           call.FunctionAddress,
+                                           call.InstanceAddress,
+                                           (int)call.CallIndex,
                                            call.Position,
                                            call.Thread,
                                            address,

@@ -391,6 +391,9 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             TraceRequest = fullTrace is null
                 ? null
                 : new TraceRequest(fullTrace, events, symbolsPath, memoryClerks, objectPool, threadIds)
+                {
+                    RecordMemoryHistory = payload.QueryOptions.RecordMemoryHistory
+                }
         };
     }
 

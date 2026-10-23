@@ -90,13 +90,8 @@ public sealed record TraceCallCondition(TraceConditionTarget Target,
         return Operator == TraceConditionOperator.NotEqual ? !isMatch : isMatch;
     }
 
-    public static string GetOperatorLabel(ExecutionOperatorEvent operatorEvent)
-        => operatorEvent.PlanNodeIdentifier is { } identifier
-            ? $"{operatorEvent.OperatorDescription} (Node {identifier.NodeId})"
-            : operatorEvent.OperatorDescription;
-
     private static IEnumerable<string> GetLabels(ExecutionOperatorEvent operatorEvent)
-        => [operatorEvent.Name, operatorEvent.OperatorDescription, GetOperatorLabel(operatorEvent)];
+        => [operatorEvent.Name, operatorEvent.OperatorDescription, operatorEvent.Label];
 
     private static IEnumerable<CallStackNode> GetCallers(CallStackNode node)
     {

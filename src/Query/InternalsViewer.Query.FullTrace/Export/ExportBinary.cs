@@ -22,4 +22,13 @@ internal static class ExportBinary
 
         return values;
     }
+
+    public static int ReadArray<T>(BinaryReader reader, T[] destination, int offset) where T : unmanaged
+    {
+        var count = reader.ReadInt32();
+
+        reader.BaseStream.ReadExactly(MemoryMarshal.AsBytes(destination.AsSpan(offset, count)));
+
+        return count;
+    }
 }

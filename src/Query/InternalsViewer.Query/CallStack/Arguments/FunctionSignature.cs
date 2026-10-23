@@ -75,6 +75,9 @@ public sealed record FunctionSignature(IReadOnlyList<string> Parameters,
         return parameters.SequenceEqual(otherParameters);
     }
 
+    public static int HashParameters(ReadOnlySpan<char> signature)
+        => TryGetParameterList(signature, out var parameters) ? string.GetHashCode(parameters) : 0;
+
     private static bool TryGetParameterList(ReadOnlySpan<char> signature, out ReadOnlySpan<char> parameters)
     {
         parameters = default;

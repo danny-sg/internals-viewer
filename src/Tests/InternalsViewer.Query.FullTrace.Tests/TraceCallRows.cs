@@ -11,7 +11,7 @@ internal static class TraceCallRows
                               ulong rdx = 0,
                               ulong r8 = 0,
                               ulong returnValue = 0,
-                              int node = 0,
+                              int callNodeIndex = 0,
                               ulong steps = 0,
                               ulong endSequence = ulong.MaxValue,
                               ulong endSteps = 0)
@@ -25,7 +25,7 @@ internal static class TraceCallRows
         row[TraceCallColumns.IntegerOffset + 1] = rdx;
         row[TraceCallColumns.IntegerOffset + 2] = r8;
         row[TraceCallColumns.ReturnValueIndex] = returnValue;
-        row[TraceCallColumns.NodeIndex] = (ulong)node;
+        row[TraceCallColumns.NodeIndex] = (ulong)callNodeIndex;
         row[TraceCallColumns.ToSequenceIndex] = endSequence;
         row[TraceCallColumns.ToStepsIndex] = endSteps;
 
@@ -36,17 +36,17 @@ internal static class TraceCallRows
     {
         var builder = new TraceCallStore.Builder();
 
-        foreach (var calls in spans.Where(s => s.Call != uint.MaxValue).GroupBy(s => s.Node))
+        foreach (var calls in spans.Where(s => s.CallIndex != uint.MaxValue).GroupBy(s => s.CallNodeIndex))
         {
-            ulong[][] rows = [.. calls.OrderBy(s => s.Call)
+            ulong[][] rows = [.. calls.OrderBy(s => s.CallIndex)
                                       .Select(s => Row(s.StartSequence,
                                                        flags: s.Thread,
-                                                       node: s.Node,
+                                                       callNodeIndex: s.CallNodeIndex,
                                                        steps: s.StartSteps,
                                                        endSequence: s.EndSequence,
                                                        endSteps: s.EndSteps))];
 
-            builder.Add(nodes[calls.Key].Address, nodes[calls.Key].Instance, Chunk(rows), rows.Length);
+            builder.Add(nodes[calls.Key].FunctionAddress, nodes[calls.Key].InstanceAddress, Chunk(rows), rows.Length);
         }
 
         return builder.Build();
@@ -56,11 +56,11 @@ internal static class TraceCallRows
     {
         var columns = new ulong[rows.Length * TraceCallColumns.ValueCount];
 
-        for (var call = 0; call < rows.Length; call++)
+        for (var callIndex = 0; callIndex < rows.Length; callIndex++)
         {
             for (var value = 0; value < TraceCallColumns.ValueCount; value++)
             {
-                columns[value * rows.Length + call] = rows[call][value];
+                columns[value * rows.Length + callIndex] = rows[callIndex][value];
             }
         }
 

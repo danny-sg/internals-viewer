@@ -1,15 +1,14 @@
 ﻿using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using InternalsViewer.Internals.Engine.Loading;
 using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.CallStack.Dia;
 using InternalsViewer.Query.CallStack.Symbols;
-using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Output;
-using InternalsViewer.Query.FullTrace.RowSources;
 using Microsoft.Extensions.Logging;
 using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.Helpers;
@@ -52,7 +51,7 @@ namespace InternalsViewer.Query.FullTrace.Functions;
 ///
 /// Locators
 ///
-///     Functions that read page/row id via their arguments.
+///     Functions that reference known structures their arguments.
 ///     
 ///     
 /// </remarks>
@@ -113,9 +112,6 @@ internal static class ReplayFunctionResolver
 
         return ReplayFunctions.Merge([.. found, .. heap]);
     }
-
-    internal static bool IsExcluded(SymbolCategory category, string? iterator)
-        => category is SymbolCategory.XEventInfrastructure || (category is SymbolCategory.Tracing && iterator is null);
 
     private static ReplayFunctions GetHeapFunctions(TraceModule module)
     {
@@ -190,7 +186,7 @@ internal static class ReplayFunctionResolver
 
         logger?.LogInformation("Replay functions for {Module} resolved from {Pdb} in {Elapsed}: {Excluded} excluded, "
                                + "{Iterators} iterator methods, {Locators} locator reads, "
-                               + "{Memory} memory functions, {Members} member functions",
+                               + "{Memory} memory functions, {Members} member functions, {Vtables} vtables",
                                module.Name,
                                module.Pdb,
                                Stopwatch.GetElapsedTime(start),
@@ -198,7 +194,8 @@ internal static class ReplayFunctionResolver
                                relative.InstanceMethods.Length,
                                relative.LocatorReads.Length,
                                relative.MemoryFunctions.Length,
-                               relative.MemoryMapFunctions.Length);
+                               relative.MemoryMapFunctions.Length,
+                               relative.Vtables.Count);
     }
 
     private static ReplayFunctions? GetFunctions(TraceModule module, string symbolsPath)
@@ -216,25 +213,22 @@ internal static class ReplayFunctionResolver
 
         var moduleName = module.Name;
 
-        var rowSources = new RowSourceFunctions.Collector();
+        var planNodes = new PlanNodeFunctions.Collector();
 
         var output = new OutputFunctions.Collector();
+
+        var vtables = new VtableResolver.Collector();
 
         var functions = ModuleSymbols.Load(resolver,
                                            (rva, name) =>
                                            {
-                                               rowSources.VisitFunction(rva, name);
+                                               planNodes.VisitFunction(rva, name);
 
                                                output.VisitFunction(rva, name);
 
                                                return ClassifyFunction(mappings, moduleName, rva, name);
                                            },
-                                           (rva, name) =>
-                                           {
-                                               rowSources.VisitData(rva, name);
-
-                                               output.VisitData(rva, name);
-                                           });
+                                           vtables.VisitData);
 
         var iterates = string.Equals(moduleName, IteratorModule, StringComparison.OrdinalIgnoreCase);
 
@@ -242,19 +236,39 @@ internal static class ReplayFunctionResolver
             ? [.. InstanceMethodCollector.FindInstanceMethods(functions.Where(f => f.Value.IsInstanceMethod).Select(f => f.Key), resolver)]
             : [];
 
-        uint[] kept = [.. functions.Where(f => !f.Value.IsExcluded).Select(f => f.Key)];
+        var reads = new LocatorReadResolver.Collector();
 
-        LocatorRead[] locators = [.. LocatorReadResolver.FindReads(resolver, kept), .. LocatorReadResolver.FindStackReads(resolver, kept)];
+        var memoryMapFunctions = new MemoryMapFunctionResolver.Collector();
+
+        var sites = new AllocationSiteResolver.Collector(functions.Where(f => f.Value.MemoryFunction is { IsAllocation: true })
+                                                                  .Select(f => f.Key)
+                                                                  .ToHashSet());
+
+        ModuleSymbols.VisitFunctions(resolver,
+                                     functions.Where(f => !f.Value.IsExcluded).Select(f => f.Key).ToHashSet(),
+                                     symbol =>
+                                     {
+                                         reads.Visit(symbol);
+
+                                         memoryMapFunctions.Visit(symbol);
+
+                                         sites.Visit(symbol);
+                                     });
 
         ulong[] excluded = [.. functions.Where(f => f.Value.IsExcluded).Select(f => (ulong)f.Key)];
 
+        var classes = vtables.Build();
+
         return new ReplayFunctions(excluded,
                                    instanceMethods,
-                                   locators,
-                                   [.. functions.Values.Select(f => f.MemoryFunction).OfType<MemoryFunction>()],
-                                   [.. MemoryMapFunctionResolver.Find(resolver, kept)],
-                                   rowSources.Build(),
-                                   output.Build());
+                                   reads.Build(),
+                                   [.. functions.Values.Select(f => f.MemoryFunction).OfType<MemoryFunction>().Select(sites.Apply)],
+                                   memoryMapFunctions.Build(),
+                                   planNodes.Build(classes),
+                                   output.Build(classes))
+        {
+            Vtables = classes
+        };
     }
 
     private static FunctionClassification ClassifyFunction(CategoryMappings mappings, string module, uint rva, ReadOnlySpan<char> symbol)
@@ -269,7 +283,7 @@ internal static class ReplayFunctionResolver
     {
         SymbolsHelper.Split(symbol, out var className, out var methodName);
 
-        return IsExcluded(mappings.Classify(module, className, methodName),
-                          mappings.ClassifyOperator(module, className, methodName).Iterator);
+        return Instrumentation.IsExcluded(mappings.Classify(module, className, methodName),
+                                          mappings.ClassifyOperator(module, className, methodName).Iterator);
     }
 }

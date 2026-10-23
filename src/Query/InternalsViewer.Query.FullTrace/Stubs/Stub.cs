@@ -1,12 +1,10 @@
-using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
+using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Stubs.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Stubs;
 
-internal sealed record Stub(ulong Address, IReadOnlyList<StubOperation> Operations)
+internal sealed record Stub(ulong Address, StubOperation[] Operations)
 {
-    private const ulong SmallestTarget = 0x10000;
-
     public bool TryResolve(Span<ulong> registers, ITraceReplay replay, StubMemory memory, out ulong target)
     {
         Span<ulong> values = stackalloc ulong[registers.Length];
@@ -63,7 +61,7 @@ internal sealed record Stub(ulong Address, IReadOnlyList<StubOperation> Operatio
 
     private static bool Accept(ReadOnlySpan<ulong> values, Span<ulong> registers, ulong target)
     {
-        if (target < SmallestTarget)
+        if (target < TraceAddress.MinAddress)
         {
             return false;
         }

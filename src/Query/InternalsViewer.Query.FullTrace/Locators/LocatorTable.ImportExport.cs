@@ -1,15 +1,17 @@
 using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.FullTrace.Export;
+using InternalsViewer.Query.FullTrace.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Locators;
 
 internal sealed partial class LocatorTable
 {
-    public static LocatorTable Read(BinaryReader reader)
-    {
-        var calls = ExportBinary.ReadArray<int>(reader);
+    public static LocatorTable Read(BinaryReader reader, Locator[] locators)
+        => new(BitPackedArray.Read(reader), ExportBinary.ReadArray<int>(reader), BitPackedArray.Read(reader), locators);
 
-        var locators = new Locator[calls.Length];
+    public static Locator[] ReadLocators(BinaryReader reader)
+    {
+        var locators = new Locator[reader.ReadInt32()];
 
         for (var index = 0; index < locators.Length; index++)
         {
@@ -21,19 +23,19 @@ internal sealed partial class LocatorTable
 
             var detail = reader.ReadUInt64();
 
-            var text = valueType is LocatorValueType.Text or LocatorValueType.WideText ? reader.ReadString() : null;
+            var text = HasText(valueType) ? reader.ReadString() : null;
 
             locators[index] = new Locator(register, valueType, value, detail, text);
         }
 
-        return new LocatorTable(calls, locators);
+        return locators;
     }
 
-    public void Write(BinaryWriter writer)
+    public static void WriteLocators(BinaryWriter writer, Locator[] locators)
     {
-        ExportBinary.WriteArray(writer, Calls);
+        writer.Write(locators.Length);
 
-        foreach (var locator in Locators)
+        foreach (var locator in locators)
         {
             writer.Write(locator.Register);
 
@@ -43,10 +45,22 @@ internal sealed partial class LocatorTable
 
             writer.Write(locator.Detail);
 
-            if (locator.ValueType is LocatorValueType.Text or LocatorValueType.WideText)
+            if (HasText(locator.ValueType))
             {
                 writer.Write(locator.Text ?? string.Empty);
             }
         }
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        CallIndexes.Write(writer);
+
+        ExportBinary.WriteArray(writer, Palette);
+
+        PaletteIndexes.Write(writer);
+    }
+
+    private static bool HasText(LocatorValueType valueType)
+        => valueType is LocatorValueType.Text or LocatorValueType.WideText or LocatorValueType.Bindings;
 }

@@ -1,8 +1,10 @@
 ﻿using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
+using InternalsViewer.UI.App.Controls.Query.SqlEditor;
+using InternalsViewer.UI.App.Controls.Query.Timeline.Definition;
+using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.Services.Query.Simulation;
-using InternalsViewer.UI.App.ViewModels.Query.OperatorTracks;
-using InternalsViewer.UI.App.Services.Query;
+using InternalsViewer.UI.App.Services.Query.Trace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Memory;
@@ -24,6 +26,7 @@ using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
@@ -31,27 +34,28 @@ using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events.Properties;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Results;
-using InternalsViewer.UI.App.Controls.SqlEditor;
-using InternalsViewer.UI.App.Controls.Trace;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Columnstore;
-using InternalsViewer.UI.App.Models.Query.CallStack;
 using InternalsViewer.UI.App.Models.Schema;
 using InternalsViewer.UI.App.Services;
 using InternalsViewer.Query.XEvents;
 using InternalsViewer.UI.App.ViewModels.Allocation;
 using InternalsViewer.UI.App.ViewModels.Docking;
-using InternalsViewer.UI.App.ViewModels.Query.CallStack;
-using InternalsViewer.UI.App.ViewModels.Query.CustomHooks;
 using InternalsViewer.UI.App.ViewModels.Query.Simulation;
 using InternalsViewer.UI.App.ViewModels.Columnstore;
-using InternalsViewer.UI.App.Controls.Timeline.Definition;
 using InternalsViewer.UI.App.Services.Query.Timeline;
 using InternalsViewer.UI.App.ViewModels.Index;
 using InternalsViewer.UI.App.ViewModels.Query.Events;
+using InternalsViewer.UI.App.ViewModels.Query.Trace.CallStack;
+using InternalsViewer.UI.App.ViewModels.Query.Trace.CustomHooks;
+using InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryHistory;
+using InternalsViewer.UI.App.ViewModels.Query.Trace.OperatorTracks;
+using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
 using InternalsViewer.UI.App.ViewModels.Tabs;
-using InternalsViewer.UI.App.Views.Query.Tabs;
+using InternalsViewer.UI.App.Views.Query.Index;
+using InternalsViewer.UI.App.Views.Query.Page;
+using InternalsViewer.UI.App.Views.Query.Simulation;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -66,12 +70,9 @@ using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Transactions;
 using InternalsViewer.TransactionLog.LogRecords;
 using InternalsViewer.UI.App.ViewModels.Page;
-using InternalsViewer.UI.App.ViewModels.Query.Settings;
-using InternalsViewer.UI.App.Views.Query.Tabs.Simulation;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Views.Columnstore;
-using InternalsViewer.UI.App.Views.Query.Tabs.Index;
 using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 using InternalsViewer.UI.App.Models.Allocations;
 using InternalsViewer.UI.App.Models.Query;
@@ -272,6 +273,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private TraceTimeline? _fullTraceTimeline;
 
     [ObservableProperty]
+    private MemoryIndex _traceMemory = MemoryIndex.Empty;
+
+    [ObservableProperty]
+    private TraceOperatorLifetimes _traceLifetimes = TraceOperatorLifetimes.Empty;
+
+    [ObservableProperty]
     private TraceRowReturnMarks? _rowReturnMarks;
 
     [ObservableProperty]
@@ -355,6 +362,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         Arguments = new ArgumentsViewModel(logger, Symbols, GetHoBtName);
 
         CustomHooks = new CustomHooksViewModel(settingsViewModel, OpenCallTree);
+
+        MemoryHistory = new MemoryHistoryViewModel(OpenCallTree);
 
         TickTrackStore = tickTrackStore;
 
@@ -458,9 +467,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public CustomHooksViewModel CustomHooks { get; }
 
+    public MemoryHistoryViewModel MemoryHistory { get; }
+
     public CallTreeTabViewModel CallTreeTab => CreatedCallTreeTab ??= new CallTreeTabViewModel(this, _settingsViewModel, Logger);
 
-    public PlayheadCallStackViewModel PlayheadStack => CreatedPlayheadStack ??= new PlayheadCallStackViewModel(this);
+    public TraceTimelineTabViewModel TraceTimelineTab => CreatedTraceTimelineTab ??= new TraceTimelineTabViewModel(this);
 
     /// <summary>
     /// The queries run against this database, listed beside the SQL editor
@@ -632,6 +643,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             field = value;
 
             CustomHooks.SetTrace(value);
+
+            MemoryHistory.SetTrace(value, Events);
+
+            CreatedTraceTimelineTab?.CloseMemory();
         }
     }
 
@@ -654,7 +669,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private CallTreeTabViewModel? CreatedCallTreeTab { get; set; }
 
-    private PlayheadCallStackViewModel? CreatedPlayheadStack { get; set; }
+    private TraceTimelineTabViewModel? CreatedTraceTimelineTab { get; set; }
 
     public void NavigateToEvent(EngineEvent engineEvent)
     {
@@ -793,7 +808,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    public void OpenCallTree(CallStackNode? node, int call)
+    public void OpenCallTree(CallStackNode? node, int callIndex)
     {
         Layout.ShowCallTree();
 
@@ -804,7 +819,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         _ = CallTreeTab;
 
-        NavigateToCall(node, call);
+        NavigateToCall(node, callIndex);
     }
 
     /// <summary>
@@ -827,6 +842,18 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     [RelayCommand]
     private void ShowCustomHooks() => Layout.ShowCustomHooks();
+
+    [RelayCommand]
+    private void ShowMemoryHistory() => Layout.ShowMemoryHistory();
+
+    public void ShowMemoryWrite(int block, TracePosition? position)
+    {
+        MemoryHistory.Select(block, position);
+
+        Layout.ShowMemoryHistory();
+    }
+
+    partial void OnTraceTimelineChanged(TraceTimeline? value) => MemoryHistory.SetWindow(value);
 
     partial void OnSelectedEventChanged(EngineEvent? value) => SelectedEventProperties = value?.GetProperties() ?? [];
 
@@ -1058,13 +1085,31 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         FullTraceTimeline = null;
 
+        TraceMemory = MemoryIndex.Empty;
+
+        TraceLifetimes = TraceOperatorLifetimes.Empty;
+
         RowReturnMarks = null;
 
         ResetTickTracks();
 
         StatementName = null;
 
+        LastRun = null;
+
+        Trace = null;
+
+        ExecutionPlans = [];
+
+        ResultSets = [];
+
+        CreatedTraceTimelineTab?.Dispose();
+
+        CreatedTraceTimelineTab = null;
+
         CreatedCallTreeTab?.Dispose();
+
+        CreatedCallTreeTab = null;
 
         Symbols.Dispose();
 
@@ -1985,18 +2030,18 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    public void NavigateToCall(CallStackNode node, int call)
+    public void NavigateToCall(CallStackNode node, int callIndex)
     {
         SelectedCallNode = node;
 
         if (CallNavigationRequested is { } handler)
         {
-            handler(node, call);
+            handler(node, callIndex);
 
             return;
         }
 
-        _ = call >= 0 ? Arguments.ShowAsync(node, call) : Arguments.ShowAsync(node);
+        _ = callIndex >= 0 ? Arguments.ShowAsync(node, callIndex) : Arguments.ShowAsync(node);
     }
 
     [RelayCommand]
@@ -2247,22 +2292,26 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         FullTraceTimeline = result.Timeline;
 
+        TraceMemory = result.Memory;
+
+        TraceLifetimes = result.Lifetimes;
+
         RowReturnMarks = result.RowReturnMarks;
 
         CustomTickTracks.Clear();
 
         RefreshTickTracks();
 
-        StatementName = GetStatementOperator(result.Timeline)?.Name;
+        StatementName = GetStatementOperator(result.Lifetimes)?.Name;
 
         TraceTimeline = traceTimeline;
 
         ExecutionPlans = [.. ExecutionPlans];
     }
 
-    private ExecutionOperatorEvent? GetStatementOperator(TraceTimeline timeline)
+    private ExecutionOperatorEvent? GetStatementOperator(TraceOperatorLifetimes lifetimes)
     {
-        var planHandle = timeline.Lifetimes.Select(l => l.Operator.PlanNodeIdentifier?.PlanHandleId).FirstOrDefault(h => h is not null);
+        var planHandle = lifetimes.Select(l => l.Operator.PlanNodeIdentifier?.PlanHandleId).FirstOrDefault(h => h is not null);
 
         return Events.OfType<ExecutionOperatorEvent>()
                      .FirstOrDefault(o => o.NodeLevel == 0 && (planHandle is null || o.PlanNodeIdentifier?.PlanHandleId == planHandle));
@@ -2386,6 +2435,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         TraceTimeline = null;
 
         FullTraceTimeline = null;
+
+        TraceMemory = MemoryIndex.Empty;
+
+        TraceLifetimes = TraceOperatorLifetimes.Empty;
 
         RowReturnMarks = null;
 

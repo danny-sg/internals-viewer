@@ -17,7 +17,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Dispatching;
 using System.Collections;
-using InternalsViewer.UI.App.Controls;
 using System.Collections.Generic;
 
 namespace InternalsViewer.UI.App.Views.Columnstore.Tabs;

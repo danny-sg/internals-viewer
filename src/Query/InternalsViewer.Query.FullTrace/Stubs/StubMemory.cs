@@ -1,10 +1,9 @@
 using InternalsViewer.Query.FullTrace.Hooks;
-using InternalsViewer.Query.FullTrace.Interfaces.Hooks;
 using InternalsViewer.Query.Extensions;
 
 namespace InternalsViewer.Query.FullTrace.Stubs;
 
-internal sealed class StubMemory(IReadOnlyList<(ulong Start, ulong End)> images)
+internal sealed class StubMemory((ulong Start, ulong End)[] images)
 {
     private Dictionary<ulong, ulong> ImageValues { get; } = [];
 

@@ -4,9 +4,10 @@ using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Output;
-using InternalsViewer.Query.FullTrace.RowSources;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
@@ -24,11 +25,17 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
 
     public HoBtAccessMap HoBtAccess { get; init; } = HoBtAccessMap.Empty;
 
+    public MemoryIndex Memory { get; init; } = MemoryIndex.Empty;
+
+    public TraceOperatorLifetimes Lifetimes { get; init; } = TraceOperatorLifetimes.Empty;
+
     public MemoryMap MemoryMap { get; init; } = MemoryMap.Empty;
 
     public ObjectPoolSnapshot ObjectPool { get; init; } = ObjectPoolSnapshot.Empty;
 
     public CustomHookStore CustomHooks { get; init; } = CustomHookStore.Empty;
+
+    public MemoryHistoryStore MemoryHistory { get; init; } = MemoryHistoryStore.Empty;
 
     internal IReadOnlyList<TraceOutputStructure> OutputStructures { get; init; } = [];
 
@@ -42,7 +49,7 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
 
     public TraceTimeline QueryTimeline => CroppedTimeline ??= GetQueryTimeline();
 
-    public IReadOnlyList<TraceOutputRowSource> OutputSources => Sources ??= TraceOutputLineage.GetSources(Timeline, OutputStructures);
+    public IReadOnlyList<TraceOutputRowSource> OutputSources => Sources ??= TraceOutputLineage.GetSources(Lifetimes, OutputStructures);
 
     private IReadOnlyList<CallStackNode>? Roots { get; set; }
 
@@ -54,6 +61,24 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
 
     private Dictionary<TraceTimeline, Dictionary<CallStackNode, int[]>> ActivityByWindow { get; } =
         new(ReferenceEqualityComparer.Instance);
+
+    internal IEnumerable<(string Component, long Items, long? Bytes)> GetComponentSizes()
+    {
+        yield return ("Timeline Spans", Timeline.SpanCount, Timeline.Bytes);
+        yield return ("Call Log Calls", CallStore.Calls, CallStore.Size);
+        yield return ("Locator Entries", CallStore.LocatorCount, CallStore.LocatorTableBytes);
+        yield return ("Unique Locators", CallStore.UniqueLocatorCount, CallStore.UniqueLocatorBytes);
+        yield return ("Memory Map Entries", MemoryMap.Count, MemoryMap.Bytes);
+        yield return ("Memory Allocations", Memory.AllocationCount, Memory.Bytes);
+        yield return ("Memory History Writes", MemoryHistory.WriteCount, MemoryHistory.Bytes);
+        yield return ("Call Tree Nodes", CallStack.Nodes().LongCount(), null);
+        yield return ("Operator Lifetimes", Lifetimes.Count, null);
+        yield return ("Read Ticks", Reads.Count, null);
+        yield return ("Evaluation Ticks", Evaluations.Count, null);
+        yield return ("Row Return Marks", RowReturnMarks.Count, null);
+        yield return ("HoBt Accesses", HoBtAccess.Count, null);
+        yield return ("Custom Hook Captures", CustomHooks.Count, null);
+    }
 
     public void SetActivityWindow(TraceTimeline window)
     {
