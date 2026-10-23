@@ -48,8 +48,10 @@ it compiles, batch the remaining work, and run the suite once at the end.
 ## Conventions
 
 - Method names are `Verb_Describes_Behaviour` — `Parses_File_Event`, `Can_Run_Simple_Query`.
-- Most test projects keep test files flat in the project root. `InternalsViewer.UI.App.Tests` is the exception:
-  its folders and namespaces mirror the app project (`Controls\Timeline\Renderers`, etc.).
+- Test folders and namespaces mirror the source project's folders, so a test for `Events\Locks\LockGrouper` lives in
+  `Events\Locks`. `InternalsViewer.Internals.Tests`, `InternalsViewer.Execution.Tests` and `InternalsViewer.Query.Tests`
+  keep `UnitTests\` and `IntegrationTests\` roots with the mirror beneath each. A test with no single subject type, such
+  as a whole-backup read or a columnstore probe, sits at the root of its project or split, or in the area folder.
 - The app project grants `InternalsVisibleTo` to its test project, so internal types are testable directly.
 
 ## Tests that need external resources

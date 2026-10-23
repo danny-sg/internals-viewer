@@ -575,8 +575,8 @@ public class OperatorScopeIntegrationTests(ITestOutputHelper testOutputHelper)
 
     private static string Kind(EngineEvent engineEvent) => engineEvent switch
     {
-        Events.Locks.LockEvent l => $"Lock {l.Resource.ResourceType}/{l.LockMode} '{l.Name}'",
-        Events.Locks.LockGroup g => $"LockGroup ({g.Events.Count})",
+        InternalsViewer.Query.Events.Locks.LockEvent l => $"Lock {l.Resource.ResourceType}/{l.LockMode} '{l.Name}'",
+        InternalsViewer.Query.Events.Locks.LockGroup g => $"LockGroup ({g.Events.Count})",
         _ => $"{engineEvent.GetType().Name} '{engineEvent.Name}'",
     };
 
