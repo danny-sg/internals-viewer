@@ -1,6 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 using InternalsViewer.UI.App.Models;
-using InternalsViewer.UI.App.ViewModels.Page;
+using InternalsViewer.UI.App.ViewModels.HexView;
 using Microsoft.UI.Xaml.Input;
 
 namespace InternalsViewer.UI.App.Controls.HexView;

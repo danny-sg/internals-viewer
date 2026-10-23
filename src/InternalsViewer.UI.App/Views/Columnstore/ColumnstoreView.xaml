@@ -6,7 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:docking="using:InternalsViewer.UI.App.Controls.Docking"
-    xmlns:columnstore="using:InternalsViewer.UI.App.Controls.Columnstore"
+    xmlns:icons="using:InternalsViewer.UI.App.Controls.Icons"
     mc:Ignorable="d">
 
     <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
@@ -27,7 +27,7 @@
                                 Spacing="10"
                                 VerticalAlignment="Stretch"
                                 Margin="12,0,18,0">
-                        <columnstore:ColumnstoreIcon VerticalAlignment="Center"
+                        <icons:ColumnstoreIcon VerticalAlignment="Center"
                                                      Colour="{x:Bind ViewModel.AllocationUnit.DisplayColour, Mode=OneWay}"/>
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock>Columnstore Index</TextBlock>

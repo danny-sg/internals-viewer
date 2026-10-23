@@ -57,7 +57,7 @@
     </ItemGroup>
     <ItemGroup>
       <!-- Execution plan operator icons are addressed via ms-appx and must be packaged as content. -->
-      <Content Include="Controls\Plan\Icons\*.svg">
+      <Content Include="Controls\Query\Plan\Icons\*.svg">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </Content>
     </ItemGroup>
@@ -81,10 +81,10 @@
         <None Remove="Controls\PageAddressTextBox.xaml" />
         <None Remove="Controls\PageHeader.xaml" />
         <None Remove="Controls\Page\HexViewControl.xaml" />
-        <None Remove="Controls\Page\MarkerTreeView.xaml" />
+        <None Remove="Controls\MarkerTreeView.xaml" />
         <None Remove="Controls\PasswordDialog.xaml" />
         <None Remove="Controls\ServerConnectionControl.xaml" />
-        <None Remove="Controls\SqlEditor\SqlEditor.xaml" />
+        <None Remove="Controls\Query\SqlEditor\SqlEditor.xaml" />
         <None Remove="Images\LargeTile.scale-100.png" />
         <None Remove="Images\LargeTile.scale-125.png" />
         <None Remove="Images\LargeTile.scale-150.png" />
@@ -135,7 +135,7 @@
         <None Remove="Images\Wide310x150Logo.scale-150.png" />
         <None Remove="Images\Wide310x150Logo.scale-200.png" />
         <None Remove="Images\Wide310x150Logo.scale-400.png" />
-        <None Remove="Controls\Simulation\Steps\AccessStepTemplates.xaml" />
+        <None Remove="Controls\Query\Simulation\Steps\AccessStepTemplates.xaml" />
         <None Remove="Styles\CommonStyles.xaml" />
         <None Remove="Styles\Markers\MarkerStylesDark.xaml" />
         <None Remove="Styles\Markers\MarkerStylesLight.xaml" />
@@ -336,7 +336,7 @@
       <Page Update="Controls\Results\ResultsGridControl.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
-      <Page Update="Controls\Simulation\Steps\AccessStepsControl.xaml">
+      <Page Update="Controls\Query\Simulation\Steps\AccessStepsControl.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
       <Page Update="Views\Query\Tabs\CallstackDocumentView.xaml">
@@ -354,7 +354,7 @@
       <Page Update="Views\QueryView.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
-      <Page Update="Controls\SqlEditor\SqlEditor.xaml">
+      <Page Update="Controls\Query\SqlEditor\SqlEditor.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
       <Page Update="Controls\Index\RecordGrid.xaml">
@@ -378,7 +378,7 @@
       <Page Update="Controls\CopyTextBlock.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
-      <Page Update="Controls\Page\MarkerTreeView.xaml">
+      <Page Update="Controls\MarkerTreeView.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
       <Page Update="Controls\PasswordDialog.xaml">
@@ -418,7 +418,7 @@
       <Page Update="Controls\Page\HexViewControl.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
-      <Page Update="Controls\Predicates\PredicateTextBox.xaml">
+      <Page Update="Controls\Query\PredicateTextBox.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
       <Page Update="Controls\Connections\BackupFileConnectionControl.xaml">
@@ -478,7 +478,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Page Update="Controls\Simulation\Steps\AccessStepTemplates.xaml">
+        <Page Update="Controls\Query\Simulation\Steps\AccessStepTemplates.xaml">
             <Generator>MSBuild:Compile</Generator>
         </Page>
         <Page Update="Styles\CommonStyles.xaml">
@@ -562,12 +562,12 @@
       <Folder Include="Controls\Columnstore\Segment\" />
       <Folder Include="Controls\Logging\" />
       <Folder Include="Controls\Dialogs\" />
-      <Folder Include="Controls\Trace\Memory\" />
-      <Folder Include="Controls\Trace\Operators\" />
+      <Folder Include="Controls\Query\Trace\Timeline\Memory\" />
+      <Folder Include="Controls\Query\Trace\Timeline\Operators\" />
       <Folder Include="ViewModels\Columnstore\Segment\" />
-      <Folder Include="Views\Query\Tabs\Index\" />
-      <Folder Include="Views\Query\Tabs\Plan\" />
-      <Folder Include="Views\Query\Tabs\Simulation\Panels\" />
+      <Folder Include="Views\Query\Index\" />
+      <Folder Include="Views\Query\Plan\" />
+      <Folder Include="Views\Query\Simulation\Panels\" />
     </ItemGroup>
 
     <ItemGroup>

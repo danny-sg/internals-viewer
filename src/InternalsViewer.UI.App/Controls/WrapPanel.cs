@@ -6,7 +6,7 @@ using Windows.Foundation;
 namespace InternalsViewer.UI.App.Controls;
 
 /// <summary>
-/// Lays children left to right, wrapping to a new line when the available width runs out
+/// Lays children left to right wrapping to a new line when the available width runs out
 /// </summary>
 public sealed class WrapPanel : Panel
 {

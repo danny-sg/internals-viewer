@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Reads;
-using InternalsViewer.UI.App.Controls.Timeline.Definition;
+using InternalsViewer.UI.App.Controls.Query.Timeline.Definition;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels.Query;
 using SkiaSharp;

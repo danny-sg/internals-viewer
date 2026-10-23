@@ -8,7 +8,6 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Connections;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Readers.Pages;
-using InternalsViewer.UI.App.Controls;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models.Connections;

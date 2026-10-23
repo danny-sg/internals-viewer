@@ -6,6 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:page="using:InternalsViewer.UI.App.Controls.Page"
+    xmlns:icons="using:InternalsViewer.UI.App.Controls.Icons"
     xmlns:hexView="using:InternalsViewer.UI.App.Controls.HexView"
     xmlns:models="using:InternalsViewer.UI.App.Models.Page"
     xmlns:allocation="using:InternalsViewer.UI.App.Controls.Allocation"
@@ -93,7 +94,7 @@
                                     Spacing="12"
                                     Margin="12,9,18,0"
                                     MinWidth="140">
-                            <page:PageIcon VerticalAlignment="Center"
+                            <icons:PageIcon VerticalAlignment="Center"
                                            Colour="{x:Bind ViewModel.IconColour, Mode=OneWay}"/>
 
                             <StackPanel>
@@ -273,7 +274,7 @@
                 </TabView>
 
                 <Grid Grid.Row="1" Margin="14,0,14,14">
-                    <page:MarkerTreeView x:Name="MarkerTreeView"
+                    <controls:MarkerTreeView x:Name="MarkerTreeView"
                                          Visibility="{x:Bind GetTabContentVisibility(ViewModel.SelectedTabIndex,
                                                              ViewModel.IsRowDataTabVisible, 0), Mode=OneWay}"
                                          Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"

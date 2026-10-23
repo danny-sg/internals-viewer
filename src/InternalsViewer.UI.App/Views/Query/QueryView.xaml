@@ -7,7 +7,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:docking="using:InternalsViewer.UI.App.Controls.Docking"
-    xmlns:query="using:InternalsViewer.UI.App.Controls.Query"
+    xmlns:icons="using:InternalsViewer.UI.App.Controls.Icons"
     mc:Ignorable="d">
 
     <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
@@ -35,11 +35,11 @@
                                     Spacing="6"
                                     Margin="12,0,12,0"
                                     VerticalAlignment="Center">
-                            <query:QueryIcon VerticalAlignment="Center">
-                                <query:QueryIcon.RenderTransform>
+                            <icons:QueryIcon VerticalAlignment="Center">
+                                <icons:QueryIcon.RenderTransform>
                                     <TranslateTransform Y="1"/>
-                                </query:QueryIcon.RenderTransform>
-                            </query:QueryIcon>
+                                </icons:QueryIcon.RenderTransform>
+                            </icons:QueryIcon>
                             <TextBlock FontWeight="SemiBold" VerticalAlignment="Center">
                                 Query
                             </TextBlock>

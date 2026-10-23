@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Views.Query.Trace.CallStack.CallTreeSymbolsPanelView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
+    xmlns:symbols="using:InternalsViewer.Query.CallStack.Symbols"
+    xmlns:callStack="using:InternalsViewer.UI.App.Controls.Query.Trace.CallStack"
+    xmlns:signatures="using:InternalsViewer.UI.App.Controls.Query.Trace.CallStack.Signatures"
+    xmlns:callStackSymbols="using:InternalsViewer.UI.App.Models.Query.Trace.CallStack.Symbols"
+    xmlns:selectors="using:InternalsViewer.UI.App.Helpers.Selectors">
+
+    <UserControl.Resources>
+        <DataTemplate x:Key="SymbolModuleTemplate" x:DataType="muxc:TreeViewNode">
+            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" RightTapped="OnModuleRightTapped">
+                <StackPanel.ContextFlyout>
+                    <MenuFlyout>
+                        <MenuFlyoutItem Text="Expand all" Click="OnExpandSymbolsClick"/>
+                        <MenuFlyoutItem Text="Collapse all" Click="OnCollapseSymbolsClick"/>
+                        <MenuFlyoutSeparator/>
+                        <MenuFlyoutItem Text="Exclude module" Click="OnExcludeModuleClick"/>
+                        <MenuFlyoutItem Text="Clear module exclusions" Click="OnClearModuleExclusionsClick"/>
+                    </MenuFlyout>
+                </StackPanel.ContextFlyout>
+                <TextBlock Text="{x:Bind ((callStackSymbols:SymbolModuleRow)Content).Module}"
+                           FontFamily="{StaticResource MonospaceFontFamily}"
+                           FontSize="11"
+                           Foreground="{ThemeResource SqlKeywordBrush}"
+                           VerticalAlignment="Center"/>
+                <TextBlock Text="{x:Bind ((callStackSymbols:SymbolModuleRow)Content).CountLabel}"
+                           FontSize="11"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+        </DataTemplate>
+
+        <DataTemplate x:Key="SymbolGroupTemplate" x:DataType="muxc:TreeViewNode">
+            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                <StackPanel.ContextFlyout>
+                    <MenuFlyout>
+                        <MenuFlyoutItem Text="Expand All" Click="OnExpandSymbolsClick"/>
+                        <MenuFlyoutItem Text="Collapse All" Click="OnCollapseSymbolsClick"/>
+                    </MenuFlyout>
+                </StackPanel.ContextFlyout>
+                <TextBlock Text="{x:Bind ((callStackSymbols:SymbolGroupRow)Content).Label}"
+                           signatures:SearchHighlight.Search="{x:Bind ((callStackSymbols:SymbolGroupRow)Content).Highlight}"
+                           FontFamily="{StaticResource MonospaceFontFamily}"
+                           FontSize="11"
+                           Foreground="{ThemeResource CppClassBrush}"
+                           VerticalAlignment="Center"/>
+                <TextBlock Text="{x:Bind ((callStackSymbols:SymbolGroupRow)Content).CountLabel}"
+                           FontSize="11"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+        </DataTemplate>
+
+        <DataTemplate x:Key="MemberRowTemplate" x:DataType="callStackSymbols:ClassMemberRow">
+            <callStack:ClassMemberLine/>
+        </DataTemplate>
+
+        <DataTemplate x:Key="SymbolMemberTemplate" x:DataType="muxc:TreeViewNode">
+            <ContentPresenter Content="{x:Bind Content}" ContentTemplate="{StaticResource MemberRowTemplate}"/>
+        </DataTemplate>
+
+        <DataTemplate x:Key="SymbolExclusionsTemplate" x:DataType="muxc:TreeViewNode">
+            <HyperlinkButton Content="{x:Bind ((callStackSymbols:SymbolExclusionsRow)Content).Label}"
+                             ToolTipService.ToolTip="{x:Bind ((callStackSymbols:SymbolExclusionsRow)Content).Detail}"
+                             FontSize="11"
+                             Padding="0,2,0,2"
+                             Click="OnClearModuleExclusionsClick"/>
+        </DataTemplate>
+
+        <selectors:SymbolTreeTemplateSelector x:Key="SymbolTreeTemplateSelector"
+                                                ModuleTemplate="{StaticResource SymbolModuleTemplate}"
+                                                GroupTemplate="{StaticResource SymbolGroupTemplate}"
+                                                MemberTemplate="{StaticResource SymbolMemberTemplate}"
+                                                ExclusionsTemplate="{StaticResource SymbolExclusionsTemplate}"/>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Margin="0,0,0,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <AutoSuggestBox x:Name="SymbolSearchBox"
+                            Grid.Column="0"
+                            Grid.Row="0"
+                            PlaceholderText="Search"
+                            QueryIcon="Find"
+                            TextBoxStyle="{StaticResource SearchTextBoxStyle}"
+                            BorderThickness="0"
+                            FontSize="12"
+                            Height="28"
+                            TextMemberPath="Term"
+                            GotFocus="OnSymbolSearchGotFocus"
+                            TextChanged="OnSymbolSearchTextChanged">
+                <AutoSuggestBox.ItemTemplate>
+                    <DataTemplate x:DataType="symbols:SymbolSearchSuggestion">
+                        <TextBlock Text="{x:Bind Display}" FontSize="12"/>
+                    </DataTemplate>
+                </AutoSuggestBox.ItemTemplate>
+            </AutoSuggestBox>
+
+            <StackPanel Grid.Column="1"
+                        Orientation="Horizontal"
+                        Spacing="2"
+                        Margin="6,0,8,0"
+                        VerticalAlignment="Center">
+                <ToggleButton Content="Module"
+                              Tag="Module"
+                              FontSize="11"
+                              Padding="6,2,6,3"
+                              BorderThickness="0"
+                              Checked="OnSymbolFieldToggled"
+                              Unchecked="OnSymbolFieldToggled"/>
+                <ToggleButton Content="Class"
+                              Tag="Class"
+                              FontSize="11"
+                              Padding="6,2,6,3"
+                              BorderThickness="0"
+                              Checked="OnSymbolFieldToggled"
+                              Unchecked="OnSymbolFieldToggled"/>
+                <ToggleButton Content="Signature"
+                              Tag="Signature"
+                              FontSize="11"
+                              Padding="6,2,6,3"
+                              BorderThickness="0"
+                              Checked="OnSymbolFieldToggled"
+                              Unchecked="OnSymbolFieldToggled"/>
+            </StackPanel>
+        </Grid>
+
+        <TextBlock Grid.Row="1"
+                   Text="{x:Bind ViewModel.Symbols.SymbolSearchMessage, Mode=OneWay}"
+                   Visibility="{x:Bind ViewModel.Symbols.SymbolSearchMessage, Mode=OneWay, Converter={StaticResource NullToVisibilityConverter}}"
+                   FontSize="12"
+                   Margin="12,8,12,8"
+                   TextWrapping="Wrap"
+                   VerticalAlignment="Top"/>
+
+        <muxc:TreeView x:Name="SymbolTree"
+                       Grid.Row="1"
+                       ItemTemplateSelector="{StaticResource SymbolTreeTemplateSelector}"
+                       SelectionMode="None"
+                       CanDragItems="False"
+                       CanReorderItems="False"
+                       Background="{ThemeResource LayerFillColorDefaultBrush}"
+                       ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                       ScrollViewer.HorizontalScrollMode="Enabled">
+            <muxc:TreeView.ItemContainerStyle>
+                <Style TargetType="muxc:TreeViewItem">
+                    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                    <Setter Property="MinHeight" Value="22"/>
+                </Style>
+            </muxc:TreeView.ItemContainerStyle>
+        </muxc:TreeView>
+
+        <StackPanel Grid.Row="1"
+                    Orientation="Vertical"
+                    Spacing="8"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Visibility="{x:Bind ViewModel.Symbols.IsSymbolSearchLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+            <ProgressRing IsActive="{x:Bind ViewModel.Symbols.IsSymbolSearchLoading, Mode=OneWay}"
+                          HorizontalAlignment="Center"/>
+            <TextBlock Text="Searching..." HorizontalAlignment="Center"/>
+        </StackPanel>
+    </Grid>
+</UserControl>

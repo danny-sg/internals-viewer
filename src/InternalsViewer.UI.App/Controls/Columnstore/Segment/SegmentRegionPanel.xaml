@@ -5,7 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:page="using:InternalsViewer.UI.App.Controls.Page"
+    xmlns:app="using:InternalsViewer.UI.App.Controls"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     mc:Ignorable="d">
     <Grid>
@@ -15,7 +15,7 @@
             <RowDefinition Height="{x:Bind DetailHeight, Mode=OneWay}" MinHeight="0"/>
         </Grid.RowDefinitions>
 
-        <page:MarkerTreeView x:Name="MarkerTree"
+        <app:MarkerTreeView x:Name="MarkerTree"
                              Grid.Row="0"
                              Opacity="{x:Bind MarkerOpacity, Mode=OneWay}"
                              Markers="{x:Bind Markers, Mode=OneWay}"

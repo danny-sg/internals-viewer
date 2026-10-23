@@ -6,6 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:index="using:InternalsViewer.UI.App.Controls.Index"
+    xmlns:icons="using:InternalsViewer.UI.App.Controls.Icons"
     xmlns:controls="using:InternalsViewer.UI.App.Controls"
     xmlns:controls1="using:CommunityToolkit.WinUI.Controls"
     xmlns:allocation="using:InternalsViewer.UI.App.Controls.Allocation"
@@ -37,7 +38,7 @@
                                 VerticalAlignment="Stretch"
                                 Margin="12,8,18,0"
                                 MinWidth="150">
-                        <index:IndexIcon VerticalAlignment="Center"
+                        <icons:IndexIcon VerticalAlignment="Center"
                                          Colour="{x:Bind ViewModel.IconColour, Mode=OneWay}"/>
                         <StackPanel VerticalAlignment="Stretch">
                             <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}"

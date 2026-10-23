@@ -6,7 +6,7 @@
     xmlns:winUi="using:CommunityToolkit.WinUI"
     xmlns:controls="using:InternalsViewer.UI.App.Controls"
     xmlns:hexView="using:InternalsViewer.UI.App.Controls.HexView"
-    xmlns:page="using:InternalsViewer.UI.App.ViewModels.Page">
+    xmlns:viewModels="using:InternalsViewer.UI.App.ViewModels.HexView">
     <UserControl.Resources>
         <Style TargetType="Border">
             <Setter Property="Margin" Value="0" />
@@ -96,7 +96,7 @@
                         <TransitionCollection />
                     </ItemsControl.ItemContainerTransitions>
                     <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="page:HexTipValue">
+                        <DataTemplate x:DataType="viewModels:HexTipValue">
                             <Grid Height="22" Padding="4,0,0,0" ColumnSpacing="4">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="70" />

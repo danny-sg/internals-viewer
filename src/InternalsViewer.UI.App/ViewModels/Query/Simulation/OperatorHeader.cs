@@ -1,7 +1,7 @@
 using System;
 using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Query.Plans.Model;
-using InternalsViewer.UI.App.Controls.Plan;
+using InternalsViewer.UI.App.Controls.Query.Plan;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Simulation;
 

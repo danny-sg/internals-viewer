@@ -5,7 +5,7 @@ using System.Collections.Specialized;
 using Windows.Foundation;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
-using InternalsViewer.UI.App.ViewModels.Page;
+using InternalsViewer.UI.App.ViewModels.HexView;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
 

@@ -1,6 +1,6 @@
 ﻿using System;
 using InternalsViewer.UI.App.Helpers;
-using InternalsViewer.UI.App.ViewModels.Page;
+using InternalsViewer.UI.App.ViewModels.HexView;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Windows.System;

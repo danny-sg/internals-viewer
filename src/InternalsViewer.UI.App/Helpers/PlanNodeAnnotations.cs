@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 using InternalsViewer.Query.Plans.Model;
-using InternalsViewer.UI.App.Models.Plan;
+using InternalsViewer.UI.App.Models.Query.Plan;
 using Windows.UI;
 
 namespace InternalsViewer.UI.App.Helpers;

@@ -8,6 +8,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
     xmlns:allocation="using:InternalsViewer.UI.App.Controls.Allocation"
+    xmlns:icons="using:InternalsViewer.UI.App.Controls.Icons"
     xmlns:models="using:InternalsViewer.UI.App.Models"
     xmlns:controls="using:InternalsViewer.UI.App.Controls"
     mc:Ignorable="d">
@@ -116,7 +117,7 @@
                                 Spacing="12"
                                 Margin="12,9,18,0"
                                 MinWidth="150">
-                        <allocation:DatabaseIcon Cells="{x:Bind TabViewModel.IconCells, Mode=OneWay}"/>
+                        <icons:DatabaseIcon Cells="{x:Bind TabViewModel.IconCells, Mode=OneWay}"/>
                         <StackPanel>
                             <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}">Allocations</TextBlock>
                             <TextBlock FontWeight="SemiBold" Text="{x:Bind TabViewModel.Database.Name, Mode=OneWay}"/>

@@ -1,19 +1,19 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
-using InternalsViewer.UI.App.Controls;
+using InternalsViewer.UI.App.Controls.Query.Trace.Dialogs;
 using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml.Controls;
-using TimeTravelLicenceDialog = InternalsViewer.UI.App.Controls.Dialogs.TimeTravelLicenceDialog;
-using TimeTravelWarningDialog = InternalsViewer.UI.App.Controls.Dialogs.TimeTravelWarningDialog;
+using TimeTravelLicenceDialog = InternalsViewer.UI.App.Controls.Query.Trace.Dialogs.TimeTravelLicenceDialog;
+using TimeTravelWarningDialog = InternalsViewer.UI.App.Controls.Query.Trace.Dialogs.TimeTravelWarningDialog;
 using WinDbgInstallDialog = InternalsViewer.UI.App.Controls.Dialogs.WinDbgInstallDialog;
 using InternalsViewer.Query.Recording;
 using InternalsViewer.Query.FullTrace.Recording;
 
 namespace InternalsViewer.UI.App.Views.Query;
 
-public sealed partial class QueryView : Page, IDisposable
+public sealed partial class QueryView : Microsoft.UI.Xaml.Controls.Page, IDisposable
 {
     public QueryView()
     {

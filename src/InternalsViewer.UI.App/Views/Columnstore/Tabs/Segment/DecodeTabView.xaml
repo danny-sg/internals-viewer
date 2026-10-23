@@ -6,7 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:tableView="using:WinUI.TableView"
-    xmlns:controls="using:InternalsViewer.UI.App.Controls"
+    xmlns:columnstore="using:InternalsViewer.UI.App.Controls.Columnstore"
     xmlns:models="using:InternalsViewer.UI.App.Models.Columnstore.Segment"
     xmlns:page="using:InternalsViewer.UI.App.Controls.Page"
     xmlns:hexView="using:InternalsViewer.UI.App.Controls.HexView"
@@ -81,7 +81,7 @@
                 <tableView:TableViewTemplateColumn Header="Value" Width="360">
                     <tableView:TableViewTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="models:ValueDetail">
-                            <TextBlock controls:DerivationText.Derivation="{x:Bind Derivation, Mode=OneTime}"
+                            <TextBlock columnstore:DerivationText.Derivation="{x:Bind Derivation, Mode=OneTime}"
                                        Style="{StaticResource DerivationTextStyle}"/>
                         </DataTemplate>
                     </tableView:TableViewTemplateColumn.CellTemplate>

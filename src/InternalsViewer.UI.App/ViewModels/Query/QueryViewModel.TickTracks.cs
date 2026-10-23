@@ -8,9 +8,9 @@ using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
-using InternalsViewer.UI.App.Models.Query.Trace;
+using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.Services.Query.Trace;
-using InternalsViewer.UI.App.ViewModels.Query.OperatorTracks;
+using InternalsViewer.UI.App.ViewModels.Query.Trace.OperatorTracks;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 

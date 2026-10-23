@@ -7,7 +7,7 @@ using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Simulation;
 using InternalsViewer.UI.App.Services.Query.Simulation;
 using InternalsViewer.UI.App.ViewModels.Docking;
-using InternalsViewer.UI.App.Views.Query.Tabs.Simulation;
+using InternalsViewer.UI.App.Views.Query.Simulation;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Simulation;

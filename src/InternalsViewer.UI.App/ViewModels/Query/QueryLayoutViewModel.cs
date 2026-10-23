@@ -2,12 +2,19 @@ using System;
 using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.UI.App.ViewModels.Docking;
-using InternalsViewer.UI.App.Views.Query.Tabs.Trace;
-using InternalsViewer.UI.App.Views.Query.Tabs;
-using InternalsViewer.UI.App.Views.Query.Tabs.CallStack;
-using InternalsViewer.UI.App.Views.Query.Tabs.Timeline;
+using InternalsViewer.UI.App.Views.Query.Allocation;
+using InternalsViewer.UI.App.Views.Query.Events;
+using InternalsViewer.UI.App.Views.Query.Instructions;
+using InternalsViewer.UI.App.Views.Query.Plan;
+using InternalsViewer.UI.App.Views.Query.Sql;
+using InternalsViewer.UI.App.Views.Query.Timeline;
+using InternalsViewer.UI.App.Views.Query.Trace.CallStack;
+using InternalsViewer.UI.App.Views.Query.Trace.CustomHooks;
+using InternalsViewer.UI.App.Views.Query.Trace.MemoryHistory;
+using InternalsViewer.UI.App.Views.Query.Trace.OperatorTracks;
+using InternalsViewer.UI.App.Views.Query.Trace.Timeline;
 using Microsoft.UI.Xaml.Controls;
-using QueryPlanTabCommands = InternalsViewer.UI.App.Views.Query.Tabs.Plan.QueryPlanTabCommands;
+using QueryPlanTabCommands = InternalsViewer.UI.App.Views.Query.Plan.QueryPlanTabCommands;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 

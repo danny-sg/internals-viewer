@@ -1,4 +1,4 @@
-﻿using InternalsViewer.UI.App.Models.Query.CallStack.Symbols;
+﻿using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Symbols;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Helpers.Selectors;
