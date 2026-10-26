@@ -63,7 +63,10 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
         LoadStatusBitsB(record, data);
 
         // The record structure gives information about the structure of the record to decode the values
-        LoadRecordStructure(record, data, structure);
+        LoadRecordStructure(record,
+                            data,
+                            structure.Columns.Count(column => !column.IsSparse),
+                            structure.HasSparseColumns && structure.Columns.All(column => column.IsSparse));
 
         LoadValues(record, structure, data);
 
@@ -71,6 +74,33 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
         {
             LoadSparseVector(record, structure, data);
         }
+
+        return record;
+    }
+
+    public DataRecord LoadStructure(DataPage page, ushort slotOffset)
+    {
+        var data = page.Data;
+
+        var record = new DataRecord
+        {
+            Offset = slotOffset,
+            RowIdentifier = new RowIdentifier(page.PageAddress, slotOffset),
+            IsMarkEnabled = page.IsMarkEnabled
+        };
+
+        LoadStatusBitsA(record, data);
+
+        if (record.RecordType == RecordType.ForwardingStub)
+        {
+            LoadForwardingStub(record, data);
+
+            return record;
+        }
+
+        LoadStatusBitsB(record, data);
+
+        LoadRecordStructure(record, data, null, false);
 
         return record;
     }
@@ -94,7 +124,7 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
     ///     Column offset array                        - 2 bytes * Number of variable length columns
     ///     Variable length data                       - defined by Column offset array
     /// </remarks>
-    private static void LoadRecordStructure(DataRecord dataRecord, byte[] data, TableStructure structure)
+    private static void LoadRecordStructure(DataRecord dataRecord, byte[] data, int? nonSparseColumnCount, bool isAllSparse)
     {
         // Fixed column offset 2-byte int located after Status Bits A (1 byte) and Status Bits B (1 byte)
         var columnCountOffsetPosition = dataRecord.Offset + sizeof(byte) + sizeof(byte);
@@ -113,7 +143,7 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
 
         // Calculate the number of bytes required to store the null bitmap for each non-sparse column,
         // rounded up to the nearest byte
-        dataRecord.NullBitmapSize = (short)Math.Ceiling(structure.Columns.Count(column => !column.IsSparse) / 8.0);
+        dataRecord.NullBitmapSize = (short)Math.Ceiling((nonSparseColumnCount ?? dataRecord.ColumnCount) / 8.0);
 
         // Has Null Bitmap defined by Status Bits A Bit 4
         if (dataRecord.HasNullBitmap)
@@ -125,8 +155,7 @@ public sealed class FixedVarDataRecordLoader(ILogger<FixedVarDataRecordLoader> l
         {
             short offsetStart;
 
-            if (structure.HasSparseColumns
-                && structure.Columns.All(column => column.IsSparse))
+            if (isAllSparse)
             {
                 dataRecord.VariableLengthColumnCount = 1;
 

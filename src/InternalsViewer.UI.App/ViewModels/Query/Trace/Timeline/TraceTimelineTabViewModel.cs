@@ -119,7 +119,7 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, IDispo
 
         memory.MemoryRequested += OnMemoryRequested;
 
-        var document = new DocumentViewModel(memory.ObjectName,
+        var document = new DocumentViewModel(memory.Title,
                                              memory,
                                              static () => new TraceTimelineMemoryView(),
                                              keepAlive: true,
@@ -262,11 +262,13 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, IDispo
             return;
         }
 
-        var block = Query.MemoryHistory.GetBlock(request.Address, memory.Position);
+        var position = request.Position ?? memory.Position;
+
+        var block = Query.MemoryHistory.GetBlock(request.Address, position);
 
         if (block >= 0)
         {
-            OpenMemory(block, request.Address, memory.Position, request.Length);
+            OpenMemory(block, request.Address, position, request.Length);
         }
     }
 

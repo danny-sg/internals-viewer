@@ -91,7 +91,7 @@ public sealed partial class TraceTimelineControl
         DependencyProperty.Register(nameof(HighlightMemoryWriters),
                                     typeof(bool),
                                     typeof(TraceTimelineControl),
-                                    new PropertyMetadata(true, OnHighlightMemoryWritersChanged));
+                                    new PropertyMetadata(false, OnHighlightMemoryWritersChanged));
 
     public bool HighlightMemoryWriters
     {
@@ -201,13 +201,15 @@ public sealed partial class TraceTimelineControl
 
     private bool ShowsMemory => ShowMemoryHistory && _memory.HasBlocks;
 
+    private bool ShowsMemorySplitter => ShowsMemory && ShowsFlameChart;
+
     private float PanesArea => OperatorsHeight + (ShowsSplitter ? SplitterHeight : 0) + MemoryArea;
 
     private float ChartHeight => (float)_overlay.ActualHeight - OperatorsTop - BandHeight - SplitterHeight - MemoryArea;
 
     private float MemoryTop => OperatorsTop + OperatorsHeight + (ShowsSplitter ? SplitterHeight : 0);
 
-    private float MemoryArea => ShowsMemory ? MemoryHeight + SplitterHeight : 0;
+    private float MemoryArea => ShowsMemory ? MemoryHeight + (ShowsMemorySplitter ? SplitterHeight : 0) : 0;
 
     private float MemoryHeight
     {
@@ -218,12 +220,23 @@ public sealed partial class TraceTimelineControl
                 return 0;
             }
 
-            var available = (float)_overlay.ActualHeight - OperatorsTop - BandHeight - SplitterHeight * 2;
+            var panes = (float)_overlay.ActualHeight - OperatorsTop - BandHeight;
 
             if (!ShowsFlameChart && !ShowsOperators)
             {
-                return Math.Max(MinimumMemoryHeight, available);
+                return Math.Max(MinimumMemoryHeight, panes);
             }
+
+            if (!ShowsFlameChart)
+            {
+                var shared = panes - SplitterHeight;
+
+                var limit = Math.Max(MinimumMemoryHeight, shared - MinimumOperatorsHeight);
+
+                return Math.Clamp(_memoryHeight ?? shared * MemoryShare, MinimumMemoryHeight, limit);
+            }
+
+            var available = panes - SplitterHeight * 2;
 
             var room = Math.Max(MinimumMemoryHeight, available - MinimumLanesHeight - (ShowsOperators ? MinimumOperatorsHeight : 0));
 
@@ -265,7 +278,7 @@ public sealed partial class TraceTimelineControl
             DrawSplitter(canvas, OperatorsTop + OperatorsHeight, width);
         }
 
-        if (ShowsMemory)
+        if (ShowsMemorySplitter)
         {
             DrawSplitter(canvas, MemoryTop + MemoryHeight, width);
         }
@@ -411,7 +424,7 @@ public sealed partial class TraceTimelineControl
 
     private bool IsOnMemorySplitter(Point position)
     {
-        if (!ShowsMemory)
+        if (!ShowsMemorySplitter)
         {
             return false;
         }
@@ -482,11 +495,22 @@ public sealed partial class TraceTimelineControl
         _resizePressY = position.Y;
 
         _resizeStartHeight = OperatorsHeight;
+
+        _memoryResizeStartHeight = MemoryHeight;
     }
 
     private void ResizeOperators(Point position)
     {
-        _operatorsHeight = Math.Clamp(_resizeStartHeight + (float)(position.Y - _resizePressY), MinimumOperatorsHeight, OperatorsRoom);
+        var offset = (float)(position.Y - _resizePressY);
+
+        if (ShowsFlameChart)
+        {
+            _operatorsHeight = Math.Clamp(_resizeStartHeight + offset, MinimumOperatorsHeight, OperatorsRoom);
+        }
+        else
+        {
+            _memoryHeight = Math.Max(MinimumMemoryHeight, _memoryResizeStartHeight - offset);
+        }
 
         Relayout();
     }

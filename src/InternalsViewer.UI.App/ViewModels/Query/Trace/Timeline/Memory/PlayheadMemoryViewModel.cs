@@ -6,6 +6,7 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Logging;
@@ -25,7 +26,11 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     private const int BatchTab = 3;
 
+    private const int LoadInterval = 50;
+
     private const int VectorsTab = 4;
+
+    private const int PageTab = 5;
 
     [ObservableProperty]
     private bool _isOpen;
@@ -51,11 +56,16 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
     [ObservableProperty]
     private LogRecordAnnotation? _selectedChangeSpan;
 
+    [ObservableProperty]
+    private int? _scrollToOffset;
+
     public PlayheadMemoryViewModel(MemoryHistoryViewModel history)
     {
         History = history;
 
         Writes = new MemoryWritesViewModel(this);
+
+        HexLoader = new PlayheadLoader<HexImage?>(TimeSpan.FromMilliseconds(LoadInterval), ApplyHex);
     }
 
     public event EventHandler<TracePoint>? PlayheadRequested;
@@ -72,9 +82,13 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     public MemoryBatchViewModel Batch { get; } = new();
 
+    public MemoryPageViewModel WorkfilePage { get; } = new();
+
     public int Block { get; private set; } = -1;
 
     public TracePosition Position => Playhead ?? OpenedAt;
+
+    public string Title => IsOpen && History.IsPage(Block) ? $"{ObjectName} 0x{History.Store.Blocks[Block].Address:X16}" : ObjectName;
 
     public IPlayheadChart? Chart { get; set; }
 
@@ -83,6 +97,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
     private TracePosition? Playhead { get; set; }
 
     private int WriteCount { get; set; } = -1;
+
+    private PlayheadLoader<HexImage?> HexLoader { get; }
 
     private List<MemoryChangeRun> Runs { get; set; } = [];
 
@@ -121,9 +137,13 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         Batch.Load(this);
 
+        WorkfilePage.Load(this);
+
         ApplyMarkers();
 
-        if ((SelectedTab == BatchTab && !Batch.IsAvailable) || (SelectedTab == VectorsTab && !Batch.IsVectorsAvailable))
+        if ((SelectedTab == BatchTab && !Batch.IsAvailable)
+            || (SelectedTab == VectorsTab && !Batch.IsVectorsAvailable)
+            || (SelectedTab == PageTab && !WorkfilePage.IsAvailable))
         {
             SelectedTab = 0;
         }
@@ -144,16 +164,20 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         var offset = address - block.Address;
 
-        SelectedChangeSpan = (offset > 0 || length > 1) && offset < (ulong)block.Size
+        SelectedChangeSpan = length > 1 && offset < (ulong)block.Size
             ? new LogRecordAnnotation { Offset = (int)offset, Length = length, Description = $"0x{address:X16}" }
             : null;
     }
 
     public void Close()
     {
+        HexLoader.Cancel();
+
         WatchList.Attach(null);
 
         Batch.Clear();
+
+        WorkfilePage.Clear();
 
         Writes.Clear();
 
@@ -183,7 +207,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     public void RequestPlayhead(TracePoint point) => PlayheadRequested?.Invoke(this, point);
 
-    public void RequestMemory(ulong address, int length = 1) => MemoryRequested?.Invoke(this, new MemoryRequest(address, length));
+    public void RequestMemory(ulong address, int length = 1, TracePosition? position = null)
+        => MemoryRequested?.Invoke(this, new MemoryRequest(address, length, position));
 
     public void GoToWrite(int index)
     {
@@ -304,6 +329,16 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         chart.HighlightCalls(writers);
     }
 
+    public void ShowPageMarkers(int? offset)
+    {
+        if (offset is { } scroll)
+        {
+            ScrollToOffset = scroll;
+        }
+
+        ApplyMarkers();
+    }
+
     public Windows.UI.Color GetCategoryColour(int callNodeIndex)
         => ColourHelpers.FromHex(History.GetWriter(callNodeIndex)?.CategoryColour) ?? Colors.Gray;
 
@@ -318,6 +353,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         {
             RefreshBatch();
         }
+
+        RefreshPage();
 
         ApplyMarkers();
     }
@@ -377,6 +414,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         if (!isLive)
         {
+            HexLoader.Cancel();
+
             Data = null;
 
             WriterMarkers = null;
@@ -387,25 +426,48 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
             WatchList.Refresh(null);
 
+            WorkfilePage.SetData(null);
+
+            RefreshPage();
+
             return;
         }
 
-        var image = store.GetImage(Block, count - 1);
+        var block = Block;
 
-        if (Data is not { } shown || !image.Data.AsSpan().SequenceEqual(shown))
+        HexLoader.Request(() => ReadHex(store, block, count));
+    }
+
+    private static HexImage? ReadHex(MemoryHistoryStore store, int block, int count)
+    {
+        var image = store.GetImage(block, count - 1);
+
+        return new HexImage(image.Data, MemoryChangeRuns.GetRuns(store.GetWrites(block), count, image.Data.Length));
+    }
+
+    private void ApplyHex(HexImage? hex)
+    {
+        if (!IsOpen || hex is null)
         {
-            Data = image.Data;
-
-            WatchList.Refresh(Data);
+            return;
         }
 
-        var runs = MemoryChangeRuns.GetRuns(store.GetWrites(Block), count, image.Data.Length);
-
-        if (WriterMarkers is null || !runs.SequenceEqual(Runs))
+        if (Data is not { } shown || !hex.Data.AsSpan().SequenceEqual(shown))
         {
-            Runs = runs;
+            Data = hex.Data;
 
-            WriterMarkers = new ObservableCollection<Marker>(GetChangeMarkers(runs));
+            WatchList.Refresh(Data);
+
+            WorkfilePage.SetData(Data);
+
+            RefreshPage();
+        }
+
+        if (WriterMarkers is null || !hex.Runs.SequenceEqual(Runs))
+        {
+            Runs = hex.Runs;
+
+            WriterMarkers = new ObservableCollection<Marker>(GetChangeMarkers(hex.Runs));
         }
 
         ApplyMarkers();
@@ -413,11 +475,24 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     private void ApplyMarkers()
     {
-        var markers = SelectedTab == BatchTab && Batch.FieldMarkers is { } fields ? fields : WriterMarkers;
+        var markers = SelectedTab switch
+        {
+            BatchTab when Batch.FieldMarkers is { } fields => fields,
+            PageTab when WorkfilePage.IsAvailable => WorkfilePage.Markers,
+            _ => WriterMarkers
+        };
 
         if (!ReferenceEquals(Markers, markers))
         {
             Markers = markers;
+        }
+    }
+
+    private void RefreshPage()
+    {
+        if (IsOpen && SelectedTab == PageTab)
+        {
+            WorkfilePage.Refresh();
         }
     }
 
@@ -448,4 +523,6 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
             };
         }
     }
+
+    private sealed record HexImage(byte[] Data, List<MemoryChangeRun> Runs);
 }

@@ -47,4 +47,11 @@ public class PlanObjectInstanceMethodCollectorTests
         Assert.True(PlanObjectInstanceMethodCollector.IsPlanObjectMethod("CBpXteHashAgg::PbpqsGet"));
         Assert.False(PlanObjectInstanceMethodCollector.IsPlanObjectMethod("CQScanRangeNew::Open"));
     }
+
+    [Fact]
+    public void An_Open_Reached_Through_Its_Helper_Is_An_Iterator_Method()
+    {
+        Assert.True(PlanObjectInstanceMethodCollector.IsInstanceMethod("CQScanSortNew::OpenHelper"));
+        Assert.False(PlanObjectInstanceMethodCollector.IsInstanceMethod("CQScanSortNew::BuildSortTable"));
+    }
 }

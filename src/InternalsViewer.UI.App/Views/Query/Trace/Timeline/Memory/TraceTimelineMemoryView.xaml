@@ -20,6 +20,7 @@
                                 Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
                                 Watches="{x:Bind ViewModel.Watches, Mode=TwoWay}"
                                 SelectedChangeSpan="{x:Bind ViewModel.SelectedChangeSpan, Mode=OneWay}"
+                                ScrollToOffset="{x:Bind ViewModel.ScrollToOffset, Mode=OneWay}"
                                 IsChangeNavigationEnabled="True"
                                 ChangeNavigationRequested="OnChangeNavigationRequested"
                                 OffsetClicked="OnOffsetClicked"/>
@@ -49,6 +50,11 @@
                          IsClosable="False"
                          Visibility="{x:Bind ViewModel.Batch.IsVectorsAvailable, Mode=OneWay}">
                 <local:MemoryBatchPanelView/>
+            </TabViewItem>
+            <TabViewItem Header="{x:Bind ViewModel.WorkfilePage.Title, Mode=OneWay}"
+                         IsClosable="False"
+                         Visibility="{x:Bind ViewModel.WorkfilePage.IsAvailable, Mode=OneWay}">
+                <local:MemoryPagePanelView/>
             </TabViewItem>
         </TabView>
     </Grid>

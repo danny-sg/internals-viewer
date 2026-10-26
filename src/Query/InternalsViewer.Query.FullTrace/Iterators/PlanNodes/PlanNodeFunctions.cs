@@ -46,7 +46,10 @@ internal sealed record PlanNodeFunctions(IReadOnlyDictionary<ulong, PlanNodeFunc
             {
                 Others.Add(rva);
             }
-            else if (methodName is IteratorSymbols.GetRowMethod or IteratorSymbols.GetRowOrReQualifyMethod or IteratorSymbols.OpenMethod)
+            else if (methodName is IteratorSymbols.GetRowMethod
+                                   or IteratorSymbols.GetRowOrReQualifyMethod
+                                   or IteratorSymbols.OpenMethod
+                                   or IteratorSymbols.OpenHelperMethod)
             {
                 var type = className is IteratorSymbols.BatchHelperClass ? PlanNodeFunctionType.BatchHelper : PlanNodeFunctionType.Iterator;
 

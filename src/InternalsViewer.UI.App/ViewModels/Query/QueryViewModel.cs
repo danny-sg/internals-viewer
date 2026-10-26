@@ -644,7 +644,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             CustomHooks.SetTrace(value);
 
-            MemoryHistory.SetTrace(value, Events);
+            MemoryHistory.SetTrace(value, Events, Database, ResolvePlanNode);
 
             CreatedTraceTimelineTab?.CloseMemory();
         }
@@ -2055,6 +2055,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         TraceLoad = load;
 
+        Layout.ShowTraceTimeline();
+
         IsTraceLoading = true;
         TraceStatus = "Opening Full Trace";
 
@@ -2250,6 +2252,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         if (run.ExtraOf<TraceResult>() is { } fullTrace)
         {
             Layout.IsTrace = true;
+
+            Layout.ShowTraceTimeline();
 
             ShowTrace(fullTrace);
         }

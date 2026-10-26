@@ -16,6 +16,8 @@ internal static class IteratorSymbols
 
     public const string OpenMethod = "Open";
 
+    public const string OpenHelperMethod = "OpenHelper";
+
     public const string GetRowMethod = "GetRow";
 
     public const string GetRowOrReQualifyMethod = "GetRowOrReQualifyHelper";
@@ -53,7 +55,7 @@ internal static class IteratorSymbols
         => IsIterator(className) || IsQueryScan(className) || IsPlanObject(className);
 
     public static bool IsIteratorMethod(ReadOnlySpan<char> method)
-        => method is OpenMethod or GetRowMethod or GetRowOrReQualifyMethod or CloseMethod
+        => method is OpenMethod or OpenHelperMethod or GetRowMethod or GetRowOrReQualifyMethod or CloseMethod
                   or BatchOpenMethod or GetNextBatchMethod or GetBatchDataMethod or BatchCloseMethod;
 
     public static bool IsRowReturnMethod(ReadOnlySpan<char> method)

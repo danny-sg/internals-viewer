@@ -32,7 +32,7 @@ public class ArgumentValueTests
     [InlineData("enum LCK_MODE", 21ul, "RX_X")]
     [InlineData("enum LockRes::LockResourceType", 6ul, "Page")]
     [InlineData("enum PageHeader::PageType", 10ul, "Iam")]
-    [InlineData("enum PageHeader::PageType", 6ul, "6")]
+    [InlineData("enum PageHeader::PageType", 5ul, "5")]
     [InlineData("enum RbpEncodingType", 8ul, "String Hash")]
     [InlineData("enum RbpFilterType", 20ul, "In List")]
     [InlineData("enum RbpCPUInstructionSet", 2ul, "Avx2")]

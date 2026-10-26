@@ -113,21 +113,13 @@ public sealed class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader>
         // Load the null bitmap if necessary
         if (record.HasNullBitmap)
         {
-            LoadNullBitmap(record, page, structure);
+            LoadNullBitmap(record, page, structure.Columns.Count);
         }
 
         // Load the variable length column offset array if necessary
         if (record.HasVariableLengthColumns)
         {
-            var startIndex = record.HasNullBitmap ? 2 + record.NullBitmapSize : 0;
-
-            LoadColumnOffsetArray(record, startIndex, page);
-
-            // Calculate the offset of the variable length data
-            record.VariableLengthDataOffset = (ushort)(page.PageHeader.FixedLengthSize
-                                                       + sizeof(short)
-                                                       + startIndex
-                                                       + (sizeof(short) * record.VariableLengthColumnCount));
+            LoadVariableLengthStructure(record, page);
         }
 
         switch (nodeType)
@@ -168,6 +160,44 @@ public sealed class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader>
         }
 
         return record;
+    }
+
+    public FixedVarIndexRecord LoadStructure(Page page, ushort offset, int slot)
+    {
+        var record = new FixedVarIndexRecord
+        {
+            Offset = offset,
+            Slot = slot,
+            NodeType = NodeType.Leaf,
+            IsMarkEnabled = page.IsMarkEnabled
+        };
+
+        LoadStatusBitsA(record, page.Data);
+
+        if (record.HasNullBitmap)
+        {
+            LoadNullBitmap(record, page, null);
+        }
+
+        if (record.HasVariableLengthColumns)
+        {
+            LoadVariableLengthStructure(record, page);
+        }
+
+        return record;
+    }
+
+    private static void LoadVariableLengthStructure(FixedVarIndexRecord record, Page page)
+    {
+        var startIndex = record.HasNullBitmap ? 2 + record.NullBitmapSize : 0;
+
+        LoadColumnOffsetArray(record, startIndex, page);
+
+        // Calculate the offset of the variable length data
+        record.VariableLengthDataOffset = (ushort)(page.PageHeader.FixedLengthSize
+                                                   + sizeof(short)
+                                                   + startIndex
+                                                   + (sizeof(short) * record.VariableLengthColumnCount));
     }
 
     /// <summary>
@@ -453,15 +483,15 @@ public sealed class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader>
         return field;
     }
 
-    private static void LoadNullBitmap(FixedVarIndexRecord record, PageData page, IndexStructure structure)
+    private static void LoadNullBitmap(FixedVarIndexRecord record, PageData page, int? structureColumnCount)
     {
-        record.NullBitmapSize = (short)(((structure.Columns.Count - 1) / 8) + 1);
-
         var columnCountPosition = record.Offset + page.PageHeader.FixedLengthSize;
 
         record.ColumnCount = BitConverter.ToInt16(page.Data, columnCountPosition);
 
         record.MarkProperty(nameof(FixedVarIndexRecord.ColumnCount), columnCountPosition, sizeof(short));
+
+        record.NullBitmapSize = (short)((((structureColumnCount ?? record.ColumnCount) - 1) / 8) + 1);
 
         var nullBitmapPosition = record.Offset + page.PageHeader.FixedLengthSize + sizeof(short);
 

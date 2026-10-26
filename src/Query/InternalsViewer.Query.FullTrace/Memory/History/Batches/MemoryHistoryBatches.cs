@@ -14,6 +14,8 @@ public sealed class MemoryHistoryBatches(MemoryHistoryStore store,
 
     private Dictionary<int, (int Header, BatchPart Part)?> Parts { get; } = [];
 
+    private Lock PartsLock { get; } = new();
+
     public BatchPart? GetPart(int block) => GetOwner(block)?.Part;
 
     public MemoryHistoryBatch? Read(int block, TracePosition position)
@@ -52,10 +54,18 @@ public sealed class MemoryHistoryBatches(MemoryHistoryStore store,
 
     private (int Header, BatchPart Part)? GetOwner(int block)
     {
-        if (!Parts.TryGetValue(block, out var owner))
+        lock (PartsLock)
         {
-            owner = FindPart(block);
+            if (Parts.TryGetValue(block, out var cached))
+            {
+                return cached;
+            }
+        }
 
+        var owner = FindPart(block);
+
+        lock (PartsLock)
+        {
             Parts[block] = owner;
         }
 

@@ -17,13 +17,25 @@ public static class BatchReader
 
     private const ulong PureBitmapOffset = 0x10;
 
+    private const ulong VectorCapacityOffset = 0x18;
+
     private const ulong VectorCountOffset = 0x1C;
+
+    private const ulong VersionOffset = 0x20;
 
     private const ulong CapacityOffset = 0x24;
 
     private const ulong ActiveRowCountOffset = 0x28;
 
+    private const ulong MemoryObjectOffset = 0x30;
+
     private const ulong SelectionOffset = 0x38;
+
+    private const ulong DeepDataAllocatorOffset = 0x40;
+
+    private const ulong FreeDeepPagesOffset = 0x48;
+
+    private const ulong BlobHandleFactoryOffset = 0x58;
 
     private const ulong CurrentDeepPageOffset = 0x10;
 
@@ -38,10 +50,16 @@ public static class BatchReader
         new("Allocation Bitmap", (int)AllocationBitmapOffset, sizeof(ulong)),
         new("Vector Array", (int)VectorArrayOffset, sizeof(ulong)),
         new("Pure Bitmap", (int)PureBitmapOffset, sizeof(ulong)),
+        new("Vector Capacity", (int)VectorCapacityOffset, sizeof(int)),
         new("Vector Count", (int)VectorCountOffset, sizeof(int)),
+        new("Version", (int)VersionOffset, sizeof(int), IsHex: true),
         new("Capacity", (int)CapacityOffset, sizeof(int)),
         new("Active Rows", (int)ActiveRowCountOffset, sizeof(int)),
-        new("Selection Vector", (int)SelectionOffset, sizeof(ulong))
+        new("Memory Object", (int)MemoryObjectOffset, sizeof(ulong)),
+        new("Selection Vector", (int)SelectionOffset, sizeof(ulong)),
+        new("Deep Data Allocator", (int)DeepDataAllocatorOffset, sizeof(ulong)),
+        new("Free Deep Pages", (int)FreeDeepPagesOffset, sizeof(ulong)),
+        new("Blob Handle Factory", (int)BlobHandleFactoryOffset, sizeof(ulong))
     ];
 
     public static BatchState? Read(IMemoryReader memory, ulong address)

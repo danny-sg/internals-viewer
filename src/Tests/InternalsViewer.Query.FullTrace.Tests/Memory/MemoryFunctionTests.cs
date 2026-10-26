@@ -1,4 +1,6 @@
-﻿using InternalsViewer.Query.CallStack.Locators;
+﻿using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.CallStack.Categories;
+using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.Memory;
@@ -159,6 +161,23 @@ public class MemoryFunctionTests
         var call = new TraceArgumentCall(At(1), 1, true, [0xA0, ulong.MaxValue, 0, 0], 0);
 
         Assert.Equal(0ul, MemoryFunction.Classify(0x1000, "CMemObj::Alloc")!.GetByteCount(call));
+    }
+
+    [Theory]
+    [InlineData(null, "PbufGetGrantedBuf", true)]
+    [InlineData(null, "PbufGetGrantedBufs", true)]
+    [InlineData("", "PvGetGrantedPage", true)]
+    [InlineData("BPool", "Steal", false)]
+    [InlineData("CQScanHash", "PvGetGrantedPage", false)]
+    public void Memory_Grant_Frames_Are_Known_By_Their_Function(string? className, string method, bool isGrant)
+    {
+        var frame = new CallstackFrame
+        {
+            Module = "sqlmin",
+            Resolved = new ResolvedCallstackFrame { ClassName = className, MethodName = method, SymbolCategory = SymbolCategory.Unknown }
+        };
+
+        Assert.Equal(isGrant, MemoryFunction.IsGrantFrame(frame));
     }
 
     private static MemoryFunction TrackingNew() => MemoryFunction.Classify(0x1000, "operator new")! with { FileSlot = 2, LineSlot = 3 };

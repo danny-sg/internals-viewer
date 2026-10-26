@@ -24,6 +24,8 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
 {
     public const int VectorValueColumn = 3;
 
+    private const int LoadInterval = 120;
+
     private const int RowWidth = 70;
 
     private const int SelectionWidth = 90;
@@ -72,6 +74,9 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _isVectorsAvailable;
+
+    [ObservableProperty]
+    private bool _isLoading;
 
     [ObservableProperty]
     private string _title = string.Empty;
@@ -130,6 +135,11 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
     [ObservableProperty]
     private string _emptyText = string.Empty;
 
+    public MemoryBatchViewModel()
+    {
+        Loader = new PlayheadLoader<BatchSnapshot?>(TimeSpan.FromMilliseconds(LoadInterval), ApplySnapshot, b => IsLoading = b);
+    }
+
     public ObservableCollection<Marker>? FieldMarkers { get; private set; }
 
     public bool IsHeader => IsAvailable && PartType == BatchPartType.Header;
@@ -156,7 +166,11 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
 
     private ulong BlockAddress { get; set; }
 
-    private MemoryHistoryBatch? Current { get; set; }
+    private BatchSnapshot? Snapshot { get; set; }
+
+    private MemoryHistoryBatch? Current => Snapshot?.Batch;
+
+    private PlayheadLoader<BatchSnapshot?> Loader { get; }
 
     private string HeaderKey { get; set; } = string.Empty;
 
@@ -198,14 +212,27 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
 
     public void Refresh(TracePosition position)
     {
-        if (!IsAvailable || Batches is not { } batches || Current?.HasChanged(position) == false)
+        if (!IsAvailable || Batches is not { } batches || Owner is not { } owner)
         {
             return;
         }
 
-        Current = batches.Read(Block, position);
+        if (Current?.HasChanged(position) == false)
+        {
+            Loader.Cancel();
 
-        Show();
+            return;
+        }
+
+        var block = Block;
+
+        var blockAddress = BlockAddress;
+
+        var type = PartType;
+
+        var size = owner.History.Store.Blocks[Block].Size;
+
+        Loader.Request(() => ReadSnapshot(batches, block, blockAddress, size, type, position));
     }
 
     public void OpenBatch()
@@ -264,7 +291,9 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
 
         Block = -1;
 
-        Current = null;
+        Loader.Cancel();
+
+        Snapshot = null;
 
         IsAvailable = false;
 
@@ -341,9 +370,72 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
         OnPropertyChanged(nameof(IsPartTableVisible));
     }
 
+    private void ApplySnapshot(BatchSnapshot? snapshot)
+    {
+        Snapshot = snapshot;
+
+        Show();
+    }
+
+    private static BatchSnapshot? ReadSnapshot(MemoryHistoryBatches batches,
+                                               int block,
+                                               ulong blockAddress,
+                                               int size,
+                                               BatchPartType type,
+                                               TracePosition position)
+    {
+        if (batches.Read(block, position) is not { } batch)
+        {
+            return null;
+        }
+
+        var reader = batch.Reader;
+
+        List<ulong?> fields = type == BatchPartType.Header ? [.. BatchReader.Fields.Select(f => ReadField(batch, f))] : [];
+
+        var bitmap = type is BatchPartType.AllocationBitmap or BatchPartType.PureBitmap ? new byte[size] : [];
+
+        var bitmapRead = bitmap.Length > 0 ? reader.Read(blockAddress, bitmap) : 0;
+
+        var isDeepData = type == BatchPartType.DeepData;
+
+        return new BatchSnapshot(batch,
+                                 fields,
+                                 bitmap,
+                                 bitmapRead,
+                                 isDeepData ? DeepDataReader.ReadEntries(reader, blockAddress, size) : [],
+                                 isDeepData ? DeepDataReader.GetNextPage(reader, blockAddress) : 0,
+                                 GetDeepValues(batch, type));
+    }
+
+    private static Dictionary<(int Vector, int Row), DeepDataEntry> GetDeepValues(MemoryHistoryBatch batch, BatchPartType type)
+    {
+        var values = new Dictionary<(int Vector, int Row), DeepDataEntry>();
+
+        List<BatchVector> vectors = type switch
+        {
+            BatchPartType.Header => batch.State.Vectors,
+            BatchPartType.Vector when batch.VectorId > 0 => [batch.State.Vectors[batch.VectorId - 1]],
+            _ => []
+        };
+
+        foreach (var vector in vectors)
+        {
+            for (var row = 0; row < vector.Slots.Length; row++)
+            {
+                if (vector.IsDeepReference(row) && DeepDataReader.ReadValue(batch.Reader, vector.Slots[row]) is { } entry)
+                {
+                    values[(vector.Id, row)] = entry;
+                }
+            }
+        }
+
+        return values;
+    }
+
     private void Show()
     {
-        if (Current is not { } current)
+        if (Snapshot is not { Batch: var current } snapshot)
         {
             ShowEmpty();
 
@@ -365,13 +457,13 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
         switch (PartType)
         {
             case BatchPartType.Header:
-                ShowHeader(current);
+                ShowHeader(snapshot);
 
                 ShowVectors(state, current.VectorId);
                 break;
 
             case BatchPartType.AllocationBitmap or BatchPartType.PureBitmap:
-                ShowBitmap(current);
+                ShowBitmap(snapshot);
                 break;
 
             case BatchPartType.VectorArray:
@@ -383,7 +475,7 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
                 break;
 
             case BatchPartType.DeepData:
-                ShowDeepData(current);
+                ShowDeepData(snapshot);
                 break;
 
             default:
@@ -434,9 +526,9 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
         BitmapValue = string.Empty;
     }
 
-    private void ShowHeader(MemoryHistoryBatch batch)
+    private void ShowHeader(BatchSnapshot snapshot)
     {
-        var values = BatchReader.Fields.Select(f => ReadField(batch, f)).ToList();
+        var values = snapshot.Fields;
 
         var key = string.Join(",", values);
 
@@ -471,12 +563,22 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
             return null;
         }
 
-        if (!field.IsPointer)
+        if (field.IsHex)
         {
-            return $"{(int)found:N0}";
+            return $"0x{found:X8}";
         }
 
-        return found == 0 ? $"0x{found:X16}" : new ActionLinks([new ActionLink($"0x{found:X16}", () => Owner?.RequestMemory(found))]);
+        if (!field.IsPointer)
+        {
+            return $"{found:N0}";
+        }
+
+        return found != 0 && Owner is { } owner && owner.History.GetBlock(found, owner.Position) >= 0
+            ? new ActionLinks([new ActionLink($"0x{found:X16}", () => owner.RequestMemory(found))])
+            {
+                Suffix = owner.History.GetPointerTarget(found, owner.Position)
+            }
+            : $"0x{found:X16}";
     }
 
     private static ulong? ReadField(MemoryHistoryBatch batch, BatchField field)
@@ -507,15 +609,13 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
         Table = BuildVectorsTable(state, vectorId, Source);
     }
 
-    private void ShowBitmap(MemoryHistoryBatch batch)
+    private void ShowBitmap(BatchSnapshot snapshot)
     {
-        var size = Owner?.History.Store.Blocks[Block].Size ?? 0;
+        var bytes = snapshot.Bitmap;
 
-        var bytes = new byte[size];
+        var read = snapshot.BitmapRead;
 
-        var read = batch.Reader.Read(BlockAddress, bytes);
-
-        Bits = GetBits(bytes, Math.Min(batch.State.Vectors.Count, read * BitGroup));
+        Bits = GetBits(bytes, Math.Min(snapshot.Batch.State.Vectors.Count, read * BitGroup));
 
         BitmapValue = read == bytes.Length ? $"0x{Convert.ToHexString([.. Enumerable.Reverse(bytes)])}" : string.Empty;
     }
@@ -624,15 +724,15 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
                                });
     }
 
-    private void ShowDeepData(MemoryHistoryBatch batch)
+    private void ShowDeepData(BatchSnapshot snapshot)
     {
-        var size = Owner?.History.Store.Blocks[Block].Size ?? 0;
+        var batch = snapshot.Batch;
 
-        var entries = DeepDataReader.ReadEntries(batch.Reader, BlockAddress, size);
+        var entries = snapshot.Entries;
 
         VectorName = batch.VectorId > 0 ? $"Vector {batch.VectorId}" : NotAttached;
 
-        NextPageAddress = DeepDataReader.GetNextPage(batch.Reader, BlockAddress);
+        NextPageAddress = snapshot.NextPage;
 
         NextPage = $"0x{NextPageAddress:X16}";
 
@@ -673,7 +773,7 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
 
         var type = GetVectorType(vector.Id);
 
-        if (vector.IsDeepReference(row) && Current is { Reader: var reader } && DeepDataReader.ReadValue(reader, slot) is { } entry)
+        if (Snapshot?.DeepValues.GetValueOrDefault((vector.Id, row)) is { } entry)
         {
             var text = type is null ? BatchSlotFormatter.Format(slot, null) : BatchSlotFormatter.FormatDeep(entry.Data, type);
 
@@ -749,4 +849,12 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
             MapColour = FieldColours[i].ToWindowsColor(),
             ForeColour = Colors.Black
         }));
+
+    private sealed record BatchSnapshot(MemoryHistoryBatch Batch,
+                                        List<ulong?> Fields,
+                                        byte[] Bitmap,
+                                        int BitmapRead,
+                                        List<DeepDataEntry> Entries,
+                                        ulong NextPage,
+                                        Dictionary<(int Vector, int Row), DeepDataEntry> DeepValues);
 }

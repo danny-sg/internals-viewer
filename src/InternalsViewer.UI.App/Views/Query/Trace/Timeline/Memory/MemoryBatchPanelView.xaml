@@ -76,5 +76,11 @@
                    VerticalAlignment="Center"
                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                    Text="{x:Bind ViewModel.Batch.EmptyText, Mode=OneWay}"/>
+        <ProgressRing Grid.Row="1"
+                      Canvas.ZIndex="10"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Center"
+                      IsActive="{x:Bind ViewModel.Batch.IsLoading, Mode=OneWay}"
+                      Visibility="{x:Bind ViewModel.Batch.IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
     </Grid>
 </UserControl>

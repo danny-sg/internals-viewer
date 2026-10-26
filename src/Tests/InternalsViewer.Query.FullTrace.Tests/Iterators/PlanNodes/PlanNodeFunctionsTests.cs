@@ -50,6 +50,21 @@ public class PlanNodeFunctionsTests
     }
 
     [Fact]
+    public void An_Open_Reached_Through_Its_Helper_Is_An_Iterator_Call()
+    {
+        var collector = new PlanNodeFunctions.Collector();
+
+        collector.VisitFunction(0x10, "CQScanSortNew::OpenHelper");
+        collector.VisitFunction(0x20, "CQScanSortNew::BuildSortTable");
+
+        var functions = collector.Build(NoVtables).Functions.Select(f => (f.Key, f.Value));
+
+        (ulong, PlanNodeFunctionType)[] expected = [(0x10, PlanNodeFunctionType.Iterator)];
+
+        Assert.Equal(expected, functions);
+    }
+
+    [Fact]
     public void Constructors_And_The_Query_Teardown_Are_Found_By_Name()
     {
         var collector = new PlanNodeFunctions.Collector();

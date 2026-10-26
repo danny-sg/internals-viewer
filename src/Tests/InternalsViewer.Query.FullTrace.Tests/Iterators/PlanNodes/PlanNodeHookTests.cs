@@ -111,6 +111,18 @@ public class PlanNodeHookTests
     }
 
     [Fact]
+    public void An_Iterator_Sharing_A_Plan_Object_Already_Read_Reports_Its_Plan_Node_When_The_Plan_Object_Is_Not_In_The_Trace()
+    {
+        var hook = CreateHook();
+
+        hook.OnEntry(Call(GetRow, 1, Parent), PlanObjects().Write(Parent + 0x10, PlanObject));
+
+        hook.OnEntry(Call(GetRow, 2, Child), new FakeTraceReplay().Write(Child + 0x10, PlanObject));
+
+        Assert.Equal(new IteratorPlanNode(Child, PlanObject, 0, Query, 2), hook.GetPlanNodes().Single(n => n.Iterator == Child));
+    }
+
+    [Fact]
     public void A_Row_Iterator_Reports_When_Its_Constructor_Ran()
     {
         var replay = PlanObjects().Write(Parent + 0x10, PlanObject);

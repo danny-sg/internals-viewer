@@ -56,6 +56,49 @@ public class QueryLayoutViewModelTests
         Assert.True(layout.IsVisible("CallTree"));
     }
 
+    [Fact]
+    public void A_Full_Trace_Opens_The_Trace_Timeline_As_A_Full_Height_Tab_Beside_The_Sql_Editor()
+    {
+        var layout = new QueryLayoutViewModel(new object());
+
+        layout.IsTrace = true;
+
+        var group = Assert.IsType<TabGroupNode>(layout.Dock.Root);
+
+        Assert.Equal(["Sql", "FlameChart"], group.Documents.Select(d => d.Key));
+        Assert.Equal("Sql", group.SelectedDocument?.Key);
+    }
+
+    [Fact]
+    public void Leaving_A_Full_Trace_Puts_The_Timeline_Back_Beneath_The_Sql_Editor()
+    {
+        var layout = new QueryLayoutViewModel(new object());
+
+        layout.IsTrace = true;
+
+        layout.IsTrace = false;
+
+        var split = Assert.IsType<SplitNode>(layout.Dock.Root);
+
+        Assert.Equal(["Sql"], Assert.IsType<TabGroupNode>(split.First).Documents.Select(d => d.Key));
+        Assert.Equal(["Timeline"], Assert.IsType<TabGroupNode>(split.Second).Documents.Select(d => d.Key));
+    }
+
+    [Fact]
+    public void Resetting_A_Full_Trace_Layout_Shows_The_Trace_Timeline_Beside_The_Sql_Editor()
+    {
+        var layout = new QueryLayoutViewModel(new object());
+
+        layout.IsTrace = true;
+
+        layout.Reset();
+
+        var group = Assert.IsType<TabGroupNode>(layout.Dock.Root);
+
+        Assert.Equal(["Sql", "FlameChart"], group.Documents.Select(d => d.Key));
+        Assert.Equal("FlameChart", group.SelectedDocument?.Key);
+    }
+
     [Theory]
     [InlineData(true, false)]
     [InlineData(false, true)]

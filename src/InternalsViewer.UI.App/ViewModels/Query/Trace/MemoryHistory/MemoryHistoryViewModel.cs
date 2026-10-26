@@ -4,6 +4,8 @@ using System.Collections.ObjectModel;
 using System.Data;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
+using InternalsViewer.Internals.Engine.Database;
+using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.FullTrace;
@@ -11,7 +13,9 @@ using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.History.Batches;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
+using InternalsViewer.Query.FullTrace.Memory.History.Pages;
 using InternalsViewer.Query.FullTrace.Timeline;
+using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
@@ -57,6 +61,8 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
     private const string Restored = "Restored";
 
     private const string UnknownObject = "Unknown Object";
+
+    private const string AllocationSuffix = " Allocation";
 
     private static readonly Colour SharedColour = Colour.FromArgb(226, 226, 226);
 
@@ -121,15 +127,24 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
 
     private Dictionary<(ulong Batch, int Vector), SqlDbType> VectorTypes { get; } = [];
 
+    private WorkfileLayouts? Workfiles { get; set; }
+
+    private Dictionary<int, string?> PointerTargets { get; } = [];
+
     private TracePosition WindowStart => Window?.Start.Position ?? default;
 
     private TracePosition WindowEnd => Window?.End.Position ?? TracePosition.Unknown;
 
-    public void SetTrace(TraceResult? trace, IReadOnlyList<EngineEvent> events)
+    public void SetTrace(TraceResult? trace,
+                         IReadOnlyList<EngineEvent> events,
+                         DatabaseSource database,
+                         Func<PlanNodeIdentifier, PlanNode?> resolvePlanNode)
     {
         Trace = trace;
 
         VectorTypes.Clear();
+
+        PointerTargets.Clear();
 
         IsAvailable = Store.Blocks.Count > 0;
 
@@ -138,6 +153,8 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
         Batches = trace is null
             ? null
             : new MemoryHistoryBatches(Store, b => GetMapLabel(Store.Blocks[b]), b => GetAllocatingCall(b)?.Symbol);
+
+        Workfiles = trace is null ? null : new WorkfileLayouts(database, i => GetPlanNode(i, resolvePlanNode));
 
         SetWindow(null);
     }
@@ -191,6 +208,43 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
 
     public int GetBlock(ulong address, TracePosition position) => Store.GetBlock(address, position);
 
+    public string? GetPointerTarget(ulong address, TracePosition position)
+    {
+        var block = Store.GetBlock(address, position);
+
+        if (block < 0)
+        {
+            return null;
+        }
+
+        if (!PointerTargets.TryGetValue(block, out var label))
+        {
+            label = GetDisplayLabel(block) is { Length: > 0 } name ? name : null;
+
+            PointerTargets[block] = label;
+        }
+
+        var offset = address - Store.Blocks[block].Address;
+
+        return label is null || offset == 0 ? label : $"{label} +0x{offset:X}";
+    }
+
+    public bool IsPage(int block)
+        => Store.Blocks[block].Size == PageData.Size && GetMapLabel(Store.Blocks[block]) == WorkfilePageReader.ClassName;
+
+    public RowRecordLayout? GetWorkfileLayout(int block)
+    {
+        foreach (var write in Store.GetWrites(block))
+        {
+            if (Store.GetIterator(write) is not 0 and var iterator)
+            {
+                return Workfiles?.Get(iterator);
+            }
+        }
+
+        return null;
+    }
+
     public SqlDbType? GetVectorType(ulong batch, int vector) => VectorTypes.TryGetValue((batch, vector), out var type) ? type : null;
 
     public void SetVectorType(ulong batch, int vector, SqlDbType? type)
@@ -205,7 +259,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
         }
     }
 
-    public string GetObjectName(int block) => GetObjectLabel(block) is { Length: > 0 } name ? name : UnknownObject;
+    public string GetObjectName(int block) => GetDisplayLabel(block) is { Length: > 0 } name ? name : UnknownObject;
 
     public CallStackNode? GetWriter(int callNodeIndex) => callNodeIndex >= 0 ? Trace?.Timeline.NodeOf(callNodeIndex) : null;
 
@@ -292,7 +346,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
                         .OrderBy(b => Store.GetCreatedPosition(b.Index))
                         .ThenBy(b => b.Block.Address)
                         .Select(b => new ResultRow<long>([b.Operator,
-                                                          GetObjectLabel(b.Index),
+                                                          GetDisplayLabel(b.Index),
                                                           $"0x{b.Block.Address:X16}",
                                                           b.Block.Size,
                                                           b.Summary.CallCount,
@@ -331,7 +385,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
                 continue;
             }
 
-            var label = GetObjectLabel(index);
+            var label = GetDisplayLabel(index);
 
             blocks.Add(new TraceMemoryBlock(index,
                                             label.Length > 0 ? label : UnknownObject,
@@ -527,10 +581,20 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
 
     private string GetOperatorLabels(IEnumerable<ulong> iterators) => string.Join(", ", iterators.Select(GetOperatorLabel));
 
+    private string GetDisplayLabel(int block)
+        => GetObjectLabel(block) is { Length: > 0 } label
+            ? label
+            : GetAllocatingCall(block)?.Symbol is { Length: > 0 } symbol ? symbol + AllocationSuffix : string.Empty;
+
     private string GetObjectLabel(int block)
         => Batches?.GetPart(block)?.Name
            ?? GetMapLabel(Store.Blocks[block])
            ?? (Store.Blocks[block].IsIterator ? IteratorObject : string.Empty);
+
+    private PlanNode? GetPlanNode(ulong iterator, Func<PlanNodeIdentifier, PlanNode?> resolvePlanNode)
+        => Iterators.TryGetValue(iterator, out var target) && target.Operator?.PlanNodeIdentifier is { } identifier
+            ? resolvePlanNode(identifier)
+            : null;
 
     private string? GetMapLabel(MemoryHistoryBlock block) => Trace?.MemoryMap.GetLabel(block.Address, block.FromPosition, block.ToPosition);
 
