@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Controls.Page.PageSlotListControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:models="using:InternalsViewer.UI.App.Models.Page"
+    xmlns:selectors="using:InternalsViewer.UI.App.Helpers.Selectors">
+    <UserControl.Resources>
+        <Style x:Key="SlotHeader" TargetType="Grid">
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="MinHeight" Value="22"/>
+            <Setter Property="Padding" Value="8"/>
+            <Setter Property="Background" Value="{ThemeResource LayerFillColorDefaultBrush}"/>
+            <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}"/>
+            <Setter Property="BorderThickness" Value="1,1,1,0"/>
+        </Style>
+
+        <DataTemplate x:Key="SlotTemplate" x:DataType="models:PageSlot">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="50"/>
+                    <ColumnDefinition Width="60"/>
+                    <ColumnDefinition Width="50"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0"
+                           Text="{x:Bind Index}"
+                           Style="{StaticResource ListTextBlockStyle}"
+                           x:Phase="1"/>
+                <TextBlock Grid.Column="1"
+                           Text="{x:Bind Offset}"
+                           Style="{StaticResource ListTextBlockStyle}"
+                           x:Phase="2"/>
+                <TextBlock Grid.Column="2"
+                           Text="{x:Bind Description}"
+                           Style="{StaticResource ListTextBlockStyle}"
+                           x:Phase="3"/>
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="SlotItemTemplate" x:DataType="models:PageSlot">
+            <Grid>
+                <TextBlock Text="{x:Bind Description}" Style="{StaticResource ListTextBlockStyle}" Padding="0"/>
+            </Grid>
+        </DataTemplate>
+
+        <selectors:SlotTemplateSelector x:Key="SlotTemplateSelector"
+                                        ItemTemplate="{StaticResource SlotItemTemplate}"
+                                        SlotTemplate="{StaticResource SlotTemplate}"/>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Style="{StaticResource SlotHeader}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="40"/>
+                <ColumnDefinition Width="40"/>
+                <ColumnDefinition Width="40"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="Slot"/>
+            <TextBlock Grid.Column="1" Text="Offset"/>
+        </Grid>
+
+        <ListView x:Name="SlotListView"
+                  Grid.Row="1"
+                  Width="178"
+                  HorizontalAlignment="Left"
+                  Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
+                  BorderThickness="1"
+                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                  SelectionMode="Single"
+                  IsItemClickEnabled="True"
+                  ItemClick="OnSlotClick"
+                  ItemsSource="{x:Bind Slots, Mode=OneWay}"
+                  SelectedItem="{x:Bind SelectedSlot, Mode=TwoWay}"
+                  ItemContainerStyle="{StaticResource RowListViewItemStyle}"
+                  ItemTemplateSelector="{StaticResource SlotTemplateSelector}"/>
+    </Grid>
+</UserControl>

@@ -1,4 +1,3 @@
-using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.Dia;
 using InternalsViewer.Query.FullTrace.Iterators;
@@ -7,7 +6,22 @@ using InternalsViewer.Query.FullTrace.Arguments;
 
 namespace InternalsViewer.Query.FullTrace.Functions;
 
-internal static class InstanceMethodCollector
+/// <summary>
+/// Identifies functions that operate on query plan instances and which argument slot carries the instance pointer
+/// </summary>
+/// <remarks>
+/// An instance method is a function whose calls can be tied to a specific plan object instance - plan object methods, and iterator/query
+/// scan methods that are part of the iterator interface.
+///
+/// The instance pointer is located per function type:
+///
+///     - Member functions - the instance is 'this' in slot 0 (RCX)
+///     - Static functions - the instance is the first register passed parameter that is a pointer to an instance class
+///     - Unknown signatures - slot 0 is assumed
+///
+/// Free functions, and static functions with no instance class pointer in a register, are not instance methods.
+/// </remarks>
+internal static class PlanObjectInstanceMethodCollector
 {
     public static int? InstanceRegister(string? signature, string? decoratedName)
     {

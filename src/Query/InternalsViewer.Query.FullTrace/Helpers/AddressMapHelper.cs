@@ -1,6 +1,6 @@
-namespace InternalsViewer.Query.FullTrace.Functions;
+namespace InternalsViewer.Query.FullTrace.Helpers;
 
-internal static class AddressMap
+internal static class AddressMapHelper
 {
     public static Dictionary<ulong, T> Merge<T>(IEnumerable<IReadOnlyDictionary<ulong, T>> maps)
     {

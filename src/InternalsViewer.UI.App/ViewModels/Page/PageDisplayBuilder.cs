@@ -35,31 +35,7 @@ internal sealed class PageDisplayBuilder(ILogger logger, IRecordService recordSe
 
     public PageDisplay Build(Internals.Engine.Pages.Page resultPage, short? slot, PageAddress pageAddress)
     {
-        var headerSlot = new PageSlot
-        {
-            Index = PageHeaderSlot,
-            Description = "Page Header"
-        };
-
-        var slots = new List<PageSlot> { headerSlot };
-
-        if (resultPage is not AllocationPage and not BootPage)
-        {
-            var offsetTableSlot = new PageSlot()
-            {
-                Index = OffsetTableSlot,
-                Description = "Offset Table"
-            };
-
-            slots.Add(offsetTableSlot);
-
-            slots.AddRange(resultPage.OffsetTable.Select((s, i) => new PageSlot
-            {
-                Index = (short)i,
-                Offset = s,
-                Description = $"0x{s:X}"
-            }).ToList());
-        }
+        var slots = GetSlots(resultPage);
 
         var display = new PageDisplay(resultPage, slots, slot);
 
@@ -165,6 +141,37 @@ internal sealed class PageDisplayBuilder(ILogger logger, IRecordService recordSe
         }
 
         return display;
+    }
+
+    public static List<PageSlot> GetSlots(Internals.Engine.Pages.Page page)
+    {
+        var headerSlot = new PageSlot
+        {
+            Index = PageHeaderSlot,
+            Description = "Page Header"
+        };
+
+        var slots = new List<PageSlot> { headerSlot };
+
+        if (page is not AllocationPage and not BootPage)
+        {
+            var offsetTableSlot = new PageSlot()
+            {
+                Index = OffsetTableSlot,
+                Description = "Offset Table"
+            };
+
+            slots.Add(offsetTableSlot);
+
+            slots.AddRange(page.OffsetTable.Select((s, i) => new PageSlot
+            {
+                Index = (short)i,
+                Offset = s,
+                Description = $"0x{s:X}"
+            }).ToList());
+        }
+
+        return slots;
     }
 
     private static AllocationLayer BuildIamLayer(IamPage iamPage)

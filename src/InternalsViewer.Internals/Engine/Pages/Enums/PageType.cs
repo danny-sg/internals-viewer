@@ -11,6 +11,7 @@ public enum PageType
     Index = 2,
     Lob3 = 3,
     Lob4 = 4,
+    WorkFile = 6,
     Sort = 7,
     Gam = 8,
     Sgam = 9,

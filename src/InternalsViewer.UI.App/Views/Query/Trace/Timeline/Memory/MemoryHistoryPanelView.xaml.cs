@@ -1,5 +1,6 @@
 using InternalsViewer.UI.App.Controls.Results;
 using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline.Memory;
 using Microsoft.UI.Xaml.Controls;
 
@@ -19,6 +20,8 @@ public sealed partial class MemoryHistoryPanelView : UserControl
     private void OnClearClick(object sender, RoutedEventArgs e) => ViewModel?.Writes.ClearFilters();
 
     private void OnSortRequested(object? sender, ResultSortEventArgs e) => ViewModel?.Writes.Sort(e.Ordinal, e.Direction);
+
+    private void OnCallClicked(object? sender, CallValue value) => ViewModel?.History.ShowCall(value);
 
     private void OnCellMenuOpening(object? sender, ResultCellMenuEventArgs e)
     {

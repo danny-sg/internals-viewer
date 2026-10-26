@@ -105,16 +105,4 @@ public sealed partial class PageView : IDisposable
             }
         }
     }
-
-    private void OffsetTableListView_ItemClick(object sender, ItemClickEventArgs e)
-    {
-        var listView = sender as ListView;
-
-        // If the clicked item is already selected, unselect it
-        if (listView?.SelectedItem == e.ClickedItem)
-        {
-            listView.DeselectAll();
-            ViewModel.SelectedSlot = null;
-        }
-    }
 }

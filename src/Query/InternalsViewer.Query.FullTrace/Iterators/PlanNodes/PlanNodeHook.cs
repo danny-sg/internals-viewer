@@ -26,6 +26,8 @@ internal sealed class PlanNodeHook(PlanNodeFunctions functions) : ITraceHook
 
     private Dictionary<ulong, ulong> PendingPlanNodes { get; } = [];
 
+    private Dictionary<ulong, IteratorPlanNode> ResolvedPlanObjects { get; } = [];
+
     private Dictionary<ulong, PendingFactory> Factories { get; } = [];
 
     private Dictionary<ulong, TracePoint> Constructions { get; } = [];
@@ -115,8 +117,24 @@ internal sealed class PlanNodeHook(PlanNodeFunctions functions) : ITraceHook
     {
         if (PlanNodes.ContainsKey(iterator)
             || PendingPlanNodes.ContainsKey(iterator)
-            || !replay.TryRead(iterator + PlanObjectOffset, out ulong planObject)
-            || GetPlanObjectClass(replay, planObject) is null)
+            || !replay.TryRead(iterator + PlanObjectOffset, out ulong planObject))
+        {
+            return;
+        }
+
+        if (ResolvedPlanObjects.TryGetValue(planObject, out var resolved))
+        {
+            PlanNodes[iterator] = resolved with
+            {
+                Iterator = iterator,
+                Constructed = Constructions.TryGetValue(iterator, out var constructed) ? constructed : null,
+                IsBatchHelper = BatchHelpers.Contains(iterator)
+            };
+
+            return;
+        }
+
+        if (GetPlanObjectClass(replay, planObject) is null)
         {
             return;
         }
@@ -133,6 +151,8 @@ internal sealed class PlanNodeHook(PlanNodeFunctions functions) : ITraceHook
             if (GetPlanNode(replay, iterator, planObject) is { } planNode)
             {
                 PlanNodes[iterator] = planNode;
+
+                ResolvedPlanObjects.TryAdd(planObject, planNode);
 
                 ResolvedPlanNodes.Add(iterator);
             }

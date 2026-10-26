@@ -47,6 +47,7 @@
                                     ResultSet="{x:Bind ViewModel.Writes.Table, Mode=OneWay}"
                                     SelectedRow="{x:Bind ViewModel.Writes.SelectedRow, Mode=TwoWay}"
                                     CellHovered="OnCellHovered"
+                                    CallClicked="OnCallClicked"
                                     CellMenuOpening="OnCellMenuOpening"
                                     SortRequested="OnSortRequested"
                                     RowName="write"/>

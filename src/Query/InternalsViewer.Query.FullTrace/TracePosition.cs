@@ -4,13 +4,15 @@ using System.Globalization;
 namespace InternalsViewer.Query.FullTrace;
 
 /// <summary>
-/// Absolution position in the trace
+/// Absolute position in the trace
 /// </summary>
 /// <remarks>
 /// Packed into a 64-bit value with the following layout:
-
-///     Bits  0-31: Sequence - Trace counter marking syncronization across threads
-///     Bits 32-63: Steps    - Count of instructions on a thread since the last Sequence point
+///
+///     Bits  0-31: Steps    - Count of instructions on a thread since the last Sequence point
+///     Bits 32-63: Sequence - Trace counter marking synchronisation across threads
+///
+/// Unknown has every bit set, so it sorts after every known position.
 /// </remarks>
 public readonly record struct TracePosition : IComparable<TracePosition>
 {

@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
+﻿using InternalsViewer.Query.FullTrace.Helpers;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Output;
@@ -32,7 +33,7 @@ internal sealed record ReplayFunctions(ulong[] ExcludedFunctions,
                PlanNodeFunctions.Merge(functions.Select(f => f.PlanNodeFunctions)),
                OutputFunctions.Merge(functions.Select(f => f.Output)))
         {
-            Vtables = AddressMap.Merge(functions.Select(f => f.Vtables))
+            Vtables = AddressMapHelper.Merge(functions.Select(f => f.Vtables))
         };
 
     public ReplayFunctions Rebase(ulong address)
@@ -44,6 +45,6 @@ internal sealed record ReplayFunctions(ulong[] ExcludedFunctions,
                PlanNodeFunctions.Rebase(address),
                Output.Rebase(address))
         {
-            Vtables = AddressMap.Rebase(Vtables, address)
+            Vtables = AddressMapHelper.Rebase(Vtables, address)
         };
 }

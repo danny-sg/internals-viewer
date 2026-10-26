@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Views.Query.Trace.Timeline.Memory.MemoryBatchPanelView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:results="using:InternalsViewer.UI.App.Controls.Results">
+
+    <UserControl.Resources>
+        <Style x:Key="DetailNameStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{ThemeResource TextFillColorTertiaryBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="DetailValueStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0"
+              Padding="12,8,12,8"
+              ColumnSpacing="12"
+              RowSpacing="6"
+              BorderThickness="0,0,0,1"
+              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="Batch" Style="{StaticResource DetailNameStyle}"/>
+            <TextBlock Grid.Row="0" Grid.Column="1"
+                       Text="{x:Bind ViewModel.Batch.Address, Mode=OneWay}"
+                       FontFamily="{StaticResource MonospaceFontFamily}"
+                       Style="{StaticResource DetailValueStyle}"/>
+
+            <TextBlock Grid.Row="0" Grid.Column="2" Text="Vectors" Style="{StaticResource DetailNameStyle}"/>
+            <TextBlock Grid.Row="0" Grid.Column="3"
+                       Text="{x:Bind ViewModel.Batch.Vectors, Mode=OneWay}"
+                       Style="{StaticResource DetailValueStyle}"/>
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="Capacity" Style="{StaticResource DetailNameStyle}"/>
+            <TextBlock Grid.Row="1" Grid.Column="1"
+                       Text="{x:Bind ViewModel.Batch.Capacity, Mode=OneWay}"
+                       Style="{StaticResource DetailValueStyle}"/>
+
+            <TextBlock Grid.Row="1" Grid.Column="2" Text="Active Rows" Style="{StaticResource DetailNameStyle}"/>
+            <TextBlock Grid.Row="1" Grid.Column="3"
+                       Text="{x:Bind ViewModel.Batch.ActiveRows, Mode=OneWay}"
+                       Style="{StaticResource DetailValueStyle}"/>
+        </Grid>
+
+        <results:ResultsGridControl Grid.Row="1"
+                                    ResultSet="{x:Bind ViewModel.Batch.Table, Mode=OneWay}"
+                                    Version="{x:Bind ViewModel.Batch.Version, Mode=OneWay}"
+                                    HeaderLinkClicked="OnHeaderLinkClicked"
+                                    HeaderMenuOpening="OnHeaderMenuOpening"
+                                    CellMenuOpening="OnCellMenuOpening"
+                                    RowName="row"/>
+
+        <TextBlock Grid.Row="1"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                   Text="{x:Bind ViewModel.Batch.EmptyText, Mode=OneWay}"/>
+        <ProgressRing Grid.Row="1"
+                      Canvas.ZIndex="10"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Center"
+                      IsActive="{x:Bind ViewModel.Batch.IsLoading, Mode=OneWay}"
+                      Visibility="{x:Bind ViewModel.Batch.IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+    </Grid>
+</UserControl>

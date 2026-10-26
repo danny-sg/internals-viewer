@@ -286,9 +286,9 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         replay.Timeline.MapNodes(mapped);
 
-        callStack.RemoveCallsUnder(Instrumentation.IsExcluded);
+        callStack.RemoveCallsUnder(n => n.IsInstrumentation);
 
-        replay.Timeline.RemoveCallsUnder(Instrumentation.IsExcluded);
+        replay.Timeline.RemoveCallsUnder(n => n.IsInstrumentation);
 
         var timeline = replay.Timeline;
 

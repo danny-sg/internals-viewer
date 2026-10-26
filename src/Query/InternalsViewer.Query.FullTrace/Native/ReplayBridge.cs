@@ -69,7 +69,7 @@ namespace InternalsViewer.Query.FullTrace.Native;
 ///
 ///    - Hook Functions
 ///
-///      Each hook function is an address to watch, a mask of the events to fire (Call, Entry, Return), and a hook id passed back with
+///      Each hook function is an address to watch, a mask of the events to fire (Entry, Return), and a hook id passed back with
 ///      each event so the managed side can route it. One event is dispatched per address; the managed side fans out to every hook
 ///      registered for that address.
 ///
@@ -80,10 +80,11 @@ namespace InternalsViewer.Query.FullTrace.Native;
 ///          Return       - A tracked frame was popped with a confirmed return, including the return value (RAX)
 ///          Abandoned    - A tracked frame was popped without a confirmed return (e.g. exception unwinding), no return value
 ///          FrameEnded   - A frame marked with WatchFrame left the stack, whether it returned or not. Sent to every hook
-///          StackUnwound - The stack pointer passed a stack pointer value registered with WatchStack. Sent to every hook
+///          StackUnwound - The stack pointer passed a value registered with WatchStack. The managed side no longer imports
+///                         WatchStack, so no hook receives this event
 ///
-///      The callback also receives a view handle for ReadTraceMemory, and a session handle for WatchFrame, WatchStack and
-///      GetHookFrames. Both handles are only valid for the duration of the callback.
+///      The callback also receives a view handle for ReadTraceMemory, and a session handle for WatchFrame and GetHookFrames. Both
+///      handles are only valid for the duration of the callback.
 ///
 ///    The callbacks are:
 ///
@@ -125,6 +126,11 @@ namespace InternalsViewer.Query.FullTrace.Native;
 ///
 ///      Fired for each hook event as described under Hook Functions above.
 ///
+///    - Stub
+///
+///      Fired for a call whose target is not yet known to be a real function. The managed side decodes a forwarder, a CFG dispatch thunk
+///      or a wrapper at that address and returns the function it leads to, and the call is recorded against that target.
+///
 ///    - Progress
 ///
 ///      Percentage complete for each thread, measured between the thread's first and last active position in the trace.
@@ -133,6 +139,14 @@ namespace InternalsViewer.Query.FullTrace.Native;
 ///
 ///    Cancellation is through a pointer to an int that the bridge checks during the replay. Setting it to 1 interrupts the replay and
 ///    ReadCallTree returns Cancelled.
+///
+/// 4. Watches memory
+///
+///    WatchMemory makes a second forward pass between two sequences with watchpoints on the given address ranges, for the access mask asked
+///    for (Memory History asks for writes).
+///
+///    Hits arrive in chunks through the Watch Hit callback, each with its position, thread, address and size and the bytes written, and the
+///     pass reports how many ranges it watched. Progress and cancellation work as for ReadCallTree.
 /// </remarks>
 internal static class ReplayBridge
 {

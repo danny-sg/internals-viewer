@@ -9,8 +9,8 @@ namespace InternalsViewer.Query.FullTrace.Hooks;
 /// Call Argument Hook
 /// </summary>
 /// <remarks>
-/// Reads the arguments named by the function and read pairs it is built with. Functions lists those addresses for the bridge,
-/// adding the Return event when any read on that function has IsReadAtReturn set.
+/// Reads the arguments named by the function and read pairs it is built with. Functions lists those addresses for the bridge, adding the
+/// Return event when any read on that function has IsReadAtReturn set.
 ///
 /// Argument values are always taken at entry, because the argument registers are not preserved across the call.
 /// 
@@ -24,7 +24,8 @@ namespace InternalsViewer.Query.FullTrace.Hooks;
 ///     2 = R8
 ///     3 = R9
 ///
-/// - 4-15 are stack slots, read past the return address and the 0x20 home space (RSP + 0x28, RSP + 0x30, etc.)
+/// - 4-15 are stack slots, read past the return address and the 0x20 home space (RSP + 0x28, RSP + 0x30, etc.), or past the home space
+///   alone (RSP + 0x20 onwards) when the return address is no longer at RSP
 ///
 /// - 16 is the return value (RAX), only available at return
 /// </remarks>

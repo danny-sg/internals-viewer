@@ -24,6 +24,10 @@ public sealed partial class ResultsGridControl : UserControl
 
     private const string DetailsToggleStyleKey = "DetailsToggleStyle";
 
+    private const double HeaderBadgeSpacing = 6;
+
+    private const double HeaderBadgeFontSize = 10;
+
     private static readonly Thickness GroupPadding = new(8, 0, 8, 0);
 
     private static readonly Thickness GroupBorder = new(0, 0, 1, 1);
@@ -129,6 +133,10 @@ public sealed partial class ResultsGridControl : UserControl
     public event EventHandler<CallValue>? CallClicked;
 
     public event EventHandler<ResultCellMenuEventArgs>? CellMenuOpening;
+
+    public event EventHandler<ResultHeaderMenuEventArgs>? HeaderMenuOpening;
+
+    public event EventHandler<ResultColumn>? HeaderLinkClicked;
 
     public event EventHandler<ResultCellHoverEventArgs>? CellHovered;
 
@@ -489,8 +497,13 @@ public sealed partial class ResultsGridControl : UserControl
 
     private static int HeaderWidth(ResultColumn column) => HeaderLength(column) * 7 + 24;
 
-    private static object CreateHeader(ResultColumn column)
+    private object CreateHeader(ResultColumn column)
     {
+        if (column.IsHeaderLink || column.Badge is not null)
+        {
+            return CreateHeaderPanel(column);
+        }
+
         if (column.TypeName is null && column.Detail is null)
         {
             return column.Name;
@@ -525,19 +538,112 @@ public sealed partial class ResultsGridControl : UserControl
         return header;
     }
 
-    private static Style? CreateHeaderStyle(ResultColumn column)
+    private StackPanel CreateHeaderPanel(ResultColumn column)
     {
-        if (column.BackgroundColour is not { } colour)
+        var panel = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+
+        if (column.IsHeaderLink)
+        {
+            var link = new HyperlinkButton
+            {
+                Content = column.Name,
+                Style = Resource<Style>("ResultPointerStyle"),
+                Padding = new Thickness(0),
+                MinHeight = 0,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            link.Click += (_, _) => HeaderLinkClicked?.Invoke(this, column);
+
+            panel.Children.Add(link);
+        }
+        else
+        {
+            panel.Children.Add(new TextBlock { Text = column.Name, VerticalAlignment = VerticalAlignment.Center });
+        }
+
+        if (column.TypeName is { } typeName)
+        {
+            panel.Children.Add(new TextBlock
+            {
+                Text = typeName,
+                Margin = new Thickness(HeaderBadgeSpacing, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                FontFamily = Resource<FontFamily>("MonospaceFontFamily"),
+                Foreground = Resource<Brush>("CppClassBrush")
+            });
+        }
+
+        if (column.Badge is { } badge)
+        {
+            panel.Children.Add(CreateHeaderBadge(badge, column.BadgeColour));
+        }
+
+        return panel;
+    }
+
+    private static Border CreateHeaderBadge(string text, System.Drawing.Color? colour)
+    {
+        var background = colour ?? System.Drawing.Color.Gray;
+
+        return new Border
+        {
+            Margin = new Thickness(HeaderBadgeSpacing, 0, 0, 0),
+            Padding = new Thickness(5, 1, 5, 1),
+            CornerRadius = new CornerRadius(3),
+            Background = new SolidColorBrush(Windows.UI.Color.FromArgb(background.A, background.R, background.G, background.B)),
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = new TextBlock
+            {
+                Text = text,
+                FontSize = HeaderBadgeFontSize,
+                Foreground = new SolidColorBrush(Microsoft.UI.Colors.White)
+            }
+        };
+    }
+
+    private Style? CreateHeaderStyle(ResultColumn column)
+    {
+        var hasMenu = HeaderMenuOpening is not null;
+
+        if (column.BackgroundColour is null && !hasMenu)
         {
             return null;
         }
 
         var style = new Style(typeof(TableViewColumnHeader)) { BasedOn = Resource<Style>("TableViewColumnHeaderStyle") };
 
-        style.Setters.Add(new Setter(Control.BackgroundProperty,
-                                     new SolidColorBrush(Windows.UI.Color.FromArgb(colour.A, colour.R, colour.G, colour.B))));
+        if (column.BackgroundColour is { } colour)
+        {
+            style.Setters.Add(new Setter(Control.BackgroundProperty,
+                                         new SolidColorBrush(Windows.UI.Color.FromArgb(colour.A, colour.R, colour.G, colour.B))));
+        }
+
+        if (hasMenu)
+        {
+            style.Setters.Add(new Setter(UIElement.ContextFlyoutProperty, CreateHeaderMenu(column)));
+        }
 
         return style;
+    }
+
+    private MenuFlyout CreateHeaderMenu(ResultColumn column)
+    {
+        var menu = new MenuFlyout();
+
+        menu.Opening += (_, _) =>
+        {
+            menu.Items.Clear();
+
+            HeaderMenuOpening?.Invoke(this, new ResultHeaderMenuEventArgs(column, menu));
+
+            if (menu.Items.Count == 0)
+            {
+                DispatcherQueue.TryEnqueue(menu.Hide);
+            }
+        };
+
+        return menu;
     }
 
     private static int HeaderLength(ResultColumn column)

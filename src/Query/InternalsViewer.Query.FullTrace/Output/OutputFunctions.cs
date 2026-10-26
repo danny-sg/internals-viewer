@@ -1,4 +1,5 @@
 using InternalsViewer.Query.FullTrace.Functions;
+using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Output.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Output;
@@ -18,11 +19,11 @@ internal sealed record OutputFunctions(IReadOnlyDictionary<ulong, OutputFunction
     {
         var all = functions.ToList();
 
-        return new(AddressMap.Merge(all.Select(f => f.Functions)), AddressMap.Merge(all.Select(f => f.Classes)));
+        return new(AddressMapHelper.Merge(all.Select(f => f.Functions)), AddressMapHelper.Merge(all.Select(f => f.Classes)));
     }
 
     public OutputFunctions Rebase(ulong address)
-        => new(AddressMap.Rebase(Functions, address), AddressMap.Rebase(Classes, address));
+        => new(AddressMapHelper.Rebase(Functions, address), AddressMapHelper.Rebase(Classes, address));
 
     private bool Has(OutputFunctionType type) => Functions.Values.Contains(type);
 

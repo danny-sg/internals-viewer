@@ -8,10 +8,8 @@
     xmlns:page="using:InternalsViewer.UI.App.Controls.Page"
     xmlns:icons="using:InternalsViewer.UI.App.Controls.Icons"
     xmlns:hexView="using:InternalsViewer.UI.App.Controls.HexView"
-    xmlns:models="using:InternalsViewer.UI.App.Models.Page"
     xmlns:allocation="using:InternalsViewer.UI.App.Controls.Allocation"
     xmlns:controls="using:InternalsViewer.UI.App.Controls"
-    xmlns:selectors="using:InternalsViewer.UI.App.Helpers.Selectors"
     xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
     xmlns:results="using:InternalsViewer.UI.App.Controls.Results"
     mc:Ignorable="d">
@@ -19,46 +17,6 @@
         <Style x:Key="TitleStyle" 
                BasedOn="{StaticResource BodyStrongTextBlockStyle}" 
                TargetType="TextBlock" />
-        <Style x:Key="SlotHeader" TargetType="Grid" >
-            <Setter Property="Height" Value="32"/>
-            <Setter Property="MinHeight" Value="22" />
-            <Setter Property="Padding" Value="8" />
-            <Setter Property="Background" Value="{ThemeResource LayerFillColorDefaultBrush}"/>
-            <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
-            <Setter Property="BorderThickness" Value="1,1,1,0" />
-        </Style>
-
-        <DataTemplate x:Key="SlotTemplate" x:DataType="models:PageSlot">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="50"/>
-                    <ColumnDefinition Width="60"/>
-                    <ColumnDefinition Width="50"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" 
-                           Text="{x:Bind Index}" 
-                           Style="{StaticResource ListTextBlockStyle}"
-                           x:Phase="1"/>
-                <TextBlock Grid.Column="1" 
-                           Text="{x:Bind Offset}" 
-                           Style="{StaticResource ListTextBlockStyle}"
-                           x:Phase="2"/>
-                <TextBlock Grid.Column="2"                  
-                           Text="{x:Bind Description}"
-                           Style="{StaticResource ListTextBlockStyle}"
-                           x:Phase="3"/>
-            </Grid>
-        </DataTemplate>
-
-        <DataTemplate x:Key="SlotItemTemplate" x:DataType="models:PageSlot">
-            <Grid>
-                <TextBlock Text="{x:Bind Description}" Style="{StaticResource ListTextBlockStyle}" Padding="0"/>
-            </Grid>
-        </DataTemplate>
-
-        <selectors:SlotTemplateSelector x:Key="SlotTemplateSelector" 
-                                        ItemTemplate="{StaticResource SlotItemTemplate}"
-                                        SlotTemplate="{StaticResource SlotTemplate}" />
     </UserControl.Resources>
 
     <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
@@ -179,40 +137,11 @@
                                  ScrollToOffset="{x:Bind ViewModel.ScrollToOffset, Mode=OneWay}"/>
 
             <!--Page Slots Table-->
-            <Grid x:Name="OffsetTableContainerGrid"
-                  Grid.Row="1"
-                  Grid.Column="1"
-                  Margin="14,14,0,14" >
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-                <Grid x:Name="OffsetTableHeaderGrid" Style="{StaticResource SlotHeader}" Grid.Row="0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="40"/>
-                        <ColumnDefinition Width="40"/>
-                        <ColumnDefinition Width="40"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="Slot"/>
-                    <TextBlock Grid.Column="1" Text="Offset"/>
-                </Grid>
-
-                <ListView x:Name="OffsetTableListView"
-                          Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
-                          BorderThickness="1"
-                          Grid.Row="1"
-                          SelectionMode="Single"
-                          SelectedItem="{x:Bind ViewModel.SelectedSlot, Mode=TwoWay}"
-                          BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                          ItemsSource="{x:Bind ViewModel.PageSlots, Mode=OneWay}"
-                          Width="178"
-                          IsItemClickEnabled="True"
-                          ItemClick="OffsetTableListView_ItemClick"
-                          ItemContainerStyle="{StaticResource RowListViewItemStyle}"
-                          ItemTemplateSelector="{StaticResource SlotTemplateSelector}"
-                          HorizontalAlignment="Left">
-                </ListView>
-            </Grid>
+            <page:PageSlotListControl Grid.Row="1"
+                                      Grid.Column="1"
+                                      Margin="14,14,0,14"
+                                      Slots="{x:Bind ViewModel.PageSlots, Mode=OneWay}"
+                                      SelectedSlot="{x:Bind ViewModel.SelectedSlot, Mode=TwoWay}"/>
 
 
             <!--Tab View/Log Record view-->

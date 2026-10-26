@@ -297,6 +297,54 @@ public class MemoryHistoryBuilderTests
     }
 
     [Fact]
+    public void Neighbouring_First_Writes_From_One_Call_Are_Kept_As_One_Write()
+    {
+        var (timeline, _) = BuildTimeline();
+
+        var store = Build([Block(Owned, 0x10, from: 1)], [Write(13, Owned, 1, 2), Write(14, Owned + 2, 3, 4)], timeline: timeline);
+
+        var write = Assert.Single(store.GetWrites(0));
+
+        Assert.Equal((At(13), 0, 4), (write.Position, write.Offset, (int)write.Length));
+        Assert.Equal(new byte[] { 1, 2, 3, 4 }, store.GetBytes(write).ToArray());
+    }
+
+    [Fact]
+    public void Neighbouring_First_Writes_From_Different_Calls_Are_Kept_Apart()
+    {
+        var (timeline, _) = BuildTimeline();
+
+        var store = Build([Block(Owned, 0x10, from: 1)], [Write(13, Owned, 1, 2), Write(33, Owned + 2, 3, 4)], timeline: timeline);
+
+        Assert.Equal([0, 2], store.GetWrites(0).Select(w => w.Offset));
+    }
+
+    [Fact]
+    public void Clerk_Pages_Taken_For_A_Memory_Grant_Are_Kept()
+    {
+        var tree = new CallStackTree();
+
+        var query = tree.AddCall(tree.Root, Frame("CQueryScan", "GetRow", 0x10), 1);
+        var grant = tree.AddCall(query, Frame(string.Empty, "PbufGetGrantedBuf", 0x20), 1);
+        var steal = tree.AddCall(grant, Frame("BPool", "Steal", 0x30), 1);
+
+        var builder = new TraceTimeline.Builder();
+
+        builder.Add([Span(0, 0, 100, 0), Span(1, 10, 20, 0), Span(2, 12, 18, 0)]);
+
+        var timeline = builder.Build([new(-1, 0, 0x10, 0, 1), new(0, 0, 0x20, 0, 1), new(1, 0, 0x30, 0, 1)]);
+
+        timeline.MapNodes([query, grant, steal]);
+
+        var store = Build([Block(Page, 0x2000, from: 15), Block(Owned, 0x2000, from: 30)],
+                          [Write(40, Page, 1), Write(41, Owned, 1)],
+                          timeline: timeline,
+                          clerkPages: [Page, Owned]);
+
+        Assert.Equal([Page], store.Blocks.Select(b => b.Address));
+    }
+
+    [Fact]
     public void An_Image_Is_Rebuilt_From_The_Changes_Up_To_A_Write()
     {
         var store = Build([Block(Owned, 0x10, from: 1)], [Write(2, Owned, new byte[0x10]), Write(3, Owned + 8, 7)]);

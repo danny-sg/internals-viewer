@@ -360,7 +360,9 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 
     private static void ApplyActions(ContentControl host, ActionLinks actions)
     {
-        if (host.Content is not StackPanel { Tag: ActionLinks } panel || panel.Children.Count != actions.Links.Count)
+        if (host.Content is not StackPanel { Tag: ActionLinks previous } panel
+            || previous.Links.Count != actions.Links.Count
+            || (previous.Suffix is null) != (actions.Suffix is null))
         {
             panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = ActionSpacing };
 
@@ -371,6 +373,15 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
                 button.Click += OnActionClick;
 
                 panel.Children.Add(button);
+            }
+
+            if (actions.Suffix is not null)
+            {
+                panel.Children.Add(new TextBlock
+                {
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Foreground = Resource("TextFillColorSecondaryBrush")
+                });
             }
 
             host.Content = panel;
@@ -384,6 +395,11 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
             {
                 SetAction(button, actions.Links[index]);
             }
+        }
+
+        if (actions.Suffix is { } suffix && panel.Children[^1] is TextBlock text)
+        {
+            text.Text = suffix;
         }
     }
 

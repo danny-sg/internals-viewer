@@ -1,4 +1,5 @@
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -20,15 +21,19 @@ public sealed partial class MemoryWritesViewModel(PlayheadMemoryViewModel owner)
 
     public const int FunctionColumn = 1;
 
-    public const int AddressColumn = 2;
+    public const int CallColumn = 2;
 
-    public const int LengthColumn = 3;
+    public const int AddressColumn = 3;
 
-    public const int ValueColumn = 4;
+    public const int LengthColumn = 4;
+
+    public const int ValueColumn = 5;
 
     private const int PositionWidth = 110;
 
     private const int FunctionWidth = 260;
+
+    private const int CallWidth = 70;
 
     private const int AddressWidth = 200;
 
@@ -37,6 +42,8 @@ public sealed partial class MemoryWritesViewModel(PlayheadMemoryViewModel owner)
     private const int ValueWidth = 220;
 
     private const int ValueBytesShown = 16;
+
+    private const int PointerSize = sizeof(ulong);
 
     private const string HexPrefix = "0x";
 
@@ -159,6 +166,7 @@ public sealed partial class MemoryWritesViewModel(PlayheadMemoryViewModel owner)
         {
             SortableColumn(PositionColumn, "Position", PositionWidth),
             new(FunctionColumn, "Function", typeof(string), false) { Width = FunctionWidth },
+            new(CallColumn, "Call", typeof(long), false) { Width = CallWidth, Alignment = ResultAlignment.Right },
             SortableColumn(AddressColumn, "Address", AddressWidth),
             new(LengthColumn, "Length", typeof(int), false) { Width = LengthWidth, Alignment = ResultAlignment.Right },
             SortableColumn(ValueColumn, "Value", ValueWidth)
@@ -187,9 +195,17 @@ public sealed partial class MemoryWritesViewModel(PlayheadMemoryViewModel owner)
 
         var entries = new List<(int Index, ulong Start, string Value, ResultRow<long> Row)>();
 
+        var image = new byte[block.Size];
+
+        var known = new bool[block.Size];
+
         for (var index = 0; index < writes.Count; index++)
         {
             var write = writes[index];
+
+            store.GetBytes(write).CopyTo(image.AsSpan(write.Offset));
+
+            known.AsSpan(write.Offset, write.Length).Fill(true);
 
             var label = Owner.History.GetWriterLabel(write.CallNodeIndex);
 
@@ -209,13 +225,16 @@ public sealed partial class MemoryWritesViewModel(PlayheadMemoryViewModel owner)
 
             var value = GetValueText(write, store.GetBytes(write));
 
+            var valueCell = GetPointerLink(write, image, known) ?? (object)value;
+
             var row = new ResultRow<long>([
                 new ActionLinks([new ActionLink(TracePositionText.GetHexText(write.Position), () => Owner.GoToWrite(writeIndex))]),
                 new SwatchText(label, Owner.GetCategoryColour(write.CallNodeIndex).ToColor()),
+                Owner.History.GetWriter(write.CallNodeIndex) is { } writer ? new CallValue(writer, write.CallIndex) : null,
                 new ActionText($"{HexPrefix}{start:X16}",
                                [new ActionLink("Pin", () => Owner.PinRange(write.Offset, write.Length)) { Glyph = HexTipPin.GetGlyph(false) }]),
                 (int)write.Length,
-                value
+                valueCell
             ])
             {
                 Id = index
@@ -273,6 +292,33 @@ public sealed partial class MemoryWritesViewModel(PlayheadMemoryViewModel owner)
         }
 
         return ulong.TryParse(trimmed, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var address) ? address : null;
+    }
+
+    private ActionLinks? GetPointerLink(MemoryHistoryWrite write, byte[] image, bool[] known)
+    {
+        var start = write.Offset & ~(PointerSize - 1);
+
+        if (write.Offset + write.Length > start + PointerSize
+            || start + PointerSize > image.Length
+            || known.AsSpan(start, PointerSize).Contains(false)
+            || GetTypedWatch(write) is not null)
+        {
+            return null;
+        }
+
+        var pointer = BinaryPrimitives.ReadUInt64LittleEndian(image.AsSpan(start));
+
+        if (pointer == 0 || Owner.History.GetBlock(pointer, write.Position) < 0)
+        {
+            return null;
+        }
+
+        var position = write.Position;
+
+        return new ActionLinks([new ActionLink($"{HexPrefix}{pointer:X16}", () => Owner.RequestMemory(pointer, position: position))])
+        {
+            Suffix = Owner.History.GetPointerTarget(pointer, position)
+        };
     }
 
     private string GetValueText(MemoryHistoryWrite write, ReadOnlySpan<byte> bytes)

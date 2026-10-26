@@ -190,7 +190,7 @@ internal static class MemoryHistoryBuilder
         foreach (var block in blocks)
         {
             block.IsBufferPool = !block.IsIterator
-                                 && (block.IsClerkPage || stacks.IsBufferPool(stacks.GetCallNodeIndex(block.Thread, block.FromPosition)));
+                                 && stacks.IsBufferPool(stacks.GetCallNodeIndex(block.Thread, block.FromPosition), block.IsClerkPage);
         }
 
         var recorder = new WriteRecorder(lookup, stacks);
@@ -277,7 +277,7 @@ internal static class MemoryHistoryBuilder
     {
         private Dictionary<int, ulong> Iterators { get; } = [];
 
-        private Dictionary<int, bool> BufferPool { get; } = [];
+        private Dictionary<int, (bool IsBufferPool, bool IsGrant)> PageSources { get; } = [];
 
         public (int CallNodeIndex, int CallIndex, ulong Instructions) GetWriter(uint thread, TracePosition position)
         {
@@ -308,16 +308,18 @@ internal static class MemoryHistoryBuilder
         public int GetCallNodeIndex(uint thread, TracePosition position)
             => timeline?.GetInnermostCall(thread, position) is { } span ? span.CallNodeIndex : -1;
 
-        public bool IsBufferPool(int callNodeIndex)
+        public bool IsBufferPool(int callNodeIndex, bool isClerkPage)
         {
-            if (!BufferPool.TryGetValue(callNodeIndex, out var isBufferPool))
+            if (!PageSources.TryGetValue(callNodeIndex, out var source))
             {
-                isBufferPool = timeline?.NodeOf(callNodeIndex)?.Ancestors().Any(n => TraceReads.IsBufferPool(n.Frame)) ?? false;
+                CallStackNode[] ancestors = [.. timeline?.NodeOf(callNodeIndex)?.Ancestors() ?? []];
 
-                BufferPool[callNodeIndex] = isBufferPool;
+                source = (ancestors.Any(n => TraceReads.IsBufferPool(n.Frame)), ancestors.Any(n => MemoryFunction.IsGrantFrame(n.Frame)));
+
+                PageSources[callNodeIndex] = source;
             }
 
-            return isBufferPool;
+            return !source.IsGrant && (isClerkPage || source.IsBufferPool);
         }
 
         public ulong GetIterator(int callNodeIndex)
@@ -616,13 +618,19 @@ internal static class MemoryHistoryBuilder
 
         private (int CallNodeIndex, int CallIndex, ulong Instructions)? Writer { get; set; }
 
+        private (ChunkHit Hit, int Block, int End, int Length)? LastInitialised { get; set; }
+
+        private (int CallNodeIndex, int CallIndex, ulong Instructions)? LastWriter { get; set; }
+
         public void Count(ChunkHit hit, ReadOnlySpan<byte> bytes)
         {
-            var first = WriteCount;
+            Writer = null;
+
+            var first = DataLength;
 
             var (isInBlock, isBufferPool) = Apply(hit, bytes);
 
-            Counts.Add(WriteCount > first, isBufferPool, isInBlock);
+            Counts.Add(DataLength > first, isBufferPool, isInBlock);
         }
 
         public void BeginWriting(int[] firstWrites)
@@ -640,6 +648,10 @@ internal static class MemoryHistoryBuilder
             Data = new byte[DataLength];
 
             Next = firstWrites;
+
+            LastInitialised = null;
+
+            LastWriter = null;
 
             IsWriting = true;
         }
@@ -731,19 +743,81 @@ internal static class MemoryHistoryBuilder
 
                 block.Known.AsSpan(offset + start, run.Length).Fill(true);
 
-                if (IsWriting)
+                var isContinuation = IsContinuation(hit, found, offset + start, run.Length, type);
+
+                if (IsWriting && isContinuation)
+                {
+                    Extend(found, run);
+                }
+                else if (IsWriting)
                 {
                     Add(hit, found, offset + start, run, type);
                 }
                 else
                 {
-                    Written[found]++;
+                    if (!isContinuation)
+                    {
+                        Written[found]++;
 
-                    WriteCount++;
+                        WriteCount++;
+                    }
 
                     DataLength += run.Length;
                 }
+
+                Remember(hit, found, offset + start, run.Length, type, isContinuation);
             }
+        }
+
+        private bool IsContinuation(ChunkHit hit, int block, int offset, int length, MemoryHistoryChangeType type)
+        {
+            if (type != MemoryHistoryChangeType.Initialised
+                || LastInitialised is not { } last
+                || last.Block != block
+                || last.End != offset
+                || last.Hit.Thread != hit.Thread
+                || last.Length + length > ushort.MaxValue)
+            {
+                return false;
+            }
+
+            var writer = Writer ??= GetWriter(hit);
+
+            var previous = LastWriter ??= GetWriter(last.Hit);
+
+            return writer.CallNodeIndex >= 0 && writer.CallNodeIndex == previous.CallNodeIndex && writer.CallIndex == previous.CallIndex;
+        }
+
+        private void Remember(ChunkHit hit, int block, int offset, int length, MemoryHistoryChangeType type, bool isContinuation)
+        {
+            if (type != MemoryHistoryChangeType.Initialised)
+            {
+                LastInitialised = null;
+
+                return;
+            }
+
+            if (isContinuation && LastInitialised is { } last)
+            {
+                LastInitialised = (last.Hit, block, offset + length, last.Length + length);
+
+                return;
+            }
+
+            LastInitialised = (hit, block, offset + length, length);
+
+            LastWriter = Writer;
+        }
+
+        private void Extend(int block, ReadOnlySpan<byte> run)
+        {
+            var target = Next[block] - 1;
+
+            Writes[target] = Writes[target] with { Length = (ushort)(Writes[target].Length + run.Length) };
+
+            run.CopyTo(Data.AsSpan(DataAt));
+
+            DataAt += run.Length;
         }
 
         private void Add(ChunkHit hit, int block, int offset, ReadOnlySpan<byte> run, MemoryHistoryChangeType type)

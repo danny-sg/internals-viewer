@@ -705,64 +705,18 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
     {
         MarkerTabName = "Page Header";
 
-        var headerMarkers = MarkerBuilder.BuildMarkers(Page.PageHeader);
-
-        headerMarkers.Add(new Marker
-        {
-            Name = "Unused",
-            StartPosition = 64,
-            EndPosition = 95,
-            ForeColour = Colors.Gray,
-            BackColour = Colors.AliceBlue,
-            IsVisible = false
-        });
-
-        Markers = new ObservableCollection<Marker>(headerMarkers);
+        Markers = new ObservableCollection<Marker>(PageMarkers.GetHeaderMarkers(Page));
     }
 
     private ushort AddSlotOffsetMarkers()
     {
         MarkerTabName = "Slot Offset Table";
 
-        var offsetTableMarkers = new List<Marker>();
+        var (markers, start) = PageMarkers.GetOffsetTableMarkers(Page);
 
-        var slotMarkers = new List<Marker>(Page.OffsetTable.Length);
+        Markers = new ObservableCollection<Marker>(markers);
 
-        var offsetTableStart = PageData.Size - Page.PageHeader.SlotCount * 2;
-
-        var offset = PageData.Size - 2;
-
-        for (uint slotIndex = 0; slotIndex < Page.PageHeader.SlotCount; slotIndex++)
-        {
-            offsetTableMarkers.Add(new Marker
-            {
-                Name = $"Slot {slotIndex}",
-                Value = Page.OffsetTable[slotIndex].ToString(),
-                StartPosition = offset,
-                EndPosition = offset + 1,
-                ForeColour = Colors.Green,
-                BackColour = slotIndex % 2 == 0 ? Color.FromArgb(50, 205, 250, 205) : Color.FromArgb(255, 215, 255, 215),
-                IsVisible = true,
-                HasKey = true,
-            });
-
-            offset -= 2;
-        }
-
-        offsetTableMarkers.Add(new Marker
-        {
-            Name = "Offset Table",
-            StartPosition = offsetTableStart,
-            EndPosition = PageData.Size,
-            ForeColour = Colors.Green,
-            BackColour = Color.FromArgb(100, 205, 250, 205),
-            IsVisible = false,
-            Children = new ObservableCollection<Marker>(slotMarkers)
-        });
-
-        Markers = new ObservableCollection<Marker>(offsetTableMarkers);
-
-        return (ushort)offsetTableStart;
+        return start;
     }
 
     private void AddPageMarkers(string suffix)
@@ -800,42 +754,5 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
         }
     }
 
-    private void AddMarkers(IDataStructure source)
-    {
-        var pageMarkers = GetPageMarkers(Page);
-
-        var recordMarkers = MarkerBuilder.BuildMarkers(source);
-
-        Markers = [.. pageMarkers.Concat(recordMarkers).OrderBy(o => o.StartPosition)];
-    }
-
-    private static List<Marker> GetPageMarkers(PageData p)
-    {
-        var m = new List<Marker>
-        {
-            new()
-            {
-                Name = "Page Header",
-                StartPosition = 0,
-                EndPosition = 95,
-                ForeColour = Colors.Blue,
-                BackColour = Color.FromArgb(1, 245, 245, 250),
-                IsVisible = false
-            }
-        };
-
-        var offsetTableStart = PageData.Size - p.PageHeader.SlotCount * 2;
-
-        m.Add(new Marker
-        {
-            Name = "Offset Table",
-            StartPosition = offsetTableStart,
-            EndPosition = PageData.Size,
-            ForeColour = Colors.Green,
-            BackColour = Color.FromArgb(50, 205, 250, 205),
-            IsVisible = false
-        });
-
-        return m;
-    }
+    private void AddMarkers(IDataStructure source) => Markers = [.. PageMarkers.GetRecordMarkers(Page, source)];
 }

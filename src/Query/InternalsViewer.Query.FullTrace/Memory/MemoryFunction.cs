@@ -51,6 +51,13 @@ internal sealed record MemoryFunction(ulong Address,
 
     private static readonly string[] AllocatorClassPrefixes = ["CMemPartitioned<", "TVarPageMgr<"];
 
+    private static readonly HashSet<string> GrantFunctions = new(StringComparer.Ordinal)
+    {
+        "PbufGetGrantedBuf",
+        "PbufGetGrantedBufs",
+        "PvGetGrantedPage"
+    };
+
     public bool IsPage { get; init; }
 
     public bool CarriesClerk { get; init; }
@@ -90,6 +97,9 @@ internal sealed record MemoryFunction(ulong Address,
                || AllocatorClassPrefixes.Any(p => className.StartsWith(p, StringComparison.Ordinal))
                || Classify(0, $"{className}::{resolved.MethodName}") is not null;
     }
+
+    public static bool IsGrantFrame(CallstackFrame? frame)
+        => frame?.Resolved is { ClassName: null or "", MethodName: var methodName } && GrantFunctions.Contains(methodName);
 
     public bool IsCounted(TraceArgumentCall call) => FlagSlot < 0 || (call.Slot(FlagSlot) & FlagMask) != 0;
 

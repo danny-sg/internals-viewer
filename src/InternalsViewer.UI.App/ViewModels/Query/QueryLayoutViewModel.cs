@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.Views.Query.Allocation;
@@ -154,7 +155,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
                                                                                      key: MemoryHistoryKey)
         };
 
-        Dock = new DockLayoutViewModel(DefaultRoot(TimelineKey));
+        Dock = new DockLayoutViewModel(DefaultRoot());
 
         Dock.LayoutChanged += OnDockLayoutChanged;
         Dock.SelectionChanged += OnDockSelectionChanged;
@@ -209,18 +210,20 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     {
         if (!IsTrace)
         {
-            Dock.SetRoot(DefaultRoot(TimelineKey));
+            Dock.SetRoot(DefaultRoot());
 
             return;
         }
 
         _hiddenForTrace.Clear();
 
-        _rootBeforeTrace = DockLayoutSerializer.Serialize(DefaultRoot(TimelineKey));
+        _rootBeforeTrace = DockLayoutSerializer.Serialize(DefaultRoot());
 
         _hiddenForTrace.Add(_documentsByKey[TimelineKey]);
 
-        Dock.SetRoot(DefaultRoot(TraceTimelineKey));
+        Dock.SetRoot(new TabGroupNode(_documentsByKey[SqlKey], _documentsByKey[TraceTimelineKey]));
+
+        Dock.Activate(_documentsByKey[TraceTimelineKey]);
     }
 
     public bool TryGetDocument(string key, out DocumentViewModel document)
@@ -291,10 +294,10 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         }
     }
 
-    private LayoutNode DefaultRoot(string bottomKey)
+    private LayoutNode DefaultRoot()
         => new SplitNode(Orientation.Vertical,
                          new TabGroupNode(_documentsByKey[SqlKey]),
-                         new TabGroupNode(_documentsByKey[bottomKey]));
+                         new TabGroupNode(_documentsByKey[TimelineKey]));
 
     partial void OnIsSqlEditorVisibleChanged(bool value)
         => SetDocumentVisible(_documentsByKey[SqlKey], value);
@@ -355,18 +358,23 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
         _rootBeforeTrace = DockLayoutSerializer.Serialize(Dock.Root);
 
-        var timeline = _documentsByKey[TimelineKey];
+        ShowTraceTimelineTab(select: false);
 
-        if (Dock.FindGroup(timeline) is { } group)
+        HideEventViews();
+    }
+
+    private void ShowTraceTimelineTab(bool select)
+    {
+        var document = _documentsByKey[TraceTimelineKey];
+
+        if (Dock.Groups().Any())
         {
-            Dock.ShowBeside(_documentsByKey[TraceTimelineKey], timeline, select: ReferenceEquals(group.SelectedDocument, timeline));
+            Dock.ShowBeside(document, _documentsByKey[SqlKey], select);
         }
         else
         {
-            Dock.DockBottom(_documentsByKey[TraceTimelineKey]);
+            Dock.SetRoot(new TabGroupNode(document));
         }
-
-        HideEventViews();
     }
 
     private void RestoreEventViews()
@@ -375,7 +383,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         {
             if (ReferenceEquals(document, _documentsByKey[TimelineKey]))
             {
-                Dock.ShowBeside(document, _documentsByKey[TraceTimelineKey]);
+                Dock.DockBottom(document);
             }
             else
             {
@@ -419,7 +427,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         {
             if (IsTrace)
             {
-                Dock.DockBottom(document);
+                ShowTraceTimelineTab(select: true);
             }
             else
             {

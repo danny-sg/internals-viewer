@@ -7,6 +7,9 @@ using InternalsViewer.Query.FullTrace.Memory;
 
 namespace InternalsViewer.Query.FullTrace.Functions;
 
+/// <summary>
+/// Resolves function arguments to a file/line (allocation site)
+/// </summary>
 internal static class AllocationSiteResolver
 {
     private const string LineType = "int";

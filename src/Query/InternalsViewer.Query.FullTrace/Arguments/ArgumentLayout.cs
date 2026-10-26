@@ -3,6 +3,39 @@ using InternalsViewer.Query.FullTrace.Arguments.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Arguments;
 
+/// <summary>
+/// Models function arguments and their layout to slots (name/type/location/index/source)
+/// </summary>
+/// <remarks>
+/// Functions use the Windows x64 calling conventions. The convention defines where an argument is located. This can be:
+///
+/// Sources:
+/// 
+///     Position 0-3
+///     
+///     - Registers
+///         - Integers/pointers: RCX, RDX, R8 and R9
+///         - Floating point: XMM0, XMM1, XMM2, and XMM3
+///     
+///     Position 4-15
+///     
+///     - Stack offset
+///     
+///     Position >= 16 or variadic argument (... signifying variable number of arguments)
+///     
+///     - Not Captured
+///
+/// Layout depends on if the function is static or a class member as the first register for a member is always RCX as 'this'.
+///
+/// A hidden return buffer pointer, when present, also takes a position and shifts the remaining parameters.
+///
+/// Return types:
+/// 
+///     - Void - None
+///     - Integer/pointers: RAX
+///     - Floating point: XMM0
+///     - Return buffers: RAX as a pointer
+/// </remarks>
 public sealed record ArgumentLayout(IReadOnlyList<ArgumentSlot> Slots, string? ReturnType)
 {
     public const int RegisterCount = 4;
@@ -55,7 +88,8 @@ public sealed record ArgumentLayout(IReadOnlyList<ArgumentSlot> Slots, string? R
         return new ArgumentLayout(slots, signature.ReturnType);
     }
 
-    public static string GetStackLocation(int position) => $"[RSP+0x{GetStackOffset(position):X}]";
+    public static string GetStackLocation(int position)
+        => $"[RSP+0x{GetStackOffset(position):X}]";
 
     public bool IsDeclared(string location)
     {
