@@ -7,11 +7,31 @@ using InternalsViewer.Query.FullTrace.Memory.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Functions;
 
+/// <summary>
+/// Resolves functions that contribute to the memory map by declaring, constructing or visiting class instances
+/// </summary>
+/// <remarks>
+/// A function contributes to the memory map in one of three ways, derived from its decorated name:
+///
+/// - Constructed
+///     Member function whose decorated name starts with ??0 (a constructor). The address in RCX (this) is a new instance of the class.
+/// 
+/// - Visited
+///     Any other member function. The address in RCX is an existing instance of the class.
+///
+/// - Declared
+///     A non-member function that takes or returns class pointers. Each pointer argument/return associates an address with a class.
+///     Member functions can also carry declared classes for their class pointer arguments in addition to their operation.
+/// 
+/// GetDeclared maps register passed class pointer arguments (and a class pointer return value in RAX) to their argument slot index and
+/// class name, skipping the hidden return buffer slot.
+/// </remarks>
 internal static partial class MemoryMapFunctionResolver
 {
     private const string ConstructorPrefix = "??0";
 
-    internal static DeclaredClass[] GetDeclared(FunctionSignature signature) => GetDeclared(signature, ArgumentLayout.GetLayout(signature));
+    internal static DeclaredClass[] GetDeclared(FunctionSignature signature) 
+        => GetDeclared(signature, ArgumentLayout.GetLayout(signature));
 
     internal static DeclaredClass[] GetDeclared(FunctionSignature signature, ArgumentLayout layout)
     {
@@ -38,6 +58,9 @@ internal static partial class MemoryMapFunctionResolver
     [GeneratedRegex("[PQA]E[A-D][UVT]")]
     private static partial Regex ClassPointer();
 
+    /// <summary>
+    /// Collects memory map functions during symbol enumeration
+    /// </summary>
     internal sealed class Collector
     {
         private Dictionary<uint, MemoryMapFunction> Found { get; } = [];

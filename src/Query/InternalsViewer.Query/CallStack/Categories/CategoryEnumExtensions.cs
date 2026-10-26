@@ -12,4 +12,7 @@ public static class CategoryEnumExtensions
             .Cast<CategoryAttribute>()
             .FirstOrDefault();
     }
+
+    public static bool IsInstrumentation(this SymbolCategory category, bool hasOperator)
+        => category is SymbolCategory.XEventInfrastructure || (category is SymbolCategory.Tracing && !hasOperator);
 }

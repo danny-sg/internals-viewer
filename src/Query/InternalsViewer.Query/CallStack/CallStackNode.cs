@@ -43,6 +43,8 @@ public sealed class CallStackNode
 
     public bool IsTracing => Frame?.Resolved?.SymbolCategory == SymbolCategory.Tracing;
 
+    public bool IsInstrumentation => Frame?.Resolved?.SymbolCategory is { } category && category.IsInstrumentation(HasOperator);
+
     /// <summary>
     /// The plan operator this frame implements if it is a query iterator, otherwise null
     /// </summary>

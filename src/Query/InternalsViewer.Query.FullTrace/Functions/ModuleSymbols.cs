@@ -4,8 +4,33 @@ using InternalsViewer.Query.CallStack.Dia;
 
 namespace InternalsViewer.Query.FullTrace.Functions;
 
+/// <summary>
+/// Reads symbols from a module's PDB via DIA
+/// </summary>
+/// <remarks>
+/// Multiple symbols can resolve to the same RVA (for example identical functions folded together by the linker), so both operations handle
+/// duplicate addresses:
+///
+///     - VisitFunctions - enumerates function symbols for a set of RVAs of interest and calls the visitor with a
+///       <see cref="FunctionSymbol"/> for each. Name and parameter hashes of the first symbol at each address are tracked so
+///       revisits can report whether they match (IsFirst/HasSameName/HasSameParameters). The decorated name is only resolved
+///       for the first symbol at an address, and a single stack buffer and signature cache are reused across the enumeration
+///       to avoid allocations.
+///
+///     - Load - enumerates every symbol, classifying functions into a per RVA <see cref="FunctionClassification"/> map (merging duplicates
+///       via Add) and passing non function symbols to the data visitor.
+/// </remarks>
 internal static class ModuleSymbols
 {
+    /// <summary>
+    /// Enumerates symbol records and invokes a callback for each function where the RVA is in the functions set
+    /// </summary>
+    /// <remarks>
+    /// The visit delegate is called for every matching symbol, including duplicates at the same RVA. The decorated (mangled) name is only
+    /// resolved for the first symbol at an address. If it cannot be resolved the symbol is skipped.
+    ///
+    /// Revisited symbols report their relationship to the first via IsFirst/HasSameName/HasSameParameters.
+    /// </remarks>
     public static void VisitFunctions(DiaResolver resolver, IReadOnlySet<uint> functions, Action<FunctionSymbol> visit)
     {
         var first = new Dictionary<uint, (int Name, int? Parameters)>();
@@ -67,6 +92,14 @@ internal static class ModuleSymbols
         }
     }
 
+    /// <summary>
+    /// Enumerates all symbols, classifying functions and passing non-function symbols to the visitData callback
+    /// </summary>
+    /// <remarks>
+    /// The return Functions list gives unique list of RVA/classification.
+    ///
+    /// The visitData callback is 'everthing else' which include types
+    /// </remarks>
     public static Dictionary<uint, FunctionClassification> Load(DiaResolver resolver,
                                                                 Func<uint, ReadOnlySpan<char>, FunctionClassification> classify,
                                                                 Action<uint, ReadOnlySpan<char>> visitData)

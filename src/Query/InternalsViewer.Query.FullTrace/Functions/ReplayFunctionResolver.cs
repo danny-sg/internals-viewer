@@ -261,7 +261,7 @@ internal static class ReplayFunctionResolver
         var iterates = string.Equals(moduleName, IteratorModule, StringComparison.OrdinalIgnoreCase);
 
         InstanceMethod[] instanceMethods = iterates
-            ? [.. InstanceMethodCollector.FindInstanceMethods(functions.Where(f => f.Value.IsInstanceMethod).Select(f => f.Key), resolver)]
+            ? [.. PlanObjectInstanceMethodCollector.FindInstanceMethods(functions.Where(f => f.Value.IsInstanceMethod).Select(f => f.Key), resolver)]
             : [];
 
         var reads = new LocatorReadResolver.Collector();
@@ -302,8 +302,8 @@ internal static class ReplayFunctionResolver
     private static FunctionClassification ClassifyFunction(CategoryMappings mappings, string module, uint rva, ReadOnlySpan<char> symbol)
     {
         return new(IsExcluded(mappings, module, symbol),
-                   InstanceMethodCollector.IsInstanceMethod(symbol),
-                   InstanceMethodCollector.IsInstanceClass(symbol),
+                   PlanObjectInstanceMethodCollector.IsInstanceMethod(symbol),
+                   PlanObjectInstanceMethodCollector.IsInstanceClass(symbol),
                    MemoryFunction.Classify(rva, symbol));
     }
 
@@ -311,7 +311,7 @@ internal static class ReplayFunctionResolver
     {
         SymbolsHelper.Split(symbol, out var className, out var methodName);
 
-        return Instrumentation.IsExcluded(mappings.Classify(module, className, methodName),
-                                          mappings.ClassifyOperator(module, className, methodName).Iterator);
+        return mappings.Classify(module, className, methodName)
+                       .IsInstrumentation(mappings.ClassifyOperator(module, className, methodName).Iterator is not null);
     }
 }

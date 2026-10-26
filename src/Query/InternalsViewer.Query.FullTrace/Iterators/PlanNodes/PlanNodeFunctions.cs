@@ -1,4 +1,5 @@
 using InternalsViewer.Query.FullTrace.Functions;
+using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
 using InternalsViewer.Query.Helpers;
 
@@ -14,10 +15,10 @@ internal sealed record PlanNodeFunctions(IReadOnlyDictionary<ulong, PlanNodeFunc
     {
         var all = functions.ToList();
 
-        return new(AddressMap.Merge(all.Select(f => f.Functions)), AddressMap.Merge(all.Select(f => f.PlanObjects)));
+        return new(AddressMapHelper.Merge(all.Select(f => f.Functions)), AddressMapHelper.Merge(all.Select(f => f.PlanObjects)));
     }
 
-    public PlanNodeFunctions Rebase(ulong address) => new(AddressMap.Rebase(Functions, address), AddressMap.Rebase(PlanObjects, address));
+    public PlanNodeFunctions Rebase(ulong address) => new(AddressMapHelper.Rebase(Functions, address), AddressMapHelper.Rebase(PlanObjects, address));
 
     internal sealed class Collector
     {

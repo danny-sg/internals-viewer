@@ -2,6 +2,37 @@ using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.CallStack.Arguments;
 
+/// <summary>
+/// Parsed C++ function signature giving the parameter types, function type and return type
+/// </summary>
+/// <remarks>
+/// Parsing combines two sources from the PDB symbols:
+///
+///     - The undecorated signature text, e.g. name(type, type) - provides the parameter list, split on top level commas so template
+///       arguments and nested parentheses are kept intact
+/// 
+///     - The MSVC decorated (mangled) name - provides information the signature text does not include.
+///
+/// Decorated/mangled names have additional information about the functions encoded in their name. The decorated name is parsed and used to
+/// determine:
+///
+///     - Function type - the code after the @@ terminator identifies member, static member or free functions (function that is not a member
+///       of any class)
+/// 
+///     - Return type - decoded from the mangled return type code (primitives, pointers/references to classes, enums)
+///
+///     - HasReturnBuffer - set when a class/struct/union is returned by value, meaning the caller passes a hidden
+///       return buffer pointer as an argument
+///
+///     - Enum parameters - parameters whose type is an enum are prefixed with "enum " so later layout/locator logic can
+///       treat them as integers rather than classes
+///
+/// If no function code is found in the decorated name the function type falls back to scoping in the signature text (Class::Method implies
+/// member) and the return type is unknown (Class::Method implies a member, otherwise free).
+///
+/// Parsing is buffer/ReadOnlySpan based so scanning, filtering and the comparison helpers (CountParameters, HasSameParameters,
+/// HashParameters) do not allocate. Strings are only allocated when a signature is successfully parsed into a result.
+/// </remarks>
 public sealed record FunctionSignature(IReadOnlyList<string> Parameters,
                                        FunctionType Type,
                                        string? ReturnType,
