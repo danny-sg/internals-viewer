@@ -9,6 +9,7 @@ using InternalsViewer.Query.FullTrace;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Logging;
+using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.ViewModels.Page;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryHistory;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline.Memory.Enums;
@@ -21,6 +22,10 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
     private const string NotYetChanged = "Not Yet Changed";
 
     private const int HistoryTab = 1;
+
+    private const int BatchTab = 3;
+
+    private const int VectorsTab = 4;
 
     [ObservableProperty]
     private bool _isOpen;
@@ -55,6 +60,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     public event EventHandler<TracePoint>? PlayheadRequested;
 
+    public event EventHandler<MemoryRequest>? MemoryRequested;
+
     public MemoryHistoryViewModel History { get; }
 
     public MemoryDetailsViewModel Details { get; } = new();
@@ -63,7 +70,11 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     public MemoryWatchesViewModel WatchList { get; } = new();
 
+    public MemoryBatchViewModel Batch { get; } = new();
+
     public int Block { get; private set; } = -1;
+
+    public TracePosition Position => Playhead ?? OpenedAt;
 
     public IPlayheadChart? Chart { get; set; }
 
@@ -74,6 +85,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
     private int WriteCount { get; set; } = -1;
 
     private List<MemoryChangeRun> Runs { get; set; } = [];
+
+    private ObservableCollection<Marker>? WriterMarkers { get; set; }
 
     public void Open(int block, ulong address, TracePosition position)
     {
@@ -106,10 +119,21 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         WatchList.Attach(Watches);
 
+        Batch.Load(this);
+
+        ApplyMarkers();
+
+        if ((SelectedTab == BatchTab && !Batch.IsAvailable) || (SelectedTab == VectorsTab && !Batch.IsVectorsAvailable))
+        {
+            SelectedTab = 0;
+        }
+
+        RefreshBatch();
+
         ShowAddress(address);
     }
 
-    public void ShowAddress(ulong address)
+    public void ShowAddress(ulong address, int length = 1)
     {
         if (!IsOpen)
         {
@@ -120,14 +144,16 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         var offset = address - block.Address;
 
-        SelectedChangeSpan = offset > 0 && offset < (ulong)block.Size
-            ? new LogRecordAnnotation { Offset = (int)offset, Length = 1, Description = $"0x{address:X16}" }
+        SelectedChangeSpan = (offset > 0 || length > 1) && offset < (ulong)block.Size
+            ? new LogRecordAnnotation { Offset = (int)offset, Length = length, Description = $"0x{address:X16}" }
             : null;
     }
 
     public void Close()
     {
         WatchList.Attach(null);
+
+        Batch.Clear();
 
         Writes.Clear();
 
@@ -136,6 +162,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         Block = -1;
 
         Data = null;
+
+        WriterMarkers = null;
 
         Markers = null;
 
@@ -154,6 +182,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
     }
 
     public void RequestPlayhead(TracePoint point) => PlayheadRequested?.Invoke(this, point);
+
+    public void RequestMemory(ulong address, int length = 1) => MemoryRequested?.Invoke(this, new MemoryRequest(address, length));
 
     public void GoToWrite(int index)
     {
@@ -283,6 +313,13 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         {
             SelectedChangeSpan = null;
         }
+
+        if (value is BatchTab or VectorsTab)
+        {
+            RefreshBatch();
+        }
+
+        ApplyMarkers();
     }
 
     private void OnWatchesChanged(object? sender, NotifyCollectionChangedEventArgs e) => Writes.Load();
@@ -312,6 +349,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         Playhead = position;
 
         Refresh();
+
+        RefreshBatch();
     }
 
     private void Refresh()
@@ -340,6 +379,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         {
             Data = null;
 
+            WriterMarkers = null;
+
             Markers = null;
 
             Runs = [];
@@ -360,11 +401,31 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         var runs = MemoryChangeRuns.GetRuns(store.GetWrites(Block), count, image.Data.Length);
 
-        if (Markers is null || !runs.SequenceEqual(Runs))
+        if (WriterMarkers is null || !runs.SequenceEqual(Runs))
         {
             Runs = runs;
 
-            Markers = new ObservableCollection<Marker>(GetChangeMarkers(runs));
+            WriterMarkers = new ObservableCollection<Marker>(GetChangeMarkers(runs));
+        }
+
+        ApplyMarkers();
+    }
+
+    private void ApplyMarkers()
+    {
+        var markers = SelectedTab == BatchTab && Batch.FieldMarkers is { } fields ? fields : WriterMarkers;
+
+        if (!ReferenceEquals(Markers, markers))
+        {
+            Markers = markers;
+        }
+    }
+
+    private void RefreshBatch()
+    {
+        if (IsOpen && SelectedTab is BatchTab or VectorsTab)
+        {
+            Batch.Refresh(Position);
         }
     }
 

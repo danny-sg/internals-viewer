@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Views.Query.Trace.Timeline.Memory.MemoryBatchPartPanelView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:results="using:InternalsViewer.UI.App.Controls.Results">
+
+    <UserControl.Resources>
+        <Style x:Key="DetailNameStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{ThemeResource TextFillColorTertiaryBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="DetailValueStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="DetailLinkStyle" TargetType="HyperlinkButton" BasedOn="{StaticResource ResultPointerStyle}">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="FontFamily" Value="{StaticResource MonospaceFontFamily}"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0"
+              Padding="12,8,12,8"
+              ColumnSpacing="12"
+              RowSpacing="6"
+              BorderThickness="0,0,0,1"
+              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+              Visibility="{x:Bind ViewModel.Batch.IsBatchLinkVisible, Mode=OneWay}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="Batch" Style="{StaticResource DetailNameStyle}"/>
+            <HyperlinkButton Grid.Row="0" Grid.Column="1"
+                             Content="{x:Bind ViewModel.Batch.Address, Mode=OneWay}"
+                             Style="{StaticResource DetailLinkStyle}"
+                             Click="OnBatchClick"/>
+
+            <TextBlock Grid.Row="0" Grid.Column="2" Text="Active Rows" Style="{StaticResource DetailNameStyle}"/>
+            <TextBlock Grid.Row="0" Grid.Column="3"
+                       Text="{x:Bind ViewModel.Batch.ActiveRows, Mode=OneWay}"
+                       Style="{StaticResource DetailValueStyle}"/>
+
+            <TextBlock Grid.Row="1" Grid.Column="0"
+                       Text="Vector"
+                       Style="{StaticResource DetailNameStyle}"
+                       Visibility="{x:Bind ViewModel.Batch.IsVectorNameVisible, Mode=OneWay}"/>
+            <TextBlock Grid.Row="1" Grid.Column="1"
+                       Text="{x:Bind ViewModel.Batch.VectorName, Mode=OneWay}"
+                       Style="{StaticResource DetailValueStyle}"
+                       Visibility="{x:Bind ViewModel.Batch.IsVectorNameVisible, Mode=OneWay}"/>
+
+            <TextBlock Grid.Row="1" Grid.Column="2"
+                       Text="Next Page"
+                       Style="{StaticResource DetailNameStyle}"
+                       Visibility="{x:Bind ViewModel.Batch.IsNextPageVisible, Mode=OneWay}"/>
+            <HyperlinkButton Grid.Row="1" Grid.Column="3"
+                             Content="{x:Bind ViewModel.Batch.NextPage, Mode=OneWay}"
+                             Style="{StaticResource DetailLinkStyle}"
+                             Visibility="{x:Bind ViewModel.Batch.IsNextPageVisible, Mode=OneWay}"
+                             Click="OnNextPageClick"/>
+
+            <TextBlock Grid.Row="1" Grid.Column="0"
+                       Text="Bits"
+                       Style="{StaticResource DetailNameStyle}"
+                       Visibility="{x:Bind ViewModel.Batch.IsBitmap, Mode=OneWay}"/>
+            <TextBlock Grid.Row="1" Grid.Column="1"
+                       Text="{x:Bind ViewModel.Batch.Bits, Mode=OneWay}"
+                       FontFamily="{StaticResource MonospaceFontFamily}"
+                       Style="{StaticResource DetailValueStyle}"
+                       Visibility="{x:Bind ViewModel.Batch.IsBitmap, Mode=OneWay}"/>
+
+            <TextBlock Grid.Row="1" Grid.Column="2"
+                       Text="Value"
+                       Style="{StaticResource DetailNameStyle}"
+                       Visibility="{x:Bind ViewModel.Batch.IsBitmap, Mode=OneWay}"/>
+            <TextBlock Grid.Row="1" Grid.Column="3"
+                       Text="{x:Bind ViewModel.Batch.BitmapValue, Mode=OneWay}"
+                       FontFamily="{StaticResource MonospaceFontFamily}"
+                       Style="{StaticResource DetailValueStyle}"
+                       Visibility="{x:Bind ViewModel.Batch.IsBitmap, Mode=OneWay}"/>
+        </Grid>
+
+        <results:ResultsGridControl Grid.Row="1"
+                                    ResultSet="{x:Bind ViewModel.Batch.HeaderTable, Mode=OneWay}"
+                                    SelectedRow="{x:Bind ViewModel.Batch.SelectedHeaderRow, Mode=TwoWay}"
+                                    RowName="field"
+                                    Visibility="{x:Bind ViewModel.Batch.IsHeader, Mode=OneWay}"/>
+
+        <results:ResultsGridControl Grid.Row="1"
+                                    ResultSet="{x:Bind ViewModel.Batch.PartTable, Mode=OneWay}"
+                                    Version="{x:Bind ViewModel.Batch.PartVersion, Mode=OneWay}"
+                                    SelectedRow="{x:Bind ViewModel.Batch.SelectedPartRow, Mode=TwoWay}"
+                                    HeaderMenuOpening="OnHeaderMenuOpening"
+                                    CellMenuOpening="OnCellMenuOpening"
+                                    Visibility="{x:Bind ViewModel.Batch.IsPartTableVisible, Mode=OneWay}"/>
+
+        <TextBlock Grid.Row="1"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                   Text="{x:Bind ViewModel.Batch.EmptyText, Mode=OneWay}"/>
+    </Grid>
+</UserControl>

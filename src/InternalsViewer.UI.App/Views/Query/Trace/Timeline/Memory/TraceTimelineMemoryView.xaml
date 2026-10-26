@@ -40,6 +40,16 @@
             <TabViewItem Header="Watches" IsClosable="False">
                 <local:MemoryWatchesPanelView/>
             </TabViewItem>
+            <TabViewItem Header="{x:Bind ViewModel.Batch.Title, Mode=OneWay}"
+                         IsClosable="False"
+                         Visibility="{x:Bind ViewModel.Batch.IsAvailable, Mode=OneWay}">
+                <local:MemoryBatchPartPanelView/>
+            </TabViewItem>
+            <TabViewItem Header="Vectors"
+                         IsClosable="False"
+                         Visibility="{x:Bind ViewModel.Batch.IsVectorsAvailable, Mode=OneWay}">
+                <local:MemoryBatchPanelView/>
+            </TabViewItem>
         </TabView>
     </Grid>
 </UserControl>

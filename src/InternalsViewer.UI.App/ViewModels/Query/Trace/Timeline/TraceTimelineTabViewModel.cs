@@ -6,6 +6,7 @@ using InternalsViewer.Query.FullTrace;
 using InternalsViewer.UI.App.Controls.Query.Trace.CallStack;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Controls.HexView;
+using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline.Memory;
 using InternalsViewer.UI.App.Views.Query.Trace.Timeline.Memory;
@@ -81,7 +82,7 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, IDispo
 
     public void ShowCallStack() => IsCallStackVisible = true;
 
-    public void OpenMemory(int block, ulong address, TracePosition position)
+    public void OpenMemory(int block, ulong address, TracePosition position, int length = 1)
     {
         Query.Layout.ShowTraceTimeline();
 
@@ -91,7 +92,7 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, IDispo
         {
             Dock.Activate(existing);
 
-            (existing.Content as PlayheadMemoryViewModel)?.ShowAddress(address);
+            (existing.Content as PlayheadMemoryViewModel)?.ShowAddress(address, length);
 
             return;
         }
@@ -105,11 +106,18 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, IDispo
             return;
         }
 
+        if (length > 1)
+        {
+            memory.ShowAddress(address, length);
+        }
+
         memory.SetPlayhead(Playhead);
 
         memory.Chart = Chart;
 
         memory.PlayheadRequested += OnMemoryPlayheadRequested;
+
+        memory.MemoryRequested += OnMemoryRequested;
 
         var document = new DocumentViewModel(memory.ObjectName,
                                              memory,
@@ -247,6 +255,21 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, IDispo
 
     private void OnMemoryPlayheadRequested(object? sender, TracePoint point) => PlayheadRequested?.Invoke(this, point);
 
+    private void OnMemoryRequested(object? sender, MemoryRequest request)
+    {
+        if (sender is not PlayheadMemoryViewModel memory)
+        {
+            return;
+        }
+
+        var block = Query.MemoryHistory.GetBlock(request.Address, memory.Position);
+
+        if (block >= 0)
+        {
+            OpenMemory(block, request.Address, memory.Position, request.Length);
+        }
+    }
+
     private void DisposeMemory(DocumentViewModel document)
     {
         document.DisposeView();
@@ -254,6 +277,8 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, IDispo
         var memory = (PlayheadMemoryViewModel)document.Content;
 
         memory.PlayheadRequested -= OnMemoryPlayheadRequested;
+
+        memory.MemoryRequested -= OnMemoryRequested;
 
         memory.Close();
     }
