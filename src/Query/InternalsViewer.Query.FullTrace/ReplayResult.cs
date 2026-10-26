@@ -24,6 +24,21 @@ namespace InternalsViewer.Query.FullTrace;
 /// <param name="Timeline">
 /// Hierarchical/row layout start and end position for each call per thread
 /// </param>
+/// <param name="MemoryMap">
+/// Address sightings from the memory map hook: allocations, constructions, member calls and declared pointers
+/// </param>
+/// <param name="CustomHooks">
+/// Captures from the user-defined hooks
+/// </param>
+/// <param name="OutputAddresses">
+/// Where each output row's columns read from, at the position the row was sent
+/// </param>
+/// <param name="PlanNodes">
+/// Iterators linked to their plan object and plan node id by the plan node hook
+/// </param>
+/// <param name="Teardowns">
+/// Where each query teardown ended, per thread
+/// </param>
 internal sealed record ReplayResult(CallNode[] Nodes,
                                     IReadOnlyList<TraceModule> Modules,
                                     TraceCallStore CallStore,

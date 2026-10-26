@@ -2,7 +2,7 @@ namespace InternalsViewer.Query.FullTrace.Native.Enums;
 
 internal enum HookEventType : uint
 {
-    CallIndex = 0,
+    Call = 0,
     Entry = 1,
     Return = 2,
     Abandoned = 3,

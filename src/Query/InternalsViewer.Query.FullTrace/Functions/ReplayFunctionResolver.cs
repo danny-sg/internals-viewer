@@ -19,8 +19,16 @@ namespace InternalsViewer.Query.FullTrace.Functions;
 /// Resolves a ReplayFunctions for the trace
 /// </summary>
 /// <remarks>
-/// ReplayFunctions provides functions that are excluded from the call stack, memory functions, instance methods, and locator reads per
-/// module.
+/// ReplayFunctions provides functions per module:
+/// 
+///     - Excluded from the call stack
+///     - Memory functions for allocations/de-allocations
+///     - Instance methods
+///     - Locator reads
+///     - Memory map functions
+///     - Plan node functions
+///     - Output functions
+///     - Vtables
 ///
 /// Results are prepared and cached per module as the derivation of the function sets is expensive, but won't change from run to run.
 ///
@@ -29,31 +37,51 @@ namespace InternalsViewer.Query.FullTrace.Functions;
 ///
 /// Exclusions
 ///
-///     Excluded functions based on mapped category (e.g. XEventInfrastructure, Tracing) using CategoryMappings.
+///     Excluded functions based on mapped category using CategoryMappings: XEventInfrastructure always, Tracing unless the function
+///     belongs to an operator.
 ///
 /// Memory Functions
 ///
 ///     Memory allocation and deallocations functions.
 ///
-///     SQL Server memory functions are identified by mapped category.
+///     SQL Server memory functions are identified by name, from the allocator functions and allocator class prefixes that
+///     MemoryFunction.Classify knows. AllocationSiteResolver adds the file and line argument slots of the allocators that take them.
 ///
 ///     Windows heap + C Runtime memory function names are resolved using ModuleExportReader that reads the PE export table to get the name
 ///     from an address and classifies the function via MemoryFunction.ClassifyExport. The reason this is done instead of downloading
 ///     symbols is that first the data is available directly, and second a Windows Update could bump the age of the module requiring
 ///     frequent downloads of new files.
 ///
-///    are identified via MemoryFunction.ClassifyExport.
-///
 /// Instance Methods
 ///
-///     Functions keyed from a class instance pointer. These are identified via InstanceMethodCollector that uses CategoryMappings to
-///     identify the class and method.
+///     Functions keyed from a class instance pointer. These are identified via InstanceMethodCollector from the iterator, query scan and
+///     plan object class names in IteratorSymbols, with the DIA signature deciding the register: RCX for a member function, the keyed
+///     pointer parameter for a static one.
 ///
 /// Locators
 ///
-///     Functions that reference known structures their arguments.
-///     
-///     
+///     Functions whose arguments or return value point at known structures, such as pages, rows and variants, picked by
+///     LocatorReadResolver from the parsed signatures.
+///
+/// Memory Map Functions
+///
+///     Constructors and member functions whose instance pointer tells the memory map hook what lives at an address, and the pointer
+///     parameters and returns declared with a class, found by MemoryMapFunctionResolver.
+///
+/// Plan Node Functions
+///
+///     The iterator, batch helper, batch factory, constructor and teardown functions the plan node hook watches, with the plan object
+///     vtables, found by PlanNodeFunctions.Collector.
+///
+/// Output Functions
+///
+///     The expression evaluation, value read, variant read and send functions the output hook watches to find where each output column
+///     reads from, found by OutputFunctions.Collector.
+///
+/// Vtables
+///
+///     Class names by vtable address from the module's data symbols, found by VtableResolver, so a pointer can be typed from the vtable
+///     it points at.
 /// </remarks>
 internal static class ReplayFunctionResolver
 {

@@ -11,9 +11,9 @@ namespace InternalsViewer.Query.FullTrace.Recording;
 /// </summary>
 /// <remarks>
 /// The Microsoft Store WinDbg records its install folder in the per-user package repository in the registry, which any process can read.
-/// Its engine cannot be loaded from there, as the package folder refuses to map DLLs into processes outside the package, so
-/// <see cref="PrepareEngine"/> copies the engine into a cache first. The engine has to be the one the debugger runs, since a session
-/// refuses a client built from a different engine.
+/// 
+/// Its files cannot be run from there, as the package folder refuses to map DLLs into processes outside the package, so
+/// <see cref="PrepareTimeTravel"/> copies the TTD folder into a cache first and grants services read and execute access to the copy.
 /// </remarks>
 [SupportedOSPlatform("windows")]
 internal sealed record WinDbgInstallation(string Executable, string EngineDirectory, string Name, bool IsPackaged)

@@ -4,7 +4,7 @@ namespace InternalsViewer.Query.FullTrace.Hooks;
 /// Trace Hook definition interface
 /// </summary>
 /// <remarks>
-/// The TTD trace is replayed via the Time Travel Bridge, a C++ library that uses the TDD API. Interop between the .DLL and C# code is
+/// The TTD trace is replayed via the Time Travel Bridge, a C++ library that uses the TTD API. Interop between the .DLL and C# code is
 /// expensive so the basic replay is done inside the bridge.
 ///
 /// Hooks allow the managed code to jump in when certain functions (addresses) are found in the trace so memory can be read and decoded at
@@ -17,7 +17,7 @@ internal interface ITraceHook
     IEnumerable<TraceHookFunction> Functions { get; }
 
     /// <summary>
-    /// When a function call is found, tracked and has been added as a CallNode
+    /// When a hooked function call is found, tracked and has been added as a CallNode
     /// </summary>
     void OnEntry(in TraceHookCall call, ITraceReplay replay)
     {

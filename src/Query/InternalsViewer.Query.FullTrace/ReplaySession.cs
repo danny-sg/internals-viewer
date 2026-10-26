@@ -39,9 +39,16 @@ namespace InternalsViewer.Query.FullTrace;
 ///
 ///     The forward pass is the most efficient way of reading the trace.
 ///
-///     Delegates are used to add to the call log, timeline, and memory locators to keep memory usage low and avoid large allocations.
+///     Callbacks add to the call log and timeline as the pass runs, and the hooks read memory at the calls they watch, to keep memory
+///     usage low and avoid large allocations.
 ///
-///     Returns a ReplayResult with the raw call nodes, the modules, the call log and the timeline.
+///     Returns a ReplayResult with the raw call nodes, the modules, the call log, the timeline and what the hooks collected: memory map
+///     entries, custom hook captures, output addresses, plan nodes and query teardowns.
+///
+/// WatchAsync
+///
+///     Replays the trace again between two positions with write watchpoints on the given address ranges, keeping the hits the caller
+///     selects together with the bytes written. Memory History runs it for the ranges it shows.
 /// </remarks>
 internal sealed class ReplaySession : IDisposable
 {
@@ -66,7 +73,7 @@ internal sealed class ReplaySession : IDisposable
     /// Semaphore to gate access to the replay engine
     /// </summary>
     /// <remarks>
-    /// Only one replay runs on a session at a time, each replay being a full forward pass of the trace.
+    /// Only one pass runs on a session at a time, whether a replay of the whole trace or a memory watch over part of it.
     /// </remarks>
     private SemaphoreSlim Gate { get; } = new(1, 1);
 
