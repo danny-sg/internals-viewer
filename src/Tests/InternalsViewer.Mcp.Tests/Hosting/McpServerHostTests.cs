@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Sockets;
 using InternalsViewer.Mcp.Documents;
 using InternalsViewer.Mcp.Hosting;
-using InternalsViewer.Mcp.Interfaces.Documents;
+using InternalsViewer.Mcp.Interfaces.Tabs;
 using InternalsViewer.Mcp.Tests.Documents;
 using InternalsViewer.Mcp;
 using Microsoft.Extensions.DependencyInjection;
@@ -39,10 +39,10 @@ public class McpServerHostTests
 
             var tools = await client.ListToolsAsync();
 
-            Assert.Contains(tools, t => t.Name == "list_documents");
+            Assert.Contains(tools, t => t.Name == "list_tabs");
             Assert.Contains(tools, t => t.Name == "show_call");
 
-            var result = await client.CallToolAsync("list_documents");
+            var result = await client.CallToolAsync("list_tabs");
 
             var text = Assert.IsType<TextContentBlock>(Assert.Single(result.Content)).Text;
 
@@ -94,7 +94,7 @@ public class McpServerHostTests
 
         services.AddLogging();
 
-        services.AddSingleton<IMcpDocumentSource>(new TestDocumentSource(new TestDocument { Run = TestRuns.Create() }));
+        services.AddSingleton<IMcpTabSource>(new TestDocumentSource(new TestDocument { Run = TestRuns.Create() }));
 
         services.RegisterMcpServices();
 

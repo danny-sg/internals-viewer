@@ -56,6 +56,12 @@ internal sealed class QueryMcpDocument : IMcpDocument, IMcpNavigator
 
     private DispatcherQueue Dispatcher { get; }
 
+    public Task ActivateAsync(CancellationToken cancellationToken = default)
+        => RunAsync(() => GetWindow().ActivateTab(ViewModel), cancellationToken);
+
+    public Task CloseAsync(CancellationToken cancellationToken = default)
+        => RunAsync(() => GetWindow().CloseTab(ViewModel), cancellationToken);
+
     public Task ShowCallAsync(CallStackNode node, int callIndex, CancellationToken cancellationToken)
         => RunAsync(() => ViewModel.OpenCallTree(node, callIndex), cancellationToken);
 
@@ -101,6 +107,9 @@ internal sealed class QueryMcpDocument : IMcpDocument, IMcpNavigator
 
     private static McpTraceRange? GetTraceRange(TraceViewRange? range)
         => range is null ? null : new McpTraceRange(range.Axis.ToString(), range.Start, range.End, range.From, range.To);
+
+    private static MainWindow GetWindow()
+        => App.MainWindow ?? throw new InvalidOperationException("The Internals Viewer window is not available.");
 
     private static McpPageSelection GetPageSelection(PageTabViewModel page, bool isActive)
         => new(page.PageAddress,

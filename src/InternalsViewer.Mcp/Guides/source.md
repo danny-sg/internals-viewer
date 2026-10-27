@@ -12,7 +12,7 @@ storage engine internals, which depend on nothing else.
 ## Storage engine internals, `src/InternalsViewer.Internals`
 
 Pages, records, allocation chains, compression, columnstore segment decoding and metadata, read directly from the data
-files or over a connection. `Engine/Pages` and `Engine/Records` decode what the `page` tool returns. `Engine/Address`
+files or over a connection. `Engine/Pages` and `Engine/Records` decode what the `page_read` tool returns. `Engine/Address`
 holds `PageAddress` and `RowIdentifier`.
 
 ## Query tracing, `src/Query/InternalsViewer.Query`
@@ -20,7 +20,7 @@ holds `PageAddress` and `RowIdentifier`.
 The Extended Events capture and everything built on it. `Events/` holds one type per event with its parser (reads under
 `Events/Reads`, locks, latches, waits, columnstore and batch mode under `Events/BatchMode`) and the folding that turns
 raw events into the groups the app shows (`Events/Consolidation`). `Plans/` parses the execution plan XML into the model
-the `plan` tool reads. `CallStack/` builds the call tree from the captured frames, resolves symbols and classifies them:
+the `query_plan` tool reads. `CallStack/` builds the call tree from the captured frames, resolves symbols and classifies them:
 the category and operator rules are the text files in `Mappings/`, and `OperatorCallStackMatcher.cs` is what decides an
 operator's entry and exit frames. `Export/` writes and reads the `.ivtrace` export.
 

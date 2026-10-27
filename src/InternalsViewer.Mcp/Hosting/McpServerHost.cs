@@ -3,11 +3,18 @@ using System.Text;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Mcp.Documents;
-using InternalsViewer.Mcp.Interfaces.Documents;
+using InternalsViewer.Mcp.Interfaces.Tabs;
 using InternalsViewer.Mcp.Interfaces.Guides;
 using InternalsViewer.Mcp.Prompts;
-using InternalsViewer.Mcp.Resources;
+using InternalsViewer.Mcp.Prompts.Indexes;
+using InternalsViewer.Mcp.Prompts.Queries;
+using InternalsViewer.Mcp.Resources.Queries;
 using InternalsViewer.Mcp.Tools;
+using InternalsViewer.Mcp.Tools.Allocations;
+using InternalsViewer.Mcp.Tools.Columnstore;
+using InternalsViewer.Mcp.Tools.Indexes;
+using InternalsViewer.Mcp.Tools.Pages;
+using InternalsViewer.Mcp.Tools.Queries;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -88,13 +95,14 @@ public sealed class McpServerHost(IServiceProvider services, ILogger<McpServerHo
 
         builder.WebHost.ConfigureKestrel(kestrel => kestrel.ListenLocalhost(settings.Port));
 
-        builder.Services.AddSingleton(Services.GetRequiredService<IMcpDocumentSource>());
+        builder.Services.AddSingleton(Services.GetRequiredService<IMcpTabSource>());
+
+        if (Services.GetService<IMcpWorkspace>() is { } workspace)
+        {
+            builder.Services.AddSingleton(workspace);
+        }
 
         builder.Services.AddSingleton(Services.GetRequiredService<McpDocumentResolver>());
-
-        builder.Services.AddSingleton(_ => Services.GetRequiredService<IPageService>());
-
-        builder.Services.AddSingleton(_ => Services.GetRequiredService<IRecordService>());
 
         foreach (var source in Services.GetServices<IMcpGuideSource>())
         {
@@ -114,6 +122,7 @@ public sealed class McpServerHost(IServiceProvider services, ILogger<McpServerHo
                    options.ServerInstructions = ServerInstructions.Text;
                })
                .WithHttpTransport(http => http.Stateless = true)
+               .WithTools<TabTools>()
                .WithTools<DocumentTools>()
                .WithTools<NavigationTools>()
                .WithTools<RunTools>()
@@ -123,9 +132,17 @@ public sealed class McpServerHost(IServiceProvider services, ILogger<McpServerHo
                .WithTools<TimelineTools>()
                .WithTools<MemoryTools>()
                .WithTools<PageTools>()
+               .WithTools<PageCommandTools>()
+               .WithTools<IndexCommandTools>()
+               .WithTools<AllocationTools>()
+               .WithTools<AllocationCommandTools>()
+               .WithTools<IndexTools>()
+               .WithTools<ColumnstoreTools>()
+               .WithTools<ColumnstoreCommandTools>()
                .WithTools<GuideTools>()
                .WithResources<DocumentResources>()
-               .WithPrompts<ExplorePrompts>();
+               .WithPrompts<ExplorePrompts>()
+               .WithPrompts<IndexPrompts>();
 
         var application = builder.Build();
 

@@ -179,6 +179,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private bool _isPfsVisible = false;
 
     [ObservableProperty]
+    private PageAddress? _scrollTarget;
+
+    [ObservableProperty]
     private ObservableCollection<AllocationLayer> _allocationLayers = [];
 
     [ObservableProperty]

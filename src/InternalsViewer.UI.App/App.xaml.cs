@@ -1,4 +1,4 @@
-using InternalsViewer.Mcp.Interfaces.Documents;
+using InternalsViewer.Mcp.Interfaces.Tabs;
 using InternalsViewer.Mcp.Interfaces.Guides;
 using System;
 using CommunityToolkit.Mvvm.Messaging;
@@ -71,7 +71,8 @@ public partial class App
             services.RegisterTraceServices();
             services.RegisterMcpServices();
 
-            services.AddSingleton<IMcpDocumentSource, McpDocumentSource>();
+            services.AddSingleton<IMcpTabSource, McpTabSource>();
+            services.AddSingleton<IMcpWorkspace, McpWorkspace>();
 
             services.AddSingleton<IMcpGuideSource, InstructionsGuideSource>();
 

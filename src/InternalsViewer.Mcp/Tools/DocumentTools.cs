@@ -2,6 +2,13 @@ using System.ComponentModel;
 using System.Text;
 using InternalsViewer.Mcp.Documents;
 using InternalsViewer.Mcp.Formatting;
+using InternalsViewer.Mcp.Interfaces.Documents;
+using InternalsViewer.Mcp.Interfaces.Tabs;
+using InternalsViewer.Mcp.Models.Context;
+using InternalsViewer.Mcp.Models.Context.Allocations;
+using InternalsViewer.Mcp.Models.Context.Columnstore;
+using InternalsViewer.Mcp.Models.Context.Indexes;
+using InternalsViewer.Mcp.Models.Context.Pages;
 using InternalsViewer.Query.FullTrace;
 using ModelContextProtocol.Server;
 
@@ -12,63 +19,27 @@ public sealed class DocumentTools(McpDocumentResolver documents)
 {
     private McpDocumentResolver Documents { get; } = documents;
 
-    [McpServerTool(Name = "list_documents", ReadOnly = true, Idempotent = true)]
-    [Description("The query documents open in Internals Viewer: their ids, database, whether a run and a Full Trace are loaded, " +
-                 "and the active one")]
-    public async Task<string> ListDocuments(CancellationToken cancellationToken)
-    {
-        var all = await Documents.GetDocumentsAsync(cancellationToken);
-
-        if (all.Count == 0)
-        {
-            return "No query documents are open. Open a database and a Query tab in Internals Viewer first.";
-        }
-
-        var table = new TextTable("Id", "Active", "Title", "Server", "Database", "Run", "Full Trace", "Query");
-
-        foreach (var document in all)
-        {
-            var run = document.Run;
-
-            var sql = run?.SqlText ?? document.SqlText;
-
-            var firstLine = sql.Split('\n').Select(l => l.Trim()).FirstOrDefault(l => l.Length > 0) ?? string.Empty;
-
-            table.Add(document.Id,
-                      document.IsActive ? "yes" : string.Empty,
-                      document.Title,
-                      document.ServerName,
-                      document.DatabaseName,
-                      run is null ? "none" : run.Result.IsSuccess ? "yes" : "failed",
-                      run?.ExtraOf<TraceResult>() is null ? string.Empty : "yes",
-                      Format.Truncate(firstLine, 60));
-        }
-
-        var builder = new StringBuilder();
-
-        table.Write(builder);
-
-        builder.AppendLine();
-
-        builder.AppendLine("Pass a document id to the other tools, or leave it out for the active document.");
-
-        return builder.ToString();
-    }
-
     [McpServerTool(Name = "get_selection", ReadOnly = true)]
-    [Description("What the user has selected in a query document: the event, plan node, call tree node, playhead position " +
-                 "and the visible views")]
+    [Description("What the user has selected in a tab. A Query tab reports the event, plan node, call tree node, playhead " +
+                 "position and the visible views. The other areas report their page, slot, file or filter")]
     public async Task<string> GetSelection(
-        [Description("Document id from list_documents; the active document when omitted")] string? document = null,
+        [Description("Tab id from list_tabs; the active tab when omitted")] string? document = null,
         CancellationToken cancellationToken = default)
     {
-        var scope = await Documents.ResolveAsync(document, cancellationToken);
+        var tab = await Documents.ResolveTabAsync(document, cancellationToken);
 
-        var selection = await scope.RequireNavigator().GetSelectionAsync(cancellationToken);
+        if (tab is not IMcpDocument)
+        {
+            return await DescribeAreaSelectionAsync(tab, cancellationToken);
+        }
+
+        var scope = await Documents.ResolveAsync(tab.Id, cancellationToken);
+
+        var selection = scope.Selection;
 
         var builder = new StringBuilder();
 
-        builder.AppendLine($"Document {scope.Document.Id}: {scope.Document.Title}");
+        builder.AppendLine($"Document {scope.Query.TabId}: {scope.Query.Title}");
 
         if (selection.VisibleViews.Length > 0)
         {
@@ -134,6 +105,132 @@ public sealed class DocumentTools(McpDocumentResolver documents)
         }
 
         return builder.ToString();
+    }
+
+    private static async Task<string> DescribeAreaSelectionAsync(IMcpTab tab, CancellationToken cancellationToken)
+    {
+        var context = await tab.GetContextAsync(cancellationToken);
+
+        var builder = new StringBuilder();
+
+        builder.AppendLine($"{tab.Area} tab {tab.Id}: {tab.Title}");
+
+        foreach (var line in DescribeContext(context))
+        {
+            builder.AppendLine(line);
+        }
+
+        return builder.ToString();
+    }
+
+    private static IEnumerable<string> DescribeContext(TabContext context)
+    {
+        switch (context)
+        {
+            case AllocationsContext allocations:
+                yield return $"File {allocations.FileId}";
+
+                if (!string.IsNullOrEmpty(allocations.Filter))
+                {
+                    yield return $"Filter: {allocations.Filter}";
+                }
+
+                if (allocations.Overlay is { } overlay)
+                {
+                    yield return $"Overlay: {overlay}";
+                }
+
+                yield return allocations.ShowsSystemObjects ? "System objects shown" : "System objects hidden";
+
+                if (allocations.SelectedObjects.Count > 0)
+                {
+                    yield return $"Selected objects: {string.Join(", ", allocations.SelectedObjects)}";
+                }
+
+                break;
+
+            case PageContext page:
+                yield return page.Page is null
+                    ? "No page is open."
+                    : $"Page {page.Address} {page.Page.PageHeader.PageTypeName}";
+
+                if (page.CurrentSlot is { } slot)
+                {
+                    var structure = page.Structures.FirstOrDefault(s => s.Slot == slot);
+
+                    yield return structure is null
+                        ? $"Slot {slot} selected"
+                        : $"{structure.Name} selected (slot {slot})";
+                }
+
+                if (page.Structures.Count > 0)
+                {
+                    yield return "Structures selectable as slots: " +
+                                 string.Join(", ", page.Structures.Select(s => $"{s.Name} = {s.Slot}"));
+                }
+
+                if (page.SelectedName is { } name)
+                {
+                    yield return $"Selected {name} = {page.SelectedValue} at offset {page.SelectionStart}, " +
+                                 $"{page.Selection?.Length ?? 0} bytes";
+                }
+
+                yield return $"Marker view: {page.View}";
+
+                break;
+
+            case IndexContext index:
+                yield return $"Root page {index.RootPage}, {index.Nodes.Count} pages loaded";
+
+                if (index.SelectedNode is { } node)
+                {
+                    yield return $"Page {node.PageAddress} {node.PageType} height {node.IndexLevel} selected";
+                }
+
+                if (index.SelectedSlot is { } selectedSlot)
+                {
+                    yield return $"Slot {selectedSlot} selected";
+                }
+
+                break;
+
+            case ColumnstoreContext columnstore:
+                yield return columnstore.Index is { } columnStoreIndex
+                    ? $"{columnstore.AllocationUnit?.IndexName}: {columnStoreIndex.RowGroups.Count} row groups"
+                    : "Index not loaded yet.";
+
+                yield return $"Open documents: {string.Join(", ", columnstore.Documents)}";
+
+                if (columnstore.CurrentDocument is { } document)
+                {
+                    yield return $"Showing {document}" + (columnstore.Region is { } region ? $", region {region}" : string.Empty);
+                }
+
+                yield return $"Metadata list: {columnstore.MetadataTab}";
+
+                if (columnstore.AvailableRegions.Count > 0)
+                {
+                    yield return $"Regions: {string.Join(", ", columnstore.AvailableRegions)}";
+                }
+
+                if (columnstore.SelectedMarker is { } marker)
+                {
+                    yield return $"Marker {marker} selected" +
+                                 (columnstore.SelectedMarkerValue is { Length: > 0 } value ? $" = {value}" : string.Empty);
+                }
+
+                if (columnstore.MarkerNames.Count > 0)
+                {
+                    yield return $"Markers: {string.Join(", ", columnstore.MarkerNames.Take(40))}";
+                }
+
+                if (columnstore.SelectedRow is { } row)
+                {
+                    yield return $"Row {row} selected";
+                }
+
+                break;
+        }
     }
 
     private static string PageLine(McpPageSelection page)

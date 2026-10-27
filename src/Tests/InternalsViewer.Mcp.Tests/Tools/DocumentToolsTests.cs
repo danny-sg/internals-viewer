@@ -8,16 +8,17 @@ namespace InternalsViewer.Mcp.Tests.Tools;
 public class DocumentToolsTests
 {
     [Fact]
-    public async Task List_Documents_Shows_The_Run_And_Full_Trace()
+    public async Task List_Tabs_Shows_The_Area_Run_And_Full_Trace()
     {
         var (resolver, _) = TestRuns.CreateResolver(TestRuns.Create());
 
-        var text = await new DocumentTools(resolver).ListDocuments(CancellationToken.None);
+        var text = await new TabTools(resolver).ListTabs(CancellationToken.None);
 
         Assert.Contains("q1", text);
+        Assert.Contains("Query", text);
         Assert.Contains("Sales", text);
         Assert.Contains("SELECT * FROM dbo.Orders", text);
-        Assert.Contains("yes", text);
+        Assert.Contains("Full Trace", text);
     }
 
     [Fact]

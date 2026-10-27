@@ -54,6 +54,9 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     private bool _isZoomToFit = true;
 
     [ObservableProperty]
+    private float? _zoomToPageTarget;
+
+    [ObservableProperty]
     private bool _isZoomToPage;
 
     [ObservableProperty]

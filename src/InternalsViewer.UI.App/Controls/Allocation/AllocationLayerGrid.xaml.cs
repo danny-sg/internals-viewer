@@ -38,9 +38,29 @@ public sealed partial class AllocationLayerGrid
         set => SetValue(SelectedLayersProperty, value);
     }
 
+    public static readonly DependencyProperty FilterProperty
+        = DependencyProperty.Register(nameof(Filter),
+            typeof(string),
+            typeof(AllocationLayerGrid),
+            new PropertyMetadata(string.Empty, OnPropertyChanged));
+
+    public string Filter
+    {
+        get => (string)GetValue(FilterProperty);
+        set => SetValue(FilterProperty, value);
+    }
+
     public AllocationLayerGrid()
     {
         InitializeComponent();
+
+        ViewModel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ViewModel.Filter))
+            {
+                Filter = ViewModel.Filter;
+            }
+        };
 
         // handledEventsToo so the press still reaches us after the row has handled it for its own selection.
         LayerTable.AddHandler(UIElement.PointerPressedEvent,
@@ -172,6 +192,11 @@ public sealed partial class AllocationLayerGrid
             var layers = (ObservableCollection<AllocationLayer>)e.NewValue;
 
             control.ViewModel.SetLayers([.. layers.Where(l => !l.IsAllocationLayer)]);
+        }
+
+        if (e.Property == FilterProperty)
+        {
+            control.ViewModel.Filter = (string?)e.NewValue ?? string.Empty;
         }
 
         if (e.Property == SelectedLayersProperty)

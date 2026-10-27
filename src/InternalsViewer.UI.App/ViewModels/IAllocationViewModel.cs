@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Allocations;
@@ -24,4 +25,6 @@ public interface IAllocationViewModel : INotifyPropertyChanged
     bool IsPfsVisible { get; }
 
     long PlayheadTimeUs { get; }
+
+    PageAddress? ScrollTarget { get; }
 }

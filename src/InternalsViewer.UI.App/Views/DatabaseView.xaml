@@ -64,6 +64,8 @@
                                               GridColor="{ThemeResource AllocationBorderColor}"
                                               PfsChain="{x:Bind Parent.PfsChain, Mode=OneWay}"
                                               IsPfsVisible="{x:Bind Parent.IsPfsVisible, Mode=OneWay}"
+                                              AutoScroll="True"
+                                              CurrentPageAddress="{x:Bind Parent.ScrollTarget, Mode=OneWay}"
                                               PageClicked="OnPageSelected"
                                               x:Name="AllocationControl"/>
             </Grid>
@@ -86,6 +88,8 @@
                                               GridColor="{ThemeResource AllocationBorderColor}"
                                               PfsChain="{x:Bind Parent.PfsChain, Mode=OneWay}"
                                               IsPfsVisible="{x:Bind Parent.IsPfsVisible, Mode=OneWay}"
+                                              AutoScroll="True"
+                                              CurrentPageAddress="{x:Bind Parent.ScrollTarget, Mode=OneWay}"
                                               PageClicked="OnPageSelected"/>
             </TabViewItem>
         </DataTemplate>
@@ -215,6 +219,7 @@
 
         <allocation:AllocationLayerGrid Grid.Row="2"
                                         x:Name="AllocationLayerGrid"
+                                        Filter="{x:Bind TabViewModel.Filter, Mode=TwoWay}"
                                         SelectedLayers="{x:Bind TabViewModel.SelectedLayers, Mode=TwoWay}"
                                         Layers="{x:Bind TabViewModel.AllocationLayers, Mode=OneWay}"/>
         <toolkit:GridSplitter Grid.Row="2"
