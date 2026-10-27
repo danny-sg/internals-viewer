@@ -179,6 +179,10 @@ public sealed class MemoryTools(McpDocumentResolver documents)
                                             [Description("With block, how many writers and fields to summarise")] int writers = 8,
                                             [Description("Truncate function names to this width")] int width = 70,
                                             [Description("Maximum blocks or writes to list")] int limit = 50,
+                                            [Description("Keep blocks alive and writes made at or after this position, hex Sequence:Steps")]
+                                            string? from = null,
+                                            [Description("Keep blocks alive and writes made at or before this position, hex Sequence:Steps")]
+                                            string? to = null,
                                             [Description(DocumentDescription)] string? document = null,
                                             CancellationToken cancellationToken = default)
     {
@@ -210,15 +214,20 @@ public sealed class MemoryTools(McpDocumentResolver documents)
 
         var timeline = trace.Timeline;
 
+        var fromPosition = from is null ? (TracePosition?)null : Parse.Position(from);
+
+        var toPosition = to is null ? (TracePosition?)null : Parse.Position(to);
+
         var builder = new StringBuilder();
 
         builder.AppendLine($"memory history: {Format.Number(history.Blocks.Count)} watched blocks, " +
                            $"{Format.Number(history.WriteCount)} writes");
 
-        builder.AppendLine("A block is memory the query allocated and wrote to. Kind iterator = an operator object, inline = carved from a " +
-                           "larger");
+        builder.AppendLine("A block is memory the query allocated and wrote to. Kind iterator = an operator object, inline = " +
+                           "carved from a larger");
 
-        builder.AppendLine("block. Iterator = the operator object the block belongs to (0 when none). Writes are byte changes, each with its writer.");
+        builder.AppendLine("block. Iterator = the operator object the block belongs to (0 when none). Writes are byte changes, " +
+                           "each with its writer.");
 
         var selected = Enumerable.Range(0, history.Blocks.Count).Select(i => (Index: i, Block: history.Blocks[i]));
 
@@ -246,6 +255,16 @@ public sealed class MemoryTools(McpDocumentResolver documents)
         if (wantedKind is { } isIterator)
         {
             selected = selected.Where(b => isIterator ? b.Block.IsIterator : b.Block.IsInline);
+        }
+
+        if (fromPosition is { } alive)
+        {
+            selected = selected.Where(b => !b.Block.ToPosition.IsKnown || b.Block.ToPosition >= alive);
+        }
+
+        if (toPosition is { } until)
+        {
+            selected = selected.Where(b => b.Block.FromPosition <= until);
         }
 
         var blocks = selected.ToList();
@@ -284,7 +303,9 @@ public sealed class MemoryTools(McpDocumentResolver documents)
                 throw new McpException($"No memory history block {blockIndex}; there are {history.Blocks.Count}.");
             }
 
-            AppendBlock(builder, scope, timeline, history, blockIndex, field is null ? null : (int)Parse.Integer(field), offset, writers, limit);
+            var fieldOffset = field is null ? (int?)null : (int)Parse.Integer(field);
+
+            AppendBlock(builder, scope, timeline, history, blockIndex, fieldOffset, offset, writers, limit, fromPosition, toPosition);
         }
 
         return builder.ToString();
@@ -341,7 +362,9 @@ public sealed class MemoryTools(McpDocumentResolver documents)
 
             group.Add(entry);
 
-            if ((pattern is not null && pattern.IsMatch($"{entry.ClassName} {entry.Site}")) || (address is { } wanted && entry.Address == wanted))
+            var isNamed = pattern is not null && pattern.IsMatch($"{entry.ClassName} {entry.Site}");
+
+            if (isNamed || (address is { } wanted && entry.Address == wanted))
             {
                 matched.Add(entry);
             }
@@ -350,7 +373,8 @@ public sealed class MemoryTools(McpDocumentResolver documents)
         builder.AppendLine($"memory map: {Format.Number(count)} entries; " +
                            string.Join(", ", operations.OrderByDescending(o => o.Value).Select(o => $"{o.Key} {Format.Number(o.Value)}")));
 
-        builder.AppendLine("An entry is one labelling of an address: Allocated at its allocation, Constructed when a constructor ran on it,");
+        builder.AppendLine("An entry is one labelling of an address: Allocated at its allocation, Constructed when a constructor " +
+                           "ran on it,");
 
         builder.AppendLine("Declared when a call declared its type, Visited when a method ran on it. Blocks counts distinct addresses.");
 
@@ -383,7 +407,8 @@ public sealed class MemoryTools(McpDocumentResolver documents)
         {
             builder.AppendLine($"  {Format.Hex(entry.Address)} {Format.Bytes(entry.Bytes)} {entry.Operation} " +
                                $"{Format.Truncate(entry.ClassName, width)} {entry.Site ?? string.Empty} thread {entry.Thread} " +
-                               $"{Format.Position(entry.FromPosition)} to {Format.Position(entry.ToPosition)} owner {Format.Hex(entry.Owner)} " +
+                               $"{Format.Position(entry.FromPosition)} to {Format.Position(entry.ToPosition)} " +
+                               $"owner {Format.Hex(entry.Owner)} " +
                                $"in {GetFunctionName(scope, timeline, entry.CallNodeIndex)}");
         }
 
@@ -398,7 +423,9 @@ public sealed class MemoryTools(McpDocumentResolver documents)
                                     int? field,
                                     int offset,
                                     int writers,
-                                    int limit)
+                                    int limit,
+                                    TracePosition? fromPosition,
+                                    TracePosition? toPosition)
     {
         var entry = history.Blocks[block];
 
@@ -419,12 +446,18 @@ public sealed class MemoryTools(McpDocumentResolver documents)
 
         builder.AppendLine();
 
-        builder.AppendLine($"block {block} {Format.Hex(entry.Address)} size {entry.Size}: {Format.Number(writes.Count)} writes by {byWriter.Count} functions");
+        builder.AppendLine($"block {block} {Format.Hex(entry.Address)} size {entry.Size}: " +
+                           $"{Format.Number(writes.Count)} writes by {byWriter.Count} functions");
 
-        builder.AppendLine("writers: " + string.Join(", ", byWriter.OrderByDescending(w => w.Value).Take(writers).Select(w => $"{w.Key} x{Format.Number(w.Value)}")));
+        var topWriters = byWriter.OrderByDescending(w => w.Value).Take(writers).Select(w => $"{w.Key} x{Format.Number(w.Value)}");
 
-        builder.AppendLine("most written fields (offset/length): " +
-                           string.Join(", ", byField.OrderByDescending(f => f.Value).Take(writers).Select(f => $"+0x{f.Key.Offset:X}/{f.Key.Length} x{Format.Number(f.Value)}")));
+        builder.AppendLine("writers: " + string.Join(", ", topWriters));
+
+        var topFields = byField.OrderByDescending(f => f.Value)
+                               .Take(writers)
+                               .Select(f => $"+0x{f.Key.Offset:X}/{f.Key.Length} x{Format.Number(f.Value)}");
+
+        builder.AppendLine("most written fields (offset/length): " + string.Join(", ", topFields));
 
         builder.AppendLine();
 
@@ -435,6 +468,11 @@ public sealed class MemoryTools(McpDocumentResolver documents)
         for (var index = Math.Max(offset, 0); index < writes.Count; index++)
         {
             var write = writes[index];
+
+            if ((fromPosition is { } first && write.Position < first) || (toPosition is { } last && write.Position > last))
+            {
+                continue;
+            }
 
             if (field is { } wantedOffset && write.Offset != wantedOffset)
             {

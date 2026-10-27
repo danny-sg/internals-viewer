@@ -20,7 +20,8 @@ public sealed class NavigationTools(McpDocumentResolver documents)
     [McpServerTool(Name = "show_call")]
     [Description("Open a call tree node in the app's Call Tree, and with a call index the arguments of that call from the call log")]
     public async Task<string> ShowCall([Description("Call tree node id")] int node,
-                                       [Description("Call index within the node's function, from the calls tool; omit for the node alone")] int? callIndex = null,
+                                       [Description("Call index within the node's function, from the calls tool; omit for the node alone")]
+                                       int? callIndex = null,
                                        [Description(DocumentDescription)] string? document = null,
                                        CancellationToken cancellationToken = default)
     {
@@ -76,7 +77,8 @@ public sealed class NavigationTools(McpDocumentResolver documents)
 
         return planNode is null
             ? $"Selected plan node {node}."
-            : $"Selected plan node [{node}] {planNode.PhysicalOperator} ({planNode.LogicalOperator}) est {planNode.EstimatedRows} actual {planNode.RowsOutput} rows.";
+            : $"Selected plan node [{node}] {planNode.PhysicalOperator} ({planNode.LogicalOperator}) " +
+              $"est {planNode.EstimatedRows} actual {planNode.RowsOutput} rows.";
     }
 
     [McpServerTool(Name = "show_event")]
@@ -115,7 +117,8 @@ public sealed class NavigationTools(McpDocumentResolver documents)
     [Description("Open a memory history block in the app's memory pane at a position")]
     public async Task<string> ShowMemory([Description("Memory history block number from memoryhistory")] int block,
                                          [Description("Address to scroll to, hex; the block's start when omitted")] string? address = null,
-                                         [Description("Trace position as hex Sequence:Steps; the block's first write when omitted")] string? position = null,
+                                         [Description("Trace position as hex Sequence:Steps; the block's first write when omitted")]
+                                         string? position = null,
                                          [Description(DocumentDescription)] string? document = null,
                                          CancellationToken cancellationToken = default)
     {

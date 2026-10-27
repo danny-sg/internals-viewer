@@ -20,12 +20,19 @@ public sealed class TimelineTools(McpDocumentResolver documents)
     private McpDocumentResolver Documents { get; } = documents;
 
     [McpServerTool(Name = "timeline", ReadOnly = true)]
-    [Description("Full Trace timeline: the threads with their span counts and instruction totals, the longest spans, or one call tree node's spans and instructions")]
+    [Description("Full Trace timeline: the threads with their span counts and instruction totals, the longest spans, or one " +
+                 "call tree node's spans and instructions")]
     public async Task<string> Timeline([Description("List the N longest spans")] int? top = null,
-                                       [Description("Length axis for the longest spans: instructions or position")] string axis = "instructions",
+                                       [Description("Length axis for the longest spans and the range: instructions or position")]
+                                       string axis = "instructions",
                                        [Description("Only spans on this thread id")] int? thread = null,
                                        [Description("Only spans at this call depth")] int? depth = null,
                                        [Description("Only spans of this call tree node id")] int? node = null,
+                                       [Description("Keep spans overlapping from this point on the axis: a hex Sequence:Steps position on " +
+                                                    "position, an instruction count on instructions")]
+                                       string? from = null,
+                                       [Description("Keep spans overlapping up to this point on the axis, in the same form")]
+                                       string? to = null,
                                        [Description(DocumentDescription)] string? document = null,
                                        CancellationToken cancellationToken = default)
     {
@@ -41,6 +48,8 @@ public sealed class TimelineTools(McpDocumentResolver documents)
             "position" => false,
             _ => throw new McpException($"axis must be instructions or position, not '{axis}'.")
         };
+
+        var range = SpanRange.Create(from, to, useInstructions);
 
         var builder = new StringBuilder();
 
@@ -67,11 +76,11 @@ public sealed class TimelineTools(McpDocumentResolver documents)
 
         if (top is { } count)
         {
-            AppendLongest(builder, scope, timeline, count, useInstructions, thread, depth, node);
+            AppendLongest(builder, scope, timeline, count, useInstructions, thread, depth, node, range);
         }
         else if (node is { } nodeId)
         {
-            AppendNodeTotals(builder, scope, timeline, nodeId);
+            AppendNodeTotals(builder, scope, timeline, nodeId, range);
         }
 
         return builder.ToString();
@@ -101,7 +110,14 @@ public sealed class TimelineTools(McpDocumentResolver documents)
 
         builder.AppendLine($"plan nodes: {trace.PlanNodes.Count} iterator objects linked to plan nodes");
 
-        var table = new TextTable("Node", "Operator", "Iterator", "Plan object", "Batch plan object", "Query", "Constructed", "Batch helper");
+        var table = new TextTable("Node",
+                                  "Operator",
+                                  "Iterator",
+                                  "Plan object",
+                                  "Batch plan object",
+                                  "Query",
+                                  "Constructed",
+                                  "Batch helper");
 
         foreach (var planNode in trace.PlanNodes.OrderBy(p => p.NodeId).ThenBy(p => p.Iterator))
         {
@@ -151,7 +167,8 @@ public sealed class TimelineTools(McpDocumentResolver documents)
     }
 
     [McpServerTool(Name = "output", ReadOnly = true)]
-    [Description("Full Trace: the output row structures with the iterator object owning each column, and the plan operator each column comes from")]
+    [Description("Full Trace: the output row structures with the iterator object owning each column, and the plan operator " +
+                 "each column comes from")]
     public async Task<string> Output([Description("Maximum output rows to list")] int limit = 50,
                                      [Description(DocumentDescription)] string? document = null,
                                      CancellationToken cancellationToken = default)
@@ -207,7 +224,8 @@ public sealed class TimelineTools(McpDocumentResolver documents)
                                       bool useInstructions,
                                       int? thread,
                                       int? depth,
-                                      int? node)
+                                      int? node,
+                                      SpanRange range)
     {
         if (top <= 0)
         {
@@ -252,13 +270,27 @@ public sealed class TimelineTools(McpDocumentResolver documents)
 
                     var from = row.GetFrom(index);
 
+                    if (!range.Contains(from, to))
+                    {
+                        continue;
+                    }
+
                     var length = useInstructions
                         ? (double)(to.Instructions - from.Instructions)
                         : timeline.Scale.GetValue(to.Position) - timeline.Scale.GetValue(from.Position);
 
                     total++;
 
-                    longest.Enqueue(new Candidate(length, timelineThread.ThreadId, rowIndex, from, to, callNodeIndex, row.GetCallIndex(index), row.FlagsAt(index)),
+                    var candidate = new Candidate(length,
+                                                  timelineThread.ThreadId,
+                                                  rowIndex,
+                                                  from,
+                                                  to,
+                                                  callNodeIndex,
+                                                  row.GetCallIndex(index),
+                                                  row.FlagsAt(index));
+
+                    longest.Enqueue(candidate,
                                     length);
 
                     if (longest.Count > top)
@@ -271,7 +303,9 @@ public sealed class TimelineTools(McpDocumentResolver documents)
 
         builder.AppendLine();
 
-        builder.AppendLine($"longest {Math.Min(top, total)} of {Format.Number(total)} spans by {(useInstructions ? "instructions" : "position")}:");
+        var axisName = useInstructions ? "instructions" : "position";
+
+        builder.AppendLine($"longest {Math.Min(top, total)} of {Format.Number(total)} spans by {axisName}:");
 
         var table = new TextTable("Length", "Thread", "Depth", "From", "To", "Call", "Flags", "Node", "Function");
 
@@ -304,7 +338,11 @@ public sealed class TimelineTools(McpDocumentResolver documents)
         table.Write(builder);
     }
 
-    private static void AppendNodeTotals(StringBuilder builder, McpDocumentScope scope, TraceTimeline timeline, int nodeId)
+    private static void AppendNodeTotals(StringBuilder builder,
+                                         McpDocumentScope scope,
+                                         TraceTimeline timeline,
+                                         int nodeId,
+                                         SpanRange range)
     {
         var count = 0L;
 
@@ -328,9 +366,16 @@ public sealed class TimelineTools(McpDocumentResolver documents)
                         continue;
                     }
 
+                    var from = row.GetFrom(index);
+
+                    if (!range.Contains(from, to))
+                    {
+                        continue;
+                    }
+
                     count++;
 
-                    total += to.Instructions - row.GetFrom(index).Instructions;
+                    total += to.Instructions - from.Instructions;
                 }
             }
         }
@@ -377,6 +422,20 @@ public sealed class TimelineTools(McpDocumentResolver documents)
 
     private static string GetFunctionName(McpDocumentScope scope, TraceTimeline timeline, int callNodeIndex)
         => timeline.NodeOf(callNodeIndex) is { } node ? scope.Context.GetFunctionName(node) : $"raw node {callNodeIndex}";
+
+    private sealed record SpanRange(ulong? FromInstructions, ulong? ToInstructions, TracePosition? FromPosition, TracePosition? ToPosition)
+    {
+        public static SpanRange Create(string? from, string? to, bool useInstructions)
+            => useInstructions
+                ? new SpanRange(from is null ? null : Parse.Integer(from), to is null ? null : Parse.Integer(to), null, null)
+                : new SpanRange(null, null, from is null ? null : Parse.Position(from), to is null ? null : Parse.Position(to));
+
+        public bool Contains(TracePoint spanFrom, TracePoint spanTo)
+            => (FromInstructions is not { } fromInstructions || spanTo.Instructions >= fromInstructions)
+               && (ToInstructions is not { } toInstructions || spanFrom.Instructions <= toInstructions)
+               && (FromPosition is not { } fromPosition || spanTo.Position >= fromPosition)
+               && (ToPosition is not { } toPosition || spanFrom.Position <= toPosition);
+    }
 
     private readonly record struct Candidate(double Length,
                                              uint Thread,

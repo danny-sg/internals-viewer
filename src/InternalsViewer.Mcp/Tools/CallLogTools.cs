@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Text;
 using InternalsViewer.Mcp.Documents;
 using InternalsViewer.Mcp.Formatting;
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Calls;
 using ModelContextProtocol.Server;
 
@@ -26,6 +27,8 @@ public sealed class CallLogTools(McpDocumentResolver documents)
                                     string? value = null,
                                     [Description("First call to show")] int offset = 0,
                                     [Description("Calls to show")] int limit = 50,
+                                    [Description("Only calls starting at or after this position, hex Sequence:Steps")] string? from = null,
+                                    [Description("Only calls starting at or before this position, hex Sequence:Steps")] string? to = null,
                                     [Description(DocumentDescription)] string? document = null,
                                     CancellationToken cancellationToken = default)
     {
@@ -34,6 +37,10 @@ public sealed class CallLogTools(McpDocumentResolver documents)
         var store = scope.RequireTrace().CallStore;
 
         var context = scope.Context;
+
+        var fromPosition = from is null ? (TracePosition?)null : Parse.Position(from);
+
+        var toPosition = to is null ? (TracePosition?)null : Parse.Position(to);
 
         var builder = new StringBuilder();
 
@@ -80,7 +87,7 @@ public sealed class CallLogTools(McpDocumentResolver documents)
 
             lock (context.CallStoreSync)
             {
-                WriteCalls(builder, context, store, list, thread, wantedValue, offset, limit);
+                WriteCalls(builder, context, store, list, thread, wantedValue, fromPosition, toPosition, offset, limit);
             }
         }
 
@@ -132,6 +139,8 @@ public sealed class CallLogTools(McpDocumentResolver documents)
                                    TraceCallList list,
                                    uint? thread,
                                    ulong? wantedValue,
+                                   TracePosition? fromPosition,
+                                   TracePosition? toPosition,
                                    int offset,
                                    int limit)
     {
@@ -147,6 +156,11 @@ public sealed class CallLogTools(McpDocumentResolver documents)
             }
 
             if (wantedValue is { } wanted && !HasValue(call, wanted))
+            {
+                continue;
+            }
+
+            if ((fromPosition is { } first && call.FromPosition < first) || (toPosition is { } last && call.FromPosition > last))
             {
                 continue;
             }

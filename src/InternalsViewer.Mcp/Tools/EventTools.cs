@@ -39,6 +39,9 @@ public sealed class EventTools(McpDocumentResolver documents)
                                      [Description("Events to list")] int limit = 100,
                                      [Description("First event to list")] int offset = 0,
                                      [Description("Width of the description column")] int width = 90,
+                                     [Description("Keep events overlapping from this time, in milliseconds from the query start")]
+                                     double? fromMs = null,
+                                     [Description("Keep events overlapping up to this time, in milliseconds")] double? toMs = null,
                                      [Description(DocumentDescription)] string? document = null,
                                      CancellationToken cancellationToken = default)
     {
@@ -59,7 +62,7 @@ public sealed class EventTools(McpDocumentResolver documents)
 
         var pattern = grep is null ? null : Parse.Pattern(grep);
 
-        var events = scope.Context.Events.GetEvents(includeChildren)
+        var events = GetEvents(scope, includeChildren, fromMs, toMs)
                           .Where(e => Matches(e, type, name, objectName, pageAddress, thread, node, pattern))
                           .ToList();
 
@@ -110,12 +113,15 @@ public sealed class EventTools(McpDocumentResolver documents)
                                     [Description("Reads to list")] int limit = 200,
                                     [Description("First read to list")] int offset = 0,
                                     [Description("Width of the pages column")] int width = 80,
+                                    [Description("Keep events overlapping from this time, in milliseconds from the query start")]
+                                    double? fromMs = null,
+                                    [Description("Keep events overlapping up to this time, in milliseconds")] double? toMs = null,
                                     [Description(DocumentDescription)] string? document = null,
                                     CancellationToken cancellationToken = default)
     {
         var scope = await Documents.ResolveAsync(document, cancellationToken);
 
-        var all = scope.Context.Events.GetEvents(includeChildren: true);
+        var all = GetEvents(scope, true, fromMs, toMs);
 
         var groups = all.OfType<ReadEventGroup>().ToList();
 
@@ -209,12 +215,15 @@ public sealed class EventTools(McpDocumentResolver documents)
     [Description("Waits by type with counts and durations, and optionally the longest waits")]
     public async Task<string> Waits([Description("Also list the longest waits")] bool list = false,
                                     [Description("Waits to list")] int limit = 50,
+                                    [Description("Keep events overlapping from this time, in milliseconds from the query start")]
+                                    double? fromMs = null,
+                                    [Description("Keep events overlapping up to this time, in milliseconds")] double? toMs = null,
                                     [Description(DocumentDescription)] string? document = null,
                                     CancellationToken cancellationToken = default)
     {
         var scope = await Documents.ResolveAsync(document, cancellationToken);
 
-        var waits = scope.Context.Events.GetEvents(includeChildren: true).OfType<WaitEvent>().ToList();
+        var waits = GetEvents(scope, true, fromMs, toMs).OfType<WaitEvent>().ToList();
 
         var builder = new StringBuilder();
 
@@ -259,12 +268,15 @@ public sealed class EventTools(McpDocumentResolver documents)
     [Description("Locks by resource and mode, lock groups and escalations, and optionally every lock event in time order")]
     public async Task<string> Locks([Description("Also list every lock event in time order")] bool list = false,
                                     [Description("Lock events to list")] int limit = 200,
+                                    [Description("Keep events overlapping from this time, in milliseconds from the query start")]
+                                    double? fromMs = null,
+                                    [Description("Keep events overlapping up to this time, in milliseconds")] double? toMs = null,
                                     [Description(DocumentDescription)] string? document = null,
                                     CancellationToken cancellationToken = default)
     {
         var scope = await Documents.ResolveAsync(document, cancellationToken);
 
-        var all = scope.Context.Events.GetEvents(includeChildren: true);
+        var all = GetEvents(scope, true, fromMs, toMs);
 
         var locks = all.OfType<LockEvent>().ToList();
 
@@ -342,12 +354,15 @@ public sealed class EventTools(McpDocumentResolver documents)
     [McpServerTool(Name = "latches", ReadOnly = true)]
     [Description("Latches by class and mode, and the most latched pages")]
     public async Task<string> Latches([Description("Pages to list")] int limit = 20,
+                                      [Description("Keep events overlapping from this time, in milliseconds from the query start")]
+                                      double? fromMs = null,
+                                      [Description("Keep events overlapping up to this time, in milliseconds")] double? toMs = null,
                                       [Description(DocumentDescription)] string? document = null,
                                       CancellationToken cancellationToken = default)
     {
         var scope = await Documents.ResolveAsync(document, cancellationToken);
 
-        var latches = scope.Context.Events.GetEvents(includeChildren: true).OfType<LatchEvent>().ToList();
+        var latches = GetEvents(scope, true, fromMs, toMs).OfType<LatchEvent>().ToList();
 
         var builder = new StringBuilder();
 
@@ -379,12 +394,17 @@ public sealed class EventTools(McpDocumentResolver documents)
 
     [McpServerTool(Name = "columnstore", ReadOnly = true)]
     [Description("Columnstore segment scans, rowgroups eliminated, object pool lookups and batch events")]
-    public async Task<string> Columnstore([Description(DocumentDescription)] string? document = null,
+    public async Task<string> Columnstore([Description("Only events overlapping from this time, in milliseconds from the query " +
+                                                       "start as the tools print them")]
+                                          double? fromMs = null,
+                                          [Description("Only events overlapping up to this time, in milliseconds from the query start")]
+                                          double? toMs = null,
+                                          [Description(DocumentDescription)] string? document = null,
                                           CancellationToken cancellationToken = default)
     {
         var scope = await Documents.ResolveAsync(document, cancellationToken);
 
-        var all = scope.Context.Events.GetEvents(includeChildren: true);
+        var all = GetEvents(scope, true, fromMs, toMs);
 
         var builder = new StringBuilder();
 
@@ -569,6 +589,22 @@ public sealed class EventTools(McpDocumentResolver documents)
         {
             builder.AppendLine($"  {Format.EventLine(scope.Context, child, scope.CropStartUs)}");
         }
+    }
+
+    private static List<EngineEvent> GetEvents(McpDocumentScope scope, bool includeChildren, double? fromMs, double? toMs)
+    {
+        var events = scope.Context.Events.GetEvents(includeChildren);
+
+        if (fromMs is null && toMs is null)
+        {
+            return [.. events];
+        }
+
+        var start = fromMs is { } from ? scope.CropStartUs + (long)(from * 1000) : long.MinValue;
+
+        var end = toMs is { } to ? scope.CropStartUs + (long)(to * 1000) : long.MaxValue;
+
+        return [.. events.Where(e => e.TimeUs <= end && e.TimeUs + e.DurationUs >= start)];
     }
 
     private static bool Matches(EngineEvent engineEvent,

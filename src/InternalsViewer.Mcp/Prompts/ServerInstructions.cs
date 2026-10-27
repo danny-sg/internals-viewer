@@ -18,6 +18,10 @@ public static class ServerInstructions
         and source (where the public code lives, for questions nothing else answers). Read reading before the first
         investigation and the others as needed.
 
+        When the user refers to what they can see, the scope is the ranges get_selection reports. The event tools take fromMs
+        and toMs in the milliseconds they print. The Full Trace tools (timeline, calls, memoryhistory) take from and to on the
+        trace timeline's own axis, positions as hex Sequence:Steps or instruction counts, and never milliseconds.
+
         Ids. Node ids index the call tree, event ids the events, both per document. A page is file:page (1:1048), a row is
         file:page:slot. A Full Trace position is hex Sequence:Steps (1A3:4F): the sequence is shared across threads and steps
         count instructions since, so positions order events but are not time. Never report a Full Trace figure as milliseconds;
