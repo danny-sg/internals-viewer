@@ -33,17 +33,16 @@ public sealed partial class DatabaseTabViewModel : IMcpContextSource, IAllocatio
             Gam = Database.Gam,
             SGam = Database.SGam,
             Dcm = Database.Dcm,
-            Bcm = Database.Bcm,
-            FindOwner = Database.FindPageAllocationUnit
+            Bcm = Database.Bcm
         };
 
-    public Task<string> SelectObjectAsync(string? name, bool add)
+    public Task SelectObjectAsync(string? name, bool add)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
             SelectedLayers = [];
 
-            return Task.FromResult("Cleared the object selection.");
+            return Task.CompletedTask;
         }
 
         var layer = FindLayer(name);
@@ -57,20 +56,18 @@ public sealed partial class DatabaseTabViewModel : IMcpContextSource, IAllocatio
 
         SelectedLayers = new ObservableCollection<AllocationLayer>(layers);
 
-        return Task.FromResult($"Selected {layer.Name}. Selected: {string.Join(", ", layers.Select(l => l.Name))}.");
+        return Task.CompletedTask;
     }
 
-    public Task<string> ScrollToAsync(string? name, PageAddress? page)
+    public Task<PageAddress> ScrollToAsync(string? name, PageAddress? page)
     {
         var target = page;
-
-        string description;
 
         if (target is null)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
-                throw new InvalidOperationException("Give an object name or a page to scroll to.");
+                throw new InvalidOperationException("No object or page was given to scroll to.");
             }
 
             var layer = FindLayer(name);
@@ -79,16 +76,10 @@ public sealed partial class DatabaseTabViewModel : IMcpContextSource, IAllocatio
                 ? layer.FirstPage
                 : layer.PageSpans.Count > 0 ? layer.PageSpans[0].Address : null;
 
-            description = layer.Name;
-
             if (target is null)
             {
                 throw new InvalidOperationException($"{layer.Name} has no pages to scroll to.");
             }
-        }
-        else
-        {
-            description = $"page {target}";
         }
 
         if (!Database.Files.Any(f => f.FileId == target.Value.FileId))
@@ -101,10 +92,10 @@ public sealed partial class DatabaseTabViewModel : IMcpContextSource, IAllocatio
         ScrollTarget = null;
         ScrollTarget = target;
 
-        return Task.FromResult($"Scrolled the map to {description} at {target}.");
+        return Task.FromResult(target.Value);
     }
 
-    public async Task<string> SetOverlayAsync(AllocationOverlay? overlay)
+    public async Task SetOverlayAsync(AllocationOverlay? overlay)
     {
         var name = overlay switch
         {
@@ -123,15 +114,13 @@ public sealed partial class DatabaseTabViewModel : IMcpContextSource, IAllocatio
         }
 
         await SetOverlay(name);
-
-        return overlay is null ? "Turned the overlay off." : $"Showing the {name} overlay.";
     }
 
-    public Task<string> SetSearchAsync(string? text)
+    public Task SetSearchAsync(string? text)
     {
         Filter = text ?? string.Empty;
 
-        return Task.FromResult(string.IsNullOrEmpty(Filter) ? "Cleared the search text." : $"Searching for '{Filter}'.");
+        return Task.CompletedTask;
     }
 
     private AllocationLayer FindLayer(string name)
@@ -160,8 +149,7 @@ public sealed partial class DatabaseTabViewModel : IMcpContextSource, IAllocatio
         {
             1 => matches[0],
             0 => throw new InvalidOperationException($"No object matches '{name}'."),
-            _ => throw new InvalidOperationException(
-                $"'{name}' matches {matches.Count} objects: {string.Join(", ", matches.Select(l => l.Name).Take(20))}.")
+            _ => throw new InvalidOperationException($"'{name}' matches {matches.Count} objects.")
         };
     }
 }

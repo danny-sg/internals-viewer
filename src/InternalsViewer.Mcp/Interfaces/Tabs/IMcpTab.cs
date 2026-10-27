@@ -28,16 +28,11 @@ public interface IMcpTab
     Task CloseAsync(CancellationToken cancellationToken = default)
         => throw new NotSupportedException($"Tab {Id} ({Area}) cannot be closed.");
 
-    Task<string> RunAsync<TCommands>(Func<TCommands, Task<string>> command, CancellationToken cancellationToken = default)
+    Task RunAsync<TCommands>(Func<TCommands, Task> command, CancellationToken cancellationToken = default)
         where TCommands : class
         => throw new NotSupportedException($"Tab {Id} ({Area}) does not accept {typeof(TCommands).Name} commands.");
 
-    async Task RunAsync<TCommands>(Func<TCommands, Task> command, CancellationToken cancellationToken = default)
+    Task<TResult> RunAsync<TCommands, TResult>(Func<TCommands, Task<TResult>> command, CancellationToken cancellationToken = default)
         where TCommands : class
-        => await RunAsync<TCommands>(async c =>
-        {
-            await command(c);
-
-            return string.Empty;
-        }, cancellationToken);
+        => throw new NotSupportedException($"Tab {Id} ({Area}) does not accept {typeof(TCommands).Name} commands.");
 }

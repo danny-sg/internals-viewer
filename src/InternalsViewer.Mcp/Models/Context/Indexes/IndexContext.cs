@@ -16,5 +16,7 @@ public sealed record IndexContext : AllocationUnitContext, IAreaContext
 
     public int? SelectedSlot { get; init; }
 
+    public float Zoom { get; init; } = 1;
+
     public IReadOnlyList<IndexRecordContext> Records { get; init; } = [];
 }

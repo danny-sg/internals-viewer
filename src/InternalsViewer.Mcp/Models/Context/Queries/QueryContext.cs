@@ -17,4 +17,6 @@ public sealed record QueryContext : TabContext, IAreaContext
     public IReadOnlyList<McpOption> Options { get; init; } = [];
 
     public McpTraceTimeline? Timeline { get; init; }
+
+    public bool IsTraceLoading { get; init; }
 }

@@ -210,6 +210,8 @@ public sealed class RunTools(McpDocumentResolver documents)
     {
         var scope = await Documents.ResolveAsync(document, cancellationToken);
 
+        scope.RequireOperatorFrames();
+
         var operators = scope.Context.Events.GetEvents(includeChildren: true)
                              .OfType<ExecutionOperatorEvent>()
                              .OrderBy(o => o.PlanNodeIdentifier?.NodeId ?? -1)

@@ -353,6 +353,8 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
 
         if (operatorNodeId is { } nodeId)
         {
+            scope.RequireOperatorFrames();
+
             var roots = new List<CallStackNode>();
 
             foreach (var operatorEvent in scope.Result.EngineEvents.OfType<ExecutionOperatorEvent>()

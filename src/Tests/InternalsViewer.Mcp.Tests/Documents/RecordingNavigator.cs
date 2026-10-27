@@ -35,12 +35,8 @@ internal sealed class RecordingNavigator : IQueryCommands
 
     public Task<McpFunctionSignature?> ResolveSignatureAsync(CallstackFrame frame) => Task.FromResult<McpFunctionSignature?>(null);
 
-    public Task<string> SetOptionAsync(string key, bool enabled)
-    {
-        Calls.Add($"SetOption {key} {enabled}");
-
-        return Task.FromResult($"Set {key}.");
-    }
+    public Task SetOptionAsync(string key, bool enabled)
+        => Record($"SetOption {key} {enabled}");
 
     private Task Record(string call)
     {

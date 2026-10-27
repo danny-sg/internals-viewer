@@ -30,6 +30,7 @@ public partial class IndexTabViewModel : IMcpContextSource, IIndexCommands
             RootPage = RootPage,
             SelectedNode = Nodes.Find(n => n.PageAddress == SelectedPageAddress),
             SelectedSlot = SelectedSlot,
+            Zoom = ZoomToPageTarget ?? Zoom,
             Records =
             [
                 .. Records.Select(r => new IndexRecordContext(
@@ -39,7 +40,7 @@ public partial class IndexTabViewModel : IMcpContextSource, IIndexCommands
             ]
         };
 
-    public async Task<string> ZoomToPageAsync(PageAddress address, float? zoom)
+    public async Task ZoomToPageAsync(PageAddress address, float? zoom)
     {
         RequireNode(address);
 
@@ -47,8 +48,6 @@ public partial class IndexTabViewModel : IMcpContextSource, IIndexCommands
         {
             throw new InvalidOperationException("Zoom must be greater than zero.");
         }
-
-        var previous = Zoom;
 
         await LoadPage(address);
 
@@ -59,11 +58,9 @@ public partial class IndexTabViewModel : IMcpContextSource, IIndexCommands
         ZoomToPageTarget = zoom ?? DefaultZoom;
 
         _ = ClearZoomTargetAsync();
-
-        return $"Selected page {address} and zoomed from {previous:0.##} to {ZoomToPageTarget:0.##}.";
     }
 
-    public async Task<string> SelectPageAsync(PageAddress? address)
+    public async Task SelectPageAsync(PageAddress? address)
     {
         if (address is null)
         {
@@ -72,7 +69,7 @@ public partial class IndexTabViewModel : IMcpContextSource, IIndexCommands
             SelectedPageAddress = null;
             SelectedSlot = null;
 
-            return "Cleared the page selection.";
+            return;
         }
 
         RequireNode(address.Value);
@@ -82,33 +79,25 @@ public partial class IndexTabViewModel : IMcpContextSource, IIndexCommands
         await LoadPage(address.Value);
 
         await WaitForRecordsAsync(address.Value);
-
-        return $"Selected page {address} with {Records.Count} record(s) in the details pane.";
     }
 
-    public Task<string> SelectRowAsync(int? slot)
+    public Task SelectRowAsync(int? slot)
     {
         if (slot is null)
         {
             SelectedSlot = null;
 
-            return Task.FromResult("Cleared the row selection.");
+            return Task.CompletedTask;
         }
 
-        if (SelectedPageAddress is null || Records.Count == 0)
+        if (SelectedPageAddress is null || Records.All(r => r.Slot != slot))
         {
-            throw new InvalidOperationException("No page is selected. Use index_select_page first.");
-        }
-
-        if (Records.All(r => r.Slot != slot))
-        {
-            throw new InvalidOperationException(
-                $"Page {SelectedPageAddress} has no record in slot {slot}. It has {Records.Count} record(s).");
+            throw new InvalidOperationException($"Page {SelectedPageAddress} has no record in slot {slot}.");
         }
 
         SelectedSlot = slot;
 
-        return Task.FromResult($"Selected the record in slot {slot} of page {SelectedPageAddress}.");
+        return Task.CompletedTask;
     }
 
     private async Task WaitForRecordsAsync(PageAddress address)

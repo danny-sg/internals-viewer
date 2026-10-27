@@ -17,14 +17,14 @@ public partial class QueryViewModel : ITraceTimelineCommands
 
     private const string DefaultTrackColour = "#0067C0";
 
-    public async Task<string> SetTimelineOptionAsync(string key, bool enabled)
+    public async Task SetTimelineOptionAsync(string key, bool enabled)
         => (await RequireTimelineAsync()).SetOption(key, enabled);
 
-    public Task<string> AddTrackAsync(McpTrackRequest request)
+    public Task AddTrackAsync(McpTrackRequest request)
     {
         if (TickTrackStore.Definitions.Any(d => string.Equals(d.Name, request.Name, StringComparison.OrdinalIgnoreCase)))
         {
-            throw new InvalidOperationException($"A track named '{request.Name}' already exists. Remove it first or choose another name.");
+            throw new InvalidOperationException($"A track named '{request.Name}' already exists.");
         }
 
         var node = (CallStack?.Nodes() ?? []).FirstOrDefault(n => IsFunction(n, request.Module, request.Function));
@@ -39,13 +39,13 @@ public partial class QueryViewModel : ITraceTimelineCommands
 
         AddTickTrack(definition);
 
-        return Task.FromResult($"Added the {request.Name} track for {request.Module}!{request.Function}.");
+        return Task.CompletedTask;
     }
 
-    public async Task<string> SetTrackVisibleAsync(string name, bool isVisible)
+    public async Task SetTrackVisibleAsync(string name, bool isVisible)
         => (await RequireTimelineAsync()).SetTrackVisible(name, isVisible);
 
-    public Task<string> RemoveTracksAsync(string? name)
+    public Task<int> RemoveTracksAsync(string? name)
     {
         if (name is null)
         {
@@ -53,30 +53,29 @@ public partial class QueryViewModel : ITraceTimelineCommands
 
             TickTrackStore.Clear();
 
-            return Task.FromResult($"Removed {count} custom tracks.");
+            return Task.FromResult(count);
         }
 
         var definition = TickTrackStore.Definitions.FirstOrDefault(d => string.Equals(d.Name, name, StringComparison.OrdinalIgnoreCase))
-                         ?? throw new InvalidOperationException(
-                             $"No custom track '{name}'. Built-in tracks can be hidden but not removed.");
+                         ?? throw new InvalidOperationException($"No custom track '{name}'.");
 
         TickTrackStore.Remove(definition);
 
-        return Task.FromResult($"Removed the {definition.Name} track.");
+        return Task.FromResult(1);
     }
 
-    public async Task<string> StepAsync(McpStepMode mode, bool forward, int count)
+    public async Task StepAsync(McpStepMode mode, bool forward, int count)
         => (await RequireTimelineAsync()).Step(mode, forward, count);
 
-    public async Task<string> SearchAsync(string? text) => (await RequireTimelineAsync()).Search(text);
+    public async Task SearchAsync(string? text) => (await RequireTimelineAsync()).Search(text);
 
-    public async Task<string> StepSearchAsync(bool forward, int count)
+    public async Task StepSearchAsync(bool forward, int count)
         => (await RequireTimelineAsync()).StepSearch(forward, count);
 
-    public async Task<string> SelectCallAsync(CallStackNode node, int callIndex, bool zoom)
+    public async Task SelectCallAsync(CallStackNode node, int callIndex, bool zoom)
         => (await RequireTimelineAsync()).SelectCall(node, callIndex, zoom);
 
-    public async Task<string> ZoomAsync(bool toSelection) => (await RequireTimelineAsync()).Zoom(toSelection);
+    public async Task ZoomAsync(bool toSelection) => (await RequireTimelineAsync()).Zoom(toSelection);
 
     private static bool IsFunction(CallStackNode node, string module, string function)
         => node.Frame is { } frame && string.Equals(frame.Module, module, StringComparison.OrdinalIgnoreCase) && node.Symbol == function;
@@ -100,6 +99,6 @@ public partial class QueryViewModel : ITraceTimelineCommands
             await Task.Delay(ControllerDelayMilliseconds);
         }
 
-        throw new InvalidOperationException("The Trace Timeline did not open. Try again.");
+        throw new InvalidOperationException("The Trace Timeline did not open.");
     }
 }

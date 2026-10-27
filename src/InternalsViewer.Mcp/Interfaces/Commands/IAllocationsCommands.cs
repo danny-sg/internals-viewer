@@ -5,11 +5,11 @@ namespace InternalsViewer.Mcp.Interfaces.Commands;
 
 public interface IAllocationsCommands
 {
-    Task<string> SelectObjectAsync(string? name, bool add);
+    Task SelectObjectAsync(string? name, bool add);
 
-    Task<string> ScrollToAsync(string? name, PageAddress? page);
+    Task<PageAddress> ScrollToAsync(string? name, PageAddress? page);
 
-    Task<string> SetOverlayAsync(AllocationOverlay? overlay);
+    Task SetOverlayAsync(AllocationOverlay? overlay);
 
-    Task<string> SetSearchAsync(string? text);
+    Task SetSearchAsync(string? text);
 }

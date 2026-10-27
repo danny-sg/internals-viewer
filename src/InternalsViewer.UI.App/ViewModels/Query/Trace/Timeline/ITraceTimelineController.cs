@@ -7,17 +7,17 @@ public interface ITraceTimelineController
 {
     McpTraceTimeline GetState();
 
-    string SetOption(string key, bool enabled);
+    void SetOption(string key, bool enabled);
 
-    string SetTrackVisible(string name, bool isVisible);
+    void SetTrackVisible(string name, bool isVisible);
 
-    string Step(McpStepMode mode, bool forward, int count);
+    void Step(McpStepMode mode, bool forward, int count);
 
-    string Search(string? text);
+    void Search(string? text);
 
-    string StepSearch(bool forward, int count);
+    void StepSearch(bool forward, int count);
 
-    string SelectCall(CallStackNode node, int callIndex, bool zoom);
+    void SelectCall(CallStackNode node, int callIndex, bool zoom);
 
-    string Zoom(bool toSelection);
+    void Zoom(bool toSelection);
 }

@@ -30,7 +30,9 @@ internal sealed class TestAreaTab(McpArea area, TabContext? context = null, obje
 
     public bool Closed { get; private set; }
 
-    private TabContext? Context { get; } = context;
+    public object? Commands { get; set; } = commands;
+
+    public TabContext? Context { get; set; } = context;
 
     public Task<List<IMcpTab>> GetTabsAsync(CancellationToken cancellationToken) => Task.FromResult(new List<IMcpTab> { this });
 
@@ -51,9 +53,17 @@ internal sealed class TestAreaTab(McpArea area, TabContext? context = null, obje
         return Task.CompletedTask;
     }
 
-    public Task<string> RunAsync<TCommands>(Func<TCommands, Task<string>> command, CancellationToken cancellationToken = default)
+    public Task RunAsync<TCommands>(Func<TCommands, Task> command, CancellationToken cancellationToken = default)
         where TCommands : class
-        => commands is TCommands target
+        => Commands is TCommands target
+            ? command(target)
+            : throw new NotSupportedException($"No {typeof(TCommands).Name} commands.");
+
+    public Task<TResult> RunAsync<TCommands, TResult>(
+        Func<TCommands, Task<TResult>> command,
+        CancellationToken cancellationToken = default)
+        where TCommands : class
+        => Commands is TCommands target
             ? command(target)
             : throw new NotSupportedException($"No {typeof(TCommands).Name} commands.");
 

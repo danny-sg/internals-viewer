@@ -8,7 +8,6 @@ using InternalsViewer.Query.FullTrace.Calls.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.UI.App.Controls.Query.Trace.Timeline;
 using InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Enums;
-using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
 
 namespace InternalsViewer.UI.App.Views.Query.Trace.Timeline;
@@ -107,7 +106,7 @@ public sealed partial class QueryTraceTimelineTabView : ITraceTimelineController
             SearchMatches = TraceTimeline.SearchMatchCount,
             SelectedNode = TraceTimeline.GetSelectedCall()?.Node,
             SelectedCallIndex = TraceTimeline.GetSelectedCall()?.CallIndex ?? -1,
-            Options = [.. TimelineOptions.Select(o => new McpOption(o.Key, o.Label, o.Group, o.Get(this), true))],
+            Options = [.. TimelineOptions.Select(o => new McpOption(o.Key, o.Label, o.Group, o.Get(this), IsChoice: o.IsChoice))],
             Tracks =
             [
                 .. (TraceTimeline.TickTracks ?? []).Select(t => new McpTimelineTrack(t.Name,
@@ -121,33 +120,28 @@ public sealed partial class QueryTraceTimelineTabView : ITraceTimelineController
         };
     }
 
-    public string SetOption(string key, bool enabled)
+    public void SetOption(string key, bool enabled)
     {
         var option = TimelineOptions.FirstOrDefault(o => string.Equals(o.Key, key, StringComparison.OrdinalIgnoreCase))
                      ?? throw new InvalidOperationException($"No Trace Timeline option '{key}'.");
 
         if (option.IsChoice && !enabled)
         {
-            throw new InvalidOperationException($"{option.Label} is one of a choice for {option.Group}. Turn another one on instead.");
+            throw new InvalidOperationException($"{option.Label} is one of a choice and cannot be turned off.");
         }
 
         option.Set(this, enabled);
-
-        return $"Turned {(enabled ? "on" : "off")} {option.Group} {option.Label}.";
     }
 
-    public string SetTrackVisible(string name, bool isVisible)
+    public void SetTrackVisible(string name, bool isVisible)
     {
         var track = (TraceTimeline.TickTracks ?? []).FirstOrDefault(t => string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase))
-                    ?? throw new InvalidOperationException(
-                        $"No track '{name}'. The tracks are {string.Join(", ", (TraceTimeline.TickTracks ?? []).Select(t => t.Name))}.");
+                    ?? throw new InvalidOperationException($"No track '{name}'.");
 
         OnTickTrackVisibilityChanged(track.Name, isVisible);
-
-        return $"{(isVisible ? "Showing" : "Hid")} the {track.Name} track.";
     }
 
-    public string Step(McpStepMode mode, bool forward, int count)
+    public void Step(McpStepMode mode, bool forward, int count)
     {
         var stepMode = mode switch
         {
@@ -160,24 +154,22 @@ public sealed partial class QueryTraceTimelineTabView : ITraceTimelineController
 
         if (stepMode == PlayheadStepMode.SameCall && TraceTimeline.GetSelectedCall() is null)
         {
-            throw new InvalidOperationException("Same-call stepping needs a selected call. Select one with trace_goto_call first.");
+            throw new InvalidOperationException("No call is selected.");
         }
 
         for (var index = 0; index < Math.Clamp(count, 1, MaximumSteps); index++)
         {
             TraceTimeline.StepPlayhead(forward, stepMode);
         }
-
-        return $"Stepped {(forward ? "forward" : "back")} by {mode}. {DescribePlayhead()}";
     }
 
-    public string Search(string? text)
+    public void Search(string? text)
     {
         if (string.IsNullOrWhiteSpace(text))
         {
             SetSearchVisible(false);
 
-            return "Cleared the search.";
+            return;
         }
 
         SetSearchVisible(true);
@@ -185,55 +177,42 @@ public sealed partial class QueryTraceTimelineTabView : ITraceTimelineController
         SearchBar.Text = text;
 
         TraceTimeline.SearchText = text;
-
-        return $"Searching for '{text}'. {TraceTimeline.SearchMatchCount ?? 0} matching calls are visible.";
     }
 
-    public string StepSearch(bool forward, int count)
+    public void StepSearch(bool forward, int count)
     {
         if (string.IsNullOrEmpty(TraceTimeline.SearchText) || !TraceTimeline.HasSearchMatches)
         {
-            throw new InvalidOperationException("There are no search matches to step through. Search first with trace_search.");
+            throw new InvalidOperationException("There are no search matches.");
         }
 
         for (var index = 0; index < Math.Clamp(count, 1, MaximumSteps); index++)
         {
             TraceTimeline.StepSearch(forward);
         }
-
-        return $"Moved to the {(forward ? "next" : "previous")} match. {DescribeSelection()}";
     }
 
-    public string SelectCall(CallStackNode node, int callIndex, bool zoom)
+    public void SelectCall(CallStackNode node, int callIndex, bool zoom)
     {
         if (!TraceTimeline.SelectCall(node, callIndex, zoom))
         {
-            throw new InvalidOperationException(
-                "That call is not visible in the Trace Timeline. A category filter or a scope may be hiding it.");
+            throw new InvalidOperationException("That call is not visible in the Trace Timeline.");
         }
-
-        return $"Selected {DescribeCall(node, callIndex)}{(zoom ? " and zoomed to it" : string.Empty)}.";
     }
 
-    public string Zoom(bool toSelection)
+    public void Zoom(bool toSelection)
     {
-        if (toSelection)
+        if (!toSelection)
         {
-            var call = TraceTimeline.GetSelectedCall()
-                       ?? throw new InvalidOperationException("No call is selected. Select one with trace_goto_call first.");
+            TraceTimeline.ZoomToFit();
 
-            TraceTimeline.ZoomToCall(call.Node, call.CallIndex);
-
-            return $"Zoomed to {DescribeCall(call.Node, call.CallIndex)}.";
+            return;
         }
 
-        TraceTimeline.ZoomToFit();
+        var call = TraceTimeline.GetSelectedCall() ?? throw new InvalidOperationException("No call is selected.");
 
-        return "Zoomed to fit the whole trace.";
+        TraceTimeline.ZoomToCall(call.Node, call.CallIndex);
     }
-
-    private static string DescribeCall(CallStackNode node, int callIndex)
-        => $"{(node.Frame is { } frame ? $"{frame.Module}!" : string.Empty)}{node.Symbol} call {callIndex}";
 
     private static string DescribeCondition(TraceCallCondition condition)
     {
@@ -247,21 +226,13 @@ public sealed partial class QueryTraceTimelineTabView : ITraceTimelineController
         return $"{subject} {condition.Operator} {condition.Value}";
     }
 
-    private string DescribePlayhead()
-        => TraceTimeline.GetPlayheadPosition() is { } position
-            ? $"Playhead at {TracePositionText.GetHexText(position)}."
-            : DescribeSelection();
-
-    private string DescribeSelection()
-        => TraceTimeline.GetSelectedCall() is { } call ? $"Selected {DescribeCall(call.Node, call.CallIndex)}." : string.Empty;
-
     private void SetPane(bool isVisible, Action set)
     {
         var visible = new[] { TraceTimeline.ShowOperators, TraceTimeline.ShowMemoryHistory, TraceTimeline.ShowFlameChart }.Count(v => v);
 
         if (!isVisible && visible <= 1)
         {
-            throw new InvalidOperationException("At least one pane must stay visible. Turn another pane on first.");
+            throw new InvalidOperationException("At least one pane must stay visible.");
         }
 
         set();

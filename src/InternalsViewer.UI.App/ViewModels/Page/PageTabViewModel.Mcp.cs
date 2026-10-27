@@ -38,7 +38,7 @@ public sealed partial class PageTabViewModel : IMcpContextSource, IPageCommands
             SelectedValue = marker?.Value,
             SelectionStart = marker?.StartPosition ?? 0,
             Selection = selection,
-            Records = Records,
+            Records = [.. Records],
             View = MarkerTabName,
             Tab = availableTabs.Contains((PageViewTab)SelectedTabIndex) ? (PageViewTab)SelectedTabIndex : PageViewTab.Markers,
             AvailableTabs = availableTabs,
@@ -46,7 +46,7 @@ public sealed partial class PageTabViewModel : IMcpContextSource, IPageCommands
         };
     }
 
-    public async Task<string> GoToPageAsync(PageAddress address, int? slot)
+    public async Task GoToPageAsync(PageAddress address, int? slot)
     {
         await LoadPage(address, slot is { } value ? (ushort)value : null);
 
@@ -54,74 +54,65 @@ public sealed partial class PageTabViewModel : IMcpContextSource, IPageCommands
         {
             throw new InvalidOperationException($"Page {address} could not be loaded.");
         }
-
-        return $"Loaded page {address} ({Page.PageHeader.PageTypeName}).";
     }
 
-    public Task<string> SelectSlotAsync(int slot)
+    public Task SelectSlotAsync(int slot)
     {
-        var target = PageSlots.FirstOrDefault(s => s.Index == slot)
-                     ?? throw new InvalidOperationException(
-                         $"Page {PageAddress} has no slot {slot}. It has {PageSlots.Count} entries.");
+        SelectedSlot = PageSlots.FirstOrDefault(s => s.Index == slot)
+                       ?? throw new InvalidOperationException($"Page {PageAddress} has no slot {slot}.");
 
-        SelectedSlot = target;
-
-        return Task.FromResult($"Selected slot {slot} ({target.Description}).");
+        return Task.CompletedTask;
     }
 
-    public Task<string> SelectMarkerAsync(string? name)
+    public Task SelectMarkerAsync(string? name)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
             SelectedMarker = null;
 
-            return Task.FromResult("Cleared the marker selection.");
+            return Task.CompletedTask;
         }
 
         var markers = Flatten(Markers).ToList();
 
         var marker = markers.FirstOrDefault(m => string.Equals(m.Name, name, StringComparison.OrdinalIgnoreCase))
                      ?? markers.FirstOrDefault(m => m.Name.Contains(name, StringComparison.OrdinalIgnoreCase))
-                     ?? throw new InvalidOperationException(
-                         $"No marker matches '{name}'. Markers: {string.Join(", ", markers.Select(m => m.Name).Take(40))}.");
+                     ?? throw new InvalidOperationException($"No marker matches '{name}'.");
 
         SelectedMarker = marker;
 
         ScrollToOffset = null;
         ScrollToOffset = marker.StartPosition;
 
-        return Task.FromResult($"Selected {marker.Name} at offset {marker.StartPosition}, {marker.EndPosition - marker.StartPosition + 1} bytes.");
+        return Task.CompletedTask;
     }
 
-    public Task<string> ScrollToAsync(int offset)
+    public Task ScrollToAsync(int offset)
     {
         if (offset < 0 || offset >= PageData.Size)
         {
-            throw new InvalidOperationException($"Offset {offset} is outside the page. Use 0 to {PageData.Size - 1}.");
+            throw new InvalidOperationException($"Offset {offset} is outside the page.");
         }
 
         ScrollToOffset = null;
         ScrollToOffset = offset;
 
-        return Task.FromResult($"Scrolled the hex viewer to offset {offset}.");
+        return Task.CompletedTask;
     }
 
-    public Task<string> ShowTabAsync(PageViewTab tab)
+    public Task ShowTabAsync(PageViewTab tab)
     {
-        var available = GetAvailableTabs();
-
-        if (!available.Contains(tab))
+        if (!GetAvailableTabs().Contains(tab))
         {
-            throw new InvalidOperationException(
-                $"This page has no {tab} view. Available: {string.Join(", ", available)}.");
+            throw new InvalidOperationException($"This page has no {tab} view.");
         }
 
         SelectedTabIndex = (int)tab;
 
-        return Task.FromResult($"Showing the {tab} view.");
+        return Task.CompletedTask;
     }
 
-    public async Task<string> OpenIndexAsync()
+    public async Task OpenIndexAsync()
     {
         if (!OpenIndexViewCommand.CanExecute(null))
         {
@@ -129,8 +120,6 @@ public sealed partial class PageTabViewModel : IMcpContextSource, IPageCommands
         }
 
         await OpenIndexViewCommand.ExecuteAsync(null);
-
-        return "Opened the index in a new tab.";
     }
 
     private static IEnumerable<Marker> Flatten(IEnumerable<Marker> markers)

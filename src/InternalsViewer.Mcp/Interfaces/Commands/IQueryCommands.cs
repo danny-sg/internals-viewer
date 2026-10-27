@@ -26,5 +26,5 @@ public interface IQueryCommands
 
     Task<McpFunctionSignature?> ResolveSignatureAsync(CallstackFrame frame);
 
-    Task<string> SetOptionAsync(string key, bool enabled);
+    Task SetOptionAsync(string key, bool enabled);
 }

@@ -7,6 +7,7 @@ using InternalsViewer.Internals.Engine.Allocation.Enums;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Mcp.Documents;
 using InternalsViewer.Mcp.Formatting;
 using InternalsViewer.Mcp.Models.Context.Allocations;
@@ -167,7 +168,7 @@ public sealed class AllocationTools(McpDocumentResolver documents)
 
         builder.AppendLine($"BCM: {bulkChanged}");
 
-        var unit = context.FindOwner(address);
+        var unit = context.Database?.FindPageAllocationUnit(address);
 
         if (unit is not null)
         {

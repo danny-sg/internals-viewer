@@ -68,6 +68,16 @@ public class CallTreeToolsTests
     }
 
     [Fact]
+    public async Task Call_Tree_Scoped_To_An_Operator_Refuses_While_The_Full_Trace_Loads()
+    {
+        var (resolver, _) = TestRuns.CreateResolver(TestRuns.Create(true), isTraceLoading: true);
+
+        var exception = await Assert.ThrowsAsync<McpException>(() => new CallTreeTools(resolver).CallTree(@operator: 0));
+
+        Assert.Contains("Full Trace is still loading", exception.Message);
+    }
+
+    [Fact]
     public async Task Call_Tree_Reports_An_Operator_Without_Entry_Frames()
     {
         var text = await Tools().CallTree(@operator: 7);

@@ -35,8 +35,6 @@ public sealed class DocumentContext
 
     public EventIndex Events { get; }
 
-    public Lock CallStoreSync { get; } = new();
-
     private Lazy<FunctionNames>? Functions { get; set; }
 
     public string GetFunctionName(CallStackNode node)

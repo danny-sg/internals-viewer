@@ -57,16 +57,35 @@ public sealed class QueryOptionTools(McpDocumentResolver documents)
                                         [Description(TabDescription)] string? tab = null,
                                         CancellationToken cancellationToken = default)
     {
-        var context = await Documents.GetContextAsync<QueryContext>(tab, cancellationToken);
+        var session = await Documents.OpenAsync<QueryContext>(tab, cancellationToken);
 
-        var option = context.Options.FirstOrDefault(o => string.Equals(o.Key, key, StringComparison.OrdinalIgnoreCase))
+        var option = session.Context.Options.FirstOrDefault(o => string.Equals(o.Key, key, StringComparison.OrdinalIgnoreCase))
                      ?? throw new McpException(
-                         $"No option '{key}'. Keys: {string.Join(", ", context.Options.Select(o => o.Key))}.");
+                         $"No option '{key}'. Keys: {string.Join(", ", session.Context.Options.Select(o => o.Key))}.");
 
-        return await Documents.RunAsync<IQueryCommands>(
-            McpArea.Query,
-            tab,
-            c => c.SetOptionAsync(option.Key, enabled),
-            cancellationToken);
+        switch (option.Unavailable)
+        {
+            case McpOptionUnavailable.FullTraceLoaded:
+                throw new McpException($"{option.Label} cannot be changed while a Full Trace is loaded. Open a run without one.");
+
+            case McpOptionUnavailable.NeedsFullTrace:
+                throw new McpException(
+                    $"{option.Label} needs a Full Trace to be loaded. Turn on full-trace and run the query first.");
+
+            case McpOptionUnavailable.NeedsConsent when enabled:
+                throw new McpException(
+                    "Full Trace records SQL Server with Time Travel Debugging, and the user has not yet accepted its warning " +
+                    "and licence. Ask the user to turn it on once from the Trace menu, then try again.");
+        }
+
+        await session.RunAsync<IQueryCommands>(c => c.SetOptionAsync(option.Key, enabled), cancellationToken);
+
+        var current = session.Context.Options.FirstOrDefault(o => o.Key == option.Key) ?? option;
+
+        var state = current.IsOn ? "on" : "off";
+
+        return option.Key == "full-trace"
+            ? $"Turned {state} Full Trace. It applies to the next run."
+            : $"Turned {state} {option.Label}.";
     }
 }

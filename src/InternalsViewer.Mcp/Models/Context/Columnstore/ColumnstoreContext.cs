@@ -25,5 +25,11 @@ public sealed record ColumnstoreContext : AllocationUnitContext, IAreaContext
 
     public string? SelectedMarkerValue { get; init; }
 
+    public int? SelectedMarkerOffset { get; init; }
+
+    public int? SelectedMarkerLength { get; init; }
+
+    public bool IsLoaded { get; init; }
+
     public int? SelectedRow { get; init; }
 }

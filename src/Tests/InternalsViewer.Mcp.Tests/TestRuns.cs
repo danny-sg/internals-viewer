@@ -198,9 +198,9 @@ internal static class TestRuns
         };
     }
 
-    public static (McpDocumentResolver Resolver, TestDocument Document) CreateResolver(QueryExportContent run)
+    public static (McpDocumentResolver Resolver, TestDocument Document) CreateResolver(QueryExportContent run, bool isTraceLoading = false)
     {
-        var document = new TestDocument { Run = run };
+        var document = new TestDocument { Run = run, IsTraceLoading = isTraceLoading };
 
         return (new McpDocumentResolver(new TestDocumentSource(document)), document);
     }

@@ -34,6 +34,32 @@ public sealed class McpDocumentScope(
         => Trace
            ?? throw new McpException($"Document {Query.TabId} has no Full Trace. Only the events, plan and call stacks are available.");
 
+    public void RequireOperatorFrames()
+    {
+        if (Query.IsTraceLoading)
+        {
+            throw new McpException("The Full Trace is still loading. The events, plan, reads, waits, locks and latches " +
+                                   "are already available.");
+        }
+    }
+
+    public async Task<QueryContext> ReadContextAsync(CancellationToken cancellationToken)
+        => await Tab.GetContextAsync(cancellationToken) as QueryContext
+           ?? throw new McpException($"Tab {Tab.Id} has no Query context.");
+
+    public async Task RunAsync<TCommands>(Func<TCommands, Task> command, CancellationToken cancellationToken)
+        where TCommands : class
+    {
+        try
+        {
+            await Tab.RunAsync(command, cancellationToken);
+        }
+        catch (Exception exception) when (exception is NotSupportedException or InvalidOperationException or ArgumentException)
+        {
+            throw new McpException(exception.Message);
+        }
+    }
+
     public async Task RunAsync(Func<IQueryCommands, Task> command, CancellationToken cancellationToken)
     {
         try

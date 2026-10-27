@@ -16,8 +16,8 @@ public class QueryOptionToolsTests
         Title = "Test",
         Options =
         [
-            new McpOption("full-trace", "Record Full Trace", "Trace", false, true),
-            new McpOption("timeline", "Timeline", "View", true, false)
+            new McpOption("full-trace", "Record Full Trace", "Trace", false),
+            new McpOption("timeline", "Timeline", "View", true, McpOptionUnavailable.FullTraceLoaded)
         ]
     };
 

@@ -100,7 +100,28 @@ public class RunToolsTests
         Assert.Contains("  thread 0: start +0.040 ms, 0.900 ms, 120 rows", text);
     }
 
-    private static RunTools Tools(bool withTrace = true) => new(TestRuns.CreateResolver(TestRuns.Create(withTrace)).Resolver);
+    [Fact]
+    public async Task Operators_Refuses_While_The_Full_Trace_Loads()
+    {
+        var exception = await Assert.ThrowsAsync<McpException>(() => Tools(isTraceLoading: true).Operators());
+
+        Assert.Contains("Full Trace is still loading", exception.Message);
+    }
+
+    [Fact]
+    public async Task Summary_Still_Answers_While_The_Full_Trace_Loads()
+    {
+        var text = await Tools(isTraceLoading: true).Summary();
+
+        Assert.Contains("Database:      Sales", text);
+    }
+
+    private static RunTools Tools(bool withTrace = true, bool isTraceLoading = false)
+    {
+        var (resolver, _) = TestRuns.CreateResolver(TestRuns.Create(withTrace), isTraceLoading);
+
+        return new RunTools(resolver);
+    }
 
     private static List<string> Lines(string text)
         => [.. text.Split('\n').Select(l => Regex.Replace(l.Trim(), " {2,}", " "))];

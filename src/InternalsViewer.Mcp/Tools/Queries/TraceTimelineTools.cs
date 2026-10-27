@@ -20,6 +20,8 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
 {
     private const string TabDescription = "Query tab id from list_tabs; the active Query tab when omitted";
 
+    private const string PanePrefix = "pane-";
+
     private const string ConditionsDescription = "Conditions on the calls: 'arg 2 = 0x1', 'return != 0', 'calledby Function', " +
                                                  "'calleddirectlyby Function' or 'operator Name'. Arguments are numbered from 1 " +
                                                  "as in query_calls. Operators are =, !=, <, <=, > and >=";
@@ -95,7 +97,33 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
                                         [Description(TabDescription)] string? tab = null,
                                         CancellationToken cancellationToken = default)
     {
-        return await RunAsync(tab, c => c.SetTimelineOptionAsync(key, enabled), cancellationToken);
+        var session = await Documents.OpenAsync<QueryContext>(tab, cancellationToken);
+
+        if (RequireTimeline(session.Context) is { } timeline)
+        {
+            var option = timeline.Options.FirstOrDefault(o => string.Equals(o.Key, key, StringComparison.OrdinalIgnoreCase))
+                         ?? throw new McpException(
+                             $"No Trace Timeline option '{key}'. Keys: {string.Join(", ", timeline.Options.Select(o => o.Key))}.");
+
+            if (option.IsChoice && !enabled)
+            {
+                throw new McpException($"{option.Label} is one of a choice for {option.Group}. Turn another one on instead.");
+            }
+
+            if (!enabled && option.IsOn && option.Key.StartsWith(PanePrefix, StringComparison.Ordinal) &&
+                timeline.Options.Count(o => o.Key.StartsWith(PanePrefix, StringComparison.Ordinal) && o.IsOn) <= 1)
+            {
+                throw new McpException("At least one pane must stay visible. Turn another pane on first.");
+            }
+        }
+
+        await session.RunAsync<ITraceTimelineCommands>(c => c.SetTimelineOptionAsync(key, enabled), cancellationToken);
+
+        var current = session.Context.Timeline?.Options.FirstOrDefault(o => string.Equals(o.Key, key, StringComparison.OrdinalIgnoreCase));
+
+        return current is null
+            ? $"Turned {(enabled ? "on" : "off")} {key}."
+            : $"Turned {(current.IsOn ? "on" : "off")} {current.Group} {current.Label}.";
     }
 
     [McpServerTool(Name = "trace_track_add")]
@@ -112,15 +140,27 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
     {
         var scope = await Documents.ResolveAsync(tab, cancellationToken);
 
+        var timeline = RequireTimeline(scope.Query);
+
         var match = FunctionSearch.Resolve(scope.Context.Nodes.GetNodes(), function, false)[0];
 
         var node = match.Members[0];
 
+        var trackName = name ?? node.Symbol;
+
+        if (timeline?.Tracks.FirstOrDefault(t => t.IsCustom && string.Equals(t.Name, trackName, StringComparison.OrdinalIgnoreCase))
+            is { } existing)
+        {
+            throw new McpException($"A track named '{existing.Name}' already exists. Remove it first or choose another name.");
+        }
+
         var parsed = await ParseConditionsAsync(scope, node, conditions);
 
-        var request = new McpTrackRequest(name ?? node.Symbol, node.Frame!.Module, node.Symbol, colour, parsed);
+        var request = new McpTrackRequest(trackName, node.Frame!.Module, node.Symbol, colour, parsed);
 
-        return await RunAsync(tab, c => c.AddTrackAsync(request), cancellationToken);
+        await scope.RunAsync<ITraceTimelineCommands>(c => c.AddTrackAsync(request), cancellationToken);
+
+        return $"Added the {request.Name} track for {request.Module}!{request.Function}.";
     }
 
     [McpServerTool(Name = "trace_track_set")]
@@ -130,7 +170,18 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
                                        [Description(TabDescription)] string? tab = null,
                                        CancellationToken cancellationToken = default)
     {
-        return await RunAsync(tab, c => c.SetTrackVisibleAsync(name, visible), cancellationToken);
+        var session = await Documents.OpenAsync<QueryContext>(tab, cancellationToken);
+
+        if (RequireTimeline(session.Context) is { } timeline && FindTrack(timeline, name) is null)
+        {
+            throw new McpException($"No track '{name}'. The tracks are {string.Join(", ", timeline.Tracks.Select(t => t.Name))}.");
+        }
+
+        await session.RunAsync<ITraceTimelineCommands>(c => c.SetTrackVisibleAsync(name, visible), cancellationToken);
+
+        var track = session.Context.Timeline is { } after ? FindTrack(after, name) : null;
+
+        return $"{(track?.IsVisible ?? visible ? "Showing" : "Hid")} the {track?.Name ?? name} track.";
     }
 
     [McpServerTool(Name = "trace_track_remove")]
@@ -139,7 +190,31 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
                                           [Description(TabDescription)] string? tab = null,
                                           CancellationToken cancellationToken = default)
     {
-        return await RunAsync(tab, c => c.RemoveTracksAsync(name), cancellationToken);
+        var session = await Documents.OpenAsync<QueryContext>(tab, cancellationToken);
+
+        if (name is not null && RequireTimeline(session.Context) is { } timeline)
+        {
+            var track = FindTrack(timeline, name);
+
+            if (track is null)
+            {
+                var custom = timeline.Tracks.Where(t => t.IsCustom).Select(t => t.Name).ToList();
+
+                throw new McpException(
+                    $"No custom track '{name}'. Custom tracks: {(custom.Count == 0 ? "none" : string.Join(", ", custom))}.");
+            }
+
+            if (!track.IsCustom)
+            {
+                throw new McpException($"{track.Name} is a built-in track. Built-in tracks can be hidden with trace_track_set.");
+            }
+        }
+
+        var removed = await session.RunAsync<ITraceTimelineCommands, int>(c => c.RemoveTracksAsync(name), cancellationToken);
+
+        return name is null
+            ? $"Removed {removed} custom tracks."
+            : $"Removed the {FindTrack(session.Before.Timeline, name)?.Name ?? name} track.";
     }
 
     [McpServerTool(Name = "trace_step")]
@@ -161,7 +236,16 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
             _ => throw new McpException($"Unknown step mode '{mode}'. Use call, same-call, batch, row or allocation.")
         };
 
-        return await RunAsync(tab, c => c.StepAsync(stepMode, forward, count), cancellationToken);
+        var session = await Documents.OpenAsync<QueryContext>(tab, cancellationToken);
+
+        if (RequireTimeline(session.Context) is { SelectedNode: null } && stepMode == McpStepMode.SameCall)
+        {
+            throw new McpException("Same-call stepping needs a selected call. Select one with trace_goto_call first.");
+        }
+
+        await session.RunAsync<ITraceTimelineCommands>(c => c.StepAsync(stepMode, forward, count), cancellationToken);
+
+        return $"Stepped {(forward ? "forward" : "back")} by {stepMode}. {DescribePlayhead(session.Context)}";
     }
 
     [McpServerTool(Name = "trace_search")]
@@ -174,12 +258,27 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
                                      [Description(TabDescription)] string? tab = null,
                                      CancellationToken cancellationToken = default)
     {
+        var session = await Documents.OpenAsync<QueryContext>(tab, cancellationToken);
+
+        var timeline = RequireTimeline(session.Context);
+
         if (step is { } forward)
         {
-            return await RunAsync(tab, c => c.StepSearchAsync(forward, count), cancellationToken);
+            if (timeline is not { SearchText.Length: > 0, SearchMatches: > 0 })
+            {
+                throw new McpException("There are no search matches to step through. Search first with trace_search.");
+            }
+
+            await session.RunAsync<ITraceTimelineCommands>(c => c.StepSearchAsync(forward, count), cancellationToken);
+
+            return $"Moved to the {(forward ? "next" : "previous")} match. {DescribeSelection(session.Context.Timeline)}";
         }
 
-        return await RunAsync(tab, c => c.SearchAsync(text), cancellationToken);
+        await session.RunAsync<ITraceTimelineCommands>(c => c.SearchAsync(text), cancellationToken);
+
+        return session.Context.Timeline is { SearchText.Length: > 0 } after
+            ? $"Searching for '{after.SearchText}'. {after.SearchMatches ?? 0} matching calls are visible."
+            : "Cleared the search.";
     }
 
     [McpServerTool(Name = "trace_zoom")]
@@ -189,7 +288,18 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
                                    [Description(TabDescription)] string? tab = null,
                                    CancellationToken cancellationToken = default)
     {
-        return await RunAsync(tab, c => c.ZoomAsync(toSelection), cancellationToken);
+        var session = await Documents.OpenAsync<QueryContext>(tab, cancellationToken);
+
+        if (RequireTimeline(session.Context) is { SelectedNode: null } && toSelection)
+        {
+            throw new McpException("No call is selected. Select one with trace_goto_call first.");
+        }
+
+        await session.RunAsync<ITraceTimelineCommands>(c => c.ZoomAsync(toSelection), cancellationToken);
+
+        return toSelection
+            ? $"Zoomed to {DescribeSelection(session.Context.Timeline)}."
+            : "Zoomed to fit the whole trace.";
     }
 
     [McpServerTool(Name = "trace_goto_call")]
@@ -218,28 +328,25 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
 
         var candidates = new List<(CallStackNode Node, int Index, TraceArgumentCall Call)>();
 
-        lock (scope.Context.CallStoreSync)
+        foreach (var node in members)
         {
-            foreach (var node in members)
+            if (node.Frame is not { } frame || store.GetCallList(frame.Address, frame.InstanceAddress) is not { } list)
             {
-                if (node.Frame is not { } frame || store.GetCallList(frame.Address, frame.InstanceAddress) is not { } list)
+                continue;
+            }
+
+            for (var index = 0; index < list.Count; index++)
+            {
+                var call = list[index];
+
+                if (store.GetNode(call) != node)
                 {
                     continue;
                 }
 
-                for (var index = 0; index < list.Count; index++)
+                if (TraceCallCondition.MatchesAll(parsed, call) && parsed.Where(p => !p.IsCallCondition).All(p => Matches(p, node)))
                 {
-                    var call = list[index];
-
-                    if (store.GetNode(call) != node)
-                    {
-                        continue;
-                    }
-
-                    if (TraceCallCondition.MatchesAll(parsed, call) && parsed.Where(p => !p.IsCallCondition).All(p => Matches(p, node)))
-                    {
-                        candidates.Add((node, index, call));
-                    }
+                    candidates.Add((node, index, call));
                 }
             }
         }
@@ -259,9 +366,12 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
 
         var chosen = Choose(candidates, which, n, reference);
 
-        var summary = await RunAsync(tab, c => c.SelectCallAsync(chosen.Node, chosen.Index, zoom), cancellationToken);
+        await scope.RunAsync<ITraceTimelineCommands>(c => c.SelectCallAsync(chosen.Node, chosen.Index, zoom), cancellationToken);
 
-        return $"{summary}{Environment.NewLine}{matches[0].Name} #{chosen.Index} of {candidates.Count} matching calls, " +
+        var after = (await scope.ReadContextAsync(cancellationToken)).Timeline;
+
+        return $"Selected {DescribeSelection(after)}{(zoom ? " and zoomed to it" : string.Empty)}.{Environment.NewLine}" +
+               $"{matches[0].Name} #{chosen.Index} of {candidates.Count} matching calls, " +
                $"{Format.Position(chosen.Call.FromPosition)} to {Format.Position(chosen.Call.ToPosition)}";
     }
 
@@ -344,8 +454,24 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
         return TraceConditions.Parse(conditions, layout);
     }
 
-    private Task<string> RunAsync(string? tab, Func<ITraceTimelineCommands, Task<string>> command, CancellationToken cancellationToken)
+    private static McpTimelineTrack? FindTrack(McpTraceTimeline? timeline, string name)
+        => timeline?.Tracks.FirstOrDefault(t => string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase));
+
+    private static McpTraceTimeline? RequireTimeline(QueryContext context)
     {
-        return Documents.RunAsync(McpArea.Query, tab, command, cancellationToken);
+        if (context.Options.Any(o => o is { Key: "trace-timeline", Unavailable: McpOptionUnavailable.NeedsFullTrace }))
+        {
+            throw new McpException("The Trace Timeline needs a Full Trace. Turn on full-trace, run the query and try again.");
+        }
+
+        return context.Timeline;
     }
+
+    private static string DescribeSelection(McpTraceTimeline? timeline)
+        => timeline?.SelectedNode is { } node ? $"{ConditionsText(node)} #{timeline.SelectedCallIndex}" : "no call";
+
+    private static string DescribePlayhead(QueryContext context)
+        => context.Selection.Playhead is { } position
+            ? $"Playhead at {Format.Position(position)}."
+            : $"Selected {DescribeSelection(context.Timeline)}.";
 }

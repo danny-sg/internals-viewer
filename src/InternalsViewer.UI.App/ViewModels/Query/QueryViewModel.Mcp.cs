@@ -22,8 +22,6 @@ public partial class QueryViewModel : IMcpContextSource, IQueryCommands
 {
     private const string FullTraceKey = "full-trace";
 
-    private const string EventViewsUnavailable = "It is not available while a Full Trace is loaded.";
-
     private static readonly McpOptionBinding[] OptionBindings =
     [
         new("sql-editor",
@@ -36,8 +34,7 @@ public partial class QueryViewModel : IMcpContextSource, IQueryCommands
             "View",
             q => q.Layout.IsAllocationsVisible,
             (q, v) => q.Layout.IsAllocationsVisible = v,
-            q => q.Layout.CanShowEventViews,
-            EventViewsUnavailable),
+            q => q.Layout.CanShowEventViews ? McpOptionUnavailable.None : McpOptionUnavailable.FullTraceLoaded),
         new("execution-plan",
             "Execution Plan",
             "View",
@@ -48,8 +45,7 @@ public partial class QueryViewModel : IMcpContextSource, IQueryCommands
             "View",
             q => q.Layout.IsEventsVisible,
             (q, v) => q.Layout.IsEventsVisible = v,
-            q => q.Layout.CanShowEventViews,
-            EventViewsUnavailable),
+            q => q.Layout.CanShowEventViews ? McpOptionUnavailable.None : McpOptionUnavailable.FullTraceLoaded),
         new("call-tree",
             "Call Tree",
             "View",
@@ -70,15 +66,13 @@ public partial class QueryViewModel : IMcpContextSource, IQueryCommands
             "View",
             q => q.Layout.IsTimelineVisible,
             (q, v) => q.Layout.IsTimelineVisible = v,
-            q => q.Layout.CanShowEventViews,
-            EventViewsUnavailable),
+            q => q.Layout.CanShowEventViews ? McpOptionUnavailable.None : McpOptionUnavailable.FullTraceLoaded),
         new("trace-timeline",
             "Trace Timeline",
             "View",
             q => q.Layout.IsTraceTimelineVisible,
             (q, v) => q.Layout.IsTraceTimelineVisible = v,
-            q => q.Layout.IsTrace,
-            "It needs a Full Trace to be loaded."),
+            q => q.Layout.IsTrace ? McpOptionUnavailable.None : McpOptionUnavailable.NeedsFullTrace),
         new("simulation",
             "Simulation",
             "View",
@@ -163,7 +157,8 @@ public partial class QueryViewModel : IMcpContextSource, IQueryCommands
             "Record Full Trace",
             "Trace",
             q => q.QueryOptions.RecordTimeTravel,
-            (q, v) => q.QueryOptions.RecordTimeTravel = v)
+            (q, v) => q.QueryOptions.RecordTimeTravel = v,
+            q => q.QueryOptions.RecordTimeTravel || !ConsentRequired() ? McpOptionUnavailable.None : McpOptionUnavailable.NeedsConsent)
     ];
 
     public TabContext GetContext()
@@ -174,6 +169,7 @@ public partial class QueryViewModel : IMcpContextSource, IQueryCommands
             Database = Database,
             Sql = Sql,
             Run = CurrentRun,
+            IsTraceLoading = IsTraceLoading,
             Options =
             [
                 .. OptionBindings.Select(b => new McpOption(
@@ -181,7 +177,7 @@ public partial class QueryViewModel : IMcpContextSource, IQueryCommands
                     b.Label,
                     b.Group,
                     b.Get(this),
-                    b.IsEnabled?.Invoke(this) ?? true))
+                    b.Unavailable?.Invoke(this) ?? McpOptionUnavailable.None))
             ],
             Timeline = TraceTimeline is null ? null : TraceTimelineTab.Controller?.GetState(),
             Selection = new McpSelection
@@ -258,14 +254,16 @@ public partial class QueryViewModel : IMcpContextSource, IQueryCommands
         return resolved is null ? null : new McpFunctionSignature(resolved.Text ?? string.Empty, resolved.Layout);
     }
 
-    public Task<string> SetOptionAsync(string key, bool enabled)
+    public Task SetOptionAsync(string key, bool enabled)
     {
         var binding = OptionBindings.FirstOrDefault(b => string.Equals(b.Key, key, StringComparison.OrdinalIgnoreCase))
                       ?? throw new InvalidOperationException($"No option '{key}'.");
 
-        if (binding.IsEnabled?.Invoke(this) == false)
+        var unavailable = binding.Unavailable?.Invoke(this) ?? McpOptionUnavailable.None;
+
+        if (unavailable is McpOptionUnavailable.FullTraceLoaded or McpOptionUnavailable.NeedsFullTrace)
         {
-            throw new InvalidOperationException($"{binding.Label} cannot be changed. {binding.DisabledReason}");
+            throw new InvalidOperationException($"{binding.Label} cannot be changed now.");
         }
 
         if (binding.Key == FullTraceKey && enabled)
@@ -275,12 +273,11 @@ public partial class QueryViewModel : IMcpContextSource, IQueryCommands
 
         binding.Set(this, enabled);
 
-        var state = enabled ? "on" : "off";
-
-        return Task.FromResult(binding.Key == FullTraceKey
-                                   ? $"Turned {state} Full Trace. It applies to the next run."
-                                   : $"Turned {state} {binding.Label}.");
+        return Task.CompletedTask;
     }
+
+    private static bool ConsentRequired()
+        => App.GetService<SettingsViewModel>().ShowTimeTravelWarning;
 
     private static void RequireFullTraceConsent()
     {
@@ -295,11 +292,9 @@ public partial class QueryViewModel : IMcpContextSource, IQueryCommands
             throw new InvalidOperationException(exception.Message);
         }
 
-        if (App.GetService<SettingsViewModel>().ShowTimeTravelWarning || !recorder.IsLicenceAccepted)
+        if (ConsentRequired() || !recorder.IsLicenceAccepted)
         {
-            throw new InvalidOperationException(
-                "Full Trace records SQL Server with Time Travel Debugging, and the user has not yet accepted its warning " +
-                "and licence. Ask the user to turn it on once from the Trace menu, then try again.");
+            throw new InvalidOperationException("The Full Trace warning and licence have not been accepted.");
         }
     }
 
@@ -322,6 +317,5 @@ public partial class QueryViewModel : IMcpContextSource, IQueryCommands
                                            string Group,
                                            Func<QueryViewModel, bool> Get,
                                            Action<QueryViewModel, bool> Set,
-                                           Func<QueryViewModel, bool>? IsEnabled = null,
-                                           string? DisabledReason = null);
+                                           Func<QueryViewModel, McpOptionUnavailable>? Unavailable = null);
 }

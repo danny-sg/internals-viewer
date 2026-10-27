@@ -27,6 +27,8 @@ internal sealed class TestDocument : IMcpTab
 
     public DatabaseSource? Database { get; init; }
 
+    public bool IsTraceLoading { get; init; }
+
     public RecordingNavigator Recorded { get; init; } = new();
 
     public Task<TabContext> GetContextAsync(CancellationToken cancellationToken = default)
@@ -37,10 +39,19 @@ internal sealed class TestDocument : IMcpTab
             Database = Database,
             Sql = SqlText,
             Run = Run,
+            IsTraceLoading = IsTraceLoading,
             Selection = Recorded.Selection
         });
 
-    public Task<string> RunAsync<TCommands>(Func<TCommands, Task<string>> command, CancellationToken cancellationToken = default)
+    public Task RunAsync<TCommands>(Func<TCommands, Task> command, CancellationToken cancellationToken = default)
+        where TCommands : class
+        => Recorded is TCommands target
+            ? command(target)
+            : throw new NotSupportedException($"No {typeof(TCommands).Name} commands.");
+
+    public Task<TResult> RunAsync<TCommands, TResult>(
+        Func<TCommands, Task<TResult>> command,
+        CancellationToken cancellationToken = default)
         where TCommands : class
         => Recorded is TCommands target
             ? command(target)

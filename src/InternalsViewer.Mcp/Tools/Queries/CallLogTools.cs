@@ -94,10 +94,7 @@ public sealed class CallLogTools(McpDocumentResolver documents)
                 builder.AppendLine($"signature: {signature.Text}");
             }
 
-            lock (context.CallStoreSync)
-            {
-                WriteCalls(builder, context, store, list, signature?.Layout, thread, wantedValue, fromPosition, toPosition, offset, limit);
-            }
+            WriteCalls(builder, context, store, list, signature?.Layout, thread, wantedValue, fromPosition, toPosition, offset, limit);
         }
 
         return builder.ToString();

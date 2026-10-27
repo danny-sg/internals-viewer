@@ -59,23 +59,15 @@ public sealed class McpDocumentResolver(IMcpTabSource tabs)
                ?? throw new McpException($"Tab {tab.Id} has no {TContext.Area} context.");
     }
 
-    public async Task<string> RunAsync<TCommands>(
-        McpArea area,
-        string? tabId,
-        Func<TCommands, Task<string>> command,
-        CancellationToken cancellationToken)
-        where TCommands : class
+    public async Task<McpAreaSession<TContext>> OpenAsync<TContext>(string? tabId, CancellationToken cancellationToken)
+        where TContext : TabContext, IAreaContext
     {
-        var tab = await ResolveAreaTabAsync(area, tabId, cancellationToken);
+        var tab = await ResolveAreaTabAsync(TContext.Area, tabId, cancellationToken);
 
-        try
-        {
-            return await tab.RunAsync(command, cancellationToken);
-        }
-        catch (Exception exception) when (exception is NotSupportedException or InvalidOperationException or ArgumentException)
-        {
-            throw new McpException(exception.Message);
-        }
+        var context = await tab.GetContextAsync(cancellationToken) as TContext
+                      ?? throw new McpException($"Tab {tab.Id} has no {TContext.Area} context.");
+
+        return new McpAreaSession<TContext>(tab, context);
     }
 
     public async Task<IMcpTab> ResolveAreaTabAsync(McpArea area, string? tabId, CancellationToken cancellationToken)

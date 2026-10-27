@@ -8,21 +8,21 @@ namespace InternalsViewer.Mcp.Interfaces.Commands;
 /// </summary>
 public interface ITraceTimelineCommands
 {
-    Task<string> SetTimelineOptionAsync(string key, bool enabled);
+    Task SetTimelineOptionAsync(string key, bool enabled);
 
-    Task<string> AddTrackAsync(McpTrackRequest request);
+    Task AddTrackAsync(McpTrackRequest request);
 
-    Task<string> SetTrackVisibleAsync(string name, bool isVisible);
+    Task SetTrackVisibleAsync(string name, bool isVisible);
 
-    Task<string> RemoveTracksAsync(string? name);
+    Task<int> RemoveTracksAsync(string? name);
 
-    Task<string> StepAsync(McpStepMode mode, bool forward, int count);
+    Task StepAsync(McpStepMode mode, bool forward, int count);
 
-    Task<string> SearchAsync(string? text);
+    Task SearchAsync(string? text);
 
-    Task<string> StepSearchAsync(bool forward, int count);
+    Task StepSearchAsync(bool forward, int count);
 
-    Task<string> SelectCallAsync(CallStackNode node, int callIndex, bool zoom);
+    Task SelectCallAsync(CallStackNode node, int callIndex, bool zoom);
 
-    Task<string> ZoomAsync(bool toSelection);
+    Task ZoomAsync(bool toSelection);
 }

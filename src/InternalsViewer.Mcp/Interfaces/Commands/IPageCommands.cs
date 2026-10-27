@@ -5,15 +5,15 @@ namespace InternalsViewer.Mcp.Interfaces.Commands;
 
 public interface IPageCommands
 {
-    Task<string> GoToPageAsync(PageAddress address, int? slot);
+    Task GoToPageAsync(PageAddress address, int? slot);
 
-    Task<string> SelectSlotAsync(int slot);
+    Task SelectSlotAsync(int slot);
 
-    Task<string> SelectMarkerAsync(string? name);
+    Task SelectMarkerAsync(string? name);
 
-    Task<string> ScrollToAsync(int offset);
+    Task ScrollToAsync(int offset);
 
-    Task<string> ShowTabAsync(PageViewTab tab);
+    Task ShowTabAsync(PageViewTab tab);
 
-    Task<string> OpenIndexAsync();
+    Task OpenIndexAsync();
 }

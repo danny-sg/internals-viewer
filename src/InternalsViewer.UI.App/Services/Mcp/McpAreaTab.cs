@@ -63,7 +63,18 @@ internal sealed class McpAreaTab(string id,
             return Task.FromResult(true);
         }, cancellationToken);
 
-    public Task<string> RunAsync<TCommands>(Func<TCommands, Task<string>> command, CancellationToken cancellationToken = default)
+    public Task RunAsync<TCommands>(Func<TCommands, Task> command, CancellationToken cancellationToken = default)
+        where TCommands : class
+        => RunAsync<TCommands, bool>(async c =>
+        {
+            await command(c);
+
+            return true;
+        }, cancellationToken);
+
+    public Task<TResult> RunAsync<TCommands, TResult>(
+        Func<TCommands, Task<TResult>> command,
+        CancellationToken cancellationToken = default)
         where TCommands : class
     {
         if (ViewModel is not TCommands commands)

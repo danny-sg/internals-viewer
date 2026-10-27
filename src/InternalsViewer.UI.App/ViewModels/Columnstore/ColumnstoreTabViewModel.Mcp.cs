@@ -69,6 +69,9 @@ public sealed partial class ColumnstoreTabViewModel : IMcpContextSource, IColumn
             MarkerNames = hex is null ? [] : [.. FlattenMarkers(hex.Markers).Select(m => m.Name).Where(n => n.Length > 0)],
             SelectedMarker = marker?.Name,
             SelectedMarkerValue = marker?.Value,
+            SelectedMarkerOffset = marker?.StartPosition,
+            SelectedMarkerLength = marker is null ? null : marker.EndPosition - marker.StartPosition + 1,
+            IsLoaded = IsInitialized,
             SelectedRow = content switch
             {
                 SegmentTabViewModel segment => segment.SelectedRow?.Ordinal,
@@ -78,7 +81,7 @@ public sealed partial class ColumnstoreTabViewModel : IMcpContextSource, IColumn
         };
     }
 
-    public async Task<string> OpenAsync(ColumnstoreItem item, int? rowGroup, int? column, int? dictionary)
+    public async Task OpenAsync(ColumnstoreItem item, int? rowGroup, int? column, int? dictionary)
     {
         RequireInitialized();
 
@@ -87,14 +90,13 @@ public sealed partial class ColumnstoreTabViewModel : IMcpContextSource, IColumn
             case ColumnstoreItem.Segment:
             {
                 var segment = Segments.FirstOrDefault(s => s.RowGroupId == rowGroup && s.ColumnId == column)
-                              ?? throw new InvalidOperationException(
-                                  $"No segment for row group {rowGroup} column {column}. Both are required.");
+                              ?? throw new InvalidOperationException($"No segment for row group {rowGroup} column {column}.");
 
                 OpenSegment(segment);
 
                 await WaitForDocumentAsync();
 
-                return $"Opened {CurrentDocumentViewModel?.Title}.";
+                break;
             }
 
             case ColumnstoreItem.Dictionary:
@@ -109,7 +111,7 @@ public sealed partial class ColumnstoreTabViewModel : IMcpContextSource, IColumn
 
                 await WaitForDocumentAsync();
 
-                return $"Opened {CurrentDocumentViewModel?.Title}.";
+                break;
             }
 
             case ColumnstoreItem.DeltaStore:
@@ -119,24 +121,23 @@ public sealed partial class ColumnstoreTabViewModel : IMcpContextSource, IColumn
 
                 OpenDeltaStore(group);
 
-                return $"Opened {CurrentDocumentViewModel?.Title}.";
+                break;
             }
 
             default:
                 OpenDeleteBitmap();
 
-                return $"Opened {CurrentDocumentViewModel?.Title}.";
+                break;
         }
     }
 
-    public Task<string> ShowDocumentAsync(string name)
+    public Task ShowDocumentAsync(string name)
     {
         var documents = Dock.Groups().SelectMany(g => g.Documents).ToList();
 
         var document = documents.FirstOrDefault(d => string.Equals(d.Title, name, StringComparison.OrdinalIgnoreCase))
                        ?? documents.FirstOrDefault(d => d.Title.Contains(name, StringComparison.OrdinalIgnoreCase))
-                       ?? throw new InvalidOperationException(
-                           $"No open document matches '{name}'. Open: {string.Join(", ", documents.Select(d => d.Title))}.");
+                       ?? throw new InvalidOperationException($"No open document matches '{name}'.");
 
         var group = Dock.Groups().First(g => g.Documents.Contains(document));
 
@@ -144,17 +145,17 @@ public sealed partial class ColumnstoreTabViewModel : IMcpContextSource, IColumn
 
         Dock.NotifySelectionChanged();
 
-        return Task.FromResult($"Showing {document.Title}.");
+        return Task.CompletedTask;
     }
 
-    public Task<string> ShowMetadataTabAsync(ColumnstoreMetadataTab tab)
+    public Task ShowMetadataTabAsync(ColumnstoreMetadataTab tab)
     {
         SelectedMetadataTabIndex = (int)tab;
 
-        return Task.FromResult($"Showing the {tab} list.");
+        return Task.CompletedTask;
     }
 
-    public async Task<string> ShowRegionAsync(string region)
+    public async Task ShowRegionAsync(string region)
     {
         var content = await RequireOpenDocumentAsync();
 
@@ -166,7 +167,7 @@ public sealed partial class ColumnstoreTabViewModel : IMcpContextSource, IColumn
 
                 if (index < 0)
                 {
-                    throw new InvalidOperationException($"No region '{region}'. Regions: {string.Join(", ", SegmentRegionNames)}.");
+                    throw new InvalidOperationException($"No region '{region}'.");
                 }
 
                 if (index < SegmentDataTabIndex)
@@ -176,7 +177,7 @@ public sealed partial class ColumnstoreTabViewModel : IMcpContextSource, IColumn
 
                 segment.SelectedRegionTabIndex = index;
 
-                return $"Showing the {SegmentRegionNames[index]} region.";
+                break;
             }
 
             case DictionaryTabViewModel dictionary:
@@ -185,12 +186,12 @@ public sealed partial class ColumnstoreTabViewModel : IMcpContextSource, IColumn
 
                 if (index < 0)
                 {
-                    throw new InvalidOperationException($"No region '{region}'. Regions: {string.Join(", ", DictionaryRegionNames)}.");
+                    throw new InvalidOperationException($"No region '{region}'.");
                 }
 
                 dictionary.SelectedTabIndex = index;
 
-                return $"Showing the {DictionaryRegionNames[index]} region.";
+                break;
             }
 
             default:
@@ -198,7 +199,7 @@ public sealed partial class ColumnstoreTabViewModel : IMcpContextSource, IColumn
         }
     }
 
-    public async Task<string> SelectMarkerAsync(string? name)
+    public async Task SelectMarkerAsync(string? name)
     {
         var hex = (await RequireOpenDocumentAsync()) switch
         {
@@ -211,22 +212,17 @@ public sealed partial class ColumnstoreTabViewModel : IMcpContextSource, IColumn
         {
             hex.SelectedMarker = null;
 
-            return "Cleared the marker selection.";
+            return;
         }
 
         var markers = FlattenMarkers(hex.Markers).ToList();
 
-        var marker = markers.FirstOrDefault(m => string.Equals(m.Name, name, StringComparison.OrdinalIgnoreCase))
-                     ?? markers.FirstOrDefault(m => m.Name.Contains(name, StringComparison.OrdinalIgnoreCase))
-                     ?? throw new InvalidOperationException(
-                         $"No marker matches '{name}'. Markers: {string.Join(", ", markers.Select(m => m.Name).Take(40))}.");
-
-        hex.SelectedMarker = marker;
-
-        return $"Selected {marker.Name} at offset {marker.StartPosition}, {marker.EndPosition - marker.StartPosition + 1} bytes.";
+        hex.SelectedMarker = markers.FirstOrDefault(m => string.Equals(m.Name, name, StringComparison.OrdinalIgnoreCase))
+                             ?? markers.FirstOrDefault(m => m.Name.Contains(name, StringComparison.OrdinalIgnoreCase))
+                             ?? throw new InvalidOperationException($"No marker matches '{name}'.");
     }
 
-    public async Task<string> SelectRowAsync(int? index)
+    public async Task SelectRowAsync(int? index)
     {
         switch (await RequireOpenDocumentAsync())
         {
@@ -236,19 +232,19 @@ public sealed partial class ColumnstoreTabViewModel : IMcpContextSource, IColumn
                 {
                     segment.SelectRow(null);
 
-                    return "Cleared the row selection.";
+                    return;
                 }
 
                 if (segment.Rows is not { } rows || index < 0 || index >= rows.Count)
                 {
-                    throw new InvalidOperationException($"Row {index} is outside the segment. It has {segment.Rows?.Count ?? 0} rows.");
+                    throw new InvalidOperationException($"Row {index} is outside the segment, which has {segment.Rows?.Count ?? 0} rows.");
                 }
 
                 segment.SelectedRegionTabIndex = SegmentDataTabIndex;
 
                 segment.SelectRow(rows[index.Value]);
 
-                return $"Selected row {index}.";
+                return;
             }
 
             case DictionaryTabViewModel dictionary:
@@ -257,24 +253,24 @@ public sealed partial class ColumnstoreTabViewModel : IMcpContextSource, IColumn
                 {
                     dictionary.SelectedEntryIndex = -1;
 
-                    return "Cleared the entry selection.";
+                    return;
                 }
 
                 if (dictionary.Blob is not { } blob || index < 0 || index >= blob.EntryCount)
                 {
                     throw new InvalidOperationException(
-                        $"Entry {index} is outside the dictionary. It has {dictionary.Blob?.EntryCount ?? 0} entries.");
+                        $"Entry {index} is outside the dictionary, which has {dictionary.Blob?.EntryCount ?? 0} entries.");
                 }
 
                 dictionary.SelectedTabIndex = DictionaryRegionNames.Length - 1;
 
                 dictionary.SelectedEntryIndex = index.Value;
 
-                return $"Selected entry {index}.";
+                return;
             }
 
             default:
-                throw new InvalidOperationException("The current document has no rows. Open a segment or dictionary first.");
+                throw new InvalidOperationException("The current document has no rows.");
         }
     }
 
@@ -305,7 +301,7 @@ public sealed partial class ColumnstoreTabViewModel : IMcpContextSource, IColumn
 
         return CurrentDocumentViewModel?.Content is SegmentTabViewModel or DictionaryTabViewModel
             ? CurrentDocumentViewModel.Content
-            : throw new InvalidOperationException("The current document is not a segment or dictionary. Use columnstore_open first.");
+            : throw new InvalidOperationException("The current document is not a segment or dictionary.");
     }
 
     private async Task WaitForDocumentAsync()

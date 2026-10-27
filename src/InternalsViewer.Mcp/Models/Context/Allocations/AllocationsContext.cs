@@ -1,4 +1,3 @@
-using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Allocation;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Mcp.Tabs;
@@ -32,6 +31,4 @@ public sealed record AllocationsContext : TabContext, IAreaContext
     public IReadOnlyDictionary<int, AllocationChain> Dcm { get; init; } = new Dictionary<int, AllocationChain>();
 
     public IReadOnlyDictionary<int, AllocationChain> Bcm { get; init; } = new Dictionary<int, AllocationChain>();
-
-    public Func<PageAddress, AllocationUnit?> FindOwner { get; init; } = _ => null;
 }
