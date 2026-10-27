@@ -72,15 +72,19 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, IDispo
         }
     }
 
+    public TracePosition? Playhead { get; private set; }
+
+    public TraceViewRange? ViewRange => Chart?.GetViewRange();
+
     private QueryViewModel Query { get; }
 
     private DocumentViewModel CallStackDocument { get; }
 
     private List<DocumentViewModel> MemoryDocuments { get; } = [];
 
-    private TracePosition? Playhead { get; set; }
-
     public void ShowCallStack() => IsCallStackVisible = true;
+
+    public void RequestPlayhead(TracePoint point) => PlayheadRequested?.Invoke(this, point);
 
     public void OpenMemory(int block, ulong address, TracePosition position, int length = 1)
     {

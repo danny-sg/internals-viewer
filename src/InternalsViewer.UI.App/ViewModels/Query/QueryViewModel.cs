@@ -661,6 +661,29 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
+    public QueryExportContent? CurrentRun => LastRun;
+
+    public Func<(long StartUs, long EndUs)?>? VisibleTimeRangeSource { get; set; }
+
+    public List<(PageTabViewModel Page, bool IsActive)> GetOpenPages()
+    {
+        var pages = new List<(PageTabViewModel Page, bool IsActive)>();
+
+        foreach (var (key, page) in _openPages)
+        {
+            if (!Layout.TryGetDocument(key, out var document))
+            {
+                continue;
+            }
+
+            var isActive = Layout.Dock.FindGroup(document) is { } group && ReferenceEquals(group.SelectedDocument, document);
+
+            pages.Add((page, isActive));
+        }
+
+        return pages;
+    }
+
     public bool ShowTraceTimelineHint => TraceTimeline is null && !IsTraceLoading;
 
     private IBufferPoolInfoProvider BufferPoolInfoProvider { get; }

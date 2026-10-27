@@ -17,6 +17,8 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="$(AssemblyName).Tests" />
+        <InternalsVisibleTo Include="InternalsViewer.Mcp" />
+        <InternalsVisibleTo Include="InternalsViewer.Mcp.Tests" />
     </ItemGroup>
 
 </Project>

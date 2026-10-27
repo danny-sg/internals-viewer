@@ -56,6 +56,16 @@ public sealed partial class EventTimelineControl
     private double XToTime(double x)
         => _minTime + (Math.Max(0, x - BandLabelWidth) + _scrollX) / ContentWidth * _timeRange;
 
+    public (long StartUs, long EndUs)? GetVisibleTimeRange()
+    {
+        if (_timeRange <= 0 || ContentWidth <= 0)
+        {
+            return null;
+        }
+
+        return (ToUs(XToTime(BandLabelWidth)), ToUs(XToTime(CanvasWidth)));
+    }
+
     private void EnsurePlayheadVisible()
     {
         if (MaxScroll <= 0)

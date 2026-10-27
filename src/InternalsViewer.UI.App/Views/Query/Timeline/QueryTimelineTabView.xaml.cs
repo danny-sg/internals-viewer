@@ -44,6 +44,8 @@ public sealed partial class QueryTimelineTabView : UserControl, IDocumentCommand
 
         EventTimeline.ResolveStructure =
             page => ColumnstoreStructureText.Describe(cache.GetPageReads(viewModel.Database, page));
+
+        viewModel.VisibleTimeRangeSource = EventTimeline.GetVisibleTimeRange;
     }
 
     public QueryViewModel? ViewModel => DataContext as QueryViewModel;
@@ -55,6 +57,11 @@ public sealed partial class QueryTimelineTabView : UserControl, IDocumentCommand
         // x:Bind listens to the view model, which outlives the view, so the view stays rooted until
         // tracking stops
         Bindings.StopTracking();
+
+        if (ViewModel is { } viewModel && viewModel.VisibleTimeRangeSource == EventTimeline.GetVisibleTimeRange)
+        {
+            viewModel.VisibleTimeRangeSource = null;
+        }
 
         EventTimeline.ScopeChanged -= OnScopeChanged;
         EventTimeline.PlayheadTimeChanged -= OnPlayheadTimeChanged;

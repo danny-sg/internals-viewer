@@ -109,7 +109,9 @@ public sealed class SettingsService
         {
             try
             {
-                return JsonSerializer.Deserialize<T>((string)value);
+                var json = value is JsonElement element ? element.GetString() : value as string;
+
+                return json is null ? default : JsonSerializer.Deserialize<T>(json);
             }
             catch (JsonException ex)
             {

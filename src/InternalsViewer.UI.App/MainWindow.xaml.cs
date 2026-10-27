@@ -422,6 +422,19 @@ public sealed partial class MainWindow
         return true;
     }
 
+    internal IEnumerable<(QueryViewModel ViewModel, bool IsActive)> GetQueryViewModels()
+    {
+        var selected = (WindowTabView.SelectedItem as TabViewItem)?.Tag;
+
+        foreach (var child in TabContentHost.Children)
+        {
+            if (child is QueryView { DataContext: QueryViewModel viewModel })
+            {
+                yield return (viewModel, ReferenceEquals(child, selected));
+            }
+        }
+    }
+
     private void BindTabTitle(TabViewModel viewModel, TabViewItem tab)
     {
         var titleBinding = new Binding { Mode = BindingMode.OneWay };

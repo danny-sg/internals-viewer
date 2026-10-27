@@ -8,6 +8,16 @@
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     mc:Ignorable="d"
     Background="Transparent">
+    <Page.Resources>
+        <Style x:Key="SettingsSectionHeaderTextBlockStyle"
+               BasedOn="{StaticResource BodyStrongTextBlockStyle}"
+               TargetType="TextBlock">
+            <Style.Setters>
+                <Setter Property="Margin" Value="20,30,0,6" />
+            </Style.Setters>
+        </Style>
+
+    </Page.Resources>
     <StackPanel Padding="20" Spacing="12">
 
         <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}">Settings</TextBlock>
@@ -17,7 +27,7 @@
                                    Description="Settings for query tracing">
             <controls:SettingsExpander.ItemsHeader>
                 <StackPanel>
-                    <InfoBar IsOpen="True"
+                    <InfoBar IsOpen="False"
                          Severity="Warning"
                          IsClosable="False"
                          BorderThickness="0"
@@ -95,12 +105,6 @@
                                 VerticalAlignment="Center"/>
                     </StackPanel>
                 </controls:SettingsCard>
-            </controls:SettingsExpander.Items>
-        </controls:SettingsExpander>
-
-        <controls:SettingsExpander Header="Full Trace"
-                                   Description="Recording SQL Server with Time Travel Debugging">
-            <controls:SettingsExpander.Items>
                 <controls:SettingsCard Header="WinDbg Path"
                                        Description="WinDbg installation that provides the Time Travel Debugging recorder. Leave blank to use the Microsoft Store WinDbg or the Debugging Tools for Windows">
                     <TextBox Text="{x:Bind ViewModel.WinDbgPath, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
@@ -114,8 +118,43 @@
             </controls:SettingsExpander.Items>
         </controls:SettingsExpander>
 
-        <controls:SettingsCard Header="Diagnostic log"
-                               Description="Activity log from the internals loading pipeline">
+        <controls:SettingsExpander x:Name="McpServerExpander"
+                                   Header="MCP Server"
+                                   Description="MCP (Model Context Protocol) settings for AI agent integration">
+            <controls:SettingsExpander.ItemsHeader>
+                <InfoBar IsOpen="True"
+                         Severity="Informational"
+                         IsClosable="False"
+                         BorderThickness="0"
+                         CornerRadius="0"
+                         Message="{x:Bind ViewModel.McpServerStatus, Mode=OneWay}" />
+            </controls:SettingsExpander.ItemsHeader>
+            <controls:SettingsExpander.Items>
+                <controls:SettingsCard Header="Enable Server"
+                                       Description="Listen for MCP clients on this machine only (127.0.0.1)">
+                    <ToggleSwitch IsOn="{x:Bind ViewModel.McpServerEnabled, Mode=TwoWay}"/>
+                </controls:SettingsCard>
+                <controls:SettingsCard Header="Port"
+                                       Description="Local port the server listens on">
+                    <NumberBox Value="{x:Bind ViewModel.McpServerPort, Mode=TwoWay}"
+                               Minimum="1024"
+                               Maximum="65535"
+                               SpinButtonPlacementMode="Compact"
+                               HorizontalAlignment="Right"
+                               MinWidth="150"/>
+                </controls:SettingsCard>
+                <controls:SettingsCard Header="Access Token"
+                                       Description="Clients send a bearer token that is stored encrypted for the current Windows user and never shown. Registered clients are updated when it is regenerated">
+                    <Button Content="Regenerate" Command="{x:Bind ViewModel.RegenerateMcpTokenCommand}"/>
+                </controls:SettingsCard>
+                <TextBlock Style="{StaticResource SettingsSectionHeaderTextBlockStyle}"
+                           Text="Clients" />
+
+            </controls:SettingsExpander.Items>
+        </controls:SettingsExpander>
+
+        <controls:SettingsCard Header="Logging"
+                               Description="Application diagnostic logs">
             <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
                 <Button x:Name="ClearLogButton" Content="Clear Log" Click="ClearLogButton_Click"/>
                 <Button x:Name="OpenLogButton" Content="Open Log" Click="OpenLogButton_Click"
