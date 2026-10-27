@@ -32,8 +32,6 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
     private const int DebounceMilliseconds = 120;
 
-    private const string ToolTipTitle = "Memory";
-
     private static readonly SKColor PaneColour = new(30, 30, 30, 220);
 
     private static readonly SKColor LifetimeColour = new(90, 90, 90, 120);
@@ -221,11 +219,11 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
         return writers;
     }
 
-    public string? GetToolTip(TraceMemoryHit? hit, Point position)
+    public string? GetToolTip(TraceMemoryHit? hit)
     {
         if (hit is not { } found || found.Block >= Blocks.Count)
         {
-            return Contains(position) ? ToolTipTitle : null;
+            return null;
         }
 
         var block = Blocks[found.Block];

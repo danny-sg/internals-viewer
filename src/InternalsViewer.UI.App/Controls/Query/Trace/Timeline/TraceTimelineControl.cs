@@ -241,6 +241,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     private readonly Dictionary<FlameHit, MemoryInUseCurve> _inUseCurves = [];
 
+    private (TraceTimeline Timeline, MemoryIndex Memory, InstanceMemoryCurves Curves)? _instanceCurves;
+
     private TraceTimeline? _timeline;
 
     private CallStackNode? _highlightedNode;

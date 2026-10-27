@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
+using InternalsViewer.UI.App.Helpers;
 using SkiaSharp;
 
 namespace InternalsViewer.UI.App.Controls.Query.Trace.Timeline;
@@ -200,18 +201,9 @@ public sealed partial class TraceTimelineControl
     }
 
     private string PlayheadLabel(double value)
-    {
-        var relative = value - OriginOf(_axis);
-
-        if (_axis != TraceTimelineAxis.Position || _timeline is not { } timeline)
-        {
-            return $"{relative}";
-        }
-
-        var sequence = Math.Floor(relative);
-
-        return $"{sequence}:{Math.Round((relative - sequence) / timeline.Scale.GetStep(_axis))}";
-    }
+        => _axis == TraceTimelineAxis.Position
+            ? TracePositionText.GetHexText(TraceScale.GetPosition(value))
+            : $"{value - OriginOf(_axis)}";
 
     private static SKPath PlayheadTriangle()
     {

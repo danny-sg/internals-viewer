@@ -79,7 +79,9 @@
 
     <Style x:Key="FilterTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource DefaultTextBoxStyle}">
         <Setter Property="FontSize" Value="12" />
-        <Setter Property="Padding" Value="10,8,0,0" />
+        <Setter Property="Height" Value="28" />
+        <Setter Property="MinHeight" Value="28" />
+        <Setter Property="Padding" Value="10,5,0,0" />
         <Setter Property="CornerRadius" Value="0" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />

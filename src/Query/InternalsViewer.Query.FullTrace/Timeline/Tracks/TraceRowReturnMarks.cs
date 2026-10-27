@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Helpers;
@@ -19,6 +20,10 @@ public sealed class TraceRowReturnMarks
     private const uint FakeRowStatus = 0x4FFFF;
 
     private const string FilterOperator = "Filter";
+
+    private const string HashClass = "CQScanHash";
+
+    private const string ConsumeBuildMethod = "ConsumeBuild";
 
     private static readonly int TypeCount = Enum.GetValues<RowReturnType>().Length;
 
@@ -79,6 +84,8 @@ public sealed class TraceRowReturnMarks
 
         var batchOperators = new HashSet<ExecutionOperatorEvent>(ReferenceEqualityComparer.Instance);
 
+        var buildInputs = new Dictionary<CallStackNode, bool>(ReferenceEqualityComparer.Instance);
+
         foreach (var group in groups)
         {
             var operatorEvent = owners[group.InstanceAddress];
@@ -98,8 +105,12 @@ public sealed class TraceRowReturnMarks
 
                 var parent = enclosing == 0 ? null : groupsByInstance.GetValueOrDefault((enclosing, group.Thread));
 
-                if (GetReturnType(group, index, parent, caller?.Name == FilterOperator) is not { } type
-                    || timeline.FindCall(call.FunctionAddress, group.InstanceAddress, call.CallIndex) is not { } location)
+                if (timeline.FindCall(call.FunctionAddress, group.InstanceAddress, call.CallIndex) is not { } location
+                    || GetReturnType(group,
+                                     index,
+                                     parent,
+                                     caller?.Name == FilterOperator,
+                                     IsBuildInput(location.Node, enclosing, buildInputs)) is not { } type)
                 {
                     continue;
                 }
@@ -198,16 +209,43 @@ public sealed class TraceRowReturnMarks
         }
     }
 
-    private static RowReturnType? GetReturnType(CallGroup group, int index, CallGroup? parent, bool isFiltered)
+    private static RowReturnType? GetReturnType(CallGroup group, int index, CallGroup? parent, bool isFiltered, bool isBuildInput)
         => group.Calls[index].Status switch
         {
             null => null,
-            RowStatus when parent is null || IsPassedUp(group, index, parent) => RowReturnType.Returned,
+            RowStatus when parent is null || isBuildInput || IsPassedUp(group, index, parent) => RowReturnType.Returned,
             RowStatus => isFiltered ? RowReturnType.Rejected : RowReturnType.Skipped,
             EndStatus => RowReturnType.End,
             FakeRowStatus => RowReturnType.FakeRow,
             _ => RowReturnType.Other
         };
+
+    private static bool IsBuildInput(CallStackNode node, ulong caller, Dictionary<CallStackNode, bool> known)
+    {
+        if (caller == 0)
+        {
+            return false;
+        }
+
+        if (known.TryGetValue(node, out var isBuildInput))
+        {
+            return isBuildInput;
+        }
+
+        for (var ancestor = node.Parent; ancestor?.Frame is { } frame && frame.InstanceAddress != caller; ancestor = ancestor.Parent)
+        {
+            if (frame.Resolved is { ClassName: HashClass, MethodName: ConsumeBuildMethod })
+            {
+                isBuildInput = true;
+
+                break;
+            }
+        }
+
+        known[node] = isBuildInput;
+
+        return isBuildInput;
+    }
 
     private static bool IsPassedUp(CallGroup group, int index, CallGroup parent)
     {

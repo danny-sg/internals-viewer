@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using SkiaSharp;
@@ -344,7 +345,10 @@ public sealed partial class TraceTimelineControl
     {
         if (!_inUseCurves.TryGetValue(source, out var curve))
         {
-            curve = Memory.InUseWithin(threadId, row.GetFrom(source.Index).Position, row.GetTo(source.Index).Position);
+            var node = timeline.NodeOf(row.GetCallNodeIndex(source.Index));
+
+            curve = (node is null ? null : GetInstanceCurves(timeline).GetCurve(threadId, node))
+                    ?? Memory.InUseWithin(threadId, row.GetFrom(source.Index).Position, row.GetTo(source.Index).Position);
 
             _inUseCurves[source] = curve;
         }
@@ -378,6 +382,20 @@ public sealed partial class TraceTimelineControl
         }
 
         FinishSurface(first);
+    }
+
+    private InstanceMemoryCurves GetInstanceCurves(TraceTimeline timeline)
+    {
+        var owner = Overview ?? timeline;
+
+        if (_instanceCurves is not { } cached || !ReferenceEquals(cached.Timeline, owner) || !ReferenceEquals(cached.Memory, Memory))
+        {
+            cached = (owner, Memory, InstanceMemoryCurves.Build(owner, Memory));
+
+            _instanceCurves = cached;
+        }
+
+        return cached.Curves;
     }
 
     private void FinishSurface(int first)

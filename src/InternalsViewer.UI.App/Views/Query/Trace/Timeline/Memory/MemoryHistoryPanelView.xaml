@@ -23,14 +23,14 @@
             </Grid.ColumnDefinitions>
 
             <TextBox Grid.Column="0"
-                     Margin="0,2,0,2"
+                     Margin="0,4,0,4"
                      VerticalAlignment="Center"
                      PlaceholderText="Function"
                      Style="{StaticResource FilterTextBoxStyle}"
                      Text="{x:Bind ViewModel.Writes.FunctionFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
             <TextBox Grid.Column="1"
-                     Margin="0,2,0,2"
+                     Margin="0,4,0,4"
                      VerticalAlignment="Center"
                      PlaceholderText="Address"
                      FontFamily="{StaticResource MonospaceFontFamily}"

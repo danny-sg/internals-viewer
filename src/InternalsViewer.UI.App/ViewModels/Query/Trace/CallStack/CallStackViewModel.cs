@@ -148,7 +148,9 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
     {
         if (part is { IsMemoryTracked: true, Value: { } address })
         {
-            Query.TraceTimelineTab.OpenMemory(part.MemoryBlock, address, row.FromPosition);
+            var position = ReferenceEquals(part, row.Return) ? row.ToPosition : row.FromPosition;
+
+            Query.TraceTimelineTab.OpenMemory(part.MemoryBlock, address, position);
         }
     }
 
@@ -317,15 +319,34 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
         return threads;
     }
 
-    private void SetMemoryBlocks(CallSignature signature, TracePosition position)
+    private void SetMemoryBlocks(CallSignature signature, TracePosition from, TracePosition to)
     {
         foreach (var part in signature.Parts.Append(signature.This))
         {
-            if (part is { Kind: CallSignaturePartKind.Value, Value: { } value and not 0 })
+            if (!ReferenceEquals(part, signature.Return))
             {
-                part.MemoryBlock = Query.MemoryHistory.GetBlock(value, position);
+                SetMemoryBlock(part, from);
             }
         }
+
+        if (to.IsKnown)
+        {
+            SetMemoryBlock(signature.Return, to);
+        }
+    }
+
+    private void SetMemoryBlock(CallSignaturePart? part, TracePosition position)
+    {
+        if (part is not { Kind: CallSignaturePartKind.Value, Value: { } value and not 0 })
+        {
+            return;
+        }
+
+        part.MemoryBlock = Query.MemoryHistory.GetBlock(value, position);
+
+        part.MemoryTarget = part is { IsMemoryTracked: true, DecodedString: null }
+            ? Query.MemoryHistory.GetPointerTarget(value, position)
+            : null;
     }
 
     private async Task<PlayheadCallRow> BuildRowAsync(CallStackNode node, TraceSpan call, uint thread, bool isCurrent, ulong origin)
@@ -342,7 +363,7 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
 
         if (ShowsMemory && from.IsKnown)
         {
-            SetMemoryBlocks(signature, from);
+            SetMemoryBlocks(signature, from, to);
         }
 
         return new PlayheadCallRow(node, call, signature, from, to, thread, isCurrent, origin)

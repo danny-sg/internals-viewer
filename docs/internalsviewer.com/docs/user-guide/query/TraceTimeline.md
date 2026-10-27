@@ -110,7 +110,7 @@ The filter button beside the **Search** toggle opens the same category badges as
 
 **Operators** on the tab strip adds a pane above the threads, with a row per plan operator in the same order and colours as the Timeline's Plan band. A Batch To Row adapter between batch and row mode operators is grey. Each row runs from the operator's first call to its last. The stretches where one of its methods was on the stack are drawn in full colour and the rest shaded, and an operator that ran on several threads gets a track per thread. Either side of that, a fainter bar shows how long the operator's iterator existed. It starts at the iterator's constructor, or for a batch mode operator the call that built it, and ends with the query's `CQueryScan::DestroyQuery`, where SQL Server frees all of a query's iterators together. When the recording started after an iterator was built, or stopped before the query was torn down, the fainter bar runs to the edge of the recording.
 
-The top row is the statement, such as **SELECT**, in grey. Its **GetRow Returns** strip has a tick for each call the statement made to the plan's top operator, with a line down to it, so its **Passed Up** ticks are the rows the query returned.
+The top row is the statement, such as **SELECT**, in grey. Its **GetRow Returns** strip has a tick for each call the statement made to the plan's top operator, with a line down to it, so its **Returned** ticks are the rows the query returned.
 
 This shows something the lanes cannot. An operator is only on a thread's stack while one of its methods runs, so a Hash Match sits beside its scans in the lanes rather than above them - but its iterator object exists from the moment it is built until the query is torn down, and does its work from its first call to its last. The Operators pane draws both.
 
@@ -156,7 +156,7 @@ The same function can be added more than once, such as one track for `GetRow` ca
 
 ### GetRow returns
 
-A tick is a call to the operator's `GetRow`, or `BpGetNextBatch` for a batch mode operator. It ends at the return and is coloured by what happened to the row. **Passed Up** rows went on to the operator that asked for them. **Skipped** rows were taken by the operator that asked for them without it returning a row before it asked again, such as the rows a Stream Aggregate folds into a group or the build input of a Hash Match. **Rejected** rows failed a Filter. **End** is the call that reported there were no more rows.
+A tick is a call to the operator's `GetRow`, or `BpGetNextBatch` for a batch mode operator. It ends at the return and is coloured by what happened to the row. **Returned** rows went on to the operator that asked for them, including the rows a Hash Match reads into its hash table while it builds. **Skipped** rows were taken by the operator that asked for them without it returning a row before it asked again, such as the rows a Stream Aggregate folds into a group. **Rejected** rows failed a Filter. **End** is the call that reported there were no more rows.
 
 A line runs from each call up to the operator that made it. The dotted line is the call, in the track's colour. The solid line is the return, in the colour of the call's marker, and meets the marker's edge. The lines are drawn only once the calls are wide enough to tell apart.
 

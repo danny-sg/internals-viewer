@@ -61,6 +61,10 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
 
     public static string ArgumentLabel(string? label, string? location) => label ?? location ?? string.Empty;
 
+    public static Visibility GetTargetVisibility(string? target) => GetVisibility(target is not null);
+
+    public static Visibility GetChipVisibility(bool isTracked, string? target) => GetVisibility(isTracked && target is null);
+
     public void FindReferences(ulong value) => ViewModel?.FindReferences(value);
 
     public void Dispose()
@@ -76,7 +80,11 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
 
     private Visibility IsVisible(object? value) => GetVisibility(value is not null);
 
-    private Visibility IsMemoryVisible(CallSignaturePart? part) => GetVisibility(part is { IsMemoryTracked: true });
+    private Visibility IsMemoryVisible(CallSignaturePart? part) => GetVisibility(part is { IsMemoryTracked: true, MemoryTarget: null });
+
+    private Visibility IsTargetVisible(CallSignaturePart? part) => GetVisibility(part?.MemoryTarget is not null);
+
+    private string TargetText(CallSignaturePart? part) => part?.MemoryTarget ?? string.Empty;
 
     private Visibility IsEmpty(IReadOnlyList<PlayheadThreadRow>? threads) => GetVisibility(threads is not { Count: > 0 });
 
@@ -100,10 +108,14 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
     private Brush? CategoryBrush(PlayheadCallRow? row) => row is null ? null : HexColorToBrushConverter.ToBrush(row.Node.CategoryColour);
 
     private string ThisText(PlayheadCallRow? row)
-        => row?.This is { } self ? (self.Decoded is { } decoded && decoded != self.Text ? $"{self.Text}  {decoded}" : self.Text) : "None";
+        => row?.This is { } self
+            ? self.MemoryTarget is null && self.Decoded is { } decoded && decoded != self.Text ? $"{self.Text}  {decoded}" : self.Text
+            : "None";
 
     private string ReturnText(PlayheadCallRow? row)
-        => row?.Return is { } returned ? $"{returned.TypeName} {returned.GetText(Settings.DecodeValues)}".Trim() : "None";
+        => row?.Return is { } returned
+            ? $"{returned.TypeName} {returned.GetText(Settings.DecodeValues && returned.MemoryTarget is null)}".Trim()
+            : "None";
 
     private void OnViewModelChanged()
     {

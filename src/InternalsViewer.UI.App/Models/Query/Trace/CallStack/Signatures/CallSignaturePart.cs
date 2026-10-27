@@ -47,6 +47,8 @@ public sealed class CallSignaturePart(string text,
 
     public int MemoryBlock { get; set; } = -1;
 
+    public string? MemoryTarget { get; set; }
+
     public bool IsMemoryTracked => MemoryBlock >= 0;
 
     public bool IsThis => Label == ThisLabel;

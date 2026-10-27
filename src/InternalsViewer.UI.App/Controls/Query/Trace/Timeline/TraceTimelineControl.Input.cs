@@ -368,7 +368,7 @@ public sealed partial class TraceTimelineControl
 
         if (ShowsMemory && _memory.Contains(position))
         {
-            if (_memory.GetToolTip(memoryHover, position) is { } memoryText)
+            if (_memory.GetToolTip(memoryHover) is { } memoryText)
             {
                 OpenToolTip(memoryText, position);
             }

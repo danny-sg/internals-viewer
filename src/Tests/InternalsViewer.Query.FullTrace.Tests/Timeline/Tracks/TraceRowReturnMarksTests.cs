@@ -88,6 +88,17 @@ public class TraceRowReturnMarksTests
     }
 
     [Fact]
+    public void Rows_A_Hash_Match_Reads_While_Building_Are_Returned()
+    {
+        var marks = Build([(10, 100, RowStatus), (110, 120, RowStatus), (130, 140, EndStatus)],
+                          [(12, 15, RowStatus), (20, 25, RowStatus), (30, 35, EndStatus)],
+                          isHashBuild: true);
+
+        Assert.Equal((2, 0),
+                     (marks.GetCount(Scan, Thread, RowReturnType.Returned), marks.GetCount(Scan, Thread, RowReturnType.Skipped)));
+    }
+
+    [Fact]
     public void Rows_A_Filter_Reads_Without_Returning_Are_Rejected()
     {
         var filter = new ExecutionOperatorEvent
@@ -170,7 +181,8 @@ public class TraceRowReturnMarksTests
                                              (ulong Start, ulong End, ulong Status)[] scanCalls,
                                              ExecutionOperatorEvent? top = null,
                                              string childMethod = "GetRowOrReQualifyHelper",
-                                             (ulong Start, ulong End)[]? joinOpens = null)
+                                             (ulong Start, ulong End)[]? joinOpens = null,
+                                             bool isHashBuild = false)
     {
         CallSpan[] spans = [.. joinCalls.Select((c, i) => Span(0, c.Start, c.End, (uint)i)),
                             .. scanCalls.Select((c, i) => Span(1, c.Start, c.End, (uint)i))];
@@ -185,7 +197,9 @@ public class TraceRowReturnMarksTests
 
         var join = tree.AddCall(tree.Root, Frame(JoinIterator), 1);
 
-        var scan = tree.AddCall(join, Frame(ScanIterator, childMethod), 1);
+        var reader = isHashBuild ? tree.AddCall(join, ConsumeBuild(), 1) : join;
+
+        var scan = tree.AddCall(reader, Frame(ScanIterator, childMethod), 1);
 
         CallStackNode[] nodes = [join, scan];
 
@@ -234,6 +248,19 @@ public class TraceRowReturnMarksTests
         {
             ClassName = "CQScanNew",
             MethodName = method,
+            SymbolCategory = SymbolCategory.Unknown
+        }
+    };
+
+    private static CallstackFrame ConsumeBuild() => new()
+    {
+        Module = "sqlmin",
+        Rva = 0x20,
+        Address = 0x1200,
+        Resolved = new ResolvedCallstackFrame
+        {
+            ClassName = "CQScanHash",
+            MethodName = "ConsumeBuild",
             SymbolCategory = SymbolCategory.Unknown
         }
     };
