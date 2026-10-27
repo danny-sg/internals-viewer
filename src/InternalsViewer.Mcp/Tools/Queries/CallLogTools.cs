@@ -2,7 +2,9 @@ using System.ComponentModel;
 using System.Text;
 using InternalsViewer.Mcp.Documents;
 using InternalsViewer.Mcp.Formatting;
+using InternalsViewer.Mcp.Models.Context.Queries;
 using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using ModelContextProtocol.Server;
 
@@ -16,8 +18,8 @@ public sealed class CallLogTools(McpDocumentResolver documents)
     private McpDocumentResolver Documents { get; } = documents;
 
     [McpServerTool(Name = "query_calls", ReadOnly = true)]
-    [Description("Full Trace call log: the functions logged with their call counts, or the calls of one function with their register " +
-                 "arguments, return values and the pages and rows they touched")]
+    [Description("Full Trace call log: the functions logged with their call counts, or the calls of one function with their " +
+                 "arguments numbered from 1 with their types, the return value and the pages and rows they touched")]
     public async Task<string> Calls([Description("Regex to filter the function list")] string? grep = null,
                                     [Description("Regex naming the function whose calls to dump; omitted lists the logged functions")]
                                     string? function = null,
@@ -59,7 +61,7 @@ public sealed class CallLogTools(McpDocumentResolver documents)
         {
             var wanted = Parse.Hex(instance);
 
-            keys = keys.Where(k => k.InstanceAddress == wanted).ToList();
+            keys = [.. keys.Where(k => k.InstanceAddress == wanted)];
         }
 
         if (keys.Count == 0)
@@ -80,18 +82,48 @@ public sealed class CallLogTools(McpDocumentResolver documents)
 
             var name = context.GetFunctionName(key.FunctionAddress, key.InstanceAddress);
 
+            var signature = await ResolveSignatureAsync(scope, context, key.FunctionAddress, key.InstanceAddress);
+
             builder.AppendLine();
 
             builder.AppendLine($"{name} address {Format.Hex(key.FunctionAddress)} instance {Format.Hex(key.InstanceAddress)}: " +
                                $"{Format.Number(list.Count)} calls");
 
+            if (signature is { Text.Length: > 0 })
+            {
+                builder.AppendLine($"signature: {signature.Text}");
+            }
+
             lock (context.CallStoreSync)
             {
-                WriteCalls(builder, context, store, list, thread, wantedValue, fromPosition, toPosition, offset, limit);
+                WriteCalls(builder, context, store, list, signature?.Layout, thread, wantedValue, fromPosition, toPosition, offset, limit);
             }
         }
 
         return builder.ToString();
+    }
+
+    private static async Task<McpFunctionSignature?> ResolveSignatureAsync(McpDocumentScope scope,
+                                                                          DocumentContext context,
+                                                                          ulong functionAddress,
+                                                                          ulong instanceAddress)
+    {
+        if (context.GetFrame(functionAddress, instanceAddress) is not { } frame)
+        {
+            return null;
+        }
+
+        McpFunctionSignature? signature = null;
+
+        try
+        {
+            await scope.RunAsync(async c => signature = await c.ResolveSignatureAsync(frame), CancellationToken.None);
+        }
+        catch (ModelContextProtocol.McpException)
+        {
+        }
+
+        return signature;
     }
 
     private static void WriteFunctions(StringBuilder builder, DocumentContext context, TraceCallStore store, string? grep, int limit)
@@ -137,6 +169,7 @@ public sealed class CallLogTools(McpDocumentResolver documents)
                                    DocumentContext context,
                                    TraceCallStore store,
                                    TraceCallList list,
+                                   ArgumentLayout? layout,
                                    uint? thread,
                                    ulong? wantedValue,
                                    TracePosition? fromPosition,
@@ -172,18 +205,32 @@ public sealed class CallLogTools(McpDocumentResolver documents)
 
             var where = store.GetNode(call) is { } node ? context.GetFunctionName(node) : $"raw node {call.CallNodeIndex}";
 
-            var returned = call.Returned ? $" RAX={Format.Hex(call.ReturnValue)}" : " (no return)";
-
             var positions = $"{Format.Position(call.FromPosition)} to {Format.Position(call.ToPosition)}";
 
-            var registers = $"RCX={Format.Hex(call.Slot(0))} RDX={Format.Hex(call.Slot(1))} " +
-                            $"R8={Format.Hex(call.Slot(2))} R9={Format.Hex(call.Slot(3))}";
-
-            builder.AppendLine($"  #{index} thread {call.ThreadId} {positions} {registers}{returned}  in {where}");
-
-            foreach (var locator in call.Locators)
+            if (layout is null)
             {
-                builder.AppendLine($"      {Format.Locator(locator)}");
+                var returned = call.Returned ? $" RAX={Format.Hex(call.ReturnValue)}" : " (no return)";
+
+                var registers = $"RCX={Format.Hex(call.Slot(0))} RDX={Format.Hex(call.Slot(1))} " +
+                                $"R8={Format.Hex(call.Slot(2))} R9={Format.Hex(call.Slot(3))}";
+
+                builder.AppendLine($"  #{index} thread {call.ThreadId} {positions} {registers}{returned}  in {where}");
+
+                foreach (var locator in call.Locators)
+                {
+                    builder.AppendLine($"      {Format.Locator(locator)}");
+                }
+            }
+            else
+            {
+                var returned = call.Returned ? string.Empty : " (no return)";
+
+                builder.AppendLine($"  #{index} thread {call.ThreadId} {positions}{returned}  in {where}");
+
+                foreach (var argument in Format.Arguments(layout, call))
+                {
+                    builder.AppendLine($"      {argument}");
+                }
             }
 
             shown++;

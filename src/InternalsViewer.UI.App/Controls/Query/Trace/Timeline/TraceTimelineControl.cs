@@ -526,6 +526,33 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     public CallReference? GetSelectedCall() => GetCallReference(_selected);
 
+    public bool SelectCall(CallStackNode node, int callIndex, bool zoom)
+    {
+        if (_visible is not { } timeline || FindCall(timeline, node, callIndex) is not { } hit)
+        {
+            return false;
+        }
+
+        if (zoom)
+        {
+            ZoomToCall(node, callIndex);
+        }
+
+        StopPlay();
+
+        SetSelected(hit);
+
+        _highlightedNode = node;
+
+        FindNodeMatches(node);
+
+        BringIntoView(hit);
+
+        Redraw();
+
+        return true;
+    }
+
     public void SelectAdjacentCall(bool forward)
     {
         if (_selected is { } hit

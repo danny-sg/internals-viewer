@@ -56,6 +56,11 @@ public sealed class DocumentContext
 
     public string GetFunctionName(int nodeId) => Nodes.GetNode(nodeId) is { } node ? GetFunctionName(node) : $"node {nodeId}";
 
+    public CallstackFrame? GetFrame(ulong functionAddress, ulong instanceAddress)
+        => Nodes.GetNodes().Select(n => n.Frame)
+                .FirstOrDefault(f => f is not null && f.Address == functionAddress && f.InstanceAddress == instanceAddress)
+           ?? Nodes.GetNodes().Select(n => n.Frame).FirstOrDefault(f => f is not null && f.Address == functionAddress);
+
     public string GetFunctionName(ulong functionAddress, ulong instanceAddress)
     {
         Functions ??= new Lazy<FunctionNames>(() => new FunctionNames(this));

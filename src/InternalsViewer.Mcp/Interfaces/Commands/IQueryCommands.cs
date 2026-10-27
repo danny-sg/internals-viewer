@@ -1,4 +1,5 @@
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Mcp.Models.Context.Queries;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.FullTrace;
@@ -22,6 +23,8 @@ public interface IQueryCommands
     Task SetPlayheadAsync(TracePosition position);
 
     Task ShowMemoryAsync(int block, ulong address, TracePosition position);
+
+    Task<McpFunctionSignature?> ResolveSignatureAsync(CallstackFrame frame);
 
     Task<string> SetOptionAsync(string key, bool enabled);
 }

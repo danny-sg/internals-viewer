@@ -130,6 +130,8 @@ public sealed class McpServerHost(IServiceProvider services, ILogger<McpServerHo
                .WithTools<QueryOptionTools>()
                .WithTools<CallTreeTools>()
                .WithTools<CallLogTools>()
+               .WithTools<FunctionSearchTools>()
+                   .WithTools<TraceTimelineTools>()
                .WithTools<TimelineTools>()
                .WithTools<MemoryTools>()
                .WithTools<PageTools>()

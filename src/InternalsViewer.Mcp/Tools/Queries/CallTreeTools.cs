@@ -104,7 +104,7 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
         {
             var wanted = NormaliseCategory(category);
 
-            totals = totals.Where(t => NormaliseCategory(t.Category) == wanted).ToList();
+            totals = [.. totals.Where(t => NormaliseCategory(t.Category) == wanted)];
         }
 
         Func<FunctionTotal, long> key = by switch

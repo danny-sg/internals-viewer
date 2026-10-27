@@ -18,6 +18,12 @@ them to walk the user through what you found. show_page opens in the Query tab's
 target, otherwise in a new Page tab. show_tab switches to a tab and close_tab closes one, which loses the user's place
 in it, so ask first. query_options lists the Query tab's menu toggles (views shown, what is captured, Full Trace) and
 query_set_option turns one on or off, for example full-trace for the next run. Ask before turning on full-trace.
+The trace_ tools drive the Trace Timeline of a Full Trace: trace_options lists its panes, scale, highlights, operator
+tracks and selected call, and trace_set_option changes one. Use the Operators pane for the query's iterator view and the
+Memory pane for detail. trace_find_functions is a fuzzy search of the call graph to settle ambiguous names.
+trace_track_add marks a function on the Operators pane (for example SearchPage), and trace_track_set and
+trace_track_remove show, hide or clear tracks. trace_step steps the playhead by call, same-call, batch, row or allocation.
+trace_goto_call selects and zooms to a call, such as the first GetRow, and trace_search and trace_zoom search and zoom.
 get_selection shows what the user has selected in the active tab, whatever its area, and which
 ranges are on screen. On a page it lists the structures that can be selected as slots (the page header and the offset
 table have negative slot numbers that differ by page type), so take those numbers from get_selection and never assume

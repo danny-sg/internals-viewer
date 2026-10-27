@@ -142,7 +142,7 @@ public sealed partial class DatabaseTabViewModel : IMcpContextSource, IAllocatio
 
         var matches = exact.Count > 0
             ? exact
-            : layers.Where(l => l.Name.Contains(name, StringComparison.OrdinalIgnoreCase)).ToList();
+            : [.. layers.Where(l => l.Name.Contains(name, StringComparison.OrdinalIgnoreCase))];
 
         if (matches.Count > 1)
         {

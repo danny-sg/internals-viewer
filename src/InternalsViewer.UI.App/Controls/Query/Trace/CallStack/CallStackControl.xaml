@@ -459,7 +459,7 @@
                                              Tag="{x:Bind ViewModel.SelectedCall.Node.Category, Mode=OneWay}"
                                              Click="OnCopyValueClick"/>
 
-                        <TextBlock Grid.Row="1" Text="Module" Style="{StaticResource DetailLabelStyle}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Module" Style="{StaticResource DetailLabelStyle}"/>
                         <TextBlock Grid.Row="1"
                                    Grid.Column="1"
                                    Style="{StaticResource DetailValueStyle}"
@@ -470,7 +470,7 @@
                                              Tag="{x:Bind ViewModel.SelectedCall.Node.Frame.Module, Mode=OneWay}"
                                              Click="OnCopyValueClick"/>
 
-                        <TextBlock Grid.Row="2"
+                        <TextBlock Grid.Row="2" Grid.Column="0"
                                    Text="This"
                                    Style="{StaticResource DetailLabelStyle}"
                                    Visibility="{x:Bind IsVisible(ViewModel.SelectedCall.This), Mode=OneWay}"/>
@@ -510,7 +510,7 @@
                                              Visibility="{x:Bind IsVisible(ViewModel.SelectedCall.This), Mode=OneWay}"
                                              Click="OnCopyValueClick"/>
 
-                        <TextBlock Grid.Row="3" Text="Returns" Style="{StaticResource DetailLabelStyle}"/>
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Returns" Style="{StaticResource DetailLabelStyle}"/>
                         <Grid Grid.Row="3" Grid.Column="1" ColumnSpacing="4">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -544,7 +544,7 @@
                                              Tag="{x:Bind ReturnText(ViewModel.SelectedCall), Mode=OneWay}"
                                              Click="OnCopyValueClick"/>
 
-                        <TextBlock Grid.Row="4" Text="Position" Style="{StaticResource DetailLabelStyle}"/>
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Position" Style="{StaticResource DetailLabelStyle}"/>
                         <TextBlock Grid.Row="4"
                                    Grid.Column="1"
                                    Style="{StaticResource DetailValueStyle}"
@@ -555,7 +555,7 @@
                                              Tag="{x:Bind PositionText(ViewModel.SelectedCall), Mode=OneWay}"
                                              Click="OnCopyValueClick"/>
 
-                        <TextBlock Grid.Row="5" Text="Start" Style="{StaticResource DetailLabelStyle}"/>
+                        <TextBlock Grid.Row="5" Grid.Column="0" Text="Start" Style="{StaticResource DetailLabelStyle}"/>
                         <TextBlock Grid.Row="5"
                                    Grid.Column="1"
                                    Style="{StaticResource DetailValueStyle}"
@@ -566,7 +566,7 @@
                                              Tag="{x:Bind StartText(ViewModel.SelectedCall), Mode=OneWay}"
                                              Click="OnCopyValueClick"/>
 
-                        <TextBlock Grid.Row="6" Text="End" Style="{StaticResource DetailLabelStyle}"/>
+                        <TextBlock Grid.Row="6" Grid.Column="0" Text="End" Style="{StaticResource DetailLabelStyle}"/>
                         <TextBlock Grid.Row="6"
                                    Grid.Column="1"
                                    Style="{StaticResource DetailValueStyle}"
@@ -577,7 +577,7 @@
                                              Tag="{x:Bind EndText(ViewModel.SelectedCall), Mode=OneWay}"
                                              Click="OnCopyValueClick"/>
 
-                        <TextBlock Grid.Row="7" Text="Instructions" Style="{StaticResource DetailLabelStyle}"/>
+                        <TextBlock Grid.Row="7" Grid.Column="0" Text="Instructions" Style="{StaticResource DetailLabelStyle}"/>
                         <TextBlock Grid.Row="7"
                                    Grid.Column="1"
                                    Style="{StaticResource DetailValueStyle}"
@@ -588,7 +588,7 @@
                                              Tag="{x:Bind InstructionsText(ViewModel.SelectedCall), Mode=OneWay}"
                                              Click="OnCopyValueClick"/>
 
-                        <TextBlock Grid.Row="8"
+                        <TextBlock Grid.Row="8" Grid.Column="0"
                                    Text="Arguments"
                                    Style="{StaticResource DetailLabelStyle}"
                                    Margin="0,1,0,0"
@@ -627,7 +627,7 @@
                                              Style="{StaticResource ValueCopyButtonStyle}"
                                              Click="OnCopyValueClick"/>
 
-                        <TextBlock Grid.Row="1" Text="Value" Style="{StaticResource DetailLabelStyle}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Value" Style="{StaticResource DetailLabelStyle}"/>
                         <TextBlock Grid.Row="1"
                                    Grid.Column="1"
                                    Style="{StaticResource DetailValueStyle}"
@@ -639,7 +639,7 @@
                                              Tag="{x:Bind ViewModel.SelectedValue.Text, Mode=OneWay}"
                                              Click="OnCopyValueClick"/>
 
-                        <TextBlock Grid.Row="2" Text="Decoded" Style="{StaticResource DetailLabelStyle}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Decoded" Style="{StaticResource DetailLabelStyle}"/>
                         <TextBlock x:Name="ValueDecodedText"
                                    Grid.Row="2"
                                    Grid.Column="1"

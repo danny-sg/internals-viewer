@@ -15,4 +15,6 @@ public sealed record QueryContext : TabContext, IAreaContext
     public McpSelection Selection { get; init; } = new();
 
     public IReadOnlyList<McpOption> Options { get; init; } = [];
+
+    public McpTraceTimeline? Timeline { get; init; }
 }

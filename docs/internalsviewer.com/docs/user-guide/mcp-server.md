@@ -72,6 +72,7 @@ The server also carries its own reading guides - how to read what the tools retu
 - **Select and scroll** - slots, fields and bytes in the Page viewer, objects and overlays in the Allocations map, pages and records in the Index viewer, and segments, dictionaries and rows in the Columnstore viewer.
 - **Switch and close tabs.** The assistant should ask before it closes one.
 - **Turn the Query tab's menu toggles on and off** - the views that are visible, what is captured and shown, and Record Full Trace. Record Full Trace only turns on once you have accepted its warning and licence yourself from the Trace menu, and applies to the next run.
+- **Drive the Trace Timeline** - turn the Operators, Memory and Calls panes and the other timeline options on and off, add custom operator tracks for a function (for example "mark where a b-tree is searched"), clear them, step the playhead by call, same call, batch, row or allocation, search, and select and zoom to a call such as "the first GetRow call". A fuzzy search of the call graph resolves half remembered function names.
 
 ## Walking through a seek or a scan
 

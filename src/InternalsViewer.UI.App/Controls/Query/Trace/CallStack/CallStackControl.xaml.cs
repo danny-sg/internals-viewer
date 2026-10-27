@@ -499,7 +499,7 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
     {
         if (StackTree.FindDescendant<TreeViewList>() is { } list)
         {
-            list.ItemContainerTransitions = new TransitionCollection();
+            list.ItemContainerTransitions = [];
         }
     }
 

@@ -183,6 +183,7 @@ public partial class QueryViewModel : IMcpContextSource, IQueryCommands
                     b.Get(this),
                     b.IsEnabled?.Invoke(this) ?? true))
             ],
+            Timeline = TraceTimeline is null ? null : TraceTimelineTab.Controller?.GetState(),
             Selection = new McpSelection
             {
                 Event = SelectedEvent,
@@ -243,6 +244,18 @@ public partial class QueryViewModel : IMcpContextSource, IQueryCommands
         TraceTimelineTab.OpenMemory(block, address, position);
 
         return Task.CompletedTask;
+    }
+
+    public async Task<McpFunctionSignature?> ResolveSignatureAsync(CallstackFrame frame)
+    {
+        if (Arguments.Lookup is not { } lookup)
+        {
+            return null;
+        }
+
+        var resolved = await lookup.ResolveAsync(frame);
+
+        return resolved is null ? null : new McpFunctionSignature(resolved.Text ?? string.Empty, resolved.Layout);
     }
 
     public Task<string> SetOptionAsync(string key, bool enabled)

@@ -1,6 +1,7 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Mcp.Documents;
 using InternalsViewer.Mcp.Interfaces.Commands;
+using InternalsViewer.Mcp.Models.Context.Queries;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.FullTrace;
@@ -31,6 +32,8 @@ internal sealed class RecordingNavigator : IQueryCommands
 
     public Task ShowMemoryAsync(int block, ulong address, TracePosition position)
         => Record($"ShowMemory {block} 0x{address:X} {position}");
+
+    public Task<McpFunctionSignature?> ResolveSignatureAsync(CallstackFrame frame) => Task.FromResult<McpFunctionSignature?>(null);
 
     public Task<string> SetOptionAsync(string key, bool enabled)
     {

@@ -234,6 +234,11 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
             {
                 previous.Chart = null;
             }
+
+            if (ReferenceEquals(previous.Controller, this))
+            {
+                previous.Controller = null;
+            }
         }
 
         Tab = tab;
@@ -248,6 +253,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         tab.PlayheadRequested += OnPlayheadRequested;
 
         tab.Chart = TraceTimeline;
+
+        tab.Controller = this;
 
         tab.SetPlayhead(TraceTimeline.GetPlayheadPosition());
 

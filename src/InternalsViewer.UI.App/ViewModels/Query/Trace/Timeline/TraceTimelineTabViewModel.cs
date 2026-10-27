@@ -74,6 +74,8 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, IDispo
 
     public TracePosition? Playhead { get; private set; }
 
+    public ITraceTimelineController? Controller { get; set; }
+
     public TraceViewRange? ViewRange => Chart?.GetViewRange();
 
     private QueryViewModel Query { get; }

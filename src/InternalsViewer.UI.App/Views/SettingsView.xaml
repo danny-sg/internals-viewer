@@ -23,11 +23,11 @@
         <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}">Settings</TextBlock>
 
         <controls:SettingsExpander Header="Query"
-                                   IsExpanded="True"
+                                   IsExpanded="False"
                                    Description="Settings for query tracing">
             <controls:SettingsExpander.ItemsHeader>
                 <StackPanel>
-                    <InfoBar IsOpen="False"
+                    <InfoBar IsOpen="True"
                          Severity="Warning"
                          IsClosable="False"
                          BorderThickness="0"

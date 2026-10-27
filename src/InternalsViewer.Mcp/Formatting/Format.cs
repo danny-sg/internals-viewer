@@ -6,6 +6,8 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.FullTrace.Arguments;
+using InternalsViewer.Query.FullTrace.Calls;
 
 namespace InternalsViewer.Mcp.Formatting;
 
@@ -177,18 +179,54 @@ public static class Format
         _ => $"slot {register}"
     };
 
-    public static string Locator(Locator locator)
-    {
-        var where = Register(locator.Register);
+    public static string Locator(Locator locator) => $"{Register(locator.Register)} {LocatorValue(locator)}";
 
-        return locator.ValueType switch
+    public static string LocatorValue(Locator locator)
+        => locator.ValueType switch
         {
-            LocatorValueType.Page => $"{where} page ({locator.Page.FileId}:{locator.Page.PageId})",
-            LocatorValueType.Row => $"{where} row ({locator.Page.FileId}:{locator.Page.PageId}:{locator.Slot})",
-            LocatorValueType.ColumnStoreObject => $"{where} columnstore {locator}",
-            LocatorValueType.Text or LocatorValueType.WideText or LocatorValueType.Bindings => $"{where} {locator.ValueType} {locator}",
-            _ => $"{where} {locator.ValueType} {Hex(locator.Value)}{(locator.Detail != 0 ? $" detail {Hex(locator.Detail)}" : string.Empty)}"
+            LocatorValueType.Page => $"page ({locator.Page.FileId}:{locator.Page.PageId})",
+            LocatorValueType.Row => $"row ({locator.Page.FileId}:{locator.Page.PageId}:{locator.Slot})",
+            LocatorValueType.ColumnStoreObject => $"columnstore {locator}",
+            LocatorValueType.Text or LocatorValueType.WideText or LocatorValueType.Bindings => $"{locator.ValueType} {locator}",
+            _ => $"{locator.ValueType} {Hex(locator.Value)}{(locator.Detail != 0 ? $" detail {Hex(locator.Detail)}" : string.Empty)}"
         };
+
+    public static IEnumerable<string> Arguments(ArgumentLayout layout, TraceArgumentCall call)
+    {
+        var number = 0;
+
+        foreach (var slot in layout.Slots.Where(TraceArgumentCall.IsCaptured))
+        {
+            var label = slot.Type == "this" ? "this"
+                        : slot.Name == ArgumentLayout.ReturnBuffer ? "return buffer"
+                        : $"arg {++number}";
+
+            yield return ArgumentLine(label, slot.Type, slot.Name, call.GetValue(slot), call.GetLocator(slot.Index));
+        }
+
+        if (layout.ReturnType is { } returnType && returnType != "void" && TraceArgumentCall.IsReturnCaptured(returnType))
+        {
+            yield return ArgumentLine("return",
+                                      returnType,
+                                      string.Empty,
+                                      call.Returned ? call.ReturnValue : null,
+                                      call.GetLocator(ArgumentLayout.ReturnRegister));
+        }
+    }
+
+    private static string ArgumentLine(string label, string type, string name, ulong? value, Locator? locator)
+    {
+        var text = value is null
+            ? "not captured"
+            : locator is { ValueType: not LocatorValueType.Referenced } found
+                ? $"{Hex(value.Value)} {LocatorValue(found)}"
+                : ArgumentValue.Decode(type, value.Value) is { } decoded && decoded != Hex(value.Value)
+                    ? $"{Hex(value.Value)} ({decoded})"
+                    : Hex(value.Value);
+
+        var declared = name.Length > 0 ? $"{type} {name}" : type;
+
+        return $"{label}: {declared} = {text}";
     }
 
     public static string More(int total, int shown, string hint)
