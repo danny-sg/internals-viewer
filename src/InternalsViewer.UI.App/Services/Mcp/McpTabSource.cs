@@ -75,13 +75,6 @@ public sealed class McpTabSource : IMcpTabSource
         {
             var id = GetId(viewModel, area);
 
-            if (viewModel is QueryViewModel query)
-            {
-                tabs.Add(new QueryMcpDocument(id, query, isActive, window.DispatcherQueue));
-
-                continue;
-            }
-
             var database = GetDatabase(viewModel);
 
             tabs.Add(new McpAreaTab(id, area, isActive, viewModel, database, window.DispatcherQueue));

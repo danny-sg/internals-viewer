@@ -2,8 +2,8 @@ using System.ComponentModel;
 using System.Text;
 using InternalsViewer.Mcp.Documents;
 using InternalsViewer.Mcp.Formatting;
-using InternalsViewer.Mcp.Interfaces.Documents;
 using InternalsViewer.Mcp.Interfaces.Tabs;
+using InternalsViewer.Mcp.Tabs;
 using InternalsViewer.Mcp.Tools.Allocations;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events.Operators;
@@ -35,7 +35,7 @@ public sealed class NavigationTools(McpDocumentResolver documents, IMcpWorkspace
 
         var target = scope.Context.Nodes.GetNode(node) ?? throw new McpException($"No call tree node {node}.");
 
-        await scope.RequireNavigator().ShowCallAsync(target, callIndex ?? -1, cancellationToken);
+        await scope.RunAsync(c => c.ShowCallAsync(target, callIndex ?? -1), cancellationToken);
 
         var builder = new StringBuilder();
 
@@ -65,11 +65,11 @@ public sealed class NavigationTools(McpDocumentResolver documents, IMcpWorkspace
 
         var selectedSlot = slot is { } s ? (ushort?)s : null;
 
-        if (tab is IMcpDocument)
+        if (tab.Area == McpArea.Query)
         {
             var scope = await Documents.ResolveAsync(tab.Id, cancellationToken);
 
-            await scope.RequireNavigator().ShowPageAsync(pageAddress, selectedSlot, cancellationToken);
+            await scope.RunAsync(c => c.ShowPageAsync(pageAddress, selectedSlot), cancellationToken);
         }
         else
         {
@@ -129,7 +129,7 @@ public sealed class NavigationTools(McpDocumentResolver documents, IMcpWorkspace
 
         var identifier = GetPlanNodeIdentifier(scope, node);
 
-        await scope.RequireNavigator().ShowPlanNodeAsync(identifier, cancellationToken);
+        await scope.RunAsync(c => c.ShowPlanNodeAsync(identifier), cancellationToken);
 
         var planNode = scope.Result.ExecutionPlans.Select(p => p.NodesById.GetValueOrDefault(node)).FirstOrDefault(n => n is not null);
 
@@ -149,7 +149,7 @@ public sealed class NavigationTools(McpDocumentResolver documents, IMcpWorkspace
 
         var engineEvent = scope.Context.Events.GetEvent(eventId) ?? throw new McpException($"No event {eventId}.");
 
-        await scope.RequireNavigator().ShowEventAsync(engineEvent, cancellationToken);
+        await scope.RunAsync(c => c.ShowEventAsync(engineEvent), cancellationToken);
 
         return $"Selected event {Format.EventLine(scope.Context, engineEvent, scope.CropStartUs)}";
     }
@@ -166,7 +166,7 @@ public sealed class NavigationTools(McpDocumentResolver documents, IMcpWorkspace
 
         var target = Parse.Position(position);
 
-        await scope.RequireNavigator().SetPlayheadAsync(target, cancellationToken);
+        await scope.RunAsync(c => c.SetPlayheadAsync(target), cancellationToken);
 
         return $"Playhead moved to {Format.Position(target)}.";
     }
@@ -195,7 +195,7 @@ public sealed class NavigationTools(McpDocumentResolver documents, IMcpWorkspace
 
         var scrollTo = address is null ? target.Address : Parse.Hex(address);
 
-        await scope.RequireNavigator().ShowMemoryAsync(block, scrollTo, at, cancellationToken);
+        await scope.RunAsync(c => c.ShowMemoryAsync(block, scrollTo, at), cancellationToken);
 
         return $"Opened memory block {block} at {Format.Hex(target.Address)} ({target.Size} bytes) at position {Format.Position(at)}.";
     }

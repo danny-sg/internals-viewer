@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using InternalsViewer.Mcp.Interfaces.Documents;
 using InternalsViewer.Mcp.Interfaces.Tabs;
 using InternalsViewer.Mcp.Models.Context;
 using InternalsViewer.Mcp.Models.Context.Queries;
@@ -98,41 +97,48 @@ public sealed class McpDocumentResolver(IMcpTabSource tabs)
                ?? throw new McpException($"No {area} tab is open in Internals Viewer. Open one first.");
     }
 
-    public async Task<List<IMcpDocument>> GetDocumentsAsync(CancellationToken cancellationToken)
-        => [.. (await Tabs.GetTabsAsync(cancellationToken)).OfType<IMcpDocument>()];
-
-    public async Task<IMcpDocument> ResolveDocumentAsync(string? documentId, CancellationToken cancellationToken)
+    public async Task<McpDocumentScope> ResolveAsync(string? documentId, CancellationToken cancellationToken)
     {
-        var all = await GetDocumentsAsync(cancellationToken);
+        var tab = await ResolveQueryTabAsync(documentId, cancellationToken);
 
-        if (all.Count == 0)
+        var query = await tab.GetContextAsync(cancellationToken) as QueryContext
+                    ?? throw new McpException($"Tab {tab.Id} has no Query context.");
+
+        return CreateScope(tab, query);
+    }
+
+    public DocumentContext GetContext(QueryExportContent run) => Contexts.GetValue(run, r => new DocumentContext(r));
+
+    private async Task<IMcpTab> ResolveQueryTabAsync(string? documentId, CancellationToken cancellationToken)
+    {
+        if (documentId is not null)
+        {
+            return await ResolveAreaTabAsync(McpArea.Query, documentId, cancellationToken);
+        }
+
+        var queries = (await Tabs.GetTabsAsync(cancellationToken)).Where(t => t.Area == McpArea.Query).ToList();
+
+        if (queries.Count == 0)
         {
             throw new McpException("No Query tabs are open in Internals Viewer. Open a database and a Query tab first.");
         }
 
-        if (documentId is null)
+        foreach (var tab in queries.OrderByDescending(t => t.IsActive))
         {
-            return all.FirstOrDefault(d => d is { IsActive: true, Run: not null })
-                   ?? all.FirstOrDefault(d => d.Run is not null)
-                   ?? all.First(d => d.IsActive);
+            if (await tab.GetContextAsync(cancellationToken) is QueryContext { Run: not null })
+            {
+                return tab;
+            }
         }
 
-        return all.FirstOrDefault(d => string.Equals(d.Id, documentId, StringComparison.OrdinalIgnoreCase))
-               ?? throw new McpException($"No document {documentId}. Open documents: {string.Join(", ", all.Select(d => d.Id))}.");
+        return queries.FirstOrDefault(t => t.IsActive) ?? queries[0];
     }
 
-    public async Task<McpDocumentScope> ResolveAsync(string? documentId, CancellationToken cancellationToken)
+    private McpDocumentScope CreateScope(IMcpTab tab, QueryContext query)
     {
-        var document = await ResolveDocumentAsync(documentId, cancellationToken);
-
-        var query = await document.GetContextAsync(cancellationToken) as QueryContext
-                    ?? throw new McpException($"Tab {document.Id} has no Query context.");
-
         var run = query.Run
-                  ?? throw new McpException($"Document {document.Id} has no query run yet. Run the query in Internals Viewer first.");
+                  ?? throw new McpException($"Document {tab.Id} has no query run yet. Run the query in Internals Viewer first.");
 
-        return new McpDocumentScope(query, run, Contexts.GetValue(run, r => new DocumentContext(r)), document.Navigator);
+        return new McpDocumentScope(tab, query, run, Contexts.GetValue(run, r => new DocumentContext(r)));
     }
-
-    public DocumentContext GetContext(QueryExportContent run) => Contexts.GetValue(run, r => new DocumentContext(r));
 }

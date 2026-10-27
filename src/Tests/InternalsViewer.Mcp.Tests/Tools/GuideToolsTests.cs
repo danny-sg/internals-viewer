@@ -19,9 +19,12 @@ public class GuideToolsTests
         Assert.StartsWith("- events:", lines[2]);
         Assert.StartsWith("- engine-symbols:", lines[3]);
         Assert.StartsWith("- full-trace-investigations:", lines[4]);
-        Assert.StartsWith("- index-seek:", lines[5]);
-        Assert.StartsWith("- index-scan:", lines[6]);
-        Assert.StartsWith("- source:", lines[7]);
+        Assert.StartsWith("- page-viewer:", lines[5]);
+        Assert.StartsWith("- allocations:", lines[6]);
+        Assert.StartsWith("- columnstore:", lines[7]);
+        Assert.StartsWith("- index-seek:", lines[8]);
+        Assert.StartsWith("- index-scan:", lines[9]);
+        Assert.StartsWith("- source:", lines[10]);
         Assert.Contains(lines, l => l.StartsWith("- deep-dive-full-trace: How Full Trace works"));
         Assert.Contains(lines, l => l.StartsWith("- deep-dive-query-tracing: How query tracing works"));
     }

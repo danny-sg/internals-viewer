@@ -20,6 +20,7 @@
 
     <ItemGroup>
         <EmbeddedResource Include="Guides\**\*.md" LogicalName="InternalsViewer.Mcp.Guides.%(Filename).md" />
+        <EmbeddedResource Include="Prompts\**\*.md" LogicalName="InternalsViewer.Mcp.Prompts.%(Filename).md" />
         <EmbeddedResource Include="..\..\docs\internalsviewer.com\docs\deep-dives\*.md"
                           LogicalName="InternalsViewer.Mcp.Guides.deep-dive-%(Filename).md"
                           Link="Guides\DeepDives\%(Filename).md" />

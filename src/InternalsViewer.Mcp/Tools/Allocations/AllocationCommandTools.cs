@@ -32,7 +32,7 @@ public sealed class AllocationCommandTools(McpDocumentResolver documents)
                                [Description(TabDescription)] string? tab = null,
                                CancellationToken cancellationToken = default)
     {
-        var address = page is null ? (InternalsViewer.Internals.Engine.Address.PageAddress?)null : Parse.PageAddress(page);
+        var address = page is null ? (Internals.Engine.Address.PageAddress?)null : Parse.PageAddress(page);
 
         return Run(tab, c => c.ScrollToAsync(name, address), cancellationToken);
     }

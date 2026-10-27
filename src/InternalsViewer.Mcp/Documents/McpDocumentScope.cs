@@ -1,4 +1,5 @@
-using InternalsViewer.Mcp.Interfaces.Documents;
+using InternalsViewer.Mcp.Interfaces.Commands;
+using InternalsViewer.Mcp.Interfaces.Tabs;
 using InternalsViewer.Mcp.Models.Context.Queries;
 using InternalsViewer.Query;
 using InternalsViewer.Query.Export;
@@ -8,10 +9,10 @@ using ModelContextProtocol;
 namespace InternalsViewer.Mcp.Documents;
 
 public sealed class McpDocumentScope(
+    IMcpTab tab,
     QueryContext query,
     QueryExportContent run,
-    DocumentContext context,
-    IMcpNavigator? navigator)
+    DocumentContext context)
 {
     public QueryContext Query { get; } = query;
 
@@ -27,12 +28,21 @@ public sealed class McpDocumentScope(
 
     public long CropStartUs => Result.CropStartUs ?? 0;
 
-    private IMcpNavigator? Navigator { get; } = navigator;
+    private IMcpTab Tab { get; } = tab;
 
     public TraceResult RequireTrace()
         => Trace
            ?? throw new McpException($"Document {Query.TabId} has no Full Trace. Only the events, plan and call stacks are available.");
 
-    public IMcpNavigator RequireNavigator()
-        => Navigator ?? throw new McpException($"Document {Query.TabId} cannot be navigated from here.");
+    public async Task RunAsync(Func<IQueryCommands, Task> command, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Tab.RunAsync(command, cancellationToken);
+        }
+        catch (Exception exception) when (exception is NotSupportedException or InvalidOperationException or ArgumentException)
+        {
+            throw new McpException(exception.Message);
+        }
+    }
 }

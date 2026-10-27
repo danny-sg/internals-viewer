@@ -15,6 +15,10 @@ public partial class IndexTabViewModel : IMcpContextSource, IIndexCommands
 
     private const float DefaultZoom = 2f;
 
+    private const int RecordsLoadTimeoutMs = 5000;
+
+    private const int RecordsPollMs = 20;
+
     public TabContext GetContext()
         => new IndexContext
         {
@@ -48,6 +52,8 @@ public partial class IndexTabViewModel : IMcpContextSource, IIndexCommands
 
         await LoadPage(address);
 
+        await WaitForRecordsAsync(address);
+
         SelectedSlot = null;
 
         ZoomToPageTarget = zoom ?? DefaultZoom;
@@ -75,6 +81,8 @@ public partial class IndexTabViewModel : IMcpContextSource, IIndexCommands
 
         await LoadPage(address.Value);
 
+        await WaitForRecordsAsync(address.Value);
+
         return $"Selected page {address} with {Records.Count} record(s) in the details pane.";
     }
 
@@ -101,6 +109,23 @@ public partial class IndexTabViewModel : IMcpContextSource, IIndexCommands
         SelectedSlot = slot;
 
         return Task.FromResult($"Selected the record in slot {slot} of page {SelectedPageAddress}.");
+    }
+
+    private async Task WaitForRecordsAsync(PageAddress address)
+    {
+        var deadline = DateTime.UtcNow.AddMilliseconds(RecordsLoadTimeoutMs);
+
+        while (DateTime.UtcNow < deadline)
+        {
+            if (SelectedPageAddress == address && LoadingPageAddress is null && PageLoadCancellation is null)
+            {
+                return;
+            }
+
+            await Task.Delay(RecordsPollMs);
+        }
+
+        throw new InvalidOperationException($"Timed out waiting for the records of page {address} to load.");
     }
 
     private void RequireNode(PageAddress address)

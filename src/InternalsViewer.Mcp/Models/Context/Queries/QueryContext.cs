@@ -13,4 +13,6 @@ public sealed record QueryContext : TabContext, IAreaContext
     public QueryExportContent? Run { get; init; }
 
     public McpSelection Selection { get; init; } = new();
+
+    public IReadOnlyList<McpOption> Options { get; init; } = [];
 }

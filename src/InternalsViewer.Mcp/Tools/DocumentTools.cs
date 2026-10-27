@@ -2,13 +2,13 @@ using System.ComponentModel;
 using System.Text;
 using InternalsViewer.Mcp.Documents;
 using InternalsViewer.Mcp.Formatting;
-using InternalsViewer.Mcp.Interfaces.Documents;
 using InternalsViewer.Mcp.Interfaces.Tabs;
 using InternalsViewer.Mcp.Models.Context;
 using InternalsViewer.Mcp.Models.Context.Allocations;
 using InternalsViewer.Mcp.Models.Context.Columnstore;
 using InternalsViewer.Mcp.Models.Context.Indexes;
 using InternalsViewer.Mcp.Models.Context.Pages;
+using InternalsViewer.Mcp.Tabs;
 using InternalsViewer.Query.FullTrace;
 using ModelContextProtocol.Server;
 
@@ -28,7 +28,7 @@ public sealed class DocumentTools(McpDocumentResolver documents)
     {
         var tab = await Documents.ResolveTabAsync(document, cancellationToken);
 
-        if (tab is not IMcpDocument)
+        if (tab.Area != McpArea.Query)
         {
             return await DescribeAreaSelectionAsync(tab, cancellationToken);
         }

@@ -1,11 +1,10 @@
-using InternalsViewer.Mcp.Interfaces.Documents;
 using InternalsViewer.Mcp.Interfaces.Tabs;
 
 namespace InternalsViewer.Mcp.Tests.Documents;
 
-internal sealed class TestDocumentSource(params IMcpDocument[] documents) : IMcpTabSource
+internal sealed class TestDocumentSource(params IMcpTab[] documents) : IMcpTabSource
 {
-    public List<IMcpDocument> Documents { get; } = [.. documents];
+    public List<IMcpTab> Documents { get; } = [.. documents];
 
-    public Task<List<IMcpTab>> GetTabsAsync(CancellationToken cancellationToken) => Task.FromResult(Documents.Cast<IMcpTab>().ToList());
+    public Task<List<IMcpTab>> GetTabsAsync(CancellationToken cancellationToken) => Task.FromResult(new List<IMcpTab>(Documents));
 }
