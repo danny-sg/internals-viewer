@@ -4,27 +4,10 @@ Internals Viewer is a visualisation tool for viewing the internals of the SQL Se
 
 [Internals Viewer Medium Articles](https://medium.com/internals-viewer)
 
-## Version 4.8 - New Features
+## Version 5.0 - New Features
 
-- Query
-  - Full Trace - record a query with Time Travel Debugging for a complete call tree
-    - Flame Chart of the recorded calls per thread, with the plan operators above them
-    - Memory allocated per call and per plan operator
-    - Events placed in the recording, so the Timeline drives the Flame Chart
-  - Export a run to a file and import it again, Full Trace included
-  - Columnstore
-    - Timeline band for segment scans, rowgroup reads and elimination, object pool lookups and filters
-    - Aggregate pushdown and filter events, with plan annotations
-    - Parallel rowgroup reads shown per thread
-  - Call Stack
-    - Filter the tree to a node, and by category
-    - Activity bands and operator rows
-    - Table and index names on operator frames
-  - Events pane details for every property of an event
-  - Index pane - zoom to page, levels overlay, page data with previous/next navigation
-- Settings
-  - Full columnstore allocation resolution
-  - Time travel warning
+- Full Trace
+- Local MCP for AI integration
 
 ## Installation
 
@@ -75,6 +58,9 @@ overhead and risk of some functions.
 Use caution with Query tracing - the **Clear Buffer Pool** option runs `CHECKPOINT` and `DBCC DROPCLEANBUFFERS`
 before executing a query, emptying the buffer pool for the whole server.
 
+The Full Trace feature could generate very large local trace files and will restart the SQL Server
+service to clear the attached tracing.
+
 ## Usage
 
 ### Connecting to a database
@@ -93,12 +79,12 @@ Internals Viewer is built with the following open source projects. Thanks to the
 
 ### Application
 
-| Project | Used For | Licence |
-|---|---|---|
-| [.NET Community Toolkit](https://github.com/CommunityToolkit/dotnet) | MVVM framework | MIT |
-| [Windows Community Toolkit](https://github.com/CommunityToolkit/Windows) | Behaviours, converters, headered controls, settings controls and sizers | MIT |
-| [Windows Community Toolkit Labs](https://github.com/CommunityToolkit/Labs-Windows) | Markdown rendering | MIT |
-| [SkiaSharp](https://github.com/mono/SkiaSharp) | Drawing custom visualisations | MIT (Skia BSD-3-Clause) |
-| [WinUI.TableView](https://github.com/w-ahmad/WinUI.TableView) | Data grids | MIT |
-| [WinUIEx](https://github.com/dotMorten/WinUIEx) | Window management | MIT |
-| [ZstdSharp](https://github.com/oleg-st/ZstdSharp) | Reading zstd compressed backups, a port of [Zstandard](https://github.com/facebook/zstd) | MIT |
+| Project                                                                            | Used For                                                                                 | Licence                 |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------- |
+| [.NET Community Toolkit](https://github.com/CommunityToolkit/dotnet)               | MVVM framework                                                                           | MIT                     |
+| [Windows Community Toolkit](https://github.com/CommunityToolkit/Windows)           | Behaviours, converters, headered controls, settings controls and sizers                  | MIT                     |
+| [Windows Community Toolkit Labs](https://github.com/CommunityToolkit/Labs-Windows) | Markdown rendering                                                                       | MIT                     |
+| [SkiaSharp](https://github.com/mono/SkiaSharp)                                     | Drawing custom visualisations                                                            | MIT (Skia BSD-3-Clause) |
+| [WinUI.TableView](https://github.com/w-ahmad/WinUI.TableView)                      | Data grids                                                                               | MIT                     |
+| [WinUIEx](https://github.com/dotMorten/WinUIEx)                                    | Window management                                                                        | MIT                     |
+| [ZstdSharp](https://github.com/oleg-st/ZstdSharp)                                  | Reading zstd compressed backups, a port of [Zstandard](https://github.com/facebook/zstd) | MIT                     |
