@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using InternalsViewer.Mcp.Interfaces.Commands;
 using InternalsViewer.Mcp.Models.Context.Queries;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
 
@@ -76,6 +77,8 @@ public partial class QueryViewModel : ITraceTimelineCommands
         => (await RequireTimelineAsync()).SelectCall(node, callIndex, zoom);
 
     public async Task ZoomAsync(bool toSelection) => (await RequireTimelineAsync()).Zoom(toSelection);
+
+    public async Task PinPositionsAsync(TracePoint[] points) => (await RequireTimelineAsync()).PinPositions(points);
 
     private static bool IsFunction(CallStackNode node, string module, string function)
         => node.Frame is { } frame && string.Equals(frame.Module, module, StringComparison.OrdinalIgnoreCase) && node.Symbol == function;

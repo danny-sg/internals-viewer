@@ -3,21 +3,18 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using CommunityToolkit.WinUI;
-using InternalsViewer.Query.FullTrace;
 using InternalsViewer.UI.App.Controls.Query.Trace.CallStack.Signatures;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Helpers.Converters.Page;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Signatures.Enums;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Signatures;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Stack;
-using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.CallStack;
 using InternalsViewer.UI.App.ViewModels;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Animation;
 
 namespace InternalsViewer.UI.App.Controls.Query.Trace.CallStack;
 

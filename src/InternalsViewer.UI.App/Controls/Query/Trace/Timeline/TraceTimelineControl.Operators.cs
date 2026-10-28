@@ -4,7 +4,6 @@ using System.Linq;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline;
-using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.Plans.Model;
@@ -12,7 +11,6 @@ using InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Operators;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.ViewModels.Query;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using SkiaSharp;
 using Windows.Foundation;
@@ -38,6 +36,10 @@ public sealed partial class TraceTimelineControl
     private const float MinimumMemoryHeight = 24f;
 
     private const double MemoryProgressSize = 28;
+
+    private const double MemoryScrollBarWidth = 12;
+
+    private const double MemoryScrollStep = 40;
 
     public static readonly DependencyProperty MemoryBlocksProperty =
         DependencyProperty.Register(nameof(MemoryBlocks),
@@ -97,6 +99,18 @@ public sealed partial class TraceTimelineControl
     {
         get => (bool)GetValue(HighlightMemoryWritersProperty);
         set => SetValue(HighlightMemoryWritersProperty, value);
+    }
+
+    public static readonly DependencyProperty MemorySizeToFitProperty =
+        DependencyProperty.Register(nameof(MemorySizeToFit),
+                                    typeof(bool),
+                                    typeof(TraceTimelineControl),
+                                    new PropertyMetadata(true, OnMemorySizeToFitChanged));
+
+    public bool MemorySizeToFit
+    {
+        get => (bool)GetValue(MemorySizeToFitProperty);
+        set => SetValue(MemorySizeToFitProperty, value);
     }
 
     public static readonly DependencyProperty RowReturnMarksProperty =
@@ -561,6 +575,21 @@ public sealed partial class TraceTimelineControl
 
     private static void OnHighlightMemoryWritersChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((TraceTimelineControl)d).SetMemoryWriters(null);
+
+    private static void OnMemorySizeToFitChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (TraceTimelineControl)d;
+
+        control.HideToolTip();
+
+        control._memory.Hover = null;
+
+        control._memory.SizeToFit = (bool)e.NewValue;
+
+        control.UpdateScrollBars();
+
+        control.Redraw();
+    }
 
     private static void OnTickTracksChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {

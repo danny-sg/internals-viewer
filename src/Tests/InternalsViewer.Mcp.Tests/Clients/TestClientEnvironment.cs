@@ -13,8 +13,11 @@ internal sealed class TestClientEnvironment : IDisposable
 
         Directory.CreateDirectory(ApplicationData);
 
+        Directory.CreateDirectory(LocalApplicationData);
+
         Environment = new McpClientEnvironment(Home,
                                                ApplicationData,
+                                               LocalApplicationData,
                                                name => executables.Contains(name) ? Path.Combine(Root, $"{name}.exe") : null);
     }
 
@@ -23,6 +26,8 @@ internal sealed class TestClientEnvironment : IDisposable
     public string Home => Path.Combine(Root, "home");
 
     public string ApplicationData => Path.Combine(Root, "appdata");
+
+    public string LocalApplicationData => Path.Combine(Root, "local");
 
     public McpClientEnvironment Environment { get; }
 

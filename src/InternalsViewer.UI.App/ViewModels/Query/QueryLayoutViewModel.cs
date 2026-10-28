@@ -233,6 +233,13 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
     public void Show(DocumentViewModel document) => Dock.Show(document);
 
+    public void ShowSqlEditor()
+    {
+        IsSqlEditorVisible = true;
+
+        Show(_documentsByKey[SqlKey]);
+    }
+
     public void ShowExecutionPlan()
     {
         IsExecutionPlanVisible = true;

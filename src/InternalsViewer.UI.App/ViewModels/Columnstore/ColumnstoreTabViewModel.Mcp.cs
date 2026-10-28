@@ -7,7 +7,6 @@ using InternalsViewer.Mcp.Interfaces.Tabs;
 using InternalsViewer.Mcp.Models.Context;
 using InternalsViewer.Mcp.Models.Context.Columnstore;
 using InternalsViewer.UI.App.Models;
-using InternalsViewer.UI.App.Models.Columnstore.Dictionary;
 using InternalsViewer.UI.App.Models.Columnstore.Segment;
 using InternalsViewer.UI.App.ViewModels.Columnstore.Dictionary;
 using InternalsViewer.UI.App.ViewModels.Columnstore.Segment;

@@ -34,9 +34,15 @@ public sealed partial class TraceTimelineControl
 
     private (CallStackNode Node, int CallIndex)? _marked;
 
-    private TracePoint? _markedPoint;
+    private TracePoint[] _markedPoints = [];
 
-    private (double Current, double Marked, int Lane, int Depth)? _minimapMarkers;
+    private TracePoint[] _pinnedPoints = [];
+
+    private (TracePoint[] Points, TraceTimelineAxis Axis, double[] Values)? _markedValues;
+
+    private (double Current, double[] Marked, int Lane, int Depth)? _minimapMarkers;
+
+    public int PinnedPositionCount => _pinnedPoints.Length;
 
     private TraceTimeline? Overview => FullTimeline ?? _timeline;
 
@@ -47,9 +53,16 @@ public sealed partial class TraceTimelineControl
         _canvas.Invalidate();
     }
 
-    public void MarkPosition(TracePoint? point)
+    public void MarkPositions(TracePoint[]? points)
     {
-        _markedPoint = point;
+        _markedPoints = points ?? [];
+
+        _canvas.Invalidate();
+    }
+
+    public void PinPositions(TracePoint[] points)
+    {
+        _pinnedPoints = points;
 
         _canvas.Invalidate();
     }
@@ -103,9 +116,23 @@ public sealed partial class TraceTimelineControl
     {
         _marked = null;
 
-        _markedPoint = null;
+        _markedPoints = [];
+
+        _markedValues = null;
 
         _markedCalls.Clear();
+    }
+
+    private void ClearPins()
+    {
+        if (_pinnedPoints.Length == 0)
+        {
+            return;
+        }
+
+        _pinnedPoints = [];
+
+        _canvas.Invalidate();
     }
 
     private void DrawMark(SKCanvas canvas, int width, int height)
@@ -117,27 +144,77 @@ public sealed partial class TraceTimelineControl
             return;
         }
 
-        if (_markedPoint is not { } point)
+        var points = _markedPoints.Length > 0 ? _markedPoints : _pinnedPoints;
+
+        if (points.Length == 0)
         {
             HideMinimap();
 
             return;
         }
 
-        var value = TraceScale.GetValue(point, _axis);
+        var values = GetMarkedValues(points);
 
-        var x = (float)((value - _viewStart) * PixelsPerUnit(width));
+        var pixelsPerUnit = PixelsPerUnit(width);
 
-        if (x >= 0 && x <= width)
+        var bottom = height - BandHeight;
+
+        var isOutside = false;
+
+        var lastPixel = float.NaN;
+
+        foreach (var value in values)
         {
-            canvas.DrawLine(x, ContentTop, x, height - BandHeight, _paints.Mark);
+            var x = (float)((value - _viewStart) * pixelsPerUnit);
 
-            HideMinimap();
+            if (x < 0 || x > width)
+            {
+                isOutside = true;
 
-            return;
+                continue;
+            }
+
+            var pixel = MathF.Round(x);
+
+            if (pixel.Equals(lastPixel))
+            {
+                continue;
+            }
+
+            lastPixel = pixel;
+
+            canvas.DrawLine(x, ContentTop, x, bottom, _paints.Mark);
         }
 
-        ShowMinimap(value, -1, -1, width, height);
+        if (isOutside)
+        {
+            ShowMinimap(values, -1, -1, width, height);
+        }
+        else
+        {
+            HideMinimap();
+        }
+    }
+
+    private double[] GetMarkedValues(TracePoint[] points)
+    {
+        if (_markedValues is { } cached && ReferenceEquals(cached.Points, points) && cached.Axis == _axis)
+        {
+            return cached.Values;
+        }
+
+        var values = new double[points.Length];
+
+        for (var index = 0; index < points.Length; index++)
+        {
+            values[index] = TraceScale.GetValue(points[index], _axis);
+        }
+
+        Array.Sort(values);
+
+        _markedValues = (points, _axis, values);
+
+        return values;
     }
 
     private void DrawMarkedCall(SKCanvas canvas, MarkedCall marked, int width, int height)
@@ -148,7 +225,7 @@ public sealed partial class TraceTimelineControl
 
         if (x < 0 || x > width || GetMarkedTop(marked) is not { } rowTop)
         {
-            ShowMinimap(start, marked.Lane, marked.Depth, width, height);
+            ShowMinimap([start], marked.Lane, marked.Depth, width, height);
 
             return;
         }
@@ -196,7 +273,7 @@ public sealed partial class TraceTimelineControl
         return null;
     }
 
-    private void ShowMinimap(double marked, int lane, int depth, int width, int height)
+    private void ShowMinimap(ReadOnlySpan<double> marked, int lane, int depth, int width, int height)
     {
         var fits = width >= MinimapWidth + MinimapMargin * 2 && height - BandHeight - ContentTop >= MinimapHeight + MinimapMargin * 2;
 
@@ -219,22 +296,25 @@ public sealed partial class TraceTimelineControl
 
         if (_minimapMarkers is not { } shown
             || !shown.Current.Equals(current)
-            || !shown.Marked.Equals(marked)
+            || !shown.Marked.AsSpan().SequenceEqual(marked)
             || shown.Lane != lane
             || shown.Depth != depth)
         {
-            var markers = new List<MinimapMarker>();
+            var markers = new List<MinimapMarker>(marked.Length + 1);
 
             if (!double.IsNaN(current))
             {
                 markers.Add(new MinimapMarker(current, CurrentColour));
             }
 
-            markers.Add(new MinimapMarker(marked, MarkedColour, lane, depth));
+            foreach (var value in marked)
+            {
+                markers.Add(new MinimapMarker(value, MarkedColour, lane, depth));
+            }
 
             _minimap.Markers = markers;
 
-            _minimapMarkers = (current, marked, lane, depth);
+            _minimapMarkers = (current, marked.ToArray(), lane, depth);
         }
 
         _minimap.Visibility = Visibility.Visible;

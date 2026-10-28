@@ -9,7 +9,6 @@ using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Signatures.Enums;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Signatures;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Stack;
-using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.CallStack;

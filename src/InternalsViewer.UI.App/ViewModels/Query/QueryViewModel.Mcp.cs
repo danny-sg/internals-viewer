@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using InternalsViewer.Internals.Engine.Address;
@@ -202,11 +201,34 @@ public partial class QueryViewModel : IMcpContextSource, IQueryCommands
         return Task.CompletedTask;
     }
 
-    public Task ShowPageAsync(PageAddress pageAddress, ushort? slot)
-    {
-        OpenPage(pageAddress, slot);
+    public Task ShowPageAsync(PageAddress pageAddress, ushort? slot) => OpenPageAsync(pageAddress, slot);
 
-        return Task.CompletedTask;
+    public (PageTabViewModel Page, bool IsActive) GetOpenPage(PageAddress? address)
+    {
+        var pages = GetOpenPages();
+
+        if (pages.Count == 0)
+        {
+            throw new InvalidOperationException("No page is open in this Query tab.");
+        }
+
+        if (address is not { } wanted)
+        {
+            var active = pages.FindIndex(p => p.IsActive);
+
+            return pages[active >= 0 ? active : pages.Count - 1];
+        }
+
+        var index = pages.FindIndex(p => p.Page.PageAddress == wanted);
+
+        if (index < 0)
+        {
+            var open = string.Join(", ", pages.Select(p => p.Page.PageAddress));
+
+            throw new InvalidOperationException($"Page {wanted} is not open in this Query tab. Open pages: {open}.");
+        }
+
+        return pages[index];
     }
 
     public Task ShowPlanNodeAsync(PlanNodeIdentifier identifier)
@@ -227,10 +249,9 @@ public partial class QueryViewModel : IMcpContextSource, IQueryCommands
     {
         Layout.ShowTraceTimeline();
 
-        var instructions = CurrentRun?.ExtraOf<TraceResult>()?.Timeline.Threads
-                                      .Select(t => t.Clock.GetInstructions(position)).DefaultIfEmpty().Max() ?? 0;
+        var point = CurrentRun?.ExtraOf<TraceResult>()?.Timeline.GetPoint(position) ?? new TracePoint(position, 0);
 
-        TraceTimelineTab.RequestPlayhead(new TracePoint(position, instructions));
+        TraceTimelineTab.RequestPlayhead(point);
 
         return Task.CompletedTask;
     }

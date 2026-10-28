@@ -1,6 +1,8 @@
 using System.Runtime.CompilerServices;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Mcp.Interfaces.Tabs;
 using InternalsViewer.Mcp.Models.Context;
+using InternalsViewer.Mcp.Models.Context.Pages;
 using InternalsViewer.Mcp.Models.Context.Queries;
 using InternalsViewer.Mcp.Tabs;
 using InternalsViewer.Query.Export;
@@ -68,6 +70,29 @@ public sealed class McpDocumentResolver(IMcpTabSource tabs)
                       ?? throw new McpException($"Tab {tab.Id} has no {TContext.Area} context.");
 
         return new McpAreaSession<TContext>(tab, context);
+    }
+
+    public async Task<McpAreaSession<PageContext>> OpenQueryPageAsync(string? tabId,
+                                                                       PageAddress? address,
+                                                                       CancellationToken cancellationToken)
+    {
+        var tab = await ResolveAreaTabAsync(McpArea.Query, tabId, cancellationToken);
+
+        IMcpTab page;
+
+        try
+        {
+            page = await tab.GetPageAsync(address, cancellationToken);
+        }
+        catch (Exception exception) when (exception is NotSupportedException or InvalidOperationException)
+        {
+            throw new McpException($"{exception.Message} Use query_page_goto to open one in Query tab {tab.Id}.");
+        }
+
+        var context = await page.GetContextAsync(cancellationToken) as PageContext
+                      ?? throw new McpException($"Tab {page.Id} has no Page context.");
+
+        return new McpAreaSession<PageContext>(page, context);
     }
 
     public async Task<IMcpTab> ResolveAreaTabAsync(McpArea area, string? tabId, CancellationToken cancellationToken)

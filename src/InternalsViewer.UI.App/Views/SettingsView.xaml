@@ -120,7 +120,7 @@
 
         <controls:SettingsExpander x:Name="McpServerExpander"
                                    Header="MCP Server"
-                                   Description="MCP (Model Context Protocol) settings for AI agent integration">
+                                   Description="MCP (Model Context Protocol) settings for AI agent integration on this machine only (127.0.0.1)">
             <controls:SettingsExpander.ItemsHeader>
                 <InfoBar IsOpen="True"
                          Severity="Informational"
@@ -129,11 +129,11 @@
                          CornerRadius="0"
                          Message="{x:Bind ViewModel.McpServerStatus, Mode=OneWay}" />
             </controls:SettingsExpander.ItemsHeader>
+            <controls:SettingsExpander.Content>
+
+                <ToggleSwitch IsOn="{x:Bind ViewModel.McpServerEnabled, Mode=TwoWay}"/>
+            </controls:SettingsExpander.Content>
             <controls:SettingsExpander.Items>
-                <controls:SettingsCard Header="Enable Server"
-                                       Description="Listen for MCP clients on this machine only (127.0.0.1)">
-                    <ToggleSwitch IsOn="{x:Bind ViewModel.McpServerEnabled, Mode=TwoWay}"/>
-                </controls:SettingsCard>
                 <controls:SettingsCard Header="Port"
                                        Description="Local port the server listens on">
                     <NumberBox Value="{x:Bind ViewModel.McpServerPort, Mode=TwoWay}"

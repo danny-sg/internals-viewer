@@ -10,6 +10,10 @@ public sealed class ClaudeDesktopMcpClient(McpClientEnvironment environment) : J
 
     public const string SetupUrl = "https://danny-sg.github.io/internals-viewer/docs/user-guide/mcp-server#claude-desktop";
 
+    private const string ConfigFileName = "claude_desktop_config.json";
+
+    private const string PackagedDataFolder = "Claude-Data";
+
     public override string Id => "claude-desktop";
 
     public override string Name => "Claude Desktop";
@@ -19,11 +23,12 @@ public sealed class ClaudeDesktopMcpClient(McpClientEnvironment environment) : J
 
     public override string? HelpUrl => SetupUrl;
 
-    protected override string InstallDirectory { get; } = environment.GetApplicationDataPath("Claude");
-
-    protected override string ConfigPath { get; } = environment.GetApplicationDataPath("Claude", "claude_desktop_config.json");
+    protected override string[] InstallDirectories { get; } =
+        [environment.GetLocalApplicationDataPath(PackagedDataFolder), environment.GetApplicationDataPath("Claude")];
 
     protected override string ServersKey => "mcpServers";
+
+    protected override string MissingConfigMessage => "Open Settings > Developer > Edit Config in Claude Desktop first, then Register";
 
     private McpClientEnvironment Environment { get; } = environment;
 
@@ -35,6 +40,21 @@ public sealed class ClaudeDesktopMcpClient(McpClientEnvironment environment) : J
         }
 
         return base.GetStateAsync(settings, cancellationToken);
+    }
+
+    protected override string[] GetConfigPaths()
+    {
+        var packaged = Environment.GetLocalApplicationDataPath(PackagedDataFolder);
+
+        string[] packageFolders = Directory.Exists(packaged)
+            ? [.. Directory.GetDirectories(packaged).Order(StringComparer.OrdinalIgnoreCase)]
+            : [];
+
+        return
+        [
+            .. packageFolders.Select(f => Path.Combine(f, ConfigFileName)),
+            Environment.GetApplicationDataPath("Claude", ConfigFileName)
+        ];
     }
 
     protected override JsonObject CreateEntry(McpHostSettings settings) => new()

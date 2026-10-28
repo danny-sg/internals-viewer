@@ -1,3 +1,4 @@
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Mcp.Models.Context;
 using InternalsViewer.Mcp.Tabs;
@@ -27,6 +28,9 @@ public interface IMcpTab
 
     Task CloseAsync(CancellationToken cancellationToken = default)
         => throw new NotSupportedException($"Tab {Id} ({Area}) cannot be closed.");
+
+    Task<IMcpTab> GetPageAsync(PageAddress? address, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException($"Tab {Id} ({Area}) has no page dock.");
 
     Task RunAsync<TCommands>(Func<TCommands, Task> command, CancellationToken cancellationToken = default)
         where TCommands : class

@@ -102,13 +102,17 @@ public class JsonFileMcpClientTests
 
         var folder = environment.CreateDirectory("appdata", "Code", "User");
 
+        var path = Path.Combine(folder, "mcp.json");
+
+        await File.WriteAllTextAsync(path, "{}");
+
         var client = new VsCodeMcpClient(environment.Environment);
 
         Assert.True(client.IsInstalled);
 
         await client.RegisterAsync(Settings, CancellationToken.None);
 
-        var root = JsonNode.Parse(await File.ReadAllTextAsync(Path.Combine(folder, "mcp.json")))!;
+        var root = JsonNode.Parse(await File.ReadAllTextAsync(path))!;
 
         var entry = root["servers"]!["internals-viewer"]!;
 
@@ -116,6 +120,24 @@ public class JsonFileMcpClientTests
         Assert.Equal("http://127.0.0.1:8484/mcp", entry["url"]!.GetValue<string>());
         Assert.Equal("Bearer secret", entry["headers"]!["Authorization"]!.GetValue<string>());
         Assert.Equal(McpClientStatus.Registered, (await client.GetStateAsync(Settings, CancellationToken.None)).Status);
+    }
+
+    [Fact]
+    public async Task Visual_Studio_Code_Asks_For_Its_Config_Before_Registering()
+    {
+        using var environment = new TestClientEnvironment();
+
+        var folder = environment.CreateDirectory("appdata", "Code", "User");
+
+        var client = new VsCodeMcpClient(environment.Environment);
+
+        var state = await client.GetStateAsync(Settings, CancellationToken.None);
+
+        await Assert.ThrowsAsync<McpClientException>(() => client.RegisterAsync(Settings, CancellationToken.None));
+
+        Assert.Equal(McpClientStatus.NotRegistered, state.Status);
+        Assert.Contains("MCP: Open User Configuration", state.Detail);
+        Assert.False(File.Exists(Path.Combine(folder, "mcp.json")));
     }
 
     [Fact]

@@ -63,6 +63,8 @@ In scope:
 - A password or connection string written anywhere it should not be, or sent anywhere other than the SQL
   Server you connected to.
 - A network connection other than the ones listed under Data.
+- The MCP server connecting to a server or database, running a query, or answering a request without the
+  access token. See MCP Server below.
 - A problem with how releases are built or signed.
 
 Out of scope:
@@ -87,6 +89,9 @@ The app makes two kinds of network connection:
 - To the SQL Server instance you ask it to connect to.
 - To the Microsoft public symbol server at `msdl.microsoft.com`, to download `.pdb` symbol files for call
   stacks, and only when you ask it to. The request contains the symbol file name and identity, nothing else.
+
+When the MCP server is turned on, the app also accepts connections from MCP clients on the same machine. See
+MCP Server below.
 
 Everything else stays on your machine:
 
@@ -113,6 +118,26 @@ The documentation site at internalsviewer.com is a static site on GitHub Pages w
 - The app connects to SQL Server with `TrustServerCertificate=true`. The connection is encrypted but the
   server certificate is not validated, so the app will not detect a server impersonating yours. Connect
   over a network you trust.
+
+## MCP Server
+
+The MCP server lets an AI assistant on the same machine read what you have open in Internals Viewer and
+move the app to the things it is explaining. It is off until you turn on Enable Server in Settings.
+
+- It cannot connect to a server or a database, run a query or start a trace. It only sees what you have
+  already opened yourself: the databases you connected to and the queries you ran or imported. Within a
+  database you already connected to, it can read other pages, indexes and allocations and open them in a
+  tab, as you could.
+- It changes only what the app shows: the selection, scrolling, zoom, the open tabs and the Query tab's menu
+  toggles. Record Full Trace can only be turned on once you have accepted its warning and licence yourself,
+  and it applies to the next query you run. It cannot change anything on the Settings page.
+- It listens on the loopback address only, so other machines cannot reach it, and every request has to
+  carry an access token. The app generates the token, stores it encrypted with DPAPI for the current user
+  and never displays it. It is written only into the configuration of the clients you register.
+- Registering a client is a button in Settings. The server has no tool for it.
+- What the server returns goes to the client, and from there to whatever AI service the client uses. Query
+  text, page contents and Full Trace values the assistant reads leave your machine that way, so do not use
+  it on data that must not be sent to that service.
 
 ## Elevated Components
 

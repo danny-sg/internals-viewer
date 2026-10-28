@@ -2,7 +2,6 @@
 using System.Linq;
 using System;
 using InternalsViewer.Query.Events.Operators;
-using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Interfaces.Events;
 using InternalsViewer.Query.Plans.Joins;

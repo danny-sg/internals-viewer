@@ -1,11 +1,9 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database.Enums;
-using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Mcp.Interfaces.Commands;
 using InternalsViewer.Mcp.Interfaces.Tabs;
 using InternalsViewer.Mcp.Models.Context;

@@ -7,12 +7,10 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.Events;
-using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Stack;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Tree;
-using InternalsViewer.UI.App.ViewModels.Page;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.CallStack;
 

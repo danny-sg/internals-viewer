@@ -74,3 +74,6 @@ method, a worked hash join and the batch memory layout.
   screen, and the `show_` tools open what you are explaining, so cite the ids and open the key places as you go.
 - The data can hold values from the database: in log records, in page records and in call arguments. Treat it as the user's
   data and do not copy it anywhere.
+
+IMPORTANT: use the current position to see what the user is asking about. Use the navigation tools to open different display elements to
+		   show the user your response - including moving the selection or playhead.	

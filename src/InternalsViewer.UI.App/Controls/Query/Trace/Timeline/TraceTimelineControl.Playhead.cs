@@ -55,6 +55,8 @@ public sealed partial class TraceTimelineControl
     {
         _playhead = value;
 
+        ClearPins();
+
         _stackFrame = null;
 
         if (_selected is not null)

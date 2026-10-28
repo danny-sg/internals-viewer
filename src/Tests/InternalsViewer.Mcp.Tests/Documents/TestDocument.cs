@@ -31,6 +31,10 @@ internal sealed class TestDocument : IMcpTab
 
     public RecordingNavigator Recorded { get; init; } = new();
 
+    public object? TimelineCommands { get; init; }
+
+    public McpTraceTimeline? TimelineState { get; init; }
+
     public Task<TabContext> GetContextAsync(CancellationToken cancellationToken = default)
         => Task.FromResult<TabContext>(new QueryContext
         {
@@ -40,12 +44,13 @@ internal sealed class TestDocument : IMcpTab
             Sql = SqlText,
             Run = Run,
             IsTraceLoading = IsTraceLoading,
+            Timeline = TimelineState,
             Selection = Recorded.Selection
         });
 
     public Task RunAsync<TCommands>(Func<TCommands, Task> command, CancellationToken cancellationToken = default)
         where TCommands : class
-        => Recorded is TCommands target
+        => (Recorded as TCommands ?? TimelineCommands as TCommands) is { } target
             ? command(target)
             : throw new NotSupportedException($"No {typeof(TCommands).Name} commands.");
 
@@ -53,7 +58,7 @@ internal sealed class TestDocument : IMcpTab
         Func<TCommands, Task<TResult>> command,
         CancellationToken cancellationToken = default)
         where TCommands : class
-        => Recorded is TCommands target
+        => (Recorded as TCommands ?? TimelineCommands as TCommands) is { } target
             ? command(target)
             : throw new NotSupportedException($"No {typeof(TCommands).Name} commands.");
 }

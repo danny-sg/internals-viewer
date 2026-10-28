@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:query="using:InternalsViewer.UI.App.Controls.Query"
     xmlns:plan="using:InternalsViewer.UI.App.Controls.Query.Plan"
     xmlns:plans="using:InternalsViewer.Query.Plans"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
@@ -43,6 +44,11 @@
                            Layout="{StaticResource PlanStackLayout}"
                            ItemTemplate="{StaticResource ExecutionPlanTemplate}" />
         </ScrollViewer>
+
+        <query:NoQueryHint Grid.Row="0"
+                           Grid.Column="0"
+                           Layout="{x:Bind ViewModel.Layout, Mode=OneWay}"
+                           Visibility="{x:Bind ViewModel.IsNoQueryHintVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
 
         <controls:GridSplitter Grid.Row="0"
                                Grid.Column="1"

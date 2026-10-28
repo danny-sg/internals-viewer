@@ -1,3 +1,4 @@
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Mcp.Interfaces.Tabs;
 using InternalsViewer.Mcp.Models.Context;
@@ -34,7 +35,12 @@ internal sealed class TestAreaTab(McpArea area, TabContext? context = null, obje
 
     public TabContext? Context { get; set; } = context;
 
+    public IMcpTab? Page { get; set; }
+
     public Task<List<IMcpTab>> GetTabsAsync(CancellationToken cancellationToken) => Task.FromResult(new List<IMcpTab> { this });
+
+    public Task<IMcpTab> GetPageAsync(PageAddress? address, CancellationToken cancellationToken = default)
+        => Page is { } page ? Task.FromResult(page) : throw new InvalidOperationException("No page is open in this Query tab.");
 
     public Task<TabContext> GetContextAsync(CancellationToken cancellationToken = default)
         => Task.FromResult(Context ?? Empty());

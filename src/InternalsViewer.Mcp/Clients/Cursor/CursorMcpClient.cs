@@ -11,11 +11,15 @@ public sealed class CursorMcpClient(McpClientEnvironment environment) : JsonFile
 
     public override string Description => "Adds the server to Cursor's global mcp.json, so it is available in every project";
 
-    protected override string InstallDirectory { get; } = environment.GetHomePath(".cursor");
-
-    protected override string ConfigPath { get; } = environment.GetHomePath(".cursor", "mcp.json");
+    protected override string[] InstallDirectories { get; } = [environment.GetHomePath(".cursor")];
 
     protected override string ServersKey => "mcpServers";
+
+    protected override bool CanCreateConfig => true;
+
+    private string ConfigPath { get; } = environment.GetHomePath(".cursor", "mcp.json");
+
+    protected override string[] GetConfigPaths() => [ConfigPath];
 
     protected override JsonObject CreateEntry(McpHostSettings settings) => McpServerConfigFile.CreateEntry(settings);
 }

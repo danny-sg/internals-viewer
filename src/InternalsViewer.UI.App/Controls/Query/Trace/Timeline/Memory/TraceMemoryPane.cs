@@ -32,7 +32,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
     private const int DebounceMilliseconds = 120;
 
-    private static readonly SKColor PaneColour = new(30, 30, 30, 220);
+    private static readonly SKColor PaneColour = new(30, 30, 30, 255);
 
     private static readonly SKColor LifetimeColour = new(90, 90, 90, 120);
 
@@ -43,6 +43,30 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
     public bool HasBlocks => Blocks.Count > 0;
 
     public TraceMemoryHit? Hover { get; set; }
+
+    public bool SizeToFit
+    {
+        get;
+        set
+        {
+            if (field == value)
+            {
+                return;
+            }
+
+            field = value;
+
+            ScrollY = 0;
+
+            Host.Invalidate();
+        }
+    } = true;
+
+    public float ScrollY { get; private set; }
+
+    public float ContentHeight => CurrentFrame?.View.ContentHeight ?? 0;
+
+    public bool CanScroll => !SizeToFit && ContentHeight > Height;
 
     private ITraceTimelineHost Host { get; } = host;
 
@@ -79,6 +103,8 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
         Reset();
 
         Hover = null;
+
+        ScrollY = 0;
     }
 
     public void SetScale(TraceScale scale)
@@ -110,7 +136,24 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
             return;
         }
 
-        RequestFrame(key);
+        if (CurrentFrame is { } scrolled && scrolled.Key == key with { ScrollY = scrolled.Key.ScrollY })
+        {
+            canvas.Save();
+
+            canvas.ClipRect(new SKRect(0, Top, width, Top + Height));
+
+            canvas.Translate(0, scrolled.Key.ScrollY - key.ScrollY);
+
+            canvas.DrawPicture(scrolled.Picture);
+
+            canvas.Restore();
+
+            RequestFrame(key, isScrolling: true);
+
+            return;
+        }
+
+        RequestFrame(key, isScrolling: false);
     }
 
     public void Render(int width, double scale)
@@ -149,7 +192,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
             Paints.Outline.StrokeWidth = 1f;
 
-            canvas.DrawRect(new SKRect(left, Top + rows.Top, right, Top + rows.Bottom), Paints.Outline);
+            canvas.DrawRect(new SKRect(left, Top + rows.Top - ScrollY, right, Top + rows.Bottom - ScrollY), Paints.Outline);
         }
 
         canvas.Restore();
@@ -164,7 +207,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
         var scale = Host.Scale;
 
-        if (frame.View.GetAddressAt(frame.Structure, (float)(position.Y - Top)) is not { } address)
+        if (frame.View.GetAddressAt(frame.Structure, (float)(position.Y - Top) + ScrollY) is not { } address)
         {
             return null;
         }
@@ -262,6 +305,22 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
         Host.SelectMemoryWrite(block.Block, hit.Write >= 0 ? block.Writes[hit.Write].Point.Position : null);
     }
 
+    public void ScrollTo(float y)
+    {
+        var clamped = Math.Clamp(y, 0, Math.Max(0, ContentHeight - Height));
+
+        if (clamped == ScrollY)
+        {
+            return;
+        }
+
+        ScrollY = clamped;
+
+        Host.Invalidate();
+    }
+
+    public void ScrollBy(float delta) => ScrollTo(ScrollY + delta);
+
     public void Dispose()
     {
         Reset();
@@ -293,7 +352,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
         Rendering = null;
     }
 
-    private void RequestFrame(FrameKey key)
+    private void RequestFrame(FrameKey key, bool isScrolling)
     {
         if (RequestedKey == key)
         {
@@ -306,7 +365,10 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
         Rendering = new CancellationTokenSource();
 
-        Host.ShowMemoryProgress(true);
+        if (!isScrolling)
+        {
+            Host.ShowMemoryProgress(true);
+        }
 
         _ = RenderAsync(key, Rendering.Token);
     }
@@ -348,11 +410,12 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
            && frame.Key.Start == Host.ViewStart
            && frame.Key.End == Host.ViewEnd
            && ReferenceEquals(frame.Key.Scope, Host.MemoryScope)
+           && frame.Key.SizeToFit == SizeToFit
             ? frame
             : null;
 
     private FrameKey GetKey(int width, double scale)
-        => new(Blocks, TraceScale, Host.Axis, width, Top, Height, Host.ViewStart, Host.ViewEnd, scale, Host.MemoryScope);
+        => new(Blocks, TraceScale, Host.Axis, width, Top, Height, Host.ViewStart, Host.ViewEnd, scale, Host.MemoryScope, SizeToFit, ScrollY);
 
     private TraceMemoryHit? GetClickHit(Point position)
     {
@@ -361,7 +424,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
             return null;
         }
 
-        return GetNearestWrite(frame, position.X, (float)(position.Y - Top), Host.Scale) ?? GetHit(position);
+        return GetNearestWrite(frame, position.X, (float)(position.Y - Top) + ScrollY, Host.Scale) ?? GetHit(position);
     }
 
     private void SetFrame(FrameKey key, Rendered rendered)
@@ -381,7 +444,11 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
         CurrentFrame?.Picture.Dispose();
 
-        CurrentFrame = new Frame(key, rendered.Structure, rendered.View, recorder.EndRecording());
+        ScrollY = rendered.View.Offset;
+
+        CurrentFrame = new Frame(key with { ScrollY = ScrollY }, rendered.Structure, rendered.View, recorder.EndRecording());
+
+        Host.OnMemoryLayoutChanged();
     }
 
     private void DrawPoints(SKCanvas canvas, List<(int X, int Y, int CallNodeIndex)> marks, int size, bool[]? scope)
@@ -457,7 +524,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
         Paints.Fill.Color = LifetimeColour;
 
         canvas.DrawRect(barLeft,
-                        key.Top + rows.Top,
+                        key.Top + rows.Top - view.Offset,
                         Math.Max(1f, Math.Min(right, key.Width + 1f) - barLeft),
                         rows.Bottom - rows.Top,
                         Paints.Fill);
@@ -579,7 +646,9 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
                                  List<(int X, int Y, int CallNodeIndex)> marks,
                                  bool[]? scope)
     {
-        if (view.GetRows(structure, lane.Run, lane.Address, lane.Length) is not { } rows)
+        if (view.GetRows(structure, lane.Run, lane.Address, lane.Length) is not { } rows
+            || rows.Bottom < view.Offset
+            || rows.Top > view.Offset + key.Height)
         {
             return;
         }
@@ -590,7 +659,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
         var end = key.End + 1 / scale;
 
-        var y = (int)MathF.Floor(key.Top + (rows.Top + rows.Bottom - size) / 2);
+        var y = (int)MathF.Floor(key.Top + (rows.Top + rows.Bottom - size) / 2 - view.Offset);
 
         var row = (y - (int)MathF.Floor(key.Top)) * columns;
 
@@ -974,12 +1043,22 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
             segments[^1].Add(run);
         }
 
-        var gap = segments.Count > 1
-            ? Math.Clamp((height - segments.Count * MinimumRunHeight) / (segments.Count - 1), 0, BlockGap)
-            : 0;
+        var gap = segments.Count switch
+        {
+            <= 1 => 0f,
+            _ when key.SizeToFit => Math.Clamp((height - segments.Count * MinimumRunHeight) / (segments.Count - 1), 0, BlockGap),
+            _ => BlockGap
+        };
 
-        var segmentHeights = GetRunHeights([.. segments.Select(s => s.Aggregate(0ul, (total, r) => total + runs[r].End - runs[r].Start))],
-                                           height - gap * Math.Max(segments.Count - 1, 0));
+        var room = height - gap * Math.Max(segments.Count - 1, 0);
+
+        var lengths = segments.Select(s => s.Select(r => runs[r].End - runs[r].Start).ToList()).ToList();
+
+        var segmentHeights = key.SizeToFit
+            ? GetRunHeights([.. lengths.Select(l => l.Aggregate(0ul, (total, length) => total + length))], room)
+            : null;
+
+        var relativeBytePixels = key.SizeToFit ? 0 : GetRelativeBytePixels(lengths, room);
 
         var tops = new float[runs.Length];
 
@@ -998,7 +1077,9 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
             var members = segments[segment];
 
-            var heights = GetRunHeights([.. members.Select(r => runs[r].End - runs[r].Start)], segmentHeights[segment]);
+            float[] heights = segmentHeights is { } fitted
+                ? GetRunHeights(lengths[segment], fitted[segment])
+                : [.. lengths[segment].Select(length => (float)(length * relativeBytePixels))];
 
             for (var index = 0; index < members.Count; index++)
             {
@@ -1037,7 +1118,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
             blockRows[block] = top is { } value ? (value, bottom) : null;
         }
 
-        return new View(markSize, [.. active], tops, bytePixels, blockRows);
+        return new View(markSize, [.. active], tops, bytePixels, blockRows, y, Math.Clamp(key.ScrollY, 0, Math.Max(0, y - height)));
     }
 
     private static int GetRunAt(IReadOnlyList<Run> runs, int from, int to, ulong address)
@@ -1080,6 +1161,22 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
         }
 
         return merged;
+    }
+
+    private static double GetRelativeBytePixels(List<List<ulong>> lengths, float room)
+    {
+        var total = 0ul;
+
+        var smallest = ulong.MaxValue;
+
+        foreach (var length in lengths.SelectMany(l => l))
+        {
+            total += length;
+
+            smallest = Math.Min(smallest, length);
+        }
+
+        return total == 0 ? 0 : Math.Min(MaximumBytePixels, Math.Max(Math.Max(room, 0) / total, MinimumRunHeight / smallest));
     }
 
     private static float[] GetRunHeights(List<ulong> lengths, float height)
@@ -1163,7 +1260,9 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
                                             double Start,
                                             double End,
                                             double Scale,
-                                            bool[]? Scope);
+                                            bool[]? Scope,
+                                            bool SizeToFit,
+                                            float ScrollY);
 
     private sealed record Frame(FrameKey Key, Structure Structure, View View, SKPicture Picture);
 
@@ -1173,7 +1272,9 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
                                int[] Active,
                                float[] Tops,
                                float[] BytePixels,
-                               (float Top, float Bottom)?[] BlockRows)
+                               (float Top, float Bottom)?[] BlockRows,
+                               float ContentHeight,
+                               float Offset)
     {
         public (float Top, float Bottom)? GetRows(Structure structure, ulong address, int length)
             => GetRows(structure, GetRunAt(structure.Runs, 0, structure.Runs.Length, address), address, length);

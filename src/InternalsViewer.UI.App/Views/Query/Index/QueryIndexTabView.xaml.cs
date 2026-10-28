@@ -3,7 +3,6 @@ using Windows.System;
 using Windows.UI.Core;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.UI.App.Controls.Index;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.ViewModels.Index;
 using InternalsViewer.UI.App.ViewModels.Query;

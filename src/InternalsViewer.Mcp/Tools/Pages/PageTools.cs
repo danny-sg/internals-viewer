@@ -28,7 +28,12 @@ public sealed class PageTools(McpDocumentResolver documents)
     {
         var context = await Documents.GetContextAsync<PageContext>(document, cancellationToken);
 
-        var loaded = context.Page ?? throw new McpException($"Page tab {context.TabId} has no page         open.");
+        return Read(context, slot, limit, offset, width);
+    }
+
+    internal static string Read(PageContext context, int? slot, int limit, int offset, int width)
+    {
+        var loaded = context.Page ?? throw new McpException($"Tab {context.TabId} has no page open.");
         var pageAddress = loaded.PageAddress;
 
         var header = loaded.PageHeader;
@@ -47,6 +52,13 @@ public sealed class PageTools(McpDocumentResolver documents)
 
         builder.AppendLine($"  lsn {header.Lsn} flags 0x{header.FlagBits:X} type flags 0x{header.TypeFlagBits:X} " +
                            $"torn bits {header.TornBits}");
+
+        if (context.Structures.Count > 0)
+        {
+            var structures = string.Join(", ", context.Structures.Select(s => $"{s.Name} = {s.Slot}"));
+
+            builder.AppendLine($"  structures selectable as slots: {structures}");
+        }
 
         var records = context.Records;
 

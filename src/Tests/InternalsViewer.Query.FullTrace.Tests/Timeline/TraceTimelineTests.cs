@@ -63,6 +63,17 @@ public class TraceTimelineTests
     }
 
     [Fact]
+    public void A_Point_At_A_Position_Takes_Its_Instructions_From_The_Thread_Clock()
+    {
+        var timeline = Build(new CallSpan(1, 0, 5, 20, 0, 1020, 0, 7, 0, 1),
+                             new CallSpan(3, 40, 3, 60, 340, 360, 1, 7, 0, 1));
+
+        var point = timeline.GetPoint(At(3, 50));
+
+        Assert.Equal((At(3, 50), 350ul), (point.Position, point.Instructions));
+    }
+
+    [Fact]
     public void A_Call_Is_Found_By_Where_It_Ran()
     {
         var row = Build(Span(callNodeIndex: 0, start: 0, end: 10), Span(callNodeIndex: 0, start: 20, end: 30, sequence: 2)).Threads[0].Rows[0];

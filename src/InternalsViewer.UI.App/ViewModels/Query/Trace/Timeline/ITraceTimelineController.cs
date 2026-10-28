@@ -1,5 +1,6 @@
 using InternalsViewer.Mcp.Models.Context.Queries;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
 
@@ -20,4 +21,6 @@ public interface ITraceTimelineController
     void SelectCall(CallStackNode node, int callIndex, bool zoom);
 
     void Zoom(bool toSelection);
+
+    void PinPositions(TracePoint[] points);
 }

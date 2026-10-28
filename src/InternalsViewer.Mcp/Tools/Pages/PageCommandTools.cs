@@ -32,13 +32,7 @@ public sealed class PageCommandTools(McpDocumentResolver documents)
 
         await session.RunAsync<IPageCommands>(c => c.GoToPageAsync(address, slot), cancellationToken);
 
-        var context = session.Context;
-
-        var type = context.Page is { } loaded ? $" ({loaded.PageHeader.PageTypeName})" : string.Empty;
-
-        var selected = context.CurrentSlot is { } current ? $" Selected slot {current}." : string.Empty;
-
-        return $"Loaded page {context.Address}{type}.{selected}";
+        return DescribeLoaded(session.Context);
     }
 
     [McpServerTool(Name = "page_select_slot")]
@@ -51,11 +45,75 @@ public sealed class PageCommandTools(McpDocumentResolver documents)
     {
         var session = await Documents.OpenAsync<PageContext>(tab, cancellationToken);
 
+        return await SelectSlotAsync(session, slot, cancellationToken);
+    }
+
+    [McpServerTool(Name = "page_select_marker")]
+    [Description("Select a marker (a field or structure) in the hex viewer by name, or clear the marker selection when the name " +
+                 "is omitted. The names come from get_selection and page_read")]
+    public async Task<string> SelectMarker([Description("Marker name, matched case insensitively. Omit to clear")] string? name = null,
+                                           [Description(TabDescription)] string? tab = null,
+                                           CancellationToken cancellationToken = default)
+    {
+        var session = await Documents.OpenAsync<PageContext>(tab, cancellationToken);
+
+        return await SelectMarkerAsync(session, name, cancellationToken);
+    }
+
+    [McpServerTool(Name = "page_scroll")]
+    [Description("Scroll the hex viewer to a byte offset in the page, 0 to 8191")]
+    public async Task<string> Scroll([Description("Byte offset from the start of the page")] int offset,
+                                     [Description(TabDescription)] string? tab = null,
+                                     CancellationToken cancellationToken = default)
+    {
+        RequireOffset(offset);
+
+        var session = await Documents.OpenAsync<PageContext>(tab, cancellationToken);
+
+        return await ScrollAsync(session, offset, cancellationToken);
+    }
+
+    [McpServerTool(Name = "page_view")]
+    [Description("Switch the Page tab's view: Markers (the page header or slot being viewed), Allocations, Pfs or Data. " +
+                 "Only the views the page has are available")]
+    public async Task<string> View([Description("Markers, Allocations, Pfs or Data")] PageViewTab view,
+                                   [Description(TabDescription)] string? tab = null,
+                                   CancellationToken cancellationToken = default)
+    {
+        var session = await Documents.OpenAsync<PageContext>(tab, cancellationToken);
+
+        return await ViewAsync(session, view, cancellationToken);
+    }
+
+    [McpServerTool(Name = "page_open_index")]
+    [Description("Open the index the page belongs to in a new Index tab, from its root page. Only for pages of an index")]
+    public async Task<string> OpenIndex([Description(TabDescription)] string? tab = null,
+                                        CancellationToken cancellationToken = default)
+    {
+        var session = await Documents.OpenAsync<PageContext>(tab, cancellationToken);
+
+        return await OpenIndexAsync(session, cancellationToken);
+    }
+
+    internal static string DescribeLoaded(PageContext context)
+    {
+        var type = context.Page is { } loaded ? $" ({loaded.PageHeader.PageTypeName})" : string.Empty;
+
+        var selected = context.CurrentSlot is { } current ? $" Selected slot {current}." : string.Empty;
+
+        return $"Loaded page {context.Address}{type}.{selected}";
+    }
+
+    internal static async Task<string> SelectSlotAsync(McpAreaSession<PageContext> session,
+                                                       int slot,
+                                                       CancellationToken cancellationToken)
+    {
         var before = session.Context;
 
         if (before.Page is not { } page)
         {
-            throw new McpException("No page is loaded in this tab. Use page_goto to load one.");
+            throw new McpException($"No page is loaded in tab {before.TabId}. Load one with page_goto, or query_page_goto in a " +
+                                   "Query tab.");
         }
 
         var structure = before.Structures.FirstOrDefault(s => s.Slot == slot);
@@ -76,15 +134,10 @@ public sealed class PageCommandTools(McpDocumentResolver documents)
         return $"Selected slot {session.Context.CurrentSlot}{description}.";
     }
 
-    [McpServerTool(Name = "page_select_marker")]
-    [Description("Select a marker (a field or structure) in the hex viewer by name, or clear the marker selection when the name " +
-                 "is omitted. The names come from get_selection and page_read")]
-    public async Task<string> SelectMarker([Description("Marker name, matched case insensitively. Omit to clear")] string? name = null,
-                                           [Description(TabDescription)] string? tab = null,
-                                           CancellationToken cancellationToken = default)
+    internal static async Task<string> SelectMarkerAsync(McpAreaSession<PageContext> session,
+                                                         string? name,
+                                                         CancellationToken cancellationToken)
     {
-        var session = await Documents.OpenAsync<PageContext>(tab, cancellationToken);
-
         if (!string.IsNullOrWhiteSpace(name))
         {
             var names = session.Context.MarkerNames;
@@ -107,33 +160,25 @@ public sealed class PageCommandTools(McpDocumentResolver documents)
         return $"Selected {context.SelectedName} at offset {context.SelectionStart}, {context.Selection?.Length ?? 0} bytes.";
     }
 
-    [McpServerTool(Name = "page_scroll")]
-    [Description("Scroll the hex viewer to a byte offset in the page, 0 to 8191")]
-    public async Task<string> Scroll([Description("Byte offset from the start of the page")] int offset,
-                                     [Description(TabDescription)] string? tab = null,
-                                     CancellationToken cancellationToken = default)
+    internal static void RequireOffset(int offset)
     {
         if (offset < 0 || offset >= PageData.Size)
         {
             throw new McpException($"Offset {offset} is outside the page. Use 0 to {PageData.Size - 1}.");
         }
+    }
 
-        var session = await Documents.OpenAsync<PageContext>(tab, cancellationToken);
-
+    internal static async Task<string> ScrollAsync(McpAreaSession<PageContext> session, int offset, CancellationToken cancellationToken)
+    {
         await session.RunAsync<IPageCommands>(c => c.ScrollToAsync(offset), cancellationToken);
 
         return $"Scrolled the hex viewer to offset {offset}.";
     }
 
-    [McpServerTool(Name = "page_view")]
-    [Description("Switch the Page tab's view: Markers (the page header or slot being viewed), Allocations, Pfs or Data. " +
-                 "Only the views the page has are available")]
-    public async Task<string> View([Description("Markers, Allocations, Pfs or Data")] PageViewTab view,
-                                   [Description(TabDescription)] string? tab = null,
-                                   CancellationToken cancellationToken = default)
+    internal static async Task<string> ViewAsync(McpAreaSession<PageContext> session,
+                                                 PageViewTab view,
+                                                 CancellationToken cancellationToken)
     {
-        var session = await Documents.OpenAsync<PageContext>(tab, cancellationToken);
-
         if (!session.Context.AvailableTabs.Contains(view))
         {
             throw new McpException(
@@ -145,13 +190,8 @@ public sealed class PageCommandTools(McpDocumentResolver documents)
         return $"Showing the {session.Context.Tab} view.";
     }
 
-    [McpServerTool(Name = "page_open_index")]
-    [Description("Open the index the page belongs to in a new Index tab, from its root page. Only for pages of an index")]
-    public async Task<string> OpenIndex([Description(TabDescription)] string? tab = null,
-                                        CancellationToken cancellationToken = default)
+    internal static async Task<string> OpenIndexAsync(McpAreaSession<PageContext> session, CancellationToken cancellationToken)
     {
-        var session = await Documents.OpenAsync<PageContext>(tab, cancellationToken);
-
         if (session.Context.AllocationUnit is not { } unit || unit.IndexType == IndexType.Heap)
         {
             throw new McpException($"Page {session.Context.Address} does not belong to an index.");

@@ -19,6 +19,8 @@ public sealed record McpTraceTimeline
 
     public int SelectedCallIndex { get; init; } = -1;
 
+    public int PinnedPositions { get; init; }
+
     public IReadOnlyList<McpOption> Options { get; init; } = [];
 
     public IReadOnlyList<McpTimelineTrack> Tracks { get; init; } = [];

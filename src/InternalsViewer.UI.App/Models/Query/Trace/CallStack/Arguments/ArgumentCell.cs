@@ -1,4 +1,3 @@
-using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.CallStack.Locators;
 
 namespace InternalsViewer.UI.App.Models.Query.Trace.CallStack.Arguments;

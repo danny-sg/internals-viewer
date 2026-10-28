@@ -16,7 +16,7 @@ From top to bottom:
 - **A lane per thread** - headed **Thread** and the operating system thread id
 - **The memory band** - with a view chosen under **View > Flame Chart > Memory**, the memory allocated and in use along the bottom - see [Memory](#memory)
 
-**Operators**, **Memory** and **Calls** on the tab strip show and hide the Operators pane, the Memory History lane and the thread lanes. The last of the three left on cannot be turned off. **View > Flame Chart > Highlight Regions** shades the stretches of the lanes where the query was compiled, started and shut down, as **Compilation**, **Setup** and **Shutdown**, each with its own toggle. **View > Memory History > Call Highlight Hover** dims every call except the ones that wrote to the block under the pointer while you hover over the Memory History lane. **View > Reset Layout** puts the pane heights back and docks the Call Stack and memory tabs beneath the chart again. Right-clicking any of the three areas offers the same three toggles, with the only area still showing greyed out, then that area's own view settings and **Call Stack**, so the View menu's settings are a click away wherever you are.
+**Operators**, **Memory** and **Calls** on the tab strip show and hide the Operators pane, the Memory History lane and the thread lanes. The last of the three left on cannot be turned off. **View > Flame Chart > Highlight Regions** shades the stretches of the lanes where the query was compiled, started and shut down, as **Compilation**, **Setup** and **Shutdown**, each with its own toggle. **View > Memory History > Size to Fit**, on by default, squeezes every block into the lane. Turn it off to draw the blocks at their relative sizes, with a scroll bar on the right of the lane whenever they overflow it. **View > Memory History > Call Highlight Hover** dims every call except the ones that wrote to the block under the pointer while you hover over the Memory History lane. **View > Reset Layout** puts the pane heights back and docks the Call Stack and memory tabs beneath the chart again. Right-clicking any of the three areas offers the same three toggles, with the only area still showing greyed out, then that area's own view settings and **Call Stack**, so the View menu's settings are a click away wherever you are.
 
 In a lane, each call is a bar running from where it started to where it ended. The calls it made sit directly beneath it, inside its width, so the outermost call is at the top of the lane and each row down is one level deeper in the stack. That is the reverse of a classic flame graph, which grows upwards, but it reads the same way as the Call Tree. A bar is coloured by its function's category and labelled with the function's name once it is wide enough to read.
 
@@ -38,7 +38,7 @@ TTD has no clock. A recording is a sequence of positions - a sequence number sha
 
 - **Mouse wheel** zooms in and out at the pointer
 - **Shift + mouse wheel**, or a horizontal wheel, pans sideways
-- **Ctrl + mouse wheel** scrolls through the threads
+- **Ctrl + mouse wheel** scrolls through the threads, or through the Memory History lane when the pointer is over it and its blocks overflow
 - **Drag** pans sideways, and a **middle-button drag** pans in both directions
 - **Shift + drag** draws a rectangle and zooms to it
 - **Shift + click** a bar to scope the chart to its function, or empty space to go back to the whole recording
@@ -51,8 +51,8 @@ The lanes shrink to fit every thread into the pane, and a call's name appears on
 
 Right-clicking a bar gives:
 
-- **Zoom to Selection** - only while a call is selected, wherever you right-click. Zooms to the selected call, as double-clicking it does, and scrolls its thread into view
-- **Zoom to Fit** - wherever you right-click. Zooms back out to the whole recording
+- **Zoom to** - only over a call. Zooms to the call under the pointer, as double-clicking it does, and scrolls its thread into view
+- **Zoom to 100%** - wherever you right-click. Zooms back out to the whole recording
 - **Scope** - scopes the chart to the call's function, as **Shift + click** does - see [Scoping to a function](#scoping-to-a-function)
 - **Clear Scope** - only while the chart is scoped, wherever you right-click. Goes back to the whole recording
 - **Open Call Tree** - opens the [Call Tree](/docs/user-guide/query/CallStack) at the call's frame, with the call selected in the [Arguments](/docs/user-guide/query/CallStack#arguments) tab. Right-clicking empty space just opens the pane, and if it is already open its tab is selected

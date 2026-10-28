@@ -15,41 +15,59 @@ public abstract class JsonFileMcpClient : IMcpClient
 
     public virtual string? HelpUrl => null;
 
-    public bool IsInstalled => Directory.Exists(InstallDirectory);
+    public bool IsInstalled => InstallDirectories.Any(Directory.Exists);
 
-    protected abstract string InstallDirectory { get; }
-
-    protected abstract string ConfigPath { get; }
+    protected abstract string[] InstallDirectories { get; }
 
     protected abstract string ServersKey { get; }
 
+    protected virtual bool CanCreateConfig => false;
+
+    protected virtual string MissingConfigMessage => $"Open the MCP configuration in {Name} first, then Register";
+
     public virtual Task<McpClientState> GetStateAsync(McpHostSettings settings, CancellationToken cancellationToken)
     {
-        var state = IsInstalled
-            ? McpServerConfigFile.GetState(ConfigPath, ServersKey, settings, IsCurrent)
-            : new McpClientState(McpClientStatus.NotInstalled, $"{Name} is not installed");
+        if (!IsInstalled)
+        {
+            return Task.FromResult(new McpClientState(McpClientStatus.NotInstalled, $"{Name} is not installed"));
+        }
+
+        var state = FindConfigPath() is { } path
+            ? McpServerConfigFile.GetState(path, ServersKey, settings, IsCurrent)
+            : new McpClientState(McpClientStatus.NotRegistered, MissingConfigMessage);
 
         return Task.FromResult(state);
     }
 
     public Task RegisterAsync(McpHostSettings settings, CancellationToken cancellationToken)
     {
-        McpServerConfigFile.Update(ConfigPath, ServersKey, servers => servers[McpHostSettings.ServerName] = CreateEntry(settings));
+        var path = FindConfigPath() ?? throw new McpClientException(MissingConfigMessage);
+
+        McpServerConfigFile.Update(path, ServersKey, servers => servers[McpHostSettings.ServerName] = CreateEntry(settings));
 
         return Task.CompletedTask;
     }
 
     public Task UnregisterAsync(CancellationToken cancellationToken)
     {
-        if (File.Exists(ConfigPath))
+        if (FindConfigPath() is { } path && File.Exists(path))
         {
-            McpServerConfigFile.Update(ConfigPath, ServersKey, servers => servers.Remove(McpHostSettings.ServerName));
+            McpServerConfigFile.Update(path, ServersKey, servers => servers.Remove(McpHostSettings.ServerName));
         }
 
         return Task.CompletedTask;
     }
 
+    protected abstract string[] GetConfigPaths();
+
     protected abstract JsonObject CreateEntry(McpHostSettings settings);
 
     protected virtual bool IsCurrent(JsonObject entry, McpHostSettings settings) => McpServerConfigFile.IsCurrent(entry, settings);
+
+    private string? FindConfigPath()
+    {
+        var paths = GetConfigPaths();
+
+        return paths.FirstOrDefault(File.Exists) ?? (CanCreateConfig ? paths[0] : null);
+    }
 }

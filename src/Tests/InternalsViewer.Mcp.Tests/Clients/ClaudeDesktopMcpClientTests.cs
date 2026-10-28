@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using InternalsViewer.Mcp.Clients;
 using InternalsViewer.Mcp.Clients.Claude;
 using InternalsViewer.Mcp.Clients.Enums;
 using InternalsViewer.Mcp.Hosting;
@@ -73,7 +74,9 @@ public class ClaudeDesktopMcpClientTests
     {
         using var environment = new TestClientEnvironment("npx");
 
-        environment.CreateDirectory("appdata", "Claude");
+        var folder = environment.CreateDirectory("appdata", "Claude");
+
+        await File.WriteAllTextAsync(Path.Combine(folder, "claude_desktop_config.json"), "{}");
 
         var client = new ClaudeDesktopMcpClient(environment.Environment);
 
@@ -89,5 +92,49 @@ public class ClaudeDesktopMcpClientTests
         await client.UnregisterAsync(CancellationToken.None);
 
         Assert.Equal(McpClientStatus.NotRegistered, (await client.GetStateAsync(Settings, CancellationToken.None)).Status);
+    }
+
+    [Fact]
+    public async Task A_Packaged_Install_Registers_In_Its_Own_Data_Folder()
+    {
+        using var environment = new TestClientEnvironment("npx");
+
+        var roaming = environment.CreateDirectory("appdata", "Claude");
+
+        var packaged = environment.CreateDirectory("local", "Claude-Data", "claude_package");
+
+        var path = Path.Combine(packaged, "claude_desktop_config.json");
+
+        await File.WriteAllTextAsync(path, """{ "preferences": { "keep": true } }""");
+
+        var client = new ClaudeDesktopMcpClient(environment.Environment);
+
+        await client.RegisterAsync(Settings, CancellationToken.None);
+
+        var root = JsonNode.Parse(await File.ReadAllTextAsync(path))!;
+
+        Assert.NotNull(root["mcpServers"]!["internals-viewer"]);
+        Assert.True(root["preferences"]!["keep"]!.GetValue<bool>());
+        Assert.False(File.Exists(Path.Combine(roaming, "claude_desktop_config.json")));
+        Assert.Equal(McpClientStatus.Registered, (await client.GetStateAsync(Settings, CancellationToken.None)).Status);
+    }
+
+    [Fact]
+    public async Task Asks_For_Its_Config_Before_Registering()
+    {
+        using var environment = new TestClientEnvironment("npx");
+
+        var packaged = environment.CreateDirectory("local", "Claude-Data", "claude_package");
+
+        var client = new ClaudeDesktopMcpClient(environment.Environment);
+
+        var state = await client.GetStateAsync(Settings, CancellationToken.None);
+
+        await Assert.ThrowsAsync<McpClientException>(() => client.RegisterAsync(Settings, CancellationToken.None));
+
+        Assert.True(client.IsInstalled);
+        Assert.Equal(McpClientStatus.NotRegistered, state.Status);
+        Assert.Contains("Edit Config", state.Detail);
+        Assert.False(File.Exists(Path.Combine(packaged, "claude_desktop_config.json")));
     }
 }

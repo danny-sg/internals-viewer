@@ -1,5 +1,4 @@
 using System;
-using InternalsViewer.UI.App.ViewModels.Page;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views.Query.Page;

@@ -1,5 +1,4 @@
 using System;
-using Microsoft.UI.Xaml;
 
 namespace InternalsViewer.UI.App.Controls.Query.Trace.Timeline;
 
@@ -79,6 +78,8 @@ public sealed partial class TraceTimelineControl
         var next = Math.Min(playhead + range * PlayTickMs / SweepDurationMs, FullEnd);
 
         _playhead = next;
+
+        ClearPins();
 
         if (next > _viewEnd)
         {

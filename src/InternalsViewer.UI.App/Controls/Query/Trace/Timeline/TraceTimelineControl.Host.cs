@@ -54,6 +54,8 @@ public sealed partial class TraceTimelineControl : ITraceTimelineHost
         }
     }
 
+    void ITraceTimelineHost.OnMemoryLayoutChanged() => UpdateScrollBars();
+
     void ITraceTimelineHost.MovePlayhead(double position)
     {
         StopPlay();

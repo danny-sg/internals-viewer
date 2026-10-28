@@ -1,7 +1,6 @@
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.OperatorTracks;
 using InternalsViewer.UI.App.ViewModels.Query;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views.Query.Trace.OperatorTracks;

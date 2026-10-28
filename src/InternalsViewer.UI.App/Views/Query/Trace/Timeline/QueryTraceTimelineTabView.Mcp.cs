@@ -1,8 +1,8 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using InternalsViewer.Mcp.Models.Context.Queries;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
@@ -74,6 +74,11 @@ public sealed partial class QueryTraceTimelineTabView : ITraceTimelineController
             v => v.TraceTimeline.ShowMemory && v.TraceTimeline.MemoryMode == TraceTimelineMemoryMode.Allocated,
             (v, _) => v.TraceTimeline.SetMemory(TraceTimelineMemoryMode.Allocated),
             IsChoice: true),
+        new("memory-size-to-fit",
+            "Size to Fit",
+            "Memory History",
+            v => v.TraceTimeline.MemorySizeToFit,
+            (v, b) => v.TraceTimeline.MemorySizeToFit = b),
         new("call-highlight-hover",
             "Call Highlight Hover",
             "Memory History",
@@ -106,6 +111,7 @@ public sealed partial class QueryTraceTimelineTabView : ITraceTimelineController
             SearchMatches = TraceTimeline.SearchMatchCount,
             SelectedNode = TraceTimeline.GetSelectedCall()?.Node,
             SelectedCallIndex = TraceTimeline.GetSelectedCall()?.CallIndex ?? -1,
+            PinnedPositions = TraceTimeline.PinnedPositionCount,
             Options = [.. TimelineOptions.Select(o => new McpOption(o.Key, o.Label, o.Group, o.Get(this), IsChoice: o.IsChoice))],
             Tracks =
             [
@@ -213,6 +219,8 @@ public sealed partial class QueryTraceTimelineTabView : ITraceTimelineController
 
         TraceTimeline.ZoomToCall(call.Node, call.CallIndex);
     }
+
+    public void PinPositions(TracePoint[] points) => TraceTimeline.PinPositions(points);
 
     private static string DescribeCondition(TraceCallCondition condition)
     {

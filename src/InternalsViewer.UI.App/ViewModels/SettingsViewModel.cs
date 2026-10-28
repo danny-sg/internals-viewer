@@ -46,6 +46,7 @@ public partial class SettingsViewModel(SettingsService settingsService,
     private const string CallTreePrunedCategoriesKey = "CallTreePrunedCategories";
     private const string TraceTimelineShowMemoryKey = "FlameChartShowMemory";
     private const string TraceTimelineMemoryModeKey = "FlameChartMemoryMode";
+    private const string TraceTimelineMemorySizeToFitKey = "FlameChartMemorySizeToFit";
 
     private const string TraceTimelineHiddenTickTracksKey = "TraceTimelineHiddenTickTracks";
     private const string DecodeValuesKey = "DecodeValues";
@@ -111,6 +112,9 @@ public partial class SettingsViewModel(SettingsService settingsService,
 
     [ObservableProperty]
     private TraceTimelineMemoryMode _traceTimelineMemoryMode;
+
+    [ObservableProperty]
+    private bool _traceTimelineMemorySizeToFit = true;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(TraceTimelineHiddenTickTrackSet))]
@@ -238,6 +242,8 @@ public partial class SettingsViewModel(SettingsService settingsService,
 
         TraceTimelineMemoryMode = await SettingsService.ReadSettingAsync<TraceTimelineMemoryMode?>(TraceTimelineMemoryModeKey)
                                ?? TraceTimelineMemoryMode.Allocated;
+
+        TraceTimelineMemorySizeToFit = await SettingsService.ReadSettingAsync<bool?>(TraceTimelineMemorySizeToFitKey) ?? true;
 
         TraceTimelineHiddenTickTracks = await SettingsService.ReadSettingAsync<string>(TraceTimelineHiddenTickTracksKey) ?? string.Empty;
 
@@ -412,6 +418,11 @@ public partial class SettingsViewModel(SettingsService settingsService,
     partial void OnTraceTimelineMemoryModeChanged(TraceTimelineMemoryMode value)
     {
         _ = SettingsService.SaveSettingAsync(TraceTimelineMemoryModeKey, value);
+    }
+
+    partial void OnTraceTimelineMemorySizeToFitChanged(bool value)
+    {
+        _ = SettingsService.SaveSettingAsync(TraceTimelineMemorySizeToFitKey, value);
     }
 
     partial void OnDecodeValuesChanged(bool value)

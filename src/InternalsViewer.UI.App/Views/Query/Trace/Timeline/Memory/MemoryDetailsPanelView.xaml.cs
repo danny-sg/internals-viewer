@@ -62,9 +62,9 @@ public sealed partial class MemoryDetailsPanelView : UserControl
     {
         if (sender is HyperlinkButton { DataContext: MemoryWriterSummary writer })
         {
-            ViewModel?.HighlightWriter(writer.Label);
+            ViewModel?.MarkWriter(writer.Label);
         }
     }
 
-    private void OnWriterPointerExited(object sender, PointerRoutedEventArgs e) => ViewModel?.HighlightWriter(null);
+    private void OnWriterPointerExited(object sender, PointerRoutedEventArgs e) => ViewModel?.MarkWriter(null);
 }

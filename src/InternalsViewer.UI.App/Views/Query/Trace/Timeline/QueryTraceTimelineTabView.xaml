@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:query="using:InternalsViewer.UI.App.Controls.Query"
     xmlns:trace="using:InternalsViewer.UI.App.Controls.Query.Trace.Timeline"
     xmlns:callStack="using:InternalsViewer.UI.App.Controls.Query.Trace.CallStack"
     xmlns:docking="using:InternalsViewer.UI.App.Controls.Docking"
@@ -67,8 +68,13 @@
                                             ShowMemory="{x:Bind Settings.TraceTimelineShowMemory, Mode=TwoWay}"
                                             ShowCallStack="{x:Bind ViewModel.TraceTimelineTab.IsCallStackVisible, Mode=OneWay}"
                                             MemoryMode="{x:Bind Settings.TraceTimelineMemoryMode, Mode=TwoWay}"
+                                            MemorySizeToFit="{x:Bind Settings.TraceTimelineMemorySizeToFit, Mode=TwoWay}"
                                             SelectedNode="{x:Bind ViewModel.SelectedCallNode, Mode=OneWay}"
                                             SelectedCall="{x:Bind ViewModel.Arguments.SelectedCallReference, Mode=OneWay}"/>
+
+                <query:NoQueryHint Grid.Row="1"
+                                   Layout="{x:Bind ViewModel.Layout, Mode=OneWay}"
+                                   Visibility="{x:Bind ViewModel.IsTraceTimelineHintVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
                 <StackPanel Grid.Row="1"
                             Orientation="Vertical"

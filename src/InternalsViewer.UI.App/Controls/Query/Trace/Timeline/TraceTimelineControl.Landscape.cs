@@ -166,12 +166,52 @@ public sealed partial class TraceTimelineControl
         return TraceScale.GetPosition(start + Math.Clamp(fraction, 0, 1) * (end - start));
     }
 
-    private void DrawSpikeHighlight(SKCanvas canvas, FlameHit? hit, SKPaint paint)
+    private void DrawRaisedHighlight(SKCanvas canvas, FlameHit? hit, SKPaint paint)
     {
-        if (hit is { } highlighted && SpikeOf(highlighted) is { } spike)
+        if (hit is not { } highlighted || SpikeOf(highlighted) is not { } spike)
         {
-            DrawWireframe(canvas, spike, paint);
+            return;
         }
+
+        if (MemoryMode == TraceTimelineMemoryMode.InUse)
+        {
+            DrawSurfaceOutline(canvas, highlighted, paint);
+        }
+        else
+        {
+            DrawBlockOutline(canvas, spike, paint);
+        }
+    }
+
+    private void DrawSurfaceOutline(SKCanvas canvas, FlameHit hit, SKPaint paint)
+    {
+        if (!_spikeIndex.TryGetValue(hit, out var index))
+        {
+            return;
+        }
+
+        var first = index;
+
+        while (first > 0 && _spikes[first - 1].Call == hit)
+        {
+            first--;
+        }
+
+        var end = index + 1;
+
+        while (end < _spikes.Count && _spikes[end].Call == hit)
+        {
+            end++;
+        }
+
+        var surface = GetSurface(first, end);
+
+        StrokeUnion(canvas,
+                    paint,
+                    BuildRect(new SKRect(surface.Leftmost.Left, surface.Top, surface.Rightmost.Right, surface.Top + surface.Height)),
+                    BuildSurfaceFace(surface),
+                    BuildSurfaceSide(surface),
+                    BuildSurfaceRibbon(surface));
     }
 
     private Block? SpikeOf(FlameHit hit) => _spikeIndex.TryGetValue(hit, out var index) ? _spikes[index] : null;
@@ -432,6 +472,45 @@ public sealed partial class TraceTimelineControl
 
     private void DrawSurface(SKCanvas canvas, int first, int end)
     {
+        var surface = GetSurface(first, end);
+
+        var colour = surface.Leftmost.Colour;
+
+        using (var face = BuildSurfaceFace(surface))
+        {
+            _paints.Face.Color = Shade(colour, _directionY > 0 ? CapShade : UnderShade).WithAlpha(LandscapeAlpha);
+
+            canvas.DrawPath(face, _paints.Face);
+        }
+
+        using (var side = BuildSurfaceSide(surface))
+        {
+            _paints.Face.Color = Shade(colour, SideShade).WithAlpha(LandscapeAlpha);
+
+            canvas.DrawPath(side, _paints.Face);
+        }
+
+        using (var ribbon = BuildSurfaceRibbon(surface))
+        {
+            _paints.Face.Color = colour.WithAlpha(LandscapeAlpha);
+
+            canvas.DrawPath(ribbon, _paints.Face);
+
+            canvas.DrawPath(ribbon, _paints.Edge);
+        }
+
+        if (NamedSlab(first, end) is { } named)
+        {
+            DrawFaceLabel(canvas, named);
+
+            return;
+        }
+
+        DrawCentreLabel(canvas, first, end, surface.Leftmost.Left, surface.Rightmost.Right);
+    }
+
+    private Surface GetSurface(int first, int end)
+    {
         var ascending = _spikes[first].Left <= _spikes[end - 1].Left;
 
         var leftmost = ascending ? _spikes[first] : _spikes[end - 1];
@@ -460,17 +539,20 @@ public sealed partial class TraceTimelineControl
 
         AddSurfacePoint(rightmost.Right, rightmost.Extrusion, top);
 
-        var height = leftmost.Height;
+        return new Surface(leftmost, rightmost, top, leftmost.Height);
+    }
 
-        var edge = _directionY > 0 ? top : top + height;
+    private SKPath BuildSurfaceFace(Surface surface)
+    {
+        var edge = _directionY > 0 ? surface.Top : surface.Top + surface.Height;
 
-        var offset = edge - top;
+        var offset = edge - surface.Top;
 
         var last = SurfacePoint(0, offset, reversed: true);
 
-        _pathBuilder.MoveTo(leftmost.Left, edge);
+        _pathBuilder.MoveTo(surface.Leftmost.Left, edge);
 
-        _pathBuilder.LineTo(rightmost.Right, edge);
+        _pathBuilder.LineTo(surface.Rightmost.Right, edge);
 
         _pathBuilder.LineTo(last.X, last.Y);
 
@@ -478,27 +560,23 @@ public sealed partial class TraceTimelineControl
 
         _pathBuilder.Close();
 
-        using (var face = _pathBuilder.Detach())
-        {
-            _paints.Face.Color = Shade(leftmost.Colour, _directionY > 0 ? CapShade : UnderShade).WithAlpha(LandscapeAlpha);
+        return _pathBuilder.Detach();
+    }
 
-            canvas.DrawPath(face, _paints.Face);
-        }
+    private SKPath BuildSurfaceSide(Surface surface)
+    {
+        var side = _directionX >= 0 ? surface.Leftmost : surface.Rightmost;
 
-        var side = _directionX >= 0 ? leftmost : rightmost;
+        var x = _directionX >= 0 ? surface.Leftmost.Left : surface.Rightmost.Right;
 
-        FillParallelogram(canvas,
-                          Shade(leftmost.Colour, SideShade).WithAlpha(LandscapeAlpha),
-                          _directionX >= 0 ? leftmost.Left : rightmost.Right,
-                          top,
-                          0,
-                          height,
-                          _directionX * side.Extrusion,
-                          _directionY * side.Extrusion);
+        return BuildParallelogram(x, surface.Top, 0, surface.Height, _directionX * side.Extrusion, _directionY * side.Extrusion);
+    }
 
+    private SKPath BuildSurfaceRibbon(Surface surface)
+    {
         var start = SurfacePoint(0, 0, reversed: false);
 
-        var turn = SurfacePoint(0, height, reversed: true);
+        var turn = SurfacePoint(0, surface.Height, reversed: true);
 
         _pathBuilder.MoveTo(start.X, start.Y);
 
@@ -506,27 +584,11 @@ public sealed partial class TraceTimelineControl
 
         _pathBuilder.LineTo(turn.X, turn.Y);
 
-        CurveThrough(height, reversed: true);
+        CurveThrough(surface.Height, reversed: true);
 
         _pathBuilder.Close();
 
-        using (var ribbon = _pathBuilder.Detach())
-        {
-            _paints.Face.Color = leftmost.Colour.WithAlpha(LandscapeAlpha);
-
-            canvas.DrawPath(ribbon, _paints.Face);
-
-            canvas.DrawPath(ribbon, _paints.Edge);
-        }
-
-        if (NamedSlab(first, end) is { } named)
-        {
-            DrawFaceLabel(canvas, named);
-
-            return;
-        }
-
-        DrawCentreLabel(canvas, first, end, leftmost.Left, rightmost.Right);
+        return _pathBuilder.Detach();
     }
 
     private Block? NamedSlab(int first, int end)
@@ -648,4 +710,6 @@ public sealed partial class TraceTimelineControl
     }
 
     private readonly record struct LandscapeKey(LayerKey Layer, float Angle, float Length);
+
+    private readonly record struct Surface(Block Leftmost, Block Rightmost, float Top, float Height);
 }

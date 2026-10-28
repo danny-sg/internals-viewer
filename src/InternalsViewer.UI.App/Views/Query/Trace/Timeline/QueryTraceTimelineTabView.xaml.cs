@@ -18,7 +18,6 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Windows.System;
-using Windows.UI;
 
 namespace InternalsViewer.UI.App.Views.Query.Trace.Timeline;
 
@@ -273,6 +272,10 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         var operators = new MenuFlyoutSubItem { Text = "Operators" };
 
+        var sizeToFit = MenuItems.Toggle("Size to Fit",
+                                         TraceTimeline.MemorySizeToFit,
+                                         isChecked => TraceTimeline.MemorySizeToFit = isChecked);
+
         var highlightHover = MenuItems.Toggle("Call Highlight Hover",
                                               TraceTimeline.HighlightMemoryWriters,
                                               isChecked => TraceTimeline.HighlightMemoryWriters = isChecked);
@@ -303,7 +306,7 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         menu.Items.Add(operators);
 
-        menu.Items.Add(MenuItems.SubMenu("Memory History", highlightHover));
+        menu.Items.Add(MenuItems.SubMenu("Memory History", sizeToFit, highlightHover));
 
         menu.Items.Add(MenuItems.SubMenu("Flame Chart",
                                          MenuItems.SubMenu("Memory", memoryItems),
@@ -331,6 +334,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
             {
                 operators.Items.Add(item);
             }
+
+            sizeToFit.IsChecked = TraceTimeline.MemorySizeToFit;
 
             highlightHover.IsChecked = TraceTimeline.HighlightMemoryWriters;
 

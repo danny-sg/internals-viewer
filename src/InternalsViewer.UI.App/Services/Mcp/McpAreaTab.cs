@@ -1,10 +1,12 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Mcp.Interfaces.Tabs;
 using InternalsViewer.Mcp.Models.Context;
 using InternalsViewer.Mcp.Tabs;
+using InternalsViewer.UI.App.ViewModels.Query;
 using InternalsViewer.UI.App.ViewModels.Tabs;
 using Microsoft.UI.Dispatching;
 
@@ -44,7 +46,7 @@ internal sealed class McpAreaTab(string id,
             throw new NotSupportedException($"The {Area} tab {Id} provides no context.");
         }
 
-        return RunOnUiThreadAsync(() => Task.FromResult(source.GetContext()), cancellationToken);
+        return RunOnUiThreadAsync(() => Task.FromResult(source.GetContext() with { TabId = Id }), cancellationToken);
     }
 
     public Task ActivateAsync(CancellationToken cancellationToken = default)
@@ -61,6 +63,21 @@ internal sealed class McpAreaTab(string id,
             Window.CloseTab(ViewModel);
 
             return Task.FromResult(true);
+        }, cancellationToken);
+
+    public Task<IMcpTab> GetPageAsync(PageAddress? address, CancellationToken cancellationToken = default)
+        => RunOnUiThreadAsync(() =>
+        {
+            if (ViewModel is not QueryViewModel query)
+            {
+                throw new NotSupportedException($"The {Area} tab {Id} has no page dock.");
+            }
+
+            var (page, isActive) = query.GetOpenPage(address);
+
+            IMcpTab tab = new McpAreaTab($"{Id}/{page.PageAddress}", McpArea.Page, isActive, page, Database, Dispatcher);
+
+            return Task.FromResult(tab);
         }, cancellationToken);
 
     public Task RunAsync<TCommands>(Func<TCommands, Task> command, CancellationToken cancellationToken = default)

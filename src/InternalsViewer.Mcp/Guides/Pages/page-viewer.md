@@ -9,7 +9,7 @@ tools change what the user sees, so say what you are about to select before you 
    another page into a Page tab that is already open.
 2. `page_read` has no page parameter. It reads the page that tab shows, so open the page first.
 3. `get_selection` shows what is selected: the slot, the marker (field or structure) with its offset and length, the view and the
-   structures that can be selected.
+   structures that can be selected. `page_read` lists the structures as well.
 
 ## Select
 
@@ -21,6 +21,14 @@ tools change what the user sees, so say what you are about to select before you 
 - `page_scroll` moves the hex viewer to a byte offset, 0 to 8191, without changing the selection.
 - `page_view` switches between Markers, Allocations, Pfs and Data. Only the views the page type has are available.
 - `page_open_index` opens the index the page belongs to, from its root. It only works for index pages.
+
+## Pages in a Query tab
+
+A Query tab opens pages in its own page dock, one document per page. The same tools work there with a `query_page_` prefix:
+`query_page_read`, `query_page_goto`, `query_page_select_slot`, `query_page_select_marker`, `query_page_scroll`,
+`query_page_view` and `query_page_open_index`. They act on the active page in the dock, or on the page named by the `page`
+parameter, which has to be open already. `query_page_goto` opens a page in the dock, or switches to it when it is open.
+The structures line of `query_page_read` gives the negative slot numbers of the page header and the offset table.
 
 ## Reading a row
 

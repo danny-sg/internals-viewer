@@ -10,7 +10,6 @@ using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Memory.History.Batches;
 using InternalsViewer.Query.FullTrace.Memory.History.Batches.Enums;
 using InternalsViewer.Query.Results;
-using InternalsViewer.Query.Results.Enums;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Logging;

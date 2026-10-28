@@ -179,7 +179,7 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
                 ApplyBadges(host, badgeText);
                 break;
 
-            case Models.SwatchText swatchText:
+            case SwatchText swatchText:
                 ApplySwatch(host, swatchText);
                 break;
 
@@ -532,9 +532,9 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
         host.Content = panel;
     }
 
-    private static void ApplySwatch(ContentControl host, Models.SwatchText value)
+    private static void ApplySwatch(ContentControl host, SwatchText value)
     {
-        if (host.Content is StackPanel { Tag: Models.SwatchText current } && current == value)
+        if (host.Content is StackPanel { Tag: SwatchText current } && current == value)
         {
             return;
         }
@@ -637,6 +637,7 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
     private static SolidColorBrush CreateBrush(Color color)
     {
         var uiColor = Windows.UI.Color.FromArgb(color.A, color.R, color.G, color.B);
+
         return new SolidColorBrush(uiColor);
     }
 }

@@ -1,4 +1,3 @@
-using System;
 using System.Linq;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Helpers;

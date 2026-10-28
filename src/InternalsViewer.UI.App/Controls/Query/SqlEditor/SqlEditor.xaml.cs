@@ -6,7 +6,6 @@ using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models.Query;
 using InternalsViewer.UI.App.Models.Schema;
 using InternalsViewer.UI.App.Services;
-using InternalsViewer.UI.App.ViewModels.Page;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Controls;
@@ -300,7 +299,7 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
 
         if (show)
         {
-            if (MessagesRow.Height.GridUnitType == GridUnitType.Pixel && MessagesRow.Height.Value == 0)
+            if (MessagesRow.Height is { GridUnitType: GridUnitType.Pixel, Value: 0 })
             {
                 MessagesRow.Height = new GridLength(1, GridUnitType.Star);
             }
@@ -323,7 +322,7 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
     {
         if (IsHistoryVisible)
         {
-            if (HistoryColumn.Width.GridUnitType == GridUnitType.Pixel && HistoryColumn.Width.Value == 0)
+            if (HistoryColumn.Width is { GridUnitType: GridUnitType.Pixel, Value: 0 })
             {
                 HistoryColumn.Width = new GridLength(320);
             }
@@ -433,6 +432,15 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
 
             await WebView.EnsureCoreWebView2Async();
 
+            if (WebView.CoreWebView2 is null)
+            {
+                _initialized = false;
+                IsEditorLoading = false;
+                LoadingOverlay.Visibility = Visibility.Collapsed;
+
+                return;
+            }
+
             WebView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
 
             var assetsPath = Path.Combine(AppContext.BaseDirectory, "Assets", "Monaco");
@@ -453,7 +461,6 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
         }
     }
 
-    // Pushes the current SqlText into the Monaco editor (when it is ready).
     private void PushSqlTextToEditor()
     {
         if (!_editorReady || _applyingEditorChange)
@@ -612,9 +619,6 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
         IsHistoryVisible = await App.GetService<SettingsService>().ReadSettingAsync<bool?>(HistoryVisibleSettingKey) ?? false;
     }
 
-    /// <remarks>
-    /// Applies the persisted editor font size (set by Ctrl+wheel zoom) once the editor is ready
-    /// </remarks>
     private async Task ApplySavedFontSizeAsync()
     {
         if (!_editorReady)
@@ -696,7 +700,7 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
         control.ApplyBottomPanelVisibility();
         control.ApplyResultsTabVisibility();
 
-        if (e.NewValue is not null && control.IsResultsVisible && !control.IsError && !control.StayOnMessages)
+        if (e.NewValue is not null && control is { IsResultsVisible: true, IsError: false, StayOnMessages: false })
         {
             control.ResultsTabView.SelectedItem = control.ResultsTab;
         }

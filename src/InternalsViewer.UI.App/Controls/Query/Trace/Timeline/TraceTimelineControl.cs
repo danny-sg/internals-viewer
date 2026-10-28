@@ -211,6 +211,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     private readonly ScrollBar _verticalScrollBar;
 
+    private readonly ScrollBar _memoryScrollBar;
+
     private readonly Popup _toolTip;
 
     private readonly ProgressRing _memoryProgress;
@@ -392,6 +394,19 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
         _overlay.Children.Add(_memoryProgress);
 
+        _memoryScrollBar = new ScrollBar
+        {
+            Orientation = Orientation.Vertical,
+            Visibility = Visibility.Collapsed,
+            IndicatorMode = ScrollingIndicatorMode.MouseIndicator,
+            Minimum = 0,
+            Width = MemoryScrollBarWidth
+        };
+
+        _memoryScrollBar.Scroll += OnMemoryScroll;
+
+        _overlay.Children.Add(_memoryScrollBar);
+
         _allocatedItem = new RadioMenuFlyoutItem
         {
             Text = "Allocated",
@@ -473,8 +488,6 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
     private float RulerTop => ShowMemory ? MemoryBarHeight : 0;
 
     private float ContentTop => OperatorsTop + PanesArea;
-
-    private bool ShowsSpikes => ShowMemory && MemoryMode == TraceTimelineMemoryMode.Allocated;
 
     private bool ShowsMemoryBand => ShowMemory && _axis == TraceTimelineAxis.Position && _visible is not null && Memory.HasAllocations;
 
@@ -603,6 +616,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
         _horizontalScrollBar.Scroll -= OnHorizontalScroll;
         _verticalScrollBar.Scroll -= OnVerticalScroll;
+        _memoryScrollBar.Scroll -= OnMemoryScroll;
 
         _overlay.PointerPressed -= OnPointerPressed;
         _keyboardHost.ContextRequested -= OnContextRequested;
@@ -888,6 +902,19 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         _verticalScrollBar.SmallChange = _rowHeight * 3;
         _verticalScrollBar.Value = _scrollY;
         _verticalScrollBar.Visibility = ShowsFlameChart && _contentHeight > viewport ? Visibility.Visible : Visibility.Collapsed;
+
+        var memoryViewport = MemoryHeight;
+
+        _memoryScrollBar.Maximum = Math.Max(0, _memory.ContentHeight - memoryViewport);
+        _memoryScrollBar.ViewportSize = memoryViewport;
+        _memoryScrollBar.LargeChange = memoryViewport;
+        _memoryScrollBar.SmallChange = MemoryScrollStep;
+        _memoryScrollBar.Value = _memory.ScrollY;
+        _memoryScrollBar.Height = memoryViewport;
+        _memoryScrollBar.Visibility = ShowsMemory && _memory.CanScroll ? Visibility.Visible : Visibility.Collapsed;
+
+        Canvas.SetLeft(_memoryScrollBar, Math.Max(0, _overlay.ActualWidth - MemoryScrollBarWidth));
+        Canvas.SetTop(_memoryScrollBar, MemoryTop);
     }
 
     private void OnHorizontalScroll(object sender, ScrollEventArgs e) => ScrollViewTo(FullStart + e.NewValue);
@@ -900,6 +927,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
         _canvas.Invalidate();
     }
+
+    private void OnMemoryScroll(object sender, ScrollEventArgs e) => _memory.ScrollTo((float)e.NewValue);
 
     private void OnOverlaySizeChanged(object sender, SizeChangedEventArgs e)
     {
@@ -987,8 +1016,6 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         FindNodeMatches(_highlightedNode);
 
         FindCallHighlights();
-
-        _highlightedCalls = null;
 
         _operatorsHeight = null;
 
@@ -1291,6 +1318,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         var control = (TraceTimelineControl)d;
 
         control._markedCalls.Clear();
+
+        control.ClearPins();
 
         control.ReleaseMinimap();
 

@@ -13,6 +13,6 @@ public static class CollectionExtensions
             throw new ArgumentNullException(nameof(source));
         }
 
-        return new ObservableCollection<T>(source);
+        return [.. source];
     }
 }

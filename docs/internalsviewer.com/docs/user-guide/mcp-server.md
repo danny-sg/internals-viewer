@@ -22,6 +22,8 @@ Each client has a card with **Register**. Once registered, the card shows where 
 - **Visual Studio Code** - adds the server to the user `mcp.json`, where Copilot agent mode lists its tools.
 - **Claude Desktop** - needs Node.js first, see [Claude Desktop](#claude-desktop) below.
 
+Visual Studio Code and Claude Desktop create their own configuration file, and it has to exist before you register. If the card asks for it, open the configuration from the client first - **MCP: Open User Configuration** from the Command Palette in Visual Studio Code, or **Edit Config** under **Settings > Developer** in Claude Desktop - then press **Register**.
+
 A client picks the server up the next time it starts, so restart a client that was already open.
 
 ## Claude Desktop
@@ -40,9 +42,11 @@ Claude Desktop starts its local MCP servers as programs, and its connectors cann
    npx --version
    ```
 
-3. In Internals Viewer, open **Settings**, expand **MCP Server** and press **Register** on the **Claude Desktop** card. The card says Node.js is not installed until it can find `npx`, so restart Internals Viewer if it was open while Node.js was installed.
+3. In Claude Desktop, open **Settings > Developer** and press **Edit Config**. This creates its configuration file if it does not exist yet, and nothing in it needs changing.
 
-4. Restart Claude Desktop. The first start downloads the bridge, which takes a moment, after which the Internals Viewer tools appear under the tools button in the chat box.
+4. In Internals Viewer, open **Settings**, expand **MCP Server** and press **Register** on the **Claude Desktop** card. The card says Node.js is not installed until it can find `npx`, so restart Internals Viewer if it was open while Node.js was installed.
+
+5. Restart Claude Desktop. The first start downloads the bridge, which takes a moment, after which the Internals Viewer tools appear under the tools button in the chat box.
 
 Internals Viewer has to be running for the bridge to connect. If it was not running when Claude Desktop started, Claude Desktop shows the server as failed until it is restarted with Internals Viewer open.
 
@@ -69,10 +73,10 @@ The server also carries its own reading guides - how to read what the tools retu
 ## What the assistant can do in the app
 
 - **Open** a call, a page, a plan node, an event or a memory block, move the playhead, and open an index or columnstore index in a new tab. A page opens in the Query tab's page dock when you are in a Query tab, and in a new Page tab otherwise.
-- **Select and scroll** - slots, fields and bytes in the Page viewer, objects and overlays in the Allocations map, pages and records in the Index viewer, and segments, dictionaries and rows in the Columnstore viewer.
+- **Select and scroll** - slots, fields and bytes in the Page viewer and in the pages open in a Query tab, objects and overlays in the Allocations map, pages and records in the Index viewer, and segments, dictionaries and rows in the Columnstore viewer.
 - **Switch and close tabs.** The assistant should ask before it closes one.
 - **Turn the Query tab's menu toggles on and off** - the views that are visible, what is captured and shown, and Record Full Trace. Record Full Trace only turns on once you have accepted its warning and licence yourself from the Trace menu, and applies to the next run.
-- **Drive the Trace Timeline** - turn the Operators, Memory and Calls panes and the other timeline options on and off, add custom operator tracks for a function (for example "mark where a b-tree is searched"), clear them, step the playhead by call, same call, batch, row or allocation, search, and select and zoom to a call such as "the first GetRow call". A fuzzy search of the call graph resolves half remembered function names.
+- **Drive the Trace Timeline** - turn the Operators, Memory and Calls panes and the other timeline options on and off, add custom operator tracks for a function (for example "mark where a b-tree is searched"), clear them, step the playhead by call, same call, batch, row or allocation, search, and select and zoom to a call such as "the first GetRow call", and pin marks at every call of a function to show when it runs. Clicking the timeline or moving the playhead hides the marks. A fuzzy search of the call graph resolves half remembered function names.
 
 ## Walking through a seek or a scan
 

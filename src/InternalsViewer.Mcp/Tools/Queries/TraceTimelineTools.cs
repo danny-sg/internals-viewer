@@ -22,6 +22,12 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
 
     private const string PanePrefix = "pane-";
 
+    private const int SearchCandidates = 50;
+
+    private const int MaximumListedMatches = 8;
+
+    private const int MaximumPins = 2000;
+
     private const string ConditionsDescription = "Conditions on the calls: 'arg 2 = 0x1', 'return != 0', 'calledby Function', " +
                                                  "'calleddirectlyby Function' or 'operator Name'. Arguments are numbered from 1 " +
                                                  "as in query_calls. Operators are =, !=, <, <=, > and >=";
@@ -54,6 +60,11 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
         if (timeline.SelectedNode is { } node)
         {
             builder.AppendLine($"selected call: {ConditionsText(node)} #{timeline.SelectedCallIndex}");
+        }
+
+        if (timeline.PinnedPositions > 0)
+        {
+            builder.AppendLine($"pinned: {Format.Number(timeline.PinnedPositions)} positions, cleared with trace_pin");
         }
 
         foreach (var group in timeline.Options.GroupBy(o => o.Group))
@@ -305,58 +316,28 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
     [McpServerTool(Name = "trace_goto_call")]
     [Description("Select a call of a function on the timeline and optionally zoom to it, e.g. the first GetRow call. The function " +
                  "is resolved with a fuzzy search. 'which' is first, last, next or previous (relative to the playhead or " +
-                 "selected call), or give n for the nth call, counted from 1. Conditions narrow the calls considered")]
+                 "selected call), or give n for the nth call, counted from 1. Conditions narrow the calls considered. An ambiguous " +
+                 "name searches every best match and says which functions matched")]
     public async Task<string> GotoCall([Description("Function words, e.g. 'GetRow'")] string function,
                                        [Description("first, last, next or previous; ignored when n is given")] string which = "first",
                                        [Description("The nth matching call, counted from 1")] int? n = null,
                                        [Description(ConditionsDescription)] IReadOnlyList<string>? conditions = null,
                                        [Description("Zoom the timeline to the call")] bool zoom = true,
-                                       [Description("Take every function that matches equally well rather than failing when ambiguous")]
-                                       bool allMatches = false,
                                        [Description(TabDescription)] string? tab = null,
                                        CancellationToken cancellationToken = default)
     {
         var scope = await Documents.ResolveAsync(tab, cancellationToken);
 
-        var store = scope.RequireTrace().CallStore;
+        var search = await SearchCallsAsync(scope, function, conditions);
 
-        var matches = FunctionSearch.Resolve(scope.Context.Nodes.GetNodes(), function, allMatches);
-
-        var members = matches.SelectMany(m => m.Members).ToList();
-
-        var parsed = await ParseConditionsAsync(scope, members[0], conditions);
-
-        var candidates = new List<(CallStackNode Node, int Index, TraceArgumentCall Call)>();
-
-        foreach (var node in members)
+        if (DescribeMissing(function, search) is { } missing)
         {
-            if (node.Frame is not { } frame || store.GetCallList(frame.Address, frame.InstanceAddress) is not { } list)
-            {
-                continue;
-            }
-
-            for (var index = 0; index < list.Count; index++)
-            {
-                var call = list[index];
-
-                if (store.GetNode(call) != node)
-                {
-                    continue;
-                }
-
-                if (TraceCallCondition.MatchesAll(parsed, call) && parsed.Where(p => !p.IsCallCondition).All(p => Matches(p, node)))
-                {
-                    candidates.Add((node, index, call));
-                }
-            }
+            return missing;
         }
 
-        if (candidates.Count == 0)
-        {
-            return $"No call of {matches[0].Name} matches{(parsed.Count > 0 ? " those conditions" : string.Empty)}.";
-        }
+        var candidates = search.Calls;
 
-        candidates.Sort((left, right) => left.Call.FromPosition.CompareTo(right.Call.FromPosition));
+        var matches = search.Matches;
 
         var reference = scope.Query.Timeline?.SelectedNode is { } selected
                         ? candidates.Where(c => c.Node == selected && c.Index == scope.Query.Timeline.SelectedCallIndex)
@@ -371,8 +352,172 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
         var after = (await scope.ReadContextAsync(cancellationToken)).Timeline;
 
         return $"Selected {DescribeSelection(after)}{(zoom ? " and zoomed to it" : string.Empty)}.{Environment.NewLine}" +
-               $"{matches[0].Name} #{chosen.Index} of {candidates.Count} matching calls, " +
-               $"{Format.Position(chosen.Call.FromPosition)} to {Format.Position(chosen.Call.ToPosition)}";
+               $"{scope.Context.GetFunctionName(chosen.Node)} #{chosen.Index} of {candidates.Count} matching calls, " +
+               $"{Format.Position(chosen.Call.FromPosition)} to {Format.Position(chosen.Call.ToPosition)}" +
+               (matches.Count > 1
+                   ? $"{Environment.NewLine}'{function}' matched {string.Join(", ", matches.Select(m => m.Name))}. " +
+                     "Name one of them to narrow it."
+                   : string.Empty);
+    }
+
+    [McpServerTool(Name = "trace_pin")]
+    [Description("Pin marks on the Trace Timeline to show the user where things happen, e.g. every GetRow call. Give a function " +
+                 "(resolved with a fuzzy search, narrowed by conditions) to pin the start of each of its calls, or positions to " +
+                 "pin those, or both. Pins replace the previous ones. They are hidden when the user clicks the timeline or the " +
+                 "playhead moves, so move the playhead first and pin last. Give neither to clear them. Pins outside the visible " +
+                 "range appear on the minimap")]
+    public async Task<string> Pin([Description("Function words, e.g. 'GetRow'")] string? function = null,
+                                  [Description(ConditionsDescription)] IReadOnlyList<string>? conditions = null,
+                                  [Description("Positions as hex Sequence:Steps, e.g. 1A3:4F")] IReadOnlyList<string>? positions = null,
+                                  [Description(TabDescription)] string? tab = null,
+                                  CancellationToken cancellationToken = default)
+    {
+        var scope = await Documents.ResolveAsync(tab, cancellationToken);
+
+        var trace = scope.RequireTrace();
+
+        if (string.IsNullOrWhiteSpace(function) && positions is not { Count: > 0 })
+        {
+            var cleared = scope.Query.Timeline?.PinnedPositions ?? 0;
+
+            await scope.RunAsync<ITraceTimelineCommands>(c => c.PinPositionsAsync([]), cancellationToken);
+
+            return cleared == 0 ? "There were no pins to clear." : $"Cleared {Format.Number(cleared)} pins.";
+        }
+
+        var points = new List<TracePoint>();
+
+        var pinned = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(function))
+        {
+            var search = await SearchCallsAsync(scope, function, conditions);
+
+            if (DescribeMissing(function, search) is { } missing)
+            {
+                return missing;
+            }
+
+            if (search.Calls.Count > MaximumPins)
+            {
+                throw new McpException($"{Format.Number(search.Calls.Count)} calls match. Narrow them with conditions to " +
+                                       $"{Format.Number(MaximumPins)} or fewer.");
+            }
+
+            foreach (var (node, index, _) in search.Calls)
+            {
+                if (trace.Timeline.FindCall(node, index) is { } location)
+                {
+                    points.Add(location.From);
+                }
+            }
+
+            pinned.Add($"{Format.Number(points.Count)} calls of {string.Join(", ", search.Matches.Select(m => m.Name))}");
+        }
+
+        if (positions is { Count: > 0 })
+        {
+            points.AddRange(positions.Select(p => trace.Timeline.GetPoint(Parse.Position(p))));
+
+            pinned.Add($"{Format.Number(positions.Count)} positions");
+        }
+
+        if (points.Count > MaximumPins)
+        {
+            throw new McpException($"That is {Format.Number(points.Count)} pins. Pin {Format.Number(MaximumPins)} or fewer.");
+        }
+
+        await scope.RunAsync<ITraceTimelineCommands>(c => c.PinPositionsAsync([.. points]), cancellationToken);
+
+        var first = points.Min(p => p.Position);
+
+        var last = points.Max(p => p.Position);
+
+        return $"Pinned {string.Join(" and ", pinned)} on the Trace Timeline, from {Format.Position(first)} to " +
+               $"{Format.Position(last)}.";
+    }
+
+    private async Task<CallSearch> SearchCallsAsync(McpDocumentScope scope, string function, IReadOnlyList<string>? conditions)
+    {
+        var trace = scope.RequireTrace();
+
+        var found = FunctionSearch.Search(scope.Context.Nodes.GetNodes(), function, SearchCandidates);
+
+        var matches = new List<FunctionMatch>();
+
+        var candidates = new List<(CallStackNode Node, int Index, TraceArgumentCall Call)>();
+
+        IReadOnlyList<TraceCallCondition> parsed = [];
+
+        foreach (var tier in found.GroupBy(m => m.Score))
+        {
+            var tierMembers = tier.SelectMany(m => m.Members).ToList();
+
+            parsed = await ParseConditionsAsync(scope, tierMembers[0], conditions);
+
+            candidates = CollectCalls(trace, tierMembers, parsed);
+
+            if (candidates.Count > 0)
+            {
+                matches = [.. tier.Where(m => m.Members.Any(member => candidates.Any(c => c.Node == member)))];
+
+                break;
+            }
+        }
+
+        candidates.Sort((left, right) => left.Call.FromPosition.CompareTo(right.Call.FromPosition));
+
+        return new CallSearch(found, matches, candidates, parsed);
+    }
+
+    private static string? DescribeMissing(string function, CallSearch search)
+    {
+        if (search.Found.Count == 0)
+        {
+            return $"No function in the call graph matches '{function}'. Try trace_find_functions with fewer words.";
+        }
+
+        if (search.Calls.Count > 0)
+        {
+            return null;
+        }
+
+        return $"No call of {string.Join(", ", search.Found.Take(MaximumListedMatches).Select(m => m.Name))} is shown on the " +
+               $"timeline{(search.Conditions.Count > 0 ? " that matches those conditions" : string.Empty)}. Instrumentation " +
+               "wrappers are left off it.";
+    }
+
+    private static List<(CallStackNode Node, int Index, TraceArgumentCall Call)> CollectCalls(
+        TraceResult trace,
+        List<CallStackNode> members,
+        IReadOnlyList<TraceCallCondition> parsed)
+    {
+        var calls = new List<(CallStackNode Node, int Index, TraceArgumentCall Call)>();
+
+        foreach (var node in members)
+        {
+            if (node.Frame is not { } frame || trace.CallStore.GetCallList(frame.Address, frame.InstanceAddress) is not { } list)
+            {
+                continue;
+            }
+
+            for (var index = 0; index < list.Count; index++)
+            {
+                var call = list[index];
+
+                if (trace.CallStore.GetNode(call) != node || trace.Timeline.FindCall(node, index) is null)
+                {
+                    continue;
+                }
+
+                if (TraceCallCondition.MatchesAll(parsed, call) && parsed.Where(p => !p.IsCallCondition).All(p => Matches(p, node)))
+                {
+                    calls.Add((node, index, call));
+                }
+            }
+        }
+
+        return calls;
     }
 
     private static (CallStackNode Node, int Index, TraceArgumentCall Call) Choose(
@@ -474,4 +619,9 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
         => context.Selection.Playhead is { } position
             ? $"Playhead at {Format.Position(position)}."
             : $"Selected {DescribeSelection(context.Timeline)}.";
+
+    private sealed record CallSearch(IReadOnlyList<FunctionMatch> Found,
+                                     List<FunctionMatch> Matches,
+                                     List<(CallStackNode Node, int Index, TraceArgumentCall Call)> Calls,
+                                     IReadOnlyList<TraceCallCondition> Conditions);
 }
