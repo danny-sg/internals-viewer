@@ -136,6 +136,8 @@
                                 IsLevelsVisible="{x:Bind ViewModel.IsLevelsVisible, Mode=OneWay}"
                                 HighlightedPageAddresses="{x:Bind ViewModel.HighlightedPages, Mode=OneWay}"
                                 SelectedPageAddress="{x:Bind ViewModel.SelectedPageAddress, Mode=TwoWay}"
+                                SelectedSlot="{x:Bind ViewModel.SelectedSlot, Mode=OneWay}"
+                                ZoomToSelectedPageAddress="{x:Bind ViewModel.ZoomToPageTarget, Mode=OneWay}"
                                 VerticalAlignment="Stretch"
                                 HorizontalAlignment="Stretch"/>
 
@@ -204,6 +206,7 @@
                 <index:RecordGrid Grid.Row="1"
                                   x:Name="RecordGrid"
                                   Records="{x:Bind ViewModel.Records, Mode=OneWay}"
+                                  SelectedSlot="{x:Bind ViewModel.SelectedSlot, Mode=OneWay}"
                                   BorderThickness="0" />
 
                 <StackPanel Grid.Row="1"

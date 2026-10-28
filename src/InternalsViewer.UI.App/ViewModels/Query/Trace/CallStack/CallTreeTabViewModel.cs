@@ -15,8 +15,6 @@ using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.Views.Query.Trace.CallStack;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml.Controls;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.CallStack;
 

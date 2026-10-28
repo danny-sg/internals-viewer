@@ -126,9 +126,9 @@ internal static class ColourHelpers
     /// the base hue and chroma are preserved while the CIE L*C*h* lightness progresses across the
     /// series, so the members look like a tidy family of shades anchored on the base colour
     /// </summary>
-    /// <param name="baseColor">The colour the series is built around.</param>
-    /// <param name="index">Position in the series (0 = darkest, count-1 = lightest).</param>
-    /// <param name="count">Total number of colours in the series.</param>
+    /// <param name="baseColor">The colour the series is built around</param>
+    /// <param name="index">Position in the series (0 = darkest, count-1 = lightest)</param>
+    /// <param name="count">Total number of colours in the series</param>
     public static Color GetSeriesColour(Color baseColor, int index, int count)
     {
         if (count <= 1)

@@ -1,7 +1,7 @@
-using System.Collections.Generic;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline;
+using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
 
@@ -17,9 +17,9 @@ public interface IPlayheadChart
 
     void MarkCall(CallStackNode? node, int callIndex);
 
-    void MarkPosition(TracePoint? point);
-
-    void HighlightCalls(IReadOnlyCollection<CallStackNode>? nodes);
+    void MarkPositions(TracePoint[]? points);
 
     void MovePlayheadTo(CallStackNode node, int callIndex);
+
+    TraceViewRange? GetViewRange();
 }

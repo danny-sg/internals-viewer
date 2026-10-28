@@ -8,6 +8,7 @@ using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Interfaces.Connections;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Engine;
 using InternalsViewer.Internals.Readers.Pages;
+using InternalsViewer.Mcp.Tabs;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models.Connections;
@@ -30,7 +31,6 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -422,6 +422,48 @@ public sealed partial class MainWindow
         return true;
     }
 
+    internal IEnumerable<(TabViewModel ViewModel, McpArea Area, bool IsActive)> GetTabs()
+    {
+        var selected = (WindowTabView.SelectedItem as TabViewItem)?.Tag;
+
+        foreach (var child in TabContentHost.Children)
+        {
+            var isActive = ReferenceEquals(child, selected);
+
+            switch ((child as FrameworkElement)?.DataContext)
+            {
+                case QueryViewModel query:
+                    yield return (query, McpArea.Query, isActive);
+                    break;
+                case DatabaseTabViewModel database:
+                    yield return (database, McpArea.Allocations, isActive);
+                    break;
+                case PageTabViewModel page:
+                    yield return (page, McpArea.Page, isActive);
+                    break;
+                case IndexTabViewModel index:
+                    yield return (index, McpArea.Index, isActive);
+                    break;
+                case ColumnstoreTabViewModel columnstore:
+                    yield return (columnstore, McpArea.Columnstore, isActive);
+                    break;
+            }
+        }
+    }
+
+    internal IEnumerable<(QueryViewModel ViewModel, bool IsActive)> GetQueryViewModels()
+    {
+        var selected = (WindowTabView.SelectedItem as TabViewItem)?.Tag;
+
+        foreach (var child in TabContentHost.Children)
+        {
+            if (child is QueryView { DataContext: QueryViewModel viewModel })
+            {
+                yield return (viewModel, ReferenceEquals(child, selected));
+            }
+        }
+    }
+
     private void BindTabTitle(TabViewModel viewModel, TabViewItem tab)
     {
         var titleBinding = new Binding { Mode = BindingMode.OneWay };
@@ -520,13 +562,35 @@ public sealed partial class MainWindow
 
     private void TabView_OnTabCloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
     {
+        CloseTab(args.Tab);
+    }
+
+    internal void ActivateTab(TabViewModel viewModel)
+    {
+        WindowTabView.SelectedItem = FindTab(viewModel)
+                                     ?? throw new InvalidOperationException("The tab is no longer open.");
+    }
+
+    internal void CloseTab(TabViewModel viewModel)
+    {
+        CloseTab(FindTab(viewModel) ?? throw new InvalidOperationException("The tab is no longer open."));
+    }
+
+    private TabViewItem? FindTab(TabViewModel viewModel)
+        => WindowTabView.TabItems
+                        .OfType<TabViewItem>()
+                        .FirstOrDefault(t => t.Tag is FrameworkElement { DataContext: TabViewModel model }
+                                             && ReferenceEquals(model, viewModel));
+
+    private void CloseTab(TabViewItem tab)
+    {
         // Close tab if it's not the connect tab
-        if (args.Tab != ConnectTab)
+        if (tab != ConnectTab)
         {
             // Dispose here rather than on Unloaded: TabView fires Unloaded on every tab switch
             // (the non-selected tab's content leaves the visual tree), which would tear down the
             // tab's content while it is still open. Disposing on actual close avoids that.
-            if (args.Tab.Tag is FrameworkElement content)
+            if (tab.Tag is FrameworkElement content)
             {
                 TabContentHost.Children.Remove(content);
 
@@ -536,7 +600,7 @@ public sealed partial class MainWindow
                 }
             }
 
-            sender.TabItems.Remove(args.Tab);
+            WindowTabView.TabItems.Remove(tab);
         }
     }
 

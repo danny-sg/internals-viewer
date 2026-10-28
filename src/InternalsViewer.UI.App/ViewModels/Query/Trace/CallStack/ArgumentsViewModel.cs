@@ -12,11 +12,9 @@ using InternalsViewer.Query.Results;
 using Microsoft.Extensions.Logging;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Memory;
-using System.Linq;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Arguments;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Stack;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Tree;
-using InternalsViewer.UI.App.Models;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.CallStack;
 

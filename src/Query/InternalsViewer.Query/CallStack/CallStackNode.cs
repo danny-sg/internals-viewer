@@ -99,7 +99,7 @@ public sealed class CallStackNode
     /// <summary>
     /// Child frames keyed by identity (RVA before resolution, resolved function after) so equal frames merge to one
     /// </summary>
-    public Dictionary<string, CallStackNode> Children { get; } = new();
+    public Dictionary<string, CallStackNode> Children { get; } = [];
 
     /// <summary>
     /// The call-site offsets (RVAs) merged into this node — one when keyed by RVA, several once collapsed to a function

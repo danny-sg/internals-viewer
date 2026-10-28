@@ -122,6 +122,64 @@ public class TraceMemoryPaneTests
     }
 
     [Fact]
+    public void Without_Size_To_Fit_Blocks_Keep_Their_Relative_Sizes_And_Overflow_The_Pane()
+    {
+        var (pane, host) = Create([Block(0, 0x1000_0000, 8, Write(0, 8)), Block(1, 0x2000_0000, 0x800, Write(0, 0x800))]);
+
+        using var _ = host;
+
+        pane.SizeToFit = false;
+
+        pane.Render(Width, host.Scale);
+
+        var top = pane.Blocks[pane.GetHit(new Point(10, PaneTop + 0.5))!.Value.Block].Block;
+
+        var bottom = pane.Blocks[pane.GetHit(new Point(10, PaneTop + 99.5))!.Value.Block].Block;
+
+        Assert.Equal((true, 258f, 0, 1), (pane.CanScroll, pane.ContentHeight, top, bottom));
+    }
+
+    [Fact]
+    public void Scrolling_The_Pane_Brings_The_Rows_Below_It_Into_View()
+    {
+        var (pane, host) = Create([Block(0, 0x1000_0000, 8, Write(0, 8)), Block(1, 0x2000_0000, 0x800, Write(0, 0x800))]);
+
+        using var _ = host;
+
+        pane.SizeToFit = false;
+
+        pane.Render(Width, host.Scale);
+
+        pane.ScrollTo(10000);
+
+        pane.Render(Width, host.Scale);
+
+        var hit = pane.GetHit(new Point(10, PaneTop + 99.5))!.Value;
+
+        Assert.Equal((158f, 1, 2044), (pane.ScrollY, pane.Blocks[hit.Block].Block, hit.Offset));
+    }
+
+    [Fact]
+    public void Size_To_Fit_Squeezes_The_Rows_Into_The_Pane_Again()
+    {
+        var (pane, host) = Create([Block(0, 0x1000_0000, 8, Write(0, 8)), Block(1, 0x2000_0000, 0x800, Write(0, 0x800))]);
+
+        using var _ = host;
+
+        pane.SizeToFit = false;
+
+        pane.Render(Width, host.Scale);
+
+        pane.ScrollTo(10000);
+
+        pane.SizeToFit = true;
+
+        pane.Render(Width, host.Scale);
+
+        Assert.Equal((false, 0f), (pane.CanScroll, pane.ScrollY));
+    }
+
+    [Fact]
     public void Hovering_A_Write_Finds_Only_Its_Block()
     {
         var (pane, host) = Create([Block(0, 0x1000_0000, 0x40, Write(0x20, 8))]);
@@ -365,6 +423,10 @@ public class TraceMemoryPaneTests
         public Task<Action> WaitForPost() => Posted.Task;
 
         public void ShowMemoryProgress(bool isVisible) => IsProgressVisible = isVisible;
+
+        public void OnMemoryLayoutChanged()
+        {
+        }
 
         public void MovePlayhead(double position) => MovedTo = position;
 

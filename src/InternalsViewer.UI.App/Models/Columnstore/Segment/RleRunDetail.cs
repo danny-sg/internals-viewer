@@ -1,5 +1,4 @@
 ﻿using System;
-using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Values;
 using InternalsViewer.Internals.Columnstore.Segments;
 
 namespace InternalsViewer.UI.App.Models.Columnstore.Segment;

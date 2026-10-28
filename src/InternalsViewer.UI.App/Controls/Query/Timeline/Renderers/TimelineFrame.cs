@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using InternalsViewer.Query.Events;
 using InternalsViewer.UI.App.Controls.Query.Timeline.Definition;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels.Query;

@@ -16,7 +16,7 @@ From top to bottom:
 - **A lane per thread** - headed **Thread** and the operating system thread id
 - **The memory band** - with a view chosen under **View > Flame Chart > Memory**, the memory allocated and in use along the bottom - see [Memory](#memory)
 
-**Operators**, **Memory** and **Calls** on the tab strip show and hide the Operators pane, the Memory History lane and the thread lanes. The last of the three left on cannot be turned off. **View > Flame Chart > Highlight Regions** shades the stretches of the lanes where the query was compiled, started and shut down, as **Compilation**, **Setup** and **Shutdown**, each with its own toggle. **View > Memory History > Call Highlight Hover** dims every call except the ones that wrote to the block under the pointer while you hover over the Memory History lane. **View > Reset Layout** puts the pane heights back and docks the Call Stack and memory tabs beneath the chart again. Right-clicking any of the three areas offers the same three toggles, with the only area still showing greyed out, then that area's own view settings and **Call Stack**, so the View menu's settings are a click away wherever you are.
+**Operators**, **Memory** and **Calls** on the tab strip show and hide the Operators pane, the Memory History lane and the thread lanes. The last of the three left on cannot be turned off. **View > Flame Chart > Highlight Regions** shades the stretches of the lanes where the query was compiled, started and shut down, as **Compilation**, **Setup** and **Shutdown**, each with its own toggle. **View > Memory History > Size to Fit**, on by default, squeezes every block into the lane. Turn it off to draw the blocks at their relative sizes, with a scroll bar on the right of the lane whenever they overflow it. **View > Memory History > Call Highlight Hover** dims every call except the ones that wrote to the block under the pointer while you hover over the Memory History lane. **View > Reset Layout** puts the pane heights back and docks the Call Stack and memory tabs beneath the chart again. Right-clicking any of the three areas offers the same three toggles, with the only area still showing greyed out, then that area's own view settings and **Call Stack**, so the View menu's settings are a click away wherever you are.
 
 In a lane, each call is a bar running from where it started to where it ended. The calls it made sit directly beneath it, inside its width, so the outermost call is at the top of the lane and each row down is one level deeper in the stack. That is the reverse of a classic flame graph, which grows upwards, but it reads the same way as the Call Tree. A bar is coloured by its function's category and labelled with the function's name once it is wide enough to read.
 
@@ -38,7 +38,7 @@ TTD has no clock. A recording is a sequence of positions - a sequence number sha
 
 - **Mouse wheel** zooms in and out at the pointer
 - **Shift + mouse wheel**, or a horizontal wheel, pans sideways
-- **Ctrl + mouse wheel** scrolls through the threads
+- **Ctrl + mouse wheel** scrolls through the threads, or through the Memory History lane when the pointer is over it and its blocks overflow
 - **Drag** pans sideways, and a **middle-button drag** pans in both directions
 - **Shift + drag** draws a rectangle and zooms to it
 - **Shift + click** a bar to scope the chart to its function, or empty space to go back to the whole recording
@@ -51,8 +51,8 @@ The lanes shrink to fit every thread into the pane, and a call's name appears on
 
 Right-clicking a bar gives:
 
-- **Zoom to Selection** - only while a call is selected, wherever you right-click. Zooms to the selected call, as double-clicking it does, and scrolls its thread into view
-- **Zoom to Fit** - wherever you right-click. Zooms back out to the whole recording
+- **Zoom to** - only over a call. Zooms to the call under the pointer, as double-clicking it does, and scrolls its thread into view
+- **Zoom to 100%** - wherever you right-click. Zooms back out to the whole recording
 - **Scope** - scopes the chart to the call's function, as **Shift + click** does - see [Scoping to a function](#scoping-to-a-function)
 - **Clear Scope** - only while the chart is scoped, wherever you right-click. Goes back to the whole recording
 - **Open Call Tree** - opens the [Call Tree](/docs/user-guide/query/CallStack) at the call's frame, with the call selected in the [Arguments](/docs/user-guide/query/CallStack#arguments) tab. Right-clicking empty space just opens the pane, and if it is already open its tab is selected
@@ -110,7 +110,7 @@ The filter button beside the **Search** toggle opens the same category badges as
 
 **Operators** on the tab strip adds a pane above the threads, with a row per plan operator in the same order and colours as the Timeline's Plan band. A Batch To Row adapter between batch and row mode operators is grey. Each row runs from the operator's first call to its last. The stretches where one of its methods was on the stack are drawn in full colour and the rest shaded, and an operator that ran on several threads gets a track per thread. Either side of that, a fainter bar shows how long the operator's iterator existed. It starts at the iterator's constructor, or for a batch mode operator the call that built it, and ends with the query's `CQueryScan::DestroyQuery`, where SQL Server frees all of a query's iterators together. When the recording started after an iterator was built, or stopped before the query was torn down, the fainter bar runs to the edge of the recording.
 
-The top row is the statement, such as **SELECT**, in grey. Its **GetRow Returns** strip has a tick for each call the statement made to the plan's top operator, with a line down to it, so its **Passed Up** ticks are the rows the query returned.
+The top row is the statement, such as **SELECT**, in grey. Its **GetRow Returns** strip has a tick for each call the statement made to the plan's top operator, with a line down to it, so its **Returned** ticks are the rows the query returned.
 
 This shows something the lanes cannot. An operator is only on a thread's stack while one of its methods runs, so a Hash Match sits beside its scans in the lanes rather than above them - but its iterator object exists from the moment it is built until the query is torn down, and does its work from its first call to its last. The Operators pane draws both.
 
@@ -156,7 +156,7 @@ The same function can be added more than once, such as one track for `GetRow` ca
 
 ### GetRow returns
 
-A tick is a call to the operator's `GetRow`, or `BpGetNextBatch` for a batch mode operator. It ends at the return and is coloured by what happened to the row. **Passed Up** rows went on to the operator that asked for them. **Skipped** rows were taken by the operator that asked for them without it returning a row before it asked again, such as the rows a Stream Aggregate folds into a group or the build input of a Hash Match. **Rejected** rows failed a Filter. **End** is the call that reported there were no more rows.
+A tick is a call to the operator's `GetRow`, or `BpGetNextBatch` for a batch mode operator. It ends at the return and is coloured by what happened to the row. **Returned** rows went on to the operator that asked for them, including the rows a Hash Match reads into its hash table while it builds. **Skipped** rows were taken by the operator that asked for them without it returning a row before it asked again, such as the rows a Stream Aggregate folds into a group. **Rejected** rows failed a Filter. **End** is the call that reported there were no more rows.
 
 A line runs from each call up to the operator that made it. The dotted line is the call, in the track's colour. The solid line is the return, in the colour of the call's marker, and meets the marker's edge. The lines are drawn only once the calls are wide enough to tell apart.
 

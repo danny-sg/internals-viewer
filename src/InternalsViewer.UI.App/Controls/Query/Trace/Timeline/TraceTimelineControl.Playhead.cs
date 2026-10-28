@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
+using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using SkiaSharp;
 
 namespace InternalsViewer.UI.App.Controls.Query.Trace.Timeline;
@@ -12,13 +14,13 @@ public sealed partial class TraceTimelineControl
 
     private const float PlayheadBadgePadding = 4f;
 
-    public TracePosition? GetPlayheadPosition()
-    {
-        if (_playhead is not { } value)
-        {
-            return null;
-        }
+    public TracePosition? GetPlayheadPosition() => _playhead is { } value ? GetPosition(value) : null;
 
+    public TraceViewRange? GetViewRange()
+        => _visible is null ? null : new TraceViewRange(_axis, _viewStart, _viewEnd, GetPosition(_viewStart), GetPosition(_viewEnd));
+
+    private TracePosition? GetPosition(double value)
+    {
         if (_axis == TraceTimelineAxis.Position)
         {
             return TraceScale.GetPosition(value);
@@ -52,6 +54,8 @@ public sealed partial class TraceTimelineControl
     private void ShowPlayhead(double value)
     {
         _playhead = value;
+
+        ClearPins();
 
         _stackFrame = null;
 
@@ -200,18 +204,9 @@ public sealed partial class TraceTimelineControl
     }
 
     private string PlayheadLabel(double value)
-    {
-        var relative = value - OriginOf(_axis);
-
-        if (_axis != TraceTimelineAxis.Position || _timeline is not { } timeline)
-        {
-            return $"{relative}";
-        }
-
-        var sequence = Math.Floor(relative);
-
-        return $"{sequence}:{Math.Round((relative - sequence) / timeline.Scale.GetStep(_axis))}";
-    }
+        => _axis == TraceTimelineAxis.Position
+            ? TracePositionText.GetHexText(TraceScale.GetPosition(value))
+            : $"{value - OriginOf(_axis)}";
 
     private static SKPath PlayheadTriangle()
     {

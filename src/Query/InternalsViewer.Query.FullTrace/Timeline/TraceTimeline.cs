@@ -72,6 +72,9 @@ public sealed partial class TraceTimeline
 
     public double GetEnd(TraceTimelineAxis axis) => Scale.GetValue(End, axis);
 
+    public TracePoint GetPoint(TracePosition position)
+        => new(position, Threads.Select(t => t.Clock.GetInstructions(position)).DefaultIfEmpty().Max());
+
     public CallStackNode? NodeOf(int callNodeIndex) => callNodeIndex >= 0 && callNodeIndex < Nodes.Length ? Nodes[callNodeIndex] : null;
 
     public TraceSpanLocation? FindCall(CallStackNode node, int callIndex)

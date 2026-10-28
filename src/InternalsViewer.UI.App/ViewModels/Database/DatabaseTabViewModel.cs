@@ -104,6 +104,9 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
     private short _fileId = 1;
 
     [ObservableProperty]
+    private PageAddress? _scrollTarget;
+
+    [ObservableProperty]
     private double _allocationMapHeight = 200;
 
     public IReadOnlyList<AllocationBorder> AllocationBorders => [];

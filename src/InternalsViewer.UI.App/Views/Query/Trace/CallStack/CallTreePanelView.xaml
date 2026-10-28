@@ -6,6 +6,7 @@
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
     xmlns:selectors="using:InternalsViewer.UI.App.Helpers.Selectors"
     xmlns:model="using:InternalsViewer.Query.CallStack"
+    xmlns:query="using:InternalsViewer.UI.App.Controls.Query"
     xmlns:callStack="using:InternalsViewer.UI.App.Controls.Query.Trace.CallStack"
     xmlns:signatures="using:InternalsViewer.UI.App.Controls.Query.Trace.CallStack.Signatures"
     xmlns:tree="using:InternalsViewer.UI.App.Models.Query.Trace.CallStack.Tree"
@@ -568,6 +569,10 @@
                    ScrollViewer.HorizontalScrollMode="Enabled"
                    ItemTemplateSelector="{StaticResource NodeTemplateSelector}"
                    ItemContainerStyle="{StaticResource ActivityItemStyle}"/>
+
+        <query:NoQueryHint Grid.Row="4"
+                           Layout="{x:Bind ViewModel.Query.Layout, Mode=OneWay}"
+                           Visibility="{x:Bind ViewModel.Query.IsNoQueryHintVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
         <StackPanel Grid.Row="4"
                     Orientation="Vertical"

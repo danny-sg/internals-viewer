@@ -1,10 +1,13 @@
-﻿using System;
+using InternalsViewer.Mcp.Interfaces.Tabs;
+using InternalsViewer.Mcp.Interfaces.Guides;
+using System;
 using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Connection.BackupFile.Connection;
 using InternalsViewer.Execution;
 using InternalsViewer.Internals;
 using InternalsViewer.Internals.Interfaces.Connections;
 using InternalsViewer.Internals.Services.Logging;
+using InternalsViewer.Mcp;
 using InternalsViewer.Query;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Export;
@@ -14,6 +17,7 @@ using InternalsViewer.TransactionLog;
 using InternalsViewer.UI.App.Activation;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
+using InternalsViewer.UI.App.Services.Mcp;
 using InternalsViewer.UI.App.Services.Query.Trace;
 using InternalsViewer.UI.App.Services;
 using InternalsViewer.UI.App.ViewModels;
@@ -65,6 +69,12 @@ public partial class App
             services.RegisterServices();
             services.RegisterExecutionServices();
             services.RegisterTraceServices();
+            services.RegisterMcpServices();
+
+            services.AddSingleton<IMcpTabSource, McpTabSource>();
+            services.AddSingleton<IMcpWorkspace, McpWorkspace>();
+
+            services.AddSingleton<IMcpGuideSource, InstructionsGuideSource>();
 
             services.AddTransient<IConnectionTypeFactory, BackupConnectionFactory>();
 

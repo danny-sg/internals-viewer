@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
-using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.Query.Timeline.Definition;
-using InternalsViewer.UI.App.Helpers;
 using SkiaSharp;
 
 namespace InternalsViewer.UI.App.Controls.Query.Timeline.Renderers;

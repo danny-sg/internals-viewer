@@ -233,6 +233,13 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
     public void Show(DocumentViewModel document) => Dock.Show(document);
 
+    public void ShowSqlEditor()
+    {
+        IsSqlEditorVisible = true;
+
+        Show(_documentsByKey[SqlKey]);
+    }
+
     public void ShowExecutionPlan()
     {
         IsExecutionPlanVisible = true;
@@ -275,8 +282,10 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         Show(_documentsByKey[MemoryHistoryKey]);
     }
 
-    public bool IsVisible(string key) 
+    public bool IsVisible(string key)
         => _documentsByKey.TryGetValue(key, out var document) && Dock.Contains(document);
+
+    public IEnumerable<string> VisibleKeys => _documentsByKey.Where(d => Dock.Contains(d.Value)).Select(d => d.Key);
 
     public bool RemoveDocument(string key, out DocumentViewModel document)
         => _documentsByKey.Remove(key, out document!);

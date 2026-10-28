@@ -41,6 +41,8 @@ internal interface ITraceTimelineHost
 
     void ShowMemoryProgress(bool isVisible);
 
+    void OnMemoryLayoutChanged();
+
     void MovePlayhead(double position);
 
     void ClickCall(CallStackNode node, int callIndex);

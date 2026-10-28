@@ -1,18 +1,27 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using InternalsViewer.Query.XEvents;
-using InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Enums;
-using InternalsViewer.UI.App.Services;
+using InternalsViewer.Mcp.Hosting;
+using InternalsViewer.Mcp.Interfaces.Clients;
 using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Recording;
+using InternalsViewer.Query.XEvents;
+using InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Enums;
+using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.Services;
+using InternalsViewer.UI.App.ViewModels.Mcp;
 
 namespace InternalsViewer.UI.App.ViewModels;
 
-public partial class SettingsViewModel(SettingsService settingsService, TraceDirectoryService traceDirectoryService)
+public partial class SettingsViewModel(SettingsService settingsService,
+                                       TraceDirectoryService traceDirectoryService,
+                                       McpServerHost mcpServerHost,
+                                       IEnumerable<IMcpClient> mcpClients)
     : ObservableObject, IWinDbgSettings
 {
     public const char CategorySeparator = ';';
@@ -37,10 +46,17 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     private const string CallTreePrunedCategoriesKey = "CallTreePrunedCategories";
     private const string TraceTimelineShowMemoryKey = "FlameChartShowMemory";
     private const string TraceTimelineMemoryModeKey = "FlameChartMemoryMode";
+    private const string TraceTimelineMemorySizeToFitKey = "FlameChartMemorySizeToFit";
 
     private const string TraceTimelineHiddenTickTracksKey = "TraceTimelineHiddenTickTracks";
     private const string DecodeValuesKey = "DecodeValues";
     private const string CustomHooksKey = "CustomHooks";
+
+    private const string McpServerEnabledKey = "McpServerEnabled";
+    private const string McpServerPortKey = "McpServerPort";
+    private const string McpServerTokenKey = "McpServerToken";
+
+    private const string McpServerStoppedStatus = "Stopped";
 
     private const string DefaultCallTreeHiddenCategories =
         "Compilation;Metadata;Networking;Query Store;Security;Tracing;Transaction Management";
@@ -98,6 +114,9 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     private TraceTimelineMemoryMode _traceTimelineMemoryMode;
 
     [ObservableProperty]
+    private bool _traceTimelineMemorySizeToFit = true;
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(TraceTimelineHiddenTickTrackSet))]
     private string _traceTimelineHiddenTickTracks = string.Empty;
 
@@ -109,6 +128,27 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
 
     [ObservableProperty]
     private string _memoryUsage = string.Empty;
+
+    [ObservableProperty]
+    private bool _mcpServerEnabled;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(McpServerEndpoint))]
+    private double _mcpServerPort = McpHostSettings.DefaultPort;
+
+    [ObservableProperty]
+    private string _mcpServerToken = string.Empty;
+
+    [ObservableProperty]
+    private string _mcpServerStatus = McpServerStoppedStatus;
+
+    public string McpServerEndpoint => GetMcpHostSettings().Endpoint;
+
+    public ObservableCollection<McpClientViewModel> McpClients
+    {
+        get => field ??= new ObservableCollection<McpClientViewModel>(
+            McpClientSources.Select(c => new McpClientViewModel(c, GetMcpHostSettings)));
+    }
 
     public string? ActiveTraceDirectory =>
         UseCustomTraceDirectory && !string.IsNullOrWhiteSpace(TraceDirectory) ? TraceDirectory : null;
@@ -122,6 +162,10 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     private SettingsService SettingsService { get; } = settingsService;
 
     private TraceDirectoryService TraceDirectoryService { get; } = traceDirectoryService;
+
+    private McpServerHost McpServerHost { get; } = mcpServerHost;
+
+    private IEnumerable<IMcpClient> McpClientSources { get; } = mcpClients;
 
     public void AddCustomHook(CustomHookDefinition definition)
         => CustomHooks = [.. CustomHooks.Where(h => h.Name != definition.Name), definition];
@@ -199,11 +243,115 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
         TraceTimelineMemoryMode = await SettingsService.ReadSettingAsync<TraceTimelineMemoryMode?>(TraceTimelineMemoryModeKey)
                                ?? TraceTimelineMemoryMode.Allocated;
 
+        TraceTimelineMemorySizeToFit = await SettingsService.ReadSettingAsync<bool?>(TraceTimelineMemorySizeToFitKey) ?? true;
+
         TraceTimelineHiddenTickTracks = await SettingsService.ReadSettingAsync<string>(TraceTimelineHiddenTickTracksKey) ?? string.Empty;
 
         DecodeValues = await SettingsService.ReadSettingAsync<bool?>(DecodeValuesKey) ?? true;
 
         CustomHooks = await SettingsService.ReadSettingAsync<List<CustomHookDefinition>>(CustomHooksKey) ?? [];
+
+        var savedPort = await SettingsService.ReadSettingAsync<double?>(McpServerPortKey);
+
+        McpServerPort = savedPort is >= 1 and <= 65535 ? savedPort.Value : McpHostSettings.DefaultPort;
+
+        var savedToken = PasswordProtection.Unprotect(await SettingsService.ReadSettingAsync<string>(McpServerTokenKey));
+
+        if (string.IsNullOrEmpty(savedToken))
+        {
+            await SaveMcpTokenAsync(McpServerHost.CreateToken());
+        }
+        else
+        {
+            McpServerToken = savedToken;
+        }
+
+        McpServerEnabled = await SettingsService.ReadSettingAsync<bool?>(McpServerEnabledKey) ?? false;
+
+        await RefreshMcpClientsAsync();
+    }
+
+    [RelayCommand]
+    private async Task RegenerateMcpTokenAsync()
+    {
+        await SaveMcpTokenAsync(McpServerHost.CreateToken());
+
+        if (McpServerHost.IsRunning)
+        {
+            await StartMcpServerAsync();
+        }
+
+        await UpdateRegisteredMcpClientsAsync();
+    }
+
+    private McpHostSettings GetMcpHostSettings() => new((int)McpServerPort, McpServerToken);
+
+    private async Task RefreshMcpClientsAsync()
+    {
+        foreach (var client in McpClients)
+        {
+            await client.RefreshAsync();
+        }
+    }
+
+    private async Task UpdateRegisteredMcpClientsAsync()
+    {
+        foreach (var client in McpClients)
+        {
+            await client.UpdateIfRegisteredAsync();
+        }
+    }
+
+    private async Task SaveMcpTokenAsync(string token)
+    {
+        McpServerToken = token;
+
+        await SettingsService.SaveSettingAsync(McpServerTokenKey, PasswordProtection.Protect(token));
+    }
+
+    private async Task StartMcpServerAsync()
+    {
+        try
+        {
+            McpServerStatus = "Starting";
+
+            await McpServerHost.StartAsync(new McpHostSettings((int)McpServerPort, McpServerToken), CancellationToken.None);
+
+            McpServerStatus = $"Running on {McpServerEndpoint}";
+        }
+        catch (Exception exception)
+        {
+            McpServerStatus = $"Failed to start: {exception.Message}";
+        }
+    }
+
+    private async Task StopMcpServerAsync()
+    {
+        await McpServerHost.StopAsync();
+
+        McpServerStatus = McpServerStoppedStatus;
+    }
+
+    partial void OnMcpServerEnabledChanged(bool value)
+    {
+        _ = SettingsService.SaveSettingAsync(McpServerEnabledKey, value);
+
+        _ = value ? StartMcpServerAsync() : StopMcpServerAsync();
+    }
+
+    partial void OnMcpServerPortChanged(double value)
+    {
+        _ = SettingsService.SaveSettingAsync(McpServerPortKey, value);
+
+        if (McpServerHost.IsRunning)
+        {
+            _ = StartMcpServerAsync();
+        }
+
+        if (McpServerToken.Length > 0)
+        {
+            _ = UpdateRegisteredMcpClientsAsync();
+        }
     }
 
     /// <summary>
@@ -270,6 +418,11 @@ public partial class SettingsViewModel(SettingsService settingsService, TraceDir
     partial void OnTraceTimelineMemoryModeChanged(TraceTimelineMemoryMode value)
     {
         _ = SettingsService.SaveSettingAsync(TraceTimelineMemoryModeKey, value);
+    }
+
+    partial void OnTraceTimelineMemorySizeToFitChanged(bool value)
+    {
+        _ = SettingsService.SaveSettingAsync(TraceTimelineMemorySizeToFitKey, value);
     }
 
     partial void OnDecodeValuesChanged(bool value)

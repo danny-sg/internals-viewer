@@ -5,7 +5,6 @@ using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Operators;
 using InternalsViewer.UI.App.Helpers;
-using InternalsViewer.UI.App.ViewModels.Page;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -87,6 +86,8 @@ public sealed partial class TraceTimelineControl
         {
             return;
         }
+
+        ClearPins();
 
         var point = e.GetCurrentPoint(_overlay);
 
@@ -368,7 +369,7 @@ public sealed partial class TraceTimelineControl
 
         if (ShowsMemory && _memory.Contains(position))
         {
-            if (_memory.GetToolTip(memoryHover, position) is { } memoryText)
+            if (_memory.GetToolTip(memoryHover) is { } memoryText)
             {
                 OpenToolTip(memoryText, position);
             }
@@ -482,9 +483,18 @@ public sealed partial class TraceTimelineControl
         }
         else if (modifiers.HasFlag(VirtualKeyModifiers.Control))
         {
-            _scrollY -= delta;
+            if (ShowsMemory && _memory.CanScroll && _memory.Contains(point.Position))
+            {
+                _memory.ScrollBy(-delta);
 
-            ApplyScroll();
+                UpdateScrollBars();
+            }
+            else
+            {
+                _scrollY -= delta;
+
+                ApplyScroll();
+            }
         }
         else
         {
@@ -680,12 +690,12 @@ public sealed partial class TraceTimelineControl
 
         var flyout = new MenuFlyout();
 
-        if (_selected is not null)
+        if (hit is { } zoomed && span is not null)
         {
-            flyout.Items.Add(MenuItems.Create("Zoom to Selection", ZoomToSelectedCall));
+            flyout.Items.Add(MenuItems.Create("Zoom to", () => ZoomToCall(zoomed)));
         }
 
-        flyout.Items.Add(MenuItems.Create("Zoom to Fit", ZoomToFit));
+        flyout.Items.Add(MenuItems.Create("Zoom to 100%", ZoomToFit));
 
         if (_selected is not null)
         {
@@ -737,6 +747,8 @@ public sealed partial class TraceTimelineControl
         AddPaneItems(flyout);
 
         flyout.Items.Add(new MenuFlyoutSeparator());
+
+        flyout.Items.Add(MenuItems.Toggle("Size to Fit", MemorySizeToFit, isChecked => MemorySizeToFit = isChecked));
 
         flyout.Items.Add(MenuItems.Toggle("Call Highlight Hover", HighlightMemoryWriters, isChecked => HighlightMemoryWriters = isChecked));
 
@@ -919,12 +931,20 @@ public sealed partial class TraceTimelineControl
 
     private void ZoomToSelectedCall()
     {
-        if (_selected is not { } selected || SpanOf(selected) is not { } span)
+        if (_selected is { } selected)
+        {
+            ZoomToCall(selected);
+        }
+    }
+
+    private void ZoomToCall(FlameHit hit)
+    {
+        if (SpanOf(hit) is not { } span)
         {
             return;
         }
 
-        BringIntoView(selected);
+        BringIntoView(hit);
 
         ZoomTo(span);
     }

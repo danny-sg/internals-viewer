@@ -62,6 +62,7 @@ export default defineConfig({
             ],
           },
           { text: "Settings", link: "docs/user-guide/settings" },
+          { text: "MCP Server", link: "docs/user-guide/mcp-server" },
           { text: "Background", link: "docs/user-guide/background" },
         ],
       },

@@ -6,9 +6,6 @@ using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.Services.Query.Simulation;
 using InternalsViewer.UI.App.Services.Query.Trace;
 using CommunityToolkit.Mvvm.ComponentModel;
-using InternalsViewer.Query.Events.BatchMode;
-using InternalsViewer.Query.Events.Memory;
-using InternalsViewer.Query.Events.Waits;
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -23,8 +20,6 @@ using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Query;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace;
-using InternalsViewer.Query.FullTrace.Arguments;
-using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -83,7 +78,6 @@ using System.Text.Json;
 using InternalsViewer.Query.Export;
 using InternalsViewer.UI.App.Helpers;
 using Windows.Storage.Pickers;
-using SkiaSharp;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
@@ -179,6 +173,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private bool _isPfsVisible = false;
 
     [ObservableProperty]
+    private PageAddress? _scrollTarget;
+
+    [ObservableProperty]
     private ObservableCollection<AllocationLayer> _allocationLayers = [];
 
     [ObservableProperty]
@@ -261,12 +258,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private bool _isSqlHistoryVisible;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowTraceTimelineHint))]
+    [NotifyPropertyChangedFor(nameof(IsTraceTimelineHintVisible))]
+    [NotifyPropertyChangedFor(nameof(IsNoQueryHintVisible))]
     [NotifyCanExecuteChangedFor(nameof(ExportRunCommand))]
     private bool _isTraceLoading;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowTraceTimelineHint))]
+    [NotifyPropertyChangedFor(nameof(IsTraceTimelineHintVisible))]
     private TraceTimeline? _traceTimeline;
 
     [ObservableProperty]
@@ -370,6 +368,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         OperatorTracks = new OperatorTracksViewModel(tickTrackStore, GetTickCount, message => AddMessage(message));
 
         TickTrackStore.PropertyChanged += OnTickTrackStoreChanged;
+
+        ExecuteQueryCommand.PropertyChanged += OnExecuteQueryCommandChanged;
 
         Logger = logger;
         QueryRunner = queryRunner;
@@ -658,10 +658,37 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             field = value;
 
             ExportRunCommand.NotifyCanExecuteChanged();
+
+            OnPropertyChanged(nameof(IsNoQueryHintVisible));
         }
     }
 
-    public bool ShowTraceTimelineHint => TraceTimeline is null && !IsTraceLoading;
+    public QueryExportContent? CurrentRun => LastRun;
+
+    public Func<(long StartUs, long EndUs)?>? VisibleTimeRangeSource { get; set; }
+
+    public List<(PageTabViewModel Page, bool IsActive)> GetOpenPages()
+    {
+        var pages = new List<(PageTabViewModel Page, bool IsActive)>();
+
+        foreach (var (key, page) in _openPages)
+        {
+            if (!Layout.TryGetDocument(key, out var document))
+            {
+                continue;
+            }
+
+            var isActive = Layout.Dock.FindGroup(document) is { } group && ReferenceEquals(group.SelectedDocument, document);
+
+            pages.Add((page, isActive));
+        }
+
+        return pages;
+    }
+
+    public bool IsTraceTimelineHintVisible => TraceTimeline is null && !IsTraceLoading;
+
+    public bool IsNoQueryHintVisible => LastRun is null && !ExecuteQueryCommand.IsRunning && !IsTraceLoading;
 
     private IBufferPoolInfoProvider BufferPoolInfoProvider { get; }
 
@@ -944,7 +971,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    public void OpenPage(PageAddress pageAddress, ushort? slot = null)
+    public void OpenPage(PageAddress pageAddress, ushort? slot = null) => _ = OpenPageAsync(pageAddress, slot);
+
+    public Task OpenPageAsync(PageAddress pageAddress, ushort? slot = null)
     {
         var logRecords = GetPageLogRecords(pageAddress);
 
@@ -954,12 +983,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             Layout.Show(existing);
 
-            if (_openPages.TryGetValue(key, out var openViewModel))
-            {
-                _ = LoadPageDocument(openViewModel, pageAddress, slot, logRecords);
-            }
-
-            return;
+            return _openPages.TryGetValue(key, out var openViewModel)
+                ? LoadPageDocument(openViewModel, pageAddress, slot, logRecords)
+                : Task.CompletedTask;
         }
 
         var pageViewModel = _pageTabViewModelFactory.Create(Database);
@@ -978,7 +1004,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         Layout.Show(document);
 
-        _ = LoadPageDocument(pageViewModel, pageAddress, slot, logRecords);
+        return LoadPageDocument(pageViewModel, pageAddress, slot, logRecords);
     }
 
     public void RefreshFilteredEvents()
@@ -995,6 +1021,14 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         var visibility = new TimelineBandVisibility(QueryOptions.ShowLocks, QueryOptions.ShowLatches, QueryOptions.ShowWaits);
 
         TimelineDefinition = _timelineDefinitionBuilder.Build(Events, visibility, IsEventVisible);
+    }
+
+    private void OnExecuteQueryCommandChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(IAsyncRelayCommand.IsRunning))
+        {
+            OnPropertyChanged(nameof(IsNoQueryHintVisible));
+        }
     }
 
     private void OnQueryOptionChanged(object? sender, PropertyChangedEventArgs e)
@@ -1058,6 +1092,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         QueryOptions.Changed -= ScheduleSaveLayout;
         Layout.Changed -= OnLayoutChanged;
         Layout.SelectionChanged -= ScheduleSaveLayout;
+        ExecuteQueryCommand.PropertyChanged -= OnExecuteQueryCommandChanged;
 
         Events = [];
         FilteredEvents = [];
@@ -1918,8 +1953,20 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         var firstMessage = Messages.Count;
 
+        var isFullTrace = QueryOptions.RecordTimeTravel;
+
+        if (isFullTrace)
+        {
+            IsTraceLoading = true;
+        }
+
         var progress = new Progress<ProgressDetail>(detail =>
         {
+            if (isFullTrace && TraceLoad is null && detail.IsStep)
+            {
+                TraceStatus = detail.ToString();
+            }
+
             AddMessage(detail);
 
             ShowOverall(run, detail);
@@ -1944,6 +1991,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         finally
         {
             TaskbarProgress.Clear(run);
+
+            if (TraceLoad is null)
+            {
+                IsTraceLoading = false;
+                TraceStatus = null;
+            }
         }
     }
 
@@ -2045,7 +2098,17 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     }
 
     [RelayCommand]
-    private void CancelTrace() => CancelTraceLoad();
+    private void CancelTrace()
+    {
+        if (ExecuteQueryCommand.IsRunning)
+        {
+            ExecuteQueryCommand.Cancel();
+
+            return;
+        }
+
+        CancelTraceLoad();
+    }
 
     private async Task LoadTraceAsync(TraceRequest request)
     {

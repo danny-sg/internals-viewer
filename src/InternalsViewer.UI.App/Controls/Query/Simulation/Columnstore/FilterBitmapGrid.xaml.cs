@@ -1,6 +1,5 @@
 using System;
 using InternalsViewer.UI.App.Models.Query.Simulation.Columnstore;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using SkiaSharp;

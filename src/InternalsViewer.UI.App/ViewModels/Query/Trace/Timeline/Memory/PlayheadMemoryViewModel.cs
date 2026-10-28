@@ -4,14 +4,12 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
-using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Logging;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
-using InternalsViewer.UI.App.ViewModels.Page;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryHistory;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline.Memory.Enums;
 using Microsoft.UI;
@@ -291,7 +289,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         ShowHistory(function, History.Store.Blocks[Block].Address + (ulong)offset);
     }
 
-    public void MarkPosition(TracePoint? point) => Chart?.MarkPosition(point);
+    public void MarkPosition(TracePoint? point) => Chart?.MarkPositions(point is { } marked ? [marked] : null);
 
     public void MarkWrite(int? index)
     {
@@ -302,7 +300,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
                          : null);
     }
 
-    public void HighlightWriter(string? label)
+    public void MarkWriter(string? label)
     {
         if (Chart is not { } chart)
         {
@@ -311,22 +309,28 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         if (label is null || !IsOpen)
         {
-            chart.HighlightCalls(null);
+            chart.MarkPositions(null);
 
             return;
         }
 
-        var writers = new HashSet<CallStackNode>(ReferenceEqualityComparer.Instance);
+        var store = History.Store;
 
-        foreach (var write in History.Store.GetWrites(Block))
+        var first = store.Blocks[Block].FirstWrite;
+
+        var writes = store.GetWrites(Block);
+
+        var points = new List<TracePoint>();
+
+        for (var index = 0; index < writes.Count; index++)
         {
-            if (History.GetWriter(write.CallNodeIndex) is { } node && History.GetWriterLabel(write.CallNodeIndex) == label)
+            if (History.GetWriterLabel(writes[index].CallNodeIndex) == label)
             {
-                writers.Add(node);
+                points.Add(store.GetPoint(first + index));
             }
         }
 
-        chart.HighlightCalls(writers);
+        chart.MarkPositions([.. points]);
     }
 
     public void ShowPageMarkers(int? offset)

@@ -132,7 +132,7 @@ public static class SignatureRuns
             inlines.Add(new Run { Text = "  " });
         }
 
-        AddValue(inlines, part, decode: true);
+        AddValue(inlines, part, decode: part.MemoryTarget is null);
     }
 
     private static void OnStepChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

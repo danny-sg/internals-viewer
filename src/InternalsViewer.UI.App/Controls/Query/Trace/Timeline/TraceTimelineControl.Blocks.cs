@@ -201,23 +201,88 @@ public sealed partial class TraceTimelineControl
                block.Right + _directionX * block.Extrusion,
                block.Top + block.Height + _directionY * block.Extrusion);
 
-    private void DrawWireframe(SKCanvas canvas, Block block, SKPaint paint)
+    private void DrawBlockOutline(SKCanvas canvas, Block block, SKPaint paint)
     {
-        var front = FrontOf(block);
+        if (block.Extrusion <= 0)
+        {
+            StrokeUnion(canvas, paint, BuildRect(FrontOf(block)));
+
+            return;
+        }
 
         var bottom = block.Top + block.Height;
 
-        canvas.DrawRect(block.Left, block.Top, block.Right - block.Left, block.Height, paint);
+        var dx = _directionX * block.Extrusion;
 
-        canvas.DrawRect(front, paint);
+        var dy = _directionY * block.Extrusion;
 
-        canvas.DrawLine(block.Left, block.Top, front.Left, front.Top, paint);
+        StrokeUnion(canvas,
+                    paint,
+                    BuildRect(new SKRect(block.Left, block.Top, block.Right, bottom)),
+                    BuildParallelogram(block.Left, dy > 0 ? block.Top : bottom, block.Right - block.Left, 0, dx, dy),
+                    BuildParallelogram(dx < 0 ? block.Right : block.Left, block.Top, 0, block.Height, dx, dy),
+                    BuildRect(FrontOf(block)));
+    }
 
-        canvas.DrawLine(block.Right, block.Top, front.Right, front.Top, paint);
+    private SKPath BuildRect(SKRect rect)
+    {
+        _pathBuilder.AddRect(rect);
 
-        canvas.DrawLine(block.Left, bottom, front.Left, front.Bottom, paint);
+        return _pathBuilder.Detach();
+    }
 
-        canvas.DrawLine(block.Right, bottom, front.Right, front.Bottom, paint);
+    private SKPath BuildParallelogram(float x, float y, float ax, float ay, float bx, float by)
+    {
+        _pathBuilder.MoveTo(x, y);
+
+        _pathBuilder.LineTo(x + ax, y + ay);
+
+        _pathBuilder.LineTo(x + ax + bx, y + ay + by);
+
+        _pathBuilder.LineTo(x + bx, y + by);
+
+        _pathBuilder.Close();
+
+        return _pathBuilder.Detach();
+    }
+
+    private static void StrokeUnion(SKCanvas canvas, SKPaint paint, params SKPath[] pieces)
+    {
+        SKPath? outline = pieces[0];
+
+        for (var index = 1; index < pieces.Length && outline is not null; index++)
+        {
+            var merged = outline.Op(pieces[index], SKPathOp.Union);
+
+            if (!ReferenceEquals(outline, pieces[0]))
+            {
+                outline.Dispose();
+            }
+
+            outline = merged;
+        }
+
+        if (outline is null)
+        {
+            foreach (var piece in pieces)
+            {
+                canvas.DrawPath(piece, paint);
+            }
+        }
+        else
+        {
+            canvas.DrawPath(outline, paint);
+
+            if (!ReferenceEquals(outline, pieces[0]))
+            {
+                outline.Dispose();
+            }
+        }
+
+        foreach (var piece in pieces)
+        {
+            piece.Dispose();
+        }
     }
 
     private void FillParallelogram(SKCanvas canvas, SKColor colour, float x, float y, float ax, float ay, float bx, float by)

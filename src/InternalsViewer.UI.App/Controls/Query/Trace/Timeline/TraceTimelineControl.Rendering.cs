@@ -429,15 +429,15 @@ public sealed partial class TraceTimelineControl
 
         DrawPaneOverlays(canvas, width);
 
-        if (ShowsSpikes)
+        if (ShowMemory)
         {
             canvas.Save();
 
             canvas.ClipRect(new SKRect(0, 0, width, height - BandHeight));
 
-            DrawSpikeHighlight(canvas, hover, hoverPaint);
+            DrawRaisedHighlight(canvas, hover, hoverPaint);
 
-            DrawSpikeHighlight(canvas, _selected, _paints.Selection);
+            DrawRaisedHighlight(canvas, _selected, _paints.Selection);
 
             canvas.Restore();
         }
@@ -481,7 +481,7 @@ public sealed partial class TraceTimelineControl
 
     private void DrawHighlight(SKCanvas canvas, FlameHit? hit, int width, SKPaint paint, float outset = 0)
     {
-        if (hit is not { } highlighted || (ShowsSpikes && SpikeOf(highlighted) is not null))
+        if (hit is not { } highlighted || (ShowMemory && SpikeOf(highlighted) is not null))
         {
             return;
         }

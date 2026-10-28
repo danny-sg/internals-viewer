@@ -1,6 +1,6 @@
 ﻿# Settings
 
-Settings are opened from **Settings** at the bottom of the sidebar on the **Internals Viewer** tab. They are grouped into **Query**, for where query traces and symbols go, and **Full Trace**, for recording with Time Travel Debugging, followed by the **Diagnostic log**, **Current memory usage** and **About**.
+Settings are opened from **Settings** at the bottom of the sidebar on the **Internals Viewer** tab. They are grouped into **Query**, for where query traces and symbols go, **Full Trace**, for recording with Time Travel Debugging, and **MCP Server**, for letting an AI assistant read the open runs, followed by the **Diagnostic log**, **Current memory usage** and **About**.
 
 Settings save as soon as they change - a text box when you move out of it.
 
@@ -49,6 +49,10 @@ The WinDbg installation that Record Full Trace takes its Time Travel Debugging r
 ### Time Travel Warning
 
 On by default. Shows the dialog explaining what a recording involves - the administrator prompt, the service restart and the size of the files - each time [Record Full Trace](/docs/user-guide/query/FullTrace#turning-it-on) is turned on. Ticking **Do Not Show Again** and choosing **Turn On** turns this off.
+
+## MCP Server
+
+Turns on the Model Context Protocol server, chooses its port and registers the AI assistants that may use it - see [MCP Server](/docs/user-guide/mcp-server).
 
 ## Diagnostic log
 
