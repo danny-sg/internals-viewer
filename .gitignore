@@ -209,3 +209,5 @@ docs/internalsviewer.com/.vitepress/cache/deps/vue.js
 # Claude Code personal settings
 .claude/settings.local.json
 /screenshots
+/src/InternalsViewer.UI.App/BundleArtifacts
+/src/InternalsViewer.UI.App/BundleArtifacts
