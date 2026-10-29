@@ -126,7 +126,7 @@ runs (the sizes are for 900-row batches):
 | Selection vector, u16 row indexes | `CBpBatch::Initialize` (`bpbatch.cpp:129`) | 1,800 |
 | Vector buffers, one per vector, 8 bytes per row | `CBpBatch::AllocateVectorBuffer` (`bpbatch.cpp:265`) | 7,848 |
 | Allocation bitmap and pure bitmap | `CBpBatch::Initialize` or `Resize` (`bpbatch.inl:460`) | 8 |
-| Deep data pages for values wider than a slot | `RbpNormalize::NormalizeVector<...>` or `CBpDeepDataStore<...>::PvAllocateDeepDataSlow` | 8,084 |
+| Deep data pages for values wider than a slot, `BPDS` at `+0x10` | `RbpNormalize::NormalizeVector<...>`, `CBpDeepDataStore<...>::PvAllocateDeepDataSlow` or `CBpDeepDataContextForBatch::StoreDeepData` (`bpbatch.cpp:599`) | 8,084 |
 
 The header fields, read from the writers of each offset: `+0x00` allocation bitmap pointer, `+0x08` vector array
 pointer, `+0x10` pure bitmap pointer, `+0x18` vector array capacity, `+0x1C` vector count, `+0x20` a version

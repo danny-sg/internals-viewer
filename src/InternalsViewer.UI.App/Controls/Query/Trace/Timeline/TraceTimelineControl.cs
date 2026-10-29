@@ -467,6 +467,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     public event Action<CallStackNode?, int>? CallTreeOpenRequested;
 
+    public event Action<string>? SearchRequested;
+
     public event Action<bool>? CallStackVisibilityRequested;
 
     public event Action? CallStackChanged;
@@ -798,6 +800,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
     private void ApplyTheme()
     {
         _paints.Apply(ActualTheme == ElementTheme.Dark);
+
+        _minimapMarkers = null;
 
         Redraw();
     }

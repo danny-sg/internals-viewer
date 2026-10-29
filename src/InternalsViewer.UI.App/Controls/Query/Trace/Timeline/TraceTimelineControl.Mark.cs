@@ -17,10 +17,6 @@ public sealed partial class TraceTimelineControl
 
     private const float MinimapMargin = 8f;
 
-    private static readonly Color CurrentColour = Color.FromArgb(255, 230, 60, 60);
-
-    private static readonly Color MarkedColour = Color.FromArgb(255, 0, 0, 0);
-
     private readonly TraceTimelineMinimap _minimap = new()
     {
         Width = MinimapWidth,
@@ -74,6 +70,8 @@ public sealed partial class TraceTimelineControl
             return;
         }
 
+        RememberLocation();
+
         StopPlay();
 
         PlacePlayhead(start);
@@ -81,6 +79,8 @@ public sealed partial class TraceTimelineControl
 
     public void MovePlayheadTo(TracePoint point)
     {
+        RememberLocation();
+
         StopPlay();
 
         PlacePlayhead(TraceScale.GetValue(point, _axis));
@@ -88,10 +88,19 @@ public sealed partial class TraceTimelineControl
 
     public void ZoomToCall(CallStackNode node, int callIndex)
     {
-        if (RevealSpan(node, callIndex) is { } span)
+        if (RevealSpan(node, callIndex) is not { } span)
         {
-            ZoomTo(span);
+            return;
         }
+
+        if (_visible is { } timeline && FindCall(timeline, node, callIndex) is { } hit)
+        {
+            ZoomToAndSelect(hit);
+
+            return;
+        }
+
+        ZoomTo(span);
     }
 
     private double? RevealCall(CallStackNode node, int callIndex)
@@ -159,6 +168,8 @@ public sealed partial class TraceTimelineControl
 
         var bottom = height - BandHeight;
 
+        var paint = values.Length > 1 ? _paints.Marks : _paints.Mark;
+
         var isOutside = false;
 
         var lastPixel = float.NaN;
@@ -183,7 +194,7 @@ public sealed partial class TraceTimelineControl
 
             lastPixel = pixel;
 
-            canvas.DrawLine(x, ContentTop, x, bottom, _paints.Mark);
+            canvas.DrawLine(x, ContentTop, x, bottom, paint);
         }
 
         if (isOutside)
@@ -304,12 +315,14 @@ public sealed partial class TraceTimelineControl
 
             if (!double.IsNaN(current))
             {
-                markers.Add(new MinimapMarker(current, CurrentColour));
+                markers.Add(GetMinimapMarker(current, _paints.Playhead));
             }
+
+            var paint = marked.Length > 1 ? _paints.Marks : _paints.Mark;
 
             foreach (var value in marked)
             {
-                markers.Add(new MinimapMarker(value, MarkedColour, lane, depth));
+                markers.Add(GetMinimapMarker(value, paint, lane, depth));
             }
 
             _minimap.Markers = markers;
@@ -321,6 +334,13 @@ public sealed partial class TraceTimelineControl
     }
 
     private void HideMinimap() => _minimap.Visibility = Visibility.Collapsed;
+
+    private static MinimapMarker GetMinimapMarker(double position, SKPaint paint, int lane = -1, int depth = -1)
+    {
+        var colour = Color.FromArgb(paint.Color.Alpha, paint.Color.Red, paint.Color.Green, paint.Color.Blue);
+
+        return new MinimapMarker(position, colour, lane, depth, paint.StrokeWidth);
+    }
 
     private void ReleaseMinimap()
     {

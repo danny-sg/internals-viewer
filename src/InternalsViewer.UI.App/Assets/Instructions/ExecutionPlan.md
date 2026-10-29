@@ -8,4 +8,4 @@ between operators as moving flow lines, and operators blocked waiting on their i
 - **Right-click** an operator that reads an index to open that index, linked to the replay
 - **Ctrl + mouse wheel** zooms, and the plan pans by dragging
 - With [Call Stack](guide:CallStack) events captured, the **Flame Graph** toggle breaks each operator's bar down into
-  the engine calls that made it up
+  the engine calls that made it up. It is not available in a Full Trace

@@ -25,10 +25,11 @@
         <AppxAutoIncrementPackageRevision>False</AppxAutoIncrementPackageRevision>
         <AppxSymbolPackageEnabled>True</AppxSymbolPackageEnabled>
         <GenerateTestArtifacts>True</GenerateTestArtifacts>
-        <AppxBundle>Never</AppxBundle>
+        <AppxBundle>Auto</AppxBundle>
         <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
         <AppxPackageDir>D:\package\InternalsViewer</AppxPackageDir>
         <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
+        <AppxBundlePlatforms>x64</AppxBundlePlatforms>
         
         
     </PropertyGroup>

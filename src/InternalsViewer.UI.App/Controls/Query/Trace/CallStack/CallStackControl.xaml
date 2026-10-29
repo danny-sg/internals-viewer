@@ -24,12 +24,6 @@
             <Setter Property="IsTextSelectionEnabled" Value="True"/>
         </Style>
 
-        <Style x:Key="ValueCopyButtonStyle" TargetType="controls:CopyButton" BasedOn="{StaticResource DefaultCopyButtonStyle}">
-            <Setter Property="Content" Value="&#xE8C8;"/>
-            <Setter Property="VerticalAlignment" Value="Top"/>
-            <Setter Property="Foreground" Value="{ThemeResource CardBackgroundFillColorSecondaryBrush}"/>
-        </Style>
-
         <Style x:Key="MemoryButtonStyle" TargetType="Button" BasedOn="{StaticResource TabCommandButtonStyle}">
             <Setter Property="Padding" Value="6,0,6,0"/>
             <Setter Property="VerticalAlignment" Value="Top"/>
@@ -40,6 +34,7 @@
             <MenuFlyoutItem Text="Open In Call Tree" Click="OnOpenInCallTreeClick"/>
             <MenuFlyoutItem Text="Zoom" Click="OnZoomClick"/>
             <MenuFlyoutItem Text="Scope" Click="OnScopeClick"/>
+            <MenuFlyoutItem Text="Search" Click="OnSearchClick"/>
             <MenuFlyoutSeparator/>
             <MenuFlyoutSubItem Text="Copy">
                 <MenuFlyoutItem Text="Copy Signature" Click="OnCopySignatureClick"/>
@@ -105,7 +100,8 @@
             <Grid ColumnSpacing="8"
                   Padding="0,1,0,1"
                   Background="Transparent"
-                  Tapped="OnArgumentTapped">
+                  Tapped="OnArgumentTapped"
+                  ContextRequested="OnArgumentContextRequested">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" MinWidth="16"/>
                     <ColumnDefinition Width="*"/>
@@ -126,6 +122,7 @@
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <TextBlock FontSize="12"
                                    TextWrapping="Wrap"
+                                   VerticalAlignment="Center"
                                    callStackSignatures:SignatureRuns.Argument="{x:Bind}"/>
 
                         <HyperlinkButton Style="{StaticResource ResultPointerStyle}"
@@ -406,6 +403,7 @@
                   BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                   BorderThickness="0,0,0,1">
                 <TextBlock x:Name="DetailsTitle"
+                           ContextRequested="OnDetailsTitleContextRequested"
                            FontFamily="{StaticResource MonospaceFontFamily}"
                            FontSize="12"
                            Margin="0,0,28,0"
@@ -426,8 +424,8 @@
                           Visibility="{x:Bind IsFunctionVisible(ViewModel.SelectedCall, ViewModel.SelectedValue), Mode=OneWay}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -441,9 +439,14 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Text="Category" Style="{StaticResource DetailLabelStyle}" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Row="0"
+                                   Text="Category"
+                                   Style="{StaticResource DetailLabelStyle}"
+                                   VerticalAlignment="Center"
+                                   Visibility="{x:Bind IsTextVisible(ViewModel.SelectedCall.Node.Category), Mode=OneWay}"/>
                         <Border Grid.Row="0"
-                                Grid.Column="1"
+                                Grid.Column="2"
+                                Visibility="{x:Bind IsTextVisible(ViewModel.SelectedCall.Node.Category), Mode=OneWay}"
                                 HorizontalAlignment="Left"
                                 CornerRadius="3"
                                 Padding="5,2,5,3"
@@ -454,19 +457,26 @@
                                        FontWeight="SemiBold"/>
                         </Border>
                         <controls:CopyButton Grid.Row="0"
-                                             Grid.Column="2"
-                                             Style="{StaticResource ValueCopyButtonStyle}"
+                                             Grid.Column="1"
+                                             Style="{StaticResource DetailCopyButtonStyle}"
+                                             Visibility="{x:Bind IsTextVisible(ViewModel.SelectedCall.Node.Category), Mode=OneWay}"
                                              Tag="{x:Bind ViewModel.SelectedCall.Node.Category, Mode=OneWay}"
                                              Click="OnCopyValueClick"/>
 
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Module" Style="{StaticResource DetailLabelStyle}"/>
                         <TextBlock Grid.Row="1"
-                                   Grid.Column="1"
+                                   Grid.Column="0"
+                                   Text="Module"
+                                   Style="{StaticResource DetailLabelStyle}"
+                                   Visibility="{x:Bind IsTextVisible(ViewModel.SelectedCall.Node.Frame.Module), Mode=OneWay}"/>
+                        <TextBlock Grid.Row="1"
+                                   Grid.Column="2"
                                    Style="{StaticResource DetailValueStyle}"
+                                   Visibility="{x:Bind IsTextVisible(ViewModel.SelectedCall.Node.Frame.Module), Mode=OneWay}"
                                    Text="{x:Bind ViewModel.SelectedCall.Node.Frame.Module, Mode=OneWay}"/>
                         <controls:CopyButton Grid.Row="1"
-                                             Grid.Column="2"
-                                             Style="{StaticResource ValueCopyButtonStyle}"
+                                             Grid.Column="1"
+                                             Style="{StaticResource DetailCopyButtonStyle}"
+                                             Visibility="{x:Bind IsTextVisible(ViewModel.SelectedCall.Node.Frame.Module), Mode=OneWay}"
                                              Tag="{x:Bind ViewModel.SelectedCall.Node.Frame.Module, Mode=OneWay}"
                                              Click="OnCopyValueClick"/>
 
@@ -475,9 +485,10 @@
                                    Style="{StaticResource DetailLabelStyle}"
                                    Visibility="{x:Bind IsVisible(ViewModel.SelectedCall.This), Mode=OneWay}"/>
                         <Grid Grid.Row="2"
-                              Grid.Column="1"
+                              Grid.Column="2"
                               ColumnSpacing="4"
-                              Visibility="{x:Bind IsVisible(ViewModel.SelectedCall.This), Mode=OneWay}">
+                              Visibility="{x:Bind IsVisible(ViewModel.SelectedCall.This), Mode=OneWay}"
+                              ContextRequested="OnThisContextRequested">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
@@ -485,6 +496,8 @@
 
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <TextBlock Style="{StaticResource DetailValueStyle}"
+                                           IsTextSelectionEnabled="False"
+                                           VerticalAlignment="Center"
                                            controls:HexText.Text="{x:Bind ThisText(ViewModel.SelectedCall), Mode=OneWay}"/>
 
                                 <HyperlinkButton Style="{StaticResource ResultPointerStyle}"
@@ -504,14 +517,14 @@
                             </Button>
                         </Grid>
                         <controls:CopyButton Grid.Row="2"
-                                             Grid.Column="2"
-                                             Style="{StaticResource ValueCopyButtonStyle}"
+                                             Grid.Column="1"
+                                             Style="{StaticResource DetailCopyButtonStyle}"
                                              Tag="{x:Bind ThisText(ViewModel.SelectedCall), Mode=OneWay}"
                                              Visibility="{x:Bind IsVisible(ViewModel.SelectedCall.This), Mode=OneWay}"
                                              Click="OnCopyValueClick"/>
 
                         <TextBlock Grid.Row="3" Grid.Column="0" Text="Returns" Style="{StaticResource DetailLabelStyle}"/>
-                        <Grid Grid.Row="3" Grid.Column="1" ColumnSpacing="4">
+                        <Grid Grid.Row="3" Grid.Column="2" ColumnSpacing="4" ContextRequested="OnReturnContextRequested">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
@@ -519,6 +532,8 @@
 
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <TextBlock Style="{StaticResource DetailValueStyle}"
+                                           IsTextSelectionEnabled="False"
+                                           VerticalAlignment="Center"
                                            controls:HexText.Text="{x:Bind ReturnText(ViewModel.SelectedCall), Mode=OneWay}"
                                            ToolTipService.ToolTip="Returned after the playhead"/>
 
@@ -539,52 +554,61 @@
                             </Button>
                         </Grid>
                         <controls:CopyButton Grid.Row="3"
-                                             Grid.Column="2"
-                                             Style="{StaticResource ValueCopyButtonStyle}"
+                                             Grid.Column="1"
+                                             Style="{StaticResource DetailCopyButtonStyle}"
                                              Tag="{x:Bind ReturnText(ViewModel.SelectedCall), Mode=OneWay}"
                                              Click="OnCopyValueClick"/>
 
                         <TextBlock Grid.Row="4" Grid.Column="0" Text="Position" Style="{StaticResource DetailLabelStyle}"/>
-                        <TextBlock Grid.Row="4"
-                                   Grid.Column="1"
-                                   Style="{StaticResource DetailValueStyle}"
-                                   Text="{x:Bind PositionText(ViewModel.SelectedCall), Mode=OneWay}"/>
+                        <HyperlinkButton Grid.Row="4"
+                                         Grid.Column="2"
+                                         HorizontalAlignment="Left"
+                                         Style="{StaticResource DetailLinkStyle}"
+                                         Content="{x:Bind PositionText(ViewModel.SelectedCall), Mode=OneWay}"
+                                         Click="OnStartClick"
+                                         ContextRequested="OnStartContextRequested"/>
                         <controls:CopyButton Grid.Row="4"
-                                             Grid.Column="2"
-                                             Style="{StaticResource ValueCopyButtonStyle}"
+                                             Grid.Column="1"
+                                             Style="{StaticResource DetailCopyButtonStyle}"
                                              Tag="{x:Bind PositionText(ViewModel.SelectedCall), Mode=OneWay}"
                                              Click="OnCopyValueClick"/>
 
                         <TextBlock Grid.Row="5" Grid.Column="0" Text="Start" Style="{StaticResource DetailLabelStyle}"/>
-                        <TextBlock Grid.Row="5"
-                                   Grid.Column="1"
-                                   Style="{StaticResource DetailValueStyle}"
-                                   Text="{x:Bind StartText(ViewModel.SelectedCall), Mode=OneWay}"/>
+                        <HyperlinkButton Grid.Row="5"
+                                         Grid.Column="2"
+                                         HorizontalAlignment="Left"
+                                         Style="{StaticResource DetailLinkStyle}"
+                                         Content="{x:Bind StartText(ViewModel.SelectedCall), Mode=OneWay}"
+                                         Click="OnStartClick"
+                                         ContextRequested="OnStartContextRequested"/>
                         <controls:CopyButton Grid.Row="5"
-                                             Grid.Column="2"
-                                             Style="{StaticResource ValueCopyButtonStyle}"
+                                             Grid.Column="1"
+                                             Style="{StaticResource DetailCopyButtonStyle}"
                                              Tag="{x:Bind StartText(ViewModel.SelectedCall), Mode=OneWay}"
                                              Click="OnCopyValueClick"/>
 
                         <TextBlock Grid.Row="6" Grid.Column="0" Text="End" Style="{StaticResource DetailLabelStyle}"/>
-                        <TextBlock Grid.Row="6"
-                                   Grid.Column="1"
-                                   Style="{StaticResource DetailValueStyle}"
-                                   Text="{x:Bind EndText(ViewModel.SelectedCall), Mode=OneWay}"/>
+                        <HyperlinkButton Grid.Row="6"
+                                         Grid.Column="2"
+                                         HorizontalAlignment="Left"
+                                         Style="{StaticResource DetailLinkStyle}"
+                                         Content="{x:Bind EndText(ViewModel.SelectedCall), Mode=OneWay}"
+                                         Click="OnEndClick"
+                                         ContextRequested="OnEndContextRequested"/>
                         <controls:CopyButton Grid.Row="6"
-                                             Grid.Column="2"
-                                             Style="{StaticResource ValueCopyButtonStyle}"
+                                             Grid.Column="1"
+                                             Style="{StaticResource DetailCopyButtonStyle}"
                                              Tag="{x:Bind EndText(ViewModel.SelectedCall), Mode=OneWay}"
                                              Click="OnCopyValueClick"/>
 
                         <TextBlock Grid.Row="7" Grid.Column="0" Text="Instructions" Style="{StaticResource DetailLabelStyle}"/>
                         <TextBlock Grid.Row="7"
-                                   Grid.Column="1"
+                                   Grid.Column="2"
                                    Style="{StaticResource DetailValueStyle}"
                                    Text="{x:Bind InstructionsText(ViewModel.SelectedCall), Mode=OneWay}"/>
                         <controls:CopyButton Grid.Row="7"
-                                             Grid.Column="2"
-                                             Style="{StaticResource ValueCopyButtonStyle}"
+                                             Grid.Column="1"
+                                             Style="{StaticResource DetailCopyButtonStyle}"
                                              Tag="{x:Bind InstructionsText(ViewModel.SelectedCall), Mode=OneWay}"
                                              Click="OnCopyValueClick"/>
 
@@ -607,8 +631,8 @@
                           Visibility="{x:Bind IsVisible(ViewModel.SelectedValue), Mode=OneWay}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -616,38 +640,42 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Text="Type" Style="{StaticResource DetailLabelStyle}"/>
+                        <TextBlock x:Name="ValueTypeLabel" Grid.Row="0" Text="Type" Style="{StaticResource DetailLabelStyle}"/>
                         <TextBlock x:Name="ValueTypeText"
                                    Grid.Row="0"
-                                   Grid.Column="1"
-                                   Style="{StaticResource DetailValueStyle}"/>
+                                   Grid.Column="2"
+                                   Style="{StaticResource DetailValueStyle}"
+                                   IsTextSelectionEnabled="False"
+                                   ContextRequested="OnValueTypeContextRequested"/>
                         <controls:CopyButton x:Name="ValueTypeCopyButton"
                                              Grid.Row="0"
-                                             Grid.Column="2"
-                                             Style="{StaticResource ValueCopyButtonStyle}"
+                                             Grid.Column="1"
+                                             Style="{StaticResource DetailCopyButtonStyle}"
                                              Click="OnCopyValueClick"/>
 
                         <TextBlock Grid.Row="1" Grid.Column="0" Text="Value" Style="{StaticResource DetailLabelStyle}"/>
                         <TextBlock Grid.Row="1"
-                                   Grid.Column="1"
+                                   Grid.Column="2"
                                    Style="{StaticResource DetailValueStyle}"
+                                   IsTextSelectionEnabled="False"
+                                   ContextRequested="OnSelectedValueContextRequested"
                                    Text="{x:Bind ViewModel.SelectedValue.Text, Mode=OneWay}"
                                    FontFamily="{StaticResource MonospaceFontFamily}"/>
                         <controls:CopyButton Grid.Row="1"
-                                             Grid.Column="2"
-                                             Style="{StaticResource ValueCopyButtonStyle}"
+                                             Grid.Column="1"
+                                             Style="{StaticResource DetailCopyButtonStyle}"
                                              Tag="{x:Bind ViewModel.SelectedValue.Text, Mode=OneWay}"
                                              Click="OnCopyValueClick"/>
 
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Decoded" Style="{StaticResource DetailLabelStyle}"/>
+                        <TextBlock x:Name="ValueDecodedLabel" Grid.Row="2" Grid.Column="0" Text="Decoded" Style="{StaticResource DetailLabelStyle}"/>
                         <TextBlock x:Name="ValueDecodedText"
                                    Grid.Row="2"
-                                   Grid.Column="1"
+                                   Grid.Column="2"
                                    Style="{StaticResource DetailValueStyle}"/>
                         <controls:CopyButton x:Name="ValueDecodedCopyButton"
                                              Grid.Row="2"
-                                             Grid.Column="2"
-                                             Style="{StaticResource ValueCopyButtonStyle}"
+                                             Grid.Column="1"
+                                             Style="{StaticResource DetailCopyButtonStyle}"
                                              Click="OnCopyValueClick"/>
                     </Grid>
 

@@ -1324,4 +1324,121 @@ public class ExecutionPlanParserTests
 
         Assert.True(plan.IsInternalPlan);
     }
+
+    private const string BitmapProbeXml =
+        """
+        <?xml version="1.0"?>
+        <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan"
+                     Version="1.599" Build="17.0.5015.4">
+          <BatchSequence>
+            <Batch>
+              <Statements>
+                <StmtSimple StatementType="SELECT" StatementSubTreeCost="3.2">
+                  <QueryPlan>
+                    <RelOp NodeId="0"
+                           PhysicalOp="Hash Match"
+                           LogicalOp="Inner Join"
+                           EstimatedExecutionMode="Batch"
+                           EstimatedTotalSubtreeCost="3.2"
+                           Parallel="false">
+                      <OutputList/>
+                      <Hash BitmapCreator="true">
+                        <DefinedValues>
+                          <DefinedValue>
+                            <ColumnReference Column="Opt_Bitmap1004" />
+                          </DefinedValue>
+                        </DefinedValues>
+                        <HashKeysBuild>
+                          <ColumnReference Database="[db]" Schema="[dbo]" Table="[ClusteredTable]" Alias="[k]" Column="Id" />
+                        </HashKeysBuild>
+                        <HashKeysProbe>
+                          <ColumnReference Database="[db]" Schema="[dbo]" Table="[ColumnstoreTable]" Alias="[c]" Column="TradeId" />
+                        </HashKeysProbe>
+                        <RelOp NodeId="2"
+                               PhysicalOp="Index Scan"
+                               LogicalOp="Index Scan"
+                               EstimatedExecutionMode="Batch"
+                               EstimatedTotalSubtreeCost="0.1"
+                               Parallel="false">
+                          <OutputList/>
+                          <IndexScan Ordered="false" ForcedIndex="false" ForceSeek="false" ForceScan="false"
+                                     NoExpandHint="false" Storage="RowStore">
+                            <Object Database="[db]" Schema="[dbo]" Table="[ClusteredTable]"
+                                    Index="[ix_ClusteredTable_TextField]" Alias="[k]" IndexKind="NonClustered" Storage="RowStore" />
+                          </IndexScan>
+                        </RelOp>
+                        <RelOp NodeId="4"
+                               PhysicalOp="Clustered Index Scan"
+                               LogicalOp="Clustered Index Scan"
+                               EstimatedExecutionMode="Batch"
+                               EstimatedTotalSubtreeCost="3.07"
+                               Parallel="false">
+                          <OutputList/>
+                          <IndexScan Ordered="false" ForcedIndex="false" ForceSeek="false" ForceScan="false"
+                                     NoExpandHint="false" Storage="ColumnStore">
+                            <Object Database="[db]" Schema="[dbo]" Table="[ColumnstoreTable]"
+                                    Index="[cci_ColumnstoreTable]" Alias="[c]" IndexKind="Clustered" Storage="ColumnStore" />
+                            <Predicate>
+                              <ScalarOperator ScalarString="PROBE([Opt_Bitmap1004],[db].[dbo].[ColumnstoreTable].[TradeId] as [c].[TradeId])">
+                                <Intrinsic FunctionName="PROBE">
+                                  <ScalarOperator>
+                                    <Identifier>
+                                      <ColumnReference Column="Opt_Bitmap1004" />
+                                    </Identifier>
+                                  </ScalarOperator>
+                                  <ScalarOperator>
+                                    <Identifier>
+                                      <ColumnReference Database="[db]" Schema="[dbo]" Table="[ColumnstoreTable]" Alias="[c]"
+                                                       Column="TradeId" />
+                                    </Identifier>
+                                  </ScalarOperator>
+                                </Intrinsic>
+                              </ScalarOperator>
+                            </Predicate>
+                          </IndexScan>
+                        </RelOp>
+                      </Hash>
+                    </RelOp>
+                  </QueryPlan>
+                </StmtSimple>
+              </Statements>
+            </Batch>
+          </BatchSequence>
+        </ShowPlanXML>
+        """;
+
+    [Fact]
+    public void A_Probe_Predicate_Names_The_Bitmap_It_Probes()
+    {
+        var plan = Parse(BitmapProbeXml);
+
+        var bitmap = Assert.Single(plan.NodesById[4].ProbedBitmaps);
+
+        Assert.Equal("Opt_Bitmap1004", bitmap);
+    }
+
+    [Fact]
+    public void A_Hash_Match_Marked_BitmapCreator_Is_A_Bitmap_Creator()
+    {
+        var plan = Parse(BitmapProbeXml);
+
+        Assert.True(plan.NodesById[0].HashInfo?.IsBitmapCreator);
+    }
+
+    [Fact]
+    public void A_Hash_Match_Without_BitmapCreator_Is_Not_A_Bitmap_Creator()
+    {
+        var plan = Parse(HashMatchXml);
+
+        Assert.False(plan.NodesById[0].HashInfo?.IsBitmapCreator);
+    }
+
+    [Fact]
+    public void A_Probe_Belongs_Only_To_The_Operator_Whose_Predicate_Holds_It()
+    {
+        var plan = Parse(BitmapProbeXml);
+
+        Assert.Empty(plan.NodesById[0].ProbedBitmaps);
+        Assert.Empty(plan.NodesById[2].ProbedBitmaps);
+    }
 }

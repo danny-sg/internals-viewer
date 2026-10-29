@@ -89,6 +89,8 @@ public sealed partial class PlanNodeControl : UserControl
 
     public const double AnnotationColumnWidth = 104;
 
+    public const double IconTop = 4;
+
     private void RefreshAnnotations()
     {
         var annotations = AreAnnotationsVisible && Node is { } node ? PlanNodeAnnotations.For(node) : [];

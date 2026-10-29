@@ -31,6 +31,8 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
 
     public string Title => Opened is { } opened ? $"Call Stack {opened.Node.Symbol} [{opened.CallIndex + 1:N0}]" : "Call Stack";
 
+    public ITraceNavigator Navigator => Query.TraceTimelineTab;
+
     protected QueryViewModel Query { get; } = query;
 
     protected virtual string CurrentText => "Running At This Position";

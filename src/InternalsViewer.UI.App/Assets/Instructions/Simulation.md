@@ -48,4 +48,3 @@ Parallelism, spools, Adaptive Join, window aggregates and data modifications can
 simulated beneath its exchanges.
 
 > A predicate the simulation cannot translate is skipped, so the simulation can return rows SQL Server filtered out.
-> The plan's annotations mark these with **Untranslated Predicate**.

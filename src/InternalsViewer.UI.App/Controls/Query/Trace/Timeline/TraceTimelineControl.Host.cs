@@ -58,6 +58,8 @@ public sealed partial class TraceTimelineControl : ITraceTimelineHost
 
     void ITraceTimelineHost.MovePlayhead(double position)
     {
+        RememberLocation();
+
         StopPlay();
 
         PlacePlayhead(position);

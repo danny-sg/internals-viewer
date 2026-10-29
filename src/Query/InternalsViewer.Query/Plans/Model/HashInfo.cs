@@ -18,4 +18,6 @@ public sealed class HashInfo
     public AccessPredicate? Residual { get; set; }
 
     public bool HasUntranslatedResidual { get; set; }
+
+    public bool IsBitmapCreator { get; set; }
 }

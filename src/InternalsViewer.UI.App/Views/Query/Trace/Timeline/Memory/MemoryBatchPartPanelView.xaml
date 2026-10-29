@@ -103,7 +103,6 @@
         <results:ResultsGridControl Grid.Row="1"
                                     ResultSet="{x:Bind ViewModel.Batch.HeaderTable, Mode=OneWay}"
                                     SelectedRow="{x:Bind ViewModel.Batch.SelectedHeaderRow, Mode=TwoWay}"
-                                    RowName="field"
                                     Visibility="{x:Bind ViewModel.Batch.IsHeader, Mode=OneWay}"/>
 
         <results:ResultsGridControl Grid.Row="1"

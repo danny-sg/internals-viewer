@@ -3,12 +3,14 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using CommunityToolkit.WinUI;
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.UI.App.Controls.Query.Trace.CallStack.Signatures;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Helpers.Converters.Page;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Signatures.Enums;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Signatures;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Stack;
+using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.CallStack;
 using InternalsViewer.UI.App.ViewModels;
 using Microsoft.UI.Xaml.Controls;
@@ -76,6 +78,8 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
     private static Visibility GetVisibility(bool isVisible) => isVisible ? Visibility.Visible : Visibility.Collapsed;
 
     private Visibility IsVisible(object? value) => GetVisibility(value is not null);
+
+    private Visibility IsTextVisible(string? text) => GetVisibility(!string.IsNullOrEmpty(text));
 
     private Visibility IsMemoryVisible(CallSignaturePart? part) => GetVisibility(part is { IsMemoryTracked: true, MemoryTarget: null });
 
@@ -312,7 +316,21 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
 
         ValueDecodedCopyButton.Tag = GetText(ValueDecodedText);
 
-        ValueDecodedCopyButton.Visibility = GetVisibility(ValueDecodedText.Inlines.Count > 0);
+        var typeVisibility = GetVisibility(ValueTypeText.Inlines.Count > 0);
+
+        ValueTypeLabel.Visibility = typeVisibility;
+
+        ValueTypeText.Visibility = typeVisibility;
+
+        ValueTypeCopyButton.Visibility = typeVisibility;
+
+        var decodedVisibility = GetVisibility(ValueDecodedText.Inlines.Count > 0);
+
+        ValueDecodedLabel.Visibility = decodedVisibility;
+
+        ValueDecodedText.Visibility = decodedVisibility;
+
+        ValueDecodedCopyButton.Visibility = decodedVisibility;
     }
 
     private Style GetStyle(string key) => (Style)Resources[key];
@@ -431,6 +449,15 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
 
     private void OnScopeClick(object sender, RoutedEventArgs e) => WithContextRow((stack, row) => stack.Scope(row));
 
+    private void OnSearchClick(object sender, RoutedEventArgs e)
+        => WithContextRow((stack, row) =>
+        {
+            if (TraceLinkMenu.GetSearchText(row.Node.Symbol) is { } text)
+            {
+                stack.Navigator.Search(text);
+            }
+        });
+
     private void OnCopySignatureClick(object sender, RoutedEventArgs e) => WithContextRow((_, row) => ClipboardText.Copy(DisplayText(row)));
 
     private void OnCopySymbolClick(object sender, RoutedEventArgs e) => WithContextRow((_, row) => ClipboardText.Copy(row.Node.Symbol));
@@ -473,6 +500,78 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
     }
 
     private void OnMemoryTapped(object sender, TappedRoutedEventArgs e) => e.Handled = true;
+
+    private void OnStartClick(object sender, RoutedEventArgs e) => MovePlayhead(Attached?.SelectedCall?.Span.From);
+
+    private void OnEndClick(object sender, RoutedEventArgs e) => MovePlayhead(Attached?.SelectedCall?.Span.To);
+
+    private void OnStartContextRequested(UIElement sender, ContextRequestedEventArgs e)
+        => ShowCallLinkMenu(Attached?.SelectedCall is { } row ? new TraceCallLink(row.Span.From, row.Node, row.CallIndex) : null, sender, e);
+
+    private void OnEndContextRequested(UIElement sender, ContextRequestedEventArgs e)
+        => ShowCallLinkMenu(Attached?.SelectedCall is { } row ? new TraceCallLink(row.Span.To, row.Node, row.CallIndex) : null, sender, e);
+
+    private void OnThisContextRequested(UIElement sender, ContextRequestedEventArgs e)
+        => ShowAddressMenu(Attached?.SelectedCall?.This, sender, e);
+
+    private void OnReturnContextRequested(UIElement sender, ContextRequestedEventArgs e)
+        => ShowAddressMenu(Attached?.SelectedCall?.Return, sender, e);
+
+    private void OnSelectedValueContextRequested(UIElement sender, ContextRequestedEventArgs e)
+        => ShowAddressMenu(Attached?.SelectedValue, sender, e);
+
+    private void OnArgumentContextRequested(UIElement sender, ContextRequestedEventArgs e)
+        => ShowAddressMenu((sender as FrameworkElement)?.DataContext as CallSignaturePart, sender, e);
+
+    private void OnDetailsTitleContextRequested(UIElement sender, ContextRequestedEventArgs e)
+        => ShowSearchMenu(Attached?.SelectedValue is { } value ? value.DeclaredType : Attached?.SelectedCall?.Node.Symbol, sender, e);
+
+    private void OnValueTypeContextRequested(UIElement sender, ContextRequestedEventArgs e)
+        => ShowSearchMenu(Attached?.SelectedValue?.DeclaredType, sender, e);
+
+    private void MovePlayhead(TracePoint? point)
+    {
+        if (Attached is { } stack && point is { } target)
+        {
+            stack.Navigator.MovePlayhead(target);
+        }
+    }
+
+    private void ShowCallLinkMenu(TraceCallLink? link, UIElement sender, ContextRequestedEventArgs e)
+    {
+        if (Attached is { } stack && link is not null)
+        {
+            TraceLinkMenu.Show(TraceLinkMenu.CreateForPosition(stack.Navigator, link), sender, e);
+        }
+    }
+
+    private void ShowAddressMenu(CallSignaturePart? part, UIElement sender, ContextRequestedEventArgs e)
+    {
+        if (Attached is not { } stack || part is null)
+        {
+            return;
+        }
+
+        var menu = part is { CanFind: true, Value: { } value } ? TraceLinkMenu.CreateForAddress(stack.Navigator, value) : new MenuFlyout();
+
+        TraceLinkMenu.AddSearch(menu, stack.Navigator, part.MemoryTarget ?? part.DecodedClass);
+
+        TraceLinkMenu.Show(menu, sender, e);
+    }
+
+    private void ShowSearchMenu(string? name, UIElement sender, ContextRequestedEventArgs e)
+    {
+        if (Attached is not { } stack)
+        {
+            return;
+        }
+
+        var menu = new MenuFlyout();
+
+        TraceLinkMenu.AddSearch(menu, stack.Navigator, name);
+
+        TraceLinkMenu.Show(menu, sender, e);
+    }
 
     private void OnSignatureMemorySelected(object? sender, CallSignaturePart part)
     {

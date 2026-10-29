@@ -166,6 +166,7 @@ public static class ExecutionPlanParser
 
         node.OutputColumns = ParseOutputColumns(element);
         node.DefinedValues = ParseDefinedValues(element, parameters);
+        node.ProbedBitmaps = ParseProbedBitmaps(element);
         node.SortColumns = ParseSortColumns(element);
         node.SortInfo = ParseSortInfo(element);
         node.MergeInfo = ParseMergeInfo(element, parameters);
@@ -521,6 +522,8 @@ public static class ExecutionPlanParser
             return info;
         }
 
+        info.IsBitmapCreator = IsTrue(hash.Attribute("BitmapCreator"));
+
         var build = hash.Elements().FirstOrDefault(e => e.Name.LocalName == "HashKeysBuild");
 
         if (build != null)
@@ -658,6 +661,41 @@ public static class ExecutionPlanParser
         }
 
         return result;
+    }
+
+    private static List<string> ParseProbedBitmaps(XElement relOp)
+    {
+        var bitmaps = new List<string>();
+
+        AddProbedBitmaps(relOp, bitmaps);
+
+        return bitmaps;
+    }
+
+    private static void AddProbedBitmaps(XElement element, List<string> bitmaps)
+    {
+        foreach (var child in element.Elements())
+        {
+            if (child.Name.LocalName == "RelOp")
+            {
+                continue;
+            }
+
+            if (child.Name.LocalName == "Intrinsic"
+                && string.Equals((string?)child.Attribute("FunctionName"), "PROBE", StringComparison.OrdinalIgnoreCase))
+            {
+                var bitmap = child.Descendants().FirstOrDefault(e => e.Name.LocalName == "ColumnReference");
+
+                if (bitmap is not null && GetAttribute("Column", bitmap) is { Length: > 0 } name && !bitmaps.Contains(name))
+                {
+                    bitmaps.Add(name);
+                }
+            }
+            else
+            {
+                AddProbedBitmaps(child, bitmaps);
+            }
+        }
     }
 
     private static SqlDbType? ParseConvertDataType(XElement? scalar)

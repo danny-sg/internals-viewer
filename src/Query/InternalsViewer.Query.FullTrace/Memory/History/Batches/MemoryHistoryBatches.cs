@@ -6,7 +6,7 @@ public sealed class MemoryHistoryBatches(MemoryHistoryStore store,
                                          Func<int, string?> getClassName,
                                          Func<int, string?> getAllocatingFunction)
 {
-    private static readonly string[] PartFunctionPrefixes = [BatchReader.ClassName + "::", "CBpDeepDataStore<", "RbpNormalize::"];
+    private const string PartFunctionPrefix = BatchReader.ClassName + "::";
 
     private const int SearchedPositions = 8;
 
@@ -79,8 +79,7 @@ public sealed class MemoryHistoryBatches(MemoryHistoryStore store,
             return (block, new BatchPart(BatchPartType.Header));
         }
 
-        if (getAllocatingFunction(block) is not { } function
-            || !PartFunctionPrefixes.Any(p => function.StartsWith(p, StringComparison.Ordinal)))
+        if (getAllocatingFunction(block)?.StartsWith(PartFunctionPrefix, StringComparison.Ordinal) != true && !IsDeepDataPage(block))
         {
             return null;
         }
@@ -153,4 +152,8 @@ public sealed class MemoryHistoryBatches(MemoryHistoryStore store,
     }
 
     private bool IsHeader(int block) => getClassName(block) == BatchReader.ClassName;
+
+    private bool IsDeepDataPage(int block)
+        => store.GetWrites(block).Any(w => store.TryGetWrittenValue(w, DeepDataReader.PageMagicOffset, out var magic)
+                                           && magic == DeepDataReader.PageMagic);
 }

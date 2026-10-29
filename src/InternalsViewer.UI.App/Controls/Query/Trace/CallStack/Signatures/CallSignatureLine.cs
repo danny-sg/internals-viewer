@@ -79,7 +79,7 @@ public sealed partial class CallSignatureLine : UserControl
         {
             Line.Children.Add(Element(part));
 
-            if (part.IsMemoryTracked)
+            if (part is { IsMemoryTracked: true, MemoryTarget: null })
             {
                 Line.Children.Add(MemoryIcon(part));
             }

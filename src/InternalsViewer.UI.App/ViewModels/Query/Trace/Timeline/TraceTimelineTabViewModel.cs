@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
+using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.UI.App.Controls.Query.Trace.CallStack;
 using InternalsViewer.UI.App.Controls.Docking;
@@ -14,7 +15,7 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
 
-public sealed partial class TraceTimelineTabViewModel : ObservableObject, IDisposable
+public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITraceNavigator, IDisposable
 {
     private const double ChartStar = 2;
 
@@ -88,6 +89,33 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, IDispo
 
     public void RequestPlayhead(TracePoint point) => PlayheadRequested?.Invoke(this, point);
 
+    public void MovePlayhead(TracePoint point) => RequestPlayhead(point);
+
+    public void ZoomToCall(CallStackNode node, int callIndex) => PlayheadStack.RequestChart(c => c.ZoomToCall(node, callIndex));
+
+    public void ShowCallStack(TracePoint point)
+    {
+        RequestPlayhead(point);
+
+        ShowCallStack();
+    }
+
+    public void FindInCallTree(CallStackNode node, int callIndex) => Query.OpenCallTree(node, callIndex);
+
+    public void FindReferences(ulong value)
+    {
+        Query.Layout.ShowCallTree();
+
+        Query.CallTreeTab.FindReferences(value);
+    }
+
+    public void Search(string text)
+    {
+        Query.Layout.ShowTraceTimeline();
+
+        Controller?.Search(text);
+    }
+
     public void OpenMemory(int block, ulong address, TracePosition position, int length = 1)
     {
         Query.Layout.ShowTraceTimeline();
@@ -120,6 +148,8 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, IDispo
         memory.SetPlayhead(Playhead);
 
         memory.Chart = Chart;
+
+        memory.Navigator = this;
 
         memory.PlayheadRequested += OnMemoryPlayheadRequested;
 

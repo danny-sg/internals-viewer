@@ -430,6 +430,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         Layout.Changed += OnLayoutChanged;
         Layout.SelectionChanged += ScheduleSaveLayout;
+        Layout.PropertyChanged += OnLayoutPropertyChanged;
 
 #pragma warning disable VSTHRD101
         DispatcherQueue.TryEnqueue(async () =>
@@ -687,6 +688,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     }
 
     public bool IsTraceTimelineHintVisible => TraceTimeline is null && !IsTraceLoading;
+
+    public bool IsFlameGraphEnabled => QueryOptions.IncludeCallStack && !Layout.IsTrace;
 
     public bool IsNoQueryHintVisible => LastRun is null && !ExecuteQueryCommand.IsRunning && !IsTraceLoading;
 
@@ -1039,6 +1042,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             RefreshTimelineDefinition();
         }
+        else if (e.PropertyName == nameof(QueryOptionsViewModel.IncludeCallStack))
+        {
+            OnPropertyChanged(nameof(IsFlameGraphEnabled));
+        }
         else if (e.PropertyName == nameof(QueryOptionsViewModel.RecordTimeTravel))
         {
             if (!ExecuteQueryCommand.IsRunning)
@@ -1063,6 +1070,21 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             TraceTimeline = ApplyCrop(trace);
         }
+    }
+
+    private void OnLayoutPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(QueryLayoutViewModel.IsTrace))
+        {
+            return;
+        }
+
+        if (Layout.IsTrace)
+        {
+            IsFlameGraphVisible = false;
+        }
+
+        OnPropertyChanged(nameof(IsFlameGraphEnabled));
     }
 
     private async void PrepareTrace()
@@ -1092,6 +1114,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         QueryOptions.Changed -= ScheduleSaveLayout;
         Layout.Changed -= OnLayoutChanged;
         Layout.SelectionChanged -= ScheduleSaveLayout;
+        Layout.PropertyChanged -= OnLayoutPropertyChanged;
         ExecuteQueryCommand.PropertyChanged -= OnExecuteQueryCommandChanged;
 
         Events = [];

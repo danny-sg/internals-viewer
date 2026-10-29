@@ -176,6 +176,11 @@ public sealed partial class TraceTimelineControl
             return;
         }
 
+        if (ClickSearchMatch(position))
+        {
+            return;
+        }
+
         if (BlockAt(position) is { } found)
         {
             BeginStretch(found, position);
@@ -692,7 +697,7 @@ public sealed partial class TraceTimelineControl
 
         if (hit is { } zoomed && span is not null)
         {
-            flyout.Items.Add(MenuItems.Create("Zoom to", () => ZoomToCall(zoomed)));
+            flyout.Items.Add(MenuItems.Create("Zoom to", () => ZoomToAndSelect(zoomed)));
         }
 
         flyout.Items.Add(MenuItems.Create("Zoom to 100%", ZoomToFit));
@@ -707,6 +712,11 @@ public sealed partial class TraceTimelineControl
             flyout.Items.Add(MenuItems.Create("Scope", () => SetRoot(node)));
 
             flyout.Items.Add(MenuItems.Create("Add to Operators", () => TickTrackAddRequested?.Invoke(node)));
+
+            if (TraceLinkMenu.GetSearchText(node.Symbol) is { } text)
+            {
+                flyout.Items.Add(MenuItems.Create("Search", () => SearchRequested?.Invoke(text)));
+            }
         }
 
         if (_root is not null)
@@ -949,6 +959,18 @@ public sealed partial class TraceTimelineControl
         ZoomTo(span);
     }
 
+    private void ZoomToAndSelect(FlameHit hit)
+    {
+        RememberLocation();
+
+        if (hit != _selected)
+        {
+            Select(hit);
+        }
+
+        ZoomToCall(hit);
+    }
+
     private void RootAt(FlameHit? hit)
         => SetRoot(hit is { } at && SpanOf(at) is { } span ? _visible?.NodeOf(span.CallNodeIndex) : null);
 
@@ -966,6 +988,8 @@ public sealed partial class TraceTimelineControl
         }
         else
         {
+            RememberLocation();
+
             Select(hit);
         }
     }
@@ -1076,11 +1100,11 @@ public sealed partial class TraceTimelineControl
         return null;
     }
 
-    private int? HeaderAt(Point position)
+    private int? HeaderAt(Point position) => _visible is { Threads.Count: > 1 } ? GetLaneHeaderAt(position) : null;
+
+    private int? GetLaneHeaderAt(Point position)
     {
-        if (_visible is not { Threads.Count: > 1 } timeline
-            || position.Y < ContentTop
-            || position.Y >= _overlay.ActualHeight - BandHeight)
+        if (_visible is not { } timeline || position.Y < ContentTop || position.Y >= _overlay.ActualHeight - BandHeight)
         {
             return null;
         }

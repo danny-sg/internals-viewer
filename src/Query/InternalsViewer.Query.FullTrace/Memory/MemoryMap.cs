@@ -58,7 +58,7 @@ public sealed partial class MemoryMap
 
         foreach (var entry in entries)
         {
-            if (entry.FromPosition < from || entry.FromPosition >= to)
+            if (!IsWithin(entry, from, to))
             {
                 continue;
             }
@@ -74,6 +74,42 @@ public sealed partial class MemoryMap
         }
 
         return site;
+    }
+
+    public string? GetClassName(ulong address, TracePosition from, TracePosition to)
+    {
+        if (!Entries.TryGetValue(address, out var entries))
+        {
+            return null;
+        }
+
+        foreach (var entry in entries)
+        {
+            if (IsWithin(entry, from, to) && Labels[entry.Label].ClassName is { } className)
+            {
+                return className;
+            }
+        }
+
+        return null;
+    }
+
+    public string? GetAllocator(ulong address, TracePosition from, TracePosition to)
+    {
+        if (!Entries.TryGetValue(address, out var entries))
+        {
+            return null;
+        }
+
+        foreach (var entry in entries)
+        {
+            if (IsWithin(entry, from, to) && Labels[entry.Label].Allocator is { } allocator)
+            {
+                return allocator;
+            }
+        }
+
+        return null;
     }
 
     public (MemoryMapEntry Entry, ulong Offset)? GetContaining(ulong address, TracePosition position)
@@ -185,6 +221,9 @@ public sealed partial class MemoryMap
     }
 
     private static bool IsLiveAt(MemoryMapEntry entry, TracePosition position) => !entry.ToPosition.IsKnown || position <= entry.ToPosition;
+
+    private static bool IsWithin(StoredEntry entry, TracePosition from, TracePosition to)
+        => entry.FromPosition >= from && entry.FromPosition < to;
 
     private static string? GetName(string? name) => name is { Length: > 0 } ? name : null;
 

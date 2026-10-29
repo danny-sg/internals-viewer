@@ -224,4 +224,14 @@
             </Setter.Value>
         </Setter>
     </Style>
+
+    <Style x:Key="ValueCopyButtonStyle" TargetType="controls:CopyButton" BasedOn="{StaticResource DefaultCopyButtonStyle}">
+        <Setter Property="Content" Value="&#xE8C8;"/>
+        <Setter Property="VerticalAlignment" Value="Top"/>
+        <Setter Property="Foreground" Value="{ThemeResource CardBackgroundFillColorSecondaryBrush}"/>
+    </Style>
+
+    <Style x:Key="DetailCopyButtonStyle" TargetType="controls:CopyButton" BasedOn="{StaticResource ValueCopyButtonStyle}">
+        <Setter Property="Foreground" Value="{ThemeResource TextFillColorTertiaryBrush}"/>
+    </Style>
 </ResourceDictionary>

@@ -34,6 +34,8 @@ public sealed class PlanNode
 
     public List<DefinedValueInfo> DefinedValues { get; set; } = [];
 
+    public List<string> ProbedBitmaps { get; set; } = [];
+
     public List<SortColumnInfo> SortColumns { get; set; } = [];
 
     public SortInfo? SortInfo { get; set; }

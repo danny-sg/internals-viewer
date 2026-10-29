@@ -7,6 +7,8 @@ namespace InternalsViewer.UI.App.Helpers;
 
 public static class PlanNodeAnnotations
 {
+    public static readonly Color Bitmap = Color.FromArgb(255, 0xE8, 0x48, 0x48);
+
     private static readonly Color Pushdown = Color.FromArgb(255, 0x6C, 0x9E, 0x3F);
 
     private static readonly Color Filter = Color.FromArgb(255, 0x2E, 0x7D, 0xB8);
@@ -69,9 +71,9 @@ public static class PlanNodeAnnotations
             }
         }
 
-        if (node.PredicateInfo is { HasUntranslatedPredicate: true })
+        if (node.HashInfo is { IsBitmapCreator: true })
         {
-            annotations.Add(new PlanNodeAnnotation("Untranslated Predicate", "The simulation cannot evaluate this predicate", Warning));
+            annotations.Add(new PlanNodeAnnotation("Bitmap Creator", GetBitmapNames(node), Bitmap));
         }
 
         if (node.PredicateInfo?.RowGoal is { } rowGoal)
@@ -90,6 +92,24 @@ public static class PlanNodeAnnotations
         }
 
         return annotations;
+    }
+
+    private static string GetBitmapNames(PlanNode node)
+    {
+        var names = new List<string>();
+
+        foreach (var definedValue in node.DefinedValues)
+        {
+            foreach (var column in definedValue.Columns)
+            {
+                if (string.IsNullOrEmpty(column.Table))
+                {
+                    names.Add(column.Column);
+                }
+            }
+        }
+
+        return string.Join(", ", names);
     }
 
     private static bool HasBatchModeSibling(PlanNode node)

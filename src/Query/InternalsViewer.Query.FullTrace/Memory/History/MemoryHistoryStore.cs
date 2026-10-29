@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Helpers;
@@ -125,6 +126,22 @@ public sealed partial class MemoryHistoryStore
         }
 
         return changing;
+    }
+
+    public bool TryGetWrittenValue(MemoryHistoryWrite write, int offset, out uint value)
+    {
+        var start = offset - write.Offset;
+
+        if (start < 0 || start + sizeof(uint) > write.Length)
+        {
+            value = 0;
+
+            return false;
+        }
+
+        value = BinaryPrimitives.ReadUInt32LittleEndian(GetBytes(write)[start..]);
+
+        return true;
     }
 
     public IReadOnlyList<MemoryHistoryCall> GetCalls(int block, TraceTimeline timeline, TracePosition from, TracePosition to)

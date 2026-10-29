@@ -67,6 +67,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         TraceTimeline.CallTreeOpenRequested += OnCallTreeOpenRequested;
 
+        TraceTimeline.SearchRequested += Search;
+
         TraceTimeline.CallStackVisibilityRequested += OnCallStackVisibilityRequested;
 
         TraceTimeline.PaneVisibilityChanged += OnPaneVisibilityChanged;
@@ -92,11 +94,15 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         SearchBar.SearchTextChanged += OnSearchTextChanged;
 
         SearchBar.StepRequested += OnSearchStepRequested;
+
+        AddHandler(PointerPressedEvent, NavigationPressedHandler, true);
     }
 
     public QueryViewModel? ViewModel => DataContext as QueryViewModel;
 
     private SettingsViewModel Settings { get; } = App.GetService<SettingsViewModel>();
+
+    private PointerEventHandler NavigationPressedHandler => field ??= OnNavigationPointerPressed;
 
     private TraceTimelineTabViewModel? Tab { get; set; }
 
@@ -178,6 +184,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         TraceTimeline.CallTreeOpenRequested -= OnCallTreeOpenRequested;
 
+        TraceTimeline.SearchRequested -= Search;
+
         TraceTimeline.CallStackVisibilityRequested -= OnCallStackVisibilityRequested;
 
         TraceTimeline.PaneVisibilityChanged -= OnPaneVisibilityChanged;
@@ -203,6 +211,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         SearchBar.SearchTextChanged -= OnSearchTextChanged;
 
         SearchBar.StepRequested -= OnSearchStepRequested;
+
+        RemoveHandler(PointerPressedEvent, NavigationPressedHandler);
 
         AttachTab(null);
 
@@ -510,6 +520,24 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         SetSearchVisible(false);
 
         e.Handled = true;
+    }
+
+    private void OnNavigationPointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        var properties = e.GetCurrentPoint(this).Properties;
+
+        if (properties.IsXButton1Pressed)
+        {
+            TraceTimeline.GoBack();
+
+            e.Handled = true;
+        }
+        else if (properties.IsXButton2Pressed)
+        {
+            TraceTimeline.GoForward();
+
+            e.Handled = true;
+        }
     }
 
     private void OnCallSelected(CallStackNode node, int callIndex) => ViewModel?.NavigateToCall(node, callIndex);

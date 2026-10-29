@@ -18,7 +18,7 @@ Selecting an operator (on the plan, the Timeline's Plan band, or the Events pane
 
 ## Command bar
 
-- **Flame Graph** - breaks each operator down into the calls that made it up, see [below](#flame-graph). Available when **Call Stack** was captured, and on by default
+- **Flame Graph** - breaks each operator down into the calls that made it up, see [below](#flame-graph). Available when **Call Stack** was captured, and on by default. Not available in a [Full Trace](/docs/user-guide/query/FullTrace), which switches it off
 - **Annotations** - adds badges to the operators something notable applies to. For a columnstore scan that is **Aggregate Pushdown** and **Local Aggregation**, **Compressed Filter** where a predicate was evaluated without decoding the segment, **Predicate Pushdown**, **Segment Elimination**, **Global Dictionary**, **Deep Data** for values too wide for a vector slot,, **Fast Comparison**, and **SIMD** with the instruction set it used. Elsewhere, **Row Goal**, **Row Mode** for a row mode operator over batch mode input, **Over Grant** where an operator used more memory than it was granted, and **Untranslated Predicate** where the trace cannot evaluate a predicate. The toggle is remembered between sessions
 - **Properties** - opens a pane beside the plan with the selected operator's properties from the plan, grouped - **Operator**, **Optimizer**, **Storage**, **Predicates**, a group for the operator's own work such as **Hash** or **Nested Loops**, **I/O Statistics**, **Memory Grant** where it had one, **Event Statistics**, **Defined Values** and **Output Columns**. The button on its header docks it to the right or the bottom
 

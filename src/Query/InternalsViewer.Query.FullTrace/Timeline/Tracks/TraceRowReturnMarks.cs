@@ -25,6 +25,14 @@ public sealed class TraceRowReturnMarks
 
     private const string ConsumeBuildMethod = "ConsumeBuild";
 
+    private const string BatchHashJoinClass = "CBpQScanHashJoin";
+
+    private const string ProcessBuildSideMethod = "ProcessBuildSide";
+
+    private const string BatchHashAggregateClass = "CBpQScanHashAggNew";
+
+    private const string ProcessInputMethod = "ProcessInput";
+
     private static readonly int TypeCount = Enum.GetValues<RowReturnType>().Length;
 
     private TraceRowReturnMarks(Dictionary<ExecutionOperatorEvent, Dictionary<uint, OperatorReturns>> operators,
@@ -234,7 +242,9 @@ public sealed class TraceRowReturnMarks
 
         for (var ancestor = node.Parent; ancestor?.Frame is { } frame && frame.InstanceAddress != caller; ancestor = ancestor.Parent)
         {
-            if (frame.Resolved is { ClassName: HashClass, MethodName: ConsumeBuildMethod })
+            if (frame.Resolved is { ClassName: HashClass, MethodName: ConsumeBuildMethod }
+                                  or { ClassName: BatchHashJoinClass, MethodName: ProcessBuildSideMethod }
+                                  or { ClassName: BatchHashAggregateClass, MethodName: ProcessInputMethod })
             {
                 isBuildInput = true;
 

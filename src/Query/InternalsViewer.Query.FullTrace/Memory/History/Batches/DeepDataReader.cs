@@ -8,11 +8,11 @@ public static class DeepDataReader
 {
     public const int PageHeaderSize = 0x18;
 
-    private const uint PageMagic = 0x53445042;
+    public const uint PageMagic = 0x53445042;
+
+    public const int PageMagicOffset = 0x10;
 
     private const ulong NextPageOffset = 0x08;
-
-    private const ulong PageMagicOffset = 0x10;
 
     private const ulong PageCapacityOffset = 0x14;
 

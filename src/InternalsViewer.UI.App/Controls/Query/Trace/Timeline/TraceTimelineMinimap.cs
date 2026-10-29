@@ -273,6 +273,8 @@ public sealed class TraceTimelineMinimap : UserControl, IDisposable
         {
             _marker.Color = new SKColor(marker.Colour.R, marker.Colour.G, marker.Colour.B, marker.Colour.A);
 
+            _marker.StrokeWidth = marker.Width;
+
             var x = (float)((marker.Position - start) * unit);
 
             canvas.DrawLine(x, GetMarkerTop(timeline, marker, height), x, height, _marker);

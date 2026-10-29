@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.History.Batches;
+using InternalsViewer.Query.FullTrace.Memory.History.Batches.Enums;
 using static InternalsViewer.Query.FullTrace.Tests.Memory.History.MemoryHistoryStores;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
@@ -20,6 +21,8 @@ public class MemoryHistoryBatchesTests
     private const ulong SecondBuffer = 0x21C_0000_5000;
 
     private const ulong Other = 0x21C_0000_6000;
+
+    private const ulong DeepPage = 0x21C_0000_7000;
 
     private const ulong BufferOffset = 0x10;
 
@@ -55,6 +58,10 @@ public class MemoryHistoryBatchesTests
                             .Select(a => Batches.GetPart(GetBlock(Store, a))?.Name));
 
     [Fact]
+    public void A_Deep_Data_Page_Is_Recognised_By_Its_Signature_Whatever_Allocated_It()
+        => Assert.Equal(new BatchPart(BatchPartType.DeepData, 1), Batches.GetPart(GetBlock(Store, DeepPage)));
+
+    [Fact]
     public void The_Batch_Changes_When_A_Vector_Buffer_Is_Written()
     {
         var batch = Batches.Read(GetBlock(Store, Header), At(3))!;
@@ -64,8 +71,12 @@ public class MemoryHistoryBatchesTests
 
     private static string? GetObjectName(int block) => Store.Blocks[block].Address == Header ? BatchReader.ClassName : null;
 
-    private static string? GetAllocatingFunction(int block)
-        => Store.Blocks[block].Address == Other ? "CMemObj::Alloc" : "CBpBatch::AllocateVectorBuffer";
+    private static string? GetAllocatingFunction(int block) => Store.Blocks[block].Address switch
+    {
+        Other => "CMemObj::Alloc",
+        DeepPage => "CBpDeepDataContextForBatch::StoreDeepData",
+        _ => "CBpBatch::AllocateVectorBuffer"
+    };
 
     private static MemoryHistoryStore BuildStore()
     {
@@ -80,16 +91,23 @@ public class MemoryHistoryBatchesTests
         var vectors = new byte[2 * 0x58];
 
         BinaryPrimitives.WriteUInt64LittleEndian(vectors.AsSpan(0), FirstBuffer + BufferOffset);
+        BinaryPrimitives.WriteUInt64LittleEndian(vectors.AsSpan(0x10), DeepPage);
+        BinaryPrimitives.WriteUInt64LittleEndian(vectors.AsSpan(0x18), DeepPage);
         BinaryPrimitives.WriteUInt64LittleEndian(vectors.AsSpan(0x58), SecondBuffer + BufferOffset);
 
+        var page = new byte[DeepDataReader.PageHeaderSize];
+
+        BinaryPrimitives.WriteUInt32LittleEndian(page.AsSpan(0x10), 0x53445042);
+
         return Build([Block(Header, 0x40), Block(VectorArray, 0xB0), Block(Selection, 0x10),
-                      Block(FirstBuffer, 0x40), Block(SecondBuffer, 0x40), Block(Other, 0x10)],
+                      Block(FirstBuffer, 0x40), Block(SecondBuffer, 0x40), Block(Other, 0x10), Block(DeepPage, 0x40)],
                      [(2, Header, header),
                       (2, VectorArray, vectors),
                       (2, Selection, [0, 0, 1, 0]),
                       (2, FirstBuffer + BufferOffset, [0xAA, 0, 0, 0, 0, 0, 0, 0, 0xBB, 0, 0, 0, 0, 0, 0, 0]),
                       (2, SecondBuffer + BufferOffset, [0xCC, 0, 0, 0, 0, 0, 0, 0, 0xDD, 0, 0, 0, 0, 0, 0, 0]),
                       (2, Other, [1]),
+                      (2, DeepPage, page),
                       (4, FirstBuffer + BufferOffset, [0xEE])]);
     }
 }

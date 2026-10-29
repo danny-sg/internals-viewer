@@ -14,7 +14,6 @@ using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Arguments;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Signatures;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Stack;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Values;
-using InternalsViewer.Query.FullTrace.Calls.Enums;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.CallStack;
 
@@ -24,24 +23,19 @@ public sealed class CallStoreLookup(TraceCallStore store,
                                   HoBtAccessMap hobtAccess,
                                   MemoryMap memoryMap,
                                   SymbolsViewModel symbols,
-                                  Func<ulong, string?> getHoBtName)
+                                  Func<ulong, string?> getHoBtName) : ITraceSignatureSource
 {
     private const string ThisType = "this";
 
-    private const string ReturnLocation = "RAX";
-
     public TraceCallStore Store { get; } = store;
-
-    private TraceValueSearch Search { get; } = new(store);
 
     private Dictionary<ulong, Task<ResolvedSignature?>> Signatures { get; } = [];
 
-    private Lazy<Dictionary<ulong, CallstackFrame>> Frames { get; } = new(() => GetFrames(tree));
+    private TraceReferenceFinder References => field ??= new(Store, tree, iterators, hobtAccess, memoryMap, getHoBtName, this);
 
     public IteratorTarget? GetIterator(ulong value) => iterators.GetValueOrDefault(value);
 
-    public CallstackFrame? GetFrame(TraceValueUse use)
-        => use.First.Node?.Frame is { Resolved: not null } frame ? frame : Frames.Value.GetValueOrDefault(use.FunctionAddress);
+    public CallstackFrame? GetFrame(TraceValueUse use) => References.GetFrame(use);
 
     public ulong? GetHoBtId(ArgumentSlot slot, ulong value, TraceArgumentCall call)
     {
@@ -84,7 +78,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
 
         if (GetIterator(value) is { } iterator)
         {
-            return new ValueDescription(IteratorLabel(iterator), className) { Origin = entry };
+            return new ValueDescription(TraceReferenceFinder.GetIteratorName(iterator), className) { Origin = entry };
         }
 
         var address = $"0x{value:X}";
@@ -94,7 +88,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
             return new ValueDescription(address, className) { Origin = entry };
         }
 
-        if (containing is ({ } inside, var offset) && (inside.ClassName ?? GetAllocationName(inside)) is { } container)
+        if (containing is ({ } inside, var offset) && (inside.ClassName ?? TraceReferenceFinder.GetAllocationName(inside)) is { } container)
         {
             return new ValueDescription($"0x{inside.Address:X} + 0x{offset:X}", container) { Origin = inside };
         }
@@ -166,23 +160,21 @@ public sealed class CallStoreLookup(TraceCallStore store,
 
     public async Task<ArgumentLayout?> GetLayoutAsync(CallstackFrame frame) => (await ResolveAsync(frame))?.Layout;
 
+    public async Task<FunctionType?> GetFunctionTypeAsync(CallstackFrame frame)
+        => await symbols.ResolveFrameDecoratedNameAsync(frame) is { } decoratedName ? FunctionSignature.GetFunctionType(decoratedName) : null;
+
+    public Task<TraceValueReferences> FindReferencesAsync(ulong value, CancellationToken cancellationToken)
+        => References.FindAsync(value, cancellationToken);
+
     public async Task<ValueReferences> GetReferencesAsync(ulong value, CancellationToken cancellationToken)
     {
-        var uses = await GetDeclaredUsesAsync(await Search.GetValueUsesAsync(value, cancellationToken));
+        var found = await FindReferencesAsync(value, cancellationToken);
 
-        var functionTypes = await ResolveFunctionTypesAsync(uses.Where(u => u.Location == ArgumentLayout.ThisRegisterName));
-
-        cancellationToken.ThrowIfCancellationRequested();
-
-        var groups = ValueUseGroup.Build(uses, u => functionTypes.GetValueOrDefault(u.FunctionAddress), GetFrame, value);
-
-        var iterator = GetIterator(value);
-
-        return new ValueReferences(GetTypeName(value, iterator, groups), iterator, groups);
+        return new ValueReferences(found.Type, found.Iterator, [.. found.Groups.Select(g => ValueUseGroup.Create(g, value, GetFrame))]);
     }
 
     public Task<IReadOnlyList<TraceValueCall>> FindCallsAsync(ValueUseRow row, CancellationToken cancellationToken)
-        => Search.GetTraceValueCallsAsync(row.Use, row.Value, cancellationToken);
+        => References.GetCallsAsync(row.Use, row.Value, cancellationToken);
 
     public async Task<IReadOnlyList<ValueCallRow>> CallRowsAsync(TraceValueUse use,
                                                                  IReadOnlyList<TraceValueCall> valueCalls,
@@ -221,14 +213,8 @@ public sealed class CallStoreLookup(TraceCallStore store,
         return frame is null ? $"0x{address:X}" : QualifiedSymbol.Of(frame);
     }
 
-    private static string? GetAllocationName(MemoryMapEntry entry)
-        => (entry.Site ?? entry.Allocator) is { } allocation ? $"{allocation} Allocation" : null;
-
     private static TracePosition GetPosition(ArgumentSlot slot, TraceArgumentCall call)
         => slot.Index == ArgumentLayout.ReturnRegister ? call.ToPosition : call.FromPosition;
-
-    private static string IteratorLabel(IteratorTarget iterator)
-        => $"{iterator.Label} {(iterator.IsPlanObject ? "Plan Object" : "Iterator")}";
 
     private ValueCallRow GetCallRow(TraceValueCall valueCall,
                                     TraceValueUse use,
@@ -236,21 +222,6 @@ public sealed class CallStoreLookup(TraceCallStore store,
                                     ArgumentLayout? layout,
                                     TraceCallList calls)
         => new(valueCall, use, ArgumentRowBuilder.GetSignature(function, layout, calls[valueCall.CallIndex], Describe, includeTypes: true));
-
-    private static Dictionary<ulong, CallstackFrame> GetFrames(CallStackTree? tree)
-    {
-        var frames = new Dictionary<ulong, CallstackFrame>();
-
-        foreach (var frame in tree?.Nodes().Select(n => n.Frame).OfType<CallstackFrame>() ?? [])
-        {
-            if (frame.Address != 0 && (!frames.TryGetValue(frame.Address, out var existing) || existing.Resolved is null))
-            {
-                frames[frame.Address] = frame;
-            }
-        }
-
-        return frames;
-    }
 
     private async Task<ResolvedSignature?> ResolveSignatureAsync(CallstackFrame frame)
     {
@@ -266,79 +237,5 @@ public sealed class CallStoreLookup(TraceCallStore store,
         var layout = KnownParameters.Apply(ArgumentLayout.GetLayout(parsed), frame.Resolved?.ClassName, frame.Resolved?.MethodName);
 
         return new ResolvedSignature(parsed, signature, layout);
-    }
-
-    private async Task<List<TraceValueUse>> GetDeclaredUsesAsync(IReadOnlyList<TraceValueUse> uses)
-    {
-        var declared = new List<TraceValueUse>(uses.Count);
-
-        foreach (var use in uses)
-        {
-            if (GetFrame(use) is not { } frame || await GetLayoutAsync(frame) is not { } layout || layout.IsDeclared(use.Location))
-            {
-                declared.Add(use);
-            }
-        }
-
-        return declared;
-    }
-
-    private async Task<Dictionary<ulong, FunctionType?>> ResolveFunctionTypesAsync(IEnumerable<TraceValueUse> uses)
-    {
-        var functionTypes = new Dictionary<ulong, FunctionType?>();
-
-        foreach (var use in uses)
-        {
-            if (functionTypes.ContainsKey(use.FunctionAddress) || GetFrame(use) is not { } frame)
-            {
-                continue;
-            }
-
-            var decoratedName = await symbols.ResolveFrameDecoratedNameAsync(frame);
-
-            functionTypes[use.FunctionAddress] = decoratedName is null ? null : FunctionSignature.GetFunctionType(decoratedName);
-        }
-
-        return functionTypes;
-    }
-
-    private string? GetTypeName(ulong value, IteratorTarget? iterator, IReadOnlyList<ValueUseGroup> groups)
-    {
-        if (iterator is not null)
-        {
-            return IteratorLabel(iterator);
-        }
-
-        if (hobtAccess.GetHoBtId(value) is { } hobtId && getHoBtName(hobtId) is { } name)
-        {
-            return $"HoBtAccess ({name})";
-        }
-
-        var firstUse = groups.SelectMany(g => g.Rows).Select(r => r.Use).MinBy(u => u.First.Position);
-
-        if (firstUse is not null
-            && Store.GetCallList(firstUse.FunctionAddress, firstUse.InstanceAddress) is { } calls
-            && firstUse.First.CallIndex < calls.Count)
-        {
-            var call = calls[firstUse.First.CallIndex];
-
-            var moment = firstUse.Location == ReturnLocation ? call.ToPosition : call.FromPosition;
-
-            if (memoryMap.GetEntry(value, moment) is { } entry && (entry.ClassName ?? GetAllocationName(entry)) is { } typeName)
-            {
-                return typeName;
-            }
-
-            if (memoryMap.GetContaining(value, moment) is ({ } inside, var offset)
-                && (inside.ClassName ?? GetAllocationName(inside)) is { } container)
-            {
-                return $"{container} + 0x{offset:X}";
-            }
-        }
-
-        return groups.FirstOrDefault(g => g.Role == TraceValueRole.CalledOn) is { Rows: [var first, ..] }
-               && GetFrame(first.Use)?.Resolved?.ClassName is { Length: > 0 } className
-            ? className
-            : null;
     }
 }

@@ -429,6 +429,8 @@ public sealed partial class TraceTimelineControl
 
         DrawPaneOverlays(canvas, width);
 
+        DrawSearchMatches(canvas, width, height);
+
         if (ShowMemory)
         {
             canvas.Save();
@@ -550,12 +552,7 @@ public sealed partial class TraceTimelineControl
         return colour;
     }
 
-    private SKColor GetPaneColour(int callNodeIndex)
-    {
-        var colour = GetCategoryColour(callNodeIndex);
-
-        return Excludes(_searchMatches, callNodeIndex) ? Dimmed(colour) : colour;
-    }
+    private SKColor GetPaneColour(int callNodeIndex) => GetCategoryColour(callNodeIndex);
 
     private SKColor GetCategoryColour(int callNodeIndex)
         => _timeline?.NodeOf(callNodeIndex)?.CategoryColour is { } hex ? Parse(hex) : _paints.Unknown;

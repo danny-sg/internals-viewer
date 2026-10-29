@@ -248,6 +248,14 @@ public sealed class ExecutionPlanControl : Canvas
             }
         }
 
+        foreach (var probe in BitmapProbeResolver.Resolve(Plan))
+        {
+            if (positions.TryGetValue(probe.Creator, out var creator) && positions.TryGetValue(probe.Probe, out var target))
+            {
+                DrawBitmapConnector(creator, target, probe);
+            }
+        }
+
         foreach (var (node, point) in positions)
         {
             AddNode(node, point, RelativeCost(node, totalCost));
@@ -421,6 +429,54 @@ public sealed class ExecutionPlanControl : Canvas
         }
 
         return (connector, arrow);
+    }
+
+    private void DrawBitmapConnector(Point creator, Point probe, BitmapProbe bitmapProbe)
+    {
+        const double headLength = 6;
+        const double headHalfWidth = 4;
+
+        var startX = creator.X + BaseNodeWidth / 2;
+
+        var startY = probe.Y > creator.Y ? creator.Y + _nodeHeight : creator.Y;
+
+        var laneY = probe.Y - VerticalGap / 2;
+
+        var endX = probe.X + BaseNodeWidth / 2;
+
+        var endY = probe.Y + PlanNodeControl.IconTop;
+
+        var brush = new SolidColorBrush(PlanNodeAnnotations.Bitmap);
+
+        var connector = new Polyline
+        {
+            Stroke = brush,
+            StrokeThickness = 2,
+            StrokeDashArray = [1, 1],
+            StrokeLineJoin = PenLineJoin.Miter,
+            Points =
+            {
+                new Point(startX, startY),
+                new Point(startX, laneY),
+                new Point(endX, laneY),
+                new Point(endX, endY - headLength)
+            }
+        };
+
+        ToolTipService.SetToolTip(connector, bitmapProbe.Bitmap);
+
+        Children.Add(connector);
+
+        Children.Add(new Polygon
+        {
+            Fill = brush,
+            Points =
+            {
+                new Point(endX, endY),
+                new Point(endX - headHalfWidth, endY - headLength),
+                new Point(endX + headHalfWidth, endY - headLength)
+            }
+        });
     }
 
     // A left-pointing arrowhead with its tip at (tipX, y); the base sits headLength to the right.

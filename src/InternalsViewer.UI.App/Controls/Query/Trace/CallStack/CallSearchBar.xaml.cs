@@ -19,7 +19,10 @@ public sealed partial class CallSearchBar : UserControl
     }
 
     public static readonly DependencyProperty MatchCountProperty =
-        DependencyProperty.Register(nameof(MatchCount), typeof(int?), typeof(CallSearchBar), new PropertyMetadata(null));
+        DependencyProperty.Register(nameof(MatchCount),
+                                    typeof(int?),
+                                    typeof(CallSearchBar),
+                                    new PropertyMetadata(null, OnMatchCountChanged));
 
     public int? MatchCount
     {
@@ -52,12 +55,12 @@ public sealed partial class CallSearchBar : UserControl
     {
         SearchTimer.Stop();
 
-        PublishedSearch = string.Empty;
-
         SearchBox.Text = string.Empty;
+
+        PublishSearch();
     }
 
-    private string GetMatchCountText(int? count) => count switch
+    private static string GetMatchCountText(int? count) => count switch
     {
         null => string.Empty,
         0 => "No Results",
@@ -65,7 +68,7 @@ public sealed partial class CallSearchBar : UserControl
         _ => $"{count:N0} Results"
     };
 
-    private Visibility GetMatchCountVisibility(int? count) => count is null ? Visibility.Collapsed : Visibility.Visible;
+    private static Visibility GetMatchCountVisibility(int? count) => count is null ? Visibility.Collapsed : Visibility.Visible;
 
     private Visibility GetCommandsVisibility(object? commands) => commands is null ? Visibility.Collapsed : Visibility.Visible;
 
@@ -119,5 +122,16 @@ public sealed partial class CallSearchBar : UserControl
         SearchTextChanged?.Invoke(text);
 
         return true;
+    }
+
+    private static void OnMatchCountChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var bar = (CallSearchBar)d;
+
+        var count = e.NewValue as int?;
+
+        bar.MatchCountText.Text = GetMatchCountText(count);
+
+        bar.MatchCountText.Visibility = GetMatchCountVisibility(count);
     }
 }

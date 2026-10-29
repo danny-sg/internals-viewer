@@ -24,13 +24,13 @@
                         TextChanged="OnSearchTextChanged"
                         QuerySubmitted="OnSearchQuerySubmitted"/>
 
-        <TextBlock Grid.Column="1"
+        <TextBlock x:Name="MatchCountText"
+                   Grid.Column="1"
                    Margin="8,2,0,0"
                    FontSize="11"
                    VerticalAlignment="Center"
                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                   Text="{x:Bind GetMatchCountText(MatchCount), Mode=OneWay}"
-                   Visibility="{x:Bind GetMatchCountVisibility(MatchCount), Mode=OneWay}"/>
+                   Visibility="Collapsed"/>
 
         <ContentPresenter Grid.Column="2"
                           Margin="4,2,0,0"

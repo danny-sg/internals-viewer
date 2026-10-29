@@ -130,6 +130,10 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
 
     private Dictionary<int, string?> PointerTargets { get; } = [];
 
+    private MagicBytesMatcher? MagicBytes { get; set; }
+
+    private ArrayAllocationMatcher? ArrayAllocations { get; set; }
+
     private TracePosition WindowStart => Window?.Start.Position ?? default;
 
     private TracePosition WindowEnd => Window?.End.Position ?? TracePosition.Unknown;
@@ -152,6 +156,10 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
         Batches = trace is null
             ? null
             : new MemoryHistoryBatches(Store, b => GetMapLabel(Store.Blocks[b]), b => GetAllocatingCall(b)?.Symbol);
+
+        MagicBytes = trace is null ? null : new MagicBytesMatcher(Store);
+
+        ArrayAllocations = trace is null ? null : new ArrayAllocationMatcher(Store, trace.MemoryMap);
 
         Workfiles = trace is null ? null : new WorkfileLayouts(database, i => GetPlanNode(i, resolvePlanNode));
 
@@ -263,6 +271,29 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
     public CallStackNode? GetWriter(int callNodeIndex) => callNodeIndex >= 0 ? Trace?.Timeline.NodeOf(callNodeIndex) : null;
 
     public string GetWriterLabel(int callNodeIndex) => GetWriterLabel(GetWriter(callNodeIndex));
+
+    public TraceCallLink GetCallLink(uint thread, TracePoint point, CallStackNode? node)
+    {
+        if (Trace?.Timeline is not { } timeline
+            || timeline.GetStack(point.Position).FirstOrDefault(s => s.ThreadId == thread) is not { } stack)
+        {
+            return new TraceCallLink(point, node, -1);
+        }
+
+        TraceSpan? found = null;
+
+        foreach (var call in stack.Calls)
+        {
+            if (node is null || ReferenceEquals(timeline.NodeOf(call.CallNodeIndex), node))
+            {
+                found = call;
+            }
+        }
+
+        return found is { } span
+            ? new TraceCallLink(point, timeline.NodeOf(span.CallNodeIndex), span.CallIndex)
+            : new TraceCallLink(point, node, -1);
+    }
 
     public CallStackNode? GetAllocatingCall(int block)
     {
@@ -587,6 +618,8 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
 
     private string GetObjectLabel(int block)
         => Batches?.GetPart(block)?.Name
+           ?? MagicBytes?.GetClassName(block)
+           ?? ArrayAllocations?.GetClassName(block)
            ?? GetMapLabel(Store.Blocks[block])
            ?? (Store.Blocks[block].IsIterator ? IteratorObject : string.Empty);
 

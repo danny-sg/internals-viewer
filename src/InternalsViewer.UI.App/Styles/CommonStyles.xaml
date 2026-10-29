@@ -182,6 +182,11 @@
         <Setter Property="Margin" Value="0" />
     </Style>
 
+    <Style x:Key="DetailLinkStyle" TargetType="HyperlinkButton" BasedOn="{StaticResource ResultPointerStyle}">
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="MinHeight" Value="0" />
+    </Style>
+
     <Style x:Key="CellPageAddressStyle" TargetType="HyperlinkButton" BasedOn="{StaticResource PageAddressStyle}">
         <Setter Property="Padding" Value="4,0,4,0" />
         <Setter Property="MinHeight" Value="0" />

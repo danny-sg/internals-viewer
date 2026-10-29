@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Mcp.Documents;
@@ -10,6 +11,7 @@ using InternalsViewer.Mcp.Models.Context.Queries;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Recording;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
@@ -274,6 +276,9 @@ public partial class QueryViewModel : IMcpContextSource, IQueryCommands
 
         return resolved is null ? null : new McpFunctionSignature(resolved.Text ?? string.Empty, resolved.Layout);
     }
+
+    public async Task<TraceValueReferences?> FindReferencesAsync(ulong value)
+        => Arguments.Lookup is { } lookup ? await lookup.FindReferencesAsync(value, CancellationToken.None) : null;
 
     public Task SetOptionAsync(string key, bool enabled)
     {

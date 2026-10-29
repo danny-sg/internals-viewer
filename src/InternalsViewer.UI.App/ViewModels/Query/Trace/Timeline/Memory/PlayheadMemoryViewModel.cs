@@ -90,6 +90,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     public IPlayheadChart? Chart { get; set; }
 
+    public ITraceNavigator? Navigator { get; set; }
+
     private TracePosition OpenedAt { get; set; } = TracePosition.Unknown;
 
     private TracePosition? Playhead { get; set; }

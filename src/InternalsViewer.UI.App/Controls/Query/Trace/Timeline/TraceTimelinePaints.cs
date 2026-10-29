@@ -5,6 +5,8 @@ namespace InternalsViewer.UI.App.Controls.Query.Trace.Timeline;
 
 internal sealed class TraceTimelinePaints : IDisposable
 {
+    private const byte MarksAlpha = 204;
+
     public SKColor LaneHeader { get; private set; } = new(255, 255, 255, 14);
 
     public SKColor Unknown { get; } = new(128, 128, 128);
@@ -78,6 +80,13 @@ internal sealed class TraceTimelinePaints : IDisposable
 
     public SKPaint Mark { get; } = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 2f, Color = new SKColor(0x00, 0xC8, 0x53) };
 
+    public SKPaint Marks { get; } = new()
+    {
+        Style = SKPaintStyle.Stroke,
+        StrokeWidth = 1f,
+        Color = new SKColor(0x00, 0xC8, 0x53, MarksAlpha)
+    };
+
     public SKPaint CallLink { get; } = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 1f };
 
     public SKPaint DottedCallLink { get; } = new()
@@ -88,6 +97,8 @@ internal sealed class TraceTimelinePaints : IDisposable
     };
 
     public SKPaint TickHighlight { get; } = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 2f, Color = new SKColor(230, 60, 60) };
+
+    public SKPaint SearchMatch { get; } = new() { Style = SKPaintStyle.Fill, Color = new SKColor(255, 214, 0, 191) };
 
     public SKFont Font { get; } = new(SKTypeface.Default, 10f);
 
@@ -130,6 +141,7 @@ internal sealed class TraceTimelinePaints : IDisposable
         GrantFill.Color = Accent.WithAlpha(isDark ? (byte)40 : (byte)28);
         GrantEdge.Color = Accent.WithAlpha(140);
         Mark.Color = isDark ? new SKColor(0x00, 0xE6, 0x76) : new SKColor(0x00, 0xC8, 0x53);
+        Marks.Color = Mark.Color.WithAlpha(MarksAlpha);
     }
 
     public void Dispose()
@@ -155,10 +167,12 @@ internal sealed class TraceTimelinePaints : IDisposable
         PlayheadText.Dispose();
         Outline.Dispose();
         Mark.Dispose();
+        Marks.Dispose();
         CallLink.Dispose();
         DottedCallLink.PathEffect?.Dispose();
         DottedCallLink.Dispose();
         TickHighlight.Dispose();
+        SearchMatch.Dispose();
         HeaderBoldFont.Dispose();
         Font.Dispose();
         TiltedFont.Dispose();

@@ -30,7 +30,7 @@
                 <TextBlock Text="SQL Server Restart" FontWeight="SemiBold"/>
                 <TextBlock TextWrapping="Wrap"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                           Text="Running a query will restart the SQL Server service automatically at the start and end of the query. This is required to attach and detatch the trace."/>
+                           Text="Running a query restarts the SQL Server service first if it has been recorded since it last started, dropping every connection to it. TTD cannot be detached from a process, so each recording needs a restart."/>
             </StackPanel>
 
             <StackPanel Spacing="2">

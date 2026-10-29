@@ -26,6 +26,8 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
     private const float HitHeight = 3f;
 
+    private const float HalfPixel = 0.5f;
+
     private const int LargeMarkSize = 2;
 
     private const int MarkDensity = 4;
@@ -196,6 +198,80 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
         }
 
         canvas.Restore();
+    }
+
+    public void DrawSearchMatches(SKCanvas canvas, List<int> blocks, SKPaint paint, float thickness, float minimumLength)
+    {
+        if (GetCurrentFrame() is not { } frame)
+        {
+            return;
+        }
+
+        var rows = new List<(float Top, float Bottom)>();
+
+        foreach (var block in blocks)
+        {
+            if (GetSearchRows(frame, block, minimumLength) is { } found)
+            {
+                rows.Add(found);
+            }
+        }
+
+        rows.Sort((a, b) => a.Top.CompareTo(b.Top));
+
+        canvas.Save();
+
+        canvas.ClipRect(new SKRect(0, Top, thickness, Top + Height));
+
+        float? start = null;
+
+        var end = 0f;
+
+        foreach (var (top, bottom) in rows)
+        {
+            if (start is not null && top <= end)
+            {
+                end = Math.Max(end, bottom);
+
+                continue;
+            }
+
+            if (start is { } drawn)
+            {
+                canvas.DrawRect(0, drawn, thickness, end - drawn, paint);
+            }
+
+            start = top;
+
+            end = bottom;
+        }
+
+        if (start is { } last)
+        {
+            canvas.DrawRect(0, last, thickness, end - last, paint);
+        }
+
+        canvas.Restore();
+    }
+
+    public List<int> GetSearchMatchesAt(float y, List<int> blocks, float minimumLength)
+    {
+        var found = new List<int>();
+
+        if (GetCurrentFrame() is not { } frame)
+        {
+            return found;
+        }
+
+        foreach (var block in blocks)
+        {
+            if (GetSearchRows(frame, block, minimumLength) is { } rows && y >= rows.Top - HalfPixel && y <= rows.Bottom + HalfPixel)
+            {
+                found.Add(block);
+            }
+        }
+
+        return found;
     }
 
     public TraceMemoryHit? GetHit(Point position)
@@ -398,6 +474,18 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
         catch (OperationCanceledException)
         {
         }
+    }
+
+    private (float Top, float Bottom)? GetSearchRows(Frame frame, int block, float minimumLength)
+    {
+        if (block >= frame.View.BlockRows.Length || frame.View.BlockRows[block] is not { } rows)
+        {
+            return null;
+        }
+
+        var top = Top + rows.Top - ScrollY;
+
+        return (top, Math.Max(Top + rows.Bottom - ScrollY, top + minimumLength));
     }
 
     private Frame? GetCurrentFrame()
