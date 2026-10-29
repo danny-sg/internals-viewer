@@ -21,5 +21,7 @@ public interface IPlayheadChart
 
     void MovePlayheadTo(CallStackNode node, int callIndex);
 
+    void ShowMemoryUpdates(TraceMemoryWrites? writes, string? name);
+
     TraceViewRange? GetViewRange();
 }

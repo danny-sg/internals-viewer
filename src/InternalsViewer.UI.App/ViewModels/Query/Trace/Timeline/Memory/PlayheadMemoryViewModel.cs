@@ -207,6 +207,18 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     public void RequestPlayhead(TracePoint point) => PlayheadRequested?.Invoke(this, point);
 
+    public TraceMemoryWrites? GetUpdates()
+    {
+        if (!IsOpen)
+        {
+            return null;
+        }
+
+        var block = History.Store.Blocks[Block];
+
+        return new TraceMemoryWrites(History.Store, block.FirstWrite, block.WriteCount);
+    }
+
     public void RequestMemory(ulong address, int length = 1, TracePosition? position = null)
         => MemoryRequested?.Invoke(this, new MemoryRequest(address, length, position));
 

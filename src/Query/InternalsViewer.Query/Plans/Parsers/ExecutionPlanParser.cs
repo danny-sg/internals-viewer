@@ -162,8 +162,6 @@ public static class ExecutionPlanParser
 
         ExtractObjectInfo(element, node);
 
-        node.Outputs = ExtractTables(element);
-
         node.OutputColumns = ParseOutputColumns(element);
         node.DefinedValues = ParseDefinedValues(element, parameters);
         node.ProbedBitmaps = ParseProbedBitmaps(element);
@@ -942,18 +940,5 @@ public static class ExecutionPlanParser
             Table = GetAttribute("Table", element) ?? string.Empty,
             Column = GetAttribute("Column", element) ?? string.Empty
         };
-    }
-
-    public static HashSet<string> ExtractTables(XElement nodeElement)
-    {
-        return
-        [
-            .. nodeElement
-                .Descendants()
-                .Where(e => e.Name.LocalName == "ColumnReference")
-                .Select(c => $"{GetAttribute("Schema", c)}.{GetAttribute("Table", c)}")
-                .Where(t => !string.IsNullOrEmpty(t))
-                .Select(t => t.ToLowerInvariant())
-        ];
     }
 }

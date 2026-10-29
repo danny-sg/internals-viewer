@@ -64,8 +64,6 @@ public sealed class PlanNode
 
     public long? RowsRead { get; set; }
 
-    public HashSet<string> Outputs { get; set; } = [];
-
     public Dictionary<int, ThreadRuntime> CountersByThread { get; set; } = new();
 
     public ExecutionMode ExecutionMode { get; set; }

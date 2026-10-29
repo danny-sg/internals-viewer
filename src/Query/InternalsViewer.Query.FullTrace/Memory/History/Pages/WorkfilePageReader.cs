@@ -19,7 +19,7 @@ public static class WorkfilePageReader
 
     private static FixedVarIndexRecordLoader IndexLoader { get; } = new(NullLogger<FixedVarIndexRecordLoader>.Instance);
 
-    public static WorkfilePage? Read(byte[] data, RowRecordLayout? layout)
+    public static WorkfilePage? Read(byte[] data, RowRecordLayout? layout, SortRecordLayout? sortLayout = null)
     {
         if (data.Length != PageData.Size || data[0] != HeaderVersion)
         {
@@ -41,10 +41,14 @@ public static class WorkfilePageReader
             IsMarkEnabled = true
         };
 
-        return new WorkfilePage(page, GetRecords(page, header.PageType == PageType.WorkFile ? layout : null), layout);
+        var records = header.PageType == PageType.WorkFile
+            ? GetRecords(page, (offset, slot) => GetWorkfileRecord(page, offset, slot, layout))
+            : GetRecords(page, (offset, slot) => GetSortRecord(page, offset, slot, sortLayout));
+
+        return new WorkfilePage(page, records, layout);
     }
 
-    private static List<FixedVarRecord> GetRecords(DataPage page, RowRecordLayout? layout)
+    private static List<FixedVarRecord> GetRecords(DataPage page, Func<ushort, int, FixedVarRecord> getRecord)
     {
         var records = new List<FixedVarRecord>();
 
@@ -61,7 +65,7 @@ public static class WorkfilePageReader
 
             try
             {
-                records.Add(GetRecord(page, offset, slot, layout));
+                records.Add(getRecord(offset, slot));
             }
             catch (Exception exception) when (exception is ArgumentException or IndexOutOfRangeException)
             {
@@ -71,13 +75,13 @@ public static class WorkfilePageReader
         return records;
     }
 
-    private static FixedVarRecord GetRecord(DataPage page, ushort offset, int slot, RowRecordLayout? layout)
-    {
-        if (page.PageHeader.PageType == PageType.Sort)
-        {
-            return IndexLoader.LoadStructure(page, offset, slot);
-        }
+    private static FixedVarRecord GetSortRecord(DataPage page, ushort offset, int slot, SortRecordLayout? layout)
+        => layout is not null && layout.Fits(page.PageHeader)
+            ? IndexLoader.LoadLeaf(page, offset, slot, layout.Columns)
+            : IndexLoader.LoadStructure(page, offset, slot);
 
+    private static FixedVarRecord GetWorkfileRecord(DataPage page, ushort offset, int slot, RowRecordLayout? layout)
+    {
         var record = layout is not null && layout.Fits(page.Data, offset)
             ? Loader.Load(page, offset, layout.Structure)
             : Loader.LoadStructure(page, offset);

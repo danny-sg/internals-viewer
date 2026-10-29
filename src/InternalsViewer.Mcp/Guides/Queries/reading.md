@@ -55,15 +55,50 @@ to its object with their writers, and its cost in instructions. Organise the ans
 numbers and positions, and mark what is read from a name rather than recorded. The `full-trace-investigations` guide has the
 method, a worked hash join and the batch memory layout.
 
+# Left out on purpose
+
+Some things are absent by design. None of them is a gap in the capture or a sign that something went wrong:
+
+- **Extended Events and tracing calls** are cut from a Full Trace call tree. Publishing an event is code that runs on the
+  query's own thread, so the Extended Events machinery would otherwise dominate the tree. The actual-plan profiling wrappers
+  (`CQScanProfileNew`, `CQScanLightProfileNew`) stay, because the operators run inside them.
+- **A Full Trace run's event session is minimal.** It captures the batch start and end, the per-operator profile, the actual
+  plan and the parallelism waits that identify worker threads. Its lock, latch, page read and I/O detail comes from the calls
+  instead. A run without Full Trace has those events.
+- **SQLOS (`sqldk`) and Windows are not recorded** in a Full Trace, only `sqlmin` and `sqllang`. Calls into the scheduler,
+  memory objects, synchronisation and the operating system appear as the entry call only, so waiting, memory allocation
+  inside SQLOS and disk I/O add almost no instructions. Instruction counts measure recorded engine code.
+- **A Full Trace has no clock.** Positions and instructions are the only measures. Nothing in it is a duration.
+- **Crop to query** trims the call tree and events to the statement's execution, so the batch handling above it and anything
+  before the query started are not there.
+
 # Answering well
 
 - Lead with the answer, then the evidence. "It read 240 pages from disk in 30 extent reads of
   `dbo.ClusteredTable.pk_ClusteredTable`, then made 531 buffer pool reads over 225 distinct pages" beats a tour of the tools.
 - Keep what the run records apart from what you infer. A function's name suggests what it does. The `engine-symbols` guide
   explains the naming and marks what is inferred. Say "this looks like" for a function you are reading by name alone.
-- For "why" questions, line up the plan (estimated against actual rows, warnings, the memory grant), the reads (disk against
-  buffer, read-ahead, extents), the waits, the operators (start, first row, duration, threads), then the hot call paths and
-  the biggest allocators. Each is one tool.
+- Explain the mechanism rather than diagnose the query. Internals Viewer shows what the engine did, not what the optimizer
+  should have chosen. A question about estimates against actuals, a missing index or a better plan is the optimizer's
+  responsibility and outside what the run records: say so in a sentence, then explain what the chosen plan did, because that
+  understanding is where troubleshooting comes from. Estimates, warnings and the grant are context for reading the plan, not
+  the subject.
+- Do not suggest changes to the query, its indexes or its hints unless the user asks for them. Offered unasked, advice turns
+  an explanation into a review.
+- Big picture first. Open with the shape of what happened: what the query asks, the plan in execution order, the operators
+  with their phases and row counts. Go into reads and function-level detail only in the direction the question points, then
+  offer the next step down ("the probe is 99 `GetRow` calls on the join, want to see what each one does?").
+- Mechanism, not performance. Do not rank hot spots, hunt anomalies or call a number "suspicious" unless the user asks about
+  cost. Much of any run is routine housekeeping, listed under "Routine work in every run" in the `engine-symbols` guide, and a
+  large share under one of those is normal. Take the recorded numbers as recorded rather than auditing how they were counted.
+- Stay on the question. A run is full of true, interesting things that have nothing to do with what was asked. A side finding
+  earns at most one closing sentence, and only when it bears on the question.
+- Check a number before explaining it. When an operator's rows, a read count or a call count looks odd, read the tool that
+  records it rather than guessing what it means.
+- Know what was left out on purpose, listed below, so an absence is reported as "not captured" rather than as something
+  missing or odd.
+- For "how did it do that" questions, line up the plan, the operators (start, first row, threads), the reads (disk against
+  buffer, read-ahead, extents) and the call tree of the operators involved. Each is one tool.
 - For "what did operator X do" questions use `query_calltree` with `operator`, then `query_calls` with `function` on the interesting
   function and `instance` set to the operator's iterator address when it is a method of the iterator.
 - Count what the user asked for in the unit they asked for: reads (events) are not pages (an extent read is 8 pages, a

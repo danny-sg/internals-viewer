@@ -332,6 +332,10 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
         Children.Add(_keyboardHost);
 
+        _indicatorText.SizeChanged += OnIndicatorTextSizeChanged;
+
+        Children.Add(_indicatorText);
+
         Children.Add(_minimap);
 
         _horizontalScrollBar = new ScrollBar
@@ -605,6 +609,10 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
     {
         StopPlay();
 
+        CloseIndicator(TraceIndicatorClose.Gone);
+
+        _indicatorText.SizeChanged -= OnIndicatorTextSizeChanged;
+
         if (_playTimer is not null)
         {
             _playTimer.Tick -= OnPlayTick;
@@ -647,6 +655,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         _pathBuilder.Dispose();
 
         _playheadTriangle.Dispose();
+
+        _indicatorHead.Dispose();
 
         _operators.Dispose();
 
@@ -1324,6 +1334,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         control._markedCalls.Clear();
 
         control.ClearPins();
+
+        control.CloseIndicator(TraceIndicatorClose.Gone);
 
         control.ReleaseMinimap();
 

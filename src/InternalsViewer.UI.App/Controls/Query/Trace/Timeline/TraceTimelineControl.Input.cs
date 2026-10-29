@@ -3,12 +3,14 @@ using System.Collections.Generic;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
+using InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Enums;
 using InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Operators;
 using InternalsViewer.UI.App.Helpers;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
+using SkiaSharp;
 using Windows.Foundation;
 using Windows.System;
 
@@ -87,9 +89,18 @@ public sealed partial class TraceTimelineControl
             return;
         }
 
-        ClearPins();
-
         var point = e.GetCurrentPoint(_overlay);
+
+        if (point.Properties.IsLeftButtonPressed && PressIndicator(ToSkPoint(point.Position)))
+        {
+            e.Handled = true;
+
+            _overlay.CapturePointer(e.Pointer);
+
+            return;
+        }
+
+        ClearPins();
 
         var position = point.Position;
 
@@ -219,9 +230,20 @@ public sealed partial class TraceTimelineControl
             return;
         }
 
-        if (HeaderAt(position) is { } lane)
+        if (ShowsFlameChart && GetLaneHeaderAt(position) is { } lane)
         {
-            ToggleLane(lane);
+            if (IsOnLaneToggle(position, lane))
+            {
+                ToggleLane(lane);
+
+                return;
+            }
+
+            _isScrubbing = true;
+
+            MovePlayheadTo(position.X);
+
+            _overlay.CapturePointer(e.Pointer);
 
             return;
         }
@@ -255,6 +277,11 @@ public sealed partial class TraceTimelineControl
     private void OnPointerMoved(object sender, PointerRoutedEventArgs e)
     {
         var position = e.GetCurrentPoint(_overlay).Position;
+
+        if (DragIndicator(ToSkPoint(position)))
+        {
+            return;
+        }
 
         if (_isPanning)
         {
@@ -338,6 +365,15 @@ public sealed partial class TraceTimelineControl
 
     private void UpdateHover(Point position)
     {
+        if (GetIndicatorHit(ToSkPoint(position)) is { } indicatorHit)
+        {
+            UpdateCursor(indicatorHit == TraceIndicatorHit.Body ? InputSystemCursorShape.SizeAll : InputSystemCursorShape.Hand);
+
+            HideToolTip();
+
+            return;
+        }
+
         var found = BlockAt(position);
 
         var operatorsHover = found is null ? _operators.GetHover(position) : TraceOperatorsHover.None;
@@ -374,7 +410,7 @@ public sealed partial class TraceTimelineControl
 
         if (ShowsMemory && _memory.Contains(position))
         {
-            if (_memory.GetToolTip(memoryHover) is { } memoryText)
+            if ((GetMemorySearchToolTip(position) ?? _memory.GetToolTip(memoryHover)) is { } memoryText)
             {
                 OpenToolTip(memoryText, position);
             }
@@ -382,6 +418,10 @@ public sealed partial class TraceTimelineControl
             {
                 HideToolTip();
             }
+        }
+        else if (GetHeaderMarkToolTip(position) is { } markText)
+        {
+            OpenToolTip(markText, position);
         }
         else if (hit is { } hovered && operatorsHover.Tick?.Tick is null)
         {
@@ -404,6 +444,13 @@ public sealed partial class TraceTimelineControl
 
     private void OnPointerReleased(object sender, PointerRoutedEventArgs e)
     {
+        if (ReleaseIndicator())
+        {
+            _overlay.ReleasePointerCapture(e.Pointer);
+
+            return;
+        }
+
         var position = e.GetCurrentPoint(_overlay).Position;
 
         if (_isSelecting)
@@ -858,6 +905,8 @@ public sealed partial class TraceTimelineControl
 
     private void EndPointer()
     {
+        ReleaseIndicator();
+
         var invalidate = _isSelecting;
 
         if (_isDragging)
@@ -1100,7 +1149,17 @@ public sealed partial class TraceTimelineControl
         return null;
     }
 
-    private int? HeaderAt(Point position) => _visible is { Threads.Count: > 1 } ? GetLaneHeaderAt(position) : null;
+    private bool IsOnLaneToggle(Point position, int lane)
+    {
+        if (_visible is not { Threads.Count: > 1 } timeline || lane >= timeline.Threads.Count)
+        {
+            return false;
+        }
+
+        var label = $"Thread {timeline.Threads[lane].ThreadId}";
+
+        return position.X < LabelPadding * 6 + ChevronSize + _paints.HeaderFont.MeasureText(label);
+    }
 
     private int? GetLaneHeaderAt(Point position)
     {

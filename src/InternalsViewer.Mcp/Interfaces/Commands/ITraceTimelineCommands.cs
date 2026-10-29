@@ -28,4 +28,10 @@ public interface ITraceTimelineCommands
     Task ZoomAsync(bool toSelection);
 
     Task PinPositionsAsync(TracePoint[] points);
+
+    Task<Guid> ShowIndicatorAsync(McpIndicatorRequest request);
+
+    Task<McpIndicatorResult?> WaitForIndicatorAsync(Guid id, TimeSpan timeout);
+
+    Task<bool> ClearIndicatorAsync();
 }

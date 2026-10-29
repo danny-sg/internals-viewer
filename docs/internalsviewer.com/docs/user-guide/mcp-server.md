@@ -63,7 +63,7 @@ The server also carries its own reading guides - how to read what the tools retu
 - **The run** - the SQL, the plan with estimated and actual rows, the operators with their timing, and the messages.
 - **Events** - reads from disk and the buffer pool, waits, locks, latches, columnstore scans and log records.
 - **The call tree** - the engine functions behind each operator, the paths to a function, the hottest paths and the pages each function touched.
-- **Full Trace** - every logged call with its arguments, the timeline, the memory, the memory map and the memory history.
+- **Full Trace** - every logged call with its arguments, the timeline, the memory, the memory map and the memory history, and the references to an address that the call tree's Find shows: its type and every function it was passed to, called on or returned by.
 - **Allocations** - the files and objects of a database, who owns a page and what the GAM, SGAM, PFS, DCM and BCM bits say about it, and the extents an object owns.
 - **Pages** - a page's header, slots and records with their column values, including the page header and offset table as selectable structures.
 - **Indexes** - the B-tree of an index level by level, its pages in order, and the keys and child pages of the page you have selected.
@@ -76,7 +76,8 @@ The server also carries its own reading guides - how to read what the tools retu
 - **Select and scroll** - slots, fields and bytes in the Page viewer and in the pages open in a Query tab, objects and overlays in the Allocations map, pages and records in the Index viewer, and segments, dictionaries and rows in the Columnstore viewer.
 - **Switch and close tabs.** The assistant should ask before it closes one.
 - **Turn the Query tab's menu toggles on and off** - the views that are visible, what is captured and shown, and Record Full Trace. Record Full Trace only turns on once you have accepted its warning and licence yourself from the Trace menu, and applies to the next run.
-- **Drive the Trace Timeline** - turn the Operators, Memory and Calls panes and the other timeline options on and off, add custom operator tracks for a function (for example "mark where a b-tree is searched"), clear them, step the playhead by call, same call, batch, row or allocation, search, and select and zoom to a call such as "the first GetRow call", and pin marks at every call of a function to show when it runs. Clicking the timeline or moving the playhead hides the marks. A fuzzy search of the call graph resolves half remembered function names.
+- **Drive the Trace Timeline** - turn the Operators, Memory and Calls panes and the other timeline options on and off, add custom operator tracks for a function (for example "mark where a b-tree is searched"), clear them, step the playhead by call, same call, batch, row or allocation, search, and select and zoom to a call such as "the first GetRow call", and pin marks at every call of a function to show when it runs. Clicking the timeline or moving the playhead hides the marks.
+- **Point things out on the flame chart** - the assistant can draw arrows to one or more calls with a comment beside them, such as "here is where the build side is read". Drag the comment to move it out of the way, and the arrows follow it. Its close button removes it. When it is walking you through something, the comment shows which step you are on and has a **Next** button that moves straight on to the next step, and **Finish** on the last one. Closing it ends the walkthrough early. A fuzzy search of the call graph resolves half remembered function names.
 
 ## Walking through a seek or a scan
 

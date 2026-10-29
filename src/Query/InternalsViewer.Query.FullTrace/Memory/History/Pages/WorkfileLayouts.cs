@@ -10,9 +10,13 @@ public sealed class WorkfileLayouts(DatabaseSource database, Func<ulong, PlanNod
 {
     private ConcurrentDictionary<ulong, RowRecordLayout?> Layouts { get; } = new();
 
+    private ConcurrentDictionary<ulong, SortRecordLayout?> SortLayouts { get; } = new();
+
     private ConcurrentDictionary<string, Dictionary<string, ColumnStructure>?> Tables { get; } = new();
 
     public RowRecordLayout? Get(ulong iterator) => iterator == 0 ? null : Layouts.GetOrAdd(iterator, Create);
+
+    public SortRecordLayout? GetSort(ulong iterator) => iterator == 0 ? null : SortLayouts.GetOrAdd(iterator, CreateSort);
 
     private RowRecordLayout? Create(ulong iterator)
     {
@@ -25,6 +29,22 @@ public sealed class WorkfileLayouts(DatabaseSource database, Func<ulong, PlanNod
 
         return RowRecordLayout.Create(columns.Count, HashTableColumns.GetKeyCount(hashMatch), o => GetStructure(columns[o]));
     }
+
+    private SortRecordLayout? CreateSort(ulong iterator)
+    {
+        if (getPlanNode(iterator) is not { SortColumns.Count: > 0 } sort || sort.Children.FirstOrDefault() is not { } input)
+        {
+            return null;
+        }
+
+        var columns = input.OutputColumns;
+
+        return SortRecordLayout.Create(columns.Count, o => GetStructure(columns[o]), o => IsSortKey(sort, columns[o]));
+    }
+
+    private static bool IsSortKey(PlanNode sort, ColumnReference column)
+        => sort.SortColumns.Any(k => k.Column.TableKey == column.TableKey
+                                     && string.Equals(k.Column.Column, column.Column, StringComparison.OrdinalIgnoreCase));
 
     private ColumnStructure? GetStructure(ColumnReference column)
     {

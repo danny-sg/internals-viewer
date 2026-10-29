@@ -49,6 +49,10 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         Dock.DocumentClosed += OnDocumentClosed;
 
         Dock.LayoutChanged += OnDockLayoutChanged;
+
+        Dock.SelectionChanged += OnDockSelectionChanged;
+
+        Dock.DocumentActivated += OnDocumentActivated;
     }
 
     public event EventHandler<TracePoint>? PlayheadRequested;
@@ -65,6 +69,8 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
             field = value;
 
             PlayheadStack.Chart = value;
+
+            value?.ShowMemoryUpdates((ShownMemory?.Content as PlayheadMemoryViewModel)?.GetUpdates(), ShownMemory?.Title);
 
             foreach (var document in MemoryDocuments)
             {
@@ -84,6 +90,10 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
     private DocumentViewModel CallStackDocument { get; }
 
     private List<DocumentViewModel> MemoryDocuments { get; } = [];
+
+    private DocumentViewModel? LastActivatedMemory { get; set; }
+
+    private DocumentViewModel? ShownMemory { get; set; }
 
     public void ShowCallStack() => IsCallStackVisible = true;
 
@@ -128,6 +138,10 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
 
             (existing.Content as PlayheadMemoryViewModel)?.ShowAddress(address, length);
 
+            LastActivatedMemory = existing;
+
+            ShowActiveMemoryUpdates();
+
             return;
         }
 
@@ -171,6 +185,10 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         MemoryDocuments.Add(document);
 
         ShowPanel(document, neighbour);
+
+        LastActivatedMemory = document;
+
+        ShowActiveMemoryUpdates();
     }
 
     public void CloseMemory()
@@ -204,6 +222,10 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
 
         Dock.LayoutChanged -= OnDockLayoutChanged;
 
+        Dock.SelectionChanged -= OnDockSelectionChanged;
+
+        Dock.DocumentActivated -= OnDocumentActivated;
+
         CallStackDocument.DisposeView();
 
         foreach (var document in MemoryDocuments)
@@ -229,6 +251,8 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         {
             Dock.Close(CallStackDocument);
         }
+
+        ShowActiveMemoryUpdates();
     }
 
     private void ShowPanel(DocumentViewModel document, DocumentViewModel? neighbour)
@@ -279,7 +303,24 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
                                                 "Next Update",
                                                 (_, _) => memory.StepWrite(isForward: true)));
 
-    private void OnDockLayoutChanged(object? sender, EventArgs e) => IsCallStackVisible = Dock.Contains(CallStackDocument);
+    private void OnDockLayoutChanged(object? sender, EventArgs e)
+    {
+        IsCallStackVisible = Dock.Contains(CallStackDocument);
+
+        ShowActiveMemoryUpdates();
+    }
+
+    private void OnDockSelectionChanged(object? sender, EventArgs e) => ShowActiveMemoryUpdates();
+
+    private void OnDocumentActivated(object? sender, DocumentViewModel? document)
+    {
+        if (document is not null && MemoryDocuments.Contains(document))
+        {
+            LastActivatedMemory = document;
+        }
+
+        ShowActiveMemoryUpdates();
+    }
 
     private void OnDocumentClosed(object? sender, DocumentViewModel document)
     {
@@ -287,6 +328,24 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         {
             DisposeMemory(document);
         }
+
+        ShowActiveMemoryUpdates();
+    }
+
+    private void ShowActiveMemoryUpdates()
+    {
+        var shown = MemoryDocuments.Where(d => ReferenceEquals(Dock.FindGroup(d)?.SelectedDocument, d)).ToList();
+
+        var active = LastActivatedMemory is { } last && shown.Contains(last) ? last : shown.LastOrDefault();
+
+        if (ReferenceEquals(active, ShownMemory))
+        {
+            return;
+        }
+
+        ShownMemory = active;
+
+        Chart?.ShowMemoryUpdates((active?.Content as PlayheadMemoryViewModel)?.GetUpdates(), active?.Title);
     }
 
     private void OnMemoryPlayheadRequested(object? sender, TracePoint point) => PlayheadRequested?.Invoke(this, point);

@@ -19,12 +19,13 @@ public class GuideToolsTests
         Assert.StartsWith("- events:", lines[2]);
         Assert.StartsWith("- engine-symbols:", lines[3]);
         Assert.StartsWith("- full-trace-investigations:", lines[4]);
-        Assert.StartsWith("- page-viewer:", lines[5]);
-        Assert.StartsWith("- allocations:", lines[6]);
-        Assert.StartsWith("- columnstore:", lines[7]);
-        Assert.StartsWith("- index-seek:", lines[8]);
-        Assert.StartsWith("- index-scan:", lines[9]);
-        Assert.StartsWith("- source:", lines[10]);
+        Assert.StartsWith("- trace-timeline:", lines[5]);
+        Assert.StartsWith("- page-viewer:", lines[6]);
+        Assert.StartsWith("- allocations:", lines[7]);
+        Assert.StartsWith("- columnstore:", lines[8]);
+        Assert.StartsWith("- index-seek:", lines[9]);
+        Assert.StartsWith("- index-scan:", lines[10]);
+        Assert.StartsWith("- source:", lines[11]);
         Assert.Contains(lines, l => l.StartsWith("- deep-dive-full-trace: How Full Trace works"));
         Assert.Contains(lines, l => l.StartsWith("- deep-dive-query-tracing: How query tracing works"));
     }
@@ -34,6 +35,7 @@ public class GuideToolsTests
     [InlineData("events", "# Event types")]
     [InlineData("engine-symbols", "## Reading a name")]
     [InlineData("full-trace-investigations", "## The method")]
+    [InlineData("trace-timeline", "## Walking the user through")]
     [InlineData("source", "github.com/danny-sg/internals-viewer")]
     [InlineData("deep-dive-operator-matching", "# How operator matching works")]
     public void Each_Guide_Returns_Its_Text(string topic, string expected)

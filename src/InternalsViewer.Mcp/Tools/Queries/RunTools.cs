@@ -26,7 +26,10 @@ public sealed class RunTools(McpDocumentResolver documents)
     private McpDocumentResolver Documents { get; } = documents;
 
     [McpServerTool(Name = "query_summary", ReadOnly = true)]
-    [Description("What the run was: server, query, options, plans, Full Trace sizes, event counts by type and messages. Run this first")]
+    [Description("What the run was: server, query, options, plans, Full Trace sizes, event counts by type and messages. Run this " +
+                 "first, then explain top-down: the plan in execution order, what each operator did (query_operators, " +
+                 "query_reads, query_calltree with operator), then the calls and memory of a Full Trace. Explain how SQL Server " +
+                 "executed the query. Estimates, grant sizing and advice on the query or its indexes only when the user asks")]
     public async Task<string> Summary([Description(DocumentDescription)] string? document = null,
                                       CancellationToken cancellationToken = default)
     {

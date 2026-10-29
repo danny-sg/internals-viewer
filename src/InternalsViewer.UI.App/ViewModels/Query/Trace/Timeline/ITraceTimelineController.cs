@@ -1,3 +1,5 @@
+using System;
+using System.Threading.Tasks;
 using InternalsViewer.Mcp.Models.Context.Queries;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace;
@@ -23,4 +25,10 @@ public interface ITraceTimelineController
     void Zoom(bool toSelection);
 
     void PinPositions(TracePoint[] points);
+
+    Guid ShowIndicator(McpIndicatorRequest request);
+
+    Task<McpIndicatorResult?> WaitForIndicatorAsync(Guid id, TimeSpan timeout);
+
+    bool ClearIndicator();
 }

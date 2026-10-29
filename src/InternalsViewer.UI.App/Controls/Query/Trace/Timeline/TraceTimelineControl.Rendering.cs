@@ -429,7 +429,7 @@ public sealed partial class TraceTimelineControl
 
         DrawPaneOverlays(canvas, width);
 
-        DrawSearchMatches(canvas, width, height);
+        DrawHeaderMarks(canvas, width, height);
 
         if (ShowMemory)
         {
@@ -449,6 +449,8 @@ public sealed partial class TraceTimelineControl
         DrawHover(canvas);
 
         DrawMark(canvas, width, height);
+
+        DrawIndicator(canvas, width, height);
 
         if (_isSelecting)
         {

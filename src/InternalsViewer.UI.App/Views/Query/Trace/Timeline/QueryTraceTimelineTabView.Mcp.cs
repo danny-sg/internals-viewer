@@ -1,6 +1,8 @@
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 using InternalsViewer.Mcp.Models.Context.Queries;
+using InternalsViewer.Mcp.Models.Context.Queries.Enums;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Calls;
@@ -112,6 +114,7 @@ public sealed partial class QueryTraceTimelineTabView : ITraceTimelineController
             SelectedNode = TraceTimeline.GetSelectedCall()?.Node,
             SelectedCallIndex = TraceTimeline.GetSelectedCall()?.CallIndex ?? -1,
             PinnedPositions = TraceTimeline.PinnedPositionCount,
+            Indicator = TraceTimeline.Indicator is { } indicator ? GetIndicator(indicator, TraceTimeline.IndicatorStep) : null,
             Options = [.. TimelineOptions.Select(o => new McpOption(o.Key, o.Label, o.Group, o.Get(this), IsChoice: o.IsChoice))],
             Tracks =
             [
@@ -221,6 +224,50 @@ public sealed partial class QueryTraceTimelineTabView : ITraceTimelineController
     }
 
     public void PinPositions(TracePoint[] points) => TraceTimeline.PinPositions(points);
+
+    public Guid ShowIndicator(McpIndicatorRequest request)
+    {
+        var indicator = new TraceIndicator(Guid.NewGuid(), [.. request.Steps.Select(GetStep)]);
+
+        TraceTimeline.ShowIndicator(indicator);
+
+        return indicator.Id;
+    }
+
+    public async Task<McpIndicatorResult?> WaitForIndicatorAsync(Guid id, TimeSpan timeout)
+    {
+        var closed = TraceTimeline.GetIndicatorClose(id) ?? throw new InvalidOperationException($"No indicator {id}.");
+
+        if (await Task.WhenAny(closed, Task.Delay(timeout)) != closed)
+        {
+            return null;
+        }
+
+        var result = await closed;
+
+        return new McpIndicatorResult(GetClose(result.Reason), result.Step, result.Steps);
+    }
+
+    public bool ClearIndicator() => TraceTimeline.CloseIndicator(TraceIndicatorClose.Cleared);
+
+    private static TraceIndicatorStep GetStep(McpIndicatorStep step)
+        => new([.. step.Targets.Select(t => new TraceIndicatorTarget(t.Node, t.CallIndex, t.Label))], step.Comment, step.HasNext);
+
+    private static McpIndicator GetIndicator(TraceIndicator indicator, int step)
+    {
+        var shown = indicator.Steps[step];
+
+        return new McpIndicator(indicator.Id, shown.Comment, shown.Targets.Length, shown.HasNext, step, indicator.Steps.Length);
+    }
+
+    private static McpIndicatorClose GetClose(TraceIndicatorClose close) => close switch
+    {
+        TraceIndicatorClose.Next => McpIndicatorClose.Next,
+        TraceIndicatorClose.Stopped => McpIndicatorClose.Stopped,
+        TraceIndicatorClose.Replaced => McpIndicatorClose.Replaced,
+        TraceIndicatorClose.Cleared => McpIndicatorClose.Cleared,
+        _ => McpIndicatorClose.Gone
+    };
 
     private static string DescribeCondition(TraceCallCondition condition)
     {

@@ -5,6 +5,7 @@ using InternalsViewer.Mcp.Models.Context.Queries;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.Plans.Model;
 
 namespace InternalsViewer.Mcp.Tests.Documents;
@@ -34,6 +35,15 @@ internal sealed class RecordingNavigator : IQueryCommands
         => Record($"ShowMemory {block} 0x{address:X} {position}");
 
     public Task<McpFunctionSignature?> ResolveSignatureAsync(CallstackFrame frame) => Task.FromResult<McpFunctionSignature?>(null);
+
+    public TraceValueReferences? References { get; set; }
+
+    public Task<TraceValueReferences?> FindReferencesAsync(ulong value)
+    {
+        Calls.Add($"FindReferences 0x{value:X}");
+
+        return Task.FromResult(References);
+    }
 
     public Task SetOptionAsync(string key, bool enabled)
         => Record($"SetOption {key} {enabled}");

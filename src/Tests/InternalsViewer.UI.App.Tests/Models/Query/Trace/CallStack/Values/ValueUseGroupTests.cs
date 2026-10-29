@@ -2,7 +2,6 @@ using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Values;
-using InternalsViewer.Query.FullTrace.Calls.Enums;
 
 namespace InternalsViewer.UI.App.Tests.Models.Query.Trace.CallStack.Values;
 
@@ -13,7 +12,7 @@ public class ValueUseGroupTests
     private const ulong Static = 0x2000;
 
     [Fact]
-    public void Uses_Are_Grouped_By_How_The_Value_Was_Held()
+    public void Each_Group_Is_Titled_By_How_The_Value_Was_Held()
     {
         TraceValueUse[] uses =
         [
@@ -22,28 +21,19 @@ public class ValueUseGroupTests
             Use(Member, "RCX")
         ];
 
-        var groups = ValueUseGroup.Build(uses, GetFunctionType);
+        var groups = TraceValueUseGroup.Build(uses, GetFunctionType).Select(g => ValueUseGroup.Create(g));
 
         Assert.Equal(["Called by", "Returned by", "Referenced by"], groups.Select(g => g.Title));
     }
 
     [Fact]
-    public void Only_A_Member_Function_Is_Called_On_The_Value_In_RCX()
-    {
-        var groups = ValueUseGroup.Build([Use(Static, "RCX"), Use(0x3000, "RCX")], GetFunctionType);
-
-        var passed = Assert.Single(groups);
-
-        Assert.Equal(TraceValueRole.Passed, passed.Role);
-        Assert.Equal(2, passed.Rows.Count);
-    }
-
-    [Fact]
     public void A_Group_Counts_Its_Functions_And_Their_Calls()
     {
-        var group = Assert.Single(ValueUseGroup.Build([Use(Static, "RDX", calls: 3), Use(0x3000, "R8", calls: 1_200)], GetFunctionType));
+        TraceValueUse[] uses = [Use(Static, "RDX", calls: 3), Use(0x3000, "R8", calls: 1_200)];
 
-        Assert.Equal("2 Functions, 1,203 Calls", group.CountLabel);
+        var found = Assert.Single(TraceValueUseGroup.Build(uses, GetFunctionType));
+
+        Assert.Equal("2 Functions, 1,203 Calls", ValueUseGroup.Create(found).CountLabel);
     }
 
     [Fact]

@@ -82,6 +82,8 @@ public sealed partial class MemoryPageViewModel : ObservableObject
 
     private RowRecordLayout? Layout { get; set; }
 
+    private SortRecordLayout? SortLayout { get; set; }
+
     private WorkfilePage? Page { get; set; }
 
     private byte[]? Data { get; set; }
@@ -97,6 +99,8 @@ public sealed partial class MemoryPageViewModel : ObservableObject
         IsAvailable = owner.History.IsPage(owner.Block);
 
         Layout = IsAvailable ? owner.History.GetWorkfileLayout(owner.Block) : null;
+
+        SortLayout = IsAvailable ? owner.History.GetSortLayout(owner.Block) : null;
     }
 
     public void SetData(byte[]? data)
@@ -131,7 +135,9 @@ public sealed partial class MemoryPageViewModel : ObservableObject
 
         var layout = Layout;
 
-        Loader.Request(() => new LoadedPage(data, WorkfilePageReader.Read(data, layout)));
+        var sortLayout = SortLayout;
+
+        Loader.Request(() => new LoadedPage(data, WorkfilePageReader.Read(data, layout, sortLayout)));
     }
 
     public void Clear()
@@ -143,6 +149,8 @@ public sealed partial class MemoryPageViewModel : ObservableObject
         IsAvailable = false;
 
         Layout = null;
+
+        SortLayout = null;
 
         Page = null;
 

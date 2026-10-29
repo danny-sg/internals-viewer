@@ -80,6 +80,13 @@ public partial class QueryViewModel : ITraceTimelineCommands
 
     public async Task PinPositionsAsync(TracePoint[] points) => (await RequireTimelineAsync()).PinPositions(points);
 
+    public async Task<Guid> ShowIndicatorAsync(McpIndicatorRequest request) => (await RequireTimelineAsync()).ShowIndicator(request);
+
+    public async Task<McpIndicatorResult?> WaitForIndicatorAsync(Guid id, TimeSpan timeout)
+        => await (await RequireTimelineAsync()).WaitForIndicatorAsync(id, timeout);
+
+    public async Task<bool> ClearIndicatorAsync() => TraceTimeline is not null && (await RequireTimelineAsync()).ClearIndicator();
+
     private static bool IsFunction(CallStackNode node, string module, string function)
         => node.Frame is { } frame && string.Equals(frame.Module, module, StringComparison.OrdinalIgnoreCase) && node.Symbol == function;
 

@@ -18,7 +18,9 @@ public sealed class TabTools(McpDocumentResolver documents)
 
     [McpServerTool(Name = "list_tabs", ReadOnly = true, Idempotent = true)]
     [Description("The tabs open in Internals Viewer: their ids, area (Query, Allocations, Page, Index or Columnstore), database " +
-                 "and the active one. A Query tab also shows whether a run and a Full Trace are loaded")]
+                 "and the active one. A Query tab also shows whether a run and a Full Trace are loaded. Internals Viewer is a " +
+                 "learning tool for how SQL Server executes a query, so explain the mechanism rather than tune the query. " +
+                 "Call this first, then query_summary")]
     public async Task<string> ListTabs(CancellationToken cancellationToken)
     {
         var all = await Documents.GetTabsAsync(cancellationToken);

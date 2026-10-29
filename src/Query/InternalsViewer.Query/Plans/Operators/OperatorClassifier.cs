@@ -202,74 +202,9 @@ public static class OperatorClassifier
         return OperatorCategory.Transformation;
     }
 
-    public static PlanNode? GetHashBuildChild(PlanNode hash)
-    {
-        if (hash.Children.Count < 2)
-        {
-            return null;
-        }
+    public static PlanNode? GetHashBuildChild(PlanNode hash) => hash.Children.Count < 2 ? null : hash.Children[0];
 
-        if (hash.HashInfo is { BuildKeys.Count: > 0 })
-        {
-            var buildTables = hash.HashInfo
-                                  .BuildKeys
-                                  .Select(k => k.TableKey)
-                                  .Where(t => !string.IsNullOrEmpty(t))
-                                  .ToHashSet();
-
-            var match = FindBestMatchingChild(hash.Children, buildTables);
-
-            if (match != null)
-            {
-                return match;
-            }
-        }
-
-        // Fallback to the table with the lowest estimated rows (the build side is usually the smaller)
-        var byEstimate = hash.Children
-                             .Where(c => c.EstimatedRows > 0)
-                             .OrderBy(c => c.EstimatedRows)
-                             .FirstOrDefault();
-
-        return byEstimate ?? hash.Children.First();
-    }
-
-    public static PlanNode? GetHashProbeChild(PlanNode hash)
-    {
-        if (hash.Children.Count < 2)
-        {
-            return null;
-        }
-
-        var build = GetHashBuildChild(hash);
-
-        return hash.Children.FirstOrDefault(c => c != build);
-    }
-
-    private static PlanNode? FindBestMatchingChild(List<PlanNode> children, HashSet<string> targetTables)
-    {
-        PlanNode? best = null;
-
-        var bestScore = 0;
-
-        foreach (var child in children)
-        {
-            if (child.Outputs.Count == 0)
-            {
-                continue;
-            }
-
-            var score = child.Outputs.Count(targetTables.Contains);
-
-            if (score > bestScore)
-            {
-                bestScore = score;
-                best = child;
-            }
-        }
-
-        return bestScore > 0 ? best : null;
-    }
+    public static PlanNode? GetHashProbeChild(PlanNode hash) => hash.Children.Count < 2 ? null : hash.Children[1];
 
     private static bool Contains(string s, string v) =>
         s?.IndexOf(v, StringComparison.OrdinalIgnoreCase) >= 0;

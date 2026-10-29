@@ -187,6 +187,15 @@ public sealed class FixedVarIndexRecordLoader(ILogger<FixedVarIndexRecordLoader>
         return record;
     }
 
+    public FixedVarIndexRecord LoadLeaf(Page page, ushort offset, int slot, List<IndexColumnStructure> columns)
+    {
+        var record = LoadStructure(page, offset, slot);
+
+        LoadColumnValues(record, page, columns, NodeType.Leaf);
+
+        return record;
+    }
+
     private static void LoadVariableLengthStructure(FixedVarIndexRecord record, Page page)
     {
         var startIndex = record.HasNullBitmap ? 2 + record.NullBitmapSize : 0;

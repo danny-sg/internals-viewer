@@ -239,18 +239,9 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
     public bool IsPage(int block)
         => Store.Blocks[block].Size == PageData.Size && GetMapLabel(Store.Blocks[block]) == WorkfilePageReader.ClassName;
 
-    public RowRecordLayout? GetWorkfileLayout(int block)
-    {
-        foreach (var write in Store.GetWrites(block))
-        {
-            if (Store.GetIterator(write) is not 0 and var iterator)
-            {
-                return Workfiles?.Get(iterator);
-            }
-        }
+    public RowRecordLayout? GetWorkfileLayout(int block) => GetPageIterator(block) is { } iterator ? Workfiles?.Get(iterator) : null;
 
-        return null;
-    }
+    public SortRecordLayout? GetSortLayout(int block) => GetPageIterator(block) is { } iterator ? Workfiles?.GetSort(iterator) : null;
 
     public SqlDbType? GetVectorType(ulong batch, int vector) => VectorTypes.TryGetValue((batch, vector), out var type) ? type : null;
 
@@ -629,6 +620,19 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
             : null;
 
     private string? GetMapLabel(MemoryHistoryBlock block) => Trace?.MemoryMap.GetLabel(block.Address, block.FromPosition, block.ToPosition);
+
+    private ulong? GetPageIterator(int block)
+    {
+        foreach (var write in Store.GetWrites(block))
+        {
+            if (Store.GetIterator(write) is not 0 and var iterator)
+            {
+                return iterator;
+            }
+        }
+
+        return null;
+    }
 
     private static string GetWriterLabel(CallStackNode? writer) => writer?.Symbol ?? UnknownWriter;
 

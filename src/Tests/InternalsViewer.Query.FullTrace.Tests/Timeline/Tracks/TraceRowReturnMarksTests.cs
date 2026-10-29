@@ -49,6 +49,16 @@ public class TraceRowReturnMarksTests
         ParentNodeId = 0
     };
 
+    private static readonly ExecutionOperatorEvent BlockingInput = new()
+    {
+        Name = "Index Scan",
+        OperatorDescription = "Index Scan",
+        Instances = [ScanIterator],
+        PlanNodeIdentifier = new PlanNodeIdentifier(1, 1),
+        ParentNodeId = 0,
+        IsBlockingInput = true
+    };
+
     private static readonly CallNode[] Nodes =
     [
         new(-1, 0, Helper, JoinIterator, 2),
@@ -88,39 +98,29 @@ public class TraceRowReturnMarksTests
     }
 
     [Fact]
-    public void Rows_A_Hash_Match_Reads_While_Building_Are_Returned()
+    public void Rows_A_Blocking_Operator_Reads_Before_Returning_Are_Returned()
     {
         var marks = Build([(10, 100, RowStatus), (110, 120, RowStatus), (130, 140, EndStatus)],
                           [(12, 15, RowStatus), (20, 25, RowStatus), (30, 35, EndStatus)],
-                          buildFrame: BuildFrame("CQScanHash", "ConsumeBuild"));
+                          bottom: BlockingInput);
 
         Assert.Equal((2, 0),
-                     (marks.GetCount(Scan, Thread, RowReturnType.Returned), marks.GetCount(Scan, Thread, RowReturnType.Skipped)));
+                     (marks.GetCount(BlockingInput, Thread, RowReturnType.Returned),
+                      marks.GetCount(BlockingInput, Thread, RowReturnType.Skipped)));
     }
 
     [Fact]
-    public void Batches_A_Hash_Match_Reads_While_Building_Are_Returned()
+    public void Batches_A_Blocking_Operator_Reads_Inside_Its_Open_Are_Returned()
     {
         var marks = Build([(50, 60, RowStatus), (70, 80, EndStatus)],
                           [(12, 15, RowStatus), (20, 25, RowStatus), (30, 35, EndStatus)],
                           childMethod: "BpGetNextBatch",
                           joinOpens: [(10, 40)],
-                          buildFrame: BuildFrame("CBpQScanHashJoin", "ProcessBuildSide"));
+                          bottom: BlockingInput);
 
         Assert.Equal((2, 0),
-                     (marks.GetCount(Scan, Thread, RowReturnType.Returned), marks.GetCount(Scan, Thread, RowReturnType.Skipped)));
-    }
-
-    [Fact]
-    public void Batches_A_Hash_Aggregate_Reads_Are_Returned()
-    {
-        var marks = Build([(10, 100, RowStatus), (110, 120, EndStatus)],
-                          [(12, 15, RowStatus), (20, 25, RowStatus), (30, 35, EndStatus)],
-                          childMethod: "BpGetNextBatch",
-                          buildFrame: BuildFrame("CBpQScanHashAggNew", "ProcessInput"));
-
-        Assert.Equal((2, 0),
-                     (marks.GetCount(Scan, Thread, RowReturnType.Returned), marks.GetCount(Scan, Thread, RowReturnType.Skipped)));
+                     (marks.GetCount(BlockingInput, Thread, RowReturnType.Returned),
+                      marks.GetCount(BlockingInput, Thread, RowReturnType.Skipped)));
     }
 
     [Fact]
@@ -207,7 +207,7 @@ public class TraceRowReturnMarksTests
                                              ExecutionOperatorEvent? top = null,
                                              string childMethod = "GetRowOrReQualifyHelper",
                                              (ulong Start, ulong End)[]? joinOpens = null,
-                                             CallstackFrame? buildFrame = null)
+                                             ExecutionOperatorEvent? bottom = null)
     {
         CallSpan[] spans = [.. joinCalls.Select((c, i) => Span(0, c.Start, c.End, (uint)i)),
                             .. scanCalls.Select((c, i) => Span(1, c.Start, c.End, (uint)i))];
@@ -222,9 +222,7 @@ public class TraceRowReturnMarksTests
 
         var join = tree.AddCall(tree.Root, Frame(JoinIterator), 1);
 
-        var reader = buildFrame is null ? join : tree.AddCall(join, buildFrame, 1);
-
-        var scan = tree.AddCall(reader, Frame(ScanIterator, childMethod), 1);
+        var scan = tree.AddCall(join, Frame(ScanIterator, childMethod), 1);
 
         CallStackNode[] nodes = [join, scan];
 
@@ -254,7 +252,7 @@ public class TraceRowReturnMarksTests
         TraceOperatorLifetime[] lifetimes =
         [
             new(Thread, top ?? Join, 0, [Whole()], MemoryInUseCurve.Empty, timeline.Scale),
-            new(Thread, Scan, 1, [Whole()], MemoryInUseCurve.Empty, timeline.Scale)
+            new(Thread, bottom ?? Scan, 1, [Whole()], MemoryInUseCurve.Empty, timeline.Scale)
         ];
 
         return TraceRowReturnMarks.Build(timeline, calls, new TraceOperatorLifetimes(lifetimes));
@@ -272,19 +270,6 @@ public class TraceRowReturnMarksTests
         Resolved = new ResolvedCallstackFrame
         {
             ClassName = "CQScanNew",
-            MethodName = method,
-            SymbolCategory = SymbolCategory.Unknown
-        }
-    };
-
-    private static CallstackFrame BuildFrame(string className, string method) => new()
-    {
-        Module = "sqlmin",
-        Rva = 0x20,
-        Address = 0x1200,
-        Resolved = new ResolvedCallstackFrame
-        {
-            ClassName = className,
             MethodName = method,
             SymbolCategory = SymbolCategory.Unknown
         }

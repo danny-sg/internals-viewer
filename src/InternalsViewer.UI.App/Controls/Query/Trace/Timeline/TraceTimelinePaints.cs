@@ -100,6 +100,39 @@ internal sealed class TraceTimelinePaints : IDisposable
 
     public SKPaint SearchMatch { get; } = new() { Style = SKPaintStyle.Fill, Color = new SKColor(255, 214, 0, 191) };
 
+    public SKPaint IndicatorFill { get; } = new()
+    {
+        Style = SKPaintStyle.Fill,
+        Color = new SKColor(255, 255, 255),
+        ImageFilter = CreateIndicatorShadow(false)
+    };
+
+    public SKPaint IndicatorEdge { get; } = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 1f, Color = GetControlStroke(false) };
+
+    public SKPaint IndicatorCross { get; } = new()
+    {
+        Style = SKPaintStyle.Stroke,
+        StrokeWidth = 1.5f,
+        IsAntialias = true,
+        Color = new SKColor(0x30, 0x30, 0x30)
+    };
+
+    public SKPaint IndicatorArrow { get; } = new()
+    {
+        Style = SKPaintStyle.Stroke,
+        StrokeWidth = 3.5f,
+        IsAntialias = true,
+        Color = GetGold(false)
+    };
+
+    public SKPaint IndicatorHead { get; } = new() { Style = SKPaintStyle.Fill, IsAntialias = true, Color = GetGold(false) };
+
+    public SKPaint IndicatorButton { get; } = new() { Style = SKPaintStyle.Fill, Color = new SKColor(0, 103, 192) };
+
+    public SKPaint IndicatorArrowShadow { get; } = new() { ImageFilter = CreateArrowShadow(false) };
+
+    public SKPaint IndicatorButtonText { get; } = new() { IsAntialias = true, Color = SKColors.White };
+
     public SKFont Font { get; } = new(SKTypeface.Default, 10f);
 
     public SKFont HeaderFont { get; } = new(SKTypeface.Default, 11f);
@@ -118,6 +151,8 @@ internal sealed class TraceTimelinePaints : IDisposable
     public SKFont OperatorFont { get; } = new(SKTypeface.Default, 12f);
 
     public SKFont OperatorBoldFont { get; } = new(BoldTypeface, 12f);
+
+    public SKFont IndicatorFont { get; } = new(SKTypeface.Default, 12f);
 
     private static SKTypeface BoldTypeface { get; } = SKTypeface.FromFamilyName(SKTypeface.Default.FamilyName, SKFontStyle.Bold);
 
@@ -142,6 +177,17 @@ internal sealed class TraceTimelinePaints : IDisposable
         GrantEdge.Color = Accent.WithAlpha(140);
         Mark.Color = isDark ? new SKColor(0x00, 0xE6, 0x76) : new SKColor(0x00, 0xC8, 0x53);
         Marks.Color = Mark.Color.WithAlpha(MarksAlpha);
+        IndicatorFill.Color = isDark ? new SKColor(43, 43, 43) : new SKColor(255, 255, 255);
+        IndicatorFill.ImageFilter?.Dispose();
+        IndicatorFill.ImageFilter = CreateIndicatorShadow(isDark);
+        IndicatorEdge.Color = GetControlStroke(isDark);
+        IndicatorCross.Color = Label.Color;
+        IndicatorArrow.Color = GetGold(isDark);
+        IndicatorHead.Color = GetGold(isDark);
+        IndicatorButton.Color = Accent;
+        IndicatorArrowShadow.ImageFilter?.Dispose();
+        IndicatorArrowShadow.ImageFilter = CreateArrowShadow(isDark);
+        IndicatorButtonText.Color = isDark ? SKColors.Black : SKColors.White;
     }
 
     public void Dispose()
@@ -173,10 +219,31 @@ internal sealed class TraceTimelinePaints : IDisposable
         DottedCallLink.Dispose();
         TickHighlight.Dispose();
         SearchMatch.Dispose();
+        IndicatorFill.ImageFilter?.Dispose();
+        IndicatorFill.Dispose();
+        IndicatorEdge.Dispose();
+        IndicatorCross.Dispose();
+        IndicatorFont.Dispose();
+        IndicatorArrow.Dispose();
+        IndicatorHead.Dispose();
+        IndicatorButton.Dispose();
+        IndicatorArrowShadow.ImageFilter?.Dispose();
+        IndicatorArrowShadow.Dispose();
+        IndicatorButtonText.Dispose();
         HeaderBoldFont.Dispose();
         Font.Dispose();
         TiltedFont.Dispose();
         OperatorFont.Dispose();
         OperatorBoldFont.Dispose();
     }
+
+    private static SKColor GetControlStroke(bool isDark) => isDark ? new SKColor(255, 255, 255, 0x12) : new SKColor(0, 0, 0, 0x0F);
+
+    private static SKColor GetGold(bool isDark) => isDark ? new SKColor(255, 196, 0) : new SKColor(230, 160, 0);
+
+    private static SKImageFilter CreateArrowShadow(bool isDark)
+        => SKImageFilter.CreateDropShadow(0, 2, 3, 3, isDark ? new SKColor(0, 0, 0, 0xA0) : new SKColor(0, 0, 0, 0x50));
+
+    private static SKImageFilter CreateIndicatorShadow(bool isDark)
+        => SKImageFilter.CreateDropShadow(0, 4, 8, 8, isDark ? new SKColor(0, 0, 0, 0x80) : new SKColor(0, 0, 0, 0x38));
 }

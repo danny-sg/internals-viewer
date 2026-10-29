@@ -4,6 +4,7 @@ using InternalsViewer.Mcp.Documents;
 using InternalsViewer.Mcp.Formatting;
 using InternalsViewer.Mcp.Interfaces.Commands;
 using InternalsViewer.Mcp.Models.Context.Queries;
+using InternalsViewer.Mcp.Models.Context.Queries.Enums;
 using InternalsViewer.Mcp.Tabs;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace;
@@ -27,6 +28,17 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
     private const int MaximumListedMatches = 8;
 
     private const int MaximumPins = 2000;
+
+    private const int MaximumIndicatorTargets = 20;
+
+    private const int MaximumWaitSeconds = 50;
+
+    private const int MaximumWalkthroughSteps = 20;
+
+    private const string CommentDescription = "What to tell the user, shown beside the arrows. It is Markdown: put function, " +
+                                              "class and field names in backticks, for example `CQScanHash::GetRow`, and use " +
+                                              "**bold** sparingly";
+
 
     private const string ConditionsDescription = "Conditions on the calls: 'arg 2 = 0x1', 'return != 0', 'calledby Function', " +
                                                  "'calleddirectlyby Function' or 'operator Name'. Arguments are numbered from 1 " +
@@ -65,6 +77,16 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
         if (timeline.PinnedPositions > 0)
         {
             builder.AppendLine($"pinned: {Format.Number(timeline.PinnedPositions)} positions, cleared with trace_pin");
+        }
+
+        if (timeline.Indicator is { } indicator)
+        {
+            var hasNext = indicator.HasNext ? " and Next" : string.Empty;
+
+            var step = indicator.Steps > 1 ? $" at step {indicator.Step + 1} of {indicator.Steps}" : string.Empty;
+
+            builder.AppendLine($"indicator: {indicator.Id}{step} with {indicator.Targets} arrows{hasNext}, " +
+                               "cleared with trace_indicate_clear");
         }
 
         foreach (var group in timeline.Options.GroupBy(o => o.Group))
@@ -339,13 +361,7 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
 
         var matches = search.Matches;
 
-        var reference = scope.Query.Timeline?.SelectedNode is { } selected
-                        ? candidates.Where(c => c.Node == selected && c.Index == scope.Query.Timeline.SelectedCallIndex)
-                                    .Select(c => (TracePosition?)c.Call.FromPosition)
-                                    .FirstOrDefault()
-                        : null;
-
-        var chosen = Choose(candidates, which, n, reference);
+        var chosen = Choose(candidates, which, n, GetReference(scope.Query, candidates));
 
         await scope.RunAsync<ITraceTimelineCommands>(c => c.SelectCallAsync(chosen.Node, chosen.Index, zoom), cancellationToken);
 
@@ -391,7 +407,7 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
 
         if (!string.IsNullOrWhiteSpace(function))
         {
-            var search = await SearchCallsAsync(scope, function, conditions);
+            var search = await SearchCallsAsync(scope, function, conditions, new CallPick(MaximumPins + 1));
 
             if (DescribeMissing(function, search) is { } missing)
             {
@@ -400,7 +416,7 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
 
             if (search.Calls.Count > MaximumPins)
             {
-                throw new McpException($"{Format.Number(search.Calls.Count)} calls match. Narrow them with conditions to " +
+                throw new McpException($"More than {Format.Number(MaximumPins)} calls match. Narrow them with conditions to " +
                                        $"{Format.Number(MaximumPins)} or fewer.");
             }
 
@@ -437,7 +453,268 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
                $"{Format.Position(last)}.";
     }
 
-    private async Task<CallSearch> SearchCallsAsync(McpDocumentScope scope, string function, IReadOnlyList<string>? conditions)
+    [McpServerTool(Name = "trace_indicate")]
+    [Description("Point arrows at calls on the Trace Timeline's flame chart with a comment, to show the user one thing, for " +
+                 "example 'here is where the build side is read'. Each target is a function (fuzzy search) and which of its " +
+                 "calls, so one indicator can point at several places. The user can drag the comment out of the way and " +
+                 "closes it with its close button, and a new indicator replaces the open one. With next the comment has a " +
+                 "Next button. For several steps use trace_walkthrough, which needs no call between steps. wait waits that " +
+                 "many seconds for the user and says how it closed, otherwise call trace_indicate_wait. Call " +
+                 "trace_indicate_clear when the conversation moves on")]
+    public async Task<string> Indicate([Description("The calls to point at")] List<IndicatorTarget> targets,
+                                       [Description(CommentDescription)] string comment,
+                                       [Description("Show a Next button")] bool next = false,
+                                       [Description("Seconds to wait for the user to close it, up to 50, or 0 to return at once")]
+                                       int wait = 0,
+                                       [Description(TabDescription)] string? tab = null,
+                                       CancellationToken cancellationToken = default)
+    {
+        var scope = await Documents.ResolveAsync(tab, cancellationToken);
+
+        scope.RequireTrace();
+
+        var (step, described) = await ResolveStepAsync(scope, targets, comment, next);
+
+        var id = await ShowIndicatorAsync(scope, new McpIndicatorRequest([step]), cancellationToken);
+
+        var shown = $"Indicator {id} points at {described}.";
+
+        return wait > 0 ? $"{shown}{Environment.NewLine}{await WaitForIndicatorAsync(scope, id, wait, cancellationToken)}" : shown;
+    }
+
+    [McpServerTool(Name = "trace_walkthrough")]
+    [Description("Walk the user through several places on the Trace Timeline's flame chart in one go. Each step points arrows at " +
+                 "calls with a comment, as trace_indicate does. The app shows the first step and its Next button moves to the " +
+                 "next step at once, with no call needed in between. The last step has Finish, and the close button ends the " +
+                 "walkthrough early. Plan every step " +
+                 "first, in the order of your explanation. It waits up to wait seconds and says how far the user got. Call " +
+                 "trace_indicate_wait with the id while it is still open")]
+    public async Task<string> Walkthrough([Description("The steps in order")] List<WalkthroughStep> steps,
+                                          [Description("Seconds to wait for the user, up to 50, or 0 to return at once")]
+                                          int wait = 30,
+                                          [Description(TabDescription)] string? tab = null,
+                                          CancellationToken cancellationToken = default)
+    {
+        if (steps.Count == 0)
+        {
+            throw new McpException("Give at least one step.");
+        }
+
+        if (steps.Count > MaximumWalkthroughSteps)
+        {
+            throw new McpException($"Give {MaximumWalkthroughSteps} steps or fewer.");
+        }
+
+        var scope = await Documents.ResolveAsync(tab, cancellationToken);
+
+        scope.RequireTrace();
+
+        var resolved = new List<McpIndicatorStep>(steps.Count);
+
+        var builder = new StringBuilder();
+
+        for (var index = 0; index < steps.Count; index++)
+        {
+            var (step, described) = await ResolveStepAsync(scope, steps[index].Targets, steps[index].Comment, index < steps.Count - 1);
+
+            resolved.Add(step);
+
+            builder.AppendLine($"  {index + 1}. {described}");
+        }
+
+        var id = await ShowIndicatorAsync(scope, new McpIndicatorRequest(resolved), cancellationToken);
+
+        var shown = $"Walkthrough {id} with {steps.Count} steps:{Environment.NewLine}{builder}";
+
+        return wait > 0 ? $"{shown}{await WaitForIndicatorAsync(scope, id, wait, cancellationToken)}" : shown;
+    }
+
+    [McpServerTool(Name = "trace_indicate_wait", ReadOnly = true)]
+    [Description("Wait for the user to close an indicator or a walkthrough, up to 50 seconds, and say how it closed and at which " +
+                 "step: Next, closed by the user, replaced, cleared or gone. Call it again while it is still open")]
+    public async Task<string> IndicateWait([Description("The id trace_indicate or trace_walkthrough returned")] string id,
+                                           [Description("Seconds to wait, up to 50")] int seconds = 30,
+                                           [Description(TabDescription)] string? tab = null,
+                                           CancellationToken cancellationToken = default)
+    {
+        if (!Guid.TryParse(id, out var indicator))
+        {
+            throw new McpException($"'{id}' is not an indicator id. Use the id trace_indicate or trace_walkthrough returned.");
+        }
+
+        var scope = await Documents.ResolveAsync(tab, cancellationToken);
+
+        return await WaitForIndicatorAsync(scope, indicator, seconds, cancellationToken);
+    }
+
+    [McpServerTool(Name = "trace_indicate_clear")]
+    [Description("Remove the open indicator or walkthrough from the Trace Timeline, for when the conversation moves on to " +
+                 "something else")]
+    public async Task<string> IndicateClear([Description(TabDescription)] string? tab = null,
+                                            CancellationToken cancellationToken = default)
+    {
+        var scope = await Documents.ResolveAsync(tab, cancellationToken);
+
+        var isCleared = false;
+
+        await scope.RunAsync<ITraceTimelineCommands>(async c => isCleared = await c.ClearIndicatorAsync(), cancellationToken);
+
+        return isCleared ? "Cleared the indicator." : "No indicator was open.";
+    }
+
+    private static async Task<Guid> ShowIndicatorAsync(McpDocumentScope scope,
+                                                       McpIndicatorRequest request,
+                                                       CancellationToken cancellationToken)
+    {
+        var id = Guid.Empty;
+
+        await scope.RunAsync<ITraceTimelineCommands>(async c => id = await c.ShowIndicatorAsync(request), cancellationToken);
+
+        return id;
+    }
+
+    private static async Task<string> WaitForIndicatorAsync(McpDocumentScope scope,
+                                                            Guid id,
+                                                            int seconds,
+                                                            CancellationToken cancellationToken)
+    {
+        var timeout = TimeSpan.FromSeconds(Math.Clamp(seconds, 1, MaximumWaitSeconds));
+
+        McpIndicatorResult? result = null;
+
+        await scope.RunAsync<ITraceTimelineCommands>(async c => result = await c.WaitForIndicatorAsync(id, timeout), cancellationToken);
+
+        if (result is not null)
+        {
+            return DescribeResult(result);
+        }
+
+        var open = (await scope.ReadContextAsync(cancellationToken)).Timeline?.Indicator;
+
+        var at = open is { Steps: > 1 } shown && shown.Id == id ? $" at step {shown.Step + 1} of {shown.Steps}" : string.Empty;
+
+        return $"Still open{at} after {timeout.TotalSeconds:N0} seconds. Call trace_indicate_wait with id {id} to keep waiting.";
+    }
+
+    private static string DescribeResult(McpIndicatorResult result)
+    {
+        var isWalkthrough = result.Steps > 1;
+
+        var isLast = result.Step >= result.Steps - 1;
+
+        return result.Reason switch
+        {
+            McpIndicatorClose.Next when isWalkthrough => $"The user went through all {result.Steps} steps.",
+            McpIndicatorClose.Next => "The user pressed Next. Go on to the next step.",
+            McpIndicatorClose.Stopped when isWalkthrough && isLast =>
+                $"The user reached the last of the {result.Steps} steps and closed it. The walkthrough is done.",
+            McpIndicatorClose.Stopped when isWalkthrough =>
+                $"The user closed the walkthrough at step {result.Step + 1} of {result.Steps}. Stop here unless they ask for more.",
+            McpIndicatorClose.Stopped => "The user closed it. Stop the walkthrough here unless they ask for more.",
+            McpIndicatorClose.Replaced => "A newer indicator replaced it.",
+            McpIndicatorClose.Cleared => "It was cleared.",
+            _ => "The Trace Timeline closed or the run changed, so it is gone."
+        };
+    }
+
+    private async Task<(McpIndicatorStep Step, string Described)> ResolveStepAsync(McpDocumentScope scope,
+                                                                                   List<IndicatorTarget> targets,
+                                                                                   string comment,
+                                                                                   bool hasNext)
+    {
+        if (targets.Count == 0)
+        {
+            throw new McpException("Give at least one target for each step.");
+        }
+
+        if (string.IsNullOrWhiteSpace(comment))
+        {
+            throw new McpException("Give a comment for the user at each step.");
+        }
+
+        var reference = GetReferencePosition(scope);
+
+        var resolved = new List<McpIndicatorTarget>();
+
+        var described = new List<string>();
+
+        foreach (var target in targets)
+        {
+            var search = await SearchCallsAsync(scope, target.Function, target.Conditions, GetPick(target, reference));
+
+            if (DescribeMissing(target.Function, search) is { } missing)
+            {
+                throw new McpException(missing);
+            }
+
+            var candidates = search.Calls;
+
+            List<(CallStackNode Node, int Index, TraceArgumentCall Call)> chosen = IsAll(target)
+                ? candidates
+                : [Choose(candidates, target.Which, target.N, reference)];
+
+            if (resolved.Count + chosen.Count > MaximumIndicatorTargets)
+            {
+                throw new McpException($"That is more than {MaximumIndicatorTargets} arrows. Narrow the targets with n or conditions.");
+            }
+
+            foreach (var (node, index, _) in chosen)
+            {
+                resolved.Add(new McpIndicatorTarget(node, index, target.Label));
+
+                var label = target.Label is { Length: > 0 } text ? $" ({text})" : string.Empty;
+
+                described.Add($"{scope.Context.GetFunctionName(node)} #{index}{label}");
+            }
+        }
+
+        return (new McpIndicatorStep(resolved, comment, hasNext), string.Join(", ", described));
+    }
+
+    private static bool IsAll(IndicatorTarget target)
+        => target.N is null && string.Equals(target.Which.Trim(), "all", StringComparison.OrdinalIgnoreCase);
+
+    private static CallPick GetPick(IndicatorTarget target, TracePosition? reference)
+    {
+        if (target.N is { } nth)
+        {
+            return new CallPick(Math.Max(nth, 1));
+        }
+
+        return target.Which.Trim().ToLowerInvariant() switch
+        {
+            "last" => new CallPick(1, IsFromEnd: true),
+            "next" when reference is { } after => new CallPick(1, After: after),
+            "previous" when reference is { } before => new CallPick(1, IsFromEnd: true, Before: before),
+            "previous" => new CallPick(1, IsFromEnd: true),
+            "all" => new CallPick(MaximumIndicatorTargets + 1),
+            _ => CallPick.First
+        };
+    }
+
+    private static TracePosition? GetReferencePosition(McpDocumentScope scope)
+    {
+        if (scope.Query.Timeline is { SelectedNode.Frame: { } frame, SelectedCallIndex: >= 0 and var index }
+            && scope.Trace?.CallStore.GetCallList(frame.Address, frame.InstanceAddress) is { } calls
+            && index < calls.Count)
+        {
+            return calls.GetFromPosition(index);
+        }
+
+        return scope.Selection.Playhead;
+    }
+
+    private static TracePosition? GetReference(QueryContext query, List<(CallStackNode Node, int Index, TraceArgumentCall Call)> candidates)
+        => query.Timeline?.SelectedNode is { } selected
+            ? candidates.Where(c => c.Node == selected && c.Index == query.Timeline.SelectedCallIndex)
+                        .Select(c => (TracePosition?)c.Call.FromPosition)
+                        .FirstOrDefault()
+            : null;
+
+    private async Task<CallSearch> SearchCallsAsync(McpDocumentScope scope,
+                                                    string function,
+                                                    IReadOnlyList<string>? conditions,
+                                                    CallPick? pick = null)
     {
         var trace = scope.RequireTrace();
 
@@ -449,25 +726,33 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
 
         IReadOnlyList<TraceCallCondition> parsed = [];
 
+        var hasCalls = false;
+
         foreach (var tier in found.GroupBy(m => m.Score))
         {
             var tierMembers = tier.SelectMany(m => m.Members).ToList();
 
             parsed = await ParseConditionsAsync(scope, tierMembers[0], conditions);
 
-            candidates = CollectCalls(trace, tierMembers, parsed);
+            var present = CollectCalls(trace, tierMembers, parsed, pick is null ? CallPick.All : CallPick.First);
 
-            if (candidates.Count > 0)
+            if (present.Count == 0)
             {
-                matches = [.. tier.Where(m => m.Members.Any(member => candidates.Any(c => c.Node == member)))];
-
-                break;
+                continue;
             }
+
+            candidates = pick is { } wanted && wanted != CallPick.First ? CollectCalls(trace, tierMembers, parsed, wanted) : present;
+
+            matches = [.. tier.Where(m => m.Members.Any(member => candidates.Any(c => c.Node == member)))];
+
+            hasCalls = true;
+
+            break;
         }
 
         candidates.Sort((left, right) => left.Call.FromPosition.CompareTo(right.Call.FromPosition));
 
-        return new CallSearch(found, matches, candidates, parsed);
+        return new CallSearch(found, matches, candidates, parsed, hasCalls);
     }
 
     private static string? DescribeMissing(string function, CallSearch search)
@@ -477,7 +762,7 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
             return $"No function in the call graph matches '{function}'. Try trace_find_functions with fewer words.";
         }
 
-        if (search.Calls.Count > 0)
+        if (search.HasCalls)
         {
             return null;
         }
@@ -490,9 +775,12 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
     private static List<(CallStackNode Node, int Index, TraceArgumentCall Call)> CollectCalls(
         TraceResult trace,
         List<CallStackNode> members,
-        IReadOnlyList<TraceCallCondition> parsed)
+        IReadOnlyList<TraceCallCondition> parsed,
+        CallPick pick)
     {
         var calls = new List<(CallStackNode Node, int Index, TraceArgumentCall Call)>();
+
+        var step = pick.IsFromEnd ? -1 : 1;
 
         foreach (var node in members)
         {
@@ -501,7 +789,9 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
                 continue;
             }
 
-            for (var index = 0; index < list.Count; index++)
+            var found = 0;
+
+            for (var index = GetStart(list, pick); index >= 0 && index < list.Count && found < pick.Limit; index += step)
             {
                 var call = list[index];
 
@@ -513,11 +803,53 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
                 if (TraceCallCondition.MatchesAll(parsed, call) && parsed.Where(p => !p.IsCallCondition).All(p => Matches(p, node)))
                 {
                     calls.Add((node, index, call));
+
+                    found++;
                 }
             }
         }
 
         return calls;
+    }
+
+    private static int GetStart(TraceCallList list, CallPick pick)
+    {
+        if (pick.After is { } after)
+        {
+            return GetFirstIndex(list, after, isInclusive: false);
+        }
+
+        if (pick.Before is { } before)
+        {
+            return GetFirstIndex(list, before, isInclusive: true) - 1;
+        }
+
+        return pick.IsFromEnd ? list.Count - 1 : 0;
+    }
+
+    private static int GetFirstIndex(TraceCallList list, TracePosition position, bool isInclusive)
+    {
+        var low = 0;
+
+        var high = list.Count;
+
+        while (low < high)
+        {
+            var middle = low + (high - low) / 2;
+
+            var from = list.GetFromPosition(middle);
+
+            if (isInclusive ? from >= position : from > position)
+            {
+                high = middle;
+            }
+            else
+            {
+                low = middle + 1;
+            }
+        }
+
+        return low;
     }
 
     private static (CallStackNode Node, int Index, TraceArgumentCall Call) Choose(
@@ -620,8 +952,27 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
             ? $"Playhead at {Format.Position(position)}."
             : $"Selected {DescribeSelection(context.Timeline)}.";
 
+    public sealed record IndicatorTarget(
+        [property: Description("Function words, e.g. 'GetRow'")] string Function,
+        [property: Description("first, last, next, previous or all; ignored when n is given")] string Which = "first",
+        [property: Description("The nth matching call, counted from 1")] int? N = null,
+        [property: Description(ConditionsDescription)] List<string>? Conditions = null,
+        [property: Description("A short label beside this arrow")] string? Label = null);
+
+    public sealed record WalkthroughStep(
+        [property: Description("The calls to point at in this step")] List<IndicatorTarget> Targets,
+        [property: Description(CommentDescription)] string Comment);
+
     private sealed record CallSearch(IReadOnlyList<FunctionMatch> Found,
                                      List<FunctionMatch> Matches,
                                      List<(CallStackNode Node, int Index, TraceArgumentCall Call)> Calls,
-                                     IReadOnlyList<TraceCallCondition> Conditions);
+                                     IReadOnlyList<TraceCallCondition> Conditions,
+                                     bool HasCalls);
+
+    private readonly record struct CallPick(int Limit, bool IsFromEnd = false, TracePosition? After = null, TracePosition? Before = null)
+    {
+        public static CallPick All { get; } = new(int.MaxValue);
+
+        public static CallPick First { get; } = new(1);
+    }
 }

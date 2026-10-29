@@ -6,6 +6,8 @@ using InternalsViewer.Mcp.Models.Context.Queries;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
+using InternalsViewer.Query.FullTrace.Calls.Enums;
+using ModelContextProtocol;
 using ModelContextProtocol.Server;
 
 namespace InternalsViewer.Mcp.Tools.Queries;
@@ -99,6 +101,80 @@ public sealed class CallLogTools(McpDocumentResolver documents)
 
         return builder.ToString();
     }
+
+    [McpServerTool(Name = "query_references", ReadOnly = true)]
+    [Description("Full Trace references to a value, usually an object address, as the Call Tree's Find shows them: the value's " +
+                 "type and every function it was called on, passed to or returned by, with the calls of each and the first and " +
+                 "last of them. query_calls with function and value then lists the calls of one function")]
+    public async Task<string> References([Description("The value, usually a memory address, decimal or 0x hex")] string value,
+                                         [Description("Functions to list in each group")] int limit = 20,
+                                         [Description(DocumentDescription)] string? document = null,
+                                         CancellationToken cancellationToken = default)
+    {
+        var wanted = Parse.Integer(value);
+
+        var scope = await Documents.ResolveAsync(document, cancellationToken);
+
+        scope.RequireOperatorFrames();
+
+        scope.RequireTrace();
+
+        TraceValueReferences? references = null;
+
+        await scope.RunAsync(async c => references = await c.FindReferencesAsync(wanted), cancellationToken);
+
+        if (references is null)
+        {
+            throw new McpException($"Document {scope.Query.TabId} has no Full Trace call log loaded.");
+        }
+
+        var builder = new StringBuilder();
+
+        builder.AppendLine(references.Type is { } type ? $"{Format.Hex(wanted)}: {type}" : Format.Hex(wanted));
+
+        if (references.Groups.Count == 0)
+        {
+            builder.AppendLine("No logged call was passed this value or returned it.");
+
+            return builder.ToString();
+        }
+
+        foreach (var group in references.Groups)
+        {
+            builder.AppendLine();
+
+            var functions = group.Uses.Count == 1 ? "function" : "functions";
+
+            var calls = group.Calls == 1 ? "call" : "calls";
+
+            builder.AppendLine($"{GetGroupTitle(group.Role)}: {Format.Number(group.Uses.Count)} {functions}, " +
+                               $"{Format.Number(group.Calls)} {calls}");
+
+            var table = new TextTable("Function", "Location", "Calls", "First", "Last");
+
+            foreach (var use in group.Uses.Take(limit))
+            {
+                table.Add(scope.Context.GetFunctionName(use.FunctionAddress, use.InstanceAddress),
+                          use.Location,
+                          Format.Number(use.Calls),
+                          $"#{use.First.CallIndex} {Format.Position(use.First.Position)}",
+                          $"#{use.Last.CallIndex} {Format.Position(use.Last.Position)}");
+            }
+
+            table.Write(builder);
+
+            builder.AppendIfNotEmpty(Format.More(group.Uses.Count, limit, "raise limit"));
+        }
+
+        return builder.ToString();
+    }
+
+    private static string GetGroupTitle(TraceValueRole role) => role switch
+    {
+        TraceValueRole.CalledOn => "Called by",
+        TraceValueRole.Returned => "Returned by",
+        _ => "Referenced by"
+    };
 
     private static async Task<McpFunctionSignature?> ResolveSignatureAsync(McpDocumentScope scope,
                                                                           DocumentContext context,

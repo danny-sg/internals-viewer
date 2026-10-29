@@ -128,8 +128,8 @@ move the app to the things it is explaining. It is off until you turn on Enable 
   already opened yourself: the databases you connected to and the queries you ran or imported. Within a
   database you already connected to, it can read other pages, indexes and allocations and open them in a
   tab, as you could.
-- It changes only what the app shows: the selection, scrolling, zoom, the open tabs and the Query tab's menu
-  toggles. Record Full Trace can only be turned on once you have accepted its warning and licence yourself,
+- It changes only what the app shows: the selection, scrolling, zoom, the open tabs, the Query tab's menu
+  toggles, and the marks and arrows it draws on the Trace Timeline. Record Full Trace can only be turned on once you have accepted its warning and licence yourself,
   and it applies to the next query you run. It cannot change anything on the Settings page.
 - It listens on the loopback address only, so other machines cannot reach it, and every request has to
   carry an access token. The app generates the token, stores it encrypted with DPAPI for the current user

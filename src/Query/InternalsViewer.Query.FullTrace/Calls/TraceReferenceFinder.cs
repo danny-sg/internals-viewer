@@ -69,7 +69,9 @@ public sealed class TraceReferenceFinder(TraceCallStore store,
 
         foreach (var use in uses)
         {
-            if (GetFrame(use) is not { } frame || await signatures.GetLayoutAsync(frame) is not { } layout || layout.IsDeclared(use.Location))
+            if (GetFrame(use) is not { } frame
+                || await signatures.GetLayoutAsync(frame) is not { } layout
+                || layout.IsDeclared(use.Location))
             {
                 declared.Add(use);
             }

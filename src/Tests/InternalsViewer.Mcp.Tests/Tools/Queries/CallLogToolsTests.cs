@@ -1,5 +1,8 @@
 using System.Text.RegularExpressions;
+using InternalsViewer.Mcp.Tests.Documents;
 using InternalsViewer.Mcp.Tools.Queries;
+using InternalsViewer.Query.FullTrace.Calls;
+using InternalsViewer.Query.FullTrace.Calls.Enums;
 using ModelContextProtocol;
 
 namespace InternalsViewer.Mcp.Tests.Tools.Queries;
@@ -98,11 +101,57 @@ public class CallLogToolsTests
         await Assert.ThrowsAsync<McpException>(() => Tools(withTrace: false).Calls());
     }
 
+    [Fact]
+    public async Task References_Lists_Each_Group_With_Its_Functions_And_First_And_Last_Calls()
+    {
+        var use = new TraceValueUse(0x30,
+                                    TestRuns.Scan,
+                                    "RCX",
+                                    2,
+                                    new TraceValueCall(0, TestRuns.At(1), null),
+                                    new TraceValueCall(1, TestRuns.At(2), null));
+
+        var (tools, navigator) = ToolsWithReferences(new TraceValueReferences("CQScanRowsetNew Iterator",
+                                                                              null,
+                                                                              [new TraceValueUseGroup(TraceValueRole.CalledOn, [use])]));
+
+        var lines = Lines(await tools.References("0x9000"));
+
+        Assert.Equal(["FindReferences 0x9000"], navigator.Calls);
+        Assert.Equal("0x9000: CQScanRowsetNew Iterator", lines[0]);
+        Assert.Equal("Called by: 1 function, 2 calls", lines[1]);
+        Assert.Equal([GetRow, "RCX", "2", "#0 1:0", "#1 2:0"], Cells(lines[4]));
+    }
+
+    [Fact]
+    public async Task References_Says_So_When_No_Call_Held_The_Value()
+    {
+        var (tools, _) = ToolsWithReferences(new TraceValueReferences(null, null, []));
+
+        var text = await tools.References("160");
+
+        Assert.Contains("0xA0", text);
+        Assert.Contains("No logged call was passed this value or returned it.", text);
+    }
+
+    [Fact]
+    public async Task References_Need_A_Full_Trace()
+        => await Assert.ThrowsAsync<McpException>(() => Tools(withTrace: false).References("0x9000"));
+
     private static CallLogTools Tools(bool withTrace = true)
     {
         var (resolver, _) = TestRuns.CreateResolver(TestRuns.Create(withTrace));
 
         return new CallLogTools(resolver);
+    }
+
+    private static (CallLogTools Tools, RecordingNavigator Navigator) ToolsWithReferences(TraceValueReferences references)
+    {
+        var (resolver, document) = TestRuns.CreateResolver(TestRuns.Create());
+
+        document.Recorded.References = references;
+
+        return (new CallLogTools(resolver), document.Recorded);
     }
 
     private static string[] Lines(string text)

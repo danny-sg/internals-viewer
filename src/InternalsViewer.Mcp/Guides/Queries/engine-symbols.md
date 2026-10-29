@@ -89,6 +89,28 @@ Infrastructure, System) are hidden by default there. When counting "the query's 
 - `memcpy`, `memset`, `__security_check_cookie` are the C runtime moving data and checking stack cookies, and their
   counts say nothing about the query beyond volume.
 
+## Routine work in every run
+
+These appear in every Full Trace, often near the top of the call counts, and say nothing about the query beyond its volume.
+Treat them as scenery unless the question is about them:
+
+- **Yields and abort checks**: `YieldAndCheckForAbort`, `Worker::OSYieldNoAbort`, `SOS_Task::PreWait` and `PostWait`,
+  `SOS_Scheduler::Suspend`, `SuspendNonPreemptive` and `SwitchContext`. A worker yields its scheduler at regular intervals
+  and checks whether the task was cancelled. What sits under a yield is the scheduler's own housekeeping while the task is
+  switched out: `CheckForAbortedTasks`, `IOQueue::CheckForIOCompletion`, `SOS_IOResourceManager::ProcessPendingIOs`,
+  `SelectWorkerByDeficit`, `ComputeUtilizationAndDeficit`, `ComputeCPUUtilization`, `ComputeDeficit`, `TaskTransition`. A
+  large instruction share here is normal.
+- **Timing**: `RtlQueryPerformanceCounter` and `QueryPerformanceCounterStub`, called by the scheduler and by the actual-plan
+  profiling wrappers twice per row.
+- **Stack and safety checks**: `SOS_Task::GetStackAvailableBytes`, `__chkstk`, `__security_check_cookie`.
+- **Memory objects**: `OperatorNew`, `operator new` and `delete`, `CMemObj::Alloc` and `Free`,
+  `PerCPUDataBase<MemObjStatPerCpu>::GetObjectData`.
+- **Feature and governance switches**: `CFeatureSwitches*::F*Enabled`, `IsXDBInstance`, `RecoveryUnit::IsLogicalRevertNeeded`.
+- **Data movement**: `memcpy`, `memcpy_s`, `memset`.
+- **Returning rows**: `CNetConnection::DwGetOutputSpaceLeft`, `PbGetOutputCurPtr`, `IncOutputPktLen` and
+  `CTdsConn::FNextRowWontBlockImpl`, called for every row written to the client.
+- **Metadata caches**: `CColMetaData::*`, `CMEDCat*::*`, `CBulkImp::GetOpenRowsetNotifications`.
+
 ## Reading a path
 
 Innermost first, a stack during a seek fetching a row reads: `BPool::Get` < `IndexPageManager::GetNextPage` <

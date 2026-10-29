@@ -186,37 +186,48 @@ public sealed partial class TraceTimelineControl
         return index >= 0 && index < starts.Length ? starts[index] : null;
     }
 
-    private void DrawSearchMatches(SKCanvas canvas, int width, int height)
+    private void DrawHeaderMarks(SKCanvas canvas, int width, int height)
     {
-        if (_searchTerms.Length == 0)
-        {
-            return;
-        }
-
         var scale = PixelsPerUnit(width);
 
-        if (ShowsFlameChart && GetCallMatchBars() is { } lanes)
+        var calls = _searchTerms.Length > 0 && ShowsFlameChart ? GetCallMatchBars() : null;
+
+        var updates = ShowsFlameChart ? GetMemoryUpdateMarks() : null;
+
+        if ((calls is not null || updates is not null) && _visible is { } timeline)
         {
             var bottom = height - BandHeight;
+
+            var markHeight = calls is not null && updates is not null ? LaneHeaderHeight / 2 : LaneHeaderHeight;
 
             canvas.Save();
 
             canvas.ClipRect(new SKRect(0, ContentTop, width, bottom));
 
-            for (var lane = 0; lane < lanes.Length && lane < _laneTops.Length; lane++)
+            for (var lane = 0; lane < timeline.Threads.Count && lane < _laneTops.Length; lane++)
             {
                 var top = ContentTop + _laneTops[lane] - (float)_scrollY;
 
-                if (lanes[lane] is { } bars && top + LaneHeaderHeight >= ContentTop && top <= bottom)
+                if (top + LaneHeaderHeight < ContentTop || top > bottom)
                 {
-                    DrawSearchMatches(canvas, bars, top, LaneHeaderHeight, scale);
+                    continue;
+                }
+
+                if (calls is not null && lane < calls.Length && calls[lane] is { } bars)
+                {
+                    DrawSearchMatches(canvas, bars, top, markHeight, scale);
+                }
+
+                if (updates is not null)
+                {
+                    DrawMemoryUpdates(canvas, updates, calls is null ? top : top + markHeight, markHeight, scale);
                 }
             }
 
             canvas.Restore();
         }
 
-        if (ShowsMemory && GetVisibleMemoryMatches() is { Count: > 0 } visible)
+        if (_searchTerms.Length > 0 && ShowsMemory && GetVisibleMemoryMatches() is { Count: > 0 } visible)
         {
             _memory.DrawSearchMatches(canvas, visible, _paints.SearchMatch, SearchMatchThickness, MinimumSearchMatchLength);
         }
@@ -255,12 +266,76 @@ public sealed partial class TraceTimelineControl
 
         if (ShowsFlameChart && GetLaneHeaderAt(position) is { } lane)
         {
-            return ZoomToCallMatches((float)position.X, lane);
+            var laneTop = ContentTop + _laneTops[lane] - _scrollY;
+
+            var isSearchBand = GetMemoryUpdateMarks() is null || position.Y < laneTop + LaneHeaderHeight / 2;
+
+            return isSearchBand && ZoomToCallMatches((float)position.X, lane);
         }
 
         if (ShowsMemory && _memory.Contains(position) && position.X < SearchMatchThickness + SearchMatchHitSlop)
         {
             return ZoomToMemoryMatches((float)position.Y);
+        }
+
+        return false;
+    }
+
+    private string? GetHeaderMarkToolTip(Point position)
+    {
+        if (!ShowsFlameChart || GetLaneHeaderAt(position) is not { } lane)
+        {
+            return null;
+        }
+
+        var calls = _searchTerms.Length > 0 ? GetCallMatchBars() : null;
+
+        var updates = GetMemoryUpdateMarks();
+
+        var laneTop = ContentTop + _laneTops[lane] - _scrollY;
+
+        var isSearchBand = calls is not null && (updates is null || position.Y < laneTop + LaneHeaderHeight / 2);
+
+        var x = (float)position.X;
+
+        var scale = PixelsPerUnit((int)_overlay.ActualWidth);
+
+        if (isSearchBand)
+        {
+            return lane < calls!.Length && calls[lane] is { } bars && IsOverSearchBar(bars, x, scale) ? "Search Results" : null;
+        }
+
+        return updates is not null && IsOverMemoryUpdate(updates, x, scale) ? $"{_memoryUpdatesName} Updates" : null;
+    }
+
+    private string? GetMemorySearchToolTip(Point position)
+    {
+        if (_searchTerms.Length == 0 || position.X >= SearchMatchThickness + SearchMatchHitSlop)
+        {
+            return null;
+        }
+
+        var blocks = _memory.GetSearchMatchesAt((float)position.Y, GetVisibleMemoryMatches(), MinimumSearchMatchLength);
+
+        return blocks.Count > 0 ? "Search Results" : null;
+    }
+
+    private bool IsOverSearchBar(SearchBars bars, float x, double scale)
+    {
+        var from = _viewStart + (x - HalfPixel - MinimumSearchMatchLength) / scale;
+
+        var to = _viewStart + (x + HalfPixel) / scale;
+
+        for (var index = SortedSearch.FirstAtOrAfter(bars.Ends, from); index < bars.Starts.Length && bars.Starts[index] <= to; index++)
+        {
+            var left = (float)((bars.Starts[index] - _viewStart) * scale);
+
+            var right = Math.Max((float)((bars.Ends[index] - _viewStart) * scale), left + MinimumSearchMatchLength);
+
+            if (left <= x + HalfPixel && right >= x - HalfPixel)
+            {
+                return true;
+            }
         }
 
         return false;

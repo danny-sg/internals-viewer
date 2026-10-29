@@ -56,8 +56,9 @@ Positions are hex `Sequence:Steps` everywhere, and instructions are the only mea
    through the run, which is how a counter, a pointer or a flag is understood: who sets it, when, to what.
 6. **Weigh it.** `timeline --node <entry node id>` totals the instructions under that call tree node, and
    `timeline --top 20 --node <id>` ranks its calls.
-7. **Tie it to the plan and the output.** `plan --detail` for predicates, seek keys, hash keys, estimates against
-   actual rows and the grant; `query_output` and `query_plannodes` for which iterator produced which output column.
+7. **Tie it to the plan and the output.** `plan --detail` for predicates, seek keys, hash keys and the grant, with
+   the estimates as context for reading the plan rather than a subject; `query_output` and `query_plannodes` for which
+   iterator produced which output column.
 
 ## Worked example: a row mode Hash Match
 

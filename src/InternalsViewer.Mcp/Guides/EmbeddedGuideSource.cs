@@ -15,6 +15,7 @@ public sealed class EmbeddedGuideSource : IMcpGuideSource
         ("events", "What each event type and field means"),
         ("engine-symbols", "How to read SQL Server engine function names and call paths"),
         ("full-trace-investigations", "The method for explaining an operator, a sort, a hash join or a batch from a Full Trace"),
+        ("trace-timeline", "How to drive the Trace Timeline: panes, tracks, finding calls, pins, indicators and walkthroughs"),
         ("page-viewer", "How to read and drive the Page viewer: opening, selecting slots, markers and pseudo slots, views"),
         ("allocations", "How to read and drive the Allocations tab: objects, page owners, extents, overlays"),
         ("columnstore", "How to read and drive the Columnstore tab: row groups, segments, dictionaries and their bytes"),
