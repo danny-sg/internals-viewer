@@ -47,6 +47,8 @@ public partial class SettingsViewModel(SettingsService settingsService,
     private const string TraceTimelineShowMemoryKey = "FlameChartShowMemory";
     private const string TraceTimelineMemoryModeKey = "FlameChartMemoryMode";
     private const string TraceTimelineMemorySizeToFitKey = "FlameChartMemorySizeToFit";
+    private const string TraceTimelineShowBufferLatchesKey = "TraceTimelineShowBufferLatches";
+    private const string TraceTimelineShowBuffersKey = "TraceTimelineShowBuffers";
 
     private const string TraceTimelineHiddenTickTracksKey = "TraceTimelineHiddenTickTracks";
     private const string DecodeValuesKey = "DecodeValues";
@@ -115,6 +117,12 @@ public partial class SettingsViewModel(SettingsService settingsService,
 
     [ObservableProperty]
     private bool _traceTimelineMemorySizeToFit = true;
+
+    [ObservableProperty]
+    private bool _traceTimelineShowBufferLatches = true;
+
+    [ObservableProperty]
+    private bool _traceTimelineShowBuffers;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(TraceTimelineHiddenTickTrackSet))]
@@ -244,6 +252,10 @@ public partial class SettingsViewModel(SettingsService settingsService,
                                ?? TraceTimelineMemoryMode.Allocated;
 
         TraceTimelineMemorySizeToFit = await SettingsService.ReadSettingAsync<bool?>(TraceTimelineMemorySizeToFitKey) ?? true;
+
+        TraceTimelineShowBufferLatches = await SettingsService.ReadSettingAsync<bool?>(TraceTimelineShowBufferLatchesKey) ?? true;
+
+        TraceTimelineShowBuffers = await SettingsService.ReadSettingAsync<bool?>(TraceTimelineShowBuffersKey) ?? false;
 
         TraceTimelineHiddenTickTracks = await SettingsService.ReadSettingAsync<string>(TraceTimelineHiddenTickTracksKey) ?? string.Empty;
 
@@ -423,6 +435,16 @@ public partial class SettingsViewModel(SettingsService settingsService,
     partial void OnTraceTimelineMemorySizeToFitChanged(bool value)
     {
         _ = SettingsService.SaveSettingAsync(TraceTimelineMemorySizeToFitKey, value);
+    }
+
+    partial void OnTraceTimelineShowBufferLatchesChanged(bool value)
+    {
+        _ = SettingsService.SaveSettingAsync(TraceTimelineShowBufferLatchesKey, value);
+    }
+
+    partial void OnTraceTimelineShowBuffersChanged(bool value)
+    {
+        _ = SettingsService.SaveSettingAsync(TraceTimelineShowBuffersKey, value);
     }
 
     partial void OnDecodeValuesChanged(bool value)

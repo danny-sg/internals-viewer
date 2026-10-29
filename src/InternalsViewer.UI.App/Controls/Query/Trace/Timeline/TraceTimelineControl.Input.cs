@@ -192,6 +192,13 @@ public sealed partial class TraceTimelineControl
             return;
         }
 
+        if (GetBufferLatchAt(position) is { } latch)
+        {
+            OpenBufferLatch(latch);
+
+            return;
+        }
+
         if (ClickSearchMatch(position))
         {
             return;
@@ -385,11 +392,13 @@ public sealed partial class TraceTimelineControl
 
         var memoryHover = found is null && ShowsMemory ? _memory.GetHit(position) : null;
 
+        var latchHover = found is null ? GetBufferLatchAt(position) : null;
+
         UpdateCursor(IsOnSplitter(position) || IsOnMemorySplitter(position) || GetPaneResizeHandle(position) is not null
                          ? InputSystemCursorShape.SizeNorthSouth
                          : found is not null
                              ? InputSystemCursorShape.SizeAll
-                             : operatorsHover.Tick is not null || memoryHover is not null
+                             : operatorsHover.Tick is not null || memoryHover is not null || latchHover is not null
                                  ? InputSystemCursorShape.Hand
                                  : InputSystemCursorShape.Arrow);
 
@@ -423,6 +432,10 @@ public sealed partial class TraceTimelineControl
             {
                 HideToolTip();
             }
+        }
+        else if (latchHover is { } latch)
+        {
+            OpenToolTip(GetBufferLatchToolTip(latch), position);
         }
         else if (GetStripMarkToolTip(position) is { } markText)
         {
@@ -803,6 +816,10 @@ public sealed partial class TraceTimelineControl
         flyout.Items.Add(MenuItems.Toggle("Size to Fit", MemorySizeToFit, isChecked => MemorySizeToFit = isChecked));
 
         flyout.Items.Add(MenuItems.Toggle("Call Highlight Hover", HighlightMemoryWriters, isChecked => HighlightMemoryWriters = isChecked));
+
+        flyout.Items.Add(LatchingItem());
+
+        flyout.Items.Add(BuffersItem());
 
         flyout.Items.Add(new MenuFlyoutSeparator());
 

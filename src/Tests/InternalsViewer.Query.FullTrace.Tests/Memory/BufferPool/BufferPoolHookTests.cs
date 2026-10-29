@@ -1,6 +1,7 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
+using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
@@ -81,6 +82,20 @@ public class BufferPoolHookTests
         hook.OnReturn(Return(Buffer, 30), replay);
 
         Assert.Null(hook.Build().GetReference(NextFrame, At(25)));
+    }
+
+    [Fact]
+    public void A_Fetched_Buffer_Is_A_Block_From_Its_First_Fetch()
+    {
+        var hook = Create();
+
+        hook.OnReturn(Return(Buffer, 9), Replay());
+
+        hook.OnEntry(new TraceHookCall { FunctionAddress = Get, Id = 1, Thread = 7, Position = At(3) }, new FakeTraceReplay());
+
+        hook.OnReturn(new TraceHookCall { FunctionAddress = Get, Id = 1, Thread = 7, ReturnValue = Buffer, Position = At(5) }, Replay());
+
+        Assert.Equal([new MemoryBlock(Buffer, BufferDescriptor.Size, 7, At(3), TracePosition.Unknown)], hook.GetBuffers());
     }
 
     [Fact]

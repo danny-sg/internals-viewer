@@ -8,4 +8,5 @@ public sealed record TraceMemoryBlock(int Block,
                                       int Size,
                                       TracePoint From,
                                       TracePoint? To,
-                                      TraceMemoryWrites Writes);
+                                      TraceMemoryWrites Writes,
+                                      bool IsBuffer = false);

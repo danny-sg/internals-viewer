@@ -15,6 +15,14 @@ internal sealed class TraceTimelinePaints : IDisposable
 
     public SKColor Dim { get; private set; } = new(0, 0, 0, 150);
 
+    public SKColor LatchShared { get; } = new(66, 165, 245);
+
+    public SKColor LatchExclusive { get; } = new(239, 83, 80);
+
+    public SKColor LatchWaiting { get; } = new(255, 167, 38);
+
+    public SKColor LatchReleased { get; } = new(128, 128, 128);
+
     public SKPaint Fill { get; } = new() { Style = SKPaintStyle.Fill };
 
     public SKPaint Text { get; } = new() { IsAntialias = true };

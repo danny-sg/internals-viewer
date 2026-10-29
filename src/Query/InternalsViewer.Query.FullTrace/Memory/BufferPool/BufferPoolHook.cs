@@ -6,16 +6,27 @@ using InternalsViewer.Query.FullTrace.Hooks.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Memory.BufferPool;
 
+/// <summary>
+/// Hook to capture BUF buffer pool structure
+/// </summary>
+/// <remarks>
+/// The buffer pool contains 8 KB frames that are slots for pages to be loaded into. It manages the frames with an array of BUF structures,
+/// one for each frame.
+///
+/// BUFs are the link between a database + page address (e.g. 1:200) and the memory address for the frame that is currently holding that
+/// page.
+///
+/// Query execution uses the BUF to get the address of the frame holding a page at that point in time, and may also hold addresses inside
+/// the frame directly, such as the address of a record. The latch in the BUF keeps the page in its frame and protects its bytes while the
+/// page is being read or changed.
+///
+/// Page contents are not captured in the trace, but every page access goes through the page’s BUF. Capturing the BUF gives the frame
+/// address, page address and database, because all three are fields of the BUF.
+///
+/// 
+/// </remarks>
 internal sealed class BufferPoolHook(BufferPoolFunctions functions) : ITraceHook
 {
-    private const ulong FrameOffset = 0x00;
-
-    private const ulong DatabaseIdOffset = 0x2C;
-
-    private const ulong PageIdOffset = 0x70;
-
-    private const ulong FileIdOffset = 0x74;
-
     private const ulong HeaderPageIdOffset = 0x20;
 
     private const ulong HeaderFileIdOffset = 0x24;
@@ -41,6 +52,8 @@ internal sealed class BufferPoolHook(BufferPoolFunctions functions) : ITraceHook
 
     private Dictionary<ulong, ushort> FileDatabases { get; } = [];
 
+    private Dictionary<ulong, (uint Thread, TracePosition Position)> Buffers { get; } = [];
+
     public TraceBufferPool Build()
     {
         foreach (var read in Reads)
@@ -53,6 +66,9 @@ internal sealed class BufferPoolHook(BufferPoolFunctions functions) : ITraceHook
 
         return Pages.Build();
     }
+
+    public MemoryBlock[] GetBuffers()
+        => [.. Buffers.Select(b => new MemoryBlock(b.Key, BufferDescriptor.Size, b.Value.Thread, b.Value.Position, TracePosition.Unknown))];
 
     public void OnEntry(in TraceHookCall call, ITraceReplay replay)
         => Starts[(call.Thread, call.Id)] = IsPostRead(call) && call.Arguments.Length > PageNumberArgument
@@ -101,12 +117,12 @@ internal sealed class BufferPoolHook(BufferPoolFunctions functions) : ITraceHook
         var buffer = call.ReturnValue;
 
         if (buffer == 0
-            || !replay.TryRead(buffer + FrameOffset, out ulong frame)
+            || !replay.TryRead(buffer + BufferDescriptor.FrameOffset, out ulong frame)
             || frame == 0
             || frame % PageData.Size != 0
-            || !replay.TryRead(buffer + PageIdOffset, out int pageId)
-            || !replay.TryRead(buffer + FileIdOffset, out short fileId)
-            || !replay.TryRead(buffer + DatabaseIdOffset, out ushort databaseId))
+            || !replay.TryRead(buffer + BufferDescriptor.PageIdOffset, out int pageId)
+            || !replay.TryRead(buffer + BufferDescriptor.FileIdOffset, out short fileId)
+            || !replay.TryRead(buffer + BufferDescriptor.DatabaseIdOffset, out ushort databaseId))
         {
             return;
         }
@@ -119,6 +135,11 @@ internal sealed class BufferPoolHook(BufferPoolFunctions functions) : ITraceHook
         }
 
         Pages.Add(new TraceBufferPage(frame, page, databaseId, start, buffer));
+
+        if (!Buffers.TryGetValue(buffer, out var first) || start < first.Position)
+        {
+            Buffers[buffer] = (call.Thread, start);
+        }
     }
 
     private bool IsPostRead(in TraceHookCall call) => PostReads.Contains(call.FunctionAddress);

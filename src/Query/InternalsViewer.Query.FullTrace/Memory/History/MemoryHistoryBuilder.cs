@@ -22,7 +22,9 @@ internal static class MemoryHistoryBuilder
 
     private const ulong PageSize = 1ul << PageShift;
 
-    public static MemoryHistoryAllocation[] GetAllocations(TraceCallStore calls, IEnumerable<MemoryFunction> functions)
+    public static MemoryHistoryAllocation[] GetAllocations(TraceCallStore calls,
+                                                           IEnumerable<MemoryFunction> functions,
+                                                           MemoryBlock[]? buffers = null)
     {
         var events = new List<(TracePosition Position, ulong Pointer, ulong Bytes, uint Thread, bool IsClerkPage)>();
 
@@ -92,6 +94,8 @@ internal static class MemoryHistoryBuilder
                                                      new MemoryBlock(pointer, o.Bytes, o.Thread, o.Start, TracePosition.Unknown),
                                                      o.IsClerkPage)));
         }
+
+        allocations.AddRange((buffers ?? []).Select(b => new MemoryHistoryAllocation(b, IsClerkPage: false, IsBuffer: true)));
 
         return [.. allocations.OrderBy(a => a.Block.Start).ThenBy(a => a.Block.Pointer)];
     }
@@ -176,7 +180,8 @@ internal static class MemoryHistoryBuilder
                                         allocations[index].IsClerkPage,
                                         allocation.Thread,
                                         allocation.Start,
-                                        allocation.FreedAt));
+                                        allocation.FreedAt,
+                                        allocations[index].IsBuffer));
         }
 
         var lookup = new BlockIndex(blocks);
@@ -190,6 +195,7 @@ internal static class MemoryHistoryBuilder
         foreach (var block in blocks)
         {
             block.IsBufferPool = !block.IsIterator
+                                 && !block.IsBuffer
                                  && stacks.IsBufferPool(stacks.GetCallNodeIndex(block.Thread, block.FromPosition), block.IsClerkPage);
         }
 
@@ -346,7 +352,8 @@ internal static class MemoryHistoryBuilder
                                       bool isClerkPage,
                                       uint thread,
                                       TracePosition fromPosition,
-                                      TracePosition toPosition)
+                                      TracePosition toPosition,
+                                      bool isBuffer = false)
     {
         public ulong Iterator { get; } = iterator;
 
@@ -359,6 +366,8 @@ internal static class MemoryHistoryBuilder
         public bool IsInline { get; } = isInline;
 
         public bool IsClerkPage { get; } = isClerkPage;
+
+        public bool IsBuffer { get; } = isBuffer;
 
         public uint Thread { get; } = thread;
 

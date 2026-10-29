@@ -505,6 +505,22 @@ public class MemoryHistoryBuilderTests
     }
 
     [Fact]
+    public void A_Buffer_Descriptor_Keeps_Its_Writes_Although_It_Belongs_To_The_Buffer_Pool()
+    {
+        var watched = new WatchResult([new WatchChunk([ChunkHit.From(Hit(2, Owned, 1), 0)], [1])], 1);
+
+        var (store, counts) = MemoryHistoryBuilder.Build([new MemoryHistoryAllocation(Block(Owned, 0xC0, from: 1),
+                                                                                      IsClerkPage: true,
+                                                                                      IsBuffer: true)],
+                                                         [0],
+                                                         new Dictionary<ulong, TracePosition>(),
+                                                         watched,
+                                                         null);
+
+        Assert.Equal((1, 0, 1), (counts.Recorded, counts.BufferPool, store.Blocks[0].WriteCount));
+    }
+
+    [Fact]
     public void The_Watch_Keeps_Only_Writes_That_Touch_A_Live_Allocation()
     {
         var keep = MemoryHistoryBuilder.GetWatchFilter([new MemoryHistoryAllocation(Block(Owned, 0x10, from: 2, to: 6), false)]);

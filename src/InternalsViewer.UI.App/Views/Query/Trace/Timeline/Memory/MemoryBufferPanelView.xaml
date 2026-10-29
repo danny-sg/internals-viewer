@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Views.Query.Trace.Timeline.Memory.MemoryBufferPanelView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:models="using:InternalsViewer.UI.App.Models.Query.Trace.Timeline">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled"
+                  Padding="12,8,12,8">
+        <ItemsControl ItemsSource="{x:Bind ViewModel.Buffer.Fields, Mode=OneWay}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="models:MemoryBufferField">
+                    <Grid ColumnSpacing="12" Padding="0,3,0,3">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="100"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0"
+                                   Text="{x:Bind Name}"
+                                   FontSize="12"
+                                   VerticalAlignment="Center"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+
+                        <TextBlock Grid.Column="1"
+                                   Text="{x:Bind Value}"
+                                   FontSize="12"
+                                   VerticalAlignment="Center"
+                                   FontFamily="{StaticResource MonospaceFontFamily}"
+                                   IsTextSelectionEnabled="True"
+                                   Visibility="{x:Bind IsText}"/>
+
+                        <HyperlinkButton Grid.Column="1"
+                                         Content="{x:Bind Value}"
+                                         FontSize="12"
+                                         Style="{StaticResource DetailLinkStyle}"
+                                         Visibility="{x:Bind IsLink}"
+                                         Click="{x:Bind OpenTarget}"/>
+                    </Grid>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </ScrollViewer>
+</UserControl>

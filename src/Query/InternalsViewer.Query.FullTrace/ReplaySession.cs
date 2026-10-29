@@ -268,7 +268,10 @@ internal sealed class ReplaySession : IDisposable
                                         bufferPool.Build(),
                                         output.Build(),
                                         planNodeHook.GetPlanNodes(),
-                                        planNodeHook.GetTeardowns());
+                                        planNodeHook.GetTeardowns())
+                {
+                    Buffers = bufferPool.GetBuffers()
+                };
             }
             finally
             {

@@ -290,6 +290,12 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
                                               TraceTimeline.HighlightMemoryWriters,
                                               isChecked => TraceTimeline.HighlightMemoryWriters = isChecked);
 
+        var latching = MenuItems.Toggle("Latching",
+                                        TraceTimeline.ShowBufferLatches,
+                                        isChecked => TraceTimeline.ShowBufferLatches = isChecked);
+
+        var buffers = MenuItems.Toggle("BUF", TraceTimeline.ShowBuffers, isChecked => TraceTimeline.ShowBuffers = isChecked);
+
         RadioMenuFlyoutItem[] memoryItems =
         [
             MemoryItem("None", null),
@@ -316,7 +322,7 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         menu.Items.Add(operators);
 
-        menu.Items.Add(MenuItems.SubMenu("Memory History", sizeToFit, highlightHover));
+        menu.Items.Add(MenuItems.SubMenu("Memory History", sizeToFit, highlightHover, latching, buffers));
 
         menu.Items.Add(MenuItems.SubMenu("Flame Chart",
                                          MenuItems.SubMenu("Memory", memoryItems),
@@ -348,6 +354,10 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
             sizeToFit.IsChecked = TraceTimeline.MemorySizeToFit;
 
             highlightHover.IsChecked = TraceTimeline.HighlightMemoryWriters;
+
+            latching.IsChecked = TraceTimeline.ShowBufferLatches;
+
+            buffers.IsChecked = TraceTimeline.ShowBuffers;
 
             foreach (var item in memoryItems)
             {

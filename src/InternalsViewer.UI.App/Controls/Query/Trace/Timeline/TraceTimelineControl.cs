@@ -305,7 +305,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
     {
         _operators = new TraceOperatorsPane(this, () => (OperatorsTop, OperatorsHeight));
 
-        _memory = new TraceMemoryPane(this, () => (MemoryTop, MemoryHeight));
+        _memory = new TraceMemoryPane(this, () => (MemoryTop, MemoryHeight - BufferLatchArea));
 
 
         Background = new SolidColorBrush(Colors.Transparent);
@@ -917,7 +917,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         _verticalScrollBar.Value = _scrollY;
         _verticalScrollBar.Visibility = ShowsFlameChart && _contentHeight > viewport ? Visibility.Visible : Visibility.Collapsed;
 
-        var memoryViewport = MemoryHeight;
+        var memoryViewport = MemoryHeight - BufferLatchArea;
 
         _memoryScrollBar.Maximum = Math.Max(0, _memory.ContentHeight - memoryViewport);
         _memoryScrollBar.ViewportSize = memoryViewport;

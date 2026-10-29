@@ -49,4 +49,7 @@ internal sealed record ReplayResult(CallNode[] Nodes,
                                     TraceBufferPool BufferPool,
                                     List<OutputAddresses> OutputAddresses,
                                     IReadOnlyList<IteratorPlanNode> PlanNodes,
-                                    IReadOnlyList<QueryTeardown> Teardowns);
+                                    IReadOnlyList<QueryTeardown> Teardowns)
+{
+    public MemoryBlock[] Buffers { get; init; } = [];
+}

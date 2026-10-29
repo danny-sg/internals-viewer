@@ -12,7 +12,7 @@ public sealed partial class MemoryReferencesViewModel(PlayheadMemoryViewModel ow
     private const string NoPointers = "No Pointers";
 
     [ObservableProperty]
-    private IReadOnlyList<MemoryReferenceNode> _roots = [];
+    private List<MemoryReferenceNode> _roots = [];
 
     [ObservableProperty]
     private string _emptyText = string.Empty;
@@ -26,14 +26,14 @@ public sealed partial class MemoryReferencesViewModel(PlayheadMemoryViewModel ow
         EmptyText = string.Empty;
     }
 
-    public void SetPointers(IReadOnlyList<MemoryPointer> pointers)
+    public void SetPointers(List<MemoryPointer> pointers)
     {
         Roots = [.. pointers.Select(p => CreateNode(p, null))];
 
         EmptyText = Roots.Count == 0 ? NoPointers : string.Empty;
     }
 
-    public async Task<IReadOnlyList<MemoryReferenceNode>> GetChildrenAsync(MemoryReferenceNode node)
+    public async Task<List<MemoryReferenceNode>> GetChildrenAsync(MemoryReferenceNode node)
     {
         if (!Owner.IsOpen || !node.CanExpand)
         {

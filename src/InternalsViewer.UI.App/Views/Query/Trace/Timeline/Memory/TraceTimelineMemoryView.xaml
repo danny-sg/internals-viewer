@@ -45,6 +45,11 @@
             <TabViewItem Header="References" IsClosable="False">
                 <local:MemoryReferencesPanelView/>
             </TabViewItem>
+            <TabViewItem Header="BUF"
+                         IsClosable="False"
+                         Visibility="{x:Bind ViewModel.Buffer.IsAvailable, Mode=OneWay}">
+                <local:MemoryBufferPanelView/>
+            </TabViewItem>
             <TabViewItem Header="{x:Bind ViewModel.Batch.Title, Mode=OneWay}"
                          IsClosable="False"
                          Visibility="{x:Bind ViewModel.Batch.IsAvailable, Mode=OneWay}">

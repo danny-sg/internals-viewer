@@ -66,7 +66,11 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
 
     private const string BufferPoolPrefix = "Buffer Pool: ";
 
+    private const string BufferFramePrefix = "Buffer Pool Frame: ";
+
     private const string BufferSuffix = " BUF";
+
+    private const string BufferObject = "BUF";
 
     private static readonly Colour SharedColour = Colour.FromArgb(226, 226, 226);
 
@@ -108,6 +112,9 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
 
     [ObservableProperty]
     private IReadOnlyList<TraceMemoryBlock>? _memoryBlocks;
+
+    [ObservableProperty]
+    private TraceBufferLatch[]? _bufferLatches;
 
     [ObservableProperty]
     private string _objectName = string.Empty;
@@ -190,6 +197,8 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
 
         MemoryBlocks = BuildMemoryBlocks();
 
+        BufferLatches = BuildBufferLatches();
+
         BlocksTable = BuildBlocksTable();
 
         SelectedBlockRow = BlocksTable.Rows.FirstOrDefault();
@@ -258,16 +267,20 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
 
     public string GetBufferPageLabel(TraceBufferReference reference)
     {
-        var database = IsQueryDatabase(reference) ? string.Empty : $"{GetDatabaseName(reference.DatabaseId)} ";
-
         var buffer = reference.IsBuffer ? BufferSuffix : string.Empty;
 
         var offset = reference.Offset == 0 ? string.Empty : $" +0x{reference.Offset:X}";
 
-        return $"{BufferPoolPrefix}{database}{reference.Page}{buffer}{offset}";
+        var prefix = reference.IsBuffer ? BufferPoolPrefix : BufferFramePrefix;
+
+        return $"{prefix}{GetDatabasePrefix(reference)}{reference.Page}{buffer}{offset}";
     }
 
     public bool IsQueryDatabase(TraceBufferReference reference) => reference.DatabaseId == DatabaseId;
+
+    public string GetBufferPageName(TraceBufferReference reference) => $"{GetDatabasePrefix(reference)}{reference.Page}";
+
+    public bool IsBuffer(int block) => Trace?.BufferPool.IsBuffer(Store.Blocks[block].Address) == true;
 
     public bool IsPage(int block)
         => Store.Blocks[block].Size == PageData.Size && GetMapLabel(Store.Blocks[block]) == WorkfilePageReader.ClassName;
@@ -447,10 +460,50 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
                                             block.Size,
                                             block.From,
                                             block.To,
-                                            new TraceMemoryWrites(Store, first, count)));
+                                            new TraceMemoryWrites(Store, first, count),
+                                            IsBuffer(index)));
         }
 
         return blocks;
+    }
+
+    private TraceBufferLatch[] BuildBufferLatches()
+    {
+        var latches = new List<TraceBufferLatch>();
+
+        if (Trace is null || Window is null)
+        {
+            return [];
+        }
+
+        for (var index = 0; index < Store.Blocks.Count; index++)
+        {
+            if (!IsBuffer(index))
+            {
+                continue;
+            }
+
+            var label = GetObjectName(index);
+
+            foreach (var (write, state) in BufferDescriptor.GetLatchStates(Store, index))
+            {
+                var point = Store.GetPoint(write);
+
+                if (point.Position < WindowStart || point.Position > WindowEnd)
+                {
+                    continue;
+                }
+
+                latches.Add(new TraceBufferLatch(point,
+                                                 index,
+                                                 Store.Blocks[index].Address,
+                                                 label,
+                                                 BufferDescriptor.GetLatchState(state),
+                                                 Store.GetWrite(write).CallNodeIndex >= 0));
+            }
+        }
+
+        return [.. latches.OrderBy(l => l.Point.Position)];
     }
 
     private bool IsTracked(int block) => Store.IsCreatedWithin(block, WindowStart, WindowEnd);
@@ -641,7 +694,8 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
             : GetAllocatingCall(block)?.Symbol is { Length: > 0 } symbol ? symbol + AllocationSuffix : string.Empty;
 
     private string GetObjectLabel(int block)
-        => Batches?.GetPart(block)?.Name
+        => GetBufferLabel(block)
+           ?? Batches?.GetPart(block)?.Name
            ?? MagicBytes?.GetClassName(block)
            ?? ArrayAllocations?.GetClassName(block)
            ?? GetMapLabel(Store.Blocks[block])
@@ -651,6 +705,20 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
         => Iterators.TryGetValue(iterator, out var target) && target.Operator?.PlanNodeIdentifier is { } identifier
             ? resolvePlanNode(identifier)
             : null;
+
+    private string? GetBufferLabel(int block)
+    {
+        if (!IsBuffer(block))
+        {
+            return null;
+        }
+
+        var buffer = Store.Blocks[block];
+
+        return GetBufferPage(buffer.Address, buffer.FromPosition) is { } reference
+            ? $"{BufferObject} {GetBufferPageName(reference)}"
+            : BufferObject;
+    }
 
     private string? GetMapLabel(MemoryHistoryBlock block) => Trace?.MemoryMap.GetLabel(block.Address, block.FromPosition, block.ToPosition);
 
@@ -668,6 +736,9 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
     }
 
     private static string GetWriterLabel(CallStackNode? writer) => writer?.Symbol ?? UnknownWriter;
+
+    private string GetDatabasePrefix(TraceBufferReference reference)
+        => IsQueryDatabase(reference) ? string.Empty : $"{GetDatabaseName(reference.DatabaseId)} ";
 
     private static string GetDatabaseName(ushort databaseId)
         => SystemDatabases.TryGetValue(databaseId, out var name) ? name : $"Database {databaseId}";

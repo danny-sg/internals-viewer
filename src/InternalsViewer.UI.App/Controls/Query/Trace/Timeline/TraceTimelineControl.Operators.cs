@@ -315,6 +315,19 @@ public sealed partial class TraceTimelineControl
         }
     }
 
+    private void SetMemoryBlocks()
+    {
+        _memory.SetBlocks(ShowBuffers || MemoryBlocks is not { } blocks ? MemoryBlocks : [.. blocks.Where(b => !b.IsBuffer)]);
+
+        FindMemorySearchMatches();
+
+        CountSearchMatches();
+
+        SetMemoryWriters(null);
+
+        Relayout();
+    }
+
     private void DrawSplitter(SKCanvas canvas, float top, int width)
     {
         _paints.Fill.Color = _paints.LaneHeader;
@@ -548,19 +561,7 @@ public sealed partial class TraceTimelineControl
     }
 
     private static void OnMemoryBlocksChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var control = (TraceTimelineControl)d;
-
-        control._memory.SetBlocks(e.NewValue as IReadOnlyList<TraceMemoryBlock>);
-
-        control.FindMemorySearchMatches();
-
-        control.CountSearchMatches();
-
-        control.SetMemoryWriters(null);
-
-        control.Relayout();
-    }
+        => ((TraceTimelineControl)d).SetMemoryBlocks();
 
     private static void OnPaneVisibilityChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {

@@ -171,7 +171,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
             steps.Begin(WatchStep);
 
-            var allocations = MemoryHistoryBuilder.GetAllocations(replay.CallStore, functions.MemoryFunctions);
+            var allocations = MemoryHistoryBuilder.GetAllocations(replay.CallStore, functions.MemoryFunctions, replay.Buffers);
 
             var writes = allocations.Length == 0
                 ? WatchResult.Empty

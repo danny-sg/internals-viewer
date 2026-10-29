@@ -133,6 +133,11 @@ public sealed partial class TraceTimelineControl
 
             DrawPanes(canvas, width, scale);
 
+            if (ShowsBufferLatches)
+            {
+                DrawBufferLatches(canvas, width, scale);
+            }
+
             canvas.Save();
 
             var lanesBottom = height - (int)BandHeight;

@@ -67,6 +67,14 @@ public class TraceBufferPoolTests
     }
 
     [Fact]
+    public void Only_The_Start_Of_A_Fetched_Buffer_Is_A_Buffer()
+    {
+        var pool = Build((Frame, First, 2, Buffer));
+
+        Assert.Equal([true, false, false], [pool.IsBuffer(Buffer), pool.IsBuffer(Buffer + 0x98), pool.IsBuffer(Frame)]);
+    }
+
+    [Fact]
     public void A_Pointer_Past_The_End_Of_A_Buffer_Resolves_To_Nothing()
         => Assert.Null(Build((Frame, First, 2, Buffer)).GetReference(Buffer + 0xC0, At(5)));
 

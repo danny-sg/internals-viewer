@@ -6,8 +6,6 @@ namespace InternalsViewer.Query.FullTrace.Memory.BufferPool;
 
 public sealed partial class TraceBufferPool
 {
-    private const ulong BufferSize = 0xC0;
-
     internal TraceBufferPool(TraceBufferPage[] pages)
     {
         Pages = pages;
@@ -28,6 +26,8 @@ public sealed partial class TraceBufferPool
     private TraceBufferPage[] Buffers { get; }
 
     private ulong[] BufferStarts { get; }
+
+    public bool IsBuffer(ulong address) => Array.BinarySearch(BufferStarts, address) >= 0;
 
     public TraceBufferReference? GetReference(ulong address, TracePosition position)
         => GetFrameReference(address, position) ?? GetBufferReference(address, position);
@@ -52,7 +52,7 @@ public sealed partial class TraceBufferPool
     {
         var last = SortedSearch.FirstAfter(BufferStarts, address) - 1;
 
-        if (last < 0 || address - BufferStarts[last] >= BufferSize)
+        if (last < 0 || address - BufferStarts[last] >= BufferDescriptor.Size)
         {
             return null;
         }

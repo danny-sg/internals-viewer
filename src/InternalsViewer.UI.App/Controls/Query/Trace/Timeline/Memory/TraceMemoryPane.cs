@@ -34,7 +34,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
     private const int DebounceMilliseconds = 120;
 
-    private static readonly SKColor PaneColour = new(30, 30, 30, 255);
+    internal static readonly SKColor PaneColour = new(30, 30, 30, 255);
 
     private static readonly SKColor LifetimeColour = new(90, 90, 90, 120);
 

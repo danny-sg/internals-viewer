@@ -51,7 +51,7 @@ public sealed partial class HexViewControl
 
         var lineHeight = GetLineHeight();
 
-        var brush = GetBrush(Colors.LightGray);
+        var brush = GetBrush(Colors.Navy);
 
         foreach (var link in links)
         {

@@ -21,7 +21,7 @@ public sealed partial class MemoryReferencesPanelView : UserControl
 
     private MemoryReferencesViewModel? Attached { get; set; }
 
-    private IReadOnlyList<MemoryReferenceNode>? BuiltRoots { get; set; }
+    private List<MemoryReferenceNode>? BuiltRoots { get; set; }
 
     private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
     {

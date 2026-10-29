@@ -22,13 +22,15 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     private const int HistoryTab = 1;
 
-    private const int BatchTab = 4;
+    private const int BufferTab = 4;
+
+    private const int BatchTab = 5;
 
     private const int LoadInterval = 50;
 
-    private const int VectorsTab = 5;
+    private const int VectorsTab = 6;
 
-    private const int PageTab = 6;
+    private const int PageTab = 7;
 
     private const string OpenMemoryCommand = "Open Memory";
 
@@ -88,6 +90,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
     public MemoryWatchesViewModel WatchList { get; } = new();
 
     public MemoryReferencesViewModel References { get; }
+
+    public MemoryBufferViewModel Buffer { get; } = new();
 
     public MemoryBatchViewModel Batch { get; } = new();
 
@@ -152,13 +156,16 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         WatchList.Attach(Watches);
 
+        Buffer.Load(this);
+
         Batch.Load(this);
 
         WorkfilePage.Load(this);
 
         ApplyMarkers();
 
-        if ((SelectedTab == BatchTab && !Batch.IsAvailable)
+        if ((SelectedTab == BufferTab && !Buffer.IsAvailable)
+            || (SelectedTab == BatchTab && !Batch.IsAvailable)
             || (SelectedTab == VectorsTab && !Batch.IsVectorsAvailable)
             || (SelectedTab == PageTab && !WorkfilePage.IsAvailable))
         {
@@ -193,6 +200,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         WatchList.Attach(null);
 
         References.Clear();
+
+        Buffer.Clear();
 
         Batch.Clear();
 
@@ -487,6 +496,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
             WatchList.Refresh(null);
 
+            Buffer.SetData(null);
+
             WorkfilePage.SetData(null);
 
             RefreshPage();
@@ -550,6 +561,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
             WatchList.Refresh(Data);
 
+            Buffer.SetData(Data);
+
             WorkfilePage.SetData(Data);
 
             RefreshPage();
@@ -578,6 +591,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
     {
         var markers = SelectedTab switch
         {
+            BufferTab when Buffer.Markers is { } fields => fields,
             BatchTab when Batch.FieldMarkers is { } fields => fields,
             PageTab when WorkfilePage.IsAvailable => WorkfilePage.Markers,
             _ => WriterMarkers
