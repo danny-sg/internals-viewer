@@ -8,6 +8,7 @@ using InternalsViewer.Query.CallStack.Dia;
 using InternalsViewer.Query.CallStack.Symbols;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Output;
 using Microsoft.Extensions.Logging;
 using InternalsViewer.Query.FullTrace.Helpers;
@@ -245,6 +246,8 @@ internal static class ReplayFunctionResolver
 
         var output = new OutputFunctions.Collector();
 
+        var bufferPool = new BufferPoolFunctions.Collector();
+
         var vtables = new VtableResolver.Collector();
 
         var functions = ModuleSymbols.Load(resolver,
@@ -253,6 +256,8 @@ internal static class ReplayFunctionResolver
                                                planNodes.VisitFunction(rva, name);
 
                                                output.VisitFunction(rva, name);
+
+                                               bufferPool.VisitFunction(rva, name);
 
                                                return ClassifyFunction(mappings, moduleName, rva, name);
                                            },
@@ -295,7 +300,8 @@ internal static class ReplayFunctionResolver
                                    planNodes.Build(classes),
                                    output.Build(classes))
         {
-            Vtables = classes
+            Vtables = classes,
+            BufferPool = bufferPool.Build()
         };
     }
 

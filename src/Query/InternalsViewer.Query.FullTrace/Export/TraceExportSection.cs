@@ -4,6 +4,7 @@ using InternalsViewer.Query.Export;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.Memory;
@@ -29,6 +30,8 @@ internal sealed class TraceExportSection : IQueryExportSection
     internal const string TeardownsEntry = "fulltrace/teardowns.bin";
 
     internal const string MemoryHistoryEntry = "fulltrace/memoryhistory.bin";
+
+    internal const string BufferPoolEntry = "fulltrace/bufferpool.bin";
 
     public bool CanExport(QueryExportContent content) => content.ExtraOf<TraceResult>() is not null;
 
@@ -67,6 +70,8 @@ internal sealed class TraceExportSection : IQueryExportSection
         writer.WriteBinary(TeardownsEntry, CompressionLevel.Fastest, w => QueryTeardown.Write(w, fullTrace.Teardowns));
 
         writer.WriteBinary(MemoryHistoryEntry, CompressionLevel.Fastest, fullTrace.MemoryHistory.Write);
+
+        writer.WriteBinary(BufferPoolEntry, CompressionLevel.Fastest, fullTrace.BufferPool.Write);
     }
 
     public IRunExtra? Read(QueryExportReader reader)
@@ -106,7 +111,10 @@ internal sealed class TraceExportSection : IQueryExportSection
                 : MemoryMap.Empty,
             ObjectPool = reader.HasEntry(ObjectPoolSnapshotEntry)
                 ? reader.ReadBinary(ObjectPoolSnapshotEntry, ObjectPoolSnapshot.Read)
-                : ObjectPoolSnapshot.Empty
+                : ObjectPoolSnapshot.Empty,
+            BufferPool = reader.HasEntry(BufferPoolEntry) && reader.ReadBinary(BufferPoolEntry, TraceBufferPool.IsSupported)
+                ? reader.ReadBinary(BufferPoolEntry, TraceBufferPool.Read)
+                : TraceBufferPool.Empty
         };
 
         var result = builder.Build(outputStructures) with

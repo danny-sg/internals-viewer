@@ -225,7 +225,7 @@ public sealed partial class MemoryWritesViewModel(PlayheadMemoryViewModel owner)
 
             var value = GetValueText(write, store.GetBytes(write));
 
-            var valueCell = GetPointerLink(write, image, known) ?? (object)value;
+            var valueCell = GetPointerCell(write, image, known) ?? value;
 
             var row = new ResultRow<long>([
                 new ActionLinks([new ActionLink(TracePositionText.GetHexText(write.Position), () => Owner.GoToWrite(writeIndex))]),
@@ -294,7 +294,7 @@ public sealed partial class MemoryWritesViewModel(PlayheadMemoryViewModel owner)
         return ulong.TryParse(trimmed, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var address) ? address : null;
     }
 
-    private ActionLinks? GetPointerLink(MemoryHistoryWrite write, byte[] image, bool[] known)
+    private object? GetPointerCell(MemoryHistoryWrite write, byte[] image, bool[] known)
     {
         var start = write.Offset & ~(PointerSize - 1);
 
@@ -308,14 +308,21 @@ public sealed partial class MemoryWritesViewModel(PlayheadMemoryViewModel owner)
 
         var pointer = BinaryPrimitives.ReadUInt64LittleEndian(image.AsSpan(start));
 
-        if (pointer == 0 || Owner.History.GetBlock(pointer, write.Position) < 0)
+        if (pointer == 0)
         {
             return null;
         }
 
         var position = write.Position;
 
-        return new ActionLinks([new ActionLink($"{HexPrefix}{pointer:X16}", () => Owner.RequestMemory(pointer, position: position))])
+        var text = $"{HexPrefix}{pointer:X16}";
+
+        if (Owner.History.GetBlock(pointer, position) < 0)
+        {
+            return Owner.GetBufferPageCell(text, pointer, position);
+        }
+
+        return new ActionLinks([new ActionLink(text, () => Owner.RequestMemory(pointer, position: position))])
         {
             Suffix = Owner.History.GetPointerTarget(pointer, position)
         };

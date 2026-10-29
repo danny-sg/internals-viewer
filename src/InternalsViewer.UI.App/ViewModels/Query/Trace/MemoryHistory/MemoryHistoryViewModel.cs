@@ -10,6 +10,7 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.History.Batches;
 using InternalsViewer.Query.FullTrace.Memory.History.Pages;
@@ -63,7 +64,20 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
 
     private const string AllocationSuffix = " Allocation";
 
+    private const string BufferPoolPrefix = "Buffer Pool: ";
+
+    private const string BufferSuffix = " BUF";
+
     private static readonly Colour SharedColour = Colour.FromArgb(226, 226, 226);
+
+    private static readonly Dictionary<ushort, string> SystemDatabases = new()
+    {
+        [1] = "master",
+        [2] = "tempdb",
+        [3] = "model",
+        [4] = "msdb",
+        [32767] = "Resource"
+    };
 
     [ObservableProperty]
     private QueryResultSet? _blocksTable;
@@ -134,6 +148,8 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
 
     private ArrayAllocationMatcher? ArrayAllocations { get; set; }
 
+    private short DatabaseId { get; set; }
+
     private TracePosition WindowStart => Window?.Start.Position ?? default;
 
     private TracePosition WindowEnd => Window?.End.Position ?? TracePosition.Unknown;
@@ -144,6 +160,8 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
                          Func<PlanNodeIdentifier, PlanNode?> resolvePlanNode)
     {
         Trace = trace;
+
+        DatabaseId = database.DatabaseId;
 
         VectorTypes.Clear();
 
@@ -235,6 +253,21 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
 
         return label is null || offset == 0 ? label : $"{label} +0x{offset:X}";
     }
+
+    public TraceBufferReference? GetBufferPage(ulong address, TracePosition position) => Trace?.BufferPool.GetReference(address, position);
+
+    public string GetBufferPageLabel(TraceBufferReference reference)
+    {
+        var database = IsQueryDatabase(reference) ? string.Empty : $"{GetDatabaseName(reference.DatabaseId)} ";
+
+        var buffer = reference.IsBuffer ? BufferSuffix : string.Empty;
+
+        var offset = reference.Offset == 0 ? string.Empty : $" +0x{reference.Offset:X}";
+
+        return $"{BufferPoolPrefix}{database}{reference.Page}{buffer}{offset}";
+    }
+
+    public bool IsQueryDatabase(TraceBufferReference reference) => reference.DatabaseId == DatabaseId;
 
     public bool IsPage(int block)
         => Store.Blocks[block].Size == PageData.Size && GetMapLabel(Store.Blocks[block]) == WorkfilePageReader.ClassName;
@@ -635,5 +668,8 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
     }
 
     private static string GetWriterLabel(CallStackNode? writer) => writer?.Symbol ?? UnknownWriter;
+
+    private static string GetDatabaseName(ushort databaseId)
+        => SystemDatabases.TryGetValue(databaseId, out var name) ? name : $"Database {databaseId}";
 
 }

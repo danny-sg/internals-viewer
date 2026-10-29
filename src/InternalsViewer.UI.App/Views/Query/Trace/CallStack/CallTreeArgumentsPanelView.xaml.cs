@@ -2,6 +2,7 @@ using System;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.UI.App.Controls.Query.Trace.CallStack;
@@ -12,6 +13,7 @@ using InternalsViewer.UI.App.Controls.Results;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Arguments;
 using InternalsViewer.UI.App.Models;
+using InternalsViewer.UI.App.ViewModels.Query;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.CallStack;
 using Microsoft.UI.Xaml.Controls;
 using System.Threading.Tasks;
@@ -43,6 +45,26 @@ public sealed partial class CallTreeArgumentsPanelView : UserControl, IDocumentC
         menu.Items.Add(MenuItems.Create("Copy Value", () => ClipboardText.Copy(hex)));
 
         menu.Items.Add(new MenuFlyoutSeparator());
+    }
+
+    private static void AddMemoryItem(MenuFlyout menu, QueryViewModel query, ulong value, TracePosition position)
+    {
+        var history = query.MemoryHistory;
+
+        if (history.GetBlock(value, position) is >= 0 and var block)
+        {
+            menu.Items.Add(MenuItems.Create("Show Memory",
+                                            () =>
+                                            {
+                                                _ = query.SetPlayheadAsync(position);
+
+                                                query.TraceTimelineTab.OpenMemory(block, value, position);
+                                            }));
+        }
+        else if (history.GetBufferPage(value, position) is { } page && history.IsQueryDatabase(page))
+        {
+            menu.Items.Add(MenuItems.Create("Open Page", () => query.TraceTimelineTab.OpenBufferPage(page)));
+        }
     }
 
     private void OnArgumentPageClicked(object? sender, PageAddressEventArgs e)
@@ -141,6 +163,11 @@ public sealed partial class CallTreeArgumentsPanelView : UserControl, IDocumentC
         if (arguments.GetOrigin(index, e.Ordinal) is { } origin)
         {
             e.Menu.Items.Add(MenuItems.Create("Go To Origin", () => viewModel.Tree.ShowOrigin(origin)));
+        }
+
+        if (arguments.GetValuePosition(index, e.Ordinal) is { } position)
+        {
+            AddMemoryItem(e.Menu, viewModel.Query, value, position);
         }
 
         AddCopyItems(e.Menu, value, arguments.GetDecodedText(index, e.Ordinal));

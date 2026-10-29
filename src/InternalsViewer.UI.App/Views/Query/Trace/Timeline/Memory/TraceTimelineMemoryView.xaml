@@ -18,6 +18,7 @@
                                 Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
                                 Data="{x:Bind ViewModel.Data, Mode=OneWay}"
                                 Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
+                                Links="{x:Bind ViewModel.Links, Mode=OneWay}"
                                 Watches="{x:Bind ViewModel.Watches, Mode=TwoWay}"
                                 SelectedChangeSpan="{x:Bind ViewModel.SelectedChangeSpan, Mode=OneWay}"
                                 ScrollToOffset="{x:Bind ViewModel.ScrollToOffset, Mode=OneWay}"
@@ -40,6 +41,9 @@
             </TabViewItem>
             <TabViewItem Header="Watches" IsClosable="False">
                 <local:MemoryWatchesPanelView/>
+            </TabViewItem>
+            <TabViewItem Header="References" IsClosable="False">
+                <local:MemoryReferencesPanelView/>
             </TabViewItem>
             <TabViewItem Header="{x:Bind ViewModel.Batch.Title, Mode=OneWay}"
                          IsClosable="False"

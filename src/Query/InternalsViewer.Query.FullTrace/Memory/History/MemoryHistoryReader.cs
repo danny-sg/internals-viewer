@@ -6,7 +6,7 @@ public sealed class MemoryHistoryReader(MemoryHistoryStore store, TracePosition 
 {
     public TracePosition Position { get; } = position;
 
-    private Dictionary<int, (MemoryHistoryImage Image, int WriteCount)> Images { get; } = [];
+    private Dictionary<int, (MemoryHistoryImage Image, int WriteCount, bool[] IsRead)> Images { get; } = [];
 
     public int Read(ulong address, Span<byte> destination)
     {
@@ -17,11 +17,13 @@ public sealed class MemoryHistoryReader(MemoryHistoryStore store, TracePosition 
             return 0;
         }
 
-        var image = GetImage(block);
+        var (image, _, isRead) = GetImage(block);
 
         var offset = (int)(address - store.Blocks[block].Address);
 
         var available = Math.Min(destination.Length, image.Data.Length - offset);
+
+        isRead.AsSpan(offset, available).Fill(true);
 
         var unknown = image.Known.AsSpan(offset, available).IndexOf(false);
 
@@ -36,7 +38,15 @@ public sealed class MemoryHistoryReader(MemoryHistoryStore store, TracePosition 
     {
         foreach (var (block, read) in Images)
         {
-            if (!store.IsLive(block, position) || store.GetWriteCount(block, position) != read.WriteCount)
+            if (!store.IsLive(block, position))
+            {
+                return true;
+            }
+
+            var count = store.GetWriteCount(block, position);
+
+            if (count != read.WriteCount
+                && IsAnyWritten(store.GetWrites(block), read.IsRead, Math.Min(count, read.WriteCount), Math.Max(count, read.WriteCount)))
             {
                 return true;
             }
@@ -45,19 +55,34 @@ public sealed class MemoryHistoryReader(MemoryHistoryStore store, TracePosition 
         return false;
     }
 
-    private MemoryHistoryImage GetImage(int block)
+    private static bool IsAnyWritten(IReadOnlyList<MemoryHistoryWrite> writes, bool[] isRead, int from, int to)
+    {
+        for (var index = from; index < to; index++)
+        {
+            if (isRead.AsSpan(writes[index].Offset, writes[index].Length).Contains(true))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private (MemoryHistoryImage Image, int WriteCount, bool[] IsRead) GetImage(int block)
     {
         if (Images.TryGetValue(block, out var read))
         {
-            return read.Image;
+            return read;
         }
 
         var count = store.GetWriteCount(block, Position);
 
         var image = store.GetImage(block, count - 1);
 
-        Images[block] = (image, count);
+        read = (image, count, new bool[image.Data.Length]);
 
-        return image;
+        Images[block] = read;
+
+        return read;
     }
 }

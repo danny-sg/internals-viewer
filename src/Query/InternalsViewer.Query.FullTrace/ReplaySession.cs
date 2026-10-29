@@ -8,6 +8,7 @@ using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Recording;
 using InternalsViewer.Query.FullTrace.Functions;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Output;
@@ -187,11 +188,14 @@ internal sealed class ReplaySession : IDisposable
 
         var customHook = new CustomHook(Resolve(customHooks));
 
+        var bufferPool = new BufferPoolHook(functions.BufferPool);
+
         var hooks = new TraceHooks([planNodeHook,
                                     new LocatorHook(functions.LocatorReads, store, images),
                                     memoryMap,
                                     output,
-                                    customHook]);
+                                    customHook,
+                                    bufferPool]);
 
         ReplayBridge.HookCallback onHook = hooks.OnHook;
 
@@ -261,6 +265,7 @@ internal sealed class ReplaySession : IDisposable
                                         timeline.Build(nodes),
                                         memoryMap.Build(),
                                         customHook.Build(),
+                                        bufferPool.Build(),
                                         output.Build(),
                                         planNodeHook.GetPlanNodes(),
                                         planNodeHook.GetTeardowns());

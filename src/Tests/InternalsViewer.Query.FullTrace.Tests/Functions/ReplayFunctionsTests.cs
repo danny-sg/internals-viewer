@@ -2,6 +2,7 @@ using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.FullTrace.Functions;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
@@ -52,6 +53,19 @@ public class ReplayFunctionsTests
 
         Assert.Equal([(0x300ul, "CQScanRangeNew"), (Base + 0x200, "CQScanTableScanNew")],
                      merged.Vtables.Select(v => (v.Key, v.Value[0])).OrderBy(v => v.Key));
+    }
+
+    [Fact]
+    public void Buffer_Pool_Gets_Move_To_The_Module_Base_And_Merge()
+    {
+        var first = ReplayFunctions.Empty with { BufferPool = new BufferPoolFunctions([0x10], [0x30]) };
+
+        var second = ReplayFunctions.Empty with { BufferPool = new BufferPoolFunctions([0x20], []) };
+
+        var merged = ReplayFunctions.Merge([first.Rebase(Base), second]).BufferPool;
+
+        Assert.Equal([Base + 0x10, 0x20ul], merged.Gets);
+        Assert.Equal([Base + 0x30], merged.PostReads);
     }
 
     private static (ulong, T) Pair<T>(KeyValuePair<ulong, T> entry) => (entry.Key, entry.Value);

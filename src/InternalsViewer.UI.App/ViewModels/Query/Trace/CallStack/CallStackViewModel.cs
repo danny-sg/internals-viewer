@@ -153,6 +153,10 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
 
             Query.TraceTimelineTab.OpenMemory(part.MemoryBlock, address, position);
         }
+        else if (part.BufferPage is { } page)
+        {
+            Navigator.OpenBufferPage(page);
+        }
     }
 
     protected virtual void UseChart(Action<IPlayheadChart> action) => Query.TraceTimelineTab.PlayheadStack.RequestChart(action);
@@ -343,11 +347,20 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
             return;
         }
 
-        part.MemoryBlock = Query.MemoryHistory.GetBlock(value, position);
+        var history = Query.MemoryHistory;
 
-        part.MemoryTarget = part is { IsMemoryTracked: true, DecodedString: null }
-            ? Query.MemoryHistory.GetPointerTarget(value, position)
-            : null;
+        part.MemoryBlock = history.GetBlock(value, position);
+
+        part.BufferPage = part is { IsMemoryTracked: false, DecodedString: null } ? history.GetBufferPage(value, position) : null;
+
+        part.CanOpenTarget = part.BufferPage is not { } page || history.IsQueryDatabase(page);
+
+        part.MemoryTarget = part switch
+        {
+            { IsMemoryTracked: true, DecodedString: null } => history.GetPointerTarget(value, position),
+            { BufferPage: { } buffer } => history.GetBufferPageLabel(buffer),
+            _ => null
+        };
     }
 
     private async Task<PlayheadCallRow> BuildRowAsync(CallStackNode node, TraceSpan call, uint thread, bool isCurrent, ulong origin)

@@ -22,13 +22,17 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     private const int HistoryTab = 1;
 
-    private const int BatchTab = 3;
+    private const int BatchTab = 4;
 
     private const int LoadInterval = 50;
 
-    private const int VectorsTab = 4;
+    private const int VectorsTab = 5;
 
-    private const int PageTab = 5;
+    private const int PageTab = 6;
+
+    private const string OpenMemoryCommand = "Open Memory";
+
+    private const string OpenPageCommand = "Open Page";
 
     [ObservableProperty]
     private bool _isOpen;
@@ -38,6 +42,9 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     [ObservableProperty]
     private ObservableCollection<Marker>? _markers;
+
+    [ObservableProperty]
+    private IReadOnlyList<HexLink>? _links;
 
     [ObservableProperty]
     private ObservableCollection<HexWatch>? _watches;
@@ -63,6 +70,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         Writes = new MemoryWritesViewModel(this);
 
+        References = new MemoryReferencesViewModel(this);
+
         HexLoader = new PlayheadLoader<HexImage?>(TimeSpan.FromMilliseconds(LoadInterval), ApplyHex);
     }
 
@@ -77,6 +86,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
     public MemoryWritesViewModel Writes { get; }
 
     public MemoryWatchesViewModel WatchList { get; } = new();
+
+    public MemoryReferencesViewModel References { get; }
 
     public MemoryBatchViewModel Batch { get; } = new();
 
@@ -102,6 +113,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     private List<MemoryChangeRun> Runs { get; set; } = [];
 
+    private List<MemoryPointer> Pointers { get; set; } = [];
+
     private ObservableCollection<Marker>? WriterMarkers { get; set; }
 
     public void Open(int block, ulong address, TracePosition position)
@@ -116,6 +129,10 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         OpenedAt = position;
 
         WriteCount = -1;
+
+        Links = null;
+
+        References.Clear();
 
         ObjectName = History.GetObjectName(block);
 
@@ -175,6 +192,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         WatchList.Attach(null);
 
+        References.Clear();
+
         Batch.Clear();
 
         WorkfilePage.Clear();
@@ -190,6 +209,10 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         WriterMarkers = null;
 
         Markers = null;
+
+        Pointers = [];
+
+        Links = null;
 
         if (Watches is { } watches)
         {
@@ -221,6 +244,20 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     public void RequestMemory(ulong address, int length = 1, TracePosition? position = null)
         => MemoryRequested?.Invoke(this, new MemoryRequest(address, length, position));
+
+    public object? GetBufferPageCell(string text, ulong address, TracePosition position)
+    {
+        if (History.GetBufferPage(address, position) is not { } page)
+        {
+            return null;
+        }
+
+        var label = History.GetBufferPageLabel(page);
+
+        return History.IsQueryDatabase(page)
+            ? new ActionLinks([new ActionLink(text, () => Navigator?.OpenBufferPage(page))]) { Suffix = label }
+            : $"{text}  {label}";
+    }
 
     public void GoToWrite(int index)
     {
@@ -442,6 +479,12 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
             Runs = [];
 
+            Pointers = [];
+
+            Links = null;
+
+            References.SetPointers([]);
+
             WatchList.Refresh(null);
 
             WorkfilePage.SetData(null);
@@ -453,14 +496,45 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         var block = Block;
 
-        HexLoader.Request(() => ReadHex(store, block, count));
+        var history = History;
+
+        HexLoader.Request(() => ReadHex(history, block, count, position));
     }
 
-    private static HexImage? ReadHex(MemoryHistoryStore store, int block, int count)
+    private static HexImage? ReadHex(MemoryHistoryViewModel history, int block, int count, TracePosition position)
     {
+        var store = history.Store;
+
         var image = store.GetImage(block, count - 1);
 
-        return new HexImage(image.Data, MemoryChangeRuns.GetRuns(store.GetWrites(block), count, image.Data.Length));
+        return new HexImage(image.Data,
+                            MemoryChangeRuns.GetRuns(store.GetWrites(block), count, image.Data.Length),
+                            MemoryPointers.Find(history, image, store.Blocks[block].Address, position));
+    }
+
+    private List<HexLink> GetLinks(List<MemoryPointer> pointers)
+    {
+        var links = new List<HexLink>();
+
+        foreach (var (offset, value, block, page) in pointers)
+        {
+            if (block >= 0)
+            {
+                var target = History.GetPointerTarget(value, Position) ?? $"0x{value:X16}";
+
+                links.Add(new HexLink(offset, MemoryPointers.PointerSize, target, OpenMemoryCommand, () => RequestMemory(value)));
+            }
+            else if (page is { } reference && History.IsQueryDatabase(reference))
+            {
+                links.Add(new HexLink(offset,
+                                      MemoryPointers.PointerSize,
+                                      History.GetBufferPageLabel(reference),
+                                      OpenPageCommand,
+                                      () => Navigator?.OpenBufferPage(reference)));
+            }
+        }
+
+        return links;
     }
 
     private void ApplyHex(HexImage? hex)
@@ -486,6 +560,15 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
             Runs = hex.Runs;
 
             WriterMarkers = new ObservableCollection<Marker>(GetChangeMarkers(hex.Runs));
+        }
+
+        if (Links is null || !hex.Pointers.SequenceEqual(Pointers))
+        {
+            Pointers = hex.Pointers;
+
+            Links = GetLinks(hex.Pointers);
+
+            References.SetPointers(hex.Pointers);
         }
 
         ApplyMarkers();
@@ -542,5 +625,5 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         }
     }
 
-    private sealed record HexImage(byte[] Data, List<MemoryChangeRun> Runs);
+    private sealed record HexImage(byte[] Data, List<MemoryChangeRun> Runs, List<MemoryPointer> Pointers);
 }

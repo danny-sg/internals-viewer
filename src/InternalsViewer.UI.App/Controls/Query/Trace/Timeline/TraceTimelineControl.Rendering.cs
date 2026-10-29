@@ -429,7 +429,7 @@ public sealed partial class TraceTimelineControl
 
         DrawPaneOverlays(canvas, width);
 
-        DrawHeaderMarks(canvas, width, height);
+        DrawStripMarks(canvas, width);
 
         if (ShowMemory)
         {

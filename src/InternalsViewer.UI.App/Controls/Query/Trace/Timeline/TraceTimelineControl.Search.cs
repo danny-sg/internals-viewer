@@ -58,7 +58,7 @@ public sealed partial class TraceTimelineControl
 
     private int[] _memoryMatches = [];
 
-    private (bool[] Matches, TraceTimeline Timeline, TraceTimelineAxis Axis, SearchBars?[] Lanes)? _callMatchBars;
+    private (bool[] Matches, TraceTimeline Timeline, TraceTimelineAxis Axis, SearchBars? Bars)? _callMatchBars;
 
     private (TraceTimelineAxis Axis, double[] Starts)? _memoryMatchStarts;
 
@@ -186,45 +186,24 @@ public sealed partial class TraceTimelineControl
         return index >= 0 && index < starts.Length ? starts[index] : null;
     }
 
-    private void DrawHeaderMarks(SKCanvas canvas, int width, int height)
+    private void DrawStripMarks(SKCanvas canvas, int width)
     {
         var scale = PixelsPerUnit(width);
 
-        var calls = _searchTerms.Length > 0 && ShowsFlameChart ? GetCallMatchBars() : null;
+        var calls = _searchTerms.Length > 0 ? GetCallMatchBars() : null;
 
-        var updates = ShowsFlameChart ? GetMemoryUpdateMarks() : null;
+        var updates = GetMemoryUpdateMarks();
 
-        if ((calls is not null || updates is not null) && _visible is { } timeline)
+        var markHeight = calls is not null && updates is not null ? PlayheadStripHeight / 2 : PlayheadStripHeight;
+
+        if (calls is not null)
         {
-            var bottom = height - BandHeight;
+            DrawSearchMatches(canvas, calls, PlayheadStripTop, markHeight, scale);
+        }
 
-            var markHeight = calls is not null && updates is not null ? LaneHeaderHeight / 2 : LaneHeaderHeight;
-
-            canvas.Save();
-
-            canvas.ClipRect(new SKRect(0, ContentTop, width, bottom));
-
-            for (var lane = 0; lane < timeline.Threads.Count && lane < _laneTops.Length; lane++)
-            {
-                var top = ContentTop + _laneTops[lane] - (float)_scrollY;
-
-                if (top + LaneHeaderHeight < ContentTop || top > bottom)
-                {
-                    continue;
-                }
-
-                if (calls is not null && lane < calls.Length && calls[lane] is { } bars)
-                {
-                    DrawSearchMatches(canvas, bars, top, markHeight, scale);
-                }
-
-                if (updates is not null)
-                {
-                    DrawMemoryUpdates(canvas, updates, calls is null ? top : top + markHeight, markHeight, scale);
-                }
-            }
-
-            canvas.Restore();
+        if (updates is not null)
+        {
+            DrawMemoryUpdates(canvas, updates, calls is null ? PlayheadStripTop : PlayheadStripTop + markHeight, markHeight, scale);
         }
 
         if (_searchTerms.Length > 0 && ShowsMemory && GetVisibleMemoryMatches() is { Count: > 0 } visible)
@@ -264,13 +243,9 @@ public sealed partial class TraceTimelineControl
             return false;
         }
 
-        if (ShowsFlameChart && GetLaneHeaderAt(position) is { } lane)
+        if (IsInPlayheadStrip(position))
         {
-            var laneTop = ContentTop + _laneTops[lane] - _scrollY;
-
-            var isSearchBand = GetMemoryUpdateMarks() is null || position.Y < laneTop + LaneHeaderHeight / 2;
-
-            return isSearchBand && ZoomToCallMatches((float)position.X, lane);
+            return IsInSearchBand(position, GetMemoryUpdateMarks() is not null) && ZoomToCallMatches((float)position.X);
         }
 
         if (ShowsMemory && _memory.Contains(position) && position.X < SearchMatchThickness + SearchMatchHitSlop)
@@ -281,9 +256,9 @@ public sealed partial class TraceTimelineControl
         return false;
     }
 
-    private string? GetHeaderMarkToolTip(Point position)
+    private string? GetStripMarkToolTip(Point position)
     {
-        if (!ShowsFlameChart || GetLaneHeaderAt(position) is not { } lane)
+        if (!IsInPlayheadStrip(position))
         {
             return null;
         }
@@ -292,21 +267,21 @@ public sealed partial class TraceTimelineControl
 
         var updates = GetMemoryUpdateMarks();
 
-        var laneTop = ContentTop + _laneTops[lane] - _scrollY;
-
-        var isSearchBand = calls is not null && (updates is null || position.Y < laneTop + LaneHeaderHeight / 2);
-
         var x = (float)position.X;
 
         var scale = PixelsPerUnit((int)_overlay.ActualWidth);
 
-        if (isSearchBand)
+        if (calls is not null && IsInSearchBand(position, updates is not null))
         {
-            return lane < calls!.Length && calls[lane] is { } bars && IsOverSearchBar(bars, x, scale) ? "Search Results" : null;
+            return IsOverSearchBar(calls, x, scale) ? "Search Results" : null;
         }
 
         return updates is not null && IsOverMemoryUpdate(updates, x, scale) ? $"{_memoryUpdatesName} Updates" : null;
     }
+
+    private bool IsInPlayheadStrip(Point position) => position.Y >= PlayheadStripTop && position.Y < OperatorsTop;
+
+    private bool IsInSearchBand(Point position, bool hasUpdates) => !hasUpdates || position.Y < PlayheadStripTop + PlayheadStripHeight / 2;
 
     private string? GetMemorySearchToolTip(Point position)
     {
@@ -341,9 +316,9 @@ public sealed partial class TraceTimelineControl
         return false;
     }
 
-    private bool ZoomToCallMatches(float x, int lane)
+    private bool ZoomToCallMatches(float x)
     {
-        if (_searchMatches is not { } matches || _visible is not { } timeline || lane >= timeline.Threads.Count)
+        if (_searchMatches is not { } matches || _visible is not { } timeline)
         {
             return false;
         }
@@ -362,28 +337,31 @@ public sealed partial class TraceTimelineControl
 
         var end = double.MinValue;
 
-        var rows = timeline.Threads[lane].Rows;
-
-        for (var depth = 0; depth < rows.Count; depth++)
+        for (var lane = 0; lane < timeline.Threads.Count; lane++)
         {
-            var row = rows[depth];
+            var rows = timeline.Threads[lane].Rows;
 
-            for (var index = row.GetFirstEndingAfter(_axis, from);
-                 index >= 0 && index < row.Count && row.GetStart(_axis, index) <= to;
-                 index++)
+            for (var depth = 0; depth < rows.Count; depth++)
             {
-                if (!IsSearchMatch(matches, row.GetCallNodeIndex(index)) || !IsUnderSearchPixel(row, index, x, scale))
+                var row = rows[depth];
+
+                for (var index = row.GetFirstEndingAfter(_axis, from);
+                     index >= 0 && index < row.Count && row.GetStart(_axis, index) <= to;
+                     index++)
                 {
-                    continue;
+                    if (!IsSearchMatch(matches, row.GetCallNodeIndex(index)) || !IsUnderSearchPixel(row, index, x, scale))
+                    {
+                        continue;
+                    }
+
+                    count++;
+
+                    only = new FlameHit(lane, depth, index);
+
+                    start = Math.Min(start, row.GetStart(_axis, index));
+
+                    end = Math.Max(end, row.GetEnd(_axis, index));
                 }
-
-                count++;
-
-                only = new FlameHit(lane, depth, index);
-
-                start = Math.Min(start, row.GetStart(_axis, index));
-
-                end = Math.Max(end, row.GetEnd(_axis, index));
             }
         }
 
@@ -477,7 +455,7 @@ public sealed partial class TraceTimelineControl
         }
     }
 
-    private SearchBars?[]? GetCallMatchBars()
+    private SearchBars? GetCallMatchBars()
     {
         if (_searchMatches is not { } matches || _visible is not { } timeline)
         {
@@ -489,16 +467,14 @@ public sealed partial class TraceTimelineControl
             && ReferenceEquals(cached.Timeline, timeline)
             && cached.Axis == _axis)
         {
-            return cached.Lanes;
+            return cached.Bars;
         }
 
-        var lanes = new SearchBars?[timeline.Threads.Count];
+        var spans = new List<(double Start, double End)>();
 
-        for (var lane = 0; lane < lanes.Length; lane++)
+        foreach (var thread in timeline.Threads)
         {
-            var spans = new List<(double Start, double End)>();
-
-            foreach (var row in timeline.Threads[lane].Rows)
+            foreach (var row in thread.Rows)
             {
                 for (var index = 0; index < row.Count; index++)
                 {
@@ -508,13 +484,13 @@ public sealed partial class TraceTimelineControl
                     }
                 }
             }
-
-            lanes[lane] = spans.Count > 0 ? SearchBars.Merge(spans) : null;
         }
 
-        _callMatchBars = (matches, timeline, _axis, lanes);
+        var bars = spans.Count > 0 ? SearchBars.Merge(spans) : null;
 
-        return lanes;
+        _callMatchBars = (matches, timeline, _axis, bars);
+
+        return bars;
     }
 
     private double[]? GetMemoryMatchStarts()

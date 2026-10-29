@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Arguments;
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.Results;
@@ -186,6 +187,18 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
             : null;
 
     public CallStackNode? GetNode(int index) => GetCall(index) is { } call ? Lookup?.Store.GetNode(call) : null;
+
+    public TracePosition? GetValuePosition(int index, int ordinal)
+    {
+        if (Layout is not { } layout || GetCall(index) is not { } call)
+        {
+            return null;
+        }
+
+        var position = ArgumentRowBuilder.FindSlotAt(layout, ordinal) is null ? call.ToPosition : call.FromPosition;
+
+        return position.IsKnown ? position : null;
+    }
 
     public (string Name, int Register)? GetHookArgument(int ordinal)
         => Layout is { } layout ? ArgumentRowBuilder.GetHookArgument(layout, ordinal) : null;

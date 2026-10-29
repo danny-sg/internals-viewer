@@ -87,6 +87,10 @@
                            Style="{StaticResource HexRichTextBlockStyle}">
                         <RichTextBlock.ContextFlyout>
                             <MenuFlyout Opening="HexMenu_Opening">
+                                <MenuFlyoutItem x:Name="OpenLinkMenuItem"
+                                                KeyboardAcceleratorTextOverride="Ctrl+Click"
+                                                Click="OpenLinkMenuItem_Click" />
+                                <MenuFlyoutSeparator x:Name="OpenLinkSeparator" />
                                 <MenuFlyoutItem x:Name="NextChangeMenuItem"
                                                 Text="Next Change"
                                                 KeyboardAcceleratorTextOverride="Double-Click"
@@ -106,6 +110,9 @@
                     <Canvas x:Name="HexOverlayCanvas"
                             IsHitTestVisible="False"
                             Canvas.ZIndex="10" />
+                    <Canvas x:Name="LinkCanvas"
+                            IsHitTestVisible="False"
+                            Canvas.ZIndex="11" />
                     <Canvas x:Name="PinOutlineCanvas"
                             IsHitTestVisible="False"
                             Canvas.ZIndex="12" />
@@ -122,6 +129,21 @@
         <Grid x:Name="TipLayer"
               Grid.Row="0"
               Grid.Column="0" />
+        <Popup x:Name="LinkTipPopup"
+               Grid.Row="0"
+               Grid.Column="0"
+               IsHitTestVisible="False"
+               ShouldConstrainToRootBounds="False">
+            <Border CornerRadius="1"
+                    Padding="6"
+                    BorderThickness="1"
+                    BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}">
+                <Border.Background>
+                    <SolidColorBrush Color="{ThemeResource SolidBackgroundFillColorBase}" Opacity="0.95"/>
+                </Border.Background>
+                <TextBlock x:Name="LinkTipText" Style="{StaticResource TooltipValueStyle}"/>
+            </Border>
+        </Popup>
         <Canvas x:Name="MarkerMapCanvas"
                 Grid.Row="0"
                 Grid.Column="0"

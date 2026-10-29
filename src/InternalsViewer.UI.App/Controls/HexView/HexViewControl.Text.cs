@@ -177,6 +177,8 @@ public sealed partial class HexViewControl
 
         target.DrawChangeSpans();
 
+        target.DrawLinks();
+
         target.DrawSelectionMask();
 
         target.RefreshTips();

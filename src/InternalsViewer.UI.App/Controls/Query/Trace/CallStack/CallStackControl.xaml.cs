@@ -26,6 +26,10 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
 
     private const double DetailsShare = 1;
 
+    private const string OpenMemoryToolTip = "Open Memory";
+
+    private const string OpenPageToolTip = "Open Page";
+
     public CallStackControl()
     {
         InitializeComponent();
@@ -64,6 +68,8 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
 
     public static Visibility GetChipVisibility(bool isTracked, string? target) => GetVisibility(isTracked && target is null);
 
+    public static string GetTargetToolTip(bool isBufferPage) => isBufferPage ? OpenPageToolTip : OpenMemoryToolTip;
+
     public void FindReferences(ulong value) => ViewModel?.FindReferences(value);
 
     public void Dispose()
@@ -86,6 +92,10 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
     private Visibility IsTargetVisible(CallSignaturePart? part) => GetVisibility(part?.MemoryTarget is not null);
 
     private string TargetText(CallSignaturePart? part) => part?.MemoryTarget ?? string.Empty;
+
+    private string TargetToolTip(CallSignaturePart? part) => GetTargetToolTip(part?.IsBufferPage == true);
+
+    private bool IsTargetEnabled(CallSignaturePart? part) => part?.CanOpenTarget != false;
 
     private Visibility IsEmpty(IReadOnlyList<PlayheadThreadRow>? threads) => GetVisibility(threads is not { Count: > 0 });
 
@@ -597,6 +607,8 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
         {
             list.ItemContainerTransitions = [];
         }
+
+        LayoutHelpers.EnableHorizontalScrolling(StackTree);
     }
 
     private void OnSettingsPropertyChanged(object? sender, PropertyChangedEventArgs e)

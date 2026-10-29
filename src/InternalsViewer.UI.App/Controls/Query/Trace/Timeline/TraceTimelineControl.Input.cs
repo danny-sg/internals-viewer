@@ -138,6 +138,11 @@ public sealed partial class TraceTimelineControl
         _lastPressTicks = now;
         _lastPressPoint = position;
 
+        if (IsInPlayheadStrip(position) && !IsOnPlayhead(position.X) && ClickSearchMatch(position))
+        {
+            return;
+        }
+
         if (position.Y < OperatorsTop && (IsOnPlayhead(position.X) || BlockAt(position) is null))
         {
             if (isDoubleClick)
@@ -419,7 +424,7 @@ public sealed partial class TraceTimelineControl
                 HideToolTip();
             }
         }
-        else if (GetHeaderMarkToolTip(position) is { } markText)
+        else if (GetStripMarkToolTip(position) is { } markText)
         {
             OpenToolTip(markText, position);
         }
@@ -749,11 +754,6 @@ public sealed partial class TraceTimelineControl
 
         flyout.Items.Add(MenuItems.Create("Zoom to 100%", ZoomToFit));
 
-        if (_selected is not null)
-        {
-            flyout.Items.Add(MenuItems.Create("Clear Selection", Deselect));
-        }
-
         if (node is not null)
         {
             flyout.Items.Add(MenuItems.Create("Scope", () => SetRoot(node)));
@@ -774,11 +774,6 @@ public sealed partial class TraceTimelineControl
         flyout.Items.Add(new MenuFlyoutSeparator());
 
         flyout.Items.Add(MenuItems.Create("Open Call Tree", () => CallTreeOpenRequested?.Invoke(node, callIndex)));
-
-        if (hit is { } opened && span is not null)
-        {
-            flyout.Items.Add(MenuItems.Create("Open Call Stack", () => OpenCallStack(opened)));
-        }
 
         flyout.Items.Add(new MenuFlyoutSeparator());
 
@@ -838,16 +833,6 @@ public sealed partial class TraceTimelineControl
 
     private ToggleMenuFlyoutItem CallStackItem()
         => MenuItems.Toggle("Call Stack", ShowCallStack, isChecked => CallStackVisibilityRequested?.Invoke(isChecked));
-
-    private void OpenCallStack(FlameHit hit)
-    {
-        if (hit != _selected)
-        {
-            Select(hit);
-        }
-
-        CallStackVisibilityRequested?.Invoke(true);
-    }
 
     private void Select(FlameHit? hit)
     {

@@ -321,7 +321,8 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
             Memory = memory,
             MemoryMap = MemoryMap.Build(replay.MemoryMap, timeline.NodeOf, GetAllocation(replay.CallStore, functions.MemoryFunctions)),
             ObjectPool = request.ObjectPool,
-            CustomHooks = replay.CustomHooks
+            CustomHooks = replay.CustomHooks,
+            BufferPool = replay.BufferPool
         };
 
         var matched = IteratorInstanceMatcher.Match(callStack, events, builder.PlanLink);

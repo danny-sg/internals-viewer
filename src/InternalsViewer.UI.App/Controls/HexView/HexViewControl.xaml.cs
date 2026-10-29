@@ -57,6 +57,8 @@ public sealed partial class HexViewControl
 
             DrawChangeSpans();
 
+            DrawLinks();
+
             DrawSelectionMask();
 
             DrawPinOutlines();

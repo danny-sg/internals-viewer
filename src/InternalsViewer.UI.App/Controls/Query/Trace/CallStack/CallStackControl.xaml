@@ -129,7 +129,8 @@
                                          Content="{x:Bind MemoryTarget}"
                                          Tag="{x:Bind}"
                                          Visibility="{x:Bind callStack:CallStackControl.GetTargetVisibility(MemoryTarget)}"
-                                         ToolTipService.ToolTip="Open Memory"
+                                         IsEnabled="{x:Bind CanOpenTarget}"
+                                         ToolTipService.ToolTip="{x:Bind callStack:CallStackControl.GetTargetToolTip(IsBufferPage)}"
                                          Tapped="OnMemoryTapped"
                                          Click="OnMemoryClick"/>
                     </StackPanel>
@@ -504,7 +505,8 @@
                                                  Content="{x:Bind TargetText(ViewModel.SelectedCall.This), Mode=OneWay}"
                                                  Tag="{x:Bind ViewModel.SelectedCall.This, Mode=OneWay}"
                                                  Visibility="{x:Bind IsTargetVisible(ViewModel.SelectedCall.This), Mode=OneWay}"
-                                                 ToolTipService.ToolTip="Open Memory"
+                                                 IsEnabled="{x:Bind IsTargetEnabled(ViewModel.SelectedCall.This), Mode=OneWay}"
+                                                 ToolTipService.ToolTip="{x:Bind TargetToolTip(ViewModel.SelectedCall.This), Mode=OneWay}"
                                                  Click="OnMemoryClick"/>
                             </StackPanel>
 
@@ -541,7 +543,8 @@
                                                  Content="{x:Bind TargetText(ViewModel.SelectedCall.Return), Mode=OneWay}"
                                                  Tag="{x:Bind ViewModel.SelectedCall.Return, Mode=OneWay}"
                                                  Visibility="{x:Bind IsTargetVisible(ViewModel.SelectedCall.Return), Mode=OneWay}"
-                                                 ToolTipService.ToolTip="Open Memory"
+                                                 IsEnabled="{x:Bind IsTargetEnabled(ViewModel.SelectedCall.Return), Mode=OneWay}"
+                                                 ToolTipService.ToolTip="{x:Bind TargetToolTip(ViewModel.SelectedCall.Return), Mode=OneWay}"
                                                  Click="OnMemoryClick"/>
                             </StackPanel>
 

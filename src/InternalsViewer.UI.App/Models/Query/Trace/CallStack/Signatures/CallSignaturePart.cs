@@ -1,5 +1,6 @@
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Signatures.Enums;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 
 namespace InternalsViewer.UI.App.Models.Query.Trace.CallStack.Signatures;
 
@@ -48,6 +49,12 @@ public sealed class CallSignaturePart(string text,
     public int MemoryBlock { get; set; } = -1;
 
     public string? MemoryTarget { get; set; }
+
+    public TraceBufferReference? BufferPage { get; set; }
+
+    public bool IsBufferPage => BufferPage is not null;
+
+    public bool CanOpenTarget { get; set; } = true;
 
     public bool IsMemoryTracked => MemoryBlock >= 0;
 

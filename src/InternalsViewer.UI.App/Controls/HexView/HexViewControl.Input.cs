@@ -3,6 +3,7 @@ using Windows.Foundation;
 using InternalsViewer.UI.App.Models;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Input;
+using Windows.System;
 
 namespace InternalsViewer.UI.App.Controls.HexView;
 
@@ -33,12 +34,14 @@ public sealed partial class HexViewControl
     {
         var position = HexRichTextBlock.GetPositionFromPoint(e.GetCurrentPoint(HexRichTextBlock).Position);
 
-        if (position != null)
-        {
-            var offset = HexLayout.FromRunPosition(position.Offset, HexLayout.CharactersPerLine) - 1;
+        int? offset = position is null ? null : HexLayout.FromRunPosition(position.Offset, HexLayout.CharactersPerLine) - 1;
 
-            MouseOver = new(offset, MarkerLookup.FindAt(Markers, offset));
+        if (offset is { } hovered)
+        {
+            MouseOver = new(hovered, MarkerLookup.FindAt(Markers, hovered));
         }
+
+        UpdateHoveredLink(offset, e.GetCurrentPoint(this).Position);
     }
 
     private void OnHexPointerPressed(object sender, PointerRoutedEventArgs e)
@@ -67,10 +70,19 @@ public sealed partial class HexViewControl
 
         SelectedMarker = null;
 
-        if (HexRichTextBlock.GetPositionFromPoint(released) is { } position)
+        if (HexRichTextBlock.GetPositionFromPoint(released) is not { } position)
         {
-            OffsetClicked?.Invoke(this, HexLayout.FromRunPosition(position.Offset, HexLayout.CharactersPerLine) - 1);
+            return;
         }
+
+        var offset = HexLayout.FromRunPosition(position.Offset, HexLayout.CharactersPerLine) - 1;
+
+        if (e.KeyModifiers.HasFlag(VirtualKeyModifiers.Control) && OpenLinkAt(offset))
+        {
+            return;
+        }
+
+        OffsetClicked?.Invoke(this, offset);
     }
 
     private void HexRichTextBlock_PointerEntered(object sender, PointerRoutedEventArgs e)
@@ -83,6 +95,8 @@ public sealed partial class HexViewControl
     private void HexRichTextBlock_PointerExited(object sender, PointerRoutedEventArgs e)
     {
         MouseOver = new MouseOverInfo(null, null);
+
+        UpdateHoveredLink(null, default);
     }
 
     public sealed class MouseOverInfo(int? offset, Marker? marker)

@@ -283,6 +283,24 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
         }
     }
 
+    public void SelectOffset(int offset)
+    {
+        var slotArrayStart = PageData.Size - Page.PageHeader.SlotCount * sizeof(ushort);
+
+        var index = offset < PageHeader.Size
+            ? PageDisplayBuilder.PageHeaderSlot
+            : offset >= slotArrayStart
+                ? PageDisplayBuilder.OffsetTableSlot
+                : PageSlots.Where(s => s.Index >= 0 && s.Offset <= offset).MaxBy(s => s.Offset)?.Index;
+
+        if (PageSlots.FirstOrDefault(s => s.Index == index) is { } slot)
+        {
+            SelectedSlot = slot;
+        }
+
+        ScrollToOffset = offset;
+    }
+
     partial void OnLogRecordsChanged(ObservableCollection<LogRecordItem> value)
     {
         UpdateLogRecordsVisibility();

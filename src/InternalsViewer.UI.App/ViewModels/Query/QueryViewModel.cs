@@ -976,7 +976,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public void OpenPage(PageAddress pageAddress, ushort? slot = null) => _ = OpenPageAsync(pageAddress, slot);
 
-    public Task OpenPageAsync(PageAddress pageAddress, ushort? slot = null)
+    public void OpenPageAtOffset(PageAddress pageAddress, int offset) => _ = OpenPageAsync(pageAddress, offset: offset);
+
+    public Task OpenPageAsync(PageAddress pageAddress, ushort? slot = null, int? offset = null)
     {
         var logRecords = GetPageLogRecords(pageAddress);
 
@@ -987,7 +989,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             Layout.Show(existing);
 
             return _openPages.TryGetValue(key, out var openViewModel)
-                ? LoadPageDocument(openViewModel, pageAddress, slot, logRecords)
+                ? LoadPageDocument(openViewModel, pageAddress, slot, offset, logRecords)
                 : Task.CompletedTask;
         }
 
@@ -1007,7 +1009,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         Layout.Show(document);
 
-        return LoadPageDocument(pageViewModel, pageAddress, slot, logRecords);
+        return LoadPageDocument(pageViewModel, pageAddress, slot, offset, logRecords);
     }
 
     public void RefreshFilteredEvents()
@@ -1570,11 +1572,17 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private async Task LoadPageDocument(PageTabViewModel pageViewModel,
                                         PageAddress pageAddress,
                                         ushort? slot,
+                                        int? offset,
                                         IReadOnlyList<PageLogRecord> logRecords)
     {
         try
         {
             await pageViewModel.LoadPage(pageAddress, slot);
+
+            if (offset is { } selected)
+            {
+                pageViewModel.SelectOffset(selected);
+            }
 
             pageViewModel.LogRecords = new ObservableCollection<LogRecordItem>(
                 logRecords.Select(r => new LogRecordItem { Record = r }));

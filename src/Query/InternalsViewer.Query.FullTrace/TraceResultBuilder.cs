@@ -7,6 +7,7 @@ using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
@@ -46,6 +47,8 @@ internal sealed class TraceResultBuilder
 
     public CustomHookStore CustomHooks { get; init; } = CustomHookStore.Empty;
 
+    public TraceBufferPool BufferPool { get; init; } = TraceBufferPool.Empty;
+
     private CallStackTree CallStack { get; }
 
     private TraceCallStore CallStore { get; }
@@ -84,6 +87,7 @@ internal sealed class TraceResultBuilder
             MemoryMap = MemoryMap,
             ObjectPool = ObjectPool,
             CustomHooks = CustomHooks,
+            BufferPool = BufferPool,
             OutputStructures = outputStructures,
             RowReturnMarks = TraceRowReturnMarks.Build(Timeline, CallStore, lifetimes, enclosing),
             Reads = TraceReads.Build(Timeline, CallStore, lifetimes, enclosing),

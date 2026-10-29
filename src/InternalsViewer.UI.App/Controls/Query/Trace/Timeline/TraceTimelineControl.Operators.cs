@@ -207,7 +207,9 @@ public sealed partial class TraceTimelineControl
 
     private bool ShowsOperators => ShowOperators && _operators.HasRows;
 
-    private float OperatorsTop => RulerTop + RulerHeight + PlayheadStripHeight;
+    private float OperatorsTop => PlayheadStripTop + PlayheadStripHeight;
+
+    private float PlayheadStripTop => RulerTop + RulerHeight;
 
     private bool ShowsFlameChart => ShowFlameChart || (!ShowsOperators && !ShowsMemory);
 

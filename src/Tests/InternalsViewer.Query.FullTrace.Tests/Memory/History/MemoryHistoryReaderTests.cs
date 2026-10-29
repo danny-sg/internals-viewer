@@ -36,12 +36,24 @@ public class MemoryHistoryReaderTests
         => Assert.Equal(0, new MemoryHistoryReader(Store, At(3)).Read(Owned + 0x100, new byte[4]));
 
     [Fact]
-    public void Has_Changed_Only_When_A_Block_It_Read_Was_Written_Again()
+    public void Has_Changed_When_A_Byte_It_Read_Was_Written_Again()
     {
         var reader = new MemoryHistoryReader(Store, At(3));
 
         reader.Read(Owned, new byte[4]);
 
         Assert.Equal((false, true), (reader.HasChanged(At(3, 5)), reader.HasChanged(At(5))));
+    }
+
+    [Fact]
+    public void Has_Not_Changed_When_Only_Bytes_It_Did_Not_Read_Were_Written()
+    {
+        var store = Build([Block(Owned, 0x10)], [(2, Owned, [1, 2, 3, 4]), (4, Owned + 8, [7]), (6, Owned + 1, [5])]);
+
+        var reader = new MemoryHistoryReader(store, At(5));
+
+        reader.Read(Owned, new byte[4]);
+
+        Assert.Equal((false, true), (reader.HasChanged(At(3)), reader.HasChanged(At(7))));
     }
 }

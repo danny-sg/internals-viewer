@@ -6,6 +6,7 @@ using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -34,6 +35,8 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
     public ObjectPoolSnapshot ObjectPool { get; init; } = ObjectPoolSnapshot.Empty;
 
     public CustomHookStore CustomHooks { get; init; } = CustomHookStore.Empty;
+
+    public TraceBufferPool BufferPool { get; init; } = TraceBufferPool.Empty;
 
     public MemoryHistoryStore MemoryHistory { get; init; } = MemoryHistoryStore.Empty;
 
@@ -71,6 +74,7 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
         yield return ("Memory Map Entries", MemoryMap.Count, MemoryMap.Bytes);
         yield return ("Memory Allocations", Memory.AllocationCount, Memory.Bytes);
         yield return ("Memory History Writes", MemoryHistory.WriteCount, MemoryHistory.Bytes);
+        yield return ("Buffer Pool Pages", BufferPool.Count, BufferPool.Bytes);
         yield return ("Call Tree Nodes", CallStack.Nodes().LongCount(), null);
         yield return ("Operator Lifetimes", Lifetimes.Count, null);
         yield return ("Read Ticks", Reads.Count, null);

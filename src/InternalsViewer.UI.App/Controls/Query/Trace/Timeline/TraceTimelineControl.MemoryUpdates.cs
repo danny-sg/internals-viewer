@@ -9,6 +9,8 @@ namespace InternalsViewer.UI.App.Controls.Query.Trace.Timeline;
 
 public sealed partial class TraceTimelineControl
 {
+    private const float MemoryUpdateWidth = 1;
+
     private TraceMemoryWrites? _memoryUpdates;
 
     private string? _memoryUpdatesName;
@@ -72,17 +74,15 @@ public sealed partial class TraceTimelineControl
 
         var lastColour = SKColors.Transparent;
 
-        for (var index = SortedSearch.FirstAtOrAfter(marks.Values, _viewStart - MinimumSearchMatchLength / scale);
+        for (var index = SortedSearch.FirstAtOrAfter(marks.Values, _viewStart - MemoryUpdateWidth / scale);
              index < marks.Values.Length && marks.Values[index] <= _viewEnd;
              index++)
         {
-            var x = (float)((marks.Values[index] - _viewStart) * scale);
-
-            var pixel = (int)MathF.Floor(x);
+            var pixel = (int)MathF.Floor((float)((marks.Values[index] - _viewStart) * scale));
 
             var colour = marks.Colours[index];
 
-            if (pixel <= lastPixel + 1 && colour == lastColour)
+            if (pixel == lastPixel && colour == lastColour)
             {
                 continue;
             }
@@ -93,13 +93,13 @@ public sealed partial class TraceTimelineControl
 
             _paints.Fill.Color = colour;
 
-            canvas.DrawRect(x - MinimumSearchMatchLength / 2, top, MinimumSearchMatchLength, height, _paints.Fill);
+            canvas.DrawRect(pixel, top, MemoryUpdateWidth, height, _paints.Fill);
         }
     }
 
     private bool IsOverMemoryUpdate(MemoryUpdateMarks marks, float x, double scale)
     {
-        var reach = HalfPixel + MinimumSearchMatchLength / 2;
+        var reach = HalfPixel + MemoryUpdateWidth / 2;
 
         var index = SortedSearch.FirstAtOrAfter(marks.Values, _viewStart + (x - reach) / scale);
 

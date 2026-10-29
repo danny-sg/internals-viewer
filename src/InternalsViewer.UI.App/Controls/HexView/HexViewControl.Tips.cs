@@ -38,6 +38,8 @@ public sealed partial class HexViewControl
 
     private void HexMenu_Opening(object sender, object e)
     {
+        SetLinkMenuItem();
+
         SetChangeMenuItems();
 
         CopyMenuItem.IsEnabled = HexRichTextBlock.SelectedText.Length > 0;

@@ -4,6 +4,7 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.UI.App.Controls.Query.Trace.CallStack;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Controls.HexView;
@@ -124,6 +125,23 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         Query.Layout.ShowTraceTimeline();
 
         Controller?.Search(text);
+    }
+
+    public void OpenBufferPage(TraceBufferReference reference)
+    {
+        if (!Query.MemoryHistory.IsQueryDatabase(reference))
+        {
+            return;
+        }
+
+        if (reference.IsBuffer)
+        {
+            Query.OpenPage(reference.Page);
+        }
+        else
+        {
+            Query.OpenPageAtOffset(reference.Page, reference.Offset);
+        }
     }
 
     public void OpenMemory(int block, ulong address, TracePosition position, int length = 1)
