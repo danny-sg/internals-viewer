@@ -10,10 +10,13 @@
 
     <UserControl.Resources>
         <DataTemplate x:Key="ReferenceTemplate" x:DataType="muxc:TreeViewNode">
-            <StackPanel Orientation="Horizontal"
-                        Spacing="8"
-                        ToolTipService.ToolTip="{x:Bind ((timeline:MemoryReferenceNode)Content).ValueText}">
+            <StackPanel Orientation="Horizontal" Spacing="8">
                 <TextBlock Text="{x:Bind ((timeline:MemoryReferenceNode)Content).OffsetText}"
+                           FontSize="12"
+                           FontFamily="{StaticResource MonospaceFontFamily}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           VerticalAlignment="Center"/>
+                <TextBlock Text="{x:Bind ((timeline:MemoryReferenceNode)Content).ValueText}"
                            FontSize="12"
                            FontFamily="{StaticResource MonospaceFontFamily}"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
@@ -34,7 +37,37 @@
     </UserControl.Resources>
 
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0"
+              Padding="8,0,4,0"
+              ColumnSpacing="6"
+              BorderThickness="0,0,0,1"
+              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBox Grid.Column="0"
+                     Margin="0,4,0,4"
+                     VerticalAlignment="Center"
+                     PlaceholderText="Name or Address"
+                     Style="{StaticResource FilterTextBoxStyle}"
+                     Text="{x:Bind ViewModel.References.Filter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+            <Button Grid.Column="1"
+                    Content="Graph"
+                    Style="{StaticResource TabCommandButtonStyle}"
+                    ToolTipService.ToolTip="Open Reference Graph"
+                    Click="OnGraphClick"/>
+        </Grid>
+
         <muxc:TreeView x:Name="ReferenceTree"
+                       Grid.Row="1"
                        ItemTemplate="{StaticResource ReferenceTemplate}"
                        ItemContainerStyle="{StaticResource ReferenceItemStyle}"
                        SelectionMode="Single"
@@ -48,9 +81,11 @@
                        ScrollViewer.VerticalScrollBarVisibility="Auto"
                        ScrollViewer.VerticalScrollMode="Enabled"/>
 
-        <TextBlock Text="{x:Bind ViewModel.References.EmptyText, Mode=OneWay}"
+        <TextBlock Grid.Row="1"
+                   Text="{x:Bind ViewModel.References.EmptyText, Mode=OneWay}"
                    FontSize="12"
                    Margin="12,8,12,8"
+                   VerticalAlignment="Top"
                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                    IsHitTestVisible="False"/>
     </Grid>

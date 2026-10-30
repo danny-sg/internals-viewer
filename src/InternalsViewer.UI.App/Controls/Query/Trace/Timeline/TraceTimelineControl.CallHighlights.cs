@@ -18,7 +18,7 @@ public sealed partial class TraceTimelineControl
     [
         new("CSQLSource::Transform", "Compilation", SKColors.LightGreen),
         new("CQuery::CreateExecPlan", "Setup", SKColors.LightSkyBlue),
-        new("CXStmtQuery::ShutdownNormal", "Shutdown", SKColors.LightCoral)
+        new(TraceTimeline.ShutdownSymbol, "Shutdown", SKColors.LightCoral)
     ];
 
     private readonly HashSet<string> _hiddenHighlightRegions = [];

@@ -25,5 +25,7 @@ public sealed record ResultColumn(int Ordinal, string Name, Type ClrType, bool I
 
     public int? Width { get; set; }
 
+    public bool IsStar { get; set; }
+
     public ResultAlignment Alignment { get; set; } = ResultAlignment.Left;
 }

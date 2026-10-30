@@ -186,6 +186,11 @@ public sealed partial class ResultsGridControl : UserControl
                 resultCellColumn.SortDirection = direction == ResultSortDirection.Ascending ? SortDirection.Ascending : SortDirection.Descending;
             }
 
+            if (column is { IsStar: true, Width: { } minimum })
+            {
+                resultCellColumn.MinWidth = minimum;
+            }
+
             if (CreateHeaderStyle(column) is { } headerStyle)
             {
                 resultCellColumn.HeaderStyle = headerStyle;
@@ -476,6 +481,11 @@ public sealed partial class ResultsGridControl : UserControl
 
     private static GridLength GetColumnWidth(ResultColumn column, ResultRow<long>? first, double fontSize)
     {
+        if (column.IsStar)
+        {
+            return new GridLength(1, GridUnitType.Star);
+        }
+
         if (column.Width is null && first is not null)
         {
             var content = ResultCellColumn.MeasureWidth(first[column.Ordinal], fontSize) + CellMargin;

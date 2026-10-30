@@ -88,6 +88,20 @@ public sealed partial class MemoryHistoryStore
         return new MemoryHistoryImage(data, known, changed);
     }
 
+    public int[] GetLastWrites(int block, int writeIndex)
+    {
+        var lastWrites = new int[BlockArray[block].Size];
+
+        var writes = GetBlockWrites(block);
+
+        for (var index = 0; index < writes.Length && index <= writeIndex; index++)
+        {
+            lastWrites.AsSpan(writes[index].Offset, writes[index].Length).Fill(index);
+        }
+
+        return lastWrites;
+    }
+
     public int GetWriteCount(int block, TracePosition position)
         => SortedSearch.FirstAfter<MemoryHistoryWrite, TracePosition>(GetBlockWrites(block), position, w => w.Position);
 

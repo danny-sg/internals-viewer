@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Controls.Query.Trace.Memory.MemoryReferenceGraphControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="GraphLineBrush" Color="#8A8A8A"/>
+                    <SolidColorBrush x:Key="GraphHotLineBrush" Color="#C25E00"/>
+                    <SolidColorBrush x:Key="GraphProgressBrush" Color="#59808080"/>
+                    <SolidColorBrush x:Key="GraphActiveBrush" Color="#606060"/>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="GraphLineBrush" Color="#7A7A7A"/>
+                    <SolidColorBrush x:Key="GraphHotLineBrush" Color="#F0A030"/>
+                    <SolidColorBrush x:Key="GraphProgressBrush" Color="#59A0A0A0"/>
+                    <SolidColorBrush x:Key="GraphActiveBrush" Color="#B0B0B0"/>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+
+            <Style x:Key="NodeStyle" TargetType="Border">
+                <Setter Property="CornerRadius" Value="0"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="BorderBrush" Value="{ThemeResource GraphLineBrush}"/>
+                <Setter Property="Background" Value="{ThemeResource SolidBackgroundFillColorTertiaryBrush}"/>
+            </Style>
+
+            <Style x:Key="RootNodeStyle" TargetType="Border" BasedOn="{StaticResource NodeStyle}">
+                <Setter Property="BorderThickness" Value="2"/>
+                <Setter Property="BorderBrush" Value="{ThemeResource AccentFillColorDefaultBrush}"/>
+            </Style>
+
+            <Style x:Key="DataNodeStyle" TargetType="Border" BasedOn="{StaticResource NodeStyle}">
+                <Setter Property="Background" Value="{ThemeResource SystemFillColorSuccessBackgroundBrush}"/>
+            </Style>
+
+            <Style x:Key="NodeContentStyle" TargetType="Grid">
+                <Setter Property="Margin" Value="4,2,2,2"/>
+                <Setter Property="ColumnSpacing" Value="4"/>
+            </Style>
+
+            <Style x:Key="ProgressStyle" TargetType="Rectangle">
+                <Setter Property="Fill" Value="{ThemeResource GraphProgressBrush}"/>
+            </Style>
+
+            <Style x:Key="ActiveStyle" TargetType="Rectangle">
+                <Setter Property="Fill" Value="{ThemeResource GraphActiveBrush}"/>
+            </Style>
+
+            <Style x:Key="NodeLabelStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+            </Style>
+
+            <Style x:Key="NodeDetailStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="11"/>
+                <Setter Property="FontFamily" Value="{StaticResource MonospaceFontFamily}"/>
+                <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}"/>
+                <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+            </Style>
+
+            <Style x:Key="ToggleStyle" TargetType="Button">
+                <Setter Property="Padding" Value="4"/>
+                <Setter Property="MinWidth" Value="0"/>
+                <Setter Property="MinHeight" Value="0"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="0"/>
+            </Style>
+
+            <Style x:Key="EdgeStyle" TargetType="Polyline">
+                <Setter Property="StrokeThickness" Value="1"/>
+                <Setter Property="Stroke" Value="{ThemeResource GraphLineBrush}"/>
+            </Style>
+
+            <Style x:Key="HotEdgeStyle" TargetType="Polyline">
+                <Setter Property="StrokeThickness" Value="1"/>
+                <Setter Property="Stroke" Value="{ThemeResource GraphHotLineBrush}"/>
+            </Style>
+
+            <Style x:Key="ArrowStyle" TargetType="Polygon">
+                <Setter Property="Fill" Value="{ThemeResource GraphLineBrush}"/>
+            </Style>
+
+            <Style x:Key="HotArrowStyle" TargetType="Polygon">
+                <Setter Property="Fill" Value="{ThemeResource GraphHotLineBrush}"/>
+            </Style>
+
+            <Style x:Key="EdgeLabelStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="10"/>
+                <Setter Property="FontFamily" Value="{StaticResource MonospaceFontFamily}"/>
+                <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}"/>
+            </Style>
+
+            <Style x:Key="HotEdgeLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource EdgeLabelStyle}">
+                <Setter Property="Foreground" Value="{ThemeResource GraphHotLineBrush}"/>
+            </Style>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid>
+        <ScrollViewer x:Name="GraphScroller"
+                      ZoomMode="Enabled"
+                      MinZoomFactor="0.2"
+                      MaxZoomFactor="2"
+                      HorizontalScrollMode="Enabled"
+                      HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollMode="Enabled"
+                      VerticalScrollBarVisibility="Auto"
+                      PointerMoved="OnScrollerPointerMoved"
+                      PointerReleased="OnScrollerPointerReleased"
+                      PointerCaptureLost="OnScrollerPointerCaptureLost"
+                      SizeChanged="OnScrollerSizeChanged"
+                      ViewChanged="OnScrollerViewChanged">
+            <Canvas x:Name="GraphCanvas"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Top"
+                    Background="Transparent"
+                    PointerWheelChanged="OnCanvasPointerWheelChanged"/>
+        </ScrollViewer>
+
+        <TextBlock x:Name="TruncatedText"
+                   FontSize="12"
+                   Margin="12,8,12,8"
+                   HorizontalAlignment="Right"
+                   VerticalAlignment="Bottom"
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                   IsHitTestVisible="False"
+                   Visibility="Collapsed"/>
+    </Grid>
+</UserControl>

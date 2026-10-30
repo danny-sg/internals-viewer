@@ -436,6 +436,8 @@ public sealed partial class TraceTimelineControl
 
         DrawStripMarks(canvas, width);
 
+        DrawTrim(canvas, width, height);
+
         if (ShowMemory)
         {
             canvas.Save();

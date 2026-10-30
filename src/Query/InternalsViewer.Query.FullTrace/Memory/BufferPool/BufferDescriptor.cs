@@ -12,9 +12,23 @@ public static class BufferDescriptor
 
     public const int DatabaseIdOffset = 0x2C;
 
+    public const int StateHistoryOffset = 0x30;
+
+    public const int ReadTimeOffset = 0x40;
+
+    public const int ErrorCodeOffset = 0x5C;
+
+    public const int LastUsedOffset = 0x60;
+
+    public const int StatusOffset = 0x64;
+
     public const int PageIdOffset = 0x70;
 
     public const int FileIdOffset = 0x74;
+
+    public const int PartitionOffset = 0x76;
+
+    public const int RecoveryUnitOffset = 0x90;
 
     public const int LatchWaitersOffset = 0x98;
 
@@ -30,10 +44,17 @@ public static class BufferDescriptor
 
     public static List<BufferField> Fields { get; } =
     [
-        new("Frame", FrameOffset, sizeof(ulong)),
-        new("Database ID", DatabaseIdOffset, sizeof(ushort)),
-        new("Page ID", PageIdOffset, sizeof(uint)),
-        new("File ID", FileIdOffset, sizeof(ushort)),
+        new("Frame (bpage)", FrameOffset, sizeof(ulong)),
+        new("Database Id (bdbid)", DatabaseIdOffset, sizeof(ushort)),
+        new("State History (blog)", StateHistoryOffset, sizeof(uint)),
+        new("Read \u00B5s (bReadMicroSec)", ReadTimeOffset, sizeof(ulong)),
+        new("Error Code (berrcode)", ErrorCodeOffset, sizeof(uint)),
+        new("Last Used (bUse1)", LastUsedOffset, sizeof(ushort)),
+        new("Status (bstat)", StatusOffset, sizeof(uint)),
+        new("Page ID (bpageno)", PageIdOffset, sizeof(uint)),
+        new("File ID (bpageno)", FileIdOffset, sizeof(ushort)),
+        new("Partition (bpart)", PartitionOffset, sizeof(ushort)),
+        new("Recovery Unit (bpru)", RecoveryUnitOffset, sizeof(ulong)),
         new("Latch Waiters", LatchWaitersOffset, sizeof(ulong)),
         new("Latch Owner", LatchOwnerOffset, sizeof(ulong)),
         new("Latch State", LatchStateOffset, sizeof(ulong))

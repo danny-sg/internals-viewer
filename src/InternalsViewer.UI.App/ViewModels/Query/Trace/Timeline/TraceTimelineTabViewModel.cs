@@ -13,6 +13,7 @@ using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline.Memory;
 using InternalsViewer.UI.App.Views.Query.Trace.Timeline.Memory;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
 
@@ -54,6 +55,8 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         Dock.SelectionChanged += OnDockSelectionChanged;
 
         Dock.DocumentActivated += OnDocumentActivated;
+
+        Query.Layout.Dock.DocumentClosed += OnQueryDocumentClosed;
     }
 
     public event EventHandler<TracePoint>? PlayheadRequested;
@@ -91,6 +94,8 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
     private DocumentViewModel CallStackDocument { get; }
 
     private List<DocumentViewModel> MemoryDocuments { get; } = [];
+
+    private List<DocumentViewModel> GraphDocuments { get; } = [];
 
     private DocumentViewModel? LastActivatedMemory { get; set; }
 
@@ -195,7 +200,8 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
                                              persist: false,
                                              commandsFactory: () => CreateMemoryCommands(memory))
         {
-            MinWidth = HexViewControl.StandardWidth
+            MinWidth = HexViewControl.StandardWidth,
+            MenuItems = [new DocumentMenuItem("Open Reference Graph", () => OpenReferenceGraph(memory.Block, memory.Position))]
         };
 
         var neighbour = MemoryDocuments.LastOrDefault(Dock.Contains) ?? CallStackDocument;
@@ -209,11 +215,61 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         ShowActiveMemoryUpdates();
     }
 
+    public void OpenReferenceGraph(int block, TracePosition position)
+    {
+        if (block < 0 || block >= Query.MemoryHistory.Store.Blocks.Count)
+        {
+            return;
+        }
+
+        var key = $"Graph:{block}";
+
+        if (GraphDocuments.FirstOrDefault(d => d.Key == key) is { } existing)
+        {
+            ShowGraph(existing);
+
+            return;
+        }
+
+        var graph = new MemoryReferenceGraphViewModel(Query.MemoryHistory, block, position, this);
+
+        graph.SetPlayhead(Playhead);
+
+        var document = new DocumentViewModel(graph.Title,
+                                             graph,
+                                             static () => new MemoryReferenceGraphView(),
+                                             keepAlive: true,
+                                             key: key,
+                                             persist: false,
+                                             commandsFactory: () => CreateGraphCommands(graph));
+
+        Query.Layout.RegisterDocument(key, document);
+
+        ShowGraph(document);
+
+        GraphDocuments.Add(document);
+    }
+
+    public void SetTrim(TracePosition? start, TracePosition? end)
+    {
+        Query.MemoryHistory.SetScope(start, end);
+
+        foreach (var document in GraphDocuments)
+        {
+            ((MemoryReferenceGraphViewModel)document.Content).RefreshScope();
+        }
+    }
+
     public void CloseMemory()
     {
         foreach (var document in MemoryDocuments.ToList())
         {
             Dock.Close(document);
+        }
+
+        foreach (var document in GraphDocuments.ToList())
+        {
+            Query.Layout.Close(document);
         }
     }
 
@@ -224,6 +280,11 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         foreach (var document in MemoryDocuments)
         {
             ((PlayheadMemoryViewModel)document.Content).SetPlayhead(position);
+        }
+
+        foreach (var document in GraphDocuments)
+        {
+            ((MemoryReferenceGraphViewModel)document.Content).SetPlayhead(position);
         }
     }
 
@@ -244,6 +305,8 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
 
         Dock.DocumentActivated -= OnDocumentActivated;
 
+        Query.Layout.Dock.DocumentClosed -= OnQueryDocumentClosed;
+
         CallStackDocument.DisposeView();
 
         foreach (var document in MemoryDocuments)
@@ -252,6 +315,17 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         }
 
         MemoryDocuments.Clear();
+
+        foreach (var document in GraphDocuments)
+        {
+            Query.Layout.Close(document);
+
+            Query.Layout.RemoveDocument(document.Key, out _);
+
+            DisposeGraph(document);
+        }
+
+        GraphDocuments.Clear();
     }
 
     partial void OnIsCallStackVisibleChanged(bool value)
@@ -321,6 +395,30 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
                                                 "Next Update",
                                                 (_, _) => memory.StepWrite(isForward: true)));
 
+    private static FrameworkElement CreateGraphCommands(MemoryReferenceGraphViewModel graph)
+    {
+        var toggles = new ToggleButton[2];
+
+        toggles[0] = TabCommands.Toggle(TabCommands.Label("Reference Changes"),
+                                        graph.IsReferenceHot,
+                                        "Show only the pointers that changed after they were set up, and the paths to them",
+                                        (_, _) => SetHot(0));
+
+        toggles[1] = TabCommands.Toggle(TabCommands.Label("Data Changes"),
+                                        graph.IsDataHot,
+                                        "Show only the objects whose other fields changed after they were set up, and the paths to them",
+                                        (_, _) => SetHot(1));
+
+        return TabCommands.Panel(CommandSpacing, toggles);
+
+        void SetHot(int index)
+        {
+            toggles[1 - index].IsChecked = false;
+
+            graph.SetHot(TabCommands.IsChecked(toggles[0]), TabCommands.IsChecked(toggles[1]));
+        }
+    }
+
     private void OnDockLayoutChanged(object? sender, EventArgs e)
     {
         IsCallStackVisible = Dock.Contains(CallStackDocument);
@@ -383,6 +481,37 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         {
             OpenMemory(block, request.Address, position, request.Length);
         }
+    }
+
+    private void ShowGraph(DocumentViewModel document)
+    {
+        var dock = Query.Layout.Dock;
+
+        if (GraphDocuments.FirstOrDefault(d => d != document && dock.Contains(d)) is { } neighbour)
+        {
+            dock.ShowBeside(document, neighbour);
+        }
+        else
+        {
+            dock.DockBottom(document);
+        }
+    }
+
+    private void OnQueryDocumentClosed(object? sender, DocumentViewModel document)
+    {
+        if (GraphDocuments.Remove(document))
+        {
+            Query.Layout.RemoveDocument(document.Key, out _);
+
+            DisposeGraph(document);
+        }
+    }
+
+    private static void DisposeGraph(DocumentViewModel document)
+    {
+        document.DisposeView();
+
+        ((MemoryReferenceGraphViewModel)document.Content).Close();
     }
 
     private void DisposeMemory(DocumentViewModel document)

@@ -656,6 +656,10 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
         _playheadTriangle.Dispose();
 
+        _trimStartHandle.Dispose();
+
+        _trimEndHandle.Dispose();
+
         _indicatorHead.Dispose();
 
         _operators.Dispose();
@@ -1332,6 +1336,10 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         var control = (TraceTimelineControl)d;
 
         control._markedCalls.Clear();
+
+        control._trimStart = null;
+
+        control._trimEnd = null;
 
         control.ClearPins();
 

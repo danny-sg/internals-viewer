@@ -10,6 +10,8 @@ namespace InternalsViewer.Query.FullTrace.Timeline;
 
 public sealed partial class TraceTimeline
 {
+    public const string ShutdownSymbol = "CXStmtQuery::ShutdownNormal";
+
     internal TraceTimeline(IReadOnlyList<TraceTimelineThread> threads, int[] parents, TraceScale scale)
     {
         Threads = threads;
@@ -229,6 +231,40 @@ public sealed partial class TraceTimeline
     }
 
     public int ParentOf(int callNodeIndex) => callNodeIndex >= 0 && callNodeIndex < Parents.Length ? Parents[callNodeIndex] : -1;
+
+    public TracePosition? GetFirstCallStart(string symbol)
+    {
+        var isMatch = Array.ConvertAll(Nodes, n => n?.Symbol == symbol);
+
+        if (!isMatch.Contains(true))
+        {
+            return null;
+        }
+
+        TracePosition? first = null;
+
+        foreach (var row in Threads.SelectMany(t => t.Rows))
+        {
+            for (var index = 0; index < row.Count; index++)
+            {
+                var callNodeIndex = row.GetCallNodeIndex(index);
+
+                if (callNodeIndex < 0 || callNodeIndex >= isMatch.Length || !isMatch[callNodeIndex])
+                {
+                    continue;
+                }
+
+                var start = row.GetSpan(index).From.Position;
+
+                if (first is not { } found || start < found)
+                {
+                    first = start;
+                }
+            }
+        }
+
+        return first;
+    }
 
     public TraceTimeline Where(Func<int, bool> include) => new([.. Threads.Select(t => t.Where(include))], this);
 

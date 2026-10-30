@@ -4,6 +4,7 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Enums;
+using InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Memory;
 using InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Operators;
 using InternalsViewer.UI.App.Helpers;
 using Microsoft.UI.Input;
@@ -137,6 +138,22 @@ public sealed partial class TraceTimelineControl
 
         _lastPressTicks = now;
         _lastPressPoint = position;
+
+        if (isDoubleClick && IsTrimmed && IsInPlayheadStrip(position) && IsOnPlayhead(position.X))
+        {
+            ClearTrim();
+
+            return;
+        }
+
+        if (GetTrimHandleAt(position) is not TrimHandle.None and var trimHandle)
+        {
+            _trimDrag = trimHandle;
+
+            _overlay.CapturePointer(e.Pointer);
+
+            return;
+        }
 
         if (IsInPlayheadStrip(position) && !IsOnPlayhead(position.X) && ClickSearchMatch(position))
         {
@@ -304,6 +321,13 @@ public sealed partial class TraceTimelineControl
             return;
         }
 
+        if (IsDraggingTrim)
+        {
+            DragTrim(position.X);
+
+            return;
+        }
+
         if (_isScrubbing)
         {
             MovePlayheadTo(position.X);
@@ -396,11 +420,13 @@ public sealed partial class TraceTimelineControl
 
         UpdateCursor(IsOnSplitter(position) || IsOnMemorySplitter(position) || GetPaneResizeHandle(position) is not null
                          ? InputSystemCursorShape.SizeNorthSouth
-                         : found is not null
-                             ? InputSystemCursorShape.SizeAll
-                             : operatorsHover.Tick is not null || memoryHover is not null || latchHover is not null
-                                 ? InputSystemCursorShape.Hand
-                                 : InputSystemCursorShape.Arrow);
+                         : GetTrimHandleAt(position) is not TrimHandle.None
+                             ? InputSystemCursorShape.SizeWestEast
+                             : found is not null
+                                 ? InputSystemCursorShape.SizeAll
+                                 : operatorsHover.Tick is not null || memoryHover is not null || latchHover is not null
+                                     ? InputSystemCursorShape.Hand
+                                     : InputSystemCursorShape.Arrow);
 
         var hit = found?.Call ?? HitTest(position) ?? GetMarkHit(operatorsHover.Tick?.Tick?.Node, operatorsHover.Tick?.Tick?.CallIndex);
 
@@ -729,7 +755,7 @@ public sealed partial class TraceTimelineControl
         var flyout = hasPosition && _operators.Contains(position)
             ? CreateOperatorsMenu(_operators.GetPlanNode(position))
             : hasPosition && ShowsMemory && _memory.Contains(position)
-                ? CreateMemoryHistoryMenu()
+                ? CreateMemoryHistoryMenu(_memory.GetHit(position))
                 : CreateChartMenu(hasPosition ? HitTest(position) : _selected);
 
         if (hasPosition)
@@ -805,9 +831,24 @@ public sealed partial class TraceTimelineControl
         return flyout;
     }
 
-    private MenuFlyout CreateMemoryHistoryMenu()
+    private MenuFlyout CreateMemoryHistoryMenu(TraceMemoryHit? hit)
     {
         var flyout = new MenuFlyout();
+
+        if (hit is { } found && found.Block < _memory.Blocks.Count)
+        {
+            var block = _memory.Blocks[found.Block];
+
+            var position = GetPlayheadPosition() is { } playhead
+                           && playhead >= block.From.Position
+                           && (block.To is not { } to || playhead < to.Position)
+                ? playhead
+                : block.From.Position;
+
+            flyout.Items.Add(MenuItems.Create("Open Reference Graph", () => ReferenceGraphRequested?.Invoke(block.Block, position)));
+
+            flyout.Items.Add(new MenuFlyoutSeparator());
+        }
 
         AddPaneItems(flyout);
 
@@ -911,6 +952,11 @@ public sealed partial class TraceTimelineControl
 
         var invalidate = _isSelecting;
 
+        if (IsDraggingTrim)
+        {
+            EndTrimDrag();
+        }
+
         if (_isDragging)
         {
             UpdateCursor(InputSystemCursorShape.Arrow);
@@ -938,7 +984,7 @@ public sealed partial class TraceTimelineControl
     {
         var scale = PixelsPerUnit((int)_overlay.ActualWidth);
 
-        ShowPlayhead(Math.Clamp(_viewStart + x / scale, Math.Max(_viewStart, FullStart), Math.Min(_viewEnd, FullEnd)));
+        ShowPlayhead(ClampToTrim(Math.Clamp(_viewStart + x / scale, _viewStart, _viewEnd)));
 
         HideToolTip();
 

@@ -91,7 +91,15 @@ public sealed partial class MemoryBufferViewModel : ObservableObject
         return
         [
             GetPageField(owner, address),
+            new("Database Id", $"{ReadShort(data, BufferDescriptor.DatabaseIdOffset)}"),
             new("Frame", $"0x{Read(data, BufferDescriptor.FrameOffset):X16}"),
+            new("Partition", $"{ReadShort(data, BufferDescriptor.PartitionOffset)}"),
+            new("Status", $"0x{ReadInt(data, BufferDescriptor.StatusOffset):X}"),
+            new("Error Code", $"{ReadInt(data, BufferDescriptor.ErrorCodeOffset)}"),
+            new("State History", $"0x{ReadInt(data, BufferDescriptor.StateHistoryOffset):X8}"),
+            new("Read \u00B5s", $"{Read(data, BufferDescriptor.ReadTimeOffset)}"),
+            new("Last Used", $"{ReadShort(data, BufferDescriptor.LastUsedOffset)}"),
+            new("Recovery Unit", GetPointerText(Read(data, BufferDescriptor.RecoveryUnitOffset))),
             new("Latch", GetLatchText(state)),
             new("Latch Owner", GetPointerText(Read(data, BufferDescriptor.LatchOwnerOffset))),
             new("Latch Waiters", GetPointerText(Read(data, BufferDescriptor.LatchWaitersOffset))),
@@ -129,6 +137,10 @@ public sealed partial class MemoryBufferViewModel : ObservableObject
     private static string GetPointerText(ulong value) => value == 0 ? NoneText : $"0x{value:X16}";
 
     private static ulong Read(byte[] data, int offset) => BinaryPrimitives.ReadUInt64LittleEndian(data.AsSpan(offset));
+
+    private static uint ReadInt(byte[] data, int offset) => BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(offset));
+
+    private static ushort ReadShort(byte[] data, int offset) => BinaryPrimitives.ReadUInt16LittleEndian(data.AsSpan(offset));
 
     private static ObservableCollection<Marker> GetMarkers()
         => new(BufferDescriptor.Fields.Select((f, i) => new Marker

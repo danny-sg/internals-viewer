@@ -6,6 +6,7 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.FullTrace;
@@ -72,6 +73,10 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
 
     private const string BufferObject = "BUF";
 
+    private const string SortPageObject = "Sort Page";
+
+    private const string WorkfilePageObject = "Workfile Page";
+
     private static readonly Colour SharedColour = Colour.FromArgb(226, 226, 226);
 
     private static readonly Dictionary<ushort, string> SystemDatabases = new()
@@ -129,11 +134,27 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
 
     public MemoryHistoryBatches? Batches { get; private set; }
 
+    public TracePosition WindowStart
+        => ScopeStart is { } start && start > (Window?.Start.Position ?? default) ? start : Window?.Start.Position ?? default;
+
+    public TracePosition WindowEnd
+        => ScopeEnd is { } end && end < (Window?.End.Position ?? TracePosition.Unknown)
+            ? end
+            : Window?.End.Position ?? TracePosition.Unknown;
+
+    public TraceScale Scale => Window?.Scale ?? TraceScale.Default;
+
+    public TracePosition ShutdownStart { get; private set; } = TracePosition.Unknown;
+
     private Action<CallStackNode, int> OpenCall { get; } = openCall;
 
     private TraceResult? Trace { get; set; }
 
     private TraceTimeline? Window { get; set; }
+
+    private TracePosition? ScopeStart { get; set; }
+
+    private TracePosition? ScopeEnd { get; set; }
 
     private IReadOnlyDictionary<ulong, IteratorTarget> Iterators { get; set; } = new Dictionary<ulong, IteratorTarget>();
 
@@ -156,10 +177,6 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
     private ArrayAllocationMatcher? ArrayAllocations { get; set; }
 
     private short DatabaseId { get; set; }
-
-    private TracePosition WindowStart => Window?.Start.Position ?? default;
-
-    private TracePosition WindowEnd => Window?.End.Position ?? TracePosition.Unknown;
 
     public void SetTrace(TraceResult? trace,
                          IReadOnlyList<EngineEvent> events,
@@ -188,6 +205,10 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
 
         Workfiles = trace is null ? null : new WorkfileLayouts(database, i => GetPlanNode(i, resolvePlanNode));
 
+        ScopeStart = null;
+
+        ScopeEnd = null;
+
         SetWindow(null);
     }
 
@@ -195,6 +216,22 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
     {
         Window = window;
 
+        ShutdownStart = window?.GetFirstCallStart(TraceTimeline.ShutdownSymbol) ?? TracePosition.Unknown;
+
+        ApplyWindow();
+    }
+
+    public void SetScope(TracePosition? start, TracePosition? end)
+    {
+        ScopeStart = start;
+
+        ScopeEnd = end;
+
+        ApplyWindow();
+    }
+
+    private void ApplyWindow()
+    {
         MemoryBlocks = BuildMemoryBlocks();
 
         BufferLatches = BuildBufferLatches();
@@ -263,6 +300,8 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
         return label is null || offset == 0 ? label : $"{label} +0x{offset:X}";
     }
 
+    public TraceBufferPool BufferPool => Trace?.BufferPool ?? TraceBufferPool.Empty;
+
     public TraceBufferReference? GetBufferPage(ulong address, TracePosition position) => Trace?.BufferPool.GetReference(address, position);
 
     public string GetBufferPageLabel(TraceBufferReference reference)
@@ -305,7 +344,25 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
 
     public string GetObjectName(int block) => GetDisplayLabel(block) is { Length: > 0 } name ? name : UnknownObject;
 
+    public string GetTypeName(int block)
+    {
+        if (IsBuffer(block))
+        {
+            return BufferObject;
+        }
+
+        if (IsPage(block))
+        {
+            return WorkfilePageReader.GetPageType(Store, block) == PageType.Sort ? SortPageObject : WorkfilePageObject;
+        }
+
+        return GetObjectName(block);
+    }
+
     public CallStackNode? GetWriter(int callNodeIndex) => callNodeIndex >= 0 ? Trace?.Timeline.NodeOf(callNodeIndex) : null;
+
+    public Windows.UI.Color GetCategoryColour(int callNodeIndex)
+        => ColourHelpers.FromHex(GetWriter(callNodeIndex)?.CategoryColour) ?? Colors.Gray;
 
     public string GetWriterLabel(int callNodeIndex) => GetWriterLabel(GetWriter(callNodeIndex));
 
@@ -506,7 +563,8 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
         return [.. latches.OrderBy(l => l.Point.Position)];
     }
 
-    private bool IsTracked(int block) => Store.IsCreatedWithin(block, WindowStart, WindowEnd);
+    private bool IsTracked(int block)
+        => Store.IsCreatedWithin(block, Window?.Start.Position ?? default, Window?.End.Position ?? TracePosition.Unknown);
 
     private void ShowBlock(int block)
     {

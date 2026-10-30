@@ -1,10 +1,16 @@
+using InternalsViewer.Query.FullTrace.Memory.History;
+
 namespace InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 
-public sealed class MemoryReferenceNode(MemoryPointer pointer, string target, bool isCycle, bool canOpen, MemoryReferenceNode? parent)
+public sealed class MemoryReferenceNode(MemoryHistoryPointer pointer,
+                                        string target,
+                                        bool isCycle,
+                                        bool canOpen,
+                                        MemoryReferenceNode? parent)
 {
     private const string CycleSuffix = "  (Cycle)";
 
-    public MemoryPointer Pointer { get; } = pointer;
+    public MemoryHistoryPointer Pointer { get; } = pointer;
 
     public string Target { get; } = target;
 

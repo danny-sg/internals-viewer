@@ -258,6 +258,16 @@ public sealed partial class TabGroupView : UserControl
 
         var menu = new MenuFlyout();
 
+        foreach (var menuItem in document.MenuItems)
+        {
+            menu.Items.Add(MenuItems.Create(menuItem.Text, menuItem.Invoke));
+        }
+
+        if (document.MenuItems.Count > 0)
+        {
+            menu.Items.Add(new MenuFlyoutSeparator());
+        }
+
         menu.Items.Add(closeAll);
 
         menu.Items.Add(closeOthers);

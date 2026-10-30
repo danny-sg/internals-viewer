@@ -140,18 +140,14 @@ public sealed partial class AllocationLayerGridViewModel : ObservableObject
 
     private static IComparable? GetSortValue(AllocationLayer layer, string property) => property switch
     {
-        nameof(AllocationLayer.ObjectName) => layer.ObjectName,
-        nameof(AllocationLayer.IndexName) => layer.IndexName,
-        nameof(AllocationLayer.IndexTypeDescription) => layer.IndexTypeDescription,
-        nameof(AllocationLayer.TotalPages) => layer.TotalPages,
+        nameof(AllocationLayer.ObjectName) 
+            => layer.ObjectName,
+        nameof(AllocationLayer.IndexName) 
+            => layer.IndexName,
+        nameof(AllocationLayer.IndexTypeDescription) 
+            => layer.IndexTypeDescription,
+        nameof(AllocationLayer.TotalPages) 
+            => layer.TotalPages,
         _ => null
     };
-
-    private void AllocationLayerGridViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (_refreshProperties.Contains(e.PropertyName))
-        {
-            RefreshDataSource();
-        }
-    }
 }

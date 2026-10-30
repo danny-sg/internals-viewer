@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.ComponentModel;
+using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline.Memory;
@@ -88,7 +89,7 @@ public sealed partial class MemoryReferencesPanelView : UserControl
 
         BuiltRoots = references.Roots;
 
-        var existing = new Dictionary<MemoryPointer, TreeViewNode>();
+        var existing = new Dictionary<MemoryHistoryPointer, TreeViewNode>();
 
         foreach (var node in ReferenceTree.RootNodes)
         {
@@ -152,6 +153,8 @@ public sealed partial class MemoryReferencesPanelView : UserControl
             Attached?.Select(reference);
         }
     }
+
+    private void OnGraphClick(object sender, RoutedEventArgs e) => Attached?.OpenGraph();
 
     private void OnTargetClick(object sender, RoutedEventArgs e)
     {

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.UI.App.Controls.Docking;
 using Microsoft.UI.Xaml.Controls;
@@ -74,6 +75,8 @@ public sealed partial class DocumentViewModel : ObservableObject
     public bool CanClose { get; }
 
     public double MinWidth { get; init; }
+
+    public List<DocumentMenuItem> MenuItems { get; init; } = [];
 
     public Microsoft.UI.Xaml.Media.Brush? Accent { get; set; }
 

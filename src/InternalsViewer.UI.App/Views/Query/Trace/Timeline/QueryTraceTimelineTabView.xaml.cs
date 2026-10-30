@@ -91,6 +91,10 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         TraceTimeline.PlayheadChanged += OnPlayheadChanged;
 
+        TraceTimeline.TrimChanged += OnTrimChanged;
+
+        TraceTimeline.ReferenceGraphRequested += OnReferenceGraphRequested;
+
         SearchBar.SearchTextChanged += OnSearchTextChanged;
 
         SearchBar.StepRequested += OnSearchStepRequested;
@@ -207,6 +211,10 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         TraceTimeline.CallStackChanged -= OnCallStackChanged;
 
         TraceTimeline.PlayheadChanged -= OnPlayheadChanged;
+
+        TraceTimeline.TrimChanged -= OnTrimChanged;
+
+        TraceTimeline.ReferenceGraphRequested -= OnReferenceGraphRequested;
 
         SearchBar.SearchTextChanged -= OnSearchTextChanged;
 
@@ -465,6 +473,10 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
     }
 
     private void OnPlayheadChanged() => MemoryThrottle.Run(RefreshMemory);
+
+    private void OnTrimChanged(TracePosition? start, TracePosition? end) => Tab?.SetTrim(start, end);
+
+    private void OnReferenceGraphRequested(int block, TracePosition position) => Tab?.OpenReferenceGraph(block, position);
 
     private void RefreshMemory()
     {

@@ -33,9 +33,9 @@ public sealed partial class TraceTimelineControl
             return;
         }
 
-        if (_playhead is not { } playhead || playhead >= FullEnd)
+        if (_playhead is not { } playhead || playhead >= TrimTo || playhead < TrimFrom)
         {
-            ShowPlayhead(_playhead is null ? GetSelectedStart() ?? Math.Max(_viewStart, FullStart) : Math.Max(_viewStart, FullStart));
+            ShowPlayhead(_playhead is null ? GetSelectedStart() ?? ClampToTrim(_viewStart) : ClampToTrim(_viewStart));
         }
 
         if (_playTimer is null)
@@ -75,7 +75,7 @@ public sealed partial class TraceTimelineControl
 
         var range = _viewEnd - _viewStart;
 
-        var next = Math.Min(playhead + range * PlayTickMs / SweepDurationMs, FullEnd);
+        var next = Math.Min(playhead + range * PlayTickMs / SweepDurationMs, TrimTo);
 
         _playhead = next;
 
@@ -88,7 +88,7 @@ public sealed partial class TraceTimelineControl
 
         _canvas.Invalidate();
 
-        if (next >= FullEnd)
+        if (next >= TrimTo)
         {
             StopPlay();
         }

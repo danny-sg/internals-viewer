@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Data;
+using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Query.FullTrace.Memory.History.Pages;
 using InternalsViewer.Query.Plans.Model;
@@ -114,6 +115,17 @@ public class WorkfilePageReaderTests
         var layout = new RowRecordLayout([Column("Id", SqlDbType.Int, 4), Column("Id", SqlDbType.Int, 4)], keyCount: 1);
 
         Assert.Equal(["Id", "Id (Build Key)"], layout.Structure.Columns.Select(c => c.ColumnName));
+    }
+
+    [Fact]
+    public void A_Page_Type_Is_The_Last_Type_Written_To_The_Header()
+    {
+        const ulong address = 0x1000;
+
+        var store = MemoryHistoryStores.Build([MemoryHistoryStores.Block(address, PageSize)],
+                                              [(2, address, new byte[16]), (3, address, [1, Sort]), (4, address + 0x20, [5])]);
+
+        Assert.Equal(PageType.Sort, WorkfilePageReader.GetPageType(store, 0));
     }
 
     private static RowRecordLayout Layout() => new([Column("Id", SqlDbType.Int, 4)]);

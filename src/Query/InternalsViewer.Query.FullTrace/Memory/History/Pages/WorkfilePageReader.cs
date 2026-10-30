@@ -15,6 +15,8 @@ public static class WorkfilePageReader
 
     private const int HeaderSize = 96;
 
+    private const int PageTypeOffset = 1;
+
     private static FixedVarDataRecordLoader Loader { get; } = new(NullLogger<FixedVarDataRecordLoader>.Instance);
 
     private static FixedVarIndexRecordLoader IndexLoader { get; } = new(NullLogger<FixedVarIndexRecordLoader>.Instance);
@@ -46,6 +48,25 @@ public static class WorkfilePageReader
             : GetRecords(page, (offset, slot) => GetSortRecord(page, offset, slot, sortLayout));
 
         return new WorkfilePage(page, records, layout);
+    }
+
+    public static PageType? GetPageType(MemoryHistoryStore store, int block)
+    {
+        var writes = store.GetWrites(block);
+
+        for (var index = writes.Count - 1; index >= 0; index--)
+        {
+            var write = writes[index];
+
+            var at = PageTypeOffset - write.Offset;
+
+            if (at >= 0 && at < write.Length && store.GetBytes(write)[at] is not 0 and var type)
+            {
+                return (PageType)type;
+            }
+        }
+
+        return null;
     }
 
     private static List<FixedVarRecord> GetRecords(DataPage page, Func<ushort, int, FixedVarRecord> getRecord)

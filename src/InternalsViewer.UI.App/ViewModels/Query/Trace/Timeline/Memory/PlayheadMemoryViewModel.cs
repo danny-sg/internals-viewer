@@ -36,6 +36,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     private const string OpenPageCommand = "Open Page";
 
+    private const string PointerPrefix = "Pointer: ";
+
     [ObservableProperty]
     private bool _isOpen;
 
@@ -117,7 +119,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     private List<MemoryChangeRun> Runs { get; set; } = [];
 
-    private List<MemoryPointer> Pointers { get; set; } = [];
+    private List<MemoryHistoryPointer> Pointers { get; set; } = [];
 
     private ObservableCollection<Marker>? WriterMarkers { get; set; }
 
@@ -403,8 +405,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         ApplyMarkers();
     }
 
-    public Windows.UI.Color GetCategoryColour(int callNodeIndex)
-        => ColourHelpers.FromHex(History.GetWriter(callNodeIndex)?.CategoryColour) ?? Colors.Gray;
+    public Windows.UI.Color GetCategoryColour(int callNodeIndex) => History.GetCategoryColour(callNodeIndex);
 
     partial void OnSelectedTabChanged(int value)
     {
@@ -520,10 +521,10 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         return new HexImage(image.Data,
                             MemoryChangeRuns.GetRuns(store.GetWrites(block), count, image.Data.Length),
-                            MemoryPointers.Find(history, image, store.Blocks[block].Address, position));
+                            MemoryHistoryPointers.Find(store, history.BufferPool, block, image, count, position));
     }
 
-    private List<HexLink> GetLinks(List<MemoryPointer> pointers)
+    private List<HexLink> GetLinks(List<MemoryHistoryPointer> pointers)
     {
         var links = new List<HexLink>();
 
@@ -533,13 +534,17 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
             {
                 var target = History.GetPointerTarget(value, Position) ?? $"0x{value:X16}";
 
-                links.Add(new HexLink(offset, MemoryPointers.PointerSize, target, OpenMemoryCommand, () => RequestMemory(value)));
+                links.Add(new HexLink(offset,
+                                      MemoryHistoryPointers.PointerSize,
+                                      PointerPrefix + target,
+                                      OpenMemoryCommand,
+                                      () => RequestMemory(value)));
             }
             else if (page is { } reference && History.IsQueryDatabase(reference))
             {
                 links.Add(new HexLink(offset,
-                                      MemoryPointers.PointerSize,
-                                      History.GetBufferPageLabel(reference),
+                                      MemoryHistoryPointers.PointerSize,
+                                      PointerPrefix + History.GetBufferPageLabel(reference),
                                       OpenPageCommand,
                                       () => Navigator?.OpenBufferPage(reference)));
             }
@@ -639,5 +644,5 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         }
     }
 
-    private sealed record HexImage(byte[] Data, List<MemoryChangeRun> Runs, List<MemoryPointer> Pointers);
+    private sealed record HexImage(byte[] Data, List<MemoryChangeRun> Runs, List<MemoryHistoryPointer> Pointers);
 }

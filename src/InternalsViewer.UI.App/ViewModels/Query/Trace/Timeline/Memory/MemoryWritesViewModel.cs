@@ -169,7 +169,7 @@ public sealed partial class MemoryWritesViewModel(PlayheadMemoryViewModel owner)
             new(CallColumn, "Call", typeof(long), false) { Width = CallWidth, Alignment = ResultAlignment.Right },
             SortableColumn(AddressColumn, "Address", AddressWidth),
             new(LengthColumn, "Length", typeof(int), false) { Width = LengthWidth, Alignment = ResultAlignment.Right },
-            SortableColumn(ValueColumn, "Value", ValueWidth)
+            SortableColumn(ValueColumn, "Value", ValueWidth) with { IsStar = true }
         };
 
         if (!Owner.IsOpen)

@@ -203,6 +203,8 @@ public sealed partial class TraceTimelineControl
 
     public event Action<int, ulong, TracePosition>? MemoryBlockSelected;
 
+    public event Action<int, TracePosition>? ReferenceGraphRequested;
+
     public event Action? PaneVisibilityChanged;
 
     private bool ShowsOperators => ShowOperators && _operators.HasRows;

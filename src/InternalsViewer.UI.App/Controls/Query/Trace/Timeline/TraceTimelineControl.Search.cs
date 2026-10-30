@@ -158,7 +158,7 @@ public sealed partial class TraceTimelineControl
                 {
                     for (var index = 0; index < row.Count; index++)
                     {
-                        if (IsSearchMatch(matches, row.GetCallNodeIndex(index)))
+                        if (IsSearchMatch(matches, row.GetCallNodeIndex(index)) && IsWithinTrim(row, index))
                         {
                             count++;
                         }
@@ -545,7 +545,7 @@ public sealed partial class TraceTimelineControl
 
                     for (var index = first; index < row.Count && (best is null || row.GetStart(_axis, index) < bestStart); index++)
                     {
-                        if (IsSearchMatch(matches, row.GetCallNodeIndex(index)))
+                        if (IsSearchMatch(matches, row.GetCallNodeIndex(index)) && IsWithinTrim(row, index))
                         {
                             best = new FlameHit(lane, depth, index);
 
@@ -563,7 +563,7 @@ public sealed partial class TraceTimelineControl
 
                     for (var index = last; index >= 0 && (best is null || row.GetStart(_axis, index) >= bestStart); index--)
                     {
-                        if (IsSearchMatch(matches, row.GetCallNodeIndex(index)))
+                        if (IsSearchMatch(matches, row.GetCallNodeIndex(index)) && IsWithinTrim(row, index))
                         {
                             best = new FlameHit(lane, depth, index);
 
@@ -578,6 +578,9 @@ public sealed partial class TraceTimelineControl
 
         return best;
     }
+
+    private bool IsWithinTrim(TraceTimelineRow row, int index)
+        => row.GetEnd(_axis, index) >= TrimFrom && row.GetStart(_axis, index) <= TrimTo;
 
     private static bool IsSearchMatch(bool[] matches, int callNodeIndex) => callNodeIndex >= 0 && callNodeIndex < matches.Length && matches[callNodeIndex];
 

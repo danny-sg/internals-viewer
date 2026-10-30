@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using Windows.Foundation;
 using InternalsViewer.UI.App.Models;
 using Microsoft.UI;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Shapes;
 
 namespace InternalsViewer.UI.App.Controls.HexView;
@@ -51,7 +53,7 @@ public sealed partial class HexViewControl
 
         var lineHeight = GetLineHeight();
 
-        var brush = GetBrush(Colors.Navy);
+        var brush = GetBrush(Colors.LightSteelBlue);
 
         foreach (var link in links)
         {
@@ -77,6 +79,53 @@ public sealed partial class HexViewControl
                 Canvas.SetTop(underline, bounds.Bottom - LinkUnderlineInset);
 
                 LinkCanvas.Children.Add(underline);
+            }
+        }
+    }
+
+    private void HighlightLinks(ObservableCollection<Marker>? markers)
+    {
+        var length = Data?.Length ?? 0;
+
+        if (Links is not { Count: > 0 } links || length == 0)
+        {
+            return;
+        }
+
+        var ordered = new List<Marker>();
+
+        AddMarkers(ordered, markers);
+
+        foreach (var link in links)
+        {
+            var end = link.Offset + link.Length;
+
+            if (link.Length <= 0 || link.Offset < 0 || end > length)
+            {
+                continue;
+            }
+
+            for (var start = link.Offset; start < end;)
+            {
+                var background = GetMarkerBackground(ordered, start);
+
+                var stop = start + 1;
+
+                while (stop < end && Nullable.Equals(GetMarkerBackground(ordered, stop), background))
+                {
+                    stop++;
+                }
+
+                var from = HexLayout.ToRunPosition(start);
+
+                HexRichTextBlock.TextHighlighters.Add(new TextHighlighter
+                {
+                    Foreground = GetBrush(Colors.Gray),
+                    Background = GetBrush(background ?? Colors.Transparent),
+                    Ranges = { new TextRange(from, HexLayout.ToRunPosition(stop) - 1 - from) }
+                });
+
+                start = stop;
             }
         }
     }
@@ -142,6 +191,29 @@ public sealed partial class HexViewControl
         return true;
     }
 
+    private static void AddMarkers(List<Marker> ordered, IEnumerable<Marker>? markers)
+    {
+        foreach (var marker in markers ?? [])
+        {
+            ordered.Add(marker);
+
+            AddMarkers(ordered, marker.Children);
+        }
+    }
+
+    private static Windows.UI.Color? GetMarkerBackground(List<Marker> ordered, int offset)
+    {
+        for (var index = ordered.Count - 1; index >= 0; index--)
+        {
+            if (ordered[index].StartPosition <= offset && offset <= ordered[index].EndPosition)
+            {
+                return ordered[index].BackColour;
+            }
+        }
+
+        return null;
+    }
+
     private static void OnLinksChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var control = (HexViewControl)d;
@@ -152,6 +224,8 @@ public sealed partial class HexViewControl
 
             control.LinkTipPopup.IsOpen = false;
         }
+
+        HighlightMarkers(control, control.Markers);
 
         control.DrawLinks();
     }

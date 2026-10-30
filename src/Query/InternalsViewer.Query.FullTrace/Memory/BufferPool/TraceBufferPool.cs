@@ -32,6 +32,33 @@ public sealed partial class TraceBufferPool
     public TraceBufferReference? GetReference(ulong address, TracePosition position)
         => GetFrameReference(address, position) ?? GetBufferReference(address, position);
 
+    public List<TraceBufferPage> GetResidencies(ulong buffer)
+    {
+        var residencies = new List<TraceBufferPage>();
+
+        for (var index = SortedSearch.FirstAtOrAfter<TraceBufferPage, ulong>(Buffers, buffer, p => p.Buffer);
+             index < Buffers.Length && Buffers[index].Buffer == buffer;
+             index++)
+        {
+            residencies.Add(Buffers[index]);
+        }
+
+        return residencies;
+    }
+
+    public TracePosition GetReferenceEnd(TraceBufferReference reference, ulong address, TracePosition position)
+    {
+        var start = address - (ulong)reference.Offset;
+
+        var (pages, getKey) = reference.IsBuffer
+            ? (Buffers, (Func<TraceBufferPage, (ulong, TracePosition)>)GetBufferKey)
+            : (Pages, GetFrameKey);
+
+        var index = SortedSearch.FirstAfter<TraceBufferPage, (ulong, TracePosition)>(pages, (start, position), getKey);
+
+        return index < pages.Length && getKey(pages[index]).Item1 == start ? pages[index].Position : TracePosition.Unknown;
+    }
+
     private TraceBufferReference? GetFrameReference(ulong address, TracePosition position)
     {
         var frame = address - address % PageData.Size;
