@@ -1,21 +1,32 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using Windows.Foundation;
 
 namespace InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 
-public sealed class MemoryReferenceGraphEdge(Point[] points,
-                                             Point labelAt,
-                                             string label,
-                                             string changes,
-                                             string detail,
-                                             int changeCount,
-                                             bool isCrossLink,
-                                             bool isLabelBelow)
+public sealed partial class MemoryReferenceGraphEdge(MemoryReferenceGraphNode from,
+                                                     MemoryReferenceGraphNode to,
+                                                     Point[] points,
+                                                     Point labelAt,
+                                                     string label,
+                                                     string widestLabel,
+                                                     string changes,
+                                                     string detail,
+                                                     int changeCount,
+                                                     bool isCrossLink,
+                                                     bool isLabelBelow) : ObservableObject
 {
+    [ObservableProperty]
+    private string _label = label;
+
+    public MemoryReferenceGraphNode From { get; } = from;
+
+    public MemoryReferenceGraphNode To { get; } = to;
+
     public Point[] Points { get; } = points;
 
     public Point LabelAt { get; } = labelAt;
 
-    public string Label { get; } = label;
+    public string WidestLabel { get; } = widestLabel;
 
     public string Changes { get; } = changes;
 

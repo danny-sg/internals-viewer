@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <UserControl
-    x:Class="InternalsViewer.UI.App.Views.Query.Trace.Timeline.Memory.MemoryHistoryPanelView"
+    x:Class="InternalsViewer.UI.App.Views.Query.Trace.Timeline.Memory.MemoryReadsPanelView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:results="using:InternalsViewer.UI.App.Controls.Results">
@@ -27,7 +27,7 @@
                      VerticalAlignment="Center"
                      PlaceholderText="Function"
                      Style="{StaticResource FilterTextBoxStyle}"
-                     Text="{x:Bind ViewModel.Writes.FunctionFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                     Text="{x:Bind ViewModel.Reads.FunctionFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
             <TextBox Grid.Column="1"
                      Margin="0,4,0,4"
@@ -35,7 +35,7 @@
                      PlaceholderText="Address"
                      FontFamily="{StaticResource MonospaceFontFamily}"
                      Style="{StaticResource FilterTextBoxStyle}"
-                     Text="{x:Bind ViewModel.Writes.AddressFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                     Text="{x:Bind ViewModel.Reads.AddressFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
             <Button Grid.Column="2"
                     Content="Clear"
@@ -44,12 +44,12 @@
         </Grid>
 
         <results:ResultsGridControl Grid.Row="1"
-                                    ResultSet="{x:Bind ViewModel.Writes.Table, Mode=OneWay}"
-                                    SelectedRow="{x:Bind ViewModel.Writes.SelectedRow, Mode=TwoWay}"
+                                    ResultSet="{x:Bind ViewModel.Reads.Table, Mode=OneWay}"
+                                    SelectedRow="{x:Bind ViewModel.Reads.SelectedRow, Mode=TwoWay}"
                                     CellHovered="OnCellHovered"
                                     CallClicked="OnCallClicked"
                                     CellMenuOpening="OnCellMenuOpening"
                                     SortRequested="OnSortRequested"
-                                    RowName="write"/>
+                                    RowName="read"/>
     </Grid>
 </UserControl>

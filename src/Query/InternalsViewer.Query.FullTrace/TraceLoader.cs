@@ -77,7 +77,9 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
             return null;
         }
 
-        var (replay, functions, allocations, writes) = replayed.Value;
+        using var session = replayed.Value.Session;
+
+        var (_, replay, functions) = replayed.Value;
 
         steps.Begin(CallTreeStep);
 
@@ -93,16 +95,10 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         steps.Complete();
 
-        if (request.RecordMemoryHistory)
+        if (request.RecordMemoryHistory
+            && await WatchMemoryAsync(session, replay, functions, result.Lifetimes, timeline, steps, progress, cancellationToken) is { } history)
         {
-            steps.Begin(MemoryHistoryStep);
-
-            if (allocations.Length > 0)
-            {
-                result = result with { MemoryHistory = BuildMemoryHistory(replay, allocations, writes, result.Lifetimes, timeline) };
-            }
-
-            steps.Complete();
+            result = result with { MemoryHistory = history };
         }
 
         Logger.LogInformation("{Objects} HoBt access object(s) linked to their HoBt", result.HoBtAccess.Count);
@@ -123,7 +119,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         return result;
     }
 
-    private async Task<(ReplayResult Replay, ReplayFunctions Functions, MemoryHistoryAllocation[] Allocations, WatchResult Writes)?>
+    private async Task<(ReplaySession Session, ReplayResult Replay, ReplayFunctions Functions)?>
         ReplayAsync(TraceRequest request,
                     IReadOnlyList<CustomHookDefinition> customHooks,
                     StepProgress steps,
@@ -131,11 +127,13 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                     IProgress<ProgressDetail>? progress,
                     CancellationToken cancellationToken)
     {
+        ReplaySession? session = null;
+
         try
         {
             steps.Begin(OpeningStep);
 
-            using var session = await ReplaySession.OpenAsync(request.TraceFile, cancellationToken);
+            session = await ReplaySession.OpenAsync(request.TraceFile, cancellationToken);
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -164,37 +162,12 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
             steps.Complete();
 
-            if (!request.RecordMemoryHistory)
-            {
-                return (replay, functions, [], WatchResult.Empty);
-            }
-
-            steps.Begin(WatchStep);
-
-            var allocations = MemoryHistoryBuilder.GetAllocations(replay.CallStore, functions.MemoryFunctions, replay.Buffers);
-
-            var writes = allocations.Length == 0
-                ? WatchResult.Empty
-                : await session.WatchAsync(MemoryHistoryBuilder.GetRanges(allocations.Select(a => a.Block)),
-                                           allocations.Min(a => a.Block.Start),
-                                           replay.Timeline.End.Position,
-                                           MemoryHistoryBuilder.GetWatchFilter(allocations),
-                                           steps,
-                                           cancellationToken);
-
-            Logger.LogInformation("{Writes} of {Received} watched write(s) were to {Allocations} allocation(s) while live, "
-                                  + "watched in {Ranges} range(s)",
-                                  writes.HitCount,
-                                  writes.ReceivedHitCount,
-                                  allocations.Length,
-                                  writes.WatchedRanges);
-
-            steps.Complete();
-
-            return (replay, functions, allocations, writes);
+            return (session, replay, functions);
         }
         catch (Exception exception) when (exception is InvalidOperationException or DllNotFoundException)
         {
+            session?.Dispose();
+
             Logger.LogWarning(exception, "Time travel trace {TracePath} could not be replayed", request.TraceFile.Path);
 
             steps.Complete();
@@ -209,16 +182,12 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
     {
         List<ProgressStep> steps = [new(OpeningStep, 25), new(SymbolsStep, 5), new(ReplayStep, 50)];
 
-        if (memoryHistory)
-        {
-            steps.Add(new(WatchStep, 40));
-        }
-
         steps.Add(new(CallTreeStep, 15));
         steps.Add(new(OperatorsStep, 5));
 
         if (memoryHistory)
         {
+            steps.Add(new(WatchStep, 40));
             steps.Add(new(MemoryHistoryStep, 25));
         }
 
@@ -359,21 +328,88 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         return builder.Build(outputStructures);
     }
 
-    private MemoryHistoryStore BuildMemoryHistory(ReplayResult replay,
-                                                  MemoryHistoryAllocation[] allocations,
-                                                  WatchResult writes,
-                                                  TraceOperatorLifetimes lifetimes,
-                                                  TraceTimeline timeline)
+    private async Task<MemoryHistoryStore?> WatchMemoryAsync(ReplaySession session,
+                                                             ReplayResult replay,
+                                                             ReplayFunctions functions,
+                                                             TraceOperatorLifetimes lifetimes,
+                                                             TraceTimeline timeline,
+                                                             StepProgress steps,
+                                                             IProgress<ProgressDetail>? progress,
+                                                             CancellationToken cancellationToken)
     {
+        steps.Begin(WatchStep);
+
+        var allocations = MemoryHistoryBuilder.GetAllocations(replay.CallStore, functions.MemoryFunctions, replay.Buffers);
+
+        if (allocations.Length == 0)
+        {
+            steps.Complete();
+
+            return null;
+        }
+
         HashSet<ulong> iterators = [.. lifetimes.OperatorsByInstance.Keys, .. replay.PlanNodes.Select(p => p.Iterator)];
 
         var owners = IteratorAllocations.GetOwners([.. allocations.Select(a => a.Block)], replay.CallStore, iterators, replay.PlanNodes);
 
-        var (history, counts) = MemoryHistoryBuilder.Build(allocations,
+        var recording = new MemoryHistoryBuilder.Recording(allocations,
                                                            owners,
                                                            MemoryHistoryBuilder.GetFirstPositions(replay.CallStore, iterators),
-                                                           writes,
                                                            timeline);
+
+        WatchResult writes;
+
+        try
+        {
+            writes = await session.WatchAsync(MemoryHistoryBuilder.GetRanges(allocations.Select(a => a.Block)),
+                                              allocations.Min(a => a.Block.Start),
+                                              replay.Timeline.End.Position,
+                                              MemoryHistoryBuilder.GetWatchFilter(allocations),
+                                              recording.AddRead,
+                                              steps,
+                                              cancellationToken);
+        }
+        catch (InvalidOperationException exception)
+        {
+            Logger.LogWarning(exception, "Memory could not be watched in time travel trace {TracePath}", session.TraceFile.Path);
+
+            steps.Complete();
+
+            progress?.Report($"Memory History could not be recorded: {exception.Message}");
+
+            return null;
+        }
+
+        var reads = recording.ReadCounts;
+
+        Logger.LogInformation("{Writes} of {Received} watched write(s) were to {Allocations} allocation(s) while live, "
+                              + "watched in {Ranges} range(s)",
+                              writes.HitCount,
+                              writes.ReceivedHitCount,
+                              allocations.Length,
+                              writes.WatchedRanges);
+
+        Logger.LogInformation("{Recorded} of {Received} watched read(s) were from live blocks, {BufferPool} from buffer pool memory, "
+                              + "{Outside} outside a live block",
+                              reads.Recorded,
+                              reads.Received,
+                              reads.BufferPool,
+                              reads.Outside);
+
+        steps.Complete();
+
+        steps.Begin(MemoryHistoryStep);
+
+        var history = BuildMemoryHistory(recording, writes, allocations.Length);
+
+        steps.Complete();
+
+        return history;
+    }
+
+    private MemoryHistoryStore BuildMemoryHistory(MemoryHistoryBuilder.Recording recording, WatchResult writes, int allocationCount)
+    {
+        var (history, counts) = recording.Build(writes);
 
         Logger.LogInformation("{Recorded} kept write(s) recorded a change, {Unchanged} left values unchanged, {BufferPool} were to "
                               + "buffer pool memory, {Outside} were outside a live block",
@@ -385,8 +421,12 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         Logger.LogInformation("{Writes} change(s) to {Blocks} of {Allocations} watched allocation(s), {Owned} owned by an iterator",
                               history.WriteCount,
                               history.Blocks.Count,
-                              allocations.Length,
+                              allocationCount,
                               history.Blocks.Count(b => b.Iterator != 0));
+
+        Logger.LogInformation("{Reads} read(s) by call recorded, {Unwritten} read(s) were from blocks with no writes",
+                              history.ReadCount,
+                              recording.ReadCounts.Unwritten);
 
         return history;
     }

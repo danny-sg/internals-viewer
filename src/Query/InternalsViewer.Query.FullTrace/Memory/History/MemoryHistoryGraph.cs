@@ -1,28 +1,40 @@
 using System.Buffers.Binary;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
+using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Memory.History;
 
 public sealed class MemoryHistoryGraph
 {
+    public const char PathSeparator = '/';
+
+    public const char ReferrerSeparator = '<';
+
     private const int PointerSize = MemoryHistoryPointers.PointerSize;
 
-    private MemoryHistoryGraph(List<MemoryHistoryGraphNode> nodes, List<MemoryHistoryGraphEdge> edges, bool isTruncated)
+    private MemoryHistoryGraph(List<MemoryHistoryGraphNode> nodes,
+                               List<MemoryHistoryGraphEdge> edges,
+                               Dictionary<(int From, int To, int Offset), TargetOffset[]> targetOffsets,
+                               bool isTruncated)
     {
         Nodes = nodes;
 
         Edges = edges;
 
+        TargetOffsets = targetOffsets;
+
         IsTruncated = isTruncated;
     }
 
-    public static MemoryHistoryGraph Empty { get; } = new([], [], false);
+    public static MemoryHistoryGraph Empty { get; } = new([], [], [], false);
 
     public List<MemoryHistoryGraphNode> Nodes { get; }
 
     public List<MemoryHistoryGraphEdge> Edges { get; }
 
     public bool IsTruncated { get; }
+
+    private Dictionary<(int From, int To, int Offset), TargetOffset[]> TargetOffsets { get; }
 
     public static MemoryHistoryGraph Build(MemoryHistoryStore store,
                                            TraceBufferPool pool,
@@ -33,173 +45,46 @@ public sealed class MemoryHistoryGraph
                                            Func<string, bool> isExpanded,
                                            Func<string, bool> isReferrersExpanded,
                                            int depth,
-                                           int limit)
+                                           int limit,
+                                           Func<int, MemoryHistoryArray?>? getArray = null)
     {
         var root = store.Blocks[block];
 
         MemoryHistoryGraphTarget[] rootTargets = [new(root.FromPosition, root.ToPosition, root.Address, block, null)];
 
-        var changesEnd = shutdown < to ? shutdown : to;
+        return Build(store, pool, rootTargets, null, from, to, shutdown, isExpanded, isReferrersExpanded, depth, limit, getArray);
+    }
 
-        var changes = new Dictionary<int, Dictionary<int, SlotChanges>>();
+    public static MemoryHistoryGraph BuildFromCall(MemoryHistoryStore store,
+                                                   TraceBufferPool pool,
+                                                   ulong[] arguments,
+                                                   TracePosition position,
+                                                   TracePosition from,
+                                                   TracePosition to,
+                                                   TracePosition shutdown,
+                                                   Func<string, bool> isExpanded,
+                                                   Func<string, bool> isReferrersExpanded,
+                                                   int depth,
+                                                   int limit,
+                                                   Func<int, MemoryHistoryArray?>? getArray = null)
+    {
+        var seeds = new SortedDictionary<int, List<SlotSegment>>();
 
-        var nodes = new List<MemoryHistoryGraphNode>
+        for (var index = 0; index < arguments.Length; index++)
         {
-            new(string.Empty, 0, -1, rootTargets, GetDataMarks(store, pool, rootTargets, from, changesEnd, changes))
-        };
+            var value = arguments[index];
 
-        var edges = new List<MemoryHistoryGraphEdge>();
-
-        var owners = new Dictionary<string, int>();
-
-        Own(owners, rootTargets, 0);
-
-        var timelines = new Dictionary<int, Dictionary<int, List<MemoryHistoryGraphTarget>>>();
-
-        var queue = new Queue<int>([0]);
-
-        var isTruncated = false;
-
-        while (queue.TryDequeue(out var index))
-        {
-            var node = nodes[index];
-
-            if (node.Depth >= depth || !isExpanded(node.Path))
+            if (value == 0 || MemoryHistoryPointers.GetTarget(store, pool, value, position) is not { } target)
             {
                 continue;
             }
 
-            foreach (var (offset, segments) in GetSlots(store, pool, node, from, to, timelines))
-            {
-                List<MemoryHistoryGraphTarget> targets = [.. segments.Select(s => s.Target)];
+            var end = target.Page is { } page ? pool.GetReferenceEnd(page, value, position) : store.Blocks[target.Block].ToPosition;
 
-                var moves = GetMoves(store, pool, segments, offset, from, changesEnd, changes);
-
-                var changeCount = moves.Count;
-
-                if (targets.All(t => owners.ContainsKey(GetTargetKey(t))))
-                {
-                    foreach (var owned in targets.GroupBy(t => owners[GetTargetKey(t)]))
-                    {
-                        edges.Add(new MemoryHistoryGraphEdge(index, owned.Key, offset, GetTargetOffset(store, [.. owned]), changeCount));
-                    }
-
-                    continue;
-                }
-
-                if (nodes.Count >= limit)
-                {
-                    isTruncated = true;
-
-                    continue;
-                }
-
-                var target = nodes.Count;
-
-                nodes.Add(new MemoryHistoryGraphNode($"{node.Path}/{offset:X}",
-                                                     node.Depth + 1,
-                                                     index,
-                                                     [.. targets],
-                                                     [.. moves, .. GetDataMarks(store, pool, targets, from, changesEnd, changes)]));
-
-                Own(owners, targets, target);
-
-                queue.Enqueue(target);
-
-                edges.Add(new MemoryHistoryGraphEdge(index, target, offset, GetTargetOffset(store, targets), changeCount));
-            }
+            seeds[index] = [new SlotSegment(new MemoryHistoryGraphTarget(position, end, value, target.Block, target.Page), -1, position)];
         }
 
-        var placed = nodes.SelectMany(n => GetBlocks(n.Targets)).ToHashSet();
-
-        var level = isReferrersExpanded(string.Empty) ? new List<int> { 0 } : [];
-
-        while (level.Count > 0)
-        {
-            var next = new List<int>();
-
-            var references = GetReferences(store, pool, [.. level.SelectMany(i => GetBlocks(nodes[i].Targets))], from, to);
-
-            foreach (var index in level)
-            {
-                var node = nodes[index];
-
-                var blocks = GetBlocks(node.Targets).ToHashSet();
-
-                var found = references.Where(r => blocks.Contains(r.Target.Block) && !placed.Contains(r.Block)).ToList();
-
-                foreach (var (key, lane) in GetReferrerLanes(store, found))
-                {
-                    if (nodes.Count >= limit)
-                    {
-                        isTruncated = true;
-
-                        continue;
-                    }
-
-                    var referrer = nodes.Count;
-
-                    var path = $"{node.Path}<{key}";
-
-                    var targets = GetReferrerTargets(store, lane);
-
-                    nodes.Add(new MemoryHistoryGraphNode(path,
-                                                         node.Depth - 1,
-                                                         index,
-                                                         targets,
-                                                         GetDataMarks(store, pool, targets, from, changesEnd, changes)));
-
-                    placed.UnionWith(lane.Select(r => r.Block));
-
-                    foreach (var slot in lane.GroupBy(r => r.Offset).OrderBy(g => g.Key))
-                    {
-                        List<SlotSegment> pointers = [.. slot.Select(r => new SlotSegment(r.Target, r.Block, r.Target.From))];
-
-                        edges.Add(new MemoryHistoryGraphEdge(referrer,
-                                                             index,
-                                                             slot.Key,
-                                                             GetTargetOffset(store, [.. slot.Select(r => r.Target)]),
-                                                             GetMoves(store, pool, pointers, slot.Key, from, changesEnd, changes).Count));
-                    }
-
-                    if (1 - node.Depth < depth && isReferrersExpanded(path))
-                    {
-                        next.Add(referrer);
-                    }
-                }
-            }
-
-            level = next;
-        }
-
-        foreach (var node in nodes.Where(n => !n.IsReferrer))
-        {
-            node.HasPointers = GetSlots(store, pool, node, from, to, timelines).Count > 0;
-        }
-
-        foreach (var node in nodes.Where(n => n.Targets.Length > 0 && n.Targets.All(t => t.Page is null && t.Block == n.Targets[0].Block)))
-        {
-            var info = store.Blocks[node.Targets[0].Block];
-
-            node.Object = new MemoryHistoryGraphTarget(info.FromPosition, info.ToPosition, info.Address, node.Targets[0].Block, null);
-        }
-
-        var unplaced = GetReferences(store, pool, [.. nodes.Where(n => n.Depth <= 0).SelectMany(n => GetBlocks(n.Targets))], from, to)
-                       .Where(r => !placed.Contains(r.Block))
-                       .Select(r => r.Target.Block)
-                       .ToHashSet();
-
-        for (var index = 0; index < nodes.Count; index++)
-        {
-            var node = nodes[index];
-
-            if (node.Depth <= 0)
-            {
-                node.HasReferrers = nodes.Any(n => n.IsReferrer && n.Parent == index) || GetBlocks(node.Targets).Any(unplaced.Contains);
-            }
-        }
-
-        return new MemoryHistoryGraph(nodes, edges, isTruncated);
+        return Build(store, pool, [], seeds, from, to, shutdown, isExpanded, isReferrersExpanded, depth, limit, getArray);
     }
 
     public MemoryHistoryGraph GetHot(bool isReferenceHot, bool isDataHot)
@@ -261,6 +146,7 @@ public sealed class MemoryHistoryGraph
                 {
                     HasPointers = node.HasPointers,
                     HasReferrers = node.HasReferrers,
+                    IsReferrer = node.IsReferrer,
                     Object = node.Object
                 });
             }
@@ -270,12 +156,226 @@ public sealed class MemoryHistoryGraph
                          .Select(e => e with { From = indexes[e.From], To = indexes[e.To] })
                          .ToList();
 
-        return new MemoryHistoryGraph(nodes, edges, IsTruncated);
+        var targetOffsets = TargetOffsets.Where(o => isKept[o.Key.From] && isKept[o.Key.To])
+                                         .ToDictionary(o => (indexes[o.Key.From], indexes[o.Key.To], o.Key.Offset), o => o.Value);
+
+        return new MemoryHistoryGraph(nodes, edges, targetOffsets, IsTruncated);
     }
+
+    public int? GetTargetOffset(MemoryHistoryGraphEdge edge, TracePosition position)
+    {
+        if (edge.TargetOffset is { } offset)
+        {
+            return offset;
+        }
+
+        if (!TargetOffsets.TryGetValue((edge.From, edge.To, edge.Offset), out var offsets))
+        {
+            return null;
+        }
+
+        var index = SortedSearch.FirstAfter<TargetOffset, TracePosition>(offsets, position, o => o.From) - 1;
+
+        return index >= 0 && position < offsets[index].To ? offsets[index].Offset : null;
+    }
+
+    public int? GetMaximumTargetOffset(MemoryHistoryGraphEdge edge)
+        => edge.TargetOffset
+           ?? (TargetOffsets.TryGetValue((edge.From, edge.To, edge.Offset), out var offsets) ? offsets.Max(o => o.Offset) : null);
 
     public bool IsTreeEdge(MemoryHistoryGraphEdge edge)
         => edge.From != edge.To
            && (Nodes[edge.To].Parent == edge.From || (Nodes[edge.From].IsReferrer && Nodes[edge.From].Parent == edge.To));
+
+    private static MemoryHistoryGraph Build(MemoryHistoryStore store,
+                                            TraceBufferPool pool,
+                                            MemoryHistoryGraphTarget[] rootTargets,
+                                            SortedDictionary<int, List<SlotSegment>>? seeds,
+                                            TracePosition from,
+                                            TracePosition to,
+                                            TracePosition shutdown,
+                                            Func<string, bool> isExpanded,
+                                            Func<string, bool> isReferrersExpanded,
+                                            int depth,
+                                            int limit,
+                                            Func<int, MemoryHistoryArray?>? getArray)
+    {
+        var changesEnd = shutdown < to ? shutdown : to;
+
+        var changes = new Dictionary<int, Dictionary<int, SlotChanges>>();
+
+        var nodes = new List<MemoryHistoryGraphNode>
+        {
+            new(string.Empty, 0, -1, rootTargets, GetDataMarks(store, pool, rootTargets, from, changesEnd, changes))
+        };
+
+        var edges = new List<MemoryHistoryGraphEdge>();
+
+        var targetOffsets = new Dictionary<(int From, int To, int Offset), TargetOffset[]>();
+
+        var owners = new Dictionary<string, int>();
+
+        Own(owners, rootTargets, 0);
+
+        var timelines = new Dictionary<int, Dictionary<int, List<MemoryHistoryGraphTarget>>>();
+
+        var queue = new Queue<int>([0]);
+
+        var isTruncated = false;
+
+        while (queue.TryDequeue(out var index))
+        {
+            var node = nodes[index];
+
+            if (node.Depth >= depth || !isExpanded(node.Path))
+            {
+                continue;
+            }
+
+            if (node.Element is null && GetArray(node, getArray) is { } array)
+            {
+                isTruncated |= AddElements(store, nodes, edges, queue, index, array, limit);
+
+                continue;
+            }
+
+            foreach (var (offset, segments) in index == 0 && seeds is not null ? seeds : GetSlots(store, pool, node, from, to, timelines))
+            {
+                var field = node.Element is { } element ? offset - element.Offset : offset;
+
+                List<MemoryHistoryGraphTarget> targets = [.. segments.Select(s => s.Target)];
+
+                var moves = GetMoves(store, pool, segments, offset, from, changesEnd, changes);
+
+                var changeCount = moves.Count;
+
+                if (targets.All(t => owners.ContainsKey(GetTargetKey(t))))
+                {
+                    foreach (var owned in targets.GroupBy(t => owners[GetTargetKey(t)]))
+                    {
+                        AddEdge(store, edges, targetOffsets, index, owned.Key, field, [.. owned], changeCount);
+                    }
+
+                    continue;
+                }
+
+                if (nodes.Count >= limit)
+                {
+                    isTruncated = true;
+
+                    continue;
+                }
+
+                var target = nodes.Count;
+
+                nodes.Add(new MemoryHistoryGraphNode($"{node.Path}{PathSeparator}{field:X}",
+                                                     node.Depth + 1,
+                                                     index,
+                                                     [.. targets],
+                                                     [.. moves, .. GetDataMarks(store, pool, targets, from, changesEnd, changes)]));
+
+                Own(owners, targets, target);
+
+                queue.Enqueue(target);
+
+                AddEdge(store, edges, targetOffsets, index, target, field, targets, changeCount);
+            }
+        }
+
+        var placed = nodes.SelectMany(n => GetBlocks(n.Targets)).ToHashSet();
+
+        var level = Enumerable.Range(0, nodes.Count).Where(i => !nodes[i].IsData && isReferrersExpanded(nodes[i].Path)).ToList();
+
+        for (var step = 0; level.Count > 0 && step < depth; step++)
+        {
+            var next = new List<int>();
+
+            var references = GetReferences(store, pool, [.. level.SelectMany(i => GetBlocks(nodes[i].Targets))], from, to);
+
+            foreach (var index in level)
+            {
+                var node = nodes[index];
+
+                var blocks = GetBlocks(node.Targets).ToHashSet();
+
+                var found = references.Where(r => blocks.Contains(r.Target.Block) && !placed.Contains(r.Block)).ToList();
+
+                foreach (var (key, lane) in GetReferrerLanes(store, found))
+                {
+                    if (nodes.Count >= limit)
+                    {
+                        isTruncated = true;
+
+                        continue;
+                    }
+
+                    var referrer = nodes.Count;
+
+                    var path = $"{node.Path}{ReferrerSeparator}{key}";
+
+                    var targets = GetReferrerTargets(store, lane);
+
+                    nodes.Add(new MemoryHistoryGraphNode(path,
+                                                         node.Depth - 1,
+                                                         index,
+                                                         targets,
+                                                         GetDataMarks(store, pool, targets, from, changesEnd, changes))
+                    {
+                        IsReferrer = true
+                    });
+
+                    placed.UnionWith(lane.Select(r => r.Block));
+
+                    foreach (var slot in lane.GroupBy(r => r.Offset).OrderBy(g => g.Key))
+                    {
+                        List<SlotSegment> pointers = [.. slot.Select(r => new SlotSegment(r.Target, r.Block, r.Target.From))];
+
+                        AddEdge(store,
+                                edges,
+                                targetOffsets,
+                                referrer,
+                                index,
+                                slot.Key,
+                                [.. slot.Select(r => r.Target)],
+                                GetMoves(store, pool, pointers, slot.Key, from, changesEnd, changes).Count);
+                    }
+
+                    if (isReferrersExpanded(path))
+                    {
+                        next.Add(referrer);
+                    }
+                }
+            }
+
+            level = next;
+        }
+
+        foreach (var node in nodes.Where(n => !n.IsReferrer))
+        {
+            node.HasPointers = GetSlots(store, pool, node, from, to, timelines).Count > 0 || (node.Depth == 0 && seeds is { Count: > 0 });
+        }
+
+        foreach (var node in nodes.Where(n => n.Targets.Length > 0 && n.Targets.All(t => t.Page is null && t.Block == n.Targets[0].Block)))
+        {
+            var info = store.Blocks[node.Targets[0].Block];
+
+            node.Object = new MemoryHistoryGraphTarget(info.FromPosition, info.ToPosition, info.Address, node.Targets[0].Block, null);
+        }
+
+        var unplaced = GetReferences(store, pool, [.. nodes.SelectMany(n => GetBlocks(n.Targets))], from, to)
+                       .Where(r => !placed.Contains(r.Block))
+                       .Select(r => r.Target.Block)
+                       .ToHashSet();
+
+        for (var index = 0; index < nodes.Count; index++)
+        {
+            var node = nodes[index];
+
+            node.HasReferrers = nodes.Any(n => n.IsReferrer && n.Parent == index) || GetBlocks(node.Targets).Any(unplaced.Contains);
+        }
+
+        return new MemoryHistoryGraph(nodes, edges, targetOffsets, isTruncated);
+    }
 
     private void Keep(bool[] isKept, HashSet<string> shown, int node)
     {
@@ -308,6 +408,11 @@ public sealed class MemoryHistoryGraph
 
             foreach (var (offset, segments) in timeline)
             {
+                if (node.Element is { } element && !element.Contains(offset))
+                {
+                    continue;
+                }
+
                 foreach (var segment in segments)
                 {
                     if (segment.From >= instance.To || segment.To <= instance.From)
@@ -336,6 +441,54 @@ public sealed class MemoryHistoryGraph
         return slots;
     }
 
+    private static MemoryHistoryArray? GetArray(MemoryHistoryGraphNode node, Func<int, MemoryHistoryArray?>? getArray)
+        => getArray is not null
+           && node.Targets.Length > 0
+           && node.Targets.All(t => t.Page is null && t.Block >= 0 && t.Block == node.Targets[0].Block)
+           && getArray(node.Targets[0].Block) is { Count: > 0, ElementSize: > 0 } array
+            ? array
+            : null;
+
+    private static bool AddElements(MemoryHistoryStore store,
+                                    List<MemoryHistoryGraphNode> nodes,
+                                    List<MemoryHistoryGraphEdge> edges,
+                                    Queue<int> queue,
+                                    int index,
+                                    MemoryHistoryArray array,
+                                    int limit)
+    {
+        var node = nodes[index];
+
+        var address = store.Blocks[node.Targets[0].Block].Address;
+
+        for (var element = 0; element < array.Count; element++)
+        {
+            if (nodes.Count >= limit)
+            {
+                return true;
+            }
+
+            var offset = element * array.ElementSize;
+
+            var target = nodes.Count;
+
+            nodes.Add(new MemoryHistoryGraphNode($"{node.Path}{PathSeparator}{offset:X}",
+                                                 node.Depth + 1,
+                                                 index,
+                                                 [.. node.Targets.Select(t => t with { Value = address + (ulong)offset })],
+                                                 [])
+            {
+                Element = new MemoryHistoryGraphElement(element, offset, array.ElementSize)
+            });
+
+            queue.Enqueue(target);
+
+            edges.Add(new MemoryHistoryGraphEdge(index, target, offset, 0, 0));
+        }
+
+        return false;
+    }
+
     private static IEnumerable<int> GetBlocks(IEnumerable<MemoryHistoryGraphTarget> targets)
         => targets.Where(t => t.Block >= 0).Select(t => t.Block).Distinct();
 
@@ -345,8 +498,9 @@ public sealed class MemoryHistoryGraph
                                                  TracePosition from,
                                                  TracePosition to)
     {
-        var ranges = blocks.Select(b => (Start: store.Blocks[b].Address, End: store.Blocks[b].Address + (ulong)store.Blocks[b].Size))
-                           .ToArray();
+        var ranges = GetRanges(store, blocks);
+
+        var starts = Array.ConvertAll(ranges, r => r.Start);
 
         var references = new List<Reference>();
 
@@ -359,7 +513,7 @@ public sealed class MemoryHistoryGraph
                 continue;
             }
 
-            var timeline = GetTimeline(store, pool, block, from, to, v => ranges.Any(r => v >= r.Start && v < r.End));
+            var timeline = GetTimeline(store, pool, block, from, to, v => IsInRanges(ranges, starts, v));
 
             foreach (var (offset, segments) in timeline)
             {
@@ -368,6 +522,39 @@ public sealed class MemoryHistoryGraph
         }
 
         return references;
+    }
+
+    private static (ulong Start, ulong End)[] GetRanges(MemoryHistoryStore store, HashSet<int> blocks)
+    {
+        var ranges = new List<(ulong Start, ulong End)>();
+
+        foreach (var block in blocks.Select(b => store.Blocks[b]).OrderBy(b => b.Address))
+        {
+            var end = block.Address + (ulong)block.Size;
+
+            if (ranges.Count > 0 && block.Address <= ranges[^1].End)
+            {
+                ranges[^1] = (ranges[^1].Start, Math.Max(ranges[^1].End, end));
+            }
+            else
+            {
+                ranges.Add((block.Address, end));
+            }
+        }
+
+        return [.. ranges];
+    }
+
+    private static bool IsInRanges((ulong Start, ulong End)[] ranges, ulong[] starts, ulong value)
+    {
+        var index = Array.BinarySearch(starts, value);
+
+        if (index < 0)
+        {
+            index = ~index - 1;
+        }
+
+        return index >= 0 && value < ranges[index].End;
     }
 
     private static List<(string Key, List<Reference> References)> GetReferrerLanes(MemoryHistoryStore store, List<Reference> references)
@@ -638,13 +825,38 @@ public sealed class MemoryHistoryGraph
     private static string GetTargetKey(MemoryHistoryGraphTarget target)
         => target.Page is { } page ? $"{page.DatabaseId}:{page.Page}:{page.IsBuffer}" : $"{target.Block}";
 
+    private static void AddEdge(MemoryHistoryStore store,
+                                List<MemoryHistoryGraphEdge> edges,
+                                Dictionary<(int From, int To, int Offset), TargetOffset[]> targetOffsets,
+                                int from,
+                                int to,
+                                int offset,
+                                List<MemoryHistoryGraphTarget> targets,
+                                int changeCount)
+    {
+        var targetOffset = GetTargetOffset(store, targets);
+
+        edges.Add(new MemoryHistoryGraphEdge(from, to, offset, targetOffset, changeCount));
+
+        if (targetOffset is null && targets.Count > 0)
+        {
+            targetOffsets[(from, to, offset)] =
+            [
+                .. targets.Select(t => new TargetOffset(t.From, t.To, GetOffset(store, t))).OrderBy(t => t.From)
+            ];
+        }
+    }
+
+    private static int GetOffset(MemoryHistoryStore store, MemoryHistoryGraphTarget target)
+        => target.Page is { } page ? page.Offset : (int)(target.Value - store.Blocks[target.Block].Address);
+
     private static int? GetTargetOffset(MemoryHistoryStore store, List<MemoryHistoryGraphTarget> targets)
     {
         int? found = null;
 
         foreach (var target in targets)
         {
-            var offset = target.Page is { } page ? page.Offset : (int)(target.Value - store.Blocks[target.Block].Address);
+            var offset = GetOffset(store, target);
 
             if (found is { } previous && previous != offset)
             {
@@ -675,6 +887,7 @@ public sealed class MemoryHistoryGraph
         {
             if (previous is { } last
                 && last != segment.Target.Value
+                && segment.Owner >= 0
                 && GetChangeCounts(store, pool, segment.Owner, from, to, changes).TryGetValue(offset, out var slot)
                 && slot.References.TryGetValue(segment.Origin, out var write)
                 && counted.Add((segment.Owner, segment.Origin)))
@@ -846,4 +1059,6 @@ public sealed class MemoryHistoryGraph
     private readonly record struct SlotSegment(MemoryHistoryGraphTarget Target, int Owner, TracePosition Origin);
 
     private sealed record SlotChanges(Dictionary<TracePosition, MemoryHistoryWrite> References, List<MemoryHistoryWrite> Data);
+
+    private readonly record struct TargetOffset(TracePosition From, TracePosition To, int Offset);
 }

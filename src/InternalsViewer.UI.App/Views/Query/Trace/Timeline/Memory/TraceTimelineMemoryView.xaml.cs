@@ -42,5 +42,5 @@ public sealed partial class TraceTimelineMemoryView : UserControl
 
     private void OnChangeNavigationRequested(object? sender, HexChangeNavigation e) => ViewModel?.GoToChange(e.Offset, e.IsForward);
 
-    private void OnOffsetClicked(object? sender, int offset) => ViewModel?.ShowHistoryAt(offset);
+    private void OnOffsetClicked(object? sender, int offset) => ViewModel?.ShowWritesAt(offset);
 }

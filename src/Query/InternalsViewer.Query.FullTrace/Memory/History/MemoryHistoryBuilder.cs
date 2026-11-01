@@ -165,62 +165,7 @@ internal static class MemoryHistoryBuilder
                                                                                   IReadOnlyDictionary<ulong, TracePosition> iterators,
                                                                                   WatchResult watched,
                                                                                   TraceTimeline? timeline)
-    {
-        var blocks = new List<WatchedBlock>(allocations.Count);
-
-        for (var index = 0; index < allocations.Count; index++)
-        {
-            var allocation = allocations[index].Block;
-
-            blocks.Add(new WatchedBlock(owners[index],
-                                        allocation.Pointer,
-                                        allocation.Bytes,
-                                        owners[index] == allocation.Pointer,
-                                        isInline: false,
-                                        allocations[index].IsClerkPage,
-                                        allocation.Thread,
-                                        allocation.Start,
-                                        allocation.FreedAt,
-                                        allocations[index].IsBuffer));
-        }
-
-        var lookup = new BlockIndex(blocks);
-
-        lookup.ClipToContainers();
-
-        lookup.AddIterators(iterators);
-
-        var stacks = new StackLookup(timeline);
-
-        foreach (var block in blocks)
-        {
-            block.IsBufferPool = !block.IsIterator
-                                 && !block.IsBuffer
-                                 && stacks.IsBufferPool(stacks.GetCallNodeIndex(block.Thread, block.FromPosition), block.IsClerkPage);
-        }
-
-        var recorder = new WriteRecorder(lookup, stacks);
-
-        var order = HitOrder.Get(watched);
-
-        foreach (var (hit, bytes) in order.GetHits())
-        {
-            recorder.Count(hit, bytes.AsSpan(hit.DataOffset, hit.Size));
-        }
-
-        var (kept, firstWrites) = GetKeptBlocks(blocks, stacks, recorder.Written);
-
-        recorder.BeginWriting(firstWrites);
-
-        foreach (var (hit, bytes) in order.GetHits())
-        {
-            recorder.Write(hit, bytes.AsSpan(hit.DataOffset, hit.Size));
-        }
-
-        var store = new MemoryHistoryStore(kept, recorder.Writes, recorder.GetInstructionHighs(), recorder.Data, recorder.Iterators);
-
-        return (store, recorder.Counts);
-    }
+        => new Recording(allocations, owners, iterators, timeline).Build(watched);
 
     private static bool IsWatched(MemoryFunction function)
         => !function.IsVirtual
@@ -277,6 +222,292 @@ internal static class MemoryHistoryBuilder
         }
 
         return ([.. kept], firstWrites);
+    }
+
+    internal sealed class Recording
+    {
+        internal Recording(IReadOnlyList<MemoryHistoryAllocation> allocations,
+                           IReadOnlyList<ulong> owners,
+                           IReadOnlyDictionary<ulong, TracePosition> iterators,
+                           TraceTimeline? timeline)
+        {
+            for (var index = 0; index < allocations.Count; index++)
+            {
+                var allocation = allocations[index].Block;
+
+                Blocks.Add(new WatchedBlock(owners[index],
+                                            allocation.Pointer,
+                                            allocation.Bytes,
+                                            owners[index] == allocation.Pointer,
+                                            isInline: false,
+                                            allocations[index].IsClerkPage,
+                                            allocation.Thread,
+                                            allocation.Start,
+                                            allocation.FreedAt,
+                                            allocations[index].IsBuffer));
+            }
+
+            Lookup = new BlockIndex(Blocks);
+
+            Lookup.ClipToContainers();
+
+            Lookup.AddIterators(iterators);
+
+            Stacks = new StackLookup(timeline);
+
+            foreach (var block in Blocks)
+            {
+                block.IsBufferPool = !block.IsIterator
+                                     && !block.IsBuffer
+                                     && Stacks.IsBufferPool(Stacks.GetCallNodeIndex(block.Thread, block.FromPosition), block.IsClerkPage);
+            }
+
+            Reads = new ReadRecorder(Lookup, timeline);
+        }
+
+        public MemoryHistoryReadCounts ReadCounts => Reads.Counts;
+
+        private List<WatchedBlock> Blocks { get; } = [];
+
+        private BlockIndex Lookup { get; }
+
+        private StackLookup Stacks { get; }
+
+        private ReadRecorder Reads { get; }
+
+        public void AddRead(WatchHit hit) => Reads.Add(hit);
+
+        public (MemoryHistoryStore Store, MemoryHistoryHitCounts Counts) Build(WatchResult watched)
+        {
+            var recorder = new WriteRecorder(Lookup, Stacks);
+
+            var order = HitOrder.Get(watched);
+
+            foreach (var (hit, bytes) in order.GetHits())
+            {
+                recorder.Count(hit, bytes.AsSpan(hit.DataOffset, hit.Size));
+            }
+
+            var (kept, firstWrites) = GetKeptBlocks(Blocks, Stacks, recorder.Written);
+
+            recorder.BeginWriting(firstWrites);
+
+            foreach (var (hit, bytes) in order.GetHits())
+            {
+                recorder.Write(hit, bytes.AsSpan(hit.DataOffset, hit.Size));
+            }
+
+            var (reads, readStarts, readHighs) = Reads.Build(recorder.Written, kept.Length, Stacks);
+
+            var store = new MemoryHistoryStore(kept,
+                                               recorder.Writes,
+                                               recorder.GetInstructionHighs(),
+                                               recorder.Data,
+                                               recorder.Iterators,
+                                               reads,
+                                               readStarts,
+                                               readHighs);
+
+            return (store, recorder.Counts);
+        }
+    }
+
+    private sealed class ReadRecorder(BlockIndex lookup, TraceTimeline? timeline)
+    {
+        public MemoryHistoryReadCounts Counts { get; } = new();
+
+        private Dictionary<(int Block, int CallNodeIndex, int CallIndex), ReadMark> Marks { get; } = [];
+
+        private Dictionary<uint, TraceTimelineThread> Lanes { get; } = timeline?.Threads.ToDictionary(t => t.ThreadId) ?? [];
+
+        private Dictionary<uint, int> Depths { get; } = [];
+
+        public void Add(WatchHit hit)
+        {
+            Counts.Received++;
+
+            var position = hit.Position;
+
+            if (lookup.GetInnermost(hit.Address, position) is not { } found)
+            {
+                Counts.Outside++;
+
+                return;
+            }
+
+            var block = lookup.Blocks[found];
+
+            if (block.IsBufferPool)
+            {
+                Counts.BufferPool++;
+
+                return;
+            }
+
+            var (callNodeIndex, callIndex) = GetCall(hit.Thread, position);
+
+            var offset = (int)(hit.Address - block.Address);
+
+            var end = (int)Math.Min(block.Size, hit.Address - block.Address + hit.Size);
+
+            ref var mark = ref CollectionsMarshal.GetValueRefOrAddDefault(Marks, (found, callNodeIndex, callIndex), out var exists);
+
+            mark = exists ? mark.Add(position, offset, end) : new ReadMark(hit.Thread, position, offset, end, 1);
+
+            Counts.Recorded++;
+        }
+
+        public (MemoryHistoryRead[] Reads, int[] Starts, HighWordRuns Highs) Build(int[] written, int keptCount, StackLookup stacks)
+        {
+            var kept = new int[written.Length];
+
+            var next = 0;
+
+            for (var index = 0; index < written.Length; index++)
+            {
+                kept[index] = written[index] > 0 ? next++ : -1;
+            }
+
+            var starts = new int[keptCount + 1];
+
+            foreach (var (block, _, _) in Marks.Keys)
+            {
+                if (kept[block] >= 0)
+                {
+                    starts[kept[block] + 1]++;
+                }
+            }
+
+            for (var index = 1; index < starts.Length; index++)
+            {
+                starts[index] += starts[index - 1];
+            }
+
+            var reads = new MemoryHistoryRead[starts[^1]];
+
+            var placed = new int[keptCount];
+
+            uint[]? highs = null;
+
+            foreach (var ((block, callNodeIndex, callIndex), mark) in Marks)
+            {
+                if (kept[block] < 0)
+                {
+                    Counts.Unwritten += mark.Count;
+
+                    continue;
+                }
+
+                var target = starts[kept[block]] + placed[kept[block]]++;
+
+                var instructions = stacks.GetInstructions(mark.Thread, mark.First);
+
+                reads[target] = new MemoryHistoryRead(mark.First,
+                                                      (uint)instructions,
+                                                      callNodeIndex,
+                                                      callIndex,
+                                                      mark.Start,
+                                                      mark.End - mark.Start,
+                                                      mark.Count);
+
+                if (instructions > uint.MaxValue)
+                {
+                    highs ??= new uint[reads.Length];
+
+                    highs[target] = (uint)(instructions >> 32);
+                }
+            }
+
+            Marks.Clear();
+
+            for (var block = 0; block < keptCount; block++)
+            {
+                SortByPosition(reads, highs, starts[block], starts[block + 1] - starts[block]);
+            }
+
+            return (reads, starts, highs is null ? HighWordRuns.Empty : HighWordRuns.Build(highs));
+        }
+
+        private static void SortByPosition(MemoryHistoryRead[] reads, uint[]? highs, int start, int count)
+        {
+            var isSorted = true;
+
+            for (var index = start + 1; index < start + count && isSorted; index++)
+            {
+                isSorted = reads[index - 1].Position <= reads[index].Position;
+            }
+
+            if (isSorted)
+            {
+                return;
+            }
+
+            var keys = new TracePosition[count];
+
+            var order = new int[count];
+
+            for (var index = 0; index < count; index++)
+            {
+                keys[index] = reads[start + index].Position;
+
+                order[index] = start + index;
+            }
+
+            Array.Sort(keys, order);
+
+            var sorted = order.Select(i => (Read: reads[i], High: highs?[i] ?? 0)).ToArray();
+
+            for (var index = 0; index < count; index++)
+            {
+                reads[start + index] = sorted[index].Read;
+
+                if (highs is not null)
+                {
+                    highs[start + index] = sorted[index].High;
+                }
+            }
+        }
+
+        private (int CallNodeIndex, int CallIndex) GetCall(uint thread, TracePosition position)
+        {
+            if (!Lanes.TryGetValue(thread, out var lane) || lane.Rows.Count == 0)
+            {
+                return (-1, -1);
+            }
+
+            var rows = lane.Rows;
+
+            var depth = Depths.TryGetValue(thread, out var cached) ? Math.Min(cached, rows.Count - 1) : 0;
+
+            var index = -1;
+
+            while (depth >= 0 && (index = rows[depth].GetIndex(position)) < 0)
+            {
+                depth--;
+            }
+
+            if (depth < 0)
+            {
+                return (-1, -1);
+            }
+
+            while (depth + 1 < rows.Count && rows[depth + 1].GetIndex(position) is >= 0 and var deeper)
+            {
+                depth++;
+
+                index = deeper;
+            }
+
+            Depths[thread] = depth;
+
+            return (rows[depth].GetCallNodeIndex(index), rows[depth].GetCallIndex(index));
+        }
+    }
+
+    private readonly record struct ReadMark(uint Thread, TracePosition First, int Start, int End, int Count)
+    {
+        public ReadMark Add(TracePosition position, int start, int end)
+            => new(Thread, position < First ? position : First, Math.Min(start, Start), Math.Max(end, End), Count + 1);
     }
 
     private sealed class StackLookup(TraceTimeline? timeline)

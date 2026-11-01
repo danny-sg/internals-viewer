@@ -15,7 +15,10 @@ public sealed partial class MemoryHistoryStore
                                 MemoryHistoryWrite[] writes,
                                 HighWordRuns instructionHighs,
                                 byte[] data,
-                                IReadOnlyDictionary<int, ulong> iterators)
+                                IReadOnlyDictionary<int, ulong> iterators,
+                                MemoryHistoryRead[]? reads = null,
+                                int[]? readStarts = null,
+                                HighWordRuns? readInstructionHighs = null)
     {
         Blocks = blocks;
         BlockArray = blocks;
@@ -23,6 +26,9 @@ public sealed partial class MemoryHistoryStore
         InstructionHighs = instructionHighs;
         Data = data;
         Iterators = iterators;
+        Reads = reads ?? [];
+        ReadStarts = readStarts ?? [];
+        ReadInstructionHighs = readInstructionHighs ?? HighWordRuns.Empty;
     }
 
     public static MemoryHistoryStore Empty { get; } = new([], [], HighWordRuns.Empty, [], new Dictionary<int, ulong>());
@@ -31,7 +37,17 @@ public sealed partial class MemoryHistoryStore
 
     public int WriteCount => Writes.Length;
 
-    internal long Bytes => Writes.Length * (long)Unsafe.SizeOf<MemoryHistoryWrite>() + InstructionHighs.Bytes + Data.Length;
+    public int ReadCount => Reads.Length;
+
+    public bool HasReads => ReadStarts.Length > 0;
+
+    internal long Bytes => WriteBytes + ReadBytes;
+
+    internal long WriteBytes => Writes.Length * (long)Unsafe.SizeOf<MemoryHistoryWrite>() + InstructionHighs.Bytes + Data.Length;
+
+    internal long ReadBytes => Reads.Length * (long)Unsafe.SizeOf<MemoryHistoryRead>()
+                               + ReadStarts.Length * (long)sizeof(int)
+                               + ReadInstructionHighs.Bytes;
 
     private MemoryHistoryBlock[] BlockArray { get; }
 
@@ -43,6 +59,12 @@ public sealed partial class MemoryHistoryStore
 
     private IReadOnlyDictionary<int, ulong> Iterators { get; }
 
+    private MemoryHistoryRead[] Reads { get; }
+
+    private int[] ReadStarts { get; }
+
+    private HighWordRuns ReadInstructionHighs { get; }
+
     private AddressIndex Addresses => field ??= GetAddressIndex();
 
 
@@ -52,6 +74,32 @@ public sealed partial class MemoryHistoryStore
             : ArraySegment<MemoryHistoryWrite>.Empty;
 
     public ulong GetIterator(MemoryHistoryWrite write) => Iterators.GetValueOrDefault(write.CallNodeIndex);
+
+    public (int First, int Count) GetReadRange(int block)
+        => block >= 0 && block + 1 < ReadStarts.Length ? (ReadStarts[block], ReadStarts[block + 1] - ReadStarts[block]) : (0, 0);
+
+    public IReadOnlyList<MemoryHistoryRead> GetReads(int block)
+        => GetReadRange(block) is (var first, > 0 and var count)
+            ? new ArraySegment<MemoryHistoryRead>(Reads, first, count)
+            : ArraySegment<MemoryHistoryRead>.Empty;
+
+    public (int First, int Count) GetReadRange(int block, TracePosition from, TracePosition to)
+    {
+        var (first, count) = GetReadRange(block);
+
+        ReadOnlySpan<MemoryHistoryRead> reads = Reads.AsSpan(first, count);
+
+        var start = SortedSearch.FirstAtOrAfter<MemoryHistoryRead, TracePosition>(reads, from, r => r.Position);
+
+        var end = SortedSearch.FirstAfter<MemoryHistoryRead, TracePosition>(reads, to, r => r.Position, start);
+
+        return (first + start, end - start);
+    }
+
+    public MemoryHistoryRead GetRead(int index) => Reads[index];
+
+    public TracePoint GetReadPoint(int index)
+        => new(Reads[index].Position, (ulong)ReadInstructionHighs.Get(index) << 32 | Reads[index].LowInstructions);
 
     public ReadOnlySpan<byte> GetBytes(MemoryHistoryWrite write) => Data.AsSpan(write.DataIndex, write.Length);
 

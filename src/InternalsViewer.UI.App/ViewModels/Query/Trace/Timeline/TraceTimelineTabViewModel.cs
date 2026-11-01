@@ -4,6 +4,7 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.UI.App.Controls.Query.Trace.CallStack;
 using InternalsViewer.UI.App.Controls.Docking;
@@ -60,6 +61,8 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
     }
 
     public event EventHandler<TracePoint>? PlayheadRequested;
+
+    public event EventHandler<int?>? MemoryHighlightRequested;
 
     public DockLayoutViewModel Dock { get; }
 
@@ -215,6 +218,8 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         ShowActiveMemoryUpdates();
     }
 
+    public void HighlightMemory(int? block) => MemoryHighlightRequested?.Invoke(this, block);
+
     public void OpenReferenceGraph(int block, TracePosition position)
     {
         if (block < 0 || block >= Query.MemoryHistory.Store.Blocks.Count)
@@ -231,23 +236,21 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
             return;
         }
 
-        var graph = new MemoryReferenceGraphViewModel(Query.MemoryHistory, block, position, this);
+        AddGraph(key, new MemoryReferenceGraphViewModel(Query.MemoryHistory, block, position, this));
+    }
 
-        graph.SetPlayhead(Playhead);
+    public void OpenObjectGraph(TraceStartCall start)
+    {
+        var key = $"Graph:Call:{start.Call.FromPosition}";
 
-        var document = new DocumentViewModel(graph.Title,
-                                             graph,
-                                             static () => new MemoryReferenceGraphView(),
-                                             keepAlive: true,
-                                             key: key,
-                                             persist: false,
-                                             commandsFactory: () => CreateGraphCommands(graph));
+        if (GraphDocuments.FirstOrDefault(d => d.Key == key) is { } existing)
+        {
+            ShowGraph(existing);
 
-        Query.Layout.RegisterDocument(key, document);
+            return;
+        }
 
-        ShowGraph(document);
-
-        GraphDocuments.Add(document);
+        AddGraph(key, new MemoryReferenceGraphViewModel(Query.MemoryHistory, start, this));
     }
 
     public void SetTrim(TracePosition? start, TracePosition? end)
@@ -481,6 +484,25 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         {
             OpenMemory(block, request.Address, position, request.Length);
         }
+    }
+
+    private void AddGraph(string key, MemoryReferenceGraphViewModel graph)
+    {
+        graph.SetPlayhead(Playhead);
+
+        var document = new DocumentViewModel(graph.Title,
+                                             graph,
+                                             static () => new MemoryReferenceGraphView(),
+                                             keepAlive: true,
+                                             key: key,
+                                             persist: false,
+                                             commandsFactory: () => CreateGraphCommands(graph));
+
+        Query.Layout.RegisterDocument(key, document);
+
+        ShowGraph(document);
+
+        GraphDocuments.Add(document);
     }
 
     private void ShowGraph(DocumentViewModel document)

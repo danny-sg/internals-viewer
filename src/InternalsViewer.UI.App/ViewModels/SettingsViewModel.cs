@@ -47,6 +47,8 @@ public partial class SettingsViewModel(SettingsService settingsService,
     private const string TraceTimelineShowMemoryKey = "FlameChartShowMemory";
     private const string TraceTimelineMemoryModeKey = "FlameChartMemoryMode";
     private const string TraceTimelineMemorySizeToFitKey = "FlameChartMemorySizeToFit";
+    private const string TraceTimelineShowMemoryWritesKey = "TraceTimelineShowMemoryWrites";
+    private const string TraceTimelineShowMemoryReadsKey = "TraceTimelineShowMemoryReads";
     private const string TraceTimelineShowBufferLatchesKey = "TraceTimelineShowBufferLatches";
     private const string TraceTimelineShowBuffersKey = "TraceTimelineShowBuffers";
 
@@ -117,6 +119,12 @@ public partial class SettingsViewModel(SettingsService settingsService,
 
     [ObservableProperty]
     private bool _traceTimelineMemorySizeToFit = true;
+
+    [ObservableProperty]
+    private bool _traceTimelineShowMemoryWrites = true;
+
+    [ObservableProperty]
+    private bool _traceTimelineShowMemoryReads;
 
     [ObservableProperty]
     private bool _traceTimelineShowBufferLatches = true;
@@ -252,6 +260,10 @@ public partial class SettingsViewModel(SettingsService settingsService,
                                ?? TraceTimelineMemoryMode.Allocated;
 
         TraceTimelineMemorySizeToFit = await SettingsService.ReadSettingAsync<bool?>(TraceTimelineMemorySizeToFitKey) ?? true;
+
+        TraceTimelineShowMemoryWrites = await SettingsService.ReadSettingAsync<bool?>(TraceTimelineShowMemoryWritesKey) ?? true;
+
+        TraceTimelineShowMemoryReads = await SettingsService.ReadSettingAsync<bool?>(TraceTimelineShowMemoryReadsKey) ?? false;
 
         TraceTimelineShowBufferLatches = await SettingsService.ReadSettingAsync<bool?>(TraceTimelineShowBufferLatchesKey) ?? true;
 
@@ -435,6 +447,16 @@ public partial class SettingsViewModel(SettingsService settingsService,
     partial void OnTraceTimelineMemorySizeToFitChanged(bool value)
     {
         _ = SettingsService.SaveSettingAsync(TraceTimelineMemorySizeToFitKey, value);
+    }
+
+    partial void OnTraceTimelineShowMemoryWritesChanged(bool value)
+    {
+        _ = SettingsService.SaveSettingAsync(TraceTimelineShowMemoryWritesKey, value);
+    }
+
+    partial void OnTraceTimelineShowMemoryReadsChanged(bool value)
+    {
+        _ = SettingsService.SaveSettingAsync(TraceTimelineShowMemoryReadsKey, value);
     }
 
     partial void OnTraceTimelineShowBufferLatchesChanged(bool value)

@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Views.Query.Trace.Timeline.Memory.MemoryBindingsPanelView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:results="using:InternalsViewer.UI.App.Controls.Results">
+
+    <UserControl.Resources>
+        <Style x:Key="DetailNameStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{ThemeResource TextFillColorTertiaryBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="DetailValueStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="DetailLinkStyle" TargetType="HyperlinkButton" BasedOn="{StaticResource ResultPointerStyle}">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="FontFamily" Value="{StaticResource MonospaceFontFamily}"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0"
+              Padding="12,8,12,8"
+              ColumnSpacing="12"
+              RowSpacing="6"
+              BorderThickness="0,0,0,1"
+              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="Columns" Style="{StaticResource DetailNameStyle}"/>
+            <TextBlock Grid.Row="0" Grid.Column="1"
+                       Text="{x:Bind ViewModel.Bindings.ColumnCount, Mode=OneWay}"
+                       Style="{StaticResource DetailValueStyle}"/>
+
+            <TextBlock Grid.Row="0" Grid.Column="2"
+                       Text="Bindings"
+                       Style="{StaticResource DetailNameStyle}"
+                       Visibility="{x:Bind ViewModel.Bindings.IsBindingsLinkVisible, Mode=OneWay}"/>
+            <HyperlinkButton Grid.Row="0" Grid.Column="3"
+                             Content="{x:Bind ViewModel.Bindings.BindingsAddress, Mode=OneWay}"
+                             Style="{StaticResource DetailLinkStyle}"
+                             Visibility="{x:Bind ViewModel.Bindings.IsBindingsLinkVisible, Mode=OneWay}"
+                             Click="OnBindingsClick"/>
+
+            <TextBlock Grid.Row="1" Grid.Column="0"
+                       Text="Column Bindings"
+                       Style="{StaticResource DetailNameStyle}"
+                       Visibility="{x:Bind ViewModel.Bindings.IsColumnsLinkVisible, Mode=OneWay}"/>
+            <HyperlinkButton Grid.Row="1" Grid.Column="1"
+                             Content="{x:Bind ViewModel.Bindings.ColumnsAddress, Mode=OneWay}"
+                             Style="{StaticResource DetailLinkStyle}"
+                             Visibility="{x:Bind ViewModel.Bindings.IsColumnsLinkVisible, Mode=OneWay}"
+                             Click="OnColumnsClick"/>
+
+            <TextBlock Grid.Row="1" Grid.Column="2"
+                       Text="Row Buffer"
+                       Style="{StaticResource DetailNameStyle}"
+                       Visibility="{x:Bind ViewModel.Bindings.IsRowBufferLinkVisible, Mode=OneWay}"/>
+            <HyperlinkButton Grid.Row="1" Grid.Column="3"
+                             Content="{x:Bind ViewModel.Bindings.RowBufferAddress, Mode=OneWay}"
+                             Style="{StaticResource DetailLinkStyle}"
+                             Visibility="{x:Bind ViewModel.Bindings.IsRowBufferLinkVisible, Mode=OneWay}"
+                             Click="OnRowBufferClick"/>
+        </Grid>
+
+        <results:ResultsGridControl Grid.Row="1"
+                                    ResultSet="{x:Bind ViewModel.Bindings.Table, Mode=OneWay}"
+                                    SelectedRow="{x:Bind ViewModel.Bindings.SelectedRow, Mode=TwoWay}"
+                                    Visibility="{x:Bind ViewModel.Bindings.IsTableVisible, Mode=OneWay}"/>
+
+        <TextBlock Grid.Row="1"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                   Text="{x:Bind ViewModel.Bindings.EmptyText, Mode=OneWay}"/>
+    </Grid>
+</UserControl>

@@ -1,10 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Helpers;
+using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using SkiaSharp;
 using Windows.Foundation;
 
@@ -21,6 +24,10 @@ public sealed partial class TraceTimelineControl
     private const float SearchMatchHitSlop = 2;
 
     private const float HalfPixel = 0.5f;
+
+    private const int SuggestionLimit = 12;
+
+    private const string HexPrefix = "0x";
 
     public static readonly DependencyProperty SearchTextProperty =
         DependencyProperty.Register(nameof(SearchText),
@@ -52,7 +59,35 @@ public sealed partial class TraceTimelineControl
         private set => SetValue(SearchMatchCountProperty, value);
     }
 
+    public static readonly DependencyProperty IsCallSearchProperty =
+        DependencyProperty.Register(nameof(IsCallSearch),
+                                    typeof(bool),
+                                    typeof(TraceTimelineControl),
+                                    new PropertyMetadata(true, OnSearchTextChanged));
+
+    public bool IsCallSearch
+    {
+        get => (bool)GetValue(IsCallSearchProperty);
+        set => SetValue(IsCallSearchProperty, value);
+    }
+
+    public static readonly DependencyProperty IsMemorySearchProperty =
+        DependencyProperty.Register(nameof(IsMemorySearch),
+                                    typeof(bool),
+                                    typeof(TraceTimelineControl),
+                                    new PropertyMetadata(true, OnSearchTextChanged));
+
+    public bool IsMemorySearch
+    {
+        get => (bool)GetValue(IsMemorySearchProperty);
+        set => SetValue(IsMemorySearchProperty, value);
+    }
+
     private string[] _searchTerms = [];
+
+    private LocatorSearch? _searchLocator;
+
+    private ulong? _searchAddress;
 
     private bool[]? _searchMatches;
 
@@ -103,19 +138,70 @@ public sealed partial class TraceTimelineControl
         SelectAndShow(hit);
     }
 
+    public List<object> GetSearchSuggestions()
+    {
+        var suggestions = new List<object>();
+
+        if (_searchTerms.Length == 0)
+        {
+            return suggestions;
+        }
+
+        if (_searchMatches is { } matches && _visible is { } timeline)
+        {
+            var calls = new Dictionary<string, int>();
+
+            foreach (var row in timeline.Threads.SelectMany(t => t.Rows))
+            {
+                for (var index = 0; index < row.Count; index++)
+                {
+                    var callNodeIndex = row.GetCallNodeIndex(index);
+
+                    if (IsSearchMatch(matches, callNodeIndex) && IsWithinTrim(row, index))
+                    {
+                        var label = LabelOf(callNodeIndex);
+
+                        calls[label] = calls.GetValueOrDefault(label) + 1;
+                    }
+                }
+            }
+
+            suggestions.AddRange(calls.OrderBy(c => c.Key, StringComparer.OrdinalIgnoreCase)
+                                      .Take(SuggestionLimit)
+                                      .Select(c => new CallSearchSuggestion(c.Key, c.Value)));
+        }
+
+        var blocks = _memoryMatches.Select(i => _memory.Blocks[i])
+                                   .OrderBy(b => b.Label, StringComparer.OrdinalIgnoreCase)
+                                   .Take(SuggestionLimit);
+
+        foreach (var block in blocks)
+        {
+            suggestions.Add(new MemorySearchSuggestion(block.Label, block.Address, block.Size, block.Block, block.From.Position));
+        }
+
+        return suggestions;
+    }
+
     private void FindSearchMatches()
     {
         _searchMatches = null;
 
         _searchTerms = SearchText?.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
 
-        if (_searchTerms.Length > 0 && _timeline is { } timeline)
+        _searchLocator = LocatorSearch.TryParse(SearchText, out var locator) ? locator : null;
+
+        _searchAddress = GetSearchAddress(SearchText);
+
+        if (IsCallSearch && _searchTerms.Length > 0 && _timeline is { } timeline)
         {
             var matches = new bool[timeline.NodeCount];
 
             for (var callNodeIndex = 0; callNodeIndex < matches.Length; callNodeIndex++)
             {
-                matches[callNodeIndex] = MatchesSearch(LabelOf(callNodeIndex));
+                matches[callNodeIndex] = _searchLocator is { } found
+                    ? timeline.NodeOf(callNodeIndex)?.Locators?.Contains(found) == true
+                    : MatchesSearch(LabelOf(callNodeIndex));
             }
 
             _searchMatches = matches;
@@ -132,10 +218,37 @@ public sealed partial class TraceTimelineControl
 
         var blocks = _memory.Blocks;
 
-        _memoryMatches = _searchTerms.Length == 0 ? [] : [.. Enumerable.Range(0, blocks.Count).Where(i => MatchesSearch(blocks[i].Label))];
+        _memoryMatches = !IsMemorySearch || _searchTerms.Length == 0
+            ? []
+            : [.. Enumerable.Range(0, blocks.Count).Where(i => MatchesMemorySearch(blocks[i]))];
+    }
+
+    private bool MatchesMemorySearch(TraceMemoryBlock block)
+    {
+        if (_searchAddress is { } address)
+        {
+            return address >= block.Address && address < block.Address + (ulong)block.Size;
+        }
+
+        if (_searchLocator is { IsColumnStore: false } locator && block.Pages is { } pages && pages.Contains(locator.Page))
+        {
+            return true;
+        }
+
+        return MatchesSearch(block.Label);
     }
 
     private bool MatchesSearch(string label) => _searchTerms.All(t => label.Contains(t, StringComparison.OrdinalIgnoreCase));
+
+    private static ulong? GetSearchAddress(string? text)
+    {
+        var trimmed = text?.Trim() ?? string.Empty;
+
+        return trimmed.StartsWith(HexPrefix, StringComparison.OrdinalIgnoreCase)
+               && ulong.TryParse(trimmed[HexPrefix.Length..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var address)
+            ? address
+            : null;
+    }
 
     private void CountSearchMatches()
     {

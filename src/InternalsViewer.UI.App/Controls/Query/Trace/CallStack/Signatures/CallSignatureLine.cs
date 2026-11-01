@@ -184,10 +184,18 @@ public sealed partial class CallSignatureLine : UserControl
 
         menu.Items.Add(MenuItems.Create("Copy Value", () => ClipboardText.Copy(part.Text)));
 
-        if (part.CanFind)
+        if (part.IsMemoryTracked || part.CanFind)
         {
             menu.Items.Add(new MenuFlyoutSeparator());
+        }
 
+        if (part.IsMemoryTracked)
+        {
+            menu.Items.Add(TraceLinkMenu.CreateMemoryHistory(() => MemorySelected?.Invoke(this, part)));
+        }
+
+        if (part.CanFind)
+        {
             menu.Items.Add(MenuItems.Create("Find", () => LayoutHelpers.FindParent<IReferenceFinder>(this)?.FindReferences(value)));
         }
 

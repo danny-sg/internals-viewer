@@ -20,17 +20,21 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 {
     private const string NotYetChanged = "Not Yet Changed";
 
-    private const int HistoryTab = 1;
+    private const int WritesTab = 1;
 
-    private const int BufferTab = 4;
+    private const int ReadsTab = 2;
 
-    private const int BatchTab = 5;
+    private const int BufferTab = 5;
+
+    private const int BatchTab = 6;
 
     private const int LoadInterval = 50;
 
-    private const int VectorsTab = 6;
+    private const int VectorsTab = 7;
 
-    private const int PageTab = 7;
+    private const int PageTab = 8;
+
+    private const int BindingsTab = 9;
 
     private const string OpenMemoryCommand = "Open Memory";
 
@@ -74,6 +78,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         Writes = new MemoryWritesViewModel(this);
 
+        Reads = new MemoryReadsViewModel(this);
+
         References = new MemoryReferencesViewModel(this);
 
         HexLoader = new PlayheadLoader<HexImage?>(TimeSpan.FromMilliseconds(LoadInterval), ApplyHex);
@@ -89,6 +95,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     public MemoryWritesViewModel Writes { get; }
 
+    public MemoryReadsViewModel Reads { get; }
+
     public MemoryWatchesViewModel WatchList { get; } = new();
 
     public MemoryReferencesViewModel References { get; }
@@ -98,6 +106,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
     public MemoryBatchViewModel Batch { get; } = new();
 
     public MemoryPageViewModel WorkfilePage { get; } = new();
+
+    public MemoryBindingsViewModel Bindings { get; } = new();
 
     public int Block { get; private set; } = -1;
 
@@ -156,6 +166,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         Writes.Load();
 
+        Reads.Load();
+
         WatchList.Attach(Watches);
 
         Buffer.Load(this);
@@ -164,17 +176,22 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         WorkfilePage.Load(this);
 
+        Bindings.Load(this);
+
         ApplyMarkers();
 
         if ((SelectedTab == BufferTab && !Buffer.IsAvailable)
             || (SelectedTab == BatchTab && !Batch.IsAvailable)
             || (SelectedTab == VectorsTab && !Batch.IsVectorsAvailable)
-            || (SelectedTab == PageTab && !WorkfilePage.IsAvailable))
+            || (SelectedTab == PageTab && !WorkfilePage.IsAvailable)
+            || (SelectedTab == BindingsTab && !Bindings.IsAvailable))
         {
             SelectedTab = 0;
         }
 
         RefreshBatch();
+
+        RefreshBindings();
 
         ShowAddress(address);
     }
@@ -209,7 +226,11 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         WorkfilePage.Clear();
 
+        Bindings.Clear();
+
         Writes.Clear();
+
+        Reads.Clear();
 
         Details.Clear();
 
@@ -318,16 +339,64 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         watches.Add(new HexWatch(offset, length));
     }
 
-    public void ShowHistory(string? function, ulong? address)
+    public void ShowWrites(string? function, ulong? address)
     {
         Writes.SetFilters(function, address);
 
-        SelectedTab = HistoryTab;
+        SelectedTab = WritesTab;
     }
 
-    public void ClearWriteSelection() => SelectedChangeSpan = null;
+    public void ShowReads(string? function, ulong? address)
+    {
+        Reads.SetFilters(function, address);
 
-    public void ShowHistoryAt(int offset)
+        SelectedTab = ReadsTab;
+    }
+
+    public void ClearSelection() => SelectedChangeSpan = null;
+
+    public void GoToRead(int index)
+    {
+        if (GetReadIndex(index) is { } read)
+        {
+            RequestPlayhead(History.Store.GetReadPoint(read));
+        }
+    }
+
+    public void SelectRead(int index)
+    {
+        if (GetReadIndex(index) is not { } found)
+        {
+            return;
+        }
+
+        var read = History.Store.GetRead(found);
+
+        GoToRead(index);
+
+        SelectedChangeSpan = new LogRecordAnnotation
+        {
+            Offset = read.Offset,
+            Length = read.Length,
+            Description = History.GetWriterLabel(read.CallNodeIndex),
+            OutlineColour = GetReadColour(read.CallNodeIndex)
+        };
+    }
+
+    public void MarkRead(int? index)
+        => MarkPosition(index is { } wanted && GetReadIndex(wanted) is { } found ? History.Store.GetReadPoint(found) : null);
+
+    public Windows.UI.Color GetReadColour(int callNodeIndex)
+    {
+        var colour = GetCategoryColour(callNodeIndex);
+
+        return Windows.UI.Color.FromArgb(colour.A,
+                                         (byte)(colour.R + (255 - colour.R) / 2),
+                                         (byte)(colour.G + (255 - colour.G) / 2),
+                                         (byte)(colour.B + (255 - colour.B) / 2));
+    }
+
+    public void ShowWritesAt(int offset)
     {
         if (!IsOpen || offset < 0 || offset >= History.Store.Blocks[Block].Size)
         {
@@ -348,7 +417,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
             }
         }
 
-        ShowHistory(function, History.Store.Blocks[Block].Address + (ulong)offset);
+        ShowWrites(function, History.Store.Blocks[Block].Address + (ulong)offset);
     }
 
     public void MarkPosition(TracePoint? point) => Chart?.MarkPositions(point is { } marked ? [marked] : null);
@@ -360,6 +429,37 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         MarkPosition(block is not null && index is { } wanted && wanted >= 0 && wanted < block.WriteCount
                          ? History.Store.GetPoint(block.FirstWrite + wanted)
                          : null);
+    }
+
+    public void MarkReader(string? label)
+    {
+        if (Chart is not { } chart)
+        {
+            return;
+        }
+
+        if (label is null || !IsOpen)
+        {
+            chart.MarkPositions(null);
+
+            return;
+        }
+
+        var store = History.Store;
+
+        var (first, count) = store.GetReadRange(Block);
+
+        var points = new List<TracePoint>();
+
+        for (var index = first; index < first + count; index++)
+        {
+            if (History.GetWriterLabel(store.GetRead(index).CallNodeIndex) == label)
+            {
+                points.Add(store.GetReadPoint(index));
+            }
+        }
+
+        chart.MarkPositions([.. points]);
     }
 
     public void MarkWriter(string? label)
@@ -395,7 +495,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         chart.MarkPositions([.. points]);
     }
 
-    public void ShowPageMarkers(int? offset)
+    public void ShowMarkers(int? offset)
     {
         if (offset is { } scroll)
         {
@@ -409,7 +509,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     partial void OnSelectedTabChanged(int value)
     {
-        if (value != HistoryTab)
+        if (value is not (WritesTab or ReadsTab))
         {
             SelectedChangeSpan = null;
         }
@@ -421,10 +521,24 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         RefreshPage();
 
+        RefreshBindings();
+
         ApplyMarkers();
     }
 
     private void OnWatchesChanged(object? sender, NotifyCollectionChangedEventArgs e) => Writes.Load();
+
+    private int? GetReadIndex(int index)
+    {
+        if (!IsOpen)
+        {
+            return null;
+        }
+
+        var (first, count) = History.Store.GetReadRange(Block);
+
+        return index >= 0 && index < count ? first + index : null;
+    }
 
     public void GoToChange(int offset, bool isForward)
     {
@@ -453,6 +567,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         Refresh();
 
         RefreshBatch();
+
+        RefreshBindings();
     }
 
     private void Refresh()
@@ -599,6 +715,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
             BufferTab when Buffer.Markers is { } fields => fields,
             BatchTab when Batch.FieldMarkers is { } fields => fields,
             PageTab when WorkfilePage.IsAvailable => WorkfilePage.Markers,
+            BindingsTab when Bindings.Markers is { } fields => fields,
             _ => WriterMarkers
         };
 
@@ -621,6 +738,16 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         if (IsOpen && SelectedTab is BatchTab or VectorsTab)
         {
             Batch.Refresh(Position);
+        }
+    }
+
+    private void RefreshBindings()
+    {
+        if (IsOpen && SelectedTab == BindingsTab)
+        {
+            Bindings.Refresh(Position);
+
+            ApplyMarkers();
         }
     }
 

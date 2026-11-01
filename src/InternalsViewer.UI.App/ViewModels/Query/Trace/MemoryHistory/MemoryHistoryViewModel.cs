@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Data;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Pages.Enums;
@@ -14,6 +15,7 @@ using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.History.Batches;
+using InternalsViewer.Query.FullTrace.Memory.History.Bindings;
 using InternalsViewer.Query.FullTrace.Memory.History.Pages;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Plans.Model;
@@ -324,6 +326,15 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
     public bool IsPage(int block)
         => Store.Blocks[block].Size == PageData.Size && GetMapLabel(Store.Blocks[block]) == WorkfilePageReader.ClassName;
 
+    public bool IsAccessorBindings(int block) => GetMapLabel(Store.Blocks[block]) == AccessorBindings.ClassName;
+
+    public bool IsColumnBindings(int block) => GetMapLabel(Store.Blocks[block]) == AccessorBindings.ColumnsClassName;
+
+    public MemoryHistoryArray? GetArray(int block)
+        => IsColumnBindings(block) && AccessorBindings.GetColumnCount(Store.Blocks[block].Size) is > 0 and var count
+            ? new MemoryHistoryArray(AccessorBindings.ColumnSize, count)
+            : null;
+
     public RowRecordLayout? GetWorkfileLayout(int block) => GetPageIterator(block) is { } iterator ? Workfiles?.Get(iterator) : null;
 
     public SortRecordLayout? GetSortLayout(int block) => GetPageIterator(block) is { } iterator ? Workfiles?.GetSort(iterator) : null;
@@ -363,6 +374,8 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
 
     public Windows.UI.Color GetCategoryColour(int callNodeIndex)
         => ColourHelpers.FromHex(GetWriter(callNodeIndex)?.CategoryColour) ?? Colors.Gray;
+
+    public Windows.UI.Color? GetAllocationColour(int block) => ColourHelpers.FromHex(GetAllocatingCall(block)?.CategoryColour);
 
     public string GetWriterLabel(int callNodeIndex) => GetWriterLabel(GetWriter(callNodeIndex));
 
@@ -504,7 +517,9 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
 
             var (first, count) = Store.GetChangedWriteRange(index, WindowStart, WindowEnd);
 
-            if (count == 0)
+            var (firstRead, readCount) = Store.GetReadRange(index, WindowStart, WindowEnd);
+
+            if (count == 0 && readCount == 0)
             {
                 continue;
             }
@@ -518,7 +533,9 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
                                             block.From,
                                             block.To,
                                             new TraceMemoryWrites(Store, first, count),
-                                            IsBuffer(index)));
+                                            IsBuffer(index),
+                                            IsBuffer(index) ? GetBufferPages(block.Address) : null,
+                                            readCount > 0 ? new TraceMemoryWrites(Store, firstRead, readCount, isReads: true) : null));
         }
 
         return blocks;
@@ -763,6 +780,9 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
         => Iterators.TryGetValue(iterator, out var target) && target.Operator?.PlanNodeIdentifier is { } identifier
             ? resolvePlanNode(identifier)
             : null;
+
+    private PageAddress[] GetBufferPages(ulong buffer)
+        => Trace is { } trace ? [.. trace.BufferPool.GetResidencies(buffer).Select(r => r.Page).Distinct()] : [];
 
     private string? GetBufferLabel(int block)
     {

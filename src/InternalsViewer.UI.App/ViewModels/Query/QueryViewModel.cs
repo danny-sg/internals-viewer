@@ -20,6 +20,7 @@ using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Query;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -875,6 +876,15 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     [RelayCommand]
     private void ShowMemoryHistory() => Layout.ShowMemoryHistory();
+
+    [RelayCommand]
+    private void ShowObjectGraph()
+    {
+        if (Trace is { } trace && TraceTimeline is { } timeline && TraceStartCall.Find(trace.CallStore, timeline) is { } start)
+        {
+            TraceTimelineTab.OpenObjectGraph(start);
+        }
+    }
 
     public void ShowMemoryWrite(int block, TracePosition? position)
     {

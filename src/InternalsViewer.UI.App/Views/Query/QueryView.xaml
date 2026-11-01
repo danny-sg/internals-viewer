@@ -150,12 +150,14 @@
                                 <MenuFlyoutSeparator/>
                                 <MenuFlyoutItem Text="Search symbols"
                                                 Command="{x:Bind ViewModel.SearchSymbolsCommand}"/>
+                                <MenuFlyoutSeparator/>
                                 <MenuFlyoutItem Text="Custom Hooks"
                                                 Command="{x:Bind ViewModel.ShowCustomHooksCommand}"/>
                                 <MenuFlyoutItem Text="Operator Tracks"
                                                 Command="{x:Bind ViewModel.ShowOperatorTracksCommand}"/>
-                                <MenuFlyoutItem Text="Memory History"
-                                                Command="{x:Bind ViewModel.ShowMemoryHistoryCommand}"
+                                <MenuFlyoutSeparator/>
+                                <MenuFlyoutItem Text="Object Graph"
+                                                Command="{x:Bind ViewModel.ShowObjectGraphCommand}"
                                                 Visibility="{x:Bind ViewModel.MemoryHistory.IsAvailable, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
                             </MenuBarItem>
 

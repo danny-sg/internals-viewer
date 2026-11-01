@@ -55,7 +55,11 @@ internal sealed class ReplaySession : IDisposable
 {
     private const int NameLength = 1024;
 
+    private const uint ReadAccess = 1;
+
     private const uint WriteAccess = 2;
+
+    private const uint ReadType = 0;
 
     private ReplaySession(TimeTravelTraceFile trace, TraceHandle handle)
     {
@@ -103,6 +107,7 @@ internal sealed class ReplaySession : IDisposable
                                               TracePosition start,
                                               TracePosition end,
                                               Func<WatchHit, bool> keep,
+                                              Action<WatchHit>? onRead,
                                               IProgress<double>? progress,
                                               CancellationToken cancellationToken)
     {
@@ -110,7 +115,7 @@ internal sealed class ReplaySession : IDisposable
 
         try
         {
-            return await Task.Run(() => Watch([.. ranges], start, end, keep, progress, cancellationToken), cancellationToken);
+            return await Task.Run(() => Watch([.. ranges], start, end, keep, onRead, progress, cancellationToken), cancellationToken);
         }
         finally
         {
@@ -290,6 +295,7 @@ internal sealed class ReplaySession : IDisposable
                                      TracePosition start,
                                      TracePosition end,
                                      Func<WatchHit, bool> keep,
+                                     Action<WatchHit>? onRead,
                                      IProgress<double>? progress,
                                      CancellationToken cancellationToken)
     {
@@ -307,8 +313,6 @@ internal sealed class ReplaySession : IDisposable
 
         ReplayBridge.WatchHitCallback onHits = (pointer, count, bytes, length) =>
         {
-            received += count;
-
             var source = new ReadOnlySpan<WatchHit>((void*)pointer, count);
 
             var chunk = new ReadOnlySpan<byte>((void*)bytes, length);
@@ -324,6 +328,17 @@ internal sealed class ReplaySession : IDisposable
 
             for (var index = 0; index < count; index++)
             {
+                if (source[index].Type == ReadType)
+                {
+                    onRead?.Invoke(source[index]);
+
+                    selected[index] = false;
+
+                    continue;
+                }
+
+                received++;
+
                 selected[index] = keep(source[index]);
 
                 if (selected[index])
@@ -373,7 +388,7 @@ internal sealed class ReplaySession : IDisposable
             var result = ReplayBridge.WatchMemory(Handle,
                                                   ranges,
                                                   ranges.Length,
-                                                  WriteAccess,
+                                                  onRead is null ? WriteAccess : WriteAccess | ReadAccess,
                                                   start.Sequence,
                                                   end.IsKnown ? end.Sequence + 1 : 0,
                                                   onHits,

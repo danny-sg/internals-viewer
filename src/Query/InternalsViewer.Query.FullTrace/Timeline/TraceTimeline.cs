@@ -232,6 +232,23 @@ public sealed partial class TraceTimeline
 
     public int ParentOf(int callNodeIndex) => callNodeIndex >= 0 && callNodeIndex < Parents.Length ? Parents[callNodeIndex] : -1;
 
+    public (TraceSpan Span, uint ThreadId)? GetFirstRootCall()
+    {
+        (TraceSpan Span, uint ThreadId)? first = null;
+
+        foreach (var thread in Threads.Where(t => t.Rows.Count > 0 && t.Rows[0].Count > 0))
+        {
+            var span = thread.Rows[0].GetSpan(0);
+
+            if (first is not { } found || span.From.Position < found.Span.From.Position)
+            {
+                first = (span, thread.ThreadId);
+            }
+        }
+
+        return first;
+    }
+
     public TracePosition? GetFirstCallStart(string symbol)
     {
         var isMatch = Array.ConvertAll(Nodes, n => n?.Symbol == symbol);

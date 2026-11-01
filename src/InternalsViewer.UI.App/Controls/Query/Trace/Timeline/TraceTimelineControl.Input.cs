@@ -854,6 +854,12 @@ public sealed partial class TraceTimelineControl
 
         flyout.Items.Add(new MenuFlyoutSeparator());
 
+        flyout.Items.Add(MenuItems.Toggle("Writes", ShowMemoryWrites, isChecked => ShowMemoryWrites = isChecked));
+
+        flyout.Items.Add(MenuItems.Toggle("Reads", ShowMemoryReads, isChecked => ShowMemoryReads = isChecked));
+
+        flyout.Items.Add(new MenuFlyoutSeparator());
+
         flyout.Items.Add(MenuItems.Toggle("Size to Fit", MemorySizeToFit, isChecked => MemorySizeToFit = isChecked));
 
         flyout.Items.Add(MenuItems.Toggle("Call Highlight Hover", HighlightMemoryWriters, isChecked => HighlightMemoryWriters = isChecked));

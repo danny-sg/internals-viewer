@@ -37,6 +37,8 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <TextBlock Grid.Row="0" Grid.Column="0" Text="Address" Style="{StaticResource DetailNameStyle}"/>
@@ -153,6 +155,51 @@
                                  Grid.Column="1"
                                  Style="{StaticResource DetailCopyButtonStyle}"
                                  Tag="{x:Bind ViewModel.Details.WritersText, Mode=OneWay}"
+                                 Click="OnCopyValueClick"/>
+
+            <TextBlock Grid.Row="7" Grid.Column="0" Text="Reads" Style="{StaticResource DetailNameStyle}"/>
+            <TextBlock Grid.Row="7" Grid.Column="2"
+                       Text="{x:Bind ViewModel.Details.ReadCount, Mode=OneWay}"
+                       Style="{StaticResource DetailValueStyle}"/>
+            <controls:CopyButton Grid.Row="7"
+                                 Grid.Column="1"
+                                 Style="{StaticResource DetailCopyButtonStyle}"
+                                 Tag="{x:Bind ViewModel.Details.ReadCount, Mode=OneWay}"
+                                 Click="OnCopyValueClick"/>
+
+            <TextBlock Grid.Row="8" Grid.Column="0" Text="Read By" Style="{StaticResource DetailNameStyle}" VerticalAlignment="Top"/>
+            <ItemsControl Grid.Row="8" Grid.Column="2" ItemsSource="{x:Bind ViewModel.Details.Readers, Mode=OneWay}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Spacing="2"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="models:MemoryWriterSummary">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Border Width="8"
+                                    Height="8"
+                                    CornerRadius="2"
+                                    VerticalAlignment="Center"
+                                    Background="{x:Bind Colour, Converter={StaticResource ColorToSolidColorBrushValueConverter}}"/>
+                            <HyperlinkButton Content="{x:Bind Label}"
+                                             Style="{StaticResource DetailLinkStyle}"
+                                             Click="OnWriterClick"
+                                             ContextRequested="OnReaderContextRequested"
+                                             PointerEntered="OnReaderPointerEntered"
+                                             PointerExited="OnReaderPointerExited"/>
+                            <TextBlock Text="{x:Bind Count}"
+                                       FontSize="12"
+                                       VerticalAlignment="Center"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <controls:CopyButton Grid.Row="8"
+                                 Grid.Column="1"
+                                 Style="{StaticResource DetailCopyButtonStyle}"
+                                 Tag="{x:Bind ViewModel.Details.ReadersText, Mode=OneWay}"
                                  Click="OnCopyValueClick"/>
         </Grid>
     </ScrollViewer>

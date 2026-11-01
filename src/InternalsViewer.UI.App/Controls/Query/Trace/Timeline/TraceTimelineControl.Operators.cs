@@ -113,6 +113,30 @@ public sealed partial class TraceTimelineControl
         set => SetValue(MemorySizeToFitProperty, value);
     }
 
+    public static readonly DependencyProperty ShowMemoryWritesProperty =
+        DependencyProperty.Register(nameof(ShowMemoryWrites),
+                                    typeof(bool),
+                                    typeof(TraceTimelineControl),
+                                    new PropertyMetadata(true, OnShowMemoryMarksChanged));
+
+    public bool ShowMemoryWrites
+    {
+        get => (bool)GetValue(ShowMemoryWritesProperty);
+        set => SetValue(ShowMemoryWritesProperty, value);
+    }
+
+    public static readonly DependencyProperty ShowMemoryReadsProperty =
+        DependencyProperty.Register(nameof(ShowMemoryReads),
+                                    typeof(bool),
+                                    typeof(TraceTimelineControl),
+                                    new PropertyMetadata(false, OnShowMemoryMarksChanged));
+
+    public bool ShowMemoryReads
+    {
+        get => (bool)GetValue(ShowMemoryReadsProperty);
+        set => SetValue(ShowMemoryReadsProperty, value);
+    }
+
     public static readonly DependencyProperty RowReturnMarksProperty =
         DependencyProperty.Register(nameof(RowReturnMarks),
                                     typeof(TraceRowReturnMarks),
@@ -594,6 +618,23 @@ public sealed partial class TraceTimelineControl
         control._memory.Hover = null;
 
         control._memory.SizeToFit = (bool)e.NewValue;
+
+        control.UpdateScrollBars();
+
+        control.Redraw();
+    }
+
+    private static void OnShowMemoryMarksChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var control = (TraceTimelineControl)d;
+
+        control.HideToolTip();
+
+        control._memory.Hover = null;
+
+        control._memory.ShowWrites = control.ShowMemoryWrites;
+
+        control._memory.ShowReads = control.ShowMemoryReads;
 
         control.UpdateScrollBars();
 

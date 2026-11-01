@@ -221,7 +221,7 @@ public sealed partial class MemoryPageViewModel : ObservableObject
 
             Markers = [];
 
-            Owner?.ShowPageMarkers(null);
+            Owner?.ShowMarkers(null);
 
             return;
         }
@@ -264,7 +264,7 @@ public sealed partial class MemoryPageViewModel : ObservableObject
             SelectedRecordRow = row;
         }
 
-        Owner?.ShowPageMarkers(offset);
+        Owner?.ShowMarkers(offset);
     }
 
     private sealed record LoadedPage(byte[]? Data, WorkfilePage? Page);

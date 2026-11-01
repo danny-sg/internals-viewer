@@ -49,8 +49,6 @@ public sealed partial class TraceTimelineControl
 
     private readonly List<(Guid Id, TraceIndicatorResult Result)> _closedIndicators = [];
 
-    private readonly SKPath _indicatorHead = new();
-
     private readonly MarkdownTextBlock _indicatorText = new()
     {
         IsHitTestVisible = false,
@@ -490,17 +488,17 @@ public sealed partial class TraceTimelineControl
             canvas.DrawLine(from.X, from.Y, baseX + directionX, baseY + directionY, _paints.IndicatorArrow);
         }
 
-        _indicatorHead.Reset();
+        _pathBuilder.MoveTo(to);
 
-        _indicatorHead.MoveTo(to);
+        _pathBuilder.LineTo(baseX - directionY * IndicatorArrowHead / 2, baseY + directionX * IndicatorArrowHead / 2);
 
-        _indicatorHead.LineTo(baseX - directionY * IndicatorArrowHead / 2, baseY + directionX * IndicatorArrowHead / 2);
+        _pathBuilder.LineTo(baseX + directionY * IndicatorArrowHead / 2, baseY - directionX * IndicatorArrowHead / 2);
 
-        _indicatorHead.LineTo(baseX + directionY * IndicatorArrowHead / 2, baseY - directionX * IndicatorArrowHead / 2);
+        _pathBuilder.Close();
 
-        _indicatorHead.Close();
+        using var head = _pathBuilder.Detach();
 
-        canvas.DrawPath(_indicatorHead, _paints.IndicatorHead);
+        canvas.DrawPath(head, _paints.IndicatorHead);
     }
 
     private void DrawIndicatorLabel(SKCanvas canvas, string label, SKPoint at, bool isAbove, int width)

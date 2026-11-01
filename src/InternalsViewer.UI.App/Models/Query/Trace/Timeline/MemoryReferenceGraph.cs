@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace InternalsViewer.UI.App.Models.Query.Trace.Timeline;
@@ -8,7 +9,8 @@ public sealed class MemoryReferenceGraph(List<MemoryReferenceGraphNode> nodes,
                                          double height,
                                          double nodeWidth,
                                          double nodeHeight,
-                                         bool isTruncated)
+                                         bool isTruncated,
+                                         Action? reset)
 {
     public List<MemoryReferenceGraphNode> Nodes { get; } = nodes;
 
@@ -23,4 +25,6 @@ public sealed class MemoryReferenceGraph(List<MemoryReferenceGraphNode> nodes,
     public double NodeHeight { get; } = nodeHeight;
 
     public bool IsTruncated { get; } = isTruncated;
+
+    public Action? Reset { get; } = reset;
 }

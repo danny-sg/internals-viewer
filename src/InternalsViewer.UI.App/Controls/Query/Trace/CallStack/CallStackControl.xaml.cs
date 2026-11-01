@@ -564,6 +564,11 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
 
         var menu = part is { CanFind: true, Value: { } value } ? TraceLinkMenu.CreateForAddress(stack.Navigator, value) : new MenuFlyout();
 
+        if (part.IsMemoryTracked)
+        {
+            menu.Items.Insert(0, TraceLinkMenu.CreateMemoryHistory(() => stack.ShowMemory(part)));
+        }
+
         TraceLinkMenu.AddSearch(menu, stack.Navigator, part.MemoryTarget ?? part.DecodedClass);
 
         TraceLinkMenu.Show(menu, sender, e);

@@ -17,7 +17,7 @@ internal sealed class CanvasViewport
     private const float ZoomEpsilon = 0.0001f;
 
     /// <summary>
-    /// The zoom the wheel stops at on its way past, which is the one the content was laid out for
+    /// Stop point for a default zoom
     /// </summary>
     private const float DetentZoom = 1f;
 
@@ -139,6 +139,41 @@ internal sealed class CanvasViewport
 
         return true;
     }
+
+    public bool ZoomTo(float zoom, double x, double y)
+    {
+        var target = Math.Clamp(zoom, MinimumZoom, MaximumZoom);
+
+        if (Math.Abs(target - Zoom) < ZoomEpsilon)
+        {
+            return false;
+        }
+
+        var anchor = ToContent(x, y);
+
+        Zoom = target;
+
+        UpdateExtent();
+
+        OffsetX = Math.Clamp(anchor.X * Zoom - (float)x, 0, MaximumOffsetX);
+        OffsetY = Math.Clamp(anchor.Y * Zoom - (float)y, 0, MaximumOffsetY);
+
+        return true;
+    }
+
+    public void Fit(SKRect content)
+    {
+        if (content.Width <= 0 || content.Height <= 0)
+        {
+            return;
+        }
+
+        ZoomTo(Math.Min(_viewportWidth / content.Width, _viewportHeight / content.Height), 0, 0);
+
+        CentreOn(new SKPoint(content.MidX, content.MidY));
+    }
+
+    public bool CentreOn(SKPoint content) => SetOffset(content.X * Zoom - _viewportWidth / 2, content.Y * Zoom - _viewportHeight / 2);
 
     private bool UpdateExtent()
     {

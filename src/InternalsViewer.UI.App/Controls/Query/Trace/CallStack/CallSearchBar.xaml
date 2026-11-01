@@ -21,6 +21,9 @@
                         BorderThickness="0"
                         FontSize="12"
                         Height="28"
+                        ItemsSource="{x:Bind Suggestions, Mode=OneWay}"
+                        ItemTemplateSelector="{x:Bind SuggestionTemplateSelector, Mode=OneWay}"
+                        UpdateTextOnSelect="False"
                         TextChanged="OnSearchTextChanged"
                         QuerySubmitted="OnSearchQuerySubmitted"/>
 

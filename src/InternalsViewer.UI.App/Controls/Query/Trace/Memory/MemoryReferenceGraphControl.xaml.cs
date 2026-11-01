@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using InternalsViewer.UI.App.Controls.Query.Trace.Memory.Enums;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using Microsoft.UI.Input;
@@ -9,46 +10,22 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Shapes;
+using SkiaSharp;
 using Windows.Foundation;
 using Windows.System;
-using Windows.UI;
+using Windows.UI.Core;
 
 namespace InternalsViewer.UI.App.Controls.Query.Trace.Memory;
 
-public sealed partial class MemoryReferenceGraphControl : UserControl
+public sealed partial class MemoryReferenceGraphControl : UserControl, IDisposable
 {
-    private const double ArrowLength = 6;
+    private const double DragThreshold = 3;
 
-    private const double ArrowHalfWidth = 3;
+    private const double ToolTipGap = 14;
 
-    private const double EdgeLabelGap = 4;
+    private const double ToolTipPadding = 12;
 
-    private const double EdgeLabelRise = 15;
-
-    private const double EdgeLabelDrop = 1;
-
-    private const double DashLength = 4;
-
-    private const double DashGap = 3;
-
-    private const double WheelZoomStep = 1.1;
-
-    private const double WheelNotch = 120;
-
-    private const float DetailZoom = 0.8f;
-
-    private const double BandHeight = 4;
-
-    private const double LifetimeHeight = 1;
-
-    private const string RightGlyph = "\uE76C";
-
-    private const string LeftGlyph = "\uE76B";
-
-    private const string TruncatedPrefix = "Graph Limited to ";
-
-    private const string TruncatedSuffix = " Objects";
+    private const float SelectionMinimum = 8;
 
     public static readonly DependencyProperty GraphProperty =
         DependencyProperty.Register(nameof(Graph),
@@ -78,553 +55,605 @@ public sealed partial class MemoryReferenceGraphControl : UserControl
     {
         InitializeComponent();
 
-        GraphScroller.AddHandler(PointerPressedEvent, new PointerEventHandler(OnScrollerPointerPressed), true);
+        GraphCanvas.PaintSurface += OnPaintSurface;
+        GraphCanvas.PointerPressed += OnPointerPressed;
+        GraphCanvas.PointerMoved += OnPointerMoved;
+        GraphCanvas.PointerReleased += OnPointerReleased;
+        GraphCanvas.PointerCaptureLost += OnPointerCaptureLost;
+        GraphCanvas.PointerExited += OnPointerExited;
+        GraphCanvas.PointerWheelChanged += OnPointerWheelChanged;
+        GraphCanvas.RightTapped += OnRightTapped;
+        GraphCanvas.SizeChanged += OnCanvasSizeChanged;
+
+        ActualThemeChanged += OnActualThemeChanged;
 
         Loaded += OnLoaded;
-
-        var menu = new MenuFlyout();
-
-        menu.Items.Add(MenuItems.Create("Zoom to 100%", () => ZoomAt(GetViewportCentre(), 1)));
-
-        menu.Items.Add(MenuItems.Create("Zoom to Fit", ZoomToFit));
-
-        GraphScroller.ContextFlyout = menu;
     }
 
-    private List<(MemoryReferenceGraphNode Node, PropertyChangedEventHandler Handler)> Subscriptions { get; } = [];
+    private MemoryReferenceGraphPaints Paints { get; } = new();
 
-    private Point? DragOrigin { get; set; }
+    private CanvasViewport Viewport { get; } = new();
 
-    private Point DragOffset { get; set; }
+    private bool IsThemeDirty { get; set; } = true;
 
-    private List<UIElement> ZoomDetails { get; } = [];
+    private bool IsPressed { get; set; }
 
-    private List<(Rectangle Bar, double Width)> ProgressBars { get; } = [];
+    private bool IsPanning { get; set; }
 
-    private bool IsDetailVisible { get; set; } = true;
+    private bool IsSelecting { get; set; }
 
-    private Dictionary<Color, SolidColorBrush> MarkBrushes { get; } = [];
+    private bool IsShiftPressed { get; set; }
 
-    private double Scale { get; set; } = 1;
+    private Point PressPoint { get; set; }
 
-    private void Unsubscribe()
+    private Point DragPoint { get; set; }
+
+    private SKPoint PressOffset { get; set; }
+
+    private GraphHit PressHit { get; set; }
+
+    private GraphHit HoverHit { get; set; }
+
+    private MemoryReferenceGraphNode? HoveredNode { get; set; }
+
+    private MemoryReferenceGraphNode? SelectedNode { get; set; }
+
+    private List<INotifyPropertyChanged> Subscribed { get; } = [];
+
+    private InputSystemCursorShape CursorShape { get; set; } = InputSystemCursorShape.Arrow;
+
+    public void ShowNode(MemoryReferenceGraphNode node)
     {
-        foreach (var (node, handler) in Subscriptions)
+        if (Graph is not { } graph)
         {
-            node.PropertyChanged -= handler;
+            return;
         }
 
-        Subscriptions.Clear();
+        SelectedNode = node;
+
+        if (Viewport.Zoom < DetailZoom)
+        {
+            Viewport.ZoomTo(1, 0, 0);
+        }
+
+        Viewport.CentreOn(new SKPoint((float)(node.X + graph.NodeWidth / 2), (float)(node.Y + graph.NodeHeight / 2)));
+
+        SyncScrollBars();
+
+        GraphCanvas.Invalidate();
     }
 
-    private void Rebuild()
+    public void Dispose()
     {
-        Scale = XamlRoot?.RasterizationScale ?? 1;
+        GraphCanvas.PaintSurface -= OnPaintSurface;
+        GraphCanvas.PointerPressed -= OnPointerPressed;
+        GraphCanvas.PointerMoved -= OnPointerMoved;
+        GraphCanvas.PointerReleased -= OnPointerReleased;
+        GraphCanvas.PointerCaptureLost -= OnPointerCaptureLost;
+        GraphCanvas.PointerExited -= OnPointerExited;
+        GraphCanvas.PointerWheelChanged -= OnPointerWheelChanged;
+        GraphCanvas.RightTapped -= OnRightTapped;
+        GraphCanvas.SizeChanged -= OnCanvasSizeChanged;
+
+        ActualThemeChanged -= OnActualThemeChanged;
+
+        Loaded -= OnLoaded;
 
         Unsubscribe();
 
-        GraphCanvas.Children.Clear();
+        PathBuilder.Dispose();
 
-        ZoomDetails.Clear();
+        Paints.Dispose();
+    }
 
-        ProgressBars.Clear();
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        IsThemeDirty = true;
 
-        if (Graph is not { } graph)
+        UpdateExtent();
+
+        GraphCanvas.Invalidate();
+    }
+
+    private void OnActualThemeChanged(FrameworkElement sender, object args)
+    {
+        IsThemeDirty = true;
+
+        GraphCanvas.Invalidate();
+    }
+
+    private void ApplyTheme()
+    {
+        Paints.Line = GetColour(LineProbe, Paints.Line);
+        Paints.CrossLine = GetColour(CrossLineProbe, Paints.CrossLine);
+        Paints.HoverLine = GetColour(HoverLineProbe, Paints.HoverLine);
+        Paints.HotLine = GetColour(HotLineProbe, Paints.HotLine);
+        Paints.Progress = GetColour(ProgressProbe, Paints.Progress);
+        Paints.Active = GetColour(ActiveProbe, Paints.Active);
+        Paints.Node = GetColour(NodeProbe, Paints.Node);
+        Paints.DataNode = GetColour(DataNodeProbe, Paints.DataNode);
+        Paints.Accent = GetColour(AccentProbe, Paints.Accent);
+        Paints.Text = GetColour(TextProbe, Paints.Text);
+        Paints.SecondaryText = GetColour(SecondaryTextProbe, Paints.SecondaryText);
+        Paints.DisabledText = GetColour(DisabledTextProbe, Paints.DisabledText);
+        Paints.Link = GetColour(LinkProbe, Paints.Link);
+        Paints.HoverFill = GetColour(HoverProbe, Paints.HoverFill);
+    }
+
+    private static SKColor GetColour(Border probe, SKColor fallback)
+        => probe.Background is SolidColorBrush brush
+            ? new SKColor(brush.Color.R, brush.Color.G, brush.Color.B, brush.Color.A)
+            : fallback;
+
+    private void SetGraph(MemoryReferenceGraph? graph)
+    {
+        Unsubscribe();
+
+        SetHover(default);
+
+        HideToolTip();
+
+        SelectedNode = null;
+
+        BuildScene(graph);
+
+        if (graph is not null)
         {
-            GraphCanvas.Width = 0;
+            foreach (var item in graph.Nodes.Concat<INotifyPropertyChanged>(graph.Edges))
+            {
+                item.PropertyChanged += OnItemChanged;
 
-            GraphCanvas.Height = 0;
+                Subscribed.Add(item);
+            }
+        }
 
-            TruncatedText.Visibility = Visibility.Collapsed;
+        UpdateExtent();
+
+        GraphCanvas.Invalidate();
+    }
+
+    private void Unsubscribe()
+    {
+        foreach (var item in Subscribed)
+        {
+            item.PropertyChanged -= OnItemChanged;
+        }
+
+        Subscribed.Clear();
+    }
+
+    private void OnItemChanged(object? sender, PropertyChangedEventArgs e) => GraphCanvas.Invalidate();
+
+    private void OnPointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        var point = e.GetCurrentPoint(GraphCanvas);
+
+        if (!point.Properties.IsLeftButtonPressed)
+        {
+            return;
+        }
+
+        IsPressed = true;
+
+        IsPanning = false;
+
+        IsSelecting = false;
+
+        IsShiftPressed = (e.KeyModifiers & VirtualKeyModifiers.Shift) != 0;
+
+        PressPoint = point.Position;
+
+        DragPoint = point.Position;
+
+        PressOffset = new SKPoint(Viewport.OffsetX, Viewport.OffsetY);
+
+        PressHit = HitTest(point.Position);
+
+        HideToolTip();
+
+        GraphCanvas.CapturePointer(e.Pointer);
+
+        e.Handled = true;
+    }
+
+    private void OnPointerMoved(object sender, PointerRoutedEventArgs e)
+    {
+        var position = e.GetCurrentPoint(GraphCanvas).Position;
+
+        if (!IsPressed)
+        {
+            UpdateHover(position);
 
             return;
         }
 
-        GraphCanvas.Width = graph.Width;
+        DragPoint = position;
 
-        GraphCanvas.Height = graph.Height;
-
-        foreach (var edge in graph.Edges)
+        if (!IsPanning && !IsSelecting && Distance(PressPoint, position) > DragThreshold)
         {
-            AddEdge(edge);
+            IsSelecting = IsShiftPressed;
+
+            IsPanning = !IsShiftPressed;
+
+            SetCursor(IsPanning ? InputSystemCursorShape.SizeAll : InputSystemCursorShape.Cross);
         }
 
-        foreach (var node in graph.Nodes)
+        if (IsPanning && Viewport.SetOffset(PressOffset.X - (float)(position.X - PressPoint.X),
+                                            PressOffset.Y - (float)(position.Y - PressPoint.Y)))
         {
-            AddNode(node, graph.NodeWidth, graph.NodeHeight);
+            SyncScrollBars();
+
+            GraphCanvas.Invalidate();
+        }
+        else if (IsSelecting)
+        {
+            GraphCanvas.Invalidate();
         }
 
-        TruncatedText.Text = $"{TruncatedPrefix}{graph.Nodes.Count}{TruncatedSuffix}";
-
-        TruncatedText.Visibility = graph.IsTruncated ? Visibility.Visible : Visibility.Collapsed;
+        e.Handled = true;
     }
 
-    private void AddEdge(MemoryReferenceGraphEdge edge)
+    private void OnPointerReleased(object sender, PointerRoutedEventArgs e)
     {
-        var points = new PointCollection();
-
-        foreach (var point in edge.Points)
+        if (!IsPressed)
         {
-            points.Add(Snap(point));
+            return;
         }
 
-        var thickness = GetLineThickness();
-
-        var line = new Polyline
+        if (IsSelecting)
         {
-            Points = points,
-            Style = GetStyle(edge.IsHot ? "HotEdgeStyle" : "EdgeStyle"),
-            StrokeThickness = thickness
-        };
-
-        SetExtent(line, points);
-
-        if (edge.IsCrossLink)
+            ZoomToSelection();
+        }
+        else if (!IsPanning)
         {
-            line.StrokeDashArray = new DoubleCollection { DashLength / thickness, DashGap / thickness };
+            Click(PressHit);
         }
 
-        GraphCanvas.Children.Add(line);
+        EndPointer();
 
-        var end = Snap(edge.Points[^1]);
+        GraphCanvas.ReleasePointerCapture(e.Pointer);
 
-        var direction = end.X >= edge.Points[^2].X ? 1 : -1;
+        UpdateHover(e.GetCurrentPoint(GraphCanvas).Position);
 
-        var arrow = new Polygon
+        e.Handled = true;
+    }
+
+    private void OnPointerCaptureLost(object sender, PointerRoutedEventArgs e) => EndPointer();
+
+    private void EndPointer()
+    {
+        var isSelecting = IsSelecting;
+
+        IsPressed = false;
+
+        IsPanning = false;
+
+        IsSelecting = false;
+
+        SetCursor(InputSystemCursorShape.Arrow);
+
+        if (isSelecting)
         {
-            Points = new PointCollection
+            GraphCanvas.Invalidate();
+        }
+    }
+
+    private void OnPointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        if (IsPressed)
+        {
+            return;
+        }
+
+        SetHover(default);
+
+        HideToolTip();
+
+        SetCursor(InputSystemCursorShape.Arrow);
+    }
+
+    private void Click(GraphHit hit)
+    {
+        switch (hit.Part)
+        {
+            case MemoryReferenceGraphPart.Expand:
             {
-                new Point(end.X - direction * ArrowLength, end.Y - ArrowHalfWidth),
-                end,
-                new Point(end.X - direction * ArrowLength, end.Y + ArrowHalfWidth)
-            },
-            Style = GetStyle(edge.IsHot ? "HotArrowStyle" : "ArrowStyle")
-        };
+                hit.Node?.Toggle?.Invoke();
 
-        SetExtent(arrow, arrow.Points);
+                break;
+            }
+            case MemoryReferenceGraphPart.Referrers:
+            {
+                hit.Node?.ToggleReferrers?.Invoke();
 
-        GraphCanvas.Children.Add(arrow);
+                break;
+            }
+            case MemoryReferenceGraphPart.Name when hit.Node is { CanOpen: true } node:
+            {
+                node.Open?.Invoke();
 
-        var left = edge.LabelAt.X + EdgeLabelGap;
+                break;
+            }
+            case MemoryReferenceGraphPart.None:
+            {
+                SelectedNode = null;
 
-        AddEdgeLabel(edge, edge.Label, left, edge.LabelAt.Y + (edge.IsLabelBelow ? EdgeLabelDrop : -EdgeLabelRise));
+                GraphCanvas.Invalidate();
 
-        if (edge.Changes.Length > 0)
-        {
-            AddEdgeLabel(edge, edge.Changes, left, edge.LabelAt.Y + EdgeLabelDrop);
+                break;
+            }
         }
     }
 
-    private static void SetExtent(Shape shape, PointCollection points)
+    private void UpdateHover(Point position)
     {
-        shape.Width = points.Max(p => p.X) + ArrowLength;
+        var hit = HitTest(position);
 
-        shape.Height = points.Max(p => p.Y) + ArrowLength;
-    }
+        SetHover(hit);
 
-    private double GetLineThickness() => Math.Max(1, Math.Round(Scale)) / Scale;
+        SetCursor(IsClickable(hit) ? InputSystemCursorShape.Hand : InputSystemCursorShape.Arrow);
 
-    private Point Snap(Point point) => new(Snap(point.X), Snap(point.Y));
-
-    private double Snap(double value)
-    {
-        var centre = Math.Max(1, Math.Round(Scale)) % 2 == 1 ? 0.5 : 0;
-
-        return (Math.Floor(value * Scale) + centre) / Scale;
-    }
-
-    private void AddEdgeLabel(MemoryReferenceGraphEdge edge, string text, double left, double top)
-    {
-        var label = new TextBlock
+        if (GetToolTipText(hit) is { Length: > 0 } text)
         {
-            Text = text,
-            Style = GetStyle(edge.IsHot ? "HotEdgeLabelStyle" : "EdgeLabelStyle"),
-            Visibility = IsDetailVisible ? Visibility.Visible : Visibility.Collapsed
-        };
-
-        ToolTipService.SetToolTip(label, edge.Detail);
-
-        Canvas.SetLeft(label, left);
-
-        Canvas.SetTop(label, top);
-
-        GraphCanvas.Children.Add(label);
-
-        ZoomDetails.Add(label);
-    }
-
-    private void AddNode(MemoryReferenceGraphNode node, double width, double height)
-    {
-        var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-
-        var label = new TextBlock { Style = GetStyle("NodeLabelStyle") };
-
-        HyperlinkButton? link = null;
-
-        if (node.Open is { } open)
-        {
-            link = new HyperlinkButton { Content = label, Style = (Style)Application.Current.Resources["DetailLinkStyle"] };
-
-            link.Click += (_, _) => open();
-
-            text.Children.Add(link);
+            OpenToolTip(text, position);
         }
         else
         {
-            text.Children.Add(label);
+            HideToolTip();
+        }
+    }
+
+    private void SetHover(GraphHit hit)
+    {
+        if (!ReferenceEquals(hit.Node, HoveredNode))
+        {
+            HoveredNode?.Hover?.Invoke(false);
+
+            HoveredNode = hit.Node;
+
+            HoveredNode?.Hover?.Invoke(true);
         }
 
-        var detail = new TextBlock { Style = GetStyle("NodeDetailStyle") };
-
-        text.Children.Add(detail);
-
-        Update();
-
-        PropertyChangedEventHandler handler = (_, _) => Update();
-
-        node.PropertyChanged += handler;
-
-        Subscriptions.Add((node, handler));
-
-        var content = new Grid { Style = GetStyle("NodeContentStyle") };
-
-        content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-        content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-        content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-        Grid.SetColumn(text, 1);
-
-        content.Children.Add(text);
-
-        if (node.ToggleReferrers is { } toggleReferrers)
+        if (hit != HoverHit)
         {
-            content.Children.Add(CreateToggle(node.IsReferrersExpanded ? RightGlyph : LeftGlyph,
-                                              node.IsReferrersExpanded ? "Hide Referencing Objects" : "Show Referencing Objects",
-                                              toggleReferrers,
-                                              0));
+            HoverHit = hit;
+
+            GraphCanvas.Invalidate();
         }
+    }
 
-        if (node.Toggle is { } toggle)
-        {
-            content.Children.Add(CreateToggle(node.IsExpanded ? LeftGlyph : RightGlyph,
-                                              node.IsExpanded ? "Collapse" : "Expand",
-                                              toggle,
-                                              2));
-        }
+    private static bool IsClickable(GraphHit hit)
+        => hit.Part is MemoryReferenceGraphPart.Expand or MemoryReferenceGraphPart.Referrers
+           || (hit.Part == MemoryReferenceGraphPart.Name && hit.Node is { CanOpen: true });
 
-        var border = new Border
+    private string? GetToolTipText(GraphHit hit)
+        => hit.Part switch
         {
-            Width = width,
-            Height = height,
-            Style = GetStyle(node.IsRoot ? "RootNodeStyle" : node.IsData ? "DataNodeStyle" : "NodeStyle")
+            MemoryReferenceGraphPart.Expand => hit.Node is { IsExpanded: true } ? "Collapse" : "Expand",
+            MemoryReferenceGraphPart.Referrers => hit.Node is { IsReferrersExpanded: true }
+                ? "Hide Referencing Objects"
+                : "Show Referencing Objects",
+            MemoryReferenceGraphPart.Name or MemoryReferenceGraphPart.Node when hit.Node is { } node => GetNodeToolTip(node),
+            MemoryReferenceGraphPart.Label or MemoryReferenceGraphPart.Edge when hit.Edge is { } edge => GetEdgeToolTip(edge),
+            _ => null
         };
 
-        var layout = new Grid();
+    private static string GetNodeToolTip(MemoryReferenceGraphNode node)
+    {
+        string[] lines = [node.Label, node.Label == node.Types ? string.Empty : node.Types, node.Detail, node.DataChanges];
 
-        layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-
-        layout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-
-        layout.Children.Add(CreateBand(node, width - border.BorderThickness.Left - border.BorderThickness.Right));
-
-        Grid.SetRow(content, 1);
-
-        layout.Children.Add(content);
-
-        border.Child = layout;
-
-        Canvas.SetLeft(border, node.X);
-
-        Canvas.SetTop(border, node.Y);
-
-        GraphCanvas.Children.Add(border);
-
-        void Update()
-        {
-            label.Text = node.Label;
-
-            detail.Text = node.Detail;
-
-            if (link is not null)
-            {
-                link.IsEnabled = node.CanOpen;
-            }
-
-            string[] tip = [node.Label, node.Label == node.Types ? string.Empty : node.Types, node.Detail, node.DataChanges];
-
-            ToolTipService.SetToolTip(text, string.Join(Environment.NewLine, tip.Where(t => t.Length > 0)));
-        }
+        return string.Join(Environment.NewLine, lines.Where(l => l.Length > 0));
     }
 
-    private Button CreateToggle(string glyph, string tip, Action toggle, int column)
+    private static string GetEdgeToolTip(MemoryReferenceGraphEdge edge)
+        => $"{edge.From.Label} → {edge.To.Label}{Environment.NewLine}{edge.Detail}";
+
+    private void OpenToolTip(string text, Point position)
     {
-        var button = new Button { Content = new FontIcon { Glyph = glyph, FontSize = 10 }, Style = GetStyle("ToggleStyle") };
+        ToolTipText.Text = text;
 
-        ToolTipService.SetToolTip(button, tip);
+        ToolTipPopup.IsOpen = true;
 
-        button.Click += (_, _) => toggle();
+        ToolTipText.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
 
-        Grid.SetColumn(button, column);
+        var width = ToolTipText.DesiredSize.Width + ToolTipPadding;
 
-        return button;
+        var left = position.X + ToolTipGap + width > GraphCanvas.ActualWidth
+            ? position.X - ToolTipGap - width
+            : position.X + ToolTipGap;
+
+        ToolTipPopup.HorizontalOffset = Math.Max(0, left);
+
+        ToolTipPopup.VerticalOffset = position.Y + ToolTipGap;
     }
 
-    private Canvas CreateBand(MemoryReferenceGraphNode node, double width)
+    private void HideToolTip() => ToolTipPopup.IsOpen = false;
+
+    private void SetCursor(InputSystemCursorShape shape)
     {
-        var band = new Canvas
-        {
-            Width = width,
-            Height = BandHeight + LifetimeHeight,
-            IsHitTestVisible = false,
-            Visibility = IsDetailVisible ? Visibility.Visible : Visibility.Collapsed
-        };
-
-        var track = new Rectangle { Height = LifetimeHeight, Width = width, Style = GetStyle("ProgressStyle") };
-
-        Canvas.SetTop(track, BandHeight);
-
-        band.Children.Add(track);
-
-        foreach (var (start, end) in node.ActiveSpans)
-        {
-            var span = new Rectangle
-            {
-                Height = LifetimeHeight,
-                Width = Math.Max(1, (end - start) * width),
-                Style = GetStyle("ActiveStyle")
-            };
-
-            Canvas.SetLeft(span, start * width);
-
-            Canvas.SetTop(span, BandHeight);
-
-            band.Children.Add(span);
-        }
-
-        var bar = new Rectangle { Height = BandHeight, Width = Progress * width, Style = GetStyle("ProgressStyle") };
-
-        band.Children.Add(bar);
-
-        ProgressBars.Add((bar, width));
-
-        var columns = Math.Max(1, (int)width);
-
-        var colours = new Color?[columns];
-
-        foreach (var mark in node.Marks)
-        {
-            colours[Math.Clamp((int)(mark.At * columns), 0, columns - 1)] = mark.Colour;
-        }
-
-        var marks = new Dictionary<Color, GeometryCollection>();
-
-        for (var column = 0; column < columns; column++)
-        {
-            if (colours[column] is not { } colour)
-            {
-                continue;
-            }
-
-            var start = column;
-
-            while (column + 1 < columns && colours[column + 1] == colour)
-            {
-                column++;
-            }
-
-            if (!marks.TryGetValue(colour, out var geometry))
-            {
-                geometry = new GeometryCollection();
-
-                marks[colour] = geometry;
-            }
-
-            geometry.Add(new RectangleGeometry { Rect = new Rect(start, 0, column - start + 1, BandHeight) });
-        }
-
-        foreach (var (colour, geometry) in marks)
-        {
-            band.Children.Add(new Path { Data = new GeometryGroup { Children = geometry }, Fill = GetBrush(colour) });
-        }
-
-        ZoomDetails.Add(band);
-
-        return band;
-    }
-
-    private SolidColorBrush GetBrush(Color colour)
-    {
-        if (!MarkBrushes.TryGetValue(colour, out var brush))
-        {
-            brush = new SolidColorBrush(colour);
-
-            MarkBrushes[colour] = brush;
-        }
-
-        return brush;
-    }
-
-    private bool IsBackground(object source)
-    {
-        for (var element = source as DependencyObject; element is not null; element = VisualTreeHelper.GetParent(element))
-        {
-            if (element is ScrollBar || (element is Border && VisualTreeHelper.GetParent(element) == GraphCanvas))
-            {
-                return false;
-            }
-
-            if (element == GraphScroller)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private void OnScrollerPointerPressed(object sender, PointerRoutedEventArgs e)
-    {
-        var point = e.GetCurrentPoint(GraphScroller);
-
-        if (e.Pointer.PointerDeviceType == PointerDeviceType.Touch
-            || !point.Properties.IsLeftButtonPressed
-            || !IsBackground(e.OriginalSource))
+        if (shape == CursorShape)
         {
             return;
         }
 
-        DragOrigin = point.Position;
+        CursorShape = shape;
 
-        DragOffset = new Point(GraphScroller.HorizontalOffset, GraphScroller.VerticalOffset);
-
-        GraphScroller.CapturePointer(e.Pointer);
-
-        e.Handled = true;
+        ProtectedCursor = InputSystemCursor.Create(shape);
     }
 
-    private void OnScrollerPointerMoved(object sender, PointerRoutedEventArgs e)
+    private void OnPointerWheelChanged(object sender, PointerRoutedEventArgs e)
     {
-        if (DragOrigin is not { } origin)
+        var point = e.GetCurrentPoint(GraphCanvas);
+
+        var delta = point.Properties.MouseWheelDelta;
+
+        HideToolTip();
+
+        var changed = point.Properties.IsHorizontalMouseWheel
+            ? Viewport.SetOffset(Viewport.OffsetX + delta, Viewport.OffsetY)
+            : IsKeyDown(VirtualKey.Control)
+                ? Viewport.ZoomAt(delta, point.Position.X, point.Position.Y, point.Timestamp)
+                : IsKeyDown(VirtualKey.Shift)
+                    ? Viewport.SetOffset(Viewport.OffsetX - delta, Viewport.OffsetY)
+                    : Viewport.SetOffset(Viewport.OffsetX, Viewport.OffsetY - delta);
+
+        if (changed)
         {
-            return;
+            SyncScrollBars();
+
+            GraphCanvas.Invalidate();
         }
 
-        var position = e.GetCurrentPoint(GraphScroller).Position;
-
-        GraphScroller.ChangeView(DragOffset.X - (position.X - origin.X), DragOffset.Y - (position.Y - origin.Y), null, true);
-
         e.Handled = true;
     }
 
-    private void OnScrollerPointerReleased(object sender, PointerRoutedEventArgs e)
+    private static bool IsKeyDown(VirtualKey key)
+        => InputKeyboardSource.GetKeyStateForCurrentThread(key).HasFlag(CoreVirtualKeyStates.Down);
+
+    private void OnRightTapped(object sender, RightTappedRoutedEventArgs e)
     {
-        if (DragOrigin is null)
+        var point = e.GetPosition(GraphCanvas);
+
+        var menu = new MenuFlyout();
+
+        if (HitTest(point).Node is { } node)
         {
-            return;
+            menu.Items.Add(CreateMenuItem("Select", node.Select));
+
+            menu.Items.Add(new MenuFlyoutSeparator());
+
+            menu.Items.Add(CreateMenuItem("Expand All", node.ExpandAll));
+
+            menu.Items.Add(CreateMenuItem("Collapse All", node.CollapseAll));
+
+            menu.Items.Add(new MenuFlyoutSeparator());
+        }
+        else
+        {
+            menu.Items.Add(CreateMenuItem("Reset", Graph?.Reset));
+
+            menu.Items.Add(new MenuFlyoutSeparator());
         }
 
-        DragOrigin = null;
+        menu.Items.Add(MenuItems.Create("Zoom to 100%", () => ZoomTo(1)));
 
-        GraphScroller.ReleasePointerCapture(e.Pointer);
+        menu.Items.Add(MenuItems.Create("Zoom to Fit", ZoomToFit));
+
+        HideToolTip();
+
+        menu.ShowAt(GraphCanvas, point);
 
         e.Handled = true;
     }
 
-    private void OnScrollerPointerCaptureLost(object sender, PointerRoutedEventArgs e) => DragOrigin = null;
-
-    private void OnCanvasPointerWheelChanged(object sender, PointerRoutedEventArgs e)
+    private static MenuFlyoutItem CreateMenuItem(string text, Action? click)
     {
-        var point = e.GetCurrentPoint(GraphScroller);
+        var item = MenuItems.Create(text, () => click?.Invoke());
 
-        if (point.Properties.IsHorizontalMouseWheel || (e.KeyModifiers & VirtualKeyModifiers.Control) == 0)
+        item.IsEnabled = click is not null;
+
+        return item;
+    }
+
+    private void ZoomTo(float zoom)
+    {
+        if (Viewport.ZoomTo(zoom, GraphCanvas.ActualWidth / 2, GraphCanvas.ActualHeight / 2))
         {
-            return;
+            SyncScrollBars();
+
+            GraphCanvas.Invalidate();
         }
-
-        ZoomAt(point.Position, GraphScroller.ZoomFactor * Math.Pow(WheelZoomStep, point.Properties.MouseWheelDelta / WheelNotch));
-
-        e.Handled = true;
-    }
-
-    private void ZoomAt(Point position, double zoom)
-    {
-        var target = Math.Clamp(zoom, GraphScroller.MinZoomFactor, GraphScroller.MaxZoomFactor);
-
-        var scale = target / GraphScroller.ZoomFactor;
-
-        GraphScroller.ChangeView((GraphScroller.HorizontalOffset + position.X) * scale - position.X,
-                                 (GraphScroller.VerticalOffset + position.Y) * scale - position.Y,
-                                 (float)target,
-                                 true);
     }
 
     private void ZoomToFit()
     {
-        if (Graph is not { Width: > 0, Height: > 0 } graph)
+        if (Graph is not { } graph)
         {
             return;
         }
 
-        var zoom = Math.Min(GraphScroller.ViewportWidth / graph.Width, GraphScroller.ViewportHeight / graph.Height);
+        Viewport.Fit(new SKRect(0, 0, (float)graph.Width, (float)graph.Height));
 
-        GraphScroller.ChangeView(0, 0, (float)Math.Clamp(zoom, GraphScroller.MinZoomFactor, GraphScroller.MaxZoomFactor), true);
+        SyncScrollBars();
+
+        GraphCanvas.Invalidate();
     }
 
-    private Point GetViewportCentre() => new(GraphScroller.ViewportWidth / 2, GraphScroller.ViewportHeight / 2);
-
-    private void OnScrollerSizeChanged(object sender, SizeChangedEventArgs e) => FillViewport();
-
-    private void OnLoaded(object sender, RoutedEventArgs e)
+    private void ZoomToSelection()
     {
-        if (Graph is not null && XamlRoot?.RasterizationScale is { } scale && scale != Scale)
-        {
-            Rebuild();
-        }
-    }
+        var from = Viewport.ToContent(PressPoint.X, PressPoint.Y);
 
-    private void OnScrollerViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
-    {
-        FillViewport();
+        var to = Viewport.ToContent(DragPoint.X, DragPoint.Y);
 
-        var isVisible = GraphScroller.ZoomFactor >= DetailZoom;
+        var rect = new SKRect(Math.Min(from.X, to.X), Math.Min(from.Y, to.Y), Math.Max(from.X, to.X), Math.Max(from.Y, to.Y));
 
-        if (isVisible == IsDetailVisible)
+        if (rect.Width * Viewport.Zoom < SelectionMinimum || rect.Height * Viewport.Zoom < SelectionMinimum)
         {
             return;
         }
 
-        IsDetailVisible = isVisible;
+        Viewport.Fit(rect);
 
-        foreach (var detail in ZoomDetails)
+        SyncScrollBars();
+
+        GraphCanvas.Invalidate();
+    }
+
+    private void OnScrollBarScroll(object sender, ScrollEventArgs e)
+    {
+        var horizontal = ReferenceEquals(sender, HorizontalScrollBar) ? (float)e.NewValue : Viewport.OffsetX;
+
+        var vertical = ReferenceEquals(sender, VerticalScrollBar) ? (float)e.NewValue : Viewport.OffsetY;
+
+        if (Viewport.SetOffset(horizontal, vertical))
         {
-            detail.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+            SyncScrollBars();
+
+            GraphCanvas.Invalidate();
         }
     }
 
-    private void FillViewport()
+    private void OnCanvasSizeChanged(object sender, SizeChangedEventArgs e)
     {
-        var zoom = GraphScroller.ZoomFactor;
+        UpdateExtent();
 
-        GraphCanvas.MinWidth = Math.Floor(GraphScroller.ViewportWidth / zoom);
-
-        GraphCanvas.MinHeight = Math.Floor(GraphScroller.ViewportHeight / zoom);
+        GraphCanvas.Invalidate();
     }
 
-    private Style GetStyle(string key) => (Style)Resources[key];
-
-    private void UpdateProgress()
+    private void UpdateExtent()
     {
-        foreach (var (bar, width) in ProgressBars)
-        {
-            bar.Width = Progress * width;
-        }
+        var graph = Graph;
+
+        Viewport.SetExtent((float)(graph?.Width ?? 0),
+                           (float)(graph?.Height ?? 0),
+                           (float)GraphCanvas.ActualWidth,
+                           (float)GraphCanvas.ActualHeight);
+
+        SyncScrollBars();
     }
+
+    private void SyncScrollBars()
+    {
+        VerticalScrollBar.Maximum = Viewport.MaximumOffsetY;
+        VerticalScrollBar.ViewportSize = GraphCanvas.ActualHeight;
+        VerticalScrollBar.Visibility = Viewport.MaximumOffsetY > 0 ? Visibility.Visible : Visibility.Collapsed;
+        VerticalScrollBar.Value = Viewport.OffsetY;
+
+        HorizontalScrollBar.Maximum = Viewport.MaximumOffsetX;
+        HorizontalScrollBar.ViewportSize = GraphCanvas.ActualWidth;
+        HorizontalScrollBar.Visibility = Viewport.MaximumOffsetX > 0 ? Visibility.Visible : Visibility.Collapsed;
+        HorizontalScrollBar.Value = Viewport.OffsetX;
+    }
+
+    private static double Distance(Point a, Point b) => Math.Sqrt(Math.Pow(a.X - b.X, 2) + Math.Pow(a.Y - b.Y, 2));
 
     private static void OnGraphChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((MemoryReferenceGraphControl)d).Rebuild();
+        => ((MemoryReferenceGraphControl)d).SetGraph(e.NewValue as MemoryReferenceGraph);
 
     private static void OnProgressChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((MemoryReferenceGraphControl)d).UpdateProgress();
+        => ((MemoryReferenceGraphControl)d).GraphCanvas.Invalidate();
+
+    private readonly record struct GraphHit(MemoryReferenceGraphNode? Node,
+                                            MemoryReferenceGraphPart Part,
+                                            MemoryReferenceGraphEdge? Edge);
 }

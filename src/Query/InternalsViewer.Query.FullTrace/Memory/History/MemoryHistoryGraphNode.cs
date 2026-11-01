@@ -26,9 +26,11 @@ public sealed class MemoryHistoryGraphNode(string path,
 
     public MemoryHistoryGraphTarget? Object { get; internal set; }
 
-    public bool IsData => Targets.All(t => t.Block < 0);
+    public MemoryHistoryGraphElement? Element { get; internal set; }
 
-    public bool IsReferrer => Depth < 0;
+    public bool IsData => Targets.Length > 0 && Targets.All(t => t.Block < 0);
+
+    public bool IsReferrer { get; internal set; }
 
     public MemoryHistoryGraphTarget? GetTarget(TracePosition position)
     {

@@ -47,6 +47,35 @@ internal static class MemoryHistoryStores
                                           timeline).Store;
     }
 
+    public static MemoryHistoryStore BuildWithReads(MemoryBlock[] blocks,
+                                                    (ulong Sequence, ulong Address, byte[] Bytes)[] writes,
+                                                    (ulong Sequence, ulong Address, uint Size)[] reads,
+                                                    TraceTimeline timeline)
+    {
+        var data = new List<byte>();
+
+        var hits = new List<ChunkHit>();
+
+        foreach (var (sequence, address, bytes) in writes)
+        {
+            hits.Add(ChunkHit.From(new WatchHit(sequence, 0, address, Writer, Thread, (uint)bytes.Length, 0, 1), data.Count));
+
+            data.AddRange(bytes);
+        }
+
+        var recording = new MemoryHistoryBuilder.Recording([.. blocks.Select(b => new MemoryHistoryAllocation(b, false))],
+                                                           new ulong[blocks.Length],
+                                                           new Dictionary<ulong, TracePosition>(),
+                                                           timeline);
+
+        foreach (var (sequence, address, size) in reads)
+        {
+            recording.AddRead(new WatchHit(sequence, 0, address, Writer, Thread, size, 0, 0));
+        }
+
+        return recording.Build(new WatchResult([new WatchChunk([.. hits], [.. data])], 1)).Store;
+    }
+
     public static int GetBlock(MemoryHistoryStore store, ulong address)
     {
         for (var index = 0; index < store.Blocks.Count; index++)

@@ -44,6 +44,13 @@ public sealed partial class MemoryDetailsViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(WritersText))]
     private List<MemoryWriterSummary> _writers = [];
 
+    [ObservableProperty]
+    private string _readCount = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ReadersText))]
+    private List<MemoryWriterSummary> _readers = [];
+
     public string InitialisedAtText => InitialisedAt is { } point ? TracePositionText.GetHexText(point.Position) : string.Empty;
 
     public string DestroyedAtText => DestroyedAt is { } point ? TracePositionText.GetHexText(point.Position) : EndOfRecording;
@@ -51,6 +58,8 @@ public sealed partial class MemoryDetailsViewModel : ObservableObject
     public string LifetimeText => InitialisedAt is null ? string.Empty : $"{InitialisedAtText} - {DestroyedAtText}";
 
     public string WritersText => string.Join(Environment.NewLine, Writers.Select(w => $"{w.Label} {w.Count}"));
+
+    public string ReadersText => string.Join(Environment.NewLine, Readers.Select(r => $"{r.Label} {r.Count}"));
 
     public bool IsDestroyed => DestroyedAt is not null;
 
@@ -93,6 +102,14 @@ public sealed partial class MemoryDetailsViewModel : ObservableObject
         Writers = [.. Enumerable.Range(0, writes.Count)
                                 .GroupBy(i => writes[i].CallNodeIndex)
                                 .Select(g => GetWriter(owner, g.Key, g.First(), g.Count()))];
+
+        var reads = store.GetReads(owner.Block);
+
+        ReadCount = $"{reads.Sum(r => (long)r.Count):N0}";
+
+        Readers = [.. Enumerable.Range(0, reads.Count)
+                                .GroupBy(i => reads[i].CallNodeIndex)
+                                .Select(g => GetReader(owner, g.Key, g.First(), g.Sum(i => reads[i].Count)))];
     }
 
     public void Clear()
@@ -118,6 +135,10 @@ public sealed partial class MemoryDetailsViewModel : ObservableObject
         UpdateCount = string.Empty;
 
         Writers = [];
+
+        ReadCount = string.Empty;
+
+        Readers = [];
     }
 
     private static MemoryWriterSummary GetWriter(PlayheadMemoryViewModel owner, int callNodeIndex, int first, int count)
@@ -131,5 +152,18 @@ public sealed partial class MemoryDetailsViewModel : ObservableObject
         var link = new TraceCallLink(store.GetPoint(block.FirstWrite + first), owner.History.GetWriter(callNodeIndex), write.CallIndex);
 
         return new MemoryWriterSummary(owner.History.GetWriterLabel(callNodeIndex), owner.GetCategoryColour(callNodeIndex), count, link);
+    }
+
+    private static MemoryWriterSummary GetReader(PlayheadMemoryViewModel owner, int callNodeIndex, int first, int count)
+    {
+        var store = owner.History.Store;
+
+        var (start, _) = store.GetReadRange(owner.Block);
+
+        var read = store.GetRead(start + first);
+
+        var link = new TraceCallLink(store.GetReadPoint(start + first), owner.History.GetWriter(callNodeIndex), read.CallIndex);
+
+        return new MemoryWriterSummary(owner.History.GetWriterLabel(callNodeIndex), owner.GetReadColour(callNodeIndex), count, link);
     }
 }

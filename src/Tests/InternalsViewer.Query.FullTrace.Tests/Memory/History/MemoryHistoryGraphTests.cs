@@ -100,6 +100,26 @@ public class MemoryHistoryGraphTests
     }
 
     [Fact]
+    public void A_Pointer_Moving_Within_A_Page_Gives_The_Offset_It_Holds_At_A_Position()
+    {
+        var builder = new TraceBufferPool.Builder();
+
+        builder.Add(new TraceBufferPage(Frame, new PageAddress(1, 100), 6, At(1)));
+
+        var store = MemoryHistoryStores.Build([MemoryHistoryStores.Block(First, 0x10)],
+                                              [(2, First, Pointer(Frame + 0x60)), (4, First, Pointer(Frame + 0x1A0))]);
+
+        var graph = Build(store, builder.Build(), MemoryHistoryStores.GetBlock(store, First), 10);
+
+        var edge = graph.Edges.Single();
+
+        Assert.Null(edge.TargetOffset);
+
+        Assert.Equal((0x60, 0x1A0, 0x1A0),
+                     (graph.GetTargetOffset(edge, At(3)), graph.GetTargetOffset(edge, At(5)), graph.GetMaximumTargetOffset(edge)));
+    }
+
+    [Fact]
     public void A_Buffer_Whose_Frame_Was_Not_Written_Points_At_The_Frame_It_Holds()
     {
         const ulong buffer = 0x7000;
@@ -362,6 +382,55 @@ public class MemoryHistoryGraphTests
     }
 
     [Fact]
+    public void A_Box_On_The_Right_Expands_Left_To_The_Objects_Pointing_At_It()
+    {
+        var store = MemoryHistoryStores.Build([MemoryHistoryStores.Block(First, 0x10),
+                                               MemoryHistoryStores.Block(Second, 0x10),
+                                               MemoryHistoryStores.Block(Third, 0x10)],
+                                              [Touch(Second), (2, First, Pointer(Second)), (3, Third, Pointer(Second))]);
+
+        var graph = MemoryHistoryGraph.Build(store,
+                                             TraceBufferPool.Empty,
+                                             MemoryHistoryStores.GetBlock(store, First),
+                                             default,
+                                             TracePosition.Unknown,
+                                             TracePosition.Unknown,
+                                             _ => true,
+                                             p => p == "/0",
+                                             8,
+                                             10);
+
+        var referrer = graph.Nodes[2];
+
+        Assert.Equal((Third, 0, 1, true), (referrer.Targets.Single().Value, referrer.Depth, referrer.Parent, referrer.IsReferrer));
+
+        Assert.True(graph.IsTreeEdge(Assert.Single(graph.Edges, e => e.From == 2)));
+    }
+
+    [Fact]
+    public void A_Call_Rooted_Graph_Starts_From_The_Objects_The_Call_Is_Given()
+    {
+        var store = MemoryHistoryStores.Build([MemoryHistoryStores.Block(First, 0x10), MemoryHistoryStores.Block(Second, 0x10)],
+                                              [Touch(First), Touch(Second)]);
+
+        var graph = MemoryHistoryGraph.BuildFromCall(store,
+                                                     TraceBufferPool.Empty,
+                                                     [First, 0, Second + 8],
+                                                     At(3),
+                                                     default,
+                                                     TracePosition.Unknown,
+                                                     TracePosition.Unknown,
+                                                     _ => true,
+                                                     _ => false,
+                                                     8,
+                                                     10);
+
+        Assert.Equal((false, true), (graph.Nodes[0].IsData, graph.Nodes[0].HasPointers));
+
+        Assert.Equal([new MemoryHistoryGraphEdge(0, 1, 0, 0, 0), new(0, 2, 2, 8, 0)], graph.Edges);
+    }
+
+    [Fact]
     public void An_Object_Already_On_The_Graph_Is_Not_Added_Again_As_One_Pointing_At_It()
     {
         var store = MemoryHistoryStores.Build([MemoryHistoryStores.Block(First, 0x10), MemoryHistoryStores.Block(Second, 0x10)],
@@ -415,6 +484,43 @@ public class MemoryHistoryGraphTests
 
     private static ulong[][] GetAddresses(MemoryHistoryStore store, MemoryHistoryGraph graph)
         => [.. graph.Nodes.Select(n => n.Targets.Select(t => store.Blocks[t.Block].Address).ToArray())];
+
+    [Fact]
+    public void An_Array_Is_Split_Into_Its_Elements_Each_With_Its_Own_Pointers()
+    {
+        var store = MemoryHistoryStores.Build([MemoryHistoryStores.Block(First, 0x10),
+                                               MemoryHistoryStores.Block(Second, 0x100),
+                                               MemoryHistoryStores.Block(Third, 0x10),
+                                               MemoryHistoryStores.Block(Fourth, 0x10)],
+                                              [Touch(Third),
+                                               Touch(Fourth),
+                                               (2, First, Pointer(Second)),
+                                               (3, Second + 0x18, Pointer(Third)),
+                                               (3, Second + 0x68, Pointer(Fourth))]);
+
+        var array = MemoryHistoryStores.GetBlock(store, Second);
+
+        var graph = MemoryHistoryGraph.Build(store,
+                                             TraceBufferPool.Empty,
+                                             MemoryHistoryStores.GetBlock(store, First),
+                                             default,
+                                             TracePosition.Unknown,
+                                             TracePosition.Unknown,
+                                             _ => true,
+                                             _ => false,
+                                             depth: 8,
+                                             limit: 10,
+                                             b => b == array ? new MemoryHistoryArray(0x50, 2) : null);
+
+        Assert.Equal([null, null, 0, 1, null, null], graph.Nodes.Select(n => n.Element?.Index));
+
+        Assert.Equal([new MemoryHistoryGraphEdge(0, 1, 0, 0, 0),
+                      new(1, 2, 0, 0, 0),
+                      new(1, 3, 0x50, 0, 0),
+                      new(2, 4, 0x18, 0, 0),
+                      new(3, 5, 0x18, 0, 0)],
+                     graph.Edges);
+    }
 
     private static MemoryHistoryGraph Build(MemoryHistoryStore store,
                                             TraceBufferPool pool,

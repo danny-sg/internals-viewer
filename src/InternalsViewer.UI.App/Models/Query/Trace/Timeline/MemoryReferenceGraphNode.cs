@@ -10,12 +10,16 @@ public sealed partial class MemoryReferenceGraphNode(string types,
                                                      bool isData,
                                                      bool isExpanded,
                                                      bool isReferrersExpanded,
-                                                     (double Start, double End)[] activeSpans,
+                                                     MemoryReferenceGraphSpan[] activeSpans,
                                                      MemoryReferenceGraphMark[] marks,
                                                      string dataChanges,
                                                      Action? open,
                                                      Action? toggle,
-                                                     Action? toggleReferrers) : ObservableObject
+                                                     Action? toggleReferrers,
+                                                     Action? select,
+                                                     Action? expandAll,
+                                                     Action? collapseAll,
+                                                     Action<bool>? hover) : ObservableObject
 {
     [ObservableProperty]
     private string _label = types;
@@ -40,7 +44,7 @@ public sealed partial class MemoryReferenceGraphNode(string types,
 
     public bool IsReferrersExpanded { get; } = isReferrersExpanded;
 
-    public (double Start, double End)[] ActiveSpans { get; } = activeSpans;
+    public MemoryReferenceGraphSpan[] ActiveSpans { get; } = activeSpans;
 
     public MemoryReferenceGraphMark[] Marks { get; } = marks;
 
@@ -51,4 +55,12 @@ public sealed partial class MemoryReferenceGraphNode(string types,
     public Action? Toggle { get; } = toggle;
 
     public Action? ToggleReferrers { get; } = toggleReferrers;
+
+    public Action? Select { get; } = select;
+
+    public Action? ExpandAll { get; } = expandAll;
+
+    public Action? CollapseAll { get; } = collapseAll;
+
+    public Action<bool>? Hover { get; } = hover;
 }

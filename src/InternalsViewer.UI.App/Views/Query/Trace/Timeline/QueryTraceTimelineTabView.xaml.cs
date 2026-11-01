@@ -10,6 +10,7 @@ using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Enums;
 using InternalsViewer.UI.App.Controls.Query.Trace.Timeline;
 using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
 using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Query;
@@ -99,6 +100,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         SearchBar.StepRequested += OnSearchStepRequested;
 
+        SearchBar.SuggestionChosen += OnSearchSuggestionChosen;
+
         AddHandler(PointerPressedEvent, NavigationPressedHandler, true);
     }
 
@@ -144,7 +147,7 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         _searchToggle = TabCommands.Toggle(TabCommands.Glyph(SearchGlyph),
                                            false,
-                                           "Search function names",
+                                           "Search Calls and Memory",
                                            (sender, _) => SetSearchVisible(TabCommands.IsChecked(sender)));
 
         var categoryToggle = TabCommands.Toggle(TabCommands.FilterGlyph(),
@@ -220,6 +223,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         SearchBar.StepRequested -= OnSearchStepRequested;
 
+        SearchBar.SuggestionChosen -= OnSearchSuggestionChosen;
+
         RemoveHandler(PointerPressedEvent, NavigationPressedHandler);
 
         AttachTab(null);
@@ -247,6 +252,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
             previous.PlayheadRequested -= OnPlayheadRequested;
 
+            previous.MemoryHighlightRequested -= OnMemoryHighlightRequested;
+
             if (ReferenceEquals(previous.Chart, TraceTimeline))
             {
                 previous.Chart = null;
@@ -269,6 +276,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         tab.PlayheadRequested += OnPlayheadRequested;
 
+        tab.MemoryHighlightRequested += OnMemoryHighlightRequested;
+
         tab.Chart = TraceTimeline;
 
         tab.Controller = this;
@@ -289,6 +298,10 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
                                      "Width is the instructions each call executed, so it shows how long each call took");
 
         var operators = new MenuFlyoutSubItem { Text = "Operators" };
+
+        var writes = MenuItems.Toggle("Writes", TraceTimeline.ShowMemoryWrites, isChecked => TraceTimeline.ShowMemoryWrites = isChecked);
+
+        var reads = MenuItems.Toggle("Reads", TraceTimeline.ShowMemoryReads, isChecked => TraceTimeline.ShowMemoryReads = isChecked);
 
         var sizeToFit = MenuItems.Toggle("Size to Fit",
                                          TraceTimeline.MemorySizeToFit,
@@ -330,7 +343,7 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         menu.Items.Add(operators);
 
-        menu.Items.Add(MenuItems.SubMenu("Memory History", sizeToFit, highlightHover, latching, buffers));
+        menu.Items.Add(MenuItems.SubMenu("Memory History", writes, reads, new MenuFlyoutSeparator(), sizeToFit, highlightHover, latching, buffers));
 
         menu.Items.Add(MenuItems.SubMenu("Flame Chart",
                                          MenuItems.SubMenu("Memory", memoryItems),
@@ -358,6 +371,10 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
             {
                 operators.Items.Add(item);
             }
+
+            writes.IsChecked = TraceTimeline.ShowMemoryWrites;
+
+            reads.IsChecked = TraceTimeline.ShowMemoryReads;
 
             sizeToFit.IsChecked = TraceTimeline.MemorySizeToFit;
 
@@ -488,6 +505,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
     private void OnPlayheadRequested(object? sender, TracePoint point) => TraceTimeline.MovePlayheadTo(point);
 
+    private void OnMemoryHighlightRequested(object? sender, int? block) => TraceTimeline.HighlightMemoryBlock(block);
+
     private void OnTabPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(TraceTimelineTabViewModel.IsCallStackVisible))
@@ -528,7 +547,46 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         }
     }
 
-    private void OnSearchTextChanged(string text) => TraceTimeline.SearchText = text;
+    private void OnSearchTextChanged(string text)
+    {
+        TraceTimeline.SearchText = text;
+
+        SearchBar.Suggestions = TraceTimeline.GetSearchSuggestions();
+    }
+
+    private void OnCallSearchClick(object sender, RoutedEventArgs e)
+    {
+        TraceTimeline.IsCallSearch = TabCommands.IsChecked(sender);
+
+        SearchBar.Suggestions = TraceTimeline.GetSearchSuggestions();
+    }
+
+    private void OnMemorySearchClick(object sender, RoutedEventArgs e)
+    {
+        TraceTimeline.IsMemorySearch = TabCommands.IsChecked(sender);
+
+        SearchBar.Suggestions = TraceTimeline.GetSearchSuggestions();
+    }
+
+    private void OnSearchSuggestionChosen(object suggestion)
+    {
+        SearchBar.Text = suggestion switch
+        {
+            CallSearchSuggestion call => call.Name,
+            MemorySearchSuggestion memory => $"0x{memory.Address:X}",
+            _ => SearchBar.Text
+        };
+    }
+
+    private void OnOpenMemorySuggestionClick(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is MemorySearchSuggestion memory)
+        {
+            SearchBar.CloseSuggestions();
+
+            Tab?.OpenMemory(memory.Block, memory.Address, memory.Position);
+        }
+    }
 
     private void OnSearchStepRequested(bool forward) => TraceTimeline.StepSearch(forward);
 

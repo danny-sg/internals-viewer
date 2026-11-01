@@ -36,8 +36,11 @@
             <TabViewItem Header="Details" IsClosable="False">
                 <local:MemoryDetailsPanelView/>
             </TabViewItem>
-            <TabViewItem Header="History" IsClosable="False">
-                <local:MemoryHistoryPanelView/>
+            <TabViewItem Header="Writes" IsClosable="False">
+                <local:MemoryWritesPanelView/>
+            </TabViewItem>
+            <TabViewItem Header="Reads" IsClosable="False">
+                <local:MemoryReadsPanelView/>
             </TabViewItem>
             <TabViewItem Header="Watches" IsClosable="False">
                 <local:MemoryWatchesPanelView/>
@@ -64,6 +67,11 @@
                          IsClosable="False"
                          Visibility="{x:Bind ViewModel.WorkfilePage.IsAvailable, Mode=OneWay}">
                 <local:MemoryPagePanelView/>
+            </TabViewItem>
+            <TabViewItem Header="Bindings"
+                         IsClosable="False"
+                         Visibility="{x:Bind ViewModel.Bindings.IsAvailable, Mode=OneWay}">
+                <local:MemoryBindingsPanelView/>
             </TabViewItem>
         </TabView>
     </Grid>

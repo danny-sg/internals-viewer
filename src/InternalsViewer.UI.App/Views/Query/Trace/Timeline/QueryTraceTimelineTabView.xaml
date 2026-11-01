@@ -9,6 +9,8 @@
     xmlns:trace="using:InternalsViewer.UI.App.Controls.Query.Trace.Timeline"
     xmlns:callStack="using:InternalsViewer.UI.App.Controls.Query.Trace.CallStack"
     xmlns:docking="using:InternalsViewer.UI.App.Controls.Docking"
+    xmlns:selectors="using:InternalsViewer.UI.App.Helpers.Selectors"
+    xmlns:models="using:InternalsViewer.UI.App.Models.Query.Trace.Timeline"
     mc:Ignorable="d">
     <docking:DockHost Layout="{x:Bind ViewModel.TraceTimelineTab.Dock, Mode=OneWay}">
         <docking:DockHost.FixedContent>
@@ -24,8 +26,71 @@
                         <callStack:CallSearchBar x:Name="SearchBar"
                                                  MatchCount="{x:Bind TraceTimeline.SearchMatchCount, Mode=OneWay}"
                                                  KeyDown="OnSearchKeyDown">
+                            <callStack:CallSearchBar.SuggestionTemplateSelector>
+                                <selectors:TraceSearchSuggestionTemplateSelector>
+                                    <selectors:TraceSearchSuggestionTemplateSelector.CallTemplate>
+                                        <DataTemplate x:DataType="models:CallSearchSuggestion">
+                                            <Grid ColumnSpacing="12">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="{x:Bind Name}"
+                                                           FontSize="12"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{x:Bind CallsText}"
+                                                           FontSize="11"
+                                                           Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                                           VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </selectors:TraceSearchSuggestionTemplateSelector.CallTemplate>
+                                    <selectors:TraceSearchSuggestionTemplateSelector.MemoryTemplate>
+                                        <DataTemplate x:DataType="models:MemorySearchSuggestion">
+                                            <Grid ColumnSpacing="12">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel VerticalAlignment="Center">
+                                                    <TextBlock Text="{x:Bind Label}"
+                                                               FontSize="12"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Text="{x:Bind Detail}"
+                                                               FontSize="11"
+                                                               FontFamily="{StaticResource MonospaceFontFamily}"
+                                                               Foreground="{ThemeResource TextFillColorTertiaryBrush}"/>
+                                                </StackPanel>
+                                                <Button Grid.Column="1"
+                                                        Content="Open"
+                                                        Style="{StaticResource TabCommandButtonStyle}"
+                                                        AllowFocusOnInteraction="False"
+                                                        ClickMode="Press"
+                                                        ToolTipService.ToolTip="Open This Object as a Memory Tab"
+                                                        Click="OnOpenMemorySuggestionClick"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </selectors:TraceSearchSuggestionTemplateSelector.MemoryTemplate>
+                                </selectors:TraceSearchSuggestionTemplateSelector>
+                            </callStack:CallSearchBar.SuggestionTemplateSelector>
                             <callStack:CallSearchBar.Commands>
                                 <StackPanel Orientation="Horizontal" Spacing="2">
+                                    <ToggleButton Content="Call"
+                                                  IsChecked="True"
+                                                  FontSize="11"
+                                                  Padding="6,2,6,3"
+                                                  BorderThickness="0"
+                                                  ToolTipService.ToolTip="Search Calls by Name, or by a Page or Row They Touched"
+                                                  Click="OnCallSearchClick"/>
+                                    <ToggleButton Content="Memory"
+                                                  IsChecked="True"
+                                                  FontSize="11"
+                                                  Padding="6,2,6,3"
+                                                  BorderThickness="0"
+                                                  ToolTipService.ToolTip="Search Memory History by Name, by a 0x Address, or by a Page a BUF Held"
+                                                  Click="OnMemorySearchClick"/>
                                     <Button Style="{StaticResource TabCommandButtonStyle}"
                                             ToolTipService.ToolTip="Previous Match (Shift+Enter)"
                                             IsEnabled="{x:Bind TraceTimeline.HasSearchMatches, Mode=OneWay}"
@@ -72,6 +137,8 @@
                                             ShowCallStack="{x:Bind ViewModel.TraceTimelineTab.IsCallStackVisible, Mode=OneWay}"
                                             MemoryMode="{x:Bind Settings.TraceTimelineMemoryMode, Mode=TwoWay}"
                                             MemorySizeToFit="{x:Bind Settings.TraceTimelineMemorySizeToFit, Mode=TwoWay}"
+                                            ShowMemoryWrites="{x:Bind Settings.TraceTimelineShowMemoryWrites, Mode=TwoWay}"
+                                            ShowMemoryReads="{x:Bind Settings.TraceTimelineShowMemoryReads, Mode=TwoWay}"
                                             SelectedNode="{x:Bind ViewModel.SelectedCallNode, Mode=OneWay}"
                                             SelectedCall="{x:Bind ViewModel.Arguments.SelectedCallReference, Mode=OneWay}"/>
 

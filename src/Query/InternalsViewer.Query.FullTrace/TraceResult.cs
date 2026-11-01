@@ -73,7 +73,8 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
         yield return ("Unique Locators", CallStore.UniqueLocatorCount, CallStore.UniqueLocatorBytes);
         yield return ("Memory Map Entries", MemoryMap.Count, MemoryMap.Bytes);
         yield return ("Memory Allocations", Memory.AllocationCount, Memory.Bytes);
-        yield return ("Memory History Writes", MemoryHistory.WriteCount, MemoryHistory.Bytes);
+        yield return ("Memory History Writes", MemoryHistory.WriteCount, MemoryHistory.WriteBytes);
+        yield return ("Memory History Reads", MemoryHistory.ReadCount, MemoryHistory.ReadBytes);
         yield return ("Buffer Pool Pages", BufferPool.Count, BufferPool.Bytes);
         yield return ("Call Tree Nodes", CallStack.Nodes().LongCount(), null);
         yield return ("Operator Lifetimes", Lifetimes.Count, null);

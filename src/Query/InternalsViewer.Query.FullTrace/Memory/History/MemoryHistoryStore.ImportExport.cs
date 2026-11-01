@@ -5,9 +5,11 @@ namespace InternalsViewer.Query.FullTrace.Memory.History;
 
 public sealed partial class MemoryHistoryStore
 {
-    private const int FormatVersion = 8;
+    private const int FormatVersion = 9;
 
-    internal static bool IsSupported(BinaryReader reader) => reader.ReadInt32() == -FormatVersion;
+    private const int WritesOnlyVersion = 8;
+
+    internal static bool IsSupported(BinaryReader reader) => ReadVersion(reader) is FormatVersion or WritesOnlyVersion;
 
     internal void Write(BinaryWriter writer)
     {
@@ -75,11 +77,41 @@ public sealed partial class MemoryHistoryStore
 
             writer.Write(iterator);
         }
+
+        writer.Write(ReadStarts.Length);
+
+        foreach (var start in ReadStarts)
+        {
+            writer.Write(start);
+        }
+
+        writer.Write(Reads.Length);
+
+        for (var index = 0; index < Reads.Length; index++)
+        {
+            var read = Reads[index];
+
+            WritePosition(writer, read.Position);
+
+            writer.Write(GetReadPoint(index).Instructions);
+
+            writer.Write(read.CallNodeIndex);
+
+            writer.Write(read.CallIndex);
+
+            writer.Write(read.Offset);
+
+            writer.Write(read.Length);
+
+            writer.Write(read.Count);
+        }
     }
 
     internal static MemoryHistoryStore Read(BinaryReader reader)
     {
-        if (!IsSupported(reader))
+        var version = ReadVersion(reader);
+
+        if (version is not (FormatVersion or WritesOnlyVersion))
         {
             throw new InvalidDataException("The memory history was exported by an unsupported version and must be re-recorded");
         }
@@ -151,11 +183,56 @@ public sealed partial class MemoryHistoryStore
             iterators[reader.ReadInt32()] = reader.ReadUInt64();
         }
 
+        var (reads, readStarts, readHighs) = version == FormatVersion ? ReadReads(reader) : ([], [], HighWordRuns.Empty);
+
         return new MemoryHistoryStore(blocks,
                                       writes,
                                       highs is null ? HighWordRuns.Empty : HighWordRuns.Build(highs),
                                       [.. data],
-                                      iterators);
+                                      iterators,
+                                      reads,
+                                      readStarts,
+                                      readHighs);
+    }
+
+    private static int ReadVersion(BinaryReader reader) => -reader.ReadInt32();
+
+    private static (MemoryHistoryRead[] Reads, int[] Starts, HighWordRuns Highs) ReadReads(BinaryReader reader)
+    {
+        var starts = new int[reader.ReadInt32()];
+
+        for (var index = 0; index < starts.Length; index++)
+        {
+            starts[index] = reader.ReadInt32();
+        }
+
+        var reads = new MemoryHistoryRead[reader.ReadInt32()];
+
+        uint[]? highs = null;
+
+        for (var index = 0; index < reads.Length; index++)
+        {
+            var position = ReadPosition(reader);
+
+            var instructions = reader.ReadUInt64();
+
+            if (instructions > uint.MaxValue)
+            {
+                highs ??= new uint[reads.Length];
+
+                highs[index] = (uint)(instructions >> 32);
+            }
+
+            reads[index] = new MemoryHistoryRead(position,
+                                                 (uint)instructions,
+                                                 CallNodeIndex: reader.ReadInt32(),
+                                                 CallIndex: reader.ReadInt32(),
+                                                 Offset: reader.ReadInt32(),
+                                                 Length: reader.ReadInt32(),
+                                                 Count: reader.ReadInt32());
+        }
+
+        return (reads, starts, highs is null ? HighWordRuns.Empty : HighWordRuns.Build(highs));
     }
 
     private static void WritePosition(BinaryWriter writer, TracePosition position)

@@ -6,9 +6,9 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Views.Query.Trace.Timeline.Memory;
 
-public sealed partial class MemoryHistoryPanelView : UserControl
+public sealed partial class MemoryWritesPanelView : UserControl
 {
-    public MemoryHistoryPanelView()
+    public MemoryWritesPanelView()
     {
         InitializeComponent();
 

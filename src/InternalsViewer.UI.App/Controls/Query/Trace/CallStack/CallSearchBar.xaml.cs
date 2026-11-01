@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using InternalsViewer.UI.App.Helpers;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
@@ -30,6 +31,30 @@ public sealed partial class CallSearchBar : UserControl
         set => SetValue(MatchCountProperty, value);
     }
 
+    public static readonly DependencyProperty SuggestionsProperty =
+        DependencyProperty.Register(nameof(Suggestions),
+                                    typeof(object),
+                                    typeof(CallSearchBar),
+                                    new PropertyMetadata(null, OnSuggestionsChanged));
+
+    public object? Suggestions
+    {
+        get => GetValue(SuggestionsProperty);
+        set => SetValue(SuggestionsProperty, value);
+    }
+
+    public static readonly DependencyProperty SuggestionTemplateSelectorProperty =
+        DependencyProperty.Register(nameof(SuggestionTemplateSelector),
+                                    typeof(DataTemplateSelector),
+                                    typeof(CallSearchBar),
+                                    new PropertyMetadata(null));
+
+    public DataTemplateSelector? SuggestionTemplateSelector
+    {
+        get => (DataTemplateSelector?)GetValue(SuggestionTemplateSelectorProperty);
+        set => SetValue(SuggestionTemplateSelectorProperty, value);
+    }
+
     public CallSearchBar()
     {
         InitializeComponent();
@@ -38,6 +63,8 @@ public sealed partial class CallSearchBar : UserControl
     public event Action<string>? SearchTextChanged;
 
     public event Action<bool>? StepRequested;
+
+    public event Action<object>? SuggestionChosen;
 
     public string Text
     {
@@ -49,7 +76,16 @@ public sealed partial class CallSearchBar : UserControl
 
     private string PublishedSearch { get; set; } = string.Empty;
 
+    private bool IsTyping { get; set; }
+
     public void FocusSearch() => SearchBox.Focus(FocusState.Programmatic);
+
+    public void CloseSuggestions()
+    {
+        IsTyping = false;
+
+        SearchBox.IsSuggestionListOpen = false;
+    }
 
     public void Clear()
     {
@@ -86,7 +122,9 @@ public sealed partial class CallSearchBar : UserControl
 
     private void OnSearchTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
     {
-        if (args.Reason == AutoSuggestionBoxTextChangeReason.UserInput)
+        IsTyping = args.Reason == AutoSuggestionBoxTextChangeReason.UserInput;
+
+        if (IsTyping)
         {
             SearchTimer.Start();
 
@@ -98,6 +136,15 @@ public sealed partial class CallSearchBar : UserControl
 
     private void OnSearchQuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
     {
+        if (args.ChosenSuggestion is { } chosen)
+        {
+            CloseSuggestions();
+
+            SuggestionChosen?.Invoke(chosen);
+
+            return;
+        }
+
         if (!PublishSearch())
         {
             StepRequested?.Invoke(!KeyboardState.IsShiftDown());
@@ -122,6 +169,13 @@ public sealed partial class CallSearchBar : UserControl
         SearchTextChanged?.Invoke(text);
 
         return true;
+    }
+
+    private static void OnSuggestionsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var bar = (CallSearchBar)d;
+
+        bar.SearchBox.IsSuggestionListOpen = bar.IsTyping && e.NewValue is ICollection { Count: > 0 };
     }
 
     private static void OnMatchCountChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

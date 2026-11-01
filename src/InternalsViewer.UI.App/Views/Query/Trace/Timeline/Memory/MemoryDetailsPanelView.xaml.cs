@@ -97,7 +97,26 @@ public sealed partial class MemoryDetailsPanelView : UserControl
 
         menu.Items.Add(new MenuFlyoutSeparator());
 
-        menu.Items.Add(MenuItems.Create("Show History", () => viewModel.ShowHistory(writer.Label, null)));
+        menu.Items.Add(MenuItems.Create("Show Writes", () => viewModel.ShowWrites(writer.Label, null)));
+
+        TraceLinkMenu.Show(menu, sender, e);
+    }
+
+    private void OnReaderContextRequested(UIElement sender, ContextRequestedEventArgs e)
+    {
+        if (ViewModel is not { Navigator: { } navigator } viewModel
+            || sender is not FrameworkElement { DataContext: MemoryWriterSummary reader })
+        {
+            return;
+        }
+
+        var menu = TraceLinkMenu.CreateForFunction(navigator, reader.First, isFirst: reader.Count > 1);
+
+        TraceLinkMenu.AddSearch(menu, navigator, reader.Label);
+
+        menu.Items.Add(new MenuFlyoutSeparator());
+
+        menu.Items.Add(MenuItems.Create("Show Reads", () => viewModel.ShowReads(reader.Label, null)));
 
         TraceLinkMenu.Show(menu, sender, e);
     }
@@ -137,6 +156,16 @@ public sealed partial class MemoryDetailsPanelView : UserControl
     }
 
     private void OnWriterPointerExited(object sender, PointerRoutedEventArgs e) => ViewModel?.MarkWriter(null);
+
+    private void OnReaderPointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is HyperlinkButton { DataContext: MemoryWriterSummary reader })
+        {
+            ViewModel?.MarkReader(reader.Label);
+        }
+    }
+
+    private void OnReaderPointerExited(object sender, PointerRoutedEventArgs e) => ViewModel?.MarkReader(null);
 
     private void ShowLinkMenu(TraceCallLink? link, UIElement sender, ContextRequestedEventArgs e)
     {

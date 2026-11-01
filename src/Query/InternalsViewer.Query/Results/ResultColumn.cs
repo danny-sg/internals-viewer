@@ -19,6 +19,8 @@ public sealed record ResultColumn(int Ordinal, string Name, Type ClrType, bool I
 
     public Color? BadgeColour { get; set; }
 
+    public Color? MarkerColour { get; set; }
+
     public bool IsHeaderLink { get; set; }
 
     public string? Group { get; set; }

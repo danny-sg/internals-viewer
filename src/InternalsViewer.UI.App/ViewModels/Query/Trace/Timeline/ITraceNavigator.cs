@@ -23,4 +23,6 @@ public interface ITraceNavigator
     void OpenMemory(int block, ulong address, TracePosition position, int length = 1);
 
     void OpenReferenceGraph(int block, TracePosition position);
+
+    void HighlightMemory(int? block);
 }

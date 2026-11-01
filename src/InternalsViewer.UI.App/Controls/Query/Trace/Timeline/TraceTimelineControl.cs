@@ -660,8 +660,6 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
         _trimEndHandle.Dispose();
 
-        _indicatorHead.Dispose();
-
         _operators.Dispose();
 
         _memory.Dispose();
@@ -1174,6 +1172,23 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         }
 
         ShowMemory = mode is not null;
+    }
+
+    public void HighlightMemoryBlock(int? block)
+    {
+        if (_memory.Highlight == block)
+        {
+            return;
+        }
+
+        _memory.Highlight = block;
+
+        if (block is { } found)
+        {
+            _memory.Reveal(found);
+        }
+
+        Redraw();
     }
 
     private static string MemoryModeLabel(TraceTimelineMemoryMode mode)

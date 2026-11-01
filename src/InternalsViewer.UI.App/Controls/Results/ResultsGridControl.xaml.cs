@@ -28,6 +28,10 @@ public sealed partial class ResultsGridControl : UserControl
 
     private const double HeaderBadgeFontSize = 10;
 
+    private const double MarkerKeySize = 11;
+
+    private const double MarkerKeySpacing = 6;
+
     private static readonly Thickness GroupPadding = new(8, 0, 8, 0);
 
     private static readonly Thickness GroupBorder = new(0, 0, 1, 1);
@@ -505,11 +509,12 @@ public sealed partial class ResultsGridControl : UserControl
         return new GridLength(column.Width ?? Math.Max(width, HeaderWidth(column)));
     }
 
-    private static int HeaderWidth(ResultColumn column) => HeaderLength(column) * 7 + 24;
+    private static int HeaderWidth(ResultColumn column)
+        => HeaderLength(column) * 7 + 24 + (column.MarkerColour is null ? 0 : (int)(MarkerKeySize + MarkerKeySpacing));
 
     private object CreateHeader(ResultColumn column)
     {
-        if (column.IsHeaderLink || column.Badge is not null)
+        if (column.IsHeaderLink || column.Badge is not null || column.MarkerColour is not null)
         {
             return CreateHeaderPanel(column);
         }
@@ -552,6 +557,11 @@ public sealed partial class ResultsGridControl : UserControl
     {
         var panel = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
 
+        if (column.MarkerColour is { } marker)
+        {
+            panel.Children.Add(CreateMarkerKey(marker));
+        }
+
         if (column.IsHeaderLink)
         {
             var link = new HyperlinkButton
@@ -591,6 +601,16 @@ public sealed partial class ResultsGridControl : UserControl
 
         return panel;
     }
+
+    private static Border CreateMarkerKey(System.Drawing.Color background)
+        => new()
+        {
+            Width = MarkerKeySize,
+            Height = MarkerKeySize,
+            Margin = new Thickness(0, 0, MarkerKeySpacing, 0),
+            Background = new SolidColorBrush(Windows.UI.Color.FromArgb(background.A, background.R, background.G, background.B)),
+            VerticalAlignment = VerticalAlignment.Center
+        };
 
     private static Border CreateHeaderBadge(string text, System.Drawing.Color? colour)
     {

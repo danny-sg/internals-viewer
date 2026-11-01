@@ -154,7 +154,7 @@ public sealed partial class MemoryWritesViewModel(PlayheadMemoryViewModel owner)
         }
         else
         {
-            Owner.ClearWriteSelection();
+            Owner.ClearSelection();
         }
     }
 

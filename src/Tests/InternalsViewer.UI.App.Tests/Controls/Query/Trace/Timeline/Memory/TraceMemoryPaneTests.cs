@@ -323,6 +323,32 @@ public class TraceMemoryPaneTests
         Assert.Null(pane.GetWriters(1, OtherNode + 1));
     }
 
+    [Fact]
+    public void A_Block_That_Is_Only_Read_Takes_No_Rows_While_Reads_Are_Hidden()
+    {
+        var (pane, host) = Create([ReadOnlyBlock(1, 0x1000_0000, 0x40, Write(0, 0x40)), Block(0, 0x1000_0000, 0x40, Write(0, 8))]);
+
+        using var _ = host;
+
+        Assert.Equal([0, 0], new[] { 5f, 40f }.Select(y => pane.Blocks[pane.GetHit(new Point(10, PaneTop + y))!.Value.Block].Block));
+    }
+
+    [Fact]
+    public void Reads_Are_Drawn_In_A_Lighter_Shade_Of_The_Reader_Colour()
+    {
+        var (pane, host) = Create([ReadOnlyBlock(0, 0x1000_0000, 0x40, Write(0x20, 8))]);
+
+        using var _ = host;
+
+        pane.ShowWrites = false;
+
+        pane.ShowReads = true;
+
+        var colours = GetDrawnColours(pane, host);
+
+        Assert.Equal((true, false), (colours.Contains(new SKColor(227, 147, 147)), colours.Contains(WriterColour)));
+    }
+
     private static (TraceMemoryPane Pane, FakeHost Host) Create(TraceMemoryBlock[] blocks)
     {
         var host = new FakeHost();
@@ -354,6 +380,9 @@ public class TraceMemoryPaneTests
 
     private static TraceMemoryBlock Block(int id, ulong address, int size, params TraceMemoryWrite[] writes)
         => new(id, $"Object {id}", address, size, Point(1), null, new TraceMemoryWrites(writes));
+
+    private static TraceMemoryBlock ReadOnlyBlock(int id, ulong address, int size, params TraceMemoryWrite[] reads)
+        => new(id, $"Object {id}", address, size, Point(1), null, new TraceMemoryWrites([]), Reads: new TraceMemoryWrites(reads));
 
     private static TraceMemoryWrite Write(int offset, int length) => new(Point(20), offset, length, WriterNode);
 

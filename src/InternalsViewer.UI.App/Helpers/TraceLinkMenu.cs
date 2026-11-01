@@ -30,6 +30,8 @@ public static class TraceLinkMenu
         return menu;
     }
 
+    public static MenuFlyoutItem CreateMemoryHistory(Action open) => MenuItems.Create("Memory History", open);
+
     public static void AddSearch(MenuFlyout menu, ITraceNavigator navigator, string? name)
     {
         if (GetSearchText(name) is { } text)

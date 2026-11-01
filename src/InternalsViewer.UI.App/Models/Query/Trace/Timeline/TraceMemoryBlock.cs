@@ -1,3 +1,4 @@
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.FullTrace;
 
 namespace InternalsViewer.UI.App.Models.Query.Trace.Timeline;
@@ -9,4 +10,6 @@ public sealed record TraceMemoryBlock(int Block,
                                       TracePoint From,
                                       TracePoint? To,
                                       TraceMemoryWrites Writes,
-                                      bool IsBuffer = false);
+                                      bool IsBuffer = false,
+                                      PageAddress[]? Pages = null,
+                                      TraceMemoryWrites? Reads = null);
