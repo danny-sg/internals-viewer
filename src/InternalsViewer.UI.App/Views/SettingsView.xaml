@@ -17,6 +17,16 @@
             </Style.Setters>
         </Style>
 
+        <Style x:Key="NestedSettingsExpanderStyle"
+               TargetType="controls:SettingsExpander">
+            <Style.Setters>
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0,1,0,0" />
+                <Setter Property="CornerRadius" Value="0" />
+                <Setter Property="Padding" Value="58,8,4,8" />
+            </Style.Setters>
+        </Style>
+
     </Page.Resources>
     <StackPanel Padding="20" Spacing="12">
 
@@ -151,6 +161,7 @@
                            Text="Clients" />
 
                 <controls:SettingsExpander x:Name="ManualMcpClient"
+                                           Style="{StaticResource NestedSettingsExpanderStyle}"
                                            Header="Manual"
                                            Description="Use the Server Address and Access Token to connect other MCP clients">
                     <controls:SettingsExpander.Items>
