@@ -258,13 +258,17 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
     [RelayCommand]
     private void OpenPage(PageAddress pageAddress)
     {
+#pragma warning disable VSTHRD110
         WeakReferenceMessenger.Default.Send(new OpenPageMessage(new OpenPageRequest(Database, pageAddress)));
+#pragma warning restore VSTHRD110
     }
 
     [RelayCommand]
     private void OpenQueryReplay()
     {
+#pragma warning disable VSTHRD110
         WeakReferenceMessenger.Default.Send(new OpenQueryMessage(Database));
+#pragma warning restore VSTHRD110
     }
 
     partial void OnSelectedLayersChanged(ObservableCollection<AllocationLayer>? oldValue, ObservableCollection<AllocationLayer> newValue)

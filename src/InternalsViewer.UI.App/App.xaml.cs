@@ -136,7 +136,9 @@ public partial class App
 
     private static void App_UnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
     {
+#pragma warning disable VSTHRD110
         WeakReferenceMessenger.Default.Send(new ExceptionMessage(e.Exception));
+#pragma warning restore VSTHRD110
 
         e.Handled = true;
     }

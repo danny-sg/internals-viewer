@@ -44,6 +44,7 @@ public sealed partial class QueryOperatorTracksTabView : UserControl
         }
     }
 
+#pragma warning disable VSTHRD100
     private async void OnAddClick(object sender, RoutedEventArgs e)
     {
         if (ViewModel is { } viewModel && await OperatorTrackEditor.ShowAsync(XamlRoot, viewModel, null, null) is { } definition)
@@ -59,4 +60,5 @@ public sealed partial class QueryOperatorTracksTabView : UserControl
             viewModel.ReplaceTickTrack(existing, definition);
         }
     }
+#pragma warning restore VSTHRD100
 }

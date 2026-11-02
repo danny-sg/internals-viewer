@@ -106,6 +106,7 @@ internal sealed class McpAreaTab(string id,
     {
         var completion = new TaskCompletionSource<TResult>(TaskCreationOptions.RunContinuationsAsynchronously);
 
+#pragma warning disable VSTHRD101
         var queued = Dispatcher.TryEnqueue(async () =>
         {
             try
@@ -117,6 +118,7 @@ internal sealed class McpAreaTab(string id,
                 completion.SetException(exception);
             }
         });
+#pragma warning restore VSTHRD101
 
         if (!queued)
         {

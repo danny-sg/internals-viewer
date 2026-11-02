@@ -1,6 +1,6 @@
 # Where the code lives
 
-Internals Viewer is open source at https://github.com/danny-sg/internals-viewer, default branch `master`. When a
+Internals Viewer is open source at https://github.com/danny-sg/internals-viewer, default branch `main`. When a
 question goes past what the run, the guides and the deep dives can answer, the code is the final word on what the app
 does with what it recorded. Read a file with your own web or file access when you have it (a raw file is at
 `https://raw.githubusercontent.com/danny-sg/internals-viewer/master/<path>`), otherwise tell the user which file would

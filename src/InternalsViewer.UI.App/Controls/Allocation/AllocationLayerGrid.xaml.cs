@@ -30,7 +30,7 @@ public sealed partial class AllocationLayerGrid
         = DependencyProperty.Register(nameof(SelectedLayers),
             typeof(ObservableCollection<AllocationLayer>),
             typeof(AllocationLayerGrid),
-            new PropertyMetadata(new ObservableCollection<AllocationLayer>(), OnPropertyChanged));
+            new PropertyMetadata(new ObservableCollection<AllocationLayer>()));
 
     public ObservableCollection<AllocationLayer> SelectedLayers
     {
@@ -197,11 +197,6 @@ public sealed partial class AllocationLayerGrid
         if (e.Property == FilterProperty)
         {
             control.ViewModel.Filter = (string?)e.NewValue ?? string.Empty;
-        }
-
-        if (e.Property == SelectedLayersProperty)
-        {
-            control.ViewModel.SelectedLayers = (ObservableCollection<AllocationLayer>)e.NewValue;
         }
     }
 }

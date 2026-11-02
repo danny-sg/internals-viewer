@@ -158,3 +158,8 @@ dotnet_naming_style.pascal_case.capitalization = pascal_case
 
 # Default severity for analyzer diagnostics with category 'StyleCop.CSharp.DocumentationRules'
 dotnet_analyzer_diagnostic.category-StyleCop.CSharp.DocumentationRules.severity = none
+
+[XamlTypeInfo.g.cs]
+
+# CS0618: Type or member is obsolete
+dotnet_diagnostic.CS0618.severity = none

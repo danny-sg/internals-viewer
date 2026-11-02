@@ -54,6 +54,7 @@ public sealed partial class QueryView : Microsoft.UI.Xaml.Controls.Page, IDispos
         Bindings.Update();
     }
 
+#pragma warning disable VSTHRD100
     private async void OnRecordTimeTravelClick(object sender, RoutedEventArgs e)
     {
         var item = (ToggleMenuFlyoutItem)sender;
@@ -85,6 +86,7 @@ public sealed partial class QueryView : Microsoft.UI.Xaml.Controls.Page, IDispos
 
         item.IsChecked = record;
     }
+#pragma warning restore VSTHRD100
 
     private async Task<bool> PrepareTimeTravelAsync()
     {

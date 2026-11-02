@@ -31,6 +31,7 @@ public sealed class McpWorkspace : IMcpWorkspace
 
         var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
+#pragma warning disable VSTHRD101
         var queued = window.DispatcherQueue.TryEnqueue(async () =>
         {
             try
@@ -42,6 +43,7 @@ public sealed class McpWorkspace : IMcpWorkspace
                 completion.SetException(exception);
             }
         });
+#pragma warning restore VSTHRD101
 
         if (!queued)
         {

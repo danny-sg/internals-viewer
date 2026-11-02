@@ -660,6 +660,7 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         Settings.TraceTimelineHiddenTickTracks = string.Join(SettingsViewModel.CategorySeparator, hidden.Order(StringComparer.Ordinal));
     }
 
+#pragma warning disable VSTHRD100
     private async void OnTickTrackAddRequested(CallStackNode? node)
     {
         if (ViewModel is { } viewModel && await OperatorTrackEditor.ShowAsync(XamlRoot, viewModel, null, node) is { } definition)
@@ -667,6 +668,7 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
             viewModel.AddTickTrack(definition);
         }
     }
+#pragma warning restore VSTHRD100
 
     private void OnSelectionCleared()
     {

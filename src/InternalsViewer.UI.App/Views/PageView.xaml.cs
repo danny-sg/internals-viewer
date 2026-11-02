@@ -67,7 +67,9 @@ public sealed partial class PageView : IDisposable
 
             var request = new OpenPageRequest(ViewModel.Database, pageAddress) { Slot = e.Slot };
 
+#pragma warning disable VSTHRD110
             WeakReferenceMessenger.Default.Send(new OpenPageMessage(request));
+#pragma warning restore VSTHRD110
         }
         else
         {
@@ -89,7 +91,9 @@ public sealed partial class PageView : IDisposable
         {
             var request = new OpenPageRequest(ViewModel.Database, pageAddress) { Slot = e.Slot };
 
+#pragma warning disable VSTHRD110
             WeakReferenceMessenger.Default.Send(new OpenPageMessage(request));
+#pragma warning restore VSTHRD110
         }
         else
         {

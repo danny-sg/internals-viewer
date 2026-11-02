@@ -1102,6 +1102,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         OnPropertyChanged(nameof(IsFlameGraphEnabled));
     }
 
+#pragma warning disable VSTHRD100
     private async void PrepareTrace()
     {
         if (!QueryOptions.RecordTimeTravel)
@@ -1118,6 +1119,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             Logger.LogWarning(exception, "Preparing the Full Trace symbols failed, they will be resolved when the trace is loaded");
         }
     }
+#pragma warning restore VSTHRD100
 
     /// <summary>
     /// Releases the query event data and disposes the dock layout's views when the tab closes

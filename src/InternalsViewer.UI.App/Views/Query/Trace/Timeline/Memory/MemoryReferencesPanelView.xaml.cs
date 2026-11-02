@@ -110,6 +110,7 @@ public sealed partial class MemoryReferencesPanelView : UserControl
     private static TreeViewNode CreateTreeNode(MemoryReferenceNode reference)
         => new() { Content = reference, HasUnrealizedChildren = reference.CanExpand };
 
+#pragma warning disable VSTHRD100
     private async void OnReferenceTreeExpanding(TreeView sender, TreeViewExpandingEventArgs args)
     {
         var node = args.Node;
@@ -135,6 +136,7 @@ public sealed partial class MemoryReferencesPanelView : UserControl
             node.Children.Add(CreateTreeNode(child));
         }
     }
+#pragma warning restore VSTHRD100
 
     private void OnReferenceTreeCollapsed(TreeView sender, TreeViewCollapsedEventArgs args)
     {

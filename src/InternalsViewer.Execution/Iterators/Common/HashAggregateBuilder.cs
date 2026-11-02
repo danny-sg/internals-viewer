@@ -154,7 +154,7 @@ public sealed class HashAggregateBuilder(IReadOnlyList<string> groupBy, IReadOnl
         {
             for (var index = skipKeyFields; index < key.Count; index++)
             {
-                fields.Add(new ComputedField(key[index].ColumnName, key[index]));
+                fields.Add(new ComputedField(key[index].ColumnName ?? $"COLUMN_{index}", key[index]));
             }
         }
 

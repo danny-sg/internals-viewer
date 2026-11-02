@@ -19,9 +19,6 @@ public sealed partial class AllocationLayerGridViewModel : ObservableObject
     private string _filter = string.Empty;
 
     [ObservableProperty]
-    private ObservableCollection<AllocationLayer> _selectedLayers = [];
-
-    [ObservableProperty]
     private ObservableCollection<AllocationLayerRow> _dataSource = [];
 
     private List<AllocationLayer> Layers { get; set; } = [];

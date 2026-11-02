@@ -1,4 +1,4 @@
-name: Build MSIX sideload package
+name: Build MSIX Sideload package
 
 on:
   workflow_call:

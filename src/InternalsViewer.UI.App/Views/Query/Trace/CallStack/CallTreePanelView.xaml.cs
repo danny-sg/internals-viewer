@@ -403,6 +403,7 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
         });
     }
 
+#pragma warning disable VSTHRD100
     private async void OnSignatureClick(object sender, RoutedEventArgs e)
     {
         if (CallTree is { } callTree)
@@ -410,6 +411,7 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
             await callTree.SetSignatureVisibleAsync(TabCommands.IsChecked(sender));
         }
     }
+#pragma warning restore VSTHRD100
 
     private void OnRowSelectionRequested(CallTreeRow row) => Select(row);
 

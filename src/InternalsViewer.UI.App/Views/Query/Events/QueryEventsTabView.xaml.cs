@@ -224,12 +224,14 @@ public sealed partial class QueryEventsTabView : UserControl, IDisposable
         // Shift opens the page as a separate top level tab; a plain click opens it as a document inside the query view's dock layout
         if (isShiftPressed)
         {
+#pragma warning disable VSTHRD110
             WeakReferenceMessenger.Default
                                   .Send(new OpenPageMessage(new OpenPageRequest(viewModel.Database, pageAddress)
                                   {
                                       Slot = slot,
                                       LogRecords = viewModel.GetPageLogRecords(pageAddress)
                                   }));
+#pragma warning restore VSTHRD110
         }
         else
         {

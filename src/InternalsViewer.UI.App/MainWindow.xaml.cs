@@ -416,7 +416,9 @@ public sealed partial class MainWindow
         }
         catch (Exception ex)
         {
+#pragma warning disable VSTHRD110
             WeakReferenceMessenger.Default.Send(new ExceptionMessage(ex));
+#pragma warning restore VSTHRD110
         }
 
         return true;

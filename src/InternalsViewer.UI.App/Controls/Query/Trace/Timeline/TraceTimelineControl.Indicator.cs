@@ -152,7 +152,9 @@ public sealed partial class TraceTimelineControl
     {
         if (_indicator is { } open && open.Indicator.Id == id)
         {
+#pragma warning disable VSTHRD003
             return open.Closed.Task;
+#pragma warning restore VSTHRD003
         }
 
         foreach (var (closedId, result) in _closedIndicators)

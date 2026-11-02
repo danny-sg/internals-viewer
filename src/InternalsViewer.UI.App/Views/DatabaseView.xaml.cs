@@ -89,8 +89,10 @@ public sealed partial class DatabaseView : IDisposable
     {
         var pageAddress = new PageAddress(e.FileId, e.PageId);
 
+#pragma warning disable VSTHRD110
         WeakReferenceMessenger.Default
                               .Send(new OpenPageMessage(new OpenPageRequest(TabViewModel.Database, pageAddress)));
+#pragma warning restore VSTHRD110
     }
 
     private void AppBarToggleButton_Changed(object sender, RoutedEventArgs e)

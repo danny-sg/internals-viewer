@@ -86,7 +86,7 @@ public sealed partial class OperatorTrackDialog
 
     private TraceFunctionChoice? Function { get; set; }
 
-    private IReadOnlyList<ConditionTarget> Targets { get; set; } = PatternTargets;
+    private ConditionTarget[] Targets { get; set; } = PatternTargets;
 
     private List<ConditionRow> Rows { get; } = [];
 
@@ -231,8 +231,10 @@ public sealed partial class OperatorTrackDialog
 
         row.Value.PlaceholderText = target.Kind switch
         {
-            TraceConditionTarget.CalledBy or TraceConditionTarget.CalledDirectlyBy => FunctionPlaceholder,
-            TraceConditionTarget.Operator => $"Operator, such as {Source.Operators.FirstOrDefault() ?? "Filter"}",
+            TraceConditionTarget.CalledBy or TraceConditionTarget.CalledDirectlyBy 
+                => FunctionPlaceholder,
+            TraceConditionTarget.Operator 
+                => $"Operator, such as {(Source.Operators.Count > 0 ? Source.Operators[0] : "Filter")}",
             _ => ValuePlaceholder
         };
     }
@@ -287,6 +289,7 @@ public sealed partial class OperatorTrackDialog
                                              .ToList();
     }
 
+#pragma warning disable VSTHRD100
     private async void OnFunctionChosen(AutoSuggestBox sender, AutoSuggestBoxSuggestionChosenEventArgs args)
         => await SetFunctionAsync(args.SelectedItem as TraceFunctionChoice);
 
@@ -294,6 +297,7 @@ public sealed partial class OperatorTrackDialog
         => await SetFunctionAsync(args.ChosenSuggestion as TraceFunctionChoice ?? FindFunction(args.QueryText));
 
     private async void OnFunctionLostFocus(object sender, RoutedEventArgs e) => await SetFunctionAsync(FindFunction(FunctionBox.Text));
+#pragma warning restore VSTHRD100
 
     private void OnAddConditionClick(object sender, RoutedEventArgs e) => AddRow(null);
 

@@ -18,7 +18,12 @@ internal static class RowGroupScanGrouper
             return events;
         }
 
-        var members = finishes.ToDictionary(f => f, _ => new List<EngineEvent>(), ReferenceEqualityComparer.Instance);
+        var members = new Dictionary<ColumnStoreScanEvent, List<EngineEvent>>(ReferenceEqualityComparer.Instance);
+
+        foreach (var finished in finishes)
+        {
+            members[finished] = [];
+        }
 
         var byRowGroup = finishes.ToLookup(f => f.RowGroupId!.Value);
 

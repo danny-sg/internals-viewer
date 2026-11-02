@@ -99,6 +99,7 @@ public sealed partial class CallTreeReferencesPanelView : UserControl, IReferenc
         }
     }
 
+#pragma warning disable VSTHRD100
     private async void OnValueTreeExpanding(TreeView sender, TreeViewExpandingEventArgs args)
     {
         if (args.Node is not { HasUnrealizedChildren: true, Content: ValueUseRow row } node || Attached is not { } references)
@@ -159,6 +160,7 @@ public sealed partial class CallTreeReferencesPanelView : UserControl, IReferenc
             }
         }
     }
+#pragma warning restore VSTHRD100
 
     private static async Task<List<TreeViewNode>> CallNodesAsync(ValueReferencesViewModel references,
                                                                  TraceValueUse use,
