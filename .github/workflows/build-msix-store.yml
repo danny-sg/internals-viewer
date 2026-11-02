@@ -104,6 +104,7 @@ jobs:
           /p:AppxBundle=Always `
           /p:AppxBundlePlatforms=$env:Platform `
           /p:AppxPackageSigningEnabled=false `
+          /p:GenerateTemporaryStoreCertificate=false `
           /p:AppxPackageDir="$env:Appx_Package_Dir" `
           /p:GenerateAppxPackageOnBuild=true `
           /verbosity:quiet
