@@ -60,6 +60,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
     {
         InitializeComponent();
 
+        SearchAccelerator.ScopeOwner = this;
+
         DataContextChanged += (_, _) => OnViewModelChanged();
 
         TraceTimeline.CallSelected += OnCallSelected;
@@ -573,7 +575,7 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         SearchBar.Text = suggestion switch
         {
             CallSearchSuggestion call => call.Name,
-            MemorySearchSuggestion memory => $"0x{memory.Address:X}",
+            MemorySearchSuggestion memory => memory.Label,
             _ => SearchBar.Text
         };
     }
@@ -589,6 +591,13 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
     }
 
     private void OnSearchStepRequested(bool forward) => TraceTimeline.StepSearch(forward);
+
+    private void OnSearchAcceleratorInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        SetSearchVisible(true);
+
+        args.Handled = true;
+    }
 
     private void OnSearchKeyDown(object sender, KeyRoutedEventArgs e)
     {

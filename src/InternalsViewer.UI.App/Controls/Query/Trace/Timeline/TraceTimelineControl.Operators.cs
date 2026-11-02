@@ -41,6 +41,8 @@ public sealed partial class TraceTimelineControl
 
     private const double MemoryScrollStep = 40;
 
+    private const string ScrollBarExpandedState = "ExpandedWithoutAnimation";
+
     public static readonly DependencyProperty MemoryBlocksProperty =
         DependencyProperty.Register(nameof(MemoryBlocks),
                                     typeof(IReadOnlyList<TraceMemoryBlock>),
@@ -343,9 +345,7 @@ public sealed partial class TraceTimelineControl
 
     private void SetMemoryBlocks()
     {
-        _memory.SetBlocks(ShowBuffers || MemoryBlocks is not { } blocks ? MemoryBlocks : [.. blocks.Where(b => !b.IsBuffer)]);
-
-        FindMemorySearchMatches();
+        FilterMemoryBlocks(isForced: true);
 
         CountSearchMatches();
 

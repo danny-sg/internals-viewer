@@ -11,8 +11,8 @@ of its functions, objects and memory: "explain what the Sort operator is doing",
 vectors for", "why is the hash join calling ReadRow twice per row", "what does this field of the iterator hold".
 
 Answers to these are longer, come from several commands run in sequence, and are organised by phase. Everything
-in them should be checkable: cite node ids, iterator addresses, block numbers, positions and counts, so the reader
-can open the same thing in the app. Keep what the export records apart from what the names suggest, and say which
+in them should be checkable: cite positions, iterator addresses, block numbers and counts, so the reader can open
+the same thing in the app. Call tree node ids are internal to the tools, so never show them to the user. Keep what the export records apart from what the names suggest, and say which
 is which.
 
 ## What the export holds for this
@@ -111,6 +111,17 @@ the grant in `query_plan` and the workspace peak in `query_memory`. A sort that 
 workfile classes and `workfile.cpp` allocation sites under its segment, and say that a Full Trace carries no I/O
 events, so a spill shows as code paths and allocations rather than as file writes. Follow the sort object's fields
 with `query_memoryhistory` to show the run count, row count or position moving as it consumes and then emits.
+
+## Stack objects
+
+An object a function keeps on its own stack is in the memory history when the function hands it to another one: as `this`
+to a member, or as an argument or return value declared as a pointer to a class. It is read as it is handed over and again
+when that call returns, so a change is attributed to the caller as it handed the object over, or to the function it was
+handed to. It is one block per site, the same local of the same function at the same place in its frame, so a per-row
+`CXVariant` in `CEsExec::GeneralEval4` is one block with a call for every row. `memoryhistory --kind stack` lists them with
+their call counts. The block is live only while one of those calls is running, and its writes run on from call to call,
+so a change is what differed from the previous call. The Trace menu's Capture options switch heap reads, heap writes and
+stack memory on or off for the next Full Trace, so a run can leave any of them out.
 
 ## Batch mode and batch memory
 

@@ -5,11 +5,13 @@ namespace InternalsViewer.Query.FullTrace.Memory.History;
 
 public sealed partial class MemoryHistoryStore
 {
-    private const int FormatVersion = 9;
+    private const int FormatVersion = 10;
+
+    private const int ReadsVersion = 9;
 
     private const int WritesOnlyVersion = 8;
 
-    internal static bool IsSupported(BinaryReader reader) => ReadVersion(reader) is FormatVersion or WritesOnlyVersion;
+    internal static bool IsSupported(BinaryReader reader) => ReadVersion(reader) is >= WritesOnlyVersion and <= FormatVersion;
 
     internal void Write(BinaryWriter writer)
     {
@@ -44,6 +46,12 @@ public sealed partial class MemoryHistoryStore
             writer.Write(block.FirstWrite);
 
             writer.Write(block.WriteCount);
+
+            writer.Write(block.IsStack);
+
+            writer.Write(block.FirstInstance);
+
+            writer.Write(block.InstanceCount);
         }
 
         writer.Write(Writes.Length);
@@ -105,13 +113,26 @@ public sealed partial class MemoryHistoryStore
 
             writer.Write(read.Count);
         }
+
+        writer.Write(Instances.Length);
+
+        foreach (var instance in Instances)
+        {
+            WritePosition(writer, instance.FromPosition);
+
+            WritePosition(writer, instance.ToPosition);
+
+            writer.Write(instance.FromInstructions);
+
+            writer.Write(instance.ToInstructions);
+        }
     }
 
     internal static MemoryHistoryStore Read(BinaryReader reader)
     {
         var version = ReadVersion(reader);
 
-        if (version is not (FormatVersion or WritesOnlyVersion))
+        if (version is < WritesOnlyVersion or > FormatVersion)
         {
             throw new InvalidDataException("The memory history was exported by an unsupported version and must be re-recorded");
         }
@@ -132,7 +153,12 @@ public sealed partial class MemoryHistoryStore
                                                    FromInstructions: reader.ReadUInt64(),
                                                    ToInstructions: reader.ReadUInt64(),
                                                    FirstWrite: reader.ReadInt32(),
-                                                   WriteCount: reader.ReadInt32());
+                                                   WriteCount: reader.ReadInt32())
+            {
+                IsStack = version >= FormatVersion && reader.ReadBoolean(),
+                FirstInstance = version >= FormatVersion ? reader.ReadInt32() : 0,
+                InstanceCount = version >= FormatVersion ? reader.ReadInt32() : 0
+            };
         }
 
         var writes = new MemoryHistoryWrite[reader.ReadInt32()];
@@ -183,7 +209,9 @@ public sealed partial class MemoryHistoryStore
             iterators[reader.ReadInt32()] = reader.ReadUInt64();
         }
 
-        var (reads, readStarts, readHighs) = version == FormatVersion ? ReadReads(reader) : ([], [], HighWordRuns.Empty);
+        var (reads, readStarts, readHighs) = version >= ReadsVersion ? ReadReads(reader) : ([], [], HighWordRuns.Empty);
+
+        var instances = version >= FormatVersion ? ReadInstances(reader) : [];
 
         return new MemoryHistoryStore(blocks,
                                       writes,
@@ -192,7 +220,8 @@ public sealed partial class MemoryHistoryStore
                                       iterators,
                                       reads,
                                       readStarts,
-                                      readHighs);
+                                      readHighs,
+                                      instances);
     }
 
     private static int ReadVersion(BinaryReader reader) => -reader.ReadInt32();
@@ -233,6 +262,21 @@ public sealed partial class MemoryHistoryStore
         }
 
         return (reads, starts, highs is null ? HighWordRuns.Empty : HighWordRuns.Build(highs));
+    }
+
+    private static MemoryHistoryInstance[] ReadInstances(BinaryReader reader)
+    {
+        var instances = new MemoryHistoryInstance[reader.ReadInt32()];
+
+        for (var index = 0; index < instances.Length; index++)
+        {
+            instances[index] = new MemoryHistoryInstance(FromPosition: ReadPosition(reader),
+                                                         ToPosition: ReadPosition(reader),
+                                                         FromInstructions: reader.ReadUInt64(),
+                                                         ToInstructions: reader.ReadUInt64());
+        }
+
+        return instances;
     }
 
     private static void WritePosition(BinaryWriter writer, TracePosition position)

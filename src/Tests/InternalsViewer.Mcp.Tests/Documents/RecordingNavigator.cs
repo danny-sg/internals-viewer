@@ -34,6 +34,20 @@ internal sealed class RecordingNavigator : IQueryCommands
     public Task ShowMemoryAsync(int block, ulong address, TracePosition position)
         => Record($"ShowMemory {block} 0x{address:X} {position}");
 
+    public Task ShowObjectGraphAsync(int? block, TracePosition? position)
+        => Record($"ShowObjectGraph {block?.ToString() ?? "-"} {position?.ToString() ?? "-"}");
+
+    public Task<McpWatch> AddWatchAsync(int block, int offset, int length, string? dataType, string? label)
+    {
+        Calls.Add($"AddWatch {block} 0x{offset:X} {length} {dataType ?? "-"} {label ?? "-"}");
+
+        return Task.FromResult(new McpWatch("Object", block, offset, length, dataType, label, "1", IsTemporary: true));
+    }
+
+    public Task<McpWatch[]> GetWatchesAsync() => Task.FromResult<McpWatch[]>([]);
+
+    public Task<int> ClearWatchesAsync() => Task.FromResult(0);
+
     public Task<McpFunctionSignature?> ResolveSignatureAsync(CallstackFrame frame) => Task.FromResult<McpFunctionSignature?>(null);
 
     public TraceValueReferences? References { get; set; }

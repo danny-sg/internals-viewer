@@ -38,6 +38,22 @@ public sealed partial class TraceTimelineControl
 
     private double TrimTo => IsTrimmed && GetAxisValue(_trimEnd!.Value) is { } end ? Math.Min(end, FullEnd) : FullEnd;
 
+    public void SetTrim(TracePosition? start, TracePosition? end)
+    {
+        var isSet = start is not null && end is not null && start < end;
+
+        _trimStart = isSet ? start : null;
+
+        _trimEnd = isSet ? end : null;
+
+        ApplyTrim();
+
+        if (isSet)
+        {
+            ZoomTo(TrimFrom, TrimTo);
+        }
+    }
+
     private double ClampToTrim(double value) => Math.Clamp(value, TrimFrom, Math.Max(TrimFrom, TrimTo));
 
     private TrimHandle GetTrimHandleAt(Point position)

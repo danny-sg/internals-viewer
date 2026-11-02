@@ -54,6 +54,18 @@ public class ConnectServerViewModelTests
         Assert.False(viewModel.ConnectCommand.CanExecute(null));
     }
 
+    [Fact]
+    public void Cannot_Refresh_Databases_While_Busy()
+    {
+        var viewModel = Create();
+
+        Assert.True(viewModel.RefreshDatabasesCommand.CanExecute(null));
+
+        viewModel.IsBusy = true;
+
+        Assert.False(viewModel.RefreshDatabasesCommand.CanExecute(null));
+    }
+
 #pragma warning disable CS0618
     [Theory]
     [InlineData(SqlAuthenticationMethod.ActiveDirectoryIntegrated, false, false)]
@@ -87,6 +99,93 @@ public class ConnectServerViewModelTests
         Assert.Contains(nameof(ConnectServerViewModel.IsPasswordEnabled), raised);
     }
 
+    [Fact]
+    public void Connection_String_Includes_Credentials_For_Sql_Server_Authentication()
+    {
+        var viewModel = CreateWithCredentials();
+
+        var builder = new SqlConnectionStringBuilder(viewModel.GetConnectionString());
+
+        Assert.Equal("user1", builder.UserID);
+        Assert.Equal("password1", builder.Password);
+    }
+
+    [Fact]
+    public void Connection_String_Drops_Credentials_After_Switching_To_Windows_Authentication()
+    {
+        var viewModel = CreateWithCredentials();
+
+        viewModel.GetConnectionString();
+
+        viewModel.AuthenticationType = (int)SqlAuthenticationMethod.ActiveDirectoryIntegrated;
+
+        var builder = new SqlConnectionStringBuilder(viewModel.GetConnectionString());
+
+        Assert.Equal(string.Empty, builder.UserID);
+        Assert.Equal(string.Empty, builder.Password);
+    }
+
+    [Fact]
+    public void Connection_String_Drops_A_Cleared_Password()
+    {
+        var viewModel = CreateWithCredentials();
+
+        viewModel.GetConnectionString();
+
+        viewModel.Password = string.Empty;
+
+        var builder = new SqlConnectionStringBuilder(viewModel.GetConnectionString());
+
+        Assert.Equal("user1", builder.UserID);
+        Assert.Equal(string.Empty, builder.Password);
+    }
+
+    [Fact]
+    public void Database_List_Keeps_The_Database_When_The_Selection_Is_Cleared()
+    {
+        var viewModel = Create();
+
+        viewModel.Database = "Sales";
+
+        viewModel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ConnectServerViewModel.Databases))
+            {
+                viewModel.Database = null;
+            }
+        };
+
+        viewModel.SetDatabaseList(["master", "model"]);
+
+        Assert.Equal("Sales", viewModel.Database);
+        Assert.Equal(["Sales", "master", "model"], viewModel.Databases);
+    }
+
+    [Fact]
+    public void Database_List_Keeps_The_Database_When_The_List_Is_Empty()
+    {
+        var viewModel = Create();
+
+        viewModel.Database = "Sales";
+
+        viewModel.SetDatabaseList([]);
+
+        Assert.Equal("Sales", viewModel.Database);
+        Assert.Equal(["Sales"], viewModel.Databases);
+    }
+
+    private static ConnectServerViewModel CreateWithCredentials()
+    {
+        var viewModel = Create();
+
+        viewModel.AuthenticationType = (int)SqlAuthenticationMethod.SqlPassword;
+        viewModel.UserId = "user1";
+        viewModel.Password = "password1";
+
+        return viewModel;
+    }
+
     private static ConnectServerViewModel Create()
-        => new(new SettingsService(NullLogger<SettingsService>.Instance, Options.Create(new SettingsOptions())));
+        => new(NullLogger<ConnectServerViewModel>.Instance,
+               new SettingsService(NullLogger<SettingsService>.Instance, Options.Create(new SettingsOptions())));
 }

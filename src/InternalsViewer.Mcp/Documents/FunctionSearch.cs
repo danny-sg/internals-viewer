@@ -1,4 +1,5 @@
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.Helpers;
 using ModelContextProtocol;
 
 namespace InternalsViewer.Mcp.Documents;
@@ -160,21 +161,6 @@ public static class FunctionSearch
             return ContainsScore;
         }
 
-        return IsSubsequence(symbol, word) ? SubsequenceScore : 0;
-    }
-
-    private static bool IsSubsequence(string value, string word)
-    {
-        var position = 0;
-
-        foreach (var character in value)
-        {
-            if (position < word.Length && char.ToLowerInvariant(character) == char.ToLowerInvariant(word[position]))
-            {
-                position++;
-            }
-        }
-
-        return position == word.Length;
+        return FuzzyMatch.IsSubsequence(symbol, word) ? SubsequenceScore : 0;
     }
 }

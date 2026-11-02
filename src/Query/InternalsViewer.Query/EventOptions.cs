@@ -18,6 +18,12 @@ public sealed record EventOptions
 
     public bool RecordTimeTravel { get; set; }
 
+    public bool CaptureHeapReads { get; set; } = true;
+
+    public bool CaptureHeapWrites { get; set; } = true;
+
+    public bool CaptureStackMemory { get; set; } = true;
+
     public bool IncludeLatch { get; set; } = false;
 
     public bool IncludeBatchMode { get; set; } = true;

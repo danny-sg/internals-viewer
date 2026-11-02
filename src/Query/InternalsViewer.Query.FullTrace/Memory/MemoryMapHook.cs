@@ -89,7 +89,7 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions, IR
         }
     }
 
-    private static Dictionary<ulong, MemoryMapFunction> GetOperations(IEnumerable<MemoryMapFunction> functions)
+    internal static Dictionary<ulong, MemoryMapFunction> GetOperations(IEnumerable<MemoryMapFunction> functions)
     {
         var operations = functions.TryGetNonEnumeratedCount(out var count)
             ? new Dictionary<ulong, MemoryMapFunction>(count)
@@ -123,17 +123,7 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions, IR
     }
 
     private static ulong GetOwner(ReadOnlySpan<TraceHookFrame> frames, ulong address)
-    {
-        foreach (var frame in frames)
-        {
-            if (frame.StackPointer > address)
-            {
-                return frame.Id;
-            }
-        }
-
-        return 0;
-    }
+        => TraceHookFrames.GetOwnerIndex(frames, address) is >= 0 and var index ? frames[index].Id : 0;
 
     private static bool IsActive(ReadOnlySpan<TraceHookFrame> frames, ulong call)
     {

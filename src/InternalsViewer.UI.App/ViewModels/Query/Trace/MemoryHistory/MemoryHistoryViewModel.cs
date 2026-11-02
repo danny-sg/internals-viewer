@@ -132,6 +132,12 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
     [ObservableProperty]
     private bool _isAvailable;
 
+    public event EventHandler? WatchesChanged
+    {
+        add => WatchStore.Changed += value;
+        remove => WatchStore.Changed -= value;
+    }
+
     public MemoryHistoryStore Store => Trace?.MemoryHistory ?? MemoryHistoryStore.Empty;
 
     public MemoryHistoryBatches? Batches { get; private set; }
@@ -419,14 +425,18 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
         return writes.Count > 0 ? trace.Timeline.NodeOf(writes[0].CallNodeIndex) : null;
     }
 
-    public ObservableCollection<HexWatch> GetWatches(int block)
+    public ObservableCollection<HexWatch> GetWatches(int block) => WatchStore.GetWatches(GetWatchName(block));
+
+    public string GetWatchName(int block)
     {
         var label = GetObjectLabel(block);
 
-        var name = label.Length > 0 && label != IteratorObject ? label : $"0x{Store.Blocks[block].Address:X16}";
-
-        return WatchStore.GetWatches(name);
+        return label.Length > 0 && label != IteratorObject ? label : $"0x{Store.Blocks[block].Address:X16}";
     }
+
+    public Dictionary<string, HexWatch[]> GetWatchSnapshot() => WatchStore.GetSnapshot();
+
+    public int RemoveTemporaryWatches() => WatchStore.RemoveTemporary();
 
     partial void OnSelectedBlockRowChanged(ResultRow<long>? value)
         => ShowBlock(value is { Id: var index } && index < Store.Blocks.Count ? (int)index : -1);
@@ -535,7 +545,9 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
                                             new TraceMemoryWrites(Store, first, count),
                                             IsBuffer(index),
                                             IsBuffer(index) ? GetBufferPages(block.Address) : null,
-                                            readCount > 0 ? new TraceMemoryWrites(Store, firstRead, readCount, isReads: true) : null));
+                                            readCount > 0 ? new TraceMemoryWrites(Store, firstRead, readCount, isReads: true) : null,
+                                            block.InstanceCount > 0 ? Store.GetInstances(index) : null,
+                                            block.IsStack));
         }
 
         return blocks;

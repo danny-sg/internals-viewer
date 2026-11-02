@@ -35,6 +35,13 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
 
     private const int MaximumWalkthroughSteps = 20;
 
+    private const string PlayheadStart = "start";
+
+    private const string PlayheadDescription = "Where the playhead goes while this is shown: start or end of the first call " +
+                                               "pointed at, none to leave it, or a position as hex Sequence:Steps. The playhead " +
+                                               "drives the call stack, the memory tabs and the watches, so end shows what the " +
+                                               "call left behind";
+
     private const string CommentDescription = "What to tell the user, shown beside the arrows. It is Markdown: put function, " +
                                               "class and field names in backticks, for example `CQScanHash::GetRow`, and use " +
                                               "**bold** sparingly";
@@ -363,17 +370,63 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
 
         var chosen = Choose(candidates, which, n, GetReference(scope.Query, candidates));
 
+        var uncropped = await scope.UncropForAsync([(chosen.Node, chosen.Index)], [], cancellationToken);
+
         await scope.RunAsync<ITraceTimelineCommands>(c => c.SelectCallAsync(chosen.Node, chosen.Index, zoom), cancellationToken);
 
         var after = (await scope.ReadContextAsync(cancellationToken)).Timeline;
 
-        return $"Selected {DescribeSelection(after)}{(zoom ? " and zoomed to it" : string.Empty)}.{Environment.NewLine}" +
-               $"{scope.Context.GetFunctionName(chosen.Node)} #{chosen.Index} of {candidates.Count} matching calls, " +
-               $"{Format.Position(chosen.Call.FromPosition)} to {Format.Position(chosen.Call.ToPosition)}" +
-               (matches.Count > 1
-                   ? $"{Environment.NewLine}'{function}' matched {string.Join(", ", matches.Select(m => m.Name))}. " +
-                     "Name one of them to narrow it."
-                   : string.Empty);
+        return Format.WithNote($"Selected {DescribeSelection(after)}{(zoom ? " and zoomed to it" : string.Empty)}.{Environment.NewLine}" +
+                               $"{scope.Context.GetFunctionName(chosen.Node)} #{chosen.Index} of {candidates.Count} matching calls, " +
+                               $"{Format.Position(chosen.Call.FromPosition)} to {Format.Position(chosen.Call.ToPosition)}" +
+                               (matches.Count > 1
+                                   ? $"{Environment.NewLine}'{function}' matched {string.Join(", ", matches.Select(m => m.Name))}. " +
+                                     "Name one of them to narrow it."
+                                   : string.Empty),
+                               uncropped);
+    }
+
+    [McpServerTool(Name = "trace_scope")]
+    [Description("Scope the playhead to a stretch of the trace, as the user does with the trim handles either side of the " +
+                 "playhead, and zoom the timeline to it. While it is set, playing (trace_set_option playing) repeats the stretch " +
+                 "until it is stopped, so a watch can be seen changing over and over. Give neither position to clear it")]
+    public async Task<string> SetScope([Description("Start position as hex Sequence:Steps")] string? from = null,
+                                       [Description("End position as hex Sequence:Steps")] string? to = null,
+                                       [Description(TabDescription)] string? tab = null,
+                                       CancellationToken cancellationToken = default)
+    {
+        var scope = await Documents.ResolveAsync(tab, cancellationToken);
+
+        scope.RequireTrace();
+
+        if (from is null && to is null)
+        {
+            await scope.RunAsync<ITraceTimelineCommands>(c => c.SetScopeAsync(null, null), cancellationToken);
+
+            return "Cleared the playhead scope.";
+        }
+
+        if (from is null || to is null)
+        {
+            throw new McpException("Give both from and to, or neither to clear the scope.");
+        }
+
+        var start = Parse.Position(from);
+
+        var end = Parse.Position(to);
+
+        if (end <= start)
+        {
+            throw new McpException("to must be after from.");
+        }
+
+        var uncropped = await scope.UncropForAsync([], [start, end], cancellationToken);
+
+        await scope.RunAsync<ITraceTimelineCommands>(c => c.SetScopeAsync(start, end), cancellationToken);
+
+        return Format.WithNote($"Scoped the playhead to {Format.Position(start)} - {Format.Position(end)} and zoomed to it. " +
+                               "Turn on playing with trace_set_option to repeat it.",
+                               uncropped);
     }
 
     [McpServerTool(Name = "trace_pin")]
@@ -443,14 +496,17 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
             throw new McpException($"That is {Format.Number(points.Count)} pins. Pin {Format.Number(MaximumPins)} or fewer.");
         }
 
+        var uncropped = await scope.UncropForAsync([], [.. points.Select(p => p.Position)], cancellationToken);
+
         await scope.RunAsync<ITraceTimelineCommands>(c => c.PinPositionsAsync([.. points]), cancellationToken);
 
         var first = points.Min(p => p.Position);
 
         var last = points.Max(p => p.Position);
 
-        return $"Pinned {string.Join(" and ", pinned)} on the Trace Timeline, from {Format.Position(first)} to " +
-               $"{Format.Position(last)}.";
+        return Format.WithNote($"Pinned {string.Join(" and ", pinned)} on the Trace Timeline, from {Format.Position(first)} to " +
+                               $"{Format.Position(last)}.",
+                               uncropped);
     }
 
     [McpServerTool(Name = "trace_indicate")]
@@ -464,6 +520,7 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
     public async Task<string> Indicate([Description("The calls to point at")] List<IndicatorTarget> targets,
                                        [Description(CommentDescription)] string comment,
                                        [Description("Show a Next button")] bool next = false,
+                                       [Description(PlayheadDescription)] string playhead = PlayheadStart,
                                        [Description("Seconds to wait for the user to close it, up to 50, or 0 to return at once")]
                                        int wait = 0,
                                        [Description(TabDescription)] string? tab = null,
@@ -473,11 +530,13 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
 
         scope.RequireTrace();
 
-        var (step, described) = await ResolveStepAsync(scope, targets, comment, next);
+        var (step, described) = await ResolveStepAsync(scope, targets, comment, next, playhead);
+
+        var uncropped = await UncropForStepsAsync(scope, [step], cancellationToken);
 
         var id = await ShowIndicatorAsync(scope, new McpIndicatorRequest([step]), cancellationToken);
 
-        var shown = $"Indicator {id} points at {described}.";
+        var shown = Format.WithNote($"Indicator {id} points at {described}.", uncropped);
 
         return wait > 0 ? $"{shown}{Environment.NewLine}{await WaitForIndicatorAsync(scope, id, wait, cancellationToken)}" : shown;
     }
@@ -515,16 +574,27 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
 
         for (var index = 0; index < steps.Count; index++)
         {
-            var (step, described) = await ResolveStepAsync(scope, steps[index].Targets, steps[index].Comment, index < steps.Count - 1);
+            var (step, described) = await ResolveStepAsync(scope,
+                                                           steps[index].Targets,
+                                                           steps[index].Comment,
+                                                           index < steps.Count - 1,
+                                                           steps[index].Playhead);
 
             resolved.Add(step);
 
             builder.AppendLine($"  {index + 1}. {described}");
         }
 
+        var uncropped = await UncropForStepsAsync(scope, resolved, cancellationToken);
+
         var id = await ShowIndicatorAsync(scope, new McpIndicatorRequest(resolved), cancellationToken);
 
         var shown = $"Walkthrough {id} with {steps.Count} steps:{Environment.NewLine}{builder}";
+
+        if (uncropped is not null)
+        {
+            shown = $"{shown}{uncropped}{Environment.NewLine}";
+        }
 
         return wait > 0 ? $"{shown}{await WaitForIndicatorAsync(scope, id, wait, cancellationToken)}" : shown;
     }
@@ -562,7 +632,15 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
         return isCleared ? "Cleared the indicator." : "No indicator was open.";
     }
 
+    private static Task<string?> UncropForStepsAsync(McpDocumentScope scope,
+                                                     List<McpIndicatorStep> steps,
+                                                     CancellationToken cancellationToken)
+        => scope.UncropForAsync([.. steps.SelectMany(s => s.Targets).Select(t => (t.Node, t.CallIndex))],
+                                [.. steps.Where(s => s.Playhead is not null).Select(s => s.Playhead!.Value.Position)],
+                                cancellationToken);
+
     private static async Task<Guid> ShowIndicatorAsync(McpDocumentScope scope,
+
                                                        McpIndicatorRequest request,
                                                        CancellationToken cancellationToken)
     {
@@ -620,7 +698,8 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
     private async Task<(McpIndicatorStep Step, string Described)> ResolveStepAsync(McpDocumentScope scope,
                                                                                    List<IndicatorTarget> targets,
                                                                                    string comment,
-                                                                                   bool hasNext)
+                                                                                   bool hasNext,
+                                                                                   string playhead)
     {
         if (targets.Count == 0)
         {
@@ -668,7 +747,40 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
             }
         }
 
-        return (new McpIndicatorStep(resolved, comment, hasNext), string.Join(", ", described));
+        var point = GetPlayhead(scope.RequireTrace(), resolved[0], playhead);
+
+        var moved = point is { } at ? $", playhead at {Format.Position(at)}" : string.Empty;
+
+        return (new McpIndicatorStep(resolved, comment, hasNext, point), string.Join(", ", described) + moved);
+    }
+
+    private static TracePoint? GetPlayhead(TraceResult trace, McpIndicatorTarget first, string playhead)
+    {
+        var choice = playhead.Trim().ToLowerInvariant();
+
+        if (choice == "none")
+        {
+            return null;
+        }
+
+        if (choice is not (PlayheadStart or "end"))
+        {
+            return trace.Timeline.GetPoint(Parse.Position(playhead));
+        }
+
+        if (trace.Timeline.FindCall(first.Node, first.CallIndex) is not { } location)
+        {
+            return null;
+        }
+
+        if (choice == PlayheadStart)
+        {
+            return location.From;
+        }
+
+        var end = location.To.Position;
+
+        return trace.Timeline.GetPoint(end.Steps > 0 ? new TracePosition(end.Sequence, end.Steps - 1) : end);
     }
 
     private static bool IsAll(IndicatorTarget target)
@@ -718,6 +830,8 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
     {
         var trace = scope.RequireTrace();
 
+        var cropRoots = scope.GetCropRoots();
+
         var found = FunctionSearch.Search(scope.Context.Nodes.GetNodes(), function, SearchCandidates);
 
         var matches = new List<FunctionMatch>();
@@ -734,14 +848,25 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
 
             parsed = await ParseConditionsAsync(scope, tierMembers[0], conditions);
 
-            var present = CollectCalls(trace, tierMembers, parsed, pick is null ? CallPick.All : CallPick.First);
+            var presence = pick is null ? CallPick.All : CallPick.First;
+
+            var searched = cropRoots is null ? tierMembers : [.. tierMembers.Where(n => !QueryCrop.IsHidden(n, cropRoots))];
+
+            var present = CollectCalls(trace, searched, parsed, presence);
+
+            if (present.Count == 0 && searched.Count < tierMembers.Count)
+            {
+                searched = tierMembers;
+
+                present = CollectCalls(trace, searched, parsed, presence);
+            }
 
             if (present.Count == 0)
             {
                 continue;
             }
 
-            candidates = pick is { } wanted && wanted != CallPick.First ? CollectCalls(trace, tierMembers, parsed, wanted) : present;
+            candidates = pick is { } wanted && wanted != CallPick.First ? CollectCalls(trace, searched, parsed, wanted) : present;
 
             matches = [.. tier.Where(m => m.Members.Any(member => candidates.Any(c => c.Node == member)))];
 
@@ -961,7 +1086,8 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
 
     public sealed record WalkthroughStep(
         [property: Description("The calls to point at in this step")] List<IndicatorTarget> Targets,
-        [property: Description(CommentDescription)] string Comment);
+        [property: Description(CommentDescription)] string Comment,
+        [property: Description(PlayheadDescription)] string Playhead = PlayheadStart);
 
     private sealed record CallSearch(IReadOnlyList<FunctionMatch> Found,
                                      List<FunctionMatch> Matches,

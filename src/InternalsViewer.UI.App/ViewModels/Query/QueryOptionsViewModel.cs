@@ -80,6 +80,24 @@ public sealed partial class QueryOptionsViewModel : ObservableObject
         set => SetOption(_options.RecordTimeTravel, value, v => _options.RecordTimeTravel = v);
     }
 
+    public bool CaptureHeapReads
+    {
+        get => _options.CaptureHeapReads;
+        set => SetOption(_options.CaptureHeapReads, value, v => _options.CaptureHeapReads = v);
+    }
+
+    public bool CaptureHeapWrites
+    {
+        get => _options.CaptureHeapWrites;
+        set => SetOption(_options.CaptureHeapWrites, value, v => _options.CaptureHeapWrites = v);
+    }
+
+    public bool CaptureStackMemory
+    {
+        get => _options.CaptureStackMemory;
+        set => SetOption(_options.CaptureStackMemory, value, v => _options.CaptureStackMemory = v);
+    }
+
     /// <summary>Whether any lock category is selected, and therefore locks are shown</summary>
     public bool ShowLocks => _options.IncludeLock;
 
@@ -133,7 +151,10 @@ public sealed partial class QueryOptionsViewModel : ObservableObject
                         bool includeColumnstore,
                         bool includeMemory,
                         bool includeCallStack,
-                        IEnumerable<LockModeCategory> lockModeCategories)
+                        IEnumerable<LockModeCategory> lockModeCategories,
+                        bool captureHeapReads,
+                        bool captureHeapWrites,
+                        bool captureStackMemory)
     {
         _options.CropToQuery = cropToQuery;
         _options.IncludeSystemObjects = includeSystemObjects;
@@ -143,6 +164,9 @@ public sealed partial class QueryOptionsViewModel : ObservableObject
         _options.IncludeMemory = includeMemory;
         _options.IncludeCallStack = includeCallStack;
         _options.IncludeLockModeCategories = [.. lockModeCategories];
+        _options.CaptureHeapReads = captureHeapReads;
+        _options.CaptureHeapWrites = captureHeapWrites;
+        _options.CaptureStackMemory = captureStackMemory;
 
         RaiseAll();
     }

@@ -26,14 +26,16 @@ public class MemoryHistoryReadTests
     }
 
     [Fact]
-    public void Reads_Outside_A_Block_Or_From_A_Block_With_No_Writes_Are_Not_Kept()
+    public void Reads_Outside_A_Block_Are_Not_Kept_But_A_Block_That_Is_Only_Read_Is()
     {
         var store = BuildWithReads([Block(Owned, 0x10), Block(Unwritten, 0x10)],
                                    [(2, Owned, [1])],
                                    [(3, Unwritten, 8), (4, Owned + 0x100, 8)],
                                    MemoryHistoryStores.Calls((1, 10)));
 
-        Assert.Equal(0, store.ReadCount);
+        var unwritten = MemoryHistoryStores.GetBlock(store, Unwritten);
+
+        Assert.Equal((1, 0, 1), (store.ReadCount, store.Blocks[unwritten].WriteCount, store.GetReads(unwritten).Count));
     }
 
     [Fact]

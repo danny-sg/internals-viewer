@@ -63,6 +63,10 @@ public sealed partial class MemoryReferenceGraphControl
 
     private const float NameShare = 0.55f;
 
+    private const float WatchValueGap = 8;
+
+    private const float WatchValueShare = 0.5f;
+
     private const float ChevronHalfWidth = 2;
 
     private const float ChevronHalfHeight = 4;
@@ -337,7 +341,7 @@ public sealed partial class MemoryReferenceGraphControl
 
         var right = MathF.Round(view.ToX(node.X + graph.NodeWidth));
 
-        var bottom = MathF.Round(view.ToY(node.Y + graph.NodeHeight));
+        var bottom = MathF.Round(view.ToY(node.Y + node.Height));
 
         var border = node.IsRoot ? view.Thickness * 2 : view.Thickness;
 
@@ -472,7 +476,7 @@ public sealed partial class MemoryReferenceGraphControl
             canvas.Restore();
         }
 
-        if (!isDetail || node.Detail.Length == 0)
+        if (!isDetail)
         {
             return;
         }
@@ -481,13 +485,55 @@ public sealed partial class MemoryReferenceGraphControl
 
         var detailTop = layout.NameTop + NameLineHeight;
 
-        DrawText(canvas,
-                 Trim(node.Detail, detailFont, layout.TextRight - layout.TextLeft, true),
-                 detailFont,
-                 layout.TextLeft,
-                 GetBaseline(detailFont, detailTop, DetailLineHeight),
-                 Paints.SecondaryText,
-                 view);
+        if (node.Detail.Length > 0)
+        {
+            DrawText(canvas,
+                     Trim(node.Detail, detailFont, layout.TextRight - layout.TextLeft, true),
+                     detailFont,
+                     layout.TextLeft,
+                     GetBaseline(detailFont, detailTop, DetailLineHeight),
+                     Paints.SecondaryText,
+                     view);
+        }
+
+        DrawWatches(canvas, node, graph, view, layout, detailFont, detailTop + DetailLineHeight);
+    }
+
+    private void DrawWatches(SKCanvas canvas,
+                             MemoryReferenceGraphNode node,
+                             MemoryReferenceGraph graph,
+                             GraphView view,
+                             NodeLayout layout,
+                             SKFont font,
+                             float top)
+    {
+        if (node.Watches.Length == 0 || node.WatchCount == 0)
+        {
+            return;
+        }
+
+        var width = layout.Right - layout.TextLeft;
+
+        var lineHeight = (float)(node.Height - graph.NodeHeight) / node.WatchCount;
+
+        foreach (var watch in node.Watches)
+        {
+            var baseline = GetBaseline(font, top, lineHeight);
+
+            var nameWidth = font.MeasureText(watch.Name);
+
+            var value = Trim(watch.Value, font, Math.Max(width - WatchValueGap - nameWidth, width * WatchValueShare), true);
+
+            var valueWidth = font.MeasureText(value);
+
+            var name = Trim(watch.Name, font, width - WatchValueGap - valueWidth, true);
+
+            DrawText(canvas, name, font, layout.TextLeft, baseline, Paints.SecondaryText, view);
+
+            DrawText(canvas, value, font, layout.Right - valueWidth, baseline, Paints.Text, view);
+
+            top += lineHeight;
+        }
     }
 
     private float DrawText(SKCanvas canvas, string text, SKFont font, float x, float baseline, SKColor colour, GraphView view)
@@ -698,7 +744,7 @@ public sealed partial class MemoryReferenceGraphControl
     {
         var top = (float)node.Y + (isDetail ? BorderWidth + BandHeight + LifetimeHeight : 0);
 
-        var bottom = (float)(node.Y + graph.NodeHeight);
+        var bottom = (float)(node.Y + (isDetail ? graph.NodeHeight : node.Height));
 
         var centre = (top + bottom) / 2;
 
@@ -722,14 +768,14 @@ public sealed partial class MemoryReferenceGraphControl
         {
             var nameTop = centre - (NameLineHeight + DetailLineHeight) / 2;
 
-            return new NodeLayout(referrers, expand, textLeft, textRight, nameTop, NameLineHeight, NameSize);
+            return new NodeLayout(referrers, expand, textLeft, textRight, right, nameTop, NameLineHeight, NameSize);
         }
 
         var size = Math.Clamp(MinimumNameSize / zoom, NameSize, (float)graph.NodeHeight * NameShare);
 
         var height = size * NameLineRatio;
 
-        return new NodeLayout(referrers, expand, textLeft, textRight, centre - height / 2, height, size);
+        return new NodeLayout(referrers, expand, textLeft, textRight, right, centre - height / 2, height, size);
     }
 
     private GraphHit HitTest(Point position)
@@ -747,7 +793,7 @@ public sealed partial class MemoryReferenceGraphControl
         {
             var node = graph.Nodes[index];
 
-            if (point.X < node.X || point.X > node.X + graph.NodeWidth || point.Y < node.Y || point.Y > node.Y + graph.NodeHeight)
+            if (point.X < node.X || point.X > node.X + graph.NodeWidth || point.Y < node.Y || point.Y > node.Y + node.Height)
             {
                 continue;
             }
@@ -873,6 +919,7 @@ public sealed partial class MemoryReferenceGraphControl
                                               SKRect Expand,
                                               float TextLeft,
                                               float TextRight,
+                                              float Right,
                                               float NameTop,
                                               float NameHeight,
                                               float NameSize);
@@ -899,7 +946,7 @@ public sealed partial class MemoryReferenceGraphControl
             => Visible.IntersectsWith(new SKRect((float)node.X,
                                                  (float)node.Y,
                                                  (float)(node.X + graph.NodeWidth),
-                                                 (float)(node.Y + graph.NodeHeight)));
+                                                 (float)(node.Y + node.Height)));
 
         private static float Snap(float value, float thickness) => thickness % 2 == 1 ? MathF.Floor(value) + 0.5f : MathF.Round(value);
     }

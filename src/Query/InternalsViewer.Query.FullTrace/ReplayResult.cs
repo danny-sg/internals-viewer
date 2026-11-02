@@ -3,6 +3,7 @@ using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
+using InternalsViewer.Query.FullTrace.Memory.History.StackObjects;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -52,4 +53,6 @@ internal sealed record ReplayResult(CallNode[] Nodes,
                                     IReadOnlyList<QueryTeardown> Teardowns)
 {
     public MemoryBlock[] Buffers { get; init; } = [];
+
+    public StackSnapshots StackSnapshots { get; init; } = StackSnapshots.Empty;
 }

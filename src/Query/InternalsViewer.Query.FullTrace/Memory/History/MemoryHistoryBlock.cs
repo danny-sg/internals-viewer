@@ -14,6 +14,12 @@ public sealed record MemoryHistoryBlock(ulong Iterator,
                                         int FirstWrite,
                                         int WriteCount)
 {
+    public bool IsStack { get; init; }
+
+    public int FirstInstance { get; init; }
+
+    public int InstanceCount { get; init; }
+
     public TracePoint From => new(FromPosition, FromInstructions);
 
     public TracePoint? To => ToPosition.IsKnown ? new TracePoint(ToPosition, ToInstructions) : null;

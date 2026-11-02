@@ -2,13 +2,13 @@
 
 Internals Viewer can act as a Model Context Protocol (MCP) server, so an AI assistant such as Claude Code can read what you have open and move the app to the places it is explaining. It covers all five kinds of tab - Query, Allocations, Page, Index and Columnstore. The assistant works from the same evidence you see - the plan, the events, the call tree, the allocation map, the pages, the index structure, the columnstore segments and, for a Full Trace, the calls, timeline and memory - and the ids it quotes are the ones in the app.
 
-The server cannot connect to another database or server, run a query or start a trace. All it changes in the app is what is selected, scrolled, zoomed or open, the way a click would, and it can open a page, an index or a columnstore index in a new tab, switch to a tab and close one. It can also turn the Query tab's menu toggles on and off, including Record Full Trace for the next run.
+The server cannot connect to another database or server, run a query or start a trace. All it changes in the app is what is selected, scrolled, zoomed, trimmed, played or open, and the watches it pins itself, the way a click would, and it can open a page, an index or a columnstore index in a new tab, switch to a tab and close one. It can also turn the Query tab's menu toggles on and off, including Record Full Trace for the next run.
 
 ## Turning it on
 
 Open **Settings** and expand **MCP Server**. **Enable Server** starts it, and the line above the group shows the address it listens on. It listens on this machine only, on the **Port** in the group, 8484 unless changed.
 
-Every client sends an access token that Internals Viewer generates and stores encrypted for your Windows account. The token is never displayed - the app writes it into each client's own configuration when you register the client. **Regenerate** replaces it and updates every registered client in one go.
+Every client sends an access token that Internals Viewer generates and stores encrypted for your Windows account. The app writes it into each client's own configuration when you register the client, so a registered client never needs you to see it. **Regenerate** replaces it and updates every registered client in one go.
 
 <!-- Screenshot: the MCP Server group expanded, with the client cards below the Access Token card -->
 
@@ -25,6 +25,10 @@ Each client has a card with **Register**. Once registered, the card shows where 
 Visual Studio Code and Claude Desktop create their own configuration file, and it has to exist before you register. If the card asks for it, open the configuration from the client first - **MCP: Open User Configuration** from the Command Palette in Visual Studio Code, or **Edit Config** under **Settings > Developer** in Claude Desktop - then press **Register**.
 
 A client picks the server up the next time it starts, so restart a client that was already open.
+
+### Other clients
+
+For a client that has no card, expand **Manual** at the end of the list. It gives the **Server Address** to connect to over HTTP and the **Access Token** to send in the `Authorization` header, as `Bearer` followed by a space and the token. The token is hidden until you press **Show Access Token**, and **Copy** copies the address or the token without showing it. The token is hidden again when you leave Settings. A client set up this way is not updated by **Regenerate**, so enter the new token in it yourself.
 
 ## Claude Desktop
 
@@ -54,7 +58,7 @@ Internals Viewer has to be running for the bridge to connect. If it was not runn
 
 The conversation starts in the assistant, not in the app. With a database and a Query tab open and a query run or imported, ask the assistant about it in plain language - "look at the query open in Internals Viewer and tell me why it read so many pages". It finds the open document, reads the summary, the plan, the reads and the call tree, and quotes the ids so you can find the same things in the app.
 
-In Claude Code, `/mcp` shows the server and its tools, and the `explore` prompt it provides starts an investigation with the evidence-first approach built in. Asking it to walk you through an operator makes it open the plan node, the call tree node and the trace position as it explains, and asking "what is this?" after you have selected something in the app makes it look at your selection - the selected event, plan node, call tree node, page, slot, field and log record, the playhead, and the ranges the timelines are showing.
+In Claude Code, `/mcp` shows the server and its tools, and the `explore` prompt it provides starts an investigation with the evidence-first approach built in. Asking it to walk you through an operator makes it open the operator in the plan, its calls in the Call Tree and their positions on the Trace Timeline as it explains, and asking "what is this?" after you have selected something in the app makes it look at your selection - the selected event, plan operator, call, page, slot, field and log record, the playhead, and the ranges the timelines are showing.
 
 The server also carries its own reading guides - how to read what the tools return, what each event means, how to read engine function names, the method for explaining an operator from a Full Trace, the app's own instruction pages so it describes things by the names you see, and the [deep dives](/docs/deep-dives/query-tracing) from this site - so an assistant that has never seen Internals Viewer can still work from the evidence. For a question nothing else answers it knows where the [source code](https://github.com/danny-sg/internals-viewer) for each part lives.
 
@@ -63,7 +67,9 @@ The server also carries its own reading guides - how to read what the tools retu
 - **The run** - the SQL, the plan with estimated and actual rows, the operators with their timing, and the messages.
 - **Events** - reads from disk and the buffer pool, waits, locks, latches, columnstore scans and log records.
 - **The call tree** - the engine functions behind each operator, the paths to a function, the hottest paths and the pages each function touched.
-- **Full Trace** - every logged call with its arguments, the timeline, the memory, the memory map and the memory history, and the references to an address that the call tree's Find shows: its type and every function it was passed to, called on or returned by.
+- **Full Trace** - every logged call with its arguments, its return value and the pages and rows it read, the timeline, the memory in use over the run, the memory map of what was allocated by class and allocation site, and the references to an address that the call tree's Find shows: its type and every function it was passed to, called on or returned by. Its cost is in instructions, never milliseconds, because a Full Trace has no clock.
+- **Memory History** - how each object the query used changed, field by field, with the function that made each change, the functions that read it, and the objects functions keep on their own stacks and hand to each other. The assistant points you at each change by its position on the Trace Timeline.
+- **The Object Graph** - the objects an object points to, and the objects those point to, with the object each pointer held at a position and how often it moved, the same graph the app draws.
 - **Allocations** - the files and objects of a database, who owns a page and what the GAM, SGAM, PFS, DCM and BCM bits say about it, and the extents an object owns.
 - **Pages** - a page's header, slots and records with their column values, including the page header and offset table as selectable structures.
 - **Indexes** - the B-tree of an index level by level, its pages in order, and the keys and child pages of the page you have selected.
@@ -72,12 +78,14 @@ The server also carries its own reading guides - how to read what the tools retu
 
 ## What the assistant can do in the app
 
-- **Open** a call, a page, a plan node, an event or a memory block, move the playhead, and open an index or columnstore index in a new tab. A page opens in the Query tab's page dock when you are in a Query tab, and in a new Page tab otherwise.
+- **Open** a call, a page, an operator in the plan, an event, a memory block or the Object Graph, move the playhead, and open an index or columnstore index in a new tab. A page opens in the Query tab's page dock when you are in a Query tab, and in a new Page tab otherwise.
 - **Select and scroll** - slots, fields and bytes in the Page viewer and in the pages open in a Query tab, objects and overlays in the Allocations map, pages and records in the Index viewer, and segments, dictionaries and rows in the Columnstore viewer.
 - **Switch and close tabs.** The assistant should ask before it closes one.
-- **Turn the Query tab's menu toggles on and off** - the views that are visible, what is captured and shown, and Record Full Trace. Record Full Trace only turns on once you have accepted its warning and licence yourself from the Trace menu, and applies to the next run.
-- **Drive the Trace Timeline** - turn the Operators, Memory and Calls panes and the other timeline options on and off, add custom operator tracks for a function (for example "mark where a b-tree is searched"), clear them, step the playhead by call, same call, batch, row or allocation, search, and select and zoom to a call such as "the first GetRow call", and pin marks at every call of a function to show when it runs. Clicking the timeline or moving the playhead hides the marks.
-- **Point things out on the flame chart** - the assistant can draw arrows to one or more calls with a comment beside them, such as "here is where the build side is read". Drag the comment to move it out of the way, and the arrows follow it. Its close button removes it. When it is walking you through something, the comment shows which step you are on and has a **Next** button that moves straight on to the next step, and **Finish** on the last one. Closing it ends the walkthrough early. A fuzzy search of the call graph resolves half remembered function names.
+- **Turn the Query tab's menu toggles on and off** - the views that are visible, what is captured and shown, including the Trace menu's **Capture** options for heap reads, heap writes and stack memory, and Record Full Trace. Record Full Trace only turns on once you have accepted its warning and licence yourself from the Trace menu, and applies to the next run.
+- **Drive the Trace Timeline** - turn the Operators, Memory and Calls panes and the other timeline options on and off, add custom operator tracks for a function (for example "mark where a b-tree is searched"), clear them, step the playhead by call, same call, batch, row or allocation, search, and select and zoom to a call such as "the first GetRow call", and pin marks at every call of a function to show when it runs. Clicking the timeline or moving the playhead hides the marks. It can also trim the timeline to a stretch, the same as dragging the handles either side of the playhead, and play that stretch on a loop, and clear the trim when it moves on.
+- **Show a field changing** - the assistant can pin a watch on a field of a memory block, open the block or its Object Graph so the watch is visible, and trim the Trace Timeline to the stretch where the field changes and play it on a loop. Its watches are temporary: it clears the ones it added and leaves yours alone.
+- **Point things out on the flame chart** - the assistant can draw arrows to one or more calls with a comment beside them, such as "here is where the build side is read", and moves the playhead there so the call stack, memory and watches follow. Drag the comment to move it out of the way, and the arrows follow it. Its close button removes it. When it is walking you through something, the comment shows which step you are on and has a **Next** button that moves straight on to the next step, a **Previous** button from the second step on, and **Finish** on the last one. Closing it ends the walkthrough early. A fuzzy search of the call graph resolves half remembered function names.
+- **Open up Crop To Query** - the assistant points at calls inside the query's execution where it can. When it needs to show you something Crop To Query hides, such as compiling the plan, it turns the crop off and tells you why.
 
 ## Walking through a seek or a scan
 

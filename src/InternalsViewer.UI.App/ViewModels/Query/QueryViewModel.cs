@@ -726,7 +726,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             IncludeColumnstore = QueryOptions.Options.IncludeColumnstore,
             IncludeMemory = QueryOptions.Options.IncludeMemory,
             IncludeCallstack = QueryOptions.Options.IncludeCallStack,
-            LockModeCategories = [.. QueryOptions.Options.IncludeLockModeCategories]
+            LockModeCategories = [.. QueryOptions.Options.IncludeLockModeCategories],
+            CaptureHeapReads = QueryOptions.CaptureHeapReads,
+            CaptureHeapWrites = QueryOptions.CaptureHeapWrites,
+            CaptureStackMemory = QueryOptions.CaptureStackMemory
         };
 
         await _settingsService.SaveSettingAsync(LayoutSettingKey, dto);
@@ -1271,7 +1274,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                  dto.IncludeColumnstore,
                                  dto.IncludeMemory,
                                  dto.IncludeCallstack,
-                                 lockCategories);
+                                 lockCategories,
+                                 dto.CaptureHeapReads,
+                                 dto.CaptureHeapWrites,
+                                 dto.CaptureStackMemory);
 
             _layoutRestored = true;
         }

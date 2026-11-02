@@ -232,6 +232,8 @@ public static class Format
     public static string More(int total, int shown, string hint)
         => total > shown ? $"(+{total - shown} more; {hint})" : string.Empty;
 
+    public static string WithNote(string text, string? note) => note is null ? text : $"{text}{Environment.NewLine}{note}";
+
     public static void AppendIfNotEmpty(this StringBuilder builder, string text)
     {
         if (text.Length > 0)

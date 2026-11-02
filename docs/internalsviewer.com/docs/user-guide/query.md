@@ -75,6 +75,8 @@ Pages and indexes opened from the trace - by double-clicking a timeline event, c
 
 **Record Full Trace** records each run with Microsoft's Time Travel Debugging while it is on, so the [Call Tree](/docs/user-guide/query/CallStack) holds every call the query made rather than the stacks sampled at each event - see [Full Trace](/docs/user-guide/query/FullTrace). It is for development and test instances only: it needs administrator consent, can restart the SQL Server service, slows the recorded query down considerably and writes very large files. The dialog shown when it is turned on explains the requirements, and the **Time Travel Warning** [setting](/docs/user-guide/settings#time-travel-warning) brings the dialog back once it has been dismissed. While it is on, a red **Full Trace** badge sits at the end of the menu bar - click it to turn recording off again.
 
+**Capture** chooses what a Full Trace records of the query's memory for the Memory History in the [Trace Timeline](/docs/user-guide/query/TraceTimeline#memory). **Heap Memory** has **Reads** and **Writes**, for the memory the query allocates, and **Stack Memory** covers the objects its functions keep on their own stacks and hand to each other. All three are on by default. Turning some off makes a large query's recording quicker to load and smaller. They apply from the next run. The **Memory History** run option turns them all off together.
+
 **Search symbols** is covered in [Searching Symbols](/docs/user-guide/query/CallStack#searching-symbols).
 
 **Custom Hooks** opens the Custom Hooks tab - see [Custom Hooks](/docs/user-guide/query/FullTrace#custom-hooks).
@@ -85,7 +87,7 @@ Pages and indexes opened from the trace - by double-clicking a timeline event, c
 
 Panes are tabs that can be dragged into any layout - drop a tab beside or below another pane to split the space, or onto a pane to stack them. While dragging, the drop zones highlight to show where the tab will land. Right-click a tab for **Close All**, which closes every tab in its group, and **Close Others**, which closes every tab in the group except that one. Tabs that cannot be closed are left open. The default layout is the SQL Editor above the Timeline.
 
-The layout is remembered - the pane arrangement, timeline visibility, and the Events menu options, **Crop to query** and **Include system objects** are all restored the next time a Query tab is opened. **Track query** and **Record Full Trace** are not, and neither are the Index, Page, Columnstore and Simulation panes opened from a query. **Reset Layout** on the View menu puts everything back to the default.
+The layout is remembered - the pane arrangement, timeline visibility, and the Events menu options, **Crop to query**, **Include system objects** and the Trace menu's **Capture** options are all restored the next time a Query tab is opened. **Track query** and **Record Full Trace** are not, and neither are the Index, Page, Columnstore and Simulation panes opened from a query. **Reset Layout** on the View menu puts everything back to the default.
 
 ::: details How this works
 The query runs with an Extended Events session filtered to the connection, capturing page reads, locks, waits, per-operator profiles, and the execution plan. The events are matched to plan operators to build the timeline.

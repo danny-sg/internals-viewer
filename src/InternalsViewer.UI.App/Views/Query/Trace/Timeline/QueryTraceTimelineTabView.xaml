@@ -11,7 +11,11 @@
     xmlns:docking="using:InternalsViewer.UI.App.Controls.Docking"
     xmlns:selectors="using:InternalsViewer.UI.App.Helpers.Selectors"
     xmlns:models="using:InternalsViewer.UI.App.Models.Query.Trace.Timeline"
-    mc:Ignorable="d">
+    mc:Ignorable="d"
+    KeyboardAcceleratorPlacementMode="Hidden">
+    <UserControl.KeyboardAccelerators>
+        <KeyboardAccelerator x:Name="SearchAccelerator" Key="F" Modifiers="Control" Invoked="OnSearchAcceleratorInvoked"/>
+    </UserControl.KeyboardAccelerators>
     <docking:DockHost Layout="{x:Bind ViewModel.TraceTimelineTab.Dock, Mode=OneWay}">
         <docking:DockHost.FixedContent>
             <Grid>

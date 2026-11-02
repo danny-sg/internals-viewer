@@ -80,6 +80,8 @@ public partial class QueryViewModel : ITraceTimelineCommands
 
     public async Task PinPositionsAsync(TracePoint[] points) => (await RequireTimelineAsync()).PinPositions(points);
 
+    public async Task SetScopeAsync(TracePosition? from, TracePosition? to) => (await RequireTimelineAsync()).SetScope(from, to);
+
     public async Task<Guid> ShowIndicatorAsync(McpIndicatorRequest request) => (await RequireTimelineAsync()).ShowIndicator(request);
 
     public async Task<McpIndicatorResult?> WaitForIndicatorAsync(Guid id, TimeSpan timeout)

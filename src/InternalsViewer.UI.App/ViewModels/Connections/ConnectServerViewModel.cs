@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -12,17 +13,23 @@ using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models.Connections;
 using InternalsViewer.UI.App.Services;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.UI.App.ViewModels.Connections;
 
-public sealed class ConnectServerViewModelFactory(SettingsService settingsService)
+public sealed class ConnectServerViewModelFactory(ILogger<ConnectServerViewModel> logger,
+                                                   SettingsService settingsService)
 {
+    private ILogger<ConnectServerViewModel> Logger { get; } = logger;
+
     private SettingsService SettingsService { get; } = settingsService;
 
-    public ConnectServerViewModel Create() => new(SettingsService);
+    public ConnectServerViewModel Create() => new(Logger, SettingsService);
 }
 
-public partial class ConnectServerViewModel(SettingsService settingsService) : ObservableValidator
+public partial class ConnectServerViewModel(ILogger<ConnectServerViewModel> logger,
+                                            SettingsService settingsService)
+    : ObservableValidator
 {
     private readonly SqlConnectionStringBuilder _builder = new() { TrustServerCertificate = true };
 
@@ -55,8 +62,16 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
     private ObservableCollection<string> _databases = [];
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsDatabaseListErrorVisible))]
+    private string _databaseListError = string.Empty;
+
+    [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RefreshDatabasesCommand))]
     private bool _isBusy;
+
+    [ObservableProperty]
+    private bool _isDatabaseListRefreshing;
 
     [ObservableProperty]
     private string _connectButtonText = "Connect";
@@ -75,10 +90,19 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
     ];
 #pragma warning restore CS0618 // Type or member is obsolete
 
+    public bool IsDatabaseListErrorVisible => !string.IsNullOrEmpty(DatabaseListError);
+
+    private ILogger<ConnectServerViewModel> Logger { get; } = logger;
+
     private SettingsService SettingsService { get; } = settingsService;
+
+    private CancellationTokenSource? RefreshCancellation { get; set; }
 
     public bool CanConnect() => !HasErrors && !IsBusy;    
 
+    public bool CanRefreshDatabases() => !IsBusy;
+
+    [RelayCommand(CanExecute = nameof(CanRefreshDatabases))]
     public async Task RefreshDatabases()
     {
         if (string.IsNullOrWhiteSpace(InstanceName))
@@ -86,7 +110,15 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
             return;
         }
 
+        RefreshCancellation?.Cancel();
+
+        using var cancellation = new CancellationTokenSource();
+
+        RefreshCancellation = cancellation;
+
         IsBusy = true;
+        IsDatabaseListRefreshing = true;
+        DatabaseListError = string.Empty;
 
         try
         {
@@ -100,33 +132,45 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
 
             await using (var connection = new SqlConnection(connectionStringBuilder.ConnectionString))
             {
-                await connection.OpenAsync();
+                await connection.OpenAsync(cancellation.Token);
 
                 await using var command = connection.CreateCommand();
 
                 command.CommandText = "SELECT [name] FROM sys.databases ORDER BY [name]";
 
-                await using var reader = await command.ExecuteReaderAsync();
+                await using var reader = await command.ExecuteReaderAsync(cancellation.Token);
 
-                while (await reader.ReadAsync())
+                while (await reader.ReadAsync(cancellation.Token))
                 {
                     results.Add(reader.GetString(0));
                 }
             }
-            if ((!string.IsNullOrEmpty(Database) && !results.Contains(Database)))
-            {
-                results.Insert(0, Database);
-            }
 
-            Databases = new ObservableCollection<string>(results);
+            if (!cancellation.IsCancellationRequested)
+            {
+                SetDatabaseList(results);
+            }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            ClearDatabaseList();
+            if (!cancellation.IsCancellationRequested)
+            {
+                Logger.LogError(ex, "Failed to refresh databases for instance: {InstanceName}", InstanceName);
+
+                DatabaseListError = ex.Message;
+
+                SetDatabaseList([]);
+            }
         }
         finally
         {
-            IsBusy = false;
+            if (!cancellation.IsCancellationRequested)
+            {
+                RefreshCancellation = null;
+
+                IsBusy = false;
+                IsDatabaseListRefreshing = false;
+            }
         }
     }
 
@@ -152,21 +196,35 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
         ValidateAllProperties();
     }
 
+    /// <summary>
+    /// Gets the connection string from the current settings
+    /// </summary>
+    internal string GetConnectionString()
+    {
+        RefreshConnectionString();
+
+        return _builder.ConnectionString;
+    }
+
+    internal void SetDatabaseList(List<string> names)
+    {
+        var database = Database;
+
+        if (!string.IsNullOrEmpty(database) && !names.Contains(database))
+        {
+            names.Insert(0, database);
+        }
+
+        Databases = new ObservableCollection<string>(names);
+
+        Database = database;
+    }
+
     protected override void OnPropertyChanged(PropertyChangedEventArgs e)
     {
         ValidateAllProperties();
 
         base.OnPropertyChanged(e);
-    }
-
-    /// <summary>
-    /// Gets the connection string from the current settings
-    /// </summary>
-    private string GetConnectionString()
-    {
-        RefreshConnectionString();
-
-        return _builder.ConnectionString;
     }
 
     /// <summary>
@@ -260,16 +318,6 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
         return recent;
     }
 
-    private void ClearDatabaseList()
-    {
-        Databases.Clear();
-
-        if (!string.IsNullOrEmpty(Database))
-        {
-            Databases.Add(Database);
-        }
-    }
-
     private void RefreshConnectionString()
     {
         _builder.InitialCatalog = Database ?? "master";
@@ -277,12 +325,15 @@ public partial class ConnectServerViewModel(SettingsService settingsService) : O
 
         _builder.Authentication = (SqlAuthenticationMethod)AuthenticationType;
 
-        if (!string.IsNullOrEmpty(UserId))
+        _builder.Remove("User ID");
+        _builder.Remove(nameof(Password));
+
+        if (IsUserIdEnabled && !string.IsNullOrEmpty(UserId))
         {
             _builder.UserID = UserId;
         }
 
-        if (!string.IsNullOrEmpty(Password))
+        if (IsPasswordEnabled && !string.IsNullOrEmpty(Password))
         {
             _builder.Password = Password;
         }

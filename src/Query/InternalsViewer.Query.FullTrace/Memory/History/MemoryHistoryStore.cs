@@ -18,7 +18,8 @@ public sealed partial class MemoryHistoryStore
                                 IReadOnlyDictionary<int, ulong> iterators,
                                 MemoryHistoryRead[]? reads = null,
                                 int[]? readStarts = null,
-                                HighWordRuns? readInstructionHighs = null)
+                                HighWordRuns? readInstructionHighs = null,
+                                MemoryHistoryInstance[]? instances = null)
     {
         Blocks = blocks;
         BlockArray = blocks;
@@ -29,6 +30,7 @@ public sealed partial class MemoryHistoryStore
         Reads = reads ?? [];
         ReadStarts = readStarts ?? [];
         ReadInstructionHighs = readInstructionHighs ?? HighWordRuns.Empty;
+        Instances = instances ?? [];
     }
 
     public static MemoryHistoryStore Empty { get; } = new([], [], HighWordRuns.Empty, [], new Dictionary<int, ulong>());
@@ -41,13 +43,15 @@ public sealed partial class MemoryHistoryStore
 
     public bool HasReads => ReadStarts.Length > 0;
 
-    internal long Bytes => WriteBytes + ReadBytes;
+    internal long Bytes => WriteBytes + ReadBytes + InstanceBytes;
 
     internal long WriteBytes => Writes.Length * (long)Unsafe.SizeOf<MemoryHistoryWrite>() + InstructionHighs.Bytes + Data.Length;
 
     internal long ReadBytes => Reads.Length * (long)Unsafe.SizeOf<MemoryHistoryRead>()
                                + ReadStarts.Length * (long)sizeof(int)
                                + ReadInstructionHighs.Bytes;
+
+    internal long InstanceBytes => Instances.Length * (long)Unsafe.SizeOf<MemoryHistoryInstance>();
 
     private MemoryHistoryBlock[] BlockArray { get; }
 
@@ -65,7 +69,11 @@ public sealed partial class MemoryHistoryStore
 
     private HighWordRuns ReadInstructionHighs { get; }
 
-    private AddressIndex Addresses => field ??= GetAddressIndex();
+    private MemoryHistoryInstance[] Instances { get; }
+
+    private AddressIndex Addresses => field ??= GetAddressIndex(isStack: false);
+
+    private AddressIndex StackAddresses => field ??= GetAddressIndex(isStack: true);
 
 
     public IReadOnlyList<MemoryHistoryWrite> GetWrites(int block)
@@ -154,26 +162,26 @@ public sealed partial class MemoryHistoryStore
         => SortedSearch.FirstAfter<MemoryHistoryWrite, TracePosition>(GetBlockWrites(block), position, w => w.Position);
 
     public int GetBlock(ulong address, TracePosition position)
-    {
-        var (blocks, starts, largest) = Addresses;
-
-        var found = -1;
-
-        for (var index = SortedSearch.FirstAfter(starts, address) - 1; index >= 0 && address - starts[index] < largest; index--)
-        {
-            var block = blocks[index];
-
-            if (IsLiveAt(block, address, position) && (found < 0 || BlockArray[block].Size < BlockArray[found].Size))
-            {
-                found = block;
-            }
-        }
-
-        return found;
-    }
+        => GetBlock(StackAddresses, address, position) is >= 0 and var stack ? stack : GetBlock(Addresses, address, position);
 
     public bool IsLive(int block, TracePosition position)
-        => BlockArray[block].FromPosition <= position && position < BlockArray[block].ToPosition;
+        => BlockArray[block] is { InstanceCount: > 0 }
+            ? GetInstance(block, position) >= 0
+            : BlockArray[block].FromPosition <= position && position < BlockArray[block].ToPosition;
+
+    public IReadOnlyList<MemoryHistoryInstance> GetInstances(int block)
+        => block >= 0 && block < BlockArray.Length
+            ? new ArraySegment<MemoryHistoryInstance>(Instances, BlockArray[block].FirstInstance, BlockArray[block].InstanceCount)
+            : ArraySegment<MemoryHistoryInstance>.Empty;
+
+    public int GetInstance(int block, TracePosition position)
+    {
+        ReadOnlySpan<MemoryHistoryInstance> instances = Instances.AsSpan(BlockArray[block].FirstInstance, BlockArray[block].InstanceCount);
+
+        var index = SortedSearch.FirstAfter<MemoryHistoryInstance, TracePosition>(instances, position, i => i.FromPosition) - 1;
+
+        return index >= 0 && position < instances[index].ToPosition ? index : -1;
+    }
 
     public bool[] GetChangingBytes(int block)
     {
@@ -477,13 +485,34 @@ public sealed partial class MemoryHistoryStore
         return merged;
     }
 
-    private AddressIndex GetAddressIndex()
+    private int GetBlock(AddressIndex index, ulong address, TracePosition position)
     {
-        int[] blocks = [.. Enumerable.Range(0, BlockArray.Length).OrderBy(b => BlockArray[b].Address)];
+        var (blocks, starts, largest) = index;
+
+        var found = -1;
+
+        for (var at = SortedSearch.FirstAfter(starts, address) - 1; at >= 0 && address - starts[at] < largest; at--)
+        {
+            var block = blocks[at];
+
+            if (IsLiveAt(block, address, position) && (found < 0 || BlockArray[block].Size < BlockArray[found].Size))
+            {
+                found = block;
+            }
+        }
+
+        return found;
+    }
+
+    private AddressIndex GetAddressIndex(bool isStack)
+    {
+        int[] blocks = [.. Enumerable.Range(0, BlockArray.Length)
+                                     .Where(b => BlockArray[b].IsStack == isStack)
+                                     .OrderBy(b => BlockArray[b].Address)];
 
         return new AddressIndex(blocks,
                                 [.. blocks.Select(b => BlockArray[b].Address)],
-                                BlockArray.Length == 0 ? 0 : (ulong)BlockArray.Max(b => b.Size));
+                                blocks.Length == 0 ? 0 : (ulong)blocks.Max(b => BlockArray[b].Size));
     }
 
     private sealed record AddressIndex(int[] Blocks, ulong[] Starts, ulong Largest);

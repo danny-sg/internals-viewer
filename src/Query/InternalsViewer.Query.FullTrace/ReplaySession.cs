@@ -14,6 +14,7 @@ using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Stubs;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
+using InternalsViewer.Query.FullTrace.Memory.History.StackObjects;
 using InternalsViewer.Query.FullTrace.Memory.History.Watches;
 
 namespace InternalsViewer.Query.FullTrace;
@@ -88,6 +89,7 @@ internal sealed class ReplaySession : IDisposable
     public async Task<ReplayResult> ReplayAsync(IReadOnlyCollection<uint> threadIds,
                                                 ReplayFunctions functions,
                                                 IReadOnlyList<CustomHookDefinition> customHooks,
+                                                bool isStackRecorded,
                                                 IProgress<double>? progress,
                                                 CancellationToken cancellationToken)
     {
@@ -95,7 +97,8 @@ internal sealed class ReplaySession : IDisposable
 
         try
         {
-            return await Task.Run(() => Replay([.. threadIds], functions, customHooks, progress, cancellationToken), cancellationToken);
+            return await Task.Run(() => Replay([.. threadIds], functions, customHooks, isStackRecorded, progress, cancellationToken),
+                                  cancellationToken);
         }
         finally
         {
@@ -107,6 +110,7 @@ internal sealed class ReplaySession : IDisposable
                                               TracePosition start,
                                               TracePosition end,
                                               Func<WatchHit, bool> keep,
+                                              bool isWatchingWrites,
                                               Action<WatchHit>? onRead,
                                               IProgress<double>? progress,
                                               CancellationToken cancellationToken)
@@ -115,7 +119,8 @@ internal sealed class ReplaySession : IDisposable
 
         try
         {
-            return await Task.Run(() => Watch([.. ranges], start, end, keep, onRead, progress, cancellationToken), cancellationToken);
+            return await Task.Run(() => Watch([.. ranges], start, end, keep, isWatchingWrites, onRead, progress, cancellationToken),
+                                  cancellationToken);
         }
         finally
         {
@@ -148,6 +153,7 @@ internal sealed class ReplaySession : IDisposable
     private ReplayResult Replay(uint[] threads,
                                 ReplayFunctions functions,
                                 IReadOnlyList<CustomHookDefinition> customHooks,
+                                bool isStackRecorded,
                                 IProgress<double>? progress,
                                 CancellationToken cancellationToken)
     {
@@ -195,12 +201,15 @@ internal sealed class ReplaySession : IDisposable
 
         var bufferPool = new BufferPoolHook(functions.BufferPool);
 
+        var stack = isStackRecorded ? new StackSnapshotHook(functions.MemoryMapFunctions) : null;
+
         var hooks = new TraceHooks([planNodeHook,
                                     new LocatorHook(functions.LocatorReads, store, images),
                                     memoryMap,
                                     output,
                                     customHook,
-                                    bufferPool]);
+                                    bufferPool,
+                                    .. stack is null ? Array.Empty<ITraceHook>() : [stack]]);
 
         ReplayBridge.HookCallback onHook = hooks.OnHook;
 
@@ -275,7 +284,8 @@ internal sealed class ReplaySession : IDisposable
                                         planNodeHook.GetPlanNodes(),
                                         planNodeHook.GetTeardowns())
                 {
-                    Buffers = bufferPool.GetBuffers()
+                    Buffers = bufferPool.GetBuffers(),
+                    StackSnapshots = stack?.Build() ?? StackSnapshots.Empty
                 };
             }
             finally
@@ -295,6 +305,7 @@ internal sealed class ReplaySession : IDisposable
                                      TracePosition start,
                                      TracePosition end,
                                      Func<WatchHit, bool> keep,
+                                     bool isWatchingWrites,
                                      Action<WatchHit>? onRead,
                                      IProgress<double>? progress,
                                      CancellationToken cancellationToken)
@@ -388,7 +399,7 @@ internal sealed class ReplaySession : IDisposable
             var result = ReplayBridge.WatchMemory(Handle,
                                                   ranges,
                                                   ranges.Length,
-                                                  onRead is null ? WriteAccess : WriteAccess | ReadAccess,
+                                                  (isWatchingWrites ? WriteAccess : 0) | (onRead is null ? 0 : ReadAccess),
                                                   start.Sequence,
                                                   end.IsKnown ? end.Sequence + 1 : 0,
                                                   onHits,

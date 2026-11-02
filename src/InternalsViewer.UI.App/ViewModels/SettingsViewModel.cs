@@ -60,6 +60,8 @@ public partial class SettingsViewModel(SettingsService settingsService,
     private const string McpServerPortKey = "McpServerPort";
     private const string McpServerTokenKey = "McpServerToken";
 
+    private const char HiddenTokenCharacter = '\u25CF';
+
     private const string McpServerStoppedStatus = "Stopped";
 
     private const string DefaultCallTreeHiddenCategories =
@@ -153,12 +155,19 @@ public partial class SettingsViewModel(SettingsService settingsService,
     private double _mcpServerPort = McpHostSettings.DefaultPort;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(McpServerTokenText))]
     private string _mcpServerToken = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(McpServerTokenText))]
+    private bool _isMcpServerTokenVisible;
 
     [ObservableProperty]
     private string _mcpServerStatus = McpServerStoppedStatus;
 
     public string McpServerEndpoint => GetMcpHostSettings().Endpoint;
+
+    public string McpServerTokenText => IsMcpServerTokenVisible ? McpServerToken : new string(HiddenTokenCharacter, McpServerToken.Length);
 
     public ObservableCollection<McpClientViewModel> McpClients
     {
@@ -307,6 +316,12 @@ public partial class SettingsViewModel(SettingsService settingsService,
 
         await UpdateRegisteredMcpClientsAsync();
     }
+
+    [RelayCommand]
+    private void CopyMcpServerEndpoint() => ClipboardText.Copy(McpServerEndpoint);
+
+    [RelayCommand]
+    private void CopyMcpServerToken() => ClipboardText.Copy(McpServerToken);
 
     private McpHostSettings GetMcpHostSettings() => new((int)McpServerPort, McpServerToken);
 

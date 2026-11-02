@@ -22,15 +22,22 @@ public sealed partial class SettingsView : Page
 
         ViewModel.RefreshMemoryUsage();
 
+        var at = McpServerExpander.Items.IndexOf(ManualMcpClient);
+
         foreach (var client in ViewModel.McpClients)
         {
-            McpServerExpander.Items.Add(CreateMcpClientCard(client));
+            McpServerExpander.Items.Insert(at++, CreateMcpClientCard(client));
         }
 
         _memoryTimer.Tick += (_, _) => ViewModel.RefreshMemoryUsage();
 
         Loaded += (_, _) => _memoryTimer.Start();
-        Unloaded += (_, _) => _memoryTimer.Stop();
+        Unloaded += (_, _) =>
+        {
+            _memoryTimer.Stop();
+
+            ViewModel.IsMcpServerTokenVisible = false;
+        };
     }
 
     internal AppLogViewModel AppLogViewModel { get; } = App.GetService<AppLogViewModel>();

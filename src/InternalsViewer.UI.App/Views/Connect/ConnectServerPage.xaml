@@ -12,6 +12,13 @@
     <Grid Padding="20">
         <Grid.Resources>
             <converters:BoolNegationConverter x:Key="BoolNegationConverter" />
+            <Storyboard x:Name="RefreshSpinStoryboard" RepeatBehavior="Forever">
+                <DoubleAnimation Storyboard.TargetName="RefreshIconRotation"
+                                 Storyboard.TargetProperty="Angle"
+                                 From="0"
+                                 To="360"
+                                 Duration="0:0:1" />
+            </Storyboard>
             <Style TargetType="TextBox">
                 <Setter Property="FontSize" Value="14" />
             </Style>
@@ -32,7 +39,7 @@
             <controls:SettingsCard Description="Name or network address of the SQL Server instance"
                             Header="Instance Name"
                             CornerRadius="4,4,0,0">
-                <TextBox Text="{x:Bind ViewModel.InstanceName, Mode=TwoWay}" MinWidth="300" />
+                <TextBox Text="{x:Bind ViewModel.InstanceName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" MinWidth="300" />
             </controls:SettingsCard>
 
             <controls:SettingsCard Header="Authentication"
@@ -48,7 +55,7 @@
             <controls:SettingsCard x:Name="UserIdSettingsCard"
                                    Header="User Id"
                                    IsEnabled="{x:Bind ViewModel.IsUserIdEnabled, Mode=OneWay}">
-                <TextBox Text="{x:Bind ViewModel.UserId, Mode=TwoWay}" MinWidth="300" />
+                <TextBox Text="{x:Bind ViewModel.UserId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" MinWidth="300" />
             </controls:SettingsCard>
 
             <controls:SettingsCard x:Name="PasswordSettingsCard"
@@ -59,12 +66,43 @@
 
             <controls:SettingsCard Description="Name of the database" Header="Database" >
                 <StackPanel>
-                    <ComboBox DropDownOpened="DatabaseComboBox_DropDownOpened"
-                              ItemsSource="{x:Bind ViewModel.Databases, Mode=OneWay}"
-                              Text="{x:Bind ViewModel.Database, Mode=TwoWay}"
-                              SelectedItem="{x:Bind ViewModel.Database, Mode=TwoWay}"
-                              IsEditable="True"
-                              MinWidth="300" />
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <ComboBox DropDownOpened="DatabaseComboBox_DropDownOpened"
+                                  ItemsSource="{x:Bind ViewModel.Databases, Mode=OneWay}"
+                                  Text="{x:Bind ViewModel.Database, Mode=TwoWay}"
+                                  SelectedItem="{x:Bind ViewModel.Database, Mode=TwoWay}"
+                                  IsEditable="True"
+                                  HorizontalAlignment="Stretch"
+                                  MinWidth="260" />
+                        <Button Grid.Column="1"
+                                Command="{x:Bind ViewModel.RefreshDatabasesCommand}"
+                                ToolTipService.ToolTip="Refresh Databases"
+                                AutomationProperties.Name="Refresh Databases"
+                                Width="32"
+                                Height="32"
+                                Padding="0">
+                            <FontIcon Glyph="&#xE72C;" FontSize="14" RenderTransformOrigin="0.5,0.5">
+                                <FontIcon.RenderTransform>
+                                    <RotateTransform x:Name="RefreshIconRotation" />
+                                </FontIcon.RenderTransform>
+                            </FontIcon>
+                        </Button>
+                    </Grid>
+                    <TextBlock Text="Connecting..."
+                               Visibility="{x:Bind ViewModel.IsDatabaseListRefreshing, Mode=OneWay}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               Margin="0,4,0,0" />
+                    <TextBlock Text="{x:Bind ViewModel.DatabaseListError, Mode=OneWay}"
+                               Visibility="{x:Bind ViewModel.IsDatabaseListErrorVisible, Mode=OneWay}"
+                               Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                               TextWrapping="Wrap"
+                               IsTextSelectionEnabled="True"
+                               MaxWidth="300"
+                               Margin="0,4,0,0" />
                 </StackPanel>
             </controls:SettingsCard>
 

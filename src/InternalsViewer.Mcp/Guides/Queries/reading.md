@@ -51,8 +51,8 @@ A Full Trace is recorded for one reason: to see how the engine executed the quer
 memory. Expect questions like "explain what the Sort operator is doing", "what is the batch using those vectors for" or "what
 does this field of the hash join hold", and expect to answer them from several tools run in turn: the operator's entry frames,
 its call tree by phase with counts, its methods and arguments from the call log, its allocations by class and site, the writes
-to its object with their writers, and its cost in instructions. Organise the answer by phase, cite node ids, addresses, block
-numbers and positions, and mark what is read from a name rather than recorded. The `full-trace-investigations` guide has the
+to its object with their writers, and its cost in instructions. Organise the answer by phase, cite positions, addresses and block
+numbers (never call tree node ids, which are internal), and mark what is read from a name rather than recorded. The `full-trace-investigations` guide has the
 method, a worked hash join and the batch memory layout.
 
 # Left out on purpose

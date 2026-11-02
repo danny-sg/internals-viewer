@@ -75,20 +75,20 @@ public sealed partial class TraceTimelineControl
 
         var range = _viewEnd - _viewStart;
 
-        var next = Math.Min(playhead + range * PlayTickMs / SweepDurationMs, TrimTo);
+        var next = IsTrimmed && playhead >= TrimTo ? TrimFrom : Math.Min(playhead + range * PlayTickMs / SweepDurationMs, TrimTo);
 
         _playhead = next;
 
         ClearPins();
 
-        if (next > _viewEnd)
+        if (next > _viewEnd || next < _viewStart)
         {
             ScrollViewTo(next);
         }
 
         _canvas.Invalidate();
 
-        if (next >= TrimTo)
+        if (next >= TrimTo && !IsTrimmed)
         {
             StopPlay();
         }

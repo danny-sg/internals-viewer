@@ -8,6 +8,7 @@ using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Timeline;
+using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryHistory;
 using Windows.Foundation;
@@ -28,6 +29,8 @@ public sealed partial class MemoryReferenceGraphViewModel : ObservableObject
 
     private const string TypeSeparator = " / ";
 
+    private const string BytesType = "Bytes";
+
     private const int GraphLimit = 300;
 
     private const int HotDepth = 6;
@@ -39,6 +42,8 @@ public sealed partial class MemoryReferenceGraphViewModel : ObservableObject
     private const double NodeWidth = 230;
 
     private const double NodeHeight = 48;
+
+    private const double WatchLineHeight = 14;
 
     private const double ColumnGap = 132;
 
@@ -112,6 +117,10 @@ public sealed partial class MemoryReferenceGraphViewModel : ObservableObject
 
         Title = title;
 
+        Watches = history.GetWatchSnapshot();
+
+        history.WatchesChanged += OnWatchesChanged;
+
         Refresh();
     }
 
@@ -155,6 +164,12 @@ public sealed partial class MemoryReferenceGraphViewModel : ObservableObject
 
     private ConcurrentDictionary<int, string> TypeNames { get; } = new();
 
+    private ConcurrentDictionary<int, string> WatchNames { get; } = new();
+
+    private Dictionary<string, HexWatch[]> Watches { get; set; }
+
+    private Dictionary<int, WatchImage> WatchImages { get; set; } = [];
+
     private bool IsHighlighting { get; set; }
 
     public void SetPlayhead(TracePosition? position)
@@ -168,11 +183,15 @@ public sealed partial class MemoryReferenceGraphViewModel : ObservableObject
     {
         ClearHighlight();
 
+        History.WatchesChanged -= OnWatchesChanged;
+
         Loader.Cancel();
 
         Shown = null;
 
         Graph = null;
+
+        WatchImages = [];
     }
 
     public void RefreshScope() => Refresh();
@@ -378,7 +397,8 @@ public sealed partial class MemoryReferenceGraphViewModel : ObservableObject
                                        referrers.Contains,
                                        GetWindow(),
                                        History.Scale,
-                                       shutdown);
+                                       shutdown,
+                                       Watches);
 
         Loader.Request(() => Load(isHot ? Build(_ => true, HotDepth).GetHot(isReferenceHot, isDataHot) : Build(isExpanded, int.MaxValue)));
 
@@ -456,6 +476,8 @@ public sealed partial class MemoryReferenceGraphViewModel : ObservableObject
 
         Progress = end > start ? Math.Clamp((History.Scale.GetValue(position) - start) / (end - start), 0, 1) : 0;
 
+        var images = new Dictionary<int, WatchImage>();
+
         for (var index = 0; index < graph.Nodes.Count; index++)
         {
             var node = shown.Nodes[index];
@@ -467,13 +489,124 @@ public sealed partial class MemoryReferenceGraphViewModel : ObservableObject
             node.Detail = target is { } value ? GetValueText(value, position) : string.Empty;
 
             node.CanOpen = target is { } openable && CanOpen(openable);
+
+            if (node.WatchCount > 0)
+            {
+                var watches = GetWatchLines(graph.Nodes[index], node.WatchCount, position, images);
+
+                if (!watches.SequenceEqual(node.Watches))
+                {
+                    node.Watches = watches;
+                }
+            }
         }
+
+        WatchImages = images;
 
         foreach (var (edge, pointer) in MovingEdges)
         {
             edge.Label = GetPointerLabel(pointer, graph.GetTargetOffset(pointer, position));
         }
     }
+
+    private void OnWatchesChanged(object? sender, EventArgs e)
+    {
+        Watches = History.GetWatchSnapshot();
+
+        if (Shown is { } model && Graph is { } graph && IsWatchCountChanged(model, graph))
+        {
+            Refresh();
+
+            return;
+        }
+
+        UpdateValues();
+    }
+
+    private bool IsWatchCountChanged(MemoryHistoryGraph model, MemoryReferenceGraph graph)
+    {
+        for (var index = 0; index < model.Nodes.Count; index++)
+        {
+            if (GetWatchCount(model.Nodes[index], Watches) != graph.Nodes[index].WatchCount)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private int GetWatchCount(MemoryHistoryGraphNode node, Dictionary<string, HexWatch[]> watches)
+    {
+        if (watches.Count == 0)
+        {
+            return 0;
+        }
+
+        var count = 0;
+
+        foreach (var block in node.Targets.Where(t => t.Block >= 0).Select(t => t.Block).Distinct())
+        {
+            count = Math.Max(count, GetWatches(node, block, watches).Count());
+        }
+
+        return count;
+    }
+
+    private IEnumerable<HexWatch> GetWatches(MemoryHistoryGraphNode node, int block, Dictionary<string, HexWatch[]> watches)
+        => watches.TryGetValue(GetWatchName(block), out var found)
+            ? found.Where(w => node.Element is not { } element || (element.Contains(w.Offset) && element.Contains(w.End)))
+            : [];
+
+    private string GetWatchName(int block) => WatchNames.GetOrAdd(block, History.GetWatchName);
+
+    private MemoryReferenceGraphWatch[] GetWatchLines(MemoryHistoryGraphNode node,
+                                                      int count,
+                                                      TracePosition position,
+                                                      Dictionary<int, WatchImage> images)
+    {
+        if (GetBlock(node, position) is not { } block)
+        {
+            return [];
+        }
+
+        HexWatch[] watches = [.. GetWatches(node, block, Watches).Take(count)];
+
+        if (watches.Length == 0)
+        {
+            return [];
+        }
+
+        var data = GetWatchData(block, position, images);
+
+        return [.. watches.Select(w => new MemoryReferenceGraphWatch(GetWatchLabel(node, w), MemoryWatchRowViewModel.GetValue(w, data)))];
+    }
+
+    private byte[]? GetWatchData(int block, TracePosition position, Dictionary<int, WatchImage> images)
+    {
+        var store = History.Store;
+
+        if (!store.IsLive(block, position))
+        {
+            return null;
+        }
+
+        var count = store.GetWriteCount(block, position);
+
+        if (!(images.TryGetValue(block, out var image) || WatchImages.TryGetValue(block, out image)) || image.WriteCount != count)
+        {
+            image = new WatchImage(count, store.GetImage(block, count - 1).Data);
+        }
+
+        images[block] = image;
+
+        return image.Data;
+    }
+
+    private static string GetWatchLabel(MemoryHistoryGraphNode node, HexWatch watch)
+        => string.IsNullOrWhiteSpace(watch.Label)
+            ? $"{GetOffsetText(watch.Offset - (node.Element?.Offset ?? 0))} {watch.DataType ?? BytesType}"
+            : watch.Label;
 
     private MemoryReferenceGraph GetGraph(MemoryHistoryGraph graph,
                                           GraphContext context,
@@ -517,6 +650,28 @@ public sealed partial class MemoryReferenceGraphViewModel : ObservableObject
 
         var rowCount = count == 0 ? 0 : Place(children, referrers, rows, spans, 0, 0, true);
 
+        var watchCounts = new int[count];
+
+        var rowHeights = new double[rowCount];
+
+        Array.Fill(rowHeights, NodeHeight);
+
+        for (var index = 0; index < count; index++)
+        {
+            watchCounts[index] = GetWatchCount(graph.Nodes[index], context.Watches);
+
+            rowHeights[rows[index]] = Math.Max(rowHeights[rows[index]], GetNodeHeight(watchCounts[index]));
+        }
+
+        var rowTops = new double[rowCount + 1];
+
+        rowTops[0] = GraphMargin;
+
+        for (var row = 0; row < rowCount; row++)
+        {
+            rowTops[row + 1] = rowTops[row] + rowHeights[row] + RowGap;
+        }
+
         var first = count == 0 ? 0 : graph.Nodes.Min(n => n.Depth);
 
         var nodes = new List<MemoryReferenceGraphNode>(count);
@@ -525,7 +680,8 @@ public sealed partial class MemoryReferenceGraphViewModel : ObservableObject
         {
             nodes.Add(CreateNode(graph.Nodes[index],
                                  GraphMargin + (graph.Nodes[index].Depth - first) * (NodeWidth + ColumnGap),
-                                 GraphMargin + rows[index] * (NodeHeight + RowGap),
+                                 rowTops[rows[index]],
+                                 watchCounts[index],
                                  index == 0,
                                  context));
         }
@@ -556,13 +712,15 @@ public sealed partial class MemoryReferenceGraphViewModel : ObservableObject
 
             var isTree = graph.IsTreeEdge(pointers[0]);
 
+            var rowBottom = rowTops[rows[pointers[0].To] + 1] - RowGap;
+
             if (pointers.Count == 1)
             {
-                AddEdge(pointers[0], widest => CreateEdge(from, to, pointers, isTree, isReferrer, isSideEntry, widest));
+                AddEdge(pointers[0], widest => CreateEdge(from, to, pointers, isTree, isReferrer, isSideEntry, rowBottom, widest));
             }
             else
             {
-                edges.Add(CreateEdge(from, to, pointers, isTree, isReferrer, isSideEntry, null));
+                edges.Add(CreateEdge(from, to, pointers, isTree, isReferrer, isSideEntry, rowBottom, null));
             }
         }
 
@@ -585,7 +743,7 @@ public sealed partial class MemoryReferenceGraphViewModel : ObservableObject
         return new MemoryReferenceGraph(nodes,
                                         edges,
                                         GraphMargin * 2 + columns * (NodeWidth + ColumnGap) - ColumnGap,
-                                        GraphMargin * 2 + rowCount * (NodeHeight + RowGap) - RowGap,
+                                        rowTops[rowCount] - RowGap + GraphMargin,
                                         NodeWidth,
                                         NodeHeight,
                                         graph.IsTruncated,
@@ -638,9 +796,12 @@ public sealed partial class MemoryReferenceGraphViewModel : ObservableObject
         return Math.Max(1, (int)Math.Ceiling(height / (NodeHeight + RowGap)));
     }
 
+    private static double GetNodeHeight(int watchCount) => NodeHeight + watchCount * WatchLineHeight;
+
     private MemoryReferenceGraphNode CreateNode(MemoryHistoryGraphNode node,
                                                 double x,
                                                 double y,
+                                                int watchCount,
                                                 bool isRoot,
                                                 GraphContext context)
     {
@@ -659,6 +820,8 @@ public sealed partial class MemoryReferenceGraphViewModel : ObservableObject
         return new MemoryReferenceGraphNode(types,
                                             x,
                                             y,
+                                            GetNodeHeight(watchCount),
+                                            watchCount,
                                             isRoot,
                                             node.IsData,
                                             context.IsExpanded(path),
@@ -856,6 +1019,7 @@ public sealed partial class MemoryReferenceGraphViewModel : ObservableObject
                                                        bool isTree,
                                                        bool isReferrer,
                                                        bool isSideEntry,
+                                                       double rowBottom,
                                                        int? widest)
     {
         var isUp = to.Y < from.Y;
@@ -872,7 +1036,7 @@ public sealed partial class MemoryReferenceGraphViewModel : ObservableObject
         var trunk = isReferrer ? end.X - TrunkGap : start.X + (isTree ? TrunkGap : isUp ? UpLinkTrunkGap : DownLinkTrunkGap);
 
         Point[] points = IsDetour(from, to)
-            ? GetDetour(from, to, start, isUp)
+            ? GetDetour(from, to, start, isUp, rowBottom)
             : [start, new Point(trunk, start.Y), new Point(trunk, end.Y), end];
 
         var labelAt = isReferrer || !isTree
@@ -942,11 +1106,15 @@ public sealed partial class MemoryReferenceGraphViewModel : ObservableObject
         return columns is < 0 or > 1;
     }
 
-    private static Point[] GetDetour(MemoryReferenceGraphNode from, MemoryReferenceGraphNode to, Point start, bool isUp)
+    private static Point[] GetDetour(MemoryReferenceGraphNode from,
+                                     MemoryReferenceGraphNode to,
+                                     Point start,
+                                     bool isUp,
+                                     double rowBottom)
     {
         var isBelow = from.Y >= to.Y;
 
-        var gap = isBelow ? to.Y + NodeHeight + RowGap / 2 : to.Y - RowGap / 2;
+        var gap = isBelow ? rowBottom + RowGap / 2 : to.Y - RowGap / 2;
 
         var exit = start.X + (isUp ? UpLinkTrunkGap : DownLinkTrunkGap);
 
@@ -999,5 +1167,8 @@ public sealed partial class MemoryReferenceGraphViewModel : ObservableObject
                                        Func<string, bool> IsReferrersExpanded,
                                        (double Start, double End) Window,
                                        TraceScale Scale,
-                                       TracePosition Shutdown);
+                                       TracePosition Shutdown,
+                                       Dictionary<string, HexWatch[]> Watches);
+
+    private readonly record struct WatchImage(int WriteCount, byte[] Data);
 }

@@ -5,6 +5,7 @@ using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
+using InternalsViewer.Query.FullTrace.Memory.History.StackObjects;
 using InternalsViewer.Query.FullTrace.Memory.History.Watches;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -164,8 +165,9 @@ internal static class MemoryHistoryBuilder
                                                                                   IReadOnlyList<ulong> owners,
                                                                                   IReadOnlyDictionary<ulong, TracePosition> iterators,
                                                                                   WatchResult watched,
-                                                                                  TraceTimeline? timeline)
-        => new Recording(allocations, owners, iterators, timeline).Build(watched);
+                                                                                  TraceTimeline? timeline,
+                                                                                  StackSnapshots? stack = null)
+        => new Recording(allocations, owners, iterators, timeline, stack).Build(watched);
 
     private static bool IsWatched(MemoryFunction function)
         => !function.IsVirtual
@@ -181,19 +183,20 @@ internal static class MemoryHistoryBuilder
         return block.Image![offset] != value ? MemoryHistoryChangeType.Changed : null;
     }
 
-    private static (MemoryHistoryBlock[] Kept, int[] FirstWrites) GetKeptBlocks(List<WatchedBlock> blocks,
-                                                                                StackLookup stacks,
-                                                                                int[] written)
+    private static (MemoryHistoryBlock[] Kept, int[] FirstWrites, MemoryHistoryInstance[] Instances)
+        GetKeptBlocks(List<WatchedBlock> blocks, StackLookup stacks, int[] written, bool[] isKept)
     {
         var firstWrites = new int[blocks.Count];
 
         var kept = new List<MemoryHistoryBlock>();
 
+        var instances = new List<MemoryHistoryInstance>();
+
         var firstWrite = 0;
 
         for (var index = 0; index < blocks.Count; index++)
         {
-            if (written[index] == 0)
+            if (!isKept[index])
             {
                 continue;
             }
@@ -202,7 +205,17 @@ internal static class MemoryHistoryBuilder
 
             var block = blocks[index];
 
-            var callNodeIndex = stacks.GetCallNodeIndex(block.Thread, block.FromPosition);
+            var callNodeIndex = block.IsStack ? block.CallNodeIndex : stacks.GetCallNodeIndex(block.Thread, block.FromPosition);
+
+            var firstInstance = instances.Count;
+
+            foreach (var (from, to) in block.Instances.OrderBy(i => i.From))
+            {
+                instances.Add(new MemoryHistoryInstance(from,
+                                                        to,
+                                                        stacks.GetInstructions(block.Thread, from),
+                                                        to.IsKnown ? stacks.GetInstructions(block.Thread, to) : 0));
+            }
 
             kept.Add(new MemoryHistoryBlock(block.Iterator,
                                             block.Address,
@@ -216,12 +229,17 @@ internal static class MemoryHistoryBuilder
                                             stacks.GetInstructions(block.Thread, block.FromPosition),
                                             block.ToPosition.IsKnown ? stacks.GetInstructions(block.Thread, block.ToPosition) : 0,
                                             firstWrite,
-                                            written[index]));
+                                            written[index])
+            {
+                IsStack = block.IsStack,
+                FirstInstance = firstInstance,
+                InstanceCount = block.Instances.Count
+            });
 
             firstWrite += written[index];
         }
 
-        return ([.. kept], firstWrites);
+        return ([.. kept], firstWrites, [.. instances]);
     }
 
     internal sealed class Recording
@@ -229,8 +247,13 @@ internal static class MemoryHistoryBuilder
         internal Recording(IReadOnlyList<MemoryHistoryAllocation> allocations,
                            IReadOnlyList<ulong> owners,
                            IReadOnlyDictionary<ulong, TracePosition> iterators,
-                           TraceTimeline? timeline)
+                           TraceTimeline? timeline,
+                           StackSnapshots? stack = null)
         {
+            Stacks = new StackLookup(timeline);
+
+            Stack = stack ?? StackSnapshots.Empty;
+
             for (var index = 0; index < allocations.Count; index++)
             {
                 var allocation = allocations[index].Block;
@@ -247,18 +270,19 @@ internal static class MemoryHistoryBuilder
                                             allocations[index].IsBuffer));
             }
 
+            Sites = AddStackSites();
+
             Lookup = new BlockIndex(Blocks);
 
             Lookup.ClipToContainers();
 
             Lookup.AddIterators(iterators);
 
-            Stacks = new StackLookup(timeline);
-
             foreach (var block in Blocks)
             {
                 block.IsBufferPool = !block.IsIterator
                                      && !block.IsBuffer
+                                     && !block.IsStack
                                      && Stacks.IsBufferPool(Stacks.GetCallNodeIndex(block.Thread, block.FromPosition), block.IsClerkPage);
             }
 
@@ -275,6 +299,10 @@ internal static class MemoryHistoryBuilder
 
         private ReadRecorder Reads { get; }
 
+        private StackSnapshots Stack { get; }
+
+        private int[] Sites { get; }
+
         public void AddRead(WatchHit hit) => Reads.Add(hit);
 
         public (MemoryHistoryStore Store, MemoryHistoryHitCounts Counts) Build(WatchResult watched)
@@ -288,7 +316,16 @@ internal static class MemoryHistoryBuilder
                 recorder.Count(hit, bytes.AsSpan(hit.DataOffset, hit.Size));
             }
 
-            var (kept, firstWrites) = GetKeptBlocks(Blocks, Stacks, recorder.Written);
+            ApplySnapshots(recorder);
+
+            var isKept = Reads.GetReadBlocks(Blocks.Count);
+
+            for (var index = 0; index < isKept.Length; index++)
+            {
+                isKept[index] |= recorder.Written[index] > 0;
+            }
+
+            var (kept, firstWrites, instances) = GetKeptBlocks(Blocks, Stacks, recorder.Written, isKept);
 
             recorder.BeginWriting(firstWrites);
 
@@ -297,7 +334,9 @@ internal static class MemoryHistoryBuilder
                 recorder.Write(hit, bytes.AsSpan(hit.DataOffset, hit.Size));
             }
 
-            var (reads, readStarts, readHighs) = Reads.Build(recorder.Written, kept.Length, Stacks);
+            ApplySnapshots(recorder);
+
+            var (reads, readStarts, readHighs) = Reads.Build(isKept, kept.Length, Stacks);
 
             var store = new MemoryHistoryStore(kept,
                                                recorder.Writes,
@@ -306,9 +345,64 @@ internal static class MemoryHistoryBuilder
                                                recorder.Iterators,
                                                reads,
                                                readStarts,
-                                               readHighs);
+                                               readHighs,
+                                               instances);
 
             return (store, recorder.Counts);
+        }
+
+        private void ApplySnapshots(WriteRecorder recorder)
+        {
+            foreach (var chunk in Stack.Chunks)
+            {
+                foreach (var run in chunk.Runs)
+                {
+                    var item = Stack.Objects[run.Object];
+
+                    var hit = new ChunkHit(run.Position, item.Address + (ulong)run.Offset, run.DataOffset, item.Thread, run.Length);
+
+                    recorder.ApplySnapshot(Sites[run.Object], hit, chunk.Data.AsSpan(run.DataOffset, run.Length));
+                }
+            }
+        }
+
+        private int[] AddStackSites()
+        {
+            var sites = new Dictionary<(uint Thread, int Owner, ulong Address, int Size), int>();
+
+            var blocks = new int[Stack.Objects.Length];
+
+            for (var index = 0; index < Stack.Objects.Length; index++)
+            {
+                var item = Stack.Objects[index];
+
+                var from = Stacks.GetFrameStart(item.Thread, item.FirstPosition, item.OwnerCallNodeIndex) ?? item.FirstPosition;
+
+                if (!sites.TryGetValue((item.Thread, item.OwnerCallNodeIndex, item.Address, item.Size), out var site))
+                {
+                    site = Blocks.Count;
+
+                    sites[(item.Thread, item.OwnerCallNodeIndex, item.Address, item.Size)] = site;
+
+                    Blocks.Add(new WatchedBlock(0,
+                                                item.Address,
+                                                (ulong)item.Size,
+                                                isIterator: false,
+                                                isInline: false,
+                                                isClerkPage: false,
+                                                item.Thread,
+                                                from,
+                                                item.EndPosition,
+                                                isStack: true,
+                                                callNodeIndex: item.OwnerCallNodeIndex));
+                }
+
+                Blocks[site].AddInstance(from, item.EndPosition);
+
+                blocks[index] = site;
+            }
+
+            return blocks;
         }
     }
 
@@ -357,15 +451,27 @@ internal static class MemoryHistoryBuilder
             Counts.Recorded++;
         }
 
-        public (MemoryHistoryRead[] Reads, int[] Starts, HighWordRuns Highs) Build(int[] written, int keptCount, StackLookup stacks)
+        public bool[] GetReadBlocks(int count)
         {
-            var kept = new int[written.Length];
+            var blocks = new bool[count];
+
+            foreach (var (block, _, _) in Marks.Keys)
+            {
+                blocks[block] = true;
+            }
+
+            return blocks;
+        }
+
+        public (MemoryHistoryRead[] Reads, int[] Starts, HighWordRuns Highs) Build(bool[] isKept, int keptCount, StackLookup stacks)
+        {
+            var kept = new int[isKept.Length];
 
             var next = 0;
 
-            for (var index = 0; index < written.Length; index++)
+            for (var index = 0; index < isKept.Length; index++)
             {
-                kept[index] = written[index] > 0 ? next++ : -1;
+                kept[index] = isKept[index] ? next++ : -1;
             }
 
             var starts = new int[keptCount + 1];
@@ -545,6 +651,27 @@ internal static class MemoryHistoryBuilder
         public int GetCallNodeIndex(uint thread, TracePosition position)
             => timeline?.GetInnermostCall(thread, position) is { } span ? span.CallNodeIndex : -1;
 
+        public TracePosition? GetFrameStart(uint thread, TracePosition position, int callNodeIndex)
+        {
+            foreach (var lane in timeline?.Threads ?? [])
+            {
+                if (lane.ThreadId != thread)
+                {
+                    continue;
+                }
+
+                for (var row = lane.Rows.Count - 1; row >= 0; row--)
+                {
+                    if (lane.Rows[row].GetIndex(position) is >= 0 and var index && lane.Rows[row].GetCallNodeIndex(index) == callNodeIndex)
+                    {
+                        return lane.Rows[row].GetFromPosition(index);
+                    }
+                }
+            }
+
+            return null;
+        }
+
         public bool IsBufferPool(int callNodeIndex, bool isClerkPage)
         {
             if (!PageSources.TryGetValue(callNodeIndex, out var source))
@@ -584,7 +711,9 @@ internal static class MemoryHistoryBuilder
                                       uint thread,
                                       TracePosition fromPosition,
                                       TracePosition toPosition,
-                                      bool isBuffer = false)
+                                      bool isBuffer = false,
+                                      bool isStack = false,
+                                      int callNodeIndex = -1)
     {
         public ulong Iterator { get; } = iterator;
 
@@ -600,6 +729,12 @@ internal static class MemoryHistoryBuilder
 
         public bool IsBuffer { get; } = isBuffer;
 
+        public bool IsStack { get; } = isStack;
+
+        public int CallNodeIndex { get; } = callNodeIndex;
+
+        public List<(TracePosition From, TracePosition To)> Instances { get; } = [];
+
         public uint Thread { get; } = thread;
 
         public TracePosition FromPosition { get; } = fromPosition;
@@ -614,6 +749,16 @@ internal static class MemoryHistoryBuilder
 
         public bool Contains(ulong address, TracePosition position)
             => address >= Address && address - Address < Size && FromPosition <= position && position < ToPosition;
+
+        public void AddInstance(TracePosition from, TracePosition to)
+        {
+            Instances.Add((from, to));
+
+            if (ToPosition < to)
+            {
+                ToPosition = to;
+            }
+        }
     }
 
     private sealed class BlockIndex
@@ -624,7 +769,10 @@ internal static class MemoryHistoryBuilder
 
             for (var index = 0; index < blocks.Count; index++)
             {
-                AddToPages(index);
+                if (!blocks[index].IsStack)
+                {
+                    AddToPages(index);
+                }
             }
         }
 
@@ -901,6 +1049,13 @@ internal static class MemoryHistoryBuilder
             Writer = null;
 
             Apply(hit, bytes);
+        }
+
+        public void ApplySnapshot(int block, ChunkHit hit, ReadOnlySpan<byte> bytes)
+        {
+            Writer = null;
+
+            AddChanges(hit, block, (int)(hit.Address - lookup.Blocks[block].Address), bytes);
         }
 
         public HighWordRuns GetInstructionHighs() => Highs is null ? HighWordRuns.Empty : HighWordRuns.Build(Highs);

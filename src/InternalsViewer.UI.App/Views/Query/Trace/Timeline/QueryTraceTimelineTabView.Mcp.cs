@@ -241,6 +241,8 @@ public sealed partial class QueryTraceTimelineTabView : ITraceTimelineController
 
     public void PinPositions(TracePoint[] points) => TraceTimeline.PinPositions(points);
 
+    public void SetScope(TracePosition? from, TracePosition? to) => TraceTimeline.SetTrim(from, to);
+
     public Guid ShowIndicator(McpIndicatorRequest request)
     {
         var indicator = new TraceIndicator(Guid.NewGuid(), [.. request.Steps.Select(GetStep)]);
@@ -267,7 +269,10 @@ public sealed partial class QueryTraceTimelineTabView : ITraceTimelineController
     public bool ClearIndicator() => TraceTimeline.CloseIndicator(TraceIndicatorClose.Cleared);
 
     private static TraceIndicatorStep GetStep(McpIndicatorStep step)
-        => new([.. step.Targets.Select(t => new TraceIndicatorTarget(t.Node, t.CallIndex, t.Label))], step.Comment, step.HasNext);
+        => new([.. step.Targets.Select(t => new TraceIndicatorTarget(t.Node, t.CallIndex, t.Label))],
+               step.Comment,
+               step.HasNext,
+               step.Playhead);
 
     private static McpIndicator GetIndicator(TraceIndicator indicator, int step)
     {

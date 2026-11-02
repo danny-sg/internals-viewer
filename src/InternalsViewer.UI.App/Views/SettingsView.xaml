@@ -144,11 +144,37 @@
                                MinWidth="150"/>
                 </controls:SettingsCard>
                 <controls:SettingsCard Header="Access Token"
-                                       Description="Clients send a bearer token that is stored encrypted for the current Windows user and never shown. Registered clients are updated when it is regenerated">
+                                       Description="Clients send a bearer token that is stored encrypted for the current Windows user. Registered clients are updated when it is regenerated">
                     <Button Content="Regenerate" Command="{x:Bind ViewModel.RegenerateMcpTokenCommand}"/>
                 </controls:SettingsCard>
                 <TextBlock Style="{StaticResource SettingsSectionHeaderTextBlockStyle}"
                            Text="Clients" />
+
+                <controls:SettingsExpander x:Name="ManualMcpClient"
+                                           Header="Manual"
+                                           Description="Use the Server Address and Access Token to connect other MCP clients">
+                    <controls:SettingsExpander.Items>
+                        <controls:SettingsCard Header="Server Address">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBox IsReadOnly="True"
+                                         MinWidth="320"
+                                         FontFamily="{StaticResource MonospaceFontFamily}"
+                                         Text="{x:Bind ViewModel.McpServerEndpoint, Mode=OneWay}"/>
+                                <Button Content="Copy" Command="{x:Bind ViewModel.CopyMcpServerEndpointCommand}"/>
+                            </StackPanel>
+                        </controls:SettingsCard>
+                        <controls:SettingsCard Header="Access Token">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBox IsReadOnly="True"
+                                         MinWidth="320"
+                                         FontFamily="{StaticResource MonospaceFontFamily}"
+                                         Text="{x:Bind ViewModel.McpServerTokenText, Mode=OneWay}"/>
+                                <ToggleButton Content="Show Access Token" IsChecked="{x:Bind ViewModel.IsMcpServerTokenVisible, Mode=TwoWay}"/>
+                                <Button Content="Copy" Command="{x:Bind ViewModel.CopyMcpServerTokenCommand}"/>
+                            </StackPanel>
+                        </controls:SettingsCard>
+                    </controls:SettingsExpander.Items>
+                </controls:SettingsExpander>
 
             </controls:SettingsExpander.Items>
         </controls:SettingsExpander>

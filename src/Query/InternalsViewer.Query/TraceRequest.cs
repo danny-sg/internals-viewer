@@ -21,4 +21,14 @@ public sealed record TraceRequest(TimeTravelTraceFile TraceFile,
                                   IReadOnlySet<uint> ThreadIds)
 {
     public bool RecordMemoryHistory { get; init; } = true;
+
+    public bool CaptureHeapReads { get; init; } = true;
+
+    public bool CaptureHeapWrites { get; init; } = true;
+
+    public bool CaptureStackMemory { get; init; } = true;
+
+    public bool IsHeapCaptured => RecordMemoryHistory && (CaptureHeapReads || CaptureHeapWrites);
+
+    public bool IsStackCaptured => RecordMemoryHistory && CaptureStackMemory;
 }

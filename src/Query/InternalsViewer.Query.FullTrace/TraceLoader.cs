@@ -68,7 +68,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
     {
         var messages = new StepLoggerProgress(progress, Logger);
 
-        var steps = new StepProgress(messages, GetSteps(request.RecordMemoryHistory));
+        var steps = new StepProgress(messages, GetSteps(request));
 
         var replayed = await ReplayAsync(request, customHooks, steps, messages, progress, cancellationToken);
 
@@ -95,8 +95,9 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         steps.Complete();
 
-        if (request.RecordMemoryHistory
-            && await WatchMemoryAsync(session, replay, functions, result.Lifetimes, timeline, steps, progress, cancellationToken) is { } history)
+        if ((request.IsHeapCaptured || request.IsStackCaptured)
+            && await RecordMemoryAsync(session, request, replay, functions, result.Lifetimes, timeline, steps, progress, cancellationToken)
+                is { } history)
         {
             result = result with { MemoryHistory = history };
         }
@@ -158,7 +159,12 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
             Logger.LogInformation("Replaying Full Trace for {Threads} thread(s)", request.ThreadIds.Count);
 
-            var replay = await session.ReplayAsync(request.ThreadIds, functions, customHooks, steps, cancellationToken);
+            var replay = await session.ReplayAsync(request.ThreadIds,
+                                                   functions,
+                                                   customHooks,
+                                                   request.IsStackCaptured,
+                                                   steps,
+                                                   cancellationToken);
 
             steps.Complete();
 
@@ -178,16 +184,20 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         }
     }
 
-    private static List<ProgressStep> GetSteps(bool memoryHistory)
+    private static List<ProgressStep> GetSteps(TraceRequest request)
     {
         List<ProgressStep> steps = [new(OpeningStep, 25), new(SymbolsStep, 5), new(ReplayStep, 50)];
 
         steps.Add(new(CallTreeStep, 15));
         steps.Add(new(OperatorsStep, 5));
 
-        if (memoryHistory)
+        if (request.IsHeapCaptured)
         {
             steps.Add(new(WatchStep, 40));
+        }
+
+        if (request.IsHeapCaptured || request.IsStackCaptured)
+        {
             steps.Add(new(MemoryHistoryStep, 25));
         }
 
@@ -328,23 +338,22 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         return builder.Build(outputStructures);
     }
 
-    private async Task<MemoryHistoryStore?> WatchMemoryAsync(ReplaySession session,
-                                                             ReplayResult replay,
-                                                             ReplayFunctions functions,
-                                                             TraceOperatorLifetimes lifetimes,
-                                                             TraceTimeline timeline,
-                                                             StepProgress steps,
-                                                             IProgress<ProgressDetail>? progress,
-                                                             CancellationToken cancellationToken)
+    private async Task<MemoryHistoryStore?> RecordMemoryAsync(ReplaySession session,
+                                                              TraceRequest request,
+                                                              ReplayResult replay,
+                                                              ReplayFunctions functions,
+                                                              TraceOperatorLifetimes lifetimes,
+                                                              TraceTimeline timeline,
+                                                              StepProgress steps,
+                                                              IProgress<ProgressDetail>? progress,
+                                                              CancellationToken cancellationToken)
     {
-        steps.Begin(WatchStep);
+        var allocations = request.IsHeapCaptured
+            ? MemoryHistoryBuilder.GetAllocations(replay.CallStore, functions.MemoryFunctions, replay.Buffers)
+            : [];
 
-        var allocations = MemoryHistoryBuilder.GetAllocations(replay.CallStore, functions.MemoryFunctions, replay.Buffers);
-
-        if (allocations.Length == 0)
+        if (allocations.Length == 0 && replay.StackSnapshots.Objects.Length == 0)
         {
-            steps.Complete();
-
             return null;
         }
 
@@ -355,7 +364,42 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         var recording = new MemoryHistoryBuilder.Recording(allocations,
                                                            owners,
                                                            MemoryHistoryBuilder.GetFirstPositions(replay.CallStore, iterators),
-                                                           timeline);
+                                                           timeline,
+                                                           replay.StackSnapshots);
+
+        Logger.LogInformation("{Objects} stack object(s) handed between functions, read {Snapshots} time(s) into {Changes} change(s)",
+                              replay.StackSnapshots.Objects.Length,
+                              replay.StackSnapshots.SnapshotCount,
+                              replay.StackSnapshots.RunCount);
+
+        var writes = request.IsHeapCaptured && allocations.Length > 0
+            ? await WatchHeapAsync(session, request, replay, allocations, recording, steps, progress, cancellationToken)
+            : WatchResult.Empty;
+
+        if (writes is null)
+        {
+            return null;
+        }
+
+        steps.Begin(MemoryHistoryStep);
+
+        var history = BuildMemoryHistory(recording, writes, allocations.Length);
+
+        steps.Complete();
+
+        return history;
+    }
+
+    private async Task<WatchResult?> WatchHeapAsync(ReplaySession session,
+                                                    TraceRequest request,
+                                                    ReplayResult replay,
+                                                    MemoryHistoryAllocation[] allocations,
+                                                    MemoryHistoryBuilder.Recording recording,
+                                                    StepProgress steps,
+                                                    IProgress<ProgressDetail>? progress,
+                                                    CancellationToken cancellationToken)
+    {
+        steps.Begin(WatchStep);
 
         WatchResult writes;
 
@@ -365,7 +409,8 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                                               allocations.Min(a => a.Block.Start),
                                               replay.Timeline.End.Position,
                                               MemoryHistoryBuilder.GetWatchFilter(allocations),
-                                              recording.AddRead,
+                                              request.CaptureHeapWrites,
+                                              request.CaptureHeapReads ? recording.AddRead : null,
                                               steps,
                                               cancellationToken);
         }
@@ -398,13 +443,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         steps.Complete();
 
-        steps.Begin(MemoryHistoryStep);
-
-        var history = BuildMemoryHistory(recording, writes, allocations.Length);
-
-        steps.Complete();
-
-        return history;
+        return writes;
     }
 
     private MemoryHistoryStore BuildMemoryHistory(MemoryHistoryBuilder.Recording recording, WatchResult writes, int allocationCount)
@@ -419,10 +458,15 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                               counts.Outside);
 
         Logger.LogInformation("{Writes} change(s) to {Blocks} of {Allocations} watched allocation(s), {Owned} owned by an iterator",
-                              history.WriteCount,
-                              history.Blocks.Count,
+                              history.Blocks.Where(b => !b.IsStack).Sum(b => (long)b.WriteCount),
+                              history.Blocks.Count(b => !b.IsStack),
                               allocationCount,
                               history.Blocks.Count(b => b.Iterator != 0));
+
+        Logger.LogInformation("{Writes} change(s) to {Sites} stack object(s), {Instances} call(s) of the functions holding them",
+                              history.Blocks.Where(b => b.IsStack).Sum(b => (long)b.WriteCount),
+                              history.Blocks.Count(b => b.IsStack),
+                              history.Blocks.Sum(b => (long)b.InstanceCount));
 
         Logger.LogInformation("{Reads} read(s) by call recorded, {Unwritten} read(s) were from blocks with no writes",
                               history.ReadCount,

@@ -26,6 +26,22 @@ public class TraceTimelineToolsTests
     }
 
     [Fact]
+    public async Task Trace_Scope_Sets_The_Playhead_Scope_And_Clears_It()
+    {
+        var timeline = new RecordingTimeline();
+
+        var tools = Create(timeline);
+
+        Assert.Contains("Scoped the playhead to 14:0 - 1E:0", await tools.SetScope("14:0", "1E:0"));
+        Assert.Equal((At(0x14), At(0x1E)), timeline.Scope!.Value);
+
+        Assert.Equal("Cleared the playhead scope.", await tools.SetScope());
+        Assert.Equal((null, null), timeline.Scope!.Value);
+
+        await Assert.ThrowsAsync<McpException>(() => tools.SetScope("1E:0", "14:0"));
+    }
+
+    [Fact]
     public async Task Trace_Pin_Without_A_Function_Or_Positions_Clears_The_Pins()
     {
         var timeline = new RecordingTimeline();
@@ -163,6 +179,15 @@ public class TraceTimelineToolsTests
             return Task.CompletedTask;
         }
 
+        public (TracePosition? From, TracePosition? To)? Scope { get; private set; }
+
+        public Task SetScopeAsync(TracePosition? from, TracePosition? to)
+        {
+            Scope = (from, to);
+
+            return Task.CompletedTask;
+        }
+
         public Task SetTimelineOptionAsync(string key, bool enabled) => throw new NotSupportedException();
 
         public Task AddTrackAsync(McpTrackRequest request) => throw new NotSupportedException();
@@ -187,7 +212,14 @@ public class TraceTimelineToolsTests
 
         public (Guid Id, TimeSpan Timeout)? Waited { get; private set; }
 
-        public Task<Guid> ShowIndicatorAsync(McpIndicatorRequest request) => throw new NotSupportedException();
+        public McpIndicatorRequest? Indicated { get; private set; }
+
+        public Task<Guid> ShowIndicatorAsync(McpIndicatorRequest request)
+        {
+            Indicated = request;
+
+            return Task.FromResult(Guid.NewGuid());
+        }
 
         public Task<McpIndicatorResult?> WaitForIndicatorAsync(Guid id, TimeSpan timeout)
         {

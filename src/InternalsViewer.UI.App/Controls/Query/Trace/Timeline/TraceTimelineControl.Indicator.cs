@@ -47,6 +47,8 @@ public sealed partial class TraceTimelineControl
 
     private const string IndicatorFinishLabel = "Finish";
 
+    private const string IndicatorPreviousLabel = "Previous";
+
     private readonly List<(Guid Id, TraceIndicatorResult Result)> _closedIndicators = [];
 
     private readonly MarkdownTextBlock _indicatorText = new()
@@ -187,6 +189,22 @@ public sealed partial class TraceTimelineControl
         _canvas.Invalidate();
     }
 
+    private void PreviousIndicatorStep()
+    {
+        if (_indicator is not { Step: > 0 } open)
+        {
+            return;
+        }
+
+        open.Step--;
+
+        SetIndicatorText(open.Indicator.Steps[open.Step].Comment);
+
+        RevealIndicator(open.Indicator.Steps[open.Step]);
+
+        _canvas.Invalidate();
+    }
+
     private void RevealIndicator(TraceIndicatorStep step)
     {
         double? start = null;
@@ -222,6 +240,13 @@ public sealed partial class TraceTimelineControl
         {
             ZoomTo(first, last);
         }
+
+        if (step.Playhead is { } point)
+        {
+            StopPlay();
+
+            PlacePlayhead(TraceScale.GetValue(point, _axis));
+        }
     }
 
     private bool PressIndicator(SKPoint point)
@@ -230,6 +255,11 @@ public sealed partial class TraceTimelineControl
         {
             case TraceIndicatorHit.Next:
                 NextIndicatorStep();
+
+                return true;
+
+            case TraceIndicatorHit.Previous:
+                PreviousIndicatorStep();
 
                 return true;
 
@@ -283,6 +313,11 @@ public sealed partial class TraceTimelineControl
             return TraceIndicatorHit.Next;
         }
 
+        if (layout.Previous is { } previous && previous.Contains(point))
+        {
+            return TraceIndicatorHit.Previous;
+        }
+
         if (layout.Close.Contains(point))
         {
             return TraceIndicatorHit.Close;
@@ -325,13 +360,19 @@ public sealed partial class TraceTimelineControl
 
         var buttonWidth = button is null ? 0 : font.MeasureText(button) + IndicatorButtonPadding * 2;
 
+        var back = open.Step > 0 ? IndicatorPreviousLabel : null;
+
+        var backWidth = back is null ? 0 : font.MeasureText(back) + IndicatorButtonPadding * 2;
+
+        var buttonsWidth = buttonWidth + backWidth + (button is not null && back is not null ? IndicatorGap : 0);
+
         var counter = open.Indicator.Steps.Length > 1 ? $"{open.Step + 1} of {open.Indicator.Steps.Length}" : null;
 
         var counterWidth = counter is null ? 0 : font.MeasureText(counter) + IndicatorGap;
 
-        var footer = button is not null || counter is not null ? IndicatorButtonHeight + IndicatorGap : 0;
+        var footer = button is not null || back is not null || counter is not null ? IndicatorButtonHeight + IndicatorGap : 0;
 
-        var size = new SKSize(Math.Max(textWidth, counterWidth + buttonWidth) + IndicatorPadding * 2,
+        var size = new SKSize(Math.Max(textWidth, counterWidth + buttonsWidth) + IndicatorPadding * 2,
                               _indicatorTextSize.Height + IndicatorPadding * 2 + footer);
 
         var placed = TraceIndicatorLayout.GetDefault(size,
@@ -395,30 +436,40 @@ public sealed partial class TraceTimelineControl
                             _paints.Label);
         }
 
+        var right = callout.Right - IndicatorPadding;
+
         SKRect? next = null;
 
         if (button is not null)
         {
-            var buttonArea = SnapToPixels(SKRect.Create(callout.Right - IndicatorPadding - buttonWidth,
-                                                        callout.Bottom - IndicatorPadding - IndicatorButtonHeight,
-                                                        buttonWidth,
-                                                        IndicatorButtonHeight));
+            next = DrawIndicatorButton(canvas, button, right - buttonWidth, buttonWidth, callout);
 
-            canvas.DrawRect(buttonArea, _paints.IndicatorButton);
-
-            canvas.DrawText(button,
-                            buttonArea.MidX,
-                            IndicatorBaseline(font, buttonArea.Top + (IndicatorButtonHeight - IndicatorLineHeight) / 2),
-                            SKTextAlign.Center,
-                            font,
-                            _paints.IndicatorButtonText);
-
-            next = buttonArea;
+            right -= buttonWidth + IndicatorGap;
         }
+
+        SKRect? previous = back is null ? null : DrawIndicatorButton(canvas, back, right - backWidth, backWidth, callout);
 
         canvas.Restore();
 
-        _indicatorLayout = new IndicatorLayout(callout, close, next);
+        _indicatorLayout = new IndicatorLayout(callout, close, next, previous);
+    }
+
+    private SKRect DrawIndicatorButton(SKCanvas canvas, string text, float left, float width, SKRect callout)
+    {
+        var font = _paints.IndicatorFont;
+
+        var area = SnapToPixels(SKRect.Create(left, callout.Bottom - IndicatorPadding - IndicatorButtonHeight, width, IndicatorButtonHeight));
+
+        canvas.DrawRect(area, _paints.IndicatorButton);
+
+        canvas.DrawText(text,
+                        area.MidX,
+                        IndicatorBaseline(font, area.Top + (IndicatorButtonHeight - IndicatorLineHeight) / 2),
+                        SKTextAlign.Center,
+                        font,
+                        _paints.IndicatorButtonText);
+
+        return area;
     }
 
     private void SetIndicatorText(string comment)
@@ -551,7 +602,7 @@ public sealed partial class TraceTimelineControl
 
     private readonly record struct IndicatorAnchor(SKPoint Top, float Bottom, string? Label);
 
-    private sealed record IndicatorLayout(SKRect Callout, SKRect Close, SKRect? Next);
+    private sealed record IndicatorLayout(SKRect Callout, SKRect Close, SKRect? Next, SKRect? Previous);
 
     private sealed class OpenIndicator(TraceIndicator indicator)
     {

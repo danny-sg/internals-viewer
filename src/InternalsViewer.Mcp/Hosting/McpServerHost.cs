@@ -134,6 +134,8 @@ public sealed class McpServerHost(IServiceProvider services, ILogger<McpServerHo
                    .WithTools<TraceTimelineTools>()
                .WithTools<TimelineTools>()
                .WithTools<MemoryTools>()
+               .WithTools<MemoryWatchTools>()
+               .WithTools<ObjectGraphTools>()
                .WithTools<PageTools>()
                .WithTools<PageCommandTools>()
                .WithTools<QueryPageTools>()

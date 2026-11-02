@@ -116,7 +116,7 @@ public sealed partial class MemoryReferenceGraphControl : UserControl, IDisposab
             Viewport.ZoomTo(1, 0, 0);
         }
 
-        Viewport.CentreOn(new SKPoint((float)(node.X + graph.NodeWidth / 2), (float)(node.Y + graph.NodeHeight / 2)));
+        Viewport.CentreOn(new SKPoint((float)(node.X + graph.NodeWidth / 2), (float)(node.Y + node.Height / 2)));
 
         SyncScrollBars();
 
@@ -440,7 +440,14 @@ public sealed partial class MemoryReferenceGraphControl : UserControl, IDisposab
 
     private static string GetNodeToolTip(MemoryReferenceGraphNode node)
     {
-        string[] lines = [node.Label, node.Label == node.Types ? string.Empty : node.Types, node.Detail, node.DataChanges];
+        string[] lines =
+        [
+            node.Label,
+            node.Label == node.Types ? string.Empty : node.Types,
+            node.Detail,
+            .. node.Watches.Select(w => w.Value.Length > 0 ? $"{w.Name}: {w.Value}" : w.Name),
+            node.DataChanges
+        ];
 
         return string.Join(Environment.NewLine, lines.Where(l => l.Length > 0));
     }

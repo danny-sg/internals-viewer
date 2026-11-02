@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,8 +15,10 @@ using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Recording;
+using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.ViewModels.Page;
+using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline.Memory;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
@@ -159,8 +162,25 @@ public partial class QueryViewModel : IMcpContextSource, IQueryCommands
             "Trace",
             q => q.QueryOptions.RecordTimeTravel,
             (q, v) => q.QueryOptions.RecordTimeTravel = v,
-            q => q.QueryOptions.RecordTimeTravel || !ConsentRequired() ? McpOptionUnavailable.None : McpOptionUnavailable.NeedsConsent)
+            q => q.QueryOptions.RecordTimeTravel || !ConsentRequired() ? McpOptionUnavailable.None : McpOptionUnavailable.NeedsConsent),
+        new("capture-heap-reads",
+            "Capture Heap Memory Reads",
+            "Trace",
+            q => q.QueryOptions.CaptureHeapReads,
+            (q, v) => q.QueryOptions.CaptureHeapReads = v),
+        new("capture-heap-writes",
+            "Capture Heap Memory Writes",
+            "Trace",
+            q => q.QueryOptions.CaptureHeapWrites,
+            (q, v) => q.QueryOptions.CaptureHeapWrites = v),
+        new("capture-stack-memory",
+            "Capture Stack Memory",
+            "Trace",
+            q => q.QueryOptions.CaptureStackMemory,
+            (q, v) => q.QueryOptions.CaptureStackMemory = v)
     ];
+
+    private Dictionary<HexWatch, int> McpWatchBlocks { get; } = [];
 
     public TabContext GetContext()
         => new QueryContext
@@ -265,6 +285,53 @@ public partial class QueryViewModel : IMcpContextSource, IQueryCommands
         return Task.CompletedTask;
     }
 
+    public Task ShowObjectGraphAsync(int? block, TracePosition? position)
+    {
+        if (block is not { } index)
+        {
+            if (Trace is not { } trace
+                || TraceTimeline is not { } timeline
+                || TraceStartCall.Find(trace.CallStore, timeline) is not { } start)
+            {
+                throw new InvalidOperationException("The trace has no first call to start the Object Graph from.");
+            }
+
+            TraceTimelineTab.OpenObjectGraph(start);
+
+            return Task.CompletedTask;
+        }
+
+        TraceTimelineTab.OpenReferenceGraph(index, position ?? MemoryHistory.Store.Blocks[index].FromPosition);
+
+        return Task.CompletedTask;
+    }
+
+    public Task<McpWatch> AddWatchAsync(int block, int offset, int length, string? dataType, string? label)
+    {
+        if (block < 0 || block >= MemoryHistory.Store.Blocks.Count)
+        {
+            throw new ArgumentException($"No memory history block {block}.");
+        }
+
+        var watch = new HexWatch(offset, length, dataType, isTemporary: true) { Label = label };
+
+        MemoryHistory.GetWatches(block).Add(watch);
+
+        McpWatchBlocks.Add(watch, block);
+
+        return Task.FromResult(GetWatch(MemoryHistory.GetWatchName(block), watch));
+    }
+
+    public Task<McpWatch[]> GetWatchesAsync()
+        => Task.FromResult<McpWatch[]>([.. MemoryHistory.GetWatchSnapshot().SelectMany(w => w.Value.Select(h => GetWatch(w.Key, h)))]);
+
+    public Task<int> ClearWatchesAsync()
+    {
+        McpWatchBlocks.Clear();
+
+        return Task.FromResult(MemoryHistory.RemoveTemporaryWatches());
+    }
+
     public async Task<McpFunctionSignature?> ResolveSignatureAsync(CallstackFrame frame)
     {
         if (Arguments.Lookup is not { } lookup)
@@ -300,6 +367,32 @@ public partial class QueryViewModel : IMcpContextSource, IQueryCommands
         binding.Set(this, enabled);
 
         return Task.CompletedTask;
+    }
+
+    private McpWatch GetWatch(string name, HexWatch watch)
+    {
+        int? block = McpWatchBlocks.TryGetValue(watch, out var found) ? found : null;
+
+        return new McpWatch(name,
+                            block,
+                            watch.Offset,
+                            watch.Length,
+                            watch.DataType,
+                            watch.Label,
+                            block is { } index ? GetWatchValue(index, watch) : null,
+                            watch.IsTemporary);
+    }
+
+    private string? GetWatchValue(int block, HexWatch watch)
+    {
+        var store = MemoryHistory.Store;
+
+        if (TraceTimelineTab.Playhead is not { } position || !store.IsLive(block, position))
+        {
+            return null;
+        }
+
+        return MemoryWatchRowViewModel.GetValue(watch, store.GetImage(block, store.GetWriteCount(block, position)).Data);
     }
 
     private static bool ConsentRequired()

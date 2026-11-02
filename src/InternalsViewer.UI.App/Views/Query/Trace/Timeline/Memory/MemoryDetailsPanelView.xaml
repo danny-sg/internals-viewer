@@ -42,11 +42,19 @@
             </Grid.RowDefinitions>
 
             <TextBlock Grid.Row="0" Grid.Column="0" Text="Address" Style="{StaticResource DetailNameStyle}"/>
-            <TextBlock Grid.Row="0" Grid.Column="2"
-                       Text="{x:Bind ViewModel.Details.Address, Mode=OneWay}"
-                       FontFamily="{StaticResource MonospaceFontFamily}"
-                       Style="{StaticResource DetailValueStyle}"
-                       ContextRequested="OnAddressContextRequested"/>
+            <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal" Spacing="6">
+                <TextBlock Text="{x:Bind ViewModel.Details.Address, Mode=OneWay}"
+                           FontFamily="{StaticResource MonospaceFontFamily}"
+                           Style="{StaticResource DetailValueStyle}"
+                           ContextRequested="OnAddressContextRequested"/>
+                <Border Background="{ThemeResource AccentFillColorDefaultBrush}"
+                        CornerRadius="2"
+                        Padding="4,1"
+                        VerticalAlignment="Center"
+                        Visibility="{x:Bind ViewModel.Details.HasMemoryKind, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <TextBlock Text="{x:Bind ViewModel.Details.MemoryKind, Mode=OneWay}" Style="{StaticResource TagTextBlockStyle}"/>
+                </Border>
+            </StackPanel>
             <controls:CopyButton Grid.Row="0"
                                  Grid.Column="1"
                                  Style="{StaticResource DetailCopyButtonStyle}"
@@ -90,6 +98,10 @@
                                  ContextRequested="OnDestroyedContextRequested"
                                  PointerEntered="OnDestroyedPointerEntered"
                                  PointerExited="OnMarkPointerExited"/>
+                <TextBlock Text="{x:Bind ViewModel.Details.InstancesText, Mode=OneWay}"
+                           Style="{StaticResource DetailValueStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Visibility="{x:Bind ViewModel.Details.HasInstances, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
             </StackPanel>
             <controls:CopyButton Grid.Row="3"
                                  Grid.Column="1"
@@ -157,18 +169,32 @@
                                  Tag="{x:Bind ViewModel.Details.WritersText, Mode=OneWay}"
                                  Click="OnCopyValueClick"/>
 
-            <TextBlock Grid.Row="7" Grid.Column="0" Text="Reads" Style="{StaticResource DetailNameStyle}"/>
+            <TextBlock Grid.Row="7"
+                       Grid.Column="0"
+                       Text="Reads"
+                       Style="{StaticResource DetailNameStyle}"
+                       Visibility="{x:Bind ViewModel.Details.IsReadVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
             <TextBlock Grid.Row="7" Grid.Column="2"
                        Text="{x:Bind ViewModel.Details.ReadCount, Mode=OneWay}"
-                       Style="{StaticResource DetailValueStyle}"/>
+                       Style="{StaticResource DetailValueStyle}"
+                       Visibility="{x:Bind ViewModel.Details.IsReadVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
             <controls:CopyButton Grid.Row="7"
                                  Grid.Column="1"
                                  Style="{StaticResource DetailCopyButtonStyle}"
                                  Tag="{x:Bind ViewModel.Details.ReadCount, Mode=OneWay}"
+                                 Visibility="{x:Bind ViewModel.Details.IsReadVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                                  Click="OnCopyValueClick"/>
 
-            <TextBlock Grid.Row="8" Grid.Column="0" Text="Read By" Style="{StaticResource DetailNameStyle}" VerticalAlignment="Top"/>
-            <ItemsControl Grid.Row="8" Grid.Column="2" ItemsSource="{x:Bind ViewModel.Details.Readers, Mode=OneWay}">
+            <TextBlock Grid.Row="8"
+                       Grid.Column="0"
+                       Text="Read By"
+                       Style="{StaticResource DetailNameStyle}"
+                       VerticalAlignment="Top"
+                       Visibility="{x:Bind ViewModel.Details.IsReadVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+            <ItemsControl Grid.Row="8"
+                          Grid.Column="2"
+                          ItemsSource="{x:Bind ViewModel.Details.Readers, Mode=OneWay}"
+                          Visibility="{x:Bind ViewModel.Details.IsReadVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <StackPanel Spacing="2"/>
@@ -200,6 +226,7 @@
                                  Grid.Column="1"
                                  Style="{StaticResource DetailCopyButtonStyle}"
                                  Tag="{x:Bind ViewModel.Details.ReadersText, Mode=OneWay}"
+                                 Visibility="{x:Bind ViewModel.Details.IsReadVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                                  Click="OnCopyValueClick"/>
         </Grid>
     </ScrollViewer>

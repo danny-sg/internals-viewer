@@ -26,6 +26,8 @@ public interface ITraceTimelineController
 
     void PinPositions(TracePoint[] points);
 
+    void SetScope(TracePosition? from, TracePosition? to);
+
     Guid ShowIndicator(McpIndicatorRequest request);
 
     Task<McpIndicatorResult?> WaitForIndicatorAsync(Guid id, TimeSpan timeout);

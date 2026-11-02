@@ -404,7 +404,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
             Visibility = Visibility.Collapsed,
             IndicatorMode = ScrollingIndicatorMode.MouseIndicator,
             Minimum = 0,
-            Width = MemoryScrollBarWidth
+            Width = MemoryScrollBarWidth,
+            CornerRadius = new CornerRadius(0)
         };
 
         _memoryScrollBar.Scroll += OnMemoryScroll;
@@ -927,7 +928,12 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         _memoryScrollBar.SmallChange = MemoryScrollStep;
         _memoryScrollBar.Value = _memory.ScrollY;
         _memoryScrollBar.Height = memoryViewport;
-        _memoryScrollBar.Visibility = ShowsMemory && _memory.CanScroll ? Visibility.Visible : Visibility.Collapsed;
+        _memoryScrollBar.Visibility = ShowsMemory && !_memory.SizeToFit ? Visibility.Visible : Visibility.Collapsed;
+
+        if (_memoryScrollBar.Visibility == Visibility.Visible)
+        {
+            VisualStateManager.GoToState(_memoryScrollBar, ScrollBarExpandedState, false);
+        }
 
         Canvas.SetLeft(_memoryScrollBar, Math.Max(0, _overlay.ActualWidth - MemoryScrollBarWidth));
         Canvas.SetTop(_memoryScrollBar, MemoryTop);

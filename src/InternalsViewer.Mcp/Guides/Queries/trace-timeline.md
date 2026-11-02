@@ -20,10 +20,40 @@ and never milliseconds. The `trace_` tools change what the user sees, so say wha
 - `query_references` is the call tree's Find. Give it a value, usually an object address, and it names the type and lists
   every function the value was called on, passed to or returned by.
 
+## Crop To Query
+
+Crop To Query, on by default, hides what runs outside the query's execution from the call tree and the Trace Timeline:
+compilation and setup before it, and teardown after it. The tools still see everything, so an arrow, a pin or the playhead
+at a hidden call would point at nothing the user can see.
+
+- The call search looks inside the crop first, so "the first `GetRow`" is the first one the query executed. It only goes
+  outside the crop when the function has no calls inside it.
+- When `show_call`, `set_playhead`, `trace_goto_call`, `trace_pin`, `trace_indicate` or `trace_walkthrough` would point at
+  something the crop hides, it turns Crop To Query off and says so in its result. Tell the user you opened it up and why,
+  for example that the call is part of compiling the plan rather than running it.
+- To show the compilation phase on purpose, turn `crop-to-query` off first with `query_set_option`, so the search covers
+  it, and turn it back on when you move on.
+
 ## Pins
 
 `trace_pin` pins lines at every call of a function or at positions, to show when they happen. A click on the timeline or a
 playhead move hides the pins, so move the playhead first and pin last.
+
+## Watching a field change
+
+To show how an operator keeps its state, such as how a TOP counts the rows it has returned:
+
+1. Find the field. `query_operators` gives the iterator (`this`), `query_memoryhistory --iterator <this>` lists its blocks,
+   and `query_memoryhistory --block N` shows the writes field by field. A counter is a small field written once per row, its
+   value going up by one each time. `query_object_graph` lists the objects the block points to, when the state lives in
+   one of those.
+2. `memory_watch add` pins it with a type and a label, for example `int` at `0x40` labelled "Rows Returned". The watch is
+   temporary. `memory_watch clear` removes the ones you added and leaves the user's own.
+3. Open a view that shows the watch, `show_memory` for the block's bytes and Watches tab, or `show_object_graph` for the
+   box with the watch under its address.
+4. `trace_scope` with the positions of the field's first and last writes scopes the playhead to that stretch and zooms to it.
+   Turn on `playing` with `trace_set_option` and the playhead repeats the stretch, so the user sees the value change again
+   and again until it is stopped. `trace_scope` with no positions clears the scope when you move on.
 
 ## Indicators
 
@@ -37,6 +67,10 @@ The comment is Markdown. Put function, class and field names in backticks so the
 "`CQScanHash::GetRow` reads the probe side". Use **bold** sparingly, and keep it to a sentence or two.
 
 ## Walking the user through
+
+Each indicator or walkthrough step moves the playhead to the start of the first call it points at, so the call stack,
+the memory tabs and any watches show that moment. Give `playhead` as `end` to show what the call left behind, for example a
+counter after it went up, `none` to leave the playhead, or a position. The user can step back with Previous.
 
 A walkthrough holds the conversation while it waits for the user, so offer one rather than starting it. When the user
 accepts:

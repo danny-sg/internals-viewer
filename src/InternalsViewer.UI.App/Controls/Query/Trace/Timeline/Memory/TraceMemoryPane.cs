@@ -138,7 +138,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
     public void SetBlocks(IReadOnlyList<TraceMemoryBlock>? blocks)
     {
-        Blocks = blocks is null ? [] : [.. blocks.OrderBy(b => b.Address)];
+        Blocks = blocks is null ? [] : [.. blocks.OrderBy(b => b.IsStack).ThenBy(b => b.Address)];
 
         Reset();
 
@@ -340,11 +340,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
                 continue;
             }
 
-            var from = TraceScale.GetValue(block.From, frame.Key.Axis);
-
-            var to = block.To is { } end ? TraceScale.GetValue(end, frame.Key.Axis) : double.MaxValue;
-
-            if (value >= from - tolerance && value <= to + tolerance)
+            if (IsLiveNear(block, value, tolerance, frame.Key.Axis))
             {
                 return new TraceMemoryHit(index, -1, (int)(address - block.Address));
             }
@@ -704,18 +700,59 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
         var block = key.Blocks[index];
 
-        var left = GetX(block.From, key);
+        Paints.Fill.Color = LifetimeColour;
 
-        var right = block.To is { } to ? GetX(to, key) : key.Width;
+        if (block.Instances is not { Count: > 0 } instances)
+        {
+            DrawLifetimeBar(canvas, key, view, rows, GetX(block.From, key), block.To is { } to ? GetX(to, key) : key.Width);
 
+            return;
+        }
+
+        var start = float.NaN;
+
+        var end = float.NaN;
+
+        foreach (var instance in instances)
+        {
+            var left = GetX(instance.From, key);
+
+            var right = instance.To is { } to ? GetX(to, key) : key.Width;
+
+            if (right < 0 || left > key.Width)
+            {
+                continue;
+            }
+
+            if (!float.IsNaN(start) && left <= end + 1f)
+            {
+                end = Math.Max(end, right);
+
+                continue;
+            }
+
+            if (!float.IsNaN(start))
+            {
+                DrawLifetimeBar(canvas, key, view, rows, start, end);
+            }
+
+            (start, end) = (left, right);
+        }
+
+        if (!float.IsNaN(start))
+        {
+            DrawLifetimeBar(canvas, key, view, rows, start, end);
+        }
+    }
+
+    private void DrawLifetimeBar(SKCanvas canvas, FrameKey key, View view, (float Top, float Bottom) rows, float left, float right)
+    {
         if (right < 0 || left > key.Width)
         {
             return;
         }
 
         var barLeft = Math.Max(left, -1f);
-
-        Paints.Fill.Color = LifetimeColour;
 
         canvas.DrawRect(barLeft,
                         key.Top + rows.Top - view.Offset,
@@ -1025,6 +1062,36 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
         return false;
     }
 
+    private bool IsLiveNear(TraceMemoryBlock block, double value, double tolerance, TraceTimelineAxis axis)
+    {
+        if (block.Instances is not { Count: > 0 } instances)
+        {
+            var to = block.To is { } end ? TraceScale.GetValue(end, axis) : double.MaxValue;
+
+            return value >= TraceScale.GetValue(block.From, axis) - tolerance && value <= to + tolerance;
+        }
+
+        var low = 0;
+
+        var high = instances.Count;
+
+        while (low < high)
+        {
+            var middle = (low + high) / 2;
+
+            if (TraceScale.GetValue(instances[middle].From, axis) - tolerance <= value)
+            {
+                low = middle + 1;
+            }
+            else
+            {
+                high = middle;
+            }
+        }
+
+        return low > 0 && (instances[low - 1].To is not { } last || value <= TraceScale.GetValue(last, axis) + tolerance);
+    }
+
     private static float GetX(TracePoint point, FrameKey key)
         => (float)((key.TraceScale.GetValue(point, key.Axis) - key.Start) * key.Scale);
 
@@ -1090,7 +1157,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
             var end = blocks[index].Address + (ulong)blocks[index].Size;
 
-            while (index + 1 < blocks.Count && blocks[index + 1].Address < end)
+            while (index + 1 < blocks.Count && blocks[index + 1].IsStack == blocks[first].IsStack && blocks[index + 1].Address < end)
             {
                 index++;
 

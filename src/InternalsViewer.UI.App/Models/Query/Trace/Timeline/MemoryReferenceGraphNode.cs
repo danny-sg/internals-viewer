@@ -6,6 +6,8 @@ namespace InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 public sealed partial class MemoryReferenceGraphNode(string types,
                                                      double x,
                                                      double y,
+                                                     double height,
+                                                     int watchCount,
                                                      bool isRoot,
                                                      bool isData,
                                                      bool isExpanded,
@@ -30,11 +32,18 @@ public sealed partial class MemoryReferenceGraphNode(string types,
     [ObservableProperty]
     private bool _canOpen;
 
+    [ObservableProperty]
+    private MemoryReferenceGraphWatch[] _watches = [];
+
     public string Types { get; } = types;
 
     public double X { get; } = x;
 
     public double Y { get; } = y;
+
+    public double Height { get; } = height;
+
+    public int WatchCount { get; } = watchCount;
 
     public bool IsRoot { get; } = isRoot;
 

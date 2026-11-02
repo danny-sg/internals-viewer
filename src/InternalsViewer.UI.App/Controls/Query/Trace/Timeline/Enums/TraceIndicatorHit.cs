@@ -4,5 +4,6 @@ internal enum TraceIndicatorHit
 {
     Body,
     Close,
-    Next
+    Next,
+    Previous
 }

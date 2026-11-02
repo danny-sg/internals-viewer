@@ -35,6 +35,8 @@ public sealed class NavigationTools(McpDocumentResolver documents, IMcpWorkspace
 
         var target = scope.Context.Nodes.GetNode(node) ?? throw new McpException($"No call tree node {node}.");
 
+        var uncropped = await scope.UncropForAsync([(target, callIndex ?? -1)], [], cancellationToken);
+
         await scope.RunAsync(c => c.ShowCallAsync(target, callIndex ?? -1), cancellationToken);
 
         var builder = new StringBuilder();
@@ -48,7 +50,7 @@ public sealed class NavigationTools(McpDocumentResolver documents, IMcpWorkspace
             builder.AppendLine($"  showing call #{index}");
         }
 
-        return builder.ToString();
+        return Format.WithNote(builder.ToString().TrimEnd(), uncropped);
     }
 
     [McpServerTool(Name = "show_page")]
@@ -166,9 +168,41 @@ public sealed class NavigationTools(McpDocumentResolver documents, IMcpWorkspace
 
         var target = Parse.Position(position);
 
+        var uncropped = await scope.UncropForAsync([], [target], cancellationToken);
+
         await scope.RunAsync(c => c.SetPlayheadAsync(target), cancellationToken);
 
-        return $"Playhead moved to {Format.Position(target)}.";
+        return Format.WithNote($"Playhead moved to {Format.Position(target)}.", uncropped);
+    }
+
+    [McpServerTool(Name = "show_object_graph")]
+    [Description("Open the Object Graph in the app: the pointers from a memory history block, or from the objects the query's " +
+                 "first call was given. Its boxes follow the playhead and show the watches added with memory_watch under the " +
+                 "address. query_object_graph reads the same graph as text")]
+    public async Task<string> ShowObjectGraph([Description("Block number from query_memoryhistory; the query's first call when omitted")]
+                                              int? block = null,
+                                              [Description("Trace position as hex Sequence:Steps for the object the graph starts " +
+                                                           "from; the block's start when omitted")]
+                                              string? position = null,
+                                              [Description(DocumentDescription)] string? document = null,
+                                              CancellationToken cancellationToken = default)
+    {
+        var scope = await Documents.ResolveAsync(document, cancellationToken);
+
+        var history = scope.RequireTrace().MemoryHistory;
+
+        if (block is { } index && (index < 0 || index >= history.Blocks.Count))
+        {
+            throw new McpException($"No memory history block {index}; there are {history.Blocks.Count}.");
+        }
+
+        var at = position is null ? (TracePosition?)null : Parse.Position(position);
+
+        await scope.RunAsync(c => c.ShowObjectGraphAsync(block, at), cancellationToken);
+
+        return block is { } opened
+            ? $"Opened the Object Graph from block {opened} at {Format.Hex(history.Blocks[opened].Address)}."
+            : "Opened the Object Graph from the query's first call.";
     }
 
     [McpServerTool(Name = "show_memory")]

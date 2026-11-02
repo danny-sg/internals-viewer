@@ -392,7 +392,10 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                 ? null
                 : new TraceRequest(fullTrace, events, symbolsPath, memoryClerks, objectPool, threadIds)
                 {
-                    RecordMemoryHistory = payload.QueryOptions.RecordMemoryHistory
+                    RecordMemoryHistory = payload.QueryOptions.RecordMemoryHistory,
+                    CaptureHeapReads = eventOptions.CaptureHeapReads,
+                    CaptureHeapWrites = eventOptions.CaptureHeapWrites,
+                    CaptureStackMemory = eventOptions.CaptureStackMemory
                 }
         };
     }

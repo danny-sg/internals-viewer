@@ -573,24 +573,25 @@ public sealed partial class TraceTimelineControl
 
         var range = _viewEnd - _viewStart;
 
+        var isOverScrollingMemory = ShowsMemory && !_memory.SizeToFit && _memory.Contains(point.Position);
+
+        var isControl = modifiers.HasFlag(VirtualKeyModifiers.Control);
+
         if (point.Properties.IsHorizontalMouseWheel || modifiers.HasFlag(VirtualKeyModifiers.Shift))
         {
             ScrollViewTo(_viewStart - Math.Sign(delta) * range * WheelPan);
         }
-        else if (modifiers.HasFlag(VirtualKeyModifiers.Control))
+        else if (isOverScrollingMemory && !isControl)
         {
-            if (ShowsMemory && _memory.CanScroll && _memory.Contains(point.Position))
-            {
-                _memory.ScrollBy(-delta);
+            _memory.ScrollBy(-delta);
 
-                UpdateScrollBars();
-            }
-            else
-            {
-                _scrollY -= delta;
+            UpdateScrollBars();
+        }
+        else if (isControl && !isOverScrollingMemory)
+        {
+            _scrollY -= delta;
 
-                ApplyScroll();
-            }
+            ApplyScroll();
         }
         else
         {

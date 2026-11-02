@@ -53,7 +53,7 @@ public sealed partial class MemoryWatchRowViewModel : ObservableObject
 
     public void Refresh(byte[]? data)
     {
-        var bytes = GetBytes(data);
+        var bytes = GetBytes(Watch, data);
 
         if (bytes is null)
         {
@@ -71,10 +71,13 @@ public sealed partial class MemoryWatchRowViewModel : ObservableObject
             DataTypes = types;
         }
 
-        Value = DataType is { } type ? results.Find(r => r.DataType == type)?.Value ?? string.Empty : GetHexText(bytes);
+        Value = GetValue(bytes, results, DataType);
     }
 
     public void Clear() => Owner.Remove(Watch);
+
+    public static string GetValue(HexWatch watch, byte[]? data)
+        => GetBytes(watch, data) is { } bytes ? GetValue(bytes, DataDecoder.Decode(bytes), watch.DataType) : string.Empty;
 
     partial void OnDataTypeChanged(string? value)
     {
@@ -98,10 +101,13 @@ public sealed partial class MemoryWatchRowViewModel : ObservableObject
         Refresh(Owner.Data);
     }
 
-    private byte[]? GetBytes(byte[]? data)
-        => data is not null && Watch.Offset >= 0 && Watch.Length > 0 && Watch.Offset + Watch.Length <= data.Length
-            ? data[Watch.Offset..(Watch.Offset + Watch.Length)]
+    private static byte[]? GetBytes(HexWatch watch, byte[]? data)
+        => data is not null && watch.Offset >= 0 && watch.Length > 0 && watch.Offset + watch.Length <= data.Length
+            ? data[watch.Offset..(watch.Offset + watch.Length)]
             : null;
+
+    private static string GetValue(byte[] bytes, List<DecodeResult> results, string? dataType)
+        => dataType is { } type ? results.Find(r => r.DataType == type)?.Value ?? string.Empty : GetHexText(bytes);
 
     private static string GetHexText(byte[] bytes)
     {

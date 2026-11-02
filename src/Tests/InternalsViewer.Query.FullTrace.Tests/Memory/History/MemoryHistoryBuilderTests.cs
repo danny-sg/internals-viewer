@@ -4,6 +4,7 @@ using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
+using InternalsViewer.Query.FullTrace.Memory.History.StackObjects;
 using InternalsViewer.Query.FullTrace.Memory.History.Watches;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -21,6 +22,8 @@ public class MemoryHistoryBuilderTests
     private const ulong Owned = 0x21C_0BB5_0000;
 
     private const ulong Writer = 0x7FF8_0080_0010;
+
+    private const ulong StackAddress = 0x55_47EF_B300;
 
     private const uint Thread = 9;
 
@@ -531,6 +534,121 @@ public class MemoryHistoryBuilderTests
                       keep(Hit(3, Owned - 2, 4)),
                       keep(Hit(3, Owned + 0x10, 4)),
                       keep(Hit(6, Owned, 4))]);
+    }
+
+    [Fact]
+    public void A_Stack_Object_Is_A_Block_Whose_Changes_Come_From_Its_Snapshots()
+    {
+        var store = BuildStack([]);
+
+        var block = Assert.Single(store.Blocks);
+
+        var writes = store.GetWrites(0);
+
+        Assert.Equal((true, 6, At(5), At(50), 1),
+                     (block.IsStack, block.CallNodeIndex, block.FromPosition, block.ToPosition, block.InstanceCount));
+        Assert.Equal([MemoryHistoryChangeType.Initialised, MemoryHistoryChangeType.Changed], writes.Select(w => w.Type));
+        Assert.Equal((2, (byte)9), (writes[1].Offset, store.GetBytes(writes[1])[0]));
+    }
+
+    [Fact]
+    public void Each_Call_Holding_The_Same_Stack_Object_Is_An_Instance_Of_One_Object()
+    {
+        StackSnapshotRun[] runs = [new(0, At(5), 0, 0, 4), new(1, At(65), 0, 4, 4)];
+
+        var stack = new StackSnapshots([new StackObject(StackAddress, 4, Thread, 6, At(5), At(50)),
+                                        new StackObject(StackAddress, 4, Thread, 6, At(65), At(90))],
+                                       [new StackSnapshotChunk(runs, [1, 2, 3, 4, 1, 2, 7, 4])],
+                                       2);
+
+        var store = MemoryHistoryBuilder.Build([], [], new Dictionary<ulong, TracePosition>(), WatchResult.Empty, null, stack).Store;
+
+        var block = Assert.Single(store.Blocks);
+
+        var second = store.GetWrites(0)[1];
+
+        Assert.Equal((2, At(5), At(90)), (block.InstanceCount, block.FromPosition, block.ToPosition));
+        Assert.Equal((true, false, true), (store.IsLive(0, At(20)), store.IsLive(0, At(55)), store.IsLive(0, At(70))));
+        Assert.Equal((MemoryHistoryChangeType.Changed, 2, 1), (second.Type, second.Offset, (int)second.Length));
+    }
+
+    [Fact]
+    public void A_Pointer_Into_The_Stack_Finds_The_Object_Only_While_A_Call_Holds_It()
+    {
+        StackSnapshotRun[] runs = [new(0, At(5), 0, 0, 4), new(1, At(65), 0, 4, 4)];
+
+        var stack = new StackSnapshots([new StackObject(StackAddress, 4, Thread, 6, At(5), At(50)),
+                                        new StackObject(StackAddress, 4, Thread, 6, At(65), At(90))],
+                                       [new StackSnapshotChunk(runs, [1, 2, 3, 4, 1, 2, 7, 4])],
+                                       2);
+
+        var store = MemoryHistoryBuilder.Build([new MemoryHistoryAllocation(Block(Owned, 0x10, from: 1), false)],
+                                               [0],
+                                               new Dictionary<ulong, TracePosition>(),
+                                               new WatchResult([new WatchChunk([ChunkHit.From(Hit(2, Owned, 1), 0)], [1])], 1),
+                                               null,
+                                               stack).Store;
+
+        Assert.Equal((1, -1, 0),
+                     (store.GetBlock(StackAddress + 2, At(70)),
+                      store.GetBlock(StackAddress + 2, At(55)),
+                      store.GetBlock(Owned + 4, At(70))));
+    }
+
+    [Fact]
+    public void A_Watched_Write_Is_Never_Given_To_A_Stack_Object()
+    {
+        var store = BuildStack([Write(10, StackAddress, 7, 7, 7, 7)]);
+
+        Assert.Equal(2, store.WriteCount);
+    }
+
+    [Fact]
+    public void A_Stack_Object_Is_Still_On_The_Stack_After_An_Export()
+    {
+        var built = BuildStack([]);
+
+        using var stream = new MemoryStream();
+
+        using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
+        {
+            built.Write(writer);
+        }
+
+        stream.Position = 0;
+
+        using var reader = new BinaryReader(stream);
+
+        var store = MemoryHistoryStore.Read(reader);
+
+        Assert.Equal((true, 2, 1), (store.Blocks[0].IsStack, store.WriteCount, store.GetInstances(0).Count));
+    }
+
+    private static MemoryHistoryStore BuildStack((ulong Sequence, ulong Address, byte[] Bytes)[] writes)
+    {
+        StackSnapshotRun[] runs = [new(0, At(5), 0, 0, 4), new(0, At(20), 2, 4, 1)];
+
+        var stack = new StackSnapshots([new StackObject(StackAddress, 4, Thread, 6, At(5), At(50))],
+                                       [new StackSnapshotChunk(runs, [1, 2, 3, 4, 9])],
+                                       2);
+
+        var data = new List<byte>();
+
+        var hits = new List<ChunkHit>();
+
+        foreach (var (sequence, address, bytes) in writes)
+        {
+            hits.Add(ChunkHit.From(Hit(sequence, address, (uint)bytes.Length), data.Count));
+
+            data.AddRange(bytes);
+        }
+
+        return MemoryHistoryBuilder.Build([],
+                                          [],
+                                          new Dictionary<ulong, TracePosition>(),
+                                          new WatchResult([new WatchChunk([.. hits], [.. data])], 1),
+                                          null,
+                                          stack).Store;
     }
 
     private static (TraceTimeline Timeline, (CallStackNode Query, CallStackNode GetRow, CallStackNode Scanner) Nodes) BuildTimeline()

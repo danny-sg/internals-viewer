@@ -172,7 +172,7 @@ public sealed class MemoryTools(McpDocumentResolver documents)
                                             [Description("Hex address: only the block containing it")] string? address = null,
                                             [Description("Regex over the allocating function, for example CBpBatch::")]
                                             string? allocatedIn = null,
-                                            [Description("Only blocks of this kind: iterator or inline")] string? kind = null,
+                                            [Description("Only blocks of this kind: iterator, inline or stack")] string? kind = null,
                                             [Description("Block order: index or writes")] string sort = "index",
                                             [Description("With block, only writes at this offset, decimal or 0x hex")] string? field = null,
                                             [Description("With block, first write to show")] int offset = 0,
@@ -197,13 +197,12 @@ public sealed class MemoryTools(McpDocumentResolver documents)
             return "no memory history in the trace";
         }
 
-        var wantedKind = kind?.ToLowerInvariant() switch
+        var wantedKind = kind?.ToLowerInvariant();
+
+        if (wantedKind is not (null or "iterator" or "inline" or "stack"))
         {
-            null => (bool?)null,
-            "iterator" => true,
-            "inline" => false,
-            _ => throw new McpException($"kind must be iterator or inline, not '{kind}'.")
-        };
+            throw new McpException($"kind must be iterator, inline or stack, not '{kind}'.");
+        }
 
         var byWrites = sort.ToLowerInvariant() switch
         {
@@ -229,6 +228,11 @@ public sealed class MemoryTools(McpDocumentResolver documents)
         builder.AppendLine("block. Iterator = the operator object the block belongs to (0 when none). Writes are byte changes, " +
                            "each with its writer.");
 
+        builder.AppendLine("Kind stack = a local of the allocating function handed to another function, one block for every call " +
+                           "of it, read as it");
+
+        builder.AppendLine("is handed over and when that call returns. From and To span all of its calls.");
+
         var selected = Enumerable.Range(0, history.Blocks.Count).Select(i => (Index: i, Block: history.Blocks[i]));
 
         if (iterator is not null)
@@ -252,9 +256,9 @@ public sealed class MemoryTools(McpDocumentResolver documents)
             selected = selected.Where(b => pattern.IsMatch(GetFunctionName(scope, timeline, b.Block.CallNodeIndex)));
         }
 
-        if (wantedKind is { } isIterator)
+        if (wantedKind is not null)
         {
-            selected = selected.Where(b => isIterator ? b.Block.IsIterator : b.Block.IsInline);
+            selected = selected.Where(b => GetKind(b.Block) == wantedKind);
         }
 
         if (fromPosition is { } alive)
@@ -283,7 +287,7 @@ public sealed class MemoryTools(McpDocumentResolver documents)
             table.Add(index,
                       Format.Hex(entry.Address),
                       entry.Size,
-                      entry.IsIterator ? "iterator" : entry.IsInline ? "inline" : string.Empty,
+                      entry.IsStack ? $"stack, {Format.Number(entry.InstanceCount)} calls" : GetKind(entry),
                       Format.Hex(entry.Iterator),
                       entry.Thread,
                       Format.Position(entry.FromPosition),
@@ -509,6 +513,9 @@ public sealed class MemoryTools(McpDocumentResolver documents)
 
     private static string GetFunctionName(McpDocumentScope scope, TraceTimeline timeline, int callNodeIndex)
         => timeline.NodeOf(callNodeIndex) is { } node ? scope.Context.GetFunctionName(node) : $"raw node {callNodeIndex}";
+
+    private static string GetKind(MemoryHistoryBlock block)
+        => block.IsIterator ? "iterator" : block.IsInline ? "inline" : block.IsStack ? "stack" : string.Empty;
 
     private sealed class Group
     {

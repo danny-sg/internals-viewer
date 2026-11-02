@@ -1,6 +1,7 @@
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.UI.App.Controls.Query.Timeline;
 using InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Memory;
@@ -347,6 +348,51 @@ public class TraceMemoryPaneTests
         var colours = GetDrawnColours(pane, host);
 
         Assert.Equal((true, false), (colours.Contains(new SKColor(227, 147, 147)), colours.Contains(WriterColour)));
+    }
+
+    [Fact]
+    public void Heap_Objects_Come_Before_Stack_Objects_At_Lower_Addresses()
+    {
+        var stack = Block(1, 0x0500_0000, 0x40, Write(0, 8)) with { IsStack = true };
+
+        var (pane, host) = Create([stack, Block(0, 0x1000_0000, 0x40, Write(0, 8))]);
+
+        using var _ = host;
+
+        Assert.Equal([0, 1], new[] { 5f, 70f }.Select(y => pane.Blocks[pane.GetHit(new Point(10, PaneTop + y))!.Value.Block].Block));
+    }
+
+    [Fact]
+    public void A_Stack_Object_Draws_Its_Lifetime_Only_While_A_Call_Holds_It()
+    {
+        MemoryHistoryInstance[] instances = [new(new TracePosition(1, 0), new TracePosition(15, 0), 1, 15),
+                                             new(new TracePosition(60, 0), new TracePosition(80, 0), 60, 80)];
+
+        var block = new TraceMemoryBlock(0,
+                                         "Object 0",
+                                         0x1000_0000,
+                                         0x40,
+                                         Point(1),
+                                         Point(80),
+                                         new TraceMemoryWrites([new TraceMemoryWrite(Point(5), 0x20, 8, WriterNode)]),
+                                         Instances: instances);
+
+        var (pane, host) = Create([block]);
+
+        using var _ = host;
+
+        using var bitmap = new SKBitmap(Width, (int)(PaneTop + PaneHeight));
+
+        using (var canvas = new SKCanvas(bitmap))
+        {
+            canvas.Clear(SKColors.Black);
+
+            pane.Draw(canvas, Width, host.Scale);
+        }
+
+        var first = bitmap.GetPixel(10, (int)PaneTop + 5);
+
+        Assert.Equal((first, true), (bitmap.GetPixel(140, (int)PaneTop + 5), bitmap.GetPixel(70, (int)PaneTop + 5) != first));
     }
 
     private static (TraceMemoryPane Pane, FakeHost Host) Create(TraceMemoryBlock[] blocks)

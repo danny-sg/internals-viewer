@@ -25,6 +25,14 @@ public interface IQueryCommands
 
     Task ShowMemoryAsync(int block, ulong address, TracePosition position);
 
+    Task ShowObjectGraphAsync(int? block, TracePosition? position);
+
+    Task<McpWatch> AddWatchAsync(int block, int offset, int length, string? dataType, string? label);
+
+    Task<McpWatch[]> GetWatchesAsync();
+
+    Task<int> ClearWatchesAsync();
+
     Task<McpFunctionSignature?> ResolveSignatureAsync(CallstackFrame frame);
 
     Task<TraceValueReferences?> FindReferencesAsync(ulong value);

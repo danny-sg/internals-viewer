@@ -2,7 +2,7 @@
 
 namespace InternalsViewer.UI.App.Models;
 
-public sealed partial class HexWatch(int offset, int length, string? dataType = null) : ObservableObject
+public sealed partial class HexWatch(int offset, int length, string? dataType = null, bool isTemporary = false) : ObservableObject
 {
     [ObservableProperty]
     private string? _label;
@@ -12,6 +12,8 @@ public sealed partial class HexWatch(int offset, int length, string? dataType = 
     public int Length { get; } = length;
 
     public string? DataType { get; } = dataType;
+
+    public bool IsTemporary { get; } = isTemporary;
 
     public int End => Offset + Length - 1;
 }

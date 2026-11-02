@@ -183,7 +183,7 @@ public sealed partial class TraceTimelineControl
         return suggestions;
     }
 
-    private void FindSearchMatches()
+    private bool FindSearchMatches()
     {
         _searchMatches = null;
 
@@ -207,20 +207,47 @@ public sealed partial class TraceTimelineControl
             _searchMatches = matches;
         }
 
-        FindMemorySearchMatches();
+        var isFiltered = FilterMemoryBlocks();
 
         CountSearchMatches();
+
+        return isFiltered;
     }
 
-    private void FindMemorySearchMatches()
+    private bool FilterMemoryBlocks(bool isForced = false)
     {
         _memoryMatchStarts = null;
 
-        var blocks = _memory.Blocks;
+        IReadOnlyList<TraceMemoryBlock> blocks = ShowBuffers || MemoryBlocks is not { } all
+            ? MemoryBlocks ?? []
+            : [.. all.Where(b => !b.IsBuffer)];
 
-        _memoryMatches = !IsMemorySearch || _searchTerms.Length == 0
-            ? []
-            : [.. Enumerable.Range(0, blocks.Count).Where(i => MatchesMemorySearch(blocks[i]))];
+        TraceMemoryBlock[] matches = IsMemorySearch && _searchTerms.Length > 0 ? [.. blocks.Where(MatchesMemorySearch)] : [];
+
+        var shown = matches.Length > 0 ? matches : blocks;
+
+        _memoryMatches = [.. Enumerable.Range(0, matches.Length)];
+
+        if (!isForced && IsShowing(shown))
+        {
+            return false;
+        }
+
+        _memory.SetBlocks(shown);
+
+        return true;
+    }
+
+    private bool IsShowing(IReadOnlyList<TraceMemoryBlock> blocks)
+    {
+        if (_memory.Blocks.Count != blocks.Count)
+        {
+            return false;
+        }
+
+        var shown = _memory.Blocks.Select(b => b.Block).ToHashSet();
+
+        return blocks.All(b => shown.Contains(b.Block));
     }
 
     private bool MatchesMemorySearch(TraceMemoryBlock block)
@@ -238,7 +265,7 @@ public sealed partial class TraceTimelineControl
         return MatchesSearch(block.Label);
     }
 
-    private bool MatchesSearch(string label) => _searchTerms.All(t => label.Contains(t, StringComparison.OrdinalIgnoreCase));
+    private bool MatchesSearch(string label) => _searchTerms.All(t => FuzzyMatch.IsMatch(label, t));
 
     private static ulong? GetSearchAddress(string? text)
     {
@@ -783,7 +810,12 @@ public sealed partial class TraceTimelineControl
     {
         var control = (TraceTimelineControl)d;
 
-        control.FindSearchMatches();
+        if (control.FindSearchMatches())
+        {
+            control.SetMemoryWriters(null);
+
+            control.Relayout();
+        }
 
         control.Redraw();
     }

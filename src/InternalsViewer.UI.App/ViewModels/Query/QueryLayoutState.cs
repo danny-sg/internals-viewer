@@ -26,5 +26,11 @@ public sealed class QueryLayoutState
 
     public bool IncludeColumnstore { get; set; } = true;
 
+    public bool CaptureHeapReads { get; set; } = true;
+
+    public bool CaptureHeapWrites { get; set; } = true;
+
+    public bool CaptureStackMemory { get; set; } = true;
+
     public List<LockModeCategory>? LockModeCategories { get; set; }
 }

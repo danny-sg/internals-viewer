@@ -14,8 +14,20 @@ public sealed partial class MemoryDetailsViewModel : ObservableObject
 
     private const string EndOfRecording = "End Of Recording";
 
+    private const string StackMemory = "Stack";
+
+    private const string HeapMemory = "Heap";
+
     [ObservableProperty]
     private string _address = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasMemoryKind))]
+    private string _memoryKind = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsReadVisible))]
+    private bool _isStack;
 
     [ObservableProperty]
     private string _type = string.Empty;
@@ -33,6 +45,10 @@ public sealed partial class MemoryDetailsViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(LifetimeText))]
     [NotifyPropertyChangedFor(nameof(IsDestroyed))]
     private TracePoint? _destroyedAt;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasInstances))]
+    private string _instancesText = string.Empty;
 
     [ObservableProperty]
     private string _initialisedBy = string.Empty;
@@ -63,6 +79,12 @@ public sealed partial class MemoryDetailsViewModel : ObservableObject
 
     public bool IsDestroyed => DestroyedAt is not null;
 
+    public bool HasInstances => InstancesText.Length > 0;
+
+    public bool HasMemoryKind => MemoryKind.Length > 0;
+
+    public bool IsReadVisible => !IsStack;
+
     public ulong BlockAddress { get; private set; }
 
     public TraceCallLink? InitialisedLink { get; private set; }
@@ -85,6 +107,10 @@ public sealed partial class MemoryDetailsViewModel : ObservableObject
 
         Address = $"0x{block.Address:X16}";
 
+        IsStack = block.IsStack;
+
+        MemoryKind = block.IsStack ? StackMemory : HeapMemory;
+
         Type = owner.History.GetObjectName(owner.Block);
 
         Length = $"{block.Size:N0} Bytes";
@@ -92,6 +118,13 @@ public sealed partial class MemoryDetailsViewModel : ObservableObject
         InitialisedAt = block.From;
 
         DestroyedAt = block.To;
+
+        InstancesText = block.InstanceCount switch
+        {
+            0 => string.Empty,
+            1 => "1 Instance",
+            var count => $"{count:N0} Instances"
+        };
 
         InitialisedBy = allocatingCall?.Symbol ?? UnknownFunction;
 
@@ -116,6 +149,10 @@ public sealed partial class MemoryDetailsViewModel : ObservableObject
     {
         Address = string.Empty;
 
+        IsStack = false;
+
+        MemoryKind = string.Empty;
+
         Type = string.Empty;
 
         Length = string.Empty;
@@ -129,6 +166,8 @@ public sealed partial class MemoryDetailsViewModel : ObservableObject
         InitialisedAt = null;
 
         DestroyedAt = null;
+
+        InstancesText = string.Empty;
 
         InitialisedBy = string.Empty;
 
