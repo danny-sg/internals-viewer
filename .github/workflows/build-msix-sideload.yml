@@ -17,6 +17,7 @@ jobs:
 
     env:
       Solution_Name: src\InternalsViewer.slnx
+      Manifest_Path: src\InternalsViewer.UI.App\Package.appxmanifest
 
     steps:
     - name: Checkout
@@ -36,6 +37,36 @@ jobs:
       uses: gittools/actions/gitversion/setup@v0
       with:
         versionSpec: '5.x'
+
+    - name: Set the package version from the tag
+      if: github.ref_type == 'tag'
+      shell: pwsh
+      run: |
+        if ($env:GITHUB_REF_NAME -notmatch '^v?(\d+\.\d+\.\d+)(-.+)?$') {
+          throw "Release tags need to be Major.Minor.Build such as v5.0.5 or v5.0.6-beta.1, got '$env:GITHUB_REF_NAME'"
+        }
+
+        $build = [int]$env:GITHUB_RUN_NUMBER
+
+        if ($build -gt 65535) {
+          throw "Run number $build is above 65535, the largest value for a package version part"
+        }
+
+        $version = "$($Matches[1]).$build"
+
+        $manifest = Get-Content $env:Manifest_Path -Raw
+
+        $identity = [regex]'(<Identity\b[^>]*?\bVersion=")[^"]*(")'
+
+        if (-not $identity.IsMatch($manifest)) {
+          throw "No Identity version found in $env:Manifest_Path"
+        }
+
+        $manifest = $identity.Replace($manifest, "`${1}$version`${2}", 1)
+
+        Set-Content -Path $env:Manifest_Path -Value $manifest -NoNewline
+
+        Write-Host "Package version $version"
 
     - name: Restore the application
       run: msbuild $env:Solution_Name /t:Restore /p:Configuration=$env:Configuration

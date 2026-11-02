@@ -2,25 +2,7 @@ name: Build MSIX Store package
 
 on:
   workflow_call:
-    inputs:
-      version:
-        description: 'Package version as Major.Minor.Build, for example 5.0.5. Defaults to the tag, then the manifest'
-        type: string
-        required: false
-      commit:
-        description: 'Submit for certification. Otherwise the submission is left as a draft in Partner Center'
-        type: boolean
-        default: false
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Package version as Major.Minor.Build, for example 5.0.5. Defaults to the tag, then the manifest'
-        type: string
-        required: false
-      commit:
-        description: 'Submit for certification. Otherwise the submission is left as a draft in Partner Center'
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -36,9 +18,6 @@ jobs:
       Configuration: Release
       Platform: x64
 
-    outputs:
-      version: ${{ steps.version.outputs.version }}
-
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -53,43 +32,32 @@ jobs:
     - name: Setup MSBuild.exe
       uses: microsoft/setup-msbuild@v2
 
-    - name: Set the package version
-      id: version
+    - name: Set the package version from the tag
       shell: pwsh
-      env:
-        Requested_Version: ${{ inputs.version }}
       run: |
-        $version = $env:Requested_Version
+        if ($env:GITHUB_REF_TYPE -ne 'tag') {
+          throw "Run this from a release tag such as v5.0.5, the package version comes from the tag"
+        }
 
-        if (-not $version -and $env:GITHUB_REF_TYPE -eq 'tag') {
-          $version = $env:GITHUB_REF_NAME
+        $version = $env:GITHUB_REF_NAME.TrimStart('v')
+
+        if ($version -notmatch '^\d+\.\d+\.\d+$') {
+          throw "Store releases need a Major.Minor.Build tag such as v5.0.5, got '$env:GITHUB_REF_NAME'"
         }
 
         $manifest = Get-Content $env:Manifest_Path -Raw
 
-        $identity = [regex]'(<Identity\b[^>]*?\bVersion=")([^"]*)(")'
+        $identity = [regex]'(<Identity\b[^>]*?\bVersion=")[^"]*(")'
 
-        if ($version) {
-          $version = $version.TrimStart('v')
-
-          if ($version -notmatch '^\d+\.\d+\.\d+$') {
-            throw "Store versions are Major.Minor.Build, got '$version'"
-          }
-
-          $manifest = $identity.Replace($manifest, "`${1}$version.0`${3}", 1)
-
-          Set-Content -Path $env:Manifest_Path -Value $manifest -NoNewline
+        if (-not $identity.IsMatch($manifest)) {
+          throw "No Identity version found in $env:Manifest_Path"
         }
 
-        $packageVersion = $identity.Match($manifest).Groups[2].Value
+        $manifest = $identity.Replace($manifest, "`${1}$version.0`${2}", 1)
 
-        if ($packageVersion -notmatch '^\d+\.\d+\.\d+\.0$') {
-          throw "The Store needs the fourth version number to be 0, the manifest has '$packageVersion'"
-        }
+        Set-Content -Path $env:Manifest_Path -Value $manifest -NoNewline
 
-        Write-Host "Package version $packageVersion"
-
-        "version=$packageVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        Write-Host "Package version $version.0"
 
     - name: Restore the application
       run: msbuild $env:Solution_Name /t:Restore /p:Configuration=$env:Configuration
@@ -154,8 +122,6 @@ jobs:
       shell: pwsh
       env:
         Product_Id: ${{ vars.STORE_PRODUCT_ID }}
-        Is_Committed: ${{ inputs.commit }}
-        Package_Version: ${{ needs.build.outputs.version }}
       run: |
         if (-not $env:Product_Id) {
           throw "Set the STORE_PRODUCT_ID repository variable to the app's Store ID"
@@ -167,15 +133,9 @@ jobs:
           throw "Expected one .msixupload, found $($uploads.Count)"
         }
 
-        $arguments = @($uploads[0].FullName, '--appId', $env:Product_Id)
+        Write-Host "Submitting $($uploads[0].Name)"
 
-        if ($env:Is_Committed -ne 'true') {
-          $arguments += '--noCommit'
-        }
-
-        Write-Host "Submitting $($uploads[0].Name) ($env:Package_Version), committed: $env:Is_Committed"
-
-        msstore publish @arguments
+        msstore publish $uploads[0].FullName --appId $env:Product_Id
 
         if ($LASTEXITCODE -ne 0) {
           throw "msstore publish failed with exit code $LASTEXITCODE"
