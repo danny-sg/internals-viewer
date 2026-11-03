@@ -10,8 +10,6 @@ using InternalsViewer.UI.App.Views.Query.Plan;
 using InternalsViewer.UI.App.Views.Query.Sql;
 using InternalsViewer.UI.App.Views.Query.Timeline;
 using InternalsViewer.UI.App.Views.Query.Trace.CallStack;
-using InternalsViewer.UI.App.Views.Query.Trace.CustomHooks;
-using InternalsViewer.UI.App.Views.Query.Trace.MemoryHistory;
 using InternalsViewer.UI.App.Views.Query.Trace.OperatorTracks;
 using InternalsViewer.UI.App.Views.Query.Trace.Timeline;
 using Microsoft.UI.Xaml.Controls;
@@ -33,9 +31,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     private const string InstructionsKey = "Instructions";
     private const string TimelineKey = "Timeline";
     private const string TraceTimelineKey = "FlameChart";
-    private const string CustomHooksKey = "CustomHooks";
     private const string OperatorTracksKey = "OperatorTracks";
-    private const string MemoryHistoryKey = "MemoryHistory";
 
     private readonly Dictionary<string, DocumentViewModel> _documentsByKey;
 
@@ -79,13 +75,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     private bool _isTraceTimelineVisible;
 
     [ObservableProperty]
-    private bool _isCustomHooksVisible;
-
-    [ObservableProperty]
     private bool _isOperatorTracksVisible;
-
-    [ObservableProperty]
-    private bool _isMemoryHistoryVisible;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanShowEventViews))]
@@ -139,20 +129,10 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
                                                                                keepAlive: true,
                                                                                key: TraceTimelineKey),
 
-            [CustomHooksKey] = DocumentViewModel.Create<QueryCustomHooksTabView>("Custom Hooks",
-                                                                                 content,
-                                                                                 keepAlive: true,
-                                                                                 key: CustomHooksKey),
-
             [OperatorTracksKey] = DocumentViewModel.Create<QueryOperatorTracksTabView>("Operator Tracks",
                                                                                        content,
                                                                                        keepAlive: true,
-                                                                                       key: OperatorTracksKey),
-
-            [MemoryHistoryKey] = DocumentViewModel.Create<QueryMemoryHistoryTabView>("Memory History",
-                                                                                     content,
-                                                                                     keepAlive: true,
-                                                                                     key: MemoryHistoryKey)
+                                                                                       key: OperatorTracksKey)
         };
 
         Dock = new DockLayoutViewModel(DefaultRoot());
@@ -261,25 +241,11 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         Show(_documentsByKey[TraceTimelineKey]);
     }
 
-    public void ShowCustomHooks()
-    {
-        IsCustomHooksVisible = true;
-
-        Show(_documentsByKey[CustomHooksKey]);
-    }
-
     public void ShowOperatorTracks()
     {
         IsOperatorTracksVisible = true;
 
         Show(_documentsByKey[OperatorTracksKey]);
-    }
-
-    public void ShowMemoryHistory()
-    {
-        IsMemoryHistoryVisible = true;
-
-        Show(_documentsByKey[MemoryHistoryKey]);
     }
 
     public bool IsVisible(string key)
@@ -336,14 +302,8 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     partial void OnIsTraceTimelineVisibleChanged(bool value)
         => SetDocumentVisible(_documentsByKey[TraceTimelineKey], value);
 
-    partial void OnIsCustomHooksVisibleChanged(bool value)
-        => SetDocumentVisible(_documentsByKey[CustomHooksKey], value);
-
     partial void OnIsOperatorTracksVisibleChanged(bool value)
         => SetDocumentVisible(_documentsByKey[OperatorTracksKey], value);
-
-    partial void OnIsMemoryHistoryVisibleChanged(bool value)
-        => SetDocumentVisible(_documentsByKey[MemoryHistoryKey], value);
 
     partial void OnIsTraceChanged(bool value)
     {
@@ -468,9 +428,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         IsInstructionsVisible = Dock.Contains(_documentsByKey[InstructionsKey]);
         IsTimelineVisible = Dock.Contains(_documentsByKey[TimelineKey]);
         IsTraceTimelineVisible = Dock.Contains(_documentsByKey[TraceTimelineKey]);
-        IsCustomHooksVisible = Dock.Contains(_documentsByKey[CustomHooksKey]);
         IsOperatorTracksVisible = Dock.Contains(_documentsByKey[OperatorTracksKey]);
-        IsMemoryHistoryVisible = Dock.Contains(_documentsByKey[MemoryHistoryKey]);
 
         _suppressVisibilitySync = false;
     }

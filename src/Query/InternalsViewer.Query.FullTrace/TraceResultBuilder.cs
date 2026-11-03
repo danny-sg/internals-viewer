@@ -6,10 +6,8 @@ using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
-using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
-using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -49,8 +47,6 @@ internal sealed class TraceResultBuilder
     public IReadOnlyDictionary<ulong, MemoryObjectInfo> MemoryObjectSnapshot { get; init; } = new Dictionary<ulong, MemoryObjectInfo>();
 
     public ObjectPoolSnapshot ObjectPool { get; init; } = ObjectPoolSnapshot.Empty;
-
-    public CustomHookStore CustomHooks { get; init; } = CustomHookStore.Empty;
 
     public TraceBufferPool BufferPool { get; init; } = TraceBufferPool.Empty;
 
@@ -93,7 +89,6 @@ internal sealed class TraceResultBuilder
             AddressMap = AddressMap,
             MemoryObjects = MemoryObjectMap.Build(CallStore, Timeline.MappedNodes, MemoryObjectSnapshot),
             ObjectPool = ObjectPool,
-            CustomHooks = CustomHooks,
             BufferPool = BufferPool,
             OutputStructures = outputStructures,
             RowReturnMarks = TraceRowReturnMarkMap.Build(Timeline, CallStore, lifetimes, enclosing),

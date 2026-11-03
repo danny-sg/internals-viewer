@@ -12,7 +12,6 @@ using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Properties;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Events.Scheduling;
-using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.Memory.Enums;
 using InternalsViewer.Query.Plans.Enums;
 using InternalsViewer.Query.QueryStore;

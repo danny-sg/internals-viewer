@@ -3,10 +3,8 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace;
-using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.UI.App.Controls.Query.Trace.CallStack;
-using InternalsViewer.UI.App.Controls.Query.Trace.Dialogs;
 using InternalsViewer.UI.App.Controls;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Controls.Results;
@@ -86,37 +84,6 @@ public sealed partial class CallTreeArgumentsPanelView : UserControl, IDocumentC
         }
     }
 
-    private async Task AddCustomHookAsync(CallTreeTabViewModel viewModel, CallStackNode node, (string Name, int Register) argument)
-    {
-        if (node.Frame is not { } frame)
-        {
-            return;
-        }
-
-        var dialog = new CustomHookDialog(node.Symbol, argument.Name, argument.Register == ArgumentLayout.ReturnRegister)
-        {
-            XamlRoot = XamlRoot,
-            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-        };
-
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
-        {
-            return;
-        }
-
-        viewModel.Query.AddCustomHook(new CustomHookDefinition(dialog.HookName.Trim(),
-                                                               frame.Module,
-                                                               frame.Guid,
-                                                               frame.Age,
-                                                               frame.Rva,
-                                                               node.Symbol,
-                                                               argument.Name,
-                                                               argument.Register,
-                                                               dialog.IsReadAtReturn,
-                                                               dialog.Offset,
-                                                               (int)dialog.Length));
-    }
-
     private void OnArgumentCellMenuOpening(object? sender, ResultCellMenuEventArgs e)
     {
         if (ViewModel is not { } viewModel)
@@ -135,11 +102,6 @@ public sealed partial class CallTreeArgumentsPanelView : UserControl, IDocumentC
             e.Menu.Items.Add(MenuItems.Create("Call Stack", () => viewModel.ShowCallStack(node, index)));
 
             e.Menu.Items.Add(MenuItems.Create("Scope", () => viewModel.Query.TraceTimelineTab.PlayheadStack.Scope(node)));
-
-            if (node.Frame is { Guid.Length: > 0 } && arguments.GetHookArgument(e.Ordinal) is { } argument)
-            {
-                e.Menu.Items.Add(MenuItems.Create("Custom Hook", () => _ = AddCustomHookAsync(viewModel, node, argument)));
-            }
         }
 
         var cell = arguments.GetCell(index, e.Ordinal);

@@ -1,7 +1,5 @@
 using InternalsViewer.Query.FullTrace.Memory.Address;
-using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Calls;
-using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
@@ -31,9 +29,6 @@ namespace InternalsViewer.Query.FullTrace;
 /// <param name="AddressMap">
 /// Address sightings from the memory map hook: allocations, constructions, member calls and declared pointers
 /// </param>
-/// <param name="CustomHooks">
-/// Captures from the user-defined hooks
-/// </param>
 /// <param name="OutputAddresses">
 /// Where each output row's columns read from, at the position the row was sent
 /// </param>
@@ -48,7 +43,6 @@ internal sealed record ReplayResult(CallNode[] Nodes,
                                     TraceCallStore CallStore,
                                     TraceTimeline Timeline,
                                     ChunkedList<AddressEntry> AddressMap,
-                                    CustomHookStore CustomHooks,
                                     TraceBufferPool BufferPool,
                                     List<OutputAddressEntry> OutputAddresses,
                                     IReadOnlyList<IteratorPlanNode> PlanNodes,

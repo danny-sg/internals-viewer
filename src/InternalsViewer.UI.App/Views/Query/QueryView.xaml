@@ -93,7 +93,7 @@
                                 <ToggleMenuFlyoutItem Text="Track query"
                                    IsChecked="{x:Bind ViewModel.TrackQuery, Mode=TwoWay}"/>
                                 <MenuFlyoutSeparator/>
-                                <ToggleMenuFlyoutItem Text="Crop To Query"
+                                <ToggleMenuFlyoutItem Text="Crop To query"
                                    IsChecked="{x:Bind ViewModel.QueryOptions.CropToQuery, Mode=TwoWay}"/>
                                 <ToggleMenuFlyoutItem Text="Include system objects"
                                    IsChecked="{x:Bind ViewModel.QueryOptions.IncludeSystemObjects, Mode=TwoWay}"/>
@@ -160,8 +160,6 @@
                                 <MenuFlyoutItem Text="Search symbols"
                                                 Command="{x:Bind ViewModel.SearchSymbolsCommand}"/>
                                 <MenuFlyoutSeparator/>
-                                <MenuFlyoutItem Text="Custom Hooks"
-                                                Command="{x:Bind ViewModel.ShowCustomHooksCommand}"/>
                                 <MenuFlyoutItem Text="Operator Tracks"
                                                 Command="{x:Bind ViewModel.ShowOperatorTracksCommand}"/>
                                 <MenuFlyoutSeparator                                                 Visibility="{x:Bind ViewModel.MemoryHistory.IsAvailable, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>

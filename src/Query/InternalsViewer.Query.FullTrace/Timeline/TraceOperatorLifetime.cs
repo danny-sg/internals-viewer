@@ -1,6 +1,5 @@
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.Events.Operators;
-using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Timeline;

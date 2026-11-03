@@ -19,7 +19,7 @@ Rules that always apply:
   its cost is instructions. Never report a Full Trace figure as milliseconds.
 - When the user refers to what they can see, the scope is what get_selection reports.
 - Ask before close_tab, and before turning on full-trace with query_set_option.
-- Crop To Query hides compilation, setup and teardown. A tool that shows the user something it hides turns it off and
+- Crop To query hides compilation, setup and teardown. A tool that shows the user something it hides turns it off and
   says so: then tell the user why.
 
 Tools are named after their area: query_, page_, allocations_, index_ and columnstore_, and query_page_ for a page open in

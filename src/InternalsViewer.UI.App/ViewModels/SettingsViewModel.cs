@@ -8,7 +8,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.Mcp.Hosting;
 using InternalsViewer.Mcp.Interfaces.Clients;
-using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Recording;
 using InternalsViewer.Query.XEvents;
 using InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Enums;
@@ -54,8 +53,6 @@ public partial class SettingsViewModel(SettingsService settingsService,
 
     private const string TraceTimelineHiddenTickTracksKey = "TraceTimelineHiddenTickTracks";
     private const string DecodeValuesKey = "DecodeValues";
-    private const string CustomHooksKey = "CustomHooks";
-
     private const string McpServerEnabledKey = "McpServerEnabled";
     private const string McpServerPortKey = "McpServerPort";
     private const string McpServerTokenKey = "McpServerToken";
@@ -142,9 +139,6 @@ public partial class SettingsViewModel(SettingsService settingsService,
     private bool _decodeValues = true;
 
     [ObservableProperty]
-    private IReadOnlyList<CustomHookDefinition> _customHooks = [];
-
-    [ObservableProperty]
     private string _memoryUsage = string.Empty;
 
     [ObservableProperty]
@@ -191,14 +185,6 @@ public partial class SettingsViewModel(SettingsService settingsService,
     private McpServerHost McpServerHost { get; } = mcpServerHost;
 
     private IEnumerable<IMcpClient> McpClientSources { get; } = mcpClients;
-
-    public void AddCustomHook(CustomHookDefinition definition)
-        => CustomHooks = [.. CustomHooks.Where(h => h.Name != definition.Name), definition];
-
-    public void RemoveCustomHook(CustomHookDefinition definition) => CustomHooks = [.. CustomHooks.Where(h => h != definition)];
-
-    public void SetCustomHookPaused(CustomHookDefinition definition, bool isPaused)
-        => CustomHooks = [.. CustomHooks.Select(h => h == definition ? h with { IsPaused = isPaused } : h)];
 
     public void ResetCallTreeCategories()
     {
@@ -281,8 +267,6 @@ public partial class SettingsViewModel(SettingsService settingsService,
         TraceTimelineHiddenTickTracks = await SettingsService.ReadSettingAsync<string>(TraceTimelineHiddenTickTracksKey) ?? string.Empty;
 
         DecodeValues = await SettingsService.ReadSettingAsync<bool?>(DecodeValuesKey) ?? true;
-
-        CustomHooks = await SettingsService.ReadSettingAsync<List<CustomHookDefinition>>(CustomHooksKey) ?? [];
 
         var savedPort = await SettingsService.ReadSettingAsync<double?>(McpServerPortKey);
 
@@ -487,11 +471,6 @@ public partial class SettingsViewModel(SettingsService settingsService,
     partial void OnDecodeValuesChanged(bool value)
     {
         _ = SettingsService.SaveSettingAsync(DecodeValuesKey, value);
-    }
-
-    partial void OnCustomHooksChanged(IReadOnlyList<CustomHookDefinition> value)
-    {
-        _ = SettingsService.SaveSettingAsync(CustomHooksKey, value);
     }
 
     partial void OnUseCustomTraceDirectoryChanged(bool value)

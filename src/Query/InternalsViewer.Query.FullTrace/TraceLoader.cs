@@ -2,7 +2,6 @@ using InternalsViewer.Query.FullTrace.Memory.Address;
 using InternalsViewer.Query.FullTrace.Memory.Address.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Memory.History.Capture;
-using InternalsViewer.Query.FullTrace.Memory.History.Capture.StackObjects;
 using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using System.Diagnostics;
@@ -13,11 +12,9 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.Symbols;
 using InternalsViewer.Query.FullTrace.Calls;
-using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Iterators;
-using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.History.Capture.Watches;
 using InternalsViewer.Query.FullTrace.Output;
@@ -68,7 +65,6 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
     }
 
     public async Task<TraceResult?> LoadAsync(TraceRequest request,
-                                              IReadOnlyList<CustomHookDefinition> customHooks,
                                               IProgress<ProgressDetail>? progress,
                                               CancellationToken cancellationToken)
     {
@@ -76,7 +72,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         var steps = new StepProgress(messages, GetSteps(request));
 
-        var replayed = await ReplayAsync(request, customHooks, steps, messages, progress, cancellationToken);
+        var replayed = await ReplayAsync(request, steps, messages, progress, cancellationToken);
 
         if (replayed is null)
         {
@@ -125,8 +121,6 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                               result.AddressMap.GetSiteCount(),
                               replay.AddressMap.Count(e => e is { Operation: AddressMapOperation.Allocated, ClassName: not null }));
 
-        Logger.LogInformation("{Captures} custom hook capture(s) read from {Hooks} hook(s)", result.CustomHooks.Count, customHooks.Count);
-
         result.CallStore.ReleaseColumns();
 
         LogComponentSizes(result);
@@ -136,7 +130,6 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
     private async Task<(ReplaySession Session, ReplayResult Replay, ReplayFunctionTable Functions)?>
         ReplayAsync(TraceRequest request,
-                    IReadOnlyList<CustomHookDefinition> customHooks,
                     StepProgress steps,
                     StepLoggerProgress messages,
                     IProgress<ProgressDetail>? progress,
@@ -175,7 +168,6 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
             var replay = await session.ReplayAsync(request.ThreadIds,
                                                    functions,
-                                                   customHooks,
                                                    request.IsStackCaptured,
                                                    steps,
                                                    cancellationToken);
@@ -321,7 +313,6 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
             AddressMap = AddressMap.Build(replay.AddressMap, timeline.NodeOf, getAllocation),
             MemoryObjectSnapshot = request.MemoryClerks.MemoryObjects,
             ObjectPool = request.ObjectPool,
-            CustomHooks = replay.CustomHooks,
             BufferPool = replay.BufferPool
         };
 

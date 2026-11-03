@@ -20,7 +20,7 @@ and never milliseconds. The `trace_` tools change what the user sees, so say wha
 - `query_references` is the call tree's Find. Give it a value, usually an object address, and it names the type and lists
   every function the value was called on, passed to or returned by.
 
-## Crop To Query
+## Crop To query
 
 Crop To Query, on by default, hides what runs outside the query's execution from the call tree and the Trace Timeline:
 compilation and setup before it, and teardown after it. The tools still see everything, so an arrow, a pin or the playhead

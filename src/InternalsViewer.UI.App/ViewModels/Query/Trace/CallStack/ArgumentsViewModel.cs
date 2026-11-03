@@ -208,9 +208,6 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
         return position.IsKnown ? position : null;
     }
 
-    public (string Name, int Register)? GetHookArgument(int ordinal)
-        => Layout is { } layout ? ArgumentRowBuilder.GetHookArgument(layout, ordinal) : null;
-
     public IteratorTarget? GetIterator(ulong value) => Lookup?.GetIterator(value);
 
     public ulong? GetHoBtId(int index, int ordinal)

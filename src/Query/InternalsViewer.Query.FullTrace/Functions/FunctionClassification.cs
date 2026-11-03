@@ -1,5 +1,4 @@
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
-using InternalsViewer.Query.FullTrace.Memory;
 
 namespace InternalsViewer.Query.FullTrace.Functions;
 

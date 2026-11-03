@@ -104,7 +104,6 @@ Right-click a cell for what can be done with its call and value:
 - **Go To Call** - shows the call in the call tree and the Trace Timeline
 - **Call Stack** - opens a tab beside **Arguments** listing the calls in progress at the start of the call, on every thread, laid out like the Trace Timeline's [Call Stack](/docs/user-guide/query/TraceTimeline#call-stack). The tab stays at that point, so several can be open side by side. Clicking a call in it selects the call in the Trace Timeline without leaving the tab
 - **Scope** - scopes the Trace Timeline to the call's function
-- **Custom Hook** - for an argument, or the value the call returned, saves a hook that reads the bytes it points to on later runs - see [Custom Hooks](/docs/user-guide/query/FullTrace#custom-hooks)
 - **Go To Origin** - for an object in the trace's map, goes to the call that created it, the same as clicking the link
 - **Show Memory** - for a pointer into memory the trace recorded, moves the playhead to the call and opens the block's bytes in the Trace Timeline - see [Call Stack](/docs/user-guide/query/TraceTimeline#call-stack)
 - **Open Page** - for a pointer into a buffer pool page of the query's database, opens the page with the record holding that byte selected

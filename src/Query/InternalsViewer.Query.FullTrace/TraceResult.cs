@@ -5,10 +5,8 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Export;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
-using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
-using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Output;
@@ -38,8 +36,6 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
     public MemoryObjectMap MemoryObjects { get; init; } = MemoryObjectMap.Empty;
 
     public ObjectPoolSnapshot ObjectPool { get; init; } = ObjectPoolSnapshot.Empty;
-
-    public CustomHookStore CustomHooks { get; init; } = CustomHookStore.Empty;
 
     public TraceBufferPool BufferPool { get; init; } = TraceBufferPool.Empty;
 
@@ -93,7 +89,6 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
         yield return ("Evaluation Ticks", Evaluations.Count, null);
         yield return ("Row Return Marks", RowReturnMarks.Count, null);
         yield return ("HoBt Accesses", HoBtAccess.Count, null);
-        yield return ("Custom Hook Captures", CustomHooks.Count, null);
     }
 
     public void SetActivityWindow(TraceTimeline window)

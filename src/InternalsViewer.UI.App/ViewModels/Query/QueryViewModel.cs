@@ -1,6 +1,5 @@
 using InternalsViewer.Query.FullTrace.Memory.Address;
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
-using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.UI.App.Controls.Query.SqlEditor;
 using InternalsViewer.UI.App.Controls.Query.Timeline.Definition;
@@ -48,7 +47,6 @@ using InternalsViewer.UI.App.Services.Query.Timeline;
 using InternalsViewer.UI.App.ViewModels.Index;
 using InternalsViewer.UI.App.ViewModels.Query.Events;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.CallStack;
-using InternalsViewer.UI.App.ViewModels.Query.Trace.CustomHooks;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryHistory;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.OperatorTracks;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
@@ -364,8 +362,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         Arguments = new ArgumentsViewModel(logger, Symbols);
 
-        CustomHooks = new CustomHooksViewModel(settingsViewModel, OpenCallTree);
-
         MemoryHistory = new MemoryHistoryViewModel(OpenCallTree);
 
         TickTrackStore = tickTrackStore;
@@ -470,8 +466,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public SymbolsViewModel Symbols { get; }
 
     public ArgumentsViewModel Arguments { get; }
-
-    public CustomHooksViewModel CustomHooks { get; }
 
     public MemoryHistoryViewModel MemoryHistory { get; }
 
@@ -647,8 +641,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         set
         {
             field = value;
-
-            CustomHooks.SetTrace(value);
 
             MemoryHistory.SetTrace(value, Events, Database, ResolvePlanNode);
 
@@ -871,19 +863,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         CallTreeTab.ShowSymbols();
     }
 
-    public void AddCustomHook(CustomHookDefinition definition)
-    {
-        _settingsViewModel.AddCustomHook(definition);
-
-        Layout.ShowCustomHooks();
-    }
-
-    [RelayCommand]
-    private void ShowCustomHooks() => Layout.ShowCustomHooks();
-
-    [RelayCommand]
-    private void ShowMemoryHistory() => Layout.ShowMemoryHistory();
-
     [RelayCommand]
     private void ShowObjectGraph()
     {
@@ -895,9 +874,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public void ShowMemoryWrite(int block, TracePosition? position)
     {
-        MemoryHistory.Select(block, position);
+        var target = MemoryHistory.Store.Blocks[block];
 
-        Layout.ShowMemoryHistory();
+        TraceTimelineTab.OpenMemory(block, target.Address, position ?? target.FromPosition);
     }
 
     partial void OnTraceTimelineChanged(TraceTimeline? value) => MemoryHistory.SetWindow(value);
@@ -1193,8 +1172,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         Symbols.Dispose();
 
         Arguments.Dispose();
-
-        CustomHooks.Dispose();
 
         OperatorTracks.Dispose();
 
@@ -2193,9 +2170,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         try
         {
-            var customHooks = _settingsViewModel.CustomHooks.Where(h => !h.IsPaused).ToList();
-
-            var result = await Task.Run(() => TraceLoader.LoadAsync(request, customHooks, progress, load.Token), load.Token);
+            var result = await Task.Run(() => TraceLoader.LoadAsync(request, progress, load.Token), load.Token);
 
             if (load.IsCancellationRequested || result is null)
             {

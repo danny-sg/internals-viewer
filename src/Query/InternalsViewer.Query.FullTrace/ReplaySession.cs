@@ -10,13 +10,10 @@ using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Recording;
 using InternalsViewer.Query.FullTrace.Functions;
-using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
-using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Stubs;
-using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.History.Capture.StackObjects;
 using InternalsViewer.Query.FullTrace.Memory.History.Capture.Watches;
 
@@ -91,7 +88,6 @@ internal sealed class ReplaySession : IDisposable
 
     public async Task<ReplayResult> ReplayAsync(IReadOnlyCollection<uint> threadIds,
                                                 ReplayFunctionTable functions,
-                                                IReadOnlyList<CustomHookDefinition> customHooks,
                                                 bool isStackRecorded,
                                                 IProgress<double>? progress,
                                                 CancellationToken cancellationToken)
@@ -100,7 +96,7 @@ internal sealed class ReplaySession : IDisposable
 
         try
         {
-            return await Task.Run(() => Replay([.. threadIds], functions, customHooks, isStackRecorded, progress, cancellationToken),
+            return await Task.Run(() => Replay([.. threadIds], functions, isStackRecorded, progress, cancellationToken),
                                   cancellationToken);
         }
         finally
@@ -155,7 +151,6 @@ internal sealed class ReplaySession : IDisposable
 
     private ReplayResult Replay(uint[] threads,
                                 ReplayFunctionTable functions,
-                                IReadOnlyList<CustomHookDefinition> customHooks,
                                 bool isStackRecorded,
                                 IProgress<double>? progress,
                                 CancellationToken cancellationToken)
@@ -201,8 +196,6 @@ internal sealed class ReplaySession : IDisposable
 
         var output = new OutputHook(functions.OutputFunctions, functions.OutputClasses);
 
-        var customHook = new CustomHook(Resolve(customHooks));
-
         var bufferPool = new BufferPoolHook(functions.BufferPoolFunctions);
 
         var stack = isStackRecorded ? new StackSnapshotHook(operations) : null;
@@ -211,7 +204,6 @@ internal sealed class ReplaySession : IDisposable
                                     new LocatorHook(functions.LocatorReads, store, images),
                                     addressMap,
                                     output,
-                                    customHook,
                                     bufferPool,
                                     .. stack is null ? Array.Empty<ITraceHook>() : [stack]]);
 
@@ -282,7 +274,6 @@ internal sealed class ReplaySession : IDisposable
                                         store.Build(),
                                         timeline.Build(nodes),
                                         addressMap.Build(),
-                                        customHook.Build(),
                                         bufferPool.Build(),
                                         output.Build(),
                                         planNodeHook.GetPlanNodes(),
@@ -431,12 +422,6 @@ internal sealed class ReplaySession : IDisposable
             Marshal.FreeHGlobal(cancel);
         }
     }
-
-    private IEnumerable<(ulong Address, CustomHookDefinition Definition)> Resolve(IReadOnlyList<CustomHookDefinition> customHooks)
-        => customHooks.SelectMany(h => Modules.Where(m => m.Name.Equals(h.Module, StringComparison.OrdinalIgnoreCase)
-                                                          && m.Guid.Equals(h.Guid, StringComparison.OrdinalIgnoreCase)
-                                                          && m.Age == h.Age)
-                                              .Select(m => (m.StartAddress + h.Rva, h)));
 
     private static TraceModule[] ReadModules(TraceHandle handle)
     {
