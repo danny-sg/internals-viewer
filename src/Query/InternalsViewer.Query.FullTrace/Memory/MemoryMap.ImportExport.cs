@@ -41,7 +41,7 @@ public sealed partial class MemoryMap
         {
             foreach (var entry in entries)
             {
-                var label = Labels[entry.Label];
+                var label = Labels[entry.LabelIndex];
 
                 writer.Write(address);
 

@@ -52,9 +52,9 @@ internal sealed class StackSnapshotHook(IEnumerable<MemoryMapFunction> functions
 
         foreach (var declared in function.Declared)
         {
-            if (declared.Slot < ArgumentLayout.RegisterCount)
+            if (declared.ArgumentSlot < ArgumentLayout.RegisterCount)
             {
-                Handoff(call.Arguments[declared.Slot], call, replay, isReturned: false);
+                Handoff(call.Arguments[declared.ArgumentSlot], call, replay, isReturned: false);
             }
         }
 
@@ -83,7 +83,7 @@ internal sealed class StackSnapshotHook(IEnumerable<MemoryMapFunction> functions
 
         foreach (var declared in function.Declared)
         {
-            if (declared.Slot == ArgumentLayout.ReturnRegister)
+            if (declared.ArgumentSlot == ArgumentLayout.ReturnRegister)
             {
                 Handoff(call.ReturnValue, call, replay, isReturned: true);
             }

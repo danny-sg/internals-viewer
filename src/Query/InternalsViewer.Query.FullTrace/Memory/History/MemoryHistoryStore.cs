@@ -2,7 +2,6 @@ using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Helpers;
-using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Helpers;

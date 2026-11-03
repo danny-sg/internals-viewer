@@ -63,7 +63,7 @@ public sealed partial class MemoryMap
                 continue;
             }
 
-            var label = Labels[entry.Label];
+            var label = Labels[entry.LabelIndex];
 
             if (label.ClassName is { } className)
             {
@@ -85,7 +85,7 @@ public sealed partial class MemoryMap
 
         foreach (var entry in entries)
         {
-            if (IsWithin(entry, from, to) && Labels[entry.Label].ClassName is { } className)
+            if (IsWithin(entry, from, to) && Labels[entry.LabelIndex].ClassName is { } className)
             {
                 return className;
             }
@@ -103,7 +103,7 @@ public sealed partial class MemoryMap
 
         foreach (var entry in entries)
         {
-            if (IsWithin(entry, from, to) && Labels[entry.Label].Allocator is { } allocator)
+            if (IsWithin(entry, from, to) && Labels[entry.LabelIndex].Allocator is { } allocator)
             {
                 return allocator;
             }
@@ -121,7 +121,7 @@ public sealed partial class MemoryMap
 
         foreach (var entry in entries)
         {
-            if (IsWithin(entry, from, to) && Labels[entry.Label].MemoryObject is { } memoryObject)
+            if (IsWithin(entry, from, to) && Labels[entry.LabelIndex].MemoryObject is { } memoryObject)
             {
                 return memoryObject;
             }
@@ -164,7 +164,7 @@ public sealed partial class MemoryMap
     internal IEnumerable<MemoryMapEntry> GetEntries() => Entries.SelectMany(e => e.Value.Select(entry => ToEntry(e.Key, entry)));
 
     internal int GetSiteCount()
-        => Entries.Values.Sum(e => e.Count(entry => Labels[entry.Label] is { Operation: MemoryMapOperation.Allocated, Site: not null }));
+        => Entries.Values.Sum(e => e.Count(entry => Labels[entry.LabelIndex] is { Operation: MemoryMapOperation.Allocated, Site: not null }));
 
     internal static MemoryMap Build(IEnumerable<AddressEntry> entries,
                                     Func<int, CallStackNode?> nodeOf,
@@ -280,7 +280,7 @@ public sealed partial class MemoryMap
         if (index < 0)
         {
             return entries[0].Owner == 0
-                   && Labels[entries[0].Label].Operation is MemoryMapOperation.Visited or MemoryMapOperation.Declared
+                   && Labels[entries[0].LabelIndex].Operation is MemoryMapOperation.Visited or MemoryMapOperation.Declared
                 ? 0
                 : -1;
         }
@@ -290,7 +290,7 @@ public sealed partial class MemoryMap
 
     private MemoryMapEntry ToEntry(ulong address, StoredEntry entry)
     {
-        var label = Labels[entry.Label];
+        var label = Labels[entry.LabelIndex];
 
         return new MemoryMapEntry(address,
                                   label.Operation,
@@ -314,7 +314,7 @@ public sealed partial class MemoryMap
                                                int CallIndex,
                                                uint Thread,
                                                int CallNodeIndex,
-                                               int Label);
+                                               int LabelIndex);
 
     private readonly record struct Label(MemoryMapOperation Operation,
                                          string? ClassName,

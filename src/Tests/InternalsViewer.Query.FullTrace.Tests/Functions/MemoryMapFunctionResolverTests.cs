@@ -22,7 +22,7 @@ public class MemoryMapFunctionResolverTests
         var function = Assert.Single(collector.Build());
 
         Assert.Equal(MemoryMapOperation.Visited, function.Operation);
-        Assert.Equal([(2, "BaseXact"), (3, "HkTransaction")], function.Declared.Select(d => (d.Slot, d.Name)));
+        Assert.Equal([(2, "BaseXact"), (3, "HkTransaction")], function.Declared.Select(d => (Slot: d.ArgumentSlot, d.Name)));
     }
 
     [Fact]
@@ -69,7 +69,7 @@ public class MemoryMapFunctionResolverTests
         var function = Assert.Single(collector.Build());
 
         Assert.Equal(MemoryMapOperation.Declared, function.Operation);
-        Assert.Equal([(1, "BaseXact")], function.Declared.Select(d => (d.Slot, d.Name)));
+        Assert.Equal([(1, "BaseXact")], function.Declared.Select(d => (Slot: d.ArgumentSlot, d.Name)));
     }
 
     [Fact]
@@ -100,7 +100,7 @@ public class MemoryMapFunctionResolverTests
 
         var function = Assert.Single(collector.Build());
 
-        Assert.Equal([(2, "DataAccessWrapper")], function.Declared.Select(d => (d.Slot, d.Name)));
+        Assert.Equal([(2, "DataAccessWrapper")], function.Declared.Select(d => (Slot: d.ArgumentSlot, d.Name)));
         Assert.Equal([4], function.Pointers);
     }
 
@@ -152,7 +152,7 @@ public class MemoryMapFunctionResolverTests
                                               "AccBindings *");
 
         Assert.Equal([(1, "XDES"), (2, "HoBtAccess"), (ArgumentLayout.ReturnRegister, "AccBindings")],
-                     MemoryMapFunctionResolver.GetDeclared(signature).Select(d => (d.Slot, d.Name)));
+                     MemoryMapFunctionResolver.GetDeclared(signature).Select(d => (Slot: d.ArgumentSlot, d.Name)));
     }
 
     [Fact]
@@ -162,7 +162,7 @@ public class MemoryMapFunctionResolverTests
                                               FunctionType.Free,
                                               "bool");
 
-        Assert.Equal([(0, "CMsqlReadOnlyXact")], MemoryMapFunctionResolver.GetDeclared(signature).Select(d => (d.Slot, d.Name)));
+        Assert.Equal([(0, "CMsqlReadOnlyXact")], MemoryMapFunctionResolver.GetDeclared(signature).Select(d => (Slot: d.ArgumentSlot, d.Name)));
     }
 
     [Fact]

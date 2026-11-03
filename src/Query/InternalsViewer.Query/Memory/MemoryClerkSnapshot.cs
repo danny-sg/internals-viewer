@@ -9,9 +9,9 @@ public sealed record MemoryClerkSnapshot(IReadOnlyDictionary<ulong, string> Cler
                                                            new Dictionary<ulong, MemoryObjectInfo>());
 
     public MemoryClerkSnapshot Merge(MemoryClerkSnapshot later)
-        => new(Merged(Clerks, later.Clerks), Merged(ObjectClerks, later.ObjectClerks), Merged(MemoryObjects, later.MemoryObjects));
+        => new(Merge(Clerks, later.Clerks), Merge(ObjectClerks, later.ObjectClerks), Merge(MemoryObjects, later.MemoryObjects));
 
-    private static Dictionary<ulong, T> Merged<T>(IReadOnlyDictionary<ulong, T> earlier, IReadOnlyDictionary<ulong, T> later)
+    private static Dictionary<ulong, T> Merge<T>(IReadOnlyDictionary<ulong, T> earlier, IReadOnlyDictionary<ulong, T> later)
     {
         var merged = new Dictionary<ulong, T>(earlier);
 

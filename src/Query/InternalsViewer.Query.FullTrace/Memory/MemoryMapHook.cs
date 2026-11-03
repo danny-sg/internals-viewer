@@ -49,9 +49,9 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions, IR
 
         foreach (var declared in function.Declared)
         {
-            if (declared.Slot < ArgumentLayout.RegisterCount)
+            if (declared.ArgumentSlot < ArgumentLayout.RegisterCount)
             {
-                Record(MemoryMapOperation.Declared, call.Arguments[declared.Slot], call, replay, declared.Name);
+                Record(MemoryMapOperation.Declared, call.Arguments[declared.ArgumentSlot], call, replay, declared.Name);
             }
         }
     }
@@ -70,7 +70,7 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions, IR
 
         foreach (var declared in function.Declared)
         {
-            if (declared.Slot == ArgumentLayout.ReturnRegister)
+            if (declared.ArgumentSlot == ArgumentLayout.ReturnRegister)
             {
                 Record(MemoryMapOperation.Declared, call.ReturnValue, call, replay, declared.Name);
             }
@@ -123,7 +123,7 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions, IR
 
         foreach (var declared in function.Declared)
         {
-            events |= declared.Slot == ArgumentLayout.ReturnRegister ? TraceHookEvents.Return : TraceHookEvents.Entry;
+            events |= declared.ArgumentSlot == ArgumentLayout.ReturnRegister ? TraceHookEvents.Return : TraceHookEvents.Entry;
         }
 
         return events;

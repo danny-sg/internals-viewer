@@ -148,7 +148,7 @@ internal static partial class MemoryMapFunctionResolver
                 function = function with
                 {
                     Operation = MemoryMapOperation.Declared,
-                    Declared = [.. function.Declared.Where(d => d.Slot != ArgumentLayout.ReturnRegister)]
+                    Declared = [.. function.Declared.Where(d => d.ArgumentSlot != ArgumentLayout.ReturnRegister)]
                 };
             }
 

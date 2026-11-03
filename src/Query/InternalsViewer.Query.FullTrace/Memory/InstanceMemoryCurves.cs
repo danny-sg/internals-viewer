@@ -49,7 +49,7 @@ public sealed class InstanceMemoryCurves
         {
             var owners = instances.Keys.ToList();
 
-            var owned = memory.InUseOwnedBy(thread, [.. owners.Select(o => (IReadOnlyList<TraceSpan>)instances[o])]);
+            var owned = memory.InUseOwnedBy(thread, [.. owners.Select(IReadOnlyList<TraceSpan> (o) => instances[o])]);
 
             for (var index = 0; index < owners.Count; index++)
             {

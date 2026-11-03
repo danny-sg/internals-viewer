@@ -5,4 +5,4 @@ internal readonly record struct MemoryAllocation(uint Thread,
                                                  TracePosition End,
                                                  ulong Bytes,
                                                  ulong Pointer,
-                                                 bool Workspace = false);
+                                                 bool IsWorkspace = false);

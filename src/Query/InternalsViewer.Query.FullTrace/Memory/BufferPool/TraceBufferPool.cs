@@ -36,7 +36,7 @@ public sealed partial class TraceBufferPool
     {
         var residencies = new List<TraceBufferPage>();
 
-        for (var index = SortedSearch.FirstAtOrAfter<TraceBufferPage, ulong>(Buffers, buffer, p => p.Buffer);
+        for (var index = SortedSearch.FirstAtOrAfter(Buffers, buffer, p => p.Buffer);
              index < Buffers.Length && Buffers[index].Buffer == buffer;
              index++)
         {
@@ -54,7 +54,7 @@ public sealed partial class TraceBufferPool
             ? (Buffers, (Func<TraceBufferPage, (ulong, TracePosition)>)GetBufferKey)
             : (Pages, GetFrameKey);
 
-        var index = SortedSearch.FirstAfter<TraceBufferPage, (ulong, TracePosition)>(pages, (start, position), getKey);
+        var index = SortedSearch.FirstAfter(pages, (start, position), getKey);
 
         return index < pages.Length && getKey(pages[index]).Item1 == start ? pages[index].Position : TracePosition.Unknown;
     }
@@ -63,7 +63,7 @@ public sealed partial class TraceBufferPool
     {
         var frame = address - address % PageData.Size;
 
-        var index = SortedSearch.FirstAfter<TraceBufferPage, (ulong, TracePosition)>(Pages, (frame, position), GetFrameKey) - 1;
+        var index = SortedSearch.FirstAfter(Pages, (frame, position), GetFrameKey) - 1;
 
         if (index < 0 || Pages[index].Frame != frame)
         {
@@ -86,7 +86,7 @@ public sealed partial class TraceBufferPool
 
         var buffer = BufferStarts[last];
 
-        var index = SortedSearch.FirstAfter<TraceBufferPage, (ulong, TracePosition)>(Buffers, (buffer, position), GetBufferKey) - 1;
+        var index = SortedSearch.FirstAfter(Buffers, (buffer, position), GetBufferKey) - 1;
 
         if (index < 0 || Buffers[index].Buffer != buffer)
         {

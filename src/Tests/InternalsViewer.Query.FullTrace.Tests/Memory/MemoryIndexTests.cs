@@ -23,7 +23,7 @@ public class MemoryIndexTests
     [Fact]
     public void Workspace_Memory_Is_Tracked_Apart_From_Everything_In_Use()
     {
-        var index = MemoryIndex.Build([new(7, At(10), At(11), 100, 0xA, Workspace: true), new(7, At(20), At(21), 50, 0xB)],
+        var index = MemoryIndex.Build([new(7, At(10), At(11), 100, 0xA, IsWorkspace: true), new(7, At(20), At(21), 50, 0xB)],
                                       [new(7, At(30), At(31), 0xA)]);
 
         Assert.Equal((150ul, 100ul, 0ul),

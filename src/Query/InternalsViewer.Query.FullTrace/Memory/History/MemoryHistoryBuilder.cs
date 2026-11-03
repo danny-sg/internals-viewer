@@ -140,7 +140,7 @@ internal static class MemoryHistoryBuilder
                                                                               a.IsClerkPage,
                                                                               a.Block.Thread,
                                                                               a.Block.Start,
-                                                                              a.Block.FreedAt))]);
+                                                                              a.Block.End))]);
 
         return hit => index.IsLive(hit.Address, hit.Size, hit.Position);
     }
@@ -272,7 +272,7 @@ internal static class MemoryHistoryBuilder
                                             allocations[index].IsClerkPage,
                                             allocation.Thread,
                                             allocation.Start,
-                                            allocation.FreedAt,
+                                            allocation.End,
                                             allocations[index].IsBuffer));
             }
 
@@ -286,9 +286,7 @@ internal static class MemoryHistoryBuilder
 
             foreach (var block in Blocks)
             {
-                block.IsBufferPool = !block.IsIterator
-                                     && !block.IsBuffer
-                                     && !block.IsStack
+                block.IsBufferPool = block is { IsIterator: false, IsBuffer: false, IsStack: false }
                                      && Stacks.IsBufferPool(Stacks.GetCallNodeIndex(block.Thread, block.FromPosition), block.IsClerkPage);
             }
 

@@ -80,7 +80,7 @@ public sealed partial class MemoryIndex
 
                 inUse -= Math.Min(inUse, kept[allocation].Bytes);
 
-                if (kept[allocation].Workspace)
+                if (kept[allocation].IsWorkspace)
                 {
                     workspace -= Math.Min(workspace, kept[allocation].Bytes);
 
@@ -100,7 +100,7 @@ public sealed partial class MemoryIndex
 
                 inUse += kept[index].Bytes;
 
-                if (kept[index].Workspace)
+                if (kept[index].IsWorkspace)
                 {
                     workspace += kept[index].Bytes;
 

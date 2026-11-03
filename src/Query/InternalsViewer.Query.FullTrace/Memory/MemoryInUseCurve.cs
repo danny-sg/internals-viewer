@@ -2,6 +2,9 @@ using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Memory;
 
+/// <summary>
+/// Memory Is Use value against a series of positions
+/// </summary>
 public sealed partial class MemoryInUseCurve(TracePosition[] positions, ulong[] values)
 {
     public static MemoryInUseCurve Empty { get; } = new([], []);
@@ -16,7 +19,7 @@ public sealed partial class MemoryInUseCurve(TracePosition[] positions, ulong[] 
 
     public ulong GetValue(TracePosition position)
     {
-        var index = SortedSearch.FirstAfter<TracePosition>(Positions, position) - 1;
+        var index = SortedSearch.FirstAfter(Positions, position) - 1;
 
         return index >= 0 ? Values[index] : 0;
     }
@@ -25,7 +28,7 @@ public sealed partial class MemoryInUseCurve(TracePosition[] positions, ulong[] 
     {
         var peak = GetValue(start);
 
-        for (var index = SortedSearch.FirstAfter<TracePosition>(Positions, start);
+        for (var index = SortedSearch.FirstAfter(Positions, start);
              index < Positions.Length && Positions[index] < end;
              index++)
         {
