@@ -164,7 +164,7 @@ public sealed partial class QueryHistoryViewModel(SettingsService settingsServic
         var trimmed = false;
 
         while (AllEntries.Count > 0
-               && Encoding.UTF8.GetByteCount(JsonSerializer.Serialize(AllEntries)) > MaxSettingBytes)
+               && Encoding.Unicode.GetByteCount(JsonSerializer.Serialize(AllEntries)) > MaxSettingBytes)
         {
             AllEntries.RemoveAt(AllEntries.Count - 1);
 

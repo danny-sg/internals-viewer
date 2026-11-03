@@ -21,7 +21,7 @@
             <SolidColorBrush x:Key="SqlUnknownBrush" Color="#CD3131" />
             <SolidColorBrush x:Key="CppClassBrush" Color="#2B91AF" />
             <SolidColorBrush x:Key="CppFunctionBrush" Color="#795E26" />
-            <SolidColorBrush x:Key="CppLocalBrush" Color="#1F377F" />
+            <SolidColorBrush x:Key="CppLocalBrush" Color="#8F00B4" />
             <SolidColorBrush x:Key="SearchHighlightBrush" Color="#FFE066" />
             <SolidColorBrush x:Key="SearchHighlightForegroundBrush" Color="#000000" />
         </ResourceDictionary>
@@ -38,7 +38,7 @@
             <SolidColorBrush x:Key="SqlUnknownBrush" Color="#F48771" />
             <SolidColorBrush x:Key="CppClassBrush" Color="#4EC9B0" />
             <SolidColorBrush x:Key="CppFunctionBrush" Color="#DCDCAA" />
-            <SolidColorBrush x:Key="CppLocalBrush" Color="#9CDCFE" />
+            <SolidColorBrush x:Key="CppLocalBrush" Color="#B564AF" />
             <SolidColorBrush x:Key="SearchHighlightBrush" Color="#FFD54F" />
             <SolidColorBrush x:Key="SearchHighlightForegroundBrush" Color="#000000" />
         </ResourceDictionary>

@@ -89,8 +89,10 @@ public static class SignatureRuns
         {
             var brush = token.Type switch
             {
-                SignatureTokenType.Keyword => "SqlKeywordBrush",
-                SignatureTokenType.Punctuation => "SqlPunctuationBrush",
+                SignatureTokenType.Keyword 
+                    => "SqlKeywordBrush",
+                SignatureTokenType.Punctuation
+                    => "SqlPunctuationBrush",
                 _ => "SqlIdentifierBrush"
             };
 

@@ -114,7 +114,7 @@ public sealed class QueryHistoryViewModelTests : IDisposable
             viewModel.Add($"SELECT {index} -- {padding}");
         }
 
-        var bytes = Encoding.UTF8.GetByteCount(JsonSerializer.Serialize(viewModel.Entries.ToList()));
+        var bytes = Encoding.Unicode.GetByteCount(JsonSerializer.Serialize(viewModel.Entries.ToList()));
 
         Assert.True(bytes <= 8 * 1024, $"History serialized to {bytes} bytes");
 

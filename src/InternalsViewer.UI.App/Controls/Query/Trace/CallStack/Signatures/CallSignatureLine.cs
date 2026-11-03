@@ -14,6 +14,8 @@ namespace InternalsViewer.UI.App.Controls.Query.Trace.CallStack.Signatures;
 
 public sealed partial class CallSignatureLine : UserControl
 {
+    private const double SpaceWidth = 4;
+
     public static readonly DependencyProperty PartsProperty =
         DependencyProperty.Register(nameof(Parts),
                                     typeof(IReadOnlyList<CallSignaturePart>),
@@ -102,7 +104,8 @@ public sealed partial class CallSignatureLine : UserControl
                 CallSignaturePartKind.NotCaptured => "TextFillColorTertiaryBrush",
                 _ when part.CanFind => "AccentTextFillColorPrimaryBrush",
                 _ => "TextFillColorPrimaryBrush"
-            })
+            }),
+            Margin = part.Text.EndsWith(' ') ? new Thickness(0, 0, SpaceWidth, 0) : default
         };
 
         if (part.ShowsTypeFor(IsDecoded))
