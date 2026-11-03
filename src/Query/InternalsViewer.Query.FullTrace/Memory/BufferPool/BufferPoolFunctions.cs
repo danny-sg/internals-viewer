@@ -1,40 +1,31 @@
+using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Functions;
+using InternalsViewer.Query.FullTrace.Memory.BufferPool.Enums;
+
 namespace InternalsViewer.Query.FullTrace.Memory.BufferPool;
 
-internal sealed record BufferPoolFunctions(ulong[] Gets, ulong[] PostReads)
+internal static class BufferPoolFunctions
 {
-    public static BufferPoolFunctions Empty { get; } = new([], []);
+    public const string Module = "sqlmin";
 
-    public static BufferPoolFunctions Merge(IEnumerable<BufferPoolFunctions> functions)
+    public const string BufferPoolClass = "BPool";
+
+    public const string GetMethod = "Get";
+
+    public const string ReadAheadMethod = "ReadAhead";
+
+    public const string FileControlBlockClass = "FCB";
+
+    public const string PostReadMethod = "PostRead";
+
+    private static Dictionary<string, BufferPoolFunctionType> Names { get; } = new(StringComparer.Ordinal)
     {
-        var all = functions.ToList();
+        [$"{BufferPoolClass}::{GetMethod}"] = BufferPoolFunctionType.Get,
+        [$"{FileControlBlockClass}::{PostReadMethod}"] = BufferPoolFunctionType.PostRead
+    };
 
-        return new([.. all.SelectMany(f => f.Gets)], [.. all.SelectMany(f => f.PostReads)]);
-    }
+    public static NamedFunctionCollector<BufferPoolFunctionType> CreateCollector() => new(Names);
 
-    public BufferPoolFunctions Rebase(ulong address) => new([.. Gets.Select(g => g + address)], [.. PostReads.Select(p => p + address)]);
-
-    internal sealed class Collector
-    {
-        private const string GetFunction = "BPool::Get";
-
-        private const string PostReadFunction = "FCB::PostRead";
-
-        private List<ulong> Gets { get; } = [];
-
-        private List<ulong> PostReads { get; } = [];
-
-        public void VisitFunction(uint rva, ReadOnlySpan<char> name)
-        {
-            if (name.SequenceEqual(GetFunction))
-            {
-                Gets.Add(rva);
-            }
-            else if (name.SequenceEqual(PostReadFunction))
-            {
-                PostReads.Add(rva);
-            }
-        }
-
-        public BufferPoolFunctions Build() => new([.. Gets], [.. PostReads]);
-    }
+    public static bool IsBufferPool(CallstackFrame? frame)
+        => frame is { Resolved.ClassName: BufferPoolClass } && frame.Module.Equals(Module, StringComparison.OrdinalIgnoreCase);
 }

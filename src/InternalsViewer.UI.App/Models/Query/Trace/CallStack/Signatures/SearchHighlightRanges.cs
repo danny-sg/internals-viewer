@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using InternalsViewer.Query.FullTrace.Helpers;
 
 namespace InternalsViewer.UI.App.Models.Query.Trace.CallStack.Signatures;
 
@@ -40,9 +41,7 @@ public static class SearchHighlightRanges
             }
         }
 
-        ranges.Sort();
-
-        return Merge(ranges);
+        return [.. Intervals.Coalesce(ranges, r => r.Start, r => r.Start + r.Length).Select(r => (r.Start, Length: r.End - r.Start))];
     }
 
     /// <summary>
@@ -61,26 +60,5 @@ public static class SearchHighlightRanges
         var separator = trimmed.IndexOf('!');
 
         return separator >= 0 ? trimmed[(separator + 1)..].Trim() : trimmed;
-    }
-
-    private static List<(int Start, int Length)> Merge(List<(int Start, int Length)> ranges)
-    {
-        var merged = new List<(int Start, int Length)>();
-
-        foreach (var range in ranges)
-        {
-            if (merged.Count > 0 && range.Start <= merged[^1].Start + merged[^1].Length)
-            {
-                var last = merged[^1];
-
-                merged[^1] = (last.Start, Math.Max(last.Start + last.Length, range.Start + range.Length) - last.Start);
-            }
-            else
-            {
-                merged.Add(range);
-            }
-        }
-
-        return merged;
     }
 }

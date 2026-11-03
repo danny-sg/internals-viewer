@@ -45,7 +45,7 @@ public static class BatchReader
 
     private const int MaximumRows = 0x10000;
 
-    public static List<BatchField> Fields { get; } =
+    public static List<MemoryField> Fields { get; } =
     [
         new("Allocation Bitmap", (int)AllocationBitmapOffset, sizeof(ulong)),
         new("Vector Array", (int)VectorArrayOffset, sizeof(ulong)),

@@ -1,14 +1,18 @@
 namespace InternalsViewer.Query.FullTrace.Memory.History;
 
-internal sealed class MemoryHistoryHitCounts
+internal sealed class MemoryHistoryCounts
 {
-    public long Recorded { get; private set; }
+    public long Received { get; set; }
 
-    public long Unchanged { get; private set; }
+    public long Recorded { get; set; }
 
-    public long BufferPool { get; private set; }
+    public long Unchanged { get; set; }
 
-    public long Outside { get; private set; }
+    public long BufferPool { get; set; }
+
+    public long Outside { get; set; }
+
+    public long Unwritten { get; set; }
 
     public void Add(bool isRecorded, bool isBufferPool, bool isInBlock)
     {

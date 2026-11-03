@@ -1,6 +1,6 @@
 namespace InternalsViewer.Query.FullTrace.Memory.History.Watches;
 
-internal sealed record WatchResult(IReadOnlyList<WatchChunk> Chunks, int WatchedRanges, long ReceivedHitCount = 0)
+internal sealed record WatchResult(IReadOnlyList<DataChunk<ChunkHit>> Chunks, int WatchedRanges, long ReceivedHitCount = 0)
 {
     public static WatchResult Empty { get; } = new([], 0);
 

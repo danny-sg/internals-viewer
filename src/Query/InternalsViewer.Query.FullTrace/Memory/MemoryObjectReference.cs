@@ -2,7 +2,7 @@ namespace InternalsViewer.Query.FullTrace.Memory;
 
 public sealed record MemoryObjectReference(ulong Address, string? Type, int PageSize)
 {
-    public string? Name => Type is { } type ? MemoryObjectNames.GetName(type) : null;
+    public string? Name => Type != null ? MemoryObjectNames.GetName(Type) : null;
 
     private ulong PageMask => ~((ulong)PageSize - 1);
 

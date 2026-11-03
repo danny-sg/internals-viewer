@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Helpers;
@@ -8,114 +7,50 @@ namespace InternalsViewer.Query.FullTrace.Timeline.Ticks;
 
 internal sealed class EnclosingOperatorCalls
 {
-    private EnclosingOperatorCalls(Dictionary<uint, Entry[]> threads)
+    private EnclosingOperatorCalls(SweepSpan<TracePosition>[] spans, bool[] isRowReturn)
     {
-        Threads = threads;
+        Spans = spans;
+
+        IsRowReturn = isRowReturn;
     }
 
-    private Dictionary<uint, Entry[]> Threads { get; }
+    private SweepSpan<TracePosition>[] Spans { get; }
+
+    private bool[] IsRowReturn { get; }
 
     public static EnclosingOperatorCalls Build(TraceCallStore calls, IReadOnlyDictionary<ulong, ExecutionOperatorEvent> owners)
     {
-        var threads = new Dictionary<uint, List<Entry>>();
+        var spans = new List<(SweepSpan<TracePosition> Span, bool IsRowReturn)>();
 
         var buffer = new TraceCallStore.ColumnBuffer();
 
-        foreach (var (functionAddress, instanceAddress) in calls.FunctionKeys)
+        foreach (var list in calls.GetCallLists())
         {
-            if (!owners.ContainsKey(instanceAddress) || calls.GetCallList(functionAddress, instanceAddress) is not { Count: > 0 } list)
+            if (!owners.ContainsKey(list.InstanceAddress))
             {
                 continue;
             }
 
-            var isRowReturn = IteratorSymbols.IsRowReturnMethod(calls.GetNode(list.GetCallNodeIndex(0))?.Frame?.Resolved?.MethodName);
+            var isRowReturn = IteratorSymbols.IsRowReturnMethod(calls.GetFirstNode(list)?.Frame?.Resolved?.MethodName);
 
             foreach (var (columns, _) in list.ReadChunks(buffer))
             {
                 for (var callIndex = 0; callIndex < columns.Calls; callIndex++)
                 {
-                    ref var entries = ref CollectionsMarshal.GetValueRefOrAddDefault(threads, columns.GetThread(callIndex), out _);
-
-                    (entries ??= []).Add(new Entry(columns.GetFromPosition(callIndex),
-                                                   columns.GetToPosition(callIndex),
-                                                   instanceAddress,
-                                                   isRowReturn));
+                    spans.Add((new SweepSpan<TracePosition>(columns.GetThread(callIndex),
+                                                            columns.GetFromPosition(callIndex),
+                                                            columns.GetToPosition(callIndex),
+                                                            list.InstanceAddress),
+                               isRowReturn));
                 }
             }
         }
 
-        return new EnclosingOperatorCalls(threads.ToDictionary(t => t.Key, t => Sort(t.Value)));
+        spans.Sort(static (left, right) => EnclosingSweep.Compare(left.Span, right.Span));
+
+        return new([.. spans.Select(s => s.Span)], [.. spans.Select(s => s.IsRowReturn)]);
     }
 
     public ulong[] GetEnclosing(IReadOnlyList<SweepSpan<TracePosition>> points, bool includeRowReturns)
-    {
-        var enclosing = new ulong[points.Count];
-
-        var byThread = new Dictionary<uint, List<int>>();
-
-        for (var index = 0; index < points.Count; index++)
-        {
-            ref var indexes = ref CollectionsMarshal.GetValueRefOrAddDefault(byThread, points[index].Thread, out _);
-
-            (indexes ??= []).Add(index);
-        }
-
-        var open = new Stack<(TracePosition To, ulong InstanceAddress)>();
-
-        foreach (var (thread, indexes) in byThread)
-        {
-            indexes.Sort((left, right) => Compare(points[left].From, points[left].To, points[right].From, points[right].To));
-
-            var spans = Threads.GetValueOrDefault(thread) ?? [];
-
-            var next = 0;
-
-            open.Clear();
-
-            foreach (var pointIndex in indexes)
-            {
-                var point = points[pointIndex];
-
-                for (; next < spans.Length && Compare(spans[next].From, spans[next].To, point.From, point.To) < 0; next++)
-                {
-                    if (includeRowReturns || !spans[next].IsRowReturn)
-                    {
-                        Close(open, spans[next].From);
-
-                        open.Push((spans[next].To, spans[next].InstanceAddress));
-                    }
-                }
-
-                Close(open, point.From);
-
-                enclosing[pointIndex] = open.TryPeek(out var inner) ? inner.InstanceAddress : 0;
-
-                open.Push((point.To, point.InstanceAddress));
-            }
-        }
-
-        return enclosing;
-    }
-
-    private static Entry[] Sort(List<Entry> entries)
-    {
-        var sorted = entries.ToArray();
-
-        Array.Sort(sorted, static (left, right) => Compare(left.From, left.To, right.From, right.To));
-
-        return sorted;
-    }
-
-    private static int Compare(TracePosition leftFrom, TracePosition leftTo, TracePosition rightFrom, TracePosition rightTo)
-        => leftFrom != rightFrom ? leftFrom.CompareTo(rightFrom) : rightTo.CompareTo(leftTo);
-
-    private static void Close(Stack<(TracePosition To, ulong InstanceAddress)> open, TracePosition position)
-    {
-        while (open.TryPeek(out var outer) && outer.To <= position)
-        {
-            open.Pop();
-        }
-    }
-
-    private readonly record struct Entry(TracePosition From, TracePosition To, ulong InstanceAddress, bool IsRowReturn);
+        => EnclosingSweep.GetEnclosing<TracePosition>(Spans, [.. points], includeRowReturns ? default : IsRowReturn);
 }

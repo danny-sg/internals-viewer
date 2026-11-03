@@ -1,4 +1,5 @@
 ﻿using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -88,7 +89,17 @@ internal static class ReplayFunctionResolver
 {
     private const string IteratorModule = "sqlmin";
 
-    private static readonly string[] Modules = ["sqlmin", "sqllang", "sqldk", "sqltses"];
+    private static readonly string[] Modules = 
+    [
+        // Relational + Storage Engine
+        "sqlmin", 
+        // Query processor + optimizer
+        "sqllang",
+        // SQL OS scheduler, memory management
+        "sqldk",
+        // Transaction Services
+        "sqltses"
+    ];
 
     private static readonly string[] HeapModules = ["ntdll", "kernelbase", "kernel32", "ucrtbase"];
 
@@ -244,9 +255,9 @@ internal static class ReplayFunctionResolver
 
         var planNodes = new PlanNodeFunctions.Collector();
 
-        var output = new OutputFunctions.Collector();
+        var output = OutputFunctions.CreateCollector();
 
-        var bufferPool = new BufferPoolFunctions.Collector();
+        var bufferPool = BufferPoolFunctions.CreateCollector();
 
         var vtables = new VtableResolver.Collector();
 
@@ -296,12 +307,14 @@ internal static class ReplayFunctionResolver
                                    instanceMethods,
                                    reads.Build(),
                                    [.. functions.Values.Select(f => f.MemoryFunction).OfType<MemoryFunction>().Select(sites.Apply)],
-                                   memoryMapFunctions.Build(),
-                                   planNodes.Build(classes),
-                                   output.Build(classes))
+                                   memoryMapFunctions.Build())
         {
-            Vtables = classes,
-            BufferPool = bufferPool.Build()
+            PlanNodeFunctions = planNodes.Build(),
+            PlanObjects = PlanNodeFunctions.GetPlanObjects(classes),
+            OutputFunctions = output.Build(),
+            OutputClasses = OutputFunctions.GetValueClasses(classes),
+            BufferPoolFunctions = bufferPool.Build(),
+            Vtables = classes
         };
     }
 
@@ -309,7 +322,7 @@ internal static class ReplayFunctionResolver
     {
         return new(IsExcluded(mappings, module, symbol),
                    PlanObjectInstanceMethodCollector.IsInstanceMethod(symbol),
-                   PlanObjectInstanceMethodCollector.IsInstanceClass(symbol),
+                   IteratorSymbols.IsInstanceClass(symbol),
                    MemoryFunction.Classify(rva, symbol));
     }
 

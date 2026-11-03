@@ -45,7 +45,7 @@ public class StackSnapshotHookTests
         var snapshots = hook.Build();
 
         Assert.Equal([(At(10, 3), 0, 8), (At(20, 5), 2, 1)],
-                     snapshots.Chunks.SelectMany(c => c.Runs).Select(r => (r.Position, r.Offset, (int)r.Length)));
+                     snapshots.Chunks.SelectMany(c => c.Hits).Select(r => (r.Position, r.Offset, (int)r.Length)));
         Assert.Equal(2, snapshots.SnapshotCount);
     }
 
@@ -116,12 +116,15 @@ public class StackSnapshotHookTests
     }
 
     private static (StackSnapshotHook Hook, FakeTraceReplay Replay) Create()
-        => (new StackSnapshotHook([new MemoryMapFunction(Method, MemoryMapOperation.Visited),
-                                   new MemoryMapFunction(Consumer, MemoryMapOperation.Declared)
-                                   {
-                                       Declared = [new DeclaredClass(1, "BaseXact")]
-                                   },
-                                   new MemoryMapFunction(Filler, MemoryMapOperation.Declared) { Pointers = [1, 4] }]),
+        => (new StackSnapshotHook(MemoryMapHook.GetOperations([new MemoryMapFunction(Method, MemoryMapOperation.Visited),
+                                                                new MemoryMapFunction(Consumer, MemoryMapOperation.Declared)
+                                                                {
+                                                                    Declared = [new DeclaredClass(1, "BaseXact")]
+                                                                },
+                                                                new MemoryMapFunction(Filler, MemoryMapOperation.Declared)
+                                                                {
+                                                                    Pointers = [1, 4]
+                                                                }])),
             new FakeTraceReplay { Frames = Frames });
 
     private static TraceHookCall Call(ulong function, ulong id, TracePosition position, ulong[]? arguments = null)

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.UI.App.Models.Query.Trace.CallStack.Stack;
 
@@ -10,5 +11,5 @@ public sealed class PlayheadThreadRow(uint threadId, IReadOnlyList<PlayheadCallR
 
     public string Label => $"Thread {ThreadId}";
 
-    public string Detail => Calls.Count == 1 ? "1 Call" : $"{Calls.Count:N0} Calls";
+    public string Detail => CountText.GetCalls(Calls.Count);
 }

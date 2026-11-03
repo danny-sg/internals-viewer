@@ -3,6 +3,7 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
 using InternalsViewer.Query.FullTrace.Memory.History.StackObjects;
@@ -108,27 +109,7 @@ internal static class MemoryHistoryBuilder
     }
 
     public static WatchRange[] GetRanges(IEnumerable<MemoryBlock> blocks)
-    {
-        var ranges = new List<WatchRange>();
-
-        foreach (var block in blocks.OrderBy(b => b.Pointer))
-        {
-            var end = block.Pointer + block.Bytes;
-
-            if (ranges.Count > 0 && ranges[^1].Address + ranges[^1].Size >= block.Pointer)
-            {
-                var last = ranges[^1];
-
-                ranges[^1] = last with { Size = Math.Max(last.Address + last.Size, end) - last.Address };
-
-                continue;
-            }
-
-            ranges.Add(new WatchRange(block.Pointer, block.Bytes));
-        }
-
-        return [.. ranges];
-    }
+        => [.. Intervals.Coalesce(blocks, b => b.Pointer, b => b.Pointer + b.Bytes).Select(r => new WatchRange(r.Start, r.End - r.Start))];
 
     public static Func<WatchHit, bool> GetWatchFilter(IReadOnlyList<MemoryHistoryAllocation> allocations)
     {
@@ -149,25 +130,25 @@ internal static class MemoryHistoryBuilder
     {
         var positions = new Dictionary<ulong, TracePosition>();
 
-        foreach (var (functionAddress, instanceAddress) in calls.FunctionKeys)
+        foreach (var list in calls.GetCallLists())
         {
-            if (!iterators.Contains(instanceAddress) || calls.GetCallList(functionAddress, instanceAddress) is not { Count: > 0 } list)
+            if (!iterators.Contains(list.InstanceAddress))
             {
                 continue;
             }
 
             var position = list.GetFromPosition(0);
 
-            if (!positions.TryGetValue(instanceAddress, out var first) || position < first)
+            if (!positions.TryGetValue(list.InstanceAddress, out var first) || position < first)
             {
-                positions[instanceAddress] = position;
+                positions[list.InstanceAddress] = position;
             }
         }
 
         return positions;
     }
 
-    public static (MemoryHistoryStore Store, MemoryHistoryHitCounts Counts) Build(IReadOnlyList<MemoryHistoryAllocation> allocations,
+    public static (MemoryHistoryStore Store, MemoryHistoryCounts Counts) Build(IReadOnlyList<MemoryHistoryAllocation> allocations,
                                                                                   IReadOnlyList<ulong> owners,
                                                                                   IReadOnlyDictionary<ulong, TracePosition> iterators,
                                                                                   WatchResult watched,
@@ -293,7 +274,7 @@ internal static class MemoryHistoryBuilder
             Reads = new ReadRecorder(Lookup, timeline);
         }
 
-        public MemoryHistoryReadCounts ReadCounts => Reads.Counts;
+        public MemoryHistoryCounts ReadCounts => Reads.Counts;
 
         private List<WatchedBlock> Blocks { get; } = [];
 
@@ -309,7 +290,7 @@ internal static class MemoryHistoryBuilder
 
         public void AddRead(WatchHit hit) => Reads.Add(hit);
 
-        public (MemoryHistoryStore Store, MemoryHistoryHitCounts Counts) Build(WatchResult watched)
+        public (MemoryHistoryStore Store, MemoryHistoryCounts Counts) Build(WatchResult watched)
         {
             var recorder = new WriteRecorder(Lookup, Stacks);
 
@@ -359,7 +340,7 @@ internal static class MemoryHistoryBuilder
         {
             foreach (var chunk in Stack.Chunks)
             {
-                foreach (var run in chunk.Runs)
+                foreach (var run in chunk.Hits)
                 {
                     var item = Stack.Objects[run.Object];
 
@@ -412,7 +393,7 @@ internal static class MemoryHistoryBuilder
 
     private sealed class ReadRecorder(BlockIndex lookup, TraceTimeline? timeline)
     {
-        public MemoryHistoryReadCounts Counts { get; } = new();
+        public MemoryHistoryCounts Counts { get; } = new();
 
         private Dictionary<(int Block, int CallNodeIndex, int CallIndex), ReadMark> Marks { get; } = [];
 
@@ -682,7 +663,8 @@ internal static class MemoryHistoryBuilder
             {
                 CallStackNode[] ancestors = [.. timeline?.NodeOf(callNodeIndex)?.Ancestors() ?? []];
 
-                source = (ancestors.Any(n => TraceReads.IsBufferPool(n.Frame)), ancestors.Any(n => MemoryFunction.IsGrantFrame(n.Frame)));
+                source = (ancestors.Any(n => BufferPoolFunctions.IsBufferPool(n.Frame)),
+                          ancestors.Any(n => MemoryFunction.IsGrantFrame(n.Frame)));
 
                 PageSources[callNodeIndex] = source;
             }
@@ -703,7 +685,7 @@ internal static class MemoryHistoryBuilder
         }
 
         private static bool IsIteratorCall(CallStackNode node)
-            => node.Frame is { InstanceAddress: not 0, Resolved.ClassName: { } className } && IteratorSymbols.IsIterator(className);
+            => node.Frame is { InstanceAddress: not 0 } frame && IteratorSymbols.IsIterator(frame);
     }
 
     private sealed class WatchedBlock(ulong iterator,
@@ -986,7 +968,7 @@ internal static class MemoryHistoryBuilder
 
     private sealed class WriteRecorder(BlockIndex lookup, StackLookup stacks)
     {
-        public MemoryHistoryHitCounts Counts { get; } = new();
+        public MemoryHistoryCounts Counts { get; } = new();
 
         public int[] Written { get; } = new int[lookup.Blocks.Count];
 

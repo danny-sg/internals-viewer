@@ -5,6 +5,7 @@ using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
+using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.Query.Timeline.Renderers;
 using InternalsViewer.UI.App.Controls.Query.Timeline;
@@ -673,7 +674,7 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
         {
             var label = Host.GetLabel(call.CallNodeIndex);
 
-            var separator = label.LastIndexOf("::", StringComparison.Ordinal);
+            var separator = SymbolsHelper.FindClassMethodSeparator(label);
 
             var method = separator < 0 ? label : label[(separator + 2)..];
 

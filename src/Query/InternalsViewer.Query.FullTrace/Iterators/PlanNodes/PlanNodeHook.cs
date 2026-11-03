@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
@@ -5,7 +6,7 @@ using InternalsViewer.Query.Extensions;
 
 namespace InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 
-internal sealed class PlanNodeHook(PlanNodeFunctions functions) : ITraceHook
+internal sealed class PlanNodeHook(AddressTable<PlanNodeFunctionType> functions, AddressTable<PlanObjectClass> planObjects) : ITraceHook
 {
     private const int IteratorArgument = 0;
 
@@ -20,7 +21,7 @@ internal sealed class PlanNodeHook(PlanNodeFunctions functions) : ITraceHook
     private const TraceHookEvents EntryAndReturn = TraceHookEvents.Entry | TraceHookEvents.Return;
 
     public IEnumerable<TraceHookFunction> Functions
-        => [.. functions.Functions.Select(f => new TraceHookFunction(f.Key, HasReturn(f.Value) ? EntryAndReturn : TraceHookEvents.Entry))];
+        => [.. functions.Select(f => new TraceHookFunction(f.Key, HasReturn(f.Value) ? EntryAndReturn : TraceHookEvents.Entry))];
 
     private Dictionary<ulong, IteratorPlanNode> PlanNodes { get; } = [];
 
@@ -42,7 +43,7 @@ internal sealed class PlanNodeHook(PlanNodeFunctions functions) : ITraceHook
 
     public void OnEntry(in TraceHookCall call, ITraceReplay replay)
     {
-        if (!functions.Functions.TryGetValue(call.FunctionAddress, out var type))
+        if (!functions.TryGetValue(call.FunctionAddress, out var type))
         {
             return;
         }
@@ -201,7 +202,7 @@ internal sealed class PlanNodeHook(PlanNodeFunctions functions) : ITraceHook
     private PlanObjectClass? GetPlanObjectClass(ITraceReplay replay, ulong planObject)
         => planObject >= TraceAddress.MinAddress
            && replay.TryRead(planObject, out ulong vtable)
-           && functions.PlanObjects.TryGetValue(vtable, out var planClass)
+           && planObjects.TryGetValue(vtable, out var planClass)
             ? planClass
             : null;
 

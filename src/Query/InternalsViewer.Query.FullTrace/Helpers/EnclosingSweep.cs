@@ -1,3 +1,5 @@
+using System.Runtime.InteropServices;
+
 namespace InternalsViewer.Query.FullTrace.Helpers;
 
 internal static class EnclosingSweep
@@ -5,9 +7,17 @@ internal static class EnclosingSweep
     public static ulong[] GetEnclosing<TPosition>(List<SweepSpan<TPosition>> spans, SweepSpan<TPosition>[] points)
         where TPosition : IComparable<TPosition>
     {
-        var enclosing = new ulong[points.Length];
-
         spans.Sort(static (left, right) => Compare(left, right));
+
+        return GetEnclosing(CollectionsMarshal.AsSpan(spans), points, default);
+    }
+
+    public static ulong[] GetEnclosing<TPosition>(ReadOnlySpan<SweepSpan<TPosition>> sortedSpans,
+                                                  SweepSpan<TPosition>[] points,
+                                                  ReadOnlySpan<bool> isSkipped)
+        where TPosition : IComparable<TPosition>
+    {
+        var enclosing = new ulong[points.Length];
 
         var order = new int[points.Length];
 
@@ -35,13 +45,13 @@ internal static class EnclosingSweep
                 open.Clear();
             }
 
-            for (; next < spans.Count && Compare(spans[next], point) < 0; next++)
+            for (; next < sortedSpans.Length && Compare(sortedSpans[next], point) < 0; next++)
             {
-                if (spans[next].Thread == point.Thread)
+                if (sortedSpans[next].Thread == point.Thread && (isSkipped.IsEmpty || !isSkipped[next]))
                 {
-                    Close(open, spans[next].From);
+                    Close(open, sortedSpans[next].From);
 
-                    open.Push(spans[next]);
+                    open.Push(sortedSpans[next]);
                 }
             }
 
@@ -55,7 +65,7 @@ internal static class EnclosingSweep
         return enclosing;
     }
 
-    private static int Compare<TPosition>(SweepSpan<TPosition> left, SweepSpan<TPosition> right) where TPosition : IComparable<TPosition>
+    public static int Compare<TPosition>(SweepSpan<TPosition> left, SweepSpan<TPosition> right) where TPosition : IComparable<TPosition>
     {
         if (left.Thread != right.Thread)
         {

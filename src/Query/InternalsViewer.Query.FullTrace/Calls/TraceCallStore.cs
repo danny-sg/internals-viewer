@@ -67,6 +67,19 @@ public sealed partial class TraceCallStore
 
     public CallStackNode? GetNode(int callNodeIndex) => callNodeIndex >= 0 && callNodeIndex < Nodes.Length ? Nodes[callNodeIndex] : null;
 
+    public CallStackNode? GetFirstNode(TraceCallList calls) => GetNode(calls.GetCallNodeIndex(0));
+
+    public IEnumerable<TraceCallList> GetCallLists()
+    {
+        foreach (var (functionAddress, instanceAddress) in FunctionKeys)
+        {
+            if (GetCallList(functionAddress, instanceAddress) is { Count: > 0 } list)
+            {
+                yield return list;
+            }
+        }
+    }
+
     public IReadOnlyList<int> GetIncludedCalls(TraceCallList calls, Func<CallStackNode?, bool> include, CancellationToken cancellationToken)
     {
         var included = new List<int>(calls.Count);

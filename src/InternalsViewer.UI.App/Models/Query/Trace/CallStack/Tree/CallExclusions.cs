@@ -34,6 +34,6 @@ public sealed class CallExclusions(IReadOnlySet<string> hidden, IReadOnlySet<str
         return result;
     }
 
-    private static bool IsIn(IReadOnlySet<string> categories, CallStackNode node)
+    public static bool IsIn(IReadOnlySet<string> categories, CallStackNode node)
         => node.Frame is not null && categories.Count > 0 && categories.Contains(node.Category);
 }

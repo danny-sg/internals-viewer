@@ -1,4 +1,5 @@
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
+using InternalsViewer.Query.FullTrace.Memory.BufferPool.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Memory.BufferPool;
 
@@ -8,7 +9,7 @@ public class BufferPoolFunctionsTests
     [Fact]
     public void Gets_And_Page_Read_Completions_Are_Collected()
     {
-        var collector = new BufferPoolFunctions.Collector();
+        var collector = BufferPoolFunctions.CreateCollector();
 
         collector.VisitFunction(0x10, "BPool::Get");
 
@@ -18,9 +19,10 @@ public class BufferPoolFunctionsTests
 
         collector.VisitFunction(0x40, "BPool::ReadPageCompletion");
 
-        var functions = collector.Build();
+        var functions = collector.Build().OrderBy(f => f.Key).Select(f => (f.Key, f.Value));
 
-        Assert.Equal([0x10ul], functions.Gets);
-        Assert.Equal([0x30ul], functions.PostReads);
+        (ulong, BufferPoolFunctionType)[] expected = [(0x10, BufferPoolFunctionType.Get), (0x30, BufferPoolFunctionType.PostRead)];
+
+        Assert.Equal(expected, functions);
     }
 }

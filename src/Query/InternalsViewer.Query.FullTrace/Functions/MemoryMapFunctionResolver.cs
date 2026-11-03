@@ -4,6 +4,7 @@ using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Arguments.Enums;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
+using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Functions;
 
@@ -122,10 +123,18 @@ internal static partial class MemoryMapFunctionResolver
         public MemoryMapFunction[] Build() => [.. Found.Values];
 
         private static string GetClassName(ReadOnlySpan<char> name)
-            => name.LastIndexOf("::", StringComparison.Ordinal) is > 0 and var separator ? name[..separator].ToString() : string.Empty;
+        {
+            SymbolsHelper.Split(name, out var className, out _);
+
+            return className.ToString();
+        }
 
         private static bool IsMemberOf(ReadOnlySpan<char> name, string className)
-            => name.LastIndexOf("::", StringComparison.Ordinal) is > 0 and var separator && name[..separator].SequenceEqual(className);
+        {
+            SymbolsHelper.Split(name, out var memberClass, out _);
+
+            return memberClass.Length > 0 && memberClass.SequenceEqual(className);
+        }
 
         private void Revisit(FunctionSymbol symbol)
         {

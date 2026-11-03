@@ -1,4 +1,5 @@
 using System;
+using InternalsViewer.Query.Helpers;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Signatures.Enums;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Signatures;
@@ -43,7 +44,7 @@ public static class SignatureRuns
 
     public static void AddFunction(InlineCollection inlines, string function)
     {
-        var separator = function.LastIndexOf("::", StringComparison.Ordinal);
+        var separator = SymbolsHelper.FindClassMethodSeparator(function);
 
         if (separator > 0)
         {

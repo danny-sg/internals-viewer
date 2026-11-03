@@ -7,6 +7,7 @@ using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.History.Batches;
 using InternalsViewer.Query.FullTrace.Memory.History.Batches.Enums;
 using InternalsViewer.Query.Results;
@@ -553,7 +554,7 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
         HeaderTable = new QueryResultSet { Columns = columns, Rows = [.. rows] };
     }
 
-    private object? GetFieldCell(BatchField field, ulong? value)
+    private object? GetFieldCell(MemoryField field, ulong? value)
     {
         if (value is not { } found)
         {
@@ -588,7 +589,7 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
         };
     }
 
-    private static ulong? ReadField(MemoryHistoryBatch batch, BatchField field)
+    private static ulong? ReadField(MemoryHistoryBatch batch, MemoryField field)
     {
         var address = batch.State.Address + (ulong)field.Offset;
 

@@ -228,7 +228,7 @@ public sealed record FunctionSignature(IReadOnlyList<string> Parameters,
 
     private static string UnqualifiedName(string type)
     {
-        var separator = type.LastIndexOf("::", StringComparison.Ordinal);
+        var separator = SymbolsHelper.FindClassMethodSeparator(type);
 
         return separator < 0 ? type : type[(separator + 2)..];
     }

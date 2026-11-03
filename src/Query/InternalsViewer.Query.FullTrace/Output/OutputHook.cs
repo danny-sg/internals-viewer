@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Output.Enums;
@@ -5,7 +6,7 @@ using InternalsViewer.Query.Extensions;
 
 namespace InternalsViewer.Query.FullTrace.Output;
 
-internal sealed class OutputHook(OutputFunctions functions) : ITraceHook
+internal sealed class OutputHook(AddressTable<OutputFunctionType> functions, AddressTable<OutputValueClass> classes) : ITraceHook
 {
     private const int EvaluationContextArgument = 0;
     private const int EvaluationExecutorArgument = 1;
@@ -22,13 +23,16 @@ internal sealed class OutputHook(OutputFunctions functions) : ITraceHook
     private const TraceHookEvents EntryAndReturn = TraceHookEvents.Entry | TraceHookEvents.Return;
 
     public IEnumerable<TraceHookFunction> Functions
-        => functions.IsComplete
-            ? [.. functions.Functions.Select(f => new TraceHookFunction(f.Key, f.Value == OutputFunctionType.Send
-                                                                                    ? TraceHookEvents.Entry
-                                                                                    : EntryAndReturn))]
+        => IsComplete
+            ? [.. functions.Select(f => new TraceHookFunction(f.Key, f.Value == OutputFunctionType.Send
+                                                                          ? TraceHookEvents.Entry
+                                                                          : EntryAndReturn))]
             : [];
 
-    private IReadOnlyDictionary<ulong, OutputValueClass> Classes => functions.Classes;
+    private bool IsComplete => classes.Values.Contains(OutputValueClass.OutputRow)
+                               && (Has(OutputFunctionType.Send)
+                                   || (Has(OutputFunctionType.Evaluation)
+                                       && (Has(OutputFunctionType.ValueRead) || Has(OutputFunctionType.VariantRead))));
 
     private Dictionary<uint, EvaluationFrame> Frames { get; } = [];
 
@@ -48,7 +52,7 @@ internal sealed class OutputHook(OutputFunctions functions) : ITraceHook
 
     public void OnEntry(in TraceHookCall call, ITraceReplay replay)
     {
-        if (!functions.Functions.TryGetValue(call.FunctionAddress, out var type))
+        if (!functions.TryGetValue(call.FunctionAddress, out var type))
         {
             return;
         }
@@ -95,6 +99,8 @@ internal sealed class OutputHook(OutputFunctions functions) : ITraceHook
 
     public List<OutputAddresses> Build()
         => [.. Columns.Keys.Union(DirectSends.Keys).Select(GetAddresses)];
+
+    private bool Has(OutputFunctionType type) => functions.Values.Contains(type);
 
     private static ulong? GetSourceAddress(ITraceReplay replay, ulong executor, bool isVariant)
     {
@@ -151,7 +157,7 @@ internal sealed class OutputHook(OutputFunctions functions) : ITraceHook
             return null;
         }
 
-        return Classes.TryGetValue(vtable, out var valueClass) && valueClass == OutputValueClass.OutputRow ? first : 0;
+        return classes.TryGetValue(vtable, out var valueClass) && valueClass == OutputValueClass.OutputRow ? first : 0;
     }
 
     private void EndEvaluation(EvaluationFrame frame, ITraceReplay replay)
@@ -214,7 +220,7 @@ internal sealed class OutputHook(OutputFunctions functions) : ITraceHook
 
         if (!Sources.TryGetValue(address, out var source))
         {
-            source = OutputSourceParser.GetAddress(replay, Classes, address, frame.Context);
+            source = OutputSourceParser.GetAddress(replay, classes, address, frame.Context);
 
             if (source != 0)
             {

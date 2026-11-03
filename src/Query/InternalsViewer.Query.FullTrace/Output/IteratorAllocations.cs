@@ -16,26 +16,22 @@ internal sealed class IteratorAllocations
     {
         Blocks = blocks;
 
-        Pointers = [.. blocks.Select(b => b.Pointer)];
+        Addresses = new AddressIndex([.. blocks.Select(b => b.Pointer)], blocks.Length > 0 ? blocks.Max(b => b.Bytes) : 0);
 
         Owners = owners;
 
         Iterators = iterators;
-
-        MaximumBytes = blocks.Length > 0 ? blocks.Max(b => b.Bytes) : 0;
     }
 
     public int Count => Blocks.Length;
 
     private MemoryBlock[] Blocks { get; }
 
-    private ulong[] Pointers { get; }
+    private AddressIndex Addresses { get; }
 
     private ulong[] Owners { get; }
 
     private IReadOnlySet<ulong> Iterators { get; }
-
-    private ulong MaximumBytes { get; }
 
     public static IteratorAllocations Build(MemoryIndex memory,
                                             TraceCallStore calls,
@@ -78,9 +74,7 @@ internal sealed class IteratorAllocations
             return address;
         }
 
-        for (var index = SortedSearch.FirstAtOrAfter(Pointers, address + 1) - 1;
-             index >= 0 && address - Pointers[index] < MaximumBytes;
-             index--)
+        foreach (var index in Addresses.GetCandidates(address))
         {
             if (Blocks[index].Contains(address, position))
             {
@@ -116,18 +110,15 @@ internal sealed class IteratorAllocations
 
         var capacity = 0;
 
-        foreach (var (functionAddress, instanceAddress) in calls.FunctionKeys)
+        foreach (var list in calls.GetCallLists())
         {
-            if (calls.GetCallList(functionAddress, instanceAddress) is not { Count: > 0 } list)
-            {
-                continue;
-            }
+            var instanceAddress = list.InstanceAddress;
 
             var owner = instanceAddress == 0
                 ? 0
                 : iterators.Contains(instanceAddress) ? instanceAddress : builders.GetValueOrDefault(instanceAddress);
 
-            if (owner != 0 || (instanceAddress == 0 && IsConstructor(calls.GetNode(list.GetCallNodeIndex(0))?.Frame)))
+            if (owner != 0 || (instanceAddress == 0 && IteratorSymbols.IsIteratorConstructor(calls.GetFirstNode(list)?.Frame)))
             {
                 owned.Add((list, owner));
 
@@ -162,9 +153,4 @@ internal sealed class IteratorAllocations
 
         return spans;
     }
-
-    private static bool IsConstructor(CallstackFrame? frame)
-        => frame?.Resolved is { ClassName: { } className } resolved
-           && IteratorSymbols.IsIterator(className)
-           && resolved.MethodName == className;
 }

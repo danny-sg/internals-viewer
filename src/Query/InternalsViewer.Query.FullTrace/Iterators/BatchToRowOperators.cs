@@ -58,15 +58,7 @@ internal static class BatchToRowOperators
                                                               IReadOnlyList<ExecutionOperatorEvent> operators,
                                                               HashSet<ulong> helpers)
     {
-        var owners = new Dictionary<ulong, ExecutionOperatorEvent>();
-
-        foreach (var operatorEvent in operators)
-        {
-            foreach (var instance in operatorEvent.Instances)
-            {
-                owners.TryAdd(instance, operatorEvent);
-            }
-        }
+        var owners = OperatorHierarchy.GetOperatorsByInstance(operators);
 
         var seen = new HashSet<CallStackNode>(ReferenceEqualityComparer.Instance);
 

@@ -233,7 +233,7 @@ public class OutputHookTests
 
     [Fact]
     public void Functions_Without_The_Output_Row_Class_Hook_Nothing()
-        => Assert.Empty(new OutputHook(new OutputFunctions(CreateFunctions(), new Dictionary<ulong, OutputValueClass>())).Functions);
+        => Assert.Empty(new OutputHook(new(CreateFunctions()), new(new Dictionary<ulong, OutputValueClass>())).Functions);
 
     private static IReadOnlyList<OutputAddresses> Capture(FakeTraceReplay replay)
     {
@@ -245,16 +245,16 @@ public class OutputHookTests
     }
 
     private static OutputHook CreateHook()
-        => new(new OutputFunctions(CreateFunctions(),
-                                   new Dictionary<ulong, OutputValueClass>
-                                   {
-                                       [OutputRowTable] = OutputValueClass.OutputRow,
-                                       [SwitchTable] = OutputValueClass.HashSwitch,
-                                       [HashTable] = OutputValueClass.Hash,
-                                       [ScanTable] = OutputValueClass.Table,
-                                       [RedirectTable] = OutputValueClass.BatchRedirect,
-                                       [VariantTable] = OutputValueClass.VariantTable
-                                   }));
+        => new(new(CreateFunctions()),
+               new(new Dictionary<ulong, OutputValueClass>
+               {
+                   [OutputRowTable] = OutputValueClass.OutputRow,
+                   [SwitchTable] = OutputValueClass.HashSwitch,
+                   [HashTable] = OutputValueClass.Hash,
+                   [ScanTable] = OutputValueClass.Table,
+                   [RedirectTable] = OutputValueClass.BatchRedirect,
+                   [VariantTable] = OutputValueClass.VariantTable
+               }));
 
     private static Dictionary<ulong, OutputFunctionType> CreateFunctions()
         => new()

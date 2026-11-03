@@ -16,7 +16,7 @@ public class PlanNodeFunctionsTests
         collector.VisitFunction(0x30, "CBpQScanFilter::BpOpen");
         collector.VisitFunction(0x40, "CBpXteFilter::PbpqsGet");
 
-        var functions = collector.Build(NoVtables).Functions.OrderBy(f => f.Key).Select(f => (f.Key, f.Value));
+        var functions = collector.Build().OrderBy(f => f.Key).Select(f => (f.Key, f.Value));
 
         (ulong, PlanNodeFunctionType)[] expected =
         [
@@ -37,7 +37,7 @@ public class PlanNodeFunctionsTests
         collector.VisitFunction(0x20, "CQScanBatchHelper::Open");
         collector.VisitFunction(0x30, "CQScanHash::GetRow");
 
-        var functions = collector.Build(NoVtables).Functions.OrderBy(f => f.Key).Select(f => (f.Key, f.Value));
+        var functions = collector.Build().OrderBy(f => f.Key).Select(f => (f.Key, f.Value));
 
         (ulong, PlanNodeFunctionType)[] expected =
         [
@@ -57,7 +57,7 @@ public class PlanNodeFunctionsTests
         collector.VisitFunction(0x10, "CQScanSortNew::OpenHelper");
         collector.VisitFunction(0x20, "CQScanSortNew::BuildSortTable");
 
-        var functions = collector.Build(NoVtables).Functions.Select(f => (f.Key, f.Value));
+        var functions = collector.Build().Select(f => (f.Key, f.Value));
 
         (ulong, PlanNodeFunctionType)[] expected = [(0x10, PlanNodeFunctionType.Iterator)];
 
@@ -73,7 +73,7 @@ public class PlanNodeFunctionsTests
         collector.VisitFunction(0x20, "CQueryScan::DestroyQuery");
         collector.VisitFunction(0x30, "CQueryScan::GetRow");
 
-        var functions = collector.Build(NoVtables).Functions.OrderBy(f => f.Key).Select(f => (f.Key, f.Value));
+        var functions = collector.Build().OrderBy(f => f.Key).Select(f => (f.Key, f.Value));
 
         (ulong, PlanNodeFunctionType)[] expected =
         [
@@ -94,7 +94,7 @@ public class PlanNodeFunctionsTests
             [0x7200] = ["CQScanHash"]
         };
 
-        var planObjects = new PlanNodeFunctions.Collector().Build(vtables).PlanObjects.OrderBy(p => p.Key).Select(p => (p.Key, p.Value));
+        var planObjects = PlanNodeFunctions.GetPlanObjects(vtables).OrderBy(p => p.Key).Select(p => (p.Key, p.Value));
 
         (ulong, PlanObjectClass)[] expected = [(0x7000, PlanObjectClass.Row), (0x7100, PlanObjectClass.Batch)];
 
@@ -106,8 +106,6 @@ public class PlanNodeFunctionsTests
     {
         var vtables = new Dictionary<ulong, string[]> { [0x7000] = ["CQScanHash", "CXteHash"] };
 
-        Assert.Equal(PlanObjectClass.Row, new PlanNodeFunctions.Collector().Build(vtables).PlanObjects[0x7000]);
+        Assert.Equal(PlanObjectClass.Row, PlanNodeFunctions.GetPlanObjects(vtables)[0x7000]);
     }
-
-    private static Dictionary<ulong, string[]> NoVtables => [];
 }

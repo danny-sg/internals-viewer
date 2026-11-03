@@ -8,8 +8,6 @@ namespace InternalsViewer.Query.FullTrace.Memory;
 
 public sealed partial class MemoryObjectMap
 {
-    private const ulong SmallestAddress = 0x10000;
-
     private const int ReturnSlot = -1;
 
     private const int ObjectSlot = 0;
@@ -66,7 +64,7 @@ public sealed partial class MemoryObjectMap
                 {
                     var pointer = slot == ReturnSlot ? call.ReturnedValue : call.Slot(slot);
 
-                    if (pointer < SmallestAddress)
+                    if (pointer < TraceAddress.MinAddress)
                     {
                         continue;
                     }
@@ -93,7 +91,7 @@ public sealed partial class MemoryObjectMap
 
     public MemoryObjectReference? GetOwner(ulong address, TracePosition position)
     {
-        if (address < SmallestAddress)
+        if (address < TraceAddress.MinAddress)
         {
             return null;
         }

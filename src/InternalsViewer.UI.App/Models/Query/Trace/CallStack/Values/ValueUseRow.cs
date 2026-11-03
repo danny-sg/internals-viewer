@@ -1,5 +1,6 @@
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Calls;
+using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.UI.App.Models.Query.Trace.CallStack.Values;
 
@@ -13,5 +14,5 @@ public sealed class ValueUseRow(TraceValueUse use, ulong value = 0, CallstackFra
 
     public string Location => Use.Location;
 
-    public string Calls => Use.Calls == 1 ? "1 Call" : $"{Use.Calls:N0} Calls";
+    public string Calls => CountText.GetCalls(Use.Calls);
 }

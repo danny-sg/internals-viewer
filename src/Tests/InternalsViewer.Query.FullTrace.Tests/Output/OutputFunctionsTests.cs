@@ -10,7 +10,7 @@ public class OutputFunctionsTests
     [Fact]
     public void Functions_Are_Typed_By_Their_Full_Name()
     {
-        var collector = new OutputFunctions.Collector();
+        var collector = OutputFunctions.CreateCollector();
 
         collector.VisitFunction(0x10, "CEsExec::GeneralEval4");
 
@@ -20,7 +20,7 @@ public class OutputFunctionsTests
 
         collector.VisitFunction(0x40, "CEsRuntime::GeneralEval4");
 
-        var functions = collector.Build(new Dictionary<ulong, string[]>()).Functions.OrderBy(f => f.Key).Select(f => (f.Key, f.Value));
+        var functions = collector.Build().OrderBy(f => f.Key).Select(f => (f.Key, f.Value));
 
         (ulong, OutputFunctionType)[] expected =
         [
@@ -41,7 +41,7 @@ public class OutputFunctionsTests
 
         vtables.VisitData(0x200, "CValHashSwitch::`RTTI Complete Object Locator'");
 
-        var classes = new OutputFunctions.Collector().Build(vtables.Build()).Classes;
+        var classes = OutputFunctions.GetValueClasses(vtables.Build());
 
         Assert.Equal(OutputValueClass.HashSwitch, Assert.Single(classes, c => c.Key == 0x100).Value);
         Assert.Single(classes);

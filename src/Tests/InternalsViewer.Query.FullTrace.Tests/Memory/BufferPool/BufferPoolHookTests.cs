@@ -3,6 +3,7 @@ using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
+using InternalsViewer.Query.FullTrace.Memory.BufferPool.Enums;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Memory.BufferPool;
@@ -115,7 +116,12 @@ public class BufferPoolHookTests
         Assert.Equal(0, hook.Build().Count);
     }
 
-    private static BufferPoolHook Create() => new(new BufferPoolFunctions([Get], [PostRead]));
+    private static BufferPoolHook Create()
+        => new(new(new Dictionary<ulong, BufferPoolFunctionType>
+        {
+            [Get] = BufferPoolFunctionType.Get,
+            [PostRead] = BufferPoolFunctionType.PostRead
+        }));
 
     private static FakeTraceReplay Replay()
         => new FakeTraceReplay().Write(Buffer, Frame)

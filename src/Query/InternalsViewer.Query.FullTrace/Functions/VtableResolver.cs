@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using InternalsViewer.Query.FullTrace.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Functions;
 
@@ -37,7 +38,7 @@ internal static class VtableResolver
     internal static Dictionary<ulong, string> GetUniqueClasses(IReadOnlyDictionary<ulong, string[]> vtables)
         => vtables.Where(v => v.Value.Length == 1).ToDictionary(v => v.Key, v => v.Value[0]);
 
-    internal static Dictionary<ulong, T> GetFirstMatches<T>(IReadOnlyDictionary<ulong, string[]> vtables, Func<string, T?> match)
+    internal static AddressTable<T> GetFirstMatches<T>(IReadOnlyDictionary<ulong, string[]> vtables, Func<string, T?> match)
         where T : struct
     {
         var matches = new Dictionary<ulong, T>();
@@ -55,7 +56,7 @@ internal static class VtableResolver
             }
         }
 
-        return matches;
+        return new(matches);
     }
 
     internal sealed class Collector
@@ -79,6 +80,6 @@ internal static class VtableResolver
             }
         }
 
-        public Dictionary<ulong, string[]> Build() => Classes.ToDictionary(c => (ulong)c.Key, c => c.Value.ToArray());
+        public AddressTable<string[]> Build() => new(Classes.ToDictionary(c => (ulong)c.Key, c => c.Value.ToArray()));
     }
 }

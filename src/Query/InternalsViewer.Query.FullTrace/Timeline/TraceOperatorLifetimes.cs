@@ -9,7 +9,8 @@ public sealed class TraceOperatorLifetimes(IReadOnlyList<TraceOperatorLifetime> 
 
     public int Count => Lifetimes.Count;
 
-    public IReadOnlyDictionary<ulong, ExecutionOperatorEvent> OperatorsByInstance { get; } = GetOperatorsByInstance(lifetimes);
+    public IReadOnlyDictionary<ulong, ExecutionOperatorEvent> OperatorsByInstance { get; }
+        = OperatorHierarchy.GetOperatorsByInstance(lifetimes.Select(l => l.Operator));
 
     private IReadOnlyList<TraceOperatorLifetime> Lifetimes { get; } = lifetimes;
 
@@ -18,19 +19,4 @@ public sealed class TraceOperatorLifetimes(IReadOnlyList<TraceOperatorLifetime> 
     public IEnumerator<TraceOperatorLifetime> GetEnumerator() => Lifetimes.GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-    private static Dictionary<ulong, ExecutionOperatorEvent> GetOperatorsByInstance(IReadOnlyList<TraceOperatorLifetime> lifetimes)
-    {
-        var operators = new Dictionary<ulong, ExecutionOperatorEvent>();
-
-        foreach (var lifetime in lifetimes)
-        {
-            foreach (var instance in lifetime.Operator.Instances)
-            {
-                operators.TryAdd(instance, lifetime.Operator);
-            }
-        }
-
-        return operators;
-    }
 }

@@ -136,11 +136,10 @@ public sealed class TraceRowReturnMarks
 
         var buffer = new TraceCallStore.ColumnBuffer();
 
-        foreach (var (functionAddress, instanceAddress) in calls.FunctionKeys)
+        foreach (var list in calls.GetCallLists())
         {
-            if (!owners.ContainsKey(instanceAddress)
-                || calls.GetCallList(functionAddress, instanceAddress) is not { Count: > 0 } list
-                || calls.GetNode(list.GetCallNodeIndex(0))?.Frame?.Resolved?.MethodName is not { } method
+            if (!owners.ContainsKey(list.InstanceAddress)
+                || calls.GetFirstNode(list)?.Frame?.Resolved?.MethodName is not { } method
                 || !IteratorSymbols.IsRowReturnMethod(method))
             {
                 continue;
@@ -150,7 +149,7 @@ public sealed class TraceRowReturnMarks
             {
                 for (var callIndex = 0; callIndex < columns.Calls; callIndex++)
                 {
-                    var key = (instanceAddress, columns.GetThread(callIndex));
+                    var key = (list.InstanceAddress, columns.GetThread(callIndex));
 
                     if (method == IteratorSymbols.GetNextBatchMethod)
                     {
@@ -159,7 +158,7 @@ public sealed class TraceRowReturnMarks
 
                     ref var group = ref CollectionsMarshal.GetValueRefOrAddDefault(grouped, key, out _);
 
-                    (group ??= []).Add(new GetRowCall(functionAddress,
+                    (group ??= []).Add(new GetRowCall(list.FunctionAddress,
                                                       first + callIndex,
                                                       columns.GetFromPosition(callIndex),
                                                       columns.GetToPosition(callIndex),

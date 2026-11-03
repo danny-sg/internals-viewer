@@ -8,19 +8,25 @@ using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Memory;
 
-internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions, IReadOnlyDictionary<ulong, string>? vtables = null)
+internal sealed class MemoryMapHook(Dictionary<ulong, MemoryMapFunction> operations,
+                                    IEnumerable<MemoryMapFunction> allocations,
+                                    IReadOnlyDictionary<ulong, string>? vtables = null)
     : ITraceHook
 {
     private const int InstanceArgument = 0;
 
-    public IEnumerable<TraceHookFunction> Functions => Operations.Select(o => new TraceHookFunction(o.Key, GetEvents(o.Value)));
+    public IEnumerable<TraceHookFunction> Functions
+        => Operations.Where(o => IsMapped(o.Value) && !Allocations.ContainsKey(o.Key))
+                     .Concat(Allocations)
+                     .Select(o => new TraceHookFunction(o.Key, GetEvents(o.Value)));
 
-    private Dictionary<ulong, MemoryMapFunction> Operations { get; }
-        = GetOperations(functions.Where(f => f.Operation != MemoryMapOperation.Declared || f.Declared.Length > 0));
+    private Dictionary<ulong, MemoryMapFunction> Operations { get; } = operations;
+
+    private Dictionary<ulong, MemoryMapFunction> Allocations { get; } = GetAllocations(operations, allocations);
 
     private IReadOnlyDictionary<ulong, string> Vtables { get; } = vtables ?? new Dictionary<ulong, string>();
 
-    private ChunkedList<AddressEntry> Entries { get; } = new();
+    private ChunkedList<AddressEntry> Entries { get; } = [];
 
     private Dictionary<ulong, int> LatestEntries { get; } = [];
 
@@ -32,7 +38,7 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions, IR
 
     public void OnEntry(in TraceHookCall call, ITraceReplay replay)
     {
-        if (!Operations.TryGetValue(call.FunctionAddress, out var function))
+        if (!TryGetFunction(call.FunctionAddress, out var function))
         {
             return;
         }
@@ -58,7 +64,7 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions, IR
 
     public void OnReturn(in TraceHookCall call, ITraceReplay replay)
     {
-        if (!Operations.TryGetValue(call.FunctionAddress, out var function))
+        if (!TryGetFunction(call.FunctionAddress, out var function))
         {
             return;
         }
@@ -129,6 +135,28 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions, IR
         return events;
     }
 
+    private static Dictionary<ulong, MemoryMapFunction> GetAllocations(Dictionary<ulong, MemoryMapFunction> operations,
+                                                                       IEnumerable<MemoryMapFunction> allocations)
+    {
+        var merged = new Dictionary<ulong, MemoryMapFunction>();
+
+        foreach (var allocation in allocations)
+        {
+            merged[allocation.Address] = operations.TryGetValue(allocation.Address, out var operation)
+                ? allocation with
+                {
+                    Declared = [.. operation.Declared.Union(allocation.Declared)],
+                    Pointers = [.. operation.Pointers.Union(allocation.Pointers)]
+                }
+                : allocation;
+        }
+
+        return merged;
+    }
+
+    private static bool IsMapped(MemoryMapFunction function)
+        => function.Operation != MemoryMapOperation.Declared || function.Declared.Length > 0;
+
     private static ulong GetOwner(ReadOnlySpan<TraceHookFrame> frames, ulong address)
         => TraceHookFrames.GetOwnerIndex(frames, address) is >= 0 and var index ? frames[index].Id : 0;
 
@@ -144,6 +172,9 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions, IR
 
         return false;
     }
+
+    private bool TryGetFunction(ulong address, out MemoryMapFunction function)
+        => Allocations.TryGetValue(address, out function) || (Operations.TryGetValue(address, out function) && IsMapped(function));
 
     private void ReadVtable(ulong address, ITraceReplay replay)
     {

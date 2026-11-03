@@ -1,8 +1,10 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Query.Extensions;
+using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
+using InternalsViewer.Query.FullTrace.Memory.BufferPool.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Memory.BufferPool;
 
@@ -25,7 +27,7 @@ namespace InternalsViewer.Query.FullTrace.Memory.BufferPool;
 ///
 /// 
 /// </remarks>
-internal sealed class BufferPoolHook(BufferPoolFunctions functions) : ITraceHook
+internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functions) : ITraceHook
 {
     private const ulong HeaderPageIdOffset = 0x20;
 
@@ -38,9 +40,7 @@ internal sealed class BufferPoolHook(BufferPoolFunctions functions) : ITraceHook
     private const int PageNumberArgument = 2;
 
     public IEnumerable<TraceHookFunction> Functions
-        => functions.Gets.Concat(functions.PostReads).Select(f => new TraceHookFunction(f, TraceHookEvents.Entry | TraceHookEvents.Return));
-
-    private HashSet<ulong> PostReads { get; } = [.. functions.PostReads];
+        => functions.Select(f => new TraceHookFunction(f.Key, TraceHookEvents.Entry | TraceHookEvents.Return));
 
     private TraceBufferPool.Builder Pages { get; } = new();
 
@@ -142,7 +142,8 @@ internal sealed class BufferPoolHook(BufferPoolFunctions functions) : ITraceHook
         }
     }
 
-    private bool IsPostRead(in TraceHookCall call) => PostReads.Contains(call.FunctionAddress);
+    private bool IsPostRead(in TraceHookCall call)
+        => functions.TryGetValue(call.FunctionAddress, out var type) && type == BufferPoolFunctionType.PostRead;
 
     private readonly record struct CallStart(TracePosition Position, ulong FileControlBlock, ulong Frame, uint PageNumber);
 

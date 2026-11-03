@@ -14,15 +14,7 @@ internal static class IteratorLifetimeBuilder
                                                IReadOnlyList<IteratorPlanNode> planNodes,
                                                IReadOnlyList<QueryTeardown> teardowns)
     {
-        var owners = new Dictionary<ulong, ExecutionOperatorEvent>();
-
-        foreach (var operatorEvent in operators.Concat(BatchToRowOperators.Create(timeline, planNodes, operators)))
-        {
-            foreach (var instance in operatorEvent.Instances)
-            {
-                owners.TryAdd(instance, operatorEvent);
-            }
-        }
+        var owners = OperatorHierarchy.GetOperatorsByInstance(operators.Concat(BatchToRowOperators.Create(timeline, planNodes, operators)));
 
         var lifetimes = new List<TraceOperatorLifetime>();
 

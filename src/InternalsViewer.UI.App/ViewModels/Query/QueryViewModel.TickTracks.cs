@@ -85,7 +85,7 @@ public sealed partial class QueryViewModel
 
             if (!CustomTickTracks.TryGetValue(definition, out var track))
             {
-                var series = TraceTickSeries.FromDefinition(trace.Timeline, trace.CallStore, trace.Lifetimes, definition);
+                var series = TraceTickSeries.FromDefinition(trace, definition);
 
                 track = TraceTickTracks.Custom(definition, series);
 

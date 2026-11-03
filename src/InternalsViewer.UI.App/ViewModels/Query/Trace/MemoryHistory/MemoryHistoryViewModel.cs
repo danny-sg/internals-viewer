@@ -668,7 +668,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
 
         foreach (var writer in Calls.Where(c => !c.IsAllocation).GroupBy(c => c.Node))
         {
-            foreach (var region in Merge(writer.SelectMany(c => c.Regions)))
+            foreach (var region in MemoryHistoryRegion.Merge(writer.SelectMany(c => c.Regions)))
             {
                 boundaries.Add((region.Offset, writer.Key, 1));
 
@@ -717,32 +717,6 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
         };
     }
 
-    private static IEnumerable<MemoryHistoryRegion> Merge(IEnumerable<MemoryHistoryRegion> regions)
-    {
-        MemoryHistoryRegion? current = null;
-
-        foreach (var region in regions.OrderBy(r => r.Offset))
-        {
-            if (current is { } last && last.Offset + last.Length >= region.Offset)
-            {
-                current = last with { Length = Math.Max(last.Offset + last.Length, region.Offset + region.Length) - last.Offset };
-
-                continue;
-            }
-
-            if (current is { } completed)
-            {
-                yield return completed;
-            }
-
-            current = region;
-        }
-
-        if (current is { } final)
-        {
-            yield return final;
-        }
-    }
 
     private Colour GetColour(CallStackNode? writer)
         => writer is not null && Colours.TryGetValue(writer, out var colour) ? colour : SharedColour;
@@ -852,5 +826,4 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
 
     private static string GetDatabaseName(ushort databaseId)
         => SystemDatabases.TryGetValue(databaseId, out var name) ? name : $"Database {databaseId}";
-
 }

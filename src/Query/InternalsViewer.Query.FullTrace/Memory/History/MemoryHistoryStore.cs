@@ -70,9 +70,9 @@ public sealed partial class MemoryHistoryStore
 
     private MemoryHistoryInstance[] Instances { get; }
 
-    private AddressIndex Addresses => field ??= GetAddressIndex(isStack: false);
+    private AddressOrder Addresses => field ??= GetAddressOrder(isStack: false);
 
-    private AddressIndex StackAddresses => field ??= GetAddressIndex(isStack: true);
+    private AddressOrder StackAddresses => field ??= GetAddressOrder(isStack: true);
 
 
     public IReadOnlyList<MemoryHistoryWrite> GetWrites(int block)
@@ -110,6 +110,13 @@ public sealed partial class MemoryHistoryStore
 
     public ReadOnlySpan<byte> GetBytes(MemoryHistoryWrite write) => Data.AsSpan(write.DataIndex, write.Length);
 
+    public void Apply(MemoryHistoryWrite write, Span<byte> data, Span<bool> known)
+    {
+        GetBytes(write).CopyTo(data[write.Offset..]);
+
+        known.Slice(write.Offset, write.Length).Fill(true);
+    }
+
     public ulong GetInstructions(int index) => (ulong)InstructionHighs.Get(index) << 32 | Writes[index].LowInstructions;
 
     public TracePoint GetPoint(int index) => new(Writes[index].Position, GetInstructions(index));
@@ -130,9 +137,7 @@ public sealed partial class MemoryHistoryStore
         {
             var write = writes[index];
 
-            GetBytes(write).CopyTo(data.AsSpan(write.Offset));
-
-            known.AsSpan(write.Offset, write.Length).Fill(true);
+            Apply(write, data, known);
 
             if (write.Type == MemoryHistoryChangeType.Changed)
             {
@@ -392,7 +397,7 @@ public sealed partial class MemoryHistoryStore
             regions.Add(new MemoryHistoryRegion(writes[index].Offset, writes[index].Length));
         }
 
-        var initialised = Merge(regions);
+        var initialised = MemoryHistoryRegion.Merge(regions);
 
         var (callIndex, position) = allocation.IsInline
             ? (first.CallIndex, first.Position)
@@ -461,38 +466,13 @@ public sealed partial class MemoryHistoryStore
     private static bool IsChange(MemoryHistoryWrite write, TracePosition from, TracePosition to)
         => from <= write.Position && write.Position <= to && write.Type == MemoryHistoryChangeType.Changed;
 
-    private static List<MemoryHistoryRegion> Merge(List<MemoryHistoryRegion> regions)
+    private int GetBlock(AddressOrder order, ulong address, TracePosition position)
     {
-        var merged = new List<MemoryHistoryRegion>();
-
-        foreach (var region in regions.OrderBy(r => r.Offset))
-        {
-            if (merged.Count > 0 && merged[^1].Offset + merged[^1].Length >= region.Offset)
-            {
-                var last = merged[^1];
-
-                var end = Math.Max(last.Offset + last.Length, region.Offset + region.Length);
-
-                merged[^1] = last with { Length = end - last.Offset };
-
-                continue;
-            }
-
-            merged.Add(region);
-        }
-
-        return merged;
-    }
-
-    private int GetBlock(AddressIndex index, ulong address, TracePosition position)
-    {
-        var (blocks, starts, largest) = index;
-
         var found = -1;
 
-        for (var at = SortedSearch.FirstAfter(starts, address) - 1; at >= 0 && address - starts[at] < largest; at--)
+        foreach (var at in order.Addresses.GetCandidates(address))
         {
-            var block = blocks[at];
+            var block = order.Blocks[at];
 
             if (IsLiveAt(block, address, position) && (found < 0 || BlockArray[block].Size < BlockArray[found].Size))
             {
@@ -503,18 +483,18 @@ public sealed partial class MemoryHistoryStore
         return found;
     }
 
-    private AddressIndex GetAddressIndex(bool isStack)
+    private AddressOrder GetAddressOrder(bool isStack)
     {
         int[] blocks = [.. Enumerable.Range(0, BlockArray.Length)
                                      .Where(b => BlockArray[b].IsStack == isStack)
                                      .OrderBy(b => BlockArray[b].Address)];
 
-        return new AddressIndex(blocks,
-                                [.. blocks.Select(b => BlockArray[b].Address)],
-                                blocks.Length == 0 ? 0 : (ulong)blocks.Max(b => BlockArray[b].Size));
+        return new AddressOrder(blocks,
+                                new AddressIndex([.. blocks.Select(b => BlockArray[b].Address)],
+                                                 blocks.Length == 0 ? 0 : (ulong)blocks.Max(b => BlockArray[b].Size)));
     }
 
-    private sealed record AddressIndex(int[] Blocks, ulong[] Starts, ulong Largest);
+    private sealed record AddressOrder(int[] Blocks, AddressIndex Addresses);
 
     private sealed class CallBuilder(CallStackNode? node, MemoryHistoryWrite first, ulong iterator)
     {
@@ -551,7 +531,7 @@ public sealed partial class MemoryHistoryStore
                    first.Position,
                    LastWrite,
                    ChangeCount,
-                   Merge(Changed),
-                   Merge([.. Values.Where(v => v.Value.Before != v.Value.After).Select(v => new MemoryHistoryRegion(v.Key, 1))]));
+                   MemoryHistoryRegion.Merge(Changed),
+                   MemoryHistoryRegion.Merge(Values.Where(v => v.Value.Before != v.Value.After).Select(v => new MemoryHistoryRegion(v.Key, 1))));
     }
 }

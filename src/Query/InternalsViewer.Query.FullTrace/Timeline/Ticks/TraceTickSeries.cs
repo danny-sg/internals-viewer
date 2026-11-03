@@ -26,24 +26,27 @@ public sealed class TraceTickSeries
 
     public TraceMarkIndex<TraceTick>? GetTicks(ExecutionOperatorEvent operatorEvent, uint thread) => ByOperator.Get(operatorEvent, thread);
 
-    public static TraceTickSeries FromCalls(TraceTimeline timeline,
-                                            TraceCallStore calls,
-                                            TraceOperatorLifetimes lifetimes,
-                                            Func<CallstackFrame, bool> isFunction,
-                                            Func<CallstackFrame, TraceArgumentCall, byte?> getValue)
-        => FromCalls(timeline, calls, lifetimes, isFunction, getValue, EnclosingOperatorCalls.Build(calls, lifetimes.OperatorsByInstance));
+    public static TraceTickSeries FromDefinition(TraceResult trace, TraceTickDefinition definition)
+        => FromDefinition(trace.Timeline, trace.CallStore, trace.Lifetimes, definition, trace.EnclosingCalls);
 
     public static TraceTickSeries FromDefinition(TraceTimeline timeline,
                                                  TraceCallStore calls,
                                                  TraceOperatorLifetimes lifetimes,
                                                  TraceTickDefinition definition)
+        => FromDefinition(timeline, calls, lifetimes, definition, EnclosingOperatorCalls.Build(calls, lifetimes.OperatorsByInstance));
+
+    internal static TraceTickSeries FromDefinition(TraceTimeline timeline,
+                                                   TraceCallStore calls,
+                                                   TraceOperatorLifetimes lifetimes,
+                                                   TraceTickDefinition definition,
+                                                   EnclosingOperatorCalls enclosing)
     {
         var nodes = new Dictionary<CallStackNode, bool>(ReferenceEqualityComparer.Instance);
 
         return Build(timeline,
                      calls,
                      lifetimes,
-                     EnclosingOperatorCalls.Build(calls, lifetimes.OperatorsByInstance),
+                     enclosing,
                      definition.IsFunction,
                      (_, call) => definition.MatchesCall(call) ? (byte)0 : null,
                      node => nodes.TryGetValue(node, out var isMatch) ? isMatch : nodes[node] = definition.MatchesNode(node),
@@ -73,11 +76,9 @@ public sealed class TraceTickSeries
 
         var points = new List<SweepSpan<TracePosition>>();
 
-        foreach (var (functionAddress, instanceAddress) in calls.FunctionKeys)
+        foreach (var list in calls.GetCallLists())
         {
-            if (calls.GetCallList(functionAddress, instanceAddress) is not { Count: > 0 } list
-                || calls.GetNode(list.GetCallNodeIndex(0)) is not { Frame: { } frame } first
-                || !isFunction(first))
+            if (calls.GetFirstNode(list) is not { Frame: { } frame } first || !isFunction(first))
             {
                 continue;
             }
@@ -87,7 +88,7 @@ public sealed class TraceTickSeries
                 var call = list[index];
 
                 if (getValue(frame, call) is not { } value
-                    || timeline.FindCall(functionAddress, instanceAddress, index) is not { } location
+                    || timeline.FindCall(list.FunctionAddress, list.InstanceAddress, index) is not { } location
                     || (isNode is not null && !isNode(location.Node)))
                 {
                     continue;

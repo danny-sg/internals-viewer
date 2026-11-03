@@ -42,7 +42,7 @@ public static class BufferDescriptor
 
     private const int SharedShift = 12;
 
-    public static List<BufferField> Fields { get; } =
+    public static List<MemoryField> Fields { get; } =
     [
         new("Frame (bpage)", FrameOffset, sizeof(ulong)),
         new("Database Id (bdbid)", DatabaseIdOffset, sizeof(ushort)),

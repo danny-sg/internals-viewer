@@ -2,6 +2,7 @@ using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.CallStack.Locators;
+using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.CallStack;
 
@@ -115,7 +116,7 @@ public sealed class CallStackNode
 
     public bool HasCalls => Calls > 0;
 
-    public string CallsLabel => Calls == 1 ? "1 Call" : $"{Calls:N0} Calls";
+    public string CallsLabel => CountText.GetCalls(Calls);
 
     public int[] CallActivity { get; set; } = [];
 
@@ -129,9 +130,8 @@ public sealed class CallStackNode
 
     public bool HasAllocations => Allocated.Count > 0;
 
-    public string AllocationsLabel => AllocationsIncludingChildren == 1
-        ? "1 Allocation Including Children"
-        : $"{AllocationsIncludingChildren:N0} Allocations Including Children";
+    public string AllocationsLabel
+        => CountText.GetText(AllocationsIncludingChildren, "Allocation Including Children", "Allocations Including Children");
 
     public LocatorSet? Locators { get; set; }
 

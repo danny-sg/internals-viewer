@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.Helpers;
 
@@ -79,7 +80,7 @@ public sealed class MemoryHistoryGraph
                 continue;
             }
 
-            var end = target.Page is { } page ? pool.GetReferenceEnd(page, value, position) : store.Blocks[target.Block].ToPosition;
+            var end = GetTargetEnd(store, pool, target, value, position);
 
             seeds[index] = [new SlotSegment(new MemoryHistoryGraphTarget(position, end, value, target.Block, target.Page), -1, position)];
         }
@@ -525,25 +526,7 @@ public sealed class MemoryHistoryGraph
     }
 
     private static (ulong Start, ulong End)[] GetRanges(MemoryHistoryStore store, HashSet<int> blocks)
-    {
-        var ranges = new List<(ulong Start, ulong End)>();
-
-        foreach (var block in blocks.Select(b => store.Blocks[b]).OrderBy(b => b.Address))
-        {
-            var end = block.Address + (ulong)block.Size;
-
-            if (ranges.Count > 0 && block.Address <= ranges[^1].End)
-            {
-                ranges[^1] = (ranges[^1].Start, Math.Max(ranges[^1].End, end));
-            }
-            else
-            {
-                ranges.Add((block.Address, end));
-            }
-        }
-
-        return [.. ranges];
-    }
+        => [.. Intervals.Coalesce(blocks.Select(b => store.Blocks[b]), b => b.Address, b => b.Address + (ulong)b.Size)];
 
     private static bool IsInRanges((ulong Start, ulong End)[] ranges, ulong[] starts, ulong value)
     {
@@ -611,29 +594,10 @@ public sealed class MemoryHistoryGraph
         {
             var address = store.Blocks[referrer.Key].Address;
 
-            var spans = referrer.Select(r => r.Target).OrderBy(t => t.From).ToList();
-
-            var start = spans[0].From;
-
-            var end = spans[0].To;
-
-            foreach (var span in spans.Skip(1))
+            foreach (var (start, end) in Intervals.Coalesce(referrer.Select(r => r.Target), t => t.From, t => t.To))
             {
-                if (span.From <= end)
-                {
-                    end = span.To > end ? span.To : end;
-
-                    continue;
-                }
-
                 targets.Add(new MemoryHistoryGraphTarget(start, end, address, referrer.Key, null));
-
-                start = span.From;
-
-                end = span.To;
             }
-
-            targets.Add(new MemoryHistoryGraphTarget(start, end, address, referrer.Key, null));
         }
 
         return [.. targets.OrderBy(t => t.From)];
@@ -670,7 +634,7 @@ public sealed class MemoryHistoryGraph
         {
             var write = writes[index];
 
-            Apply(store, write, data, known);
+            store.Apply(write, data, known);
 
             foreach (var slot in GetTouchedSlots(write, first, count))
             {
@@ -692,7 +656,7 @@ public sealed class MemoryHistoryGraph
         {
             var write = writes[index];
 
-            Apply(store, write, data, known);
+            store.Apply(write, data, known);
 
             foreach (var slot in GetTouchedSlots(write, first, count))
             {
@@ -755,12 +719,12 @@ public sealed class MemoryHistoryGraph
         }
     }
 
-    private static void Apply(MemoryHistoryStore store, MemoryHistoryWrite write, byte[] data, bool[] known)
-    {
-        store.GetBytes(write).CopyTo(data.AsSpan(write.Offset));
-
-        known.AsSpan(write.Offset, write.Length).Fill(true);
-    }
+    private static TracePosition GetTargetEnd(MemoryHistoryStore store,
+                                              TraceBufferPool pool,
+                                              (int Block, TraceBufferReference? Page) target,
+                                              ulong value,
+                                              TracePosition position)
+        => target.Page is { } page ? pool.GetReferenceEnd(page, value, position) : store.Blocks[target.Block].ToPosition;
 
     private static IEnumerable<int> GetTouchedSlots(MemoryHistoryWrite write, int first, int count)
     {
@@ -795,9 +759,7 @@ public sealed class MemoryHistoryGraph
             return;
         }
 
-        var end = target.Page is { } page
-            ? pool.GetReferenceEnd(page, value, position)
-            : store.Blocks[target.Block].ToPosition;
+        var end = GetTargetEnd(store, pool, target, value, position);
 
         if (end <= position || end <= from)
         {
@@ -967,7 +929,7 @@ public sealed class MemoryHistoryGraph
 
         foreach (var write in store.GetWrites(block))
         {
-            Apply(store, write, data, known);
+            store.Apply(write, data, known);
 
             foreach (var slot in GetTouchedSlots(write, first, count))
             {

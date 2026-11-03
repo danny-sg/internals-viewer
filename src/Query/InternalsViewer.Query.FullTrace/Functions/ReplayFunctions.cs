@@ -1,9 +1,9 @@
 ﻿using InternalsViewer.Query.FullTrace.Helpers;
-using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory;
-using InternalsViewer.Query.FullTrace.Memory.BufferPool;
-using InternalsViewer.Query.FullTrace.Output;
+using InternalsViewer.Query.FullTrace.Memory.BufferPool.Enums;
+using InternalsViewer.Query.FullTrace.Output.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Functions;
 
@@ -11,33 +11,35 @@ internal sealed record ReplayFunctions(ulong[] ExcludedFunctions,
                                        InstanceMethod[] InstanceMethods,
                                        LocatorRead[] LocatorReads,
                                        MemoryFunction[] MemoryFunctions,
-                                       MemoryMapFunction[] MemoryMapFunctions,
-                                       PlanNodeFunctions PlanNodeFunctions,
-                                       OutputFunctions Output)
+                                       MemoryMapFunction[] MemoryMapFunctions)
 {
-    public static ReplayFunctions Empty { get; } = new([],
-                                                       [],
-                                                       [],
-                                                       [],
-                                                       [],
-                                                       PlanNodeFunctions.Empty,
-                                                       OutputFunctions.Empty);
+    public static ReplayFunctions Empty { get; } = new([], [], [], [], []);
 
-    public IReadOnlyDictionary<ulong, string[]> Vtables { get; init; } = new Dictionary<ulong, string[]>();
+    public AddressTable<PlanNodeFunctionType> PlanNodeFunctions { get; init; } = AddressTable<PlanNodeFunctionType>.Empty;
 
-    public BufferPoolFunctions BufferPool { get; init; } = BufferPoolFunctions.Empty;
+    public AddressTable<PlanObjectClass> PlanObjects { get; init; } = AddressTable<PlanObjectClass>.Empty;
+
+    public AddressTable<OutputFunctionType> OutputFunctions { get; init; } = AddressTable<OutputFunctionType>.Empty;
+
+    public AddressTable<OutputValueClass> OutputClasses { get; init; } = AddressTable<OutputValueClass>.Empty;
+
+    public AddressTable<BufferPoolFunctionType> BufferPoolFunctions { get; init; } = AddressTable<BufferPoolFunctionType>.Empty;
+
+    public AddressTable<string[]> Vtables { get; init; } = AddressTable<string[]>.Empty;
 
     public static ReplayFunctions Merge(IReadOnlyList<ReplayFunctions> functions)
         => new([.. functions.SelectMany(f => f.ExcludedFunctions)],
                [.. functions.SelectMany(f => f.InstanceMethods)],
                [.. functions.SelectMany(f => f.LocatorReads)],
                [.. functions.SelectMany(f => f.MemoryFunctions)],
-               [.. functions.SelectMany(f => f.MemoryMapFunctions)],
-               PlanNodeFunctions.Merge(functions.Select(f => f.PlanNodeFunctions)),
-               OutputFunctions.Merge(functions.Select(f => f.Output)))
+               [.. functions.SelectMany(f => f.MemoryMapFunctions)])
         {
-            Vtables = AddressMapHelper.Merge(functions.Select(f => f.Vtables)),
-            BufferPool = BufferPoolFunctions.Merge(functions.Select(f => f.BufferPool))
+            PlanNodeFunctions = AddressTable<PlanNodeFunctionType>.Merge(functions.Select(f => f.PlanNodeFunctions)),
+            PlanObjects = AddressTable<PlanObjectClass>.Merge(functions.Select(f => f.PlanObjects)),
+            OutputFunctions = AddressTable<OutputFunctionType>.Merge(functions.Select(f => f.OutputFunctions)),
+            OutputClasses = AddressTable<OutputValueClass>.Merge(functions.Select(f => f.OutputClasses)),
+            BufferPoolFunctions = AddressTable<BufferPoolFunctionType>.Merge(functions.Select(f => f.BufferPoolFunctions)),
+            Vtables = AddressTable<string[]>.Merge(functions.Select(f => f.Vtables))
         };
 
     public ReplayFunctions Rebase(ulong address)
@@ -45,11 +47,13 @@ internal sealed record ReplayFunctions(ulong[] ExcludedFunctions,
                [.. InstanceMethods.Select(m => m with { Address = m.Address + address })],
                [.. LocatorReads.Select(l => l with { Function = l.Function + address })],
                [.. MemoryFunctions.Select(f => f with { Address = f.Address + address })],
-               [.. MemoryMapFunctions.Select(f => f with { Address = f.Address + address })],
-               PlanNodeFunctions.Rebase(address),
-               Output.Rebase(address))
+               [.. MemoryMapFunctions.Select(f => f with { Address = f.Address + address })])
         {
-            Vtables = AddressMapHelper.Rebase(Vtables, address),
-            BufferPool = BufferPool.Rebase(address)
+            PlanNodeFunctions = PlanNodeFunctions.Rebase(address),
+            PlanObjects = PlanObjects.Rebase(address),
+            OutputFunctions = OutputFunctions.Rebase(address),
+            OutputClasses = OutputClasses.Rebase(address),
+            BufferPoolFunctions = BufferPoolFunctions.Rebase(address),
+            Vtables = Vtables.Rebase(address)
         };
 }

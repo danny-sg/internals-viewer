@@ -4,6 +4,7 @@ using System.Linq;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
+using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.UI.App.Models.Query.Trace.CallStack.Values;
 
@@ -26,7 +27,7 @@ public sealed class ValueUseGroup(TraceValueRole role, IReadOnlyList<ValueUseRow
         {
             var calls = Rows.Sum(r => r.Use.Calls);
 
-            return $"{Rows.Count:N0} {(Rows.Count == 1 ? "Function" : "Functions")}, {calls:N0} {(calls == 1 ? "Call" : "Calls")}";
+            return $"{CountText.GetText(Rows.Count, "Function", "Functions")}, {CountText.GetCalls(calls)}";
         }
     }
 

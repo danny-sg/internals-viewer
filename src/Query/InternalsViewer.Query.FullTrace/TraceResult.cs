@@ -56,6 +56,12 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
 
     public IReadOnlyList<TraceOutputRowSource> OutputSources => Sources ??= TraceOutputLineage.GetSources(Lifetimes, OutputStructures);
 
+    internal EnclosingOperatorCalls EnclosingCalls
+    {
+        get => field ??= EnclosingOperatorCalls.Build(CallStore, Lifetimes.OperatorsByInstance);
+        init;
+    }
+
     private IReadOnlyList<CallStackNode>? Roots { get; set; }
 
     private IReadOnlyList<TraceOutputRowSource>? Sources { get; set; }

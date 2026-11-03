@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.UI.App.Controls.Query.Timeline;
@@ -1178,7 +1179,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
                 extents.AddRange(drafts[block].Select(d => (d.Address, d.Address + (ulong)d.Length)));
             }
 
-            runs.AddRange(Merge(extents).Select(e => new Run(e.Start, e.End, segment)));
+            runs.AddRange(Intervals.Coalesce(extents, e => e.Start, e => e.End).Select(e => new Run(e.Start, e.End, segment)));
 
             for (var block = first; block <= index; block++)
             {
@@ -1452,25 +1453,6 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
         }
 
         return low;
-    }
-
-    private static List<(ulong Start, ulong End)> Merge(List<(ulong Start, ulong End)> extents)
-    {
-        var merged = new List<(ulong Start, ulong End)>();
-
-        foreach (var extent in extents.OrderBy(e => e.Start))
-        {
-            if (merged.Count > 0 && merged[^1].End >= extent.Start)
-            {
-                merged[^1] = (merged[^1].Start, Math.Max(merged[^1].End, extent.End));
-
-                continue;
-            }
-
-            merged.Add(extent);
-        }
-
-        return merged;
     }
 
     private static double GetRelativeBytePixels(List<List<ulong>> lengths, float room)

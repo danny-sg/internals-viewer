@@ -59,8 +59,6 @@ internal static class PlanObjectInstanceMethodCollector
                    && IteratorSymbols.IsIteratorMethod(methodName));
     }
 
-    public static bool IsInstanceClass(ReadOnlySpan<char> symbol) => IteratorSymbols.IsInstanceClass(symbol);
-
     public static List<InstanceMethod> FindInstanceMethods(IEnumerable<uint> addresses, DiaResolver resolver)
     {
         var methods = new List<InstanceMethod>();

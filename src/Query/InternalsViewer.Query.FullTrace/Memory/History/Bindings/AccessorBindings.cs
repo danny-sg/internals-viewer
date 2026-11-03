@@ -50,7 +50,7 @@ public static class AccessorBindings
 
     private const int MaximumColumns = 4096;
 
-    public static List<BindingField> Fields { get; } =
+    public static List<MemoryField> Fields { get; } =
     [
         new("Column Count", (int)ColumnCountOffset, sizeof(ushort)),
         new("Memory Object", (int)MemoryObjectOffset, sizeof(ulong)),

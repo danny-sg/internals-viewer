@@ -5,7 +5,7 @@ using InternalsViewer.Query.FullTrace.Memory.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Memory.History.StackObjects;
 
-internal sealed class StackSnapshotHook(IEnumerable<MemoryMapFunction> functions) : ITraceHook
+internal sealed class StackSnapshotHook(Dictionary<ulong, MemoryMapFunction> operations) : ITraceHook
 {
     private const int InstanceArgument = 0;
 
@@ -16,9 +16,10 @@ internal sealed class StackSnapshotHook(IEnumerable<MemoryMapFunction> functions
     private const int Alignment = sizeof(ulong);
 
     public IEnumerable<TraceHookFunction> Functions
-        => Operations.Values.Select(f => new TraceHookFunction(f.Address, TraceHookEvents.Entry | TraceHookEvents.Return));
+        => Operations.Where(o => IsWatched(o.Value))
+                     .Select(o => new TraceHookFunction(o.Key, TraceHookEvents.Entry | TraceHookEvents.Return));
 
-    private Dictionary<ulong, MemoryMapFunction> Operations { get; } = GetOperations(functions);
+    private Dictionary<ulong, MemoryMapFunction> Operations { get; } = operations;
 
     private List<Candidate> Objects { get; } = [];
 
@@ -40,7 +41,7 @@ internal sealed class StackSnapshotHook(IEnumerable<MemoryMapFunction> functions
 
     public void OnEntry(in TraceHookCall call, ITraceReplay replay)
     {
-        if (!Operations.TryGetValue(call.FunctionAddress, out var function))
+        if (!Operations.TryGetValue(call.FunctionAddress, out var function) || !IsWatched(function))
         {
             return;
         }
@@ -76,7 +77,7 @@ internal sealed class StackSnapshotHook(IEnumerable<MemoryMapFunction> functions
             }
         }
 
-        if (!Operations.TryGetValue(call.FunctionAddress, out var function))
+        if (!Operations.TryGetValue(call.FunctionAddress, out var function) || !IsWatched(function))
         {
             return;
         }
@@ -138,7 +139,7 @@ internal sealed class StackSnapshotHook(IEnumerable<MemoryMapFunction> functions
             }
         }
 
-        var chunks = new List<StackSnapshotChunk>(Chunks.Count);
+        var chunks = new List<DataChunk<StackSnapshotRun>>(Chunks.Count);
 
         foreach (var (data, runs) in Chunks)
         {
@@ -154,16 +155,16 @@ internal sealed class StackSnapshotHook(IEnumerable<MemoryMapFunction> functions
                 }
             }
 
-            chunks.Add(new StackSnapshotChunk([.. clipped], data));
+            chunks.Add(new DataChunk<StackSnapshotRun>([.. clipped], data));
         }
 
         return new StackSnapshots([.. objects], [.. chunks], SnapshotCount);
     }
 
-    private static Dictionary<ulong, MemoryMapFunction> GetOperations(IEnumerable<MemoryMapFunction> functions)
-        => MemoryMapHook.GetOperations(functions.Where(f => f.Operation is MemoryMapOperation.Constructed or MemoryMapOperation.Visited
-                                                            || f.Declared.Length > 0
-                                                            || f.Pointers.Length > 0));
+    private static bool IsWatched(MemoryMapFunction function)
+        => function.Operation is MemoryMapOperation.Constructed or MemoryMapOperation.Visited
+           || function.Declared.Length > 0
+           || function.Pointers.Length > 0;
 
     private static TracePosition GetPositionBefore(TracePosition position)
         => position.Steps > 0 ? new TracePosition(position.Sequence, position.Steps - 1) : position;

@@ -1,3 +1,5 @@
+using InternalsViewer.Query.CallStack;
+
 namespace InternalsViewer.Query.FullTrace.Iterators;
 
 internal static class IteratorSymbols
@@ -42,6 +44,11 @@ internal static class IteratorSymbols
 
     public static bool IsIterator(ReadOnlySpan<char> className) => IsRowIterator(className) || IsBatchIterator(className);
 
+    public static bool IsIterator(CallstackFrame? frame) => frame?.Resolved?.ClassName is { } className && IsIterator(className);
+
+    public static bool IsIteratorConstructor(CallstackFrame? frame)
+        => frame?.Resolved is { ClassName: { } className } resolved && IsIterator(className) && resolved.MethodName == className;
+
     public static bool IsQueryScan(ReadOnlySpan<char> className) => className.StartsWith(QueryScanClass, StringComparison.Ordinal);
 
     public static bool IsRowPlanObject(ReadOnlySpan<char> className) => className.StartsWith(RowPlanObjectPrefix, StringComparison.Ordinal);
@@ -50,6 +57,8 @@ internal static class IteratorSymbols
         => className.StartsWith(BatchPlanObjectPrefix, StringComparison.Ordinal);
 
     public static bool IsPlanObject(ReadOnlySpan<char> className) => IsRowPlanObject(className) || IsBatchPlanObject(className);
+
+    public static bool IsPlanObject(CallstackFrame? frame) => frame?.Resolved?.ClassName is { } className && IsPlanObject(className);
 
     public static bool IsInstanceClass(ReadOnlySpan<char> className)
         => IsIterator(className) || IsQueryScan(className) || IsPlanObject(className);

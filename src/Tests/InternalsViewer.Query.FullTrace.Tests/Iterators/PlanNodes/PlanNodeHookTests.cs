@@ -173,20 +173,20 @@ public class PlanNodeHookTests
                       .Write(BatchPlanObject + 0x10, PlanObject);
 
     private static PlanNodeHook CreateHook()
-        => new(new PlanNodeFunctions(new Dictionary<ulong, PlanNodeFunctionType>
-                                      {
-                                          [GetRow] = PlanNodeFunctionType.Iterator,
-                                          [BatchHelperGetRow] = PlanNodeFunctionType.BatchHelper,
-                                          [BatchGetData] = PlanNodeFunctionType.BatchIterator,
-                                          [BatchFactory] = PlanNodeFunctionType.BatchFactory,
-                                          [Constructor] = PlanNodeFunctionType.Constructor,
-                                          [Teardown] = PlanNodeFunctionType.Teardown
-                                      },
-                                      new Dictionary<ulong, PlanObjectClass>
-                                      {
-                                          [PlanObjectTable] = PlanObjectClass.Row,
-                                          [BatchPlanObjectTable] = PlanObjectClass.Batch
-                                      }));
+        => new(new(new Dictionary<ulong, PlanNodeFunctionType>
+               {
+                   [GetRow] = PlanNodeFunctionType.Iterator,
+                   [BatchHelperGetRow] = PlanNodeFunctionType.BatchHelper,
+                   [BatchGetData] = PlanNodeFunctionType.BatchIterator,
+                   [BatchFactory] = PlanNodeFunctionType.BatchFactory,
+                   [Constructor] = PlanNodeFunctionType.Constructor,
+                   [Teardown] = PlanNodeFunctionType.Teardown
+               }),
+               new(new Dictionary<ulong, PlanObjectClass>
+               {
+                   [PlanObjectTable] = PlanObjectClass.Row,
+                   [BatchPlanObjectTable] = PlanObjectClass.Batch
+               }));
 
     private static TraceHookCall Call(ulong function, ulong id, ulong iterator, ulong returnValue = 0, ulong? at = null)
         => new()

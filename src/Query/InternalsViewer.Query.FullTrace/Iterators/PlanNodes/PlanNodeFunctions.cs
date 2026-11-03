@@ -5,20 +5,20 @@ using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 
-internal sealed record PlanNodeFunctions(IReadOnlyDictionary<ulong, PlanNodeFunctionType> Functions,
-                                          IReadOnlyDictionary<ulong, PlanObjectClass> PlanObjects)
+internal static class PlanNodeFunctions
 {
-    public static PlanNodeFunctions Empty { get; } = new(new Dictionary<ulong, PlanNodeFunctionType>(),
-                                                          new Dictionary<ulong, PlanObjectClass>());
+    public static AddressTable<PlanObjectClass> GetPlanObjects(IReadOnlyDictionary<ulong, string[]> vtables)
+        => VtableResolver.GetFirstMatches(vtables, GetPlanObjectClass);
 
-    public static PlanNodeFunctions Merge(IEnumerable<PlanNodeFunctions> functions)
+    private static PlanObjectClass? GetPlanObjectClass(string className)
     {
-        var all = functions.ToList();
+        if (IteratorSymbols.IsBatchPlanObject(className))
+        {
+            return PlanObjectClass.Batch;
+        }
 
-        return new(AddressMapHelper.Merge(all.Select(f => f.Functions)), AddressMapHelper.Merge(all.Select(f => f.PlanObjects)));
+        return IteratorSymbols.IsRowPlanObject(className) ? PlanObjectClass.Row : null;
     }
-
-    public PlanNodeFunctions Rebase(ulong address) => new(AddressMapHelper.Rebase(Functions, address), AddressMapHelper.Rebase(PlanObjects, address));
 
     internal sealed class Collector
     {
@@ -65,18 +65,7 @@ internal sealed record PlanNodeFunctions(IReadOnlyDictionary<ulong, PlanNodeFunc
             }
         }
 
-        public PlanNodeFunctions Build(IReadOnlyDictionary<ulong, string[]> vtables)
-            => new(Candidates.Where(c => !Others.Contains(c.Key)).ToDictionary(c => (ulong)c.Key, c => c.Value),
-                   VtableResolver.GetFirstMatches(vtables, GetPlanObjectClass));
-
-        private static PlanObjectClass? GetPlanObjectClass(string className)
-        {
-            if (IteratorSymbols.IsBatchPlanObject(className))
-            {
-                return PlanObjectClass.Batch;
-            }
-
-            return IteratorSymbols.IsRowPlanObject(className) ? PlanObjectClass.Row : null;
-        }
+        public AddressTable<PlanNodeFunctionType> Build()
+            => new(Candidates.Where(c => !Others.Contains(c.Key)).ToDictionary(c => (ulong)c.Key, c => c.Value));
     }
 }

@@ -6,19 +6,9 @@ public sealed class ArrayAllocationMatcher(MemoryHistoryStore store, MemoryMap m
 
     private const int CountSize = sizeof(ulong);
 
-    private Dictionary<int, string?> Blocks { get; } = [];
+    private BlockCache<string?> Names => field ??= new(FindClassName);
 
-    public string? GetClassName(int block)
-    {
-        if (!Blocks.TryGetValue(block, out var className))
-        {
-            className = FindClassName(block);
-
-            Blocks[block] = className;
-        }
-
-        return className;
-    }
+    public string? GetClassName(int block) => Names.Get(block);
 
     private string? FindClassName(int block)
     {

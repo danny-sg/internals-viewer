@@ -221,21 +221,21 @@ public class MemoryMapHookTests
     }
 
     private static (MemoryMapHook Hook, FakeTraceReplay Replay) Create()
-        => (new MemoryMapHook([new MemoryMapFunction(Constructor, MemoryMapOperation.Constructed),
-                               new MemoryMapFunction(Method, MemoryMapOperation.Visited),
-                               new MemoryMapFunction(OperatorNew, MemoryMapOperation.Allocated),
-                               new MemoryMapFunction(Factory, MemoryMapOperation.Declared)
-                               {
-                                   Declared = [new DeclaredClass(ArgumentLayout.ReturnRegister, "AccBindings")]
-                               },
-                               new MemoryMapFunction(Consumer, MemoryMapOperation.Declared)
-                               {
-                                   Declared = [new DeclaredClass(1, "BaseXact")]
-                               },
-                               new MemoryMapFunction(Getter, MemoryMapOperation.Visited)
-                               {
-                                   Declared = [new DeclaredClass(ArgumentLayout.ReturnRegister, "CTypeInfo")]
-                               }],
+        => (new MemoryMapHook(MemoryMapHook.GetOperations([new MemoryMapFunction(Constructor, MemoryMapOperation.Constructed),
+                                                            new MemoryMapFunction(Method, MemoryMapOperation.Visited),
+                                                            new MemoryMapFunction(Factory, MemoryMapOperation.Declared)
+                                                            {
+                                                                Declared = [new DeclaredClass(ArgumentLayout.ReturnRegister, "AccBindings")]
+                                                            },
+                                                            new MemoryMapFunction(Consumer, MemoryMapOperation.Declared)
+                                                            {
+                                                                Declared = [new DeclaredClass(1, "BaseXact")]
+                                                            },
+                                                            new MemoryMapFunction(Getter, MemoryMapOperation.Visited)
+                                                            {
+                                                                Declared = [new DeclaredClass(ArgumentLayout.ReturnRegister, "CTypeInfo")]
+                                                            }]),
+                              [new MemoryMapFunction(OperatorNew, MemoryMapOperation.Allocated)],
                               new Dictionary<ulong, string> { [Vtable] = "CQScanTableScanNew" }),
             new FakeTraceReplay { Frames = Frames });
 

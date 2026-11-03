@@ -2,6 +2,7 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.CallStack.Locators.Enums;
 using InternalsViewer.Query.FullTrace.Calls;
+using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 
@@ -9,17 +10,7 @@ namespace InternalsViewer.Query.FullTrace.Timeline.Tracks;
 
 public static class TraceEvaluations
 {
-    private const string ExpressionService = "CEsExec";
-
     private const int ResultRegister = 2;
-
-    private static readonly HashSet<string> Methods = new(StringComparer.Ordinal)
-    {
-        "FastCompare",
-        "FastCompare1",
-        "GeneralEval",
-        "GeneralEval4"
-    };
 
     internal static TraceTickSeries Build(TraceTimeline timeline,
                                           TraceCallStore calls,
@@ -36,7 +27,8 @@ public static class TraceEvaluations
                                      enclosing ?? EnclosingOperatorCalls.Build(calls, lifetimes.OperatorsByInstance));
 
     private static bool IsEvaluation(CallstackFrame frame)
-        => frame.Resolved is { ClassName: ExpressionService, MethodName: { } method } && Methods.Contains(method);
+        => frame.Resolved is { ClassName: OutputFunctions.ExpressionServiceClass, MethodName: { } method }
+           && OutputFunctions.EvaluationMethods.Contains(method);
 
     internal static TraceEvaluationResult? GetResult(VariantLocator variant) => variant switch
     {

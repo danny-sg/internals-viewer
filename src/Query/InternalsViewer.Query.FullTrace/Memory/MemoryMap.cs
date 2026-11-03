@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
 using InternalsViewer.Query.Helpers;
 
@@ -16,9 +17,8 @@ public sealed partial class MemoryMap
 
         Labels = [.. labels.OrderBy(l => l.Value).Select(l => l.Key)];
 
-        BlockAddresses = [.. Entries.Where(e => e.Value.Any(entry => entry.Bytes > 0)).Select(e => e.Key).Order()];
-
-        MaximumBytes = Entries.Values.SelectMany(e => e).Select(e => e.Bytes).DefaultIfEmpty(0ul).Max();
+        Blocks = new AddressIndex([.. Entries.Where(e => e.Value.Any(entry => entry.Bytes > 0)).Select(e => e.Key).Order()],
+                                  Entries.Values.SelectMany(e => e).Select(e => e.Bytes).DefaultIfEmpty(0ul).Max());
     }
 
     public static MemoryMap Empty { get; } = new([]);
@@ -31,9 +31,7 @@ public sealed partial class MemoryMap
 
     private Label[] Labels { get; }
 
-    private ulong[] BlockAddresses { get; }
-
-    private ulong MaximumBytes { get; }
+    private AddressIndex Blocks { get; }
 
     public MemoryMapEntry? GetEntry(ulong address, TracePosition position)
     {
@@ -48,87 +46,16 @@ public sealed partial class MemoryMap
     }
 
     public string? GetLabel(ulong address, TracePosition from, TracePosition to)
-    {
-        if (!Entries.TryGetValue(address, out var entries))
-        {
-            return null;
-        }
-
-        string? site = null;
-
-        foreach (var entry in entries)
-        {
-            if (!IsWithin(entry, from, to))
-            {
-                continue;
-            }
-
-            var label = Labels[entry.LabelIndex];
-
-            if (label.ClassName is { } className)
-            {
-                return className;
-            }
-
-            site ??= label.Site;
-        }
-
-        return site;
-    }
+        => GetLabelValue(address, from, to, static l => l.ClassName) ?? GetLabelValue(address, from, to, static l => l.Site);
 
     public string? GetClassName(ulong address, TracePosition from, TracePosition to)
-    {
-        if (!Entries.TryGetValue(address, out var entries))
-        {
-            return null;
-        }
-
-        foreach (var entry in entries)
-        {
-            if (IsWithin(entry, from, to) && Labels[entry.LabelIndex].ClassName is { } className)
-            {
-                return className;
-            }
-        }
-
-        return null;
-    }
+        => GetLabelValue(address, from, to, static l => l.ClassName);
 
     public string? GetAllocator(ulong address, TracePosition from, TracePosition to)
-    {
-        if (!Entries.TryGetValue(address, out var entries))
-        {
-            return null;
-        }
-
-        foreach (var entry in entries)
-        {
-            if (IsWithin(entry, from, to) && Labels[entry.LabelIndex].Allocator is { } allocator)
-            {
-                return allocator;
-            }
-        }
-
-        return null;
-    }
+        => GetLabelValue(address, from, to, static l => l.Allocator);
 
     public string? GetMemoryObject(ulong address, TracePosition from, TracePosition to)
-    {
-        if (!Entries.TryGetValue(address, out var entries))
-        {
-            return null;
-        }
-
-        foreach (var entry in entries)
-        {
-            if (IsWithin(entry, from, to) && Labels[entry.LabelIndex].MemoryObject is { } memoryObject)
-            {
-                return memoryObject;
-            }
-        }
-
-        return null;
-    }
+        => GetLabelValue(address, from, to, static l => l.MemoryObject);
 
     public (MemoryMapEntry Entry, ulong Offset)? GetContaining(ulong address, TracePosition position)
     {
@@ -139,11 +66,9 @@ public sealed partial class MemoryMap
 
         (ulong Address, StoredEntry Entry, ulong Offset)? innermost = null;
 
-        for (var index = SortedSearch.FirstAtOrAfter(BlockAddresses, address) - 1;
-             index >= 0 && address - BlockAddresses[index] < MaximumBytes;
-             index--)
+        foreach (var index in Blocks.GetCandidates(address, isStartIncluded: false))
         {
-            var block = BlockAddresses[index];
+            var block = Blocks.Starts[index];
 
             var offset = address - block;
 
@@ -243,6 +168,24 @@ public sealed partial class MemoryMap
         }
 
         return entries;
+    }
+
+    private string? GetLabelValue(ulong address, TracePosition from, TracePosition to, Func<Label, string?> getValue)
+    {
+        if (!Entries.TryGetValue(address, out var entries))
+        {
+            return null;
+        }
+
+        foreach (var entry in entries)
+        {
+            if (IsWithin(entry, from, to) && getValue(Labels[entry.LabelIndex]) is { } value)
+            {
+                return value;
+            }
+        }
+
+        return null;
     }
 
     private static bool IsLiveAt(MemoryMapEntry entry, TracePosition position) => !entry.ToPosition.IsKnown || position <= entry.ToPosition;

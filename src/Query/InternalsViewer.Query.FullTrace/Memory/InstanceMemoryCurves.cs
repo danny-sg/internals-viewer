@@ -64,7 +64,7 @@ public sealed class InstanceMemoryCurves
         => GetOwner(node) is { } instance ? Curves.GetValueOrDefault((thread, instance), MemoryInUseCurve.Empty) : null;
 
     private static ulong? GetOwner(CallStackNode node)
-        => node.Frame is { InstanceAddress: not 0 and var instance } frame && !IteratorSymbols.IsPlanObject(frame.Resolved?.ClassName)
+        => node.Frame is { InstanceAddress: not 0 and var instance } frame && !IteratorSymbols.IsPlanObject(frame)
             ? instance
             : null;
 }

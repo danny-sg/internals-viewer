@@ -12,9 +12,7 @@ public sealed class MemoryHistoryBatches(MemoryHistoryStore store,
 
     private int[] Headers => field ??= [.. Enumerable.Range(0, store.Blocks.Count).Where(IsHeader)];
 
-    private Dictionary<int, (int Header, BatchPart Part)?> Parts { get; } = [];
-
-    private Lock PartsLock { get; } = new();
+    private BlockCache<(int Header, BatchPart Part)?> Parts => field ??= new(FindPart);
 
     public BatchPart? GetPart(int block) => GetOwner(block)?.Part;
 
@@ -52,25 +50,7 @@ public sealed class MemoryHistoryBatches(MemoryHistoryStore store,
         return DeepDataReader.GetPages(reader, vector.FirstDeepPage).Append(vector.CurrentDeepPage).Where(p => p != 0);
     }
 
-    private (int Header, BatchPart Part)? GetOwner(int block)
-    {
-        lock (PartsLock)
-        {
-            if (Parts.TryGetValue(block, out var cached))
-            {
-                return cached;
-            }
-        }
-
-        var owner = FindPart(block);
-
-        lock (PartsLock)
-        {
-            Parts[block] = owner;
-        }
-
-        return owner;
-    }
+    private (int Header, BatchPart Part)? GetOwner(int block) => Parts.Get(block);
 
     private (int Header, BatchPart Part)? FindPart(int block)
     {

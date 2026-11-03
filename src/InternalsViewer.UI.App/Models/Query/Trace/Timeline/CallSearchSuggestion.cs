@@ -1,3 +1,5 @@
+using InternalsViewer.Query.Helpers;
+
 namespace InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 
 public sealed class CallSearchSuggestion(string name, int calls)
@@ -6,5 +8,5 @@ public sealed class CallSearchSuggestion(string name, int calls)
 
     public int Calls { get; } = calls;
 
-    public string CallsText => Calls == 1 ? "1 Call" : $"{Calls:N0} Calls";
+    public string CallsText => CountText.GetCalls(Calls);
 }

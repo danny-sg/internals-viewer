@@ -43,7 +43,7 @@ internal static class MemoryHistoryStores
         return MemoryHistoryBuilder.Build([.. blocks.Select(b => new MemoryHistoryAllocation(b, false))],
                                           new ulong[blocks.Length],
                                           new Dictionary<ulong, TracePosition>(),
-                                          new WatchResult([new WatchChunk([.. hits], [.. data])], 1),
+                                          new WatchResult([new([.. hits], [.. data])], 1),
                                           timeline).Store;
     }
 
@@ -73,7 +73,7 @@ internal static class MemoryHistoryStores
             recording.AddRead(new WatchHit(sequence, 0, address, Writer, Thread, size, 0, 0));
         }
 
-        return recording.Build(new WatchResult([new WatchChunk([.. hits], [.. data])], 1)).Store;
+        return recording.Build(new WatchResult([new([.. hits], [.. data])], 1)).Store;
     }
 
     public static int GetBlock(MemoryHistoryStore store, ulong address)

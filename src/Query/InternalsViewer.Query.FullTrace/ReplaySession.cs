@@ -14,6 +14,7 @@ using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Stubs;
 using InternalsViewer.Query.FullTrace.Memory.Enums;
+using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.History.StackObjects;
 using InternalsViewer.Query.FullTrace.Memory.History.Watches;
 
@@ -186,22 +187,23 @@ internal sealed class ReplaySession : IDisposable
 
         ulong[] instanceMethods = [.. functions.InstanceMethods.Select(ReplayBridge.PackInstanceMethod)];
 
-        MemoryMapFunction[] memoryMapFunctions = [.. functions.MemoryMapFunctions,
-                                                  .. functions.MemoryFunctions
-                                                              .Where(f => f is { IsAllocation: true, IsVirtual: false })
-                                                              .Select(f => new MemoryMapFunction(f.Address, MemoryMapOperation.Allocated))];
+        var operations = MemoryMapHook.GetOperations(functions.MemoryMapFunctions);
 
-        var memoryMap = new MemoryMapHook(memoryMapFunctions, VtableResolver.GetUniqueClasses(functions.Vtables));
+        var memoryMap = new MemoryMapHook(operations,
+                                          functions.MemoryFunctions
+                                                   .Where(f => f is { IsAllocation: true, IsVirtual: false })
+                                                   .Select(f => new MemoryMapFunction(f.Address, MemoryMapOperation.Allocated)),
+                                          VtableResolver.GetUniqueClasses(functions.Vtables));
 
-        var planNodeHook = new PlanNodeHook(functions.PlanNodeFunctions);
+        var planNodeHook = new PlanNodeHook(functions.PlanNodeFunctions, functions.PlanObjects);
 
-        var output = new OutputHook(functions.Output);
+        var output = new OutputHook(functions.OutputFunctions, functions.OutputClasses);
 
         var customHook = new CustomHook(Resolve(customHooks));
 
-        var bufferPool = new BufferPoolHook(functions.BufferPool);
+        var bufferPool = new BufferPoolHook(functions.BufferPoolFunctions);
 
-        var stack = isStackRecorded ? new StackSnapshotHook(functions.MemoryMapFunctions) : null;
+        var stack = isStackRecorded ? new StackSnapshotHook(operations) : null;
 
         var hooks = new TraceHooks([planNodeHook,
                                     new LocatorHook(functions.LocatorReads, store, images),
@@ -316,7 +318,7 @@ internal sealed class ReplaySession : IDisposable
 
         var registration = cancellationToken.Register(() => Marshal.WriteInt32(cancel, 1));
 
-        var chunks = new List<WatchChunk>();
+        var chunks = new List<DataChunk<ChunkHit>>();
 
         var received = 0L;
 
@@ -389,7 +391,7 @@ internal sealed class ReplaySession : IDisposable
                 offset += (int)hit.Size;
             }
 
-            chunks.Add(new WatchChunk(hits, data));
+            chunks.Add(new DataChunk<ChunkHit>(hits, data));
         };
 
         ReplayBridge.ProgressCallback onProgress = (_, percent) => progress?.Report(percent);

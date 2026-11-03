@@ -86,6 +86,7 @@ internal sealed class TraceResultBuilder
             HoBtAccess = HoBtAccessMap.Build(CallStore, Timeline.MappedNodes),
             Memory = Memory,
             Lifetimes = lifetimes,
+            EnclosingCalls = enclosing,
             MemoryMap = MemoryMap,
             MemoryObjects = MemoryObjectMap.Build(CallStore, Timeline.MappedNodes, MemoryObjectSnapshot),
             ObjectPool = ObjectPool,

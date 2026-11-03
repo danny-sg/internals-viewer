@@ -402,7 +402,7 @@ public sealed partial class CallTreeViewModel
             return [node];
         }
 
-        if (reveal == Reveal.Path || IsCategoryIn(PrunedCategories, node))
+        if (reveal == Reveal.Path || CallExclusions.IsIn(PrunedCategories, node))
         {
             return [];
         }
@@ -455,7 +455,7 @@ public sealed partial class CallTreeViewModel
             return Reveal.Under;
         }
 
-        var cut = reveal == Reveal.Path || group.Any(n => Revealed?.Contains(n) == true && IsCategoryIn(PrunedCategories, n));
+        var cut = reveal == Reveal.Path || group.Any(n => Revealed?.Contains(n) == true && CallExclusions.IsIn(PrunedCategories, n));
 
         if (!cut)
         {
@@ -465,9 +465,9 @@ public sealed partial class CallTreeViewModel
         return RevealTarget is { } target && group.Contains(target) ? Reveal.Under : Reveal.Path;
     }
 
-    private bool IsHidden(CallStackNode node) => node.IsInfrastructure || IsCategoryIn(HiddenCategories, node);
+    private bool IsHidden(CallStackNode node) => node.IsInfrastructure || CallExclusions.IsIn(HiddenCategories, node);
 
-    private bool IsConcealed(CallStackNode node) => IsHidden(node) || IsCategoryIn(PrunedCategories, node);
+    private bool IsConcealed(CallStackNode node) => IsHidden(node) || CallExclusions.IsIn(PrunedCategories, node);
 
     private bool IsSearchMatch(CallStackNode node) => Search.Length > 0 && Matches(node);
 
@@ -724,12 +724,12 @@ public sealed partial class CallTreeViewModel
 
     private IEnumerable<CallStackNode> GetVisibleProjectedNodes(CallStackNode node, bool revealInfrastructure, List<CallStackNode> promotedCuts)
     {
-        if (IsCategoryIn(PrunedCategories, node))
+        if (CallExclusions.IsIn(PrunedCategories, node))
         {
             return [];
         }
 
-        if ((node.IsInfrastructure && !revealInfrastructure) || IsCategoryIn(HiddenCategories, node))
+        if ((node.IsInfrastructure && !revealInfrastructure) || CallExclusions.IsIn(HiddenCategories, node))
         {
             promotedCuts.AddRange(node.CutBelow);
 
@@ -866,9 +866,6 @@ public sealed partial class CallTreeViewModel
 
         return rows;
     }
-
-    private static bool IsCategoryIn(IReadOnlySet<string> categories, CallStackNode node)
-        => node.Frame is not null && categories.Count > 0 && categories.Contains(node.Category);
 
     /// <summary>
     /// Whether a frame answers the search, across everything it shows
