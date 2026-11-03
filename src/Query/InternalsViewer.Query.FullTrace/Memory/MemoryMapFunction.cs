@@ -5,4 +5,6 @@ namespace InternalsViewer.Query.FullTrace.Memory;
 internal readonly record struct MemoryMapFunction(ulong Address, MemoryMapOperation Operation)
 {
     public DeclaredClass[] Declared { get; init; } = [];
+
+    public int[] Pointers { get; init; } = [];
 }

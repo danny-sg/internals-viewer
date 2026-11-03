@@ -781,7 +781,9 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
     private string GetDisplayLabel(int block)
         => GetObjectLabel(block) is { Length: > 0 } label
             ? label
-            : GetAllocatingCall(block)?.Symbol is { Length: > 0 } symbol ? symbol + AllocationSuffix : string.Empty;
+            : GetAllocatingCall(block)?.Symbol is { Length: > 0 } symbol
+                ? Store.Blocks[block].IsStack ? symbol : symbol + AllocationSuffix
+                : string.Empty;
 
     private string GetObjectLabel(int block)
         => GetBufferLabel(block)

@@ -2406,6 +2406,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                             iterators,
                             result.HoBtAccess,
                             result.MemoryMap,
+                            result.MemoryHistory,
                             result.MemoryObjects,
                             StorageIdMap.Build(Database.AllocationUnits.Values));
 

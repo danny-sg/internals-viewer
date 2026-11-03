@@ -15,7 +15,8 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions, IR
 
     public IEnumerable<TraceHookFunction> Functions => Operations.Select(o => new TraceHookFunction(o.Key, GetEvents(o.Value)));
 
-    private Dictionary<ulong, MemoryMapFunction> Operations { get; } = GetOperations(functions);
+    private Dictionary<ulong, MemoryMapFunction> Operations { get; }
+        = GetOperations(functions.Where(f => f.Operation != MemoryMapOperation.Declared || f.Declared.Length > 0));
 
     private IReadOnlyDictionary<ulong, string> Vtables { get; } = vtables ?? new Dictionary<ulong, string>();
 
@@ -99,7 +100,13 @@ internal sealed class MemoryMapHook(IEnumerable<MemoryMapFunction> functions, IR
         {
             ref var operation = ref CollectionsMarshal.GetValueRefOrAddDefault(operations, function.Address, out var exists);
 
-            operation = exists ? function with { Declared = [.. operation.Declared.Union(function.Declared)] } : function;
+            operation = exists
+                ? function with
+                {
+                    Declared = [.. operation.Declared.Union(function.Declared)],
+                    Pointers = [.. operation.Pointers.Union(function.Pointers)]
+                }
+                : function;
         }
 
         return operations;

@@ -57,6 +57,11 @@ internal sealed class StackSnapshotHook(IEnumerable<MemoryMapFunction> functions
                 Handoff(call.Arguments[declared.Slot], call, replay, isReturned: false);
             }
         }
+
+        foreach (var slot in function.Pointers)
+        {
+            Handoff(TraceHookArguments.GetArgument(replay, call, slot), call, replay, isReturned: false);
+        }
     }
 
     public void OnReturn(in TraceHookCall call, ITraceReplay replay)
@@ -157,7 +162,8 @@ internal sealed class StackSnapshotHook(IEnumerable<MemoryMapFunction> functions
 
     private static Dictionary<ulong, MemoryMapFunction> GetOperations(IEnumerable<MemoryMapFunction> functions)
         => MemoryMapHook.GetOperations(functions.Where(f => f.Operation is MemoryMapOperation.Constructed or MemoryMapOperation.Visited
-                                                            || f.Declared.Length > 0));
+                                                            || f.Declared.Length > 0
+                                                            || f.Pointers.Length > 0));
 
     private static TracePosition GetPositionBefore(TracePosition position)
         => position.Steps > 0 ? new TracePosition(position.Sequence, position.Steps - 1) : position;

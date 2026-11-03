@@ -13,6 +13,7 @@ using InternalsViewer.Query.Results;
 using Microsoft.Extensions.Logging;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Arguments;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Stack;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Tree;
@@ -84,6 +85,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
                           IReadOnlyDictionary<ulong, IteratorTarget>? iterators = null,
                           HoBtAccessMap? hobtAccess = null,
                           MemoryMap? memoryMap = null,
+                          MemoryHistoryStore? memoryHistory = null,
                           MemoryObjectMap? memoryObjects = null,
                           StorageIdMap? storageIds = null)
     {
@@ -96,6 +98,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
                                 iterators ?? new Dictionary<ulong, IteratorTarget>(),
                                 hobtAccess ?? HoBtAccessMap.Empty,
                                 memoryMap ?? MemoryMap.Empty,
+                                memoryHistory ?? MemoryHistoryStore.Empty,
                                 memoryObjects ?? MemoryObjectMap.Empty,
                                 storageIds ?? StorageIdMap.Empty,
                                 symbols);

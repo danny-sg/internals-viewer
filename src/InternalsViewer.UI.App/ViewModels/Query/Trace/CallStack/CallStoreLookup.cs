@@ -10,6 +10,7 @@ using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Arguments;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Signatures;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Stack;
@@ -22,6 +23,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
                                   IReadOnlyDictionary<ulong, IteratorTarget> iterators,
                                   HoBtAccessMap hobtAccess,
                                   MemoryMap memoryMap,
+                                  MemoryHistoryStore memoryHistory,
                                   MemoryObjectMap memoryObjects,
                                   StorageIdMap storageIds,
                                   SymbolsViewModel symbols) : ITraceSignatureSource
@@ -110,9 +112,12 @@ public sealed class CallStoreLookup(TraceCallStore store,
             return new ValueDescription(address, declared) { Origin = entry };
         }
 
-        return (entry?.Site ?? entry?.Allocator) is { } allocation
-            ? new ValueDescription(address, allocation) { Origin = entry }
-            : DescribeMemoryObject(value, GetPosition(slot, call));
+        if ((entry?.Site ?? entry?.Allocator) is { } allocation)
+        {
+            return new ValueDescription(address, allocation) { Origin = entry };
+        }
+
+        return DescribeStackObject(value, GetPosition(slot, call)) ?? DescribeMemoryObject(value, GetPosition(slot, call));
     }
 
     public async Task<CallSignature?> GetSignatureAsync(CallStackNode node, int callIndex)
@@ -224,6 +229,20 @@ public sealed class CallStoreLookup(TraceCallStore store,
 
     private static TracePosition GetPosition(ArgumentSlot slot, TraceArgumentCall call)
         => slot.Index == ArgumentLayout.ReturnRegister ? call.ToPosition : call.FromPosition;
+
+    private ValueDescription? DescribeStackObject(ulong value, TracePosition position)
+    {
+        if (memoryHistory.GetBlock(value, position) is not (>= 0 and var index)
+            || memoryHistory.Blocks[index] is not { IsStack: true } block
+            || Store.GetNode(block.CallNodeIndex)?.Frame is not { } frame)
+        {
+            return null;
+        }
+
+        var text = value == block.Address ? $"0x{value:X}" : $"0x{block.Address:X} + 0x{value - block.Address:X}";
+
+        return new ValueDescription(text, FunctionName(frame, frame.Address)) { IsLocal = true };
+    }
 
     private ValueDescription? DescribeMemoryObject(ulong value, TracePosition position)
         => memoryObjects.GetOwner(value, position) is { } owner

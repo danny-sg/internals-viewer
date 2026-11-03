@@ -15,6 +15,8 @@ public class StackSnapshotHookTests
 
     private const ulong Unrelated = 0x7FF8_0070_6000;
 
+    private const ulong Filler = 0x7FF8_0070_8000;
+
     private const ulong StackObject = 0x55_47EF_B300;
 
     private const ulong HeapObject = 0x21C_0BB4_C180;
@@ -98,12 +100,28 @@ public class StackSnapshotHookTests
         Assert.Empty(hook.Build().Objects);
     }
 
+    [Fact]
+    public void A_Local_Handed_Over_As_An_Untyped_Pointer_In_A_Register_Or_On_The_Stack_Is_Read()
+    {
+        var (hook, replay) = Create();
+
+        replay.Write(StackObject, new byte[0x40]);
+
+        replay.Write(StackPointer + 0x20, StackObject + 0x10);
+
+        hook.OnEntry(Call(Filler, 10, At(10, 4), [0, StackObject, 0, 0]), replay);
+
+        Assert.Equal([(StackObject, 0x10), (StackObject + 0x10, (int)(OwnerStackPointer - StackObject - 0x10))],
+                     hook.Build().Objects.Select(o => (o.Address, o.Size)));
+    }
+
     private static (StackSnapshotHook Hook, FakeTraceReplay Replay) Create()
         => (new StackSnapshotHook([new MemoryMapFunction(Method, MemoryMapOperation.Visited),
                                    new MemoryMapFunction(Consumer, MemoryMapOperation.Declared)
                                    {
                                        Declared = [new DeclaredClass(1, "BaseXact")]
-                                   }]),
+                                   },
+                                   new MemoryMapFunction(Filler, MemoryMapOperation.Declared) { Pointers = [1, 4] }]),
             new FakeTraceReplay { Frames = Frames });
 
     private static TraceHookCall Call(ulong function, ulong id, TracePosition position, ulong[]? arguments = null)

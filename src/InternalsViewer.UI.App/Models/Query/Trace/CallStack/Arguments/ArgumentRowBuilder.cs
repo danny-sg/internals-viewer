@@ -265,7 +265,7 @@ public static class ArgumentRowBuilder
                                                bool includeType = false,
                                                string? label = null)
     {
-        var (reading, className, origin) = GetDecoded(slot, value, call, describe);
+        var (reading, className, origin, isLocal) = GetDecoded(slot, value, call, describe);
 
         return new CallSignaturePart($"0x{value:X}",
                                      CallSignaturePartKind.Value,
@@ -279,29 +279,30 @@ public static class ArgumentRowBuilder
                                      label,
                                      slot.Type == ThisType ? null : slot.Type,
                                      origin,
-                                     slot.Source);
+                                     slot.Source,
+                                     isLocal);
     }
 
-    private static (string? Reading, string? ClassName, MemoryMapEntry? Origin) GetDecoded(ArgumentSlot slot,
-                                                                                           ulong value,
-                                                                                           TraceArgumentCall call,
-                                                                                           ValueDescriber? describe)
+    private static (string? Reading, string? ClassName, MemoryMapEntry? Origin, bool IsLocal) GetDecoded(ArgumentSlot slot,
+                                                                                                         ulong value,
+                                                                                                         TraceArgumentCall call,
+                                                                                                         ValueDescriber? describe)
     {
         var locator = call.GetLocator(slot.Index);
 
         if (locator is { ValueType: not LocatorValueType.Referenced } typed)
         {
-            return (GetDisplayValue(slot.Type, typed).ToString(), null, null);
+            return (GetDisplayValue(slot.Type, typed).ToString(), null, null, false);
         }
 
         if (describe?.Invoke(slot, value, call) is { } description)
         {
-            return (description.Text, GetDescribedClass(slot, value, description), description.Origin);
+            return (description.Text, GetDescribedClass(slot, value, description), description.Origin, description.IsLocal);
         }
 
         return locator is { } referenced
-            ? (GetDisplayValue(slot.Type, referenced).ToString(), null, null)
-            : (ArgumentValue.Decode(slot.Type, value), null, null);
+            ? (GetDisplayValue(slot.Type, referenced).ToString(), null, null, false)
+            : (ArgumentValue.Decode(slot.Type, value), null, null, false);
     }
 
     private static string? GetDescribedClass(ArgumentSlot slot, ulong value, ValueDescription description)
@@ -388,14 +389,14 @@ public static class ArgumentRowBuilder
             return GetDisplayValue(slot.Type, locator);
         }
 
-        var (reading, className, origin) = GetDecoded(slot, value, call, describe);
+        var (reading, className, origin, isLocal) = GetDecoded(slot, value, call, describe);
 
         if (reading is null)
         {
             return $"0x{value:X}";
         }
 
-        return className is null && origin is null ? reading : new ObjectValue(className, reading) { Origin = origin };
+        return className is null && origin is null ? reading : new ObjectValue(className, reading) { Origin = origin, IsLocal = isLocal };
     }
 
     private static ArgumentSlot BuildReturnSlot(string returnType)

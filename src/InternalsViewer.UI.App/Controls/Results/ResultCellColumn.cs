@@ -260,7 +260,7 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 
         if (value.ClassName is { } className)
         {
-            textBlock.Inlines.Add(new Run { Text = className, Foreground = Resource("CppClassBrush") });
+            textBlock.Inlines.Add(new Run { Text = className, Foreground = Resource(GetClassBrush(value)) });
             textBlock.Inlines.Add(new Run { Text = " " });
         }
 
@@ -292,6 +292,8 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
         }
 
         classText.Text = value.ClassName ?? string.Empty;
+
+        classText.Foreground = Resource(GetClassBrush(value));
 
         classText.Visibility = value.ClassName is null ? Visibility.Collapsed : Visibility.Visible;
 
@@ -633,6 +635,8 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 
     private static Brush? Resource(string key)
         => Application.Current.Resources.TryGetValue(key, out var resource) ? resource as Brush : null;
+
+    private static string GetClassBrush(ObjectValue value) => value.IsLocal ? "CppLocalBrush" : "CppClassBrush";
 
     private static SolidColorBrush CreateBrush(Color color)
     {

@@ -88,6 +88,36 @@ public class MemoryMapFunctionResolverTests
     }
 
     [Fact]
+    public void Untyped_Pointers_In_Registers_And_On_The_Stack_Are_Listed_Apart_From_Class_Pointers()
+    {
+        var collector = new MemoryMapFunctionResolver.Collector();
+
+        collector.Visit(Symbol("IndexDataSetSession::GetNextRowValuesInternal(enum RowScanDirection,DataAccessWrapper *,"
+                               + "enum StartScanMode,unsigned __int64 *)",
+                               "?GetNextRowValuesInternal@IndexDataSetSession@@QEAAHW4RowScanDirection@@PEAVDataAccessWrapper@@"
+                               + "W4StartScanMode@@PEA_K@Z",
+                               isFirst: true));
+
+        var function = Assert.Single(collector.Build());
+
+        Assert.Equal([(2, "DataAccessWrapper")], function.Declared.Select(d => (d.Slot, d.Name)));
+        Assert.Equal([4], function.Pointers);
+    }
+
+    [Fact]
+    public void A_Free_Function_Taking_Only_Untyped_Pointers_Is_Kept_For_Them()
+    {
+        var collector = new MemoryMapFunctionResolver.Collector();
+
+        collector.Visit(Symbol("Fetch(unsigned __int64 *,int)", "?Fetch@@YAXPEA_KH@Z", isFirst: true));
+
+        var function = Assert.Single(collector.Build());
+
+        Assert.Equal((MemoryMapOperation.Declared, 0), (function.Operation, function.Declared.Length));
+        Assert.Equal([0], function.Pointers);
+    }
+
+    [Fact]
     public void Folded_Functions_That_Disagree_On_Parameters_Declare_Nothing()
     {
         var collector = new MemoryMapFunctionResolver.Collector();

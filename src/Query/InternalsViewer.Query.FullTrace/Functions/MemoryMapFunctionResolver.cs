@@ -55,8 +55,16 @@ internal static partial class MemoryMapFunctionResolver
         return [.. declared];
     }
 
-    [GeneratedRegex("[PQA]E[A-D][UVT]")]
-    private static partial Regex ClassPointer();
+    internal static int[] GetPointers(ArgumentLayout layout)
+        => [.. layout.Slots.Where(s => s.Location is ArgumentLocation.Register or ArgumentLocation.Stack
+                                       && s.Index < ArgumentLayout.CapturedSlots
+                                       && s.Name != ArgumentLayout.ReturnBuffer
+                                       && ArgumentValue.IsPointer(s.Type)
+                                       && ArgumentValue.GetPointeeClass(s.Type) is null)
+                           .Select(s => s.Index)];
+
+    [GeneratedRegex("[PQA]E[A-D]")]
+    private static partial Regex IsPointerRegex();
 
     /// <summary>
     /// Collects memory map functions during symbol enumeration
@@ -78,9 +86,16 @@ internal static partial class MemoryMapFunctionResolver
                 return;
             }
 
-            var declared = ClassPointer().IsMatch(symbol.DecoratedName) && symbol.Parsed is { } signature && symbol.Layout is { } layout
-                ? GetDeclared(signature, layout)
-                : [];
+            DeclaredClass[] declared = [];
+
+            int[] pointers = [];
+
+            if (IsPointerRegex().IsMatch(symbol.DecoratedName) && symbol.Parsed is { } signature && symbol.Layout is { } layout)
+            {
+                declared = GetDeclared(signature, layout);
+
+                pointers = GetPointers(layout);
+            }
 
             var operation = FunctionSignature.GetFunctionType(symbol.DecoratedName) == FunctionType.Member
                 ? symbol.DecoratedName.StartsWith(ConstructorPrefix, StringComparison.Ordinal)
@@ -88,9 +103,9 @@ internal static partial class MemoryMapFunctionResolver
                     : MemoryMapOperation.Visited
                 : MemoryMapOperation.Declared;
 
-            if (operation != MemoryMapOperation.Declared || declared.Length > 0)
+            if (operation != MemoryMapOperation.Declared || declared.Length > 0 || pointers.Length > 0)
             {
-                Found[symbol.Rva] = new MemoryMapFunction(symbol.Rva, operation) { Declared = declared };
+                Found[symbol.Rva] = new MemoryMapFunction(symbol.Rva, operation) { Declared = declared, Pointers = pointers };
             }
 
             if (operation != MemoryMapOperation.Declared)
@@ -139,10 +154,10 @@ internal static partial class MemoryMapFunctionResolver
 
             if (!symbol.HasSameParameters)
             {
-                function = function with { Declared = [] };
+                function = function with { Declared = [], Pointers = [] };
             }
 
-            if (function.Operation == MemoryMapOperation.Declared && function.Declared.Length == 0)
+            if (function is { Operation: MemoryMapOperation.Declared, Declared.Length: 0, Pointers.Length: 0 })
             {
                 Found.Remove(symbol.Rva);
             }

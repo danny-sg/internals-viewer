@@ -73,7 +73,9 @@ public static class SignatureRuns
 
         if (part.DecodedClass is { } className)
         {
-            inlines.Add(new Run { Text = className, Foreground = AppResources.Get<Brush>("CppClassBrush") });
+            var brush = part.IsLocal ? "CppLocalBrush" : "CppClassBrush";
+
+            inlines.Add(new Run { Text = className, Foreground = AppResources.Get<Brush>(brush) });
 
             inlines.Add(new Run { Text = " " });
         }

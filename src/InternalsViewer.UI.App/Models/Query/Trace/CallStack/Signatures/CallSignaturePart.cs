@@ -16,7 +16,8 @@ public sealed class CallSignaturePart(string text,
                                      string? label = null,
                                      string? declaredType = null,
                                      MemoryMapEntry? origin = null,
-                                     string? location = null)
+                                     string? location = null,
+                                     bool isLocal = false)
 {
     public const string ThisLabel = "this";
 
@@ -45,6 +46,8 @@ public sealed class CallSignaturePart(string text,
     public MemoryMapEntry? Origin { get; } = origin;
 
     public string? Location { get; } = location;
+
+    public bool IsLocal { get; } = isLocal;
 
     public int MemoryBlock { get; set; } = -1;
 
