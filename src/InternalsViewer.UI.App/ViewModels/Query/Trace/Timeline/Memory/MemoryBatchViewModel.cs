@@ -434,14 +434,12 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
 
     private void Show()
     {
-        if (Snapshot is not { Batch: var current } snapshot)
+        if (Snapshot is not { Batch: var (_, state, vectorId, _) } snapshot)
         {
             ShowEmpty();
 
             return;
         }
-
-        var state = current.State;
 
         EmptyText = string.Empty;
 
@@ -458,7 +456,7 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
             case BatchPartType.Header:
                 ShowHeader(snapshot);
 
-                ShowVectors(state, current.VectorId);
+                ShowVectors(state, vectorId);
                 break;
 
             case BatchPartType.AllocationBitmap or BatchPartType.PureBitmap:
@@ -478,7 +476,7 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
                 break;
 
             default:
-                ShowVector(state, current.VectorId);
+                ShowVector(state, vectorId);
                 break;
         }
     }

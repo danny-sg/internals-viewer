@@ -25,7 +25,8 @@ internal static class MemoryHistoryBuilder
 
     public static MemoryHistoryAllocation[] GetAllocations(TraceCallStore calls,
                                                            IEnumerable<MemoryFunction> functions,
-                                                           MemoryBlock[]? buffers = null)
+                                                           MemoryBlock[]? buffers = null,
+                                                           MemoryBlock[]? pages = null)
     {
         var events = new List<(TracePosition Position, ulong Pointer, ulong Bytes, uint Thread, bool IsClerkPage)>();
 
@@ -97,6 +98,11 @@ internal static class MemoryHistoryBuilder
         }
 
         allocations.AddRange((buffers ?? []).Select(b => new MemoryHistoryAllocation(b, IsClerkPage: false, IsBuffer: true)));
+
+        var allocated = allocations.Select(a => a.Block).ToArray();
+
+        allocations.AddRange((pages ?? []).Where(p => !allocated.Any(a => a.Pointer <= p.Pointer && p.Pointer + p.Bytes <= a.Pointer + a.Bytes))
+                                          .Select(p => new MemoryHistoryAllocation(p, IsClerkPage: false)));
 
         return [.. allocations.OrderBy(a => a.Block.Start).ThenBy(a => a.Block.Pointer)];
     }
@@ -171,7 +177,7 @@ internal static class MemoryHistoryBuilder
 
     private static bool IsWatched(MemoryFunction function)
         => !function.IsVirtual
-           && (function.IsAllocation || function is { Operation: AllocationOperation.Free, PointerSlot: >= 0 });
+           && (function.IsAllocation || function is { Operation: AllocationOperation.Free, PointerArgumentSlot: >= 0 });
 
     private static MemoryHistoryChangeType? GetChangeType(WatchedBlock block, int offset, byte value)
     {

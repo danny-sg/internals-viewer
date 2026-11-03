@@ -96,8 +96,16 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         steps.Complete();
 
         if ((request.IsHeapCaptured || request.IsStackCaptured)
-            && await RecordMemoryAsync(session, request, replay, functions, result.Lifetimes, timeline, steps, progress, cancellationToken)
-                is { } history)
+            && await RecordMemoryAsync(session,
+                                       request,
+                                       replay,
+                                       functions,
+                                       result.Lifetimes,
+                                       result.MemoryObjects,
+                                       timeline,
+                                       steps,
+                                       progress,
+                                       cancellationToken) is { } history)
         {
             result = result with { MemoryHistory = history };
         }
@@ -290,15 +298,18 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         var operators = events.OfType<ExecutionOperatorEvent>().ToList();
 
-        var (memory, allocationCount, allocatedBytes) = AllocationMapper.Map(replay.CallStore,
-                                                                             functions.MemoryFunctions,
-                                                                             timeline,
-                                                                             request.MemoryClerks);
+        var (memory, allocationCount, allocatedBytes, memoryObjects) = AllocationMapper.Map(replay.CallStore,
+                                                                                            functions.MemoryFunctions,
+                                                                                            timeline,
+                                                                                            request.MemoryClerks);
+
+        var getAllocation = GetAllocation(replay.CallStore, functions.MemoryFunctions, memoryObjects);
 
         var builder = new TraceResultBuilder(callStack, replay.CallStore, timeline, events, replay.PlanNodes, replay.Teardowns)
         {
             Memory = memory,
-            MemoryMap = MemoryMap.Build(replay.MemoryMap, timeline.NodeOf, GetAllocation(replay.CallStore, functions.MemoryFunctions)),
+            MemoryMap = MemoryMap.Build(replay.MemoryMap, timeline.NodeOf, getAllocation),
+            MemoryObjectSnapshot = request.MemoryClerks.MemoryObjects,
             ObjectPool = request.ObjectPool,
             CustomHooks = replay.CustomHooks,
             BufferPool = replay.BufferPool
@@ -343,13 +354,17 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                                                               ReplayResult replay,
                                                               ReplayFunctions functions,
                                                               TraceOperatorLifetimes lifetimes,
+                                                              MemoryObjectMap memoryObjects,
                                                               TraceTimeline timeline,
                                                               StepProgress steps,
                                                               IProgress<ProgressDetail>? progress,
                                                               CancellationToken cancellationToken)
     {
         var allocations = request.IsHeapCaptured
-            ? MemoryHistoryBuilder.GetAllocations(replay.CallStore, functions.MemoryFunctions, replay.Buffers)
+            ? MemoryHistoryBuilder.GetAllocations(replay.CallStore,
+                                                  functions.MemoryFunctions,
+                                                  replay.Buffers,
+                                                  [.. memoryObjects.GetPageBlocks()])
             : [];
 
         if (allocations.Length == 0 && replay.StackSnapshots.Objects.Length == 0)
@@ -580,8 +595,9 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         }
     }
 
-    private static Func<AddressEntry, CallStackNode?, (ulong Bytes, string? Site)> GetAllocation(TraceCallStore store,
-                                                                                                IReadOnlyList<MemoryFunction> functions)
+    private static Func<AddressEntry, CallStackNode?, MemoryMapAllocation> GetAllocation(TraceCallStore store,
+                                                                                        IReadOnlyList<MemoryFunction> functions,
+                                                                                        AllocationMemoryObjects memoryObjects)
     {
         var allocators = new Dictionary<ulong, MemoryFunction>();
 
@@ -598,12 +614,14 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                 || entry.CallIndex < 0
                 || entry.CallIndex >= calls.Count)
             {
-                return (0, null);
+                return default;
             }
 
             var call = calls[entry.CallIndex];
 
-            return (allocator.GetByteCount(call), allocator.GetSite(call));
+            return new MemoryMapAllocation(allocator.GetByteCount(call),
+                                           allocator.GetSite(call),
+                                           memoryObjects.GetMemoryObject(frame.Address, entry.CallIndex));
         };
     }
 

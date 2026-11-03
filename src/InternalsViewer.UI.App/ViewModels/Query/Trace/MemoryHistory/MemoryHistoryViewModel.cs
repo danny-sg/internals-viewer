@@ -12,6 +12,7 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.History.Batches;
@@ -66,6 +67,8 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
     private const string UnknownObject = "Unknown Object";
 
     private const string AllocationSuffix = " Allocation";
+
+    private const string MemoryObjectPageSuffix = " Page";
 
     private const string BufferPoolPrefix = "Buffer Pool: ";
 
@@ -601,7 +604,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
 
         ObjectName = block >= 0 ? GetObjectName(block) : string.Empty;
 
-        ObjectDetail = block >= 0 ? $"0x{Store.Blocks[block].Address:X16}, {Store.Blocks[block].Size} Bytes" : string.Empty;
+        ObjectDetail = block >= 0 ? GetObjectDetail(Store.Blocks[block]) : string.Empty;
 
         Calls = block >= 0 && Trace is { } trace ? Store.GetCalls(block, trace.Timeline, WindowStart, WindowEnd) : [];
 
@@ -785,6 +788,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
            ?? Batches?.GetPart(block)?.Name
            ?? MagicBytes?.GetClassName(block)
            ?? ArrayAllocations?.GetClassName(block)
+           ?? GetMemoryObjectPageLabel(Store.Blocks[block])
            ?? GetMapLabel(Store.Blocks[block])
            ?? (Store.Blocks[block].IsIterator ? IteratorObject : string.Empty);
 
@@ -811,6 +815,20 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
     }
 
     private string? GetMapLabel(MemoryHistoryBlock block) => Trace?.MemoryMap.GetLabel(block.Address, block.FromPosition, block.ToPosition);
+
+    private string? GetMemoryObjectPageLabel(MemoryHistoryBlock block)
+        => Trace is { } trace
+           && trace.MemoryObjects.GetOwner(block.Address, block.FromPosition) is { } owner
+           && block.Size == owner.PageSize
+           && block.Address % (ulong)owner.PageSize == 0
+           && (owner.Name ?? trace.MemoryMap.GetEntry(owner.Address, block.FromPosition)?.ClassName) is { } memoryObject
+            ? $"{memoryObject}{MemoryObjectPageSuffix}"
+            : null;
+
+    private string GetObjectDetail(MemoryHistoryBlock block)
+        => Trace?.MemoryMap.GetMemoryObject(block.Address, block.FromPosition, block.ToPosition) is { } memoryObject
+            ? $"0x{block.Address:X16}, {block.Size} Bytes, {MemoryObjectNames.GetName(memoryObject)}"
+            : $"0x{block.Address:X16}, {block.Size} Bytes";
 
     private ulong? GetPageIterator(int block)
     {

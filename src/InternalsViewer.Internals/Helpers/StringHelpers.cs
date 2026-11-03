@@ -112,6 +112,16 @@ public static partial class StringHelpers
         return string.Join(", ", values);
     }
 
+    /// <summary>
+    /// Formats a byte count for display
+    /// </summary>
+    public static string FormatSize(long bytes) => bytes switch
+    {
+        >= 1024 * 1024 => $"{bytes / 1024d / 1024d:N1} MB",
+        >= 1024 => $"{bytes / 1024d:N1} KB",
+        _ => $"{bytes} B"
+    };
+
     [GeneratedRegex("(\\B[A-Z])")]
     private static partial Regex CamelCaseBoundaryRegex();
 }

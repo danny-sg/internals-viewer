@@ -112,6 +112,24 @@ public sealed partial class MemoryMap
         return null;
     }
 
+    public string? GetMemoryObject(ulong address, TracePosition from, TracePosition to)
+    {
+        if (!Entries.TryGetValue(address, out var entries))
+        {
+            return null;
+        }
+
+        foreach (var entry in entries)
+        {
+            if (IsWithin(entry, from, to) && Labels[entry.Label].MemoryObject is { } memoryObject)
+            {
+                return memoryObject;
+            }
+        }
+
+        return null;
+    }
+
     public (MemoryMapEntry Entry, ulong Offset)? GetContaining(ulong address, TracePosition position)
     {
         if (!position.IsKnown)
@@ -150,14 +168,14 @@ public sealed partial class MemoryMap
 
     internal static MemoryMap Build(IEnumerable<AddressEntry> entries,
                                     Func<int, CallStackNode?> nodeOf,
-                                    Func<AddressEntry, CallStackNode?, (ulong Bytes, string? Site)>? getAllocation = null)
+                                    Func<AddressEntry, CallStackNode?, MemoryMapAllocation>? getAllocation = null)
         => new(entries.Select(e => GetEntry(e, nodeOf, getAllocation))
                       .GroupBy(e => e.Address)
                       .ToDictionary(g => g.Key, g => Link([.. g.OrderBy(e => e.FromPosition)])));
 
     private static MemoryMapEntry GetEntry(AddressEntry entry,
                                            Func<int, CallStackNode?> nodeOf,
-                                           Func<AddressEntry, CallStackNode?, (ulong Bytes, string? Site)>? getAllocation)
+                                           Func<AddressEntry, CallStackNode?, MemoryMapAllocation>? getAllocation)
     {
         var operation = entry.Operation;
 
@@ -165,9 +183,9 @@ public sealed partial class MemoryMap
 
         var allocates = operation == MemoryMapOperation.Allocated;
 
-        var (bytes, site) = allocates && entry.Bytes == 0 && getAllocation is not null
+        var (bytes, site, memoryObject) = allocates && entry.Bytes == 0 && getAllocation is not null
             ? getAllocation(entry, node)
-            : (entry.Bytes, entry.Site);
+            : new MemoryMapAllocation(entry.Bytes, entry.Site, entry.MemoryObject);
 
         return new MemoryMapEntry(entry.Address,
                                   operation,
@@ -180,7 +198,8 @@ public sealed partial class MemoryMap
                                   entry.ClassName ?? (allocates ? null : GetName(node?.Frame?.Resolved?.ClassName)),
                                   allocates ? GetName(node?.Symbol) : null,
                                   bytes,
-                                  site);
+                                  site,
+                                  memoryObject);
     }
 
     private static MemoryMapEntry[] Link(MemoryMapEntry[] entries)
@@ -213,7 +232,13 @@ public sealed partial class MemoryMap
 
             if (previous.Allocator is not null && IsLiveAt(previous, next.FromPosition))
             {
-                entries[index + 1] = next with { Allocator = previous.Allocator, Bytes = previous.Bytes, Site = previous.Site };
+                entries[index + 1] = next with
+                {
+                    Allocator = previous.Allocator,
+                    Bytes = previous.Bytes,
+                    Site = previous.Site,
+                    MemoryObject = previous.MemoryObject
+                };
             }
         }
 
@@ -229,7 +254,7 @@ public sealed partial class MemoryMap
 
     private static StoredEntry Store(MemoryMapEntry entry, Dictionary<Label, int> labels)
     {
-        var label = new Label(entry.Operation, entry.ClassName, entry.Allocator, entry.Site);
+        var label = new Label(entry.Operation, entry.ClassName, entry.Allocator, entry.Site, entry.MemoryObject);
 
         ref var index = ref CollectionsMarshal.GetValueRefOrAddDefault(labels, label, out var exists);
 
@@ -278,7 +303,8 @@ public sealed partial class MemoryMap
                                   label.ClassName,
                                   label.Allocator,
                                   entry.Bytes,
-                                  label.Site);
+                                  label.Site,
+                                  label.MemoryObject);
     }
 
     private readonly record struct StoredEntry(ulong Owner,
@@ -290,5 +316,9 @@ public sealed partial class MemoryMap
                                                int CallNodeIndex,
                                                int Label);
 
-    private readonly record struct Label(MemoryMapOperation Operation, string? ClassName, string? Allocator, string? Site);
+    private readonly record struct Label(MemoryMapOperation Operation,
+                                         string? ClassName,
+                                         string? Allocator,
+                                         string? Site,
+                                         string? MemoryObject);
 }

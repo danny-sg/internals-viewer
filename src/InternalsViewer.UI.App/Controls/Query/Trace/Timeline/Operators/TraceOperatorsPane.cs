@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
@@ -707,7 +708,7 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
         {
             var peak = lifetime.InUse.PeakDuring(lifetime.Start.Position, lifetime.End.Position);
 
-            lines.Add($"Peak In Use {SizeFormat.Format((long)peak)}");
+            lines.Add($"Peak In Use {StringHelpers.FormatSize((long)peak)}");
         }
 
         details = string.Join(Environment.NewLine, lines);

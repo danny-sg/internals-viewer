@@ -38,6 +38,56 @@ public class MemoryMapFunctionResolverTests
     }
 
     [Fact]
+    public void A_Member_Function_Folded_With_Another_Class_Names_Neither_Its_Object_Nor_Its_Return()
+    {
+        var collector = new MemoryMapFunctionResolver.Collector();
+
+        collector.Visit(Symbol("ExceptionBackout::GetCurrentException(void)",
+                               "?GetCurrentException@ExceptionBackout@@QEBAPEBVSQLError@@XZ",
+                               isFirst: true));
+
+        collector.Visit(Symbol("CPageInfo::PmoGetOwner(void)",
+                               "?PmoGetOwner@CPageInfo@@QEBAPEAVIMemObj@@XZ",
+                               isFirst: false,
+                               hasSameName: false));
+
+        Assert.Empty(collector.Build());
+    }
+
+    [Fact]
+    public void A_Member_Function_Folded_With_Another_Class_Still_Declares_Its_Parameters()
+    {
+        var collector = new MemoryMapFunctionResolver.Collector();
+
+        collector.Visit(Symbol("CQueryScan::StartupQuery(BaseXact *)", "?StartupQuery@CQueryScan@@QEAAHPEAVBaseXact@@@Z", isFirst: true));
+
+        collector.Visit(Symbol("CQueryExecContext::Init(BaseXact *)",
+                               "?Init@CQueryExecContext@@QEAAHPEAVBaseXact@@@Z",
+                               isFirst: false,
+                               hasSameName: false));
+
+        var function = Assert.Single(collector.Build());
+
+        Assert.Equal(MemoryMapOperation.Declared, function.Operation);
+        Assert.Equal([(1, "BaseXact")], function.Declared.Select(d => (d.Slot, d.Name)));
+    }
+
+    [Fact]
+    public void Member_Functions_Of_One_Class_Folded_Together_Still_Name_Its_Object()
+    {
+        var collector = new MemoryMapFunctionResolver.Collector();
+
+        collector.Visit(Symbol("CPageInfo::PmoGetOwner(void)", "?PmoGetOwner@CPageInfo@@QEBAPEAVIMemObj@@XZ", isFirst: true));
+
+        collector.Visit(Symbol("CPageInfo::GetOwner(void)",
+                               "?GetOwner@CPageInfo@@QEBAPEAVIMemObj@@XZ",
+                               isFirst: false,
+                               hasSameName: false));
+
+        Assert.Equal(MemoryMapOperation.Visited, Assert.Single(collector.Build()).Operation);
+    }
+
+    [Fact]
     public void Folded_Functions_That_Disagree_On_Parameters_Declare_Nothing()
     {
         var collector = new MemoryMapFunctionResolver.Collector();

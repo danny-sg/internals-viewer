@@ -32,6 +32,8 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
 
     public MemoryMap MemoryMap { get; init; } = MemoryMap.Empty;
 
+    public MemoryObjectMap MemoryObjects { get; init; } = MemoryObjectMap.Empty;
+
     public ObjectPoolSnapshot ObjectPool { get; init; } = ObjectPoolSnapshot.Empty;
 
     public CustomHookStore CustomHooks { get; init; } = CustomHookStore.Empty;

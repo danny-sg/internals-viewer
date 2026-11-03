@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
@@ -1281,20 +1282,20 @@ public sealed partial class TraceTimelineControl
 
         if (allocations > 0)
         {
-            lines.Add($"Allocated {SizeFormat.Format((long)allocatedBytes)} In {allocations:N0} "
+            lines.Add($"Allocated {StringHelpers.FormatSize((long)allocatedBytes)} In {allocations:N0} "
                       + (allocations == 1 ? "Allocation" : "Allocations"));
         }
 
         if (Memory.FreedDuring(thread.ThreadId, span.From.Position, span.To.Position) is > 0 and var freed)
         {
-            lines.Add($"Freed {SizeFormat.Format((long)freed)}");
+            lines.Add($"Freed {StringHelpers.FormatSize((long)freed)}");
         }
 
         if (allocations > 0)
         {
             var retained = Memory.RetainedBy(thread.ThreadId, span.From.Position, span.To.Position);
 
-            lines.Add($"Retained At Return {SizeFormat.Format((long)retained)}");
+            lines.Add($"Retained At Return {StringHelpers.FormatSize((long)retained)}");
         }
 
         if (span.Flags.HasFlag(TraceSpanFlags.StartUnknown))

@@ -1167,11 +1167,11 @@ public sealed partial class AllocationControl : IDisposable
 
     private static System.Drawing.Color GetHeatmapColour(System.Drawing.Color baseColour, float ratio)
     {
-        var (l, c, h) = LchColorScale.LabToLch(LchColorScale.RgbToLab(baseColour));
+        var (l, c, h) = ColourHelpers.LabToLch(ColourHelpers.RgbToLab(baseColour));
 
         var chromaRatio = MinHeatmapChromaRatio + (1 - MinHeatmapChromaRatio) * ratio;
 
-        return LchColorScale.LchToRgbSafe(l, c * chromaRatio, h);
+        return ColourHelpers.LchToRgbSafe(l, c * chromaRatio, h);
     }
 
     private void DrawExtentsCore<TChain>(SKCanvas canvas,

@@ -37,7 +37,7 @@ public class MemoryFunctionTests
         var function = MemoryFunction.Classify(0x1000, symbol);
 
         Assert.Equal((operation, sizeSlot, pointerSlot, unit),
-                     (function!.Operation, function.SizeSlot, function.PointerSlot, function.Unit));
+                     (function!.Operation, function.SizeArgumentSlot, function.PointerArgumentSlot, function.Unit));
     }
 
     [Theory]
@@ -70,7 +70,7 @@ public class MemoryFunctionTests
     {
         var function = MemoryFunction.ClassifyExport(0x1000, export);
 
-        Assert.Equal((operation, sizeSlot, pointerSlot), (function!.Operation, function.SizeSlot, function.PointerSlot));
+        Assert.Equal((operation, sizeSlot, pointerSlot), (function!.Operation, function.SizeArgumentSlot, function.PointerArgumentSlot));
     }
 
     [Fact]

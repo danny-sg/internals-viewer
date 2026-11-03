@@ -43,6 +43,8 @@ internal sealed class TraceResultBuilder
 
     public MemoryMap MemoryMap { get; init; } = MemoryMap.Empty;
 
+    public IReadOnlyDictionary<ulong, MemoryObjectInfo> MemoryObjectSnapshot { get; init; } = new Dictionary<ulong, MemoryObjectInfo>();
+
     public ObjectPoolSnapshot ObjectPool { get; init; } = ObjectPoolSnapshot.Empty;
 
     public CustomHookStore CustomHooks { get; init; } = CustomHookStore.Empty;
@@ -85,6 +87,7 @@ internal sealed class TraceResultBuilder
             Memory = Memory,
             Lifetimes = lifetimes,
             MemoryMap = MemoryMap,
+            MemoryObjects = MemoryObjectMap.Build(CallStore, Timeline.MappedNodes, MemoryObjectSnapshot),
             ObjectPool = ObjectPool,
             CustomHooks = CustomHooks,
             BufferPool = BufferPool,

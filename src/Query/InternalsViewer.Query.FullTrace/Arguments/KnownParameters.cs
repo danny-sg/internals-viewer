@@ -4,9 +4,24 @@ public static class KnownParameters
 {
     private const string HoBtIdName = "hobt_id";
 
-    private static readonly (string ClassName, string MethodName, string Type)[] HoBtIds =
+    private const string HoBtIdType = "unsigned __int64";
+
+    private const string ThisType = "this";
+
+    private static readonly (string? ClassName, string MethodName, int Parameter)[] HoBtIds =
     [
-        ("HoBtAccess", "Init", "unsigned __int64")
+        ("HoBtAccess", "Init", 2),
+        (null, "GetHoBtLockInternal", 2),
+        (null, "CreateAccessorCommon", 2),
+        ("DatasetSession", "Create", 1),
+        ("IndexDataSetSession", "WakeUpInternal", 1),
+        ("HeapDataSetSession", "WakeUpInternal", 1),
+        ("OpenRowsetSS", "OpenRowset", 1),
+        ("RowsetNewSS", "Init", 3),
+        ("RowsetNewSS", "WakeUpInternal", 2),
+        ("RecoveryUnit", "IsPVSRowsetId", 1),
+        ("RecoveryUnit", "IsRegularPVSRowsetId", 1),
+        ("RecoveryUnit", "IsLongTermPVSRowsetId", 1)
     ];
 
     public static ArgumentLayout Apply(ArgumentLayout layout, string? className, string? methodName)
@@ -31,16 +46,30 @@ public static class KnownParameters
 
     private static ArgumentLayout ApplyHoBtIds(ArgumentLayout layout, string? className, string? methodName)
     {
-        if (!HoBtIds.Any(h => h.ClassName == className && h.MethodName == methodName))
+        if (HoBtIds.FirstOrDefault(h => h.ClassName == className && h.MethodName == methodName) is not { Parameter: > 0 } known)
         {
             return layout;
         }
 
-        var slots = layout.Slots.Select(s => IsHoBtId(className, methodName, s) ? s with { Name = HoBtIdName, IsHoBtId = true } : s);
+        var slots = layout.Slots.ToArray();
 
-        return layout with { Slots = [.. slots] };
+        var parameter = 0;
+
+        for (var index = 0; index < slots.Length; index++)
+        {
+            if (slots[index].Type == ThisType || slots[index].Name == ArgumentLayout.ReturnBuffer || ++parameter != known.Parameter)
+            {
+                continue;
+            }
+
+            if (slots[index] is { Type: HoBtIdType, Name.Length: 0 })
+            {
+                slots[index] = slots[index] with { Name = HoBtIdName, IsHoBtId = true };
+            }
+
+            break;
+        }
+
+        return layout with { Slots = slots };
     }
-
-    private static bool IsHoBtId(string? className, string? methodName, ArgumentSlot slot)
-        => slot.Name.Length == 0 && HoBtIds.Any(h => h.ClassName == className && h.MethodName == methodName && h.Type == slot.Type);
 }

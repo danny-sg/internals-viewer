@@ -65,6 +65,10 @@ internal static partial class MemoryMapFunctionResolver
     {
         private Dictionary<uint, MemoryMapFunction> Found { get; } = [];
 
+        private Dictionary<uint, string> Classes { get; } = [];
+
+        private HashSet<uint> Constructors { get; } = [];
+
         public void Visit(FunctionSymbol symbol)
         {
             if (!symbol.IsFirst)
@@ -88,9 +92,25 @@ internal static partial class MemoryMapFunctionResolver
             {
                 Found[symbol.Rva] = new MemoryMapFunction(symbol.Rva, operation) { Declared = declared };
             }
+
+            if (operation != MemoryMapOperation.Declared)
+            {
+                Classes[symbol.Rva] = GetClassName(symbol.Name);
+            }
+
+            if (operation == MemoryMapOperation.Constructed)
+            {
+                Constructors.Add(symbol.Rva);
+            }
         }
 
         public MemoryMapFunction[] Build() => [.. Found.Values];
+
+        private static string GetClassName(ReadOnlySpan<char> name)
+            => name.LastIndexOf("::", StringComparison.Ordinal) is > 0 and var separator ? name[..separator].ToString() : string.Empty;
+
+        private static bool IsMemberOf(ReadOnlySpan<char> name, string className)
+            => name.LastIndexOf("::", StringComparison.Ordinal) is > 0 and var separator && name[..separator].SequenceEqual(className);
 
         private void Revisit(FunctionSymbol symbol)
         {
@@ -102,6 +122,19 @@ internal static partial class MemoryMapFunctionResolver
             if (!symbol.HasSameName && function.Operation == MemoryMapOperation.Constructed)
             {
                 function = function with { Operation = MemoryMapOperation.Visited };
+            }
+
+            if (!symbol.HasSameName
+                && function.Operation == MemoryMapOperation.Visited
+                && !Constructors.Contains(symbol.Rva)
+                && Classes.GetValueOrDefault(symbol.Rva) is { } className
+                && !IsMemberOf(symbol.Name, className))
+            {
+                function = function with
+                {
+                    Operation = MemoryMapOperation.Declared,
+                    Declared = [.. function.Declared.Where(d => d.Slot != ArgumentLayout.ReturnRegister)]
+                };
             }
 
             if (!symbol.HasSameParameters)

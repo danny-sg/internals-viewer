@@ -1,6 +1,7 @@
 using System.Text;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Categories;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
@@ -156,6 +157,19 @@ public class MemoryHistoryBuilderTests
                                                      Block(Owned, 0x10, from: 3)]);
 
         Assert.Equal([new WatchRange(Page, 0x2000), new WatchRange(Owned, 0x10)], ranges);
+    }
+
+    [Fact]
+    public void A_Memory_Object_Page_Is_Watched_Unless_An_Allocation_Already_Covers_It()
+    {
+        var store = new TraceCallStore.Builder().Build();
+
+        var allocations = MemoryHistoryBuilder.GetAllocations(store,
+                                                              [],
+                                                              [Block(Page, 0x2000, from: 1)],
+                                                              [Block(Page, 0x2000, from: 2), Block(Owned, 0x2000, from: 3)]);
+
+        Assert.Equal([(Page, true), (Owned, false)], allocations.Select(a => (a.Block.Pointer, a.IsBuffer)));
     }
 
     [Fact]

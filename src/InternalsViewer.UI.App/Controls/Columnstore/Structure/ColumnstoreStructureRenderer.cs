@@ -183,7 +183,7 @@ public sealed class ColumnstoreStructureRenderer : IDisposable
             ? ColumnstoreLayout.VerticalColumnHeaderHeight
             : ColumnstoreLayout.ColumnHeaderHeight;
 
-    public static string FormatSize(long bytes) => SizeFormat.Format(bytes);
+    public static string FormatSize(long bytes) => Internals.Helpers.StringHelpers.FormatSize(bytes);
 
     private int[] RunBuffer(int size)
     {

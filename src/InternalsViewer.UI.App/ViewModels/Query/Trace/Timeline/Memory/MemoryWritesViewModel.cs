@@ -227,12 +227,14 @@ public sealed partial class MemoryWritesViewModel(PlayheadMemoryViewModel owner)
 
             var valueCell = GetPointerCell(write, image, known) ?? value;
 
-            var row = new ResultRow<long>([
+            var row = new ResultRow<long>(
+            [
                 new ActionLinks([new ActionLink(TracePositionText.GetHexText(write.Position), () => Owner.GoToWrite(writeIndex))]),
                 new SwatchText(label, Owner.GetCategoryColour(write.CallNodeIndex).ToColor()),
                 Owner.History.GetWriter(write.CallNodeIndex) is { } writer ? new CallValue(writer, write.CallIndex) : null,
                 new ActionText($"{HexPrefix}{start:X16}",
-                               [new ActionLink("Pin", () => Owner.PinRange(write.Offset, write.Length)) { Glyph = HexTipPin.GetGlyph(false) }]),
+                               [new ActionLink("Pin", 
+                                               () => Owner.PinRange(write.Offset, write.Length)) { Glyph = HexTipPin.GetGlyph(false) }]),
                 (int)write.Length,
                 valueCell
             ])
@@ -331,7 +333,7 @@ public sealed partial class MemoryWritesViewModel(PlayheadMemoryViewModel owner)
     private string GetValueText(MemoryHistoryWrite write, ReadOnlySpan<byte> bytes)
     {
         if (GetTypedWatch(write) is { DataType: { } type }
-            && DataDecoder.Decode(bytes.ToArray()).Find(r => r.DataType == type) is { } decoded)
+            && DataDecoder.Decode([.. bytes]).Find(r => r.DataType == type) is { } decoded)
         {
             return decoded.Value;
         }

@@ -17,9 +17,11 @@ using InternalsViewer.Internals.Providers.Metadata;
 using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Engine.Loading;
 using InternalsViewer.Internals.Extensions;
+using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Query;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory;
@@ -358,7 +360,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         Symbols = new SymbolsViewModel(logger, settingsViewModel);
 
-        Arguments = new ArgumentsViewModel(logger, Symbols, GetHoBtName);
+        Arguments = new ArgumentsViewModel(logger, Symbols);
 
         CustomHooks = new CustomHooksViewModel(settingsViewModel, OpenCallTree);
 
@@ -1518,11 +1520,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         return unit;
     }
 
-    private string? GetHoBtName(ulong hobtId)
-        => Database.FindHobtIdAllocationUnit((long)hobtId) is { TableName.Length: > 0 } unit
-            ? unit.IndexName.Length == 0 ? unit.TableName : $"{unit.TableName}.{unit.IndexName}"
-            : null;
-
     private void OpenIndex(string? schema, string? table, string? index)
     {
         if (string.IsNullOrEmpty(index))
@@ -2270,7 +2267,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             await QueryExport.WriteAsync(stream, run with { Messages = [.. Messages.Select(MessageText)] }, CancellationToken.None);
 
-            AddMessage($"Run exported to {file.Path} ({SizeFormat.Format(stream.Length)})");
+            AddMessage($"Run exported to {file.Path} ({StringHelpers.FormatSize(stream.Length)})");
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
@@ -2306,7 +2303,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         var import = new object();
 
-        var step = $"Importing {file.Name} ({SizeFormat.Format(new FileInfo(file.Path).Length)})";
+        var step = $"Importing {file.Name} ({StringHelpers.FormatSize(new FileInfo(file.Path).Length)})";
 
         var started = Stopwatch.GetTimestamp();
 
@@ -2404,7 +2401,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         var iterators = IteratorTarget.Build(result.CallStack, Events, result.PlanLink);
 
-        Arguments.SetSource(result.CallStore, result.CallStack, iterators, result.HoBtAccess, result.MemoryMap);
+        Arguments.SetSource(result.CallStore,
+                            result.CallStack,
+                            iterators,
+                            result.HoBtAccess,
+                            result.MemoryMap,
+                            result.MemoryObjects,
+                            StorageIdMap.Build(Database.AllocationUnits.Values));
 
         FullTraceTimeline = result.Timeline;
 

@@ -84,14 +84,14 @@ public static class TraceLinkMenu
 
         var menu = new MenuFlyout();
 
-        if (link.Node is { } node && link.CallIndex >= 0)
+        if (link is { Node: { } node, CallIndex: >= 0 })
         {
             menu.Items.Add(MenuItems.Create($"Zoom to{suffix}", () => navigator.ZoomToCall(node, link.CallIndex)));
         }
 
         menu.Items.Add(MenuItems.Create($"Call Stack{suffix}", () => navigator.ShowCallStack(link.Point)));
 
-        if (canFind && link.Node is { } found && link.CallIndex >= 0)
+        if (canFind && link is { Node: { } found, CallIndex: >= 0 })
         {
             menu.Items.Add(MenuItems.Create("Find", () => navigator.FindInCallTree(found, link.CallIndex)));
         }

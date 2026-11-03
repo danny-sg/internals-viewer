@@ -83,6 +83,45 @@ public class HoBtAccessMapTests
     }
 
     [Fact]
+    public void The_HoBt_Id_Of_A_Free_Function_Is_Marked_And_Other_Integers_Are_Not()
+    {
+        var signature = new FunctionSignature(["XDES *", "unsigned __int64", "HoBtAccess &", "LCK_MODE &", "unsigned __int64 &"],
+                                              FunctionType.Free,
+                                              "long");
+
+        var layout = KnownParameters.Apply(ArgumentLayout.GetLayout(signature), null, "GetHoBtLockInternal");
+
+        Assert.Equal([false, true, false, false, false], layout.Slots.Select(s => s.IsHoBtId));
+    }
+
+    [Fact]
+    public void Only_The_Listed_Parameter_Is_Marked_When_A_Function_Takes_Several_Integers()
+    {
+        var signature = new FunctionSignature(["IMemObj *",
+                                               "unsigned __int64",
+                                               "XDES *",
+                                               "unsigned long",
+                                               "enum AccessorFlagEx",
+                                               "unsigned __int64"],
+                                              FunctionType.Free,
+                                              "long");
+
+        var layout = KnownParameters.Apply(ArgumentLayout.GetLayout(signature), null, "CreateAccessorCommon");
+
+        Assert.Equal([1], layout.Slots.Select((s, i) => (s, i)).Where(s => s.s.IsHoBtId).Select(s => s.i));
+    }
+
+    [Fact]
+    public void The_HoBt_Id_Of_A_Member_Function_Is_Counted_After_This()
+    {
+        var signature = new FunctionSignature(["unsigned __int64", "XDES *", "RowsetExecContext const *"], FunctionType.Member, "long");
+
+        var layout = KnownParameters.Apply(ArgumentLayout.GetLayout(signature), "HeapDataSetSession", "WakeUpInternal");
+
+        Assert.Equal(["this", "hobt_id", string.Empty, string.Empty], layout.Slots.Select(s => s.Name));
+    }
+
+    [Fact]
     public void Other_Functions_And_The_HoBtId_Overload_Are_Left_Alone()
     {
         var packed = new FunctionSignature(["enum ACCESSTYPE", "HoBtId", "XDES *", "CreateHoBtInfo *"], FunctionType.Member, "void");

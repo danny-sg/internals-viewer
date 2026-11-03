@@ -23,7 +23,7 @@ is which.
 | What the operator's code did, phase by phase, with counts | the call tree under its entry frames | `calltree --operator N`, then `--root <id> --depth D` to open a subtree |
 | Every method of its class, how often, with what arguments | the call log | `calls --grep "CQScanHash"`, `calls --function "CQScanHash::GetRow" --instance <this>` |
 | Which call handled a given pointer, key or page | the call log registers and locators | `calls --function X --value 0x295C5810060`, `locators --page 1:384` |
-| What it allocated and what those blocks are | the memory map (class, allocation site, bytes) | `memorymap --grep CQScanHash`, `memorymap --by site`, `memorymap --address <hex>` |
+| What it allocated and what those blocks are | the memory map (class, allocation site, memory object, bytes) | `memorymap --grep CQScanHash`, `memorymap --by site`, `memorymap --by memoryobject`, `memorymap --address <hex>` |
 | How its state changed, field by field, and who changed it | memory history (writes with writers) | `memoryhistory --kind iterator`, `--block N`, `--block N --field 0x3B8` |
 | Which blocks belong to an iterator, or were made by one function | memory history filters | `memoryhistory --iterator <this>`, `--allocated-in "CBpBatch::"`, `--address <hex>` |
 | How much work a call or an operator was | the timeline in instructions | `timeline --node <entry node id>`, `timeline --top 20` |

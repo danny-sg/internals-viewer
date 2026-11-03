@@ -21,6 +21,8 @@ internal sealed class TraceExportSection : IQueryExportSection
 
     internal const string MemoryMapEntry = "fulltrace/memorymap.bin";
 
+    internal const string MemoryObjectsEntry = "fulltrace/memoryobjects.bin";
+
     internal const string ObjectPoolSnapshotEntry = "fulltrace/objectpool.bin";
 
     internal const string OutputStructuresEntry = "fulltrace/output.bin";
@@ -60,6 +62,8 @@ internal sealed class TraceExportSection : IQueryExportSection
                            });
 
         writer.WriteBinary(MemoryMapEntry, CompressionLevel.Fastest, fullTrace.MemoryMap.Write);
+
+        writer.WriteBinary(MemoryObjectsEntry, CompressionLevel.Fastest, fullTrace.MemoryObjects.Write);
 
         writer.WriteBinary(ObjectPoolSnapshotEntry, CompressionLevel.Fastest, fullTrace.ObjectPool.Write);
 
@@ -109,6 +113,9 @@ internal sealed class TraceExportSection : IQueryExportSection
             MemoryMap = reader.HasEntry(MemoryMapEntry) && reader.ReadBinary(MemoryMapEntry, MemoryMap.IsSupported)
                 ? reader.ReadBinary(MemoryMapEntry, r => MemoryMap.Read(r, timeline.NodeOf))
                 : MemoryMap.Empty,
+            MemoryObjectSnapshot = reader.HasEntry(MemoryObjectsEntry) && reader.ReadBinary(MemoryObjectsEntry, MemoryObjectMap.IsSupported)
+                ? reader.ReadBinary(MemoryObjectsEntry, MemoryObjectMap.ReadObjects)
+                : new Dictionary<ulong, MemoryObjectInfo>(),
             ObjectPool = reader.HasEntry(ObjectPoolSnapshotEntry)
                 ? reader.ReadBinary(ObjectPoolSnapshotEntry, ObjectPoolSnapshot.Read)
                 : ObjectPoolSnapshot.Empty,

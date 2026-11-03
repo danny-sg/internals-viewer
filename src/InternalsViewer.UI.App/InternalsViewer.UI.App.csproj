@@ -566,6 +566,8 @@
       <Folder Include="Controls\Dialogs\" />
       <Folder Include="Controls\Query\Trace\Timeline\Memory\" />
       <Folder Include="Controls\Query\Trace\Timeline\Operators\" />
+      <Folder Include="Helpers\Plans\" />
+      <Folder Include="Helpers\Trace\" />
       <Folder Include="ViewModels\Columnstore\Segment\" />
       <Folder Include="Views\Query\Index\" />
       <Folder Include="Views\Query\Plan\" />

@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.UI.App.Helpers;
@@ -68,7 +69,7 @@ public sealed partial class TraceTimelineControl
 
         if (_inUsePeak > 0)
         {
-            canvas.DrawText($"{InUseLabel}, Peak {SizeFormat.Format((long)_inUsePeak)}",
+            canvas.DrawText($"{InUseLabel}, Peak {StringHelpers.FormatSize((long)_inUsePeak)}",
                             legendRight,
                             Baseline(inUseTop, MemoryBandLabelHeight),
                             SKTextAlign.Right,
@@ -100,7 +101,7 @@ public sealed partial class TraceTimelineControl
 
         canvas.DrawLine(0, top, width, top, _paints.GrantEdge);
 
-        canvas.DrawText($"Granted {SizeFormat.Format((long)granted)}",
+        canvas.DrawText($"Granted {StringHelpers.FormatSize((long)granted)}",
                         LabelPadding * 2,
                         top - GrantLabelGap,
                         SKTextAlign.Left,
@@ -140,7 +141,7 @@ public sealed partial class TraceTimelineControl
             DrawMarker(canvas,
                        x,
                        BandY(allocated, _bandPeak, inUseTop - 1f, AllocatedBandHeight),
-                       $"Allocated {SizeFormat.Format((long)allocated)}",
+                       $"Allocated {StringHelpers.FormatSize((long)allocated)}",
                        _paints.AreaLine.Color,
                        height - MemoryBandHeight,
                        inUseTop,
@@ -154,7 +155,7 @@ public sealed partial class TraceTimelineControl
             DrawMarker(canvas,
                        x,
                        BandY(inUse, _inUseScale, height - 1f, InUseBandHeight),
-                       $"{InUseLabel} {SizeFormat.Format((long)inUse)}",
+                       $"{InUseLabel} {StringHelpers.FormatSize((long)inUse)}",
                        _paints.InUseLine.Color,
                        inUseTop,
                        height,

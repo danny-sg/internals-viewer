@@ -102,7 +102,7 @@ public sealed partial class MemoryWatchRowViewModel : ObservableObject
     }
 
     private static byte[]? GetBytes(HexWatch watch, byte[]? data)
-        => data is not null && watch.Offset >= 0 && watch.Length > 0 && watch.Offset + watch.Length <= data.Length
+        => data is not null && watch is { Offset: >= 0, Length: > 0 } && watch.Offset + watch.Length <= data.Length
             ? data[watch.Offset..(watch.Offset + watch.Length)]
             : null;
 

@@ -5,11 +5,13 @@ namespace InternalsViewer.Query.FullTrace.Memory;
 
 public sealed partial class MemoryMap
 {
-    private const int FormatVersion = 2;
+    private const int FormatVersion = 3;
 
     private const int FirstVersion = 1;
 
     private const int SiteVersion = 2;
+
+    private const int MemoryObjectVersion = 3;
 
     private const int NoName = -1;
 
@@ -19,7 +21,10 @@ public sealed partial class MemoryMap
     {
         writer.Write(-FormatVersion);
 
-        var names = Labels.SelectMany(l => new[] { l.ClassName, l.Site }).OfType<string>().Distinct(StringComparer.Ordinal).ToList();
+        var names = Labels.SelectMany(l => new[] { l.ClassName, l.Site, l.MemoryObject })
+                          .OfType<string>()
+                          .Distinct(StringComparer.Ordinal)
+                          .ToList();
 
         var nameIndexes = names.Select((name, index) => (name, index)).ToDictionary(n => n.name, n => n.index, StringComparer.Ordinal);
 
@@ -63,6 +68,8 @@ public sealed partial class MemoryMap
                 writer.Write(entry.Bytes);
 
                 writer.Write(label.Site is { } site ? nameIndexes[site] : NoName);
+
+                writer.Write(label.MemoryObject is { } memoryObject ? nameIndexes[memoryObject] : NoName);
             }
         }
     }
@@ -99,7 +106,8 @@ public sealed partial class MemoryMap
                                               Operation: (MemoryMapOperation)reader.ReadByte(),
                                               ClassName: ReadName(reader, names),
                                               Bytes: reader.ReadUInt64(),
-                                              Site: version >= SiteVersion ? ReadName(reader, names) : null);
+                                              Site: version >= SiteVersion ? ReadName(reader, names) : null,
+                                              MemoryObject: version >= MemoryObjectVersion ? ReadName(reader, names) : null);
         }
 
         return Build(entries, nodeOf);

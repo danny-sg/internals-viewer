@@ -14,6 +14,9 @@ internal static class MemoryClerkReader
 
                                        SELECT page_allocator_address, type
                                        FROM   sys.dm_os_memory_clerks;
+
+                                       SELECT memory_object_address, type, page_size_in_bytes
+                                       FROM   sys.dm_os_memory_objects;
                                        """;
 
     public static async Task<MemoryClerkSnapshot> ReadAsync(string connectionString, CancellationToken cancellationToken)
@@ -32,12 +35,14 @@ internal static class MemoryClerkReader
 
         var allocators = await reader.NextResultAsync(cancellationToken) ? await ReadTypes(reader, cancellationToken) : [];
 
+        var memoryObjects = await reader.NextResultAsync(cancellationToken) ? await ReadMemoryObjects(reader, cancellationToken) : [];
+
         foreach (var (address, type) in allocators)
         {
             clerks.TryAdd(address, type);
         }
 
-        return new MemoryClerkSnapshot(clerks, objects);
+        return new MemoryClerkSnapshot(clerks, objects, memoryObjects);
     }
 
     internal static ulong AddressOf(ReadOnlySpan<byte> bytes)
@@ -65,5 +70,21 @@ internal static class MemoryClerkReader
         }
 
         return types;
+    }
+
+    private static async Task<Dictionary<ulong, MemoryObjectInfo>> ReadMemoryObjects(SqlDataReader reader,
+                                                                                    CancellationToken cancellationToken)
+    {
+        var memoryObjects = new Dictionary<ulong, MemoryObjectInfo>();
+
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            if (reader.GetValue(0) is byte[] address && reader.GetValue(1) is string type && reader.GetValue(2) is int pageSize)
+            {
+                memoryObjects[AddressOf(address)] = new MemoryObjectInfo(type, pageSize);
+            }
+        }
+
+        return memoryObjects;
     }
 }

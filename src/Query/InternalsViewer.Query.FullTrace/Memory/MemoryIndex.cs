@@ -210,18 +210,18 @@ public sealed partial class MemoryIndex
 
         public (ulong Bytes, int Count) AllocatedDuring(TracePosition start, TracePosition end)
         {
-            var first = SortedSearch.FirstAtOrAfter<TracePosition>(AllocationStarts, start);
+            var first = SortedSearch.FirstAtOrAfter(AllocationStarts, start);
 
-            var last = SortedSearch.FirstAtOrAfter<TracePosition>(AllocationStarts, end);
+            var last = SortedSearch.FirstAtOrAfter(AllocationStarts, end);
 
             return last > first ? (AllocationTotals[last] - AllocationTotals[first], last - first) : (0, 0);
         }
 
         public ulong FreedDuring(TracePosition start, TracePosition end)
         {
-            var first = SortedSearch.FirstAtOrAfter<TracePosition>(FreeStarts, start);
+            var first = SortedSearch.FirstAtOrAfter(FreeStarts, start);
 
-            var last = SortedSearch.FirstAtOrAfter<TracePosition>(FreeStarts, end);
+            var last = SortedSearch.FirstAtOrAfter(FreeStarts, end);
 
             return last > first ? FreeTotals[last] - FreeTotals[first] : 0;
         }
@@ -230,9 +230,9 @@ public sealed partial class MemoryIndex
 
         public MemoryInUseCurve InUseWithin(TracePosition start, TracePosition end)
         {
-            var first = SortedSearch.FirstAtOrAfter<TracePosition>(AllocationStarts, start);
+            var first = SortedSearch.FirstAtOrAfter(AllocationStarts, start);
 
-            var last = SortedSearch.FirstAtOrAfter<TracePosition>(AllocationStarts, end);
+            var last = SortedSearch.FirstAtOrAfter(AllocationStarts, end);
 
             if (last <= first)
             {
@@ -266,7 +266,7 @@ public sealed partial class MemoryIndex
             {
                 foreach (var call in owners[owner])
                 {
-                    for (var index = SortedSearch.FirstAtOrAfter<TracePosition>(AllocationStarts, call.From.Position);
+                    for (var index = SortedSearch.FirstAtOrAfter(AllocationStarts, call.From.Position);
                          index < AllocationStarts.Length && AllocationStarts[index] < call.To.Position;
                          index++)
                     {
@@ -309,7 +309,7 @@ public sealed partial class MemoryIndex
         {
             ulong retained = 0;
 
-            for (var index = SortedSearch.FirstAtOrAfter<TracePosition>(AllocationStarts, start);
+            for (var index = SortedSearch.FirstAtOrAfter(AllocationStarts, start);
                  index < AllocationStarts.Length && AllocationStarts[index] < end;
                  index++)
             {

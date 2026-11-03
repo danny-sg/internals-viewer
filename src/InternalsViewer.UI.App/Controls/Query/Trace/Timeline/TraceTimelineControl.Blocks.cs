@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using InternalsViewer.Internals.Helpers;
 using InternalsViewer.UI.App.Controls.Query.Timeline;
 using InternalsViewer.UI.App.Helpers;
 using SkiaSharp;
@@ -164,7 +165,7 @@ public sealed partial class TraceTimelineControl
     {
         var front = FrontOf(block);
 
-        var text = SizeFormat.Format((long)block.Bytes);
+        var text = StringHelpers.FormatSize((long)block.Bytes);
 
         var outward = _directionX >= 0 ? 1f : -1f;
 

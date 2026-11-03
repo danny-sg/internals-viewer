@@ -13,4 +13,5 @@ public sealed record MemoryMapEntry(ulong Address,
                                     string? ClassName,
                                     string? Allocator,
                                     ulong Bytes = 0,
-                                    string? Site = null);
+                                    string? Site = null,
+                                    string? MemoryObject = null);

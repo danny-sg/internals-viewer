@@ -22,8 +22,9 @@ public sealed class CallStoreLookup(TraceCallStore store,
                                   IReadOnlyDictionary<ulong, IteratorTarget> iterators,
                                   HoBtAccessMap hobtAccess,
                                   MemoryMap memoryMap,
-                                  SymbolsViewModel symbols,
-                                  Func<ulong, string?> getHoBtName) : ITraceSignatureSource
+                                  MemoryObjectMap memoryObjects,
+                                  StorageIdMap storageIds,
+                                  SymbolsViewModel symbols) : ITraceSignatureSource
 {
     private const string ThisType = "this";
 
@@ -31,25 +32,31 @@ public sealed class CallStoreLookup(TraceCallStore store,
 
     private Dictionary<ulong, Task<ResolvedSignature?>> Signatures { get; } = [];
 
-    private TraceReferenceFinder References => field ??= new(Store, tree, iterators, hobtAccess, memoryMap, getHoBtName, this);
+    private TraceReferenceFinder References
+        => field ??= new(Store, tree, iterators, hobtAccess, memoryMap, memoryObjects, storageIds, this);
 
     public IteratorTarget? GetIterator(ulong value) => iterators.GetValueOrDefault(value);
 
     public CallstackFrame? GetFrame(TraceValueUse use) => References.GetFrame(use);
 
-    public ulong? GetHoBtId(ArgumentSlot slot, ulong value, TraceArgumentCall call)
+    public StorageId? GetStorageId(ArgumentSlot slot, ulong value, TraceArgumentCall call)
     {
         if (slot.IsHoBtId)
         {
-            return value;
+            return storageIds.GetHoBt(value);
         }
 
         if (ArgumentValue.GetHoBtId(slot.Type, value) is { } hobtId)
         {
-            return hobtId;
+            return storageIds.GetHoBt(hobtId);
         }
 
-        return slot.Type == ThisType || ArgumentValue.IsPointer(slot.Type) ? hobtAccess.GetHoBtId(value, call.FromPosition) : null;
+        if (slot.Type == ThisType || ArgumentValue.IsPointer(slot.Type))
+        {
+            return hobtAccess.GetHoBtId(value, call.FromPosition) is { } accessed ? storageIds.GetHoBt(accessed) : null;
+        }
+
+        return ArgumentValue.IsAddressSized(slot.Type) ? storageIds.GetStorageId(value) : null;
     }
 
     public ValueDescription? Describe(ArgumentSlot slot, ulong value, TraceArgumentCall call)
@@ -64,9 +71,9 @@ public sealed class CallStoreLookup(TraceCallStore store,
 
         var containing = isPointer && value != 0 && entry is null ? memoryMap.GetContaining(value, GetPosition(slot, call)) : null;
 
-        if (GetHoBtId(slot, value, call) is { } hobtId && getHoBtName(hobtId) is { } name)
+        if (GetStorageId(slot, value, call) is { } storageId)
         {
-            return new ValueDescription(name) { Origin = entry };
+            return new ValueDescription(storageId.Name, isPointer ? null : storageId.TypeName) { Origin = entry };
         }
 
         if (!isObject)
@@ -103,7 +110,9 @@ public sealed class CallStoreLookup(TraceCallStore store,
             return new ValueDescription(address, declared) { Origin = entry };
         }
 
-        return (entry?.Site ?? entry?.Allocator) is { } allocation ? new ValueDescription(address, allocation) { Origin = entry } : null;
+        return (entry?.Site ?? entry?.Allocator) is { } allocation
+            ? new ValueDescription(address, allocation) { Origin = entry }
+            : DescribeMemoryObject(value, GetPosition(slot, call));
     }
 
     public async Task<CallSignature?> GetSignatureAsync(CallStackNode node, int callIndex)
@@ -215,6 +224,12 @@ public sealed class CallStoreLookup(TraceCallStore store,
 
     private static TracePosition GetPosition(ArgumentSlot slot, TraceArgumentCall call)
         => slot.Index == ArgumentLayout.ReturnRegister ? call.ToPosition : call.FromPosition;
+
+    private ValueDescription? DescribeMemoryObject(ulong value, TracePosition position)
+        => memoryObjects.GetOwner(value, position) is { } owner
+           && (owner.Name ?? memoryMap.GetEntry(owner.Address, position)?.ClassName) is { } memoryObject
+            ? new ValueDescription(owner.GetText(value), memoryObject)
+            : null;
 
     private ValueCallRow GetCallRow(TraceValueCall valueCall,
                                     TraceValueUse use,

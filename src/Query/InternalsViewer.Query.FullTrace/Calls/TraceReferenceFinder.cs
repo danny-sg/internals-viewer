@@ -12,7 +12,8 @@ public sealed class TraceReferenceFinder(TraceCallStore store,
                                          IReadOnlyDictionary<ulong, IteratorTarget> iterators,
                                          HoBtAccessMap hobtAccess,
                                          MemoryMap memoryMap,
-                                         Func<ulong, string?> getHoBtName,
+                                         MemoryObjectMap memoryObjects,
+                                         StorageIdMap storageIds,
                                          ITraceSignatureSource signatures)
 {
     private TraceCallStore Store { get; } = store;
@@ -104,9 +105,14 @@ public sealed class TraceReferenceFinder(TraceCallStore store,
             return GetIteratorName(iterator);
         }
 
-        if (hobtAccess.GetHoBtId(value) is { } hobtId && getHoBtName(hobtId) is { } name)
+        if (hobtAccess.GetHoBtId(value) is { } hobtId && storageIds.GetHoBt(hobtId) is { } hobt)
         {
-            return $"HoBtAccess ({name})";
+            return $"HoBtAccess ({hobt.Name})";
+        }
+
+        if (storageIds.GetStorageId(value) is { } storageId)
+        {
+            return $"{storageId.TypeName} {storageId.Name}";
         }
 
         var firstUse = groups.SelectMany(g => g.Uses).MinBy(u => u.First.Position);
@@ -128,6 +134,12 @@ public sealed class TraceReferenceFinder(TraceCallStore store,
                 && (inside.ClassName ?? GetAllocationName(inside)) is { } container)
             {
                 return $"{container} + 0x{offset:X}";
+            }
+
+            if (memoryObjects.GetOwner(value, moment) is { } owner
+                && (owner.Name ?? memoryMap.GetEntry(owner.Address, moment)?.ClassName) is { } memoryObject)
+            {
+                return $"{memoryObject} {owner.GetText(value)}";
             }
         }
 

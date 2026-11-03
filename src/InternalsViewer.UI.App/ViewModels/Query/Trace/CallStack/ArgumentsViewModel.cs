@@ -19,7 +19,7 @@ using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Tree;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.CallStack;
 
-public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel symbols, Func<ulong, string?> getHoBtName)
+public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel symbols)
     : ObservableObject, IDisposable
 {
     private const string DefaultMessage = "Right click a frame in a Full Trace call tree and choose Show Arguments";
@@ -83,7 +83,9 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
                           CallStackTree? tree = null,
                           IReadOnlyDictionary<ulong, IteratorTarget>? iterators = null,
                           HoBtAccessMap? hobtAccess = null,
-                          MemoryMap? memoryMap = null)
+                          MemoryMap? memoryMap = null,
+                          MemoryObjectMap? memoryObjects = null,
+                          StorageIdMap? storageIds = null)
     {
         Cancel();
 
@@ -94,8 +96,9 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
                                 iterators ?? new Dictionary<ulong, IteratorTarget>(),
                                 hobtAccess ?? HoBtAccessMap.Empty,
                                 memoryMap ?? MemoryMap.Empty,
-                                symbols,
-                                getHoBtName);
+                                memoryObjects ?? MemoryObjectMap.Empty,
+                                storageIds ?? StorageIdMap.Empty,
+                                symbols);
 
         Shown = null;
         Signature = string.Empty;
@@ -214,7 +217,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
         if (ArgumentRowBuilder.FindSlotAt(layout, ordinal) is { } slot)
         {
-            return call.GetValue(slot) is { } value ? lookup.GetHoBtId(slot, value, call) : null;
+            return call.GetValue(slot) is { } value ? lookup.GetStorageId(slot, value, call)?.HoBtId : null;
         }
 
         return ArgumentRowBuilder.GetCellAt(layout, call, ordinal) is { Value: { } returned, Type: { } type }

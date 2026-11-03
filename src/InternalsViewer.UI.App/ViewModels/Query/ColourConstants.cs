@@ -31,19 +31,11 @@ internal static class ColourConstants
 
     public static readonly Color ColumnStoreEventColour = Color.FromArgb(255, 120, 140, 170);
 
-    public static readonly Color ExpressionFilterBitmapColour = Color.FromArgb(255, 76, 175, 80);
-
     public static readonly Color ExpressionFilterBitmapApplyColour = Color.FromArgb(255, 27, 90, 190);
 
     public static readonly Color BatchFilterColour = Color.FromArgb(255, 150, 176, 219);
 
     public static readonly Color AllocationPageColour = Color.FromArgb(255, 169, 180, 170);
-
-    public static readonly Color SystemIoColour = Desaturate(IoColour, 0.20);
-    public static readonly Color SystemPageColour = Desaturate(PageColour, 0.20);
-    public static readonly Color SystemLockColour = Desaturate(LockColour, 0.20);
-    public static readonly Color SystemWaitColour = Desaturate(WaitColour, 0.20);
-    public static readonly Color SystemLatchColour = Desaturate(LatchColour, 0.20);
 
     /// <summary>
     /// Reduces saturation from a colour

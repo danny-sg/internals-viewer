@@ -13,7 +13,8 @@ internal readonly record struct AddressEntry(ulong Address,
                                              MemoryMapOperation Operation,
                                              string? ClassName = null,
                                              ulong Bytes = 0,
-                                             string? Site = null)
+                                             string? Site = null,
+                                             string? MemoryObject = null)
 {
     public bool IsAlive => !ToPosition.IsKnown;
 }

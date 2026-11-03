@@ -7,12 +7,86 @@ using InternalsViewer.Query.FullTrace.Memory.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Memory;
 
+/// <summary>
+/// Memory Function Definitions
+/// </summary>
+/// <remarks>
+/// The trace tracks specific memory functions to identify how memory is allocated and freed. In addition, by tracking the functions it can
+/// record the size of the allocations and the pointer returned.
+///
+/// Almost all memory is managed via mechanisms in SQL Server:
+///
+/// - OS Allocations
+///
+///     Functions: (kernel32/kernelbase) VirtualAlloc, VirtualFree
+///
+///   This captures committing/freeing of regions of the Windows virtual address space by SQL Server at the OS level. Calls are filtered by
+///   flag so only MEM_COMMIT (VirtualAlloc) and MEM_DECOMMIT/MEM_RELEASE (VirtualFree) are captured, excluding unused reservations.
+///
+/// - OS/C Runtime Heap
+///
+///     Functions:
+///         - (ntdll) RtlAllocateHeap, RtlReAllocateHeap, RtlFreeHeap
+///         - (kernel32) HeapAlloc, HeapReAlloc, HeapFree, LocalAlloc, GlobalAlloc, LocalFree, GlobalFree
+///         - (CRT) malloc, calloc, realloc, free, _aligned_malloc, _aligned_realloc, _aligned_free, _recalloc
+///         - operator new, operator delete
+///
+///   Some code allocates directly on the Windows heap outside the memory managed by SQL Server, for example CRT usage and loaded DLLs. Low
+///   level OS/C runtime calls are captured for these.
+///
+/// - Memory Clerks
+///
+///     Functions: (sqldk) MemoryClerkInternal::AllocatePages/AllocatePagesWithFailureMode/AllocateReservedPages,
+///                        MemoryClerkInternal::FreePages/FreeReservedPages
+///
+///   A Memory Clerk manages memory for a component in SQL Server, for example the buffer pool (MEMORYCLERK_SQLBUFFERPOOL), query plans
+///   (MEMORYCLERK_SQLQUERYPLAN) or workspace memory (MEMORYCLERK_SQLQERESERVATIONS) for sort pages or workfile pages.
+///
+///   The DMV sys.dm_os_memory_clerks names the clerks with their address/size allowing the allocation to be mapped to a clerk.
+///
+///   Clerks manage memory in 8 KB pages.
+///
+/// - Memory Objects
+///
+///     Classes: Defined in MemoryObjects/starting with "CMemThread"
+///     Functions: Alloc/Realloc/Free, plus MemoryObjectFactory::CreateMemObject for object creation
+///
+///   Memory Objects (PMOs - from the Hungarian notation pmo, pointer to memory object) hand out sub-allocations of memory pages obtained
+///   via a clerk to provide allocations that don't need a full 8 KB page.
+///
+///   Tracking CreateMemObject allows objects to be mapped to the clerk/parent object they were created under.
+///
+///   sys.dm_os_memory_objects gives the type, address, and size of the allocated objects.
+///
+/// - Query/workspace memory grants
+///
+///     Functions: (sqlmin) CQryMemManager::AllocatePages, CQryMemManager::FreePages
+///         - Existing grants: PbufGetGrantedBuf, PvGetGrantedPage
+///         - Hash buckets: CHashWorkfilePartitionInstance::PvAllocateHashBucketPage
+///
+///   Certain operators need memory for their internal working structures, for example hash joins and sorts. A memory grant (effectively
+///   estimated memory required) is calculated by the Query Optimizer based on the statistics/heuristics of the query. This memory will be
+///   reserved on a page basis.
+///
+/// A single logical allocation can appear at multiple layers (memory object -> clerk pages -> VirtualAlloc). Allocations nested inside
+/// another tracked allocator are excluded from totals to avoid double counting.
+///
+/// A MemoryFunction is keyed by the function's module-relative address (RVA) and defines:
+///
+/// - Operation           - Allocate/reallocate/free/create
+/// - SizeArgumentSlot    - Which argument slot includes the allocation size
+/// - PointerArgumentSlot - Which argument slot includes the pointer being freed/reallocated
+/// - Unit                - Size unit multiplier to convert from size to bytes, or a fixed size when SizeArgumentSlot is not defined
+/// - CountArgumentSlot   - Element count argument slot for count n size allocators (calloc/_recalloc)
+///
+/// A slot value of -1 means the slot is not applicable to the function.
+/// </remarks>
 internal sealed record MemoryFunction(ulong Address,
                                       AllocationOperation Operation,
-                                      int SizeSlot,
-                                      int PointerSlot,
+                                      int SizeArgumentSlot,
+                                      int PointerArgumentSlot,
                                       ulong Unit,
-                                      int CountSlot = -1)
+                                      int CountArgumentSlot = -1)
 {
     private const ulong PageSize = 8192;
 
@@ -105,7 +179,7 @@ internal sealed record MemoryFunction(ulong Address,
 
     public ulong GetObject(TraceArgumentCall call) => Operation == AllocationOperation.Create ? call.ReturnedValue : call.Slot(0);
 
-    public ulong GetPointer(TraceArgumentCall call) => call.Slot(PointerSlot);
+    public ulong GetPointer(TraceArgumentCall call) => call.Slot(PointerArgumentSlot);
 
     public string? GetSite(TraceArgumentCall call)
     {
@@ -116,7 +190,7 @@ internal sealed record MemoryFunction(ulong Address,
 
         var file = new TextLocator(locator);
 
-        ulong? line = LineSlot < ArgumentLayout.RegisterCount ? call.Slot(LineSlot) : call.GetStackValue(LineSlot);
+        var line = LineSlot < ArgumentLayout.RegisterCount ? call.Slot(LineSlot) : call.GetStackValue(LineSlot);
 
         if (file.IsTruncated || file.Text.Length == 0 || line is not { } number)
         {
@@ -128,14 +202,14 @@ internal sealed record MemoryFunction(ulong Address,
 
     public ulong GetByteCount(TraceArgumentCall call)
     {
-        if (SizeSlot < 0)
+        if (SizeArgumentSlot < 0)
         {
             return IsAllocation ? Unit : 0;
         }
 
-        var size = call.Slot(SizeSlot);
+        var size = call.Slot(SizeArgumentSlot);
 
-        var count = CountSlot < 0 ? 1 : call.Slot(CountSlot);
+        var count = CountArgumentSlot < 0 ? 1 : call.Slot(CountArgumentSlot);
 
         if (size > LargestAllocation || count > LargestAllocation || Math.BigMul(size, count, out var bytes) != 0)
         {
@@ -145,6 +219,9 @@ internal sealed record MemoryFunction(ulong Address,
         return bytes <= LargestAllocation / Unit ? bytes * Unit : 0;
     }
 
+    /// <summary>
+    /// Returns a MemoryFunction from an address/symbol buffer or null if not in scope
+    /// </summary>
     internal static MemoryFunction? Classify(ulong address, ReadOnlySpan<char> symbol)
     {
         var separator = SymbolsHelper.FindClassMethodSeparator(symbol);
@@ -243,11 +320,11 @@ internal sealed record MemoryFunction(ulong Address,
         "malloc" or "_aligned_malloc"
             => new(address, AllocationOperation.Allocate, 0, -1, 1),
         "calloc"
-            => new(address, AllocationOperation.Allocate, 1, -1, 1, CountSlot: 0),
+            => new(address, AllocationOperation.Allocate, 1, -1, 1, CountArgumentSlot: 0),
         "realloc" or "_aligned_realloc"
             => new(address, AllocationOperation.Reallocate, 1, 0, 1),
         "_recalloc"
-            => new(address, AllocationOperation.Reallocate, 2, 0, 1, CountSlot: 1),
+            => new(address, AllocationOperation.Reallocate, 2, 0, 1, CountArgumentSlot: 1),
         "free" or "_aligned_free"
             => new(address, AllocationOperation.Free, -1, 0, 1),
         _ => null

@@ -11,6 +11,8 @@ using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Properties;
 using InternalsViewer.Query.Events.Reads;
 using InternalsViewer.Query.Events.Scheduling;
+using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.Memory.Enums;
 using InternalsViewer.Query.Plans.Enums;
 using InternalsViewer.Query.QueryStore;
 
@@ -65,7 +67,8 @@ public static class ArgumentValue
         ["HoBtFactoryRingBufferRecord::HOBT_ALLOCATION_PAGE"] = new(GetEnumNames<HoBtAllocationPage>),
         ["EQDSResourceType"] = new(GetEnumNames<QueryStoreResourceType>),
         ["EQDSOperationalState"] = new(GetEnumNames<QueryStoreState>),
-        ["EQDSExecType"] = new(GetEnumNames<QueryStoreExecutionType>)
+        ["EQDSExecType"] = new(GetEnumNames<QueryStoreExecutionType>),
+        ["SOSHOST_MEMOBJ_ID"] = new(GetMemoryObjectTypeNames)
     };
 
     private static readonly Dictionary<string, Lazy<Dictionary<int, string>>> KnownFlags = new(StringComparer.Ordinal)
@@ -314,6 +317,9 @@ public static class ArgumentValue
         => Enum.GetValues<T>()
                .DistinctBy(v => Convert.ToInt32(v, CultureInfo.InvariantCulture))
                .ToDictionary(v => Convert.ToInt32(v, CultureInfo.InvariantCulture), v => EventPropertyFormatter.SplitWords(v.ToString()));
+
+    private static Dictionary<int, string> GetMemoryObjectTypeNames()
+        => Enum.GetValues<MemoryObjectType>().ToDictionary(v => (int)v, MemoryObjectNames.GetName);
 
     private static string FlagsOf(Dictionary<int, string> names, int value)
     {

@@ -36,7 +36,7 @@ public class AllocationMapperTests
 
         store.MapNodes([caller, allocator]);
 
-        var (_, allocations, bytes) = AllocationMapper.Map(store, [Function(Allocator)], null);
+        var (_, allocations, bytes, _) = AllocationMapper.Map(store, [Function(Allocator)], null);
 
         Assert.Equal((300ul, 2L), (bytes, allocations));
         Assert.Equal((300L, 2L), (allocator.AllocatedBytes, allocator.Allocations));
@@ -62,7 +62,7 @@ public class AllocationMapperTests
 
         store.MapNodes([caller, outer, inner]);
 
-        var (_, _, bytes) = AllocationMapper.Map(store, [Function(Allocator), Function(Inner)], null);
+        var (_, _, bytes, _) = AllocationMapper.Map(store, [Function(Allocator), Function(Inner)], null);
 
         Assert.Equal(64ul, bytes);
         Assert.Equal(64L, caller.AllocatedBytesIncludingChildren);
@@ -86,7 +86,7 @@ public class AllocationMapperTests
 
         store.MapNodes([caller, create, objectPages, workspacePages]);
 
-        var (_, _, bytes) = AllocationMapper.Map(store, [ClerkPages()], null);
+        var (_, _, bytes, _) = AllocationMapper.Map(store, [ClerkPages()], null);
 
         Assert.Equal(16384ul, bytes);
     }
@@ -119,10 +119,10 @@ public class AllocationMapperTests
 
         timeline.MapNodes([caller, allocator, pages]);
 
-        var (memory, _, _) = AllocationMapper.Map(store,
-                                                  [Function(Allocator), ClerkPages()],
-                                                  timeline,
-                                                  Snapshot(clerks: new() { [0xC1] = clerk }));
+        var (memory, _, _, _) = AllocationMapper.Map(store,
+                                                     [Function(Allocator), ClerkPages()],
+                                                     timeline,
+                                                     Snapshot(clerks: new() { [0xC1] = clerk }));
 
         var start = timeline.Start.Position;
 
@@ -155,10 +155,10 @@ public class AllocationMapperTests
 
         timeline.MapNodes([caller, allocator]);
 
-        var (memory, _, _) = AllocationMapper.Map(store,
-                                                  [new(Allocator, AllocationOperation.Allocate, 1, -1, 1) { IsObjectCall = true }],
-                                                  timeline,
-                                                  Snapshot(objects: new() { [0xB0] = WorkspaceClerk }));
+        var (memory, _, _, _) = AllocationMapper.Map(store,
+                                                     [new(Allocator, AllocationOperation.Allocate, 1, -1, 1) { IsObjectCall = true }],
+                                                     timeline,
+                                                     Snapshot(objectClerks: new() { [0xB0] = WorkspaceClerk }));
 
         Assert.Equal(48ul, PeakWorkspace(timeline, memory));
     }
@@ -196,14 +196,96 @@ public class AllocationMapperTests
 
         timeline.MapNodes([caller, allocator, child, parent]);
 
-        var (memory, _, bytes) = AllocationMapper.Map(store,
-                                                      [Function(Allocator),
-                                                       new(Inner, AllocationOperation.Allocate, 1, -1, 1) { IsObjectCall = true },
-                                                       new(Parent, AllocationOperation.Allocate, 1, -1, 1) { IsObjectCall = true }],
-                                                      timeline,
-                                                      Snapshot(objects: new() { [0xB0] = WorkspaceClerk }));
+        var (memory, _, bytes, _) = AllocationMapper.Map(store,
+                                                         [Function(Allocator),
+                                                          new(Inner, AllocationOperation.Allocate, 1, -1, 1) { IsObjectCall = true },
+                                                          new(Parent, AllocationOperation.Allocate, 1, -1, 1) { IsObjectCall = true }],
+                                                         timeline,
+                                                         Snapshot(objectClerks: new() { [0xB0] = WorkspaceClerk }));
 
         Assert.Equal((64ul, 64ul), (PeakWorkspace(timeline, memory), bytes));
+    }
+
+    [Fact]
+    public void An_Allocation_Takes_The_Type_Of_The_Memory_Object_It_Came_From()
+    {
+        var tree = new CallStackTree();
+
+        var caller = tree.AddCall(tree.Root, Frame(0x10), 1);
+        var allocator = tree.AddCall(caller, Frame(Allocator), 1);
+        var memoryObject = tree.AddCall(allocator, Resolved(Inner, "sqldk", "CMemProc", "Alloc"), 1);
+
+        var builder = new TraceCallStore.Builder();
+
+        builder.Add(Allocator, 0, Chunk(Row(1, size: 888, callNodeIndex: 1, returned: 0xA0)), 1);
+        builder.Add(Inner, 0, Chunk(Row(2, size: 888, callNodeIndex: 2, returned: 0xA0, receiver: 0xB0)), 1);
+
+        var store = builder.Build();
+
+        store.MapNodes([caller, allocator, memoryObject]);
+
+        var timelineBuilder = new TraceTimeline.Builder();
+
+        timelineBuilder.Add([Span(0, 0, 40, uint.MaxValue), Span(1, 10, 20, 0), Span(2, 11, 19, 0)]);
+
+        var timeline = timelineBuilder.Build([new(-1, 0, 0x10, 0, 1), new(0, 0, Allocator, 0, 1), new(1, 0, Inner, 0, 1)]);
+
+        timeline.MapNodes([caller, allocator, memoryObject]);
+
+        var (_, _, _, memoryObjects) = AllocationMapper.Map(store,
+                                                            [Function(Allocator),
+                                                             new(Inner, AllocationOperation.Allocate, 1, -1, 1) { IsObjectCall = true }],
+                                                            timeline,
+                                                            Snapshot(objectTypes: new() { [0xB0] = "MEMOBJ_EXECUTE" }));
+
+        Assert.Equal(("MEMOBJ_EXECUTE", "MEMOBJ_EXECUTE"),
+                     (memoryObjects.GetMemoryObject(Allocator, 0), memoryObjects.GetMemoryObject(Inner, 0)));
+    }
+
+    [Theory]
+    [InlineData(0xB0ul, "MEMOBJ_SORT")]
+    [InlineData(0xB1ul, "MEMOBJ_SORT")]
+    [InlineData(0xB2ul, null)]
+    public void A_Memory_Object_Missing_From_The_Snapshot_Takes_The_Type_Of_The_One_It_Allocates_From(ulong listed, string? expected)
+    {
+        const ulong Parent = 0x8000;
+
+        var tree = new CallStackTree();
+
+        var caller = tree.AddCall(tree.Root, Frame(0x10), 1);
+        var allocator = tree.AddCall(caller, Frame(Allocator), 1);
+        var child = tree.AddCall(allocator, Resolved(Inner, "sqldk", "CMemThread<CMemObj>", "Alloc"), 1);
+        var parent = tree.AddCall(child, Resolved(Parent, "sqldk", "CMemObj", "Alloc"), 1);
+
+        var builder = new TraceCallStore.Builder();
+
+        builder.Add(Allocator, 0, Chunk(Row(1, size: 64, callNodeIndex: 1, returned: 0xA0)), 1);
+        builder.Add(Inner, 0, Chunk(Row(2, size: 64, callNodeIndex: 2, receiver: 0xB1)), 1);
+        builder.Add(Parent, 0, Chunk(Row(3, size: 64, callNodeIndex: 3, receiver: 0xB0)), 1);
+
+        var store = builder.Build();
+
+        store.MapNodes([caller, allocator, child, parent]);
+
+        var timelineBuilder = new TraceTimeline.Builder();
+
+        timelineBuilder.Add([Span(0, 0, 40, uint.MaxValue), Span(1, 10, 20, 0), Span(2, 11, 19, 0), Span(3, 12, 18, 0)]);
+
+        var timeline = timelineBuilder.Build([new(-1, 0, 0x10, 0, 1),
+                                              new(0, 0, Allocator, 0, 1),
+                                              new(1, 0, Inner, 0, 1),
+                                              new(2, 0, Parent, 0, 1)]);
+
+        timeline.MapNodes([caller, allocator, child, parent]);
+
+        var (_, _, _, memoryObjects) = AllocationMapper.Map(store,
+                                                            [Function(Allocator),
+                                                             new(Inner, AllocationOperation.Allocate, 1, -1, 1) { IsObjectCall = true },
+                                                             new(Parent, AllocationOperation.Allocate, 1, -1, 1) { IsObjectCall = true }],
+                                                            timeline,
+                                                            Snapshot(objectTypes: new() { [listed] = "MEMOBJ_SORT" }));
+
+        Assert.Equal(expected, memoryObjects.GetMemoryObject(Allocator, 0));
     }
 
     [Fact]
@@ -214,8 +296,20 @@ public class AllocationMapperTests
         Assert.Equal(["A", "C", "D"], [merged.Clerks[0xC1], merged.Clerks[0xC2], merged.Clerks[0xC3]]);
     }
 
-    private static MemoryClerkSnapshot Snapshot(Dictionary<ulong, string>? clerks = null, Dictionary<ulong, string>? objects = null)
-        => new(clerks ?? [], objects ?? []);
+    [Fact]
+    public void A_Later_Snapshot_Adds_Memory_Object_Types_To_An_Earlier_One()
+    {
+        var earlier = Snapshot(objectTypes: new() { [0xB0] = "MEMOBJ_EXECUTE" });
+
+        var merged = earlier.Merge(Snapshot(objectTypes: new() { [0xB1] = "MEMOBJ_SORT" }));
+
+        Assert.Equal(["MEMOBJ_EXECUTE", "MEMOBJ_SORT"], [merged.MemoryObjects[0xB0].Type, merged.MemoryObjects[0xB1].Type]);
+    }
+
+    private static MemoryClerkSnapshot Snapshot(Dictionary<ulong, string>? clerks = null,
+                                                Dictionary<ulong, string>? objectClerks = null,
+                                                Dictionary<ulong, string>? objectTypes = null)
+        => new(clerks ?? [], objectClerks ?? [], (objectTypes ?? []).ToDictionary(o => o.Key, o => new MemoryObjectInfo(o.Value, 8192)));
 
     private static MemoryFunction ClerkPages()
         => new(Inner, AllocationOperation.Allocate, 1, -1, 8192) { IsPage = true, CarriesClerk = true };

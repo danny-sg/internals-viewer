@@ -165,7 +165,7 @@ public class MemoryMapTests
         var map = MemoryMap.Build([Entry(MemoryMapOperation.Allocated, call: 10, OperatorNew),
                                    Entry(MemoryMapOperation.Constructed, call: 20, ScanConstructor)],
                                   NodeOf,
-                                  (_, node) => node?.Symbol == "OperatorNew" ? (0x80ul, null) : (0ul, null));
+                                  (_, node) => node?.Symbol == "OperatorNew" ? new MemoryMapAllocation(0x80, null, null) : default);
 
         Assert.Equal((0x80ul, 0x80ul), (map.GetEntry(Address, At(15))?.Bytes, map.GetEntry(Address, At(25))?.Bytes));
     }
@@ -176,9 +176,23 @@ public class MemoryMapTests
         var map = MemoryMap.Build([Entry(MemoryMapOperation.Allocated, call: 10, OperatorNew),
                                    Entry(MemoryMapOperation.Declared, call: 20, Factory, className: "AccBindings")],
                                   NodeOf,
-                                  (_, _) => (0x268ul, "openrst.cpp:1135"));
+                                  (_, _) => new MemoryMapAllocation(0x268, "openrst.cpp:1135", null));
 
         Assert.Equal(("openrst.cpp:1135", "openrst.cpp:1135"), (map.GetEntry(Address, At(15))?.Site, map.GetEntry(Address, At(25))?.Site));
+    }
+
+    [Fact]
+    public void An_Allocation_Carries_The_Memory_Object_It_Came_From()
+    {
+        var map = MemoryMap.Build([Entry(MemoryMapOperation.Allocated, call: 10, OperatorNew),
+                                   Entry(MemoryMapOperation.Constructed, call: 11, ScanConstructor)],
+                                  NodeOf,
+                                  (_, _) => new MemoryMapAllocation(0x378, null, "MEMOBJ_EXECUTE"));
+
+        Assert.Equal(("MEMOBJ_EXECUTE", "MEMOBJ_EXECUTE", "MEMOBJ_EXECUTE"),
+                     (map.GetEntry(Address, At(10))?.MemoryObject,
+                      map.GetEntry(Address, At(15))?.MemoryObject,
+                      map.GetMemoryObject(Address, At(10), At(20))));
     }
 
     [Fact]
@@ -211,7 +225,12 @@ public class MemoryMapTests
     [Fact]
     public void Declared_Types_And_Lengths_Are_Rebuilt_From_What_Is_Written()
     {
-        var map = Build(Entry(MemoryMapOperation.Allocated, call: 10, OperatorNew, bytes: 0x40, site: "openrst.cpp:1135"),
+        var map = Build(Entry(MemoryMapOperation.Allocated,
+                              call: 10,
+                              OperatorNew,
+                              bytes: 0x40,
+                              site: "openrst.cpp:1135",
+                              memoryObject: "MEMOBJ_EXECUTE"),
                         Entry(MemoryMapOperation.Declared, call: 20, Factory, className: "AccBindings"));
 
         using var stream = new MemoryStream();
@@ -227,8 +246,8 @@ public class MemoryMapTests
 
         var entry = MemoryMap.Read(reader, NodeOf).GetEntry(Address, At(25));
 
-        Assert.Equal(("OperatorNew", "AccBindings", 0x40ul, "openrst.cpp:1135"),
-                     (entry?.Allocator, entry?.ClassName, entry?.Bytes, entry?.Site));
+        Assert.Equal(("OperatorNew", "AccBindings", 0x40ul, "openrst.cpp:1135", "MEMOBJ_EXECUTE"),
+                     (entry?.Allocator, entry?.ClassName, entry?.Bytes, entry?.Site, entry?.MemoryObject));
     }
 
     [Fact]
@@ -258,7 +277,8 @@ public class MemoryMapTests
                                       string? className = null,
                                       ulong bytes = 0,
                                       ulong address = Address,
-                                      string? site = null)
+                                      string? site = null,
+                                      string? memoryObject = null)
         => new(address,
                call,
                0,
@@ -270,7 +290,8 @@ public class MemoryMapTests
                operation,
                className,
                bytes,
-               site);
+               site,
+               memoryObject);
 
     private static CallStackNode? NodeOf(int callNodeIndex) => callNodeIndex >= 0 && callNodeIndex < Nodes.Length ? Nodes[callNodeIndex] : null;
 

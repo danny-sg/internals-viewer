@@ -11,6 +11,7 @@
     xmlns:signatures="using:InternalsViewer.UI.App.Controls.Query.Trace.CallStack.Signatures"
     xmlns:tree="using:InternalsViewer.UI.App.Models.Query.Trace.CallStack.Tree"
     xmlns:converters1="using:InternalsViewer.UI.App.Helpers.Converters.CallStack"
+    xmlns:internalsHelpers="using:InternalsViewer.Internals.Helpers"
     xmlns:helpers="using:InternalsViewer.UI.App.Helpers">
 
     <UserControl.Resources>
@@ -258,7 +259,7 @@
                         VerticalAlignment="Center"
                         ToolTipService.ToolTip="{x:Bind ((model:CallStackNode)Content).AllocationsLabel}"
                         Visibility="{x:Bind ((model:CallStackNode)Content).HasAllocations, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <TextBlock Text="{x:Bind helpers:SizeFormat.Format(((model:CallStackNode)Content).AllocatedBytesIncludingChildren)}"
+                    <TextBlock Text="{x:Bind internalsHelpers:StringHelpers.FormatSize(((model:CallStackNode)Content).AllocatedBytesIncludingChildren)}"
                                FontSize="10"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                 </Border>
@@ -339,7 +340,7 @@
                         VerticalAlignment="Center"
                         ToolTipService.ToolTip="{x:Bind ((model:CallStackNode)Content).AllocationsLabel}"
                         Visibility="{x:Bind ((model:CallStackNode)Content).HasAllocations, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <TextBlock Text="{x:Bind helpers:SizeFormat.Format(((model:CallStackNode)Content).AllocatedBytesIncludingChildren)}"
+                    <TextBlock Text="{x:Bind internalsHelpers:StringHelpers.FormatSize(((model:CallStackNode)Content).AllocatedBytesIncludingChildren)}"
                                FontSize="10"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                 </Border>

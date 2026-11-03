@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Execution.AccessPaths.Results.Steps;
 using InternalsViewer.Internals.BatchMode.Normalization;
 using InternalsViewer.Execution.BatchMode.Vectors;
+using InternalsViewer.Internals.Helpers;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Simulation.Batch;
 using InternalsViewer.UI.App.Models.Query.Simulation.Columnstore;
@@ -335,7 +336,7 @@ public sealed partial class SimulationBatchViewModel : ObservableObject
 
         DeepDataSummary = rows.Length == 0
             ? "No Entries"
-            : $"{rows.Length:N0} {(rows.Length == 1 ? "Entry" : "Entries")}, {SizeFormat.Format(rows.Sum(r => (long)r.Length))}";
+            : $"{rows.Length:N0} {(rows.Length == 1 ? "Entry" : "Entries")}, {StringHelpers.FormatSize(rows.Sum(r => (long)r.Length))}";
 
         SelectedDeepData = SelectedDeepData is { } selected && selected.Index < rows.Length
             ? rows[selected.Index]

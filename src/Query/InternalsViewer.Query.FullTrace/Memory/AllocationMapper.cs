@@ -7,6 +7,12 @@ using InternalsViewer.Query.FullTrace.Memory.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Memory;
 
+/// <summary>
+/// Maps Trace calls to memory allocations and memory objects
+/// </summary>
+/// <remarks>
+/// Calls are identified against a list of memory functions (referenced via RVA) to provide the Memory Index and Memory Objects.
+/// </remarks>
 internal static class AllocationMapper
 {
     private const int MaximumObjectDepth = 16;
@@ -15,10 +21,11 @@ internal static class AllocationMapper
 
     private const string WorkspaceClerk = "MEMORYCLERK_SQLQERESERVATIONS";
 
-    public static (MemoryIndex Memory, long Allocations, ulong Bytes) Map(TraceCallStore store,
-                                                                          IReadOnlyList<MemoryFunction> functions,
-                                                                          TraceTimeline? timeline,
-                                                                          MemoryClerkSnapshot? clerks = null)
+    public static (MemoryIndex Memory, long Allocations, ulong Bytes, AllocationMemoryObjects MemoryObjects) 
+        Map(TraceCallStore store,
+            IReadOnlyList<MemoryFunction> functions,
+            TraceTimeline? timeline,
+            MemoryClerkSnapshot? clerks = null)
     {
         var byAddress = functions.ToDictionary(f => f.Address);
 
@@ -36,7 +43,7 @@ internal static class AllocationMapper
 
         ulong bytes = 0;
 
-        foreach (var function in functions.Where(f => f.IsAllocation || f is { Operation: AllocationOperation.Free, PointerSlot: >= 0 }))
+        foreach (var function in functions.Where(f => f.IsAllocation || f is { Operation: AllocationOperation.Free, PointerArgumentSlot: >= 0 }))
         {
             if (GetCalls(function.Address) is not { } logged)
             {
@@ -93,7 +100,7 @@ internal static class AllocationMapper
 
         var (allocations, frees) = scanned.MemoryOf(values);
 
-        return (MemoryIndex.Build(allocations, frees), count, bytes);
+        return (MemoryIndex.Build(allocations, frees), count, bytes, new AllocationMemoryObjects(scanned.ObjectTypes));
 
         TraceCallList? GetCalls(ulong address)
             => lists.TryGetValue(address, out var list) ? list : lists[address] = store.GetCallList(address, 0);
@@ -184,50 +191,61 @@ internal static class AllocationMapper
                     continue;
                 }
 
+                var inner = FirstWithin(thread.ObjectStarts, start, end);
+
+                var memoryObject = inner >= 0 ? thread.Objects[inner].Object : 0;
+
+                if (GetObjectType(memoryObject, objectParents, snapshot) is { } objectType)
+                {
+                    SetValue(scanned.ObjectTypes, address, callIndex, objectType, getCalls);
+                }
+
                 var kind = FirstWithin(thread.PageStarts, start, end) is >= 0 and var page
-                    ? ClerkType(snapshot, thread.Pages[page].Clerk)
-                    : null;
+                    ? GetClerkType(snapshot, thread.Pages[page].Clerk)
+                    : GetObjectClerk(memoryObject, objectClerks, objectParents, snapshot);
 
-                if (kind is null && FirstWithin(thread.ObjectStarts, start, end) is >= 0 and var inner)
+                if (kind is not null)
                 {
-                    kind = ObjectType(thread.Objects[inner].Object, objectClerks, objectParents, snapshot);
+                    SetValue(scanned.Kinds, address, callIndex, kind, getCalls);
                 }
-
-                if (kind is null)
-                {
-                    continue;
-                }
-
-                if (!scanned.Kinds.TryGetValue(address, out var kinds))
-                {
-                    kinds = new string?[getCalls(address)!.Count];
-
-                    scanned.Kinds[address] = kinds;
-                }
-
-                kinds[callIndex] = kind;
             }
         }
 
         return scanned;
     }
 
-    private static string ClerkType(MemoryClerkSnapshot snapshot, ulong clerk)
+    private static void SetValue(Dictionary<ulong, string?[]> values,
+                                 ulong address,
+                                 int callIndex,
+                                 string value,
+                                 Func<ulong, TraceCallList?> getCalls)
+    {
+        if (!values.TryGetValue(address, out var calls))
+        {
+            calls = new string?[getCalls(address)!.Count];
+
+            values[address] = calls;
+        }
+
+        calls[callIndex] = value;
+    }
+
+    private static string GetClerkType(MemoryClerkSnapshot snapshot, ulong clerk)
         => snapshot.Clerks.GetValueOrDefault(clerk) ?? $"{UnknownClerk} 0x{clerk:X}";
 
-    private static string? ObjectType(ulong memoryObject,
-                                      Dictionary<ulong, ulong> objectClerks,
-                                      Dictionary<ulong, ulong> objectParents,
-                                      MemoryClerkSnapshot snapshot)
+    private static string? GetObjectClerk(ulong memoryObject,
+                                          Dictionary<ulong, ulong> objectClerks,
+                                          Dictionary<ulong, ulong> objectParents,
+                                          MemoryClerkSnapshot snapshot)
     {
         for (var depth = 0; depth < MaximumObjectDepth && memoryObject != 0; depth++)
         {
             if (objectClerks.TryGetValue(memoryObject, out var clerk))
             {
-                return ClerkType(snapshot, clerk);
+                return GetClerkType(snapshot, clerk);
             }
 
-            if (snapshot.Objects.TryGetValue(memoryObject, out var type))
+            if (snapshot.ObjectClerks.TryGetValue(memoryObject, out var type))
             {
                 return type;
             }
@@ -238,9 +256,24 @@ internal static class AllocationMapper
         return null;
     }
 
+    private static string? GetObjectType(ulong memoryObject, Dictionary<ulong, ulong> objectParents, MemoryClerkSnapshot snapshot)
+    {
+        for (var depth = 0; depth < MaximumObjectDepth && memoryObject != 0; depth++)
+        {
+            if (snapshot.MemoryObjects.TryGetValue(memoryObject, out var info))
+            {
+                return info.Type;
+            }
+
+            memoryObject = objectParents.GetValueOrDefault(memoryObject);
+        }
+
+        return null;
+    }
+
     private static int FirstWithin(TracePosition[] starts, TracePosition start, TracePosition end)
     {
-        var index = SortedSearch.FirstAtOrAfter<TracePosition>(starts, start);
+        var index = SortedSearch.FirstAtOrAfter(starts, start);
 
         return index < starts.Length && starts[index] < end ? index : -1;
     }
@@ -290,6 +323,8 @@ internal static class AllocationMapper
     private sealed class ScannedCalls
     {
         public Dictionary<ulong, string?[]> Kinds { get; } = [];
+
+        public Dictionary<ulong, string?[]> ObjectTypes { get; } = [];
 
         public List<ThreadCalls> Threads { get; } = [];
 

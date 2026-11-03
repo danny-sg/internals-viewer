@@ -94,12 +94,13 @@ public sealed class MemoryTools(McpDocumentResolver documents)
     }
 
     [McpServerTool(Name = "query_memorymap", ReadOnly = true)]
-    [Description("Full Trace memory map: allocations labelled by C++ class and allocation site, grouped, and the entries matching " +
-                 "a regex or address")]
-    public async Task<string> MemoryMap([Description("Regex over class name or allocation site to list matching entries")]
+    [Description("Full Trace memory map: allocations labelled by C++ class, allocation site and the SQL Server memory object they " +
+                 "came from (MEMOBJ_ type), grouped, and the entries matching a regex or address")]
+    public async Task<string> MemoryMap([Description("Regex over class name, allocation site or memory object to list matching entries")]
                                         string? grep = null,
                                         [Description("Hex address to list the entries of one block")] string? address = null,
-                                        [Description("How to group the totals: class, site or operation")] string by = "class",
+                                        [Description("How to group the totals: class, site, memoryobject or operation")]
+                                        string by = "class",
                                         [Description("Truncate long template class names to this width")] int width = 90,
                                         [Description("Maximum rows to list")] int limit = 40,
                                         [Description(DocumentDescription)] string? document = null,
@@ -326,8 +327,8 @@ public sealed class MemoryTools(McpDocumentResolver documents)
     {
         var grouping = by.ToLowerInvariant() switch
         {
-            "class" or "site" or "operation" => by.ToLowerInvariant(),
-            _ => throw new McpException($"by must be class, site or operation, not '{by}'.")
+            "class" or "site" or "memoryobject" or "operation" => by.ToLowerInvariant(),
+            _ => throw new McpException($"by must be class, site, memoryobject or operation, not '{by}'.")
         };
 
         var pattern = grep is null ? null : Parse.Pattern(grep);
@@ -353,6 +354,7 @@ public sealed class MemoryTools(McpDocumentResolver documents)
             var key = grouping switch
             {
                 "site" => entry.Site ?? "(no site)",
+                "memoryobject" => entry.MemoryObject is { } type ? MemoryObjectNames.GetName(type) : "(no memory object)",
                 "operation" => operation,
                 _ => entry.ClassName ?? entry.Site ?? "(unlabelled)"
             };
@@ -366,7 +368,8 @@ public sealed class MemoryTools(McpDocumentResolver documents)
 
             group.Add(entry);
 
-            var isNamed = pattern is not null && pattern.IsMatch($"{entry.ClassName} {entry.Site}");
+            var isNamed = pattern is not null
+                          && pattern.IsMatch($"{entry.ClassName} {entry.Site} {entry.MemoryObject} {GetMemoryObjectName(entry)}");
 
             if (isNamed || (address is { } wanted && entry.Address == wanted))
             {
@@ -385,6 +388,7 @@ public sealed class MemoryTools(McpDocumentResolver documents)
         var heading = grouping switch
         {
             "site" => "Allocation site",
+            "memoryobject" => "Memory object",
             "operation" => "Operation",
             _ => "Class or site"
         };
@@ -409,8 +413,11 @@ public sealed class MemoryTools(McpDocumentResolver documents)
 
         foreach (var entry in matched.OrderBy(e => e.Address).ThenBy(e => e.FromPosition).Take(limit))
         {
+            var memoryObject = GetMemoryObjectName(entry) is { } name ? $"from {name} " : string.Empty;
+
             builder.AppendLine($"  {Format.Hex(entry.Address)} {Format.Bytes(entry.Bytes)} {entry.Operation} " +
-                               $"{Format.Truncate(entry.ClassName, width)} {entry.Site ?? string.Empty} thread {entry.Thread} " +
+                               $"{Format.Truncate(entry.ClassName, width)} {entry.Site ?? string.Empty} {memoryObject}" +
+                               $"thread {entry.Thread} " +
                                $"{Format.Position(entry.FromPosition)} to {Format.Position(entry.ToPosition)} " +
                                $"owner {Format.Hex(entry.Owner)} " +
                                $"in {GetFunctionName(scope, timeline, entry.CallNodeIndex)}");
@@ -418,6 +425,9 @@ public sealed class MemoryTools(McpDocumentResolver documents)
 
         builder.AppendIfNotEmpty(Format.More(matched.Count, limit, "raise limit or narrow grep"));
     }
+
+    private static string? GetMemoryObjectName(MemoryMapEntry entry)
+        => entry.MemoryObject is { } type ? MemoryObjectNames.GetName(type) : null;
 
     private static void AppendBlock(StringBuilder builder,
                                     McpDocumentScope scope,

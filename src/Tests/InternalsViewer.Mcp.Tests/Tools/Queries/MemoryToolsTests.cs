@@ -56,7 +56,8 @@ public class MemoryToolsTests
         Assert.Contains("Class or site", text);
         Assert.Contains("CQScanRowsetNew", text);
         Assert.Contains("2 entries matching:", text);
-        Assert.Contains("0xA 100 B Allocated CQScanRowsetNew sqlmin!CQScanRowsetNew::GetRow thread 7 16:0 to 1F:0 owner 0x0 in sqlmin!CQScanRowsetNew::GetRow", text);
+        Assert.Contains("0xA 100 B Allocated CQScanRowsetNew sqlmin!CQScanRowsetNew::GetRow from Internal Execution Plan (MXC) thread 7 "
+                        + "16:0 to 1F:0 owner 0x0 in sqlmin!CQScanRowsetNew::GetRow", text);
         Assert.Contains("0xA 100 B Constructed CQScanRowsetNew", text);
     }
 
@@ -70,6 +71,18 @@ public class MemoryToolsTests
         Assert.Matches(@"Operation\s+Entries\s+Blocks\s+Bytes", text);
         Assert.Matches(@"Allocated\s+1\s+1\s+100 B", text);
         Assert.Matches(@"Constructed\s+1\s+1\s+100 B", text);
+        Assert.Contains("2 entries matching:", text);
+    }
+
+    [Fact]
+    public async Task Memory_Map_Groups_By_The_Memory_Object_An_Allocation_Came_From()
+    {
+        var (resolver, _) = CreateResolver(WithMemoryMap(Create()));
+
+        var text = await new MemoryTools(resolver).MemoryMap(by: "memoryobject", grep: "MEMOBJ_EXECUTE");
+
+        Assert.Matches(@"Memory object\s+Entries\s+Blocks\s+Bytes", text);
+        Assert.Matches(@"Internal Execution Plan \(MXC\)\s+2\s+1\s+200 B", text);
         Assert.Contains("2 entries matching:", text);
     }
 
@@ -193,7 +206,8 @@ public class MemoryToolsTests
         {
             MemoryMap = MemoryMap.Build(
             [
-                new AddressEntry(0xA, 0, 1, 0, At(0x16), At(0x1F), 1, 7, MemoryMapOperation.Allocated, "CQScanRowsetNew", 100, "sqlmin!CQScanRowsetNew::GetRow"),
+                new AddressEntry(0xA, 0, 1, 0, At(0x16), At(0x1F), 1, 7, MemoryMapOperation.Allocated, "CQScanRowsetNew", 100, "sqlmin!CQScanRowsetNew::GetRow",
+                                 "MEMOBJ_EXECUTE"),
                 new AddressEntry(0xA, 0, 1, 0, At(0x17), At(0x1F), 1, 7, MemoryMapOperation.Constructed, "CQScanRowsetNew")
             ], t.Timeline.NodeOf)
         });

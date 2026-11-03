@@ -88,7 +88,8 @@ public class TraceReferenceFinderTests
                                                CallStackTree tree,
                                                FunctionType type,
                                                Dictionary<ulong, IteratorTarget>? iterators = null)
-        => new(store, tree, iterators ?? [], HoBtAccessMap.Empty, MemoryMap.Empty, _ => null, new Signatures(type));
+        => new(store, tree, iterators ?? [], HoBtAccessMap.Empty, MemoryMap.Empty, MemoryObjectMap.Empty, StorageIdMap.Empty,
+               new Signatures(type));
 
     private static CallstackFrame Frame(ulong rva, string symbol) => new()
     {
