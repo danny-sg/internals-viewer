@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -58,26 +59,26 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
     }
 
     public static readonly DependencyProperty MemoryProperty =
-        DependencyProperty.Register(nameof(Memory),
-                                    typeof(MemoryIndex),
+        DependencyProperty.Register(nameof(Allocation),
+                                    typeof(AllocationIndex),
                                     typeof(TraceTimelineControl),
                                     new PropertyMetadata(null, OnMemoryChanged));
 
-    public MemoryIndex Memory
+    public AllocationIndex Allocation
     {
-        get => (MemoryIndex?)GetValue(MemoryProperty) ?? MemoryIndex.Empty;
+        get => (AllocationIndex?)GetValue(MemoryProperty) ?? AllocationIndex.Empty;
         set => SetValue(MemoryProperty, value);
     }
 
     public static readonly DependencyProperty LifetimesProperty =
         DependencyProperty.Register(nameof(Lifetimes),
-                                    typeof(TraceOperatorLifetimes),
+                                    typeof(TraceOperatorLifetimeList),
                                     typeof(TraceTimelineControl),
                                     new PropertyMetadata(null, OnLifetimesChanged));
 
-    public TraceOperatorLifetimes Lifetimes
+    public TraceOperatorLifetimeList Lifetimes
     {
-        get => (TraceOperatorLifetimes?)GetValue(LifetimesProperty) ?? TraceOperatorLifetimes.Empty;
+        get => (TraceOperatorLifetimeList?)GetValue(LifetimesProperty) ?? TraceOperatorLifetimeList.Empty;
         set => SetValue(LifetimesProperty, value);
     }
 
@@ -241,9 +242,9 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     private readonly Dictionary<string, SKColor> _parsedColours = new(StringComparer.OrdinalIgnoreCase);
 
-    private readonly Dictionary<FlameHit, MemoryInUseCurve> _inUseCurves = [];
+    private readonly Dictionary<FlameHit, MemoryUsageCurve> _inUseCurves = [];
 
-    private (TraceTimeline Timeline, MemoryIndex Memory, InstanceMemoryCurves Curves)? _instanceCurves;
+    private (TraceTimeline Timeline, AllocationIndex Memory, InstanceMemoryCurveMap Curves)? _instanceCurves;
 
     private TraceTimeline? _timeline;
 
@@ -496,7 +497,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     private float ContentTop => OperatorsTop + PanesArea;
 
-    private bool ShowsMemoryBand => ShowMemory && _axis == TraceTimelineAxis.Position && _visible is not null && Memory.HasAllocations;
+    private bool ShowsMemoryBand => ShowMemory && _axis == TraceTimelineAxis.Position && _visible is not null && Allocation.HasAllocations;
 
     private float BandHeight => ShowsMemoryBand ? MemoryBandHeight : 0;
 
@@ -1121,11 +1122,11 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
         _inUseCurves.Clear();
 
-        _inUseMaximum = _visible is { } visible && Memory.HasAllocations
-            ? Memory.PeakInUseDuring(visible.Start.Position, visible.End.Position)
+        _inUseMaximum = _visible is { } visible && Allocation.HasAllocations
+            ? Allocation.PeakInUseDuring(visible.Start.Position, visible.End.Position)
             : 0;
 
-        var selfAllocations = _visible?.GetSelfAllocations(Memory) ?? [];
+        var selfAllocations = _visible?.GetSelfAllocations(Allocation) ?? [];
 
         _selfMaximum = selfAllocations.Count == 0 ? 0 : selfAllocations.Max(s => s.Bytes);
 

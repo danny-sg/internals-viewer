@@ -122,6 +122,11 @@ public static partial class StringHelpers
         _ => $"{bytes} B"
     };
 
+    public static string FormatSize(ulong bytes)
+    {
+        return FormatSize((long)bytes);
+    }
+
     [GeneratedRegex("(\\B[A-Z])")]
     private static partial Regex CamelCaseBoundaryRegex();
 }

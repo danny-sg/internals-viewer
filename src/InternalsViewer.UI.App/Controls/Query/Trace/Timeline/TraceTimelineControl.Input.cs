@@ -1278,7 +1278,7 @@ public sealed partial class TraceTimelineControl
             + $"to {Math.Floor(TraceScale.GetValue(span.To.Position) - origin)}"
         };
 
-        var (allocatedBytes, allocations) = Memory.AllocatedDuring(thread.ThreadId, span.From.Position, span.To.Position);
+        var (allocatedBytes, allocations) = Allocation.AllocatedDuring(thread.ThreadId, span.From.Position, span.To.Position);
 
         if (allocations > 0)
         {
@@ -1286,14 +1286,14 @@ public sealed partial class TraceTimelineControl
                       + (allocations == 1 ? "Allocation" : "Allocations"));
         }
 
-        if (Memory.FreedDuring(thread.ThreadId, span.From.Position, span.To.Position) is > 0 and var freed)
+        if (Allocation.FreedDuring(thread.ThreadId, span.From.Position, span.To.Position) is > 0 and var freed)
         {
             lines.Add($"Freed {StringHelpers.FormatSize((long)freed)}");
         }
 
         if (allocations > 0)
         {
-            var retained = Memory.RetainedBy(thread.ThreadId, span.From.Position, span.To.Position);
+            var retained = Allocation.RetainedBy(thread.ThreadId, span.From.Position, span.To.Position);
 
             lines.Add($"Retained At Return {StringHelpers.FormatSize((long)retained)}");
         }

@@ -144,7 +144,7 @@ public class ArgumentValueTests
     [InlineData(0x42ul, "ROWDATA | 0x40")]
     public void Accessor_Flags_Use_The_OLE_DB_Names(ulong raw, string expected)
     {
-        Assert.Equal(expected, ArgumentValue.Decode(BindingArguments.AccessorFlagsType, raw));
+        Assert.Equal(expected, ArgumentValue.Decode(BindingArgumentLayout.AccessorFlagsType, raw));
     }
 
     [Fact]

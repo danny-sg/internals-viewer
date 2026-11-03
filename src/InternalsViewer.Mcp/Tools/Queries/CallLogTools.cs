@@ -119,7 +119,7 @@ public sealed class CallLogTools(McpDocumentResolver documents)
 
         scope.RequireTrace();
 
-        TraceValueReferences? references = null;
+        TraceValueReferenceResult? references = null;
 
         await scope.RunAsync(async c => references = await c.FindReferencesAsync(wanted), cancellationToken);
 

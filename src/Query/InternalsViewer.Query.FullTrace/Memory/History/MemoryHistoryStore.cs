@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 using InternalsViewer.Query.CallStack;
@@ -12,12 +13,12 @@ public sealed partial class MemoryHistoryStore
 {
     internal MemoryHistoryStore(MemoryHistoryBlock[] blocks,
                                 MemoryHistoryWrite[] writes,
-                                HighWordRuns instructionHighs,
+                                HighWordRunArray instructionHighs,
                                 byte[] data,
                                 IReadOnlyDictionary<int, ulong> iterators,
                                 MemoryHistoryRead[]? reads = null,
                                 int[]? readStarts = null,
-                                HighWordRuns? readInstructionHighs = null,
+                                HighWordRunArray? readInstructionHighs = null,
                                 MemoryHistoryInstance[]? instances = null)
     {
         Blocks = blocks;
@@ -28,11 +29,11 @@ public sealed partial class MemoryHistoryStore
         Iterators = iterators;
         Reads = reads ?? [];
         ReadStarts = readStarts ?? [];
-        ReadInstructionHighs = readInstructionHighs ?? HighWordRuns.Empty;
+        ReadInstructionHighs = readInstructionHighs ?? HighWordRunArray.Empty;
         Instances = instances ?? [];
     }
 
-    public static MemoryHistoryStore Empty { get; } = new([], [], HighWordRuns.Empty, [], new Dictionary<int, ulong>());
+    public static MemoryHistoryStore Empty { get; } = new([], [], HighWordRunArray.Empty, [], new Dictionary<int, ulong>());
 
     public IReadOnlyList<MemoryHistoryBlock> Blocks { get; }
 
@@ -56,7 +57,7 @@ public sealed partial class MemoryHistoryStore
 
     private MemoryHistoryWrite[] Writes { get; }
 
-    private HighWordRuns InstructionHighs { get; }
+    private HighWordRunArray InstructionHighs { get; }
 
     private byte[] Data { get; }
 
@@ -66,7 +67,7 @@ public sealed partial class MemoryHistoryStore
 
     private int[] ReadStarts { get; }
 
-    private HighWordRuns ReadInstructionHighs { get; }
+    private HighWordRunArray ReadInstructionHighs { get; }
 
     private MemoryHistoryInstance[] Instances { get; }
 
@@ -378,7 +379,7 @@ public sealed partial class MemoryHistoryStore
         => GetCreatedPosition(block) is var created && from <= created && created <= to;
 
     public CallStackNode? GetAllocatingCall(int block, TraceTimeline timeline)
-        => timeline.NodeOf(BlockArray[block].CallNodeIndex)?.Ancestors().FirstOrDefault(n => !MemoryFunction.IsAllocatorFrame(n.Frame));
+        => timeline.NodeOf(BlockArray[block].CallNodeIndex)?.Ancestors().FirstOrDefault(n => !AllocationFunction.IsAllocatorFrame(n.Frame));
 
     private MemoryHistoryCall GetAllocationCall(int block, TraceTimeline timeline, int firstListed)
     {

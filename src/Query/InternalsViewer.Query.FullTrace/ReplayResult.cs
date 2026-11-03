@@ -1,9 +1,11 @@
+using InternalsViewer.Query.FullTrace.Memory.Address;
+using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
-using InternalsViewer.Query.FullTrace.Memory.History.StackObjects;
+using InternalsViewer.Query.FullTrace.Memory.History.Capture.StackObjects;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -26,7 +28,7 @@ namespace InternalsViewer.Query.FullTrace;
 /// <param name="Timeline">
 /// Hierarchical/row layout start and end position for each call per thread
 /// </param>
-/// <param name="MemoryMap">
+/// <param name="AddressMap">
 /// Address sightings from the memory map hook: allocations, constructions, member calls and declared pointers
 /// </param>
 /// <param name="CustomHooks">
@@ -45,14 +47,14 @@ internal sealed record ReplayResult(CallNode[] Nodes,
                                     IReadOnlyList<TraceModule> Modules,
                                     TraceCallStore CallStore,
                                     TraceTimeline Timeline,
-                                    ChunkedList<AddressEntry> MemoryMap,
+                                    ChunkedList<AddressEntry> AddressMap,
                                     CustomHookStore CustomHooks,
                                     TraceBufferPool BufferPool,
-                                    List<OutputAddresses> OutputAddresses,
+                                    List<OutputAddressEntry> OutputAddresses,
                                     IReadOnlyList<IteratorPlanNode> PlanNodes,
                                     IReadOnlyList<QueryTeardown> Teardowns)
 {
     public MemoryBlock[] Buffers { get; init; } = [];
 
-    public StackSnapshots StackSnapshots { get; init; } = StackSnapshots.Empty;
+    public StackSnapshotResult StackSnapshotResult { get; init; } = StackSnapshotResult.Empty;
 }

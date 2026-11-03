@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Memory.Address;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -186,7 +187,7 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
         PushLocation(CurrentLocation());
     }
 
-    public void ShowOrigin(MemoryMapEntry origin)
+    public void ShowOrigin(AddressMapEntry origin)
     {
         if (Query.Arguments.Lookup?.GetOrigin(origin) is not { } reference)
         {

@@ -1,7 +1,7 @@
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Calls;
-using static InternalsViewer.Query.FullTrace.Tests.TraceCallRows;
-using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
+using static InternalsViewer.Query.FullTrace.Tests.TraceCallRowHelper;
+using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Calls;
 
@@ -26,7 +26,7 @@ public class TraceValueSearchTests
     {
         var builder = new TraceCallStore.Builder();
 
-        builder.Add(0x1000, 0, Chunk(Row(1, returnValue: 0xD0), Row(2, flags: TraceCallColumns.ReturnedFlag, returnValue: 0xD0)), 2);
+        builder.Add(0x1000, 0, Chunk(Row(1, returnValue: 0xD0), Row(2, flags: TraceCallChunk.ReturnedFlag, returnValue: 0xD0)), 2);
 
         var use = Assert.Single(await new TraceValueSearch(builder.Build()).GetValueUsesAsync(0xD0, CancellationToken.None));
 
@@ -54,7 +54,7 @@ public class TraceValueSearchTests
         var builder = new TraceCallStore.Builder();
 
         builder.Add(0x1000, 0, Chunk(Row(10, flags: 7, rcx: 0xA0), Row(11, flags: 7, rcx: 0xB0)), 2);
-        builder.Add(0x1000, 0, Chunk(Row(12, flags: 8 | TraceCallColumns.ReturnedFlag, rcx: 0xA0, returnValue: 0xA0)), 1);
+        builder.Add(0x1000, 0, Chunk(Row(12, flags: 8 | TraceCallChunk.ReturnedFlag, rcx: 0xA0, returnValue: 0xA0)), 1);
 
         var search = new TraceValueSearch(builder.Build());
 
@@ -100,7 +100,7 @@ public class TraceValueSearchTests
         var builder = new TraceCallStore.Builder();
 
         builder.Add(0x1000, 0, Chunk(Row(50, rcx: 0xA0)), 1);
-        builder.Add(0x2000, 0, Chunk(Row(10, flags: TraceCallColumns.ReturnedFlag, returnValue: 0xA0)), 1);
+        builder.Add(0x2000, 0, Chunk(Row(10, flags: TraceCallChunk.ReturnedFlag, returnValue: 0xA0)), 1);
 
         var uses = await new TraceValueSearch(builder.Build()).GetValueUsesAsync(0xA0, CancellationToken.None);
 

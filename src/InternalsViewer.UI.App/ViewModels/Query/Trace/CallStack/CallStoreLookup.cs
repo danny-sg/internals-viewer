@@ -1,3 +1,5 @@
+using InternalsViewer.Query.FullTrace.Memory.Address;
+using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,7 +24,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
                                   CallStackTree? tree,
                                   IReadOnlyDictionary<ulong, IteratorTarget> iterators,
                                   HoBtAccessMap hobtAccess,
-                                  MemoryMap memoryMap,
+                                  AddressMap addressMap,
                                   MemoryHistoryStore memoryHistory,
                                   MemoryObjectMap memoryObjects,
                                   StorageIdMap storageIds,
@@ -35,7 +37,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
     private Dictionary<ulong, Task<ResolvedSignature?>> Signatures { get; } = [];
 
     private TraceReferenceFinder References
-        => field ??= new(Store, tree, iterators, hobtAccess, memoryMap, memoryObjects, storageIds, this);
+        => field ??= new(Store, tree, iterators, hobtAccess, addressMap, memoryObjects, storageIds, this);
 
     public IteratorTarget? GetIterator(ulong value) => iterators.GetValueOrDefault(value);
 
@@ -67,11 +69,11 @@ public sealed class CallStoreLookup(TraceCallStore store,
 
         var isAddress = value != 0 && (isPointer || ArgumentValue.IsAddressSized(slot.Type));
 
-        var entry = isAddress ? memoryMap.GetEntry(value, GetPosition(slot, call)) : null;
+        var entry = isAddress ? addressMap.GetEntry(value, GetPosition(slot, call)) : null;
 
         var isObject = isPointer || entry is not null;
 
-        var containing = isPointer && value != 0 && entry is null ? memoryMap.GetContaining(value, GetPosition(slot, call)) : null;
+        var containing = isPointer && value != 0 && entry is null ? addressMap.GetContaining(value, GetPosition(slot, call)) : null;
 
         if (GetStorageId(slot, value, call) is { } storageId)
         {
@@ -155,7 +157,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
     public int GetEnclosingCall(CallStackNode node, TracePosition position, uint thread)
         => CallsOf(node)?.IndexOfEnclosing(position, thread) ?? -1;
 
-    public CallReference? GetOrigin(MemoryMapEntry origin)
+    public CallReference? GetOrigin(AddressMapEntry origin)
         => Store.GetNode(origin.CallNodeIndex) is { Frame: not null } node && CallsOf(node) is { } calls
             ? new CallReference(node, origin.CallIndex < calls.Count ? origin.CallIndex : -1)
             : null;
@@ -177,7 +179,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
     public async Task<FunctionType?> GetFunctionTypeAsync(CallstackFrame frame)
         => await symbols.ResolveFrameDecoratedNameAsync(frame) is { } decoratedName ? FunctionSignature.GetFunctionType(decoratedName) : null;
 
-    public Task<TraceValueReferences> FindReferencesAsync(ulong value, CancellationToken cancellationToken)
+    public Task<TraceValueReferenceResult> FindReferencesAsync(ulong value, CancellationToken cancellationToken)
         => References.FindAsync(value, cancellationToken);
 
     public async Task<ValueReferences> GetReferencesAsync(ulong value, CancellationToken cancellationToken)
@@ -246,7 +248,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
 
     private ValueDescription? DescribeMemoryObject(ulong value, TracePosition position)
         => memoryObjects.GetOwner(value, position) is { } owner
-           && (owner.Name ?? memoryMap.GetEntry(owner.Address, position)?.ClassName) is { } memoryObject
+           && (owner.Name ?? addressMap.GetEntry(owner.Address, position)?.ClassName) is { } memoryObject
             ? new ValueDescription(owner.GetText(value), memoryObject)
             : null;
 
@@ -268,7 +270,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
             return null;
         }
 
-        var layout = KnownParameters.Apply(ArgumentLayout.GetLayout(parsed), frame.Resolved?.ClassName, frame.Resolved?.MethodName);
+        var layout = KnownParameterLookup.Apply(ArgumentLayout.GetLayout(parsed), frame.Resolved?.ClassName, frame.Resolved?.MethodName);
 
         return new ResolvedSignature(parsed, signature, layout);
     }

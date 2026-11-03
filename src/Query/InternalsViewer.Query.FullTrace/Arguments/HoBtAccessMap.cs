@@ -32,21 +32,21 @@ public sealed class HoBtAccessMap
 
     public static HoBtAccessMap Build(TraceCallStore callStore, IReadOnlyList<CallStackNode?> nodes)
     {
-        var destroyed = CallsOf(callStore, nodes, DestructorMethod).ToLookup(c => c.Slot(ObjectSlot), c => c.FromPosition);
+        var destroyed = GetCalls(callStore, nodes, DestructorMethod).ToLookup(c => c.Slot(ObjectSlot), c => c.FromPosition);
 
         var lifetimes = new Dictionary<ulong, Lifetime[]>();
 
-        foreach (var calls in CallsOf(callStore, nodes, InitMethod).GroupBy(c => c.Slot(ObjectSlot)))
+        foreach (var calls in GetCalls(callStore, nodes, InitMethod).GroupBy(c => c.Slot(ObjectSlot)))
         {
             var ends = destroyed[calls.Key].Order().ToArray();
 
             lifetimes[calls.Key] = [.. calls.Where(c => c.Slot(HoBtIdSlot) != 0)
-                                           .GroupBy(c => c.FromPosition.Sequence)
-                                           .Select(g => (Start: g.Min(c => c.FromPosition), Values: g.Select(c => c.Slot(HoBtIdSlot))))
-                                           .OrderBy(g => g.Start)
-                                           .Select(g => new Lifetime(g.Start,
-                                                                     ends.FirstOrDefault(e => e >= g.Start, TracePosition.Unknown),
-                                                                     GetHoBtId([.. g.Values.Distinct()])))];
+                                            .GroupBy(c => c.FromPosition.Sequence)
+                                            .Select(g => (Start: g.Min(c => c.FromPosition), Values: g.Select(c => c.Slot(HoBtIdSlot))))
+                                            .OrderBy(g => g.Start)
+                                            .Select(g => new Lifetime(g.Start,
+                                                                      ends.FirstOrDefault(e => e >= g.Start, TracePosition.Unknown),
+                                                                      GetHoBtId([.. g.Values.Distinct()])))];
         }
 
         return new HoBtAccessMap(lifetimes);
@@ -88,7 +88,7 @@ public sealed class HoBtAccessMap
         return values[0] >> FullHoBtIdShift == 0 ? values[0] << PackedShift : values[0];
     }
 
-    private static IEnumerable<TraceArgumentCall> CallsOf(TraceCallStore callStore, IReadOnlyList<CallStackNode?> nodes, string method)
+    private static IEnumerable<TraceArgumentCall> GetCalls(TraceCallStore callStore, IReadOnlyList<CallStackNode?> nodes, string method)
     {
         var functions = nodes.OfType<CallStackNode>()
                              .Where(n => n.Frame?.Resolved is { ClassName: ClassName } resolved && resolved.MethodName == method)

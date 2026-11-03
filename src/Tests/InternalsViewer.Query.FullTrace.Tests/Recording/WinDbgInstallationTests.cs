@@ -1,4 +1,5 @@
 using InternalsViewer.Query.FullTrace.Recording;
+using InternalsViewer.Query.FullTrace.Tests.Memory.MemoryObject;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Recording;
 

@@ -28,16 +28,57 @@ namespace InternalsViewer.Query.FullTrace.Hooks;
 ///
 /// - 16 is the return value (RAX), only available at return
 /// </remarks>
-internal abstract class ArgumentHook<TRead>(IEnumerable<(ulong Function, TRead Read)> reads) : ITraceHook
+internal abstract class ArgumentHook<TRead> : ITraceHook
     where TRead : IArgumentRead
 {
-    public IEnumerable<TraceHookFunction> Functions
-        => Reads.Select(r => new TraceHookFunction(r.Key, r.Value.Any(f => f.IsReadAtReturn)
-                                                          ? TraceHookEvents.Entry | TraceHookEvents.Return
-                                                          : TraceHookEvents.Entry));
+    protected ArgumentHook(IEnumerable<(ulong Function, TRead Read)> reads)
+    {
+        var ranges = reads.TryGetNonEnumeratedCount(out var count)
+            ? new Dictionary<ulong, (int Start, int Count)>(count)
+            : new Dictionary<ulong, (int Start, int Count)>();
 
-    private Dictionary<ulong, TRead[]> Reads { get; }
-        = reads.GroupBy(r => r.Function).ToDictionary(g => g.Key, g => g.Select(r => r.Read).ToArray());
+        foreach (var (function, _) in reads)
+        {
+            ref var range = ref CollectionsMarshal.GetValueRefOrAddDefault(ranges, function, out _);
+
+            range.Count++;
+        }
+
+        var next = 0;
+
+        foreach (var function in ranges.Keys)
+        {
+            ref var range = ref CollectionsMarshal.GetValueRefOrNullRef(ranges, function);
+
+            var total = range.Count;
+
+            range = (next, 0);
+
+            next += total;
+        }
+
+        var all = new TRead[next];
+
+        foreach (var (function, read) in reads)
+        {
+            ref var range = ref CollectionsMarshal.GetValueRefOrNullRef(ranges, function);
+
+            all[range.Start + range.Count++] = read;
+        }
+
+        Ranges = ranges;
+
+        Reads = all;
+    }
+
+    public IEnumerable<TraceHookFunction> Functions
+        => Ranges.Select(r => new TraceHookFunction(r.Key, HasReturnRead(r.Value)
+                                                           ? TraceHookEvents.Entry | TraceHookEvents.Return
+                                                           : TraceHookEvents.Entry));
+
+    private Dictionary<ulong, (int Start, int Count)> Ranges { get; }
+
+    private TRead[] Reads { get; }
 
     private Dictionary<ulong, ulong[]> Starts { get; } = [];
 
@@ -45,10 +86,12 @@ internal abstract class ArgumentHook<TRead>(IEnumerable<(ulong Function, TRead R
 
     public void OnEntry(in TraceHookCall call, ITraceReplay replay)
     {
-        if (!Reads.TryGetValue(call.FunctionAddress, out var functionReads))
+        if (!Ranges.TryGetValue(call.FunctionAddress, out var range))
         {
             return;
         }
+
+        var functionReads = Reads.AsSpan(range.Start, range.Count);
 
         var isStackRead = false;
 
@@ -90,9 +133,9 @@ internal abstract class ArgumentHook<TRead>(IEnumerable<(ulong Function, TRead R
             return;
         }
 
-        if (Reads.TryGetValue(call.FunctionAddress, out var functionReads))
+        if (Ranges.TryGetValue(call.FunctionAddress, out var range))
         {
-            foreach (var read in functionReads)
+            foreach (var read in Reads.AsSpan(range.Start, range.Count))
             {
                 if (read.IsReadAtReturn)
                 {
@@ -137,8 +180,21 @@ internal abstract class ArgumentHook<TRead>(IEnumerable<(ulong Function, TRead R
             return;
         }
 
-        var read = replay.Read(TraceHookArguments.GetStackArguments(replay, call), MemoryMarshal.AsBytes(stack)) / sizeof(ulong);
+        var read = replay.Read(TraceHookArgumentReader.GetStackArguments(replay, call), MemoryMarshal.AsBytes(stack)) / sizeof(ulong);
 
         stack[read..].Clear();
+    }
+
+    private bool HasReturnRead((int Start, int Count) range)
+    {
+        foreach (var read in Reads.AsSpan(range.Start, range.Count))
+        {
+            if (read.IsReadAtReturn)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

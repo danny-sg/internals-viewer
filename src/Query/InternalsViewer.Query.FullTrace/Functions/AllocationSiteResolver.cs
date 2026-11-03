@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.FullTrace.Arguments;
@@ -63,7 +64,7 @@ internal static class AllocationSiteResolver
             }
         }
 
-        public MemoryFunction Apply(MemoryFunction function)
+        public AllocationFunction Apply(AllocationFunction function)
             => Sites.TryGetValue((uint)function.Address, out var slots)
                 ? function with { FileSlot = slots.File, LineSlot = slots.Line }
                 : function;

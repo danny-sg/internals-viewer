@@ -142,5 +142,5 @@ public class ColumnStoreLocatorTests
                 (uint)objectId | ((ulong)(uint)type << 32));
     }
 
-    private static ulong[] Columns(int calls) => new ulong[calls * TraceCallColumns.ValueCount];
+    private static ulong[] Columns(int calls) => new ulong[calls * TraceCallChunk.ValueCount];
 }

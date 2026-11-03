@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Memory.Address;
 using System.ComponentModel;
 using System.Text;
 using InternalsViewer.Mcp.Documents;
@@ -5,6 +6,7 @@ using InternalsViewer.Mcp.Formatting;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.History;
+using InternalsViewer.Query.FullTrace.Memory.History.Graph;
 using InternalsViewer.Query.FullTrace.Timeline;
 using ModelContextProtocol;
 using ModelContextProtocol.Server;
@@ -190,7 +192,7 @@ public sealed class ObjectGraphTools(McpDocumentResolver documents)
 
         var block = history.Blocks[found.Block];
 
-        var name = trace.MemoryMap.GetLabel(block.Address, block.FromPosition, block.ToPosition)
+        var name = trace.AddressMap.GetLabel(block.Address, block.FromPosition, block.ToPosition)
                    ?? history.GetAllocatingCall(found.Block, trace.Timeline)?.Symbol
                    ?? "Object";
 

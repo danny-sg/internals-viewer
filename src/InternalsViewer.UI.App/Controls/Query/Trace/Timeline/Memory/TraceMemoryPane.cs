@@ -1179,7 +1179,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
                 extents.AddRange(drafts[block].Select(d => (d.Address, d.Address + (ulong)d.Length)));
             }
 
-            runs.AddRange(Intervals.Coalesce(extents, e => e.Start, e => e.End).Select(e => new Run(e.Start, e.End, segment)));
+            runs.AddRange(IntervalHelper.Coalesce(extents, e => e.Start, e => e.End).Select(e => new Run(e.Start, e.End, segment)));
 
             for (var block = first; block <= index; block++)
             {

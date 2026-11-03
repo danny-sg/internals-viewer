@@ -50,9 +50,9 @@ internal sealed class RecordingNavigator : IQueryCommands
 
     public Task<McpFunctionSignature?> ResolveSignatureAsync(CallstackFrame frame) => Task.FromResult<McpFunctionSignature?>(null);
 
-    public TraceValueReferences? References { get; set; }
+    public TraceValueReferenceResult? References { get; set; }
 
-    public Task<TraceValueReferences?> FindReferencesAsync(ulong value)
+    public Task<TraceValueReferenceResult?> FindReferencesAsync(ulong value)
     {
         Calls.Add($"FindReferences 0x{value:X}");
 

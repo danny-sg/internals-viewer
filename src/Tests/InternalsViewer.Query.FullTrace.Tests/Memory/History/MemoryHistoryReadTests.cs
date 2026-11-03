@@ -1,6 +1,7 @@
 using InternalsViewer.Query.FullTrace.Memory.History;
-using static InternalsViewer.Query.FullTrace.Tests.Memory.History.MemoryHistoryStores;
-using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
+using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
+using static InternalsViewer.Query.FullTrace.Tests.Memory.History.MemoryHistoryStoreHelper;
+using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Memory.History;
 
@@ -17,7 +18,7 @@ public class MemoryHistoryReadTests
         var store = BuildWithReads([Block(Owned, 0x10)],
                                    [(2, Owned, [1])],
                                    [(3, Owned + 8, 4), (4, Owned, 2), (12, Owned + 4, 4)],
-                                   MemoryHistoryStores.Calls((1, 10), (11, 20)));
+                                   MemoryHistoryStoreHelper.Calls((1, 10), (11, 20)));
 
         var reads = store.GetReads(GetBlock(store, Owned));
 
@@ -31,9 +32,9 @@ public class MemoryHistoryReadTests
         var store = BuildWithReads([Block(Owned, 0x10), Block(Unwritten, 0x10)],
                                    [(2, Owned, [1])],
                                    [(3, Unwritten, 8), (4, Owned + 0x100, 8)],
-                                   MemoryHistoryStores.Calls((1, 10)));
+                                   MemoryHistoryStoreHelper.Calls((1, 10)));
 
-        var unwritten = MemoryHistoryStores.GetBlock(store, Unwritten);
+        var unwritten = MemoryHistoryStoreHelper.GetBlock(store, Unwritten);
 
         Assert.Equal((1, 0, 1), (store.ReadCount, store.Blocks[unwritten].WriteCount, store.GetReads(unwritten).Count));
     }
@@ -41,7 +42,7 @@ public class MemoryHistoryReadTests
     [Fact]
     public void Reads_Survive_An_Export_Round_Trip()
     {
-        var store = BuildWithReads([Block(Owned, 0x10)], [(2, Owned, [1])], [(3, Owned + 8, 4)], MemoryHistoryStores.Calls((1, 10)));
+        var store = BuildWithReads([Block(Owned, 0x10)], [(2, Owned, [1])], [(3, Owned + 8, 4)], MemoryHistoryStoreHelper.Calls((1, 10)));
 
         using var stream = new MemoryStream();
 

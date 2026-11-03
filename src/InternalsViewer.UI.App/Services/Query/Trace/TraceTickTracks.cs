@@ -52,7 +52,7 @@ public static class TraceTickTracks
         [RowReturnType.End] = new SKColor(0xF0, 0xF0, 0xF0)
     };
 
-    public static TraceTickTrack GetRows(TraceRowReturnMarks marks)
+    public static TraceTickTrack GetRows(TraceRowReturnMarkMap marks)
     {
         return new(GetRowsName, TraceTickLocation.Top, 0, marks.Ticks)
         {
@@ -127,7 +127,7 @@ public static class TraceTickTracks
 
     public static SKColor GetCategoryColour(CallStackNode node) => node.CategoryColour is { } hex ? ParseColour(hex) : DefaultColour;
 
-    private static SKColor GetPassedUpColour(TraceRowReturnMarks marks, ExecutionOperatorEvent operatorEvent)
+    private static SKColor GetPassedUpColour(TraceRowReturnMarkMap marks, ExecutionOperatorEvent operatorEvent)
         => marks.IsBatch(operatorEvent) ? BatchColour : PassedUpColour;
 
     private static TraceTickValue Value<T>(T value, string label) where T : System.Enum
@@ -137,7 +137,7 @@ public static class TraceTickTracks
     {
         if (calls.GetCallList(tick.FunctionAddress, tick.InstanceAddress) is not { } list
             || tick.CallIndex >= list.Count
-            || TraceReads.GetRead(list[tick.CallIndex], (TraceReadType)tick.Value) is not { } read)
+            || TraceReadResolver.GetRead(list[tick.CallIndex], (TraceReadType)tick.Value) is not { } read)
         {
             yield break;
         }

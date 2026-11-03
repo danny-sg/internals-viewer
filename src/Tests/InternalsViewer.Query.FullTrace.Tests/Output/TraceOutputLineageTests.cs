@@ -1,10 +1,12 @@
+using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Output;
+using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Plans.Model;
-using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
+using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Output;
 
@@ -79,10 +81,10 @@ public class TraceOutputLineageTests
     private static IReadOnlyList<TraceOutputRowSource> GetSources(TraceOutputStructure structure, ExecutionOperatorEvent? child = null)
         => TraceOutputLineage.GetSources(GetLifetimes(child ?? Scan), [structure]);
 
-    private static TraceOperatorLifetimes GetLifetimes(ExecutionOperatorEvent child) => new([Lifetime(Join, 0), Lifetime(child, 1)]);
+    private static TraceOperatorLifetimeList GetLifetimes(ExecutionOperatorEvent child) => new([Lifetime(Join, 0), Lifetime(child, 1)]);
 
     private static TraceOperatorLifetime Lifetime(ExecutionOperatorEvent operatorEvent, int index)
-        => new(Thread, operatorEvent, index, [Whole()], MemoryInUseCurve.Empty, TraceScale.Default);
+        => new(Thread, operatorEvent, index, [Whole()], MemoryUsageCurve.Empty, TraceScale.Default);
 
     private static TraceOutputStructure ScanColumns() => new(OutputRow, [ScanIterator, ScanIterator], 0);
 

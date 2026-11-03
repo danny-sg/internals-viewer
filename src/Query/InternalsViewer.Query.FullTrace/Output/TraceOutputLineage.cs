@@ -5,7 +5,7 @@ namespace InternalsViewer.Query.FullTrace.Output;
 
 internal static class TraceOutputLineage
 {
-    public static IReadOnlyList<TraceOutputRowSource> GetSources(TraceOperatorLifetimes lifetimes,
+    public static IReadOnlyList<TraceOutputRowSource> GetSources(TraceOperatorLifetimeList lifetimes,
                                                                  IReadOnlyList<TraceOutputStructure> structures)
     {
         var owners = lifetimes.OperatorsByInstance;

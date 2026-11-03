@@ -1,11 +1,12 @@
+using InternalsViewer.Query.FullTrace.Memory.Address;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.Address.Enums;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Signatures.Enums;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Signatures;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Stack;
-using InternalsViewer.Query.FullTrace.Memory.Enums;
 
 namespace InternalsViewer.UI.App.Tests.Models.Query.Trace.CallStack.Stack;
 
@@ -23,7 +24,7 @@ public class SourcePathTests
         var manager = tree.AddCall(session, Frame("IndexPageManager", "GetPageWithKey", 0x30), 1);
         var seek = tree.AddCall(manager, Frame("BTreeMgr", "Seek", 0x40), 1);
 
-        var origin = Origin(MemoryMapOperation.Constructed, 15);
+        var origin = Origin(AddressMapOperation.Constructed, 15);
 
         var value = Value(origin);
 
@@ -34,7 +35,7 @@ public class SourcePathTests
 
         Assert.Equal([At(30), At(20), At(15)], steps.Select(s => s.Position));
         Assert.Equal([0, 1, 2], steps.Select(s => s.Depth));
-        Assert.Equal([null, null, MemoryMapOperation.Constructed], steps.Select(s => s.Creation));
+        Assert.Equal([null, null, AddressMapOperation.Constructed], steps.Select(s => s.Creation));
         Assert.Equal("SEBindings::SEBindings", steps[^1].Node.Symbol);
     }
 
@@ -47,7 +48,7 @@ public class SourcePathTests
         var helper = tree.AddCall(session, Frame("IndexPageManager", "Helper", 0x20), 1);
         var seek = tree.AddCall(helper, Frame("BTreeMgr", "Seek", 0x30), 1);
 
-        var value = Value(Origin(MemoryMapOperation.Constructed, 15));
+        var value = Value(Origin(AddressMapOperation.Constructed, 15));
 
         var steps = SourcePath.Build(value,
                                      Row(seek, 40, value),
@@ -69,7 +70,7 @@ public class SourcePathTests
         var constructor = tree.AddCall(outer, Frame("SEBindings", "SEBindings", 0x20), 1);
         var seek = tree.AddCall(outer, Frame("BTreeMgr", "Seek", 0x30), 1);
 
-        var value = Value(Origin(MemoryMapOperation.Constructed, 15));
+        var value = Value(Origin(AddressMapOperation.Constructed, 15));
 
         var steps = SourcePath.Build(value, Row(seek, 40, value), [Row(outer, 10, Value())], constructor);
 
@@ -85,12 +86,12 @@ public class SourcePathTests
         var constructor = tree.AddCall(outer, Frame("SEBindings", "SEBindings", 0x20), 1);
         var init = tree.AddCall(constructor, Frame("SEBindings", "Init", 0x30), 1);
 
-        var value = Value(Origin(MemoryMapOperation.Constructed, 15));
+        var value = Value(Origin(AddressMapOperation.Constructed, 15));
 
         var steps = SourcePath.Build(value, Row(init, 40, value), [Row(constructor, 15, This()), Row(outer, 10)], constructor);
 
         Assert.Equal([At(15)], steps.Select(s => s.Position));
-        Assert.Equal(MemoryMapOperation.Constructed, steps[^1].Creation);
+        Assert.Equal(AddressMapOperation.Constructed, steps[^1].Creation);
     }
 
     [Fact]
@@ -100,7 +101,7 @@ public class SourcePathTests
 
         var constructor = tree.AddCall(tree.Root, Frame("SEBindings", "SEBindings", 0x20), 1);
 
-        var value = Value(Origin(MemoryMapOperation.Constructed, 15));
+        var value = Value(Origin(AddressMapOperation.Constructed, 15));
 
         var steps = SourcePath.Build(value, Row(constructor, 15, value), [], constructor);
 
@@ -115,7 +116,7 @@ public class SourcePathTests
         var first = tree.AddCall(tree.Root, Frame("SEBindings", "Bind", 0x20), 1);
         var seek = tree.AddCall(tree.Root, Frame("BTreeMgr", "Seek", 0x30), 1);
 
-        var value = Value(Origin(MemoryMapOperation.Visited, 12));
+        var value = Value(Origin(AddressMapOperation.Visited, 12));
 
         var steps = SourcePath.Build(value, Row(seek, 40, value), [], first);
 
@@ -133,7 +134,7 @@ public class SourcePathTests
         var later = tree.AddCall(tree.Root, Frame("SEBindings", "Bind", 0x20), 1);
         var seek = tree.AddCall(tree.Root, Frame("BTreeMgr", "Seek", 0x30), 1);
 
-        var value = Value(Origin(MemoryMapOperation.Visited, 50));
+        var value = Value(Origin(AddressMapOperation.Visited, 50));
 
         var steps = SourcePath.Build(value, Row(seek, 40, value), [], later);
 
@@ -204,7 +205,7 @@ public class SourcePathTests
         var constructor = tree.AddCall(session, Frame("SEBindings", "SEBindings", 0x20), 1);
         var seek = tree.AddCall(session, Frame("BTreeMgr", "Seek", 0x30), 1);
 
-        var value = Value(Origin(MemoryMapOperation.Constructed, 15));
+        var value = Value(Origin(AddressMapOperation.Constructed, 15));
 
         var steps = SourcePath.Build(value, Row(seek, 40, value), [Row(session, 10)], constructor, 3);
 
@@ -221,10 +222,10 @@ public class SourcePathTests
         Assert.Equal(step.Stack, step.VisibleStack);
     }
 
-    private static MemoryMapEntry Origin(MemoryMapOperation operation, ulong call)
+    private static AddressMapEntry Origin(AddressMapOperation operation, ulong call)
         => new(Address, operation, 0, 0, At(call), TracePosition.Unknown, 1, 0, "SEBindings", null);
 
-    private static CallSignaturePart Value(MemoryMapEntry? origin = null, bool other = false)
+    private static CallSignaturePart Value(AddressMapEntry? origin = null, bool other = false)
         => new($"0x{Address:X}",
                CallSignaturePartKind.Value,
                other ? Address + 8 : Address,

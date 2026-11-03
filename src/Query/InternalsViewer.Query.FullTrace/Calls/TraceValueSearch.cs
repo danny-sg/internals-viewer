@@ -25,7 +25,7 @@ public sealed class TraceValueSearch(TraceCallStore store)
 
         var options = new ParallelOptions { CancellationToken = cancellationToken };
 
-        Parallel.ForEach(GetScans(), options, () => Array.Empty<ulong>(), (scan, _, buffer) =>
+        Parallel.ForEach(GetScans(), options, Array.Empty<ulong>, (scan, _, buffer) =>
         {
             var (functionAddress, instanceAddress, start, chunk) = scan;
 
@@ -214,10 +214,10 @@ public sealed class TraceValueSearch(TraceCallStore store)
         return include is null || include(node) ? new TraceValueCall(callIndex, argument.FromPosition, node, argument.ThreadId) : null;
     }
 
-    private bool IsIncluded(TraceCallColumns columns, int callIndex, Func<CallStackNode?, bool>? include)
+    private bool IsIncluded(TraceCallChunk columns, int callIndex, Func<CallStackNode?, bool>? include)
         => include is null || include(store.GetNode(columns.GetCallNodeIndex(callIndex)));
 
-    private TraceValueCall GetValueCall(TraceCallColumns columns, int callIndex, int start)
+    private TraceValueCall GetValueCall(TraceCallChunk columns, int callIndex, int start)
         => new(start + callIndex, columns.GetFromPosition(callIndex), store.GetNode(columns.GetCallNodeIndex(callIndex)), columns.GetThread(callIndex));
 
     private static TraceValueUse MergeValueUse(TraceValueUse existing, TraceValueUse use) => existing with
@@ -242,7 +242,7 @@ public sealed class TraceValueSearch(TraceCallStore store)
         }
     }
 
-    private static IEnumerable<string> GetLocations(TraceCallColumns columns, int callIndex, ulong value)
+    private static IEnumerable<string> GetLocations(TraceCallChunk columns, int callIndex, ulong value)
     {
         for (var slot = 0; slot < ArgumentLayout.RegisterCount; slot++)
         {

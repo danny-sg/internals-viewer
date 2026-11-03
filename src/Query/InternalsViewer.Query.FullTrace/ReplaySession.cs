@@ -1,8 +1,11 @@
+using InternalsViewer.Query.FullTrace.Memory.Address;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using System.Runtime.InteropServices;
 using System.Text;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Memory.Address.Enums;
+using InternalsViewer.Query.FullTrace.Memory.History.Capture;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Recording;
@@ -13,10 +16,9 @@ using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Stubs;
-using InternalsViewer.Query.FullTrace.Memory.Enums;
 using InternalsViewer.Query.FullTrace.Memory.History;
-using InternalsViewer.Query.FullTrace.Memory.History.StackObjects;
-using InternalsViewer.Query.FullTrace.Memory.History.Watches;
+using InternalsViewer.Query.FullTrace.Memory.History.Capture.StackObjects;
+using InternalsViewer.Query.FullTrace.Memory.History.Capture.Watches;
 
 namespace InternalsViewer.Query.FullTrace;
 
@@ -88,7 +90,7 @@ internal sealed class ReplaySession : IDisposable
         => Task.Run(() => Open(trace), cancellationToken);
 
     public async Task<ReplayResult> ReplayAsync(IReadOnlyCollection<uint> threadIds,
-                                                ReplayFunctions functions,
+                                                ReplayFunctionTable functions,
                                                 IReadOnlyList<CustomHookDefinition> customHooks,
                                                 bool isStackRecorded,
                                                 IProgress<double>? progress,
@@ -152,7 +154,7 @@ internal sealed class ReplaySession : IDisposable
     }
 
     private ReplayResult Replay(uint[] threads,
-                                ReplayFunctions functions,
+                                ReplayFunctionTable functions,
                                 IReadOnlyList<CustomHookDefinition> customHooks,
                                 bool isStackRecorded,
                                 IProgress<double>? progress,
@@ -187,12 +189,12 @@ internal sealed class ReplaySession : IDisposable
 
         ulong[] instanceMethods = [.. functions.InstanceMethods.Select(ReplayBridge.PackInstanceMethod)];
 
-        var operations = MemoryMapHook.GetOperations(functions.MemoryMapFunctions);
+        var operations = AddressMapHook.GetOperations(functions.AddressMapFunctions);
 
-        var memoryMap = new MemoryMapHook(operations,
-                                          functions.MemoryFunctions
+        var addressMap = new AddressMapHook(operations,
+                                          functions.AllocationFunctions
                                                    .Where(f => f is { IsAllocation: true, IsVirtual: false })
-                                                   .Select(f => new MemoryMapFunction(f.Address, MemoryMapOperation.Allocated)),
+                                                   .Select(f => new AddressMapFunction(f.Address, AddressMapOperation.Allocated)),
                                           VtableResolver.GetUniqueClasses(functions.Vtables));
 
         var planNodeHook = new PlanNodeHook(functions.PlanNodeFunctions, functions.PlanObjects);
@@ -205,9 +207,9 @@ internal sealed class ReplaySession : IDisposable
 
         var stack = isStackRecorded ? new StackSnapshotHook(operations) : null;
 
-        var hooks = new TraceHooks([planNodeHook,
+        var hooks = new TraceHookDispatcher([planNodeHook,
                                     new LocatorHook(functions.LocatorReads, store, images),
-                                    memoryMap,
+                                    addressMap,
                                     output,
                                     customHook,
                                     bufferPool,
@@ -279,7 +281,7 @@ internal sealed class ReplaySession : IDisposable
                                         Modules,
                                         store.Build(),
                                         timeline.Build(nodes),
-                                        memoryMap.Build(),
+                                        addressMap.Build(),
                                         customHook.Build(),
                                         bufferPool.Build(),
                                         output.Build(),
@@ -287,7 +289,7 @@ internal sealed class ReplaySession : IDisposable
                                         planNodeHook.GetTeardowns())
                 {
                     Buffers = bufferPool.GetBuffers(),
-                    StackSnapshots = stack?.Build() ?? StackSnapshots.Empty
+                    StackSnapshotResult = stack?.Build() ?? StackSnapshotResult.Empty
                 };
             }
             finally

@@ -35,7 +35,7 @@ public sealed partial class TraceCallStore
 
         public void Add(ulong functionAddress, ulong instanceAddress, IntPtr columns, int calls)
         {
-            var count = calls * TraceCallColumns.ValueCount;
+            var count = calls * TraceCallChunk.ValueCount;
 
             var buffer = ColumnBuffers.Rent(count);
 
@@ -61,7 +61,7 @@ public sealed partial class TraceCallStore
         }
 
         public void Add(ulong functionAddress, ulong instanceAddress, ReadOnlySpan<ulong> columns, int calls)
-            => GetChunks(functionAddress, instanceAddress).Add(Task.FromResult(Compress(columns.ToArray(), calls)));
+            => GetChunks(functionAddress, instanceAddress).Add(Task.FromResult(Compress([.. columns], calls)));
 
         public void AddToPosition(ulong functionAddress,
                                   ulong instanceAddress,
@@ -167,7 +167,7 @@ public sealed partial class TraceCallStore
                         columns.SetToPosition((int)callIndex - first, toPosition, returnValue, returned);
                     }
 
-                    chunks[index] = Compress(columns.Values.AsSpan(0, calls * TraceCallColumns.ValueCount), calls);
+                    chunks[index] = Compress(columns.Values.AsSpan(0, calls * TraceCallChunk.ValueCount), calls);
                 }
 
                 first += calls;
@@ -176,7 +176,7 @@ public sealed partial class TraceCallStore
 
         private Chunk Compress(Span<ulong> columns, int calls)
         {
-            TraceCallColumns.Encode(columns, calls);
+            TraceCallChunk.Encode(columns, calls);
 
             var compressed = CompressionBuffers.TryTake(out var buffer) ? buffer : new MemoryStream();
 
@@ -201,7 +201,7 @@ public sealed partial class TraceCallStore
         {
             ref var found = ref CollectionsMarshal.GetValueRefOrAddDefault(Found, (functionAddress, instanceAddress), out _);
 
-            return found ??= new ChunkedList<FoundLocator>();
+            return found ??= [];
         }
 
         private List<Task<Chunk>> GetChunks(ulong functionAddress, ulong instanceAddress)

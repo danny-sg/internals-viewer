@@ -1,3 +1,5 @@
+using InternalsViewer.Query.FullTrace.Memory.Address;
+using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.FullTrace.Arguments;
@@ -5,7 +7,8 @@ using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory;
-using static InternalsViewer.Query.FullTrace.Tests.TraceCallRows;
+using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
+using static InternalsViewer.Query.FullTrace.Tests.TraceCallRowHelper;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Calls;
 
@@ -88,7 +91,7 @@ public class TraceReferenceFinderTests
                                                CallStackTree tree,
                                                FunctionType type,
                                                Dictionary<ulong, IteratorTarget>? iterators = null)
-        => new(store, tree, iterators ?? [], HoBtAccessMap.Empty, MemoryMap.Empty, MemoryObjectMap.Empty, StorageIdMap.Empty,
+        => new(store, tree, iterators ?? [], HoBtAccessMap.Empty, AddressMap.Empty, MemoryObjectMap.Empty, StorageIdMap.Empty,
                new Signatures(type));
 
     private static CallstackFrame Frame(ulong rva, string symbol) => new()

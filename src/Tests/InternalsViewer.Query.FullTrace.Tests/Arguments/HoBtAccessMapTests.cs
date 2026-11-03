@@ -3,7 +3,9 @@ using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
-using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
+using InternalsViewer.Query.FullTrace.Tests.Memory.Allocation;
+using InternalsViewer.Query.FullTrace.Tests.Memory.MemoryObject;
+using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Arguments;
 
@@ -76,7 +78,7 @@ public class HoBtAccessMapTests
     {
         var signature = new FunctionSignature(["enum ACCESSTYPE", "unsigned __int64", "XDES *"], FunctionType.Member, "void");
 
-        var layout = KnownParameters.Apply(ArgumentLayout.GetLayout(signature), "HoBtAccess", "Init");
+        var layout = KnownParameterLookup.Apply(ArgumentLayout.GetLayout(signature), "HoBtAccess", "Init");
 
         Assert.Equal(["this", string.Empty, "hobt_id", string.Empty], layout.Slots.Select(s => s.Name));
         Assert.Equal([false, false, true, false], layout.Slots.Select(s => s.IsHoBtId));
@@ -89,7 +91,7 @@ public class HoBtAccessMapTests
                                               FunctionType.Free,
                                               "long");
 
-        var layout = KnownParameters.Apply(ArgumentLayout.GetLayout(signature), null, "GetHoBtLockInternal");
+        var layout = KnownParameterLookup.Apply(ArgumentLayout.GetLayout(signature), null, "GetHoBtLockInternal");
 
         Assert.Equal([false, true, false, false, false], layout.Slots.Select(s => s.IsHoBtId));
     }
@@ -106,7 +108,7 @@ public class HoBtAccessMapTests
                                               FunctionType.Free,
                                               "long");
 
-        var layout = KnownParameters.Apply(ArgumentLayout.GetLayout(signature), null, "CreateAccessorCommon");
+        var layout = KnownParameterLookup.Apply(ArgumentLayout.GetLayout(signature), null, "CreateAccessorCommon");
 
         Assert.Equal([1], layout.Slots.Select((s, i) => (s, i)).Where(s => s.s.IsHoBtId).Select(s => s.i));
     }
@@ -116,7 +118,7 @@ public class HoBtAccessMapTests
     {
         var signature = new FunctionSignature(["unsigned __int64", "XDES *", "RowsetExecContext const *"], FunctionType.Member, "long");
 
-        var layout = KnownParameters.Apply(ArgumentLayout.GetLayout(signature), "HeapDataSetSession", "WakeUpInternal");
+        var layout = KnownParameterLookup.Apply(ArgumentLayout.GetLayout(signature), "HeapDataSetSession", "WakeUpInternal");
 
         Assert.Equal(["this", "hobt_id", string.Empty, string.Empty], layout.Slots.Select(s => s.Name));
     }
@@ -128,8 +130,8 @@ public class HoBtAccessMapTests
 
         var other = new FunctionSignature(["unsigned __int64"], FunctionType.Member, "void");
 
-        Assert.DoesNotContain(KnownParameters.Apply(ArgumentLayout.GetLayout(packed), "HoBtAccess", "Init").Slots, s => s.IsHoBtId);
-        Assert.DoesNotContain(KnownParameters.Apply(ArgumentLayout.GetLayout(other), "HoBtAccess", "GetDbId").Slots, s => s.IsHoBtId);
+        Assert.DoesNotContain(KnownParameterLookup.Apply(ArgumentLayout.GetLayout(packed), "HoBtAccess", "Init").Slots, s => s.IsHoBtId);
+        Assert.DoesNotContain(KnownParameterLookup.Apply(ArgumentLayout.GetLayout(other), "HoBtAccess", "GetDbId").Slots, s => s.IsHoBtId);
     }
 
     private sealed class Recording
@@ -152,7 +154,7 @@ public class HoBtAccessMapTests
 
             foreach (var (frame, rows) in Functions.Values)
             {
-                builder.Add(frame.Address, frame.InstanceAddress, TraceCallRows.Chunk([.. rows]), rows.Count);
+                builder.Add(frame.Address, frame.InstanceAddress, TraceCallRowHelper.Chunk([.. rows]), rows.Count);
             }
 
             return HoBtAccessMap.Build(builder.Build(), Nodes);
@@ -184,7 +186,7 @@ public class HoBtAccessMapTests
                 Functions[method] = function;
             }
 
-            function.Rows.Add(TraceCallRows.Row(sequence, flags: 1, rcx: rcx, rdx: rdx, r8: r8, callNodeIndex: Nodes.Count - 1));
+            function.Rows.Add(TraceCallRowHelper.Row(sequence, flags: 1, rcx: rcx, rdx: rdx, r8: r8, callNodeIndex: Nodes.Count - 1));
 
             return this;
         }

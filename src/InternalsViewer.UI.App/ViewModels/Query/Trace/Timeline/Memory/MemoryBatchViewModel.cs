@@ -8,8 +8,9 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Memory;
-using InternalsViewer.Query.FullTrace.Memory.History.Batches;
-using InternalsViewer.Query.FullTrace.Memory.History.Batches.Enums;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Batches;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Batches.Enums;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
@@ -160,7 +161,7 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
 
     private PlayheadMemoryViewModel? Owner { get; set; }
 
-    private MemoryHistoryBatches? Batches { get; set; }
+    private MemoryHistoryBatchResolver? Batches { get; set; }
 
     private int Block { get; set; } = -1;
 
@@ -377,14 +378,14 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
         Show();
     }
 
-    private static BatchSnapshot? ReadSnapshot(MemoryHistoryBatches batches,
+    private static BatchSnapshot? ReadSnapshot(MemoryHistoryBatchResolver batchResolver,
                                                int block,
                                                ulong blockAddress,
                                                int size,
                                                BatchPartType type,
                                                TracePosition position)
     {
-        if (batches.Read(block, position) is not { } batch)
+        if (batchResolver.Read(block, position) is not { } batch)
         {
             return null;
         }

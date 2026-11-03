@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool.Enums;
 using InternalsViewer.Query.FullTrace.Memory.History;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 
 namespace InternalsViewer.Query.FullTrace.Memory.BufferPool;
 

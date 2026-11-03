@@ -8,17 +8,17 @@ internal sealed class AddressIndex(ulong[] starts, ulong largest)
 
     public ulong Largest { get; } = largest;
 
-    public Candidates GetCandidates(ulong address, bool isStartIncluded = true)
+    public CandidateEnumerator GetCandidates(ulong address, bool isStartIncluded = true)
         => new(Starts,
                Largest,
                address,
                isStartIncluded ? SortedSearch.FirstAfter(Starts, address) : SortedSearch.FirstAtOrAfter(Starts, address));
 
-    public struct Candidates(ulong[] starts, ulong largest, ulong address, int next)
+    public struct CandidateEnumerator(ulong[] starts, ulong largest, ulong address, int next)
     {
         public int Current { get; private set; } = next;
 
-        public readonly Candidates GetEnumerator() => this;
+        public readonly CandidateEnumerator GetEnumerator() => this;
 
         public bool MoveNext()
         {

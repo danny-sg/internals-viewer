@@ -44,9 +44,9 @@ internal sealed class OutputHook(AddressTable<OutputFunctionType> functions, Add
 
     private HashSet<ulong> OtherExecutors { get; } = [];
 
-    private Dictionary<ulong, PendingColumns> Undecided { get; } = [];
+    private Dictionary<ulong, PendingColumnList> Undecided { get; } = [];
 
-    private Dictionary<ulong, PendingColumns> Columns { get; } = [];
+    private Dictionary<ulong, PendingColumnList> Columns { get; } = [];
 
     private Dictionary<ulong, DirectSend> DirectSends { get; } = [];
 
@@ -97,7 +97,7 @@ internal sealed class OutputHook(AddressTable<OutputFunctionType> functions, Add
         }
     }
 
-    public List<OutputAddresses> Build()
+    public List<OutputAddressEntry> Build()
         => [.. Columns.Keys.Union(DirectSends.Keys).Select(GetAddresses)];
 
     private bool Has(OutputFunctionType type) => functions.Values.Contains(type);
@@ -130,7 +130,7 @@ internal sealed class OutputHook(AddressTable<OutputFunctionType> functions, Add
         Frames[call.Thread] = new EvaluationFrame(call.Id,
                                                   executor,
                                                   call.Arguments[EvaluationContextArgument],
-                                                  IsKnown(executor) ? null : new PendingColumns([], call.Position));
+                                                  IsKnown(executor) ? null : new PendingColumnList([], call.Position));
     }
 
     private void StartRead(in TraceHookCall call, bool isVariant, ITraceReplay replay)
@@ -178,7 +178,7 @@ internal sealed class OutputHook(AddressTable<OutputFunctionType> functions, Add
         }
     }
 
-    private void Classify(ulong executor, PendingColumns columns, ITraceReplay replay)
+    private void Classify(ulong executor, PendingColumnList columns, ITraceReplay replay)
     {
         switch (GetOutputRow(replay, executor))
         {
@@ -231,20 +231,20 @@ internal sealed class OutputHook(AddressTable<OutputFunctionType> functions, Add
         columns.Addresses.Add(source);
     }
 
-    private OutputAddresses GetAddresses(ulong outputRow)
+    private OutputAddressEntry GetAddresses(ulong outputRow)
     {
         var columns = Columns.GetValueOrDefault(outputRow);
 
         var send = DirectSends.GetValueOrDefault(outputRow);
 
-        return new OutputAddresses(outputRow, columns?.Addresses ?? [], send.Values, columns?.Position ?? send.Position);
+        return new OutputAddressEntry(outputRow, columns?.Addresses ?? [], send.Values, columns?.Position ?? send.Position);
     }
 
     private readonly record struct PendingRead(ulong Address, bool IsVariant);
 
     private readonly record struct DirectSend(ulong Values, TracePosition Position);
 
-    private sealed record PendingColumns(List<ulong> Addresses, TracePosition Position);
+    private sealed record PendingColumnList(List<ulong> Addresses, TracePosition Position);
 
-    private sealed record EvaluationFrame(ulong Id, ulong Executor, ulong Context, PendingColumns? Columns);
+    private sealed record EvaluationFrame(ulong Id, ulong Executor, ulong Context, PendingColumnList? Columns);
 }

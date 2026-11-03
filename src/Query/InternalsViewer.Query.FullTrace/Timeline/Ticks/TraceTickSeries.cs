@@ -11,7 +11,7 @@ public sealed class TraceTickSeries
     {
         Ticks = ticks;
 
-        ByOperator = OperatorMarks<TraceTick>.Build(ticks, scale, t => t.Operator, t => t.Thread);
+        ByOperator = OperatorMarkMap<TraceTick>.Build(ticks, scale, t => t.Operator, t => t.Thread);
     }
 
     public static TraceTickSeries Empty { get; } = new([], TraceScale.Default);
@@ -22,7 +22,7 @@ public sealed class TraceTickSeries
 
     private TraceTick[] Ticks { get; }
 
-    private OperatorMarks<TraceTick> ByOperator { get; }
+    private OperatorMarkMap<TraceTick> ByOperator { get; }
 
     public TraceMarkIndex<TraceTick>? GetTicks(ExecutionOperatorEvent operatorEvent, uint thread) => ByOperator.Get(operatorEvent, thread);
 
@@ -31,15 +31,15 @@ public sealed class TraceTickSeries
 
     public static TraceTickSeries FromDefinition(TraceTimeline timeline,
                                                  TraceCallStore calls,
-                                                 TraceOperatorLifetimes lifetimes,
+                                                 TraceOperatorLifetimeList lifetimes,
                                                  TraceTickDefinition definition)
-        => FromDefinition(timeline, calls, lifetimes, definition, EnclosingOperatorCalls.Build(calls, lifetimes.OperatorsByInstance));
+        => FromDefinition(timeline, calls, lifetimes, definition, EnclosingOperatorCallIndex.Build(calls, lifetimes.OperatorsByInstance));
 
     internal static TraceTickSeries FromDefinition(TraceTimeline timeline,
                                                    TraceCallStore calls,
-                                                   TraceOperatorLifetimes lifetimes,
+                                                   TraceOperatorLifetimeList lifetimes,
                                                    TraceTickDefinition definition,
-                                                   EnclosingOperatorCalls enclosing)
+                                                   EnclosingOperatorCallIndex enclosing)
     {
         var nodes = new Dictionary<CallStackNode, bool>(ReferenceEqualityComparer.Instance);
 
@@ -55,18 +55,18 @@ public sealed class TraceTickSeries
 
     internal static TraceTickSeries FromCalls(TraceTimeline timeline,
                                               TraceCallStore calls,
-                                              TraceOperatorLifetimes lifetimes,
+                                              TraceOperatorLifetimeList lifetimes,
                                               Func<CallstackFrame, bool> isFunction,
                                               Func<CallstackFrame, TraceArgumentCall, byte?> getValue,
-                                              EnclosingOperatorCalls enclosing)
+                                              EnclosingOperatorCallIndex enclosing)
         => Build(timeline, calls, lifetimes, enclosing, n => n.Frame is { } frame && isFunction(frame), getValue, null, null);
 
     internal static TraceTickSeries Create(IEnumerable<TraceTick> ticks, TraceScale scale) => new([.. ticks], scale);
 
     private static TraceTickSeries Build(TraceTimeline timeline,
                                          TraceCallStore calls,
-                                         TraceOperatorLifetimes lifetimes,
-                                         EnclosingOperatorCalls enclosing,
+                                         TraceOperatorLifetimeList lifetimes,
+                                         EnclosingOperatorCallIndex enclosing,
                                          Func<CallStackNode, bool> isFunction,
                                          Func<CallstackFrame, TraceArgumentCall, byte?> getValue,
                                          Func<CallStackNode, bool>? isNode,

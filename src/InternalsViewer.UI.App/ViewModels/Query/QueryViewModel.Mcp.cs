@@ -344,7 +344,7 @@ public partial class QueryViewModel : IMcpContextSource, IQueryCommands
         return resolved is null ? null : new McpFunctionSignature(resolved.Text ?? string.Empty, resolved.Layout);
     }
 
-    public async Task<TraceValueReferences?> FindReferencesAsync(ulong value)
+    public async Task<TraceValueReferenceResult?> FindReferencesAsync(ulong value)
         => Arguments.Lookup is { } lookup ? await lookup.FindReferencesAsync(value, CancellationToken.None) : null;
 
     public Task SetOptionAsync(string key, bool enabled)

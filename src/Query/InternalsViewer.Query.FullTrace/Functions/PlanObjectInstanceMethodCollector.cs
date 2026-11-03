@@ -42,7 +42,7 @@ internal static class PlanObjectInstanceMethodCollector
     {
         SymbolsHelper.Split(symbol, out var className, out _);
 
-        return className.Length > 0 && IteratorSymbols.IsPlanObject(className);
+        return className.Length > 0 && IteratorSymbolLookup.IsPlanObject(className);
     }
 
     public static bool IsInstanceMethod(ReadOnlySpan<char> symbol)
@@ -54,9 +54,9 @@ internal static class PlanObjectInstanceMethodCollector
             return false;
         }
 
-        return IteratorSymbols.IsPlanObject(className)
-               || ((IteratorSymbols.IsIterator(className) || IteratorSymbols.IsQueryScan(className))
-                   && IteratorSymbols.IsIteratorMethod(methodName));
+        return IteratorSymbolLookup.IsPlanObject(className)
+               || ((IteratorSymbolLookup.IsIterator(className) || IteratorSymbolLookup.IsQueryScan(className))
+                   && IteratorSymbolLookup.IsIteratorMethod(methodName));
     }
 
     public static List<InstanceMethod> FindInstanceMethods(IEnumerable<uint> addresses, DiaResolver resolver)
@@ -80,7 +80,7 @@ internal static class PlanObjectInstanceMethodCollector
         {
             var parameter = parameters[index].TrimEnd();
 
-            if (IteratorSymbols.IsInstanceClass(parameter) && parameter.EndsWith('*'))
+            if (IteratorSymbolLookup.IsInstanceClass(parameter) && parameter.EndsWith('*'))
             {
                 return index;
             }

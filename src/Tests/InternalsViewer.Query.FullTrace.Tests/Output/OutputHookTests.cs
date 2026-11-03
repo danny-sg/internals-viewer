@@ -1,7 +1,7 @@
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Output.Enums;
-using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
+using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Output;
 
@@ -235,7 +235,7 @@ public class OutputHookTests
     public void Functions_Without_The_Output_Row_Class_Hook_Nothing()
         => Assert.Empty(new OutputHook(new(CreateFunctions()), new(new Dictionary<ulong, OutputValueClass>())).Functions);
 
-    private static IReadOnlyList<OutputAddresses> Capture(FakeTraceReplay replay)
+    private static IReadOnlyList<OutputAddressEntry> Capture(FakeTraceReplay replay)
     {
         var hook = CreateHook();
 

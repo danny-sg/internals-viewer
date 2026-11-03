@@ -1,10 +1,12 @@
+using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool.Enums;
-using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
+using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
+using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Memory.BufferPool;
 

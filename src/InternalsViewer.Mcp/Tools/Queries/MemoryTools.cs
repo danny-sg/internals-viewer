@@ -1,3 +1,5 @@
+using InternalsViewer.Query.FullTrace.Memory.Address;
+using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
 using System.Buffers.Binary;
 using System.ComponentModel;
 using System.Text;
@@ -35,7 +37,7 @@ public sealed class MemoryTools(McpDocumentResolver documents)
 
         var trace = scope.RequireTrace();
 
-        var memory = trace.Memory;
+        var memory = trace.Allocation;
 
         var timeline = trace.Timeline;
 
@@ -83,20 +85,20 @@ public sealed class MemoryTools(McpDocumentResolver documents)
             builder.AppendLine($"workspace (grant) memory: peak {Format.Bytes(workspacePeak)}");
         }
 
-        if (trace.MemoryMap.Count > 0)
+        if (trace.AddressMap.Count > 0)
         {
             builder.AppendLine();
 
-            AppendMemoryMap(builder, scope, trace, grep, null, "class", 90, limit);
+            AppendAddressMap(builder, scope, trace, grep, null, "class", 90, limit);
         }
 
         return builder.ToString();
     }
 
-    [McpServerTool(Name = "query_memorymap", ReadOnly = true)]
+    [McpServerTool(Name = "query_addressmap", ReadOnly = true)]
     [Description("Full Trace memory map: allocations labelled by C++ class, allocation site and the SQL Server memory object they " +
                  "came from (MEMOBJ_ type), grouped, and the entries matching a regex or address")]
-    public async Task<string> MemoryMap([Description("Regex over class name, allocation site or memory object to list matching entries")]
+    public async Task<string> AddressMap([Description("Regex over class name, allocation site or memory object to list matching entries")]
                                         string? grep = null,
                                         [Description("Hex address to list the entries of one block")] string? address = null,
                                         [Description("How to group the totals: class, site, memoryobject or operation")]
@@ -110,14 +112,14 @@ public sealed class MemoryTools(McpDocumentResolver documents)
 
         var trace = scope.RequireTrace();
 
-        if (trace.MemoryMap.Count == 0)
+        if (trace.AddressMap.Count == 0)
         {
             return "no memory map in the trace";
         }
 
         var builder = new StringBuilder();
 
-        AppendMemoryMap(builder, scope, trace, grep, address is null ? null : Parse.Hex(address), by, width, limit);
+        AppendAddressMap(builder, scope, trace, grep, address is null ? null : Parse.Hex(address), by, width, limit);
 
         return builder.ToString();
     }
@@ -316,7 +318,7 @@ public sealed class MemoryTools(McpDocumentResolver documents)
         return builder.ToString();
     }
 
-    private static void AppendMemoryMap(StringBuilder builder,
+    private static void AppendAddressMap(StringBuilder builder,
                                         McpDocumentScope scope,
                                         TraceResult trace,
                                         string? grep,
@@ -339,11 +341,11 @@ public sealed class MemoryTools(McpDocumentResolver documents)
 
         var operations = new Dictionary<string, int>();
 
-        var matched = new List<MemoryMapEntry>();
+        var matched = new List<AddressMapEntry>();
 
         var count = 0;
 
-        foreach (var entry in trace.MemoryMap.GetEntries())
+        foreach (var entry in trace.AddressMap.GetEntries())
         {
             count++;
 
@@ -354,7 +356,7 @@ public sealed class MemoryTools(McpDocumentResolver documents)
             var key = grouping switch
             {
                 "site" => entry.Site ?? "(no site)",
-                "memoryobject" => entry.MemoryObject is { } type ? MemoryObjectNames.GetName(type) : "(no memory object)",
+                "memoryobject" => entry.MemoryObject is { } type ? MemoryObjectNameLookup.GetName(type) : "(no memory object)",
                 "operation" => operation,
                 _ => entry.ClassName ?? entry.Site ?? "(unlabelled)"
             };
@@ -426,8 +428,8 @@ public sealed class MemoryTools(McpDocumentResolver documents)
         builder.AppendIfNotEmpty(Format.More(matched.Count, limit, "raise limit or narrow grep"));
     }
 
-    private static string? GetMemoryObjectName(MemoryMapEntry entry)
-        => entry.MemoryObject is { } type ? MemoryObjectNames.GetName(type) : null;
+    private static string? GetMemoryObjectName(AddressMapEntry entry)
+        => entry.MemoryObject is { } type ? MemoryObjectNameLookup.GetName(type) : null;
 
     private static void AppendBlock(StringBuilder builder,
                                     McpDocumentScope scope,
@@ -535,7 +537,7 @@ public sealed class MemoryTools(McpDocumentResolver documents)
 
         public HashSet<ulong> Addresses { get; } = [];
 
-        public void Add(MemoryMapEntry entry)
+        public void Add(AddressMapEntry entry)
         {
             Entries++;
 

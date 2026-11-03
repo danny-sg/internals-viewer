@@ -1,8 +1,10 @@
+using InternalsViewer.Query.FullTrace.Memory.Address;
 using InternalsViewer.Query.FullTrace;
 using System.Collections;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
+using InternalsViewer.Query.FullTrace.Memory.Address.Enums;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Arguments;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Signatures.Enums;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Signatures;
@@ -12,7 +14,6 @@ using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.Results;
-using InternalsViewer.Query.FullTrace.Memory.Enums;
 
 namespace InternalsViewer.UI.App.Tests.Models.Query.Trace.CallStack.Arguments;
 
@@ -267,7 +268,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void A_Described_Value_Shows_What_It_Stands_For()
     {
-        var layout = KnownParameters.Apply(ArgumentLayout.GetLayout(new FunctionSignature(["unsigned __int64"], FunctionType.Member, "void")),
+        var layout = KnownParameterLookup.Apply(ArgumentLayout.GetLayout(new FunctionSignature(["unsigned __int64"], FunctionType.Member, "void")),
                                            "HoBtAccess",
                                            "Init");
 
@@ -460,7 +461,7 @@ public class ArgumentRowBuilderTests
     [Fact]
     public void Without_Decoding_A_Cell_Is_Hex()
     {
-        var layout = KnownParameters.Apply(ArgumentLayout.GetLayout(new FunctionSignature(["unsigned __int64"], FunctionType.Member, "void")),
+        var layout = KnownParameterLookup.Apply(ArgumentLayout.GetLayout(new FunctionSignature(["unsigned __int64"], FunctionType.Member, "void")),
                                            "HoBtAccess",
                                            "Init");
 
@@ -487,8 +488,8 @@ public class ArgumentRowBuilderTests
     {
         var layout = ArgumentLayout.GetLayout(new FunctionSignature([], FunctionType.Member, "void"));
 
-        var origin = new MemoryMapEntry(0x1_0000,
-                                        MemoryMapOperation.Constructed,
+        var origin = new AddressMapEntry(0x1_0000,
+                                        AddressMapOperation.Constructed,
                                         5,
                                         0,
                                         new TracePosition(5, 0),

@@ -60,7 +60,7 @@ public class MemoryWatchToolsTests
 
         MemoryHistoryWrite[] writes = [new MemoryHistoryWrite(At(0x16, 1), 23, 1, 1, 0, 0, 8, MemoryHistoryChangeType.Initialised)];
 
-        var history = new MemoryHistoryStore(blocks, writes, HighWordRuns.Empty, new byte[8], new Dictionary<int, ulong>());
+        var history = new MemoryHistoryStore(blocks, writes, HighWordRunArray.Empty, new byte[8], new Dictionary<int, ulong>());
 
         return run with { Extras = [run.ExtraOf<TraceResult>()! with { MemoryHistory = history }] };
     }

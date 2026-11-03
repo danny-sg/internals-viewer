@@ -1,6 +1,6 @@
 using System.Data;
 using System.Text;
-using InternalsViewer.Query.FullTrace.Memory.History.Batches;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Batches;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 
 namespace InternalsViewer.UI.App.Tests.Models.Query.Trace.Timeline;

@@ -1,4 +1,5 @@
 ﻿using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.FullTrace.Helpers;
 

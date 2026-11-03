@@ -101,7 +101,7 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
     private int LayoutVersion { get; set; }
 
-    public void Rebuild(TraceTimeline? timeline, TraceOperatorLifetimes lifetimes)
+    public void Rebuild(TraceTimeline? timeline, TraceOperatorLifetimeList lifetimes)
     {
         TraceScale = timeline?.Scale ?? TraceScale.Default;
 
@@ -279,7 +279,7 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
         Gradients.Clear();
     }
 
-    private static TraceOperatorRow[] GetOperatorRows(TraceTimeline? timeline, TraceOperatorLifetimes lifetimes)
+    private static TraceOperatorRow[] GetOperatorRows(TraceTimeline? timeline, TraceOperatorLifetimeList lifetimes)
     {
         if (timeline is null)
         {

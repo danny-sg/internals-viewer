@@ -273,7 +273,7 @@ public sealed partial class TraceTimelineControl
         {
             var row = thread.Rows[depth];
 
-            return index => Memory.AllocatedDuring(thread.ThreadId, row.GetFrom(index).Position, row.GetTo(index).Position).Count > 0;
+            return index => Allocation.AllocatedDuring(thread.ThreadId, row.GetFrom(index).Position, row.GetTo(index).Position).Count > 0;
         }
 
         return _raisedRows.TryGetValue((lane, depth), out var raised) ? index => Array.BinarySearch(raised.Indexes, index) >= 0 : null;

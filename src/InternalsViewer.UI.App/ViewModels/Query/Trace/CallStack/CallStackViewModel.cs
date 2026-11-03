@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using System;
 using System.Collections.Generic;
 using System.Linq;

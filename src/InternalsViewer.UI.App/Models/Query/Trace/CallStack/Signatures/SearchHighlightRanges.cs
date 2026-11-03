@@ -41,7 +41,7 @@ public static class SearchHighlightRanges
             }
         }
 
-        return [.. Intervals.Coalesce(ranges, r => r.Start, r => r.Start + r.Length).Select(r => (r.Start, Length: r.End - r.Start))];
+        return [.. IntervalHelper.Coalesce(ranges, r => r.Start, r => r.Start + r.Length).Select(r => (r.Start, Length: r.End - r.Start))];
     }
 
     /// <summary>

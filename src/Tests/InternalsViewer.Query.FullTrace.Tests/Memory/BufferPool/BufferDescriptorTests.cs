@@ -1,6 +1,7 @@
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool.Enums;
 using InternalsViewer.Query.FullTrace.Tests.Memory.History;
+using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Memory.BufferPool;
 
@@ -25,7 +26,7 @@ public class BufferDescriptorTests
     [Fact]
     public void The_Latch_States_Follow_Every_Write_To_The_State_Word()
     {
-        var store = MemoryHistoryStores.Build([MemoryHistoryStores.Block(Buffer, BufferDescriptor.Size)],
+        var store = MemoryHistoryStoreHelper.Build([MemoryHistoryStoreHelper.Block(Buffer, BufferDescriptor.Size)],
                                               [(2, Buffer + BufferDescriptor.LatchStateOffset, [0x02, 0, 0, 0, 0, 0, 0, 0]),
                                                (3, Buffer + BufferDescriptor.PageIdOffset, [0x2B, 0, 0, 0]),
                                                (4, Buffer + BufferDescriptor.LatchStateOffset, [0x00]),

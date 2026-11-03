@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Calls;
@@ -199,7 +200,7 @@ public sealed partial class TraceTimeline
         }
     }
 
-    public IReadOnlyList<TraceSelfAllocation> GetSelfAllocations(MemoryIndex memory)
+    public IReadOnlyList<TraceSelfAllocation> GetSelfAllocations(AllocationIndex allocation)
     {
         var totals = new Dictionary<(int Thread, int Depth, int Index), ulong>();
 
@@ -207,7 +208,7 @@ public sealed partial class TraceTimeline
         {
             var rows = Threads[thread].Rows;
 
-            foreach (var (position, bytes) in memory.GetAllocations(Threads[thread].ThreadId))
+            foreach (var (position, bytes) in allocation.GetAllocations(Threads[thread].ThreadId))
             {
                 for (var depth = rows.Count - 1; depth >= 0; depth--)
                 {
@@ -653,7 +654,7 @@ public sealed partial class TraceTimeline
 
     internal sealed class Builder
     {
-        private Dictionary<uint, ThreadSpans> Threads { get; } = [];
+        private Dictionary<uint, ThreadSpanList> Threads { get; } = [];
 
         public unsafe void Add(IntPtr spans, int count) => Add(new ReadOnlySpan<CallSpan>((void*)spans, count));
 
@@ -663,7 +664,7 @@ public sealed partial class TraceTimeline
             {
                 if (!Threads.TryGetValue(span.Thread, out var thread))
                 {
-                    thread = new ThreadSpans();
+                    thread = new ThreadSpanList();
 
                     Threads[span.Thread] = thread;
                 }
@@ -698,7 +699,7 @@ public sealed partial class TraceTimeline
         }
     }
 
-    private sealed class ThreadSpans
+    private sealed class ThreadSpanList
     {
         private const int ChunkShift = 11;
 

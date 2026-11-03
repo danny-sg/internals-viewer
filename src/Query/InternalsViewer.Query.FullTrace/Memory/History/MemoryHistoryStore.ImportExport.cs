@@ -209,13 +209,13 @@ public sealed partial class MemoryHistoryStore
             iterators[reader.ReadInt32()] = reader.ReadUInt64();
         }
 
-        var (reads, readStarts, readHighs) = version >= ReadsVersion ? ReadReads(reader) : ([], [], HighWordRuns.Empty);
+        var (reads, readStarts, readHighs) = version >= ReadsVersion ? ReadReads(reader) : ([], [], HighWordRunArray.Empty);
 
         var instances = version >= FormatVersion ? ReadInstances(reader) : [];
 
         return new MemoryHistoryStore(blocks,
                                       writes,
-                                      highs is null ? HighWordRuns.Empty : HighWordRuns.Build(highs),
+                                      highs is null ? HighWordRunArray.Empty : HighWordRunArray.Build(highs),
                                       [.. data],
                                       iterators,
                                       reads,
@@ -226,7 +226,7 @@ public sealed partial class MemoryHistoryStore
 
     private static int ReadVersion(BinaryReader reader) => -reader.ReadInt32();
 
-    private static (MemoryHistoryRead[] Reads, int[] Starts, HighWordRuns Highs) ReadReads(BinaryReader reader)
+    private static (MemoryHistoryRead[] Reads, int[] Starts, HighWordRunArray Highs) ReadReads(BinaryReader reader)
     {
         var starts = new int[reader.ReadInt32()];
 
@@ -261,7 +261,7 @@ public sealed partial class MemoryHistoryStore
                                                  Count: reader.ReadInt32());
         }
 
-        return (reads, starts, highs is null ? HighWordRuns.Empty : HighWordRuns.Build(highs));
+        return (reads, starts, highs is null ? HighWordRunArray.Empty : HighWordRunArray.Build(highs));
     }
 
     private static MemoryHistoryInstance[] ReadInstances(BinaryReader reader)

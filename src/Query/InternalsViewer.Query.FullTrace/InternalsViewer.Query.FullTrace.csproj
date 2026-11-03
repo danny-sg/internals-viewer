@@ -21,10 +21,4 @@
         <InternalsVisibleTo Include="InternalsViewer.Mcp.Tests" />
     </ItemGroup>
 
-    <ItemGroup>
-      <Folder Include="Memory\Address\" />
-      <Folder Include="Memory\Allocation\" />
-      <Folder Include="Memory\MemoryObject\" />
-    </ItemGroup>
-
 </Project>

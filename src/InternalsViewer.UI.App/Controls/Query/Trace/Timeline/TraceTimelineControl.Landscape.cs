@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using System;
 using System.Collections.Generic;
 using InternalsViewer.Query.FullTrace;
@@ -388,7 +389,7 @@ public sealed partial class TraceTimelineControl
             var node = timeline.NodeOf(row.GetCallNodeIndex(source.Index));
 
             curve = (node is null ? null : GetInstanceCurves(timeline).GetCurve(threadId, node))
-                    ?? Memory.InUseWithin(threadId, row.GetFrom(source.Index).Position, row.GetTo(source.Index).Position);
+                    ?? Allocation.InUseWithin(threadId, row.GetFrom(source.Index).Position, row.GetTo(source.Index).Position);
 
             _inUseCurves[source] = curve;
         }
@@ -424,13 +425,13 @@ public sealed partial class TraceTimelineControl
         FinishSurface(first);
     }
 
-    private InstanceMemoryCurves GetInstanceCurves(TraceTimeline timeline)
+    private InstanceMemoryCurveMap GetInstanceCurves(TraceTimeline timeline)
     {
         var owner = Overview ?? timeline;
 
-        if (_instanceCurves is not { } cached || !ReferenceEquals(cached.Timeline, owner) || !ReferenceEquals(cached.Memory, Memory))
+        if (_instanceCurves is not { } cached || !ReferenceEquals(cached.Timeline, owner) || !ReferenceEquals(cached.Memory, Allocation))
         {
-            cached = (owner, Memory, InstanceMemoryCurves.Build(owner, Memory));
+            cached = (owner, Allocation, InstanceMemoryCurveMap.Build(owner, Allocation));
 
             _instanceCurves = cached;
         }

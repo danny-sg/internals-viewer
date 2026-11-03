@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Mcp.Documents;
 using InternalsViewer.Mcp.Tests.Documents;
@@ -223,7 +224,7 @@ internal static class TestRuns
 
         timeline.RemoveCallsUnder(node => node.IsExtendedEvents);
 
-        var memory = MemoryIndex.Build([new MemoryAllocation(7, At(22), At(23), 100, 0xA)], [new MemoryFree(7, At(31), At(32), 0xA)]);
+        var memory = AllocationIndex.Build([new MemoryAllocation(7, At(22), At(23), 100, 0xA)], [new MemoryFree(7, At(31), At(32), 0xA)]);
 
         var lifetimes = IteratorLifetimeBuilder.Build(timeline, memory, [scan], [], []);
 
@@ -237,7 +238,7 @@ internal static class TestRuns
 
         callStore.MapNodes([caller, getRow, publish]);
 
-        return new TraceResult(tree, callStore, timeline) { Memory = memory, Lifetimes = lifetimes };
+        return new TraceResult(tree, callStore, timeline) { Allocation = memory, Lifetimes = lifetimes };
     }
 
     private static CallstackFrame Frame(ulong rva, string symbol, ulong instance = 0) => new()

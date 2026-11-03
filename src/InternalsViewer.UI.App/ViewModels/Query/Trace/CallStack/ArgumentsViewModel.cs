@@ -1,3 +1,5 @@
+using InternalsViewer.Query.FullTrace.Memory.Address;
+using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -84,7 +86,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
                           CallStackTree? tree = null,
                           IReadOnlyDictionary<ulong, IteratorTarget>? iterators = null,
                           HoBtAccessMap? hobtAccess = null,
-                          MemoryMap? memoryMap = null,
+                          AddressMap? addressMap = null,
                           MemoryHistoryStore? memoryHistory = null,
                           MemoryObjectMap? memoryObjects = null,
                           StorageIdMap? storageIds = null)
@@ -97,7 +99,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
                                 tree,
                                 iterators ?? new Dictionary<ulong, IteratorTarget>(),
                                 hobtAccess ?? HoBtAccessMap.Empty,
-                                memoryMap ?? MemoryMap.Empty,
+                                addressMap ?? AddressMap.Empty,
                                 memoryHistory ?? MemoryHistoryStore.Empty,
                                 memoryObjects ?? MemoryObjectMap.Empty,
                                 storageIds ?? StorageIdMap.Empty,
@@ -187,7 +189,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
             ? ArgumentRowBuilder.DecodedTextAt(layout, call, ordinal, lookup.Describe)
             : null;
 
-    public MemoryMapEntry? GetOrigin(int index, int ordinal)
+    public AddressMapEntry? GetOrigin(int index, int ordinal)
         => Layout is { } layout && Lookup is { } lookup && GetCall(index) is { } call
             ? ArgumentRowBuilder.OriginAt(layout, call, ordinal, lookup.Describe)
             : null;

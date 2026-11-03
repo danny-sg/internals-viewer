@@ -1,3 +1,5 @@
+using InternalsViewer.Query.FullTrace.Memory.Address;
+using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.FullTrace.Arguments;
@@ -11,7 +13,7 @@ public sealed class TraceReferenceFinder(TraceCallStore store,
                                          CallStackTree? tree,
                                          IReadOnlyDictionary<ulong, IteratorTarget> iterators,
                                          HoBtAccessMap hobtAccess,
-                                         MemoryMap memoryMap,
+                                         AddressMap addressMap,
                                          MemoryObjectMap memoryObjects,
                                          StorageIdMap storageIds,
                                          ITraceSignatureSource signatures)
@@ -25,13 +27,13 @@ public sealed class TraceReferenceFinder(TraceCallStore store,
     public static string GetIteratorName(IteratorTarget iterator)
         => $"{iterator.Label} {(iterator.IsPlanObject ? "Plan Object" : "Iterator")}";
 
-    public static string? GetAllocationName(MemoryMapEntry entry)
+    public static string? GetAllocationName(AddressMapEntry entry)
         => (entry.Site ?? entry.Allocator) is { } allocation ? $"{allocation} Allocation" : null;
 
     public CallstackFrame? GetFrame(TraceValueUse use)
         => use.First.Node?.Frame is { Resolved: not null } frame ? frame : Frames.Value.GetValueOrDefault(use.FunctionAddress);
 
-    public async Task<TraceValueReferences> FindAsync(ulong value, CancellationToken cancellationToken)
+    public async Task<TraceValueReferenceResult> FindAsync(ulong value, CancellationToken cancellationToken)
     {
         var uses = await GetDeclaredUsesAsync(await Search.GetValueUsesAsync(value, cancellationToken));
 
@@ -43,7 +45,7 @@ public sealed class TraceReferenceFinder(TraceCallStore store,
 
         var iterator = iterators.GetValueOrDefault(value);
 
-        return new TraceValueReferences(GetTypeName(value, iterator, groups), iterator, groups);
+        return new TraceValueReferenceResult(GetTypeName(value, iterator, groups), iterator, groups);
     }
 
     public Task<IReadOnlyList<TraceValueCall>> GetCallsAsync(TraceValueUse use, ulong value, CancellationToken cancellationToken)
@@ -125,19 +127,19 @@ public sealed class TraceReferenceFinder(TraceCallStore store,
 
             var moment = firstUse.Location == ArgumentLayout.ReturnRegisterName ? call.ToPosition : call.FromPosition;
 
-            if (memoryMap.GetEntry(value, moment) is { } entry && (entry.ClassName ?? GetAllocationName(entry)) is { } typeName)
+            if (addressMap.GetEntry(value, moment) is { } entry && (entry.ClassName ?? GetAllocationName(entry)) is { } typeName)
             {
                 return typeName;
             }
 
-            if (memoryMap.GetContaining(value, moment) is ({ } inside, var offset)
+            if (addressMap.GetContaining(value, moment) is ({ } inside, var offset)
                 && (inside.ClassName ?? GetAllocationName(inside)) is { } container)
             {
                 return $"{container} + 0x{offset:X}";
             }
 
             if (memoryObjects.GetOwner(value, moment) is { } owner
-                && (owner.Name ?? memoryMap.GetEntry(owner.Address, moment)?.ClassName) is { } memoryObject)
+                && (owner.Name ?? addressMap.GetEntry(owner.Address, moment)?.ClassName) is { } memoryObject)
             {
                 return $"{memoryObject} {owner.GetText(value)}";
             }

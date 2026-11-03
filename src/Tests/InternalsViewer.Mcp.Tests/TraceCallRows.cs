@@ -16,18 +16,18 @@ internal static class TraceCallRows
                               ulong endSequence = ulong.MaxValue,
                               ulong endSteps = 0)
     {
-        var row = new ulong[TraceCallColumns.ValueCount];
+        var row = new ulong[TraceCallChunk.ValueCount];
 
-        row[TraceCallColumns.FromSequenceIndex] = sequence;
-        row[TraceCallColumns.FromStepsIndex] = steps;
-        row[TraceCallColumns.FlagsIndex] = flags;
-        row[TraceCallColumns.IntegerOffset] = rcx;
-        row[TraceCallColumns.IntegerOffset + 1] = rdx;
-        row[TraceCallColumns.IntegerOffset + 2] = r8;
-        row[TraceCallColumns.ReturnValueIndex] = returnValue;
-        row[TraceCallColumns.NodeIndex] = (ulong)callNodeIndex;
-        row[TraceCallColumns.ToSequenceIndex] = endSequence;
-        row[TraceCallColumns.ToStepsIndex] = endSteps;
+        row[TraceCallChunk.FromSequenceIndex] = sequence;
+        row[TraceCallChunk.FromStepsIndex] = steps;
+        row[TraceCallChunk.FlagsIndex] = flags;
+        row[TraceCallChunk.IntegerOffset] = rcx;
+        row[TraceCallChunk.IntegerOffset + 1] = rdx;
+        row[TraceCallChunk.IntegerOffset + 2] = r8;
+        row[TraceCallChunk.ReturnValueIndex] = returnValue;
+        row[TraceCallChunk.NodeIndex] = (ulong)callNodeIndex;
+        row[TraceCallChunk.ToSequenceIndex] = endSequence;
+        row[TraceCallChunk.ToStepsIndex] = endSteps;
 
         return row;
     }
@@ -54,11 +54,11 @@ internal static class TraceCallRows
 
     public static ulong[] Chunk(params ulong[][] rows)
     {
-        var columns = new ulong[rows.Length * TraceCallColumns.ValueCount];
+        var columns = new ulong[rows.Length * TraceCallChunk.ValueCount];
 
         for (var callIndex = 0; callIndex < rows.Length; callIndex++)
         {
-            for (var value = 0; value < TraceCallColumns.ValueCount; value++)
+            for (var value = 0; value < TraceCallChunk.ValueCount; value++)
             {
                 columns[value * rows.Length + callIndex] = rows[callIndex][value];
             }

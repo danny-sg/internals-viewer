@@ -141,13 +141,13 @@ public sealed partial class TraceTimelineControl
 
     public static readonly DependencyProperty RowReturnMarksProperty =
         DependencyProperty.Register(nameof(RowReturnMarks),
-                                    typeof(TraceRowReturnMarks),
+                                    typeof(TraceRowReturnMarkMap),
                                     typeof(TraceTimelineControl),
                                     new PropertyMetadata(null, OnRowReturnsChanged));
 
-    public TraceRowReturnMarks? RowReturnMarks
+    public TraceRowReturnMarkMap? RowReturnMarks
     {
-        get => (TraceRowReturnMarks?)GetValue(RowReturnMarksProperty);
+        get => (TraceRowReturnMarkMap?)GetValue(RowReturnMarksProperty);
         set => SetValue(RowReturnMarksProperty, value);
     }
 

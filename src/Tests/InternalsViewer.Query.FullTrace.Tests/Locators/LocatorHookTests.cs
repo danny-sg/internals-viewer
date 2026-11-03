@@ -9,7 +9,7 @@ using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Arguments;
 
-using static InternalsViewer.Query.FullTrace.Tests.TraceCallRows;
+using static InternalsViewer.Query.FullTrace.Tests.TraceCallRowHelper;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Locators;
 
@@ -28,7 +28,7 @@ public class LocatorHookTests
 
     private const ulong ReturnAddress = 0x7FF8_0061_0010;
 
-    private const ulong ReturnedFlag = TraceCallColumns.ReturnedFlag;
+    private const ulong ReturnedFlag = TraceCallChunk.ReturnedFlag;
 
     [Fact]
     public void A_Pointer_Argument_Is_Read_When_The_Call_Is_Made()

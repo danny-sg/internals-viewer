@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
 using System.Globalization;
 using InternalsViewer.Internals.Columnstore.Metadata.Enums;
 using InternalsViewer.Internals.Engine.Database.Enums;
@@ -135,14 +136,14 @@ public static class ArgumentValue
 
     public static bool IsFloating(string type)
     {
-        Span<char> buffer = type.Length <= MaximumStackType ? stackalloc char[type.Length] : new char[type.Length];
+        var buffer = type.Length <= MaximumStackType ? stackalloc char[type.Length] : new char[type.Length];
 
         return Normalise(type, buffer) is "float" or "double" or "long double";
     }
 
     public static bool IsAddressSized(string type)
     {
-        Span<char> buffer = type.Length <= MaximumStackType ? stackalloc char[type.Length] : new char[type.Length];
+        var buffer = type.Length <= MaximumStackType ? stackalloc char[type.Length] : new char[type.Length];
 
         return AddressSizedTypeLookup.Contains(Normalise(type, buffer));
     }
@@ -160,7 +161,7 @@ public static class ArgumentValue
 
         var pointee = type[..indirection];
 
-        Span<char> buffer = pointee.Length <= MaximumStackType ? stackalloc char[pointee.Length] : new char[pointee.Length];
+        var buffer = pointee.Length <= MaximumStackType ? stackalloc char[pointee.Length] : new char[pointee.Length];
 
         var target = Normalise(pointee, buffer);
 
@@ -182,7 +183,7 @@ public static class ArgumentValue
 
     public static bool IsReadable(ReadOnlySpan<char> type)
     {
-        Span<char> buffer = type.Length <= MaximumStackType ? stackalloc char[type.Length] : new char[type.Length];
+        var buffer = type.Length <= MaximumStackType ? stackalloc char[type.Length] : new char[type.Length];
 
         var normalised = Normalise(type, buffer);
 
@@ -219,7 +220,7 @@ public static class ArgumentValue
 
     public static ulong? GetHoBtId(string type, ulong raw)
     {
-        Span<char> buffer = type.Length <= MaximumStackType ? stackalloc char[type.Length] : new char[type.Length];
+        var buffer = type.Length <= MaximumStackType ? stackalloc char[type.Length] : new char[type.Length];
 
         return Normalise(type, buffer) is HoBtIdType ? raw << HoBtIdShift : null;
     }
@@ -319,7 +320,7 @@ public static class ArgumentValue
                .ToDictionary(v => Convert.ToInt32(v, CultureInfo.InvariantCulture), v => EventPropertyFormatter.SplitWords(v.ToString()));
 
     private static Dictionary<int, string> GetMemoryObjectTypeNames()
-        => Enum.GetValues<MemoryObjectType>().ToDictionary(v => (int)v, MemoryObjectNames.GetName);
+        => Enum.GetValues<MemoryObjectType>().ToDictionary(v => (int)v, MemoryObjectNameLookup.GetName);
 
     private static string FlagsOf(Dictionary<int, string> names, int value)
     {
@@ -362,7 +363,7 @@ public static class ArgumentValue
 
     private static string Normalise(string type)
     {
-        Span<char> buffer = type.Length <= MaximumStackType ? stackalloc char[type.Length] : new char[type.Length];
+        var buffer = type.Length <= MaximumStackType ? stackalloc char[type.Length] : new char[type.Length];
 
         return Normalise(type, buffer).ToString();
     }

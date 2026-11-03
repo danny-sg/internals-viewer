@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using System.IO.Compression;
 using System.Text.Json.Nodes;
 using InternalsViewer.Internals.Engine.Address;
@@ -10,9 +11,11 @@ using InternalsViewer.Query.FullTrace.Export;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Tests.Memory.Allocation;
+using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Plans.Model;
-using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
+using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Export;
 
@@ -62,7 +65,7 @@ public class TraceExportSectionTests
         Assert.Equal(new PageAddress(1, 336), calls[1].GetLocator(2)?.Page);
         Assert.Equal("(1:336), (1:336:4)", getRow.LocatorsDetail);
         Assert.Equal(3, fullTrace.Timeline.SpanCount);
-        Assert.Equal(100ul, fullTrace.Memory.PeakInUseDuring(At(0), At(100)));
+        Assert.Equal(100ul, fullTrace.Allocation.PeakInUseDuring(At(0), At(100)));
         Assert.Single(fullTrace.Lifetimes);
     }
 
@@ -224,13 +227,13 @@ public class TraceExportSectionTests
 
         timeline.RemoveCallsUnder(node => node.IsExtendedEvents);
 
-        var memory = MemoryIndex.Build([new MemoryAllocation(7, At(22), At(23), 100, 0xA)], [new MemoryFree(7, At(31), At(32), 0xA)]);
+        var memory = AllocationIndex.Build([new MemoryAllocation(7, At(22), At(23), 100, 0xA)], [new MemoryFree(7, At(31), At(32), 0xA)]);
 
         var lifetimes = IteratorLifetimeBuilder.Build(timeline, memory, [scan], [], []);
 
         var storeBuilder = new TraceCallStore.Builder();
 
-        storeBuilder.Add(0x30, Scan, TraceCallRows.Chunk(Call(1, 5), Call(2, 6)), 2);
+        storeBuilder.Add(0x30, Scan, TraceCallRowHelper.Chunk(Call(1, 5), Call(2, 6)), 2);
 
         storeBuilder.AddLocator(0x30, Scan, 1, new Locator(2, LocatorValueType.Page, Page336), false);
 
@@ -238,7 +241,7 @@ public class TraceExportSectionTests
 
         callStore.MapNodes([caller, getRow, publish]);
 
-        return new TraceResult(tree, callStore, timeline) { Memory = memory, Lifetimes = lifetimes };
+        return new TraceResult(tree, callStore, timeline) { Allocation = memory, Lifetimes = lifetimes };
     }
 
     private static CallstackFrame Frame(ulong rva, string symbol, ulong instance = 0) => new()
@@ -256,5 +259,5 @@ public class TraceExportSectionTests
     private static CallSpan Span(int callNodeIndex, ulong start, ulong end)
         => new(start, 0, end, 0, start, end, callNodeIndex, 7, uint.MaxValue, 1);
 
-    private static ulong[] Call(ulong sequence, ulong rcx) => TraceCallRows.Row(sequence, rcx: rcx, callNodeIndex: 1);
+    private static ulong[] Call(ulong sequence, ulong rcx) => TraceCallRowHelper.Row(sequence, rcx: rcx, callNodeIndex: 1);
 }

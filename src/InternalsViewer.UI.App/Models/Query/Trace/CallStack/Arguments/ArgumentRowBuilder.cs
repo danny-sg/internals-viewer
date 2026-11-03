@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Memory.Address;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -139,7 +140,7 @@ public static class ArgumentRowBuilder
     public static string? DecodedTextAt(ArgumentLayout layout, TraceArgumentCall call, int ordinal, ValueDescriber? describe)
         => FindValueAt(layout, call, ordinal) is { } found ? GetCellValue(found.Slot, found.Value, call, describe, decode: true).ToString() : null;
 
-    public static MemoryMapEntry? OriginAt(ArgumentLayout layout, TraceArgumentCall call, int ordinal, ValueDescriber describe)
+    public static AddressMapEntry? OriginAt(ArgumentLayout layout, TraceArgumentCall call, int ordinal, ValueDescriber describe)
         => FindValueAt(layout, call, ordinal) is { } found ? GetDecoded(found.Slot, found.Value, call, describe).Origin : null;
 
     public static IReadOnlyList<CallSignaturePart> GetSignature(string function,
@@ -283,7 +284,7 @@ public static class ArgumentRowBuilder
                                      isLocal);
     }
 
-    private static (string? Reading, string? ClassName, MemoryMapEntry? Origin, bool IsLocal) GetDecoded(ArgumentSlot slot,
+    private static (string? Reading, string? ClassName, AddressMapEntry? Origin, bool IsLocal) GetDecoded(ArgumentSlot slot,
                                                                                                          ulong value,
                                                                                                          TraceArgumentCall call,
                                                                                                          ValueDescriber? describe)

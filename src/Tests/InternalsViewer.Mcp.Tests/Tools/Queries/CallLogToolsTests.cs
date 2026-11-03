@@ -111,7 +111,7 @@ public class CallLogToolsTests
                                     new TraceValueCall(0, TestRuns.At(1), null),
                                     new TraceValueCall(1, TestRuns.At(2), null));
 
-        var (tools, navigator) = ToolsWithReferences(new TraceValueReferences("CQScanRowsetNew Iterator",
+        var (tools, navigator) = ToolsWithReferences(new TraceValueReferenceResult("CQScanRowsetNew Iterator",
                                                                               null,
                                                                               [new TraceValueUseGroup(TraceValueRole.CalledOn, [use])]));
 
@@ -126,7 +126,7 @@ public class CallLogToolsTests
     [Fact]
     public async Task References_Says_So_When_No_Call_Held_The_Value()
     {
-        var (tools, _) = ToolsWithReferences(new TraceValueReferences(null, null, []));
+        var (tools, _) = ToolsWithReferences(new TraceValueReferenceResult(null, null, []));
 
         var text = await tools.References("160");
 
@@ -145,7 +145,7 @@ public class CallLogToolsTests
         return new CallLogTools(resolver);
     }
 
-    private static (CallLogTools Tools, RecordingNavigator Navigator) ToolsWithReferences(TraceValueReferences references)
+    private static (CallLogTools Tools, RecordingNavigator Navigator) ToolsWithReferences(TraceValueReferenceResult references)
     {
         var (resolver, document) = TestRuns.CreateResolver(TestRuns.Create());
 

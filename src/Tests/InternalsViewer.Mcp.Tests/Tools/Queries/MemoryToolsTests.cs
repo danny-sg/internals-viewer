@@ -1,10 +1,11 @@
+using InternalsViewer.Query.FullTrace.Memory.Address;
 using InternalsViewer.Mcp.Tools.Queries;
 using InternalsViewer.Query.Events.BatchMode.Enums;
 using InternalsViewer.Query.Export;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Memory;
-using InternalsViewer.Query.FullTrace.Memory.Enums;
+using InternalsViewer.Query.FullTrace.Memory.Address.Enums;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
 using InternalsViewer.Query.Memory;
@@ -42,15 +43,15 @@ public class MemoryToolsTests
     {
         var (resolver, _) = CreateResolver(Create());
 
-        Assert.Equal("no memory map in the trace", await new MemoryTools(resolver).MemoryMap());
+        Assert.Equal("no memory map in the trace", await new MemoryTools(resolver).AddressMap());
     }
 
     [Fact]
     public async Task Memory_Map_Groups_By_Class_And_Lists_The_Matching_Entries()
     {
-        var (resolver, _) = CreateResolver(WithMemoryMap(Create()));
+        var (resolver, _) = CreateResolver(WithAddressMap(Create()));
 
-        var text = await new MemoryTools(resolver).MemoryMap(grep: "CQScanRowsetNew");
+        var text = await new MemoryTools(resolver).AddressMap(grep: "CQScanRowsetNew");
 
         Assert.Contains("memory map: 2 entries; Allocated 1, Constructed 1", text);
         Assert.Contains("Class or site", text);
@@ -64,9 +65,9 @@ public class MemoryToolsTests
     [Fact]
     public async Task Memory_Map_Lists_The_Entries_Of_One_Address_Grouped_By_Operation()
     {
-        var (resolver, _) = CreateResolver(WithMemoryMap(Create()));
+        var (resolver, _) = CreateResolver(WithAddressMap(Create()));
 
-        var text = await new MemoryTools(resolver).MemoryMap(address: "0xA", by: "operation");
+        var text = await new MemoryTools(resolver).AddressMap(address: "0xA", by: "operation");
 
         Assert.Matches(@"Operation\s+Entries\s+Blocks\s+Bytes", text);
         Assert.Matches(@"Allocated\s+1\s+1\s+100 B", text);
@@ -77,9 +78,9 @@ public class MemoryToolsTests
     [Fact]
     public async Task Memory_Map_Groups_By_The_Memory_Object_An_Allocation_Came_From()
     {
-        var (resolver, _) = CreateResolver(WithMemoryMap(Create()));
+        var (resolver, _) = CreateResolver(WithAddressMap(Create()));
 
-        var text = await new MemoryTools(resolver).MemoryMap(by: "memoryobject", grep: "MEMOBJ_EXECUTE");
+        var text = await new MemoryTools(resolver).AddressMap(by: "memoryobject", grep: "MEMOBJ_EXECUTE");
 
         Assert.Matches(@"Memory object\s+Entries\s+Blocks\s+Bytes", text);
         Assert.Matches(@"Internal Execution Plan \(MXC\)\s+2\s+1\s+200 B", text);
@@ -89,15 +90,15 @@ public class MemoryToolsTests
     [Fact]
     public async Task Memory_Map_Rejects_An_Unknown_Grouping()
     {
-        var (resolver, _) = CreateResolver(WithMemoryMap(Create()));
+        var (resolver, _) = CreateResolver(WithAddressMap(Create()));
 
-        await Assert.ThrowsAsync<McpException>(() => new MemoryTools(resolver).MemoryMap(by: "thread"));
+        await Assert.ThrowsAsync<McpException>(() => new MemoryTools(resolver).AddressMap(by: "thread"));
     }
 
     [Fact]
     public async Task Memory_Includes_The_Memory_Map_Summary_When_There_Is_One()
     {
-        var (resolver, _) = CreateResolver(WithMemoryMap(Create()));
+        var (resolver, _) = CreateResolver(WithAddressMap(Create()));
 
         var text = await new MemoryTools(resolver).Memory();
 
@@ -201,14 +202,14 @@ public class MemoryToolsTests
         await Assert.ThrowsAsync<McpException>(() => new MemoryTools(resolver).MemoryHistory(block: 3));
     }
 
-    private static QueryExportContent WithMemoryMap(QueryExportContent run)
+    private static QueryExportContent WithAddressMap(QueryExportContent run)
         => WithTrace(run, t => t with
         {
-            MemoryMap = MemoryMap.Build(
+            AddressMap = AddressMap.Build(
             [
-                new AddressEntry(0xA, 0, 1, 0, At(0x16), At(0x1F), 1, 7, MemoryMapOperation.Allocated, "CQScanRowsetNew", 100, "sqlmin!CQScanRowsetNew::GetRow",
+                new AddressEntry(0xA, 0, 1, 0, At(0x16), At(0x1F), 1, 7, AddressMapOperation.Allocated, "CQScanRowsetNew", 100, "sqlmin!CQScanRowsetNew::GetRow",
                                  "MEMOBJ_EXECUTE"),
-                new AddressEntry(0xA, 0, 1, 0, At(0x17), At(0x1F), 1, 7, MemoryMapOperation.Constructed, "CQScanRowsetNew")
+                new AddressEntry(0xA, 0, 1, 0, At(0x17), At(0x1F), 1, 7, AddressMapOperation.Constructed, "CQScanRowsetNew")
             ], t.Timeline.NodeOf)
         });
 
@@ -224,7 +225,7 @@ public class MemoryToolsTests
 
         byte[] data = [0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, 0x2A, 0x00, 0x00, 0x00];
 
-        var history = new MemoryHistoryStore(blocks, writes, HighWordRuns.Empty, data, new Dictionary<int, ulong> { [1] = Scan });
+        var history = new MemoryHistoryStore(blocks, writes, HighWordRunArray.Empty, data, new Dictionary<int, ulong> { [1] = Scan });
 
         return WithTrace(run, t => t with { MemoryHistory = history });
     }

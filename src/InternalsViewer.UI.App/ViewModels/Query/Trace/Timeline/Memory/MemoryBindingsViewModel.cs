@@ -6,8 +6,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Memory.History;
-using InternalsViewer.Query.FullTrace.Memory.History.Bindings;
-using InternalsViewer.Query.FullTrace.Memory.History.Bindings.Enums;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings.Enums;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
@@ -105,7 +105,7 @@ public sealed partial class MemoryBindingsViewModel : ObservableObject
 
     private int Size { get; set; }
 
-    private ScanBindings? Scan { get; set; }
+    private ScanBindingReference? Scan { get; set; }
 
     private ulong Columns { get; set; }
 
@@ -201,7 +201,7 @@ public sealed partial class MemoryBindingsViewModel : ObservableObject
 
         var (count, columns) = GetColumns(reader);
 
-        var bound = columns == 0 || Kind == MemoryBindingsKind.Bindings ? [] : AccessorBindings.ReadColumns(reader, columns, count);
+        var bound = columns == 0 || Kind == MemoryBindingsKind.Bindings ? [] : AccessorBindingLayout.ReadColumns(reader, columns, count);
 
         Reader = columns != 0 ? reader : null;
 
@@ -248,9 +248,9 @@ public sealed partial class MemoryBindingsViewModel : ObservableObject
     private (int Count, ulong Columns) GetColumns(MemoryHistoryReader reader)
         => Kind switch
         {
-            MemoryBindingsKind.Columns => (AccessorBindings.GetColumnCount(Size), Address),
-            MemoryBindingsKind.Bindings => AccessorBindings.ReadHeader(reader, Address) ?? (0, 0UL),
-            _ => Scan is { } scan ? AccessorBindings.ReadHeader(reader, scan.Bindings) ?? (0, 0UL) : (0, 0UL)
+            MemoryBindingsKind.Columns => (AccessorBindingLayout.GetColumnCount(Size), Address),
+            MemoryBindingsKind.Bindings => AccessorBindingLayout.ReadHeader(reader, Address) ?? (0, 0UL),
+            _ => Scan is { } scan ? AccessorBindingLayout.ReadHeader(reader, scan.Bindings) ?? (0, 0UL) : (0, 0UL)
         };
 
     private void Open(ulong address)
@@ -263,7 +263,7 @@ public sealed partial class MemoryBindingsViewModel : ObservableObject
 
     private int GetStart(ColumnBinding column)
         => Kind == MemoryBindingsKind.Columns
-            ? column.Index * AccessorBindings.ColumnSize
+            ? column.Index * AccessorBindingLayout.ColumnSize
             : Math.Min(column.StatusOffset, column.ValueOffset);
 
     private ObservableCollection<Marker> GetMarkers(int? selected)
@@ -272,7 +272,7 @@ public sealed partial class MemoryBindingsViewModel : ObservableObject
 
         if (Kind == MemoryBindingsKind.Bindings)
         {
-            var fields = AccessorBindings.Fields;
+            var fields = AccessorBindingLayout.Fields;
 
             for (var index = 0; index < fields.Count; index++)
             {
@@ -301,13 +301,13 @@ public sealed partial class MemoryBindingsViewModel : ObservableObject
     {
         var name = GetColumnName(column);
 
-        var start = column.Index * AccessorBindings.ColumnSize;
+        var start = column.Index * AccessorBindingLayout.ColumnSize;
 
         var infrequent = column.InfrequentData >= Address && column.InfrequentData - Address < (ulong)Size
             ? (int)(column.InfrequentData - Address)
             : -1;
 
-        foreach (var field in AccessorBindings.ColumnFields)
+        foreach (var field in AccessorBindingLayout.ColumnFields)
         {
             var offset = field.IsInfrequent ? infrequent < 0 ? -1 : infrequent + field.Offset : start + field.Offset;
 
@@ -322,7 +322,7 @@ public sealed partial class MemoryBindingsViewModel : ObservableObject
         AddMarker(markers,
                   name + StatusSuffix,
                   column.StatusOffset,
-                  AccessorBindings.StatusSize,
+                  AccessorBindingLayout.StatusSize,
                   GetFieldColour(ColumnBindingField.StatusOffset));
 
         if (column.LengthOffset is { } lengthOffset)
@@ -330,7 +330,7 @@ public sealed partial class MemoryBindingsViewModel : ObservableObject
             AddMarker(markers,
                       name + LengthSuffix,
                       lengthOffset,
-                      AccessorBindings.LengthSize,
+                      AccessorBindingLayout.LengthSize,
                       GetFieldColour(ColumnBindingField.LengthOffset));
         }
 
@@ -355,7 +355,7 @@ public sealed partial class MemoryBindingsViewModel : ObservableObject
         });
     }
 
-    private static ScanBindings? FindScan(MemoryHistoryViewModel history, MemoryHistoryBlock block, TracePosition position)
+    private static ScanBindingReference? FindScan(MemoryHistoryViewModel history, MemoryHistoryBlock block, TracePosition position)
     {
         if (block.Iterator == 0 || block.IsIterator)
         {
@@ -366,7 +366,7 @@ public sealed partial class MemoryBindingsViewModel : ObservableObject
 
         foreach (var at in GetScanPositions(store, block, position))
         {
-            if (AccessorBindings.ReadScan(new MemoryHistoryReader(store, at), block.Iterator) is { } scan
+            if (AccessorBindingLayout.ReadScan(new MemoryHistoryReader(store, at), block.Iterator) is { } scan
                 && scan.Contains(block.Address)
                 && store.GetBlock(scan.Bindings, at) is >= 0 and var bindings
                 && history.IsAccessorBindings(bindings))

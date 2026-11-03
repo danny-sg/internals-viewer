@@ -67,7 +67,7 @@ public sealed partial class MemoryReferencesViewModel(PlayheadMemoryViewModel ow
 
         var position = Owner.Position;
 
-        var pointers = await Task.Run(() => MemoryHistoryPointers.Read(history.Store, history.BufferPool, block, address, position));
+        var pointers = await Task.Run(() => MemoryHistoryPointerReader.Read(history.Store, history.BufferPool, block, address, position));
 
         return Owner.IsOpen ? [.. pointers.Select(p => CreateNode(p, node))] : [];
     }
@@ -96,7 +96,7 @@ public sealed partial class MemoryReferencesViewModel(PlayheadMemoryViewModel ow
             Owner.SelectedChangeSpan = new LogRecordAnnotation
             {
                 Offset = node.Pointer.Offset,
-                Length = MemoryHistoryPointers.PointerSize,
+                Length = MemoryHistoryPointerReader.PointerSize,
                 Description = node.Target
             };
         }

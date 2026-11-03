@@ -3,7 +3,7 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace;
-using InternalsViewer.Query.FullTrace.Memory.Enums;
+using InternalsViewer.Query.FullTrace.Memory.Address.Enums;
 
 namespace InternalsViewer.UI.App.Models.Query.Trace.CallStack.Stack;
 
@@ -11,7 +11,7 @@ public sealed partial class SourceStep(CallStackNode node,
                                        TracePosition position,
                                        uint thread,
                                        int depth,
-                                       MemoryMapOperation? creation = null,
+                                       AddressMapOperation? creation = null,
                                        bool isOnStack = false,
                                        int callIndex = -1) : ObservableObject
 {
@@ -30,7 +30,7 @@ public sealed partial class SourceStep(CallStackNode node,
 
     public int Depth { get; } = depth;
 
-    public MemoryMapOperation? Creation { get; } = creation;
+    public AddressMapOperation? Creation { get; } = creation;
 
     public bool IsOnStack { get; } = isOnStack;
 
@@ -38,7 +38,7 @@ public sealed partial class SourceStep(CallStackNode node,
 
     public bool IsCreation => Creation is not null;
 
-    public string CreationText => Creation == MemoryMapOperation.Allocated ? "Allocated Here" : "Constructed Here";
+    public string CreationText => Creation == AddressMapOperation.Allocated ? "Allocated Here" : "Constructed Here";
 
     public IReadOnlyList<SourceFrame> Stack
         => field ??= [.. Node.Ancestors().Skip(1).Where(n => n.Symbol.Length > 0).Select(n => new SourceFrame(n, Position, Thread))];

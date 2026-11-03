@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
@@ -8,7 +9,7 @@ public sealed record TraceOperatorLifetime(uint Thread,
                                            ExecutionOperatorEvent Operator,
                                            int CallNodeIndex,
                                            IReadOnlyList<TraceSpan> Calls,
-                                           MemoryInUseCurve InUse,
+                                           MemoryUsageCurve InUse,
                                            TraceScale Scale)
 {
     public TracePoint Constructed { get; init; } = Calls[0].From;

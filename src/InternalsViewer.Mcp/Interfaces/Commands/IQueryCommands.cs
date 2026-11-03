@@ -35,7 +35,7 @@ public interface IQueryCommands
 
     Task<McpFunctionSignature?> ResolveSignatureAsync(CallstackFrame frame);
 
-    Task<TraceValueReferences?> FindReferencesAsync(ulong value);
+    Task<TraceValueReferenceResult?> FindReferencesAsync(ulong value);
 
     Task SetOptionAsync(string key, bool enabled);
 }

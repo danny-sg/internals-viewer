@@ -1,3 +1,6 @@
+using InternalsViewer.Query.FullTrace.Memory.Address;
+using InternalsViewer.Query.FullTrace.Memory.Allocation;
+using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using System.IO.Compression;
 using InternalsViewer.Query.Export;
@@ -19,7 +22,7 @@ internal sealed class TraceExportSection : IQueryExportSection
 
     internal const string TimelineEntry = "fulltrace/timeline.bin";
 
-    internal const string MemoryMapEntry = "fulltrace/memorymap.bin";
+    internal const string AddressMapEntry = "fulltrace/addressmap.bin";
 
     internal const string MemoryObjectsEntry = "fulltrace/memoryobjects.bin";
 
@@ -58,10 +61,10 @@ internal sealed class TraceExportSection : IQueryExportSection
                            {
                                fullTrace.Timeline.Write(w, writer.IdOf);
 
-                               fullTrace.Memory.Write(w);
+                               fullTrace.Allocation.Write(w);
                            });
 
-        writer.WriteBinary(MemoryMapEntry, CompressionLevel.Fastest, fullTrace.MemoryMap.Write);
+        writer.WriteBinary(AddressMapEntry, CompressionLevel.Fastest, fullTrace.AddressMap.Write);
 
         writer.WriteBinary(MemoryObjectsEntry, CompressionLevel.Fastest, fullTrace.MemoryObjects.Write);
 
@@ -91,7 +94,7 @@ internal sealed class TraceExportSection : IQueryExportSection
 
         var callStore = reader.ReadBinary(CallStoreEntry, TraceCallStore.Read);
 
-        var (timeline, memory) = reader.ReadBinary(TimelineEntry, r => (TraceTimeline.Read(r, nodes), MemoryIndex.Read(r)));
+        var (timeline, memory) = reader.ReadBinary(TimelineEntry, r => (TraceTimeline.Read(r, nodes), AllocationIndex.Read(r)));
 
         callStore.MapNodes(timeline.MappedNodes);
 
@@ -109,10 +112,10 @@ internal sealed class TraceExportSection : IQueryExportSection
 
         var builder = new TraceResultBuilder(tree, callStore, timeline, reader.Events, planNodes, teardowns)
         {
-            Memory = memory,
-            MemoryMap = reader.HasEntry(MemoryMapEntry) && reader.ReadBinary(MemoryMapEntry, MemoryMap.IsSupported)
-                ? reader.ReadBinary(MemoryMapEntry, r => MemoryMap.Read(r, timeline.NodeOf))
-                : MemoryMap.Empty,
+            Allocation = memory,
+            AddressMap = reader.HasEntry(AddressMapEntry) && reader.ReadBinary(AddressMapEntry, AddressMap.IsSupported)
+                ? reader.ReadBinary(AddressMapEntry, r => AddressMap.Read(r, timeline.NodeOf))
+                : AddressMap.Empty,
             MemoryObjectSnapshot = reader.HasEntry(MemoryObjectsEntry) && reader.ReadBinary(MemoryObjectsEntry, MemoryObjectMap.IsSupported)
                 ? reader.ReadBinary(MemoryObjectsEntry, MemoryObjectMap.ReadObjects)
                 : new Dictionary<ulong, MemoryObjectInfo>(),

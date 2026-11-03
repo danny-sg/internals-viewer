@@ -1,3 +1,6 @@
+using InternalsViewer.Query.FullTrace.Memory.Address;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
+using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -15,9 +18,9 @@ using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.History;
-using InternalsViewer.Query.FullTrace.Memory.History.Batches;
-using InternalsViewer.Query.FullTrace.Memory.History.Bindings;
-using InternalsViewer.Query.FullTrace.Memory.History.Pages;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Batches;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Pages;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Results;
@@ -143,7 +146,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
 
     public MemoryHistoryStore Store => Trace?.MemoryHistory ?? MemoryHistoryStore.Empty;
 
-    public MemoryHistoryBatches? Batches { get; private set; }
+    public MemoryHistoryBatchResolver? Batches { get; private set; }
 
     public TracePosition WindowStart
         => ScopeStart is { } start && start > (Window?.Start.Position ?? default) ? start : Window?.Start.Position ?? default;
@@ -179,7 +182,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
 
     private Dictionary<(ulong Batch, int Vector), SqlDbType> VectorTypes { get; } = [];
 
-    private WorkfileLayouts? Workfiles { get; set; }
+    private WorkfileLayoutResolver? Workfiles { get; set; }
 
     private Dictionary<int, string?> PointerTargets { get; } = [];
 
@@ -208,13 +211,13 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
 
         Batches = trace is null
             ? null
-            : new MemoryHistoryBatches(Store, b => GetMapLabel(Store.Blocks[b]), b => GetAllocatingCall(b)?.Symbol);
+            : new MemoryHistoryBatchResolver(Store, b => GetMapLabel(Store.Blocks[b]), b => GetAllocatingCall(b)?.Symbol);
 
         MagicBytes = trace is null ? null : new MagicBytesMatcher(Store);
 
-        ArrayAllocations = trace is null ? null : new ArrayAllocationMatcher(Store, trace.MemoryMap);
+        ArrayAllocations = trace is null ? null : new ArrayAllocationMatcher(Store, trace.AddressMap);
 
-        Workfiles = trace is null ? null : new WorkfileLayouts(database, i => GetPlanNode(i, resolvePlanNode));
+        Workfiles = trace is null ? null : new WorkfileLayoutResolver(database, i => GetPlanNode(i, resolvePlanNode));
 
         ScopeStart = null;
 
@@ -335,13 +338,13 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
     public bool IsPage(int block)
         => Store.Blocks[block].Size == PageData.Size && GetMapLabel(Store.Blocks[block]) == WorkfilePageReader.ClassName;
 
-    public bool IsAccessorBindings(int block) => GetMapLabel(Store.Blocks[block]) == AccessorBindings.ClassName;
+    public bool IsAccessorBindings(int block) => GetMapLabel(Store.Blocks[block]) == AccessorBindingLayout.ClassName;
 
-    public bool IsColumnBindings(int block) => GetMapLabel(Store.Blocks[block]) == AccessorBindings.ColumnsClassName;
+    public bool IsColumnBindings(int block) => GetMapLabel(Store.Blocks[block]) == AccessorBindingLayout.ColumnsClassName;
 
     public MemoryHistoryArray? GetArray(int block)
-        => IsColumnBindings(block) && AccessorBindings.GetColumnCount(Store.Blocks[block].Size) is > 0 and var count
-            ? new MemoryHistoryArray(AccessorBindings.ColumnSize, count)
+        => IsColumnBindings(block) && AccessorBindingLayout.GetColumnCount(Store.Blocks[block].Size) is > 0 and var count
+            ? new MemoryHistoryArray(AccessorBindingLayout.ColumnSize, count)
             : null;
 
     public RowRecordLayout? GetWorkfileLayout(int block) => GetPageIterator(block) is { } iterator ? Workfiles?.Get(iterator) : null;
@@ -790,20 +793,20 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
             : BufferObject;
     }
 
-    private string? GetMapLabel(MemoryHistoryBlock block) => Trace?.MemoryMap.GetLabel(block.Address, block.FromPosition, block.ToPosition);
+    private string? GetMapLabel(MemoryHistoryBlock block) => Trace?.AddressMap.GetLabel(block.Address, block.FromPosition, block.ToPosition);
 
     private string? GetMemoryObjectPageLabel(MemoryHistoryBlock block)
         => Trace is { } trace
            && trace.MemoryObjects.GetOwner(block.Address, block.FromPosition) is { } owner
            && block.Size == owner.PageSize
            && block.Address % (ulong)owner.PageSize == 0
-           && (owner.Name ?? trace.MemoryMap.GetEntry(owner.Address, block.FromPosition)?.ClassName) is { } memoryObject
+           && (owner.Name ?? trace.AddressMap.GetEntry(owner.Address, block.FromPosition)?.ClassName) is { } memoryObject
             ? $"{memoryObject}{MemoryObjectPageSuffix}"
             : null;
 
     private string GetObjectDetail(MemoryHistoryBlock block)
-        => Trace?.MemoryMap.GetMemoryObject(block.Address, block.FromPosition, block.ToPosition) is { } memoryObject
-            ? $"0x{block.Address:X16}, {block.Size} Bytes, {MemoryObjectNames.GetName(memoryObject)}"
+        => Trace?.AddressMap.GetMemoryObject(block.Address, block.FromPosition, block.ToPosition) is { } memoryObject
+            ? $"0x{block.Address:X16}, {block.Size} Bytes, {MemoryObjectNameLookup.GetName(memoryObject)}"
             : $"0x{block.Address:X16}, {block.Size} Bytes";
 
     private ulong? GetPageIterator(int block)

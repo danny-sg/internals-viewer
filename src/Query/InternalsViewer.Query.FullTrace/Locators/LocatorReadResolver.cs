@@ -38,7 +38,7 @@ public static partial class LocatorReadResolver
                 continue;
             }
 
-            var count = type.ValueType == LocatorValueType.Bindings ? BindingArguments.GetCountIndex(slots, index) : -1;
+            var count = type.ValueType == LocatorValueType.Bindings ? BindingArgumentLayout.GetCountIndex(slots, index) : -1;
 
             var countRegister = count < 0 ? -1 : slots[count].Index;
 

@@ -1,9 +1,12 @@
+using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Tests.Memory.Allocation;
+using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
-using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
+using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Timeline;
 
@@ -573,7 +576,7 @@ public class TraceTimelineTests
                              Span(callNodeIndex: 1, start: 5, end: 30),
                              Span(callNodeIndex: 0, start: 0, end: 40));
 
-        var memory = MemoryIndex.Build([new(7, At(1, 10), At(1, 11), 100, 0xA),
+        var memory = AllocationIndex.Build([new(7, At(1, 10), At(1, 11), 100, 0xA),
                                         new(7, At(1, 25), At(1, 26), 30, 0xB),
                                         new(7, At(1, 35), At(1, 36), 50, 0xC)],
                                        []);
@@ -613,7 +616,7 @@ public class TraceTimelineTests
 
         var nodes = MapNodes(timeline);
 
-        timeline.SetCalls(TraceCallRows.CallsFor(Nodes, spans));
+        timeline.SetCalls(TraceCallRowHelper.CallsFor(Nodes, spans));
 
         var found = timeline.FindCall(nodes[1], 1);
 
@@ -632,7 +635,7 @@ public class TraceTimelineTests
 
         Assert.Null(timeline.FindCall(nodes[0], 0));
 
-        timeline.SetCalls(TraceCallRows.CallsFor(Nodes, spans));
+        timeline.SetCalls(TraceCallRowHelper.CallsFor(Nodes, spans));
 
         Assert.NotNull(timeline.FindCall(nodes[0], 0));
         Assert.Null(timeline.FindCall(nodes[0], 1));

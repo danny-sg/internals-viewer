@@ -116,7 +116,7 @@ internal static class IteratorInstanceMatcher
 
                 if (node.Frame is { InstanceAddress: not 0 } frame
                     && frame.InstanceAddress != context
-                    && !IteratorSymbols.IsPlanObject(frame))
+                    && !IteratorSymbolLookup.IsPlanObject(frame))
                 {
                     if (!instances.TryGetValue(frame.InstanceAddress, out var instance))
                     {

@@ -1,5 +1,7 @@
+using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Functions;
+using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Functions;
 
@@ -9,13 +11,13 @@ public class FunctionClassificationTests
     [Fact]
     public void Keeps_A_Memory_Function_Every_Symbol_Agrees_On()
     {
-        var function = MemoryFunction.Classify(0x10, "CMemObj::Alloc");
+        var function = AllocationFunction.Classify(0x10, "CMemObj::Alloc");
 
-        var same = MemoryFunction.Classify(0x10, "CMemObj::Alloc");
+        var same = AllocationFunction.Classify(0x10, "CMemObj::Alloc");
 
-        Assert.Equal(function, Fold(Classification(memory: function), Classification(memory: same)).MemoryFunction);
+        Assert.Equal(function, Fold(Classification(memory: function), Classification(memory: same)).AllocationFunction);
 
-        Assert.Null(Fold(Classification(memory: function), Classification()).MemoryFunction);
+        Assert.Null(Fold(Classification(memory: function), Classification()).AllocationFunction);
     }
 
     [Fact]
@@ -41,11 +43,11 @@ public class FunctionClassificationTests
     {
         var functions = new Dictionary<uint, FunctionClassification>();
 
-        ModuleSymbols.Add(functions, 0x10, Classification(excluded: true));
+        ModuleSymbolReader.Add(functions, 0x10, Classification(excluded: true));
 
-        ModuleSymbols.Add(functions, 0x20, Classification(excluded: true));
+        ModuleSymbolReader.Add(functions, 0x20, Classification(excluded: true));
 
-        ModuleSymbols.Add(functions, 0x20, Classification());
+        ModuleSymbolReader.Add(functions, 0x20, Classification());
 
         Assert.True(functions[0x10].IsExcluded);
 
@@ -58,7 +60,7 @@ public class FunctionClassificationTests
 
         foreach (var classification in classifications)
         {
-            ModuleSymbols.Add(functions, 0x10, classification);
+            ModuleSymbolReader.Add(functions, 0x10, classification);
         }
 
         return functions[0x10];
@@ -67,6 +69,6 @@ public class FunctionClassificationTests
     private static FunctionClassification Classification(bool excluded = false,
                                                          bool method = false,
                                                          bool instanceClass = false,
-                                                         MemoryFunction? memory = null)
+                                                         AllocationFunction? memory = null)
         => new(excluded, method, instanceClass, memory);
 }

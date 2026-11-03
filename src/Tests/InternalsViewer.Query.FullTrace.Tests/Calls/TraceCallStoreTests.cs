@@ -7,15 +7,15 @@ using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.CallStack.Locators;
 
-using static InternalsViewer.Query.FullTrace.Tests.TraceCallRows;
-using static InternalsViewer.Query.FullTrace.Tests.TracePositions;
+using static InternalsViewer.Query.FullTrace.Tests.TraceCallRowHelper;
+using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Calls;
 
 [Trait("Category", "Unit")]
 public class TraceCallStoreTests
 {
-    private const ulong ReturnedFlag = TraceCallColumns.ReturnedFlag;
+    private const ulong ReturnedFlag = TraceCallChunk.ReturnedFlag;
 
     private const ulong Page336 = 0x0000_0001_0000_0150;
 
@@ -72,7 +72,7 @@ public class TraceCallStoreTests
         var store = builder.Build();
 
         Assert.Equal(calls, store.Calls);
-        Assert.True(store.Size < calls * TraceCallColumns.ValueCount * sizeof(ulong) / 10);
+        Assert.True(store.Size < calls * TraceCallChunk.ValueCount * sizeof(ulong) / 10);
     }
 
     [Fact]
@@ -325,7 +325,7 @@ public class TraceCallStoreTests
 
         var third = store.Functions[(0x3000, 0)][0];
 
-        var cache = new TraceCallStore.ChunkCache(2 * 2 * TraceCallColumns.ValueCount + 6);
+        var cache = new TraceCallStore.ChunkCache(2 * 2 * TraceCallChunk.ValueCount + 6);
 
         Assert.Equal(At(1), cache.Read(first, 0, static (columns, index) => columns.GetFromPosition(index)));
         Assert.Equal(At(4), cache.Read(second, 1, static (columns, index) => columns.GetFromPosition(index)));

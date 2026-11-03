@@ -1,3 +1,6 @@
+using InternalsViewer.Query.FullTrace.Memory.Address;
+using InternalsViewer.Query.FullTrace.Memory.Allocation;
+using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Export;
 using InternalsViewer.Query.FullTrace.Arguments;
@@ -26,11 +29,11 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
 
     public HoBtAccessMap HoBtAccess { get; init; } = HoBtAccessMap.Empty;
 
-    public MemoryIndex Memory { get; init; } = MemoryIndex.Empty;
+    public AllocationIndex Allocation { get; init; } = AllocationIndex.Empty;
 
-    public TraceOperatorLifetimes Lifetimes { get; init; } = TraceOperatorLifetimes.Empty;
+    public TraceOperatorLifetimeList Lifetimes { get; init; } = TraceOperatorLifetimeList.Empty;
 
-    public MemoryMap MemoryMap { get; init; } = MemoryMap.Empty;
+    public AddressMap AddressMap { get; init; } = AddressMap.Empty;
 
     public MemoryObjectMap MemoryObjects { get; init; } = MemoryObjectMap.Empty;
 
@@ -44,7 +47,7 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
 
     internal IReadOnlyList<TraceOutputStructure> OutputStructures { get; init; } = [];
 
-    public TraceRowReturnMarks RowReturnMarks { get; init; } = TraceRowReturnMarks.Empty;
+    public TraceRowReturnMarkMap RowReturnMarks { get; init; } = TraceRowReturnMarkMap.Empty;
 
     public TraceTickSeries Reads { get; init; } = TraceTickSeries.Empty;
 
@@ -56,9 +59,9 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
 
     public IReadOnlyList<TraceOutputRowSource> OutputSources => Sources ??= TraceOutputLineage.GetSources(Lifetimes, OutputStructures);
 
-    internal EnclosingOperatorCalls EnclosingCalls
+    internal EnclosingOperatorCallIndex EnclosingCalls
     {
-        get => field ??= EnclosingOperatorCalls.Build(CallStore, Lifetimes.OperatorsByInstance);
+        get => field ??= EnclosingOperatorCallIndex.Build(CallStore, Lifetimes.OperatorsByInstance);
         init;
     }
 
@@ -79,8 +82,8 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
         yield return ("Call Log Calls", CallStore.Calls, CallStore.Size);
         yield return ("Locator Entries", CallStore.LocatorCount, CallStore.LocatorTableBytes);
         yield return ("Unique Locators", CallStore.UniqueLocatorCount, CallStore.UniqueLocatorBytes);
-        yield return ("Memory Map Entries", MemoryMap.Count, MemoryMap.Bytes);
-        yield return ("Memory Allocations", Memory.AllocationCount, Memory.Bytes);
+        yield return ("Memory Map Entries", AddressMap.Count, AddressMap.Bytes);
+        yield return ("Memory Allocations", Allocation.AllocationCount, Allocation.Bytes);
         yield return ("Memory History Writes", MemoryHistory.WriteCount, MemoryHistory.WriteBytes);
         yield return ("Memory History Reads", MemoryHistory.ReadCount, MemoryHistory.ReadBytes);
         yield return ("Buffer Pool Pages", BufferPool.Count, BufferPool.Bytes);

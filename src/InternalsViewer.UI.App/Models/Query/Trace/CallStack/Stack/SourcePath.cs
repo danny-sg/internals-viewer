@@ -1,10 +1,11 @@
+using InternalsViewer.Query.FullTrace.Memory.Address;
 using System.Collections.Generic;
 using System.Linq;
+using InternalsViewer.Query.FullTrace.Memory.Address.Enums;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Signatures.Enums;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Signatures;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Memory;
-using InternalsViewer.Query.FullTrace.Memory.Enums;
 
 namespace InternalsViewer.UI.App.Models.Query.Trace.CallStack.Stack;
 
@@ -23,7 +24,7 @@ public static class SourcePath
 
         var origin = value.Origin;
 
-        var creation = origin is { Operation: MemoryMapOperation.Allocated or MemoryMapOperation.Constructed } ? origin : null;
+        var creation = origin is { Operation: AddressMapOperation.Allocated or AddressMapOperation.Constructed } ? origin : null;
 
         if (creation is not null && IsCall(creation, originNode, call))
         {
@@ -70,7 +71,7 @@ public static class SourcePath
         return steps;
     }
 
-    private static bool IsCall(MemoryMapEntry entry, CallStackNode? entryNode, PlayheadCallRow row)
+    private static bool IsCall(AddressMapEntry entry, CallStackNode? entryNode, PlayheadCallRow row)
         => ReferenceEquals(entryNode, row.Node) && entry.CallIndex == row.CallIndex && entry.Thread == row.Thread;
 
     private static bool Receives(PlayheadCallRow row, ulong value)

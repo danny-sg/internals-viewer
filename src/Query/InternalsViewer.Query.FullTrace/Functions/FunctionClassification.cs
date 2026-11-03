@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Memory;
 
 namespace InternalsViewer.Query.FullTrace.Functions;
@@ -12,7 +13,7 @@ namespace InternalsViewer.Query.FullTrace.Functions;
 ///     - IsExcluded          - excluded only if every symbol at the address is excluded
 ///     - HasInstanceMethod   - set if any symbol at the address is an instance method
 ///     - InstanceClassesOnly - set only if every symbol at the address belongs to an instance class
-///     - MemoryFunction      - kept only if every symbol at the address agrees, otherwise cleared
+///     - AllocationFunction      - kept only if every symbol at the address agrees, otherwise cleared
 ///
 /// IsInstanceMethod is only true when an instance method is present and all symbols are instance classes. A folded address shared with a
 /// non-instance class is never treated as an instance method.
@@ -20,7 +21,7 @@ namespace InternalsViewer.Query.FullTrace.Functions;
 internal readonly record struct FunctionClassification(bool IsExcluded,
                                                        bool HasInstanceMethod,
                                                        bool InstanceClassesOnly,
-                                                       MemoryFunction? MemoryFunction)
+                                                       AllocationFunction? AllocationFunction)
 {
     public bool IsInstanceMethod => HasInstanceMethod && InstanceClassesOnly;
 
@@ -28,5 +29,5 @@ internal readonly record struct FunctionClassification(bool IsExcluded,
         => new(IsExcluded && other.IsExcluded,
                HasInstanceMethod || other.HasInstanceMethod,
                InstanceClassesOnly && other.InstanceClassesOnly,
-               MemoryFunction == other.MemoryFunction ? MemoryFunction : null);
+               AllocationFunction == other.AllocationFunction ? AllocationFunction : null);
 }

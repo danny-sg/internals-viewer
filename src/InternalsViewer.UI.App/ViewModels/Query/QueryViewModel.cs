@@ -1,4 +1,6 @@
-﻿using InternalsViewer.Query.FullTrace.CustomHooks;
+using InternalsViewer.Query.FullTrace.Memory.Address;
+using InternalsViewer.Query.FullTrace.Memory.Allocation;
+using InternalsViewer.Query.FullTrace.CustomHooks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.UI.App.Controls.Query.SqlEditor;
 using InternalsViewer.UI.App.Controls.Query.Timeline.Definition;
@@ -274,13 +276,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private TraceTimeline? _fullTraceTimeline;
 
     [ObservableProperty]
-    private MemoryIndex _traceMemory = MemoryIndex.Empty;
+    private AllocationIndex _traceAllocation = AllocationIndex.Empty;
 
     [ObservableProperty]
-    private TraceOperatorLifetimes _traceLifetimes = TraceOperatorLifetimes.Empty;
+    private TraceOperatorLifetimeList _traceLifetimes = TraceOperatorLifetimeList.Empty;
 
     [ObservableProperty]
-    private TraceRowReturnMarks? _rowReturnMarks;
+    private TraceRowReturnMarkMap? _rowReturnMarks;
 
     [ObservableProperty]
     private IReadOnlyList<TraceTickTrack> _tickTracks = [];
@@ -1162,9 +1164,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         FullTraceTimeline = null;
 
-        TraceMemory = MemoryIndex.Empty;
+        TraceAllocation = AllocationIndex.Empty;
 
-        TraceLifetimes = TraceOperatorLifetimes.Empty;
+        TraceLifetimes = TraceOperatorLifetimeList.Empty;
 
         RowReturnMarks = null;
 
@@ -2405,14 +2407,14 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                             result.CallStack,
                             iterators,
                             result.HoBtAccess,
-                            result.MemoryMap,
+                            result.AddressMap,
                             result.MemoryHistory,
                             result.MemoryObjects,
                             StorageIdMap.Build(Database.AllocationUnits.Values));
 
         FullTraceTimeline = result.Timeline;
 
-        TraceMemory = result.Memory;
+        TraceAllocation = result.Allocation;
 
         TraceLifetimes = result.Lifetimes;
 
@@ -2429,7 +2431,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         ExecutionPlans = [.. ExecutionPlans];
     }
 
-    private ExecutionOperatorEvent? GetStatementOperator(TraceOperatorLifetimes lifetimes)
+    private ExecutionOperatorEvent? GetStatementOperator(TraceOperatorLifetimeList lifetimes)
     {
         var planHandle = lifetimes.Select(l => l.Operator.PlanNodeIdentifier?.PlanHandleId).FirstOrDefault(h => h is not null);
 
@@ -2556,9 +2558,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         FullTraceTimeline = null;
 
-        TraceMemory = MemoryIndex.Empty;
+        TraceAllocation = AllocationIndex.Empty;
 
-        TraceLifetimes = TraceOperatorLifetimes.Empty;
+        TraceLifetimes = TraceOperatorLifetimeList.Empty;
 
         RowReturnMarks = null;
 

@@ -1,3 +1,6 @@
+using InternalsViewer.Query.FullTrace.Memory.Address;
+using InternalsViewer.Query.FullTrace.Memory.Allocation;
+using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
@@ -39,9 +42,9 @@ internal sealed class TraceResultBuilder
 
     public IteratorPlanLink PlanLink { get; }
 
-    public MemoryIndex Memory { get; init; } = MemoryIndex.Empty;
+    public AllocationIndex Allocation { get; init; } = AllocationIndex.Empty;
 
-    public MemoryMap MemoryMap { get; init; } = MemoryMap.Empty;
+    public AddressMap AddressMap { get; init; } = AddressMap.Empty;
 
     public IReadOnlyDictionary<ulong, MemoryObjectInfo> MemoryObjectSnapshot { get; init; } = new Dictionary<ulong, MemoryObjectInfo>();
 
@@ -63,11 +66,11 @@ internal sealed class TraceResultBuilder
 
     private IReadOnlyList<QueryTeardown> Teardowns { get; }
 
-    private TraceOperatorLifetimes? Lifetimes { get; set; }
+    private TraceOperatorLifetimeList? Lifetimes { get; set; }
 
-    public TraceOperatorLifetimes BuildLifetimes()
+    public TraceOperatorLifetimeList BuildLifetimes()
     {
-        Lifetimes = IteratorLifetimeBuilder.Build(Timeline, Memory, [.. Events.OfType<ExecutionOperatorEvent>()], PlanNodes, Teardowns);
+        Lifetimes = IteratorLifetimeBuilder.Build(Timeline, Allocation, [.. Events.OfType<ExecutionOperatorEvent>()], PlanNodes, Teardowns);
 
         return Lifetimes;
     }
@@ -76,7 +79,7 @@ internal sealed class TraceResultBuilder
     {
         var lifetimes = Lifetimes ?? BuildLifetimes();
 
-        var enclosing = EnclosingOperatorCalls.Build(CallStore, lifetimes.OperatorsByInstance);
+        var enclosing = EnclosingOperatorCallIndex.Build(CallStore, lifetimes.OperatorsByInstance);
 
         return new TraceResult(CallStack, CallStore, Timeline)
         {
@@ -84,18 +87,18 @@ internal sealed class TraceResultBuilder
             PlanNodes = PlanNodes,
             Teardowns = Teardowns,
             HoBtAccess = HoBtAccessMap.Build(CallStore, Timeline.MappedNodes),
-            Memory = Memory,
+            Allocation = Allocation,
             Lifetimes = lifetimes,
             EnclosingCalls = enclosing,
-            MemoryMap = MemoryMap,
+            AddressMap = AddressMap,
             MemoryObjects = MemoryObjectMap.Build(CallStore, Timeline.MappedNodes, MemoryObjectSnapshot),
             ObjectPool = ObjectPool,
             CustomHooks = CustomHooks,
             BufferPool = BufferPool,
             OutputStructures = outputStructures,
-            RowReturnMarks = TraceRowReturnMarks.Build(Timeline, CallStore, lifetimes, enclosing),
-            Reads = TraceReads.Build(Timeline, CallStore, lifetimes, enclosing),
-            Evaluations = TraceEvaluations.Build(Timeline, CallStore, lifetimes, enclosing)
+            RowReturnMarks = TraceRowReturnMarkMap.Build(Timeline, CallStore, lifetimes, enclosing),
+            Reads = TraceReadResolver.Build(Timeline, CallStore, lifetimes, enclosing),
+            Evaluations = TraceEvaluationReader.Build(Timeline, CallStore, lifetimes, enclosing)
         };
     }
 }

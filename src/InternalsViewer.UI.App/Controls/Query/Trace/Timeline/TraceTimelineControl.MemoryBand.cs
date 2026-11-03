@@ -188,15 +188,15 @@ public sealed partial class TraceTimelineControl
                         _paints.Label);
     }
 
-    private bool ShowsGrantUse => GrantedMemory > 0 && Memory.HasWorkspace;
+    private bool ShowsGrantUse => GrantedMemory > 0 && Allocation.HasWorkspace;
 
     private string InUseLabel => ShowsGrantUse ? "Grant In Use" : "In Use";
 
     private ulong BandInUse(TracePosition start, TracePosition end)
-        => ShowsGrantUse ? Memory.PeakWorkspaceDuring(start, end) : Memory.PeakInUseDuring(start, end);
+        => ShowsGrantUse ? Allocation.PeakWorkspaceDuring(start, end) : Allocation.PeakInUseDuring(start, end);
 
     private ulong AllocatedDuring(TraceTimeline timeline, TracePosition start, TracePosition end)
-        => timeline.Threads.Aggregate(0ul, (total, t) => total + Memory.AllocatedDuring(t.ThreadId, start, end).Bytes);
+        => timeline.Threads.Aggregate(0ul, (total, t) => total + Allocation.AllocatedDuring(t.ThreadId, start, end).Bytes);
 
     private (TracePosition Start, TracePosition End) BucketRange(int bucket, double scale)
     {

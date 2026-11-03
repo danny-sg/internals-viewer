@@ -6,6 +6,7 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Memory.History;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Pages;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Logging;
@@ -637,7 +638,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         return new HexImage(image.Data,
                             MemoryChangeRuns.GetRuns(store.GetWrites(block), count, image.Data.Length),
-                            MemoryHistoryPointers.Find(store, history.BufferPool, block, image, count, position));
+                            MemoryHistoryPointerReader.Find(store, history.BufferPool, block, image, count, position));
     }
 
     private List<HexLink> GetLinks(List<MemoryHistoryPointer> pointers)
@@ -651,7 +652,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
                 var target = History.GetPointerTarget(value, Position) ?? $"0x{value:X16}";
 
                 links.Add(new HexLink(offset,
-                                      MemoryHistoryPointers.PointerSize,
+                                      MemoryHistoryPointerReader.PointerSize,
                                       PointerPrefix + target,
                                       OpenMemoryCommand,
                                       () => RequestMemory(value)));
@@ -659,7 +660,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
             else if (page is { } reference && History.IsQueryDatabase(reference))
             {
                 links.Add(new HexLink(offset,
-                                      MemoryHistoryPointers.PointerSize,
+                                      MemoryHistoryPointerReader.PointerSize,
                                       PointerPrefix + History.GetBufferPageLabel(reference),
                                       OpenPageCommand,
                                       () => Navigator?.OpenBufferPage(reference)));
