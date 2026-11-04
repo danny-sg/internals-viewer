@@ -1,4 +1,5 @@
 using InternalsViewer.Query.FullTrace.Hooks;
+using InternalsViewer.Query.FullTrace.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
@@ -50,6 +51,30 @@ public class PlanNodeHookTests
         hook.OnEntry(Call(GetRow, 1, Parent), replay);
 
         Assert.Equal(new IteratorPlanNode(Parent, PlanObject, 0, Query, 2), Assert.Single(hook.GetPlanNodes()));
+    }
+
+    [Fact]
+    public void A_Row_Iterator_On_SQL_Server_2022_Reports_The_Plan_Node_Of_Its_Plan_Object()
+    {
+        var replay = PlanObjects().Write(Parent + 0x10, Parent + 0x10).Write(Parent + 0x48, PlanObject);
+
+        var hook = CreateHook(PlanNodeLayout.SqlServer2022);
+
+        hook.OnEntry(Call(GetRow, 1, Parent), replay);
+
+        Assert.Equal(new IteratorPlanNode(Parent, PlanObject, 0, Query, 2), Assert.Single(hook.GetPlanNodes()));
+    }
+
+    [Fact]
+    public void A_Batch_Helper_On_SQL_Server_2022_Reports_The_Plan_Node_Of_The_Operator_It_Adapts()
+    {
+        var replay = PlanObjects().Write(Parent + 0x10, Parent + 0x10).Write(Parent + 0x48, PlanObject);
+
+        var hook = CreateHook(PlanNodeLayout.SqlServer2022);
+
+        hook.OnEntry(Call(BatchHelperGetRow, 1, Parent), replay);
+
+        Assert.Equal(new IteratorPlanNode(Parent, PlanObject, 0, Query, 2, IsBatchHelper: true), Assert.Single(hook.GetPlanNodes()));
     }
 
     [Fact]
@@ -139,15 +164,28 @@ public class PlanNodeHookTests
     }
 
     [Fact]
-    public void A_Query_Teardown_Ends_When_Its_Call_Returns()
+    public void A_Plan_Object_Missing_From_The_Trace_Is_Read_Again_When_The_Query_Is_Torn_Down()
     {
         var hook = CreateHook();
 
-        hook.OnEntry(Call(Teardown, 1, Parent), new FakeTraceReplay());
+        var built = Slots(0, 0).Write(BatchPlanObject, BatchPlanObjectTable);
 
-        hook.OnReturn(Call(Teardown, 1, Parent, at: 9), new FakeTraceReplay());
+        hook.OnEntry(Call(BatchFactory, 1, BatchPlanObject), built);
 
-        Assert.Equal(new QueryTeardown(Thread, new TracePoint(At(9), 9)), Assert.Single(hook.GetTeardowns()));
+        hook.OnReturn(Call(BatchFactory, 1, BatchPlanObject, returnValue: Child), built);
+
+        hook.OnEntry(Call(Teardown, 2, Parent), PlanObjects());
+
+        Assert.Equal(new IteratorPlanNode(Child, PlanObject, BatchPlanObject, Query, 2, new TracePoint(At(1), 1)),
+                     Assert.Single(hook.GetPlanNodes()));
+    }
+
+    [Fact]
+    public void The_Query_Teardown_Is_Watched_On_Entry_Only()
+    {
+        var hook = CreateHook();
+
+        Assert.Equal(TraceHookEvents.Entry, hook.Functions.Single(f => f.Address == Teardown).Events);
     }
 
     [Fact]
@@ -172,7 +210,7 @@ public class PlanNodeHookTests
                       .Write(BatchPlanObject, BatchPlanObjectTable)
                       .Write(BatchPlanObject + 0x10, PlanObject);
 
-    private static PlanNodeHook CreateHook()
+    private static PlanNodeHook CreateHook(PlanNodeLayout? layout = null)
         => new(new(new Dictionary<ulong, PlanNodeFunctionType>
                {
                    [GetRow] = PlanNodeFunctionType.Iterator,
@@ -186,7 +224,8 @@ public class PlanNodeHookTests
                {
                    [PlanObjectTable] = PlanObjectClass.Row,
                    [BatchPlanObjectTable] = PlanObjectClass.Batch
-               }));
+               }),
+               layout ?? PlanNodeLayout.SqlServer2025);
 
     private static TraceHookCall Call(ulong function, ulong id, ulong iterator, ulong returnValue = 0, ulong? at = null)
         => new()

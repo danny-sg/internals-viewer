@@ -32,7 +32,8 @@
 
         <TextBlock Style="{ThemeResource BodyStrongTextBlockStyle}">Settings</TextBlock>
 
-        <controls:SettingsExpander Header="Query"
+        <controls:SettingsExpander x:Name="QueryExpander"
+                                   Header="Query"
                                    IsExpanded="False"
                                    Description="Settings for query tracing">
             <controls:SettingsExpander.ItemsHeader>

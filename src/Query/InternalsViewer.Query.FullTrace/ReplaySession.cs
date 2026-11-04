@@ -62,18 +62,27 @@ internal sealed class ReplaySession : IDisposable
 
     private const uint ReadType = 0;
 
+    private const string ServerModule = "sqlservr";
+
     private ReplaySession(TimeTravelTraceFile trace, TraceHandle handle)
     {
         TraceFile = trace;
         Handle = handle;
         Modules = ReadModules(handle);
+        ServerVersion = Modules.FirstOrDefault(m => string.Equals(m.Name, ServerModule, StringComparison.OrdinalIgnoreCase))
+                               ?.ProductVersion;
+        Offsets = new OffsetProvider(ServerVersion);
     }
 
     public TimeTravelTraceFile TraceFile { get; }
 
     public IReadOnlyList<TraceModule> Modules { get; }
 
+    public Version? ServerVersion { get; }
+
     private TraceHandle Handle { get; }
+
+    private OffsetProvider Offsets { get; }
 
     /// <summary>
     /// Semaphore to gate access to the replay engine
@@ -192,7 +201,7 @@ internal sealed class ReplaySession : IDisposable
                                                    .Select(f => new AddressMapFunction(f.Address, AddressMapOperation.Allocated)),
                                           VtableResolver.GetUniqueClasses(functions.Vtables));
 
-        var planNodeHook = new PlanNodeHook(functions.PlanNodeFunctions, functions.PlanObjects);
+        var planNodeHook = new PlanNodeHook(functions.PlanNodeFunctions, functions.PlanObjects, Offsets.PlanNode);
 
         var output = new OutputHook(functions.OutputFunctions, functions.OutputClasses);
 
@@ -277,8 +286,7 @@ internal sealed class ReplaySession : IDisposable
                                         addressMap.Build(),
                                         bufferPool.Build(),
                                         output.Build(),
-                                        planNodeHook.GetPlanNodes(),
-                                        planNodeHook.GetTeardowns())
+                                        planNodeHook.GetPlanNodes())
                 {
                     Buffers = bufferPool.GetBuffers(),
                     StackSnapshotResult = stack?.Build() ?? StackSnapshotResult.Empty

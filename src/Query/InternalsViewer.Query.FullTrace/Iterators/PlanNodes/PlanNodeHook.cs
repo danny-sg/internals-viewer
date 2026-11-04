@@ -6,17 +6,11 @@ using InternalsViewer.Query.Extensions;
 
 namespace InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 
-internal sealed class PlanNodeHook(AddressTable<PlanNodeFunctionType> functions, AddressTable<PlanObjectClass> planObjects) : ITraceHook
+internal sealed class PlanNodeHook(AddressTable<PlanNodeFunctionType> functions,
+                                   AddressTable<PlanObjectClass> planObjects,
+                                   PlanNodeLayout layout) : ITraceHook
 {
     private const int IteratorArgument = 0;
-
-    private const ulong PlanObjectOffset = 0x10;
-
-    private const ulong BatchPlanObjectOffset = 0x10;
-
-    private const ulong PlanNodeIdOffset = 0x0C;
-
-    private const ulong PlanQueryOffset = 0x28;
 
     private const TraceHookEvents EntryAndReturn = TraceHookEvents.Entry | TraceHookEvents.Return;
 
@@ -33,11 +27,7 @@ internal sealed class PlanNodeHook(AddressTable<PlanNodeFunctionType> functions,
 
     private Dictionary<ulong, TracePoint> Constructions { get; } = [];
 
-    private HashSet<ulong> TearingDown { get; } = [];
-
     private HashSet<ulong> BatchHelpers { get; } = [];
-
-    private List<QueryTeardown> Teardowns { get; } = [];
 
     private List<ulong> ResolvedPlanNodes { get; } = [];
 
@@ -61,34 +51,27 @@ internal sealed class PlanNodeHook(AddressTable<PlanNodeFunctionType> functions,
                 Factories[call.Id] = new PendingFactory(iterator, new TracePoint(call.Position, call.Instructions));
                 return;
 
-            case PlanNodeFunctionType.Teardown:
-                TearingDown.Add(call.Id);
-                return;
-
             case PlanNodeFunctionType.Constructor:
                 Constructions[iterator] = new TracePoint(call.Position, call.Instructions);
                 return;
 
             case PlanNodeFunctionType.BatchHelper:
                 BatchHelpers.Add(iterator);
-                AddPlanNode(replay, iterator);
+                AddPlanNode(replay, iterator, layout.RowIteratorPlanObjectOffset);
                 return;
 
-            case PlanNodeFunctionType.Iterator or PlanNodeFunctionType.BatchIterator:
-                AddPlanNode(replay, iterator);
+            case PlanNodeFunctionType.Iterator:
+                AddPlanNode(replay, iterator, layout.RowIteratorPlanObjectOffset);
+                return;
+
+            case PlanNodeFunctionType.BatchIterator:
+                AddPlanNode(replay, iterator, layout.BatchIteratorPlanObjectOffset);
                 return;
         }
     }
 
     public void OnReturn(in TraceHookCall call, ITraceReplay replay)
     {
-        if (TearingDown.Remove(call.Id))
-        {
-            Teardowns.Add(new QueryTeardown(call.Thread, new TracePoint(call.Position, call.Instructions)));
-
-            return;
-        }
-
         if (Factories.Remove(call.Id, out var factory)
             && call.ReturnValue >= TraceAddress.MinAddress
             && !PlanNodes.ContainsKey(call.ReturnValue))
@@ -101,24 +84,17 @@ internal sealed class PlanNodeHook(AddressTable<PlanNodeFunctionType> functions,
         }
     }
 
-    public void OnAbandoned(in TraceHookCall call)
-    {
-        Factories.Remove(call.Id);
-
-        TearingDown.Remove(call.Id);
-    }
+    public void OnAbandoned(in TraceHookCall call) => Factories.Remove(call.Id);
 
     public IReadOnlyList<IteratorPlanNode> GetPlanNodes() => [.. PlanNodes.Values];
 
-    public IReadOnlyList<QueryTeardown> GetTeardowns() => Teardowns;
+    private static bool HasReturn(PlanNodeFunctionType type) => type is PlanNodeFunctionType.BatchFactory;
 
-    private static bool HasReturn(PlanNodeFunctionType type) => type is PlanNodeFunctionType.BatchFactory or PlanNodeFunctionType.Teardown;
-
-    private void AddPlanNode(ITraceReplay replay, ulong iterator)
+    private void AddPlanNode(ITraceReplay replay, ulong iterator, ulong planObjectOffset)
     {
         if (PlanNodes.ContainsKey(iterator)
             || PendingPlanNodes.ContainsKey(iterator)
-            || !replay.TryRead(iterator + PlanObjectOffset, out ulong planObject))
+            || !replay.TryRead(iterator + planObjectOffset, out ulong planObject))
         {
             return;
         }
@@ -175,15 +151,15 @@ internal sealed class PlanNodeHook(AddressTable<PlanNodeFunctionType> functions,
         {
             batchPlanObject = planObject;
 
-            if (!replay.TryRead(batchPlanObject + BatchPlanObjectOffset, out planObject))
+            if (!replay.TryRead(batchPlanObject + layout.BatchPlanObjectOffset, out planObject))
             {
                 return null;
             }
         }
 
         if (GetPlanObjectClass(replay, planObject) != PlanObjectClass.Row
-            || !replay.TryRead(planObject + PlanNodeIdOffset, out int nodeId)
-            || !replay.TryRead(planObject + PlanQueryOffset, out ulong query)
+            || !replay.TryRead(planObject + layout.PlanNodeIdOffset, out int nodeId)
+            || !replay.TryRead(planObject + layout.PlanQueryOffset, out ulong query)
             || nodeId < 0
             || query < TraceAddress.MinAddress)
         {

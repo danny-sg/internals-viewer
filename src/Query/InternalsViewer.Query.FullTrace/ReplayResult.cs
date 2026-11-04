@@ -35,9 +35,6 @@ namespace InternalsViewer.Query.FullTrace;
 /// <param name="PlanNodes">
 /// Iterators linked to their plan object and plan node id by the plan node hook
 /// </param>
-/// <param name="Teardowns">
-/// Where each query teardown ended, per thread
-/// </param>
 internal sealed record ReplayResult(CallNode[] Nodes,
                                     IReadOnlyList<TraceModule> Modules,
                                     TraceCallStore CallStore,
@@ -45,8 +42,7 @@ internal sealed record ReplayResult(CallNode[] Nodes,
                                     ChunkedList<AddressEntry> AddressMap,
                                     TraceBufferPool BufferPool,
                                     List<OutputAddressEntry> OutputAddresses,
-                                    IReadOnlyList<IteratorPlanNode> PlanNodes,
-                                    IReadOnlyList<QueryTeardown> Teardowns)
+                                    IReadOnlyList<IteratorPlanNode> PlanNodes)
 {
     public MemoryBlock[] Buffers { get; init; } = [];
 

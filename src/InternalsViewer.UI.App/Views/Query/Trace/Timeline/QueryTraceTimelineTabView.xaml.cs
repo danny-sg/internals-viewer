@@ -15,6 +15,7 @@ using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
 using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Query;
 using InternalsViewer.UI.App.Views.Query.Trace.OperatorTracks;
+using InternalsViewer.UI.Plugins.FullTrace.Menus;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
@@ -69,6 +70,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         TraceTimeline.SelectionCleared += OnSelectionCleared;
 
         TraceTimeline.CallTreeOpenRequested += OnCallTreeOpenRequested;
+
+        TraceTimeline.CallMenuRequested += OnCallMenuRequested;
 
         TraceTimeline.SearchRequested += Search;
 
@@ -192,6 +195,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         TraceTimeline.SelectionCleared -= OnSelectionCleared;
 
         TraceTimeline.CallTreeOpenRequested -= OnCallTreeOpenRequested;
+
+        TraceTimeline.CallMenuRequested -= OnCallMenuRequested;
 
         TraceTimeline.SearchRequested -= Search;
 
@@ -632,6 +637,19 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
     private void OnCallSelected(CallStackNode node, int callIndex) => ViewModel?.NavigateToCall(node, callIndex);
 
     private void OnCallTreeOpenRequested(CallStackNode? node, int callIndex) => ViewModel?.OpenCallTree(node, callIndex);
+
+    private void OnCallMenuRequested(MenuFlyout menu, TraceMenuTarget target)
+    {
+        if (Tab is not { } tab)
+        {
+            return;
+        }
+
+        foreach (var item in tab.GetMenuItems(target))
+        {
+            menu.Items.Add(MenuItems.Create(item.Text, item.Invoke));
+        }
+    }
 
     private void OnCallStackVisibilityRequested(bool isVisible) => ViewModel?.TraceTimelineTab.IsCallStackVisible = isVisible;
 

@@ -164,7 +164,9 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
             steps.Begin(ReplayStep);
 
-            Logger.LogInformation("Replaying Full Trace for {Threads} thread(s)", request.ThreadIds.Count);
+            Logger.LogInformation("Replaying Full Trace of SQL Server {Version} for {Threads} thread(s)",
+                                  session.ServerVersion,
+                                  request.ThreadIds.Count);
 
             var replay = await session.ReplayAsync(request.ThreadIds,
                                                    functions,
@@ -307,7 +309,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         var getAllocation = GetAllocation(replay.CallStore, functions.AllocationFunctions, memoryObjects);
 
-        var builder = new TraceResultBuilder(callStack, replay.CallStore, timeline, events, replay.PlanNodes, replay.Teardowns)
+        var builder = new TraceResultBuilder(callStack, replay.CallStore, timeline, events, replay.PlanNodes)
         {
             Allocation = memory,
             AddressMap = AddressMap.Build(replay.AddressMap, timeline.NodeOf, getAllocation),

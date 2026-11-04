@@ -6,6 +6,7 @@ using InternalsViewer.UI.App.Controls.Query.Timeline.Definition;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.Services.Query.Simulation;
 using InternalsViewer.UI.App.Services.Query.Trace;
+using InternalsViewer.UI.Plugins.FullTrace.Menus;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -96,7 +97,8 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                           TraceDirectoryService traceDirectoryService,
                                           IBufferPoolInfoProvider bufferPoolInfoProvider,
                                           SimulationTabViewModelFactory simulationTabViewModelFactory,
-                                          TraceTickTrackStore tickTrackStore)
+                                          TraceTickTrackStore tickTrackStore,
+                                          IEnumerable<ITraceMenuContributor> menuContributors)
 {
     public QueryViewModel Create(DatabaseSource database) => new(logger,
                                                                  queryRunner,
@@ -111,6 +113,7 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                                                  bufferPoolInfoProvider,
                                                                  simulationTabViewModelFactory,
                                                                  tickTrackStore,
+                                                                 menuContributors,
                                                                  database);
 }
 
@@ -354,9 +357,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                           IBufferPoolInfoProvider bufferPoolInfoProvider,
                           SimulationTabViewModelFactory simulationTabViewModelFactory,
                           TraceTickTrackStore tickTrackStore,
+                          IEnumerable<ITraceMenuContributor> menuContributors,
                           DatabaseSource database)
     {
         _simulationTabViewModelFactory = simulationTabViewModelFactory;
+
+        MenuContributors = [.. menuContributors];
 
         Symbols = new SymbolsViewModel(logger, settingsViewModel);
 
@@ -468,6 +474,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public ArgumentsViewModel Arguments { get; }
 
     public MemoryHistoryViewModel MemoryHistory { get; }
+
+    public List<ITraceMenuContributor> MenuContributors { get; }
 
     public CallTreeTabViewModel CallTreeTab => CreatedCallTreeTab ??= new CallTreeTabViewModel(this, _settingsViewModel, Logger);
 

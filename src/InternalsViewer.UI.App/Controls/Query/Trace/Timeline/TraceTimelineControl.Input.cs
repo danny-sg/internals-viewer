@@ -8,6 +8,8 @@ using InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Enums;
 using InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Memory;
 using InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Operators;
 using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.Plugins.FullTrace.Menus;
+using InternalsViewer.UI.Plugins.FullTrace.Menus.Enums;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -815,6 +817,11 @@ public sealed partial class TraceTimelineControl
         flyout.Items.Add(new MenuFlyoutSeparator());
 
         flyout.Items.Add(MenuItems.Create("Open Call Tree", () => CallTreeOpenRequested?.Invoke(node, callIndex)));
+
+        if (node is not null)
+        {
+            CallMenuRequested?.Invoke(flyout, new TraceMenuTarget(TraceMenuSite.Timeline, node, callIndex));
+        }
 
         flyout.Items.Add(new MenuFlyoutSeparator());
 

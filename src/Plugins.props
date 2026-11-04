@@ -1,0 +1,20 @@
+<Project>
+
+    <PropertyGroup>
+        <DefaultInstructionHistory>true</DefaultInstructionHistory>
+        <DefaultInstructionHistory Condition="'$(GITHUB_ACTIONS)' == 'true'">false</DefaultInstructionHistory>
+        <IncludeInstructionHistory Condition="'$(IncludeInstructionHistory)' == ''">$(DefaultInstructionHistory)</IncludeInstructionHistory>
+        <InstructionHistoryName>InternalsViewer.Query.FullTrace.InstructionHistory</InstructionHistoryName>
+        <InstructionHistoryFolder>$(MSBuildThisFileDirectory)Query\$(InstructionHistoryName)\</InstructionHistoryFolder>
+        <InstructionHistoryProject>$(InstructionHistoryFolder)$(InstructionHistoryName).csproj</InstructionHistoryProject>
+    </PropertyGroup>
+
+    <ItemGroup Condition="'$(IncludeInstructionHistory)' == 'true'">
+        <ProjectReference Include="$(InstructionHistoryProject)" />
+        <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+            <_Parameter1>InternalsViewerPlugin</_Parameter1>
+            <_Parameter2>$(InstructionHistoryName)</_Parameter2>
+        </AssemblyAttribute>
+    </ItemGroup>
+
+</Project>

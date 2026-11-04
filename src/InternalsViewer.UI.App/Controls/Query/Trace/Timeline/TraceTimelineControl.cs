@@ -14,6 +14,7 @@ using InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Operators;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Stack;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
+using InternalsViewer.UI.Plugins.FullTrace.Menus;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -472,6 +473,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
     public event Action? SelectionCleared;
 
     public event Action<CallStackNode?, int>? CallTreeOpenRequested;
+
+    public event Action<MenuFlyout, TraceMenuTarget>? CallMenuRequested;
 
     public event Action<string>? SearchRequested;
 

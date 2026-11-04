@@ -30,9 +30,10 @@
         <AppxPackageDir>D:\package\InternalsViewer</AppxPackageDir>
         <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
         <AppxBundlePlatforms>x64</AppxBundlePlatforms>
-        
-        
+
+
     </PropertyGroup>
+    <Import Project="..\Plugins.props" />
     <ItemGroup>
       <Content Remove="Assets\Database.svg" />
       <Content Remove="Assets\DatabaseFile.svg" />
@@ -280,6 +281,7 @@
       <ProjectReference Include="..\Query\InternalsViewer.Query\InternalsViewer.Query.csproj" />
       <ProjectReference Include="..\Query\InternalsViewer.Query.FullTrace\InternalsViewer.Query.FullTrace.csproj" />
       <ProjectReference Include="..\InternalsViewer.Mcp\InternalsViewer.Mcp.csproj" />
+      <ProjectReference Include="..\InternalsViewer.UI.Plugins\InternalsViewer.UI.Plugins.csproj" />
     </ItemGroup>
 
     <ItemGroup>

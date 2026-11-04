@@ -102,6 +102,7 @@ jobs:
           /p:PackageCertificatePassword="${{ secrets.PFX_PASSWORD }}" `
           /p:AppxPackageDir="$env:Appx_Package_Dir" `
           /p:GenerateAppxPackageOnBuild=true `
+          /p:IncludeInstructionHistory=false `
           /verbosity:quiet
       env:
         Appx_Bundle: Never

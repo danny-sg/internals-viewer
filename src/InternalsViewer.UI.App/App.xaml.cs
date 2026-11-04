@@ -18,6 +18,8 @@ using InternalsViewer.UI.App.Activation;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Services.Mcp;
+using InternalsViewer.UI.App.Services.Plugins;
+using InternalsViewer.UI.Plugins.Settings;
 using InternalsViewer.UI.App.Services.Query.Trace;
 using InternalsViewer.UI.App.Services;
 using InternalsViewer.UI.App.ViewModels;
@@ -70,6 +72,10 @@ public partial class App
             services.RegisterExecutionServices();
             services.RegisterTraceServices();
             services.RegisterMcpServices();
+
+            services.AddSingleton<IPluginSettingStore, PluginSettingStore>();
+
+            services.RegisterPlugins(typeof(App).Assembly);
 
             services.AddSingleton<IMcpTabSource, McpTabSource>();
             services.AddSingleton<IMcpWorkspace, McpWorkspace>();

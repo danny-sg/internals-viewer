@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.WinUI.Controls;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Mcp;
+using InternalsViewer.UI.Plugins.FullTrace.Settings;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
@@ -27,6 +29,16 @@ public sealed partial class SettingsView : Page
         foreach (var client in ViewModel.McpClients)
         {
             McpServerExpander.Items.Insert(at++, CreateMcpClientCard(client));
+        }
+
+        foreach (var contributor in App.GetService<IEnumerable<ITraceSettingsContributor>>())
+        {
+            QueryExpander.Items.Add(new SettingsCard
+            {
+                Header = contributor.Header,
+                Description = contributor.Description,
+                Content = contributor.CreateContent()
+            });
         }
 
         _memoryTimer.Tick += (_, _) => ViewModel.RefreshMemoryUsage();

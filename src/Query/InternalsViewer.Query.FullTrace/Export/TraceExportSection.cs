@@ -31,8 +31,6 @@ internal sealed class TraceExportSection : IQueryExportSection
 
     internal const string PlanNodesEntry = "fulltrace/plannodes.bin";
 
-    internal const string TeardownsEntry = "fulltrace/teardowns.bin";
-
     internal const string MemoryHistoryEntry = "fulltrace/memoryhistory.bin";
 
     internal const string BufferPoolEntry = "fulltrace/bufferpool.bin";
@@ -73,8 +71,6 @@ internal sealed class TraceExportSection : IQueryExportSection
 
         writer.WriteBinary(PlanNodesEntry, CompressionLevel.Fastest, w => IteratorPlanNode.Write(w, fullTrace.PlanNodes));
 
-        writer.WriteBinary(TeardownsEntry, CompressionLevel.Fastest, w => QueryTeardown.Write(w, fullTrace.Teardowns));
-
         writer.WriteBinary(MemoryHistoryEntry, CompressionLevel.Fastest, fullTrace.MemoryHistory.Write);
 
         writer.WriteBinary(BufferPoolEntry, CompressionLevel.Fastest, fullTrace.BufferPool.Write);
@@ -105,11 +101,7 @@ internal sealed class TraceExportSection : IQueryExportSection
             ? reader.ReadBinary(PlanNodesEntry, IteratorPlanNode.Read)
             : [];
 
-        IReadOnlyList<QueryTeardown> teardowns = reader.HasEntry(TeardownsEntry)
-            ? reader.ReadBinary(TeardownsEntry, QueryTeardown.Read)
-            : [];
-
-        var builder = new TraceResultBuilder(tree, callStore, timeline, reader.Events, planNodes, teardowns)
+        var builder = new TraceResultBuilder(tree, callStore, timeline, reader.Events, planNodes)
         {
             Allocation = memory,
             AddressMap = reader.HasEntry(AddressMapEntry) && reader.ReadBinary(AddressMapEntry, AddressMap.IsSupported)

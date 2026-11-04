@@ -23,15 +23,14 @@ internal sealed class TraceResultBuilder
                               TraceCallStore callStore,
                               TraceTimeline timeline,
                               IReadOnlyList<EngineEvent> events,
-                              IReadOnlyList<IteratorPlanNode> planNodes,
-                              IReadOnlyList<QueryTeardown> teardowns)
+                              IReadOnlyList<IteratorPlanNode> planNodes)
     {
         CallStack = callStack;
         CallStore = callStore;
         Timeline = timeline;
         Events = events;
         PlanNodes = planNodes;
-        Teardowns = teardowns;
+        Teardowns = QueryTeardown.GetTeardowns(timeline);
 
         timeline.SetCalls(callStore);
 

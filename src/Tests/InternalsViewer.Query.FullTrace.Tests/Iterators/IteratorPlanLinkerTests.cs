@@ -95,25 +95,6 @@ public class IteratorPlanLinkerTests
         Assert.Equal(planNodes, IteratorPlanNode.Read(reader));
     }
 
-    [Fact]
-    public void Query_Teardowns_Survive_Export()
-    {
-        QueryTeardown[] teardowns = [new(7, new TracePoint(new(9, 10), 11))];
-
-        using var stream = new MemoryStream();
-
-        using (var writer = new BinaryWriter(stream, System.Text.Encoding.UTF8, true))
-        {
-            QueryTeardown.Write(writer, teardowns);
-        }
-
-        stream.Position = 0;
-
-        using var reader = new BinaryReader(stream);
-
-        Assert.Equal(teardowns, QueryTeardown.Read(reader));
-    }
-
     private static IteratorPlanLink Link(IteratorPlanNode[] planNodes, params ExecutionOperatorEvent[] operators)
         => IteratorPlanLinker.Link(planNodes, operators);
 

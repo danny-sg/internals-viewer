@@ -13,12 +13,15 @@ using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.ViewModels.Docking;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline.Memory;
 using InternalsViewer.UI.App.Views.Query.Trace.Timeline.Memory;
+using InternalsViewer.UI.Plugins.Documents;
+using InternalsViewer.UI.Plugins.FullTrace;
+using InternalsViewer.UI.Plugins.FullTrace.Menus;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
 
-public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITraceNavigator, IDisposable
+public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITraceNavigator, ITracePluginHost, IDisposable
 {
     private const double ChartStar = 2;
 
@@ -92,6 +95,8 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
 
     public TraceViewRange? ViewRange => Chart?.GetViewRange();
 
+    public TraceResult? Trace => Query.CurrentRun?.ExtraOf<TraceResult>();
+
     private QueryViewModel Query { get; }
 
     private DocumentViewModel CallStackDocument { get; }
@@ -99,6 +104,8 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
     private List<DocumentViewModel> MemoryDocuments { get; } = [];
 
     private List<DocumentViewModel> GraphDocuments { get; } = [];
+
+    private List<DocumentViewModel> PluginDocuments { get; } = [];
 
     private DocumentViewModel? LastActivatedMemory { get; set; }
 
@@ -253,6 +260,34 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         AddGraph(key, new MemoryReferenceGraphViewModel(Query.MemoryHistory, start, this));
     }
 
+    public List<TraceMenuItem> GetMenuItems(TraceMenuTarget target)
+    {
+        var items = new List<TraceMenuItem>();
+
+        foreach (var contributor in Query.MenuContributors)
+        {
+            contributor.AddItems(items, target, this);
+        }
+
+        return items;
+    }
+
+    public void OpenDocument(string key, Func<IPluginDocument> create)
+    {
+        if (PluginDocuments.FirstOrDefault(d => d.Key == key) is not { } document)
+        {
+            var plugin = create();
+
+            document = new DocumentViewModel(plugin.Title, plugin, plugin.CreateView, keepAlive: true, key: key, persist: false);
+
+            Query.Layout.RegisterDocument(key, document);
+
+            PluginDocuments.Add(document);
+        }
+
+        ShowPluginDocument(document);
+    }
+
     public void SetTrim(TracePosition? start, TracePosition? end)
     {
         Query.MemoryHistory.SetScope(start, end);
@@ -329,6 +364,17 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         }
 
         GraphDocuments.Clear();
+
+        foreach (var document in PluginDocuments)
+        {
+            Query.Layout.Close(document);
+
+            Query.Layout.RemoveDocument(document.Key, out _);
+
+            DisposePluginDocument(document);
+        }
+
+        PluginDocuments.Clear();
     }
 
     partial void OnIsCallStackVisibleChanged(bool value)
@@ -526,6 +572,37 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
             Query.Layout.RemoveDocument(document.Key, out _);
 
             DisposeGraph(document);
+        }
+        else if (PluginDocuments.Remove(document))
+        {
+            Query.Layout.RemoveDocument(document.Key, out _);
+
+            DisposePluginDocument(document);
+        }
+    }
+
+    private static void DisposePluginDocument(DocumentViewModel document)
+    {
+        document.DisposeView();
+
+        (document.Content as IDisposable)?.Dispose();
+    }
+
+    private void ShowPluginDocument(DocumentViewModel document)
+    {
+        var dock = Query.Layout.Dock;
+
+        if (dock.Contains(document))
+        {
+            dock.Show(document);
+        }
+        else if (PluginDocuments.FirstOrDefault(d => d != document && dock.Contains(d)) is { } neighbour)
+        {
+            dock.ShowBeside(document, neighbour);
+        }
+        else
+        {
+            dock.DockBottom(document);
         }
     }
 

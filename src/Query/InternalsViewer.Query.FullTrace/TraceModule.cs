@@ -1,4 +1,5 @@
 using InternalsViewer.Query.CallStack;
+using System.Diagnostics;
 using System.Reflection.PortableExecutable;
 
 namespace InternalsViewer.Query.FullTrace;
@@ -30,6 +31,8 @@ internal sealed record TraceModule
 
     public int Age { get; init; }
 
+    public Version? ProductVersion { get; init; }
+
     public string Name => System.IO.Path.GetFileNameWithoutExtension(Path);
 
     /// <summary>
@@ -44,6 +47,8 @@ internal sealed record TraceModule
     {
         try
         {
+            var productVersion = GetProductVersion(path);
+
             using var stream = File.OpenRead(path);
 
             using var reader = new PEReader(stream);
@@ -59,8 +64,13 @@ internal sealed record TraceModule
                                        size,
                                        System.IO.Path.GetFileName(data.Path),
                                        data.Guid.ToString("D").ToUpperInvariant(),
-                                       data.Age);
+                                       data.Age)
+                {
+                    ProductVersion = productVersion
+                };
             }
+
+            return new TraceModule(path, address, size) { ProductVersion = productVersion };
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or BadImageFormatException)
         {
@@ -86,4 +96,13 @@ internal sealed record TraceModule
         Age = Age,
         InstanceAddress = instanceAddress
     };
+
+    private static Version? GetProductVersion(string path)
+    {
+        var version = FileVersionInfo.GetVersionInfo(path);
+
+        return version.ProductMajorPart == 0
+            ? null
+            : new Version(version.ProductMajorPart, version.ProductMinorPart, version.ProductBuildPart, version.ProductPrivatePart);
+    }
 }

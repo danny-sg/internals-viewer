@@ -75,6 +75,7 @@ jobs:
           /p:GenerateTemporaryStoreCertificate=false `
           /p:AppxPackageDir="$env:Appx_Package_Dir" `
           /p:GenerateAppxPackageOnBuild=true `
+          /p:IncludeInstructionHistory=false `
           /verbosity:quiet
 
     - name: Upload the Store package

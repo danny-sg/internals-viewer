@@ -251,36 +251,43 @@ public sealed partial class TraceTimeline
 
     public TracePosition? GetFirstCallStart(string symbol)
     {
-        var isMatch = Array.ConvertAll(Nodes, n => n?.Symbol == symbol);
-
-        if (!isMatch.Contains(true))
-        {
-            return null;
-        }
-
         TracePosition? first = null;
 
-        foreach (var row in Threads.SelectMany(t => t.Rows))
+        foreach (var (_, span) in GetCalls(symbol))
         {
-            for (var index = 0; index < row.Count; index++)
+            if (first is not { } found || span.From.Position < found)
             {
-                var callNodeIndex = row.GetCallNodeIndex(index);
-
-                if (callNodeIndex < 0 || callNodeIndex >= isMatch.Length || !isMatch[callNodeIndex])
-                {
-                    continue;
-                }
-
-                var start = row.GetSpan(index).From.Position;
-
-                if (first is not { } found || start < found)
-                {
-                    first = start;
-                }
+                first = span.From.Position;
             }
         }
 
         return first;
+    }
+
+    public IEnumerable<(uint ThreadId, TraceSpan Span)> GetCalls(string symbol)
+    {
+        var isMatch = Array.ConvertAll(Nodes, n => n?.Symbol == symbol);
+
+        if (!isMatch.Contains(true))
+        {
+            yield break;
+        }
+
+        foreach (var thread in Threads)
+        {
+            foreach (var row in thread.Rows)
+            {
+                for (var index = 0; index < row.Count; index++)
+                {
+                    var callNodeIndex = row.GetCallNodeIndex(index);
+
+                    if (callNodeIndex >= 0 && callNodeIndex < isMatch.Length && isMatch[callNodeIndex])
+                    {
+                        yield return (thread.ThreadId, row.GetSpan(index));
+                    }
+                }
+            }
+        }
     }
 
     public TraceTimeline Where(Func<int, bool> include) => new([.. Threads.Select(t => t.Where(include))], this);
