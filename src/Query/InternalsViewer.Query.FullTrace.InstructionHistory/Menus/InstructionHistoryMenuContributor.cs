@@ -1,12 +1,16 @@
 using InternalsViewer.Query.FullTrace.InstructionHistory.Documents;
 using InternalsViewer.Query.FullTrace.InstructionHistory.Listing;
+using InternalsViewer.Query.FullTrace.InstructionHistory.Replay;
 using InternalsViewer.Query.FullTrace.InstructionHistory.Settings;
+using InternalsViewer.Query.Recording;
 using InternalsViewer.UI.Plugins.FullTrace;
 using InternalsViewer.UI.Plugins.FullTrace.Menus;
 
 namespace InternalsViewer.Query.FullTrace.InstructionHistory.Menus;
 
-public sealed class InstructionHistoryMenuContributor(IInstructionListingBuilder builder, InstructionHistorySettings settings)
+public sealed class InstructionHistoryMenuContributor(IInstructionHistoryReader reader,
+                                                      IInstructionListingBuilder builder,
+                                                      InstructionHistorySettings settings)
     : ITraceMenuContributor
 {
     private const string MenuText = "Instructions";
@@ -32,12 +36,14 @@ public sealed class InstructionHistoryMenuContributor(IInstructionListingBuilder
 
         var title = node.Symbol + TitleSuffix;
 
-        items.Add(new TraceMenuItem(MenuText, () => host.OpenDocument(key, () => CreateDocument(request, title))));
+        var trace = host.TraceFile;
+
+        items.Add(new TraceMenuItem(MenuText, () => host.OpenDocument(key, () => CreateDocument(trace, request, title))));
     }
 
-    private InstructionListingDocument CreateDocument(InstructionRequest request, string title)
+    private InstructionListingDocument CreateDocument(TimeTravelTraceFile? trace, InstructionRequest request, string title)
     {
-        var model = new InstructionListingViewModel(builder, request, title);
+        var model = new InstructionListingViewModel(reader, builder, trace, request, title);
 
         _ = model.LoadAsync();
 

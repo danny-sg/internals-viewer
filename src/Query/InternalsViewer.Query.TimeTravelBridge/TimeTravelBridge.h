@@ -101,6 +101,41 @@ extern "C"
 
     typedef void(__stdcall* WatchHitCallback)(const WatchHit* hits, int32_t count, const uint8_t* data, int32_t length);
 
+    struct InstructionStep
+    {
+        uint64_t Sequence;
+        uint64_t Steps;
+        uint64_t ProgramCounter;
+        uint32_t FirstChange;
+        uint32_t ChangeCount;
+        int32_t  Depth;
+        uint32_t Reserved;
+    };
+
+    struct RegisterChange
+    {
+        uint32_t Register;
+        uint32_t Reserved;
+        uint64_t Low;
+        uint64_t High;
+    };
+
+    struct InstructionCode
+    {
+        uint64_t Address;
+        uint32_t Offset;
+        uint32_t Length;
+    };
+
+    typedef void(__stdcall* InstructionStepCallback)(const InstructionStep* steps,
+                                                     int32_t                stepCount,
+                                                     const RegisterChange*  changes,
+                                                     int32_t                changeCount,
+                                                     const InstructionCode* code,
+                                                     int32_t                codeCount,
+                                                     const uint8_t*         bytes,
+                                                     int32_t                byteCount);
+
     __declspec(dllexport) int32_t OpenTrace(const wchar_t* replayLibraryPath, const wchar_t* tracePath, void** trace);
 
     __declspec(dllexport) int32_t GetModuleCount(void* trace);
@@ -142,6 +177,20 @@ extern "C"
                                               ProgressCallback  progress,
                                               volatile int32_t* cancel,
                                               int32_t*          watched);
+
+    __declspec(dllexport) int32_t WatchInstructions(void*                   trace,
+                                                    uint32_t                thread,
+                                                    uint64_t                startSequence,
+                                                    uint64_t                startSteps,
+                                                    uint64_t                endSequence,
+                                                    uint64_t                endSteps,
+                                                    uint64_t                entryAddress,
+                                                    uint32_t                flags,
+                                                    uint64_t                maximumSteps,
+                                                    InstructionStepCallback onSteps,
+                                                    ProgressCallback        progress,
+                                                    volatile int32_t*       cancel,
+                                                    uint32_t*               outcome);
 
     __declspec(dllexport) bool WatchFrame(void* session, uint32_t thread, uint64_t frame);
 

@@ -21,6 +21,7 @@ using InternalsViewer.Internals.Engine.Loading;
 using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Query;
+using InternalsViewer.Query.Recording;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Arguments;
@@ -650,6 +651,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             field = value;
 
+            TraceFile = null;
+
             MemoryHistory.SetTrace(value, Events, Database, ResolvePlanNode);
 
             CreatedTraceTimelineTab?.CloseMemory();
@@ -670,6 +673,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     }
 
     public QueryExportContent? CurrentRun => LastRun;
+
+    public TimeTravelTraceFile? TraceFile { get; private set; }
 
     public Func<(long StartUs, long EndUs)?>? VisibleTimeRangeSource { get; set; }
 
@@ -2187,7 +2192,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                 return;
             }
 
-            ShowTrace(result);
+            ShowTrace(result, request.TraceFile);
 
             LastRun = LastRun is { } run ? run with { Extras = [.. run.Extras, result] } : null;
 
@@ -2349,7 +2354,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             Layout.ShowTraceTimeline();
 
-            ShowTrace(fullTrace);
+            ShowTrace(fullTrace, null);
         }
 
         LastRun = run;
@@ -2376,9 +2381,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         RefreshFilteredEvents();
     }
 
-    private void ShowTrace(TraceResult result)
+    private void ShowTrace(TraceResult result, TimeTravelTraceFile? traceFile)
     {
         Trace = result;
+
+        TraceFile = traceFile;
 
         var traceTimeline = ApplyCrop(result);
 

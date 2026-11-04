@@ -1,0 +1,38 @@
+namespace InternalsViewer.Query.FullTrace.InstructionHistory.Replay.Enums;
+
+public enum TraceRegister
+{
+    Rax = 0,
+    Rcx = 1,
+    Rdx = 2,
+    Rbx = 3,
+    Rsp = 4,
+    Rbp = 5,
+    Rsi = 6,
+    Rdi = 7,
+    R8 = 8,
+    R9 = 9,
+    R10 = 10,
+    R11 = 11,
+    R12 = 12,
+    R13 = 13,
+    R14 = 14,
+    R15 = 15,
+    Flags = 16,
+    Xmm0 = 17,
+    Xmm1 = 18,
+    Xmm2 = 19,
+    Xmm3 = 20,
+    Xmm4 = 21,
+    Xmm5 = 22,
+    Xmm6 = 23,
+    Xmm7 = 24,
+    Xmm8 = 25,
+    Xmm9 = 26,
+    Xmm10 = 27,
+    Xmm11 = 28,
+    Xmm12 = 29,
+    Xmm13 = 30,
+    Xmm14 = 31,
+    Xmm15 = 32
+}

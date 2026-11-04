@@ -1,4 +1,5 @@
 using InternalsViewer.Query.FullTrace.InstructionHistory.Menus;
+using InternalsViewer.Query.FullTrace.InstructionHistory.Replay;
 using InternalsViewer.Query.FullTrace.InstructionHistory.Settings;
 using InternalsViewer.UI.Plugins.Enums;
 using InternalsViewer.UI.Plugins.FullTrace.Menus;
@@ -19,6 +20,9 @@ public class InstructionHistoryPluginTests
         var services = new ServiceCollection();
 
         new InstructionHistoryPlugin().ConfigureServices(services);
+
+        Assert.Contains(services, s => s.ServiceType == typeof(IInstructionHistoryReader)
+                                       && s.ImplementationType == typeof(InstructionHistoryReader));
 
         Assert.Contains(services, s => s.ServiceType == typeof(ITraceMenuContributor)
                                        && s.ImplementationType == typeof(InstructionHistoryMenuContributor));

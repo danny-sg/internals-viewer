@@ -12,9 +12,12 @@ public sealed partial class InstructionListingView : Grid, IDisposable
 
         RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
         Progress = new ProgressBar { IsIndeterminate = true };
+
+        SummaryText = new TextBlock { Margin = new Thickness(8, 4, 8, 4) };
 
         MessageText = new TextBlock { Margin = new Thickness(8, 4, 8, 4), TextWrapping = TextWrapping.Wrap };
 
@@ -27,10 +30,12 @@ public sealed partial class InstructionListingView : Grid, IDisposable
             HorizontalScrollMode = ScrollMode.Auto
         };
 
-        SetRow(MessageText, 1);
-        SetRow(scroller, 2);
+        SetRow(SummaryText, 1);
+        SetRow(MessageText, 2);
+        SetRow(scroller, 3);
 
         Children.Add(Progress);
+        Children.Add(SummaryText);
         Children.Add(MessageText);
         Children.Add(scroller);
 
@@ -43,6 +48,8 @@ public sealed partial class InstructionListingView : Grid, IDisposable
 
     private ProgressBar Progress { get; }
 
+    private TextBlock SummaryText { get; }
+
     private TextBlock MessageText { get; }
 
     private ItemsRepeater Repeater { get; }
@@ -54,6 +61,10 @@ public sealed partial class InstructionListingView : Grid, IDisposable
     private void Refresh()
     {
         Progress.Visibility = Model.IsLoading ? Visibility.Visible : Visibility.Collapsed;
+
+        SummaryText.Text = Model.Summary ?? string.Empty;
+
+        SummaryText.Visibility = Model.Summary is null ? Visibility.Collapsed : Visibility.Visible;
 
         MessageText.Text = Model.Message ?? string.Empty;
 

@@ -1375,6 +1375,332 @@ namespace
 
         return Success;
     }
+
+    constexpr size_t InstructionChunkSteps = 65536;
+
+    constexpr size_t MaximumInstructionBytes = 15;
+
+    constexpr uint64_t UserAddressLimit = 0x0000800000000000ull;
+
+    constexpr uint32_t IncludeCalleeSteps = 1;
+
+    constexpr uint32_t ReachedEnd = 0;
+
+    constexpr uint32_t FrameReturned = 1;
+
+    constexpr uint32_t StepLimitReached = 2;
+
+    constexpr uint32_t GeneralRegisterCount = 16;
+
+    constexpr uint32_t FlagsRegister = 16;
+
+    constexpr uint32_t FirstVectorRegister = 17;
+
+    constexpr uint32_t VectorRegisterCount = 16;
+
+    static_assert(offsetof(AMD64_CONTEXT, Xmm15) - offsetof(AMD64_CONTEXT, Xmm0) == 15 * sizeof(M128BIT));
+
+    struct InstructionSession
+    {
+        ICursor*                     Cursor = nullptr;
+        InstructionStepCallback      OnSteps = nullptr;
+        uint32_t                     Thread = 0;
+        uint64_t                     EntryAddress = 0;
+        bool                         IsIncludingCallees = false;
+        uint64_t                     MaximumSteps = 0;
+        bool                         IsStarted = false;
+        bool                         IsStopped = false;
+        int32_t                      Depth = 0;
+        Position                     CallPosition;
+        Position                     ReturnPosition;
+        Position                     RecordedPosition;
+        uint64_t                     Recorded = 0;
+        uint32_t                     Outcome = ReachedEnd;
+        AMD64_CONTEXT                Previous{};
+        std::unordered_set<uint64_t> Seen;
+        std::vector<InstructionStep> Steps;
+        std::vector<RegisterChange>  Changes;
+        std::vector<InstructionCode> Code;
+        std::vector<uint8_t>         Bytes;
+
+        bool IsWatched(IThreadView const& thread) const
+        {
+            return !IsStopped && static_cast<uint32_t>(thread.GetThreadInfo().Id) == Thread;
+        }
+
+        int32_t GetDepth(Position const& position) const
+        {
+            if (position == CallPosition)
+            {
+                return Depth - 1;
+            }
+
+            if (position == ReturnPosition)
+            {
+                return Depth + 1;
+            }
+
+            return Depth;
+        }
+
+        void Stop(uint32_t outcome)
+        {
+            Outcome = outcome;
+
+            IsStopped = true;
+
+            Cursor->InterruptReplay();
+        }
+
+        void Record(IThreadView const& thread, Position const& position, uint64_t programCounter, int32_t depth)
+        {
+            CROSS_PLATFORM_CONTEXT const context = thread.GetCrossPlatformContext();
+
+            auto const& registers = context.Amd64Context;
+
+            auto const first = static_cast<uint32_t>(Changes.size());
+
+            auto const* current = &registers.Rax;
+
+            auto const* previous = &Previous.Rax;
+
+            for (uint32_t index = 0; index < GeneralRegisterCount; index++)
+            {
+                if (current[index] != previous[index])
+                {
+                    Changes.push_back(RegisterChange{ index, 0, current[index], 0 });
+                }
+            }
+
+            if (registers.EFlags != Previous.EFlags)
+            {
+                Changes.push_back(RegisterChange{ FlagsRegister, 0, registers.EFlags, 0 });
+            }
+
+            auto const* vectors = &registers.Xmm0;
+
+            auto const* previousVectors = &Previous.Xmm0;
+
+            for (uint32_t index = 0; index < VectorRegisterCount; index++)
+            {
+                if (vectors[index].Low != previousVectors[index].Low || vectors[index].High != previousVectors[index].High)
+                {
+                    Changes.push_back(RegisterChange{ FirstVectorRegister + index,
+                                                      0,
+                                                      vectors[index].Low,
+                                                      static_cast<uint64_t>(vectors[index].High) });
+                }
+            }
+
+            Previous = registers;
+
+            Steps.push_back(InstructionStep{ static_cast<uint64_t>(position.Sequence),
+                                             static_cast<uint64_t>(position.Steps),
+                                             programCounter,
+                                             first,
+                                             static_cast<uint32_t>(Changes.size()) - first,
+                                             depth,
+                                             0 });
+
+            if (Seen.insert(programCounter).second)
+            {
+                auto const offset = Bytes.size();
+
+                Bytes.resize(offset + MaximumInstructionBytes);
+
+                auto const read = ReadMemory(thread, programCounter, Bytes.data() + offset, MaximumInstructionBytes);
+
+                Bytes.resize(offset + read);
+
+                Code.push_back(InstructionCode{ programCounter, static_cast<uint32_t>(offset), static_cast<uint32_t>(read) });
+            }
+
+            Recorded++;
+
+            RecordedPosition = position;
+
+            if (Steps.size() >= InstructionChunkSteps)
+            {
+                Flush();
+            }
+        }
+
+        void Flush()
+        {
+            if (!Steps.empty())
+            {
+                OnSteps(Steps.data(),
+                        static_cast<int32_t>(Steps.size()),
+                        Changes.data(),
+                        static_cast<int32_t>(Changes.size()),
+                        Code.data(),
+                        static_cast<int32_t>(Code.size()),
+                        Bytes.data(),
+                        static_cast<int32_t>(Bytes.size()));
+            }
+
+            Steps.clear();
+
+            Changes.clear();
+
+            Code.clear();
+
+            Bytes.clear();
+        }
+    };
+
+    bool __fastcall OnInstruction(uintptr_t context, ICursorView::MemoryWatchpointResult const&, IThreadView const* thread)
+    {
+        auto& session = *reinterpret_cast<InstructionSession*>(context);
+
+        if (!session.IsWatched(*thread))
+        {
+            return false;
+        }
+
+        auto const programCounter = static_cast<uint64_t>(thread->GetProgramCounter());
+
+        if (!session.IsStarted)
+        {
+            if (session.EntryAddress != 0 && programCounter != session.EntryAddress)
+            {
+                return false;
+            }
+
+            session.IsStarted = true;
+        }
+
+        auto const& position = thread->GetPosition();
+
+        auto const depth = session.GetDepth(position);
+
+        if (depth < 0)
+        {
+            session.Stop(FrameReturned);
+
+            return false;
+        }
+
+        if (depth == 0 || session.IsIncludingCallees)
+        {
+            session.Record(*thread, position, programCounter, depth);
+        }
+
+        if (session.Depth < 0)
+        {
+            session.Stop(FrameReturned);
+        }
+        else if (session.MaximumSteps != 0 && session.Recorded >= session.MaximumSteps)
+        {
+            session.Stop(StepLimitReached);
+        }
+
+        return false;
+    }
+
+    void __fastcall OnInstructionCallReturn(uintptr_t context, GuestAddress, GuestAddress fallThrough, IThreadView const* thread)
+    {
+        auto& session = *reinterpret_cast<InstructionSession*>(context);
+
+        if (!session.IsWatched(*thread) || (!session.IsStarted && session.EntryAddress != 0))
+        {
+            return;
+        }
+
+        auto const& position = thread->GetPosition();
+
+        if (static_cast<uint64_t>(fallThrough) != 0)
+        {
+            session.Depth++;
+
+            session.CallPosition = position;
+
+            return;
+        }
+
+        session.Depth--;
+
+        session.ReturnPosition = position;
+
+        if (session.Depth < 0 && session.IsStarted && session.RecordedPosition == position)
+        {
+            session.Stop(FrameReturned);
+        }
+    }
+
+    ReadResult ReplayInstructions(IReplayEngine&      engine,
+                                  Position const&     start,
+                                  Position const&     end,
+                                  InstructionSession& session,
+                                  ProgressCallback    progress,
+                                  volatile int32_t*   cancel)
+    {
+        std::unique_ptr<ICursor, Deleter<ICursor>> cursor{ engine.NewCursor() };
+
+        if (!cursor)
+        {
+            return CursorNotCreated;
+        }
+
+        session.Cursor = cursor.get();
+
+        ReplayState state{ cursor.get(), progress, cancel, {} };
+
+        state.Threads.push_back(ThreadProgress{ session.Thread,
+                                                static_cast<uint64_t>(start.Sequence),
+                                                static_cast<uint64_t>(end.Sequence),
+                                                -1 });
+
+        if (!cursor->AddMemoryWatchpoint(MemoryWatchpointData{ static_cast<GuestAddress>(0), UserAddressLimit, DataAccessMask::Execute }))
+        {
+            return ReplayFailed;
+        }
+
+        cursor->SetEventMask(EventMask::MemoryWatchpoint);
+        cursor->SetExceptionMask(ExceptionMask::None);
+        cursor->SetMemoryWatchpointCallback(OnInstruction, reinterpret_cast<uintptr_t>(&session));
+        cursor->SetCallReturnCallback(OnInstructionCallReturn, reinterpret_cast<uintptr_t>(&session));
+        cursor->SetReplayProgressCallback(OnProgress, reinterpret_cast<uintptr_t>(&state));
+        cursor->SetReplayFlags(ReplayFlags::ReplaySegmentsSequentially | ReplayFlags::ReplayAllSegmentsWithoutFiltering);
+        cursor->SetPosition(start);
+
+        while (true)
+        {
+            auto const result = cursor->ReplayForward(end);
+
+            if (result.StopReason == EventType::Error)
+            {
+                return ReplayFailed;
+            }
+
+            if (result.StopReason == EventType::Interrupted)
+            {
+                if (session.IsStopped)
+                {
+                    break;
+                }
+
+                return Cancelled;
+            }
+
+            if (result.StopReason == EventType::Position
+                || result.StopReason == EventType::StepCount
+                || result.StopReason == EventType::Process
+                || result.StepsExecuted == StepCount::Zero)
+            {
+                break;
+            }
+        }
+
+        session.Flush();
+
+        if (progress != nullptr && state.Threads[0].LastPercent != 100)
+        {
+            progress(session.Thread, 100);
+        }
+
+        return Success;
+    }
 }
 
 extern "C"
@@ -1602,6 +1928,49 @@ extern "C"
                            progress,
                            cancel,
                            *watched);
+    }
+
+    int32_t WatchInstructions(void*                   trace,
+                              uint32_t                thread,
+                              uint64_t                startSequence,
+                              uint64_t                startSteps,
+                              uint64_t                endSequence,
+                              uint64_t                endSteps,
+                              uint64_t                entryAddress,
+                              uint32_t                flags,
+                              uint64_t                maximumSteps,
+                              InstructionStepCallback onSteps,
+                              ProgressCallback        progress,
+                              volatile int32_t*       cancel,
+                              uint32_t*               outcome)
+    {
+        *outcome = ReachedEnd;
+
+        auto& engine = *static_cast<Trace*>(trace)->Engine;
+
+        auto session = std::make_unique<InstructionSession>();
+
+        session->OnSteps = onSteps;
+
+        session->Thread = thread;
+
+        session->EntryAddress = entryAddress;
+
+        session->IsIncludingCallees = (flags & IncludeCalleeSteps) != 0;
+
+        session->MaximumSteps = maximumSteps;
+
+        Position const start{ static_cast<SequenceId>(startSequence), static_cast<StepCount>(startSteps) };
+
+        auto const end = endSequence == 0
+                         ? engine.GetLastPosition()
+                         : Position{ static_cast<SequenceId>(endSequence), static_cast<StepCount>(endSteps) };
+
+        auto const status = ReplayInstructions(engine, start, end, *session, progress, cancel);
+
+        *outcome = session->Outcome;
+
+        return status;
     }
 
     uint64_t ReadTraceMemory(const void* view, uint64_t address, void* destination, uint64_t size)

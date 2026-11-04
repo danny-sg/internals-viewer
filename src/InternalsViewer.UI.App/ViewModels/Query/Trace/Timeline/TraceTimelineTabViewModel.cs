@@ -6,6 +6,7 @@ using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
+using InternalsViewer.Query.Recording;
 using InternalsViewer.UI.App.Controls.Query.Trace.CallStack;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Controls.HexView;
@@ -96,6 +97,8 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
     public TraceViewRange? ViewRange => Chart?.GetViewRange();
 
     public TraceResult? Trace => Query.CurrentRun?.ExtraOf<TraceResult>();
+
+    public TimeTravelTraceFile? TraceFile => Query.TraceFile;
 
     private QueryViewModel Query { get; }
 

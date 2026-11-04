@@ -1,6 +1,7 @@
 using InternalsViewer.Query.FullTrace.InstructionHistory;
 using InternalsViewer.Query.FullTrace.InstructionHistory.Listing;
 using InternalsViewer.Query.FullTrace.InstructionHistory.Menus;
+using InternalsViewer.Query.FullTrace.InstructionHistory.Replay;
 using InternalsViewer.Query.FullTrace.InstructionHistory.Settings;
 using InternalsViewer.UI.Plugins;
 using InternalsViewer.UI.Plugins.Enums;
@@ -18,6 +19,8 @@ public sealed class InstructionHistoryPlugin : IInternalsViewerPlugin
 
     public void ConfigureServices(IServiceCollection services)
     {
+        services.AddSingleton<IInstructionHistoryReader, InstructionHistoryReader>();
+
         services.AddSingleton<IInstructionListingBuilder, InstructionListingBuilder>();
 
         services.AddSingleton<InstructionHistorySettings>();

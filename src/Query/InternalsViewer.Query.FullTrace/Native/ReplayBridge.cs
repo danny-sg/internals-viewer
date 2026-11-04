@@ -181,6 +181,16 @@ internal static class ReplayBridge
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     public delegate void WatchHitCallback(IntPtr hits, int count, IntPtr data, int length);
 
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    public delegate void InstructionStepCallback(IntPtr steps,
+                                                 int stepCount,
+                                                 IntPtr changes,
+                                                 int changeCount,
+                                                 IntPtr code,
+                                                 int codeCount,
+                                                 IntPtr bytes,
+                                                 int byteCount);
+
     [DllImport(Library, CharSet = CharSet.Unicode)]
     public static extern int OpenTrace(string replayLibraryPath, string tracePath, out TraceHandle trace);
 
@@ -229,6 +239,21 @@ internal static class ReplayBridge
                                          ProgressCallback? progress,
                                          IntPtr cancel,
                                          out int watched);
+
+    [DllImport(Library)]
+    public static extern int WatchInstructions(TraceHandle trace,
+                                               uint thread,
+                                               ulong startSequence,
+                                               ulong startSteps,
+                                               ulong endSequence,
+                                               ulong endSteps,
+                                               ulong entryAddress,
+                                               uint flags,
+                                               ulong maximumSteps,
+                                               InstructionStepCallback onSteps,
+                                               ProgressCallback? progress,
+                                               IntPtr cancel,
+                                               out uint outcome);
 
     [DllImport(Library)]
     [return: MarshalAs(UnmanagedType.U1)]

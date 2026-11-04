@@ -1,7 +1,9 @@
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.InstructionHistory.Listing;
 using InternalsViewer.Query.FullTrace.InstructionHistory.Menus;
+using InternalsViewer.Query.FullTrace.InstructionHistory.Replay;
 using InternalsViewer.Query.FullTrace.InstructionHistory.Settings;
+using InternalsViewer.Query.Recording;
 using InternalsViewer.UI.Plugins.Documents;
 using InternalsViewer.UI.Plugins.FullTrace;
 using InternalsViewer.UI.Plugins.FullTrace.Menus;
@@ -40,7 +42,8 @@ public class InstructionHistoryMenuContributorTests
 
     private static List<TraceMenuItem> AddItems(TraceMenuTarget target)
     {
-        var contributor = new InstructionHistoryMenuContributor(new InstructionListingBuilder(),
+        var contributor = new InstructionHistoryMenuContributor(new InstructionHistoryReader(),
+                                                                new InstructionListingBuilder(),
                                                                 new InstructionHistorySettings(new FakePluginSettingStore()));
 
         var items = new List<TraceMenuItem>();
@@ -53,6 +56,8 @@ public class InstructionHistoryMenuContributorTests
     private sealed class FakeTracePluginHost : ITracePluginHost
     {
         public TraceResult? Trace => null;
+
+        public TimeTravelTraceFile? TraceFile => null;
 
         public void OpenDocument(string key, Func<IPluginDocument> create)
         {

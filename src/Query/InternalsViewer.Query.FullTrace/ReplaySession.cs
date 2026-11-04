@@ -7,6 +7,7 @@ using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory.Address.Enums;
 using InternalsViewer.Query.FullTrace.Memory.History.Capture;
 using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Native.Enums;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Recording;
 using InternalsViewer.Query.FullTrace.Functions;
@@ -114,6 +115,28 @@ internal sealed class ReplaySession : IDisposable
         }
     }
 
+    public async Task<StepReplayOutcome> ReplayAsync(uint thread,
+                                                     TracePosition from,
+                                                     TracePosition to,
+                                                     ulong entryAddress,
+                                                     long maximumSteps,
+                                                     List<ITraceHook> hooks,
+                                                     IProgress<double>? progress,
+                                                     CancellationToken cancellationToken)
+    {
+        await Gate.WaitAsync(cancellationToken);
+
+        try
+        {
+            return await Task.Run(() => ReplaySteps(thread, from, to, entryAddress, maximumSteps, hooks, progress, cancellationToken),
+                                  cancellationToken);
+        }
+        finally
+        {
+            Gate.Release();
+        }
+    }
+
     public async Task<WatchResult> WatchAsync(IReadOnlyCollection<WatchRange> ranges,
                                               TracePosition start,
                                               TracePosition end,
@@ -196,10 +219,10 @@ internal sealed class ReplaySession : IDisposable
         var operations = AddressMapHook.GetOperations(functions.AddressMapFunctions);
 
         var addressMap = new AddressMapHook(operations,
-                                          functions.AllocationFunctions
-                                                   .Where(f => f is { IsAllocation: true, IsVirtual: false })
-                                                   .Select(f => new AddressMapFunction(f.Address, AddressMapOperation.Allocated)),
-                                          VtableResolver.GetUniqueClasses(functions.Vtables));
+                                            functions.AllocationFunctions
+                                                     .Where(f => f is { IsAllocation: true, IsVirtual: false })
+                                                     .Select(f => new AddressMapFunction(f.Address, AddressMapOperation.Allocated)),
+                                            VtableResolver.GetUniqueClasses(functions.Vtables));
 
         var planNodeHook = new PlanNodeHook(functions.PlanNodeFunctions, functions.PlanObjects, Offsets.PlanNode);
 
@@ -429,6 +452,112 @@ internal sealed class ReplaySession : IDisposable
             registration.Dispose();
 
             Marshal.FreeHGlobal(cancel);
+        }
+    }
+
+    private StepReplayOutcome ReplaySteps(uint thread,
+                                          TracePosition from,
+                                          TracePosition to,
+                                          ulong entryAddress,
+                                          long maximumSteps,
+                                          List<ITraceHook> hooks,
+                                          IProgress<double>? progress,
+                                          CancellationToken cancellationToken)
+    {
+        var cancel = Marshal.AllocHGlobal(sizeof(int));
+
+        Marshal.WriteInt32(cancel, 0);
+
+        var registration = cancellationToken.Register(() => Marshal.WriteInt32(cancel, 1));
+
+        Exception? failure = null;
+
+        ReplayBridge.InstructionStepCallback onSteps = (steps, stepCount, changes, changeCount, code, codeCount, bytes, byteCount) =>
+        {
+            if (failure is not null)
+            {
+                return;
+            }
+
+            try
+            {
+                OnInstructionChunk(hooks, steps, stepCount, changes, changeCount, code, codeCount, bytes, byteCount);
+            }
+            catch (Exception exception)
+            {
+                failure = exception;
+
+                Marshal.WriteInt32(cancel, 1);
+            }
+        };
+
+        ReplayBridge.ProgressCallback onProgress = (_, percent) => progress?.Report(percent);
+
+        var (endSequence, endSteps) = to.IsKnown ? (to.Sequence + 1, 0ul) : (0ul, 0ul);
+
+        try
+        {
+            var result = ReplayBridge.WatchInstructions(Handle,
+                                                        thread,
+                                                        from.Sequence,
+                                                        from.Steps,
+                                                        endSequence,
+                                                        endSteps,
+                                                        entryAddress,
+                                                        0,
+                                                        (ulong)Math.Max(0, maximumSteps),
+                                                        onSteps,
+                                                        onProgress,
+                                                        cancel,
+                                                        out var outcome);
+
+            GC.KeepAlive(onSteps);
+
+            GC.KeepAlive(onProgress);
+
+            if (failure is not null)
+            {
+                throw new InvalidOperationException("A trace hook failed while the trace was replayed", failure);
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (result != 0)
+            {
+                throw new InvalidOperationException(Describe(result, TraceFile));
+            }
+
+            return (StepReplayOutcome)outcome;
+        }
+        finally
+        {
+            registration.Dispose();
+
+            Marshal.FreeHGlobal(cancel);
+        }
+    }
+
+    private static unsafe void OnInstructionChunk(List<ITraceHook> hooks,
+                                                  IntPtr steps,
+                                                  int stepCount,
+                                                  IntPtr changes,
+                                                  int changeCount,
+                                                  IntPtr code,
+                                                  int codeCount,
+                                                  IntPtr bytes,
+                                                  int byteCount)
+    {
+        var stepSpan = new ReadOnlySpan<InstructionStep>((void*)steps, stepCount);
+
+        var changeSpan = new ReadOnlySpan<RegisterChange>((void*)changes, changeCount);
+
+        var codeSpan = new ReadOnlySpan<InstructionCode>((void*)code, codeCount);
+
+        var byteSpan = new ReadOnlySpan<byte>((void*)bytes, byteCount);
+
+        foreach (var hook in hooks)
+        {
+            hook.OnInstructionChunk(stepSpan, changeSpan, codeSpan, byteSpan);
         }
     }
 
