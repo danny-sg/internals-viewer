@@ -98,7 +98,7 @@ internal static class ModuleSymbolReader
     /// <remarks>
     /// The return Functions list gives unique list of RVA/classification.
     ///
-    /// The visitData callback is 'everthing else' which include types
+    /// The visitData callback is 'everything else' which include types
     /// </remarks>
     public static Dictionary<uint, FunctionClassification> Load(DiaResolver resolver,
                                                                 Func<uint, ReadOnlySpan<char>, FunctionClassification> classify,

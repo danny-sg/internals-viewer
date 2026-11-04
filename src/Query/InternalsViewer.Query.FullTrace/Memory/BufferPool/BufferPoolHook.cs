@@ -25,7 +25,19 @@ namespace InternalsViewer.Query.FullTrace.Memory.BufferPool;
 /// Page contents are not captured in the trace, but every page access goes through the page’s BUF. Capturing the BUF gives the frame
 /// address, page address and database, because all three are fields of the BUF.
 ///
-/// 
+/// Two function types are hooked:
+///
+/// - Get       - functions returning a BUF. The frame, page, file and database are read from the BUF fields at the return point.
+///
+/// - PostRead  - page read completion. The frame and page number arguments are captured at entry and validated against the frame's page
+///               header at return. These calls carry a File Control Block rather than a database id - the database is resolved later by
+///               correlation, when a Get observes the same frame holding the same page the BUF's database id is recorded against the FCB,
+///               and Build applies it to the reads.
+///
+/// Frames are ignored unless they are page size aligned and, for reads, the frame header matches the expected page number.
+///
+/// The hook produces the TraceBufferPool of frame/page/database entries (Build) and the BUF descriptors seen, as memory blocks
+/// (GetBuffers).
 /// </remarks>
 internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functions) : ITraceHook
 {

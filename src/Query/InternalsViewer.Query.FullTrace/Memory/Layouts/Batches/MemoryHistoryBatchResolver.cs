@@ -3,6 +3,9 @@ using InternalsViewer.Query.FullTrace.Memory.Layouts.Batches.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Memory.Layouts.Batches;
 
+/// <summary>
+/// Resolves a batch that owns a memory history block and reads the batch state at a position
+/// </summary>
 public sealed class MemoryHistoryBatchResolver(MemoryHistoryStore store,
                                                Func<int, string?> getClassName,
                                                Func<int, string?> getAllocatingFunction)

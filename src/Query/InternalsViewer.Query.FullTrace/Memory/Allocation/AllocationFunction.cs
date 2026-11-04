@@ -71,7 +71,7 @@ namespace InternalsViewer.Query.FullTrace.Memory.Allocation;
 /// A single logical allocation can appear at multiple layers (memory object -> clerk pages -> VirtualAlloc). Allocations nested inside
 /// another tracked allocator are excluded from totals to avoid double counting.
 ///
-/// A AllocationFunction is keyed by the function's module-relative address (RVA) and defines:
+/// An AllocationFunction is keyed by the function's module-relative address (RVA) and defines:
 ///
 /// - Operation           - Allocate/reallocate/free/create
 /// - SizeArgumentSlot    - Which argument slot includes the allocation size

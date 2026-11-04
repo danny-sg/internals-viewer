@@ -1,5 +1,8 @@
 namespace InternalsViewer.Query.FullTrace.Memory.MemoryObject;
 
+/// <summary>
+/// Reference to an owning SQL Server Memory Object with its address, type, and page size
+/// </summary>
 public sealed record MemoryObjectReference(ulong Address, string? Type, int PageSize)
 {
     public string? Name => Type != null ? MemoryObjectNameLookup.GetName(Type) : null;

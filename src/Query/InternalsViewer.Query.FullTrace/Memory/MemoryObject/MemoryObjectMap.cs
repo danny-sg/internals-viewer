@@ -7,6 +7,25 @@ using InternalsViewer.Query.Memory;
 
 namespace InternalsViewer.Query.FullTrace.Memory.MemoryObject;
 
+/// <summary>
+/// SQL Server Memory Object (PMO) page ownership map
+/// </summary>
+/// <remarks>
+/// SQL Server Memory Objects (PMOs) hand out sub-allocations from 8 KB pages (or larger, given by the object's page size) obtained via a
+/// memory clerk.
+///
+/// An address inside a page belongs to the memory object that claimed the page, which attributes raw addresses to the plan, statement or
+/// cache object that owns them.
+///
+/// The map is built from the traced calls to the memory object functions (Alloc, Realloc, Free, PvMark, FreeToMark). Each call carries the
+/// memory object as its instance argument and a page pointer in either an argument slot or the return value, defined by PointerSlots. The
+/// pointer is rounded down to its page, and a Claim (position, thread, memory object) is recorded against the page.
+///
+/// A page can be claimed by different objects over the trace as pages are freed and reused, so claims are kept in position order and
+/// GetOwner answers for a specific position - the owner is the latest claim at or before that position.
+///
+/// Object identity and type come from sys.dm_os_memory_objects (MemoryObjectInfo), captured alongside the trace.
+/// </remarks>
 public sealed partial class MemoryObjectMap
 {
     private const int ReturnSlot = -1;

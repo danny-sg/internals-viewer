@@ -11,7 +11,7 @@ namespace InternalsViewer.Query.FullTrace.Functions;
 /// enumerator's buffers and are overwritten when the enumeration moves to the next symbol, which is why this is a ref struct.
 ///
 /// Name/Signature/DecoratedName use ReadOnlySpan against the enumerator's buffers to prevent string allocations until the point the
-/// signature is parsed, with the result cached so each symbol is parsed at most once.
+/// signature is parsed, with the result cached so each symbol is parsed at most once (if a cache is provided).
 /// 
 /// Multiple symbols can share the same RVA (for example identical functions folded together by the linker). The duplicate flags describe
 /// the symbol relative to others already seen at the same address:

@@ -13,19 +13,26 @@ namespace InternalsViewer.Query.FullTrace.Arguments;
 /// 
 ///     Position 0-3
 ///     
-///     - Registers
+///     -> Registers
 ///         - Integers/pointers: RCX, RDX, R8 and R9
 ///         - Floating point: XMM0, XMM1, XMM2, and XMM3
 ///     
 ///     Position 4-15
 ///     
-///     - Stack offset
+///     -> Stack offset
+/// 
+///     Stack arguments are read at [RSP + 0x28 + (position - 4) * 8] - past the return address (8 bytes) and the 32 byte register home
+///     space.
+/// 
+///     Position >= 16
 ///     
-///     Position >= 16 or variadic argument (... signifying variable number of arguments)
-///     
-///     - Not Captured
+///     -> Not Captured
 ///
-/// Layout depends on if the function is static or a class member as the first register for a member is always RCX as 'this'.
+///     Variadic argument (... signifying variable number of arguments)
+///
+///     -> Not Captured. Registers from the variadic position onward are treated as potentially in use
+///
+/// Layout depends on whether the function is static or a class member as the first register for a member is always RCX as 'this'.
 ///
 /// A hidden return buffer pointer, when present, also takes a position and shifts the remaining parameters.
 ///
