@@ -139,7 +139,7 @@ public sealed partial class TraceCallStore
 
     internal static TraceCallChunk Decompress(Chunk chunk, ref ulong[] buffer)
     {
-        var length = chunk.Calls * TraceCallChunk.ValueCount;
+        var length = chunk.Length;
 
         if (buffer.Length < length)
         {
@@ -156,10 +156,13 @@ public sealed partial class TraceCallStore
 
         TraceCallChunk.Decode(buffer.AsSpan(0, length), chunk.Calls);
 
-        return new TraceCallChunk(buffer, chunk.Calls);
+        return new TraceCallChunk(buffer, chunk.Calls, chunk.StackSlots);
     }
 
-    internal sealed record Chunk(int Calls, byte[] Columns);
+    internal sealed record Chunk(int Calls, int StackSlots, byte[] Columns)
+    {
+        public int Length => Calls * (TraceCallChunk.ValueCount + StackSlots);
+    }
 
     internal sealed class ColumnBuffer
     {
@@ -209,7 +212,7 @@ public sealed partial class TraceCallStore
                 }
             }
 
-            var buffer = Rent(chunk.Calls * TraceCallChunk.ValueCount);
+            var buffer = Rent(chunk.Length);
 
             var columns = Decompress(chunk, ref buffer);
 

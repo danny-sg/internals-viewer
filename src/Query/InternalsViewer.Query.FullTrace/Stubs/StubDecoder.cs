@@ -3,6 +3,32 @@ using InternalsViewer.Query.FullTrace.Stubs.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Stubs;
 
+/// <summary>
+/// Decodes x64 code at an address and translates it into a sequence of stub operations
+/// </summary>
+/// <remarks>
+/// Decode reads up to eight instructions, recognising only the narrow instruction set used by stubs. The decoder returns null if the rules
+/// don't match.
+/// 
+/// A decoded Stub contains a set of <see cref="StubOperation"/> instructions that are then executed in the replay to derive the target
+/// address.
+///
+/// Rules:
+///     - At most eight instructions of 64-bit register moves, memory loads, address computations or immediate add/subtract operations
+///     - No memory writes
+///     - No stack adjustment
+///     - Ending in a direct or indirect jump
+/// 
+/// Recognised instructions:
+/// 
+///     MOV  (0x8B, 0x89)    - register/memory moves
+///     ADD/SUB (0x83, 0x81) - immediate adjustment
+///     JMP  (0xEB, 0xE9)    - direct jumps
+///     JMP  (0xFF /4)       - indirect jumps via register or memory (import thunks)
+///     LEA  (0x8D)          - address load for non-RIP relative memory addresses
+/// 
+///     REX prefixes for 64-bit width and extended registers (R8-R15)
+/// </remarks>
 internal static class StubDecoder
 {
     private const int MaximumInstructions = 8;
@@ -134,7 +160,7 @@ internal static class StubDecoder
                 break;
 
             case MoveToRegister when isWide:
-                operation = memory with { Destination = operand.Register };
+                operation = memory with { DestinationRegister = operand.Register };
                 break;
 
             case LoadAddress when isWide && !operand.IsRegister && !operand.IsRipRelative:
@@ -146,7 +172,7 @@ internal static class StubDecoder
                 break;
 
             case ImmediateGroup8 or ImmediateGroup32
-                when isWide && operand.IsRegister && operand.Extension is AddExtension or SubtractExtension:
+                when isWide && operand is { IsRegister: true, Extension: AddExtension or SubtractExtension }:
             {
                 if (!TryReadImmediate(ref reader, opcode, out var immediate))
                 {
@@ -171,7 +197,7 @@ internal static class StubDecoder
                 return null;
         }
 
-        if (operation.Destination == StackPointer)
+        if (operation.DestinationRegister == StackPointer)
         {
             return null;
         }
@@ -281,16 +307,11 @@ internal static class StubDecoder
 
     private readonly record struct Operand(int Register, int Extension, int Base, long Displacement, bool IsRegister, bool IsRipRelative);
 
-    private ref struct CodeReader
+    private ref struct CodeReader(ReadOnlySpan<byte> code)
     {
-        public CodeReader(ReadOnlySpan<byte> code)
-        {
-            Code = code;
-        }
-
         public int Position { get; private set; }
 
-        private ReadOnlySpan<byte> Code { get; }
+        private ReadOnlySpan<byte> Code { get; } = code;
 
         public bool TryReadByte(out byte value)
         {

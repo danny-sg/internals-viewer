@@ -33,7 +33,8 @@ public class ReplayFunctionTableTests
             PlanObjects = Map((0x158, PlanObjectClass.Row)),
             OutputFunctions = Map((0x110, OutputFunctionType.Send)),
             OutputClasses = Map((0x120, OutputValueClass.OutputRow)),
-            BufferPoolFunctions = Map((0x130, BufferPoolFunctionType.Get))
+            BufferPoolFunctions = Map((0x130, BufferPoolFunctionType.Get)),
+            StackArguments = Map((0x70, 3))
         };
 
         var rebased = relative.Rebase(Base);
@@ -48,6 +49,7 @@ public class ReplayFunctionTableTests
         Assert.Equal((Base + 0x110, OutputFunctionType.Send), Pair(Assert.Single(rebased.OutputFunctions)));
         Assert.Equal((Base + 0x120, OutputValueClass.OutputRow), Pair(Assert.Single(rebased.OutputClasses)));
         Assert.Equal((Base + 0x130, BufferPoolFunctionType.Get), Pair(Assert.Single(rebased.BufferPoolFunctions)));
+        Assert.Equal((Base + 0x70, 3), Pair(Assert.Single(rebased.StackArguments)));
     }
 
     [Fact]

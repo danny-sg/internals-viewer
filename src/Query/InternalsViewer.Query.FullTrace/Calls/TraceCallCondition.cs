@@ -151,7 +151,7 @@ public sealed record TraceCallCondition(TraceConditionTarget Target,
     private string GetText(ulong raw, Locator? locator) => locator switch
     {
         { ValueType: LocatorValueType.Referenced } referenced => ArgumentValue.FormatReferenced(Type, referenced.Value),
-        { ValueType: not LocatorValueType.Argument } typed => typed.ToString(),
+        { } typed => typed.ToString(),
         _ => ArgumentValue.Decode(Type, raw) ?? ArgumentValue.Format(Type, raw)
     };
 }

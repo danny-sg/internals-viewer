@@ -202,6 +202,7 @@ internal sealed class ReplaySession : IDisposable
 
         var hooks = new TraceHookDispatcher([planNodeHook,
                                     new LocatorHook(functions.LocatorReads, store, images),
+                                    new StackArgumentHook(functions.StackArguments, store),
                                     addressMap,
                                     output,
                                     bufferPool,

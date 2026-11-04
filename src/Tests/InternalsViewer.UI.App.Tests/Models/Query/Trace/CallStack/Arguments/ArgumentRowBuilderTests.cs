@@ -37,7 +37,7 @@ public class ArgumentRowBuilderTests
     {
         var layout = ArgumentLayout.GetLayout(new FunctionSignature(["int", "int", "int", "int"], FunctionType.Member, "void"));
 
-        var call = Call(0x1_0000, 1) with { Locators = [new Locator(4, LocatorValueType.Argument, 7)] };
+        var call = Call(0x1_0000, 1) with { IntegerSlots = [0x1_0000, 1, 0, 0, 7] };
 
         Assert.Equal("F(this 0x10000, 1, 0, 0, 7)", Text(ArgumentRowBuilder.GetSignature("F", layout, call)));
         Assert.Equal("7", Assert.Single(ArgumentRowBuilder.BuildTable(layout, [call]).Rows)[6]);

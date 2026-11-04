@@ -3,7 +3,7 @@ using InternalsViewer.Query.FullTrace.Arguments;
 
 namespace InternalsViewer.Query.FullTrace.Calls;
 
-internal readonly struct TraceCallChunk(ulong[] values, int calls)
+internal readonly struct TraceCallChunk(ulong[] values, int calls, int stackSlots = 0)
 {
     public const int ValueCount = 11;
 
@@ -31,6 +31,8 @@ internal readonly struct TraceCallChunk(ulong[] values, int calls)
 
     public int Calls => calls;
 
+    public int StackSlots => stackSlots;
+
     public TracePosition GetFromPosition(int callIndex) => new(Get(FromSequenceIndex, callIndex), Get(FromStepsIndex, callIndex));
 
     public TracePosition GetToPosition(int callIndex) => new(Get(ToSequenceIndex, callIndex), Get(ToStepsIndex, callIndex));
@@ -41,23 +43,31 @@ internal readonly struct TraceCallChunk(ulong[] values, int calls)
 
     public ulong GetRegister(int callIndex, int slot) => Get(IntegerOffset + slot, callIndex);
 
+    public ulong? GetStackValue(int callIndex, int position)
+        => position - ArgumentLayout.RegisterCount is >= 0 and var slot && slot < stackSlots ? Get(ValueCount + slot, callIndex) : null;
+
     public ulong GetReturnValue(int callIndex) => Get(ReturnValueIndex, callIndex);
 
     public int GetCallNodeIndex(int callIndex) => (int)Get(NodeIndex, callIndex);
 
     public TraceArgumentCall GetCall(int callIndex, IReadOnlyList<Locator>? locators = null)
     {
-        var registers = new ulong[ArgumentLayout.RegisterCount];
+        var slots = new ulong[ArgumentLayout.RegisterCount + stackSlots];
 
-        for (var slot = 0; slot < registers.Length; slot++)
+        for (var slot = 0; slot < ArgumentLayout.RegisterCount; slot++)
         {
-            registers[slot] = GetRegister(callIndex, slot);
+            slots[slot] = GetRegister(callIndex, slot);
+        }
+
+        for (var slot = 0; slot < stackSlots; slot++)
+        {
+            slots[ArgumentLayout.RegisterCount + slot] = Get(ValueCount + slot, callIndex);
         }
 
         return new TraceArgumentCall(GetFromPosition(callIndex),
                                      GetThread(callIndex),
                                      IsReturned(callIndex),
-                                     registers,
+                                     slots,
                                      GetReturnValue(callIndex),
                                      GetCallNodeIndex(callIndex))
         {

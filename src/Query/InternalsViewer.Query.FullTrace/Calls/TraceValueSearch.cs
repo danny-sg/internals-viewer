@@ -1,5 +1,4 @@
 using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.FullTrace.Arguments;
 
 namespace InternalsViewer.Query.FullTrace.Calls;
@@ -74,8 +73,6 @@ public sealed class TraceValueSearch(TraceCallStore store)
             return buffer;
         }, static _ => { });
 
-        AddStackUses(uses, value, include, cancellationToken);
-
         return [.. uses.Values.OrderBy(u => u.First.Position)];
     }
 
@@ -84,11 +81,6 @@ public sealed class TraceValueSearch(TraceCallStore store)
                                                     Func<CallStackNode?, bool>? include,
                                                     CancellationToken cancellationToken)
     {
-        if (GetStackPosition(use.Location) is { } position)
-        {
-            return GetStackCalls(use, value, position, include, cancellationToken);
-        }
-
         var valueCalls = new List<TraceValueCall>();
 
         if (!store.Functions.TryGetValue((use.FunctionAddress, use.InstanceAddress), out var chunks))
@@ -118,100 +110,6 @@ public sealed class TraceValueSearch(TraceCallStore store)
         }
 
         return valueCalls;
-    }
-
-    private static int? GetStackPosition(string location)
-    {
-        for (var position = ArgumentLayout.RegisterCount; position < ArgumentLayout.CapturedSlots; position++)
-        {
-            if (location == ArgumentLayout.GetStackLocation(position))
-            {
-                return position;
-            }
-        }
-
-        return null;
-    }
-
-    private void AddStackUses(Dictionary<(ulong FunctionAddress, ulong InstanceAddress, string Location), TraceValueUse> uses,
-                              ulong value,
-                              Func<CallStackNode?, bool>? include,
-                              CancellationToken cancellationToken)
-    {
-        foreach (var ((functionAddress, instanceAddress), table) in store.Locators)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            TraceCallList? calls = null;
-
-            foreach (var (callIndex, locator) in table.Entries())
-            {
-                if (locator.ValueType != LocatorValueType.Argument || locator.Value != value)
-                {
-                    continue;
-                }
-
-                calls ??= store.GetCallList(functionAddress, instanceAddress);
-
-                if (GetStackValueCall(calls, callIndex, include) is not { } valueCall)
-                {
-                    continue;
-                }
-
-                var location = ArgumentLayout.GetStackLocation(locator.Register);
-
-                var use = new TraceValueUse(functionAddress, instanceAddress, location, 1, valueCall, valueCall);
-
-                uses[(functionAddress, instanceAddress, location)]
-                    = uses.TryGetValue((functionAddress, instanceAddress, location), out var existing)
-                        ? MergeValueUse(existing, use)
-                        : use;
-            }
-        }
-    }
-
-    private List<TraceValueCall> GetStackCalls(TraceValueUse use,
-                                               ulong value,
-                                               int position,
-                                               Func<CallStackNode?, bool>? include,
-                                               CancellationToken cancellationToken)
-    {
-        var valueCalls = new List<TraceValueCall>();
-
-        if (!store.Locators.TryGetValue((use.FunctionAddress, use.InstanceAddress), out var table)
-            || store.GetCallList(use.FunctionAddress, use.InstanceAddress) is not { } calls)
-        {
-            return valueCalls;
-        }
-
-        foreach (var (callIndex, locator) in table.Entries())
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            if (locator.ValueType == LocatorValueType.Argument
-                && locator.Register == position
-                && locator.Value == value
-                && GetStackValueCall(calls, callIndex, include) is { } valueCall)
-            {
-                valueCalls.Add(valueCall);
-            }
-        }
-
-        return valueCalls;
-    }
-
-    private TraceValueCall? GetStackValueCall(TraceCallList? calls, int callIndex, Func<CallStackNode?, bool>? include)
-    {
-        if (calls is null || callIndex >= calls.Count)
-        {
-            return null;
-        }
-
-        var argument = calls[callIndex];
-
-        var node = store.GetNode(argument.CallNodeIndex);
-
-        return include is null || include(node) ? new TraceValueCall(callIndex, argument.FromPosition, node, argument.ThreadId) : null;
     }
 
     private bool IsIncluded(TraceCallChunk columns, int callIndex, Func<CallStackNode?, bool>? include)
@@ -249,6 +147,14 @@ public sealed class TraceValueSearch(TraceCallStore store)
             if (columns.GetRegister(callIndex, slot) == value)
             {
                 yield return ArgumentLayout.Registers[slot];
+            }
+        }
+
+        for (var slot = 0; slot < columns.StackSlots; slot++)
+        {
+            if (columns.GetStackValue(callIndex, ArgumentLayout.RegisterCount + slot) == value)
+            {
+                yield return ArgumentLayout.GetStackLocation(ArgumentLayout.RegisterCount + slot);
             }
         }
 

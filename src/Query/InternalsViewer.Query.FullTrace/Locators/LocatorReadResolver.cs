@@ -5,6 +5,7 @@ using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Arguments.Enums;
 using InternalsViewer.Query.FullTrace.Functions;
+using InternalsViewer.Query.FullTrace.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Locators;
 
@@ -57,13 +58,7 @@ public static partial class LocatorReadResolver
         }
     }
 
-    internal static IEnumerable<LocatorRead> GetStackReads(ulong function, FunctionSignature signature)
-        => GetStackReads(function, ArgumentLayout.GetLayout(signature));
-
-    internal static IEnumerable<LocatorRead> GetStackReads(ulong function, ArgumentLayout layout)
-        => layout.Slots
-                 .Where(s => s.Location == ArgumentLocation.Stack)
-                 .Select(s => new LocatorRead(function, s.Index, false, LocatorValueType.Argument));
+    internal static int GetStackSlotCount(ArgumentLayout layout) => layout.Slots.Count(s => s.Location == ArgumentLocation.Stack);
 
     private static bool ReadsLocators(ReadOnlySpan<char> decoratedName)
         => decoratedName.ContainsAny(DecoratedTypes) || ReferencedType().IsMatch(decoratedName);
@@ -86,7 +81,7 @@ public static partial class LocatorReadResolver
     {
         private Dictionary<uint, LocatorRead[]> Reads { get; } = [];
 
-        private List<LocatorRead> StackReads { get; } = [];
+        private Dictionary<uint, int> StackSlots { get; } = [];
 
         public void Visit(FunctionSymbol symbol)
         {
@@ -95,14 +90,18 @@ public static partial class LocatorReadResolver
                 if (!symbol.HasSameParameters)
                 {
                     Reads.Remove(symbol.Rva);
+
+                    StackSlots.Remove(symbol.Rva);
                 }
 
                 return;
             }
 
-            if (FunctionSignature.CountParameters(symbol.Signature) is >= StackCandidateParameters && symbol.Layout is { } stacked)
+            if (FunctionSignature.CountParameters(symbol.Signature) is >= StackCandidateParameters
+                && symbol.Layout is { } stacked
+                && GetStackSlotCount(stacked) is > 0 and var count)
             {
-                StackReads.AddRange(GetStackReads(symbol.Rva, stacked));
+                StackSlots[symbol.Rva] = count;
             }
 
             if (ReadsLocators(symbol.DecoratedName) && symbol.Parsed is { } signature && symbol.Layout is { } layout)
@@ -111,6 +110,8 @@ public static partial class LocatorReadResolver
             }
         }
 
-        public LocatorRead[] Build() => [.. Reads.Values.SelectMany(r => r), .. StackReads];
+        public LocatorRead[] Build() => [.. Reads.Values.SelectMany(r => r)];
+
+        public AddressTable<int> BuildStackArguments() => new(StackSlots.ToDictionary(s => (ulong)s.Key, s => s.Value));
     }
 }

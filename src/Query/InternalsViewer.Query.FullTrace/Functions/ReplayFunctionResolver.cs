@@ -314,7 +314,8 @@ internal static class ReplayFunctionResolver
             OutputFunctions = output.Build(),
             OutputClasses = OutputFunctionLookup.GetValueClasses(classes),
             BufferPoolFunctions = bufferPool.Build(),
-            Vtables = classes
+            Vtables = classes,
+            StackArguments = reads.BuildStackArguments()
         };
     }
 

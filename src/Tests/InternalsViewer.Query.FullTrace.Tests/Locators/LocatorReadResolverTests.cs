@@ -198,7 +198,7 @@ public class LocatorReadResolverTests
     }
 
     [Fact]
-    public void The_Stack_Arguments_Of_A_Function_Are_Read_As_Values()
+    public void The_Stack_Arguments_Of_A_Function_Are_Counted()
     {
         var signature = FunctionSignature.Parse("IndexPageManager::GetPageWithKey(SEBindings const *,BTreeMgr::BTREE_SEEK_OPTION,AccessMode,"
                                                 + "HPageHandle &,SearchInfo &,SEBindings *,unsigned char *,unsigned long,"
@@ -206,10 +206,7 @@ public class LocatorReadResolverTests
                                                 "?GetPageWithKey@IndexPageManager@@QEAAXPEBVSEBindings@@W4BTREE_SEEK_OPTION@BTreeMgr@@"
                                                 + "W4AccessMode@@AEAVHPageHandle@@AEAVSearchInfo@@PEAV2@PEAEKPEAVHPageIdVersionId@@_N@Z")!;
 
-        var reads = LocatorReadResolver.GetStackReads(Function, signature).ToList();
-
-        Assert.Equal([4, 5, 6, 7, 8, 9, 10], reads.Select(r => r.Register));
-        Assert.All(reads, r => Assert.Equal((LocatorValueType.Argument, false), (r.ValueType, r.IsReadAtReturn)));
+        Assert.Equal(7, LocatorReadResolver.GetStackSlotCount(ArgumentLayout.GetLayout(signature)));
     }
 
     [Fact]
@@ -217,7 +214,7 @@ public class LocatorReadResolverTests
     {
         var signature = new FunctionSignature(["int", "int", "int"], FunctionType.Member, "void");
 
-        Assert.Empty(LocatorReadResolver.GetStackReads(Function, signature));
+        Assert.Equal(0, LocatorReadResolver.GetStackSlotCount(ArgumentLayout.GetLayout(signature)));
     }
 
     [Fact]
@@ -307,7 +304,7 @@ public class LocatorReadResolverTests
         var reads = collector.Build();
 
         Assert.Contains(new LocatorRead(Function, 2, false, LocatorValueType.Page), reads);
-        Assert.Contains(new LocatorRead(Function, 5, false, LocatorValueType.Argument), reads);
+        Assert.Equal(3, collector.BuildStackArguments()[Function]);
     }
 
     [Fact]

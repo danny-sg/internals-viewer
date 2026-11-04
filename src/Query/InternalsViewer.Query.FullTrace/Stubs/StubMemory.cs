@@ -3,9 +3,12 @@ using InternalsViewer.Query.Extensions;
 
 namespace InternalsViewer.Query.FullTrace.Stubs;
 
+/// <summary>
+/// Replay memory reads with a fallback cache of values previously read from module image ranges
+/// </summary>
 internal sealed class StubMemory((ulong Start, ulong End)[] images)
 {
-    private Dictionary<ulong, ulong> ImageValues { get; } = [];
+    private Dictionary<ulong, ulong> ImageValueCache { get; } = [];
 
     public bool TryRead(ITraceReplay replay, ulong address, out ulong value)
     {
@@ -13,13 +16,13 @@ internal sealed class StubMemory((ulong Start, ulong End)[] images)
         {
             if (IsImage(address))
             {
-                ImageValues[address] = value;
+                ImageValueCache[address] = value;
             }
 
             return true;
         }
 
-        return ImageValues.TryGetValue(address, out value);
+        return ImageValueCache.TryGetValue(address, out value);
     }
 
     private bool IsImage(ulong address)

@@ -33,6 +33,8 @@ public sealed partial class TraceCallStore
                            List<(uint CallIndex, TracePosition ToPosition, ulong ReturnValue, bool Returned)>>
             ToPositions { get; } = new();
 
+        private Dictionary<(ulong FunctionAddress, ulong InstanceAddress), StackArgumentList> StackArguments { get; } = new();
+
         public void Add(ulong functionAddress, ulong instanceAddress, IntPtr columns, int calls)
         {
             var count = calls * TraceCallChunk.ValueCount;
@@ -79,17 +81,28 @@ public sealed partial class TraceCallStore
         public void AddLocator(ulong functionAddress, ulong instanceAddress, int callIndex, Locator locator, bool isReadAtReturn)
             => GetFound(functionAddress, instanceAddress).Add(new FoundLocator(callIndex, Pool.Intern(locator), isReadAtReturn));
 
+        public void AddStackArguments(ulong functionAddress, ulong instanceAddress, uint callIndex, ReadOnlySpan<ulong> values)
+        {
+            ref var arguments = ref CollectionsMarshal.GetValueRefOrAddDefault(StackArguments, (functionAddress, instanceAddress), out _);
+
+            (arguments ??= new StackArgumentList(values.Length)).Add(callIndex, values);
+        }
+
         public TraceCallStore Build()
         {
             Task.WaitAll([.. Pending.Values.SelectMany(c => c)]);
 
             var functions = Pending.ToDictionary(p => p.Key, p => p.Value.Select(c => c.Result).ToArray());
 
-            foreach (var (key, positions) in ToPositions)
+            foreach (var (key, chunks) in functions)
             {
-                if (functions.TryGetValue(key, out var chunks))
+                var positions = ToPositions.GetValueOrDefault(key);
+
+                var stackArguments = StackArguments.GetValueOrDefault(key);
+
+                if (positions is not null || stackArguments is not null)
                 {
-                    ApplyToPositions(chunks, positions);
+                    Apply(chunks, positions, stackArguments);
                 }
             }
 
@@ -145,10 +158,15 @@ public sealed partial class TraceCallStore
             return LocatorTable.Pack(span, Pool, IndexBuffer.AsSpan(0, found.Count));
         }
 
-        private void ApplyToPositions(Chunk[] chunks,
-                                             List<(uint CallIndex, TracePosition ToPosition, ulong ReturnValue, bool Returned)> positions)
+        private void Apply(Chunk[] chunks,
+                           List<(uint CallIndex, TracePosition ToPosition, ulong ReturnValue, bool Returned)>? positions,
+                           StackArgumentList? stackArguments)
         {
             var first = 0;
+
+            var next = 0;
+
+            var slots = stackArguments?.Slots ?? 0;
 
             ulong[] buffer = [];
 
@@ -156,25 +174,53 @@ public sealed partial class TraceCallStore
             {
                 var calls = chunks[index].Calls;
 
-                var inChunk = positions.Where(p => p.CallIndex >= first && p.CallIndex < first + calls).ToArray();
+                var inChunk = positions?.Where(p => p.CallIndex >= first && p.CallIndex < first + calls).ToArray() ?? [];
 
-                if (inChunk.Length > 0)
+                if (inChunk.Length == 0 && slots == 0)
                 {
-                    var columns = Decompress(chunks[index], ref buffer);
+                    first += calls;
 
-                    foreach (var (callIndex, toPosition, returnValue, returned) in inChunk)
-                    {
-                        columns.SetToPosition((int)callIndex - first, toPosition, returnValue, returned);
-                    }
-
-                    chunks[index] = Compress(columns.Values.AsSpan(0, calls * TraceCallChunk.ValueCount), calls);
+                    continue;
                 }
+
+                var length = calls * (TraceCallChunk.ValueCount + slots);
+
+                if (buffer.Length < length)
+                {
+                    buffer = new ulong[length];
+                }
+
+                var columns = Decompress(chunks[index], ref buffer);
+
+                buffer.AsSpan(calls * TraceCallChunk.ValueCount, calls * slots).Clear();
+
+                if (stackArguments is not null)
+                {
+                    while (next < stackArguments.Count && stackArguments.Indexes[next] < first + calls)
+                    {
+                        var callIndex = (int)stackArguments.Indexes[next] - first;
+
+                        for (var slot = 0; callIndex >= 0 && slot < slots; slot++)
+                        {
+                            buffer[(TraceCallChunk.ValueCount + slot) * calls + callIndex] = stackArguments.Values[next * slots + slot];
+                        }
+
+                        next++;
+                    }
+                }
+
+                foreach (var (callIndex, toPosition, returnValue, returned) in inChunk)
+                {
+                    columns.SetToPosition((int)callIndex - first, toPosition, returnValue, returned);
+                }
+
+                chunks[index] = Compress(buffer.AsSpan(0, length), calls, slots);
 
                 first += calls;
             }
         }
 
-        private Chunk Compress(Span<ulong> columns, int calls)
+        private Chunk Compress(Span<ulong> columns, int calls, int stackSlots = 0)
         {
             TraceCallChunk.Encode(columns, calls);
 
@@ -189,7 +235,7 @@ public sealed partial class TraceCallStore
                     stream.Write(MemoryMarshal.AsBytes(columns));
                 }
 
-                return new Chunk(calls, compressed.ToArray());
+                return new Chunk(calls, stackSlots, compressed.ToArray());
             }
             finally
             {
@@ -209,6 +255,27 @@ public sealed partial class TraceCallStore
             ref var chunks = ref CollectionsMarshal.GetValueRefOrAddDefault(Pending, (functionAddress, instanceAddress), out _);
 
             return chunks ??= [];
+        }
+
+        private sealed class StackArgumentList(int slots)
+        {
+            public int Slots { get; } = slots;
+
+            public int Count => Indexes.Count;
+
+            public ChunkedList<uint> Indexes { get; } = [];
+
+            public ChunkedList<ulong> Values { get; } = [];
+
+            public void Add(uint callIndex, ReadOnlySpan<ulong> values)
+            {
+                Indexes.Add(callIndex);
+
+                foreach (var value in values)
+                {
+                    Values.Add(value);
+                }
+            }
         }
     }
 }

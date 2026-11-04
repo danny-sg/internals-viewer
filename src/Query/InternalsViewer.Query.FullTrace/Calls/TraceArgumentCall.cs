@@ -31,17 +31,7 @@ public sealed record TraceArgumentCall(TracePosition FromPosition,
     };
 
     public ulong? GetStackValue(int position)
-    {
-        foreach (var locator in Locators)
-        {
-            if (locator.Register == position && locator.ValueType == LocatorValueType.Argument)
-            {
-                return locator.Value;
-            }
-        }
-
-        return null;
-    }
+        => position >= ArgumentLayout.RegisterCount && position < IntegerSlots.Length ? IntegerSlots[position] : null;
 
     public ulong Slot(int index) => index >= 0 && index < IntegerSlots.Length ? IntegerSlots[index] : 0;
 
@@ -49,7 +39,7 @@ public sealed record TraceArgumentCall(TracePosition FromPosition,
     {
         foreach (var locator in Locators)
         {
-            if (locator.Register == register && locator.ValueType != LocatorValueType.Argument)
+            if (locator.Register == register)
             {
                 return locator;
             }

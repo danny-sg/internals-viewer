@@ -196,7 +196,7 @@ public class TraceCallStoreTests
 
         builder.Add(0x1000, 0, Chunk(Row(1), Row(2)), 2);
 
-        builder.AddLocator(0x1000, 0, 1, new Locator(4, LocatorValueType.Argument, 0x5_0000), false);
+        builder.AddStackArguments(0x1000, 0, 1, [0x5_0000]);
         builder.AddLocator(0x1000, 0, 1, new Locator(4, LocatorValueType.Page, Page336), false);
 
         var store = builder.Build();

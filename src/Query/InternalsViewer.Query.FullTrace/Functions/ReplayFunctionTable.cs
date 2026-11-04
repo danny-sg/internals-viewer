@@ -28,6 +28,8 @@ internal sealed record ReplayFunctionTable(ulong[] ExcludedFunctions,
 
     public AddressTable<string[]> Vtables { get; init; } = AddressTable<string[]>.Empty;
 
+    public AddressTable<int> StackArguments { get; init; } = AddressTable<int>.Empty;
+
     public static ReplayFunctionTable Merge(IReadOnlyList<ReplayFunctionTable> functions)
         => new([.. functions.SelectMany(f => f.ExcludedFunctions)],
                [.. functions.SelectMany(f => f.InstanceMethods)],
@@ -40,7 +42,8 @@ internal sealed record ReplayFunctionTable(ulong[] ExcludedFunctions,
             OutputFunctions = AddressTable<OutputFunctionType>.Merge(functions.Select(f => f.OutputFunctions)),
             OutputClasses = AddressTable<OutputValueClass>.Merge(functions.Select(f => f.OutputClasses)),
             BufferPoolFunctions = AddressTable<BufferPoolFunctionType>.Merge(functions.Select(f => f.BufferPoolFunctions)),
-            Vtables = AddressTable<string[]>.Merge(functions.Select(f => f.Vtables))
+            Vtables = AddressTable<string[]>.Merge(functions.Select(f => f.Vtables)),
+            StackArguments = AddressTable<int>.Merge(functions.Select(f => f.StackArguments))
         };
 
     public ReplayFunctionTable Rebase(ulong address)
@@ -55,6 +58,7 @@ internal sealed record ReplayFunctionTable(ulong[] ExcludedFunctions,
             OutputFunctions = OutputFunctions.Rebase(address),
             OutputClasses = OutputClasses.Rebase(address),
             BufferPoolFunctions = BufferPoolFunctions.Rebase(address),
-            Vtables = Vtables.Rebase(address)
+            Vtables = Vtables.Rebase(address),
+            StackArguments = StackArguments.Rebase(address)
         };
 }

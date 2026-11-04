@@ -5,7 +5,7 @@ namespace InternalsViewer.Query.FullTrace.Calls;
 
 public sealed partial class TraceCallStore
 {
-    private const int FormatVersion = 5;
+    private const int FormatVersion = 6;
 
     internal static bool IsCurrent(BinaryReader reader) => reader.ReadInt32() == -FormatVersion;
 
@@ -30,7 +30,9 @@ public sealed partial class TraceCallStore
             {
                 var calls = reader.ReadInt32();
 
-                chunks[chunk] = new Chunk(calls, ExportBinary.ReadArray<byte>(reader));
+                var stackSlots = reader.ReadInt32();
+
+                chunks[chunk] = new Chunk(calls, stackSlots, ExportBinary.ReadArray<byte>(reader));
             }
 
             functions[key] = chunks;
@@ -69,6 +71,8 @@ public sealed partial class TraceCallStore
             foreach (var chunk in chunks)
             {
                 writer.Write(chunk.Calls);
+
+                writer.Write(chunk.StackSlots);
 
                 ExportBinary.WriteArray(writer, chunk.Columns);
             }

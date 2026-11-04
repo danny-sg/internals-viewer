@@ -51,26 +51,6 @@ public class LocatorHookTests
     }
 
     [Fact]
-    public void A_Stack_Argument_Is_Read_Past_The_Return_Address_And_Home_Space()
-    {
-        var replay = new FakeTraceReplay().Write(StackPointer, ReturnAddress).Write(StackPointer + 8 + 32, 0x77ul);
-
-        var call = Replay(new LocatorRead(Function, 4, false, LocatorValueType.Argument), replay);
-
-        Assert.Equal(0x77ul, call.GetStackValue(4));
-    }
-
-    [Fact]
-    public void A_Stack_Argument_Without_A_Return_Address_Is_Read_From_The_Home_Space()
-    {
-        var replay = new FakeTraceReplay().Write(StackPointer, 0ul).Write(StackPointer + 32, 0x66ul);
-
-        var call = Replay(new LocatorRead(Function, 4, false, LocatorValueType.Argument), replay);
-
-        Assert.Equal(0x66ul, call.GetStackValue(4));
-    }
-
-    [Fact]
     public void A_Return_Value_Is_Read_When_The_Call_Returns()
     {
         var register = ArgumentLayout.ReturnRegister;

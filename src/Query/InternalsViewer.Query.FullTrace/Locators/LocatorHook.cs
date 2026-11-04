@@ -15,11 +15,7 @@ internal sealed class LocatorHook(IEnumerable<LocatorRead> reads, TraceCallStore
     {
         var count = read.CountRegister < 0 ? 1 : GetArgument(arguments, call, read.CountRegister);
 
-        var locator = read.ValueType == LocatorValueType.Argument
-            ? new Locator(read.Register, read.ValueType, pointer)
-            : ReadValue(replay, read, pointer, count);
-
-        if (locator is { } found)
+        if (ReadValue(replay, read, pointer, count) is { } found)
         {
             store.AddLocator(call.FunctionAddress, call.InstanceAddress, (int)call.CallIndex, found, read.IsReadAtReturn);
         }
