@@ -65,7 +65,7 @@ namespace InternalsViewer.Query.FullTrace.Functions;
 ///     Functions whose arguments or return value point at known structures, such as pages, rows and variants, picked by
 ///     LocatorReadResolver from the parsed signatures.
 ///
-/// Memory Map Functions
+/// Address Map Functions
 ///
 ///     Constructors and member functions whose instance pointer tells the memory map hook what lives at an address, and the pointer
 ///     parameters and returns declared with a class, found by AddressMapFunctionResolver.
@@ -120,10 +120,10 @@ internal static class ReplayFunctionResolver
     }
 
     public static async Task<ReplayFunctionTable> ResolveAsync(IReadOnlyList<TraceModule> modules,
-                                                           string symbolsPath,
-                                                           ILogger? logger,
-                                                           IProgress<ProgressDetail>? progress,
-                                                           CancellationToken cancellationToken)
+                                                               string symbolsPath,
+                                                               ILogger? logger,
+                                                               IProgress<ProgressDetail>? progress,
+                                                               CancellationToken cancellationToken)
     {
         var start = Stopwatch.GetTimestamp();
 

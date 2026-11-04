@@ -121,7 +121,7 @@ public class StackSnapshotHookTests
         => (new StackSnapshotHook(AddressMapHook.GetOperations([new AddressMapFunction(Method, AddressMapOperation.Visited),
                                                                 new AddressMapFunction(Consumer, AddressMapOperation.Declared)
                                                                 {
-                                                                    Declared = [new DeclaredClass(1, "BaseXact")]
+                                                                    DeclaredClasses = [new DeclaredClass(1, "BaseXact")]
                                                                 },
                                                                 new AddressMapFunction(Filler, AddressMapOperation.Declared)
                                                                 {

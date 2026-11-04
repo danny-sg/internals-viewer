@@ -106,7 +106,7 @@ internal static partial class AddressMapFunctionResolver
 
             if (operation != AddressMapOperation.Declared || declared.Length > 0 || pointers.Length > 0)
             {
-                Found[symbol.Rva] = new AddressMapFunction(symbol.Rva, operation) { Declared = declared, Pointers = pointers };
+                Found[symbol.Rva] = new AddressMapFunction(symbol.Rva, operation) { DeclaredClasses = declared, Pointers = pointers };
             }
 
             if (operation != AddressMapOperation.Declared)
@@ -157,16 +157,16 @@ internal static partial class AddressMapFunctionResolver
                 function = function with
                 {
                     Operation = AddressMapOperation.Declared,
-                    Declared = [.. function.Declared.Where(d => d.ArgumentSlot != ArgumentLayout.ReturnRegister)]
+                    DeclaredClasses = [.. function.DeclaredClasses.Where(d => d.ArgumentSlot != ArgumentLayout.ReturnRegister)]
                 };
             }
 
             if (!symbol.HasSameParameters)
             {
-                function = function with { Declared = [], Pointers = [] };
+                function = function with { DeclaredClasses = [], Pointers = [] };
             }
 
-            if (function is { Operation: AddressMapOperation.Declared, Declared.Length: 0, Pointers.Length: 0 })
+            if (function is { Operation: AddressMapOperation.Declared, DeclaredClasses.Length: 0, Pointers.Length: 0 })
             {
                 Found.Remove(symbol.Rva);
             }

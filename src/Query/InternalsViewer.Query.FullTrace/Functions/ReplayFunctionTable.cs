@@ -9,10 +9,10 @@ using InternalsViewer.Query.FullTrace.Output.Enums;
 namespace InternalsViewer.Query.FullTrace.Functions;
 
 internal sealed record ReplayFunctionTable(ulong[] ExcludedFunctions,
-                                       InstanceMethod[] InstanceMethods,
-                                       LocatorRead[] LocatorReads,
-                                       AllocationFunction[] AllocationFunctions,
-                                       AddressMapFunction[] AddressMapFunctions)
+                                           InstanceMethod[] InstanceMethods,
+                                           LocatorRead[] LocatorReads,
+                                           AllocationFunction[] AllocationFunctions,
+                                           AddressMapFunction[] AddressMapFunctions)
 {
     public static ReplayFunctionTable Empty { get; } = new([], [], [], [], []);
 

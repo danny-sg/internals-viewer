@@ -22,7 +22,7 @@ public class AddressMapFunctionResolverTests
         var function = Assert.Single(collector.Build());
 
         Assert.Equal(AddressMapOperation.Visited, function.Operation);
-        Assert.Equal([(2, "BaseXact"), (3, "HkTransaction")], function.Declared.Select(d => (Slot: d.ArgumentSlot, d.Name)));
+        Assert.Equal([(2, "BaseXact"), (3, "HkTransaction")], function.DeclaredClasses.Select(d => (Slot: d.ArgumentSlot, d.Name)));
     }
 
     [Fact]
@@ -69,7 +69,7 @@ public class AddressMapFunctionResolverTests
         var function = Assert.Single(collector.Build());
 
         Assert.Equal(AddressMapOperation.Declared, function.Operation);
-        Assert.Equal([(1, "BaseXact")], function.Declared.Select(d => (Slot: d.ArgumentSlot, d.Name)));
+        Assert.Equal([(1, "BaseXact")], function.DeclaredClasses.Select(d => (Slot: d.ArgumentSlot, d.Name)));
     }
 
     [Fact]
@@ -100,7 +100,7 @@ public class AddressMapFunctionResolverTests
 
         var function = Assert.Single(collector.Build());
 
-        Assert.Equal([(2, "DataAccessWrapper")], function.Declared.Select(d => (Slot: d.ArgumentSlot, d.Name)));
+        Assert.Equal([(2, "DataAccessWrapper")], function.DeclaredClasses.Select(d => (Slot: d.ArgumentSlot, d.Name)));
         Assert.Equal([4], function.Pointers);
     }
 
@@ -113,7 +113,7 @@ public class AddressMapFunctionResolverTests
 
         var function = Assert.Single(collector.Build());
 
-        Assert.Equal((AddressMapOperation.Declared, 0), (function.Operation, function.Declared.Length));
+        Assert.Equal((AddressMapOperation.Declared, 0), (function.Operation, function.DeclaredClasses.Length));
         Assert.Equal([0], function.Pointers);
     }
 

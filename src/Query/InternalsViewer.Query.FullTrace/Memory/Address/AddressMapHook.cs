@@ -53,7 +53,7 @@ internal sealed class AddressMapHook(Dictionary<ulong, AddressMapFunction> opera
             Record(function.Operation, call.Arguments[InstanceArgument], call, replay);
         }
 
-        foreach (var declared in function.Declared)
+        foreach (var declared in function.DeclaredClasses)
         {
             if (declared.ArgumentSlot < ArgumentLayout.RegisterCount)
             {
@@ -74,7 +74,7 @@ internal sealed class AddressMapHook(Dictionary<ulong, AddressMapFunction> opera
             Record(AddressMapOperation.Allocated, call.ReturnValue, call, replay);
         }
 
-        foreach (var declared in function.Declared)
+        foreach (var declared in function.DeclaredClasses)
         {
             if (declared.ArgumentSlot == ArgumentLayout.ReturnRegister)
             {
@@ -109,7 +109,7 @@ internal sealed class AddressMapHook(Dictionary<ulong, AddressMapFunction> opera
             operation = exists
                 ? function with
                 {
-                    Declared = [.. operation.Declared.Union(function.Declared)],
+                    DeclaredClasses = [.. operation.DeclaredClasses.Union(function.DeclaredClasses)],
                     Pointers = [.. operation.Pointers.Union(function.Pointers)]
                 }
                 : function;
@@ -127,7 +127,7 @@ internal sealed class AddressMapHook(Dictionary<ulong, AddressMapFunction> opera
             _ => TraceHookEvents.None
         };
 
-        foreach (var declared in function.Declared)
+        foreach (var declared in function.DeclaredClasses)
         {
             events |= declared.ArgumentSlot == ArgumentLayout.ReturnRegister ? TraceHookEvents.Return : TraceHookEvents.Entry;
         }
@@ -145,7 +145,7 @@ internal sealed class AddressMapHook(Dictionary<ulong, AddressMapFunction> opera
             merged[allocation.Address] = operations.TryGetValue(allocation.Address, out var operation)
                 ? allocation with
                 {
-                    Declared = [.. operation.Declared.Union(allocation.Declared)],
+                    DeclaredClasses = [.. operation.DeclaredClasses.Union(allocation.DeclaredClasses)],
                     Pointers = [.. operation.Pointers.Union(allocation.Pointers)]
                 }
                 : allocation;
@@ -155,7 +155,7 @@ internal sealed class AddressMapHook(Dictionary<ulong, AddressMapFunction> opera
     }
 
     private static bool IsMapped(AddressMapFunction function)
-        => function.Operation != AddressMapOperation.Declared || function.Declared.Length > 0;
+        => function.Operation != AddressMapOperation.Declared || function.DeclaredClasses.Length > 0;
 
     private static ulong GetOwner(ReadOnlySpan<TraceHookFrame> frames, ulong address)
         => TraceHookFrameLookup.GetOwnerIndex(frames, address) is >= 0 and var index ? frames[index].Id : 0;

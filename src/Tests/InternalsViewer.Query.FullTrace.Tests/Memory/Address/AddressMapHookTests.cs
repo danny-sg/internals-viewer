@@ -228,15 +228,15 @@ public class AddressMapHookTests
                                                             new AddressMapFunction(Method, AddressMapOperation.Visited),
                                                             new AddressMapFunction(Factory, AddressMapOperation.Declared)
                                                             {
-                                                                Declared = [new DeclaredClass(ArgumentLayout.ReturnRegister, "AccBindings")]
+                                                                DeclaredClasses = [new DeclaredClass(ArgumentLayout.ReturnRegister, "AccBindings")]
                                                             },
                                                             new AddressMapFunction(Consumer, AddressMapOperation.Declared)
                                                             {
-                                                                Declared = [new DeclaredClass(1, "BaseXact")]
+                                                                DeclaredClasses = [new DeclaredClass(1, "BaseXact")]
                                                             },
                                                             new AddressMapFunction(Getter, AddressMapOperation.Visited)
                                                             {
-                                                                Declared = [new DeclaredClass(ArgumentLayout.ReturnRegister, "CTypeInfo")]
+                                                                DeclaredClasses = [new DeclaredClass(ArgumentLayout.ReturnRegister, "CTypeInfo")]
                                                             }]),
                               [new AddressMapFunction(OperatorNew, AddressMapOperation.Allocated)],
                               new Dictionary<ulong, string> { [Vtable] = "CQScanTableScanNew" }),

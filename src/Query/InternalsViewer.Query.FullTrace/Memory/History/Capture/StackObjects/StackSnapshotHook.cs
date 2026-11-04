@@ -6,6 +6,70 @@ using InternalsViewer.Query.FullTrace.Memory.Address.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Memory.History.Capture.StackObjects;
 
+/// <summary>
+/// Capture of stack objects
+/// </summary>
+/// <remarks>
+/// StackSnapshotHook captures the contents of stack objects — local/temporary objects in a caller's frame whose address is passed down
+/// into a watched (lower) frame.
+///
+/// At a high level, it identifies addresses to track, derives the size of the objects, and takes snapshots of the memory contents at the
+/// point of the call and return, following the stack lifecycle.
+///
+/// As the replay moves forward through the trace, frames are pushed and popped from the stack. The address space runs from high to low, so
+/// lower frames get lower addresses.
+///
+/// Functions are watched if:
+///
+/// 1. The Operation is marked as Constructed or Visited (classified by AddressMapFunctionResolver)
+///    -> OnEntry: RCX (this) address is tracked
+///
+/// 2. It has declared arguments
+///    -> OnEntry: each declared register argument address is tracked
+///    -> OnReturn: the return value is tracked if the return register is a declared slot
+///
+/// 3. It has pointer arguments
+///    -> OnEntry: each pointer argument is read and the result is tracked
+///
+/// For the tracking/snapshot process:
+///
+/// 1. Each address is first validated to see if it is at or above the current stack pointer. This is a quick check to eliminate addresses
+///    that are not on the stack (e.g. a heap object) or beyond the current execution point.
+///
+/// 2. The owner frame, where the address is located, is found by searching top-down in the current thread frame stack. If a frame is not
+///    found the tracking will exit.
+///
+/// 3. Get or create a Candidate tracking object for the address. The Candidate is a temporary object that holds the address, size, thread,
+///    owner frame and first position. Candidate is keyed on owner frame + address.
+///
+///    - If an existing Candidate is found it is returned
+///
+///    - If not found a new Candidate is created with a size defined by the distance between the address and the owner frame stack pointer
+///      (frame.StackPointer - address), capped at a maximum size of 1 KB.
+///
+///      - Candidates cannot overlap as they represent a discrete object. The new candidate is referenced against existing candidates and
+///        either can be shrunk to stop at the point the next candidate starts.
+///
+///      - The new candidate is added to the list of candidates and the frame's owned candidates.
+///
+/// 4. The first candidate in a frame sets a watch on the owner frame. Other candidates at different addresses on the same frame share this
+///    watch. The watch triggers the OnFrameEnded event when the frame is popped. Candidates for the frame are marked as ended and removed
+///    from the index.
+///
+/// 5. The position before the current position is captured and a snapshot is taken at this point (pre-call state from OnEntry, post-call
+///    state from OnReturn).
+///
+///      - Snapshot compares the current bytes against the last known image and saves the delta bytes and linked tracking StackSnapshotRun
+///        in the Chunks list - later converted to an immutable DataChunk for the final StackSnapshotResult.
+///
+/// 6. If tracking started in OnEntry then the Candidate index is added to a list of pending snapshots for the call. OnReturn checks the
+///    pending list and snapshots the Candidate again at the return position, capturing post-call state. OnAbandoned discards the pending
+///    list if the call never completes.
+///
+/// After the trace is complete, Build() is called to produce the final StackSnapshotResult. Candidates with a non-zero size are converted
+/// to StackObjects, and the Chunks are converted to DataChunks of StackSnapshotRun, with each run clipped to the final object size and
+/// remapped to the surviving StackObject indexes.
+/// </remarks>
 internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> operations) : ITraceHook
 {
     private const int InstanceArgument = 0;
@@ -22,13 +86,13 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
 
     private Dictionary<ulong, AddressMapFunction> Operations { get; } = operations;
 
-    private List<Candidate> Objects { get; } = [];
+    private List<Candidate> Candidates { get; } = [];
 
     private Dictionary<(ulong Frame, ulong Address), int> Index { get; } = [];
 
-    private Dictionary<ulong, List<int>> Owned { get; } = [];
+    private Dictionary<ulong, List<int>> FrameCandidates { get; } = [];
 
-    private Dictionary<ulong, List<int>> Pending { get; } = [];
+    private Dictionary<ulong, List<int>> PendingSnapshots { get; } = [];
 
     private List<(byte[] Data, List<StackSnapshotRun> Runs)> Chunks { get; } = [];
 
@@ -49,26 +113,26 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
 
         if (function.Operation is AddressMapOperation.Constructed or AddressMapOperation.Visited)
         {
-            Handoff(call.Arguments[InstanceArgument], call, replay, isReturned: false);
+            Track(call.Arguments[InstanceArgument], call, replay, isReturned: false);
         }
 
-        foreach (var declared in function.Declared)
+        foreach (var declared in function.DeclaredClasses)
         {
             if (declared.ArgumentSlot < ArgumentLayout.RegisterCount)
             {
-                Handoff(call.Arguments[declared.ArgumentSlot], call, replay, isReturned: false);
+                Track(call.Arguments[declared.ArgumentSlot], call, replay, isReturned: false);
             }
         }
 
         foreach (var slot in function.Pointers)
         {
-            Handoff(TraceHookArgumentReader.GetArgument(replay, call, slot), call, replay, isReturned: false);
+            Track(TraceHookArgumentReader.GetArgument(replay, call, slot), call, replay, isReturned: false);
         }
     }
 
     public void OnReturn(in TraceHookCall call, ITraceReplay replay)
     {
-        if (Pending.Remove(call.Id, out var pending))
+        if (PendingSnapshots.Remove(call.Id, out var pending))
         {
             var position = GetPositionBefore(call.Position);
 
@@ -83,27 +147,27 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
             return;
         }
 
-        foreach (var declared in function.Declared)
+        foreach (var declared in function.DeclaredClasses)
         {
             if (declared.ArgumentSlot == ArgumentLayout.ReturnRegister)
             {
-                Handoff(call.ReturnValue, call, replay, isReturned: true);
+                Track(call.ReturnValue, call, replay, isReturned: true);
             }
         }
     }
 
-    public void OnAbandoned(in TraceHookCall call) => Pending.Remove(call.Id);
+    public void OnAbandoned(in TraceHookCall call) => PendingSnapshots.Remove(call.Id);
 
     public void OnFrameEnded(in TraceHookCall call)
     {
-        if (!Owned.Remove(call.Id, out var owned))
+        if (!FrameCandidates.Remove(call.Id, out var owned))
         {
             return;
         }
 
         foreach (var index in owned)
         {
-            var target = Objects[index];
+            var target = Candidates[index];
 
             target.EndPosition = call.Position;
 
@@ -119,13 +183,13 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
     {
         CloseChunk();
 
-        var kept = new int[Objects.Count];
+        var kept = new int[Candidates.Count];
 
         var objects = new List<StackObject>();
 
-        for (var index = 0; index < Objects.Count; index++)
+        for (var index = 0; index < Candidates.Count; index++)
         {
-            var target = Objects[index];
+            var target = Candidates[index];
 
             kept[index] = target.Size > 0 ? objects.Count : -1;
 
@@ -148,7 +212,7 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
 
             foreach (var run in runs)
             {
-                var length = Math.Min(run.Length, Objects[run.Object].Size - run.Offset);
+                var length = Math.Min(run.Length, Candidates[run.Object].Size - run.Offset);
 
                 if (length > 0)
                 {
@@ -164,13 +228,13 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
 
     private static bool IsWatched(AddressMapFunction function)
         => function.Operation is AddressMapOperation.Constructed or AddressMapOperation.Visited
-           || function.Declared.Length > 0
+           || function.DeclaredClasses.Length > 0
            || function.Pointers.Length > 0;
 
     private static TracePosition GetPositionBefore(TracePosition position)
         => position.Steps > 0 ? new TracePosition(position.Sequence, position.Steps - 1) : position;
 
-    private void Handoff(ulong address, in TraceHookCall call, ITraceReplay replay, bool isReturned)
+    private void Track(ulong address, in TraceHookCall call, ITraceReplay replay, bool isReturned)
     {
         if (address < TraceAddress.MinAddress || address < call.StackPointer)
         {
@@ -188,7 +252,7 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
 
         var position = GetPositionBefore(call.Position);
 
-        var index = GetObject(frames[owner], address, position, call.Thread, replay);
+        var index = GetCandidateIndex(frames[owner], address, position, call.Thread, replay);
 
         Snapshot(index, position, replay);
 
@@ -197,11 +261,11 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
             return;
         }
 
-        if (!Pending.TryGetValue(call.Id, out var pending))
+        if (!PendingSnapshots.TryGetValue(call.Id, out var pending))
         {
             pending = [];
 
-            Pending[call.Id] = pending;
+            PendingSnapshots[call.Id] = pending;
         }
 
         if (!pending.Contains(index))
@@ -210,22 +274,22 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
         }
     }
 
-    private int GetObject(TraceHookFrame frame, ulong address, TracePosition position, uint thread, ITraceReplay replay)
+    private int GetCandidateIndex(TraceHookFrame frame, ulong address, TracePosition position, uint thread, ITraceReplay replay)
     {
         if (Index.TryGetValue((frame.Id, address), out var index))
         {
             return index;
         }
 
-        index = Objects.Count;
+        index = Candidates.Count;
 
         Index[(frame.Id, address)] = index;
 
-        if (!Owned.TryGetValue(frame.Id, out var owned))
+        if (!FrameCandidates.TryGetValue(frame.Id, out var owned))
         {
             owned = [];
 
-            Owned[frame.Id] = owned;
+            FrameCandidates[frame.Id] = owned;
 
             replay.WatchFrame(thread, frame.Id);
         }
@@ -234,7 +298,7 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
 
         foreach (var other in owned)
         {
-            var candidate = Objects[other];
+            var candidate = Candidates[other];
 
             if (candidate.Address > address)
             {
@@ -248,14 +312,14 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
 
         owned.Add(index);
 
-        Objects.Add(new Candidate(address, size, thread, frame.CallNodeIndex, position));
+        Candidates.Add(new Candidate(address, size, thread, frame.CallNodeIndex, position));
 
         return index;
     }
 
     private void Snapshot(int index, TracePosition position, ITraceReplay replay)
     {
-        var target = Objects[index];
+        var target = Candidates[index];
 
         if (target.Size <= 0)
         {
