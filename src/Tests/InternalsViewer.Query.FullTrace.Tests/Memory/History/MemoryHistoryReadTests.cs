@@ -40,6 +40,25 @@ public class MemoryHistoryReadTests
     }
 
     [Fact]
+    public void A_Late_Read_From_A_Finished_Call_Joins_Its_Record()
+    {
+        var blocks = Enumerable.Range(0, 80).Select(i => Block(Owned + (ulong)i * 0x100, 0x10)).ToArray();
+
+        (ulong Sequence, ulong Address, uint Size)[] reads =
+        [
+            (12, Owned + 79 * 0x100, 4),
+            .. Enumerable.Range(0, 70).Select(i => (2ul, Owned + (ulong)i * 0x100, 4u)),
+            (3, Owned, 4)
+        ];
+
+        var store = BuildWithReads(blocks, [], reads, MemoryHistoryStoreHelper.Calls((1, 10), (11, 20)));
+
+        var read = Assert.Single(store.GetReads(GetBlock(store, Owned)));
+
+        Assert.Equal((At(2), 0, 2), (read.Position, read.CallIndex, read.Count));
+    }
+
+    [Fact]
     public void Reads_Survive_An_Export_Round_Trip()
     {
         var timeline = MemoryHistoryStoreHelper.Calls((1, 10));

@@ -121,19 +121,24 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
 
         ActivityWindow = window;
 
-        if (!ActivityByWindow.TryGetValue(window, out var activity))
-        {
-            activity = window.GetCallActivity(QueryRunner.ActivityBuckets);
-
-            ActivityByWindow[window] = activity;
-        }
-
-        foreach (var node in CallStack.Nodes())
-        {
-            node.CallActivity = activity.GetValueOrDefault(node) ?? [];
-        }
+        CallStack.SetCallActivity(() => GetCallActivity(window));
 
         CallStack.ComputeActivity(CallStack.ActivityMinUs, CallStack.ActivityMaxUs, QueryRunner.ActivityBuckets);
+    }
+
+    private Dictionary<CallStackNode, int[]> GetCallActivity(TraceTimeline window)
+    {
+        lock (ActivityByWindow)
+        {
+            if (!ActivityByWindow.TryGetValue(window, out var activity))
+            {
+                activity = window.GetCallActivity(QueryRunner.ActivityBuckets);
+
+                ActivityByWindow[window] = activity;
+            }
+
+            return activity;
+        }
     }
 
     private TraceTimeline GetQueryTimeline()

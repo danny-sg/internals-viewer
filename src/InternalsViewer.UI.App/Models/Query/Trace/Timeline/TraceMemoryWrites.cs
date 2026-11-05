@@ -63,4 +63,21 @@ public sealed class TraceMemoryWrites
         => Store is not { } store ? Writes[index].CallNodeIndex
            : IsReads ? store.GetRead(First + index).CallNodeIndex
            : store.GetWrite(First + index).CallNodeIndex;
+
+    public (int Offset, int Length) GetExtent(int index)
+    {
+        if (Store is not { } store)
+        {
+            return (Writes[index].Offset, Writes[index].Length);
+        }
+
+        if (IsReads)
+        {
+            var read = store.GetRead(First + index);
+
+            return (read.Offset, read.Length);
+        }
+
+        return store.GetChangedExtent(store.GetWrite(First + index));
+    }
 }

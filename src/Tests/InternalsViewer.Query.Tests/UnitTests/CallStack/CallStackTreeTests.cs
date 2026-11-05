@@ -515,6 +515,32 @@ public class CallStackTreeTests(ITestOutputHelper output)
         Assert.Equal([1, 0], Assert.Single(collapsed.Nodes()).ActivityCounts);
     }
 
+    [Fact]
+    public void Call_Activity_Is_Built_Once_And_Only_When_A_Node_Asks_For_Its_Counts()
+    {
+        var tree = new CallStackTree { ActivityFromTrace = true };
+
+        var x = tree.AddCall(tree.Root, Frame("X", 100), 1);
+
+        var y = tree.AddCall(x, Frame("Y", 200), 4);
+
+        var builds = 0;
+
+        tree.SetCallActivity(() =>
+        {
+            builds++;
+
+            return new Dictionary<CallStackNode, int[]>(ReferenceEqualityComparer.Instance) { [x] = [1, 0], [y] = [0, 3] };
+        });
+
+        tree.ComputeActivity(0, 0, 2);
+
+        Assert.Equal(0, builds);
+        Assert.Equal([1, 3], x.ActivityCounts);
+        Assert.Equal([0, 3], y.ActivityCounts);
+        Assert.Equal(1, builds);
+    }
+
     private static EngineEvent Event() => new() { Name = "e", SequenceId = _sequence++ };
 
     private static CallstackFrame Frame(string name, uint rva) => new()

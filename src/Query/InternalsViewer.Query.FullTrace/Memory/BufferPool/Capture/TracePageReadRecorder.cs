@@ -1,5 +1,6 @@
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Memory.BufferPool.Capture;
 
@@ -15,7 +16,7 @@ internal sealed class TracePageReadRecorder(TraceBufferPool pool)
 
     private Dictionary<uint, Run> Open { get; } = [];
 
-    private List<TracePageRead> Reads { get; } = [];
+    private ChunkedList<TracePageRead> Reads { get; } = [];
 
     public IEnumerable<WatchRange> GetRanges() => Frames.Select(f => new WatchRange(f, PageData.Size));
 
@@ -66,7 +67,13 @@ internal sealed class TracePageReadRecorder(TraceBufferPool pool)
 
         Open.Clear();
 
-        return new TracePageReadList([.. Reads.OrderBy(r => r.Position)]);
+        var reads = Reads.ToArray();
+
+        reads.AsSpan().Sort(static (left, right) => left.Position != right.Position ? left.Position.CompareTo(right.Position)
+                                                    : left.Thread != right.Thread ? left.Thread.CompareTo(right.Thread)
+                                                    : left.Address.CompareTo(right.Address));
+
+        return new TracePageReadList(reads);
     }
 
     private static ulong GetFrame(ulong address) => address - address % PageData.Size;

@@ -55,15 +55,24 @@ public static class WorkfilePageReader
     {
         var writes = store.GetWrites(block);
 
+        Span<byte> type = stackalloc byte[1];
+
         for (var index = writes.Count - 1; index >= 0; index--)
         {
             var write = writes[index];
 
             var at = PageTypeOffset - write.Offset;
 
-            if (at >= 0 && at < write.Length && store.GetBytes(write)[at] is not 0 and var type)
+            if (at < 0 || at >= write.Length)
             {
-                return (PageType)type;
+                continue;
+            }
+
+            store.CopyBytes(write, at, type);
+
+            if (type[0] != 0)
+            {
+                return (PageType)type[0];
             }
         }
 

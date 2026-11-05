@@ -1044,7 +1044,7 @@ public sealed partial class AllocationControl : IDisposable
 
         foreach (var layer in Layers)
         {
-            if (layer.IsExtrude && layer.IsVisible && layer.Opacity > 0 && !IsHiddenBySelection(layer))
+            if (layer.IsExtrude && layer.IsVisible && layer.Opacity > 0)
             {
                 CollectExtrudedPages(layer, firstPage, lastPage);
             }

@@ -167,14 +167,14 @@ internal static class MemoryHistoryBuilder
         => !function.IsVirtual
            && (function.IsAllocation || function is { Operation: AllocationOperation.Free, PointerArgumentSlot: >= 0 });
 
-    private static MemoryHistoryChangeType? GetChangeType(WatchedBlock block, int offset, byte value)
+    private static MemoryHistoryAccessType? GetChangeType(WatchedBlock block, int offset, byte value)
     {
         if (!block.Known![offset])
         {
-            return MemoryHistoryChangeType.Initialised;
+            return MemoryHistoryAccessType.Initialised;
         }
 
-        return block.Image![offset] != value ? MemoryHistoryChangeType.Changed : null;
+        return block.Image![offset] != value ? MemoryHistoryAccessType.Changed : null;
     }
 
     private static (MemoryHistoryBlock[] Kept, int[] FirstWrites, MemoryHistoryInstance[] Instances)
@@ -339,14 +339,11 @@ internal static class MemoryHistoryBuilder
 
             var (reads, readStarts) = Reads.Build(isKept, kept.Length);
 
-            var store = new MemoryHistoryStore(kept,
-                                               recorder.Writes,
-                                               recorder.Data,
-                                               recorder.Iterators,
-                                               Timeline,
-                                               reads,
-                                               readStarts,
-                                               instances);
+            var writeTable = MemoryHistoryAccessTable.Build(recorder.Writes, recorder.Data, MemoryHistoryStore.WriteCacheSlots);
+
+            var readTable = MemoryHistoryAccessTable.Build(reads, [], MemoryHistoryStore.ReadCacheSlots);
+
+            var store = new MemoryHistoryStore(kept, writeTable, recorder.Iterators, Timeline, readTable, readStarts, instances);
 
             return (store, recorder.Counts);
         }
@@ -506,7 +503,7 @@ internal static class MemoryHistoryBuilder
             return blocks;
         }
 
-        public (MemoryHistoryReadEntry[] Reads, int[] Starts) Build(bool[] isKept, int keptCount)
+        public (MemoryHistoryAccessEntry[] Reads, int[] Starts) Build(bool[] isKept, int keptCount)
         {
             var kept = new int[isKept.Length];
 
@@ -532,7 +529,7 @@ internal static class MemoryHistoryBuilder
                 starts[index] += starts[index - 1];
             }
 
-            var reads = new MemoryHistoryReadEntry[starts[^1]];
+            var reads = new MemoryHistoryAccessEntry[starts[^1]];
 
             var placed = new int[keptCount];
 
@@ -554,7 +551,12 @@ internal static class MemoryHistoryBuilder
 
                 var target = starts[kept[block]] + placed[kept[block]]++;
 
-                reads[target] = new MemoryHistoryReadEntry(mark.First, spanId, mark.Start, mark.End - mark.Start, mark.Count);
+                reads[target] = new MemoryHistoryAccessEntry(mark.First,
+                                                             spanId,
+                                                             mark.Start,
+                                                             mark.End - mark.Start,
+                                                             mark.Count,
+                                                             MemoryHistoryAccessType.Read);
             }
 
             Closed = [];
@@ -991,7 +993,7 @@ internal static class MemoryHistoryBuilder
 
         public int[] Written { get; } = new int[lookup.Blocks.Count];
 
-        public MemoryHistoryWriteEntry[] Writes { get; private set; } = [];
+        public MemoryHistoryAccessEntry[] Writes { get; private set; } = [];
 
         public byte[] Data { get; private set; } = [];
 
@@ -1036,7 +1038,7 @@ internal static class MemoryHistoryBuilder
                 }
             }
 
-            Writes = new MemoryHistoryWriteEntry[WriteCount];
+            Writes = new MemoryHistoryAccessEntry[WriteCount];
 
             Data = new byte[DataLength];
 
@@ -1180,9 +1182,9 @@ internal static class MemoryHistoryBuilder
             }
         }
 
-        private bool IsContinuation(ChunkHit hit, int block, int offset, int length, MemoryHistoryChangeType type)
+        private bool IsContinuation(ChunkHit hit, int block, int offset, int length, MemoryHistoryAccessType type)
         {
-            if (type != MemoryHistoryChangeType.Initialised
+            if (type != MemoryHistoryAccessType.Initialised
                 || LastInitialised is not { } last
                 || last.Block != block
                 || last.End != offset
@@ -1199,9 +1201,9 @@ internal static class MemoryHistoryBuilder
             return writer >= 0 && writer == previous;
         }
 
-        private void Remember(ChunkHit hit, int block, int offset, int length, MemoryHistoryChangeType type, bool isContinuation)
+        private void Remember(ChunkHit hit, int block, int offset, int length, MemoryHistoryAccessType type, bool isContinuation)
         {
-            if (type != MemoryHistoryChangeType.Initialised)
+            if (type != MemoryHistoryAccessType.Initialised)
             {
                 LastInitialised = null;
 
@@ -1224,16 +1226,16 @@ internal static class MemoryHistoryBuilder
         {
             var target = Next[block] - 1;
 
-            Writes[target] = Writes[target] with { Length = (ushort)(Writes[target].Length + run.Length) };
+            Writes[target] = Writes[target] with { Length = Writes[target].Length + run.Length };
 
             AddData(block, run);
         }
 
-        private void Add(ChunkHit hit, int block, int offset, ReadOnlySpan<byte> run, MemoryHistoryChangeType type)
+        private void Add(ChunkHit hit, int block, int offset, ReadOnlySpan<byte> run, MemoryHistoryAccessType type)
         {
             var spanId = Writer ??= GetWriter(hit);
 
-            Writes[Next[block]++] = new MemoryHistoryWriteEntry(hit.Position, spanId, offset, (ushort)run.Length, type);
+            Writes[Next[block]++] = new MemoryHistoryAccessEntry(hit.Position, spanId, offset, run.Length, 1, type);
 
             AddData(block, run);
         }

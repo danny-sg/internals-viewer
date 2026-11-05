@@ -12,7 +12,7 @@ public class MemoryChangeNavigationTests
     [
         Write(10, 0, 8),
         Write(20, 4, 2),
-        Write(30, 0, 4, MemoryHistoryChangeType.Initialised),
+        Write(30, 0, 4, MemoryHistoryAccessType.Initialised),
         Write(40, 5, 1),
         Write(50, 12, 4)
     ];
@@ -102,6 +102,6 @@ public class MemoryChangeNavigationTests
     private static MemoryHistoryWrite Write(ulong sequence,
                                             int offset,
                                             int length,
-                                            MemoryHistoryChangeType type = MemoryHistoryChangeType.Changed)
+                                            MemoryHistoryAccessType type = MemoryHistoryAccessType.Changed)
         => new(0, At(sequence), 0, 0, offset, (ushort)length, type);
 }

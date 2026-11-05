@@ -323,8 +323,7 @@ public sealed class QueryExportWriter
         ActivityFromTrace = tree?.ActivityFromTrace ?? false,
         ActivityMinUs = tree?.ActivityMinUs ?? 0,
         ActivityMaxUs = tree?.ActivityMaxUs ?? 0,
-        ActivityBuckets = tree?.ActivityBuckets ?? 0,
-        ActivityBusiest = tree?.ActivityBusiest ?? 0
+        ActivityBuckets = tree?.ActivityBuckets ?? 0
     };
 
     private static IEnumerable<CallStackNode> PreOrder(CallStackNode root)
@@ -357,7 +356,6 @@ public sealed class QueryExportWriter
         Frame = node.Frame is { } nodeFrame ? references.Frames.IdOf(nodeFrame) : null,
         Rvas = node.Rvas.Count > 0 ? [.. node.Rvas.Order()] : null,
         Calls = node.Calls,
-        CallActivity = node.CallActivity.Length > 0 ? node.CallActivity : null,
         AllocatedBytes = node.AllocatedBytes,
         Allocations = node.Allocations,
         Locators = LocatorsOf(node.Locators),

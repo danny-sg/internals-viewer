@@ -60,12 +60,15 @@ public class MemoryWatchToolsTests
 
         MemoryHistoryBlock[] blocks = [new MemoryHistoryBlock(Scan, 0xA, 16, true, false, 7, 1, At(0x16), At(0x1F), 22, 31, 0, 1)];
 
-        MemoryHistoryWriteEntry[] writes =
+        MemoryHistoryAccessEntry[] writes =
         [
-            new(At(0x16, 1), timeline.GetInnermostSpanId(7, At(0x16, 1)), 0, 8, MemoryHistoryChangeType.Initialised)
+            new(At(0x16, 1), timeline.GetInnermostSpanId(7, At(0x16, 1)), 0, 8, 1, MemoryHistoryAccessType.Initialised)
         ];
 
-        var history = new MemoryHistoryStore(blocks, writes, new byte[8], new Dictionary<int, ulong>(), timeline);
+        var history = new MemoryHistoryStore(blocks,
+                                             MemoryHistoryAccessTable.Build(writes, new byte[8], MemoryHistoryStore.WriteCacheSlots),
+                                             new Dictionary<int, ulong>(),
+                                             timeline);
 
         return run with { Extras = [run.ExtraOf<TraceResult>()! with { MemoryHistory = history }] };
     }

@@ -60,5 +60,5 @@ public static class MemoryChangeNavigation
     }
 
     private static bool IsChange(MemoryHistoryWrite write, int offset)
-        => write.Type == MemoryHistoryChangeType.Changed && offset >= write.Offset && offset < write.Offset + write.Length;
+        => write.Type == MemoryHistoryAccessType.Changed && offset >= write.Offset && offset < write.Offset + write.Length;
 }

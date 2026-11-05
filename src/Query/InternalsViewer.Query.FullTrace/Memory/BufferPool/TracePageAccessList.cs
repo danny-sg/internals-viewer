@@ -220,7 +220,7 @@ public sealed class TracePageAccessList
             {
                 if (GetRecord(pool, value, write.Position, write.CallNodeIndex, write.CallIndex) is { } access)
                 {
-                    var isSnapshot = item.IsStack && write.Type == MemoryHistoryChangeType.Initialised;
+                    var isSnapshot = item.IsStack && write.Type == MemoryHistoryAccessType.Initialised;
 
                     candidates.Add(new Candidate(access, item.Thread, isSnapshot));
                 }

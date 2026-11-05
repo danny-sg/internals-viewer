@@ -8,4 +8,4 @@ public readonly record struct MemoryHistoryWrite(int Index,
                                                  int CallIndex,
                                                  int Offset,
                                                  ushort Length,
-                                                 MemoryHistoryChangeType Type);
+                                                 MemoryHistoryAccessType Type);

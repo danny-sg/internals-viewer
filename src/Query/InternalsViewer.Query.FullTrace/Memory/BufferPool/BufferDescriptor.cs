@@ -105,7 +105,7 @@ public static class BufferDescriptor
                 continue;
             }
 
-            store.GetBytes(write)[(start - write.Offset)..(end - write.Offset)].CopyTo(word[(start - LatchStateOffset)..]);
+            store.CopyBytes(write, start - write.Offset, word[(start - LatchStateOffset)..(end - LatchStateOffset)]);
 
             states.Add((first + index, BinaryPrimitives.ReadUInt64LittleEndian(word)));
         }

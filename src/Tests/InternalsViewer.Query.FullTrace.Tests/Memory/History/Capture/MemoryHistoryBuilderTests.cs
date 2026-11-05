@@ -39,7 +39,7 @@ public class MemoryHistoryBuilderTests
 
         var writes = store.GetWrites(0);
 
-        Assert.Equal([MemoryHistoryChangeType.Initialised, MemoryHistoryChangeType.Changed], writes.Select(m => m.Type));
+        Assert.Equal([MemoryHistoryAccessType.Initialised, MemoryHistoryAccessType.Changed], writes.Select(m => m.Type));
         Assert.Equal(2, writes[1].Offset);
         Assert.Equal([5], store.GetBytes(writes[1]).ToArray());
     }
@@ -49,9 +49,9 @@ public class MemoryHistoryBuilderTests
     {
         var store = Build([Block(Owned, 0x10, from: 1)], [Write(2, Owned, new byte[4]), Write(3, Owned, 1, 0, 1, 0)]);
 
-        Assert.Equal([(At(2), 0, 4, MemoryHistoryChangeType.Initialised),
-                      (At(3), 0, 1, MemoryHistoryChangeType.Changed),
-                      (At(3), 2, 1, MemoryHistoryChangeType.Changed)],
+        Assert.Equal([(At(2), 0, 4, MemoryHistoryAccessType.Initialised),
+                      (At(3), 0, 1, MemoryHistoryAccessType.Changed),
+                      (At(3), 2, 1, MemoryHistoryAccessType.Changed)],
                      store.GetWrites(0).Select(w => (w.Position, w.Offset, (int)w.Length, w.Type)));
         Assert.Equal(new byte[] { 1, 0, 1, 0 }, store.GetImage(0, store.GetWriteCount(0, At(3)) - 1).Data[..4]);
     }
@@ -491,7 +491,7 @@ public class MemoryHistoryBuilderTests
                                                     watched,
                                                     null);
 
-        Assert.Equal([(At(3), MemoryHistoryChangeType.Initialised), (At(5), MemoryHistoryChangeType.Changed)],
+        Assert.Equal([(At(3), MemoryHistoryAccessType.Initialised), (At(5), MemoryHistoryAccessType.Changed)],
                      store.GetWrites(0).Select(w => (w.Position, w.Type)));
     }
 
@@ -574,7 +574,7 @@ public class MemoryHistoryBuilderTests
 
         Assert.Equal((true, 6, At(5), At(50), 1),
                      (block.IsStack, block.CallNodeIndex, block.FromPosition, block.ToPosition, block.InstanceCount));
-        Assert.Equal([MemoryHistoryChangeType.Initialised, MemoryHistoryChangeType.Changed], writes.Select(w => w.Type));
+        Assert.Equal([MemoryHistoryAccessType.Initialised, MemoryHistoryAccessType.Changed], writes.Select(w => w.Type));
         Assert.Equal((2, (byte)9), (writes[1].Offset, store.GetBytes(writes[1])[0]));
     }
 
@@ -596,7 +596,7 @@ public class MemoryHistoryBuilderTests
 
         Assert.Equal((2, At(5), At(90)), (block.InstanceCount, block.FromPosition, block.ToPosition));
         Assert.Equal((true, false, true), (store.IsLive(0, At(20)), store.IsLive(0, At(55)), store.IsLive(0, At(70))));
-        Assert.Equal((MemoryHistoryChangeType.Changed, 2, 1), (second.Type, second.Offset, (int)second.Length));
+        Assert.Equal((MemoryHistoryAccessType.Changed, 2, 1), (second.Type, second.Offset, (int)second.Length));
     }
 
     [Fact]

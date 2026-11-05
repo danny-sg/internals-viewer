@@ -208,7 +208,7 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
 
             if (Overlay == "Buffer Pool")
             {
-                layer.Opacity = (byte)(layer.LayerName == Overlay ? 100 : 20);
+                layer.Opacity = layer.LayerName == Overlay ? (byte)100 : GetSelectionOpacity(layer);
 
                 continue;
             }
@@ -219,7 +219,7 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
             }
             else
             {
-                layer.Opacity = (byte)(string.IsNullOrEmpty(layer.LayerName) ? 100 : 0);
+                layer.Opacity = string.IsNullOrEmpty(layer.LayerName) ? GetSelectionOpacity(layer) : (byte)0;
             }
         }
 
@@ -282,23 +282,11 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
 
     private void RefreshAllocationLayerSelection()
     {
-        var hasSelection = SelectedLayers.Count > 0;
-
         var updatedLayers = AllocationLayers.Select(s =>
         {
-            if (s.IsAllocationLayer)
+            if (!s.IsAllocationLayer)
             {
-                return s;
-
-            }
-
-            if (hasSelection)
-            {
-                s.Opacity = (byte) (SelectedLayers.Any(l => l.Name == s.Name) ? 100 : 20);
-            }
-            else
-            {
-                s.Opacity = 100;
+                s.Opacity = GetSelectionOpacity(s);
             }
 
             return s;
@@ -306,6 +294,9 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
 
         AllocationLayers = new ObservableCollection<AllocationLayer>(updatedLayers);
     }
+
+    private byte GetSelectionOpacity(AllocationLayer layer)
+        => (byte)(SelectedLayers.Count == 0 || SelectedLayers.Any(l => l.Name == layer.Name) ? 100 : 20);
 
     // Started on the UI thread, so the property set (which raises PropertyChanged for the toggle binding) resumes there.
     private async Task LoadTooltipEnabledAsync()

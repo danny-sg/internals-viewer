@@ -620,7 +620,20 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     public void Dispose()
     {
+        ClearValue(TimelineProperty);
+        ClearValue(FullTimelineProperty);
+        ClearValue(MemoryProperty);
+        ClearValue(LifetimesProperty);
+        ClearValue(MemoryBlocksProperty);
+        ClearValue(BufferLatchesProperty);
+        ClearValue(RowReturnMarksProperty);
+        ClearValue(TickTracksProperty);
+        ClearValue(SelectedNodeProperty);
+        ClearValue(SelectedCallProperty);
+
         StopPlay();
+
+        HideToolTip();
 
         CloseIndicator(TraceIndicatorClose.Gone);
 
@@ -675,6 +688,24 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         _rooted = null;
         _visible = null;
         _visibleFor = null;
+        _instanceCurves = null;
+        _memoryScopeTimeline = null;
+        _memoryScopeNode = null;
+        _memoryUpdates = null;
+        _bufferLatchIndex = null;
+        _searchLocator = null;
+        _highlightedNode = null;
+        _root = null;
+        _hover = null;
+        _selected = null;
+        _stackFrame = null;
+        _reportedStackFrame = null;
+        _reportedSelected = null;
+        _hoverBlock = null;
+        _reportedPlayheadFrames.Clear();
+        _inUseCurves.Clear();
+        _spikes.Clear();
+        _reversedSpikes.Clear();
         _colours.Clear();
         _labels.Clear();
         _parsedColours.Clear();

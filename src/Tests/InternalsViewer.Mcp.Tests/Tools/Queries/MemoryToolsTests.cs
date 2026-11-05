@@ -219,15 +219,18 @@ public class MemoryToolsTests
 
         MemoryHistoryBlock[] blocks = [new MemoryHistoryBlock(Scan, 0xA, 16, true, false, 7, 1, At(0x16), At(0x1F), 22, 31, 0, 2)];
 
-        MemoryHistoryWriteEntry[] writes =
+        MemoryHistoryAccessEntry[] writes =
         [
-            new(At(0x16, 1), timeline.GetInnermostSpanId(7, At(0x16, 1)), 0, 8, MemoryHistoryChangeType.Initialised),
-            new(At(0x17), timeline.GetInnermostSpanId(7, At(0x17)), 8, 4, MemoryHistoryChangeType.Changed)
+            new(At(0x16, 1), timeline.GetInnermostSpanId(7, At(0x16, 1)), 0, 8, 1, MemoryHistoryAccessType.Initialised),
+            new(At(0x17), timeline.GetInnermostSpanId(7, At(0x17)), 8, 4, 1, MemoryHistoryAccessType.Changed)
         ];
 
         byte[] data = [0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, 0x2A, 0x00, 0x00, 0x00];
 
-        var history = new MemoryHistoryStore(blocks, writes, data, new Dictionary<int, ulong> { [1] = Scan }, timeline);
+        var history = new MemoryHistoryStore(blocks,
+                                             MemoryHistoryAccessTable.Build(writes, data, MemoryHistoryStore.WriteCacheSlots),
+                                             new Dictionary<int, ulong> { [1] = Scan },
+                                             timeline);
 
         return WithTrace(run, t => t with { MemoryHistory = history });
     }

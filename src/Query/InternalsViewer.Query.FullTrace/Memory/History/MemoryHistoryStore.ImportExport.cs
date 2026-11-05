@@ -6,7 +6,7 @@ namespace InternalsViewer.Query.FullTrace.Memory.History;
 
 public sealed partial class MemoryHistoryStore
 {
-    private const int FormatVersion = 11;
+    private const int FormatVersion = 14;
 
     private const int InstancesVersion = 10;
 
@@ -14,7 +14,7 @@ public sealed partial class MemoryHistoryStore
 
     private const int WritesOnlyVersion = 8;
 
-    internal static bool IsSupported(BinaryReader reader) => ReadVersion(reader) is >= WritesOnlyVersion and <= FormatVersion;
+    internal static bool IsSupported(BinaryReader reader) => IsSupported(ReadVersion(reader));
 
     internal void Write(BinaryWriter writer)
     {
@@ -57,9 +57,7 @@ public sealed partial class MemoryHistoryStore
             writer.Write(block.InstanceCount);
         }
 
-        ExportBinary.WriteArray(writer, Writes);
-
-        ExportBinary.WriteArray(writer, Data);
+        Writes.Write(writer);
 
         writer.Write(Iterators.Count);
 
@@ -72,7 +70,7 @@ public sealed partial class MemoryHistoryStore
 
         ExportBinary.WriteArray(writer, ReadStarts);
 
-        ExportBinary.WriteArray(writer, Reads);
+        Reads.Write(writer);
 
         writer.Write(Instances.Length);
 
@@ -92,7 +90,7 @@ public sealed partial class MemoryHistoryStore
     {
         var version = ReadVersion(reader);
 
-        if (version is < WritesOnlyVersion or > FormatVersion)
+        if (!IsSupported(version))
         {
             throw new InvalidDataException("The memory history was exported by an unsupported version and must be re-recorded");
         }
@@ -126,24 +124,24 @@ public sealed partial class MemoryHistoryStore
             return ReadCalls(reader, version, blocks, new SpanResolver(timeline));
         }
 
-        var writes = ExportBinary.ReadArray<MemoryHistoryWriteEntry>(reader);
-
-        var data = ExportBinary.ReadArray<byte>(reader);
+        var writes = MemoryHistoryAccessTable.Read(reader, WriteCacheSlots);
 
         var iterators = ReadIterators(reader);
 
         var readStarts = ExportBinary.ReadArray<int>(reader);
 
-        var reads = ExportBinary.ReadArray<MemoryHistoryReadEntry>(reader);
+        var reads = MemoryHistoryAccessTable.Read(reader, ReadCacheSlots);
 
-        return new MemoryHistoryStore(blocks, writes, data, iterators, timeline, reads, readStarts, ReadInstances(reader));
+        return new MemoryHistoryStore(blocks, writes, iterators, timeline, reads, readStarts, ReadInstances(reader));
     }
+
+    private static bool IsSupported(int version) => version is (>= WritesOnlyVersion and <= InstancesVersion) or FormatVersion;
 
     private static int ReadVersion(BinaryReader reader) => -reader.ReadInt32();
 
     private static MemoryHistoryStore ReadCalls(BinaryReader reader, int version, MemoryHistoryBlock[] blocks, SpanResolver spans)
     {
-        var writes = new MemoryHistoryWriteEntry[reader.ReadInt32()];
+        var writes = new MemoryHistoryAccessEntry[reader.ReadInt32()];
 
         var data = new List<byte>();
 
@@ -157,11 +155,11 @@ public sealed partial class MemoryHistoryStore
 
             var offset = reader.ReadInt32();
 
-            var type = (MemoryHistoryChangeType)reader.ReadByte();
+            var type = (MemoryHistoryAccessType)reader.ReadByte();
 
             var bytes = reader.ReadBytes(reader.ReadInt32());
 
-            writes[index] = new MemoryHistoryWriteEntry(position, spanId, offset, (ushort)bytes.Length, type);
+            writes[index] = new MemoryHistoryAccessEntry(position, spanId, offset, bytes.Length, 1, type);
 
             data.AddRange(bytes);
         }
@@ -172,7 +170,13 @@ public sealed partial class MemoryHistoryStore
 
         var instances = version >= InstancesVersion ? ReadInstances(reader) : [];
 
-        return new MemoryHistoryStore(blocks, writes, [.. data], iterators, spans.Timeline, reads, readStarts, instances);
+        return new MemoryHistoryStore(blocks,
+                                      MemoryHistoryAccessTable.Build(writes, [.. data], WriteCacheSlots),
+                                      iterators,
+                                      spans.Timeline,
+                                      MemoryHistoryAccessTable.Build(reads, [], ReadCacheSlots),
+                                      readStarts,
+                                      instances);
     }
 
     private static Dictionary<int, ulong> ReadIterators(BinaryReader reader)
@@ -187,7 +191,7 @@ public sealed partial class MemoryHistoryStore
         return iterators;
     }
 
-    private static (MemoryHistoryReadEntry[] Reads, int[] Starts) ReadCallReads(BinaryReader reader, SpanResolver spans)
+    private static (MemoryHistoryAccessEntry[] Reads, int[] Starts) ReadCallReads(BinaryReader reader, SpanResolver spans)
     {
         var starts = new int[reader.ReadInt32()];
 
@@ -196,7 +200,7 @@ public sealed partial class MemoryHistoryStore
             starts[index] = reader.ReadInt32();
         }
 
-        var reads = new MemoryHistoryReadEntry[reader.ReadInt32()];
+        var reads = new MemoryHistoryAccessEntry[reader.ReadInt32()];
 
         for (var index = 0; index < reads.Length; index++)
         {
@@ -204,11 +208,12 @@ public sealed partial class MemoryHistoryStore
 
             reader.ReadUInt64();
 
-            reads[index] = new MemoryHistoryReadEntry(position,
-                                                      SpanId: spans.Get(reader.ReadInt32(), reader.ReadInt32(), position),
-                                                      Offset: reader.ReadInt32(),
-                                                      Length: reader.ReadInt32(),
-                                                      Count: reader.ReadInt32());
+            reads[index] = new MemoryHistoryAccessEntry(position,
+                                                        SpanId: spans.Get(reader.ReadInt32(), reader.ReadInt32(), position),
+                                                        Offset: reader.ReadInt32(),
+                                                        Length: reader.ReadInt32(),
+                                                        Count: reader.ReadInt32(),
+                                                        MemoryHistoryAccessType.Read);
         }
 
         return (reads, starts);

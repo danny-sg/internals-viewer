@@ -1,7 +1,8 @@
 namespace InternalsViewer.Query.FullTrace.Memory.History.Enums;
 
-public enum MemoryHistoryChangeType : byte
+public enum MemoryHistoryAccessType : byte
 {
     Initialised,
-    Changed
+    Changed,
+    Read
 }

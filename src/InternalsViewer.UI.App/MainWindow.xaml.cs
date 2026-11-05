@@ -600,6 +600,8 @@ public sealed partial class MainWindow
                 {
                     disposable.Dispose();
                 }
+
+                tab.Tag = null;
             }
 
             WindowTabView.TabItems.Remove(tab);

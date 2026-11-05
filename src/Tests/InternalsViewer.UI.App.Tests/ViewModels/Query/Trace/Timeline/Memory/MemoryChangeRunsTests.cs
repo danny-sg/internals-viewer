@@ -60,7 +60,7 @@ public class MemoryChangeRunsTests
     [Fact]
     public void Initialising_Writes_Are_Not_Changes()
     {
-        var runs = MemoryChangeRuns.GetRuns([Write(0, 8, 7, MemoryHistoryChangeType.Initialised)], 1, Size);
+        var runs = MemoryChangeRuns.GetRuns([Write(0, 8, 7, MemoryHistoryAccessType.Initialised)], 1, Size);
 
         Assert.Empty(runs);
     }
@@ -76,6 +76,6 @@ public class MemoryChangeRunsTests
     private static MemoryHistoryWrite Write(int offset,
                                             int length,
                                             int callNodeIndex,
-                                            MemoryHistoryChangeType type = MemoryHistoryChangeType.Changed)
+                                            MemoryHistoryAccessType type = MemoryHistoryAccessType.Changed)
         => new(0, TracePosition.Unknown, callNodeIndex, 0, offset, (ushort)length, type);
 }

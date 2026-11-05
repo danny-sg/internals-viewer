@@ -301,6 +301,18 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
     public void Dispose()
     {
+        Rows = [];
+
+        VisibleTracks = [];
+
+        StatementEvent = null;
+
+        CachedLayout = null;
+
+        Details.Clear();
+
+        RowHeights.Clear();
+
         Shape.Dispose();
 
         foreach (var gradient in Gradients.Values)

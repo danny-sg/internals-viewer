@@ -19,6 +19,4 @@ internal sealed record ExportCallTree
     public long ActivityMaxUs { get; init; }
 
     public int ActivityBuckets { get; init; }
-
-    public int ActivityBusiest { get; init; }
 }

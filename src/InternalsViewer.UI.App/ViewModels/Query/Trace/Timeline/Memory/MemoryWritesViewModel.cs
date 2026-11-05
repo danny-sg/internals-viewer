@@ -203,9 +203,7 @@ public sealed partial class MemoryWritesViewModel(PlayheadMemoryViewModel owner)
         {
             var write = writes[index];
 
-            store.GetBytes(write).CopyTo(image.AsSpan(write.Offset));
-
-            known.AsSpan(write.Offset, write.Length).Fill(true);
+            store.Apply(write, image, known);
 
             var label = Owner.History.GetWriterLabel(write.CallNodeIndex);
 
@@ -223,7 +221,7 @@ public sealed partial class MemoryWritesViewModel(PlayheadMemoryViewModel owner)
 
             var writeIndex = index;
 
-            var value = GetValueText(write, store.GetBytes(write));
+            var value = GetValueText(write, image.AsSpan(write.Offset, write.Length));
 
             var valueCell = GetPointerCell(write, image, known) ?? value;
 

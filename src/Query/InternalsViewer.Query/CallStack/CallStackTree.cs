@@ -133,7 +133,7 @@ public sealed class CallStackTree
 
             AddLocators(leaf, node.Locators);
 
-            AddCallActivity(leaf, node.CallActivity);
+            AddCallActivity(leaf, GetCallActivity(node));
 
             foreach (var engineEvent in events)
             {
@@ -459,7 +459,9 @@ public sealed class CallStackTree
 
     public int ActivityBuckets { get; private set; }
 
-    public int ActivityBusiest { get; private set; }
+    public int ActivityBusiest => Root.Children.Values.SelectMany(n => GetActivityCounts(n)).DefaultIfEmpty(0).Max();
+
+    private Lazy<IReadOnlyDictionary<CallStackNode, int[]>>? CallActivitySource { get; set; }
 
     private Dictionary<CallStackNode, int[]> ActivityCache { get; } = new(ReferenceEqualityComparer.Instance);
 
@@ -472,16 +474,20 @@ public sealed class CallStackTree
         ActivityBuckets = buckets;
 
         ClearActivity();
-
-        ActivityBusiest = Root.Children.Values.SelectMany(n => GetActivityCounts(n)).DefaultIfEmpty(0).Max();
     }
 
-    internal void RestoreActivity(long minUs, long maxUs, int buckets, int busiest)
+    public void SetCallActivity(Func<IReadOnlyDictionary<CallStackNode, int[]>> source)
+    {
+        CallActivitySource = new Lazy<IReadOnlyDictionary<CallStackNode, int[]>>(source);
+
+        ClearActivity();
+    }
+
+    internal void RestoreActivity(long minUs, long maxUs, int buckets)
     {
         ActivityMinUs = minUs;
         ActivityMaxUs = maxUs;
         ActivityBuckets = buckets;
-        ActivityBusiest = busiest;
     }
 
     /// <summary>
@@ -561,6 +567,9 @@ public sealed class CallStackTree
         return Math.Clamp((int)((timeUs - ActivityMinUs) * ActivityBuckets / span), 0, ActivityBuckets - 1);
     }
 
+    private int[] GetCallActivity(CallStackNode node)
+        => CallActivitySource is { } source ? source.Value.GetValueOrDefault(node) ?? [] : node.CallActivity;
+
     private void ClearActivity()
     {
         lock (ActivityCache)
@@ -579,7 +588,7 @@ public sealed class CallStackTree
 
         while (pending.TryPop(out var current))
         {
-            AddCounts(counts, current.CallActivity);
+            AddCounts(counts, GetCallActivity(current));
 
             if (BorrowedActivity.TryGetValue(current, out var borrowed))
             {

@@ -167,7 +167,7 @@ public sealed class QueryExportReader
     {
         var tree = exported.IsDetached ? null : new CallStackTree { ActivityFromTrace = exported.ActivityFromTrace };
 
-        tree?.RestoreActivity(exported.ActivityMinUs, exported.ActivityMaxUs, exported.ActivityBuckets, exported.ActivityBusiest);
+        tree?.RestoreActivity(exported.ActivityMinUs, exported.ActivityMaxUs, exported.ActivityBuckets);
 
         foreach (var line in ReadLines<ExportedNode>(zip, exported.File, ExportPackage.Plain))
         {
@@ -197,8 +197,6 @@ public sealed class QueryExportReader
             node.Rvas.UnionWith(line.Rvas ?? []);
 
             node.Calls = line.Calls;
-
-            node.CallActivity = line.CallActivity ?? [];
 
             node.AllocatedBytes = line.AllocatedBytes;
 

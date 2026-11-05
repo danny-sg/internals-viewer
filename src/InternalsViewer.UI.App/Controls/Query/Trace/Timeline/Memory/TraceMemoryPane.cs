@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -1240,46 +1241,74 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
                                                                                                TraceScale traceScale,
                                                                                                TraceTimelineAxis axis)
     {
-        var byExtent = new Dictionary<(int Offset, int Length), List<int>>();
+        var byExtent = new Dictionary<(int Offset, int Length), int>();
+
+        var counts = new List<int>();
+
+        var laneIds = ArrayPool<int>.Shared.Rent(writes.Count);
 
         (int Offset, int Length) lastExtent = (-1, -1);
 
-        List<int>? last = null;
+        var last = -1;
 
         for (var index = 0; index < writes.Count; index++)
         {
-            var write = writes[index];
-
-            var extent = (write.Offset, write.Length);
+            var extent = writes.GetExtent(index);
 
             if (extent.Length <= 0)
             {
+                laneIds[index] = -1;
+
                 continue;
             }
 
-            if (last is null || extent != lastExtent)
+            if (last < 0 || extent != lastExtent)
             {
-                ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(byExtent, extent, out _);
+                ref var id = ref CollectionsMarshal.GetValueRefOrAddDefault(byExtent, extent, out var exists);
 
-                list ??= [];
+                if (!exists)
+                {
+                    id = counts.Count;
 
-                last = list;
+                    counts.Add(0);
+                }
+
+                last = id;
 
                 lastExtent = extent;
             }
 
-            last.Add(index);
+            laneIds[index] = last;
+
+            counts[last]++;
         }
+
+        var lanes = new int[counts.Count][];
+
+        for (var lane = 0; lane < lanes.Length; lane++)
+        {
+            lanes[lane] = new int[counts[lane]];
+
+            counts[lane] = 0;
+        }
+
+        for (var index = 0; index < writes.Count; index++)
+        {
+            if (laneIds[index] is >= 0 and var lane)
+            {
+                lanes[lane][counts[lane]++] = index;
+            }
+        }
+
+        ArrayPool<int>.Shared.Return(laneIds);
 
         var drafts = new List<(ulong Address, int Length, int[] Writes, bool IsRead)>(byExtent.Count);
 
-        foreach (var ((offset, length), list) in byExtent.OrderBy(e => e.Key))
+        foreach (var ((offset, length), lane) in byExtent.OrderBy(e => e.Key))
         {
-            var lane = list.ToArray();
+            SortByValue(writes, lanes[lane], traceScale, axis);
 
-            SortByValue(writes, lane, traceScale, axis);
-
-            drafts.Add((address + (ulong)offset, length, lane, isRead));
+            drafts.Add((address + (ulong)offset, length, lanes[lane], isRead));
         }
 
         return drafts;

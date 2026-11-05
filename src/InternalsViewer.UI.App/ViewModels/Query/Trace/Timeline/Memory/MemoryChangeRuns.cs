@@ -18,7 +18,7 @@ public static class MemoryChangeRuns
         {
             var write = writes[index];
 
-            if (write.Type != MemoryHistoryChangeType.Changed)
+            if (write.Type != MemoryHistoryAccessType.Changed)
             {
                 continue;
             }

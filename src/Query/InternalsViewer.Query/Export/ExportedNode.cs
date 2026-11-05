@@ -24,8 +24,6 @@ internal sealed record ExportedNode
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public long Calls { get; init; }
 
-    public int[]? CallActivity { get; init; }
-
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public long AllocatedBytes { get; init; }
 
