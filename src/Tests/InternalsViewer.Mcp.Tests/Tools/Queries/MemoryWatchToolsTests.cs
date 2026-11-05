@@ -56,11 +56,16 @@ public class MemoryWatchToolsTests
 
     private static QueryExportContent WithMemoryHistory(QueryExportContent run)
     {
+        var timeline = run.ExtraOf<TraceResult>()!.Timeline;
+
         MemoryHistoryBlock[] blocks = [new MemoryHistoryBlock(Scan, 0xA, 16, true, false, 7, 1, At(0x16), At(0x1F), 22, 31, 0, 1)];
 
-        MemoryHistoryWrite[] writes = [new MemoryHistoryWrite(At(0x16, 1), 23, 1, 1, 0, 0, 8, MemoryHistoryChangeType.Initialised)];
+        MemoryHistoryWriteEntry[] writes =
+        [
+            new(At(0x16, 1), timeline.GetInnermostSpanId(7, At(0x16, 1)), 0, 8, MemoryHistoryChangeType.Initialised)
+        ];
 
-        var history = new MemoryHistoryStore(blocks, writes, HighWordRunArray.Empty, new byte[8], new Dictionary<int, ulong>());
+        var history = new MemoryHistoryStore(blocks, writes, new byte[8], new Dictionary<int, ulong>(), timeline);
 
         return run with { Extras = [run.ExtraOf<TraceResult>()! with { MemoryHistory = history }] };
     }

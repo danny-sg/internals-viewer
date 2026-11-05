@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Drawing;
+using InternalsViewer.UI.App.Controls.Query.Timeline;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
 using SkiaSharp;
@@ -12,6 +13,14 @@ public sealed class AllocationRenderer : IDisposable
     /// How far the wash over a selected page lifts what is under it, leaving the allocation colour readable through it
     /// </summary>
     private const byte SelectedPageAlpha = 128;
+
+    private const float SideShade = 0.68f;
+
+    private const float UnderShade = 0.55f;
+
+    private const byte FrontAlpha = 48;
+
+    private const byte SideAlpha = 96;
 
     public AllocationRenderer(Color borderColour,
                               Size extentSize)
@@ -43,6 +52,19 @@ public sealed class AllocationRenderer : IDisposable
             Color = SKColors.Red,
             Style = SKPaintStyle.Fill
         };
+
+        ExtrudeFacePaint = new SKPaint
+        {
+            IsAntialias = false,
+            Style = SKPaintStyle.Fill
+        };
+
+        ExtrudeEdgePaint = new SKPaint
+        {
+            IsAntialias = false,
+            Style = SKPaintStyle.Stroke,
+            StrokeWidth = 1
+        };
     }
 
     public bool IsDrawBorder { get; set; }
@@ -64,6 +86,10 @@ public sealed class AllocationRenderer : IDisposable
     private SKPaint SelectedPagePaint { get; }
 
     private SKPaint SelectedRowPaint { get; }
+
+    private SKPaint ExtrudeFacePaint { get; }
+
+    private SKPaint ExtrudeEdgePaint { get; }
 
     private Color LastColourFrom { get; set; } = Color.White;
 
@@ -123,6 +149,8 @@ public sealed class AllocationRenderer : IDisposable
         PageMarkerPaint.Dispose();
         SelectedPagePaint.Dispose();
         SelectedRowPaint.Dispose();
+        ExtrudeFacePaint.Dispose();
+        ExtrudeEdgePaint.Dispose();
 
         PathBuilder.Dispose();
     }
@@ -200,6 +228,81 @@ public sealed class AllocationRenderer : IDisposable
         }
     }
 
+    internal void DrawExtrudedSides(SKCanvas g, SKRect rect, SKColor colour, float height, ExtrudedFaceVisibility visibility)
+    {
+        var saveCount = ExcludeLowerLeft(g, rect, height, visibility.IsLowerLeftCovered);
+
+        if (visibility.IsLeftVisible)
+        {
+            FillExtrudedFace(g,
+                             TimelineColours.Scale(colour, SideShade).WithAlpha(SideAlpha),
+                             new SKPoint(rect.Left, rect.Top),
+                             new SKPoint(rect.Left + height, rect.Top - height),
+                             new SKPoint(rect.Left + height, rect.Bottom - height),
+                             new SKPoint(rect.Left, rect.Bottom));
+        }
+
+        if (visibility.IsBottomVisible)
+        {
+            FillExtrudedFace(g,
+                             TimelineColours.Scale(colour, UnderShade).WithAlpha(SideAlpha),
+                             new SKPoint(rect.Left, rect.Bottom),
+                             new SKPoint(rect.Left + height, rect.Bottom - height),
+                             new SKPoint(rect.Right + height, rect.Bottom - height),
+                             new SKPoint(rect.Right, rect.Bottom));
+        }
+
+        g.RestoreToCount(saveCount);
+    }
+
+    internal void DrawExtrudedFront(SKCanvas g, SKRect rect, SKColor colour, float height)
+    {
+        ExtrudeFacePaint.Color = colour.WithAlpha(FrontAlpha);
+
+        g.DrawRect(GetExtrudedFront(rect, height), ExtrudeFacePaint);
+    }
+
+    internal static void AddExtrudedOutline(SKPathBuilder builder, SKRect rect, float height)
+    {
+        builder.MoveTo(rect.Left, rect.Top);
+        builder.LineTo(rect.Left + height, rect.Top - height);
+        builder.LineTo(rect.Right + height, rect.Top - height);
+        builder.LineTo(rect.Right + height, rect.Bottom - height);
+        builder.LineTo(rect.Right, rect.Bottom);
+        builder.LineTo(rect.Left, rect.Bottom);
+        builder.Close();
+    }
+
+    internal void DrawExtrudedEdges(SKCanvas g, SKRect rect, SKColor colour, float height, ExtrudedFaceVisibility visibility)
+    {
+        ExtrudeEdgePaint.Color = colour.WithAlpha(byte.MaxValue);
+
+        g.DrawRect(GetExtrudedFront(rect, height), ExtrudeEdgePaint);
+
+        var saveCount = ExcludeLowerLeft(g, rect, height, visibility.IsLowerLeftCovered);
+
+        if (visibility.IsLeftVisible)
+        {
+            g.DrawLine(rect.Left, rect.Top, rect.Left, rect.Bottom, ExtrudeEdgePaint);
+
+            g.DrawLine(rect.Left, rect.Top, rect.Left + height, rect.Top - height, ExtrudeEdgePaint);
+        }
+
+        if (visibility.IsBottomVisible)
+        {
+            g.DrawLine(rect.Left, rect.Bottom, rect.Right, rect.Bottom, ExtrudeEdgePaint);
+
+            g.DrawLine(rect.Right, rect.Bottom, rect.Right + height, rect.Bottom - height, ExtrudeEdgePaint);
+        }
+
+        if (visibility.IsLeftVisible || visibility.IsBottomVisible)
+        {
+            g.DrawLine(rect.Left, rect.Bottom, rect.Left + height, rect.Bottom - height, ExtrudeEdgePaint);
+        }
+
+        g.RestoreToCount(saveCount);
+    }
+
     internal void DrawBackgroundExtents(SKCanvas g,
                                         int extentsHorizontal,
                                         int extentsVertical,
@@ -272,6 +375,40 @@ public sealed class AllocationRenderer : IDisposable
 
             g.DrawLine(new SKPoint(0, y), new SKPoint(remainingWidth, y), BorderPaint);
         }
+    }
+
+    private static SKRect GetExtrudedFront(SKRect rect, float height)
+        => new(rect.Left + height, rect.Top - height, rect.Right + height, rect.Bottom - height);
+
+    private static int ExcludeLowerLeft(SKCanvas g, SKRect rect, float height, bool isCovered)
+    {
+        if (!isCovered)
+        {
+            return g.SaveCount;
+        }
+
+        var saveCount = g.Save();
+
+        var lowerLeft = new SKRect(rect.Left - rect.Width, rect.Bottom, rect.Left, rect.Bottom + rect.Height);
+
+        g.ClipRect(GetExtrudedFront(lowerLeft, height), SKClipOperation.Difference);
+
+        return saveCount;
+    }
+
+    private void FillExtrudedFace(SKCanvas g, SKColor colour, SKPoint first, SKPoint second, SKPoint third, SKPoint fourth)
+    {
+        PathBuilder.MoveTo(first);
+        PathBuilder.LineTo(second);
+        PathBuilder.LineTo(third);
+        PathBuilder.LineTo(fourth);
+        PathBuilder.Close();
+
+        using var path = PathBuilder.Detach();
+
+        ExtrudeFacePaint.Color = colour;
+
+        g.DrawPath(path, ExtrudeFacePaint);
     }
 
     private SKPaint GetBorderPaint()

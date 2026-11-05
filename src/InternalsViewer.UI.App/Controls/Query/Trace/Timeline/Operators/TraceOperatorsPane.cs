@@ -38,6 +38,8 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
     private const float StatementRowHeight = 34f;
 
+    private const float MinimumTrackHeight = 20f;
+
     private const string ToolTipTitle = "Operators";
 
     private const string DefaultStatementName = "Statement";
@@ -57,6 +59,34 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
     public TraceOperatorRow[] Rows { get; private set; } = [];
 
     public bool HasRows => Rows.Length > 0;
+
+    public float PreferredHeight
+    {
+        get
+        {
+            var height = SpacingHeight;
+
+            var flexible = 0;
+
+            var tracks = 0;
+
+            foreach (var row in Rows)
+            {
+                if (GetFixedHeight(row) is { } value)
+                {
+                    height += value;
+                }
+                else
+                {
+                    flexible++;
+
+                    tracks = Math.Max(tracks, row.Lifetimes.Length);
+                }
+            }
+
+            return height + flexible * tracks * MinimumTrackHeight;
+        }
+    }
 
     public ExecutionOperatorEvent? SelectedOperator { get; private set; }
 
@@ -94,6 +124,8 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
     private float Height => GetBounds().Height;
 
     private TraceTimelineAxis Axis => Host.Axis;
+
+    private float SpacingHeight => OperatorsPadding * 2 + OperatorsBottomGap + Math.Max(Rows.Length - 1, 0) * OperatorRowGap;
 
     private ExecutionOperatorEvent? StatementEvent { get; set; }
 
@@ -504,7 +536,7 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
         var heights = new float[Rows.Length];
 
-        var available = height - OperatorsPadding * 2 - OperatorsBottomGap - Math.Max(Rows.Length - 1, 0) * OperatorRowGap;
+        var available = height - SpacingHeight;
 
         var fixedHeight = 0f;
 

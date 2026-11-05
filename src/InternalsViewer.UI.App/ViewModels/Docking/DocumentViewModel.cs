@@ -6,7 +6,15 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.ViewModels.Docking;
 
-public sealed partial class DocumentViewModel : ObservableObject
+public sealed partial class DocumentViewModel(string title,
+                                              object content,
+                                              Func<FrameworkElement> viewFactory,
+                                              bool canClose = true,
+                                              bool keepAlive = false,
+                                              string? key = null,
+                                              bool persist = true,
+                                              Func<FrameworkElement>? commandsFactory = null)
+    : ObservableObject
 {
     private FrameworkElement? _cachedView;
 
@@ -22,57 +30,38 @@ public sealed partial class DocumentViewModel : ObservableObject
     [ObservableProperty]
     private bool _isSelected;
 
-    public DocumentViewModel(string title,
-                             object content,
-                             Func<FrameworkElement> viewFactory,
-                             bool canClose = true,
-                             bool keepAlive = false,
-                             string? key = null,
-                             bool persist = true,
-                             Func<FrameworkElement>? commandsFactory = null)
-    {
-        Title = title;
-        Content = content;
-        ViewFactory = viewFactory;
-        CanClose = canClose;
-        KeepAlive = keepAlive;
-        Key = key ?? title;
-        Persist = persist;
-        CommandsFactory = commandsFactory;
-    }
-
     /// <summary>Stable identifier used to persist/restore which documents are open and where</summary>
-    public string Key { get; }
+    public string Key { get; } = key ?? title;
 
     /// <summary>
     /// When false the document is excluded from the saved layout (e.g. dynamically opened index tabs,
     /// which are reopened on demand rather than restored)
     /// </summary>
-    public bool Persist { get; }
+    public bool Persist { get; } = persist;
 
     /// <summary>
     /// The object set as the view's <c>DataContext</c> (e.g. the shared query view model)
     /// </summary>
-    public object Content { get; }
+    public object Content { get; } = content;
 
     /// <summary>
     /// Builds a view instance for this document
     /// </summary>
-    public Func<FrameworkElement> ViewFactory { get; }
+    public Func<FrameworkElement> ViewFactory { get; } = viewFactory;
 
     /// <summary>
     /// Builds the commands shown in the hosting tab strip while this document is selected, if it has any
     /// </summary>
-    public Func<FrameworkElement>? CommandsFactory { get; }
+    public Func<FrameworkElement>? CommandsFactory { get; } = commandsFactory;
 
     /// <summary>
     /// When true the single view instance is cached and reused across show/hide and re-layout
     /// </summary>
-    public bool KeepAlive { get; }
+    public bool KeepAlive { get; } = keepAlive;
 
-    public string Title { get; }
+    public string Title { get; } = title;
 
-    public bool CanClose { get; }
+    public bool CanClose { get; } = canClose;
 
     public double MinWidth { get; init; }
 

@@ -42,6 +42,11 @@ public class PageData : DataStructure
 
     public int? GetSlot(int offset)
     {
+        if (offset >= Size - OffsetTable.Length * sizeof(ushort) && offset < Size)
+        {
+            return (Size - 1 - offset) / sizeof(ushort);
+        }
+
         int? slot = null;
 
         var slotOffset = 0;

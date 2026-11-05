@@ -289,6 +289,10 @@ public sealed partial class AllocationControl : IDisposable
 
     private readonly HashSet<int> _liveCells = [];
 
+    private readonly Dictionary<int, ExtrudedPage> _extrudedPages = [];
+
+    private readonly SKPathBuilder _extrudedOutline = new();
+
     private readonly SKPaint _overlayBorderPaint = new()
     {
         Style = SKPaintStyle.Stroke,
@@ -371,6 +375,7 @@ public sealed partial class AllocationControl : IDisposable
         _borderPaint?.Dispose();
         _spanPaint.Dispose();
         _overlayBorderPaint.Dispose();
+        _extrudedOutline.Dispose();
 
         AllocationCanvas.SizeChanged -= AllocationCanvas_SizeChanged;
         PointerWheelChanged -= AllocationControl_PointerWheelChanged;
@@ -730,12 +735,16 @@ public sealed partial class AllocationControl : IDisposable
 
         DrawPageActivity(canvas, renderLayout);
 
+        CollectExtrudedPages(renderLayout);
+
         // The grid is a single jagged H/V pass over the whole map (cheaper than stroking every cell), so it must sit
         // over the live page activity — drawn here rather than baked into the picture. Borders then paint over the grid.
         if (Zoom >= MinimumZoomForLines)
         {
-            renderer.DrawPageLines(canvas, renderLayout.HorizontalCount, renderLayout.VerticalCount, renderLayout.RemainingCount);
+            DrawPageLines(canvas, renderer, renderLayout);
         }
+
+        DrawExtrudedPages(canvas, renderer, renderLayout);
 
         DrawPageMarkerActivity(canvas, renderLayout);
 
@@ -905,7 +914,7 @@ public sealed partial class AllocationControl : IDisposable
     {
         foreach (var layer in Layers)
         {
-            if (!layer.IsVisible || layer.Opacity == 0)
+            if (!layer.IsVisible || layer.Opacity == 0 || layer.IsExtrude)
             {
                 continue;
             }
@@ -925,7 +934,7 @@ public sealed partial class AllocationControl : IDisposable
     {
         foreach (var layer in Layers)
         {
-            if (!layer.IsVisible || layer.Opacity == 0)
+            if (!layer.IsVisible || layer.Opacity == 0 || layer.IsExtrude)
             {
                 continue;
             }
@@ -938,7 +947,7 @@ public sealed partial class AllocationControl : IDisposable
     {
         foreach (var layer in Layers)
         {
-            if (!layer.IsVisible || layer.Opacity == 0 || IsHiddenBySelection(layer))
+            if (!layer.IsVisible || layer.Opacity == 0 || layer.IsExtrude || IsHiddenBySelection(layer))
             {
                 continue;
             }
@@ -955,6 +964,126 @@ public sealed partial class AllocationControl : IDisposable
                                             layer.RendererColour.WithAlpha(alpha));
                 }
             }
+        }
+    }
+
+    private void DrawPageLines(SKCanvas canvas, AllocationRenderer renderer, ExtentLayout layout)
+    {
+        var firstPage = ScrollPosition * 8;
+
+        foreach (var (pageId, page) in _extrudedPages)
+        {
+            AllocationRenderer.AddExtrudedOutline(_extrudedOutline, GetPagePosition(pageId - firstPage, layout), page.Height);
+        }
+
+        using var excluded = _extrudedOutline.Detach();
+
+        using var restore = new SKAutoCanvasRestore(canvas);
+
+        canvas.ClipPath(excluded, SKClipOperation.Difference);
+
+        renderer.DrawPageLines(canvas, layout.HorizontalCount, layout.VerticalCount, layout.RemainingCount);
+    }
+
+    private void DrawExtrudedPages(SKCanvas canvas, AllocationRenderer renderer, ExtentLayout layout)
+    {
+        if (_extrudedPages.Count == 0)
+        {
+            return;
+        }
+
+        var firstPage = ScrollPosition * 8;
+
+        var rowWidth = layout.HorizontalCount * 8;
+
+        foreach (var (pageId, page) in _extrudedPages)
+        {
+            var cell = pageId - firstPage;
+
+            var visibility = GetFaceVisibility(pageId, cell, rowWidth);
+
+            renderer.DrawExtrudedEdges(canvas, GetPagePosition(cell, layout), page.Colour, page.Height, visibility);
+        }
+
+        foreach (var (pageId, page) in _extrudedPages)
+        {
+            var cell = pageId - firstPage;
+
+            var visibility = GetFaceVisibility(pageId, cell, rowWidth);
+
+            renderer.DrawExtrudedSides(canvas, GetPagePosition(cell, layout), page.Colour, page.Height, visibility);
+        }
+
+        foreach (var (pageId, page) in _extrudedPages)
+        {
+            renderer.DrawExtrudedFront(canvas, GetPagePosition(pageId - firstPage, layout), page.Colour, page.Height);
+        }
+    }
+
+    private ExtrudedFaceVisibility GetFaceVisibility(int pageId, int cell, int rowWidth)
+    {
+        var isFirstColumn = cell % rowWidth == 0;
+
+        return new ExtrudedFaceVisibility(isFirstColumn || !_extrudedPages.ContainsKey(pageId - 1),
+                                          !_extrudedPages.ContainsKey(pageId + rowWidth),
+                                          !isFirstColumn && _extrudedPages.ContainsKey(pageId + rowWidth - 1));
+    }
+
+    private void CollectExtrudedPages(ExtentLayout layout)
+    {
+        _extrudedPages.Clear();
+
+        if (layout.HorizontalCount <= 0)
+        {
+            return;
+        }
+
+        var firstPage = ScrollPosition * 8;
+
+        var lastPage = firstPage + layout.VisibleCount * 8;
+
+        foreach (var layer in Layers)
+        {
+            if (layer.IsExtrude && layer.IsVisible && layer.Opacity > 0 && !IsHiddenBySelection(layer))
+            {
+                CollectExtrudedPages(layer, firstPage, lastPage);
+            }
+        }
+    }
+
+    private void CollectExtrudedPages(AllocationLayer layer, int firstPage, int lastPage)
+    {
+        foreach (var page in layer.SinglePages)
+        {
+            if (page.FileId == FileId && page.PageId >= firstPage && page.PageId < lastPage)
+            {
+                _extrudedPages[page.PageId] = new ExtrudedPage(layer.RendererColour.WithAlpha(byte.MaxValue), layer.ExtrudeHeight);
+            }
+        }
+
+        var spans = layer.PageSpans;
+
+        var playhead = Playhead;
+
+        for (var i = 0; i < spans.Count; i++)
+        {
+            var span = spans[i];
+
+            if (span.Start > playhead)
+            {
+                break;
+            }
+
+            var pageId = span.Address.PageId;
+
+            if (span.End < playhead || span.Address.FileId != FileId || pageId < firstPage || pageId >= lastPage)
+            {
+                continue;
+            }
+
+            var colour = (span.DisplayColour?.ToSkColor() ?? layer.RendererColour).WithAlpha(byte.MaxValue);
+
+            _extrudedPages[pageId] = new ExtrudedPage(colour, layer.ExtrudeHeight);
         }
     }
 
@@ -1438,6 +1567,8 @@ public sealed partial class AllocationControl : IDisposable
     }
 
     private readonly record struct StaticLayerKey(int ScrollPosition, int Width, int Height, int Version);
+
+    private readonly record struct ExtrudedPage(SKColor Colour, int Height);
 
     private static void OnBordersChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {

@@ -10,10 +10,7 @@ namespace InternalsViewer.UI.App.Controls.Query.Timeline.Renderers;
 internal readonly record struct TimelineOverlay(bool SelectionActive,
                                                 float SelectionLoX,
                                                 float SelectionHiX,
-                                                float StartHandleX,
-                                                float EndHandleX,
                                                 float PlayheadX,
-                                                double PlayheadMs,
                                                 float BandLabelWidth);
 
 /// <summary>
@@ -25,17 +22,9 @@ internal readonly record struct TimelineOverlay(bool SelectionActive,
 /// the static frame. The visual layout constants mirror the control's hit-test geometry — a candidate to hoist into a
 /// shared metrics type so drawing and hit-testing can't drift.
 /// </remarks>
-internal sealed class OverlayRenderer(RenderResource resources) : IDisposable
+internal sealed class OverlayRenderer : IDisposable
 {
-    private const float RulerStripHeight = 18f;
-    private const float HandleStripHeight = 16f;
-    private const float MarkerStripHeight = RulerStripHeight + HandleStripHeight;
-    private const float HandleWidth = 7f;
-    private const float HandleHeight = 8f;
-    private const float TriangleHalfWidth = 9f;
-
     private static readonly SKColor PlayheadColour = new(230, 60, 60);
-    private static readonly SKColor HandleColour = new(95, 95, 95);
 
     private readonly SKPaint _playhead = new()
     {
@@ -45,15 +34,7 @@ internal sealed class OverlayRenderer(RenderResource resources) : IDisposable
         IsAntialias = false,
     };
 
-    private readonly SKPaint _playheadFill = new() { Color = PlayheadColour, Style = SKPaintStyle.Fill, IsAntialias = true };
-
-    private readonly SKPaint _handle = new() { Color = HandleColour, Style = SKPaintStyle.Fill, IsAntialias = true };
-
     private readonly SKPaint _clipDim = new() { Color = new SKColor(0, 0, 0, 120), Style = SKPaintStyle.Fill };
-
-    private readonly SKPaint _badgeText = new() { Color = SKColors.White, IsAntialias = true };
-
-    private readonly SKPathBuilder _pathBuilder = new();
 
     public void Draw(SKCanvas canvas, float w, float h, TimelineOverlay overlay)
     {
@@ -63,32 +44,18 @@ internal sealed class OverlayRenderer(RenderResource resources) : IDisposable
 
         if (overlay.SelectionActive)
         {
-            var bandsTop = MarkerStripHeight;
-            var bandsHeight = h - bandsTop;
-
             if (overlay.SelectionLoX > overlay.BandLabelWidth)
             {
-                canvas.DrawRect(overlay.BandLabelWidth,
-                                bandsTop,
-                                overlay.SelectionLoX - overlay.BandLabelWidth,
-                                bandsHeight,
-                                _clipDim);
+                canvas.DrawRect(overlay.BandLabelWidth, 0, overlay.SelectionLoX - overlay.BandLabelWidth, h, _clipDim);
             }
 
             if (overlay.SelectionHiX < w)
             {
-                canvas.DrawRect(overlay.SelectionHiX, bandsTop, w - overlay.SelectionHiX, bandsHeight, _clipDim);
+                canvas.DrawRect(overlay.SelectionHiX, 0, w - overlay.SelectionHiX, h, _clipDim);
             }
         }
 
-        DrawHandle(canvas, overlay.StartHandleX, isStart: true);
-        DrawHandle(canvas, overlay.EndHandleX, isStart: false);
-
-        canvas.DrawLine(overlay.PlayheadX, MarkerStripHeight, overlay.PlayheadX, h, _playhead);
-
-        DrawPlayheadTriangle(canvas, overlay.PlayheadX);
-
-        DrawBadge(canvas, w, overlay.PlayheadX, overlay.PlayheadMs, overlay.BandLabelWidth);
+        canvas.DrawLine(overlay.PlayheadX, 0, overlay.PlayheadX, h, _playhead);
 
         canvas.Restore();
     }
@@ -96,65 +63,6 @@ internal sealed class OverlayRenderer(RenderResource resources) : IDisposable
     public void Dispose()
     {
         _playhead.Dispose();
-        _playheadFill.Dispose();
-        _handle.Dispose();
         _clipDim.Dispose();
-        _badgeText.Dispose();
-        _pathBuilder.Dispose();
-    }
-
-    private void DrawHandle(SKCanvas canvas, float x, bool isStart)
-    {
-        var top = MarkerStripHeight - HandleHeight;
-        var half = HandleWidth / 2f;
-
-        _pathBuilder.MoveTo(x - half, top);
-        _pathBuilder.LineTo(x + half, top);
-        _pathBuilder.LineTo(isStart ? x - half : x + half, MarkerStripHeight);
-        _pathBuilder.Close();
-
-        using var path = _pathBuilder.Detach();
-
-        canvas.DrawPath(path, _handle);
-    }
-
-    private void DrawPlayheadTriangle(SKCanvas canvas, float x)
-    {
-        _pathBuilder.MoveTo(x, MarkerStripHeight);
-        _pathBuilder.LineTo(x - TriangleHalfWidth, RulerStripHeight);
-        _pathBuilder.LineTo(x + TriangleHalfWidth, RulerStripHeight);
-        _pathBuilder.Close();
-
-        using var path = _pathBuilder.Detach();
-
-        canvas.DrawPath(path, _playheadFill);
-    }
-
-    private void DrawBadge(SKCanvas canvas, float w, float px, double playheadMs, float bandLabelWidth)
-    {
-        Span<char> buf = stackalloc char[12];
-
-        var textLength = TimelineFormat.FormatTimeIntoSpan(playheadMs, buf);
-
-        var text = buf[..textLength];
-
-        const float padding = 4f;
-
-        var badgeWidth = resources.LabelFont.MeasureText(text) + padding * 2;
-
-        const float badgeHeight = RulerStripHeight - 2;
-
-        var bx = Math.Clamp(px - badgeWidth / 2f, bandLabelWidth, Math.Max(bandLabelWidth, w - badgeWidth));
-
-        canvas.DrawRoundRect(new SKRect(bx, 0, bx + badgeWidth, badgeHeight), 2, 2, _playheadFill);
-
-        var baseline = badgeHeight / 2f + resources.LabelFont.Size * 0.35f;
-
-        using var blob = SKTextBlob.Create(text, resources.LabelFont, SKPoint.Empty);
-
-        if (blob is not null)
-        {
-            canvas.DrawText(blob, bx + padding, baseline, _badgeText);
-        }
     }
 }

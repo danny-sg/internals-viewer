@@ -27,9 +27,6 @@ public sealed partial class EventTimelineControl
 
     private float PlayheadX => TimeToX(_playheadTime);
 
-    private float StartDrawX => SelectionActive ? TimeToX(_startTime) : TimeToX(_startTime) - HandleGap;
-    private float EndDrawX => SelectionActive ? TimeToX(_endTime) : TimeToX(_endTime) + HandleGap;
-
     // EngineEvent.TimeUs / DurationUs are microseconds; divide by AxisUnitsPerMs (1000) to get ms.
     private static double StartMs(EngineEvent ev) => ev.TimeUs / AxisUnitsPerMs;
 

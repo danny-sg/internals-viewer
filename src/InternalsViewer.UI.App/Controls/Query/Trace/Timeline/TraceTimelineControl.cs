@@ -155,6 +155,18 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         set => SetValue(ShowCallStackProperty, value);
     }
 
+    public static readonly DependencyProperty IsRulerPinnedProperty =
+        DependencyProperty.Register(nameof(IsRulerPinned),
+                                    typeof(bool),
+                                    typeof(TraceTimelineControl),
+                                    new PropertyMetadata(true));
+
+    public bool IsRulerPinned
+    {
+        get => (bool)GetValue(IsRulerPinnedProperty);
+        set => SetValue(IsRulerPinnedProperty, value);
+    }
+
     public static readonly DependencyProperty AutoZoomProperty =
         DependencyProperty.Register(nameof(AutoZoom),
                                     typeof(bool),
@@ -234,8 +246,6 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
     private readonly TraceMemoryPane _memory;
 
     private readonly SKPathBuilder _pathBuilder = new();
-
-    private readonly SKPath _playheadTriangle = PlayheadTriangle();
 
     private readonly Dictionary<int, SKColor> _colours = [];
 
@@ -496,8 +506,6 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     private double ViewportHeight => Math.Max(0, _overlay.ActualHeight - ContentTop - BandHeight);
 
-    private float RulerTop => ShowMemory ? MemoryBarHeight : 0;
-
     private float ContentTop => OperatorsTop + PanesArea;
 
     private bool ShowsMemoryBand => ShowMemory && _axis == TraceTimelineAxis.Position && _visible is not null && Allocation.HasAllocations;
@@ -658,12 +666,6 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         _paints.Dispose();
 
         _pathBuilder.Dispose();
-
-        _playheadTriangle.Dispose();
-
-        _trimStartHandle.Dispose();
-
-        _trimEndHandle.Dispose();
 
         _operators.Dispose();
 

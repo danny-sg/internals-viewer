@@ -159,8 +159,6 @@ public class MarkerRendererTests
             ShowThreads = false,
             BandColour = SKColors.Black,
             AlternateBandColour = SKColors.Black,
-            MinTime = 0,
-            XToTime = x => x - BandLabelWidth,
         };
 
         var bitmap = new SKBitmap(200, (int)(bandCount * BandHeight));

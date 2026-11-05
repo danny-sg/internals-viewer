@@ -7,6 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:query="using:InternalsViewer.UI.App.Controls.Query"
     xmlns:trace="using:InternalsViewer.UI.App.Controls.Query.Trace.Timeline"
+    xmlns:timeline="using:InternalsViewer.UI.App.Controls.Query.Timeline"
     xmlns:callStack="using:InternalsViewer.UI.App.Controls.Query.Trace.CallStack"
     xmlns:docking="using:InternalsViewer.UI.App.Controls.Docking"
     xmlns:selectors="using:InternalsViewer.UI.App.Helpers.Selectors"
@@ -114,6 +115,13 @@
 
                     <callStack:CategoryFilterPanel x:Name="CategoryFilter"
                                                    CallStack="{x:Bind ViewModel.CallStack, Mode=OneWay}"/>
+
+                    <Border Background="{ThemeResource LayerFillColorDefaultBrush}"
+                            Visibility="{x:Bind Settings.PinTimeline, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                        <timeline:TimelineRuler x:Name="Ruler"
+                                                Source="{x:Bind TraceTimeline}"
+                                                IsPinned="{x:Bind Settings.PinTimeline, Mode=TwoWay}"/>
+                    </Border>
                 </StackPanel>
 
                 <trace:TraceTimelineControl x:Name="TraceTimeline"
@@ -139,6 +147,7 @@
                                             GrantedMemory="{x:Bind ViewModel.GrantedMemory, Mode=OneWay}"
                                             ShowMemory="{x:Bind Settings.TraceTimelineShowMemory, Mode=TwoWay}"
                                             ShowCallStack="{x:Bind ViewModel.TraceTimelineTab.IsCallStackVisible, Mode=OneWay}"
+                                            IsRulerPinned="{x:Bind Settings.PinTimeline, Mode=TwoWay}"
                                             MemoryMode="{x:Bind Settings.TraceTimelineMemoryMode, Mode=TwoWay}"
                                             MemorySizeToFit="{x:Bind Settings.TraceTimelineMemorySizeToFit, Mode=TwoWay}"
                                             ShowMemoryWrites="{x:Bind Settings.TraceTimelineShowMemoryWrites, Mode=TwoWay}"

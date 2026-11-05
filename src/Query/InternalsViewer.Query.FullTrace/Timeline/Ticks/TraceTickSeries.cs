@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
@@ -7,24 +8,28 @@ namespace InternalsViewer.Query.FullTrace.Timeline.Ticks;
 
 public sealed class TraceTickSeries
 {
-    private TraceTickSeries(TraceTick[] ticks, TraceScale scale)
+    private TraceTickSeries(Dictionary<ExecutionOperatorEvent, Dictionary<uint, TraceTickIndex>> indexes)
     {
-        Ticks = ticks;
+        Indexes = indexes;
 
-        ByOperator = OperatorMarkMap<TraceTick>.Build(ticks, scale, t => t.Operator, t => t.Thread);
+        Count = indexes.Values.Sum(t => t.Values.Sum(i => i.Count));
+
+        Bytes = indexes.Values.Sum(t => t.Values.Sum(i => i.Bytes));
     }
 
-    public static TraceTickSeries Empty { get; } = new([], TraceScale.Default);
+    public static TraceTickSeries Empty { get; }
+        = new(new Dictionary<ExecutionOperatorEvent, Dictionary<uint, TraceTickIndex>>(ReferenceEqualityComparer.Instance));
 
-    public int Count => Ticks.Length;
+    public int Count { get; }
 
-    public IReadOnlyList<TraceTick> All => Ticks;
+    public long Bytes { get; }
 
-    private TraceTick[] Ticks { get; }
+    public IEnumerable<TraceTick> All => Indexes.Values.SelectMany(t => t.Values).SelectMany(i => i.All);
 
-    private OperatorMarkMap<TraceTick> ByOperator { get; }
+    private Dictionary<ExecutionOperatorEvent, Dictionary<uint, TraceTickIndex>> Indexes { get; }
 
-    public TraceMarkIndex<TraceTick>? GetTicks(ExecutionOperatorEvent operatorEvent, uint thread) => ByOperator.Get(operatorEvent, thread);
+    public TraceTickIndex? GetTicks(ExecutionOperatorEvent operatorEvent, uint thread)
+        => Indexes.TryGetValue(operatorEvent, out var threads) ? threads.GetValueOrDefault(thread) : null;
 
     public static TraceTickSeries FromDefinition(TraceResult trace, TraceTickDefinition definition)
         => FromDefinition(trace.Timeline, trace.CallStore, trace.Lifetimes, definition, trace.EnclosingCalls);
@@ -61,7 +66,66 @@ public sealed class TraceTickSeries
                                               EnclosingOperatorCallIndex enclosing)
         => Build(timeline, calls, lifetimes, enclosing, n => n.Frame is { } frame && isFunction(frame), getValue, null, null);
 
-    internal static TraceTickSeries Create(IEnumerable<TraceTick> ticks, TraceScale scale) => new([.. ticks], scale);
+    internal static TraceTickSeries FromSources(TraceTimeline timeline,
+                                                List<TraceTickSource> sources,
+                                                TraceOperatorLifetimeList lifetimes,
+                                                EnclosingOperatorCallIndex enclosing,
+                                                Func<ExecutionOperatorEvent?, bool>? isOperator = null)
+    {
+        var points = new List<SweepSpan<TracePosition>>(sources.Count);
+
+        foreach (var source in sources)
+        {
+            points.Add(new SweepSpan<TracePosition>(source.Thread.ThreadId, source.From.Position, source.From.Position, 0));
+        }
+
+        var owners = lifetimes.OperatorsByInstance;
+
+        var instances = enclosing.GetEnclosing(points, includeRowReturns: true);
+
+        var owned = new List<TraceTickSource>(sources.Count);
+
+        for (var index = 0; index < sources.Count; index++)
+        {
+            if (owners.GetValueOrDefault(instances[index]) is { } operatorEvent && (isOperator is null || isOperator(operatorEvent)))
+            {
+                owned.Add(sources[index] with { Operator = operatorEvent });
+            }
+        }
+
+        return Create(timeline, owned);
+    }
+
+    internal static TraceTickSeries Create(TraceTimeline timeline, IEnumerable<TraceTickSource> sources)
+    {
+        var grouped = new Dictionary<ExecutionOperatorEvent, Dictionary<uint, List<TraceTickSource>>>(ReferenceEqualityComparer.Instance);
+
+        foreach (var source in sources)
+        {
+            if (source.Operator is not { } operatorEvent)
+            {
+                continue;
+            }
+
+            ref var threads = ref CollectionsMarshal.GetValueRefOrAddDefault(grouped, operatorEvent, out _);
+
+            threads ??= [];
+
+            ref var list = ref CollectionsMarshal.GetValueRefOrAddDefault(threads, source.Thread.ThreadId, out _);
+
+            (list ??= []).Add(source);
+        }
+
+        var indexes = new Dictionary<ExecutionOperatorEvent, Dictionary<uint, TraceTickIndex>>(ReferenceEqualityComparer.Instance);
+
+        foreach (var (operatorEvent, threads) in grouped)
+        {
+            indexes[operatorEvent] = threads.ToDictionary(t => t.Key,
+                                                          t => new TraceTickIndex(timeline, t.Value[0].Thread, operatorEvent, t.Value));
+        }
+
+        return new TraceTickSeries(indexes);
+    }
 
     private static TraceTickSeries Build(TraceTimeline timeline,
                                          TraceCallStore calls,
@@ -72,9 +136,7 @@ public sealed class TraceTickSeries
                                          Func<CallStackNode, bool>? isNode,
                                          Func<ExecutionOperatorEvent?, bool>? isOperator)
     {
-        var ticks = new List<TraceTick>();
-
-        var points = new List<SweepSpan<TracePosition>>();
+        var sources = new List<TraceTickSource>();
 
         foreach (var list in calls.GetCallLists())
         {
@@ -94,20 +156,10 @@ public sealed class TraceTickSeries
                     continue;
                 }
 
-                ticks.Add(new TraceTick(value, call.ThreadId, location.Node, location.Row, location.Index));
-
-                points.Add(new SweepSpan<TracePosition>(call.ThreadId, call.FromPosition, call.FromPosition, 0));
+                sources.Add(TraceTickSource.FromCall(location, value));
             }
         }
 
-        var owners = lifetimes.OperatorsByInstance;
-
-        var instances = enclosing.GetEnclosing(points, includeRowReturns: true);
-
-        return new TraceTickSeries([.. ticks.Select((t, i) => owners.GetValueOrDefault(instances[i]) is { } found
-                                                                  ? t with { Operator = found }
-                                                                  : t)
-                                            .Where(t => isOperator is null || isOperator(t.Operator))],
-                                   timeline.Scale);
+        return FromSources(timeline, sources, lifetimes, enclosing, isOperator);
     }
 }

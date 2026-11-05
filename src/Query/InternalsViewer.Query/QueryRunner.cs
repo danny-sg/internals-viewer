@@ -395,7 +395,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                     RecordMemoryHistory = payload.QueryOptions.RecordMemoryHistory,
                     CaptureHeapReads = eventOptions.CaptureHeapReads,
                     CaptureHeapWrites = eventOptions.CaptureHeapWrites,
-                    CaptureStackMemory = eventOptions.CaptureStackMemory
+                    CaptureStackMemory = eventOptions.CaptureStackMemory,
+                    CapturePageReads = eventOptions.CapturePageReads
                 }
         };
     }

@@ -12,8 +12,6 @@ public sealed partial class TraceTimelineControl
 {
     private const float PlayheadHalfWidth = 9f;
 
-    private const float PlayheadBadgePadding = 4f;
-
     public TracePosition? GetPlayheadPosition() => _playhead is { } value ? GetPosition(value) : null;
 
     public TraceViewRange? GetViewRange()
@@ -172,54 +170,10 @@ public sealed partial class TraceTimelineControl
 
         DrawBandMarker(canvas, timeline, x, width, height, scale);
 
-        DrawPlayheadHandle(canvas, x, value, width);
-    }
-
-    private void DrawPlayheadHandle(SKCanvas canvas, float x, double value, int width)
-    {
-        canvas.Save();
-
-        canvas.Translate(x, RulerTop);
-
-        canvas.DrawPath(_playheadTriangle, _paints.PlayheadFill);
-
-        canvas.Restore();
-
-        var text = PlayheadLabel(value);
-
-        var badgeWidth = _paints.Font.MeasureText(text) + PlayheadBadgePadding * 2;
-
-        var badgeHeight = RulerHeight - 2;
-
-        var left = Math.Clamp(x - badgeWidth / 2, 0, Math.Max(0, width - badgeWidth));
-
-        canvas.DrawRoundRect(new SKRect(left, RulerTop, left + badgeWidth, RulerTop + badgeHeight), 2, 2, _paints.PlayheadFill);
-
-        canvas.DrawText(text,
-                        left + PlayheadBadgePadding,
-                        Baseline(RulerTop, badgeHeight),
-                        SKTextAlign.Left,
-                        _paints.Font,
-                        _paints.PlayheadText);
     }
 
     private string PlayheadLabel(double value)
         => _axis == TraceTimelineAxis.Position
             ? TracePositionText.GetHexText(TraceScale.GetPosition(value))
             : $"{value - OriginOf(_axis)}";
-
-    private static SKPath PlayheadTriangle()
-    {
-        using var builder = new SKPathBuilder();
-
-        builder.MoveTo(0, RulerHeight + PlayheadStripHeight);
-
-        builder.LineTo(-PlayheadHalfWidth, RulerHeight);
-
-        builder.LineTo(PlayheadHalfWidth, RulerHeight);
-
-        builder.Close();
-
-        return builder.Detach();
-    }
 }

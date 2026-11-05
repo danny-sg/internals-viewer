@@ -44,6 +44,34 @@ public class BufferPoolHookTests
     }
 
     [Fact]
+    public void A_Fetched_Page_Records_The_Record_Offset_Of_Each_Slot()
+    {
+        var hook = Create();
+
+        var replay = Replay().Write(Frame + 0x16, (ushort)2).Write(Frame + 0x1FFE, (ushort)0x60).Write(Frame + 0x1FFC, (ushort)0x90);
+
+        hook.OnReturn(Return(Buffer, 5), replay);
+
+        Assert.Equal([0x60, 0x90], hook.Build().GetLayout(new PageAddress(1, 100), 6)?.OffsetTable ?? []);
+    }
+
+    [Fact]
+    public void A_Page_Read_Ahead_Records_Its_Slot_Offsets_Once_Its_Database_Is_Known()
+    {
+        var hook = Create();
+
+        var replay = Replay().Write(NextFrame + 0x16, (ushort)1).Write(NextFrame + 0x1FFE, (ushort)0x60);
+
+        Read(hook, replay, 10, FileControlBlock, Frame, 100);
+
+        Read(hook, replay, 20, FileControlBlock, NextFrame, 101);
+
+        hook.OnReturn(Return(Buffer, 30), replay);
+
+        Assert.Equal([0x60], hook.Build().GetLayout(new PageAddress(1, 101), 6)?.OffsetTable ?? []);
+    }
+
+    [Fact]
     public void A_Fetched_Page_Is_In_Its_Frame_From_The_Start_Of_The_Get()
     {
         var hook = Create();

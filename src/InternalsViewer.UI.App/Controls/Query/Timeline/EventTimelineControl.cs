@@ -77,6 +77,16 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
         set => SetValue(IsAudioEnabledProperty, value);
     }
 
+    public static readonly DependencyProperty IsRulerPinnedProperty =
+        DependencyProperty.Register(nameof(IsRulerPinned), typeof(bool), typeof(EventTimelineControl),
+            new PropertyMetadata(true, OnIsRulerPinnedChanged));
+
+    public bool IsRulerPinned
+    {
+        get => (bool)GetValue(IsRulerPinnedProperty);
+        set => SetValue(IsRulerPinnedProperty, value);
+    }
+
     private readonly TimelineBandSet _bands = new();
 
     private TimelineDefinition _definition = TimelineDefinition.Empty;
@@ -152,10 +162,6 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
     // True once the user has dragged a handle. While false the start/end handles track the playhead.
     private bool _selectionActivated;
 
-    private bool _isDragging;
-
-    private DragTarget _dragTarget;
-
     private double _startTime;
 
     private double _endTime;
@@ -180,7 +186,7 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
         _traceRenderer = new TraceRenderer(_renderResource, _selection);
         _operatorRenderer = new OperatorRenderer(_renderResource, _selection, _hitRegions);
         _timelineRenderer = new TimelineRenderer(_renderResource);
-        _overlayRenderer = new OverlayRenderer(_renderResource);
+        _overlayRenderer = new OverlayRenderer();
 
         Background = new SolidColorBrush(Colors.Transparent);
 
@@ -240,8 +246,6 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
 
         _overlay.PointerPressed += OnPointerPressed;
         _overlay.PointerMoved += OnPointerMoved;
-        _overlay.PointerReleased += OnPointerReleased;
-        _overlay.PointerCaptureLost += OnPointerReleased;
         _overlay.PointerWheelChanged += OnPointerWheelChanged;
         _overlay.PointerExited += OnPointerExited;
         _overlay.SizeChanged += OnOverlaySizeChanged;
@@ -294,6 +298,10 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
 
         _transport.SetPlaying(_playTimer.IsEnabled);
 
+        _transport.SetSpeed(_playSpeed);
+
+        _transport.IsPlaybackVisible = !IsRulerPinned;
+
         return _transport;
     }
 
@@ -312,8 +320,6 @@ public sealed partial class EventTimelineControl : Grid, IDisposable
 
         _overlay.PointerPressed -= OnPointerPressed;
         _overlay.PointerMoved -= OnPointerMoved;
-        _overlay.PointerReleased -= OnPointerReleased;
-        _overlay.PointerCaptureLost -= OnPointerReleased;
         _overlay.PointerWheelChanged -= OnPointerWheelChanged;
         _overlay.PointerExited -= OnPointerExited;
         _overlay.SizeChanged -= OnOverlaySizeChanged;

@@ -167,13 +167,13 @@ public sealed partial class MainWindow
             return true;
         }
 
-        var dialog = new ExceptionDialog();
-
-        dialog.Message = exception.Message;
-        dialog.StackTrace = exception.StackTrace ?? string.Empty;
-
-        dialog.XamlRoot = Content.XamlRoot;
-        dialog.Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style;
+        var dialog = new ExceptionDialog
+        {
+            Message = exception.Message,
+            StackTrace = exception.StackTrace ?? string.Empty,
+            XamlRoot = Content.XamlRoot,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+        };
 
         await dialog.ShowAsync();
 

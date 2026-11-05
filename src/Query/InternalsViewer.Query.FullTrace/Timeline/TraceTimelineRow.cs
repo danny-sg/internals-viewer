@@ -57,8 +57,7 @@ public sealed partial class TraceTimelineRow
 
     public int GetCallNodeIndex(int index) => Store.CallNodeIndexes[GetStoreIndex(index)];
 
-    public int GetCallIndex(int index)
-        => Store.Calls[GetStoreIndex(index)] is var callIndex && callIndex == uint.MaxValue ? -1 : (int)callIndex;
+    public int GetCallIndex(int index) => Store.GetCallIndex(GetStoreIndex(index));
 
     public TraceSpanFlags FlagsAt(int index) => (TraceSpanFlags)Store.Flags[GetStoreIndex(index)];
 

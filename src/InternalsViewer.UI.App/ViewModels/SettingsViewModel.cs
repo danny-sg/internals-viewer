@@ -50,6 +50,7 @@ public partial class SettingsViewModel(SettingsService settingsService,
     private const string TraceTimelineShowMemoryReadsKey = "TraceTimelineShowMemoryReads";
     private const string TraceTimelineShowBufferLatchesKey = "TraceTimelineShowBufferLatches";
     private const string TraceTimelineShowBuffersKey = "TraceTimelineShowBuffers";
+    private const string PinTimelineKey = "PinTimeline";
 
     private const string TraceTimelineHiddenTickTracksKey = "TraceTimelineHiddenTickTracks";
     private const string DecodeValuesKey = "DecodeValues";
@@ -130,6 +131,9 @@ public partial class SettingsViewModel(SettingsService settingsService,
 
     [ObservableProperty]
     private bool _traceTimelineShowBuffers;
+
+    [ObservableProperty]
+    private bool _pinTimeline = true;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(TraceTimelineHiddenTickTrackSet))]
@@ -263,6 +267,8 @@ public partial class SettingsViewModel(SettingsService settingsService,
         TraceTimelineShowBufferLatches = await SettingsService.ReadSettingAsync<bool?>(TraceTimelineShowBufferLatchesKey) ?? true;
 
         TraceTimelineShowBuffers = await SettingsService.ReadSettingAsync<bool?>(TraceTimelineShowBuffersKey) ?? false;
+
+        PinTimeline = await SettingsService.ReadSettingAsync<bool?>(PinTimelineKey) ?? true;
 
         TraceTimelineHiddenTickTracks = await SettingsService.ReadSettingAsync<string>(TraceTimelineHiddenTickTracksKey) ?? string.Empty;
 
@@ -466,6 +472,11 @@ public partial class SettingsViewModel(SettingsService settingsService,
     partial void OnTraceTimelineShowBuffersChanged(bool value)
     {
         _ = SettingsService.SaveSettingAsync(TraceTimelineShowBuffersKey, value);
+    }
+
+    partial void OnPinTimelineChanged(bool value)
+    {
+        _ = SettingsService.SaveSettingAsync(PinTimelineKey, value);
     }
 
     partial void OnDecodeValuesChanged(bool value)

@@ -71,16 +71,6 @@ internal sealed class TimelineFrame
     /// </summary>
     public required SKColor AlternateBandColour { get; init; }
 
-    /// <summary>
-    /// The axis origin in milliseconds, and the 
-    /// </summary>
-    public required double MinTime { get; init; }
-
-    /// <summary>
-    /// Inverse of TimeToX, for the ruler's tick placement
-    /// </summary>
-    public required Func<double, double> XToTime { get; init; }
-
     public float MinSubBandHeight { get; init; }
 
     public bool IsCollapsed(int band) => Bands.Active[band].SubBandLabels is not null && BandHeights[band] < MinSubBandHeight;

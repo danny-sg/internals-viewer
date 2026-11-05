@@ -142,27 +142,6 @@ public sealed partial class TraceTimelineControl
         _lastPressTicks = now;
         _lastPressPoint = position;
 
-        if (isDoubleClick && IsTrimmed && IsInPlayheadStrip(position) && IsOnPlayhead(position.X))
-        {
-            ClearTrim();
-
-            return;
-        }
-
-        if (GetTrimHandleAt(position) is not TrimHandle.None and var trimHandle)
-        {
-            _trimDrag = trimHandle;
-
-            _overlay.CapturePointer(e.Pointer);
-
-            return;
-        }
-
-        if (IsInPlayheadStrip(position) && !IsOnPlayhead(position.X) && ClickSearchMatch(position))
-        {
-            return;
-        }
-
         if (position.Y < OperatorsTop && (IsOnPlayhead(position.X) || BlockAt(position) is null))
         {
             if (isDoubleClick)
@@ -324,13 +303,6 @@ public sealed partial class TraceTimelineControl
             return;
         }
 
-        if (IsDraggingTrim)
-        {
-            DragTrim(position.X);
-
-            return;
-        }
-
         if (_isScrubbing)
         {
             MovePlayheadTo(position.X);
@@ -423,13 +395,11 @@ public sealed partial class TraceTimelineControl
 
         UpdateCursor(IsOnSplitter(position) || IsOnMemorySplitter(position) || GetPaneResizeHandle(position) is not null
                          ? InputSystemCursorShape.SizeNorthSouth
-                         : GetTrimHandleAt(position) is not TrimHandle.None
-                             ? InputSystemCursorShape.SizeWestEast
-                             : found is not null
-                                 ? InputSystemCursorShape.SizeAll
-                                 : operatorsHover.Tick is not null || memoryHover is not null || latchHover is not null
-                                     ? InputSystemCursorShape.Hand
-                                     : InputSystemCursorShape.Arrow);
+                         : found is not null
+                             ? InputSystemCursorShape.SizeAll
+                             : operatorsHover.Tick is not null || memoryHover is not null || latchHover is not null
+                                 ? InputSystemCursorShape.Hand
+                                 : InputSystemCursorShape.Arrow);
 
         var hit = found?.Call ?? HitTest(position) ?? GetMarkHit(operatorsHover.Tick?.Tick?.Node, operatorsHover.Tick?.Tick?.CallIndex);
 
@@ -465,10 +435,6 @@ public sealed partial class TraceTimelineControl
         else if (latchHover is { } latch)
         {
             OpenToolTip(GetBufferLatchToolTip(latch), position);
-        }
-        else if (GetStripMarkToolTip(position) is { } markText)
-        {
-            OpenToolTip(markText, position);
         }
         else if (hit is { } hovered && operatorsHover.Tick?.Tick is null)
         {
@@ -966,11 +932,6 @@ public sealed partial class TraceTimelineControl
         ReleaseIndicator();
 
         var invalidate = _isSelecting;
-
-        if (IsDraggingTrim)
-        {
-            EndTrimDrag();
-        }
 
         if (_isDragging)
         {

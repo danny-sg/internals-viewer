@@ -11,10 +11,6 @@ namespace InternalsViewer.UI.App.Controls.Query.Trace.Timeline;
 
 public sealed partial class TraceTimelineControl
 {
-    private const float RulerHeight = 18f;
-
-    private const float PlayheadStripHeight = 16f;
-
     private const float MemoryBarHeight = 30f;
 
     private const float LaneHeaderHeight = 18f;
@@ -36,8 +32,6 @@ public sealed partial class TraceTimelineControl
     private const float MinimumLabelWidth = 30f;
 
     internal const float LabelPadding = 3f;
-
-    private const float TickSpacing = 110f;
 
     internal const float NarrowSpan = 1f;
 
@@ -66,6 +60,8 @@ public sealed partial class TraceTimelineControl
         ReportCallStack();
 
         ReportPlayhead();
+
+        RulerChanged?.Invoke();
 
         var canvas = e.Surface.Canvas;
 
@@ -155,13 +151,6 @@ public sealed partial class TraceTimelineControl
                 DrawMemoryBand(canvas, visible, width, height, scale);
             }
 
-            canvas.Save();
-
-            canvas.Translate(0, RulerTop);
-
-            DrawRuler(canvas, width, scale);
-
-            canvas.Restore();
         }
 
         return recorder.EndRecording();
@@ -384,31 +373,6 @@ public sealed partial class TraceTimelineControl
         canvas.Restore();
     }
 
-    private void DrawRuler(SKCanvas canvas, int width, double scale)
-    {
-        var step = TickStep(TickSpacing / scale);
-
-        var origin = OriginOf(_axis);
-
-        var first = Math.Ceiling((Math.Max(_viewStart, FullStart) - origin) / step) * step + origin;
-
-        for (var value = first; value <= Math.Min(_viewEnd, FullEnd); value += step)
-        {
-            var x = (float)((value - _viewStart) * scale);
-
-            canvas.DrawLine(x, RulerHeight - 4, x, RulerHeight, _paints.Tick);
-
-            var label = FormatAxis(value - origin, step);
-
-            if (x + 3 + _paints.Font.MeasureText(label) < width)
-            {
-                canvas.DrawText(label, x + 4, Baseline(0, RulerHeight - 4), SKTextAlign.Left, _paints.Font, _paints.Label);
-            }
-        }
-
-        canvas.DrawLine(0, RulerHeight, width, RulerHeight, _paints.Tick);
-    }
-
     private void DrawOverlay(SKCanvas canvas, int width, int height)
     {
         var hover = _hover;
@@ -431,7 +395,7 @@ public sealed partial class TraceTimelineControl
 
         DrawPaneOverlays(canvas, width);
 
-        DrawStripMarks(canvas, width);
+        DrawMemorySearchMatches(canvas);
 
         DrawTrim(canvas, width, height);
 
@@ -585,26 +549,6 @@ public sealed partial class TraceTimelineControl
         }
 
         return label;
-    }
-
-    private static double TickStep(double minimum)
-    {
-        if (minimum <= 0 || double.IsNaN(minimum) || double.IsInfinity(minimum))
-        {
-            return 1;
-        }
-
-        var magnitude = Math.Pow(10, Math.Floor(Math.Log10(minimum)));
-
-        foreach (var factor in (ReadOnlySpan<double>)[1, 2, 5, 10])
-        {
-            if (magnitude * factor >= minimum)
-            {
-                return magnitude * factor;
-            }
-        }
-
-        return magnitude * 10;
     }
 
     private string FormatAxis(double value, double step)

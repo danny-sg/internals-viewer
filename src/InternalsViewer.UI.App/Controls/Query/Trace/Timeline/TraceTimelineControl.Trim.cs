@@ -8,20 +8,6 @@ namespace InternalsViewer.UI.App.Controls.Query.Trace.Timeline;
 
 public sealed partial class TraceTimelineControl
 {
-    private const float TrimHandleWidth = 7f;
-
-    private const float TrimHandleHeight = 8f;
-
-    private const float TrimHandleGap = PlayheadHalfWidth + 4f;
-
-    private const float TrimHitWidth = 6f;
-
-    private static readonly SKColor TrimHandleColour = new(128, 128, 128);
-
-    private readonly SKPath _trimStartHandle = CreateTrimHandle(isStart: true);
-
-    private readonly SKPath _trimEndHandle = CreateTrimHandle(isStart: false);
-
     private TracePosition? _trimStart;
 
     private TracePosition? _trimEnd;
@@ -56,32 +42,9 @@ public sealed partial class TraceTimelineControl
 
     private double ClampToTrim(double value) => Math.Clamp(value, TrimFrom, Math.Max(TrimFrom, TrimTo));
 
-    private TrimHandle GetTrimHandleAt(Point position)
+    private void DragTrimTo(double value)
     {
-        if (!IsInPlayheadStrip(position) || position.Y < OperatorsTop - TrimHandleHeight - TrimHitWidth)
-        {
-            return TrimHandle.None;
-        }
-
-        var (startX, endX) = GetTrimHandleXs();
-
-        var toStart = startX is { } start ? Math.Abs(position.X - start) : double.MaxValue;
-
-        var toEnd = endX is { } end ? Math.Abs(position.X - end) : double.MaxValue;
-
-        if (toStart <= TrimHitWidth && toStart <= toEnd)
-        {
-            return TrimHandle.Start;
-        }
-
-        return toEnd <= TrimHitWidth ? TrimHandle.End : TrimHandle.None;
-    }
-
-    private void DragTrim(double x)
-    {
-        var scale = PixelsPerUnit((int)_overlay.ActualWidth);
-
-        if (GetPosition(Math.Clamp(_viewStart + x / scale, _viewStart, _viewEnd)) is not { } position)
+        if (GetPosition(value) is not { } position)
         {
             return;
         }
@@ -151,63 +114,24 @@ public sealed partial class TraceTimelineControl
 
     private void DrawTrim(SKCanvas canvas, int width, int height)
     {
-        var (startX, endX) = GetTrimHandleXs();
+        var scale = PixelsPerUnit(width);
 
-        if (IsTrimmed && startX is { } start && endX is { } end)
-        {
-            _paints.Fill.Color = _paints.Dim;
-
-            if (start > 0)
-            {
-                canvas.DrawRect(0, PlayheadStripTop, start, height - PlayheadStripTop, _paints.Fill);
-            }
-
-            if (end < width)
-            {
-                canvas.DrawRect(end, PlayheadStripTop, width - end, height - PlayheadStripTop, _paints.Fill);
-            }
-        }
-
-        _paints.Fill.Color = TrimHandleColour;
-
-        DrawTrimHandle(canvas, _trimStartHandle, startX);
-
-        DrawTrimHandle(canvas, _trimEndHandle, endX);
-    }
-
-    private void DrawTrimHandle(SKCanvas canvas, SKPath handle, float? x)
-    {
-        if (x is not { } left)
+        if (!IsTrimmed || GetTrimX(_trimStart!.Value, scale) is not { } start || GetTrimX(_trimEnd!.Value, scale) is not { } end)
         {
             return;
         }
 
-        canvas.Save();
+        _paints.Fill.Color = _paints.Dim;
 
-        canvas.Translate(left, OperatorsTop - TrimHandleHeight);
-
-        canvas.DrawPath(handle, _paints.Fill);
-
-        canvas.Restore();
-    }
-
-    private (float? Start, float? End) GetTrimHandleXs()
-    {
-        var scale = PixelsPerUnit((int)_overlay.ActualWidth);
-
-        if (IsTrimmed)
+        if (start > 0)
         {
-            return (GetTrimX(_trimStart!.Value, scale), GetTrimX(_trimEnd!.Value, scale));
+            canvas.DrawRect(0, OperatorsTop, start, height - OperatorsTop, _paints.Fill);
         }
 
-        if (_playhead is not { } playhead)
+        if (end < width)
         {
-            return (null, null);
+            canvas.DrawRect(end, OperatorsTop, width - end, height - OperatorsTop, _paints.Fill);
         }
-
-        var x = (float)((playhead - _viewStart) * scale);
-
-        return (x - TrimHandleGap, x + TrimHandleGap);
     }
 
     private float? GetTrimX(TracePosition position, double scale)
@@ -242,23 +166,6 @@ public sealed partial class TraceTimelineControl
         }
 
         return null;
-    }
-
-    private static SKPath CreateTrimHandle(bool isStart)
-    {
-        using var builder = new SKPathBuilder();
-
-        var half = TrimHandleWidth / 2;
-
-        builder.MoveTo(-half, 0);
-
-        builder.LineTo(half, 0);
-
-        builder.LineTo(isStart ? -half : half, TrimHandleHeight);
-
-        builder.Close();
-
-        return builder.Detach();
     }
 
     private enum TrimHandle

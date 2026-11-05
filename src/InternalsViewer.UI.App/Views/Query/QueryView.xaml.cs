@@ -25,14 +25,21 @@ public sealed partial class QueryView : Microsoft.UI.Xaml.Controls.Page, IDispos
 
     public QueryViewModel ViewModel => (QueryViewModel)DataContext;
 
-    private static SettingsViewModel Settings => App.GetService<SettingsViewModel>();
+    private SettingsViewModel Settings { get; } = App.GetService<SettingsViewModel>();
 
     private static ITimeTravelRecorder TimeTravel => App.GetService<ITimeTravelRecorder>();
+
+    public Visibility GetRulerVisibility(bool isPinned, bool isAvailable)
+        => isPinned && isAvailable ? Visibility.Visible : Visibility.Collapsed;
 
     public void Dispose()
     {
         // x:Bind listens to the view model, which outlives the view, so the view stays rooted until tracking stops
         Bindings.StopTracking();
+
+        PinnedRuler.Dispose();
+
+        PinnedTransport.Dispose();
 
         (DataContext as QueryViewModel)?.Dispose();
     }

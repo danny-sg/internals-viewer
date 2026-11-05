@@ -66,6 +66,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
+using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Transactions;
@@ -104,7 +105,8 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                           IBufferPoolInfoProvider bufferPoolInfoProvider,
                                           SimulationTabViewModelFactory simulationTabViewModelFactory,
                                           TraceTickTrackStore tickTrackStore,
-                                          IEnumerable<ITraceMenuContributor> menuContributors)
+                                          IEnumerable<ITraceMenuContributor> menuContributors,
+                                          IPageService pageService)
 {
     public QueryViewModel Create(DatabaseSource database) => new(logger,
                                                                  queryRunner,
@@ -120,6 +122,7 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                                                  simulationTabViewModelFactory,
                                                                  tickTrackStore,
                                                                  menuContributors,
+                                                                 pageService,
                                                                  database);
 }
 
@@ -248,6 +251,16 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private long _pagePlayhead;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RulerSource))]
+    [NotifyPropertyChangedFor(nameof(IsRulerAvailable))]
+    private ITimelineRulerSource? _eventRuler;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RulerSource))]
+    [NotifyPropertyChangedFor(nameof(IsRulerAvailable))]
+    private ITimelineRulerSource? _traceRuler;
+
+    [ObservableProperty]
     private bool _isZoomToPage;
 
     [ObservableProperty]
@@ -369,6 +382,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                           SimulationTabViewModelFactory simulationTabViewModelFactory,
                           TraceTickTrackStore tickTrackStore,
                           IEnumerable<ITraceMenuContributor> menuContributors,
+                          IPageService pageService,
                           DatabaseSource database)
     {
         _simulationTabViewModelFactory = simulationTabViewModelFactory;
@@ -380,6 +394,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         Arguments = new ArgumentsViewModel(logger, Symbols);
 
         MemoryHistory = new MemoryHistoryViewModel(OpenCallTree);
+
+        RowResolver = new PageRowResolver(pageService, database, logger);
+
+        RowResolver.PropertyChanged += OnRowResolverChanged;
 
         TickTrackStore = tickTrackStore;
 
@@ -650,6 +668,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private TraceLoader TraceLoader { get; }
 
+    private PageRowResolver RowResolver { get; }
+
     private QueryExport QueryExport { get; }
 
     private CancellationTokenSource? TraceLoad { get; set; }
@@ -679,6 +699,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             ExportRunCommand.NotifyCanExecuteChanged();
 
             OnPropertyChanged(nameof(IsNoQueryHintVisible));
+
+            OnPropertyChanged(nameof(IsRulerAvailable));
         }
     }
 
@@ -710,6 +732,14 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public bool IsTraceTimelineHintVisible => TraceTimeline is null && !IsTraceLoading;
 
     public bool IsFlameGraphEnabled => QueryOptions.IncludeCallStack && !Layout.IsTrace;
+
+    public ITimelineRulerSource? RulerSource => Layout.IsTrace ? TraceRuler : EventRuler;
+
+    public bool IsRulerAvailable => LastRun is not null && RulerSource is not null;
+
+    public RowIdentifier? SelectedRowIdentifier => RowResolver.Row;
+
+    public int SelectedRowSlotCount => RowResolver.SlotCount;
 
     public bool IsNoQueryHintVisible => LastRun is null && !ExecuteQueryCommand.IsRunning && !IsTraceLoading;
 
@@ -748,7 +778,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             LockModeCategories = [.. QueryOptions.Options.IncludeLockModeCategories],
             CaptureHeapReads = QueryOptions.CaptureHeapReads,
             CaptureHeapWrites = QueryOptions.CaptureHeapWrites,
-            CaptureStackMemory = QueryOptions.CaptureStackMemory
+            CaptureStackMemory = QueryOptions.CaptureStackMemory,
+            CapturePageReads = QueryOptions.CapturePageReads
         };
 
         await _settingsService.SaveSettingAsync(LayoutSettingKey, dto);
@@ -1065,7 +1096,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         TimelineDefinition = _timelineDefinitionBuilder.Build(Events, visibility, IsEventVisible);
     }
-
     private void OnExecuteQueryCommandChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(IAsyncRelayCommand.IsRunning))
@@ -1125,6 +1155,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
 
         OnPropertyChanged(nameof(IsFlameGraphEnabled));
+
+        OnPropertyChanged(nameof(RulerSource));
+
+        OnPropertyChanged(nameof(IsRulerAvailable));
     }
 
 #pragma warning disable VSTHRD100
@@ -1158,6 +1192,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         Layout.SelectionChanged -= ScheduleSaveLayout;
         Layout.PropertyChanged -= OnLayoutPropertyChanged;
         ExecuteQueryCommand.PropertyChanged -= OnExecuteQueryCommandChanged;
+        RowResolver.PropertyChanged -= OnRowResolverChanged;
 
         Events = [];
         FilteredEvents = [];
@@ -1304,7 +1339,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                  lockCategories,
                                  dto.CaptureHeapReads,
                                  dto.CaptureHeapWrites,
-                                 dto.CaptureStackMemory);
+                                 dto.CaptureStackMemory,
+                                 dto.CapturePageReads);
 
             _layoutRestored = true;
         }
@@ -1604,7 +1640,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         // Reflect the already-built spans and current playhead position immediately.
         ApplyIndexPageSpans(indexViewModel);
 
-        SyncIndexPage();
+        SyncPlayheadPages();
     }
 
     private async Task LoadPageDocument(PageTabViewModel pageViewModel,
@@ -1900,7 +1936,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             ApplyIndexPageSpans(viewModel);
         }
 
-        SyncIndexPage();
+        SyncPlayheadPages();
     }
 
     private (List<PageSpan> Spans, List<PageVisit> Visits) GetEventPages(List<EngineEvent> engineEvents, EventColourProvider colours)
@@ -1943,28 +1979,39 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     {
         PagePlayhead = playhead;
 
-        SyncIndexPage();
+        SyncPlayheadPages();
     }
 
-    private void SyncIndexPage()
+    private void SyncPlayheadPages()
     {
         foreach (var viewModel in _openIndexes.Values)
         {
             viewModel.PagePlayhead = PagePlayhead;
 
-            ReadOnlySpan<PageVisit> visits = CollectionsMarshal.AsSpan(viewModel.PageVisits);
+            var visit = GetPlayheadVisit(viewModel.PageVisits);
 
-            var index = SortedSearch.FirstAfter(visits, PagePlayhead, static v => v.Position) - 1;
-
-            if (index >= 0)
-            {
-                viewModel.SetPlayheadPage(visits[index].Page, visits[index].Offset);
-            }
-            else
-            {
-                viewModel.SetPlayheadPage(null, null);
-            }
+            viewModel.SetPlayheadPage(visit?.Page, visit?.Offset);
         }
+
+        var current = GetPlayheadVisit(_pageVisits);
+
+        RowResolver.MoveTo(current?.Page, current?.Offset, CancellationToken);
+    }
+
+    private PageVisit? GetPlayheadVisit(List<PageVisit> visits)
+    {
+        ReadOnlySpan<PageVisit> span = CollectionsMarshal.AsSpan(visits);
+
+        var index = SortedSearch.FirstAfter(span, PagePlayhead, static v => v.Position) - 1;
+
+        return index >= 0 ? span[index] : null;
+    }
+
+    private void OnRowResolverChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        OnPropertyChanged(nameof(SelectedRowIdentifier));
+
+        OnPropertyChanged(nameof(SelectedRowSlotCount));
     }
 
     // Generating the object layers walks the whole allocation map, so build them off the UI thread and
@@ -2633,6 +2680,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         _pageSpans = [];
 
         _pageVisits = [];
+
+        RowResolver.Clear();
 
         AllocationLayers = new ObservableCollection<AllocationLayer>(ObjectLayers);
         AllocationBorders = [];

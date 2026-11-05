@@ -25,6 +25,8 @@ public sealed class CallStackNode
     // Settable so a truncated stack's node can be re-parented onto the fuller path it belongs to.
     public CallStackNode? Parent { get; set; }
 
+    internal CallStackTree? Tree { get; init; }
+
     /// <summary>
     /// The key this node is stored under in its parent (RVA before resolution, function after)
     /// </summary>
@@ -86,7 +88,7 @@ public sealed class CallStackNode
     /// <summary>
     /// Per-time-bucket event counts for this node's subtree, filled by <see cref="CallStackTree.ComputeActivity"/>
     /// </summary>
-    public int[] ActivityCounts { get; set; } = [];
+    public int[] ActivityCounts => GetTree()?.GetActivityCounts(this) ?? [];
 
     /// <summary>
     /// The activity histogram bars to draw — only the selected node has any, so the histogram shows just for it
@@ -235,8 +237,6 @@ public sealed class CallStackNode
             }
 
             merged.CallActivity = Sum(merged.CallActivity, node.CallActivity);
-
-            merged.ActivityCounts = Sum(merged.ActivityCounts, node.ActivityCounts);
         }
 
         return merged;
@@ -258,6 +258,18 @@ public sealed class CallStackNode
         {
             PlanOperators = [.. PlanOperators.Concat(operators).Distinct<ExecutionOperatorEvent>(ReferenceEqualityComparer.Instance)];
         }
+    }
+
+    private CallStackTree? GetTree()
+    {
+        var node = this;
+
+        while (node.Parent is { } parent)
+        {
+            node = parent;
+        }
+
+        return node.Tree;
     }
 
     private static int[] Sum(int[] total, int[] counts)

@@ -75,7 +75,7 @@ public sealed class TraceRowReturnMarkMap
 
         var marks = new Dictionary<(ExecutionOperatorEvent Operator, uint Thread), List<Mark>>(OperatorThreadComparer.Instance);
 
-        var ticks = new List<TraceTick>();
+        var ticks = new List<TraceTickSource>();
 
         var batchOperators = new HashSet<ExecutionOperatorEvent>(ReferenceEqualityComparer.Instance);
 
@@ -108,7 +108,7 @@ public sealed class TraceRowReturnMarkMap
 
                 (list ??= []).Add(new Mark(location.To, type));
 
-                ticks.Add(new TraceTick((byte)type, group.Thread, location.Node, location.Row, location.Index)
+                ticks.Add(TraceTickSource.FromCall(location, (byte)type) with
                 {
                     Operator = operatorEvent,
                     Caller = ReferenceEquals(caller, operatorEvent) ? null : caller
@@ -125,7 +125,7 @@ public sealed class TraceRowReturnMarkMap
             (threads ??= [])[thread] = OperatorReturnMap.Build(list);
         }
 
-        return new TraceRowReturnMarkMap(operators, batchOperators, TraceTickSeries.Create(ticks, timeline.Scale));
+        return new TraceRowReturnMarkMap(operators, batchOperators, TraceTickSeries.Create(timeline, ticks));
     }
 
     private static List<CallGroup> GetCallGroups(TraceCallStore calls, IReadOnlyDictionary<ulong, ExecutionOperatorEvent> owners)

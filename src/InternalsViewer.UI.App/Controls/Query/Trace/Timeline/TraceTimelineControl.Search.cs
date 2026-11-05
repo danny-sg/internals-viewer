@@ -326,30 +326,8 @@ public sealed partial class TraceTimelineControl
         return index >= 0 && index < starts.Length ? starts[index] : null;
     }
 
-    private void DrawStripMarks(SKCanvas canvas, int width)
+    private void DrawMemorySearchMatches(SKCanvas canvas)
     {
-        var scale = PixelsPerUnit(width);
-
-        var calls = _searchTerms.Length > 0 ? GetCallMatchBars() : null;
-
-        var updates = GetMemoryUpdateMarks();
-
-        var halfHeight = PlayheadStripHeight / 2;
-
-        if (calls is not null)
-        {
-            DrawSearchMatches(canvas, calls, PlayheadStripTop, halfHeight, scale);
-        }
-
-        if (updates is not null)
-        {
-            DrawMemoryUpdates(canvas,
-                              updates,
-                              calls is null ? PlayheadStripTop : PlayheadStripTop + halfHeight,
-                              calls is null ? PlayheadStripHeight : halfHeight,
-                              scale);
-        }
-
         if (_searchTerms.Length > 0 && ShowsMemory && GetVisibleMemoryMatches() is { Count: > 0 } visible)
         {
             _memory.DrawSearchMatches(canvas, visible, _paints.SearchMatch, SearchMatchThickness, MinimumSearchMatchLength);
@@ -387,11 +365,6 @@ public sealed partial class TraceTimelineControl
             return false;
         }
 
-        if (IsInPlayheadStrip(position))
-        {
-            return IsInSearchBand(position) && ZoomToCallMatches((float)position.X);
-        }
-
         if (ShowsMemory && _memory.Contains(position) && position.X < SearchMatchThickness + SearchMatchHitSlop)
         {
             return ZoomToMemoryMatches((float)position.Y);
@@ -399,33 +372,6 @@ public sealed partial class TraceTimelineControl
 
         return false;
     }
-
-    private string? GetStripMarkToolTip(Point position)
-    {
-        if (!IsInPlayheadStrip(position))
-        {
-            return null;
-        }
-
-        var calls = _searchTerms.Length > 0 ? GetCallMatchBars() : null;
-
-        var updates = GetMemoryUpdateMarks();
-
-        var x = (float)position.X;
-
-        var scale = PixelsPerUnit((int)_overlay.ActualWidth);
-
-        if (calls is not null && IsInSearchBand(position))
-        {
-            return IsOverSearchBar(calls, x, scale) ? "Search Results" : null;
-        }
-
-        return updates is not null && IsOverMemoryUpdate(updates, x, scale) ? $"{_memoryUpdatesName} Updates" : null;
-    }
-
-    private bool IsInPlayheadStrip(Point position) => position.Y >= PlayheadStripTop && position.Y < OperatorsTop;
-
-    private bool IsInSearchBand(Point position) => position.Y < PlayheadStripTop + PlayheadStripHeight / 2;
 
     private string? GetMemorySearchToolTip(Point position)
     {
@@ -439,39 +385,12 @@ public sealed partial class TraceTimelineControl
         return blocks.Count > 0 ? "Search Results" : null;
     }
 
-    private bool IsOverSearchBar(SearchBars bars, float x, double scale)
-    {
-        var from = _viewStart + (x - HalfPixel - MinimumSearchMatchLength) / scale;
-
-        var to = _viewStart + (x + HalfPixel) / scale;
-
-        for (var index = SortedSearch.FirstAtOrAfter(bars.Ends, from); index < bars.Starts.Length && bars.Starts[index] <= to; index++)
-        {
-            var left = (float)((bars.Starts[index] - _viewStart) * scale);
-
-            var right = Math.Max((float)((bars.Ends[index] - _viewStart) * scale), left + MinimumSearchMatchLength);
-
-            if (left <= x + HalfPixel && right >= x - HalfPixel)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private bool ZoomToCallMatches(float x)
+    private bool ZoomToCallMatches(double from, double to, double minimumLength)
     {
         if (_searchMatches is not { } matches || _visible is not { } timeline)
         {
             return false;
         }
-
-        var scale = PixelsPerUnit((int)_overlay.ActualWidth);
-
-        var from = _viewStart + (x - HalfPixel - MinimumSearchMatchLength) / scale;
-
-        var to = _viewStart + (x + HalfPixel) / scale;
 
         FlameHit? only = null;
 
@@ -489,11 +408,12 @@ public sealed partial class TraceTimelineControl
             {
                 var row = rows[depth];
 
-                for (var index = row.GetFirstEndingAfter(_axis, from);
+                for (var index = row.GetFirstEndingAfter(_axis, from - minimumLength);
                      index >= 0 && index < row.Count && row.GetStart(_axis, index) <= to;
                      index++)
                 {
-                    if (!IsSearchMatch(matches, row.GetCallNodeIndex(index)) || !IsUnderSearchPixel(row, index, x, scale))
+                    if (!IsSearchMatch(matches, row.GetCallNodeIndex(index))
+                        || Math.Max(row.GetEnd(_axis, index), row.GetStart(_axis, index) + minimumLength) < from)
                     {
                         continue;
                     }
@@ -526,15 +446,6 @@ public sealed partial class TraceTimelineControl
         return true;
     }
 
-    private bool IsUnderSearchPixel(TraceTimelineRow row, int index, float x, double scale)
-    {
-        var left = (float)((row.GetStart(_axis, index) - _viewStart) * scale);
-
-        var right = Math.Max((float)((row.GetEnd(_axis, index) - _viewStart) * scale), left + MinimumSearchMatchLength);
-
-        return left <= x + HalfPixel && right >= x - HalfPixel;
-    }
-
     private bool ZoomToMemoryMatches(float y)
     {
         var blocks = _memory.GetSearchMatchesAt(y, GetVisibleMemoryMatches(), MinimumSearchMatchLength);
@@ -560,43 +471,6 @@ public sealed partial class TraceTimelineControl
         ZoomTo(start, end);
 
         return true;
-    }
-
-    private void DrawSearchMatches(SKCanvas canvas, SearchBars bars, float top, float height, double scale)
-    {
-        float? left = null;
-
-        var right = 0f;
-
-        for (var index = SortedSearch.FirstAtOrAfter(bars.Ends, _viewStart);
-             index < bars.Starts.Length && bars.Starts[index] <= _viewEnd;
-             index++)
-        {
-            var start = (float)((bars.Starts[index] - _viewStart) * scale);
-
-            var end = Math.Max((float)((bars.Ends[index] - _viewStart) * scale), start + MinimumSearchMatchLength);
-
-            if (left is not null && start <= right)
-            {
-                right = Math.Max(right, end);
-
-                continue;
-            }
-
-            if (left is { } drawn)
-            {
-                canvas.DrawRect(drawn, top, right - drawn, height, _paints.SearchMatch);
-            }
-
-            left = start;
-
-            right = end;
-        }
-
-        if (left is { } last)
-        {
-            canvas.DrawRect(last, top, right - last, height, _paints.SearchMatch);
-        }
     }
 
     private SearchBars? GetCallMatchBars()

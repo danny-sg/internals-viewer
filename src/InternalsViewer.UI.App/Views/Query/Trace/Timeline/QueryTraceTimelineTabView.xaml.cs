@@ -56,7 +56,11 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
     private Button? _playButton;
 
-    private PlayheadStepMode _stepMode = PlayheadStepMode.Call;
+    private Button? _previousFrameButton;
+
+    private Button? _nextFrameButton;
+
+    private long _rulerPinnedToken;
 
     public QueryTraceTimelineTabView()
     {
@@ -65,6 +69,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         SearchAccelerator.ScopeOwner = this;
 
         DataContextChanged += (_, _) => OnViewModelChanged();
+
+        _rulerPinnedToken = TraceTimeline.RegisterPropertyChangedCallback(TraceTimelineControl.IsRulerPinnedProperty, OnRulerPinnedChanged);
 
         TraceTimeline.CallSelected += OnCallSelected;
 
@@ -121,6 +127,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
     private TraceTimelineTabViewModel? Tab { get; set; }
 
+    private QueryViewModel? RulerOwner { get; set; }
+
     private UiThrottle MemoryThrottle { get; }
         = new(Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread(), TimeSpan.FromMilliseconds(MemoryRefreshMilliseconds));
 
@@ -153,6 +161,12 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
                                          TraceTimeline.IsPlaying ? "Pause" : "Play",
                                          (_, _) => TraceTimeline.TogglePlay());
 
+        _previousFrameButton = TabCommands.Button(TabCommands.Glyph(StepBackGlyph), "Previous Frame", (_, _) => Step(forward: false));
+
+        _nextFrameButton = TabCommands.Button(TabCommands.Glyph(StepForwardGlyph), "Next Frame", (_, _) => Step(forward: true));
+
+        UpdatePlaybackVisibility();
+
         _searchToggle = TabCommands.Toggle(TabCommands.Glyph(SearchGlyph),
                                            false,
                                            "Search Calls and Memory",
@@ -172,14 +186,14 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
                                  TabCommands.Separator(),
                                  TabCommands.ToggleSplitButton("Choose what Previous Frame and Next Frame step to",
                                                                "Step",
-                                                               (int)_stepMode,
-                                                               index => _stepMode = (PlayheadStepMode)index,
+                                                               (int)TraceTimeline.StepMode,
+                                                               index => TraceTimeline.StepMode = (PlayheadStepMode)index,
                                                                "Call",
                                                                "Same Call",
                                                                "Batch",
                                                                "Row"),
-                                 TabCommands.Button(TabCommands.Glyph(StepBackGlyph), "Previous Frame", (_, _) => Step(forward: false)),
-                                 TabCommands.Button(TabCommands.Glyph(StepForwardGlyph), "Next Frame", (_, _) => Step(forward: true)),
+                                 _previousFrameButton,
+                                 _nextFrameButton,
                                  TabCommands.Separator(),
                                  _searchToggle,
                                  categoryToggle);
@@ -192,6 +206,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         MemoryThrottle.Dispose();
 
         StackThrottle.Dispose();
+
+        TraceTimeline.UnregisterPropertyChangedCallback(TraceTimelineControl.IsRulerPinnedProperty, _rulerPinnedToken);
 
         TraceTimeline.CallSelected -= OnCallSelected;
 
@@ -241,6 +257,10 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         AttachTab(null);
 
+        AttachRuler(null);
+
+        Ruler.Dispose();
+
         TraceTimeline.Dispose();
     }
 
@@ -249,6 +269,20 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         Bindings.Update();
 
         AttachTab(ViewModel?.TraceTimelineTab);
+
+        AttachRuler(ViewModel);
+    }
+
+    private void AttachRuler(QueryViewModel? owner)
+    {
+        if (RulerOwner is { } previous && ReferenceEquals(previous.TraceRuler, TraceTimeline))
+        {
+            previous.TraceRuler = null;
+        }
+
+        RulerOwner = owner;
+
+        owner?.TraceRuler = TraceTimeline;
     }
 
     private void AttachTab(TraceTimelineTabViewModel? tab)
@@ -539,7 +573,20 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         ToolTipService.SetToolTip(button, isPlaying ? "Pause" : "Play");
     }
 
-    private void Step(bool forward) => TraceTimeline.StepPlayhead(forward, _stepMode);
+    private void Step(bool forward) => TraceTimeline.Step(forward);
+
+    private void OnRulerPinnedChanged(DependencyObject sender, DependencyProperty property) => UpdatePlaybackVisibility();
+
+    private void UpdatePlaybackVisibility()
+    {
+        var visibility = TraceTimeline.IsRulerPinned ? Visibility.Collapsed : Visibility.Visible;
+
+        _playButton?.Visibility = visibility;
+
+        _previousFrameButton?.Visibility = visibility;
+
+        _nextFrameButton?.Visibility = visibility;
+    }
 
     private void OnPreviousMatchClick(object sender, RoutedEventArgs e) => TraceTimeline.StepSearch(forward: false);
 

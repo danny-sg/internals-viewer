@@ -24,6 +24,8 @@ public sealed record EventOptions
 
     public bool CaptureStackMemory { get; set; } = true;
 
+    public bool CapturePageReads { get; set; } = true;
+
     public bool IncludeLatch { get; set; } = false;
 
     public bool IncludeBatchMode { get; set; } = true;

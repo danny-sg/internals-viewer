@@ -42,7 +42,9 @@ public class MemoryHistoryReadTests
     [Fact]
     public void Reads_Survive_An_Export_Round_Trip()
     {
-        var store = BuildWithReads([Block(Owned, 0x10)], [(2, Owned, [1])], [(3, Owned + 8, 4)], MemoryHistoryStoreHelper.Calls((1, 10)));
+        var timeline = MemoryHistoryStoreHelper.Calls((1, 10));
+
+        var store = BuildWithReads([Block(Owned, 0x10)], [(2, Owned, [1])], [(3, Owned + 8, 4)], timeline);
 
         using var stream = new MemoryStream();
 
@@ -55,7 +57,7 @@ public class MemoryHistoryReadTests
 
         using var reader = new BinaryReader(stream);
 
-        var imported = MemoryHistoryStore.Read(reader);
+        var imported = MemoryHistoryStore.Read(reader, timeline);
 
         Assert.Equal(store.GetReads(0), imported.GetReads(0));
         Assert.Equal(store.GetReadPoint(0), imported.GetReadPoint(0));

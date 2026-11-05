@@ -358,7 +358,6 @@ public sealed class QueryExportWriter
         Rvas = node.Rvas.Count > 0 ? [.. node.Rvas.Order()] : null,
         Calls = node.Calls,
         CallActivity = node.CallActivity.Length > 0 ? node.CallActivity : null,
-        ActivityCounts = node.ActivityCounts.Length > 0 ? node.ActivityCounts : null,
         AllocatedBytes = node.AllocatedBytes,
         Allocations = node.Allocations,
         Locators = LocatorsOf(node.Locators),

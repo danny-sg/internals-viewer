@@ -26,5 +26,9 @@ public interface IAllocationViewModel : INotifyPropertyChanged
 
     long PagePlayhead { get; }
 
+    RowIdentifier? SelectedRowIdentifier { get; }
+
+    int SelectedRowSlotCount { get; }
+
     PageAddress? ScrollTarget { get; }
 }

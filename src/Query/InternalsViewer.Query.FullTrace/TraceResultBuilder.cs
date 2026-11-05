@@ -92,7 +92,8 @@ internal sealed class TraceResultBuilder
             OutputStructures = outputStructures,
             RowReturnMarks = TraceRowReturnMarkMap.Build(Timeline, CallStore, lifetimes, enclosing),
             Reads = TraceReadResolver.Build(Timeline, CallStore, lifetimes, enclosing),
-            Evaluations = TraceEvaluationReader.Build(Timeline, CallStore, lifetimes, enclosing)
+            Evaluations = TraceEvaluationReader.Build(Timeline, CallStore, lifetimes, enclosing),
+            Seeks = TraceSeekReader.Build(Timeline, CallStore, lifetimes, enclosing)
         };
     }
 }

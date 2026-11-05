@@ -29,6 +29,8 @@ public sealed partial class TraceTimelineControl
         _memoryUpdates = writes;
 
         _canvas.Invalidate();
+
+        RulerChanged?.Invoke();
     }
 
     private MemoryUpdateMarks? GetMemoryUpdateMarks()
@@ -66,44 +68,6 @@ public sealed partial class TraceTimelineControl
         _memoryUpdateMarks = (writes, timeline, _axis, marks);
 
         return marks;
-    }
-
-    private void DrawMemoryUpdates(SKCanvas canvas, MemoryUpdateMarks marks, float top, float height, double scale)
-    {
-        var lastPixel = int.MinValue;
-
-        var lastColour = SKColors.Transparent;
-
-        for (var index = SortedSearch.FirstAtOrAfter(marks.Values, _viewStart - MemoryUpdateWidth / scale);
-             index < marks.Values.Length && marks.Values[index] <= _viewEnd;
-             index++)
-        {
-            var pixel = (int)MathF.Floor((float)((marks.Values[index] - _viewStart) * scale));
-
-            var colour = marks.Colours[index];
-
-            if (pixel == lastPixel && colour == lastColour)
-            {
-                continue;
-            }
-
-            lastPixel = pixel;
-
-            lastColour = colour;
-
-            _paints.Fill.Color = colour;
-
-            canvas.DrawRect(pixel, top, MemoryUpdateWidth, height, _paints.Fill);
-        }
-    }
-
-    private bool IsOverMemoryUpdate(MemoryUpdateMarks marks, float x, double scale)
-    {
-        var reach = HalfPixel + MemoryUpdateWidth / 2;
-
-        var index = SortedSearch.FirstAtOrAfter(marks.Values, _viewStart + (x - reach) / scale);
-
-        return index < marks.Values.Length && marks.Values[index] <= _viewStart + (x + reach) / scale;
     }
 
     private sealed record MemoryUpdateMarks(double[] Values, SKColor[] Colours);

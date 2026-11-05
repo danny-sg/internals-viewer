@@ -26,6 +26,8 @@
                                               PfsChain="{x:Bind Parent.PfsChain, Mode=OneWay}"
                                               IsPfsVisible="{x:Bind Parent.IsPfsVisible, Mode=OneWay}"
                                               Playhead="{x:Bind Parent.PagePlayhead, Mode=OneWay}"
+                                              SelectedRowIdentifier="{x:Bind Parent.SelectedRowIdentifier, Mode=OneWay}"
+                                              SelectedRowSlotCount="{x:Bind Parent.SelectedRowSlotCount, Mode=OneWay}"
                                               PageClicked="OnPageSelected"
                                               x:Name="AllocationControl"/>
             </Grid>

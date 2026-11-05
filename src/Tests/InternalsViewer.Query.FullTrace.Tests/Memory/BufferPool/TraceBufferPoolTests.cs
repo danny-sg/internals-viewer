@@ -45,6 +45,26 @@ public class TraceBufferPoolTests
         => Assert.Equal(2, Build((Frame, First, 4), (OtherFrame, Second, 3), (Frame, First, 2)).Count);
 
     [Fact]
+    public void Slot_Offsets_Round_Trip_Through_An_Export()
+    {
+        var builder = new TraceBufferPool.Builder();
+
+        builder.Add(new TraceBufferPage(Frame, First, Database, At(2)));
+
+        builder.AddLayout(First, Database, [0x60, 0x90]);
+
+        using var stream = new MemoryStream();
+
+        builder.Build().Write(new BinaryWriter(stream));
+
+        stream.Position = 0;
+
+        var read = TraceBufferPool.Read(new BinaryReader(stream));
+
+        Assert.Equal([0x60, 0x90], read.GetLayout(First, Database)?.OffsetTable ?? []);
+    }
+
+    [Fact]
     public void Pages_Round_Trip_Through_An_Export()
     {
         using var stream = new MemoryStream();

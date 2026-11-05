@@ -1,4 +1,5 @@
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Pages;
 
 namespace InternalsViewer.Query.FullTrace.Memory.BufferPool;
 
@@ -6,7 +7,9 @@ public sealed partial class TraceBufferPool
 {
     private const int FirstVersion = 1;
 
-    private const int FormatVersion = 2;
+    private const int FormatVersion = 3;
+
+    private const int LayoutVersion = 3;
 
     internal static bool IsSupported(BinaryReader reader) => -reader.ReadInt32() is >= FirstVersion and <= FormatVersion;
 
@@ -32,6 +35,24 @@ public sealed partial class TraceBufferPool
 
             writer.Write(page.Buffer);
         }
+
+        writer.Write(Layouts.Count);
+
+        foreach (var ((page, databaseId), layout) in Layouts)
+        {
+            writer.Write(page.FileId);
+
+            writer.Write(page.PageId);
+
+            writer.Write(databaseId);
+
+            writer.Write(layout.OffsetTable.Length);
+
+            foreach (var offset in layout.OffsetTable)
+            {
+                writer.Write(offset);
+            }
+        }
     }
 
     internal static TraceBufferPool Read(BinaryReader reader)
@@ -54,6 +75,26 @@ public sealed partial class TraceBufferPool
                                                version > FirstVersion ? reader.ReadUInt64() : 0);
         }
 
-        return new TraceBufferPool(pages);
+        var layouts = new Dictionary<(PageAddress Page, ushort DatabaseId), PageData>();
+
+        var layoutCount = version >= LayoutVersion ? reader.ReadInt32() : 0;
+
+        for (var index = 0; index < layoutCount; index++)
+        {
+            var page = new PageAddress(reader.ReadInt16(), reader.ReadInt32());
+
+            var databaseId = reader.ReadUInt16();
+
+            var offsets = new ushort[reader.ReadInt32()];
+
+            for (var slot = 0; slot < offsets.Length; slot++)
+            {
+                offsets[slot] = reader.ReadUInt16();
+            }
+
+            layouts[(page, databaseId)] = new PageData { PageAddress = page, OffsetTable = offsets };
+        }
+
+        return new TraceBufferPool(pages, layouts);
     }
 }

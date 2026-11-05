@@ -164,6 +164,15 @@ public class MemoryHistoryBuilderTests
     }
 
     [Fact]
+    public void Other_Ranges_Join_The_Allocations_They_Overlap()
+    {
+        var ranges = MemoryHistoryBuilder.GetRanges([Block(Page, 0x2000, from: 1)],
+                                                    [new WatchRange(Page + 0x1000, 0x2000), new WatchRange(Owned, 0x10)]);
+
+        Assert.Equal([new WatchRange(Page, 0x3000), new WatchRange(Owned, 0x10)], ranges);
+    }
+
+    [Fact]
     public void A_Memory_Object_Page_Is_Watched_Unless_An_Allocation_Already_Covers_It()
     {
         var store = new TraceCallStore.Builder().Build();
@@ -395,7 +404,7 @@ public class MemoryHistoryBuilderTests
 
         using var reader = new BinaryReader(stream);
 
-        var store = MemoryHistoryStore.Read(reader);
+        var store = MemoryHistoryStore.Read(reader, timeline);
 
         var write = store.GetWrites(0)[1];
 
@@ -428,7 +437,7 @@ public class MemoryHistoryBuilderTests
 
         using var reader = new BinaryReader(stream);
 
-        var store = MemoryHistoryStore.Read(reader);
+        var store = MemoryHistoryStore.Read(reader, timeline);
 
         Assert.Equal(start + 50, built.GetInstructions(0));
         Assert.Equal(new TracePoint(At(50), start + 50), store.GetPoint(0));
@@ -637,7 +646,7 @@ public class MemoryHistoryBuilderTests
 
         using var reader = new BinaryReader(stream);
 
-        var store = MemoryHistoryStore.Read(reader);
+        var store = MemoryHistoryStore.Read(reader, null);
 
         Assert.Equal((true, 2, 1), (store.Blocks[0].IsStack, store.WriteCount, store.GetInstances(0).Count));
     }

@@ -28,7 +28,11 @@ public sealed record TraceRequest(TimeTravelTraceFile TraceFile,
 
     public bool CaptureStackMemory { get; init; } = true;
 
+    public bool CapturePageReads { get; init; } = true;
+
     public bool IsHeapCaptured => RecordMemoryHistory && (CaptureHeapReads || CaptureHeapWrites);
 
     public bool IsStackCaptured => RecordMemoryHistory && CaptureStackMemory;
+
+    public bool IsPageReadCaptured => RecordMemoryHistory && CapturePageReads;
 }

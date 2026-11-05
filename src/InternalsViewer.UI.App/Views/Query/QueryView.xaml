@@ -7,10 +7,12 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:docking="using:InternalsViewer.UI.App.Controls.Docking"
     xmlns:icons="using:InternalsViewer.UI.App.Controls.Icons"
+    xmlns:timeline="using:InternalsViewer.UI.App.Controls.Query.Timeline"
     mc:Ignorable="d">
 
     <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
@@ -20,13 +22,17 @@
                 BorderThickness="0,0,0,0">
             <CommandBar DefaultLabelPosition="Right" 
                         OverflowButtonVisibility="Collapsed"
+                        IsDynamicOverflowEnabled="False"
+                        HorizontalContentAlignment="Stretch"
                         Height="32">
                 <CommandBar.Content>
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"></ColumnDefinition>
-                            <ColumnDefinition Width="*"></ColumnDefinition>
                             <ColumnDefinition Width="Auto"></ColumnDefinition>
+                            <ColumnDefinition Width="Auto"></ColumnDefinition>
+                            <ColumnDefinition Width="Auto"></ColumnDefinition>
+                            <ColumnDefinition Width="*"></ColumnDefinition>
                             <ColumnDefinition Width="Auto"></ColumnDefinition>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0"
@@ -78,6 +84,8 @@
                                 <ToggleMenuFlyoutItem Text="Trace Timeline"
                                    IsChecked="{x:Bind ViewModel.Layout.IsTraceTimelineVisible, Mode=TwoWay}"
                                    IsEnabled="{x:Bind ViewModel.Layout.IsTrace, Mode=OneWay}"/>
+                                <ToggleMenuFlyoutItem Text="Pin Timeline"
+                                   IsChecked="{x:Bind Settings.PinTimeline, Mode=TwoWay}"/>
                                 <ToggleMenuFlyoutItem Text="Simulation"
                                    IsChecked="{x:Bind ViewModel.IsSimulationVisible, Mode=TwoWay}"/>
                                 <MenuFlyoutSeparator/>
@@ -154,6 +162,8 @@
                                     </MenuFlyoutSubItem>
                                     <ToggleMenuFlyoutItem Text="Stack Memory"
                                                           IsChecked="{x:Bind ViewModel.QueryOptions.CaptureStackMemory, Mode=TwoWay}"/>
+                                    <ToggleMenuFlyoutItem Text="Page Reads"
+                                                          IsChecked="{x:Bind ViewModel.QueryOptions.CapturePageReads, Mode=TwoWay}"/>
                                 </MenuFlyoutSubItem>
                                 <MenuFlyoutSeparator/>
                                 <MenuFlyoutItem Text="Search symbols"
@@ -168,6 +178,13 @@
                             </MenuBarItem>
 
                         </MenuBar>
+                        <StackPanel Grid.Column="5"
+                                    Orientation="Horizontal"
+                                    VerticalAlignment="Center"
+                                    Visibility="{x:Bind GetRulerVisibility(Settings.PinTimeline, ViewModel.IsRulerAvailable), Mode=OneWay}">
+                            <timeline:PinnedTransport x:Name="PinnedTransport"
+                                                      Source="{x:Bind ViewModel.RulerSource, Mode=OneWay}"/>
+                        </StackPanel>
                         <ToggleButton Grid.Column="3"
                                       Margin="-6,1,0,0"
                                       Style="{StaticResource TabCommandToggleStyle}"
@@ -194,9 +211,20 @@
             </CommandBar>
         </Border>
 
+        <Border Grid.Row="1"
+                Margin="0,8,0,0"
+                Padding="0,4,0,0"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="0,1,0,1"
+                Visibility="{x:Bind GetRulerVisibility(Settings.PinTimeline, ViewModel.IsRulerAvailable), Mode=OneWay}">
+            <timeline:TimelineRuler x:Name="PinnedRuler"
+                                    Source="{x:Bind ViewModel.RulerSource, Mode=OneWay}"
+                                    IsPinned="{x:Bind Settings.PinTimeline, Mode=TwoWay}"/>
+        </Border>
+
         <!--Tabs (dockable / splittable document region)-->
         <docking:DockHost x:Name="DockHostControl"
-                          Grid.Row="1"
+                          Grid.Row="2"
                           Layout="{x:Bind ViewModel.Layout.Dock, Mode=OneWay}"/>
 
     </Grid>

@@ -20,6 +20,18 @@ public class PageDataTests
     }
 
     [Theory]
+    [InlineData(0x1FFE, 0)]
+    [InlineData(0x1FFF, 0)]
+    [InlineData(0x1FFC, 1)]
+    [InlineData(0x1FFA, 2)]
+    public void GetSlot_Reads_An_Offset_In_The_Slot_Array_As_That_Slot(int offset, int slot)
+    {
+        var page = new PageData { OffsetTable = [0x60, 0xAC, 0x86] };
+
+        Assert.Equal(slot, page.GetSlot(offset));
+    }
+
+    [Theory]
     [InlineData(0x10)]
     [InlineData(0x5F)]
     public void GetSlot_Finds_No_Record_Before_The_First_One(int offset)

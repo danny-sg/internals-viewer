@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Query.Helpers;
 
@@ -6,9 +7,11 @@ namespace InternalsViewer.Query.FullTrace.Memory.BufferPool;
 
 public sealed partial class TraceBufferPool
 {
-    internal TraceBufferPool(TraceBufferPage[] pages)
+    internal TraceBufferPool(TraceBufferPage[] pages, Dictionary<(PageAddress Page, ushort DatabaseId), PageData>? layouts = null)
     {
         Pages = pages;
+
+        Layouts = layouts ?? [];
 
         Buffers = [.. pages.Where(p => p.Buffer != 0).OrderBy(p => p.Buffer).ThenBy(p => p.Position)];
 
@@ -21,13 +24,19 @@ public sealed partial class TraceBufferPool
 
     public long Bytes => (Pages.Length + Buffers.Length) * (long)Unsafe.SizeOf<TraceBufferPage>() + BufferStarts.Length * sizeof(ulong);
 
+    internal TracePosition? FirstPosition => Pages.Length == 0 ? null : Pages.Min(p => p.Position);
+
     private TraceBufferPage[] Pages { get; }
 
     private TraceBufferPage[] Buffers { get; }
 
     private ulong[] BufferStarts { get; }
 
+    private Dictionary<(PageAddress Page, ushort DatabaseId), PageData> Layouts { get; }
+
     public bool IsBuffer(ulong address) => Array.BinarySearch(BufferStarts, address) >= 0;
+
+    public PageData? GetLayout(PageAddress page, ushort databaseId) => Layouts.GetValueOrDefault((page, databaseId));
 
     public TraceBufferReference? GetReference(ulong address, TracePosition position)
         => GetFrameReference(address, position) ?? GetBufferReference(address, position);
@@ -75,6 +84,8 @@ public sealed partial class TraceBufferPool
         return new TraceBufferReference(page.Page, page.DatabaseId, (int)(address - frame));
     }
 
+    internal IEnumerable<ulong> GetFrames() => Pages.Select(p => p.Frame).Distinct();
+
     private TraceBufferReference? GetBufferReference(ulong address, TracePosition position)
     {
         var last = SortedSearch.FirstAfter(BufferStarts, address) - 1;
@@ -106,7 +117,12 @@ public sealed partial class TraceBufferPool
     {
         private List<TraceBufferPage> Pages { get; } = [];
 
+        private Dictionary<(PageAddress Page, ushort DatabaseId), PageData> Layouts { get; } = [];
+
         public void Add(TraceBufferPage page) => Pages.Add(page);
+
+        public void AddLayout(PageAddress page, ushort databaseId, ushort[] offsets)
+            => Layouts[(page, databaseId)] = new PageData { PageAddress = page, OffsetTable = offsets };
 
         public TraceBufferPool Build()
         {
@@ -127,7 +143,7 @@ public sealed partial class TraceBufferPool
                 pages.Add(page);
             }
 
-            return new TraceBufferPool([.. pages]);
+            return new TraceBufferPool([.. pages], Layouts);
         }
 
         private static bool IsSameResidency(TraceBufferPage previous, TraceBufferPage page)

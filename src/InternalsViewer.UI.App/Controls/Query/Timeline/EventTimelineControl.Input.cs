@@ -4,6 +4,7 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Plans.Operators;
+using InternalsViewer.UI.App.Models.Query.Timeline.Enums;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -12,51 +13,13 @@ namespace InternalsViewer.UI.App.Controls.Query.Timeline;
 
 public sealed partial class EventTimelineControl
 {
-    // Pointer tolerance (px) around the playhead triangle and range handles for hit-testing.
-    private const double HitArea = 7;
+    private const double DoubleClickDistance = 7;
 
     // Two presses within this window count as a double-click.
     private const long DoubleClickMs = 300;
 
     // Gap between the pointer and the tooltip, on whichever side the tooltip is shown.
     private const double TooltipGap = 12;
-
-    private enum DragTarget { None, Start, End, Playhead }
-
-    private bool IsOnTriangle(double x, double y)
-        => y <= MarkerStripHeight + HitArea && Math.Abs(x - PlayheadX) <= TriangleHalfWidth + HitArea;
-
-    private DragTarget HitTest(double x, double y)
-    {
-        if (y <= MarkerStripHeight + HitArea)
-        {
-            // The triangle sits on top and is wider, so a press anywhere on it grabs the playhead.
-            if (Math.Abs(x - PlayheadX) <= TriangleHalfWidth)
-            {
-                return DragTarget.Playhead;
-            }
-
-            // The from/to handles are only the short triangles at the bottom of the band, so a press
-            // higher in the strip (over the ruler) scrubs rather than grabbing a handle.
-            if (y >= MarkerStripHeight - HandleHeight - HitArea)
-            {
-                var dStart = Math.Abs(x - StartDrawX);
-                var dEnd = Math.Abs(x - EndDrawX);
-
-                if (dStart <= HitArea && dStart <= dEnd)
-                {
-                    return DragTarget.Start;
-                }
-
-                if (dEnd <= HitArea)
-                {
-                    return DragTarget.End;
-                }
-            }
-        }
-
-        return DragTarget.Playhead;
-    }
 
     private void OnPointerPressed(object sender, PointerRoutedEventArgs e)
     {
@@ -79,40 +42,12 @@ public sealed partial class EventTimelineControl
 
         var now = Environment.TickCount64;
 
-        var isDoubleClick = now - _lastPressTicks <= DoubleClickMs && Math.Abs(position.X - _lastPressX) <= HitArea;
+        var isDoubleClick = now - _lastPressTicks <= DoubleClickMs && Math.Abs(position.X - _lastPressX) <= DoubleClickDistance;
 
         _lastPressTicks = now;
         _lastPressX = position.X;
 
-        if (isDoubleClick && IsOnTriangle(position.X, position.Y))
-        {
-            // Reset: drop the selection so the handles re-attach to the playhead (= select all).
-            DeactivateSelection();
-
-            _skCanvas.Invalidate();
-
-            return;
-        }
-
-        // Scrubbing and the range handles live in the ruler strip only. A press over the rows
-        // selects the plan operator under it rather than moving the playhead.
-        if (position.Y > MarkerStripHeight)
-        {
-            SelectOperatorAt(position, isDoubleClick);
-            return;
-        }
-
-        _overlay.CapturePointer(e.Pointer);
-
-        _dragTarget = HitTest(position.X, position.Y);
-        _isDragging = true;
-
-        // Clicking the strip moves the playhead immediately so a plain click scrubs.
-        if (_dragTarget == DragTarget.Playhead)
-        {
-            MovePlayheadToX(position.X);
-            _skCanvas.Invalidate();
-        }
+        SelectOperatorAt(position, isDoubleClick);
     }
 
     private void SelectOperatorAt(Windows.Foundation.Point position, bool isDoubleClick)
@@ -224,55 +159,7 @@ public sealed partial class EventTimelineControl
         e.Handled = true;
     }
 
-    private void OnPointerMoved(object sender, PointerRoutedEventArgs e)
-    {
-        if (!_isDragging)
-        {
-            UpdateHoverTooltip(e.GetCurrentPoint(_overlay).Position);
-            return;
-        }
-
-        var x = Math.Clamp(e.GetCurrentPoint(_overlay).Position.X, BandLabelWidth, CanvasWidth);
-
-        var t = XToTime(x);
-
-        switch (_dragTarget)
-        {
-            case DragTarget.Start:
-                _selectionActivated = true;
-
-                _startTime = Math.Min(t, _endTime);
-
-                ConfinePlayheadToSelection();
-
-                EmitScope();
-
-                break;
-
-            case DragTarget.End:
-                _selectionActivated = true;
-
-                _endTime = Math.Max(t, _startTime);
-
-                ConfinePlayheadToSelection();
-
-                EmitScope();
-                break;
-
-            case DragTarget.Playhead:
-                MovePlayheadToX(x);
-                break;
-        }
-
-        _skCanvas.Invalidate();
-    }
-
-    private void OnPointerReleased(object sender, PointerRoutedEventArgs e)
-    {
-        _overlay.ReleasePointerCaptures();
-        _isDragging = false;
-        _dragTarget = DragTarget.None;
-    }
+    private void OnPointerMoved(object sender, PointerRoutedEventArgs e) => UpdateHoverTooltip(e.GetCurrentPoint(_overlay).Position);
 
     private void OnPointerExited(object sender, PointerRoutedEventArgs e) => HideTooltip();
 
@@ -447,15 +334,33 @@ public sealed partial class EventTimelineControl
         _skCanvas.Invalidate();
     }
 
-    private void MovePlayheadToX(double x)
+    private void MovePlayheadToTime(double time)
     {
         var (lo, hi) = ActiveRange;
 
-        _playheadTime = Math.Clamp(XToTime(x), lo, hi);
+        _playheadTime = Math.Clamp(time, lo, hi);
 
         SyncHandlesToPlayhead();
 
         FirePlayhead();
+    }
+
+    private void MoveSelectionHandle(TimelineRulerHandle handle, double time)
+    {
+        _selectionActivated = true;
+
+        if (handle == TimelineRulerHandle.Start)
+        {
+            _startTime = Math.Min(time, _endTime);
+        }
+        else
+        {
+            _endTime = Math.Max(time, _startTime);
+        }
+
+        ConfinePlayheadToSelection();
+
+        EmitScope();
     }
 
     /// <summary>

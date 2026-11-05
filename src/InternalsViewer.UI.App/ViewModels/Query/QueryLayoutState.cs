@@ -32,5 +32,7 @@ public sealed class QueryLayoutState
 
     public bool CaptureStackMemory { get; set; } = true;
 
+    public bool CapturePageReads { get; set; } = true;
+
     public List<LockModeCategory>? LockModeCategories { get; set; }
 }

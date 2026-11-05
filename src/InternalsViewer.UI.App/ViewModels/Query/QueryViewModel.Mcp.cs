@@ -176,7 +176,12 @@ public partial class QueryViewModel : IMcpContextSource, IQueryCommands
             "Capture Stack Memory",
             "Trace",
             q => q.QueryOptions.CaptureStackMemory,
-            (q, v) => q.QueryOptions.CaptureStackMemory = v)
+            (q, v) => q.QueryOptions.CaptureStackMemory = v),
+        new("capture-page-reads",
+            "Capture Page Reads",
+            "Trace",
+            q => q.QueryOptions.CapturePageReads,
+            (q, v) => q.QueryOptions.CapturePageReads = v)
     ];
 
     private Dictionary<HexWatch, int> McpWatchBlocks { get; } = [];

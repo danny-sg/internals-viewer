@@ -18,7 +18,12 @@ namespace InternalsViewer.Query.CallStack;
 /// </remarks>
 public sealed class CallStackTree
 {
-    public CallStackNode Root { get; } = new();
+    public CallStackTree()
+    {
+        Root = new CallStackNode { Tree = this };
+    }
+
+    public CallStackNode Root { get; }
 
     public bool ActivityFromTrace { get; set; }
 
@@ -456,23 +461,19 @@ public sealed class CallStackTree
 
     public int ActivityBusiest { get; private set; }
 
+    private Dictionary<CallStackNode, int[]> ActivityCache { get; } = new(ReferenceEqualityComparer.Instance);
+
+    private Dictionary<CallStackNode, int[]> BorrowedActivity { get; } = new(ReferenceEqualityComparer.Instance);
+
     public void ComputeActivity(long minUs, long maxUs, int buckets)
     {
         ActivityMinUs = minUs;
         ActivityMaxUs = maxUs;
         ActivityBuckets = buckets;
 
-        if (maxUs - minUs <= 0 && !ActivityFromTrace)
-        {
-            return;
-        }
+        ClearActivity();
 
-        foreach (var root in Root.Children.Values)
-        {
-            Accumulate(root, minUs, maxUs - minUs, buckets);
-        }
-
-        ActivityBusiest = Nodes().SelectMany(node => node.ActivityCounts).DefaultIfEmpty(0).Max();
+        ActivityBusiest = Root.Children.Values.SelectMany(n => GetActivityCounts(n)).DefaultIfEmpty(0).Max();
     }
 
     internal void RestoreActivity(long minUs, long maxUs, int buckets, int busiest)
@@ -490,21 +491,59 @@ public sealed class CallStackTree
     {
         foreach (var engineEvent in events)
         {
-            if (engineEvent.TimeUs < ActivityMinUs || engineEvent.TimeUs > ActivityMaxUs)
+            if (engineEvent.TimeUs < ActivityMinUs || engineEvent.TimeUs > ActivityMaxUs || ActivityBuckets == 0)
             {
                 continue;
             }
 
-            var bucket = BucketOf(engineEvent.TimeUs);
-
-            foreach (var node in leaf.Ancestors())
+            if (!BorrowedActivity.TryGetValue(leaf, out var borrowed))
             {
-                if (node.ActivityCounts.Length == ActivityBuckets)
-                {
-                    node.ActivityCounts[bucket]++;
-                }
+                borrowed = new int[ActivityBuckets];
+
+                BorrowedActivity[leaf] = borrowed;
+            }
+
+            borrowed[BucketOf(engineEvent.TimeUs)]++;
+        }
+
+        ClearActivity();
+    }
+
+    public int[] GetActivityCounts(CallStackNode node)
+    {
+        if (ActivityBuckets == 0 || (!ActivityFromTrace && ActivityMaxUs <= ActivityMinUs))
+        {
+            return [];
+        }
+
+        lock (ActivityCache)
+        {
+            if (ActivityCache.TryGetValue(node, out var cached))
+            {
+                return cached;
             }
         }
+
+        var counts = new int[ActivityBuckets];
+
+        if (node.MergedFrom is { Count: > 0 } originals)
+        {
+            foreach (var original in originals)
+            {
+                AddCounts(counts, GetActivityCounts(original));
+            }
+        }
+        else
+        {
+            AddSubtree(counts, node);
+        }
+
+        lock (ActivityCache)
+        {
+            ActivityCache[node] = counts;
+        }
+
+        return counts;
     }
 
     /// <summary>
@@ -522,40 +561,59 @@ public sealed class CallStackTree
         return Math.Clamp((int)((timeUs - ActivityMinUs) * ActivityBuckets / span), 0, ActivityBuckets - 1);
     }
 
-    private static int[] Accumulate(CallStackNode node, long minUs, long span, int buckets)
+    private void ClearActivity()
     {
-        var bucket = new int[buckets];
-
-        if (node.CallActivity.Length == buckets)
+        lock (ActivityCache)
         {
-            node.CallActivity.CopyTo(bucket, 0);
+            ActivityCache.Clear();
         }
+    }
 
-        foreach (var engineEvent in node.Events)
+    private void AddSubtree(int[] counts, CallStackNode node)
+    {
+        var span = ActivityMaxUs - ActivityMinUs;
+
+        var pending = new Stack<CallStackNode>();
+
+        pending.Push(node);
+
+        while (pending.TryPop(out var current))
         {
-            if (span <= 0 || engineEvent.TimeUs < minUs || engineEvent.TimeUs > minUs + span)
+            AddCounts(counts, current.CallActivity);
+
+            if (BorrowedActivity.TryGetValue(current, out var borrowed))
             {
-                continue;
+                AddCounts(counts, borrowed);
             }
 
-            var index = (int)((engineEvent.TimeUs - minUs) * buckets / span);
-
-            bucket[Math.Clamp(index, 0, buckets - 1)]++;
-        }
-
-        foreach (var child in node.Children.Values)
-        {
-            var childBucket = Accumulate(child, minUs, span, buckets);
-
-            for (var i = 0; i < buckets; i++)
+            foreach (var engineEvent in current.Events)
             {
-                bucket[i] += childBucket[i];
+                if (span <= 0 || engineEvent.TimeUs < ActivityMinUs || engineEvent.TimeUs > ActivityMaxUs)
+                {
+                    continue;
+                }
+
+                counts[Math.Clamp((int)((engineEvent.TimeUs - ActivityMinUs) * counts.Length / span), 0, counts.Length - 1)]++;
+            }
+
+            foreach (var child in current.Children.Values)
+            {
+                pending.Push(child);
             }
         }
+    }
 
-        node.ActivityCounts = bucket;
+    private static void AddCounts(int[] total, int[] counts)
+    {
+        if (counts.Length != total.Length)
+        {
+            return;
+        }
 
-        return bucket;
+        for (var index = 0; index < total.Length; index++)
+        {
+            total[index] += counts[index];
+        }
     }
 
     public IEnumerable<CallStackNode> Nodes()

@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Arguments;
+using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Address.Enums;
@@ -33,6 +34,8 @@ internal sealed class AddressMapHook(Dictionary<ulong, AddressMapFunction> opera
     private Dictionary<ulong, List<int>> OwnedEntries { get; } = [];
 
     private HashSet<int> ReadEntries { get; } = [];
+
+    private ListPool<int> Lists { get; } = new();
 
     public ChunkedList<AddressEntry> Build() => Entries;
 
@@ -94,6 +97,8 @@ internal sealed class AddressMapHook(Dictionary<ulong, AddressMapFunction> opera
         {
             Entries[index] = Entries[index] with { ToPosition = call.Position };
         }
+
+        Lists.Return(owned);
     }
 
     internal static Dictionary<ulong, AddressMapFunction> GetOperations(IEnumerable<AddressMapFunction> functions)
@@ -252,7 +257,7 @@ internal sealed class AddressMapHook(Dictionary<ulong, AddressMapFunction> opera
         {
             if (!OwnedEntries.TryGetValue(owner, out var owned))
             {
-                owned = [];
+                owned = Lists.Rent();
 
                 OwnedEntries[owner] = owned;
 

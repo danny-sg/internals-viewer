@@ -155,7 +155,9 @@ internal static class AllocationLayerBuilder
             IsAllocationLayer = true,
             IsVisible = true,
             Opacity = 0,
-            LayerType = LayerType.TopLeft
+            LayerType = LayerType.TopLeft,
+            IsExtrude = true,
+            ExtrudeHeight = 2
         };
 
         layers.Add(bufferPoolLayer);

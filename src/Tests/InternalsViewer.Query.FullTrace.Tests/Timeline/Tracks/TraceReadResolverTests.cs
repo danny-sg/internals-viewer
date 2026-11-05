@@ -98,17 +98,13 @@ public class TraceReadResolverTests
     }
 
     [Fact]
-    public void A_Read_Outside_Every_Operator_Call_Has_No_Operator()
-    {
-        var read = Assert.Single(Build().Reads.All, r => r.Span.From.Position == At(70));
-
-        Assert.Null(read.Operator);
-    }
+    public void A_Read_Outside_Every_Operator_Call_Is_Not_Kept()
+        => Assert.DoesNotContain(Build().Reads.All, r => r.Span.From.Position == At(70));
 
     [Fact]
     public void Buffer_Pool_Functions_Other_Than_Get_And_ReadAhead_Are_Not_Reads()
     {
-        Assert.Equal(3, Build().Reads.Count);
+        Assert.Equal(2, Build().Reads.Count);
     }
 
     [Fact]

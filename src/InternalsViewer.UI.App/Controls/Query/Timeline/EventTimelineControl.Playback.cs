@@ -22,6 +22,21 @@ public sealed partial class EventTimelineControl
     /// </summary>
     public event Action<long>? PlayheadTimeChanged;
 
+    public event Action<bool>? PlayStateChanged;
+
+    public bool IsPlaying => _isPlaying;
+
+    public double PlaySpeed
+    {
+        get => _playSpeed;
+        set
+        {
+            _transport.SetSpeed(value);
+
+            OnPlaySpeedChanged(value);
+        }
+    }
+
     private bool IsCurrentEventAtPlayhead => _currentEvent >= 0 && _eventStarts[_currentEvent] == _playheadTime;
 
     public void MovePlayheadTo(long timeUs)
@@ -42,7 +57,7 @@ public sealed partial class EventTimelineControl
         _skCanvas.Invalidate();
     }
 
-    private void OnPlayPauseRequested()
+    public void TogglePlay()
     {
         if (_isPlaying)
         {
@@ -54,7 +69,11 @@ public sealed partial class EventTimelineControl
         }
     }
 
-    private void OnStepRequested(bool forward) => StepToAdjacentEvent(forward);
+    public void Step(bool forward) => StepToAdjacentEvent(forward);
+
+    private void OnPlayPauseRequested() => TogglePlay();
+
+    private void OnStepRequested(bool forward) => Step(forward);
 
     private void OnPlaySpeedChanged(double speed)
     {
@@ -150,6 +169,8 @@ public sealed partial class EventTimelineControl
 
         _transport.SetPlaying(isPlaying: true);
 
+        PlayStateChanged?.Invoke(true);
+
         _playTimer.Start();
 
         _skCanvas.Invalidate();
@@ -171,6 +192,8 @@ public sealed partial class EventTimelineControl
         _isPlaying = false;
 
         _transport.SetPlaying(isPlaying: false);
+
+        PlayStateChanged?.Invoke(false);
     }
 
     private void OnPlayTimerTick(object? sender, object e)
@@ -247,6 +270,8 @@ public sealed partial class EventTimelineControl
                 PlayAudioForCurrentPosition(previousUs, playheadUs);
             }
         }
+
+        RulerChanged?.Invoke();
     }
 
     private void PlayAudioForCurrentPosition(long fromUs, long toUs)

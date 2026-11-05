@@ -1,5 +1,7 @@
+using System.Buffers.Binary;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Services.Pages.Parsers;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Hooks;
@@ -66,6 +68,10 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
 
     private Dictionary<ulong, (uint Thread, TracePosition Position)> Buffers { get; } = [];
 
+    private HashSet<(ulong Frame, PageAddress Page)> Layouts { get; } = [];
+
+    private static int MaximumSlotCount => (PageData.Size - PageHeader.Size) / sizeof(ushort);
+
     public TraceBufferPool Build()
     {
         foreach (var read in Reads)
@@ -73,6 +79,11 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
             if (FileDatabases.TryGetValue(read.FileControlBlock, out var databaseId))
             {
                 Pages.Add(new TraceBufferPage(read.Frame, read.Page, databaseId, read.Position));
+
+                if (read.Offsets is { } offsets && Layouts.Add((read.Frame, read.Page)))
+                {
+                    Pages.AddLayout(read.Page, databaseId, offsets);
+                }
             }
         }
 
@@ -117,7 +128,11 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
             return;
         }
 
-        var read = new PageRead(start.FileControlBlock, start.Frame, new PageAddress(fileId, (int)pageId), start.Position);
+        var read = new PageRead(start.FileControlBlock,
+                                start.Frame,
+                                new PageAddress(fileId, (int)pageId),
+                                start.Position,
+                                ReadLayout(start.Frame, replay));
 
         Reads.Add(read);
 
@@ -148,10 +163,46 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
 
         Pages.Add(new TraceBufferPage(frame, page, databaseId, start, buffer));
 
+        AddLayout(frame, page, databaseId, replay);
+
         if (!Buffers.TryGetValue(buffer, out var first) || start < first.Position)
         {
             Buffers[buffer] = (call.Thread, start);
         }
+    }
+
+    private void AddLayout(ulong frame, PageAddress page, ushort databaseId, ITraceReplay replay)
+    {
+        if (!Layouts.Contains((frame, page)) && ReadLayout(frame, replay) is { } offsets)
+        {
+            Layouts.Add((frame, page));
+
+            Pages.AddLayout(page, databaseId, offsets);
+        }
+    }
+
+    private static ushort[]? ReadLayout(ulong frame, ITraceReplay replay)
+    {
+        if (!replay.TryRead(frame + PageHeaderParser.SlotCountOffset, out ushort count) || count > MaximumSlotCount)
+        {
+            return null;
+        }
+
+        var bytes = new byte[count * sizeof(ushort)];
+
+        if (replay.Read(frame + PageData.Size - (ulong)bytes.Length, bytes) != bytes.Length)
+        {
+            return null;
+        }
+
+        var offsets = new ushort[count];
+
+        for (var slot = 0; slot < count; slot++)
+        {
+            offsets[slot] = BinaryPrimitives.ReadUInt16LittleEndian(bytes.AsSpan(bytes.Length - (slot + 1) * sizeof(ushort)));
+        }
+
+        return offsets;
     }
 
     private bool IsPostRead(in TraceHookCall call)
@@ -159,5 +210,9 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
 
     private readonly record struct CallStart(TracePosition Position, ulong FileControlBlock, ulong Frame, uint PageNumber);
 
-    private readonly record struct PageRead(ulong FileControlBlock, ulong Frame, PageAddress Page, TracePosition Position);
+    private readonly record struct PageRead(ulong FileControlBlock,
+                                            ulong Frame,
+                                            PageAddress Page,
+                                            TracePosition Position,
+                                            ushort[]? Offsets);
 }

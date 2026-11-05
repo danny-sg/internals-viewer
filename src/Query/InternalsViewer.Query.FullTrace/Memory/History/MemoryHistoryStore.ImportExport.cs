@@ -1,11 +1,14 @@
-using InternalsViewer.Query.FullTrace.Helpers;
+using InternalsViewer.Query.FullTrace.Export;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
+using InternalsViewer.Query.FullTrace.Timeline;
 
 namespace InternalsViewer.Query.FullTrace.Memory.History;
 
 public sealed partial class MemoryHistoryStore
 {
-    private const int FormatVersion = 10;
+    private const int FormatVersion = 11;
+
+    private const int InstancesVersion = 10;
 
     private const int ReadsVersion = 9;
 
@@ -54,28 +57,9 @@ public sealed partial class MemoryHistoryStore
             writer.Write(block.InstanceCount);
         }
 
-        writer.Write(Writes.Length);
+        ExportBinary.WriteArray(writer, Writes);
 
-        for (var index = 0; index < Writes.Length; index++)
-        {
-            var write = Writes[index];
-
-            WritePosition(writer, write.Position);
-
-            writer.Write(GetInstructions(index));
-
-            writer.Write(write.CallNodeIndex);
-
-            writer.Write(write.CallIndex);
-
-            writer.Write(write.Offset);
-
-            writer.Write((byte)write.Type);
-
-            writer.Write((int)write.Length);
-
-            writer.Write(GetBytes(write));
-        }
+        ExportBinary.WriteArray(writer, Data);
 
         writer.Write(Iterators.Count);
 
@@ -86,33 +70,9 @@ public sealed partial class MemoryHistoryStore
             writer.Write(iterator);
         }
 
-        writer.Write(ReadStarts.Length);
+        ExportBinary.WriteArray(writer, ReadStarts);
 
-        foreach (var start in ReadStarts)
-        {
-            writer.Write(start);
-        }
-
-        writer.Write(Reads.Length);
-
-        for (var index = 0; index < Reads.Length; index++)
-        {
-            var read = Reads[index];
-
-            WritePosition(writer, read.Position);
-
-            writer.Write(GetReadPoint(index).Instructions);
-
-            writer.Write(read.CallNodeIndex);
-
-            writer.Write(read.CallIndex);
-
-            writer.Write(read.Offset);
-
-            writer.Write(read.Length);
-
-            writer.Write(read.Count);
-        }
+        ExportBinary.WriteArray(writer, Reads);
 
         writer.Write(Instances.Length);
 
@@ -128,7 +88,7 @@ public sealed partial class MemoryHistoryStore
         }
     }
 
-    internal static MemoryHistoryStore Read(BinaryReader reader)
+    internal static MemoryHistoryStore Read(BinaryReader reader, TraceTimeline? timeline)
     {
         var version = ReadVersion(reader);
 
@@ -155,15 +115,35 @@ public sealed partial class MemoryHistoryStore
                                                    FirstWrite: reader.ReadInt32(),
                                                    WriteCount: reader.ReadInt32())
             {
-                IsStack = version >= FormatVersion && reader.ReadBoolean(),
-                FirstInstance = version >= FormatVersion ? reader.ReadInt32() : 0,
-                InstanceCount = version >= FormatVersion ? reader.ReadInt32() : 0
+                IsStack = version >= InstancesVersion && reader.ReadBoolean(),
+                FirstInstance = version >= InstancesVersion ? reader.ReadInt32() : 0,
+                InstanceCount = version >= InstancesVersion ? reader.ReadInt32() : 0
             };
         }
 
-        var writes = new MemoryHistoryWrite[reader.ReadInt32()];
+        if (version < FormatVersion)
+        {
+            return ReadCalls(reader, version, blocks, new SpanResolver(timeline));
+        }
 
-        uint[]? highs = null;
+        var writes = ExportBinary.ReadArray<MemoryHistoryWriteEntry>(reader);
+
+        var data = ExportBinary.ReadArray<byte>(reader);
+
+        var iterators = ReadIterators(reader);
+
+        var readStarts = ExportBinary.ReadArray<int>(reader);
+
+        var reads = ExportBinary.ReadArray<MemoryHistoryReadEntry>(reader);
+
+        return new MemoryHistoryStore(blocks, writes, data, iterators, timeline, reads, readStarts, ReadInstances(reader));
+    }
+
+    private static int ReadVersion(BinaryReader reader) => -reader.ReadInt32();
+
+    private static MemoryHistoryStore ReadCalls(BinaryReader reader, int version, MemoryHistoryBlock[] blocks, SpanResolver spans)
+    {
+        var writes = new MemoryHistoryWriteEntry[reader.ReadInt32()];
 
         var data = new List<byte>();
 
@@ -171,11 +151,9 @@ public sealed partial class MemoryHistoryStore
         {
             var position = ReadPosition(reader);
 
-            var instructions = reader.ReadUInt64();
+            reader.ReadUInt64();
 
-            var callNodeIndex = reader.ReadInt32();
-
-            var callIndex = reader.ReadInt32();
+            var spanId = spans.Get(reader.ReadInt32(), reader.ReadInt32(), position);
 
             var offset = reader.ReadInt32();
 
@@ -183,25 +161,22 @@ public sealed partial class MemoryHistoryStore
 
             var bytes = reader.ReadBytes(reader.ReadInt32());
 
-            if (instructions > uint.MaxValue)
-            {
-                highs ??= new uint[writes.Length];
-
-                highs[index] = (uint)(instructions >> 32);
-            }
-
-            writes[index] = new MemoryHistoryWrite(position,
-                                                   (uint)instructions,
-                                                   callNodeIndex,
-                                                   callIndex,
-                                                   offset,
-                                                   data.Count,
-                                                   (ushort)bytes.Length,
-                                                   type);
+            writes[index] = new MemoryHistoryWriteEntry(position, spanId, offset, (ushort)bytes.Length, type);
 
             data.AddRange(bytes);
         }
 
+        var iterators = ReadIterators(reader);
+
+        var (reads, readStarts) = version >= ReadsVersion ? ReadCallReads(reader, spans) : ([], []);
+
+        var instances = version >= InstancesVersion ? ReadInstances(reader) : [];
+
+        return new MemoryHistoryStore(blocks, writes, [.. data], iterators, spans.Timeline, reads, readStarts, instances);
+    }
+
+    private static Dictionary<int, ulong> ReadIterators(BinaryReader reader)
+    {
         var iterators = new Dictionary<int, ulong>();
 
         for (var count = reader.ReadInt32(); count > 0; count--)
@@ -209,24 +184,10 @@ public sealed partial class MemoryHistoryStore
             iterators[reader.ReadInt32()] = reader.ReadUInt64();
         }
 
-        var (reads, readStarts, readHighs) = version >= ReadsVersion ? ReadReads(reader) : ([], [], HighWordRunArray.Empty);
-
-        var instances = version >= FormatVersion ? ReadInstances(reader) : [];
-
-        return new MemoryHistoryStore(blocks,
-                                      writes,
-                                      highs is null ? HighWordRunArray.Empty : HighWordRunArray.Build(highs),
-                                      [.. data],
-                                      iterators,
-                                      reads,
-                                      readStarts,
-                                      readHighs,
-                                      instances);
+        return iterators;
     }
 
-    private static int ReadVersion(BinaryReader reader) => -reader.ReadInt32();
-
-    private static (MemoryHistoryRead[] Reads, int[] Starts, HighWordRunArray Highs) ReadReads(BinaryReader reader)
+    private static (MemoryHistoryReadEntry[] Reads, int[] Starts) ReadCallReads(BinaryReader reader, SpanResolver spans)
     {
         var starts = new int[reader.ReadInt32()];
 
@@ -235,33 +196,22 @@ public sealed partial class MemoryHistoryStore
             starts[index] = reader.ReadInt32();
         }
 
-        var reads = new MemoryHistoryRead[reader.ReadInt32()];
-
-        uint[]? highs = null;
+        var reads = new MemoryHistoryReadEntry[reader.ReadInt32()];
 
         for (var index = 0; index < reads.Length; index++)
         {
             var position = ReadPosition(reader);
 
-            var instructions = reader.ReadUInt64();
+            reader.ReadUInt64();
 
-            if (instructions > uint.MaxValue)
-            {
-                highs ??= new uint[reads.Length];
-
-                highs[index] = (uint)(instructions >> 32);
-            }
-
-            reads[index] = new MemoryHistoryRead(position,
-                                                 (uint)instructions,
-                                                 CallNodeIndex: reader.ReadInt32(),
-                                                 CallIndex: reader.ReadInt32(),
-                                                 Offset: reader.ReadInt32(),
-                                                 Length: reader.ReadInt32(),
-                                                 Count: reader.ReadInt32());
+            reads[index] = new MemoryHistoryReadEntry(position,
+                                                      SpanId: spans.Get(reader.ReadInt32(), reader.ReadInt32(), position),
+                                                      Offset: reader.ReadInt32(),
+                                                      Length: reader.ReadInt32(),
+                                                      Count: reader.ReadInt32());
         }
 
-        return (reads, starts, highs is null ? HighWordRunArray.Empty : HighWordRunArray.Build(highs));
+        return (reads, starts);
     }
 
     private static MemoryHistoryInstance[] ReadInstances(BinaryReader reader)
@@ -287,4 +237,34 @@ public sealed partial class MemoryHistoryStore
     }
 
     private static TracePosition ReadPosition(BinaryReader reader) => new(reader.ReadUInt64(), reader.ReadUInt64());
+
+    private sealed class SpanResolver(TraceTimeline? timeline)
+    {
+        public TraceTimeline? Timeline => timeline;
+
+        private Dictionary<(int CallNodeIndex, int CallIndex), int> Calls { get; } = [];
+
+        public int Get(int callNodeIndex, int callIndex, TracePosition position)
+        {
+            if (timeline is null)
+            {
+                return -1;
+            }
+
+            if (Calls.TryGetValue((callNodeIndex, callIndex), out var spanId)
+                && timeline.IsSpanAt(spanId, callNodeIndex, callIndex, position))
+            {
+                return spanId;
+            }
+
+            spanId = timeline.FindSpanId(callNodeIndex, callIndex, position);
+
+            if (spanId >= 0)
+            {
+                Calls[(callNodeIndex, callIndex)] = spanId;
+            }
+
+            return spanId;
+        }
+    }
 }

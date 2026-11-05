@@ -19,7 +19,7 @@ public static class PageHeaderParser
     internal const byte LevelOffset = 3;
     internal const byte FixedLengthOffset = 14;
     internal const byte NextPageOffset = 16;
-    internal const byte SlotCountOffset = 22;
+    public const byte SlotCountOffset = 22;
 
     private const byte HeaderVersionOffset = 0;
     private const byte TypeFlagBitsOffset = 2;

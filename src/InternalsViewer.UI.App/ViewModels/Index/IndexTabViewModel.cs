@@ -14,6 +14,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Drawing;
 using System.Linq;
 using System.Threading;
@@ -169,9 +170,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
     private CancellationTokenSource? PageLoadCancellation { get; set; }
 
-    private PageData? SlotPage { get; set; }
-
-    private (PageAddress Page, int Offset)? RowRequest { get; set; }
+    private PageRowResolver RowResolver => field ??= CreateRowResolver();
 
     [RelayCommand]
     public async Task Refresh()
@@ -280,18 +279,11 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
 
         SelectedPageAddress = pageAddress;
 
-        if (pageAddress is { } page && offset is { } rowOffset)
-        {
-            _ = SelectRowAsync(page, rowOffset);
-        }
-        else
-        {
-            RowRequest = null;
+        RowResolver.MoveTo(pageAddress, offset, CancellationToken);
 
-            if (isPageChanged)
-            {
-                SelectedSlot = null;
-            }
+        if (offset is null && isPageChanged)
+        {
+            SelectedSlot = null;
         }
     }
 
@@ -320,31 +312,20 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
         }
     }
 
-    private async Task SelectRowAsync(PageAddress pageAddress, int offset)
+    private PageRowResolver CreateRowResolver()
     {
-        RowRequest = (pageAddress, offset);
+        var resolver = new PageRowResolver(PageService, Database, Logger);
 
-        try
+        resolver.PropertyChanged += OnRowResolverChanged;
+
+        return resolver;
+    }
+
+    private void OnRowResolverChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(PageRowResolver.Row))
         {
-            var page = SlotPage?.PageAddress == pageAddress
-                ? SlotPage
-                : await PageService.GetPage(Database, pageAddress, CancellationToken, false);
-
-            if (RowRequest != (pageAddress, offset))
-            {
-                return;
-            }
-
-            SlotPage = page;
-
-            SelectedSlot = page.GetSlot(offset);
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to find the slot at offset {Offset} on page {PageAddress}", offset, pageAddress);
+            SelectedSlot = RowResolver.Row?.SlotId;
         }
     }
 
@@ -447,7 +428,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
             }
 
             Records = records;
-            SlotPage = page ?? SlotPage;
+            RowResolver.Remember(page);
             SelectedLevel = page?.PageHeader.Level;
             SelectedPageType = page switch
             {

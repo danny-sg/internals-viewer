@@ -98,6 +98,8 @@ public sealed partial class QueryViewModel
         TickTracks = [TraceTickTracks.GetRows(trace.RowReturnMarks),
                       TraceTickTracks.Evaluations(trace.Evaluations),
                       TraceTickTracks.Reads(trace.Reads, trace.CallStore),
+                      TraceTickTracks.RowAccesses(trace.RowAccesses, trace.PageAccesses, trace.BufferPool),
+                      TraceTickTracks.Seeks(trace.Seeks, trace.PageAccesses),
                       .. custom];
 
         OperatorTracks.Refresh();

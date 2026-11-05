@@ -41,6 +41,7 @@ All top level views should have a command bar with a consistent layout:
 # Checks
 
 - Are colours/styles/fonts/font weights/padding/margins consistent across all views?
-- Are fonts/
+- Are borders consistent?
+- Are tooltips/messages written in the same voice?
 
 # Performance

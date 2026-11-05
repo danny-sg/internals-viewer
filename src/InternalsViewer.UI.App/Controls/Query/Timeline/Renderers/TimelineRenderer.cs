@@ -11,28 +11,15 @@ namespace InternalsViewer.UI.App.Controls.Query.Timeline.Renderers;
 /// </remarks>
 internal sealed class TimelineRenderer(RenderResource resources) : IDisposable
 {
-    private const float RulerStripHeight = 18f;
-
     // The Read row shows three stacked labels only when it can fit them with at least this gap and vertical padding
     private const float MinLabelGap = 1f;
     private const float VerticalLabelPad = 1f;
-
-    // Roughly one ruler tick per this many pixels of drawable width.
-    private const float PixelsPerTick = 80f;
 
     private readonly SKPaint _bandBackground = new() { Style = SKPaintStyle.Fill };
 
     private readonly SKPaint _separator = new() { Color = new SKColor(60, 60, 60), StrokeWidth = 1 };
 
     private readonly SKPaint _trackDivider = new() { Color = new SKColor(64, 64, 64), StrokeWidth = 1 };
-
-    private readonly SKPaint _tick = new()
-    {
-        Color = new SKColor(110, 110, 110),
-        StrokeWidth = 1,
-        Style = SKPaintStyle.Stroke,
-        IsAntialias = false,
-    };
 
     private float SubBandLabelsHeight
     {
@@ -88,63 +75,11 @@ internal sealed class TimelineRenderer(RenderResource resources) : IDisposable
         canvas.DrawRect(0, top, frame.CanvasWidth, height, _bandBackground);
     }
 
-    /// <summary>
-    /// Draws the time ruler
-    /// </summary>
-    /// <remarks>
-    /// Draws a tick and time label at each "nice" interval across the visible window
-    /// </remarks>>
-    public void DrawRuler(SKCanvas canvas, TimelineFrame frame)
-    {
-        var leftMs = frame.XToTime(frame.BandLabelWidth) - frame.MinTime;
-
-        var rightMs = frame.XToTime(frame.CanvasWidth) - frame.MinTime;
-
-        var rangeMs = rightMs - leftMs;
-
-        if (rangeMs <= 0)
-        {
-            return;
-        }
-
-        var drawWidth = frame.CanvasWidth - frame.BandLabelWidth;
-
-        var targetTicks = Math.Max(2, drawWidth / PixelsPerTick);
-
-        var interval = TimelineFormat.NiceInterval(rangeMs / targetTicks);
-
-        if (interval <= 0)
-        {
-            return;
-        }
-
-        Span<char> textBuffer = stackalloc char[12];
-
-        for (var tickMs = Math.Ceiling(leftMs / interval) * interval; tickMs <= rightMs; tickMs += interval)
-        {
-            var x = frame.TimeToX(frame.MinTime + tickMs);
-
-            canvas.DrawLine(x, RulerStripHeight - 4, x, RulerStripHeight, _tick);
-
-            textBuffer.Clear();
-
-            var length = TimelineFormat.FormatTimeIntoSpan(tickMs, textBuffer);
-
-            using var blob = SKTextBlob.Create(textBuffer[..length], resources.LabelFont, SKPoint.Empty);
-
-            if (blob is not null)
-            {
-                canvas.DrawText(blob, x + 2, RulerStripHeight - 6, resources.LabelPaint);
-            }
-        }
-    }
-
     public void Dispose()
     {
         _bandBackground.Dispose();
         _separator.Dispose();
         _trackDivider.Dispose();
-        _tick.Dispose();
     }
 
     private void DrawTrackDividers(SKCanvas canvas, TimelineFrame frame, int band, float bandTop, float bandHeight)

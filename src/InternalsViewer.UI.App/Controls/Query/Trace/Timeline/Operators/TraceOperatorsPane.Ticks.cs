@@ -243,12 +243,12 @@ internal sealed partial class TraceOperatorsPane
 
         for (var index = first; index < ticks.Count && ticks.GetStart(Axis, index) <= Host.ViewEnd; index++)
         {
-            var tick = ticks.Get(index);
-
-            if (tick.Value != value)
+            if (ticks.GetValue(index) != value)
             {
                 continue;
             }
+
+            var tick = ticks.Get(index);
 
             var (left, right) = GetTickEdges(tick.Span, width, scale);
 
@@ -491,7 +491,7 @@ internal sealed partial class TraceOperatorsPane
         }
     }
 
-    private (int First, int End)? GetVisibleTicks(TraceMarkIndex<TraceTick> ticks, double scale)
+    private (int First, int End)? GetVisibleTicks(TraceTickIndex ticks, double scale)
     {
         var first = ticks.GetFirstEndingFrom(Axis, Host.ViewStart);
 
@@ -538,7 +538,7 @@ internal sealed partial class TraceOperatorsPane
     }
 
     private SKColor GetTickColour(TraceTickTrack tickTrack, TraceTick? tick, int row, int track)
-        => (tick is null ? null : tickTrack.GetColour(tick)) ?? GetOperatorColour(Rows[row].Operator, Rows[row].Lifetimes[track]);
+        => (tick is { } found ? tickTrack.GetColour(found) : null) ?? GetOperatorColour(Rows[row].Operator, Rows[row].Lifetimes[track]);
 
     private (float CallX, float ReturnX) GetCallLinkPositions(TraceTick tick, float width, double scale)
     {
@@ -583,7 +583,7 @@ internal sealed partial class TraceOperatorsPane
         return track >= 0 ? (row, track) : null;
     }
 
-    private readonly record struct TickStrip(TraceTickTrack Track, TraceMarkIndex<TraceTick> Ticks, float Top, float Height);
+    private readonly record struct TickStrip(TraceTickTrack Track, TraceTickIndex Ticks, float Top, float Height);
 
     private readonly record struct HoveredStrip(TraceTickHit Hit, TickStrip Strip, SKRect Bar);
 }

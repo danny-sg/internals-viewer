@@ -31,14 +31,14 @@ internal sealed class TimelineTransport : StackPanel, IDisposable
 
     private int _playSpeedIndex = 1;
 
-    public TimelineTransport()
+    public TimelineTransport(bool isPlaybackOnly = false)
     {
         Orientation = Orientation.Horizontal;
         HorizontalAlignment = HorizontalAlignment.Left;
 
         _playButton = new Button
         {
-            Content = new FontIcon { Glyph = PlayGlyph, FontSize = 14 },
+            Content = new FontIcon { Glyph = PlayGlyph, FontSize = 12 },
             Width = 36,
             Height = ButtonHeight,
             Padding = new Thickness(0),
@@ -117,8 +117,12 @@ internal sealed class TimelineTransport : StackPanel, IDisposable
         Children.Add(_playButton);
         Children.Add(_stepForwardButton);
         Children.Add(_playSpeedButton);
-        Children.Add(_threadsButton);
-        Children.Add(audioSlot);
+
+        if (!isPlaybackOnly)
+        {
+            Children.Add(_threadsButton);
+            Children.Add(audioSlot);
+        }
     }
 
     public event Action? PlayPauseRequested;
@@ -131,6 +135,20 @@ internal sealed class TimelineTransport : StackPanel, IDisposable
     public event Action<bool>? ThreadsToggled;
 
     public event Action<bool>? AudioToggled;
+
+    public bool IsPlaybackVisible
+    {
+        get => _playButton.Visibility == Visibility.Visible;
+        set
+        {
+            var visibility = value ? Visibility.Visible : Visibility.Collapsed;
+
+            _stepBackButton.Visibility = visibility;
+            _playButton.Visibility = visibility;
+            _stepForwardButton.Visibility = visibility;
+            _playSpeedButton.Visibility = visibility;
+        }
+    }
 
     /// <summary>
     /// Shows a spinner over the audio toggle while the audio player builds its voices
@@ -158,6 +176,23 @@ internal sealed class TimelineTransport : StackPanel, IDisposable
         if (_playButton.Content is FontIcon icon)
         {
             icon.Glyph = isPlaying ? PauseGlyph : PlayGlyph;
+        }
+    }
+
+    public void SetSpeed(double speed)
+    {
+        var index = Array.IndexOf(PlaySpeeds, speed);
+
+        if (index < 0)
+        {
+            return;
+        }
+
+        _playSpeedIndex = index;
+
+        if (_playSpeedButton.Content is TextBlock text)
+        {
+            text.Text = FormatSpeed(speed);
         }
     }
 

@@ -77,5 +77,5 @@ public class MemoryChangeRunsTests
                                             int length,
                                             int callNodeIndex,
                                             MemoryHistoryChangeType type = MemoryHistoryChangeType.Changed)
-        => new(TracePosition.Unknown, 0, callNodeIndex, 0, offset, 0, (ushort)length, type);
+        => new(0, TracePosition.Unknown, callNodeIndex, 0, offset, (ushort)length, type);
 }

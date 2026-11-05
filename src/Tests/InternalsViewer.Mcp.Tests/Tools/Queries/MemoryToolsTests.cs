@@ -179,8 +179,8 @@ public class MemoryToolsTests
         Assert.Contains("block 0 0xA size 16: 2 writes by 1 functions", text);
         Assert.Contains("writers: sqlmin!CQScanRowsetNew::GetRow x2", text);
         Assert.Contains("most written fields (offset/length): +0x0/8 x1, +0x8/4 x1", text);
-        Assert.Contains("16:1 +0x0 Initialised 0807060504030201 (= 0x102030405060708) by sqlmin!CQScanRowsetNew::GetRow call 1", text);
-        Assert.Contains("17:0 +0x8 Changed 2a000000 (= 0x2A) by sqlmin!CQScanRowsetNew::GetRow call 1", text);
+        Assert.Contains("16:1 +0x0 Initialised 0807060504030201 (= 0x102030405060708) by sqlmin!CQScanRowsetNew::GetRow call -1", text);
+        Assert.Contains("17:0 +0x8 Changed 2a000000 (= 0x2A) by sqlmin!CQScanRowsetNew::GetRow call -1", text);
     }
 
     [Fact]
@@ -215,17 +215,19 @@ public class MemoryToolsTests
 
     private static QueryExportContent WithMemoryHistory(QueryExportContent run)
     {
+        var timeline = run.ExtraOf<TraceResult>()!.Timeline;
+
         MemoryHistoryBlock[] blocks = [new MemoryHistoryBlock(Scan, 0xA, 16, true, false, 7, 1, At(0x16), At(0x1F), 22, 31, 0, 2)];
 
-        MemoryHistoryWrite[] writes =
+        MemoryHistoryWriteEntry[] writes =
         [
-            new MemoryHistoryWrite(At(0x16, 1), 23, 1, 1, 0, 0, 8, MemoryHistoryChangeType.Initialised),
-            new MemoryHistoryWrite(At(0x17), 24, 1, 1, 8, 8, 4, MemoryHistoryChangeType.Changed)
+            new(At(0x16, 1), timeline.GetInnermostSpanId(7, At(0x16, 1)), 0, 8, MemoryHistoryChangeType.Initialised),
+            new(At(0x17), timeline.GetInnermostSpanId(7, At(0x17)), 8, 4, MemoryHistoryChangeType.Changed)
         ];
 
         byte[] data = [0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, 0x2A, 0x00, 0x00, 0x00];
 
-        var history = new MemoryHistoryStore(blocks, writes, HighWordRunArray.Empty, data, new Dictionary<int, ulong> { [1] = Scan });
+        var history = new MemoryHistoryStore(blocks, writes, data, new Dictionary<int, ulong> { [1] = Scan }, timeline);
 
         return WithTrace(run, t => t with { MemoryHistory = history });
     }

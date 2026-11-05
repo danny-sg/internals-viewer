@@ -72,7 +72,7 @@ public static class MemoryHistoryPointerReader
         return pointers;
     }
 
-    public static IEnumerable<(TracePosition Position, ulong Value)> GetWrittenPointers(MemoryHistoryStore store, int block)
+    public static IEnumerable<(MemoryHistoryWrite Write, ulong Value)> GetWrittenPointers(MemoryHistoryStore store, int block)
     {
         var item = store.Blocks[block];
 
@@ -96,7 +96,7 @@ public static class MemoryHistoryPointerReader
             {
                 if (!known.AsSpan(offset, PointerSize).Contains(false))
                 {
-                    yield return (write.Position, BinaryPrimitives.ReadUInt64LittleEndian(data.AsSpan(offset)));
+                    yield return (write, BinaryPrimitives.ReadUInt64LittleEndian(data.AsSpan(offset)));
                 }
             }
         }

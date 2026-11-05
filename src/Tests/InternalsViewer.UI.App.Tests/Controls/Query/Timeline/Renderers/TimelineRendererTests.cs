@@ -10,41 +10,6 @@ namespace InternalsViewer.UI.App.Tests.Controls.Query.Timeline.Renderers;
 [Trait("Area", "Timeline")]
 public class TimelineRendererTests
 {
-    private static readonly SKColor TickColour = new(110, 110, 110);
-
-    [Fact]
-    public void Draws_A_Ruler_Tick_At_Each_Nice_Interval()
-    {
-        using var resources = new RenderResource();
-
-        using var renderer = new TimelineRenderer(resources);
-
-        using var bandSet = new TimelineBandSet();
-
-        var frame = Frame(bandSet, canvasWidth: 400, bandLabelWidth: 80);
-
-        using var bitmap = new SKBitmap(400, 50);
-
-        using var canvas = new SKCanvas(bitmap);
-
-        canvas.Clear(SKColors.Black);
-
-        renderer.DrawRuler(canvas, frame);
-
-        var tickColumns = Enumerable.Range(0, 400)
-                                    .Where(x => bitmap.GetPixel(x, 15) == TickColour)
-                                    .ToList();
-
-        Assert.Equal(4, tickColumns.Count);
-
-        int[] expected = [80, 180, 280, 380];
-
-        foreach (var (column, expectedColumn) in tickColumns.Zip(expected))
-        {
-            Assert.InRange(column, expectedColumn - 1, expectedColumn + 1);
-        }
-    }
-
     [Fact]
     public void Draws_Alternating_Band_Backgrounds()
     {
@@ -228,8 +193,6 @@ public class TimelineRendererTests
             ShowThreads = false,
             BandColour = new SKColor(20, 20, 20),
             AlternateBandColour = new SKColor(45, 45, 45),
-            MinTime = 0,
-            XToTime = x => x - bandLabelWidth,
             MinSubBandHeight = minSubBandHeight,
         };
     }

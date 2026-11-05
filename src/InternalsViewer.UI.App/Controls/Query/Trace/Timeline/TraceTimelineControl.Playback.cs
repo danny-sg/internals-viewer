@@ -1,4 +1,5 @@
 using System;
+using InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Enums;
 
 namespace InternalsViewer.UI.App.Controls.Query.Trace.Timeline;
 
@@ -13,6 +14,19 @@ public sealed partial class TraceTimelineControl
     public event Action<bool>? PlayStateChanged;
 
     public bool IsPlaying => _playTimer?.IsEnabled == true;
+
+    public double PlaySpeed { get; set; } = 1;
+
+    public PlayheadStepMode StepMode { get; set; } = PlayheadStepMode.Call;
+
+    public void Step(bool forward)
+    {
+        StepPlayhead(forward, StepMode);
+
+        ReportPlayhead();
+
+        RulerChanged?.Invoke();
+    }
 
     public void TogglePlay()
     {
@@ -75,7 +89,9 @@ public sealed partial class TraceTimelineControl
 
         var range = _viewEnd - _viewStart;
 
-        var next = IsTrimmed && playhead >= TrimTo ? TrimFrom : Math.Min(playhead + range * PlayTickMs / SweepDurationMs, TrimTo);
+        var step = range * PlayTickMs / SweepDurationMs * PlaySpeed;
+
+        var next = IsTrimmed && playhead >= TrimTo ? TrimFrom : Math.Min(playhead + step, TrimTo);
 
         _playhead = next;
 
@@ -87,6 +103,10 @@ public sealed partial class TraceTimelineControl
         }
 
         _canvas.Invalidate();
+
+        ReportPlayhead();
+
+        RulerChanged?.Invoke();
 
         if (next >= TrimTo && !IsTrimmed)
         {

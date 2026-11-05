@@ -39,6 +39,8 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
 
     public TraceBufferPool BufferPool { get; init; } = TraceBufferPool.Empty;
 
+    public TracePageReadList PageReads { get; init; } = TracePageReadList.Empty;
+
     public TracePageAccessList PageAccesses { get; init; } = TracePageAccessList.Empty;
 
     public MemoryHistoryStore MemoryHistory { get; init; } = MemoryHistoryStore.Empty;
@@ -50,6 +52,10 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
     public TraceTickSeries Reads { get; init; } = TraceTickSeries.Empty;
 
     public TraceTickSeries Evaluations { get; init; } = TraceTickSeries.Empty;
+
+    public TraceTickSeries RowAccesses { get; init; } = TraceTickSeries.Empty;
+
+    public TraceTickSeries Seeks { get; init; } = TraceTickSeries.Empty;
 
     public IReadOnlyList<CallStackNode> QueryRoots => Roots ??= QueryExecutionCropper.GetRoots(CallStack);
 
@@ -74,6 +80,15 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
     private Dictionary<TraceTimeline, Dictionary<CallStackNode, int[]>> ActivityByWindow { get; } =
         new(ReferenceEqualityComparer.Instance);
 
+    internal TraceResult WithPageAccesses()
+    {
+        var accesses = TracePageAccessList.Build(CallStore, MemoryHistory, BufferPool, PageReads, Timeline);
+
+        var rowAccesses = TraceRowAccessReader.Build(Timeline, accesses, Lifetimes, EnclosingCalls);
+
+        return this with { PageAccesses = accesses, RowAccesses = rowAccesses };
+    }
+
     internal IEnumerable<(string Component, long Items, long? Bytes)> GetComponentSizes()
     {
         yield return ("Timeline Spans", Timeline.SpanCount, Timeline.Bytes);
@@ -85,12 +100,15 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
         yield return ("Memory History Writes", MemoryHistory.WriteCount, MemoryHistory.WriteBytes);
         yield return ("Memory History Reads", MemoryHistory.ReadCount, MemoryHistory.ReadBytes);
         yield return ("Buffer Pool Pages", BufferPool.Count, BufferPool.Bytes);
+        yield return ("Page Reads", PageReads.Count, PageReads.Bytes);
         yield return ("Page Accesses", PageAccesses.Count, PageAccesses.Bytes);
         yield return ("Call Tree Nodes", CallStack.Nodes().LongCount(), null);
         yield return ("Operator Lifetimes", Lifetimes.Count, null);
-        yield return ("Read Ticks", Reads.Count, null);
-        yield return ("Evaluation Ticks", Evaluations.Count, null);
-        yield return ("Row Return Marks", RowReturnMarks.Count, null);
+        yield return ("Read Ticks", Reads.Count, Reads.Bytes);
+        yield return ("Evaluation Ticks", Evaluations.Count, Evaluations.Bytes);
+        yield return ("Row Access Ticks", RowAccesses.Count, RowAccesses.Bytes);
+        yield return ("Seek Ticks", Seeks.Count, Seeks.Bytes);
+        yield return ("Row Return Marks", RowReturnMarks.Count, RowReturnMarks.Ticks.Bytes);
         yield return ("HoBt Accesses", HoBtAccess.Count, null);
     }
 

@@ -200,8 +200,6 @@ public sealed class QueryExportReader
 
             node.CallActivity = line.CallActivity ?? [];
 
-            node.ActivityCounts = line.ActivityCounts ?? [];
-
             node.AllocatedBytes = line.AllocatedBytes;
 
             node.Allocations = line.Allocations;

@@ -103,6 +103,10 @@ public sealed partial class AllocationLayer : ObservableObject
 
     public LayerType LayerType { get; set; } = LayerType.Fill;
 
+    public bool IsExtrude { get; set; }
+
+    public int ExtrudeHeight { get; set; }
+
     public void SetPageSpans(IReadOnlyList<PageSpan> spans)
     {
         PageSpans = spans;

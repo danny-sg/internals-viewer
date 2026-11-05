@@ -238,9 +238,7 @@ public sealed partial class TraceTimelineControl
 
     private bool ShowsOperators => ShowOperators && _operators.HasRows;
 
-    private float OperatorsTop => PlayheadStripTop + PlayheadStripHeight;
-
-    private float PlayheadStripTop => RulerTop + RulerHeight;
+    private float OperatorsTop => ShowMemory ? MemoryBarHeight : 0;
 
     private bool ShowsFlameChart => ShowFlameChart || (!ShowsOperators && !ShowsMemory);
 
@@ -307,7 +305,7 @@ public sealed partial class TraceTimelineControl
                 return ChartHeight + (ShowsSplitter ? 0 : SplitterHeight);
             }
 
-            var wanted = _operatorsHeight ?? ChartHeight * OperatorsShare;
+            var wanted = _operatorsHeight ?? Math.Max(ChartHeight * OperatorsShare, _operators.PreferredHeight);
 
             return Math.Clamp(wanted, MinimumOperatorsHeight, OperatorsRoom);
         }
@@ -507,12 +505,14 @@ public sealed partial class TraceTimelineControl
 
         AddPaneItems(flyout);
 
-        flyout.Items.Add(new MenuFlyoutSeparator());
+        var tracks = new MenuFlyoutSubItem { Text = "Tracks" };
 
         foreach (var item in CreateTickTrackItems())
         {
-            flyout.Items.Add(item);
+            tracks.Items.Add(item);
         }
+
+        flyout.Items.Add(tracks);
 
         flyout.Items.Add(new MenuFlyoutSeparator());
 

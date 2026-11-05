@@ -119,6 +119,10 @@ public sealed partial class DatabaseTabViewModel(ILogger<DatabaseTabViewModel> l
 
     public long PagePlayhead => 0;
 
+    public RowIdentifier? SelectedRowIdentifier => null;
+
+    public int SelectedRowSlotCount => 0;
+
     public bool IsServerConnection => Database.Connection is ServerConnectionType;
 
     public List<AllocationLayer> GridAllocationLayers

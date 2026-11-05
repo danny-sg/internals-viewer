@@ -9,13 +9,7 @@ namespace InternalsViewer.UI.App.Controls.Query.Timeline;
 
 public sealed partial class EventTimelineControl
 {
-    private const float RulerStripHeight = 18f;
-    private const float HandleStripHeight = 16f;
-    private const float MarkerStripHeight = RulerStripHeight + HandleStripHeight;
     private const float MinSubBandHeight = 20f;
-    private const float HandleHeight = 8f;
-    private const float HandleGap = 13f;
-    private const float TriangleHalfWidth = 9f;
     private const float MinBandLabelWidth = 36f;
     private const float BandLabelGutterPadding = 6f;
     private const float BandPadding = 2f;
@@ -30,6 +24,8 @@ public sealed partial class EventTimelineControl
 
     private void OnPaintSurface(object? sender, SKPaintSurfaceEventArgs e)
     {
+        RulerChanged?.Invoke();
+
         var canvas = e.Surface.Canvas;
 
         canvas.Clear(SKColors.Transparent);
@@ -68,10 +64,6 @@ public sealed partial class EventTimelineControl
 
         var canvas = recorder.BeginRecording(new SKRect(0, 0, w, h));
 
-        var bandsTop = MarkerStripHeight;
-
-        var bandsHeight = h - bandsTop;
-
         var bands = _bands.Active;
 
         var bandCount = bands.Count;
@@ -79,13 +71,13 @@ public sealed partial class EventTimelineControl
         var heldBand = HeldBand(bands);
 
         var bandHeights = TimelineBandLayout.Resolve(bands,
-                                                     bandsHeight,
+                                                     h,
                                                      heldBand,
                                                      heldBand >= 0 ? bands[heldBand].MinInnerHeight + BandPadding * 2 : 0f);
 
         var bandTops = new float[bandCount];
 
-        var totalTop = bandsTop;
+        var totalTop = 0f;
 
         for (var r = 0; r < bandCount; r++)
         {
@@ -99,7 +91,7 @@ public sealed partial class EventTimelineControl
 
         if (bandCount == 0)
         {
-            _timelineRenderer.DrawEmpty(canvas, frame, bandsTop, bandsHeight);
+            _timelineRenderer.DrawEmpty(canvas, frame, 0, h);
         }
 
         _hitRegions.Clear();
@@ -123,8 +115,6 @@ public sealed partial class EventTimelineControl
         _lockRenderer.Draw(canvas, frame);
 
         _operatorRenderer.Draw(canvas, frame, operatorBars);
-
-        _timelineRenderer.DrawRuler(canvas, frame);
 
         canvas.Restore();
 
@@ -152,8 +142,6 @@ public sealed partial class EventTimelineControl
         ShowThreads = _showThreads,
         BandColour = _bandColour,
         AlternateBandColour = _alternateBandColour,
-        MinTime = _minTime,
-        XToTime = XToTime,
         MinSubBandHeight = MinSubBandHeight,
     };
 
@@ -173,10 +161,7 @@ public sealed partial class EventTimelineControl
         var overlay = new TimelineOverlay(SelectionActive,
                                           Math.Min(TimeToX(_startTime), TimeToX(_endTime)),
                                           Math.Max(TimeToX(_startTime), TimeToX(_endTime)),
-                                          StartDrawX,
-                                          EndDrawX,
                                           PlayheadX,
-                                          EffectiveToMs(_playheadTime),
                                           BandLabelWidth);
 
         _overlayRenderer.Draw(canvas, w, h, overlay);

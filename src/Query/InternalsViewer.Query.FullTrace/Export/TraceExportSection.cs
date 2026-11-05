@@ -35,6 +35,8 @@ internal sealed class TraceExportSection : IQueryExportSection
 
     internal const string BufferPoolEntry = "fulltrace/bufferpool.bin";
 
+    internal const string PageReadsEntry = "fulltrace/pagereads.bin";
+
     public bool CanExport(QueryExportContent content) => content.ExtraOf<TraceResult>() is not null;
 
     public void Collect(QueryExportCollector collector, QueryExportContent content)
@@ -74,6 +76,8 @@ internal sealed class TraceExportSection : IQueryExportSection
         writer.WriteBinary(MemoryHistoryEntry, CompressionLevel.Fastest, fullTrace.MemoryHistory.Write);
 
         writer.WriteBinary(BufferPoolEntry, CompressionLevel.Fastest, fullTrace.BufferPool.Write);
+
+        writer.WriteBinary(PageReadsEntry, CompressionLevel.Fastest, fullTrace.PageReads.Write);
     }
 
     public IRunExtra? Read(QueryExportReader reader)
@@ -121,11 +125,14 @@ internal sealed class TraceExportSection : IQueryExportSection
         var result = builder.Build(outputStructures) with
         {
             MemoryHistory = reader.HasEntry(MemoryHistoryEntry) && reader.ReadBinary(MemoryHistoryEntry, MemoryHistoryStore.IsSupported)
-                ? reader.ReadBinary(MemoryHistoryEntry, MemoryHistoryStore.Read)
-                : MemoryHistoryStore.Empty
+                ? reader.ReadBinary(MemoryHistoryEntry, r => MemoryHistoryStore.Read(r, timeline))
+                : MemoryHistoryStore.Empty,
+            PageReads = reader.HasEntry(PageReadsEntry) && reader.ReadBinary(PageReadsEntry, TracePageReadList.IsSupported)
+                ? reader.ReadBinary(PageReadsEntry, TracePageReadList.Read)
+                : TracePageReadList.Empty
         };
 
-        result = result with { PageAccesses = TracePageAccessList.Build(callStore, result.MemoryHistory, result.BufferPool) };
+        result = result.WithPageAccesses();
 
         callStore.ReleaseColumns();
 

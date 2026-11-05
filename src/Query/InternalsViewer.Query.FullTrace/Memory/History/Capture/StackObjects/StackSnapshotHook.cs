@@ -1,8 +1,11 @@
+using System.Buffers;
 using InternalsViewer.Query.FullTrace.Memory.Address;
 using InternalsViewer.Query.FullTrace.Arguments;
+using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Address.Enums;
+using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Memory.History.Capture.StackObjects;
 
@@ -94,11 +97,13 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
 
     private Dictionary<ulong, List<int>> PendingSnapshots { get; } = [];
 
-    private List<(byte[] Data, List<StackSnapshotRun> Runs)> Chunks { get; } = [];
+    private List<(byte[] Data, ChunkedList<StackSnapshotRun> Runs)> Chunks { get; } = [];
 
     private byte[] Data { get; set; } = new byte[ChunkSize];
 
-    private List<StackSnapshotRun> Runs { get; set; } = [];
+    private ChunkedList<StackSnapshotRun> Runs { get; set; } = [];
+
+    private ListPool<int> Lists { get; } = new();
 
     private int DataLength { get; set; }
 
@@ -140,6 +145,8 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
             {
                 Snapshot(index, position, replay);
             }
+
+            Lists.Return(pending);
         }
 
         if (!Operations.TryGetValue(call.FunctionAddress, out var function) || !IsWatched(function))
@@ -156,7 +163,13 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
         }
     }
 
-    public void OnAbandoned(in TraceHookCall call) => PendingSnapshots.Remove(call.Id);
+    public void OnAbandoned(in TraceHookCall call)
+    {
+        if (PendingSnapshots.Remove(call.Id, out var pending))
+        {
+            Lists.Return(pending);
+        }
+    }
 
     public void OnFrameEnded(in TraceHookCall call)
     {
@@ -171,12 +184,12 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
 
             target.EndPosition = call.Position;
 
-            target.Image = null;
-
-            target.Known = null;
+            target.ReleaseImage();
 
             Index.Remove((call.Id, target.Address));
         }
+
+        Lists.Return(owned);
     }
 
     public StackSnapshotResult Build()
@@ -208,19 +221,31 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
 
         foreach (var (data, runs) in Chunks)
         {
-            var clipped = new List<StackSnapshotRun>(runs.Count);
+            var count = 0;
 
-            foreach (var run in runs)
+            for (var index = 0; index < runs.Count; index++)
             {
-                var length = Math.Min(run.Length, Candidates[run.Object].Size - run.Offset);
-
-                if (length > 0)
+                if (GetClippedLength(runs[index]) > 0)
                 {
-                    clipped.Add(run with { Object = kept[run.Object], Length = (ushort)length });
+                    count++;
                 }
             }
 
-            chunks.Add(new DataChunk<StackSnapshotRun>([.. clipped], data));
+            var clipped = new StackSnapshotRun[count];
+
+            var next = 0;
+
+            for (var index = 0; index < runs.Count; index++)
+            {
+                var run = runs[index];
+
+                if (GetClippedLength(run) is > 0 and var length)
+                {
+                    clipped[next++] = run with { Object = kept[run.Object], Length = (ushort)length };
+                }
+            }
+
+            chunks.Add(new DataChunk<StackSnapshotRun>(clipped, data));
         }
 
         return new StackSnapshotResult([.. objects], [.. chunks], SnapshotCount);
@@ -233,6 +258,8 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
 
     private static TracePosition GetPositionBefore(TracePosition position)
         => position.Steps > 0 ? new TracePosition(position.Sequence, position.Steps - 1) : position;
+
+    private int GetClippedLength(StackSnapshotRun run) => Math.Min(run.Length, Candidates[run.Object].Size - run.Offset);
 
     private void Track(ulong address, in TraceHookCall call, ITraceReplay replay, bool isReturned)
     {
@@ -263,7 +290,7 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
 
         if (!PendingSnapshots.TryGetValue(call.Id, out var pending))
         {
-            pending = [];
+            pending = Lists.Rent();
 
             PendingSnapshots[call.Id] = pending;
         }
@@ -287,7 +314,7 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
 
         if (!FrameCandidates.TryGetValue(frame.Id, out var owned))
         {
-            owned = [];
+            owned = Lists.Rent();
 
             FrameCandidates[frame.Id] = owned;
 
@@ -328,9 +355,7 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
 
         SnapshotCount++;
 
-        target.Image ??= new byte[target.Size];
-
-        target.Known ??= new bool[target.Size];
+        target.RentImage();
 
         Span<byte> buffer = stackalloc byte[MaximumSize];
 
@@ -404,7 +429,7 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
             return;
         }
 
-        Chunks.Add((Data[..DataLength], Runs));
+        Chunks.Add((DataLength * 2 >= Data.Length ? Data : Data[..DataLength], Runs));
 
         Data = new byte[ChunkSize];
 
@@ -427,10 +452,40 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
 
         public TracePosition EndPosition { get; set; } = TracePosition.Unknown;
 
-        public byte[]? Image { get; set; }
+        public byte[]? Image { get; private set; }
 
-        public bool[]? Known { get; set; }
+        public bool[]? Known { get; private set; }
 
         public bool IsUnchanged(int offset, byte value) => Known![offset] && Image![offset] == value;
+
+        public void RentImage()
+        {
+            if (Image is not null)
+            {
+                return;
+            }
+
+            Image = ArrayPool<byte>.Shared.Rent(Size);
+
+            Known = ArrayPool<bool>.Shared.Rent(Size);
+
+            Known.AsSpan(0, Size).Clear();
+        }
+
+        public void ReleaseImage()
+        {
+            if (Image is null)
+            {
+                return;
+            }
+
+            ArrayPool<byte>.Shared.Return(Image);
+
+            ArrayPool<bool>.Shared.Return(Known!);
+
+            Image = null;
+
+            Known = null;
+        }
     }
 }

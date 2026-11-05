@@ -103,5 +103,5 @@ public class MemoryChangeNavigationTests
                                             int offset,
                                             int length,
                                             MemoryHistoryChangeType type = MemoryHistoryChangeType.Changed)
-        => new(At(sequence), 0, 0, 0, offset, 0, (ushort)length, type);
+        => new(0, At(sequence), 0, 0, offset, (ushort)length, type);
 }

@@ -98,6 +98,12 @@ public sealed partial class QueryOptionsViewModel : ObservableObject
         set => SetOption(_options.CaptureStackMemory, value, v => _options.CaptureStackMemory = v);
     }
 
+    public bool CapturePageReads
+    {
+        get => _options.CapturePageReads;
+        set => SetOption(_options.CapturePageReads, value, v => _options.CapturePageReads = v);
+    }
+
     /// <summary>Whether any lock category is selected, and therefore locks are shown</summary>
     public bool ShowLocks => _options.IncludeLock;
 
@@ -154,7 +160,8 @@ public sealed partial class QueryOptionsViewModel : ObservableObject
                         IEnumerable<LockModeCategory> lockModeCategories,
                         bool captureHeapReads,
                         bool captureHeapWrites,
-                        bool captureStackMemory)
+                        bool captureStackMemory,
+                        bool capturePageReads)
     {
         _options.CropToQuery = cropToQuery;
         _options.IncludeSystemObjects = includeSystemObjects;
@@ -167,6 +174,7 @@ public sealed partial class QueryOptionsViewModel : ObservableObject
         _options.CaptureHeapReads = captureHeapReads;
         _options.CaptureHeapWrites = captureHeapWrites;
         _options.CaptureStackMemory = captureStackMemory;
+        _options.CapturePageReads = capturePageReads;
 
         RaiseAll();
     }

@@ -36,7 +36,7 @@ public sealed partial class DockHost : UserControl
         set => SetValue(FixedContentProperty, value);
     }
 
-    private readonly Dictionary<SplitNode, (Grid Grid, bool Horizontal)> grids = new();
+    private readonly Dictionary<SplitNode, (Grid Grid, bool Horizontal)> _grids = new();
 
     public DockHost()
     {
@@ -49,10 +49,9 @@ public sealed partial class DockHost : UserControl
 
     private FixedPaneView? FixedPane { get; set; }
 
-    /// <summary>Writes the live splitter star sizes back into the model (e.g. before persisting the layout)</summary>
     public void CaptureSizes()
     {
-        foreach (var (node, (grid, horizontal)) in grids)
+        foreach (var (node, (grid, horizontal)) in _grids)
         {
             if (horizontal && grid.ColumnDefinitions.Count == 3)
             {
@@ -94,7 +93,7 @@ public sealed partial class DockHost : UserControl
     {
         CaptureSizes();
 
-        grids.Clear();
+        _grids.Clear();
 
         FixedPane?.Release();
 
@@ -181,7 +180,7 @@ public sealed partial class DockHost : UserControl
         grid.Children.Add(splitter);
         grid.Children.Add(second);
 
-        grids[split] = (grid, horizontal);
+        _grids[split] = (grid, horizontal);
 
         return grid;
     }

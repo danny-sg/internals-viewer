@@ -5,6 +5,7 @@ using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.Internals.Columnstore.Services;
 using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml.Controls;
 
@@ -46,9 +47,13 @@ public sealed partial class QueryTimelineTabView : UserControl, IDocumentCommand
             page => ColumnstoreStructureText.Describe(cache.GetPageReads(viewModel.Database, page));
 
         viewModel.VisibleTimeRangeSource = EventTimeline.GetVisibleTimeRange;
+
+        viewModel.EventRuler = EventTimeline;
     }
 
     public QueryViewModel? ViewModel => DataContext as QueryViewModel;
+
+    private SettingsViewModel Settings { get; } = App.GetService<SettingsViewModel>();
 
     public FrameworkElement CreateCommands() => EventTimeline.CreateTransport();
 
@@ -61,6 +66,11 @@ public sealed partial class QueryTimelineTabView : UserControl, IDocumentCommand
         if (ViewModel is { } viewModel && viewModel.VisibleTimeRangeSource == EventTimeline.GetVisibleTimeRange)
         {
             viewModel.VisibleTimeRangeSource = null;
+        }
+
+        if (ViewModel is { } owner && ReferenceEquals(owner.EventRuler, EventTimeline))
+        {
+            owner.EventRuler = null;
         }
 
         EventTimeline.ScopeChanged -= OnScopeChanged;
@@ -77,6 +87,8 @@ public sealed partial class QueryTimelineTabView : UserControl, IDocumentCommand
             _subscribed.PlayheadMoveRequested -= OnPlayheadMoveRequested;
             _subscribed = null;
         }
+
+        Ruler.Dispose();
 
         EventTimeline.Dispose();
     }
