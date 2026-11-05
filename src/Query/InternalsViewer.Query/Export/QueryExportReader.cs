@@ -79,9 +79,11 @@ public sealed class QueryExportReader
 
         var references = new ExportReferences(allocationUnitOf);
 
+        var functions = new CallstackFunctionLookup();
+
         foreach (var frame in ReadLines<ExportedFrame>(zip, QueryExport.FramesEntry, ExportPackage.Plain))
         {
-            references.Frames.Register(frame.Id, FrameOf(frame));
+            references.Frames.Register(frame.Id, FrameOf(frame, functions));
         }
 
         var nodeEvents = new List<(CallStackNode Node, int[] Events)>();
@@ -249,18 +251,25 @@ public sealed class QueryExportReader
         return plans;
     }
 
-    private static CallstackFrame FrameOf(ExportedFrame frame) => new()
+    private static CallstackFrame FrameOf(ExportedFrame exported, CallstackFunctionLookup functions)
     {
-        Module = frame.Module,
-        Address = frame.Address,
-        Pdb = frame.Pdb,
-        Guid = frame.Guid,
-        Age = frame.Age,
-        Rva = frame.Rva,
-        InstanceAddress = frame.Instance,
-        Signature = frame.Signature,
-        Resolved = frame.Symbol is { } symbol ? ResolvedCallstackFrameParser.Parse(frame.SymbolModule ?? frame.Module, symbol) : null
-    };
+        var frame = new CallstackFrame
+        {
+            Module = CallstackModule.Get(exported.Module, exported.Pdb, exported.Guid, exported.Age),
+            Address = exported.Address,
+            Rva = exported.Rva,
+            InstanceAddress = exported.Instance
+        };
+
+        if (exported.Symbol is { } symbol)
+        {
+            functions.Resolve(frame, symbol);
+
+            frame.Function!.Signature ??= exported.Signature;
+        }
+
+        return frame;
+    }
 
     private static LocatorSet? LocatorsOf(ExportedLocators? exported)
     {

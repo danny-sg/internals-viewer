@@ -40,36 +40,36 @@ public sealed class CallStackNode
     /// <summary>
     /// Whether this frame is infrastructure (Extended Events, Tracing, scheduling…) rather than query code
     /// </summary>
-    public bool IsInfrastructure => Frame?.Resolved?.SymbolMetadata?.IsInfrastructure ?? false;
+    public bool IsInfrastructure => Frame?.Function?.SymbolMetadata?.IsInfrastructure ?? false;
 
-    public bool IsExtendedEvents => Frame?.Resolved?.SymbolCategory == SymbolCategory.XEventInfrastructure;
+    public bool IsExtendedEvents => Frame?.Function?.SymbolCategory == SymbolCategory.XEventInfrastructure;
 
-    public bool IsTracing => Frame?.Resolved?.SymbolCategory == SymbolCategory.Tracing;
+    public bool IsTracing => Frame?.Function?.SymbolCategory == SymbolCategory.Tracing;
 
-    public bool IsInstrumentation => Frame?.Resolved?.SymbolCategory is { } category && category.IsInstrumentation(HasOperator);
+    public bool IsInstrumentation => Frame?.Function?.SymbolCategory is { } category && category.IsInstrumentation(HasOperator);
 
     /// <summary>
     /// The plan operator this frame implements if it is a query iterator, otherwise null
     /// </summary>
-    public string? Operator => Frame?.Resolved?.Iterator;
+    public string? Operator => Frame?.Function?.Iterator;
 
     public bool HasOperator => Operator is not null;
 
     /// <summary>
     /// Whether an operator's execution begins here, so the tree can be cut into a segment per operator
     /// </summary>
-    public bool IsOperatorBoundary => Frame?.Resolved?.PlanOperator.Count > 0 && !IsConstructor;
+    public bool IsOperatorBoundary => Frame?.Function?.PlanOperator.Count > 0 && !IsConstructor;
 
     /// <summary>
     /// Whether a unit of storage work begins here, so an individual event's own stack can be cut from this frame
     /// </summary>
-    public bool IsAccessBarrier => Frame?.Resolved?.IsAccessBarrier ?? false;
+    public bool IsAccessBarrier => Frame?.Function?.IsAccessBarrier ?? false;
 
     /// <summary>
     /// Whether this frame is where the named showplan physical operator (e.g. Clustered Index Seek) begins executing
     /// </summary>
     public bool IsEntryFrameFor(string physicalOperator)
-        => !IsConstructor && (Frame?.Resolved?.PlanOperator.Any(pattern => pattern.Matches(physicalOperator)) ?? false);
+        => !IsConstructor && (Frame?.Function?.PlanOperator.Any(pattern => pattern.Matches(physicalOperator)) ?? false);
 
     /// <summary>
     /// Whether this frame is the iterator's constructor rather than the iterator running
@@ -82,7 +82,7 @@ public sealed class CallStackNode
     ///
     /// Detected by shape rather than a rule per class: a constructor's method name is its class name.
     /// </remarks>
-    public bool IsConstructor => Frame?.Resolved is { ClassName: { Length: > 0 } className, MethodName: { } methodName }
+    public bool IsConstructor => Frame?.Function is { ClassName: { Length: > 0 } className, MethodName: { } methodName }
                                  && string.Equals(className, methodName, StringComparison.Ordinal);
 
     /// <summary>
@@ -178,19 +178,19 @@ public sealed class CallStackNode
     /// <summary>
     /// The frame's symbol category name (e.g. AccessMethod, Buffer), falling back to the module
     /// </summary>
-    public string Category => Frame?.Resolved?.SymbolMetadata?.Name ?? Frame?.Module ?? string.Empty;
+    public string Category => Frame?.Function?.SymbolMetadata?.Name ?? Frame?.Module.Name ?? string.Empty;
 
     /// <summary>
     /// The resolved <c>Class::Method</c> of this frame
     /// </summary>
-    public string Symbol => Frame?.Resolved is { } resolved
+    public string Symbol => Frame?.Function is { } resolved
         ? resolved.ClassName is { Length: > 0 } className ? $"{className}::{resolved.MethodName}" : resolved.MethodName
         : string.Empty;
 
     /// <summary>
     /// Hex colour of the symbol category, for the node's tag
     /// </summary>
-    public string CategoryColour => Frame?.Resolved?.SymbolMetadata?.ForegroundColor ?? "#606060";
+    public string CategoryColour => Frame?.Function?.SymbolMetadata?.ForegroundColor ?? "#606060";
 
     /// <summary>
     /// The frames from this node up to (excluding) the root, innermost first — the call path of an event linked here

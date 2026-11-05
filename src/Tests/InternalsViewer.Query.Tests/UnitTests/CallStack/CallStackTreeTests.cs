@@ -13,15 +13,15 @@ public class CallStackTreeTests(ITestOutputHelper output)
     {
         var tree = new CallStackTree();
 
-        var first = tree.AddCall(tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x10 }, 1),
-                                 new CallstackFrame { Module = "sqlmin", Rva = 0x30 },
+        var first = tree.AddCall(tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqlmin"), Rva = 0x10 }, 1),
+                                 new CallstackFrame { Module = new("sqlmin"), Rva = 0x30 },
                                  2);
 
-        var second = tree.AddCall(tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x20 }, 1),
-                                  new CallstackFrame { Module = "sqlmin", Rva = 0x30 },
+        var second = tree.AddCall(tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqlmin"), Rva = 0x20 }, 1),
+                                  new CallstackFrame { Module = new("sqlmin"), Rva = 0x30 },
                                   3);
 
-        var callee = tree.AddCall(second, new CallstackFrame { Module = "sqlmin", Rva = 0x40 }, 1);
+        var callee = tree.AddCall(second, new CallstackFrame { Module = new("sqlmin"), Rva = 0x40 }, 1);
 
         first.AllocatedBytes = 100;
         first.Allocations = 1;
@@ -545,16 +545,16 @@ public class CallStackTreeTests(ITestOutputHelper output)
 
     private static CallstackFrame Frame(string name, uint rva) => new()
     {
-        Module = "sqllang",
+        Module = new("sqllang"),
         Rva = rva,
-        Resolved = new ResolvedCallstackFrame { ClassName = name, MethodName = "m" },
+        Function = new CallstackFunction { ClassName = name, MethodName = "m" },
     };
 
     private static CallstackFrame XeFrame(string name, uint rva) => new()
     {
-        Module = "sqldk",
+        Module = new("sqldk"),
         Rva = rva,
-        Resolved = new ResolvedCallstackFrame
+        Function = new CallstackFunction
         {
             ClassName = name,
             MethodName = "m",

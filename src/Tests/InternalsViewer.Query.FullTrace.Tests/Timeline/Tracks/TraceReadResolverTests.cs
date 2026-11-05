@@ -213,11 +213,11 @@ public class TraceReadResolverTests
 
     private static CallstackFrame Frame(ulong address, ulong instance, string className, string method) => new()
     {
-        Module = "sqlmin",
+        Module = new("sqlmin"),
         Rva = 0x10,
         Address = address,
         InstanceAddress = instance,
-        Resolved = new ResolvedCallstackFrame
+        Function = new CallstackFunction
         {
             ClassName = className,
             MethodName = method,

@@ -6,8 +6,8 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using InternalsViewer.Internals.Engine.Loading;
 using InternalsViewer.Query.CallStack.Categories;
-using InternalsViewer.Query.CallStack.Dia;
 using InternalsViewer.Query.CallStack.Symbols;
+using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Output;
@@ -127,7 +127,7 @@ internal static class ReplayFunctionResolver
     {
         var start = Stopwatch.GetTimestamp();
 
-        List<ReplayFunctionTable> heap = [.. modules.Where(IsHeap).Select(GetHeapFunctions)];
+        List<(ReplayFunctionTable, ulong)> heap = [.. modules.Where(IsHeap).Select(m => (GetHeapFunctions(m), m.StartAddress))];
 
         var identities = modules.Where(IsReplayed).ToList();
 
@@ -140,9 +140,15 @@ internal static class ReplayFunctionResolver
 
         await EnsureResolvedAsync(identities, symbolsPath, logger, progress, cancellationToken);
 
-        var found = identities.Select(m => Cache.TryGetValue(GetKey(m), out var relative) ? relative.Rebase(m.StartAddress) : null)
-                              .OfType<ReplayFunctionTable>()
-                              .ToList();
+        List<(ReplayFunctionTable, ulong)> found = [];
+
+        foreach (var module in identities)
+        {
+            if (Cache.TryGetValue(GetKey(module), out var relative))
+            {
+                found.Add((relative, module.StartAddress));
+            }
+        }
 
         logger?.LogInformation("Replay functions for {Modules} resolved in {Elapsed} ({Cached} of {Count} from the cache)",
                                string.Join(", ", identities.Select(m => m.Name)),
@@ -156,16 +162,16 @@ internal static class ReplayFunctionResolver
     private static ReplayFunctionTable GetHeapFunctions(TraceModule module)
     {
         AllocationFunction[] memory = [.. ModuleExportReader.Read(module.Path)
-                                                        .Select(e => AllocationFunction.ClassifyExport(e.Rva, e.Name))
-                                                        .OfType<AllocationFunction>()];
+                                                            .Select(e => AllocationFunction.ClassifyExport(e.Rva, e.Name))
+                                                            .OfType<AllocationFunction>()];
 
-        return (ReplayFunctionTable.Empty with { AllocationFunctions = memory }).Rebase(module.StartAddress);
+        return ReplayFunctionTable.Empty with { AllocationFunctions = memory };
     }
 
-    private static (string Pdb, string Guid, int Age) GetKey(TraceModule module) => (module.Pdb, module.Guid, module.Age);
+    private static (string Pdb, string Guid, int Age) GetKey(TraceModule module) => (module.Identity.Pdb, module.Identity.Guid, module.Identity.Age);
 
     private static bool IsReplayed(TraceModule module)
-        => module.Pdb.Length > 0 && Modules.Contains(module.Name, StringComparer.OrdinalIgnoreCase);
+        => module.Identity.Pdb.Length > 0 && Modules.Contains(module.Name, StringComparer.OrdinalIgnoreCase);
 
     private static bool IsHeap(TraceModule module)
         => HeapModules.Contains(Path.GetFileNameWithoutExtension(module.Path), StringComparer.OrdinalIgnoreCase);
@@ -201,7 +207,7 @@ internal static class ReplayFunctionResolver
     {
         try
         {
-            await SymbolDownloader.DownloadSymbols([module.Frame(module.StartAddress, 0)], symbolsPath, progress);
+            await SymbolDownloader.DownloadSymbols([module.Identity], symbolsPath, progress);
 
             ResolveModule(module, symbolsPath, logger);
         }
@@ -217,7 +223,7 @@ internal static class ReplayFunctionResolver
 
         if (GetFunctions(module, symbolsPath) is not { } relative)
         {
-            logger?.LogWarning("Replay functions for {Module} not resolved, {Pdb} was not found", module.Name, module.Pdb);
+            logger?.LogWarning("Replay functions for {Module} not resolved, {Pdb} was not found", module.Name, module.Identity.Pdb);
 
             return;
         }
@@ -228,7 +234,7 @@ internal static class ReplayFunctionResolver
                                + "{Iterators} iterator methods, {Locators} locator reads, "
                                + "{Memory} memory functions, {Members} member functions, {Vtables} vtables",
                                module.Name,
-                               module.Pdb,
+                               module.Identity.Pdb,
                                Stopwatch.GetElapsedTime(start),
                                relative.ExcludedFunctions.Length,
                                relative.InstanceMethods.Length,
@@ -240,14 +246,10 @@ internal static class ReplayFunctionResolver
 
     private static ReplayFunctionTable? GetFunctions(TraceModule module, string symbolsPath)
     {
-        var pdbPath = CallstackResolver.GetPdbPath(symbolsPath, module.Frame(module.StartAddress, 0));
-
-        if (!File.Exists(pdbPath))
+        if (SymbolTableCache.Get(symbolsPath, module.Identity) is not { } table)
         {
             return null;
         }
-
-        using var resolver = new DiaResolver(pdbPath);
 
         var mappings = CategoryMappings.Default;
 
@@ -261,43 +263,64 @@ internal static class ReplayFunctionResolver
 
         var vtables = new VtableResolver.Collector();
 
-        var functions = ModuleSymbolReader.Load(resolver,
-                                           (rva, name) =>
-                                           {
-                                               planNodes.VisitFunction(rva, name);
+        var functions = new Dictionary<uint, FunctionClassification>();
 
-                                               output.VisitFunction(rva, name);
+        var symbols = table.Read();
 
-                                               bufferPool.VisitFunction(rva, name);
+        while (symbols.MoveNext())
+        {
+            var rva = symbols.Rva;
 
-                                               return ClassifyFunction(mappings, moduleName, rva, name);
-                                           },
-                                           vtables.VisitData);
+            var name = symbols.Name;
+
+            if (!symbols.IsFunction)
+            {
+                vtables.VisitData(rva, name);
+
+                continue;
+            }
+
+            planNodes.VisitFunction(rva, name);
+
+            output.VisitFunction(rva, name);
+
+            bufferPool.VisitFunction(rva, name);
+
+            FunctionClassification.Add(functions, rva, ClassifyFunction(mappings, moduleName, rva, name));
+        }
 
         var iterates = string.Equals(moduleName, IteratorModule, StringComparison.OrdinalIgnoreCase);
 
         InstanceMethod[] instanceMethods = iterates
-            ? [.. PlanObjectInstanceMethodCollector.FindInstanceMethods(functions.Where(f => f.Value.IsInstanceMethod).Select(f => f.Key), resolver)]
+            ? [.. PlanObjectInstanceMethodCollector.FindInstanceMethods(functions.Where(f => f.Value.IsInstanceMethod).Select(f => f.Key), table)]
             : [];
 
         var reads = new LocatorReadResolver.Collector();
 
         var addressMapFunctions = new AddressMapFunctionResolver.Collector();
 
-        var sites = new AllocationSiteResolver.Collector(functions.Where(f => f.Value.AllocationFunction is { IsAllocation: true })
-                                                                  .Select(f => f.Key)
-                                                                  .ToHashSet());
+        var sites = new AllocationSiteResolver.Collector();
 
-        ModuleSymbolReader.VisitFunctions(resolver,
-                                     functions.Where(f => !f.Value.IsExcluded).Select(f => f.Key).ToHashSet(),
-                                     symbol =>
-                                     {
-                                         reads.Visit(symbol);
+        var visited = table.Read();
 
-                                         addressMapFunctions.Visit(symbol);
+        while (visited.MoveNext())
+        {
+            if (!visited.IsFunction || !functions.TryGetValue(visited.Rva, out var classification) || classification.IsExcluded)
+            {
+                continue;
+            }
 
-                                         sites.Visit(symbol);
-                                     });
+            var layout = visited.IsFirst && visited.Parsed is { } signature ? ArgumentLayout.GetLayout(signature) : null;
+
+            reads.Visit(visited, layout);
+
+            addressMapFunctions.Visit(visited, layout);
+
+            if (classification.AllocationFunction is { IsAllocation: true })
+            {
+                sites.Visit(visited, layout);
+            }
+        }
 
         ulong[] excluded = [.. functions.Where(f => f.Value.IsExcluded).Select(f => (ulong)f.Key)];
 

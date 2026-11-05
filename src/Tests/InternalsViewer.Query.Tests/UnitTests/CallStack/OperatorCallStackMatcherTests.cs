@@ -405,9 +405,9 @@ public class OperatorCallStackMatcherTests
 
     private static CallstackFrame Frame(string name, uint rva = 10) => new()
     {
-        Module = "sqlmin",
+        Module = new("sqlmin"),
         Rva = rva,
-        Resolved = new ResolvedCallstackFrame { ClassName = name, MethodName = "m" },
+        Function = new CallstackFunction { ClassName = name, MethodName = "m" },
     };
 
     // Categorised as a query operator like the real iterator frames are — the matcher takes that as the marker of the
@@ -415,9 +415,9 @@ public class OperatorCallStackMatcherTests
     private static CallstackFrame Operator(string name, string planOperator, uint rva = 20, bool constructor = false)
         => new()
     {
-        Module = "sqlmin",
+        Module = new("sqlmin"),
         Rva = rva,
-        Resolved = new ResolvedCallstackFrame
+        Function = new CallstackFunction
         {
             ClassName = name,
             MethodName = constructor ? name : "m",

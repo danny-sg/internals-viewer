@@ -655,6 +655,8 @@ public sealed partial class TraceTimelineControl
 
         control._operators.SetTracks(control.TickTracks, control.HiddenTickTracks);
 
+        control.ResetHiddenStepTrack();
+
         control.Redraw();
     }
 

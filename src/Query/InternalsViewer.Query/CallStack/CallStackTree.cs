@@ -696,18 +696,18 @@ public sealed class CallStackTree
     }
 
     private static string RvaKey(CallstackFrame frame)
-        => frame.InstanceAddress == 0 ? $"{frame.Module}!{frame.Rva}" : $"{frame.Module}!{frame.Rva}@{frame.InstanceAddress:X}";
+        => frame.InstanceAddress == 0 ? $"{frame.Module.Name}!{frame.Rva}" : $"{frame.Module.Name}!{frame.Rva}@{frame.InstanceAddress:X}";
 
     private static string FunctionKey(CallstackFrame frame)
     {
-        if (frame.Resolved is not { } resolved)
+        if (frame.Function is not { } function)
         {
             return RvaKey(frame);
         }
 
-        var function = $"{frame.Module}!{resolved.ClassName}::{resolved.MethodName}";
+        var key = $"{frame.Module.Name}!{function.ClassName}::{function.MethodName}";
 
-        return frame.InstanceAddress == 0 ? function : $"{function}@{frame.InstanceAddress:X}";
+        return frame.InstanceAddress == 0 ? key : $"{key}@{frame.InstanceAddress:X}";
     }
 
     private sealed class Segmenter(CallStackTree projected,

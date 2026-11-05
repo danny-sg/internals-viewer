@@ -1,5 +1,4 @@
-﻿using InternalsViewer.Query.CallStack.Dia;
-using InternalsViewer.Query.CallStack.Symbols;
+﻿using InternalsViewer.Query.CallStack.Symbols;
 
 namespace InternalsViewer.Query.Tests.UnitTests.CallStack.Symbols;
 
@@ -117,6 +116,15 @@ public class SymbolIndexSearchTests
         Assert.False(SymbolIndex.ModuleMatches("*min", "sqllang"));
     }
 
-    private static SymbolIndex Build(params (string Name, string Signature)[] symbols) =>
-        SymbolIndex.Build(symbols.Select((s, i) => new SymbolDetail(s.Name, s.Signature, (uint)(0x100 * (i + 1)), IsFunction: true)));
+    private static SymbolIndex Build(params (string Name, string Signature)[] symbols)
+    {
+        var builder = new SymbolTable.Builder();
+
+        for (var index = 0; index < symbols.Length; index++)
+        {
+            builder.Add((uint)(0x100 * (index + 1)), true, symbols[index].Name, symbols[index].Signature, string.Empty);
+        }
+
+        return SymbolIndex.Build(builder.Build());
+    }
 }

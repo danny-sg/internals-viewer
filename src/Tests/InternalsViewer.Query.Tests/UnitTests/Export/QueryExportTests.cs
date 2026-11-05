@@ -1,3 +1,4 @@
+using InternalsViewer.Query.Helpers;
 using System.IO.Compression;
 using System.Text.Json.Nodes;
 using InternalsViewer.Internals.Engine.Address;
@@ -274,14 +275,17 @@ public class QueryExportTests
         };
     }
 
-    private static CallstackFrame Frame(ulong rva, string symbol) => new()
+    private static CallstackFrame Frame(ulong rva, string symbol)
     {
-        Module = "sqlmin",
-        Pdb = "sqlmin.pdb",
-        Guid = "0123456789ABCDEF0123456789ABCDEF",
-        Age = 2,
-        Rva = (uint)rva,
-        Address = 0x7FF0_0000_0000 + rva,
-        Resolved = ResolvedCallstackFrameParser.Parse("sqlmin", symbol)
-    };
+        SymbolsHelper.SplitOffset(symbol, out var name, out var offset);
+
+        return new CallstackFrame
+        {
+            Module = new("sqlmin", "sqlmin.pdb", "0123456789ABCDEF0123456789ABCDEF", 2),
+            Rva = (uint)rva,
+            Address = 0x7FF0_0000_0000 + rva,
+            Function = CallstackFunction.Parse("sqlmin", name),
+            Offset = offset
+        };
+    }
 }

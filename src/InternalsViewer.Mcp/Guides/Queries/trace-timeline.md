@@ -16,7 +16,8 @@ and never milliseconds. The `trace_` tools change what the user sees, so say wha
 
 - `trace_find_functions` is a fuzzy search of the call graph to settle ambiguous names.
 - `trace_goto_call` selects and zooms to a call, such as the first `GetRow`, and conditions narrow the calls considered.
-- `trace_step` steps the playhead by call, same call, batch, row or allocation. `trace_search` and `trace_zoom` search and zoom.
+- `trace_step` steps the playhead by call, same call or a visible Operators track, landing on the end of each tick, so
+  `GetRow` steps from row to row and `Reads` from read to read. `trace_search` and `trace_zoom` search and zoom.
 - `query_references` is the call tree's Find. Give it a value, usually an object address, and it names the type and lists
   every function the value was called on, passed to or returned by.
 

@@ -2,7 +2,7 @@ using System.Buffers;
 
 namespace InternalsViewer.Query.CallStack.Dia;
 
-internal sealed class SymbolReader(IntPtr enumerator, bool includeSignature) : IDisposable
+internal sealed class SymbolReader(IntPtr enumerator, bool includeSignature, bool includeDecoratedName = false) : IDisposable
 {
     private IntPtr Enumerator { get; set; } = enumerator;
 
@@ -10,9 +10,14 @@ internal sealed class SymbolReader(IntPtr enumerator, bool includeSignature) : I
 
     private char[]? SignatureBuffer { get; set; } = includeSignature ? ArrayPool<char>.Shared.Rent(DiaResolver.MaximumNameLength) : null;
 
+    private char[]? DecoratedBuffer { get; set; }
+        = includeDecoratedName ? ArrayPool<char>.Shared.Rent(DiaResolver.MaximumNameLength) : null;
+
     private int NameLength { get; set; }
 
     private int SignatureLength { get; set; }
+
+    private int DecoratedLength { get; set; }
 
     public uint Rva { get; private set; }
 
@@ -21,6 +26,8 @@ internal sealed class SymbolReader(IntPtr enumerator, bool includeSignature) : I
     public ReadOnlySpan<char> Name => NameBuffer.AsSpan(0, NameLength);
 
     public ReadOnlySpan<char> Signature => SignatureBuffer.AsSpan(0, SignatureLength);
+
+    public ReadOnlySpan<char> DecoratedName => DecoratedBuffer.AsSpan(0, DecoratedLength);
 
     public unsafe bool MoveNext()
     {
@@ -31,12 +38,15 @@ internal sealed class SymbolReader(IntPtr enumerator, bool includeSignature) : I
 
         fixed (char* name = NameBuffer)
         fixed (char* signature = SignatureBuffer)
+        fixed (char* decorated = DecoratedBuffer)
         {
             if (!DiaBridge.NextSymbolDetail(Enumerator,
                                             name,
                                             NameBuffer.Length,
                                             signature,
                                             SignatureBuffer?.Length ?? 0,
+                                            decorated,
+                                            DecoratedBuffer?.Length ?? 0,
                                             out var rva,
                                             out var isFunction))
             {
@@ -51,6 +61,8 @@ internal sealed class SymbolReader(IntPtr enumerator, bool includeSignature) : I
         NameLength = GetLength(NameBuffer);
 
         SignatureLength = SignatureBuffer is null ? 0 : GetLength(SignatureBuffer);
+
+        DecoratedLength = DecoratedBuffer is null ? 0 : GetLength(DecoratedBuffer);
 
         return true;
     }
@@ -78,9 +90,18 @@ internal sealed class SymbolReader(IntPtr enumerator, bool includeSignature) : I
             SignatureBuffer = null;
         }
 
+        if (DecoratedBuffer is not null)
+        {
+            ArrayPool<char>.Shared.Return(DecoratedBuffer);
+
+            DecoratedBuffer = null;
+        }
+
         NameLength = 0;
 
         SignatureLength = 0;
+
+        DecoratedLength = 0;
     }
 
     private static int GetLength(char[] buffer)

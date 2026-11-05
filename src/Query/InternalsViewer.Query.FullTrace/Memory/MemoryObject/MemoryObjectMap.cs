@@ -142,10 +142,10 @@ public sealed partial class MemoryObjectMap
         => nodes.OfType<CallStackNode>()
                 .Select(n => n.Frame)
                 .OfType<CallstackFrame>()
-                .Where(f => f.Resolved is { } resolved
+                .Where(f => f.Function is { } resolved
                             && AllocationFunction.IsMemoryObjectClass(resolved.ClassName)
                             && PointerSlots.ContainsKey(resolved.MethodName))
-                .Select(f => (f.Address, f.InstanceAddress, PointerSlots[f.Resolved!.MethodName]))
+                .Select(f => (f.Address, f.InstanceAddress, PointerSlots[f.Function!.MethodName]))
                 .Distinct();
 
     private readonly record struct Claim(TracePosition Position, uint Thread, ulong MemoryObject);

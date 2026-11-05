@@ -80,7 +80,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
 
     public event Action? SourceChanged;
 
-    public bool CanShow(CallStackNode node) => Lookup is not null && node.Frame is { Address: not 0, Pdb.Length: > 0 };
+    public bool CanShow(CallStackNode node) => Lookup is not null && node.Frame is { Address: not 0, Module.Pdb.Length: > 0 };
 
     public void SetSource(TraceCallStore? store,
                           CallStackTree? tree = null,

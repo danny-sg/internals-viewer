@@ -1,3 +1,4 @@
+using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using System.IO.Compression;
 using System.Text.Json.Nodes;
@@ -244,17 +245,20 @@ public class TraceExportSectionTests
         return new TraceResult(tree, callStore, timeline) { Allocation = memory, Lifetimes = lifetimes };
     }
 
-    private static CallstackFrame Frame(ulong rva, string symbol, ulong instance = 0) => new()
+    private static CallstackFrame Frame(ulong rva, string symbol, ulong instance = 0)
     {
-        Module = "sqlmin",
-        Pdb = "sqlmin.pdb",
-        Guid = "0123456789ABCDEF0123456789ABCDEF",
-        Age = 2,
-        Rva = (uint)rva,
-        Address = 0x7FF0_0000_0000 + rva,
-        InstanceAddress = instance,
-        Resolved = ResolvedCallstackFrameParser.Parse("sqlmin", symbol)
-    };
+        SymbolsHelper.SplitOffset(symbol, out var name, out var offset);
+
+        return new CallstackFrame
+        {
+            Module = new("sqlmin", "sqlmin.pdb", "0123456789ABCDEF0123456789ABCDEF", 2),
+            Rva = (uint)rva,
+            Address = 0x7FF0_0000_0000 + rva,
+            InstanceAddress = instance,
+            Function = CallstackFunction.Parse("sqlmin", name),
+            Offset = offset
+        };
+    }
 
     private static CallSpan Span(int callNodeIndex, ulong start, ulong end)
         => new(start, 0, end, 0, start, end, callNodeIndex, 7, uint.MaxValue, 1);

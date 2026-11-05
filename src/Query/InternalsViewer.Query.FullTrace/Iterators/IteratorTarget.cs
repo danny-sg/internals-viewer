@@ -15,7 +15,7 @@ public sealed class IteratorTarget(CallStackNode node, ExecutionOperatorEvent? o
 
     public string Label => Operator is { PlanNodeIdentifier: not null } operatorEvent
         ? operatorEvent.Label
-        : Node.Frame?.Resolved?.ClassName is { Length: > 0 } className ? className : Node.Symbol;
+        : Node.Frame?.Function?.ClassName is { Length: > 0 } className ? className : Node.Symbol;
 
     public static IReadOnlyDictionary<ulong, IteratorTarget> Build(CallStackTree? tree,
                                                                    IReadOnlyList<EngineEvent> events,

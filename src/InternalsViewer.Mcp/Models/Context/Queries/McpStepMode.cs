@@ -7,7 +7,5 @@ public enum McpStepMode
 {
     Call,
     SameCall,
-    Batch,
-    Row,
-    Allocation
+    Track
 }

@@ -22,13 +22,13 @@ public class XmlCallStackParserTests
 
         Assert.Equal(3, frames.Count);
 
-        Assert.Equal("sqlmin", frames[0].Module);
-        Assert.Equal("sqlmin.pdb", frames[0].Pdb);
-        Assert.Equal("80B1767D-3B81-4D3F-BA30-30216965DE41", frames[0].Guid);
-        Assert.Equal(2, frames[0].Age);
+        Assert.Equal("sqlmin", frames[0].Module.Name);
+        Assert.Equal("sqlmin.pdb", frames[0].Module.Pdb);
+        Assert.Equal("80B1767D-3B81-4D3F-BA30-30216965DE41", frames[0].Module.Guid);
+        Assert.Equal(2, frames[0].Module.Age);
         Assert.Equal(0x7FFD81BD602CUL, frames[0].Address);
 
-        Assert.Equal("sqllang", frames[1].Module);
+        Assert.Equal("sqllang", frames[1].Module.Name);
     }
 
     [Fact]
@@ -48,8 +48,8 @@ public class XmlCallStackParserTests
         // Frames 0 and 2 share a module, pdb and guid, so the pool must hand back the same string instance rather
         // than a fresh allocation per frame.
         Assert.Same(frames[0].Module, frames[2].Module);
-        Assert.Same(frames[0].Pdb, frames[2].Pdb);
-        Assert.Same(frames[0].Guid, frames[2].Guid);
+        Assert.Same(frames[0].Module.Pdb, frames[2].Module.Pdb);
+        Assert.Same(frames[0].Module.Guid, frames[2].Module.Guid);
     }
 
     [Fact]

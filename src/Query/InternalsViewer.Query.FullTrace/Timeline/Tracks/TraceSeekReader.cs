@@ -78,7 +78,9 @@ internal static class TraceSeekReader
 
             for (var index = 0; index < seek.Fetches.Count; index++)
             {
-                sources.Add(TraceTickSource.FromCall(seek.Fetches[index], (byte)GetLevel(index, seek.Fetches.Count)));
+                var fetch = seek.Fetches[index];
+
+                sources.Add(TraceTickSource.FromPoint(fetch, (byte)GetLevel(index, seek.Fetches.Count), fetch.From));
             }
         }
 
@@ -86,11 +88,11 @@ internal static class TraceSeekReader
     }
 
     private static bool IsSeek(CallstackFrame frame)
-        => frame is { Resolved: { ClassName: PageManagerClass, MethodName: GetPageWithKeyMethod } }
-           && frame.Module.Equals(Module, StringComparison.OrdinalIgnoreCase);
+        => frame is { Function: { ClassName: PageManagerClass, MethodName: GetPageWithKeyMethod } }
+           && frame.Module.Name.Equals(Module, StringComparison.OrdinalIgnoreCase);
 
     private static bool IsFetch(CallstackFrame frame)
-        => BufferPoolFunctionLookup.IsBufferPool(frame) && frame.Resolved?.MethodName == BufferPoolFunctionLookup.GetMethod;
+        => BufferPoolFunctionLookup.IsBufferPool(frame) && frame.Function?.MethodName == BufferPoolFunctionLookup.GetMethod;
 
     private static List<Seek> GetThreadSeeks(Dictionary<uint, List<Seek>> seeks, uint thread)
     {

@@ -128,9 +128,9 @@ public sealed record TraceCallCondition(TraceConditionTarget Target,
 
         var (module, symbol) = SymbolIndex.SplitModule(Value);
 
-        return (module is null || SymbolIndex.ModuleMatches(module, frame.Module))
+        return (module is null || SymbolIndex.ModuleMatches(module, frame.Module.Name))
                && symbol.Length > 0
-               && SymbolIndex.Matches(symbol, SymbolSearchFields.All, frame.Resolved?.ClassName ?? string.Empty, node.Symbol, string.Empty);
+               && SymbolIndex.Matches(symbol, SymbolSearchFields.All, frame.Function?.ClassName ?? string.Empty, node.Symbol, string.Empty);
     }
 
     private ulong? GetRaw(TraceArgumentCall call) => Target switch

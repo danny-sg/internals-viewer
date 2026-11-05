@@ -1,4 +1,5 @@
 using InternalsViewer.Query.CallStack.Arguments;
+using InternalsViewer.Query.CallStack.Symbols;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Functions;
 using InternalsViewer.Query.FullTrace.Memory.Address.Enums;
@@ -15,9 +16,9 @@ public class AddressMapFunctionResolverTests
     {
         var collector = new AddressMapFunctionResolver.Collector();
 
-        collector.Visit(Symbol("CQueryScan::StartupQuery(unsigned __int64 *,BaseXact *,HkTransaction *)",
-                               "?StartupQuery@CQueryScan@@QEAAHPEA_KPEAVBaseXact@@PEAVHkTransaction@@@Z",
-                               isFirst: true));
+        Visit(collector.Visit,
+              ("CQueryScan::StartupQuery(unsigned __int64 *,BaseXact *,HkTransaction *)",
+               "?StartupQuery@CQueryScan@@QEAAHPEA_KPEAVBaseXact@@PEAVHkTransaction@@@Z"));
 
         var function = Assert.Single(collector.Build());
 
@@ -30,9 +31,9 @@ public class AddressMapFunctionResolverTests
     {
         var collector = new AddressMapFunctionResolver.Collector();
 
-        collector.Visit(Symbol("CQScanNew::CQScanNew(void)", "??0CQScanNew@@QEAA@XZ", isFirst: true));
-
-        collector.Visit(Symbol("CQScanRangeNew::CQScanRangeNew(void)", "??0CQScanRangeNew@@QEAA@XZ", isFirst: false, hasSameName: false));
+        Visit(collector.Visit,
+              ("CQScanNew::CQScanNew(void)", "??0CQScanNew@@QEAA@XZ"),
+              ("CQScanRangeNew::CQScanRangeNew(void)", "??0CQScanRangeNew@@QEAA@XZ"));
 
         Assert.Equal(AddressMapOperation.Visited, Assert.Single(collector.Build()).Operation);
     }
@@ -42,14 +43,9 @@ public class AddressMapFunctionResolverTests
     {
         var collector = new AddressMapFunctionResolver.Collector();
 
-        collector.Visit(Symbol("ExceptionBackout::GetCurrentException(void)",
-                               "?GetCurrentException@ExceptionBackout@@QEBAPEBVSQLError@@XZ",
-                               isFirst: true));
-
-        collector.Visit(Symbol("CPageInfo::PmoGetOwner(void)",
-                               "?PmoGetOwner@CPageInfo@@QEBAPEAVIMemObj@@XZ",
-                               isFirst: false,
-                               hasSameName: false));
+        Visit(collector.Visit,
+              ("ExceptionBackout::GetCurrentException(void)", "?GetCurrentException@ExceptionBackout@@QEBAPEBVSQLError@@XZ"),
+              ("CPageInfo::PmoGetOwner(void)", "?PmoGetOwner@CPageInfo@@QEBAPEAVIMemObj@@XZ"));
 
         Assert.Empty(collector.Build());
     }
@@ -59,12 +55,9 @@ public class AddressMapFunctionResolverTests
     {
         var collector = new AddressMapFunctionResolver.Collector();
 
-        collector.Visit(Symbol("CQueryScan::StartupQuery(BaseXact *)", "?StartupQuery@CQueryScan@@QEAAHPEAVBaseXact@@@Z", isFirst: true));
-
-        collector.Visit(Symbol("CQueryExecContext::Init(BaseXact *)",
-                               "?Init@CQueryExecContext@@QEAAHPEAVBaseXact@@@Z",
-                               isFirst: false,
-                               hasSameName: false));
+        Visit(collector.Visit,
+              ("CQueryScan::StartupQuery(BaseXact *)", "?StartupQuery@CQueryScan@@QEAAHPEAVBaseXact@@@Z"),
+              ("CQueryExecContext::Init(BaseXact *)", "?Init@CQueryExecContext@@QEAAHPEAVBaseXact@@@Z"));
 
         var function = Assert.Single(collector.Build());
 
@@ -77,12 +70,9 @@ public class AddressMapFunctionResolverTests
     {
         var collector = new AddressMapFunctionResolver.Collector();
 
-        collector.Visit(Symbol("CPageInfo::PmoGetOwner(void)", "?PmoGetOwner@CPageInfo@@QEBAPEAVIMemObj@@XZ", isFirst: true));
-
-        collector.Visit(Symbol("CPageInfo::GetOwner(void)",
-                               "?GetOwner@CPageInfo@@QEBAPEAVIMemObj@@XZ",
-                               isFirst: false,
-                               hasSameName: false));
+        Visit(collector.Visit,
+              ("CPageInfo::PmoGetOwner(void)", "?PmoGetOwner@CPageInfo@@QEBAPEAVIMemObj@@XZ"),
+              ("CPageInfo::GetOwner(void)", "?GetOwner@CPageInfo@@QEBAPEAVIMemObj@@XZ"));
 
         Assert.Equal(AddressMapOperation.Visited, Assert.Single(collector.Build()).Operation);
     }
@@ -92,11 +82,11 @@ public class AddressMapFunctionResolverTests
     {
         var collector = new AddressMapFunctionResolver.Collector();
 
-        collector.Visit(Symbol("IndexDataSetSession::GetNextRowValuesInternal(enum RowScanDirection,DataAccessWrapper *,"
-                               + "enum StartScanMode,unsigned __int64 *)",
-                               "?GetNextRowValuesInternal@IndexDataSetSession@@QEAAHW4RowScanDirection@@PEAVDataAccessWrapper@@"
-                               + "W4StartScanMode@@PEA_K@Z",
-                               isFirst: true));
+        Visit(collector.Visit,
+              ("IndexDataSetSession::GetNextRowValuesInternal(enum RowScanDirection,DataAccessWrapper *,"
+               + "enum StartScanMode,unsigned __int64 *)",
+               "?GetNextRowValuesInternal@IndexDataSetSession@@QEAAHW4RowScanDirection@@PEAVDataAccessWrapper@@"
+               + "W4StartScanMode@@PEA_K@Z"));
 
         var function = Assert.Single(collector.Build());
 
@@ -109,7 +99,7 @@ public class AddressMapFunctionResolverTests
     {
         var collector = new AddressMapFunctionResolver.Collector();
 
-        collector.Visit(Symbol("Fetch(unsigned __int64 *,int)", "?Fetch@@YAXPEA_KH@Z", isFirst: true));
+        Visit(collector.Visit, ("Fetch(unsigned __int64 *,int)", "?Fetch@@YAXPEA_KH@Z"));
 
         var function = Assert.Single(collector.Build());
 
@@ -122,9 +112,9 @@ public class AddressMapFunctionResolverTests
     {
         var collector = new AddressMapFunctionResolver.Collector();
 
-        collector.Visit(Symbol("Startup(BaseXact *)", "?Startup@@YAXPEAVBaseXact@@@Z", isFirst: true));
-
-        collector.Visit(Symbol("Startup(HkTransaction *)", "?Startup@@YAXPEAVHkTransaction@@@Z", isFirst: false, hasSameParameters: false));
+        Visit(collector.Visit,
+              ("Startup(BaseXact *)", "?Startup@@YAXPEAVBaseXact@@@Z"),
+              ("Startup(HkTransaction *)", "?Startup@@YAXPEAVHkTransaction@@@Z"));
 
         Assert.Empty(collector.Build());
     }
@@ -134,7 +124,7 @@ public class AddressMapFunctionResolverTests
     {
         var collector = new AddressMapFunctionResolver.Collector();
 
-        collector.Visit(Symbol("Startup(int)", "?Startup@@YAXH@Z", isFirst: true));
+        Visit(collector.Visit, ("Startup(int)", "?Startup@@YAXH@Z"));
 
         Assert.Empty(collector.Build());
     }
@@ -152,7 +142,7 @@ public class AddressMapFunctionResolverTests
                                               "AccBindings *");
 
         Assert.Equal([(1, "XDES"), (2, "HoBtAccess"), (ArgumentLayout.ReturnRegister, "AccBindings")],
-                     AddressMapFunctionResolver.GetDeclared(signature).Select(d => (Slot: d.ArgumentSlot, d.Name)));
+                     AddressMapFunctionResolver.GetDeclared(ArgumentLayout.GetLayout(signature)).Select(d => (Slot: d.ArgumentSlot, d.Name)));
     }
 
     [Fact]
@@ -162,7 +152,7 @@ public class AddressMapFunctionResolverTests
                                               FunctionType.Free,
                                               "bool");
 
-        Assert.Equal([(0, "CMsqlReadOnlyXact")], AddressMapFunctionResolver.GetDeclared(signature).Select(d => (Slot: d.ArgumentSlot, d.Name)));
+        Assert.Equal([(0, "CMsqlReadOnlyXact")], AddressMapFunctionResolver.GetDeclared(ArgumentLayout.GetLayout(signature)).Select(d => (Slot: d.ArgumentSlot, d.Name)));
     }
 
     [Fact]
@@ -170,22 +160,23 @@ public class AddressMapFunctionResolverTests
     {
         var signature = new FunctionSignature([], FunctionType.Member, "CTypeInfo", HasReturnBuffer: true);
 
-        Assert.Empty(AddressMapFunctionResolver.GetDeclared(signature));
+        Assert.Empty(AddressMapFunctionResolver.GetDeclared(ArgumentLayout.GetLayout(signature)));
     }
 
-    private static FunctionSymbol Symbol(string signature,
-                                        string decoratedName,
-                                        bool isFirst,
-                                        bool hasSameName = true,
-                                        bool hasSameParameters = true)
-        => new()
+    private static void Visit(Action<SymbolTable.Reader, ArgumentLayout?> visit, params (string Signature, string DecoratedName)[] symbols)
+    {
+        var builder = new SymbolTable.Builder();
+
+        foreach (var (signature, decoratedName) in symbols)
         {
-            Rva = Rva,
-            Name = signature[..signature.IndexOf('(')],
-            Signature = signature,
-            DecoratedName = decoratedName,
-            IsFirst = isFirst,
-            HasSameName = hasSameName,
-            HasSameParameters = hasSameParameters
-        };
+            builder.Add(Rva, true, signature[..signature.IndexOf('(')], signature, decoratedName);
+        }
+
+        var reader = builder.Build().Read();
+
+        while (reader.MoveNext())
+        {
+            visit(reader, reader.IsFirst && reader.Parsed is { } parsed ? ArgumentLayout.GetLayout(parsed) : null);
+        }
+    }
 }

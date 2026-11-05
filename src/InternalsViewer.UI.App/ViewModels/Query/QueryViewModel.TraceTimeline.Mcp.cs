@@ -65,8 +65,8 @@ public partial class QueryViewModel : ITraceTimelineCommands
         return Task.FromResult(1);
     }
 
-    public async Task StepAsync(McpStepMode mode, bool forward, int count)
-        => (await RequireTimelineAsync()).Step(mode, forward, count);
+    public async Task StepAsync(McpStepMode mode, string? track, bool forward, int count)
+        => (await RequireTimelineAsync()).Step(mode, track, forward, count);
 
     public async Task SearchAsync(string? text) => (await RequireTimelineAsync()).Search(text);
 
@@ -90,7 +90,7 @@ public partial class QueryViewModel : ITraceTimelineCommands
     public async Task<bool> ClearIndicatorAsync() => TraceTimeline is not null && (await RequireTimelineAsync()).ClearIndicator();
 
     private static bool IsFunction(CallStackNode node, string module, string function)
-        => node.Frame is { } frame && string.Equals(frame.Module, module, StringComparison.OrdinalIgnoreCase) && node.Symbol == function;
+        => node.Frame is { } frame && string.Equals(frame.Module.Name, module, StringComparison.OrdinalIgnoreCase) && node.Symbol == function;
 
     private async Task<ITraceTimelineController> RequireTimelineAsync()
     {

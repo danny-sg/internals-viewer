@@ -27,7 +27,7 @@ public static class TraceReadResolver
                                      enclosing ?? EnclosingOperatorCallIndex.Build(calls, lifetimes.OperatorsByInstance));
 
     private static TraceReadType? GetReadType(CallstackFrame frame)
-        => BufferPoolFunctionLookup.IsBufferPool(frame) && frame.Resolved is { } resolved
+        => BufferPoolFunctionLookup.IsBufferPool(frame) && frame.Function is { } resolved
             ? resolved.MethodName switch
             {
                 BufferPoolFunctionLookup.GetMethod => TraceReadType.Page,

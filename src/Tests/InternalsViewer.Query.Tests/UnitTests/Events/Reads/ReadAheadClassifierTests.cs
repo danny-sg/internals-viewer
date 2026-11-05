@@ -47,7 +47,7 @@ public class ReadAheadClassifierTests
             parent = new CallStackNode
             {
                 Parent = parent,
-                Frame = new CallstackFrame { Resolved = new ResolvedCallstackFrame { ClassName = className, MethodName = methodName } },
+                Frame = new CallstackFrame { Function = new CallstackFunction { ClassName = className, MethodName = methodName } },
             };
         }
 

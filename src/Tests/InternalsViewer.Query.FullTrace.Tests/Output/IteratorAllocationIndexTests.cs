@@ -119,10 +119,10 @@ public class IteratorAllocationIndexTests
 
     private static CallstackFrame Frame(string className, string method, uint rva) => new()
     {
-        Module = "sqlmin",
+        Module = new("sqlmin"),
         Rva = rva,
         Address = OpenFunction,
-        Resolved = new ResolvedCallstackFrame
+        Function = new CallstackFunction
         {
             ClassName = className,
             MethodName = method,

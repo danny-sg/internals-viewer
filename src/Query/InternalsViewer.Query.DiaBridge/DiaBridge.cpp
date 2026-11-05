@@ -64,8 +64,6 @@ struct EnumHandle
 {
     ComPtr<IDiaEnumSymbols> Symbols;
     std::wstring Prefix;
-    bool HasRva = false;
-    DWORD Rva = 0;
 };
 
 // Owns a BSTR returned from DIA - get_name and friends hand ownership to the caller.
@@ -156,18 +154,6 @@ static std::wstring DemangleSignature(const wchar_t *name)
     }
 
     return name;
-}
-
-static bool IsAtRva(const EnumHandle *enumerator, IDiaSymbol *symbol)
-{
-    if (!enumerator->HasRva)
-    {
-        return true;
-    }
-
-    DWORD symbolRva = 0;
-
-    return SUCCEEDED(symbol->get_relativeVirtualAddress(&symbolRva)) && symbolRva == enumerator->Rva;
 }
 
 static void CopyTruncated(wchar_t *buffer, int bufferLength, const std::wstring &value)
@@ -349,11 +335,6 @@ bool NextSymbol(void *enumeratorHandle, wchar_t *buffer, int bufferLength)
             return false;
         }
 
-        if (!IsAtRva(enumerator, symbol.Get()))
-        {
-            continue;
-        }
-
         Bstr name;
 
         std::wstring friendly;
@@ -374,7 +355,8 @@ bool NextSymbol(void *enumeratorHandle, wchar_t *buffer, int bufferLength)
 }
 
 bool NextSymbolDetail(void *enumeratorHandle, wchar_t *nameBuffer, int nameLength, wchar_t *signatureBuffer,
-                      int signatureLength, unsigned int *rva, int *isFunction)
+                      int signatureLength, wchar_t *decoratedBuffer, int decoratedLength, unsigned int *rva,
+                      int *isFunction)
 {
     if (!enumeratorHandle)
     {
@@ -392,11 +374,6 @@ bool NextSymbolDetail(void *enumeratorHandle, wchar_t *nameBuffer, int nameLengt
         if (FAILED(enumerator->Symbols->Next(1, symbol.GetAddressOf(), &fetched)) || fetched != 1)
         {
             return false;
-        }
-
-        if (!IsAtRva(enumerator, symbol.Get()))
-        {
-            continue;
         }
 
         Bstr name;
@@ -428,99 +405,16 @@ bool NextSymbolDetail(void *enumeratorHandle, wchar_t *nameBuffer, int nameLengt
             CopyTruncated(signatureBuffer, signatureLength, DemangleSignature(name.Get()));
         }
 
+        if (decoratedBuffer)
+        {
+            CopyTruncated(decoratedBuffer, decoratedLength, name.Get());
+        }
+
         *rva = symbolRva;
         *isFunction = function ? 1 : 0;
 
         return true;
     }
-}
-
-void *BeginEnumSymbolsAtRva(void *sessionHandle, unsigned int rva)
-{
-    if (!sessionHandle)
-    {
-        return nullptr;
-    }
-
-    auto handle = static_cast<DiaHandle *>(sessionHandle);
-
-    ComPtr<IDiaSymbol> global;
-
-    if (FAILED(handle->Session->get_globalScope(global.GetAddressOf())) || !global)
-    {
-        return nullptr;
-    }
-
-    auto enumerator = std::make_unique<EnumHandle>();
-
-    enumerator->HasRva = true;
-    enumerator->Rva = rva;
-
-    if (FAILED(handle->Session->findChildrenExByRVA(global.Get(), SymTagPublicSymbol, nullptr, nsNone, rva,
-                                                    enumerator->Symbols.GetAddressOf())) ||
-        !enumerator->Symbols)
-    {
-        return nullptr;
-    }
-
-    return enumerator.release();
-}
-
-bool GetDecoratedName(void *sessionHandle, unsigned int rva, const wchar_t *name, wchar_t *buffer, int bufferLength)
-{
-    std::unique_ptr<EnumHandle> enumerator{ static_cast<EnumHandle *>(BeginEnumSymbolsAtRva(sessionHandle, rva)) };
-
-    if (!enumerator)
-    {
-        return false;
-    }
-
-    std::wstring first;
-
-    for (;;)
-    {
-        ComPtr<IDiaSymbol> symbol;
-
-        ULONG fetched = 0;
-
-        if (FAILED(enumerator->Symbols->Next(1, symbol.GetAddressOf(), &fetched)) || fetched != 1)
-        {
-            break;
-        }
-
-        BOOL function = FALSE;
-
-        symbol->get_function(&function);
-
-        Bstr decorated;
-
-        if (!function || !IsAtRva(enumerator.get(), symbol.Get()) || FAILED(symbol->get_name(decorated.GetAddressOf())) ||
-            !decorated)
-        {
-            continue;
-        }
-
-        if (!name || !*name || DemangleName(decorated.Get()) == name)
-        {
-            CopyTruncated(buffer, bufferLength, decorated.Get());
-
-            return true;
-        }
-
-        if (first.empty())
-        {
-            first = decorated.Get();
-        }
-    }
-
-    if (first.empty())
-    {
-        return false;
-    }
-
-    CopyTruncated(buffer, bufferLength, first);
-
-    return true;
 }
 
 void EndEnumSymbols(void *enumeratorHandle)

@@ -12,23 +12,19 @@ public static class SymbolDownloader
 
     private const string NotFoundOutcome = "Not Found";
 
-    private sealed record PdbIdentity(string Pdb, string Guid, int Age);
-
     private static readonly HttpClient HttpClient = new()
     {
         Timeout = TimeSpan.FromMinutes(5)
     };
 
-    public static async Task DownloadSymbols(IEnumerable<CallstackFrame> frames,
+    public static async Task DownloadSymbols(IEnumerable<CallstackModule> modules,
                                              string symbolsDirectory,
                                              IProgress<ProgressDetail>? progress,
                                              CancellationToken cancellationToken = default)
     {
         Directory.CreateDirectory(symbolsDirectory);
 
-        var pdbs = frames.Select(f => new PdbIdentity(f.Pdb, f.Guid, f.Age))
-                         .Distinct()
-                         .ToList();
+        var pdbs = modules.DistinctBy(m => (m.Pdb, m.Guid, m.Age)).ToList();
 
         await Parallel.ForEachAsync(pdbs,
                                     cancellationToken,
@@ -37,7 +33,7 @@ public static class SymbolDownloader
 
     public static string SymbolId(string guid, int age) => $"{guid.Replace("-", string.Empty)}{age:X}".ToUpperInvariant();
 
-    private static async Task DownloadPdbAsync(PdbIdentity pdb,
+    private static async Task DownloadPdbAsync(CallstackModule pdb,
                                                string symbolsDirectory,
                                                IProgress<ProgressDetail>? progress,
                                                CancellationToken cancellationToken)
@@ -47,11 +43,11 @@ public static class SymbolDownloader
             return;
         }
 
-        var symbolId = SymbolId(pdb.Guid, pdb.Age);
+        var symbolId = pdb.SymbolId;
 
-        var pdbFolder = Path.Combine(symbolsDirectory, pdb.Pdb, symbolId);
+        var pdbPath = pdb.GetPdbPath(symbolsDirectory);
 
-        var pdbPath = Path.Combine(pdbFolder, pdb.Pdb);
+        var pdbFolder = Path.GetDirectoryName(pdbPath)!;
 
         if (File.Exists(pdbPath))
         {

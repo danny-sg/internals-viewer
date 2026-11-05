@@ -25,17 +25,17 @@ internal sealed class AddressTable<T>(Dictionary<ulong, T> entries) : IReadOnlyD
 
     public T this[ulong address] => Entries[address];
 
-    public static AddressTable<T> Merge(IEnumerable<AddressTable<T>> tables)
+    public static AddressTable<T> Merge(IEnumerable<(AddressTable<T> Table, ulong Address)> tables)
     {
         var all = tables.ToList();
 
-        var merged = new Dictionary<ulong, T>(all.Sum(t => t.Count));
+        var merged = new Dictionary<ulong, T>(all.Sum(t => t.Table.Count));
 
-        foreach (var table in all)
+        foreach (var (table, offset) in all)
         {
             foreach (var (address, value) in table.Entries)
             {
-                merged.TryAdd(address, value);
+                merged.TryAdd(address + offset, value);
             }
         }
 
@@ -45,8 +45,6 @@ internal sealed class AddressTable<T>(Dictionary<ulong, T> entries) : IReadOnlyD
     public bool ContainsKey(ulong address) => Entries.ContainsKey(address);
 
     public bool TryGetValue(ulong address, [MaybeNullWhen(false)] out T value) => Entries.TryGetValue(address, out value);
-
-    public AddressTable<T> Rebase(ulong address) => new(Entries.ToDictionary(e => e.Key + address, e => e.Value));
 
     public Dictionary<ulong, T>.Enumerator GetEnumerator() => Entries.GetEnumerator();
 

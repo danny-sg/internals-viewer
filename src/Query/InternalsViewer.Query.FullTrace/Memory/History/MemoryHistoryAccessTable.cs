@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.IO.Compression;
 using System.Numerics;
 using System.Runtime.InteropServices;
@@ -15,6 +16,8 @@ internal sealed partial class MemoryHistoryAccessTable
     private const int ChunkMask = ChunkSize - 1;
 
     private const int EntryBytes = sizeof(ulong) + 5 * sizeof(uint) + sizeof(byte);
+
+    private const int CompressionReserve = 1024;
 
     private MemoryHistoryAccessTable(byte[][] chunks, int[] dataLengths, int count, int cacheSlots)
     {
@@ -249,9 +252,42 @@ internal sealed partial class MemoryHistoryAccessTable
     {
         var count = entries.Length;
 
-        var bytes = new byte[count * EntryBytes + data.Length];
+        var columnLength = count * EntryBytes;
 
-        var columns = new ColumnLayout(bytes.AsSpan(0, count * EntryBytes), count);
+        var length = columnLength + data.Length;
+
+        var bytes = ArrayPool<byte>.Shared.Rent(columnLength);
+
+        var output = ArrayPool<byte>.Shared.Rent(length + (length >> 3) + CompressionReserve);
+
+        try
+        {
+            WriteColumns(entries, bytes.AsSpan(0, columnLength));
+
+            using var compressed = new MemoryStream(output);
+
+            using (var stream = new ZLibStream(compressed, CompressionLevel.Optimal, leaveOpen: true))
+            {
+                stream.Write(bytes.AsSpan(0, columnLength));
+
+                stream.Write(data);
+            }
+
+            return output.AsSpan(0, (int)compressed.Position).ToArray();
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(bytes);
+
+            ArrayPool<byte>.Shared.Return(output);
+        }
+    }
+
+    private static void WriteColumns(ReadOnlySpan<MemoryHistoryAccessEntry> entries, Span<byte> bytes)
+    {
+        var count = entries.Length;
+
+        var columns = new ColumnLayout(bytes, count);
 
         var sequence = 0ul;
 
@@ -279,17 +315,6 @@ internal sealed partial class MemoryHistoryAccessTable
 
             spanId = entry.SpanId;
         }
-
-        data.CopyTo(bytes.AsSpan(count * EntryBytes));
-
-        using var compressed = new MemoryStream();
-
-        using (var stream = new ZLibStream(compressed, CompressionLevel.Optimal, leaveOpen: true))
-        {
-            stream.Write(bytes);
-        }
-
-        return compressed.ToArray();
     }
 
     internal sealed class ChunkBuffer

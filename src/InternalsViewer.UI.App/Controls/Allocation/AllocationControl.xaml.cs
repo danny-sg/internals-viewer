@@ -501,7 +501,7 @@ public sealed partial class AllocationControl : IDisposable
 
         foreach (var layer in Layers)
         {
-            if (!layer.IsVisible || layer.Opacity == 0 || layer.PageSpans.Count == 0)
+            if (!layer.IsVisible || layer.Opacity == 0 || layer.IsExtrude || layer.PageSpans.Count == 0)
             {
                 continue;
             }

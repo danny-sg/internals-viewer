@@ -186,12 +186,11 @@ public class MemoryObjectMapTests
 
                 var frame = new CallstackFrame
                 {
-                    Module = "sqldk",
+                    Module = new("sqldk"),
                     Rva = rva,
                     Address = ModuleBase + rva,
-                    Resolved = new ResolvedCallstackFrame
+                    Function = new CallstackFunction
                     {
-                        Module = "sqldk",
                         ClassName = className,
                         MethodName = method,
                         SymbolCategory = SymbolCategory.Unknown

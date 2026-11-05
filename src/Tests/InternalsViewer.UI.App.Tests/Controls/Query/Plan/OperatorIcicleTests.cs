@@ -147,7 +147,7 @@ public class OperatorIcicleTests
 
         var publish = Frame("GenericEvent", 5) with
         {
-            Resolved = new ResolvedCallstackFrame
+            Function = new CallstackFunction
             {
                 ClassName = "GenericEvent",
                 MethodName = "m",
@@ -173,9 +173,9 @@ public class OperatorIcicleTests
 
     private static CallstackFrame Frame(string name, uint rva) => new()
     {
-        Module = "sqllang",
+        Module = new("sqllang"),
         Rva = rva,
-        Resolved = new ResolvedCallstackFrame { ClassName = name, MethodName = "m" },
+        Function = new CallstackFunction { ClassName = name, MethodName = "m" },
     };
 
     private static ExecutionOperatorEvent Operator(PlanNodeIdentifier id, params CallStackNode[] entryFrames) => new()

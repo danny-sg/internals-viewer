@@ -1,10 +1,10 @@
 using InternalsViewer.Query.FullTrace.Memory.Address;
-using System.Text.RegularExpressions;
 using InternalsViewer.Query.CallStack.Arguments;
+using InternalsViewer.Query.CallStack.Symbols;
+using InternalsViewer.Query.Events.Parsing;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Arguments.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Address.Enums;
-using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Functions;
 
@@ -27,45 +27,56 @@ namespace InternalsViewer.Query.FullTrace.Functions;
 /// GetDeclared maps register passed class pointer arguments (and a class pointer return value in RAX) to their argument slot index and
 /// class name, skipping the hidden return buffer slot.
 /// </remarks>
-internal static partial class AddressMapFunctionResolver
+internal static class AddressMapFunctionResolver
 {
-    private const string ConstructorPrefix = "??0";
-
-    internal static DeclaredClass[] GetDeclared(FunctionSignature signature) 
-        => GetDeclared(signature, ArgumentLayout.GetLayout(signature));
-
-    internal static DeclaredClass[] GetDeclared(FunctionSignature signature, ArgumentLayout layout)
+    internal static DeclaredClass[] GetDeclared(ArgumentLayout layout, StringInternPool? strings = null)
     {
-        var declared = new List<DeclaredClass>();
+        List<DeclaredClass>? declared = null;
 
-        foreach (var slot in layout.Slots)
+        var slots = layout.Slots;
+
+        for (var index = 0; index < slots.Count; index++)
         {
+            var slot = slots[index];
+
             if (slot.Location == ArgumentLocation.Register
                 && slot.Name != ArgumentLayout.ReturnBuffer
-                && ArgumentValue.GetPointeeClass(slot.Type) is { } className)
+                && ArgumentValue.GetPointeeClass(slot.Type, strings) is { } className)
             {
-                declared.Add(new DeclaredClass(slot.Index, className));
+                (declared ??= []).Add(new DeclaredClass(slot.Index, className));
             }
         }
 
-        if (signature.ReturnType is { } returnType && ArgumentValue.GetPointeeClass(returnType) is { } returned)
+        if (layout.ReturnType is { } returnType && ArgumentValue.GetPointeeClass(returnType, strings) is { } returned)
         {
-            declared.Add(new DeclaredClass(ArgumentLayout.ReturnRegister, returned));
+            (declared ??= []).Add(new DeclaredClass(ArgumentLayout.ReturnRegister, returned));
         }
 
-        return [.. declared];
+        return declared is null ? [] : [.. declared];
     }
 
     internal static int[] GetPointers(ArgumentLayout layout)
-        => [.. layout.Slots.Where(s => s.Location is ArgumentLocation.Register or ArgumentLocation.Stack
-                                       && s.Index < ArgumentLayout.CapturedSlots
-                                       && s.Name != ArgumentLayout.ReturnBuffer
-                                       && ArgumentValue.IsPointer(s.Type)
-                                       && ArgumentValue.GetPointeeClass(s.Type) is null)
-                           .Select(s => s.Index)];
+    {
+        List<int>? pointers = null;
 
-    [GeneratedRegex("[PQA]E[A-D]")]
-    private static partial Regex IsPointerRegex();
+        var slots = layout.Slots;
+
+        for (var index = 0; index < slots.Count; index++)
+        {
+            var slot = slots[index];
+
+            if (slot.Location is ArgumentLocation.Register or ArgumentLocation.Stack
+                && slot.Index < ArgumentLayout.CapturedSlots
+                && slot.Name != ArgumentLayout.ReturnBuffer
+                && ArgumentValue.IsPointer(slot.Type)
+                && !ArgumentValue.IsClassPointer(slot.Type))
+            {
+                (pointers ??= []).Add(slot.Index);
+            }
+        }
+
+        return pointers is null ? [] : [.. pointers];
+    }
 
     /// <summary>
     /// Collects memory map functions during symbol enumeration
@@ -74,11 +85,9 @@ internal static partial class AddressMapFunctionResolver
     {
         private Dictionary<uint, AddressMapFunction> Found { get; } = [];
 
-        private Dictionary<uint, string> Classes { get; } = [];
+        private StringInternPool Classes { get; } = new();
 
-        private HashSet<uint> Constructors { get; } = [];
-
-        public void Visit(FunctionSymbol symbol)
+        public void Visit(SymbolTable.Reader symbol, ArgumentLayout? layout)
         {
             if (!symbol.IsFirst)
             {
@@ -91,52 +100,28 @@ internal static partial class AddressMapFunctionResolver
 
             int[] pointers = [];
 
-            if (IsPointerRegex().IsMatch(symbol.DecoratedName) && symbol.Parsed is { } signature && symbol.Layout is { } layout)
+            if (layout is not null)
             {
-                declared = GetDeclared(signature, layout);
+                declared = GetDeclared(layout, Classes);
 
                 pointers = GetPointers(layout);
             }
 
-            var operation = FunctionSignature.GetFunctionType(symbol.DecoratedName) == FunctionType.Member
-                ? symbol.DecoratedName.StartsWith(ConstructorPrefix, StringComparison.Ordinal)
-                    ? AddressMapOperation.Constructed
-                    : AddressMapOperation.Visited
-                : AddressMapOperation.Declared;
+            var operation = symbol.FunctionType == FunctionType.Member
+                             ? symbol.IsConstructor
+                                 ? AddressMapOperation.Constructed
+                                 : AddressMapOperation.Visited
+                             : AddressMapOperation.Declared;
 
             if (operation != AddressMapOperation.Declared || declared.Length > 0 || pointers.Length > 0)
             {
                 Found[symbol.Rva] = new AddressMapFunction(symbol.Rva, operation) { DeclaredClasses = declared, Pointers = pointers };
             }
-
-            if (operation != AddressMapOperation.Declared)
-            {
-                Classes[symbol.Rva] = GetClassName(symbol.Name);
-            }
-
-            if (operation == AddressMapOperation.Constructed)
-            {
-                Constructors.Add(symbol.Rva);
-            }
         }
 
         public AddressMapFunction[] Build() => [.. Found.Values];
 
-        private static string GetClassName(ReadOnlySpan<char> name)
-        {
-            SymbolsHelper.Split(name, out var className, out _);
-
-            return className.ToString();
-        }
-
-        private static bool IsMemberOf(ReadOnlySpan<char> name, string className)
-        {
-            SymbolsHelper.Split(name, out var memberClass, out _);
-
-            return memberClass.Length > 0 && memberClass.SequenceEqual(className);
-        }
-
-        private void Revisit(FunctionSymbol symbol)
+        private void Revisit(SymbolTable.Reader symbol)
         {
             if (!Found.TryGetValue(symbol.Rva, out var function))
             {
@@ -150,9 +135,8 @@ internal static partial class AddressMapFunctionResolver
 
             if (!symbol.HasSameName
                 && function.Operation == AddressMapOperation.Visited
-                && !Constructors.Contains(symbol.Rva)
-                && Classes.GetValueOrDefault(symbol.Rva) is { } className
-                && !IsMemberOf(symbol.Name, className))
+                && !symbol.First.IsConstructor
+                && !symbol.HasSameClass)
             {
                 function = function with
                 {

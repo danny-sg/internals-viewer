@@ -91,7 +91,7 @@ public sealed class HoBtAccessMap
     private static IEnumerable<TraceArgumentCall> GetCalls(TraceCallStore callStore, IReadOnlyList<CallStackNode?> nodes, string method)
     {
         var functions = nodes.OfType<CallStackNode>()
-                             .Where(n => n.Frame?.Resolved is { ClassName: ClassName } resolved && resolved.MethodName == method)
+                             .Where(n => n.Frame?.Function is { ClassName: ClassName } resolved && resolved.MethodName == method)
                              .Select(n => (n.Frame!.Address, n.Frame.InstanceAddress))
                              .Distinct();
 

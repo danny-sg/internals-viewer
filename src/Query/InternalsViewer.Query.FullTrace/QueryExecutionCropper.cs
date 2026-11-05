@@ -11,7 +11,7 @@ internal static class QueryExecutionCropper
 
     public static bool IsQueryExecution(CallStackNode node)
         => node.Frame is { } frame
-           && string.Equals(frame.Module, Module, StringComparison.OrdinalIgnoreCase)
+           && string.Equals(frame.Module.Name, Module, StringComparison.OrdinalIgnoreCase)
            && node.Symbol == Function;
 
     public static IReadOnlyList<CallStackNode> GetRoots(CallStackTree tree)
@@ -35,7 +35,7 @@ internal static class QueryExecutionCropper
         => node.Parent is { IsRoot: true } && !executing.Contains(node) && working.Contains(node);
 
     private static bool IsIterator(CallStackNode node)
-        => node.Frame?.Resolved?.SymbolCategory is SymbolCategory.QueryOperator or SymbolCategory.BatchOperator;
+        => node.Frame?.Function?.SymbolCategory is SymbolCategory.QueryOperator or SymbolCategory.BatchOperator;
 
     private static bool IsOutermostExecution(CallStackNode node)
         => IsQueryExecution(node) && node.Parent?.Ancestors().Any(IsQueryExecution) != true;

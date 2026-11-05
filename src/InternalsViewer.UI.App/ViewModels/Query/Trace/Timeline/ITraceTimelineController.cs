@@ -14,7 +14,7 @@ public interface ITraceTimelineController
 
     void SetTrackVisible(string name, bool isVisible);
 
-    void Step(McpStepMode mode, bool forward, int count);
+    void Step(McpStepMode mode, string? track, bool forward, int count);
 
     void Search(string? text);
 

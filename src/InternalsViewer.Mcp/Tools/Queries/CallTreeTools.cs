@@ -326,7 +326,7 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
 
             var instance = frame.InstanceAddress != 0 ? $" instance {Format.Hex(frame.InstanceAddress)}" : string.Empty;
 
-            var signature = signatures && frame.Signature is { Length: > 0 } text ? $"  {text}" : string.Empty;
+            var signature = signatures && frame.Function?.Signature is { Length: > 0 } text ? $"  {text}" : string.Empty;
 
             builder.AppendLine($"{name}  address {Format.Hex(frame.Address)} rva {Format.Hex(frame.Rva)}{instance}{signature}");
 
@@ -633,7 +633,7 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
                 {
                     Name = name,
                     Category = GetCategory(node),
-                    Operator = node.Frame?.Resolved?.Iterator ?? string.Empty
+                    Operator = node.Frame?.Function?.Iterator ?? string.Empty
                 };
 
                 totals[name] = total;
@@ -654,7 +654,7 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
     }
 
     private static string GetCategory(CallStackNode node)
-        => node.Frame?.Resolved?.SymbolCategory.GetCategoryMetadata()?.Name ?? UnknownCategory;
+        => node.Frame?.Function?.SymbolCategory.GetCategoryMetadata()?.Name ?? UnknownCategory;
 
     private static string NormaliseCategory(string category) => category.Replace(" ", string.Empty).ToLowerInvariant();
 

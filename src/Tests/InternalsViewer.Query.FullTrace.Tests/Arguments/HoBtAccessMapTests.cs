@@ -168,10 +168,10 @@ public class HoBtAccessMapTests
 
                 var frame = new CallstackFrame
                 {
-                    Module = "sqlmin",
+                    Module = new("sqlmin"),
                     Rva = rva,
                     Address = ModuleBase + rva,
-                    Resolved = new ResolvedCallstackFrame
+                    Function = new CallstackFunction
                     {
                         ClassName = "HoBtAccess",
                         MethodName = method,

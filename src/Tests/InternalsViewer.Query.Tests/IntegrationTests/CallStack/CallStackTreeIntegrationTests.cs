@@ -465,8 +465,8 @@ public class CallStackTreeIntegrationTests(ITestOutputHelper testOutputHelper)
         var modules = tree?
             .Nodes()
             .Select(n => n.Frame)
-            .Where(f => f is { Pdb.Length: > 0 })
-            .Select(f => (f!.Pdb, f.Guid, f.Age))
+            .Where(f => f is { Module.Pdb.Length: > 0 })
+            .Select(f => (f!.Module.Pdb, f.Module.Guid, f.Module.Age))
             .Distinct()
             .ToList() ?? [];
 

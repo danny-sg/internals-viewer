@@ -2,21 +2,20 @@
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.Dia;
 using InternalsViewer.Query.CallStack.Symbols;
-using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.CallStack;
 
 public sealed class CallstackResolver(string symbolsPath) : IDisposable
 {
+    private const string StartOffset = "+0x0";
+
     private readonly record struct SymbolKey(string Guid, int Age, uint Rva);
 
-    private readonly ConcurrentDictionary<SymbolKey, string> _symbolCache = new();
+    private static readonly ConcurrentDictionary<SymbolKey, string> TableNames = new();
+
+    private static readonly ConcurrentDictionary<SymbolKey, string> DiaNames = new();
 
     private readonly ConcurrentDictionary<string, DiaResolver> _resolverCache = new();
-
-    private readonly ConcurrentDictionary<string, Lazy<ClassMemberIndex>> _indexCache = new();
-
-    private readonly ConcurrentDictionary<string, Lazy<SymbolIndex>> _searchIndexCache = new();
 
     private readonly ConcurrentDictionary<SymbolKey, UnresolvedSymbolInfo> _unresolvedSymbols = [];
 
@@ -26,16 +25,16 @@ public sealed class CallstackResolver(string symbolsPath) : IDisposable
     {
         symbol = null;
 
-        var key = new SymbolKey(frame.Guid, frame.Age, frame.Rva);
+        var key = new SymbolKey(frame.Module.Guid, frame.Module.Age, frame.Rva);
 
-        if (!HasSymbolInformation(frame))
+        if (!frame.Module.HasSymbols)
         {
             RecordUnresolved(key, UnresolvedReason.InvalidSymbolReference);
 
             return false;
         }
 
-        symbol = _symbolCache.GetOrAdd(key, _ => ResolveInternal(frame));
+        symbol = ResolveInternal(frame, key);
 
         return true;
     }
@@ -82,27 +81,20 @@ public sealed class CallstackResolver(string symbolsPath) : IDisposable
     /// </remarks>
     public IReadOnlyList<SymbolMatch> SearchSymbols(CallstackFrame frame, string text, SymbolSearchFields fields, int limit)
     {
-        var pdbPath = GetPdbPath(frame);
-
-        if (!HasSymbolInformation(frame) || !File.Exists(pdbPath))
+        if (SymbolTableCache.Get(symbolsPath, frame.Module) is not { } table)
         {
             return [];
         }
 
-        var resolver = _resolverCache.GetOrAdd(pdbPath, path => new DiaResolver(path));
-
-        var index = _searchIndexCache.GetOrAdd(pdbPath, _ => new Lazy<SymbolIndex>(() => BuildSearchIndex(resolver),
-                                                                                    LazyThreadSafetyMode.ExecutionAndPublication))
-                                     .Value;
+        var index = table.GetSearchIndex();
 
         return text.Split(SymbolSearchSuggestion.Alternative, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                   .SelectMany(alternative => SearchAlternative(frame, resolver, index, alternative, fields, limit))
+                   .SelectMany(alternative => SearchAlternative(frame, index, alternative, fields, limit))
                    .DistinctBy(m => (m.ClassName, m.Member.Signature))
                    .ToList();
     }
 
     private static List<SymbolMatch> SearchAlternative(CallstackFrame frame,
-                                                       DiaResolver resolver,
                                                        SymbolIndex index,
                                                        string text,
                                                        SymbolSearchFields fields,
@@ -110,7 +102,7 @@ public sealed class CallstackResolver(string symbolsPath) : IDisposable
     {
         var (modulePart, symbolPart) = SymbolIndex.SplitModule(text);
 
-        if (modulePart is not null && !SymbolIndex.ModuleMatches(modulePart, frame.Module))
+        if (modulePart is not null && !SymbolIndex.ModuleMatches(modulePart, frame.Module.Name))
         {
             return [];
         }
@@ -118,41 +110,24 @@ public sealed class CallstackResolver(string symbolsPath) : IDisposable
         var moduleMatches = symbolPart.Length == 0
                             || (modulePart is null
                                 && (fields == SymbolSearchFields.None || fields.HasFlag(SymbolSearchFields.Module))
-                                && frame.Module.Contains(symbolPart, StringComparison.OrdinalIgnoreCase));
+                                && frame.Module.Name.Contains(symbolPart, StringComparison.OrdinalIgnoreCase));
 
         var hits = moduleMatches ? index.First(limit) : index.Search(symbolPart, fields, limit);
 
         var matches = new List<SymbolMatch>();
 
-        foreach (var hit in hits)
+        foreach (var symbol in hits)
         {
-            foreach (var detail in resolver.EnumerateSymbolsAtRva(hit.Rva))
-            {
-                if (detail.Name.Contains('`'))
-                {
-                    continue;
-                }
+            var className = symbol.ClassName;
 
-                var separator = SymbolsHelper.FindClassMethodSeparator(detail.Name);
+            var prefix = className.Length > 0 ? $"{className}::" : string.Empty;
 
-                var className = separator > 0 ? detail.Name[..separator] : string.Empty;
-
-                if (!moduleMatches && !SymbolIndex.Matches(symbolPart, fields, className, detail.Name, detail.Signature))
-                {
-                    continue;
-                }
-
-                var name = separator > 0 ? detail.Name[(separator + 2)..] : detail.Name;
-
-                var prefix = className.Length > 0 ? $"{className}::" : string.Empty;
-
-                matches.Add(new SymbolMatch(className,
-                                            new ClassMember(frame.Module,
-                                                            name,
-                                                            RemoveScope(detail.Signature, prefix),
-                                                            detail.Rva,
-                                                            detail.IsFunction)));
-            }
+            matches.Add(new SymbolMatch(className,
+                                        new ClassMember(frame.Module.Name,
+                                                        symbol.MethodName,
+                                                        RemoveScope(symbol.Signature, prefix),
+                                                        symbol.Rva,
+                                                        symbol.IsFunction)));
         }
 
         return matches;
@@ -166,30 +141,16 @@ public sealed class CallstackResolver(string symbolsPath) : IDisposable
     /// </remarks>
     public ClassMemberGroup ListMembers(CallstackFrame frame, string className)
     {
-        var pdbPath = GetPdbPath(frame);
-
-        if (!HasSymbolInformation(frame) || !File.Exists(pdbPath))
+        if (SymbolTableCache.Get(symbolsPath, frame.Module) is not { } table)
         {
-            return new ClassMemberGroup(frame.Module, []);
+            return new ClassMemberGroup(frame.Module.Name, []);
         }
-
-        var resolver = _resolverCache.GetOrAdd(pdbPath, path => new DiaResolver(path));
-
-        var index = _indexCache.GetOrAdd(pdbPath,
-                                         _ => new Lazy<ClassMemberIndex>(() => ClassMemberIndex.Build(resolver),
-                                                                         LazyThreadSafetyMode.ExecutionAndPublication))
-                               .Value;
 
         var prefix = $"{className}::";
 
-        var members = index.Find(className)
-                           .Distinct()
-                           .SelectMany(resolver.EnumerateSymbolsAtRva)
-                           .Where(s => s.Name.StartsWith(prefix, StringComparison.Ordinal)
-                                       && !s.Name.Contains('`')
-                                       && SymbolsHelper.FindClassMethodSeparator(s.Name) == className.Length)
-                           .Select(s => new ClassMember(frame.Module,
-                                                        s.Name[prefix.Length..],
+        var members = table.GetClassMembers(className)
+                           .Select(s => new ClassMember(frame.Module.Name,
+                                                        s.MethodName,
                                                         RemoveScope(s.Signature, prefix),
                                                         s.Rva,
                                                         s.IsFunction))
@@ -197,97 +158,40 @@ public sealed class CallstackResolver(string symbolsPath) : IDisposable
                            .OrderBy(m => m.Signature, StringComparer.Ordinal)
                            .ToList();
 
-        return new ClassMemberGroup(frame.Module, members);
+        return new ClassMemberGroup(frame.Module.Name, members);
     }
 
-    /// <summary>
-    /// The signature of the function containing the frame's address, or null when its symbols are not available
-    /// </summary>
-    public string? ResolveSignature(CallstackFrame frame)
-    {
-        var pdbPath = GetPdbPath(frame);
-
-        if (!HasSymbolInformation(frame) || !File.Exists(pdbPath))
-        {
-            return null;
-        }
-
-        var resolver = _resolverCache.GetOrAdd(pdbPath, path => new DiaResolver(path));
-
-        return GetFunctionDetail(resolver, FunctionRva(frame), GetFunctionName(frame))?.Signature;
-    }
-
-    public string? ResolveDecoratedName(CallstackFrame frame)
-    {
-        var pdbPath = GetPdbPath(frame);
-
-        if (!HasSymbolInformation(frame) || !File.Exists(pdbPath))
-        {
-            return null;
-        }
-
-        return _resolverCache.GetOrAdd(pdbPath, path => new DiaResolver(path)).GetDecoratedName(FunctionRva(frame), GetFunctionName(frame));
-    }
+    public Symbol? ResolveSymbol(CallstackFrame frame)
+        => SymbolTableCache.Get(symbolsPath, frame.Module)?.FindFunction(FunctionRva(frame), frame.Function?.Name);
 
     public void ResolveSignatures(IEnumerable<CallstackFrame> frames)
     {
-        var functions = frames.Where(f => f.Signature is null && HasSymbolInformation(f))
-                              .GroupBy(f => (Path: GetPdbPath(f), Rva: FunctionRva(f)));
+        var functions = frames.Where(f => f.Function is { Signature: null } && f.Module.HasSymbols)
+                              .GroupBy(f => (f.Module.Pdb, f.Module.Guid, f.Module.Age, Rva: FunctionRva(f)));
 
         foreach (var function in functions)
         {
-            if (!File.Exists(function.Key.Path))
+            if (ResolveSymbol(function.First()) is not { } symbol || symbol.Signature is not { Length: > 0 } signature)
             {
                 continue;
             }
 
-            var resolver = _resolverCache.GetOrAdd(function.Key.Path, path => new DiaResolver(path));
+            var scoped = symbol.ClassName is { Length: > 0 } className ? RemoveScope(signature, $"{className}::") : signature;
 
-            if (GetFunctionDetail(resolver, function.Key.Rva, GetFunctionName(function.First())) is not { Signature: var signature } detail)
-            {
-                continue;
-            }
-
-            var separator = SymbolsHelper.FindClassMethodSeparator(detail.Name);
-
-            var scoped = separator > 0 ? RemoveScope(signature, $"{detail.Name[..separator]}::") : signature;
-
-            if (FunctionSignature.Parse(signature, resolver.GetDecoratedName(function.Key.Rva, detail.Name)) is { Type: FunctionType.Static })
+            if (symbol.Parsed is { Type: FunctionType.Static })
             {
                 scoped = $"static {scoped}";
             }
 
             foreach (var frame in function)
             {
-                frame.Signature = scoped;
+                frame.Function!.Signature = scoped;
             }
         }
     }
 
-    private static SymbolIndex BuildSearchIndex(DiaResolver resolver) =>
-        SymbolIndex.Build(resolver.EnumerateSymbolDetails(string.Empty));
-
-    private static SymbolDetail? GetFunctionDetail(DiaResolver resolver, uint rva, string? name)
-    {
-        var details = resolver.EnumerateFunctionsAtRva(rva).Where(d => d.Signature.Length > 0).ToList();
-
-        return details.Count == 0 ? null : details.FirstOrDefault(d => d.Name == name, details[0]);
-    }
-
-    private static string? GetFunctionName(CallstackFrame frame)
-    {
-        if (frame.Resolved is not { RawSymbol.Length: > 0 } resolved)
-        {
-            return null;
-        }
-
-        SymbolsHelper.SplitOffset(resolved.RawSymbol, out var name, out _);
-
-        return name.Length > 0 ? name : null;
-    }
-
     private static uint FunctionRva(CallstackFrame frame)
-        => frame.Resolved?.Offset is { } offset && offset <= frame.Rva ? frame.Rva - offset : frame.Rva;
+        => frame.Offset is { } offset && offset <= frame.Rva ? frame.Rva - offset : frame.Rva;
 
     private static string RemoveScope(string signature, string prefix)
     {
@@ -296,14 +200,6 @@ public sealed class CallstackResolver(string symbolsPath) : IDisposable
         var scoped = index < 0 ? signature : signature.Remove(index, prefix.Length);
 
         return scoped.Replace("(void)", "()", StringComparison.Ordinal);
-    }
-
-    private static bool HasSymbolInformation(CallstackFrame frame)
-    {
-        return !string.IsNullOrWhiteSpace(frame.Pdb)
-               && !string.IsNullOrWhiteSpace(frame.Guid)
-               && frame.Guid != "00000000-0000-0000-0000-000000000000"
-               && frame.Age > 0;
     }
 
     private void RecordUnresolved(SymbolKey key, UnresolvedReason reason)
@@ -318,28 +214,31 @@ public sealed class CallstackResolver(string symbolsPath) : IDisposable
                                         });
     }
 
-    private string ResolveInternal(CallstackFrame frame)
+    private string ResolveInternal(CallstackFrame frame, SymbolKey key)
     {
-        var pdbPath = GetPdbPath(frame);
+        if (SymbolTableCache.Find(frame.Module)?.FindFunction(frame.Rva) is { } symbol)
+        {
+            return TableNames.GetOrAdd(key, static (_, found) => found.Name + StartOffset, symbol);
+        }
+
+        if (DiaNames.TryGetValue(key, out var cached))
+        {
+            return cached;
+        }
+
+        var pdbPath = frame.Module.GetPdbPath(symbolsPath);
 
         if (!File.Exists(pdbPath))
         {
-            RecordUnresolved(new SymbolKey(frame.Guid, frame.Age, frame.Rva), UnresolvedReason.SymbolFileMissing);
+            RecordUnresolved(key, UnresolvedReason.SymbolFileMissing);
 
             return $"0x{frame.Rva:X}";
         }
 
         var resolver = _resolverCache.GetOrAdd(pdbPath, path => new DiaResolver(path));
 
-        return resolver.Resolve(frame.Rva);
+        return DiaNames.GetOrAdd(key, resolver.Resolve(frame.Rva));
     }
-
-    internal static string GetPdbPath(string symbolsPath, CallstackFrame frame)
-    {
-        return Path.Combine(symbolsPath, frame.Pdb, SymbolDownloader.SymbolId(frame.Guid, frame.Age), frame.Pdb);
-    }
-
-    private string GetPdbPath(CallstackFrame frame) => GetPdbPath(symbolsPath, frame);
 
     public void Dispose()
     {

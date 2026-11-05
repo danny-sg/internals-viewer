@@ -1141,7 +1141,7 @@ public sealed partial class MemoryReferenceGraphViewModel : ObservableObject
     private static string GetArgumentName(TraceStartCall start, int slot)
         => slot switch
         {
-            0 when start.Node.Frame?.Resolved?.ClassName is { Length: > 0 } => ThisName,
+            0 when start.Node.Frame?.Function?.ClassName is { Length: > 0 } => ThisName,
             < ArgumentLayout.RegisterCount => ArgumentLayout.Registers[slot],
             _ => ArgumentLayout.GetStackLocation(slot)
         };

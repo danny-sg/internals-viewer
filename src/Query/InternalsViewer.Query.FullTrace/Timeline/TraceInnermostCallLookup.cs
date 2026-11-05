@@ -4,7 +4,7 @@ internal sealed class TraceInnermostCallLookup(TraceTimeline? timeline)
 {
     private Dictionary<uint, int> Lanes { get; } = timeline is null
         ? []
-        : Enumerable.Range(0, timeline.Threads.Count).ToDictionary(i => timeline.Threads[i].ThreadId);
+        : timeline.Threads.Select((t, i) => (t.ThreadId, Lane: i)).ToDictionary(t => t.ThreadId, t => t.Lane);
 
     private Dictionary<uint, int> Depths { get; } = [];
 

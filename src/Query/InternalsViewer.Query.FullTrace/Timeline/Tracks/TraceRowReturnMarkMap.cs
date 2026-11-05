@@ -139,7 +139,7 @@ public sealed class TraceRowReturnMarkMap
         foreach (var list in calls.GetCallLists())
         {
             if (!owners.ContainsKey(list.InstanceAddress)
-                || calls.GetFirstNode(list)?.Frame?.Resolved?.MethodName is not { } method
+                || calls.GetFirstNode(list)?.Frame?.Function?.MethodName is not { } method
                 || !IteratorSymbolLookup.IsRowReturnMethod(method))
             {
                 continue;

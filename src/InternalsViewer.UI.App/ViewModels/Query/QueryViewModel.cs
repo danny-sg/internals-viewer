@@ -542,9 +542,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     // The selected event's path is recovered by walking its leaf node up the shared call stack tree.
     public List<CallstackFrame> SelectedCallstack
         => SelectedEvent?.CallStack?.Path()
-                        .Where(f => f.Resolved is null
-                                 || (f.Resolved.ModuleCategory.GetCategoryMetadata()?.IsInfrastructure != true
-                                  && f.Resolved.SymbolCategory.GetCategoryMetadata()?.IsInfrastructure != true))
+                        .Where(f => f.Function is null
+                                 || (f.Module.Category.GetCategoryMetadata()?.IsInfrastructure != true
+                                  && f.Function.SymbolCategory.GetCategoryMetadata()?.IsInfrastructure != true))
                         .ToList() ?? [];
 
     public IReadOnlyDictionary<int, string>? SelectedPlanNodeColumnNames

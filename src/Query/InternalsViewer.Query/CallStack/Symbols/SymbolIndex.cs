@@ -1,5 +1,4 @@
 ﻿using System.Text;
-using InternalsViewer.Query.CallStack.Dia;
 using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.CallStack.Symbols;
@@ -20,16 +19,16 @@ namespace InternalsViewer.Query.CallStack.Symbols;
 /// </remarks>
 internal sealed class SymbolIndex
 {
-    private SymbolIndex(PackedStrings classes, PackedStrings names, PackedStrings signatures, uint[] rvas, bool[] functions)
+    private SymbolIndex(PackedStrings classes, PackedStrings names, PackedStrings signatures, SymbolTable table, int[] entries)
     {
         Classes = classes;
         Names = names;
         Signatures = signatures;
-        Rvas = rvas;
-        Functions = functions;
+        Table = table;
+        Entries = entries;
     }
 
-    public int Count => Rvas.Length;
+    public int Count => Entries.Length;
 
     private PackedStrings Classes { get; }
 
@@ -37,11 +36,11 @@ internal sealed class SymbolIndex
 
     private PackedStrings Signatures { get; }
 
-    private uint[] Rvas { get; }
+    private SymbolTable Table { get; }
 
-    private bool[] Functions { get; }
+    private int[] Entries { get; }
 
-    public static SymbolIndex Build(IEnumerable<SymbolDetail> symbols)
+    public static SymbolIndex Build(SymbolTable table)
     {
         var classes = new PackedStrings.Builder();
 
@@ -49,31 +48,27 @@ internal sealed class SymbolIndex
 
         var signatures = new PackedStrings.Builder();
 
-        var rvas = new List<uint>();
+        var entries = new List<int>();
 
-        var functions = new List<bool>();
+        var symbols = table.Read();
 
-        foreach (var symbol in symbols)
+        while (symbols.MoveNext())
         {
-            if (symbol.Name.Contains('`'))
+            if (symbols.IsGenerated)
             {
                 continue;
             }
 
-            var separator = SymbolsHelper.FindClassMethodSeparator(symbol.Name);
+            classes.Add(symbols.ClassName);
 
-            classes.Add(separator > 0 ? symbol.Name[..separator] : string.Empty);
+            names.Add(symbols.Name);
 
-            names.Add(symbol.Name);
+            signatures.Add(symbols.Signature.Length > 0 ? symbols.Signature : symbols.Name);
 
-            signatures.Add(symbol.Signature.Length > 0 ? symbol.Signature : symbol.Name);
-
-            rvas.Add(symbol.Rva);
-
-            functions.Add(symbol.IsFunction);
+            entries.Add(symbols.Index);
         }
 
-        return new SymbolIndex(classes.Build(), names.Build(), signatures.Build(), rvas.ToArray(), functions.ToArray());
+        return new SymbolIndex(classes.Build(), names.Build(), signatures.Build(), table, [.. entries]);
     }
 
     /// <summary>
@@ -83,7 +78,7 @@ internal sealed class SymbolIndex
     /// No field chosen means every field. The module is not a field here, as one index is one module: the caller
     /// decides whether the module's name qualifies every symbol in it.
     /// </remarks>
-    public IReadOnlyList<SymbolHit> Search(string text, SymbolSearchFields fields, int limit)
+    public IReadOnlyList<Symbol> Search(string text, SymbolSearchFields fields, int limit)
     {
         var query = SearchQuery.Parse(text);
 
@@ -167,9 +162,9 @@ internal sealed class SymbolIndex
     /// <summary>
     /// The first symbols in the index, for a search satisfied by the module's name alone
     /// </summary>
-    public IReadOnlyList<SymbolHit> First(int limit) => Enumerable.Range(0, Math.Min(limit, Count)).Select(Hit).ToList();
+    public IReadOnlyList<Symbol> First(int limit) => Enumerable.Range(0, Math.Min(limit, Count)).Select(Hit).ToList();
 
-    private SymbolHit Hit(int entry) => new(Rvas[entry], Functions[entry]);
+    private Symbol Hit(int entry) => Table.GetSymbol(Entries[entry]);
 
     /// <summary>
     /// A search text folded to lower-case ASCII, with the longest wildcard-free run picked out to scan for
@@ -293,9 +288,11 @@ internal sealed class SymbolIndex
 
         private int Count => Starts.Length - 1;
 
-        public static byte[] Fold(string text)
+        public static byte[] Fold(ReadOnlySpan<char> text)
         {
-            var folded = Encoding.ASCII.GetBytes(text);
+            var folded = new byte[Encoding.ASCII.GetByteCount(text)];
+
+            Encoding.ASCII.GetBytes(text, folded);
 
             for (var i = 0; i < folded.Length; i++)
             {
@@ -386,7 +383,7 @@ internal sealed class SymbolIndex
 
             private readonly List<int> _starts = [];
 
-            public void Add(string text)
+            public void Add(ReadOnlySpan<char> text)
             {
                 _starts.Add((int)_bytes.Length);
 
@@ -402,8 +399,3 @@ internal sealed class SymbolIndex
         }
     }
 }
-
-/// <summary>
-/// A symbol found by the index, by the address it is described from
-/// </summary>
-internal readonly record struct SymbolHit(uint Rva, bool IsFunction);

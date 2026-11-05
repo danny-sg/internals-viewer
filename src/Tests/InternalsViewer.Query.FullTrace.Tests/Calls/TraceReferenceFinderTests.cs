@@ -96,10 +96,10 @@ public class TraceReferenceFinderTests
 
     private static CallstackFrame Frame(ulong rva, string symbol) => new()
     {
-        Module = "sqlmin",
+        Module = new("sqlmin"),
         Rva = (uint)rva,
         Address = 0x7FF0_0000_0000 + rva,
-        Resolved = ResolvedCallstackFrameParser.Parse("sqlmin", symbol)
+        Function = CallstackFunction.Parse("sqlmin", symbol)
     };
 
     private sealed class Signatures(FunctionType type) : ITraceSignatureSource

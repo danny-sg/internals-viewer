@@ -1,5 +1,5 @@
 using InternalsViewer.Query.CallStack.Arguments;
-using InternalsViewer.Query.CallStack.Dia;
+using InternalsViewer.Query.CallStack.Symbols;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.FullTrace.Arguments;
@@ -23,20 +23,12 @@ namespace InternalsViewer.Query.FullTrace.Functions;
 /// </remarks>
 internal static class PlanObjectInstanceMethodCollector
 {
-    public static int? InstanceRegister(string? signature, string? decoratedName)
+    public static int? InstanceRegister(FunctionSignature? signature) => signature switch
     {
-        if (signature is null || decoratedName is null)
-        {
-            return 0;
-        }
-
-        return FunctionSignature.Parse(signature, decoratedName) switch
-        {
-            { Type: FunctionType.Member } => 0,
-            { Type: FunctionType.Static, Parameters: var parameters } => KeyedParameter(parameters),
-            _ => null
-        };
-    }
+        { Type: FunctionType.Member } => 0,
+        { Type: FunctionType.Static, Parameters: var parameters } => KeyedParameter(parameters),
+        _ => null
+    };
 
     public static bool IsPlanObjectMethod(ReadOnlySpan<char> symbol)
     {
@@ -59,13 +51,13 @@ internal static class PlanObjectInstanceMethodCollector
                    && IteratorSymbolLookup.IsIteratorMethod(methodName));
     }
 
-    public static List<InstanceMethod> FindInstanceMethods(IEnumerable<uint> addresses, DiaResolver resolver)
+    public static List<InstanceMethod> FindInstanceMethods(IEnumerable<uint> addresses, SymbolTable table)
     {
         var methods = new List<InstanceMethod>();
 
         foreach (var rva in addresses)
         {
-            if (InstanceRegister(resolver.GetSignature(rva), resolver.GetDecoratedName(rva)) is { } register)
+            if ((table.FindFunction(rva) is { } symbol ? InstanceRegister(symbol.Parsed) : 0) is { } register)
             {
                 methods.Add(new InstanceMethod(rva, register));
             }

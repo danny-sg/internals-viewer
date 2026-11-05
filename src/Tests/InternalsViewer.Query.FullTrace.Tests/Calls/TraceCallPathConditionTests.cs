@@ -131,10 +131,10 @@ public class TraceCallPathConditionTests
 
     private static CallstackFrame Frame(string module, string className, string method, uint rva) => new()
     {
-        Module = module,
+        Module = new(module),
         Rva = rva,
         Address = rva,
-        Resolved = new ResolvedCallstackFrame
+        Function = new CallstackFunction
         {
             ClassName = className,
             MethodName = method,

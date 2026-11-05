@@ -15,13 +15,8 @@ extern "C"
     __declspec(dllexport) bool NextSymbol(void *enumerator, wchar_t *buffer, int bufferLength);
 
     __declspec(dllexport) bool NextSymbolDetail(void *enumerator, wchar_t *nameBuffer, int nameLength,
-                                                wchar_t *signatureBuffer, int signatureLength, unsigned int *rva,
-                                                int *isFunction);
-
-    __declspec(dllexport) void *BeginEnumSymbolsAtRva(void *session, unsigned int rva);
-
-    __declspec(dllexport) bool GetDecoratedName(void *session, unsigned int rva, const wchar_t *name, wchar_t *buffer,
-                                                int bufferLength);
+                                                wchar_t *signatureBuffer, int signatureLength, wchar_t *decoratedBuffer,
+                                                int decoratedLength, unsigned int *rva, int *isFunction);
 
     __declspec(dllexport) void EndEnumSymbols(void *enumerator);
 

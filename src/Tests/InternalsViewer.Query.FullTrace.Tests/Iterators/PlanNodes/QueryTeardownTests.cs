@@ -58,8 +58,8 @@ public class QueryTeardownTests
 
     private static CallstackFrame Frame(string className, string methodName, uint rva) => new()
     {
-        Module = "sqlmin",
+        Module = new("sqlmin"),
         Rva = rva,
-        Resolved = new ResolvedCallstackFrame { ClassName = className, MethodName = methodName }
+        Function = new CallstackFunction { ClassName = className, MethodName = methodName }
     };
 }

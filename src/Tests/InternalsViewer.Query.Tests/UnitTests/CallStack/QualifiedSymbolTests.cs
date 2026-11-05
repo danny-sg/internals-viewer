@@ -1,3 +1,4 @@
+using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.CallStack;
 
 namespace InternalsViewer.Query.Tests.UnitTests.CallStack;
@@ -20,7 +21,7 @@ public class QualifiedSymbolTests
     [Fact]
     public void An_Unresolved_Frame_Is_Its_Module_Relative_Address()
     {
-        Assert.Equal("sqlmin+0x2509D40", QualifiedSymbol.Of(new CallstackFrame { Module = "sqlmin", Rva = 0x2509D40 }));
+        Assert.Equal("sqlmin+0x2509D40", QualifiedSymbol.Of(new CallstackFrame { Module = new("sqlmin"), Rva = 0x2509D40 }));
         Assert.Equal("sqlmin+0x2509D40", QualifiedSymbol.Of(Resolved("0x2509D40", 0x2509D40)));
     }
 
@@ -42,10 +43,10 @@ public class QualifiedSymbolTests
         Assert.Equal("sqlmin!memcpy", QualifiedSymbol.Of(member));
     }
 
-    private static CallstackFrame Resolved(string symbol, uint rva = 0x1000) => new()
+    private static CallstackFrame Resolved(string symbol, uint rva = 0x1000)
     {
-        Module = "sqlmin",
-        Rva = rva,
-        Resolved = ResolvedCallstackFrameParser.Parse("sqlmin", symbol)
-    };
+        SymbolsHelper.SplitOffset(symbol, out var name, out var offset);
+
+        return new CallstackFrame { Module = new("sqlmin"), Rva = rva, Function = CallstackFunction.Parse("sqlmin", name), Offset = offset };
+    }
 }

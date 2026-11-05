@@ -70,8 +70,8 @@ public class TraceValueSearchTests
     {
         var tree = new CallStackTree();
 
-        var kept = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x10 }, 1);
-        var dropped = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x20 }, 1);
+        var kept = tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqlmin"), Rva = 0x10 }, 1);
+        var dropped = tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqlmin"), Rva = 0x20 }, 1);
 
         var builder = new TraceCallStore.Builder();
 

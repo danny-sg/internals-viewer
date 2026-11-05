@@ -120,7 +120,7 @@ public sealed partial class AddressMap
                                   entry.ToPosition,
                                   entry.Thread,
                                   entry.CallNodeIndex,
-                                  entry.ClassName ?? (allocates ? null : GetName(node?.Frame?.Resolved?.ClassName)),
+                                  entry.ClassName ?? (allocates ? null : GetName(node?.Frame?.Function?.ClassName)),
                                   allocates ? GetName(node?.Symbol) : null,
                                   bytes,
                                   site,

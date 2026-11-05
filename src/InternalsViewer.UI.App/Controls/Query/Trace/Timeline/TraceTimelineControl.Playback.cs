@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Enums;
+using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 
 namespace InternalsViewer.UI.App.Controls.Query.Trace.Timeline;
 
@@ -13,15 +16,19 @@ public sealed partial class TraceTimelineControl
 
     public event Action<bool>? PlayStateChanged;
 
+    public event Action? StepModeChanged;
+
     public bool IsPlaying => _playTimer?.IsEnabled == true;
 
     public double PlaySpeed { get; set; } = 1;
 
-    public PlayheadStepMode StepMode { get; set; } = PlayheadStepMode.Call;
+    public PlayheadStepMode StepMode { get; private set; } = PlayheadStepMode.Call;
+
+    public string? StepTrack { get; private set; }
 
     public void Step(bool forward)
     {
-        StepPlayhead(forward, StepMode);
+        StepPlayhead(forward, StepMode, StepTrack);
 
         ReportPlayhead();
 
@@ -37,6 +44,29 @@ public sealed partial class TraceTimelineControl
         else
         {
             StartPlay();
+        }
+    }
+
+    public void SetStepMode(PlayheadStepMode mode, string? track)
+    {
+        StepMode = mode;
+
+        StepTrack = mode == PlayheadStepMode.Track ? track : null;
+
+        StepModeChanged?.Invoke();
+    }
+
+    public IEnumerable<TraceTickTrack> GetStepTracks()
+        => (TickTracks ?? []).Where(t => t.Series.Count > 0 && HiddenTickTracks?.Contains(t.Name) != true);
+
+    public TraceTickTrack? GetStepTrack(string? name)
+        => GetStepTracks().FirstOrDefault(t => string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase));
+
+    private void ResetHiddenStepTrack()
+    {
+        if (StepMode == PlayheadStepMode.Track && GetStepTrack(StepTrack) is null)
+        {
+            SetStepMode(PlayheadStepMode.Call, null);
         }
     }
 

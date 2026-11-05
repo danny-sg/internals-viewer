@@ -885,7 +885,7 @@ public sealed partial class CallTreeViewModel
                || Contains(node.Symbol)
                || Contains(node.Category)
                || Contains(node.Operator)
-               || Contains(node.Frame?.Module);
+               || Contains(node.Frame?.Module.Name);
     }
 
     private bool Matches(ExecutionOperatorEvent op)

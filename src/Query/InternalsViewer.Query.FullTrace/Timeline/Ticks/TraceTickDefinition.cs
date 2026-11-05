@@ -13,7 +13,7 @@ public sealed partial record TraceTickDefinition(string Name,
                                                  IReadOnlyList<TraceCallCondition> Conditions)
 {
     public bool IsFunction(CallStackNode node)
-        => node.Frame is { } frame && string.Equals(frame.Module, Module, StringComparison.OrdinalIgnoreCase) && node.Symbol == Function;
+        => node.Frame is { } frame && string.Equals(frame.Module.Name, Module, StringComparison.OrdinalIgnoreCase) && node.Symbol == Function;
 
     public bool MatchesCall(TraceArgumentCall call) => TraceCallCondition.MatchesAll(Conditions, call);
 

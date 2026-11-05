@@ -177,7 +177,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
     public async Task<ArgumentLayout?> GetLayoutAsync(CallstackFrame frame) => (await ResolveAsync(frame))?.Layout;
 
     public async Task<FunctionType?> GetFunctionTypeAsync(CallstackFrame frame)
-        => await symbols.ResolveFrameDecoratedNameAsync(frame) is { } decoratedName ? FunctionSignature.GetFunctionType(decoratedName) : null;
+        => (await symbols.ResolveFrameSymbolAsync(frame))?.FunctionType;
 
     public Task<TraceValueReferenceResult> FindReferencesAsync(ulong value, CancellationToken cancellationToken)
         => References.FindAsync(value, cancellationToken);
@@ -221,7 +221,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
 
     private static string FunctionName(CallstackFrame? frame, ulong address)
     {
-        if (frame?.Resolved is { MethodName: { Length: > 0 } method } resolved)
+        if (frame?.Function is { MethodName: { Length: > 0 } method } resolved)
         {
             return resolved.ClassName is { Length: > 0 } className ? $"{className}::{method}" : method;
         }
@@ -261,17 +261,13 @@ public sealed class CallStoreLookup(TraceCallStore store,
 
     private async Task<ResolvedSignature?> ResolveSignatureAsync(CallstackFrame frame)
     {
-        var signature = await symbols.ResolveFrameSignatureAsync(frame);
-
-        var decoratedName = await symbols.ResolveFrameDecoratedNameAsync(frame);
-
-        if (FunctionSignature.Parse(signature, decoratedName) is not { } parsed)
+        if (await symbols.ResolveFrameSymbolAsync(frame) is not { Parsed: { } parsed } symbol)
         {
             return null;
         }
 
-        var layout = KnownParameterLookup.Apply(ArgumentLayout.GetLayout(parsed), frame.Resolved?.ClassName, frame.Resolved?.MethodName);
+        var layout = KnownParameterLookup.Apply(ArgumentLayout.GetLayout(parsed), frame.Function?.ClassName, frame.Function?.MethodName);
 
-        return new ResolvedSignature(parsed, signature, layout);
+        return new ResolvedSignature(parsed, symbol.Signature, layout);
     }
 }

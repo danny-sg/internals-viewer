@@ -468,17 +468,17 @@
                                    Grid.Column="0"
                                    Text="Module"
                                    Style="{StaticResource DetailLabelStyle}"
-                                   Visibility="{x:Bind IsTextVisible(ViewModel.SelectedCall.Node.Frame.Module), Mode=OneWay}"/>
+                                   Visibility="{x:Bind IsTextVisible(ViewModel.SelectedCall.Node.Frame.Module.Name), Mode=OneWay}"/>
                         <TextBlock Grid.Row="1"
                                    Grid.Column="2"
                                    Style="{StaticResource DetailValueStyle}"
-                                   Visibility="{x:Bind IsTextVisible(ViewModel.SelectedCall.Node.Frame.Module), Mode=OneWay}"
-                                   Text="{x:Bind ViewModel.SelectedCall.Node.Frame.Module, Mode=OneWay}"/>
+                                   Visibility="{x:Bind IsTextVisible(ViewModel.SelectedCall.Node.Frame.Module.Name), Mode=OneWay}"
+                                   Text="{x:Bind ViewModel.SelectedCall.Node.Frame.Module.Name, Mode=OneWay}"/>
                         <controls:CopyButton Grid.Row="1"
                                              Grid.Column="1"
                                              Style="{StaticResource DetailCopyButtonStyle}"
-                                             Visibility="{x:Bind IsTextVisible(ViewModel.SelectedCall.Node.Frame.Module), Mode=OneWay}"
-                                             Tag="{x:Bind ViewModel.SelectedCall.Node.Frame.Module, Mode=OneWay}"
+                                             Visibility="{x:Bind IsTextVisible(ViewModel.SelectedCall.Node.Frame.Module.Name), Mode=OneWay}"
+                                             Tag="{x:Bind ViewModel.SelectedCall.Node.Frame.Module.Name, Mode=OneWay}"
                                              Click="OnCopyValueClick"/>
 
                         <TextBlock Grid.Row="2" Grid.Column="0"

@@ -712,11 +712,11 @@ public class MemoryHistoryBuilderTests
 
     private static CallstackFrame Frame(string className, string method, uint rva, ulong instance = 0) => new()
     {
-        Module = "sqlmin",
+        Module = new("sqlmin"),
         Rva = rva,
         Address = rva,
         InstanceAddress = instance,
-        Resolved = new ResolvedCallstackFrame
+        Function = new CallstackFunction
         {
             ClassName = className,
             MethodName = method,

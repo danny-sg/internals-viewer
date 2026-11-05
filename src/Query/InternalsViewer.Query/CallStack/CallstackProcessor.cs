@@ -46,19 +46,21 @@ internal static class CallstackProcessor
 
         FixUnsymbolisedFrames(frames);
 
-        await SymbolDownloader.DownloadSymbols(frames, symbolsPath, progress, cancellationToken);
+        await SymbolDownloader.DownloadSymbols(frames.Select(f => f.Module), symbolsPath, progress, cancellationToken);
 
         using var resolver = new CallstackResolver(symbolsPath);
+
+        var functions = new CallstackFunctionLookup();
 
         foreach (var frame in frames)
         {
             if (resolver.TryResolve(frame, out var result) && !string.IsNullOrEmpty(result))
             {
-                frame.Resolved = ResolvedCallstackFrameParser.Parse(frame.Module, result);
+                functions.Resolve(frame, result);
 
-                if (frame.Resolved.ModuleCategory == ModuleCategory.Unknown || frame.Resolved.SymbolCategory == SymbolCategory.Unknown)
+                if (frame.Module.Category == ModuleCategory.Unknown || frame.Function is { SymbolCategory: SymbolCategory.Unknown })
                 {
-                    unknown.Add($"{frame.Module}!{result}");
+                    unknown.Add($"{frame.Module.Name}!{result}");
                 }
             }
         }
@@ -77,34 +79,31 @@ internal static class CallstackProcessor
     /// </remarks>
     private static void FixUnsymbolisedFrames(List<CallstackFrame> frames)
     {
-        var modules = new Dictionary<string, (ulong Base, string Pdb, string Guid, int Age)>(StringComparer.OrdinalIgnoreCase);
+        var modules = new Dictionary<string, (ulong Base, CallstackModule Module)>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var frame in frames)
         {
-            if (frame.Pdb.Length > 0 && frame.Address >= frame.Rva && !modules.ContainsKey(frame.Module))
+            if (frame.Module.Pdb.Length > 0 && frame.Address >= frame.Rva && !modules.ContainsKey(frame.Module.Name))
             {
-                modules[frame.Module] = (frame.Address - frame.Rva, frame.Pdb, frame.Guid, frame.Age);
+                modules[frame.Module.Name] = (frame.Address - frame.Rva, frame.Module);
             }
         }
 
         foreach (var frame in frames)
         {
-            if (frame.Pdb.Length > 0 || frame.Address == 0)
+            if (frame.Module.Pdb.Length > 0 || frame.Address == 0)
             {
                 continue;
             }
 
-            var at = frame.Module.IndexOf('@');
+            var name = frame.Module.Name;
 
-            var module = at >= 0 ? frame.Module[..at] : frame.Module;
+            var at = name.IndexOf('@');
 
-            if (modules.TryGetValue(module, out var moduleInfo) && frame.Address >= moduleInfo.Base)
+            if (modules.TryGetValue(at >= 0 ? name[..at] : name, out var known) && frame.Address >= known.Base)
             {
-                frame.Module = module;
-                frame.Pdb = moduleInfo.Pdb;
-                frame.Guid = moduleInfo.Guid;
-                frame.Age = moduleInfo.Age;
-                frame.Rva = (uint)(frame.Address - moduleInfo.Base);
+                frame.Module = known.Module;
+                frame.Rva = (uint)(frame.Address - known.Base);
             }
         }
     }

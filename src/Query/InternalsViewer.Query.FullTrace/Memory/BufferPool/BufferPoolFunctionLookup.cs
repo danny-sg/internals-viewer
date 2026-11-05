@@ -27,5 +27,5 @@ internal static class BufferPoolFunctionLookup
     public static NamedFunctionCollector<BufferPoolFunctionType> CreateCollector() => new(Names);
 
     public static bool IsBufferPool(CallstackFrame? frame)
-        => frame is { Resolved.ClassName: BufferPoolClass } && frame.Module.Equals(Module, StringComparison.OrdinalIgnoreCase);
+        => frame is { Function.ClassName: BufferPoolClass } && frame.Module.Name.Equals(Module, StringComparison.OrdinalIgnoreCase);
 }

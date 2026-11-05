@@ -161,6 +161,51 @@ public class TraceTimelineToolsTests
         Assert.Contains("No function in the call graph matches", exception.Message);
     }
 
+    [Fact]
+    public async Task Trace_Step_Steps_On_A_Visible_Track_By_Name()
+    {
+        var timeline = new RecordingTimeline();
+
+        var text = await Create(timeline, TrackState()).Step("getrow", forward: false, count: 2);
+
+        Assert.Equal((McpStepMode.Track, "GetRow", false, 2), timeline.Stepped);
+        Assert.Contains("Stepped back by GetRow.", text);
+    }
+
+    [Fact]
+    public async Task Trace_Step_Steps_By_Call_Without_A_Track()
+    {
+        var timeline = new RecordingTimeline();
+
+        await Create(timeline, TrackState()).Step();
+
+        Assert.Equal((McpStepMode.Call, null, true, 1), timeline.Stepped);
+    }
+
+    [Theory]
+    [InlineData("Reads", "The Reads track is hidden")]
+    [InlineData("Seek", "The Seek track has no ticks")]
+    [InlineData("Batch", "Unknown step mode 'Batch'. Use call, same-call or a visible track: GetRow.")]
+    public async Task Trace_Step_Rejects_A_Track_With_Nothing_Visible_To_Step_To(string mode, string expected)
+    {
+        var timeline = new RecordingTimeline();
+
+        var exception = await Assert.ThrowsAsync<McpException>(() => Create(timeline, TrackState()).Step(mode));
+
+        Assert.Contains(expected, exception.Message);
+        Assert.Null(timeline.Stepped);
+    }
+
+    private static McpTraceTimeline TrackState() => new()
+    {
+        Tracks =
+        [
+            new McpTimelineTrack("GetRow", false, true, 12, string.Empty, string.Empty, []),
+            new McpTimelineTrack("Reads", false, false, 4, string.Empty, string.Empty, []),
+            new McpTimelineTrack("Seek", false, true, 0, string.Empty, string.Empty, [])
+        ]
+    };
+
     private static TraceTimelineTools Create(RecordingTimeline timeline, McpTraceTimeline? state = null)
     {
         var document = new TestDocument { Run = TestRuns.Create(), TimelineCommands = timeline, TimelineState = state };
@@ -196,7 +241,14 @@ public class TraceTimelineToolsTests
 
         public Task<int> RemoveTracksAsync(string? name) => throw new NotSupportedException();
 
-        public Task StepAsync(McpStepMode mode, bool forward, int count) => throw new NotSupportedException();
+        public (McpStepMode Mode, string? Track, bool Forward, int Count)? Stepped { get; private set; }
+
+        public Task StepAsync(McpStepMode mode, string? track, bool forward, int count)
+        {
+            Stepped = (mode, track, forward, count);
+
+            return Task.CompletedTask;
+        }
 
         public Task SearchAsync(string? text) => throw new NotSupportedException();
 

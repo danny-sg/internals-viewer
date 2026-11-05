@@ -11,10 +11,7 @@ public class CallstackResolverTests
                                                uint rva = 0x1234) =>
         new()
         {
-            Module = "sqlmin",
-            Pdb = pdb,
-            Guid = guid,
-            Age = age,
+            Module = new("sqlmin", pdb, guid, age),
             Rva = rva
         };
 

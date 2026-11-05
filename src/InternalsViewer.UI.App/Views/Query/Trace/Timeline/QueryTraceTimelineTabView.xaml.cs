@@ -42,6 +42,12 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
     private const string MemoryGroup = "TraceTimelineViewMemory";
 
+    private const string StepGroup = "TraceTimelineStep";
+
+    private const string CallStepText = "Call";
+
+    private const string SameCallStepText = "Same Call";
+
     private const int MemoryRefreshMilliseconds = 50;
 
     private const int StackRefreshMilliseconds = 100;
@@ -59,6 +65,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
     private Button? _previousFrameButton;
 
     private Button? _nextFrameButton;
+
+    private TextBlock? _stepLabel;
 
     private long _rulerPinnedToken;
 
@@ -101,6 +109,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         TraceTimeline.TickTrackAddRequested += OnTickTrackAddRequested;
 
         TraceTimeline.PlayStateChanged += OnPlayStateChanged;
+
+        TraceTimeline.StepModeChanged += OnStepModeChanged;
 
         TraceTimeline.CallStackChanged += OnCallStackChanged;
 
@@ -184,14 +194,7 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
                                  _callsToggle,
                                  _playButton,
                                  TabCommands.Separator(),
-                                 TabCommands.ToggleSplitButton("Choose what Previous Frame and Next Frame step to",
-                                                               "Step",
-                                                               (int)TraceTimeline.StepMode,
-                                                               index => TraceTimeline.StepMode = (PlayheadStepMode)index,
-                                                               "Call",
-                                                               "Same Call",
-                                                               "Batch",
-                                                               "Row"),
+                                 CreateStepMenu(),
                                  _previousFrameButton,
                                  _nextFrameButton,
                                  TabCommands.Separator(),
@@ -238,6 +241,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         TraceTimeline.TickTrackAddRequested -= OnTickTrackAddRequested;
 
         TraceTimeline.PlayStateChanged -= OnPlayStateChanged;
+
+        TraceTimeline.StepModeChanged -= OnStepModeChanged;
 
         TraceTimeline.CallStackChanged -= OnCallStackChanged;
 
@@ -449,6 +454,66 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         return menu;
     }
+
+    private Button CreateStepMenu()
+    {
+        _stepLabel = TabCommands.Label(GetStepLabel());
+
+        var menu = new MenuFlyout();
+
+        menu.Opening += (_, _) => FillStepMenu(menu);
+
+        return TabCommands.Menu(_stepLabel, "Choose what Previous Frame and Next Frame step to", menu);
+    }
+
+    private void FillStepMenu(MenuFlyout menu)
+    {
+        menu.Items.Clear();
+
+        menu.Items.Add(StepItem(CallStepText, PlayheadStepMode.Call, null));
+
+        menu.Items.Add(StepItem(SameCallStepText, PlayheadStepMode.SameCall, null));
+
+        var tracks = TraceTimeline.GetStepTracks().ToList();
+
+        if (tracks.Count > 0)
+        {
+            menu.Items.Add(new MenuFlyoutSeparator());
+        }
+
+        foreach (var track in tracks)
+        {
+            menu.Items.Add(StepItem(track.MenuText, PlayheadStepMode.Track, track.Name));
+        }
+    }
+
+    private RadioMenuFlyoutItem StepItem(string text, PlayheadStepMode mode, string? track)
+    {
+        var item = new RadioMenuFlyoutItem
+        {
+            Text = text,
+            GroupName = StepGroup,
+            IsChecked = TraceTimeline.StepMode == mode && string.Equals(TraceTimeline.StepTrack, track, StringComparison.Ordinal)
+        };
+
+        item.Click += (_, _) => TraceTimeline.SetStepMode(mode, track);
+
+        return item;
+    }
+
+    private string GetStepLabel()
+    {
+        var text = TraceTimeline.StepMode switch
+        {
+            PlayheadStepMode.SameCall => SameCallStepText,
+            PlayheadStepMode.Track => TraceTimeline.GetStepTrack(TraceTimeline.StepTrack)?.MenuText ?? CallStepText,
+            _ => CallStepText
+        };
+
+        return $"Step {text}";
+    }
+
+    private void OnStepModeChanged() => _stepLabel?.Text = GetStepLabel();
 
     private RadioMenuFlyoutItem MemoryItem(string text, TraceTimelineMemoryMode? mode)
     {

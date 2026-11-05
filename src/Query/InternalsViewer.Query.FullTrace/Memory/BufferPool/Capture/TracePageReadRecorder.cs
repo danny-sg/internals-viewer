@@ -26,16 +26,16 @@ internal sealed class TracePageReadRecorder(TraceBufferPool pool)
     {
         Received++;
 
-        var address = hit.Address;
+        var frame = GetFrame(hit.Address);
 
-        var frame = GetFrame(address);
+        var address = Math.Max(hit.Address, frame + PageHeader.Size);
 
-        if (address - frame < (ulong)PageHeader.Size)
+        var end = Math.Min(hit.Address + hit.Size, frame + PageData.Size);
+
+        if (address >= end)
         {
             return;
         }
-
-        var end = Math.Min(address + hit.Size, frame + PageData.Size);
 
         var position = hit.Position;
 

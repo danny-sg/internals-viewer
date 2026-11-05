@@ -205,6 +205,23 @@ public class TraceRowReturnMarkMapTests
         Assert.Null(ticks.GetNearest(TraceTimelineAxis.Instructions, 17, 0));
     }
 
+    [Fact]
+    public void Stepping_Lands_On_The_End_Of_The_Next_Or_Previous_GetRow_Call()
+    {
+        var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)], [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)]);
+
+        var ticks = marks.Ticks.GetTicks(Scan, Thread)!;
+
+        const TraceTimelineAxis axis = TraceTimelineAxis.Instructions;
+
+        var next = (ticks.GetNextEnd(axis, 15), ticks.GetNextEnd(axis, 25), ticks.GetNextEnd(axis, 60));
+
+        var previous = (ticks.GetPreviousEnd(axis, 25), ticks.GetPreviousEnd(axis, 58), ticks.GetPreviousEnd(axis, 15));
+
+        Assert.Equal<(double?, double?, double?)>((25, 60, null), next);
+        Assert.Equal<(double?, double?, double?)>((15, 25, null), previous);
+    }
+
     private static TraceRowReturnMarkMap Build((ulong Start, ulong End, ulong Status)[] joinCalls,
                                              (ulong Start, ulong End, ulong Status)[] scanCalls,
                                              ExecutionOperatorEvent? top = null,
@@ -266,11 +283,11 @@ public class TraceRowReturnMarkMapTests
 
     private static CallstackFrame Frame(ulong instance, string method = "GetRowOrReQualifyHelper") => new()
     {
-        Module = "sqlmin",
+        Module = new("sqlmin"),
         Rva = 0x10,
         Address = Helper,
         InstanceAddress = instance,
-        Resolved = new ResolvedCallstackFrame
+        Function = new CallstackFunction
         {
             ClassName = "CQScanNew",
             MethodName = method,

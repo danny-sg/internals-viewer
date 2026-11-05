@@ -249,10 +249,10 @@ public class IteratorInstanceMatcherTests
                                            string? iterator,
                                            string? planOperator) => new()
     {
-        Module = module,
+        Module = new(module),
         Rva = (uint)StringComparer.Ordinal.GetHashCode($"{className}::{method}"),
         InstanceAddress = instance,
-        Resolved = new ResolvedCallstackFrame
+        Function = new CallstackFunction
         {
             ClassName = className,
             MethodName = method,

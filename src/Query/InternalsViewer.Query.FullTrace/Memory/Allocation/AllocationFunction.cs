@@ -82,11 +82,11 @@ namespace InternalsViewer.Query.FullTrace.Memory.Allocation;
 /// A slot value of -1 means the slot is not applicable to the function.
 /// </remarks>
 internal sealed record AllocationFunction(ulong Address,
-                                      AllocationOperation Operation,
-                                      int SizeArgumentSlot,
-                                      int PointerArgumentSlot,
-                                      ulong Unit,
-                                      int CountArgumentSlot = -1)
+                                          AllocationOperation Operation,
+                                          int SizeArgumentSlot,
+                                          int PointerArgumentSlot,
+                                          ulong Unit,
+                                          int CountArgumentSlot = -1)
 {
     private const ulong PageSize = 8192;
 
@@ -157,7 +157,7 @@ internal sealed record AllocationFunction(ulong Address,
 
     public static bool IsAllocatorFrame(CallstackFrame? frame)
     {
-        if (frame?.Resolved is not { } resolved)
+        if (frame?.Function is not { } resolved)
         {
             return false;
         }
@@ -173,7 +173,7 @@ internal sealed record AllocationFunction(ulong Address,
     }
 
     public static bool IsGrantFrame(CallstackFrame? frame)
-        => frame?.Resolved is { ClassName: null or "", MethodName: var methodName } && GrantFunctions.Contains(methodName);
+        => frame?.Function is { ClassName: null or "", MethodName: var methodName } && GrantFunctions.Contains(methodName);
 
     public bool IsCounted(TraceArgumentCall call) => FlagSlot < 0 || (call.Slot(FlagSlot) & FlagMask) != 0;
 

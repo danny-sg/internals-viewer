@@ -146,7 +146,7 @@ public static class OperatorIcicle
 
         for (var i = bottom; i < path.Count; i++)
         {
-            if (path[i].Frame?.Resolved?.SymbolCategory != SymbolCategory.XEventInfrastructure)
+            if (path[i].Frame?.Function?.SymbolCategory != SymbolCategory.XEventInfrastructure)
             {
                 weights[path[i]] = weights.GetValueOrDefault(path[i]) + 1;
             }

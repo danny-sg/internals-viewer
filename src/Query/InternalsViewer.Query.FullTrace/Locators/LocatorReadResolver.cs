@@ -1,24 +1,15 @@
-using System.Buffers;
-using System.Text.RegularExpressions;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.Locators;
+using InternalsViewer.Query.CallStack.Symbols;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Arguments.Enums;
-using InternalsViewer.Query.FullTrace.Functions;
 using InternalsViewer.Query.FullTrace.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Locators;
 
-public static partial class LocatorReadResolver
+public static class LocatorReadResolver
 {
     private const int StackCandidateParameters = 4;
-
-    private static readonly SearchValues<string> DecoratedTypes =
-        SearchValues.Create(["VPageId@@", "VAllocationPageId@@", "VHPageHandle@@", "VPageRef@@", "VBTreeHPage@@", "VIndexPageRef@@",
-                             "VHeapPageRef@@", "VTextPageRef@@", "VIAMPageRef@@", "VGAMPageRef@@", "VSGAMPageRef@@", "VPFSPageRef@@",
-                             "VPSPageRef@@", "URowId@@", "VColumnStoreObjectKey@@", "ULSN@@", "VLSN@@", "PEBD", "PEB_W", "VCTypeInfo@@",
-                             "VCXVariant@@", "UtagDBBINDING@@"],
-                            StringComparison.Ordinal);
 
     internal static IEnumerable<LocatorRead> GetReads(ulong function, FunctionSignature signature)
         => GetReads(function, signature, ArgumentLayout.GetLayout(signature));
@@ -58,10 +49,33 @@ public static partial class LocatorReadResolver
         }
     }
 
-    internal static int GetStackSlotCount(ArgumentLayout layout) => layout.Slots.Count(s => s.Location == ArgumentLocation.Stack);
+    internal static int GetStackSlotCount(ArgumentLayout layout)
+    {
+        var count = 0;
 
-    private static bool ReadsLocators(ReadOnlySpan<char> decoratedName)
-        => decoratedName.ContainsAny(DecoratedTypes) || ReferencedType().IsMatch(decoratedName);
+        for (var index = 0; index < layout.Slots.Count; index++)
+        {
+            if (layout.Slots[index].Location == ArgumentLocation.Stack)
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    private static bool HasLocatorTypes(FunctionSignature signature)
+    {
+        for (var index = 0; index < signature.Parameters.Count; index++)
+        {
+            if (LocatorType.GetLocatorType(signature.Parameters[index]) is not null)
+            {
+                return true;
+            }
+        }
+
+        return signature.ReturnType is { } returnType && LocatorType.GetLocatorType(returnType) is not null;
+    }
 
     private static IEnumerable<LocatorRead> CreateReads(ulong function,
                                                         int register,
@@ -74,16 +88,13 @@ public static partial class LocatorReadResolver
         return ends.Select(e => new LocatorRead(function, register, e, type.ValueType, type.Offset, type.Path, countRegister));
     }
 
-    [GeneratedRegex("[PQA]E[AB](?:[FGHIJKMN]|_[JKN]|W4|VHoBtId@@)")]
-    private static partial Regex ReferencedType();
-
     internal sealed class Collector
     {
         private Dictionary<uint, LocatorRead[]> Reads { get; } = [];
 
-        private Dictionary<uint, int> StackSlots { get; } = [];
+        private Dictionary<ulong, int> StackSlots { get; } = [];
 
-        public void Visit(FunctionSymbol symbol)
+        public void Visit(SymbolTable.Reader symbol, ArgumentLayout? layout)
         {
             if (!symbol.IsFirst)
             {
@@ -97,21 +108,38 @@ public static partial class LocatorReadResolver
                 return;
             }
 
-            if (FunctionSignature.CountParameters(symbol.Signature) is >= StackCandidateParameters
-                && symbol.Layout is { } stacked
-                && GetStackSlotCount(stacked) is > 0 and var count)
+            if (layout is null || symbol.Parsed is not { } signature)
+            {
+                return;
+            }
+
+            if (symbol.ParameterCount is >= StackCandidateParameters && GetStackSlotCount(layout) is > 0 and var count)
             {
                 StackSlots[symbol.Rva] = count;
             }
 
-            if (ReadsLocators(symbol.DecoratedName) && symbol.Parsed is { } signature && symbol.Layout is { } layout)
+            if (HasLocatorTypes(signature))
             {
                 Reads[symbol.Rva] = [.. GetReads(symbol.Rva, signature, layout)];
             }
         }
 
-        public LocatorRead[] Build() => [.. Reads.Values.SelectMany(r => r)];
+        public LocatorRead[] Build()
+        {
+            var reads = new LocatorRead[Reads.Values.Sum(r => r.Length)];
 
-        public AddressTable<int> BuildStackArguments() => new(StackSlots.ToDictionary(s => (ulong)s.Key, s => s.Value));
+            var at = 0;
+
+            foreach (var function in Reads.Values)
+            {
+                function.CopyTo(reads, at);
+
+                at += function.Length;
+            }
+
+            return reads;
+        }
+
+        public AddressTable<int> BuildStackArguments() => new(StackSlots);
     }
 }

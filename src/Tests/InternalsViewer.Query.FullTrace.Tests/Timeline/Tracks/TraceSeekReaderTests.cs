@@ -57,13 +57,13 @@ public class TraceSeekReaderTests
     }
 
     [Fact]
-    public void Each_Page_Fetched_In_The_Descent_Spans_Its_Fetch()
+    public void Each_Page_Fetched_In_The_Descent_Is_Marked_Where_Its_Fetch_Starts()
     {
         var descents = Build().All.Where(t => t.Value != (byte)TraceSeekMarkType.Seek).OrderBy(t => t.Span.From.Position).ToList();
 
-        Assert.Equal([(TraceSeekMarkType.Root, At(22), At(23)),
-                      (TraceSeekMarkType.Intermediate, At(26), At(27)),
-                      (TraceSeekMarkType.Leaf, At(32), At(33))],
+        Assert.Equal([(TraceSeekMarkType.Root, At(22), At(22)),
+                      (TraceSeekMarkType.Intermediate, At(26), At(26)),
+                      (TraceSeekMarkType.Leaf, At(32), At(32))],
                      descents.Select(t => ((TraceSeekMarkType)t.Value, t.Span.From.Position, t.Span.To.Position)));
     }
 
@@ -72,7 +72,7 @@ public class TraceSeekReaderTests
     {
         var ticks = Build().GetTicks(Range, Thread)!;
 
-        var tick = ticks.GetNearest(TraceTimelineAxis.Position, ticks.Scale.GetValue(At(27)) + 1, 2);
+        var tick = ticks.GetNearest(TraceTimelineAxis.Position, ticks.Scale.GetValue(At(26)) + 1, 2);
 
         Assert.Equal((byte)TraceSeekMarkType.Intermediate, tick?.Value);
     }
@@ -137,11 +137,11 @@ public class TraceSeekReaderTests
 
     private static CallstackFrame Frame(ulong address, ulong instance, string className, string method) => new()
     {
-        Module = "sqlmin",
+        Module = new("sqlmin"),
         Rva = 0x10,
         Address = address,
         InstanceAddress = instance,
-        Resolved = new ResolvedCallstackFrame
+        Function = new CallstackFunction
         {
             ClassName = className,
             MethodName = method,

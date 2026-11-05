@@ -8,6 +8,7 @@ using InternalsViewer.Internals.Engine.Records.CdRecordType;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.Events.BatchMode.Enums;
 using InternalsViewer.Query.Events.Latches;
+using InternalsViewer.Query.Events.Parsing;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Properties;
 using InternalsViewer.Query.Events.Reads;
@@ -149,35 +150,25 @@ public static class ArgumentValue
 
     public static bool IsPointer(string type) => type.TrimEnd() is { Length: > 0 } trimmed && trimmed[^1] is '*' or '&';
 
-    public static string? GetPointeeClass(ReadOnlySpan<char> type)
-    {
-        var indirection = type.IndexOfAny('*', '&');
+    public static string? GetPointeeClass(ReadOnlySpan<char> type) => GetPointeeClass(type, null);
 
-        if (indirection <= 0 || type[(indirection + 1)..].IndexOfAny('*', '&') >= 0 || type.Contains('('))
+    public static bool IsClassPointer(ReadOnlySpan<char> type)
+    {
+        var buffer = type.Length <= MaximumStackType ? stackalloc char[type.Length] : new char[type.Length];
+
+        return TryGetPointeeClass(type, buffer, out _);
+    }
+
+    internal static string? GetPointeeClass(ReadOnlySpan<char> type, StringInternPool? strings)
+    {
+        var buffer = type.Length <= MaximumStackType ? stackalloc char[type.Length] : new char[type.Length];
+
+        if (!TryGetPointeeClass(type, buffer, out var className))
         {
             return null;
         }
 
-        var pointee = type[..indirection];
-
-        var buffer = pointee.Length <= MaximumStackType ? stackalloc char[pointee.Length] : new char[pointee.Length];
-
-        var target = Normalise(pointee, buffer);
-
-        foreach (var keyword in ClassKeywords)
-        {
-            if (target.StartsWith(keyword, StringComparison.Ordinal))
-            {
-                target = target[keyword.Length..];
-            }
-        }
-
-        return target.IsEmpty
-               || target.StartsWith(FunctionSignature.EnumPrefix, StringComparison.Ordinal)
-               || ReadableTypeLookup.Contains(target)
-               || BufferTypeLookup.Contains(target)
-            ? null
-            : target.ToString();
+        return strings is null ? className.ToString() : strings.Intern(className);
     }
 
     public static bool IsReadable(ReadOnlySpan<char> type)
@@ -365,6 +356,40 @@ public static class ArgumentValue
         var buffer = type.Length <= MaximumStackType ? stackalloc char[type.Length] : new char[type.Length];
 
         return Normalise(type, buffer).ToString();
+    }
+
+    private static bool TryGetPointeeClass(ReadOnlySpan<char> type, Span<char> buffer, out ReadOnlySpan<char> className)
+    {
+        className = default;
+
+        var indirection = type.IndexOfAny('*', '&');
+
+        if (indirection <= 0 || type[(indirection + 1)..].IndexOfAny('*', '&') >= 0 || type.Contains('('))
+        {
+            return false;
+        }
+
+        var target = Normalise(type[..indirection], buffer);
+
+        foreach (var keyword in ClassKeywords)
+        {
+            if (target.StartsWith(keyword, StringComparison.Ordinal))
+            {
+                target = target[keyword.Length..];
+            }
+        }
+
+        if (target.IsEmpty
+            || target.StartsWith(FunctionSignature.EnumPrefix, StringComparison.Ordinal)
+            || ReadableTypeLookup.Contains(target)
+            || BufferTypeLookup.Contains(target))
+        {
+            return false;
+        }
+
+        className = target;
+
+        return true;
     }
 
     private static ReadOnlySpan<char> Normalise(ReadOnlySpan<char> type, Span<char> destination)

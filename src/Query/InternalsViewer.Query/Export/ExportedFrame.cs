@@ -21,6 +21,4 @@ internal sealed record ExportedFrame
     public string? Signature { get; init; }
 
     public string? Symbol { get; init; }
-
-    public string? SymbolModule { get; init; }
 }

@@ -219,8 +219,8 @@ public class TraceCallStoreTests
     {
         var tree = new CallStackTree();
 
-        var first = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x10 }, 1);
-        var second = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x20 }, 1);
+        var first = tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqlmin"), Rva = 0x10 }, 1);
+        var second = tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqlmin"), Rva = 0x20 }, 1);
 
         var builder = new TraceCallStore.Builder();
 
@@ -357,7 +357,7 @@ public class TraceCallStoreTests
     {
         var tree = new CallStackTree();
 
-        var node = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x10 }, 1);
+        var node = tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqlmin"), Rva = 0x10 }, 1);
 
         var builder = new TraceCallStore.Builder();
 
@@ -379,8 +379,8 @@ public class TraceCallStoreTests
     {
         var tree = new CallStackTree();
 
-        var first = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x10 }, 1);
-        var second = tree.AddCall(tree.Root, new CallstackFrame { Module = "sqlmin", Rva = 0x20 }, 1);
+        var first = tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqlmin"), Rva = 0x10 }, 1);
+        var second = tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqlmin"), Rva = 0x20 }, 1);
 
         var builder = new TraceCallStore.Builder();
 

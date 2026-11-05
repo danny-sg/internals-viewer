@@ -196,7 +196,7 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
 
         var parsed = await ParseConditionsAsync(scope, node, conditions);
 
-        var request = new McpTrackRequest(trackName, node.Frame!.Module, node.Symbol, colour, parsed);
+        var request = new McpTrackRequest(trackName, node.Frame!.Module.Name, node.Symbol, colour, parsed);
 
         await scope.RunAsync<ITraceTimelineCommands>(c => c.AddTrackAsync(request), cancellationToken);
 
@@ -259,33 +259,27 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
 
     [McpServerTool(Name = "trace_step")]
     [Description("Step the playhead: call (the next logged call), same-call (the next call of the selected function), " +
-                 "batch, row or allocation")]
-    public async Task<string> Step([Description("call, same-call, batch, row or allocation")] string mode = "call",
+                 "or a visible Operators track by name (the end of its next tick, such as the next GetRow or read)")]
+    public async Task<string> Step([Description("call, same-call or a visible track name from trace_options")] string mode = "call",
                                    [Description("True to step forward, false to step back")] bool forward = true,
                                    [Description("Steps to take, 1 to 100")] int count = 1,
                                    [Description(TabDescription)] string? tab = null,
                                    CancellationToken cancellationToken = default)
     {
-        var stepMode = mode.Trim().ToLowerInvariant().Replace("-", string.Empty).Replace(" ", string.Empty) switch
-        {
-            "call" => McpStepMode.Call,
-            "samecall" => McpStepMode.SameCall,
-            "batch" => McpStepMode.Batch,
-            "row" => McpStepMode.Row,
-            "allocation" => McpStepMode.Allocation,
-            _ => throw new McpException($"Unknown step mode '{mode}'. Use call, same-call, batch, row or allocation.")
-        };
-
         var session = await Documents.OpenAsync<QueryContext>(tab, cancellationToken);
 
-        if (RequireTimeline(session.Context) is { SelectedNode: null } && stepMode == McpStepMode.SameCall)
+        var timeline = RequireTimeline(session.Context);
+
+        var (stepMode, track) = GetStepMode(timeline, mode);
+
+        if (timeline is { SelectedNode: null } && stepMode == McpStepMode.SameCall)
         {
             throw new McpException("Same-call stepping needs a selected call. Select one with trace_goto_call first.");
         }
 
-        await session.RunAsync<ITraceTimelineCommands>(c => c.StepAsync(stepMode, forward, count), cancellationToken);
+        await session.RunAsync<ITraceTimelineCommands>(c => c.StepAsync(stepMode, track?.Name, forward, count), cancellationToken);
 
-        return $"Stepped {(forward ? "forward" : "back")} by {stepMode}. {DescribePlayhead(session.Context)}";
+        return $"Stepped {(forward ? "forward" : "back")} by {track?.Name ?? stepMode.ToString()}. {DescribePlayhead(session.Context)}";
     }
 
     [McpServerTool(Name = "trace_search")]
@@ -1058,6 +1052,38 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
 
     private static McpTimelineTrack? FindTrack(McpTraceTimeline? timeline, string name)
         => timeline?.Tracks.FirstOrDefault(t => string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase));
+
+    private static (McpStepMode Mode, McpTimelineTrack? Track) GetStepMode(McpTraceTimeline? timeline, string mode)
+    {
+        switch (mode.Trim().ToLowerInvariant().Replace("-", string.Empty).Replace(" ", string.Empty))
+        {
+            case "call":
+                return (McpStepMode.Call, null);
+
+            case "samecall":
+                return (McpStepMode.SameCall, null);
+        }
+
+        if (FindTrack(timeline, mode.Trim()) is not { } track)
+        {
+            var visible = timeline?.Tracks.Where(t => t is { IsVisible: true, Ticks: > 0 }).Select(t => t.Name).ToList() ?? [];
+
+            throw new McpException($"Unknown step mode '{mode}'. Use call, same-call or a visible track"
+                                   + $"{(visible.Count == 0 ? string.Empty : $": {string.Join(", ", visible)}")}.");
+        }
+
+        if (!track.IsVisible)
+        {
+            throw new McpException($"The {track.Name} track is hidden. Show it with trace_track_set to step on it.");
+        }
+
+        if (track.Ticks == 0)
+        {
+            throw new McpException($"The {track.Name} track has no ticks to step to.");
+        }
+
+        return (McpStepMode.Track, track);
+    }
 
     private static McpTraceTimeline? RequireTimeline(QueryContext context)
     {

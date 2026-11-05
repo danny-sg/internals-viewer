@@ -12,10 +12,10 @@ internal static class DiaBridge
     // BOOL (UnmanagedType.Bool) reads the undefined upper bytes of EAX, so a returned false can read as true.
     [DllImport("InternalsViewer.Query.DiaBridge.dll", CharSet = CharSet.Unicode)]
     [return: MarshalAs(UnmanagedType.U1)]
-    public static extern bool ResolveRva(IntPtr session,
-                                         uint rva,
-                                         StringBuilder buffer,
-                                         int bufferLength);
+    public static extern unsafe bool ResolveRva(IntPtr session,
+                                                uint rva,
+                                                char* buffer,
+                                                int bufferLength);
 
     [DllImport("InternalsViewer.Query.DiaBridge.dll", CharSet = CharSet.Unicode)]
     public static extern IntPtr BeginEnumSymbols(IntPtr session, string prefix);
@@ -31,15 +31,10 @@ internal static class DiaBridge
                                                       int nameLength,
                                                       char* signatureBuffer,
                                                       int signatureLength,
+                                                      char* decoratedBuffer,
+                                                      int decoratedLength,
                                                       out uint rva,
                                                       out int isFunction);
-
-    [DllImport("InternalsViewer.Query.DiaBridge.dll")]
-    public static extern IntPtr BeginEnumSymbolsAtRva(IntPtr session, uint rva);
-
-    [DllImport("InternalsViewer.Query.DiaBridge.dll", CharSet = CharSet.Unicode)]
-    [return: MarshalAs(UnmanagedType.U1)]
-    public static extern unsafe bool GetDecoratedName(IntPtr session, uint rva, char* name, char* buffer, int bufferLength);
 
     [DllImport("InternalsViewer.Query.DiaBridge.dll")]
     public static extern void EndEnumSymbols(IntPtr enumerator);

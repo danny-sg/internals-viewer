@@ -77,9 +77,9 @@ public class ArrayAllocationMatcherTests
 
     private static CallstackFrame Frame(uint rva, string? className, string methodName) => new()
     {
-        Module = "sqlmin",
+        Module = new("sqlmin"),
         Rva = rva,
         Address = rva,
-        Resolved = new ResolvedCallstackFrame { ClassName = className, MethodName = methodName }
+        Function = new CallstackFunction { ClassName = className, MethodName = methodName }
     };
 }

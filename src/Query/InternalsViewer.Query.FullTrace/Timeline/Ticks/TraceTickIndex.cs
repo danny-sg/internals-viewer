@@ -89,6 +89,50 @@ public sealed class TraceTickIndex
 
     public int GetFirstStartingAfter(TraceTimelineAxis axis, double value) => Scale.GetFirstAfter(Froms, axis, value);
 
+    public double? GetNextEnd(TraceTimelineAxis axis, double value)
+    {
+        double? next = null;
+
+        for (var index = Scale.GetFirstAfter(RunningEnds, axis, value); index < Count; index++)
+        {
+            if (next is { } limit && GetStart(axis, index) >= limit)
+            {
+                break;
+            }
+
+            var end = GetEnd(axis, index);
+
+            if (end > value && (next is null || end < next))
+            {
+                next = end;
+            }
+        }
+
+        return next;
+    }
+
+    public double? GetPreviousEnd(TraceTimelineAxis axis, double value)
+    {
+        double? previous = null;
+
+        for (var index = Scale.GetFirstAtOrAfter(Froms, axis, value) - 1; index >= 0; index--)
+        {
+            if (previous is { } limit && Scale.GetValue(RunningEnds[index], axis) <= limit)
+            {
+                break;
+            }
+
+            var end = GetEnd(axis, index);
+
+            if (end < value && (previous is null || end > previous))
+            {
+                previous = end;
+            }
+        }
+
+        return previous;
+    }
+
     public TraceTick? GetNearest(TraceTimelineAxis axis, double value, double tolerance)
     {
         var nearest = -1;

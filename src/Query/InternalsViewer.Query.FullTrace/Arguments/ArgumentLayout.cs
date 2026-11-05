@@ -67,36 +67,44 @@ public sealed record ArgumentLayout(IReadOnlyList<ArgumentSlot> Slots, string? R
 
     public static IReadOnlyList<string> Registers { get; } = [ThisRegisterName, "RDX", "R8", "R9"];
 
+    private static ArgumentSlot ThisSlot { get; } = new("this", "this", ArgumentLocation.Register, 0, ThisRegisterName);
+
+    private static string[] FloatingRegisters { get; } = [.. Enumerable.Range(0, RegisterCount).Select(p => $"XMM{p}")];
+
+    private static string[] StackLocations { get; } = [.. Enumerable.Range(0, CapturedSlots).Select(FormatStackLocation)];
+
     public static ArgumentLayout GetLayout(FunctionSignature signature)
     {
-        var slots = new List<ArgumentSlot>();
+        var isMember = signature.Type == FunctionType.Member;
+
+        var slots = new ArgumentSlot[(isMember ? 1 : 0) + (signature.HasReturnBuffer ? 1 : 0) + signature.Parameters.Count];
 
         var position = 0;
 
-        if (signature.Type == FunctionType.Member)
+        if (isMember)
         {
-            slots.Add(new ArgumentSlot("this", "this", ArgumentLocation.Register, 0, ThisRegisterName));
+            slots[position] = ThisSlot;
 
-            position = 1;
+            position++;
         }
 
         if (signature.HasReturnBuffer)
         {
-            slots.Add(GetSlot(ReturnBuffer, $"{signature.ReturnType ?? VoidType} *", position));
+            slots[position] = GetSlot(ReturnBuffer, $"{signature.ReturnType ?? VoidType} *", position);
 
             position++;
         }
 
         for (var i = 0; i < signature.Parameters.Count; i++, position++)
         {
-            slots.Add(GetSlot(string.Empty, signature.Parameters[i], position));
+            slots[position] = GetSlot(string.Empty, signature.Parameters[i], position);
         }
 
         return new ArgumentLayout(slots, signature.ReturnType);
     }
 
     public static string GetStackLocation(int position)
-        => $"[RSP+0x{GetStackOffset(position):X}]";
+        => position >= RegisterCount && position < CapturedSlots ? StackLocations[position] : FormatStackLocation(position);
 
     public bool IsDeclared(string location)
     {
@@ -122,6 +130,8 @@ public sealed record ArgumentLayout(IReadOnlyList<ArgumentSlot> Slots, string? R
     }
 
     private static int GetStackOffset(int position) => StackArgumentOffset + (position - RegisterCount) * sizeof(ulong);
+
+    private static string FormatStackLocation(int position) => $"[RSP+0x{GetStackOffset(position):X}]";
 
     private static int GetRegisterIndex(string location)
     {
@@ -151,7 +161,7 @@ public sealed record ArgumentLayout(IReadOnlyList<ArgumentSlot> Slots, string? R
         }
 
         return ArgumentValue.IsFloating(type)
-            ? new ArgumentSlot(name, type, ArgumentLocation.FloatingRegister, position, $"XMM{position}")
+            ? new ArgumentSlot(name, type, ArgumentLocation.FloatingRegister, position, FloatingRegisters[position])
             : new ArgumentSlot(name, type, ArgumentLocation.Register, position, Registers[position]);
     }
 }

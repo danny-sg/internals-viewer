@@ -259,5 +259,5 @@ public class SourcePathTests
     private static TracePosition At(ulong sequence) => new(sequence, 0);
 
     private static CallstackFrame Frame(string className, string methodName, uint rva)
-        => new() { Module = "sqlmin", Rva = rva, Resolved = new ResolvedCallstackFrame { ClassName = className, MethodName = methodName } };
+        => new() { Module = new("sqlmin"), Rva = rva, Function = new CallstackFunction { ClassName = className, MethodName = methodName } };
 }

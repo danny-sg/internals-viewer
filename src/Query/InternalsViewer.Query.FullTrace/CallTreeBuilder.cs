@@ -42,7 +42,7 @@ internal static class CallTreeBuilder
         {
             return new CallstackFrame
             {
-                Module = $"Unknown@0x{call.FunctionAddress:X}",
+                Module = new CallstackModule($"Unknown@0x{call.FunctionAddress:X}"),
                 Address = call.FunctionAddress,
                 InstanceAddress = call.InstanceAddress
             };

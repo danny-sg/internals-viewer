@@ -27,7 +27,7 @@ public static class TraceEvaluationReader
                                      enclosing ?? EnclosingOperatorCallIndex.Build(calls, lifetimes.OperatorsByInstance));
 
     private static bool IsEvaluation(CallstackFrame frame)
-        => frame.Resolved is { ClassName: OutputFunctionLookup.ExpressionServiceClass, MethodName: { } method }
+        => frame.Function is { ClassName: OutputFunctionLookup.ExpressionServiceClass, MethodName: { } method }
            && OutputFunctionLookup.EvaluationMethods.Contains(method);
 
     internal static TraceEvaluationResult? GetResult(VariantLocator variant) => variant switch

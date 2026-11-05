@@ -330,18 +330,19 @@ public class OperatorScopeIntegrationTests(ITestOutputHelper testOutputHelper)
             return;
         }
 
-        var frames = tree.Nodes().Select(n => n.Frame?.Resolved).OfType<ResolvedCallstackFrame>().ToList();
+        var frames = tree.Nodes().Select(n => n.Frame).OfType<CallstackFrame>().Where(f => f.Function is not null).ToList();
 
         Output.WriteLine($"=== {sql.ReplaceLineEndings(" ")}");
 
         Output.WriteLine("-- modules --");
 
-        foreach (var module in frames.GroupBy(f => (f.Module, f.ModuleCategory)).OrderBy(m => m.Key.Module))
+        foreach (var module in frames.GroupBy(f => (Module: f.Module.Name, ModuleCategory: f.Module.Category)).OrderBy(m => m.Key.Module))
         {
             Output.WriteLine($"   {module.Key.Module,-14} {module.Key.ModuleCategory,-16} frames={module.Count()}");
         }
 
-        var unclassified = frames.Where(f => f.SymbolCategory == SymbolCategory.Unknown)
+        var unclassified = frames.Select(f => f.Function!)
+                                 .Where(f => f.SymbolCategory == SymbolCategory.Unknown)
                                  .Select(f => f.ClassName is { Length: > 0 } c ? c : f.MethodName)
                                  .Distinct()
                                  .Order()

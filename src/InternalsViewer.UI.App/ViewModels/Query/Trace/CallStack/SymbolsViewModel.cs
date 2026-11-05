@@ -198,7 +198,7 @@ public sealed partial class SymbolsViewModel(ILogger logger, SettingsViewModel s
     /// </summary>
     public Task ListMembersAsync(CallStackNode node)
     {
-        if (node.Frame is { Resolved.ClassName: { Length: > 0 } className } frame)
+        if (node.Frame is { Function.ClassName: { Length: > 0 } className } frame)
         {
             return NavigateMembersAsync(frame, className);
         }
@@ -240,29 +240,15 @@ public sealed partial class SymbolsViewModel(ILogger logger, SettingsViewModel s
         return ListMembersAsync(frame, className);
     }
 
-    public async Task<string?> ResolveFrameSignatureAsync(CallstackFrame frame)
+    public async Task<Symbol?> ResolveFrameSymbolAsync(CallstackFrame frame)
     {
         try
         {
-            return await Task.Run(() => GetSymbolResolver().ResolveSignature(frame));
+            return await Task.Run(() => GetSymbolResolver().ResolveSymbol(frame));
         }
         catch (Exception exception)
         {
-            logger.LogDebug(exception, "Resolving the signature for a frame failed");
-
-            return null;
-        }
-    }
-
-    public async Task<string?> ResolveFrameDecoratedNameAsync(CallstackFrame frame)
-    {
-        try
-        {
-            return await Task.Run(() => GetSymbolResolver().ResolveDecoratedName(frame));
-        }
-        catch (Exception exception)
-        {
-            logger.LogDebug(exception, "Resolving the decorated name for a frame failed");
+            logger.LogDebug(exception, "Resolving the symbol for a frame failed");
 
             return null;
         }
@@ -514,9 +500,9 @@ public sealed partial class SymbolsViewModel(ILogger logger, SettingsViewModel s
     {
         foreach (var node in CallStack?.Nodes() ?? [])
         {
-            if (node.Frame is { Pdb.Length: > 0 } candidate
-                && !ExcludedModules.Contains(candidate.Module, StringComparer.OrdinalIgnoreCase)
-                && !frames.Any(f => f.Pdb == candidate.Pdb && f.Guid == candidate.Guid && f.Age == candidate.Age))
+            if (node.Frame is { Module: { Pdb.Length: > 0 } module } candidate
+                && !ExcludedModules.Contains(module.Name, StringComparer.OrdinalIgnoreCase)
+                && !frames.Any(f => (f.Module.Pdb, f.Module.Guid, f.Module.Age) == (module.Pdb, module.Guid, module.Age)))
             {
                 frames.Add(candidate);
             }

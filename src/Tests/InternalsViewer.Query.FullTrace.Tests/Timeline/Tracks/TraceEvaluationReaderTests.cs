@@ -228,11 +228,11 @@ public class TraceEvaluationReaderTests
 
     private static CallstackFrame Frame(ulong instance, string className, string method, uint rva) => new()
     {
-        Module = "SqlTsEs",
+        Module = new("SqlTsEs"),
         Rva = rva,
         Address = Helper,
         InstanceAddress = instance,
-        Resolved = new ResolvedCallstackFrame
+        Function = new CallstackFunction
         {
             ClassName = className,
             MethodName = method,

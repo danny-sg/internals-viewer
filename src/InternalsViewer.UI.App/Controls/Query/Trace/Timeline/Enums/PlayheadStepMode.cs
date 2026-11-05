@@ -4,7 +4,5 @@ public enum PlayheadStepMode
 {
     Call,
     SameCall,
-    Batch,
-    Row,
-    Allocation
+    Track
 }

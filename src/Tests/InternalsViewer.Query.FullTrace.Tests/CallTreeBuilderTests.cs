@@ -21,7 +21,7 @@ public class CallTreeBuilderTests
         var root = Assert.Single(tree.Root.ChildNodes);
         var child = Assert.Single(root.ChildNodes);
 
-        Assert.Equal("sqlmin", root.Frame?.Module);
+        Assert.Equal("sqlmin", root.Frame?.Module.Name);
         Assert.Equal(0x100u, root.Frame?.Rva);
         Assert.Equal(1, root.Calls);
         Assert.Equal(0x200u, child.Frame?.Rva);
@@ -52,7 +52,7 @@ public class CallTreeBuilderTests
 
         var node = Assert.Single(tree.Root.ChildNodes);
 
-        Assert.Equal("Unknown@0x1234", node.Frame?.Module);
+        Assert.Equal("Unknown@0x1234", node.Frame?.Module.Name);
         Assert.Equal(0x1234ul, node.Frame?.Address);
     }
 
@@ -65,6 +65,6 @@ public class CallTreeBuilderTests
 
         var node = Assert.Single(tree.Root.ChildNodes);
 
-        Assert.Equal($"Unknown@0x{SqlMinBase + 0x10000:X}", node.Frame?.Module);
+        Assert.Equal($"Unknown@0x{SqlMinBase + 0x10000:X}", node.Frame?.Module.Name);
     }
 }

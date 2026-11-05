@@ -14,9 +14,7 @@ internal sealed record TraceModule
         Path = path;
         StartAddress = startAddress;
         Size = size;
-        Pdb = pdb;
-        Guid = guid;
-        Age = age;
+        Identity = CallstackModule.Get(System.IO.Path.GetFileNameWithoutExtension(path), pdb, guid, age);
     }
 
     public string Path { get; init; }
@@ -25,15 +23,11 @@ internal sealed record TraceModule
 
     public ulong Size { get; init; }
 
-    public string Pdb { get; init; }
-
-    public string Guid { get; init; }
-
-    public int Age { get; init; }
+    public CallstackModule Identity { get; init; }
 
     public Version? ProductVersion { get; init; }
 
-    public string Name => System.IO.Path.GetFileNameWithoutExtension(Path);
+    public string Name => Identity.Name;
 
     /// <summary>
     /// Reads a module from a path and returns a TraceModule with the PDB information if available
@@ -88,12 +82,9 @@ internal sealed record TraceModule
     /// </remarks>
     internal CallstackFrame Frame(ulong functionAddress, ulong instanceAddress) => new()
     {
-        Module = Name,
+        Module = Identity,
         Address = functionAddress,
         Rva = (uint)(functionAddress - StartAddress),
-        Pdb = Pdb,
-        Guid = Guid,
-        Age = Age,
         InstanceAddress = instanceAddress
     };
 

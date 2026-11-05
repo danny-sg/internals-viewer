@@ -37,7 +37,7 @@ public class ReplayFunctionTableTests
             StackArguments = Map((0x70, 3))
         };
 
-        var rebased = relative.Rebase(Base);
+        var rebased = ReplayFunctionTable.Merge([(relative, Base)]);
 
         Assert.Equal([Base + 0x10], rebased.ExcludedFunctions);
         Assert.Equal([new InstanceMethod(Base + 0x50, 1)], rebased.InstanceMethods);
@@ -59,7 +59,7 @@ public class ReplayFunctionTableTests
 
         var second = ReplayFunctionTable.Empty with { Vtables = Map((0x300, new[] { "CQScanRangeNew" })) };
 
-        var merged = ReplayFunctionTable.Merge([first.Rebase(Base), second]);
+        var merged = ReplayFunctionTable.Merge([(first, Base), (second, 0)]);
 
         Assert.Equal([(0x300ul, "CQScanRangeNew"), (Base + 0x200, "CQScanTableScanNew")],
                      merged.Vtables.Select(v => (v.Key, v.Value[0])).OrderBy(v => v.Key));
@@ -75,7 +75,7 @@ public class ReplayFunctionTableTests
 
         var second = ReplayFunctionTable.Empty with { BufferPoolFunctions = Map((0x20, BufferPoolFunctionType.Get)) };
 
-        var merged = ReplayFunctionTable.Merge([first.Rebase(Base), second]).BufferPoolFunctions;
+        var merged = ReplayFunctionTable.Merge([(first, Base), (second, 0)]).BufferPoolFunctions;
 
         (ulong, BufferPoolFunctionType)[] expected =
         [

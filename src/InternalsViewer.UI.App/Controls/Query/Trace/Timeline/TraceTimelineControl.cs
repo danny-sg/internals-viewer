@@ -7,12 +7,12 @@ using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
-using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Enums;
 using InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Memory;
 using InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Operators;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Stack;
+using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
 using InternalsViewer.UI.Plugins.FullTrace.Menus;
 using Microsoft.UI;
@@ -596,7 +596,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         }
     }
 
-    public void StepPlayhead(bool forward, PlayheadStepMode mode)
+    public void StepPlayhead(bool forward, PlayheadStepMode mode, string? track)
     {
         switch (mode)
         {
@@ -604,12 +604,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
                 StepTo(forward, matches, allRows: true);
                 break;
 
-            case PlayheadStepMode.Batch:
-                StepToMark(forward, isBatch: true);
-                break;
-
-            case PlayheadStepMode.Row:
-                StepToMark(forward, isBatch: false);
+            case PlayheadStepMode.Track when GetStepTrack(track) is { } tickTrack:
+                StepToTick(forward, tickTrack);
                 break;
 
             default:
@@ -740,24 +736,27 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         }
     }
 
-    private void StepToMark(bool forward, bool isBatch)
+    private void StepToTick(bool forward, TraceTickTrack track)
     {
-        if (RowReturnMarks is not { } marks)
-        {
-            return;
-        }
-
         var from = _playhead ?? GetSelectedStart() ?? _viewStart;
 
         double? next = null;
 
-        foreach (var row in _operators.Rows.Where(r => marks.IsBatch(r.Operator) == isBatch))
+        foreach (var row in _operators.Rows.Where(r => !r.IsStatement))
         {
             foreach (var lifetime in row.Lifetimes)
             {
-                var values = marks.GetMarks(row.Operator, lifetime.Thread, RowReturnType.Returned);
+                if (track.Series.GetTicks(row.TickOperator, lifetime.Thread) is not { } ticks)
+                {
+                    continue;
+                }
 
-                next = forward ? FindMarkAfter(values, from, next) : FindMarkBefore(values, from, next);
+                var end = forward ? ticks.GetNextEnd(_axis, from) : ticks.GetPreviousEnd(_axis, from);
+
+                if (end is { } found && (next is not { } best || (forward ? found < best : found > best)))
+                {
+                    next = found;
+                }
             }
         }
 
@@ -765,34 +764,6 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         {
             PlacePlayhead(target);
         }
-    }
-
-    private double? FindMarkAfter(ReadOnlySpan<TracePoint> marks, double from, double? best)
-    {
-        var index = TraceScale.GetFirstAfter(marks, _axis, from);
-
-        if (index >= marks.Length)
-        {
-            return best;
-        }
-
-        var value = TraceScale.GetValue(marks[index], _axis);
-
-        return best is { } limit && value >= limit ? best : value;
-    }
-
-    private double? FindMarkBefore(ReadOnlySpan<TracePoint> marks, double from, double? best)
-    {
-        var index = TraceScale.GetFirstAtOrAfter(marks, _axis, from) - 1;
-
-        if (index < 0)
-        {
-            return best;
-        }
-
-        var value = TraceScale.GetValue(marks[index], _axis);
-
-        return best is { } limit && value <= limit ? best : value;
     }
 
     private double? FindStartAfter(TraceTimelineRow row, bool[]? matches, double from, double? best)

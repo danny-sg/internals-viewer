@@ -330,12 +330,11 @@ public class AllocationMapperTests
                                            string? iterator = null)
         => new()
         {
-            Module = module,
+            Module = new(module),
             Rva = (uint)address,
             Address = address,
-            Resolved = new ResolvedCallstackFrame
+            Function = new CallstackFunction
             {
-                Module = module,
                 ClassName = className,
                 MethodName = methodName,
                 SymbolCategory = category,
@@ -345,7 +344,7 @@ public class AllocationMapperTests
 
     private static AllocationFunction Function(ulong address) => new(address, AllocationOperation.Allocate, 1, -1, 1);
 
-    private static CallstackFrame Frame(ulong address) => new() { Module = "sqldk", Rva = (uint)address, Address = address };
+    private static CallstackFrame Frame(ulong address) => new() { Module = new("sqldk"), Rva = (uint)address, Address = address };
 
     private static ulong[] Row(ulong sequence, ulong size, int callNodeIndex, ulong returned = 0, ulong receiver = 0)
         => TraceCallRowHelper.Row(sequence,

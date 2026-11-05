@@ -16,7 +16,7 @@ namespace InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Operators;
 
 internal sealed partial class TraceOperatorsPane
 {
-    private const float StripHeight = 9f;
+    private const float StripHeight = 14f;
 
     private const float StripShare = 0.35f;
 

@@ -75,7 +75,7 @@ public class IteratorTargetTests
 
     private static CallstackFrame Iterator(uint rva, ulong instance) => new()
     {
-        Module = "sqlmin",
+        Module = new("sqlmin"),
         Rva = rva,
         InstanceAddress = instance
     };

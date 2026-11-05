@@ -2,13 +2,13 @@ using Microsoft.Data.SqlClient;
 
 namespace InternalsViewer.Query.CallStack.Symbols;
 
-public static class LoadedModules
+public static class LoadedModuleReader
 {
     private const string Sql = "SELECT name FROM sys.dm_os_loaded_modules";
 
-    public static async Task<IReadOnlyList<string>> PathsOfAsync(string connectionString,
-                                                                 IReadOnlyCollection<string> fileNames,
-                                                                 CancellationToken cancellationToken)
+    public static async Task<IReadOnlyList<string>> GetPathsAsync(string connectionString,
+                                                                  IReadOnlyCollection<string> fileNames,
+                                                                  CancellationToken cancellationToken)
     {
         await using var connection = new SqlConnection(connectionString);
 

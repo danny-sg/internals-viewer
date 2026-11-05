@@ -166,14 +166,12 @@ public sealed partial class QueryTraceTimelineTabView : ITraceTimelineController
         OnTickTrackVisibilityChanged(track.Name, isVisible);
     }
 
-    public void Step(McpStepMode mode, bool forward, int count)
+    public void Step(McpStepMode mode, string? track, bool forward, int count)
     {
         var stepMode = mode switch
         {
             McpStepMode.SameCall => PlayheadStepMode.SameCall,
-            McpStepMode.Batch => PlayheadStepMode.Batch,
-            McpStepMode.Row => PlayheadStepMode.Row,
-            McpStepMode.Allocation => PlayheadStepMode.Allocation,
+            McpStepMode.Track => PlayheadStepMode.Track,
             _ => PlayheadStepMode.Call
         };
 
@@ -182,9 +180,14 @@ public sealed partial class QueryTraceTimelineTabView : ITraceTimelineController
             throw new InvalidOperationException("No call is selected.");
         }
 
+        if (stepMode == PlayheadStepMode.Track && TraceTimeline.GetStepTrack(track) is null)
+        {
+            throw new InvalidOperationException($"The {track} track is hidden or has no ticks.");
+        }
+
         for (var index = 0; index < Math.Clamp(count, 1, MaximumSteps); index++)
         {
-            TraceTimeline.StepPlayhead(forward, stepMode);
+            TraceTimeline.StepPlayhead(forward, stepMode, track);
         }
     }
 

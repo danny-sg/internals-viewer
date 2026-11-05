@@ -388,16 +388,15 @@ public sealed class QueryExportWriter
     private static ExportedFrame FrameOf(CallstackFrame frame, ExportReferences references) => new()
     {
         Id = references.Frames.IdOf(frame),
-        Module = frame.Module,
+        Module = frame.Module.Name,
         Address = frame.Address,
-        Pdb = frame.Pdb,
-        Guid = frame.Guid,
-        Age = frame.Age,
+        Pdb = frame.Module.Pdb,
+        Guid = frame.Module.Guid,
+        Age = frame.Module.Age,
         Rva = frame.Rva,
         Instance = frame.InstanceAddress,
-        Signature = frame.Signature,
-        Symbol = frame.Resolved?.RawSymbol,
-        SymbolModule = frame.Resolved is { } resolved && resolved.Module != frame.Module ? resolved.Module : null
+        Signature = frame.Function?.Signature,
+        Symbol = frame.Function is { } function && frame.Offset is { } offset ? $"{function.Name}+0x{offset:X}" : frame.Function?.Name
     };
 
     private static List<ExportPlan> WritePlans(ZipArchive zip, IReadOnlyList<ExecutionPlan> plans)

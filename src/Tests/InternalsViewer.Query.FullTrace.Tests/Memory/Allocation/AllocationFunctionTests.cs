@@ -175,8 +175,8 @@ public class AllocationFunctionTests
     {
         var frame = new CallstackFrame
         {
-            Module = "sqlmin",
-            Resolved = new ResolvedCallstackFrame { ClassName = className, MethodName = method, SymbolCategory = SymbolCategory.Unknown }
+            Module = new("sqlmin"),
+            Function = new CallstackFunction { ClassName = className, MethodName = method, SymbolCategory = SymbolCategory.Unknown }
         };
 
         Assert.Equal(isGrant, AllocationFunction.IsGrantFrame(frame));

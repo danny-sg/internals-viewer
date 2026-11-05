@@ -289,10 +289,10 @@ public class TracePageAccessListTests
 
                 var frame = new CallstackFrame
                 {
-                    Module = "sqlmin",
+                    Module = new("sqlmin"),
                     Rva = rva,
                     Address = ModuleBase + rva,
-                    Resolved = new ResolvedCallstackFrame
+                    Function = new CallstackFunction
                     {
                         ClassName = className,
                         MethodName = method,

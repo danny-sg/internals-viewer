@@ -43,11 +43,11 @@ public class FunctionClassificationTests
     {
         var functions = new Dictionary<uint, FunctionClassification>();
 
-        ModuleSymbolReader.Add(functions, 0x10, Classification(excluded: true));
+        FunctionClassification.Add(functions, 0x10, Classification(excluded: true));
 
-        ModuleSymbolReader.Add(functions, 0x20, Classification(excluded: true));
+        FunctionClassification.Add(functions, 0x20, Classification(excluded: true));
 
-        ModuleSymbolReader.Add(functions, 0x20, Classification());
+        FunctionClassification.Add(functions, 0x20, Classification());
 
         Assert.True(functions[0x10].IsExcluded);
 
@@ -60,7 +60,7 @@ public class FunctionClassificationTests
 
         foreach (var classification in classifications)
         {
-            ModuleSymbolReader.Add(functions, 0x10, classification);
+            FunctionClassification.Add(functions, 0x10, classification);
         }
 
         return functions[0x10];

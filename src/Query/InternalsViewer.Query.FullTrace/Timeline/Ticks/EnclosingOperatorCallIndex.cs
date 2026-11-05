@@ -31,7 +31,7 @@ internal sealed class EnclosingOperatorCallIndex
                 continue;
             }
 
-            var isRowReturn = IteratorSymbolLookup.IsRowReturnMethod(calls.GetFirstNode(list)?.Frame?.Resolved?.MethodName);
+            var isRowReturn = IteratorSymbolLookup.IsRowReturnMethod(calls.GetFirstNode(list)?.Frame?.Function?.MethodName);
 
             foreach (var (columns, _) in list.ReadChunks(buffer))
             {

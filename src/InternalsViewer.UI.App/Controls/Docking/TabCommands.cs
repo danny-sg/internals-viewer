@@ -1,4 +1,3 @@
-using System;
 using InternalsViewer.UI.App.Helpers;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -77,56 +76,15 @@ public static class TabCommands
         return toggle;
     }
 
-    public static Button Menu(string text, string toolTip, MenuFlyout flyout)
+    public static Button Menu(string text, string toolTip, MenuFlyout flyout) => Menu(Label(text), toolTip, flyout);
+
+    public static Button Menu(TextBlock label, string toolTip, MenuFlyout flyout)
     {
-        var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = MenuSpacing };
-
-        content.Children.Add(Label(text));
-
-        content.Children.Add(new FontIcon { Glyph = ChevronGlyph, FontSize = ChevronSize, VerticalAlignment = VerticalAlignment.Center });
-
-        var button = new Button
-        {
-            Style = AppResources.Get<Style>("TabCommandButtonStyle"),
-            Content = content,
-            Flyout = flyout,
-            VerticalAlignment = VerticalAlignment.Stretch
-        };
-
-        ToolTipService.SetToolTip(button, toolTip);
-
-        return button;
-    }
-
-    public static Button ToggleSplitButton(string toolTip, string prefix, int selectedIndex, Action<int> selectionChanged, params string[] options)
-    {
-        var label = Label(Prefixed(prefix, options[selectedIndex]));
-
         var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = MenuSpacing };
 
         content.Children.Add(label);
 
         content.Children.Add(new FontIcon { Glyph = ChevronGlyph, FontSize = ChevronSize, VerticalAlignment = VerticalAlignment.Center });
-
-        var flyout = new MenuFlyout();
-
-        var groupName = Guid.NewGuid().ToString();
-
-        for (var index = 0; index < options.Length; index++)
-        {
-            var option = index;
-
-            var item = new RadioMenuFlyoutItem { Text = options[option], GroupName = groupName, IsChecked = option == selectedIndex };
-
-            item.Click += (_, _) =>
-            {
-                label.Text = Prefixed(prefix, options[option]);
-
-                selectionChanged(option);
-            };
-
-            flyout.Items.Add(item);
-        }
 
         var button = new Button
         {
@@ -162,6 +120,4 @@ public static class TabCommands
     };
 
     public static bool IsChecked(object sender) => sender is ToggleButton { IsChecked: true };
-
-    private static string Prefixed(string prefix, string option) => string.IsNullOrEmpty(prefix) ? option : $"{prefix} {option}";
 }

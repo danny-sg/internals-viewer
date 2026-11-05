@@ -165,8 +165,8 @@ public class QueryExecutionCropperTests
                                         uint rva,
                                         SymbolCategory category = SymbolCategory.Unknown) => new()
     {
-        Module = "sqllang",
+        Module = new("sqllang"),
         Rva = rva,
-        Resolved = new ResolvedCallstackFrame { ClassName = className, MethodName = methodName, SymbolCategory = category }
+        Function = new CallstackFunction { ClassName = className, MethodName = methodName, SymbolCategory = category }
     };
 }

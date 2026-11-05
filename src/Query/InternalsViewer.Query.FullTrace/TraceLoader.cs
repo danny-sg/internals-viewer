@@ -58,7 +58,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         var start = Stopwatch.GetTimestamp();
 
-        var paths = await LoadedModules.PathsOfAsync(database.Connection.GetConnectionString(), [.. recorder.Modules], cancellationToken);
+        var paths = await LoadedModuleReader.GetPathsAsync(database.Connection.GetConnectionString(), [.. recorder.Modules], cancellationToken);
 
         await ReplayFunctionResolver.PrepareAsync(paths, symbolsPath, Logger, cancellationToken);
 
@@ -624,7 +624,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
             var symbol = QualifiedSymbol.Of(frame);
 
             if (!functions.Add(symbol)
-                || FunctionSignature.Parse(resolver.ResolveSignature(frame), resolver.ResolveDecoratedName(frame)) is not { } signature)
+                || resolver.ResolveSymbol(frame)?.Parsed is not { } signature)
             {
                 continue;
             }

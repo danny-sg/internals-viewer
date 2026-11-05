@@ -27,8 +27,8 @@ public sealed partial class QueryViewModel
 
     public IReadOnlyList<TraceFunctionChoice> GetFunctionChoices()
         => [.. (CallStack?.Nodes() ?? [])
-               .Where(n => n.Frame is { Resolved: not null } && n.Symbol.Length > 0)
-               .Select(n => new TraceFunctionChoice(n.Frame!.Module, n.Symbol, n.Frame))
+               .Where(n => n.Frame is { Function: not null } && n.Symbol.Length > 0)
+               .Select(n => new TraceFunctionChoice(n.Frame!.Module.Name, n.Symbol, n.Frame))
                .DistinctBy(c => (c.Module.ToLowerInvariant(), c.Symbol))
                .OrderBy(c => c.Symbol, System.StringComparer.OrdinalIgnoreCase)];
 

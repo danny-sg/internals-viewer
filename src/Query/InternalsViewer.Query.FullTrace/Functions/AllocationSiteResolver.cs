@@ -1,6 +1,7 @@
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.Locators;
+using InternalsViewer.Query.CallStack.Symbols;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Locators;
@@ -14,9 +15,9 @@ internal static class AllocationSiteResolver
 {
     private const string LineType = "int";
 
-    internal static (int File, int Line)? GetSiteSlots(FunctionSignature signature)
+    internal static (int File, int Line)? GetSiteSlots(ArgumentLayout layout)
     {
-        var slots = ArgumentLayout.GetLayout(signature).Slots;
+        var slots = layout.Slots;
 
         for (var index = 0; index + 1 < slots.Count; index++)
         {
@@ -36,17 +37,12 @@ internal static class AllocationSiteResolver
         return null;
     }
 
-    internal sealed class Collector(IReadOnlySet<uint> allocators)
+    internal sealed class Collector
     {
         private Dictionary<uint, (int File, int Line)> Sites { get; } = [];
 
-        public void Visit(FunctionSymbol symbol)
+        public void Visit(SymbolTable.Reader symbol, ArgumentLayout? layout)
         {
-            if (!allocators.Contains(symbol.Rva))
-            {
-                return;
-            }
-
             if (!symbol.IsFirst)
             {
                 if (!symbol.HasSameParameters)
@@ -57,7 +53,7 @@ internal static class AllocationSiteResolver
                 return;
             }
 
-            if (symbol.Parsed is { } signature && GetSiteSlots(signature) is { } slots)
+            if (layout is not null && GetSiteSlots(layout) is { } slots)
             {
                 Sites[symbol.Rva] = slots;
             }

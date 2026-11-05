@@ -17,7 +17,7 @@ public interface ITraceTimelineCommands
 
     Task<int> RemoveTracksAsync(string? name);
 
-    Task StepAsync(McpStepMode mode, bool forward, int count);
+    Task StepAsync(McpStepMode mode, string? track, bool forward, int count);
 
     Task SearchAsync(string? text);
 

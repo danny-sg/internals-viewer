@@ -47,10 +47,11 @@ public class FunctionSearchTests
         {
             var frame = new CallstackFrame
             {
-                Module = "sqlmin",
+                Module = new("sqlmin"),
                 Rva = (uint)(0x10 + index),
                 Address = 0x7FF0_0000_0000 + (ulong)index,
-                Resolved = ResolvedCallstackFrameParser.Parse("sqlmin", symbol + "+0x0")
+                Function = CallstackFunction.Parse("sqlmin", symbol),
+                Offset = 0
             };
 
             nodes.Add(tree.AddCall(tree.Root, frame, 1));

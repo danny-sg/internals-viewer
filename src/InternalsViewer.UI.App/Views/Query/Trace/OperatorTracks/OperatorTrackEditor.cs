@@ -23,7 +23,7 @@ internal static class OperatorTrackEditor
         var function = existing is not null
             ? functions.FirstOrDefault(f => IsFunction(f.Module, f.Symbol, existing.Module, existing.Function))
             : node?.Frame is { } frame
-                ? functions.FirstOrDefault(f => IsFunction(f.Module, f.Symbol, frame.Module, node.Symbol))
+                ? functions.FirstOrDefault(f => IsFunction(f.Module, f.Symbol, frame.Module.Name, node.Symbol))
                 : null;
 
         var colour = existing is not null

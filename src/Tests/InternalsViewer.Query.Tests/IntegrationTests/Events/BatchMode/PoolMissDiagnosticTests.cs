@@ -188,7 +188,7 @@ public class PoolMissDiagnosticTests(ITestOutputHelper output)
 
         for (var node = e.CallStack; node is not null && names.Count < 40; node = node.Parent)
         {
-            if (node.Frame?.Resolved is { } f)
+            if (node.Frame?.Function is { } f)
             {
                 names.Add($"{f.ClassName}::{f.MethodName}");
             }

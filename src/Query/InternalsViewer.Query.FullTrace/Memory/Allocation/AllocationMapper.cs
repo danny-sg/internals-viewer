@@ -287,7 +287,7 @@ internal static class AllocationMapper
 
         if (!plumbing.TryGetValue(node, out var inside))
         {
-            inside = node.Ancestors().Skip(1).Any(a => AllocationFunction.IsMemoryObjectClass(a.Frame?.Resolved?.ClassName));
+            inside = node.Ancestors().Skip(1).Any(a => AllocationFunction.IsMemoryObjectClass(a.Frame?.Function?.ClassName));
 
             plumbing[node] = inside;
         }

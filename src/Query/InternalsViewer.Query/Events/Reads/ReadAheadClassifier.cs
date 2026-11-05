@@ -31,7 +31,7 @@ internal static class ReadAheadClassifier
             return cached;
         }
 
-        var result = leaf.Path().Any(f => f.Resolved is { } frame
+        var result = leaf.Path().Any(f => f.Function is { } frame
                                           && (frame.MethodName.Contains("ReadAhead", StringComparison.Ordinal)
                                               || frame.ClassName?.Contains("ReadAhead", StringComparison.Ordinal) == true));
 

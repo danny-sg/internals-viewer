@@ -30,7 +30,7 @@ public sealed class TraceReferenceFinder(TraceCallStore store,
         => (entry.Site ?? entry.Allocator) is { } allocation ? $"{allocation} Allocation" : null;
 
     public CallstackFrame? GetFrame(TraceValueUse use)
-        => use.First.Node?.Frame is { Resolved: not null } frame ? frame : Frames.Value.GetValueOrDefault(use.FunctionAddress);
+        => use.First.Node?.Frame is { Function: not null } frame ? frame : Frames.Value.GetValueOrDefault(use.FunctionAddress);
 
     public async Task<TraceValueReferenceResult> FindAsync(ulong value, CancellationToken cancellationToken)
     {
@@ -56,7 +56,7 @@ public sealed class TraceReferenceFinder(TraceCallStore store,
 
         foreach (var frame in tree?.Nodes().Select(n => n.Frame).OfType<CallstackFrame>() ?? [])
         {
-            if (frame.Address != 0 && (!frames.TryGetValue(frame.Address, out var existing) || existing.Resolved is null))
+            if (frame.Address != 0 && (!frames.TryGetValue(frame.Address, out var existing) || existing.Function is null))
             {
                 frames[frame.Address] = frame;
             }
@@ -145,7 +145,7 @@ public sealed class TraceReferenceFinder(TraceCallStore store,
         }
 
         return groups.FirstOrDefault(g => g.Role == TraceValueRole.CalledOn) is { Uses: [var first, ..] }
-               && GetFrame(first)?.Resolved?.ClassName is { Length: > 0 } className
+               && GetFrame(first)?.Function?.ClassName is { Length: > 0 } className
             ? className
             : null;
     }

@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 
 namespace InternalsViewer.Query.FullTrace.Functions;
@@ -23,6 +24,13 @@ internal readonly record struct FunctionClassification(bool IsExcluded,
                                                        AllocationFunction? AllocationFunction)
 {
     public bool IsInstanceMethod => HasInstanceMethod && InstanceClassesOnly;
+
+    public static void Add(Dictionary<uint, FunctionClassification> functions, uint rva, FunctionClassification classification)
+    {
+        ref var existing = ref CollectionsMarshal.GetValueRefOrAddDefault(functions, rva, out var exists);
+
+        existing = exists ? existing.Merge(classification) : classification;
+    }
 
     public FunctionClassification Merge(FunctionClassification other)
         => new(IsExcluded && other.IsExcluded,

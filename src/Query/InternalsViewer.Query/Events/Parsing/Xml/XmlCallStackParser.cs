@@ -58,11 +58,8 @@ internal static class XmlCallStackParser
 
                 frames.Add(new CallstackFrame
                 {
-                    Module = strings.Intern(module),
+                    Module = CallstackModule.Get(strings.Intern(module), strings.Intern(pdb), strings.Intern(guid), age),
                     Address = ParseAddress(addressSpan),
-                    Pdb = strings.Intern(pdb),
-                    Guid = strings.Intern(guid),
-                    Age = age,
                     Rva = ParseRva(rvaSpan)
                 });
             }

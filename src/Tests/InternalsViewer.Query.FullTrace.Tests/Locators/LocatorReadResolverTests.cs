@@ -3,6 +3,7 @@ using InternalsViewer.Query.FullTrace.Functions;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.CallStack.Locators;
+using InternalsViewer.Query.CallStack.Symbols;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Locators;
 
@@ -297,9 +298,9 @@ public class LocatorReadResolverTests
         const string decoratedName = "?Get@BPool@@QEAAPEAUBUF@@AEAVRecoveryUnit@@AEBVPageId@@AEAHW4LATCH_TYPE@LatchBase@@"
                                      + "PEAVLatchSuspendInfo@@_N@Z";
 
-        collector.Visit(Symbol(signature, decoratedName, isFirst: true));
-
-        collector.Visit(Symbol(signature, decoratedName, isFirst: false, hasSameName: false));
+        Visit(collector.Visit,
+              (signature, decoratedName),
+              (signature.Replace("BPool::", "BPoolMirror::"), decoratedName.Replace("@BPool@@", "@BPoolMirror@@")));
 
         var reads = collector.Build();
 
@@ -312,9 +313,9 @@ public class LocatorReadResolverTests
     {
         var collector = new LocatorReadResolver.Collector();
 
-        collector.Visit(Symbol("SMOLockOrder::Add(PageRef &)", "?Add@SMOLockOrder@@QEAAXAEAVPageRef@@@Z", isFirst: true));
-
-        collector.Visit(Symbol("SMOLockOrder::Add(int)", "?Add@SMOLockOrder@@QEAAXH@Z", isFirst: false, hasSameParameters: false));
+        Visit(collector.Visit,
+              ("SMOLockOrder::Add(PageRef &)", "?Add@SMOLockOrder@@QEAAXAEAVPageRef@@@Z"),
+              ("SMOLockOrder::Add(int)", "?Add@SMOLockOrder@@QEAAXH@Z"));
 
         Assert.Empty(collector.Build());
     }
@@ -363,19 +364,20 @@ public class LocatorReadResolverTests
     private static List<LocatorRead> Reads(string signature, string decoratedName)
         => [.. LocatorReadResolver.GetReads(Function, FunctionSignature.Parse(signature, decoratedName)!)];
 
-    private static FunctionSymbol Symbol(string signature,
-                                        string decoratedName,
-                                        bool isFirst,
-                                        bool hasSameName = true,
-                                        bool hasSameParameters = true)
-        => new()
+    private static void Visit(Action<SymbolTable.Reader, ArgumentLayout?> visit, params (string Signature, string DecoratedName)[] symbols)
+    {
+        var builder = new SymbolTable.Builder();
+
+        foreach (var (signature, decoratedName) in symbols)
         {
-            Rva = (uint)Function,
-            Name = signature[..signature.IndexOf('(')],
-            Signature = signature,
-            DecoratedName = decoratedName,
-            IsFirst = isFirst,
-            HasSameName = hasSameName,
-            HasSameParameters = hasSameParameters
-        };
+            builder.Add((uint)Function, true, signature[..signature.IndexOf('(')], signature, decoratedName);
+        }
+
+        var reader = builder.Build().Read();
+
+        while (reader.MoveNext())
+        {
+            visit(reader, reader.IsFirst && reader.Parsed is { } parsed ? ArgumentLayout.GetLayout(parsed) : null);
+        }
+    }
 }

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
@@ -14,7 +13,6 @@ using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
-using SkiaSharp;
 using Windows.Foundation;
 using Windows.System;
 
@@ -1232,8 +1230,6 @@ public sealed partial class TraceTimelineControl
 
         var node = timeline.NodeOf(span.CallNodeIndex);
 
-        var origin = OriginOf(TraceTimelineAxis.Position);
-
         var lines = new List<string>
         {
             LabelOf(span.CallNodeIndex),
@@ -1241,35 +1237,8 @@ public sealed partial class TraceTimelineControl
             span.CallIndex >= 0
                 ? $"Thread {thread.ThreadId}  ·  Call {span.CallIndex + 1}  ·  Depth {hit.Depth}"
                 : $"Thread {thread.ThreadId}  ·  Depth {hit.Depth}",
-            $"Instructions {span.Instructions}",
-            $"Position {Math.Floor(TraceScale.GetValue(span.From.Position) - origin)} "
-            + $"to {Math.Floor(TraceScale.GetValue(span.To.Position) - origin)}"
+            $"Instructions {span.Instructions}"
         };
-
-        var (allocatedBytes, allocations) = Allocation.AllocatedDuring(thread.ThreadId, span.From.Position, span.To.Position);
-
-        if (allocations > 0)
-        {
-            lines.Add($"Allocated {StringHelpers.FormatSize((long)allocatedBytes)} In {allocations:N0} "
-                      + (allocations == 1 ? "Allocation" : "Allocations"));
-        }
-
-        if (Allocation.FreedDuring(thread.ThreadId, span.From.Position, span.To.Position) is > 0 and var freed)
-        {
-            lines.Add($"Freed {StringHelpers.FormatSize((long)freed)}");
-        }
-
-        if (allocations > 0)
-        {
-            var retained = Allocation.RetainedBy(thread.ThreadId, span.From.Position, span.To.Position);
-
-            lines.Add($"Retained At Return {StringHelpers.FormatSize((long)retained)}");
-        }
-
-        if (span.Flags.HasFlag(TraceSpanFlags.StartUnknown))
-        {
-            lines.Add("Started Before The Recorded Call");
-        }
 
         if (!span.Flags.HasFlag(TraceSpanFlags.Returned))
         {
