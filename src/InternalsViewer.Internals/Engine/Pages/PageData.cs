@@ -40,6 +40,27 @@ public class PageData : DataStructure
     /// </summary>
     public ushort[] OffsetTable { get => field ??= LoadOffsetTable(); set; }
 
+    public int? GetSlot(int offset)
+    {
+        int? slot = null;
+
+        var slotOffset = 0;
+
+        for (var index = 0; index < OffsetTable.Length; index++)
+        {
+            var recordOffset = OffsetTable[index];
+
+            if (recordOffset >= PageHeader.Size && recordOffset <= offset && recordOffset > slotOffset)
+            {
+                slot = index;
+
+                slotOffset = recordOffset;
+            }
+        }
+
+        return slot;
+    }
+
     /// <summary>
     /// Load the offset table with a given slot count from the page data
     /// </summary>

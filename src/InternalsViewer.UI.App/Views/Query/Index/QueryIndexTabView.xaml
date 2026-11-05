@@ -67,7 +67,7 @@
                                 IsLevelsVisible="{x:Bind ViewModel.IsLevelsVisible, Mode=OneWay}"
                                 PageSpans="{x:Bind ViewModel.PageSpans, Mode=OneWay}"
                                 HighlightedPageAddresses="{x:Bind ViewModel.HighlightedPages, Mode=OneWay}"
-                                PlayheadTimeUs="{x:Bind ViewModel.PlayheadTimeUs, Mode=OneWay}"
+                                Playhead="{x:Bind ViewModel.PagePlayhead, Mode=OneWay}"
                                 SelectedPageAddress="{x:Bind ViewModel.SelectedPageAddress, Mode=TwoWay}"
                                 VerticalAlignment="Stretch"
                                 HorizontalAlignment="Stretch" 

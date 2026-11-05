@@ -227,6 +227,7 @@
                                                   ExtentCount="1011"
                                                   IsPfsVisible="true"
                                                   Zoom="2"
+                                                  IsZoomShared="False"
                                                   IsTooltipEnabled="True"
                                                   PageClicked="PfsControl_PageClicked"
                                                   StartPage="{x:Bind ViewModel.AllocationStartPage, Mode=OneWay}"

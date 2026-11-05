@@ -25,7 +25,7 @@
                                               GridColor="{ThemeResource AllocationBorderColor}"
                                               PfsChain="{x:Bind Parent.PfsChain, Mode=OneWay}"
                                               IsPfsVisible="{x:Bind Parent.IsPfsVisible, Mode=OneWay}"
-                                              PlayheadTimeUs="{x:Bind Parent.PlayheadTimeUs, Mode=OneWay}"
+                                              Playhead="{x:Bind Parent.PagePlayhead, Mode=OneWay}"
                                               PageClicked="OnPageSelected"
                                               x:Name="AllocationControl"/>
             </Grid>

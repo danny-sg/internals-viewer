@@ -291,7 +291,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
             ? PageDisplayBuilder.PageHeaderSlot
             : offset >= slotArrayStart
                 ? PageDisplayBuilder.OffsetTableSlot
-                : PageSlots.Where(s => s.Index >= 0 && s.Offset <= offset).MaxBy(s => s.Offset)?.Index;
+                : Page.GetSlot(offset);
 
         if (PageSlots.FirstOrDefault(s => s.Index == index) is { } slot)
         {
@@ -558,9 +558,7 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
             return PageSlots.FirstOrDefault(s => s.Index == slotId);
         }
 
-        return PageSlots.Where(s => s is { Index: >= 0, Offset: > 0 } && s.Offset <= offset)
-                        .OrderByDescending(s => s.Offset)
-                        .FirstOrDefault();
+        return Page.GetSlot(offset) is { } index ? PageSlots.FirstOrDefault(s => s.Index == index) : null;
     }
 
     private async Task ShowLogRecordState(LogRecordItem? item)

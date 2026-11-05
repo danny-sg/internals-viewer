@@ -59,7 +59,7 @@ public sealed partial class TraceBufferPool
         return index < pages.Length && getKey(pages[index]).Item1 == start ? pages[index].Position : TracePosition.Unknown;
     }
 
-    private TraceBufferReference? GetFrameReference(ulong address, TracePosition position)
+    public TraceBufferReference? GetFrameReference(ulong address, TracePosition position)
     {
         var frame = address - address % PageData.Size;
 

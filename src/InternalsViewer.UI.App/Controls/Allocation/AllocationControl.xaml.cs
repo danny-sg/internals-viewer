@@ -261,16 +261,16 @@ public sealed partial class AllocationControl : IDisposable
         set => SetValue(IsHeatmapProperty, value);
     }
 
-    public static readonly DependencyProperty PlayheadTimeUsProperty
-        = DependencyProperty.Register(nameof(PlayheadTimeUs),
+    public static readonly DependencyProperty PlayheadProperty
+        = DependencyProperty.Register(nameof(Playhead),
                                       typeof(long),
                                       typeof(AllocationControl),
-                                      new PropertyMetadata(0L, OnPlayheadTimeChanged));
+                                      new PropertyMetadata(0L, OnPlayheadChanged));
 
-    public long PlayheadTimeUs
+    public long Playhead
     {
-        get => (long)GetValue(PlayheadTimeUsProperty);
-        set => SetValue(PlayheadTimeUsProperty, value);
+        get => (long)GetValue(PlayheadProperty);
+        set => SetValue(PlayheadProperty, value);
     }
 
     private static readonly DependencyProperty ZoomProperty
@@ -330,7 +330,14 @@ public sealed partial class AllocationControl : IDisposable
 
         PointerWheelChanged += AllocationControl_PointerWheelChanged;
 
-        Loaded += (_, _) => Refresh();
+        Loaded += (_, _) =>
+        {
+            _ = ApplySavedZoomAsync();
+
+            Refresh();
+        };
+
+        RegisterSharedZoom();
 
         SetScrollBarValues();
     }
@@ -372,6 +379,8 @@ public sealed partial class AllocationControl : IDisposable
         AllocationCanvas.PointerPressed -= AllocationCanvas_PointerPressed;
         AllocationCanvas.PointerExited -= AllocationCanvas_PointerExited;
         AllocationCanvas.PointerEntered -= AllocationCanvas_PointerEntered;
+
+        UnregisterSharedZoom();
 
         if (Layers is { } layers)
         {
@@ -429,7 +438,7 @@ public sealed partial class AllocationControl : IDisposable
 
         if (IsFollowingCurrentPage)
         {
-            FollowCurrentPage(PlayheadTimeUs);
+            FollowCurrentPage(Playhead);
         }
 
         AllocationCanvas.Invalidate();
@@ -442,14 +451,14 @@ public sealed partial class AllocationControl : IDisposable
     /// The span under the playhead and <see cref="CurrentPageAddress"/> are tried in turn rather than one standing for both, because an
     /// allocation map built for a trace carries no timed spans at all.
     /// </remarks>
-    private void FollowCurrentPage(long playheadUs)
+    private void FollowCurrentPage(long playhead)
     {
         if (_isFollowingPage || Layout.HorizontalCount <= 0 || Layout.VisibleCount <= 0)
         {
             return;
         }
 
-        var followed = LatestPageSpan(playheadUs)?.Address.PageId ?? FollowedPageId();
+        var followed = LatestPageSpan(playhead)?.Address.PageId ?? FollowedPageId();
 
         if (followed is not { } pageId)
         {
@@ -476,7 +485,7 @@ public sealed partial class AllocationControl : IDisposable
     private int? FollowedPageId()
         => CurrentPageAddress is { } address && address.FileId == FileId ? address.PageId : null;
 
-    private PageSpan? LatestPageSpan(long playheadUs)
+    private PageSpan? LatestPageSpan(long playhead)
     {
         if (Layers is not { Count: > 0 })
         {
@@ -494,14 +503,14 @@ public sealed partial class AllocationControl : IDisposable
 
             foreach (var span in layer.PageSpans)
             {
-                if (span.Address.FileId != FileId || span.StartUs > playheadUs || span.EndUs < playheadUs)
+                if (span.Address.FileId != FileId || span.Start > playhead || span.End < playhead)
                 {
                     continue;
                 }
 
                 if (latestSpan is null
-                    || span.StartUs > latestSpan.StartUs
-                    || (span.StartUs == latestSpan.StartUs && span.EndUs >= latestSpan.EndUs))
+                    || span.Start > latestSpan.Start
+                    || (span.Start == latestSpan.Start && span.End >= latestSpan.End))
                 {
                     latestSpan = span;
                 }
@@ -614,6 +623,8 @@ public sealed partial class AllocationControl : IDisposable
             if (newZoom is >= MinimumZoom and <= MaximumZoom)
             {
                 Zoom = newZoom;
+
+                ShareZoom();
             }
         }
         else if (ScrollBar.IsEnabled)
@@ -630,7 +641,7 @@ public sealed partial class AllocationControl : IDisposable
 
         if (IsFollowingCurrentPage)
         {
-            FollowCurrentPage(PlayheadTimeUs);
+            FollowCurrentPage(Playhead);
         }
 
         AllocationCanvas.Invalidate();
@@ -954,7 +965,7 @@ public sealed partial class AllocationControl : IDisposable
             return;
         }
 
-        var playhead = PlayheadTimeUs;
+        var playhead = Playhead;
 
         foreach (var border in _orderedBorders)
         {
@@ -1048,18 +1059,18 @@ public sealed partial class AllocationControl : IDisposable
             return;
         }
 
-        var playhead = PlayheadTimeUs;
+        var playhead = Playhead;
 
         for (var i = 0; i < spans.Count; i++)
         {
             var span = spans[i];
 
-            if (span.StartUs > playhead)
+            if (span.Start > playhead)
             {
                 break;
             }
 
-            if (span.EndUs < playhead || span.Address.FileId != FileId)
+            if (span.End < playhead || span.Address.FileId != FileId)
             {
                 continue;
             }
@@ -1084,18 +1095,18 @@ public sealed partial class AllocationControl : IDisposable
             return;
         }
 
-        var playhead = PlayheadTimeUs;
+        var playhead = Playhead;
 
         for (var i = 0; i < spans.Count; i++)
         {
             var span = spans[i];
 
-            if (span.StartUs > playhead)
+            if (span.Start > playhead)
             {
                 break;
             }
 
-            if (span.EndUs < playhead || span.Address.FileId != FileId)
+            if (span.End < playhead || span.Address.FileId != FileId)
             {
                 continue;
             }
@@ -1116,7 +1127,7 @@ public sealed partial class AllocationControl : IDisposable
             return;
         }
 
-        var playhead = PlayheadTimeUs;
+        var playhead = Playhead;
 
         _heatmapVisits.Clear();
 
@@ -1126,7 +1137,7 @@ public sealed partial class AllocationControl : IDisposable
         {
             var span = spans[i];
 
-            if (span.StartUs > playhead)
+            if (span.Start > playhead)
             {
                 break;
             }
@@ -1439,14 +1450,14 @@ public sealed partial class AllocationControl : IDisposable
         control.Refresh();
     }
 
-    private static void OnPlayheadTimeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    private static void OnPlayheadChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var control = (AllocationControl)d;
-        var playheadUs = (long)e.NewValue;
+        var playhead = (long)e.NewValue;
 
         if (control.IsFollowingCurrentPage)
         {
-            control.FollowCurrentPage(playheadUs);
+            control.FollowCurrentPage(playhead);
         }
 
         if (control.Layers?.Any(l => l.PageSpans.Count > 0) == true
@@ -1462,7 +1473,7 @@ public sealed partial class AllocationControl : IDisposable
 
         if ((bool)e.NewValue)
         {
-            control.FollowCurrentPage(control.PlayheadTimeUs);
+            control.FollowCurrentPage(control.Playhead);
         }
 
         control.AllocationCanvas.Invalidate();
@@ -1474,7 +1485,11 @@ public sealed partial class AllocationControl : IDisposable
 
         if (e.NewValue is > 0d)
         {
-            control.FollowCurrentPage(control.PlayheadTimeUs);
+            control.FollowCurrentPage(control.Playhead);
+        }
+        else
+        {
+            control.ApplySharedZoom(SharedZoom);
         }
 
         control.AllocationCanvas.Invalidate();
@@ -1486,7 +1501,7 @@ public sealed partial class AllocationControl : IDisposable
 
         if (control.IsFollowingCurrentPage)
         {
-            control.FollowCurrentPage(control.PlayheadTimeUs);
+            control.FollowCurrentPage(control.Playhead);
         }
     }
 

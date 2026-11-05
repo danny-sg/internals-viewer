@@ -18,7 +18,7 @@ While it is on, a red **Full Trace** badge sits at the end of the menu bar, beca
 
 <!-- Screenshot (update): the Trace menu with Record Full Trace on, and the red Full Trace badge at the end of the menu bar -->
 
-Turning it on also changes the layout straight away. A recording has no clock, so the **Timeline**, **Events** and **Allocations** panes are hidden and their View menu items disabled, and the [Trace Timeline](/docs/user-guide/query/TraceTimeline) takes the Timeline's place - at the bottom in the default layout. Turning it off puts the previous layout back.
+Turning it on also changes the layout straight away. A recording has no clock, so the **Timeline** and **Events** panes are hidden and their View menu items disabled, and the [Trace Timeline](/docs/user-guide/query/TraceTimeline) takes the Timeline's place - at the bottom in the default layout. Turning it off puts the previous layout back. The **Allocations** pane is not hidden, and with a Full Trace loaded it follows the Trace Timeline's playhead.
 
 Turning Record Full Trace on also starts preparing the symbols the replay needs, in the background, so they are ready by the time the first recording finishes.
 

@@ -757,7 +757,7 @@ public sealed partial class TraceTimelineControl
         var hasPosition = e.TryGetPosition(_overlay, out var position);
 
         var flyout = hasPosition && _operators.Contains(position)
-            ? CreateOperatorsMenu(_operators.GetPlanNode(position))
+            ? CreateOperatorsMenu(_operators.GetOperator(position))
             : hasPosition && ShowsMemory && _memory.Contains(position)
                 ? CreateMemoryHistoryMenu(_memory.GetHit(position))
                 : CreateChartMenu(hasPosition ? HitTest(position) : _selected);

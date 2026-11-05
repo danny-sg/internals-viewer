@@ -72,6 +72,36 @@ public static class MemoryHistoryPointerReader
         return pointers;
     }
 
+    public static IEnumerable<(TracePosition Position, ulong Value)> GetWrittenPointers(MemoryHistoryStore store, int block)
+    {
+        var item = store.Blocks[block];
+
+        var writes = store.GetWrites(block);
+
+        var data = new byte[item.Size];
+
+        var known = new bool[item.Size];
+
+        var first = (int)((PointerSize - item.Address % PointerSize) % PointerSize);
+
+        for (var index = 0; index < writes.Count; index++)
+        {
+            var write = writes[index];
+
+            store.Apply(write, data, known);
+
+            var end = Math.Min(write.Offset + write.Length, data.Length - PointerSize + 1);
+
+            for (var offset = first + Math.Max(0, (write.Offset - first) / PointerSize * PointerSize); offset < end; offset += PointerSize)
+            {
+                if (!known.AsSpan(offset, PointerSize).Contains(false))
+                {
+                    yield return (write.Position, BinaryPrimitives.ReadUInt64LittleEndian(data.AsSpan(offset)));
+                }
+            }
+        }
+    }
+
     private static int GetLastWrite(int[] lastWrites, int offset)
     {
         var last = lastWrites[offset];

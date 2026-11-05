@@ -125,8 +125,8 @@ public sealed partial class IndexControl : IDisposable
         set => SetValue(PageSpansProperty, value);
     }
 
-    public static readonly DependencyProperty PlayheadTimeUsProperty
-        = DependencyProperty.Register(nameof(PlayheadTimeUs),
+    public static readonly DependencyProperty PlayheadProperty
+        = DependencyProperty.Register(nameof(Playhead),
                                       typeof(long),
                                       typeof(IndexControl),
                                       new PropertyMetadata(0L, OnPropertyChanged));
@@ -134,10 +134,10 @@ public sealed partial class IndexControl : IDisposable
     /// <summary>
     /// Current playhead position (microseconds) - drives which spans are currently active
     /// </summary>
-    public long PlayheadTimeUs
+    public long Playhead
     {
-        get => (long)GetValue(PlayheadTimeUsProperty);
-        set => SetValue(PlayheadTimeUsProperty, value);
+        get => (long)GetValue(PlayheadProperty);
+        set => SetValue(PlayheadProperty, value);
     }
 
     public static readonly DependencyProperty SingleSelectedColourProperty
@@ -484,7 +484,7 @@ public sealed partial class IndexControl : IDisposable
 
         _activeSpanColours.Clear();
 
-        CollectActiveSpanColours(PageSpans, PlayheadTimeUs, _rangeSelectedColour, _activeSpanColours);
+        CollectActiveSpanColours(PageSpans, Playhead, _rangeSelectedColour, _activeSpanColours);
 
         if (IsLevelsVisible)
         {
@@ -527,12 +527,12 @@ public sealed partial class IndexControl : IDisposable
         {
             var span = spans[i];
 
-            if (span.StartUs > playhead)
+            if (span.Start > playhead)
             {
                 break;
             }
 
-            if (span.EndUs < playhead)
+            if (span.End < playhead)
             {
                 continue;
             }

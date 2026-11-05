@@ -48,6 +48,7 @@ using InternalsViewer.UI.App.ViewModels.Columnstore;
 using InternalsViewer.UI.App.Services.Query.Timeline;
 using InternalsViewer.UI.App.ViewModels.Index;
 using InternalsViewer.UI.App.ViewModels.Query.Events;
+using InternalsViewer.UI.App.ViewModels.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.CallStack;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryHistory;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.OperatorTracks;
@@ -72,10 +73,14 @@ using InternalsViewer.TransactionLog.LogRecords;
 using InternalsViewer.UI.App.ViewModels.Page;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.Query.Plans.Operators;
 using InternalsViewer.UI.App.Views.Columnstore;
 using DatabaseFile = InternalsViewer.UI.App.Models.DatabaseFile;
 using InternalsViewer.UI.App.Models.Allocations;
+using InternalsViewer.UI.App.Models.Index;
 using InternalsViewer.UI.App.Models.Query;
+using InternalsViewer.Query.Helpers;
+using System.Runtime.InteropServices;
 using LogRecordItem = InternalsViewer.UI.App.Models.Logging.LogRecordItem;
 using System.Diagnostics;
 using System.IO;
@@ -168,6 +173,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private List<PageSpan> _pageSpans = [];
 
+    private List<PageVisit> _pageVisits = [];
+
     private bool _resultTabsOpened;
 
     [ObservableProperty]
@@ -236,6 +243,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     [ObservableProperty]
     private long _playheadTimeUs;
+
+    [ObservableProperty]
+    private long _pagePlayhead;
 
     [ObservableProperty]
     private bool _isZoomToPage;
@@ -823,7 +833,19 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         PlayheadTimeUs = timeUs;
 
         UpdateActiveOperators(timeUs);
-        SyncIndexPage(timeUs);
+
+        if (Trace is null)
+        {
+            SetPagePlayhead(timeUs);
+        }
+    }
+
+    public void SetTracePlayhead(TracePosition position)
+    {
+        if (Trace is not null)
+        {
+            SetPagePlayhead(TracePageSpanBuilder.GetPosition(position));
+        }
     }
 
     public void SelectPlanNode(PlanNodeIdentifier identifier)
@@ -950,6 +972,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public void OpenIndex(PlanNode node)
         => OpenIndex(node.Schema, node.Table, node.Index);
+
+    public string? GetIndexName(ExecutionOperatorEvent op)
+    {
+        var index = op.PlanNodeIdentifier is { } identifier && ResolvePlanNode(identifier) is { } node ? node.Index : op.IndexName;
+
+        return op.Category == OperatorCategory.DataAccess && !string.IsNullOrEmpty(index) ? index : null;
+    }
 
     /// <summary>
     /// The captured log records for a page, matched from the query's transaction log events
@@ -1149,6 +1178,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         _openSimulations.Clear();
 
         _pageSpans = [];
+
+        _pageVisits = [];
 
         CancelTraceLoad();
 
@@ -1573,7 +1604,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         // Reflect the already-built spans and current playhead position immediately.
         ApplyIndexPageSpans(indexViewModel);
 
-        SyncIndexPage(PlayheadTimeUs);
+        SyncIndexPage();
     }
 
     private async Task LoadPageDocument(PageTabViewModel pageViewModel,
@@ -1862,69 +1893,78 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     /// </summary>
     private void RefreshIndexPageSpans(List<EngineEvent> engineEvents, EventColourProvider colours)
     {
-        _pageSpans = PageSpanBuilder.GetEventsPageSpans(engineEvents, colours, StartOffset, EndOffset, _isClearBuferPool, Database);
+        (_pageSpans, _pageVisits) = Trace is { } trace ? GetTracePages(trace) : GetEventPages(engineEvents, colours);
 
         foreach (var viewModel in _openIndexes.Values)
         {
             ApplyIndexPageSpans(viewModel);
         }
 
-        SyncIndexPage(PlayheadTimeUs);
+        SyncIndexPage();
     }
+
+    private (List<PageSpan> Spans, List<PageVisit> Visits) GetEventPages(List<EngineEvent> engineEvents, EventColourProvider colours)
+    {
+        var spans = PageSpanBuilder.GetEventsPageSpans(engineEvents, colours, StartOffset, EndOffset, _isClearBuferPool, Database);
+
+        return (spans, [.. spans.Select(s => new PageVisit(s.Start, s.Address, null))]);
+    }
+
+    private (List<PageSpan> Spans, List<PageVisit> Visits) GetTracePages(TraceResult trace)
+        => TracePageSpanBuilder.Build(trace.PageAccesses, Database.DatabaseId, GetPageColour);
+
+    private Color GetPageColour(PageAddress page) => Database.FindPageAllocationUnit(page)?.DisplayColour ?? Color.Gray;
 
     private void ApplyIndexPageSpans(IndexTabViewModel viewModel)
     {
-        viewModel.PageSpans = [.. _pageSpans.Where(s => IsInIndex(s.Address, viewModel.RootPage))];
+        var isIndexPage = new Dictionary<PageAddress, bool>();
+
+        bool IsIndexPage(PageAddress page)
+        {
+            if (!isIndexPage.TryGetValue(page, out var value))
+            {
+                value = IsInIndex(page, viewModel.RootPage);
+
+                isIndexPage[page] = value;
+            }
+
+            return value;
+        }
+
+        viewModel.PageSpans = [.. _pageSpans.Where(s => IsIndexPage(s.Address))];
+
+        viewModel.PageVisits = [.. _pageVisits.Where(v => IsIndexPage(v.Page))];
     }
 
     private bool IsInIndex(PageAddress page, PageAddress rootPage) =>
         Database.FindPageAllocationUnit(page)?.RootPage == rootPage;
 
-    private void SyncIndexPage(long playheadUs)
+    private void SetPagePlayhead(long playhead)
     {
-        if (_openIndexes.Count == 0)
-        {
-            return;
-        }
+        PagePlayhead = playhead;
 
-        foreach (var viewModel in _openIndexes.Values)
-        {
-            viewModel.PlayheadTimeUs = playheadUs;
-
-            var spans = viewModel.PageSpans;
-
-            if (spans.Count == 0)
-            {
-                viewModel.SelectedPageAddress = null;
-                continue;
-            }
-
-            var index = UpperBoundByStartUs(spans, playheadUs) - 1;
-
-            viewModel.SelectedPageAddress = index >= 0 ? spans[index].Address : null;
-        }
+        SyncIndexPage();
     }
 
-    private static int UpperBoundByStartUs(IReadOnlyList<PageSpan> spans, long value)
+    private void SyncIndexPage()
     {
-        var lo = 0;
-        var hi = spans.Count;
-
-        while (lo < hi)
+        foreach (var viewModel in _openIndexes.Values)
         {
-            var mid = (lo + hi) / 2;
+            viewModel.PagePlayhead = PagePlayhead;
 
-            if (spans[mid].StartUs <= value)
+            ReadOnlySpan<PageVisit> visits = CollectionsMarshal.AsSpan(viewModel.PageVisits);
+
+            var index = SortedSearch.FirstAfter(visits, PagePlayhead, static v => v.Position) - 1;
+
+            if (index >= 0)
             {
-                lo = mid + 1;
+                viewModel.SetPlayheadPage(visits[index].Page, visits[index].Offset);
             }
             else
             {
-                hi = mid;
+                viewModel.SetPlayheadPage(null, null);
             }
         }
-
-        return lo;
     }
 
     // Generating the object layers walks the whole allocation map, so build them off the UI thread and
@@ -2419,6 +2459,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         TraceTimeline = traceTimeline;
 
         ExecutionPlans = [.. ExecutionPlans];
+
+        PagePlayhead = 0;
+
+        RefreshLayers(FilteredEvents);
     }
 
     private ExecutionOperatorEvent? GetStatementOperator(TraceOperatorLifetimeList lifetimes)
@@ -2564,6 +2608,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         SequenceFrom = 0;
         SequenceTo = 0;
         PlayheadTimeUs = 0;
+        PagePlayhead = 0;
         SelectedPlanNode = null;
         ActivePlanNodes = [];
         EmittingPlanNodes = [];
@@ -2582,9 +2627,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             indexViewModel.SelectedPageAddress = null;
             indexViewModel.PageSpans = [];
+            indexViewModel.PageVisits = [];
         }
 
         _pageSpans = [];
+
+        _pageVisits = [];
 
         AllocationLayers = new ObservableCollection<AllocationLayer>(ObjectLayers);
         AllocationBorders = [];
@@ -2592,9 +2640,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private void RefreshLayers(List<EngineEvent> engineEvents)
     {
-        ApplyEventLayers(GetEventsAllocationLayer(engineEvents, EventColours, StartOffset, EndOffset));
-
         RefreshIndexPageSpans(engineEvents, EventColours);
+
+        ApplyEventLayers(GetEventsAllocationLayer());
 
         RefreshLockBorders();
     }
@@ -2634,21 +2682,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         return engineEvent.ObjectId == 0 || !SystemObjectIds.Contains(engineEvent.ObjectId);
     }
 
-    private AllocationLayer GetEventsAllocationLayer(List<EngineEvent> engineEvents,
-                                                     EventColourProvider colours,
-                                                     long? startOffset,
-                                                     long? endOffset)
+    private AllocationLayer GetEventsAllocationLayer()
     {
         var overlayLayer = new AllocationLayer { Name = "Events", IsVisible = true };
 
-        var pageSpans = PageSpanBuilder.GetEventsPageSpans(engineEvents,
-                                                           colours,
-                                                           startOffset,
-                                                           endOffset,
-                                                           _isClearBuferPool,
-                                                           Database);
-
-        overlayLayer.SetPageSpans([.. pageSpans.OrderBy(s => s.StartUs)]);
+        overlayLayer.SetPageSpans(_pageSpans);
 
         return overlayLayer;
     }

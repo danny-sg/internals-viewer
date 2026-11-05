@@ -45,7 +45,7 @@ internal static class PageSpanBuilder
             }
         }
 
-        return [.. pageSpans.OrderBy(s => s.StartUs)];
+        return [.. pageSpans.OrderBy(s => s.Start)];
     }
 
     private static void AddLogEventSpan(TransactionLogEvent logEvent, long queryEndUs, Action<PageSpan> add)

@@ -39,6 +39,8 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
 
     public TraceBufferPool BufferPool { get; init; } = TraceBufferPool.Empty;
 
+    public TracePageAccessList PageAccesses { get; init; } = TracePageAccessList.Empty;
+
     public MemoryHistoryStore MemoryHistory { get; init; } = MemoryHistoryStore.Empty;
 
     internal IReadOnlyList<TraceOutputStructure> OutputStructures { get; init; } = [];
@@ -83,6 +85,7 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
         yield return ("Memory History Writes", MemoryHistory.WriteCount, MemoryHistory.WriteBytes);
         yield return ("Memory History Reads", MemoryHistory.ReadCount, MemoryHistory.ReadBytes);
         yield return ("Buffer Pool Pages", BufferPool.Count, BufferPool.Bytes);
+        yield return ("Page Accesses", PageAccesses.Count, PageAccesses.Bytes);
         yield return ("Call Tree Nodes", CallStack.Nodes().LongCount(), null);
         yield return ("Operator Lifetimes", Lifetimes.Count, null);
         yield return ("Read Ticks", Reads.Count, null);

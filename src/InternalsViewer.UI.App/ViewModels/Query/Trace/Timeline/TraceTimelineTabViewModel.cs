@@ -318,6 +318,11 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
     {
         Playhead = position;
 
+        if (position is { } value)
+        {
+            Query.SetTracePlayhead(value);
+        }
+
         foreach (var document in MemoryDocuments)
         {
             ((PlayheadMemoryViewModel)document.Content).SetPlayhead(position);

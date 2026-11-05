@@ -125,6 +125,8 @@ internal sealed class TraceExportSection : IQueryExportSection
                 : MemoryHistoryStore.Empty
         };
 
+        result = result with { PageAccesses = TracePageAccessList.Build(callStore, result.MemoryHistory, result.BufferPool) };
+
         callStore.ReleaseColumns();
 
         return result;

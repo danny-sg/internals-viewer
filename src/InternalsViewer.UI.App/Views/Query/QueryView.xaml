@@ -55,8 +55,7 @@
                                 <ToggleMenuFlyoutItem Text="SQL Editor"
                                    IsChecked="{x:Bind ViewModel.Layout.IsSqlEditorVisible, Mode=TwoWay}"/>
                                 <ToggleMenuFlyoutItem Text="Allocations"
-                                   IsChecked="{x:Bind ViewModel.Layout.IsAllocationsVisible, Mode=TwoWay}"
-                                   IsEnabled="{x:Bind ViewModel.Layout.CanShowEventViews, Mode=OneWay}"/>
+                                   IsChecked="{x:Bind ViewModel.Layout.IsAllocationsVisible, Mode=TwoWay}"/>
                                 <ToggleMenuFlyoutItem Text="Execution Plan"
                                    IsChecked="{x:Bind ViewModel.Layout.IsExecutionPlanVisible, Mode=TwoWay}"/>
                                 <ToggleMenuFlyoutItem Text="Events"

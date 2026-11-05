@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Plans.Model;
@@ -82,6 +83,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         TraceTimeline.PlanNodeSelected += OnPlanNodeSelected;
 
         TraceTimeline.ExecutionPlanRequested += OnExecutionPlanRequested;
+
+        TraceTimeline.OperatorMenuRequested += OnOperatorMenuRequested;
 
         TraceTimeline.MemoryWriteSelected += OnMemoryWriteSelected;
 
@@ -207,6 +210,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         TraceTimeline.PlanNodeSelected -= OnPlanNodeSelected;
 
         TraceTimeline.ExecutionPlanRequested -= OnExecutionPlanRequested;
+
+        TraceTimeline.OperatorMenuRequested -= OnOperatorMenuRequested;
 
         TraceTimeline.MemoryWriteSelected -= OnMemoryWriteSelected;
 
@@ -716,6 +721,14 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         else
         {
             ViewModel?.Layout.ShowExecutionPlan();
+        }
+    }
+
+    private void OnOperatorMenuRequested(MenuFlyout menu, ExecutionOperatorEvent op)
+    {
+        if (ViewModel is { } viewModel && viewModel.GetIndexName(op) is { } index)
+        {
+            menu.Items.Add(MenuItems.Create($"Open Index: {index}", () => viewModel.OpenIndex(op)));
         }
     }
 }

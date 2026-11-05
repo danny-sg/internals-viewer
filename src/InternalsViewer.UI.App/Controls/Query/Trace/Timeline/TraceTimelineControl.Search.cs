@@ -334,16 +334,20 @@ public sealed partial class TraceTimelineControl
 
         var updates = GetMemoryUpdateMarks();
 
-        var markHeight = calls is not null && updates is not null ? PlayheadStripHeight / 2 : PlayheadStripHeight;
+        var halfHeight = PlayheadStripHeight / 2;
 
         if (calls is not null)
         {
-            DrawSearchMatches(canvas, calls, PlayheadStripTop, markHeight, scale);
+            DrawSearchMatches(canvas, calls, PlayheadStripTop, halfHeight, scale);
         }
 
         if (updates is not null)
         {
-            DrawMemoryUpdates(canvas, updates, calls is null ? PlayheadStripTop : PlayheadStripTop + markHeight, markHeight, scale);
+            DrawMemoryUpdates(canvas,
+                              updates,
+                              calls is null ? PlayheadStripTop : PlayheadStripTop + halfHeight,
+                              calls is null ? PlayheadStripHeight : halfHeight,
+                              scale);
         }
 
         if (_searchTerms.Length > 0 && ShowsMemory && GetVisibleMemoryMatches() is { Count: > 0 } visible)
@@ -385,7 +389,7 @@ public sealed partial class TraceTimelineControl
 
         if (IsInPlayheadStrip(position))
         {
-            return IsInSearchBand(position, GetMemoryUpdateMarks() is not null) && ZoomToCallMatches((float)position.X);
+            return IsInSearchBand(position) && ZoomToCallMatches((float)position.X);
         }
 
         if (ShowsMemory && _memory.Contains(position) && position.X < SearchMatchThickness + SearchMatchHitSlop)
@@ -411,7 +415,7 @@ public sealed partial class TraceTimelineControl
 
         var scale = PixelsPerUnit((int)_overlay.ActualWidth);
 
-        if (calls is not null && IsInSearchBand(position, updates is not null))
+        if (calls is not null && IsInSearchBand(position))
         {
             return IsOverSearchBar(calls, x, scale) ? "Search Results" : null;
         }
@@ -421,7 +425,7 @@ public sealed partial class TraceTimelineControl
 
     private bool IsInPlayheadStrip(Point position) => position.Y >= PlayheadStripTop && position.Y < OperatorsTop;
 
-    private bool IsInSearchBand(Point position, bool hasUpdates) => !hasUpdates || position.Y < PlayheadStripTop + PlayheadStripHeight / 2;
+    private bool IsInSearchBand(Point position) => position.Y < PlayheadStripTop + PlayheadStripHeight / 2;
 
     private string? GetMemorySearchToolTip(Point position)
     {

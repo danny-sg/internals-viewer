@@ -106,7 +106,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     private IReadOnlyList<PageSpan> _pageSpans = [];
 
     [ObservableProperty]
-    private long _playheadTimeUs;
+    private long _pagePlayhead;
 
     [ObservableProperty]
     private PageAddress? _selectedNextPage;
@@ -127,6 +127,8 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     private ObservableCollection<PageAddress> _highlightedPages = [];
 
     public DatabaseSource Database { get; } = database;
+
+    public List<PageVisit> PageVisits { get; set; } = [];
 
     public string ProgressText => TotalPageCount > 0
         ? $"{LoadedPageCount:N0} / {TotalPageCount:N0} pages"
@@ -166,6 +168,10 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
     private PageAddress? LoadingPageAddress { get; set; }
 
     private CancellationTokenSource? PageLoadCancellation { get; set; }
+
+    private PageData? SlotPage { get; set; }
+
+    private (PageAddress Page, int Offset)? RowRequest { get; set; }
 
     [RelayCommand]
     public async Task Refresh()
@@ -268,6 +274,27 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
         }
     }
 
+    public void SetPlayheadPage(PageAddress? pageAddress, int? offset)
+    {
+        var isPageChanged = SelectedPageAddress != pageAddress;
+
+        SelectedPageAddress = pageAddress;
+
+        if (pageAddress is { } page && offset is { } rowOffset)
+        {
+            _ = SelectRowAsync(page, rowOffset);
+        }
+        else
+        {
+            RowRequest = null;
+
+            if (isPageChanged)
+            {
+                SelectedSlot = null;
+            }
+        }
+    }
+
     partial void OnAllocationUnitChanged(AllocationUnit? value)
     {
         TotalPageCount = value?.UsedPages ?? 0;
@@ -290,6 +317,34 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
         if (value)
         {
             ReloadSelectedPage(SelectedPageAddress);
+        }
+    }
+
+    private async Task SelectRowAsync(PageAddress pageAddress, int offset)
+    {
+        RowRequest = (pageAddress, offset);
+
+        try
+        {
+            var page = SlotPage?.PageAddress == pageAddress
+                ? SlotPage
+                : await PageService.GetPage(Database, pageAddress, CancellationToken, false);
+
+            if (RowRequest != (pageAddress, offset))
+            {
+                return;
+            }
+
+            SlotPage = page;
+
+            SelectedSlot = page.GetSlot(offset);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to find the slot at offset {Offset} on page {PageAddress}", offset, pageAddress);
         }
     }
 
@@ -392,6 +447,7 @@ public partial class IndexTabViewModel(ILogger<IndexTabViewModel> logger,
             }
 
             Records = records;
+            SlotPage = page ?? SlotPage;
             SelectedLevel = page?.PageHeader.Level;
             SelectedPageType = page switch
             {

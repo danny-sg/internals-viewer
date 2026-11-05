@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
@@ -220,6 +221,8 @@ public sealed partial class TraceTimelineControl
     public event Action<PlanNodeIdentifier>? PlanNodeSelected;
 
     public event Action<PlanNodeIdentifier?>? ExecutionPlanRequested;
+
+    public event Action<MenuFlyout, ExecutionOperatorEvent>? OperatorMenuRequested;
 
     public event Action<string, bool>? TickTrackVisibilityChanged;
 
@@ -489,11 +492,16 @@ public sealed partial class TraceTimelineControl
         return position.Y >= top - SplitterHitMargin && position.Y < top + SplitterHeight + SplitterHitMargin;
     }
 
-    private MenuFlyout CreateOperatorsMenu(PlanNodeIdentifier? identifier)
+    private MenuFlyout CreateOperatorsMenu(ExecutionOperatorEvent? op)
     {
         var flyout = new MenuFlyout();
 
-        flyout.Items.Add(MenuItems.Create("Execution Plan", () => ExecutionPlanRequested?.Invoke(identifier)));
+        flyout.Items.Add(MenuItems.Create("Execution Plan", () => ExecutionPlanRequested?.Invoke(op?.PlanNodeIdentifier)));
+
+        if (op is not null)
+        {
+            OperatorMenuRequested?.Invoke(flyout, op);
+        }
 
         flyout.Items.Add(new MenuFlyoutSeparator());
 

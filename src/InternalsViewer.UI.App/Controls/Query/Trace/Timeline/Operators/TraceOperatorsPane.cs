@@ -252,8 +252,8 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
         return (lifetime.GetStart(Axis), lifetime.GetEnd(Axis));
     }
 
-    public PlanNodeIdentifier? GetPlanNode(Point position)
-        => GetOperatorAt(position) is { } hit ? Rows[hit.Row].Operator.PlanNodeIdentifier : null;
+    public ExecutionOperatorEvent? GetOperator(Point position)
+        => GetOperatorAt(position) is { } hit ? Rows[hit.Row].Operator : null;
 
     public void Click(Point position)
     {

@@ -24,7 +24,7 @@ public interface IAllocationViewModel : INotifyPropertyChanged
 
     bool IsPfsVisible { get; }
 
-    long PlayheadTimeUs { get; }
+    long PagePlayhead { get; }
 
     PageAddress? ScrollTarget { get; }
 }

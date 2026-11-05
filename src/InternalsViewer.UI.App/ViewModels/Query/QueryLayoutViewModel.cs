@@ -155,8 +155,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     public bool IsTimelineVisibleOutsideTrace
         => IsTimelineVisible || _hiddenForTrace.Contains(_documentsByKey[TimelineKey]);
 
-    private DocumentViewModel[] EventViews =>
-        [_documentsByKey[AllocationsKey], _documentsByKey[EventsKey], _documentsByKey[TimelineKey]];
+    private DocumentViewModel[] EventViews => [_documentsByKey[EventsKey], _documentsByKey[TimelineKey]];
 
     public DockNode SerializeRoot()
         => IsTrace && _rootBeforeTrace is { } root ? root : DockLayoutSerializer.Serialize(Dock.Root);
