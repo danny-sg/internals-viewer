@@ -7,7 +7,7 @@
            stroke-width="2"
            fill="none"
            stroke-linejoin="round"
-           stroke-linecap="square">
+           stroke-linecap="square" data-part="Frame">
 
             <rect id="compute-scalar-main-rect"
                   x="3"
@@ -19,7 +19,7 @@
         <!-- calculator overlay -->
         <g id="compute-scalar-calculator"
            stroke="#424242"
-           stroke-width="2">
+           stroke-width="2" data-part="Calculator">
 
             <rect id="calculator-body"
                   x="16"
@@ -33,7 +33,7 @@
                   d="M 19 17 L 25 17" />
         </g>
 
-        <g id="calculator-buttons" fill="#0078D4">
+        <g id="calculator-buttons" fill="#0078D4" data-part="Calculator">
             <circle id="calculator-button-1" cx="20" cy="21" r="1" />
             <circle id="calculator-button-2" cx="24" cy="21" r="1" />
             <circle id="calculator-button-3" cx="20" cy="25" r="1" />

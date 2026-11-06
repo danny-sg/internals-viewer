@@ -30,6 +30,8 @@ public sealed class TraceTickIndex
 
         Callers = sources.Any(s => s.Caller is not null) ? [.. sources.Select(s => s.Caller)] : null;
 
+        ValueCount = Entries.Select(e => e.Value).Distinct().Count();
+
         RunningEnds = new TracePoint[Tos.Length];
 
         for (var index = 0; index < Tos.Length; index++)
@@ -48,6 +50,10 @@ public sealed class TraceTickIndex
 
     internal long Bytes => Count * (Unsafe.SizeOf<TraceTickEntry>() + 3L * Unsafe.SizeOf<TracePoint>())
                            + (Callers is null ? 0 : Count * (long)IntPtr.Size);
+
+    private int ValueCount { get; }
+
+    private Dictionary<byte, TracePosition[]>? EndsByValue { get; set; }
 
     private TraceTimeline Timeline { get; }
 
@@ -104,6 +110,46 @@ public sealed class TraceTickIndex
         }
 
         return false;
+    }
+
+    public int CountEnded(byte value, TracePosition upTo)
+    {
+        EndsByValue ??= Enumerable.Range(0, Count)
+                                  .GroupBy(i => Entries[i].Value)
+                                  .ToDictionary(g => g.Key, g => g.Select(i => Tos[i].Position).Order().ToArray());
+
+        return EndsByValue.TryGetValue(value, out var ends) ? SortedSearch.FirstAfter<TracePosition>(ends, upTo) : 0;
+    }
+
+    public List<TraceTick> GetRunningTicks(TracePosition position) => GetLatestTicks(position, position, isRunning: true);
+
+    public List<TraceTick> GetEndedTicks(TracePosition after, TracePosition upTo) => GetLatestTicks(after, upTo, isRunning: false);
+
+    private List<TraceTick> GetLatestTicks(TracePosition after, TracePosition upTo, bool isRunning)
+    {
+        var ticks = new List<TraceTick>();
+
+        Span<bool> seen = stackalloc bool[byte.MaxValue + 1];
+
+        for (var index = SortedSearch.FirstAfter<TracePoint, TracePosition>(Froms, upTo, static p => p.Position) - 1;
+             index >= 0 && RunningEnds[index].Position > after && ticks.Count < ValueCount;
+             index--)
+        {
+            var end = Tos[index].Position;
+
+            var value = Entries[index].Value;
+
+            if (seen[value] || end <= after || (!isRunning && end > upTo))
+            {
+                continue;
+            }
+
+            seen[value] = true;
+
+            ticks.Add(Get(index));
+        }
+
+        return ticks;
     }
 
     public double GetStart(TraceTimelineAxis axis, int index) => Scale.GetValue(Froms[index], axis);

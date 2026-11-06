@@ -8,6 +8,7 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Skipped",
+    "IsCounter": true,
     "Source": "RowReturn",
     "Value": 1
   },
@@ -20,6 +21,7 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Rejected",
+    "IsCounter": true,
     "Source": "RowReturn",
     "Value": 5
   },
@@ -32,6 +34,7 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Returned",
+    "IsCounter": true,
     "Source": "RowReturn",
     "Value": 0
   },
@@ -227,6 +230,7 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Row Access",
+    "Background": "#FFFFFF",
     "Source": "RowAccess",
     "Value": 0
   },
@@ -246,11 +250,12 @@
     "Name": "Seek",
     "Module": "",
     "Function": "",
-    "Colour": "#0026E4",
+    "Colour": "#3AA0FF",
     "HeightFactor": 1,
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Root Page",
+    "PlanPart": "Root Node",
     "Source": "Seek",
     "Value": 1
   },
@@ -258,11 +263,12 @@
     "Name": "Seek",
     "Module": "",
     "Function": "",
-    "Colour": "#0026E4",
+    "Colour": "#7CC0FF",
     "HeightFactor": 1,
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Intermediate Page",
+    "PlanPart": "Intermediate Node",
     "Source": "Seek",
     "Value": 2
   },
@@ -270,11 +276,12 @@
     "Name": "Seek",
     "Module": "",
     "Function": "",
-    "Colour": "#0026E4",
+    "Colour": "#B5DCFF",
     "HeightFactor": 1,
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Leaf Page",
+    "PlanPart": "Leaf Node",
     "Source": "Seek",
     "Value": 3
   },

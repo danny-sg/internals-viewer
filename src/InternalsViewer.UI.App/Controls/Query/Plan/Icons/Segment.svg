@@ -7,7 +7,7 @@
        stroke-width="2"
        fill="none"
        stroke-linejoin="round"
-       stroke-linecap="square">
+       stroke-linecap="square" data-part="Left Segment">
 
       <rect id="segment-left-rect"
             x="3"
@@ -28,7 +28,7 @@
        stroke-width="2"
        fill="none"
        stroke-linejoin="round"
-       stroke-linecap="square">
+       stroke-linecap="square" data-part="Right Segment">
 
       <rect id="segment-right-rect"
             x="18"

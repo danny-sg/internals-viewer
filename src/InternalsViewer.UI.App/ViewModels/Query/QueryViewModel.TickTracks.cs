@@ -45,21 +45,6 @@ public sealed partial class QueryViewModel
     public IReadOnlyList<string> GetTrackNames()
         => [.. TickTrackStore.Definitions.Select(d => d.Name).Distinct(StringComparer.OrdinalIgnoreCase)];
 
-    public int? GetTickCount(TraceTickDefinition definition)
-    {
-        foreach (var cache in TrackSeries.Values)
-        {
-            var index = Array.FindIndex(cache.Rules, r => ReferenceEquals(r, definition));
-
-            if (index >= 0)
-            {
-                return cache.Counts[cache.Series.Values[index]];
-            }
-        }
-
-        return null;
-    }
-
     [RelayCommand]
     private void ShowOperatorTracks() => Layout.ShowOperatorTracks();
 
@@ -76,8 +61,6 @@ public sealed partial class QueryViewModel
         ClearTickTrackCache();
 
         TickTracks = [];
-
-        OperatorTracks.Refresh();
     }
 
     private void ClearTickTrackCache()
@@ -123,7 +106,7 @@ public sealed partial class QueryViewModel
             {
                 var series = TraceTickSeries.FromRules(trace, rules, r => GetRuleSeries(trace, r));
 
-                cache = new TickTrackCache(rules, series, series.Series.GetValueCounts());
+                cache = new TickTrackCache(rules, series);
 
                 TrackSeries[groups[index].Key] = cache;
             }
@@ -132,8 +115,6 @@ public sealed partial class QueryViewModel
         }
 
         TickTracks = tracks;
-
-        OperatorTracks.Refresh();
     }
 
     private TraceTickSeries GetRuleSeries(TraceResult trace, TraceTickDefinition rule)
@@ -148,5 +129,5 @@ public sealed partial class QueryViewModel
         return series;
     }
 
-    private sealed record TickTrackCache(TraceTickDefinition[] Rules, TraceTickTrackSeries Series, int[] Counts);
+    private sealed record TickTrackCache(TraceTickDefinition[] Rules, TraceTickTrackSeries Series);
 }

@@ -1,9 +1,13 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Operators;
 using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.Models.Query.Plan;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
@@ -104,6 +108,109 @@ public sealed partial class PlanNodeControl : UserControl
         => CostPercent < 0 ? Visibility.Collapsed : Visibility.Visible;
 
     public string ToolTipText => Node is null ? string.Empty : BuildToolTip(Node);
+
+    private Dictionary<(string Part, Color Colour), PartLayer> PartLayers { get; } = [];
+
+    private string CounterToolTip { get; set; } = string.Empty;
+
+    public void ShowCounters(IEnumerable<PlanCounter> counters)
+    {
+        var shown = counters.ToList();
+
+        var toolTip = string.Join(Environment.NewLine, shown.Select(c => $"{c.Name}: {c.Count:N0}"));
+
+        if (toolTip == CounterToolTip)
+        {
+            return;
+        }
+
+        CounterToolTip = toolTip;
+
+        if (shown.Count == 0)
+        {
+            CounterBadge.Visibility = Visibility.Collapsed;
+
+            return;
+        }
+
+        CounterText.Text = FormatCount(shown[0].Count);
+
+        CounterBadge.Background = new SolidColorBrush(shown[0].Colour);
+
+        ToolTipService.SetToolTip(CounterBadge, toolTip);
+
+        CounterBadge.Visibility = Visibility.Visible;
+    }
+
+    public void ShowParts(IEnumerable<PlanPartActivity> parts, TimeSpan fade)
+    {
+        if (Node is not { } node)
+        {
+            return;
+        }
+
+        var icon = PlanIconResolver.GetAssetName(node);
+
+        var lit = new HashSet<(string Part, Color Colour)>();
+
+        foreach (var activity in parts)
+        {
+            foreach (var part in PlanIconParts.GetParts(icon, activity.Part))
+            {
+                var key = (part, activity.Colour);
+
+                lit.Add(key);
+
+                if (!PartLayers.ContainsKey(key))
+                {
+                    PartLayers[key] = AddPartLayer(icon, part, activity.Colour);
+                }
+            }
+        }
+
+        foreach (var (key, layer) in PartLayers)
+        {
+            if (lit.Contains(key))
+            {
+                layer.Highlight.Light();
+            }
+            else
+            {
+                layer.Highlight.Fade(fade);
+            }
+        }
+    }
+
+    private PartLayer AddPartLayer(string icon, string part, Color colour)
+    {
+        var order = PlanIconParts.GetOrder(icon, part);
+
+        var image = new Image
+        {
+            Width = NodeImage.Width,
+            Height = NodeImage.Height,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            IsHitTestVisible = false
+        };
+
+        var position = 1 + PartLayers.Values.Count(l => l.Order <= order);
+
+        IconLayers.Children.Insert(Math.Min(position, IconLayers.Children.Count), image);
+
+        _ = LoadPartLayerAsync(image, icon, part, colour);
+
+        return new PartLayer(order, new PlanHighlight(image));
+    }
+
+    private static async Task LoadPartLayerAsync(Image image, string icon, string part, Color colour)
+        => image.Source = await PlanIconParts.GetOverlayAsync(icon, part, colour);
+
+    private static string FormatCount(int count) => count switch
+    {
+        < 10_000 => count.ToString("N0", CultureInfo.CurrentCulture),
+        < 1_000_000 => $"{count / 1_000:N0}K",
+        _ => $"{count / 1_000_000d:0.#}M"
+    };
 
     private static SolidColorBrush ParseBrush(string hex)
     {
@@ -239,4 +346,6 @@ public sealed partial class PlanNodeControl : UserControl
 
     private static void OnAnnotationsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((PlanNodeControl)d).RefreshAnnotations();
+
+    private sealed record PartLayer(int Order, PlanHighlight Highlight);
 }

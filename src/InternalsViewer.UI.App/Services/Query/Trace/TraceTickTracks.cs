@@ -50,8 +50,9 @@ public static class TraceTickTracks
         {
             Values = [.. rules.Select((r, index) => new TraceTickValue(series.Values[index], r.GetLabel()))],
             GetColour = t => ruleByValue[t.Value] is >= 0 and var rule ? GetColour(rules[rule], colours[rule], t, categoryColours) : null,
+            GetRule = t => ruleByValue[t.Value] is >= 0 and var rule ? rules[rule] : null,
             Colour = colours[0],
-            Background = isAdded(first) ? LightBackground : null,
+            Background = SKColor.TryParse(first.Background, out var background) ? background : isAdded(first) ? LightBackground : null,
             HeightFactor = (float)first.HeightFactor,
             WidthFactor = (float)first.WidthFactor,
             GetDetails = t => ruleByValue[t.Value] is >= 0 and var rule ? GetDetails(trace, rules[rule], t) : [],

@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
@@ -21,6 +22,13 @@ public sealed partial record TraceTickDefinition(string Name,
     private const char FunctionSeparator = '|';
 
     public string? Label { get; init; }
+
+    public string? PlanPart { get; init; }
+
+    public string? Background { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool IsCounter { get; init; }
 
     public TraceTickSourceType Source { get; init; }
 

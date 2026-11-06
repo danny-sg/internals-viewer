@@ -10,15 +10,15 @@
            stroke-linecap="square">
 
             <path id="merge-join-output-path"
-                  d="M 16 24 L 16 5" />
+                  d="M 16 24 L 16 5" data-part="Arrow"/>
 
             <path id="merge-join-left-merge-path"
-                  d="M 8 23 L 16 15" />
+                  d="M 8 23 L 16 15" data-part="Stream 1"/>
 
             <path id="merge-join-right-merge-path"
-                  d="M 24 23 L 16 15" />
+                  d="M 24 23 L 16 15" data-part="Stream 2"/>
         </g>
-        <g id="merge-join-arrowhead" fill="#0078D4">
+        <g id="merge-join-arrowhead" fill="#0078D4" data-part="Arrow">
             <polygon id="merge-join-output-arrowhead"
                      points="13,6 16,2 19,6" />
         </g>

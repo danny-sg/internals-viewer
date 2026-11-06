@@ -17,7 +17,7 @@
        stroke-width="2"
        fill="none"
        stroke-linejoin="round"
-       stroke-linecap="square">
+       stroke-linecap="square" data-part="Frame">
       <rect
          id="compute-scalar-main-rect"
          x="3"
@@ -27,7 +27,7 @@
     </g>
     <g
        id="download-arrow"
-       fill="#0078D4">
+       fill="#0078D4" data-part="Arrow">
       <path
          id="arrow-stem"
          d="M 14.280431,7.688413 V 19.68841"

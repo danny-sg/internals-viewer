@@ -9,7 +9,7 @@
            stroke-linecap="square">
 
             <path id="nested-loops-outer-rect-path"
-                  d="M 7 13 L 7 3 L 29 3 L 29 29 L 7 29 L 7 19" />
+                  d="M 7 13 L 7 3 L 29 3 L 29 29 L 7 29 L 7 19" data-part="Outer Loop"/>
         </g>
 
         <g id="nested-loops-inner-structure"
@@ -20,16 +20,16 @@
            stroke-linecap="square">
 
             <path id="nested-loops-inner-rect-path"
-                  d="M 22 13 L 22 7 L 14 7 L 14 25 L 22 25 L 22 19" />
+                  d="M 22 13 L 22 7 L 14 7 L 14 25 L 22 25 L 22 19" data-part="Inner Loop"/>
         </g>
 
         <g id="nested-loops-arrowheads" fill="#0078D4">
 
             <polygon id="nested-loops-outer-arrowhead"
-                     points="4,16 7,12 10,16" />
+                     points="4,16 7,12 10,16" data-part="Outer Loop"/>
 
             <polygon id="nested-loops-inner-arrowhead"
-                     points="19,16 22,20 25,16" />
+                     points="19,16 22,20 25,16" data-part="Inner Loop"/>
         </g>
 
     </g>

@@ -6,7 +6,7 @@
        stroke-width="2"
        fill="none"
        stroke-linejoin="round"
-       stroke-linecap="square">
+       stroke-linecap="square" data-part="Groups">
 
       <rect id="aggregate-rectangle"
             x="3"
@@ -28,17 +28,17 @@
 
       <path id="aggregate-top-greater-than"
          stroke="#0078D4"
-            d="M 14 8 L 18 11 L 14 14" />
+            d="M 14 8 L 18 11 L 14 14" data-part="Aggregate 1"/>
 
       <path id="aggregate-top-sum"
-            d="M 21 7 L 29 7 L 25 11 L 29 15 L 21 15" />
+            d="M 21 7 L 29 7 L 25 11 L 29 15 L 21 15" data-part="Aggregate 1"/>
 
       <path id="aggregate-bottom-greater-than"
          stroke="#0078D4"
-            d="M 14 19 L 18 22 L 14 25" />
+            d="M 14 19 L 18 22 L 14 25" data-part="Aggregate 2"/>
 
       <path id="aggregate-bottom-sum"
-            d="M 21 18 L 29 18 L 25 22 L 29 26 L 21 26" />
+            d="M 21 18 L 29 18 L 25 22 L 29 26 L 21 26" data-part="Aggregate 2"/>
     </g>
 
   </g>

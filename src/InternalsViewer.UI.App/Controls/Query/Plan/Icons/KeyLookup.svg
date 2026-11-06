@@ -5,7 +5,7 @@
            stroke-width="2"
            fill="none"
            stroke-linejoin="round"
-           stroke-linecap="square">
+           stroke-linecap="square" data-part="Frame">
 
             <rect id="key-lookup-target-rect"
                   x="8"
@@ -14,7 +14,7 @@
                   height="24" />
         </g>
 
-        <g id="key-lookup-arrow" fill="#0078D4">
+        <g id="key-lookup-arrow" fill="#0078D4" data-part="Arrow">
 
             <path id="key-lookup-arrow-stem"
                   d="M 2 13 L 17 13"

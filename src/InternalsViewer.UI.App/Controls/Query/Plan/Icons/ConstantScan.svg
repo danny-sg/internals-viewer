@@ -8,16 +8,16 @@
     stroke="#424242"
     stroke-width="2"
     stroke-linejoin="round"
-    stroke-linecap="square"/>
+    stroke-linecap="square" data-part="Frame"/>
 
   <path
     d="M48.5 34V46"
     fill="none"
     stroke="#0078d4"
     stroke-width="2"
-    stroke-linejoin="round"/>
+    stroke-linejoin="round" data-part="Arrow"/>
 
   <polygon
     points="44.5,44 48.5,49 52.5,44"
-    fill="#0078d4"/>
+    fill="#0078d4" data-part="Arrow"/>
 </svg>

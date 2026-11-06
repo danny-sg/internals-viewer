@@ -33,8 +33,6 @@ public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposa
 
     private const int FactorWidth = 70;
 
-    private const int CountWidth = 90;
-
     private const int ActionsWidth = 120;
 
     private const string FileType = "Operator Tracks";
@@ -48,11 +46,9 @@ public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposa
     [ObservableProperty]
     private ResultRow<long>? _selectedTrackRow;
 
-    public OperatorTracksViewModel(TraceTickTrackStore store, Func<TraceTickDefinition, int?> getTickCount, Action<string> addMessage)
+    public OperatorTracksViewModel(TraceTickTrackStore store, Action<string> addMessage)
     {
         Store = store;
-
-        GetTickCount = getTickCount;
 
         AddMessage = addMessage;
 
@@ -66,8 +62,6 @@ public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposa
     public bool HasAddedTracks => Store.AddedDefinitions.Count > 0;
 
     private TraceTickTrackStore Store { get; }
-
-    private Func<TraceTickDefinition, int?> GetTickCount { get; }
 
     private Action<string> AddMessage { get; }
 
@@ -190,11 +184,10 @@ public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposa
             new(2, "Function", typeof(string), false) { Width = FunctionWidth },
             new(3, "Conditions", typeof(string), false) { Width = ConditionsWidth },
             new(4, "Colour", typeof(string), false) { Width = ColourWidth },
-            new(5, "Height", typeof(double), false) { Width = FactorWidth, Alignment = ResultAlignment.Right },
-            new(6, "Width", typeof(double), false) { Width = FactorWidth, Alignment = ResultAlignment.Right },
-            new(7, "Ticks", typeof(int), false) { Width = CountWidth, Alignment = ResultAlignment.Right },
-            new(8, "Added", typeof(string), false) { Width = CountWidth },
-            new(9, string.Empty, typeof(string), false) { Width = ActionsWidth }
+            new(5, "Background", typeof(string), false) { Width = ColourWidth },
+            new(6, "Height", typeof(double), false) { Width = FactorWidth, Alignment = ResultAlignment.Right },
+            new(7, "Width", typeof(double), false) { Width = FactorWidth, Alignment = ResultAlignment.Right },
+            new(8, string.Empty, typeof(string), false) { Width = ActionsWidth }
         };
 
         var rows = Store.Definitions.Select((d, index) => new ResultRow<long>([d.Name,
@@ -202,10 +195,9 @@ public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposa
                                                                               GetFunctionText(d),
                                                                               Describe(d.Conditions),
                                                                               d.Colour,
+                                                                              d.Background ?? string.Empty,
                                                                               d.HeightFactor,
                                                                               d.WidthFactor,
-                                                                              GetTickCount(d),
-                                                                              Store.IsAdded(d) ? "Yes" : "No",
                                                                               GetActions(d)])
                                                              {
                                                                  Id = index
@@ -221,5 +213,9 @@ public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposa
             : TraceTickTracks.GetSourceText(definition.Source);
 
     private ActionLinks GetActions(TraceTickDefinition definition)
-        => new([new ActionLink("Edit", () => EditRequested?.Invoke(definition)), new ActionLink("Delete", () => Store.Remove(definition))]);
+    {
+        var edit = new ActionLink("Edit", () => EditRequested?.Invoke(definition));
+
+        return new ActionLinks(Store.IsAdded(definition) ? [edit, new ActionLink("Delete", () => Store.Remove(definition))] : [edit]);
+    }
 }

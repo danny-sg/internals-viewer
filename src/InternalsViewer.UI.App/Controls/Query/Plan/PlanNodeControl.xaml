@@ -22,18 +22,36 @@
                         Orientation="Vertical"
                         HorizontalAlignment="Center"
                         Spacing="2">
-                <Border x:Name="NodeImageBorder"
-                        BorderThickness="2"
-                        CornerRadius="2"
-                        Width="38"
-                        Height="38"
-                        HorizontalAlignment="Center" >
-                    <Image Source="{x:Bind IconSource}"
-                       Name="NodeImage"
-                       Width="32"
-                       Height="32"
-                       HorizontalAlignment="Center" />
-                </Border>
+                <Grid HorizontalAlignment="Center">
+                    <Border x:Name="NodeImageBorder"
+                            BorderThickness="2"
+                            CornerRadius="2"
+                            Width="38"
+                            Height="38"
+                            HorizontalAlignment="Center" >
+                        <Grid x:Name="IconLayers">
+                            <Image Source="{x:Bind IconSource}"
+                                   Name="NodeImage"
+                                   Width="32"
+                                   Height="32"
+                                   HorizontalAlignment="Center" />
+                        </Grid>
+                    </Border>
+                    <Border x:Name="CounterBadge"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            Margin="0,-4,-14,0"
+                            MinWidth="16"
+                            Padding="4,0,4,1"
+                            CornerRadius="8"
+                            Visibility="Collapsed">
+                        <TextBlock x:Name="CounterText"
+                                   FontSize="10"
+                                   FontWeight="SemiBold"
+                                   Foreground="White"
+                                   TextAlignment="Center" />
+                    </Border>
+                </Grid>
                 <TextBlock Text="{x:Bind OperatorName}"
                            FontSize="11"
                            FontWeight="SemiBold"

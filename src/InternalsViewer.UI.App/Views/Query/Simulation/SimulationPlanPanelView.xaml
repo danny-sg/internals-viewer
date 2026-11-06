@@ -17,8 +17,8 @@
                   MaxZoomFactor="2.0"
                   Background="White"
                   Padding="8">
-        <plan:ExecutionPlanControl HorizontalAlignment="Left"
-                                   VerticalAlignment="Top"
+        <plan:ExecutionPlanControl HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
                                    Plan="{x:Bind ViewModel.SimulationPlan, Mode=OneWay}"
                                    SelectedNode="{x:Bind ViewModel.ActivePlanNode, Mode=OneWay}"
                                    NodeSelected="OnNodeSelected" />

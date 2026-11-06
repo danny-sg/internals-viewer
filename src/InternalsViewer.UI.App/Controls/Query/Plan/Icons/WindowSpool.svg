@@ -7,7 +7,7 @@
        stroke-width="2"
        fill="none"
        stroke-linejoin="round"
-       stroke-linecap="square">
+       stroke-linecap="square" data-part="Frame">
 
       <rect id="spool-main-rect"
             x="3"
@@ -22,7 +22,7 @@
        stroke-width="2"
        fill="none"
        stroke-linejoin="round"
-       stroke-linecap="square">
+       stroke-linecap="square" data-part="Spool">
 
       <!-- top cap -->
       <rect id="spool-top-cap"

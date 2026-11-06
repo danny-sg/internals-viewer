@@ -11,13 +11,13 @@
        stroke-linecap="square">
 
         <!-- Main target table -->
-        <rect x="3" y="5" width="23" height="20"/>
+        <rect x="3" y="5" width="23" height="20" data-part="Frame"/>
 
         <!-- Source table -->
-        <rect x="3" y="18" width="14" height="10" fill="white"/>
+        <rect x="3" y="18" width="14" height="10" fill="white" data-part="Row"/>
     </g>
 
-    <g fill="#2F80D1">
+    <g fill="#2F80D1" data-part="Action">
         <!-- Arrow shaft -->
         <rect x="9.5" y="13" width="2.5" height="10"/>
 

@@ -65,6 +65,36 @@ internal sealed partial class TraceOperatorsPane
 
     private float[] RowStripHeights => CachedStripHeights ??= [.. Rows.Select(GetRowStripHeight)];
 
+    private Dictionary<ExecutionOperatorEvent, HashSet<string>> HiddenOperatorTracks { get; } = new(ReferenceEqualityComparer.Instance);
+
+    public bool IsTrackShown(ExecutionOperatorEvent operatorEvent, string track)
+        => !HiddenOperatorTracks.TryGetValue(operatorEvent, out var hidden) || !hidden.Contains(track);
+
+    public void SetTrackShown(ExecutionOperatorEvent operatorEvent, string track, bool isShown)
+    {
+        if (!HiddenOperatorTracks.TryGetValue(operatorEvent, out var hidden))
+        {
+            hidden = new HashSet<string>(StringComparer.Ordinal);
+
+            HiddenOperatorTracks[operatorEvent] = hidden;
+        }
+
+        if (isShown)
+        {
+            hidden.Remove(track);
+        }
+        else
+        {
+            hidden.Add(track);
+        }
+
+        CachedStripHeights = null;
+
+        LayoutVersion++;
+
+        Hover = TraceOperatorsHover.None;
+    }
+
     public void SetTracks(IReadOnlyList<TraceTickTrack>? tracks, IReadOnlySet<string>? hidden)
     {
         VisibleTracks = [.. (tracks ?? []).Where(t => hidden?.Contains(t.Name) != true).OrderBy(t => t.Location).ThenBy(t => t.Ordinal)];
@@ -78,8 +108,10 @@ internal sealed partial class TraceOperatorsPane
 
     public TraceTick? GetTickAt(Point position) => GetTickHit(position)?.Tick;
 
-    private static TraceTickIndex? GetTicks(TraceOperatorRow row, uint thread, TraceTickTrack tickTrack)
-        => (!row.IsStatement || tickTrack.IsStatementTrack) && tickTrack.Series.GetTicks(row.TickOperator, thread) is { Count: > 0 } ticks
+    private TraceTickIndex? GetTicks(TraceOperatorRow row, uint thread, TraceTickTrack tickTrack)
+        => (!row.IsStatement || tickTrack.IsStatementTrack)
+           && IsTrackShown(row.Operator, tickTrack.Name)
+           && tickTrack.Series.GetTicks(row.TickOperator, thread) is { Count: > 0 } ticks
             ? ticks
             : null;
 
@@ -597,7 +629,7 @@ internal sealed partial class TraceOperatorsPane
 
             for (var row = 0; row < Rows.Length; row++)
             {
-                if (Rows[row].IsStatement)
+                if (Rows[row].IsStatement || !IsTrackShown(Rows[row].Operator, tickTrack.Name))
                 {
                     continue;
                 }

@@ -1,8 +1,8 @@
-﻿using System.Collections.Generic;
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.Query.Plan;
+using InternalsViewer.UI.App.Models.Query.Plan;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml.Controls;
 
@@ -20,7 +20,7 @@ public sealed partial class QueryPlanTabView : UserControl
         // Keep-alive: this view is reused across re-layout, so subscriptions follow the load lifecycle
         // rather than DataContext changes (reparenting fires Unloaded/Loaded without a DataContext change).
         Loaded += OnLoaded;
-        Unloaded += (_, _) => Unsubscribe();
+        Unloaded += OnUnloaded;
         DataContextChanged += OnDataContextChanged;
         PlanRepeater.ElementPrepared += OnPlanElementPrepared;
     }
@@ -104,10 +104,18 @@ public sealed partial class QueryPlanTabView : UserControl
             p.ActiveNodes = ViewModel?.ActivePlanNodes;
             p.EmittingNodes = ViewModel?.EmittingPlanNodes;
             p.IsFullTrace = ViewModel?.IsFullTrace == true;
-            p.ShowActivity(ViewModel?.RequestedPlanNodes ?? [], []);
+            p.ShowActivity(ViewModel?.PlanActivity ?? PlanActivity.Empty);
             p.Events = ViewModel?.Events;
             p.AreAnnotationsVisible = ViewModel?.IsAnnotationsVisible == true;
         });
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        if (!IsLoaded)
+        {
+            Unsubscribe();
+        }
     }
 
     private void Subscribe()
@@ -141,8 +149,7 @@ public sealed partial class QueryPlanTabView : UserControl
         }
     }
 
-    private void OnPlanActivityChanged(IReadOnlyList<PlanNode> requested, IReadOnlyList<PlanNode> returned)
-        => ApplyToPlans(p => p.ShowActivity(requested, returned));
+    private void OnPlanActivityChanged(PlanActivity activity) => ApplyToPlans(p => p.ShowActivity(activity));
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -186,7 +193,7 @@ public sealed partial class QueryPlanTabView : UserControl
             planControl.ActiveNodes = viewModel.ActivePlanNodes;
             planControl.EmittingNodes = viewModel.EmittingPlanNodes;
             planControl.IsFullTrace = viewModel.IsFullTrace;
-            planControl.ShowActivity(viewModel.RequestedPlanNodes, []);
+            planControl.ShowActivity(viewModel.PlanActivity);
             planControl.Events = viewModel.Events;
             planControl.AreAnnotationsVisible = viewModel.IsAnnotationsVisible;
 
@@ -206,6 +213,11 @@ public sealed partial class QueryPlanTabView : UserControl
 
             planControl.NodeSelected -= OnPlanNodeSelected;
             planControl.NodeSelected += OnPlanNodeSelected;
+
+            planControl.CounterToggleRequested -= OnCounterToggleRequested;
+            planControl.CounterToggleRequested += OnCounterToggleRequested;
+
+            planControl.IsCounterShown = viewModel.IsCounterShown;
         }
     }
 
@@ -250,6 +262,8 @@ public sealed partial class QueryPlanTabView : UserControl
     /// The identifier rather than the node: a PlanNode knows its own id but not which plan it belongs to, and the view
     /// model keys everything on both.
     /// </remarks>
+    private void OnCounterToggleRequested(object? sender, PlanNode node) => ViewModel?.ToggleCounter(node);
+
     private void OnPlanNodeSelected(object? sender, PlanNode? node)
     {
         if (node is null || sender is not ExecutionPlanControl { Plan: { } plan })

@@ -38,6 +38,24 @@ public sealed class TraceTickSeries
     public IEnumerable<ExecutionOperatorEvent> GetEnding(TracePosition after, TracePosition upTo, Func<byte, bool> include)
         => Indexes.Where(o => o.Value.Values.Any(i => i.HasEndBetween(after, upTo, include))).Select(o => o.Key);
 
+    public IEnumerable<TraceTick> GetRunningTicks(TracePosition position) => AllIndexes.SelectMany(i => i.GetRunningTicks(position));
+
+    public IEnumerable<TraceTick> GetEndedTicks(TracePosition after, TracePosition upTo)
+        => AllIndexes.SelectMany(i => i.GetEndedTicks(after, upTo));
+
+    public IEnumerable<(ExecutionOperatorEvent Operator, int Count)> CountEnded(IReadOnlyCollection<byte> values, TracePosition upTo)
+    {
+        foreach (var (operatorEvent, threads) in Indexes)
+        {
+            var count = threads.Values.Sum(i => values.Sum(v => i.CountEnded(v, upTo)));
+
+            if (count > 0)
+            {
+                yield return (operatorEvent, count);
+            }
+        }
+    }
+
     public int[] GetValueCounts()
     {
         var counts = new int[byte.MaxValue + 1];

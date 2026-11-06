@@ -4,24 +4,24 @@
   <rect x="5" y="6" width="22" height="20" rx="2"
         stroke="#424242"
         fill="none"
-        stroke-width="1.8"/>
+        stroke-width="1.8" data-part="Frame"/>
 
   <!-- top highlighted rows -->
   <line x1="7" y1="10" x2="25" y2="10"
         stroke="#0078D4"
-        stroke-width="2"/>
+        stroke-width="2" data-part="Top Row 1"/>
 
   <line x1="7" y1="14" x2="25" y2="14"
         stroke="#0078D4"
-        stroke-width="2"/>
+        stroke-width="2" data-part="Top Row 2"/>
 
   <!-- remaining rows -->
   <line x1="7" y1="18" x2="25" y2="18"
         stroke="#605E5C"
-        stroke-width="1.8"/>
+        stroke-width="1.8" data-part="Remaining Row 1"/>
 
   <line x1="7" y1="22" x2="25" y2="22"
         stroke="#605E5C"
-        stroke-width="1.8"/>
+        stroke-width="1.8" data-part="Remaining Row 2"/>
 
 </svg>

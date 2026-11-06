@@ -74,9 +74,6 @@ public sealed class ExecutionPlanControl : Canvas
 
     private static readonly Color IteratorColour = Color.FromArgb(255, 0, 176, 80);
 
-    private static readonly TimeSpan MinimumFade = TimeSpan.FromMilliseconds(100);
-
-    private static readonly TimeSpan MaximumFade = TimeSpan.FromMilliseconds(600);
 
     public static readonly DependencyProperty PlanProperty =
         DependencyProperty.Register(nameof(Plan), typeof(ExecutionPlan), typeof(ExecutionPlanControl),
@@ -198,29 +195,35 @@ public sealed class ExecutionPlanControl : Canvas
 
     public event EventHandler<PlanNode>? PropertiesOpenRequested;
 
+    public event EventHandler<PlanNode>? CounterToggleRequested;
+
+    public Func<PlanNode, bool> IsCounterShown { get; set; } = static n => n.IsStatement;
+
     private double RowPitch => BaseNodeHeight + VerticalGap;
 
     private Dictionary<PlanNode, IteratorConnector> IteratorConnectors { get; } = [];
 
     private List<int> ColumnFanOuts { get; } = [];
 
-    private IReadOnlyList<PlanNode> RequestedActivity { get; set; } = [];
+    private Dictionary<PlanNode, PlanNodeControl> NodeControls { get; } = [];
+
+    private PlanActivity Activity { get; set; } = PlanActivity.Empty;
 
     private long LastActivity { get; set; }
 
-    public void ShowActivity(IReadOnlyList<PlanNode> requested, IReadOnlyList<PlanNode> returned)
+    public void ShowActivity(PlanActivity activity)
     {
         var now = Environment.TickCount64;
 
-        var fade = TimeSpan.FromMilliseconds(Math.Min(now - LastActivity, MaximumFade.TotalMilliseconds));
+        var fade = PlanHighlight.GetFade(now - LastActivity);
 
         LastActivity = now;
 
-        RequestedActivity = requested;
+        Activity = activity;
 
         foreach (var (node, connector) in IteratorConnectors)
         {
-            if (requested.Contains(node))
+            if (activity.Requested.Contains(node))
             {
                 connector.Request.Light();
             }
@@ -229,36 +232,22 @@ public sealed class ExecutionPlanControl : Canvas
                 connector.Request.Fade(fade);
             }
 
-            if (!returned.Contains(node))
+            if (activity.Returned.Contains(node))
             {
-                connector.Response.Fade(fade);
+                connector.Response.Light();
             }
             else
             {
-                connector.Response.Light();
-
-                if (fade >= MinimumFade)
-                {
-                    connector.Response.Fade(fade);
-                }
+                connector.Response.Fade(fade);
             }
         }
-    }
 
-    private static DoubleAnimation CreateFade(UIElement target)
-    {
-        var animation = new DoubleAnimation
+        foreach (var (node, control) in NodeControls)
         {
-            From = 1,
-            To = 0,
-            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
-        };
+            control.ShowParts(activity.Parts.Where(p => ReferenceEquals(p.Node, node)), fade);
 
-        Storyboard.SetTarget(animation, target);
-
-        Storyboard.SetTargetProperty(animation, "Opacity");
-
-        return animation;
+            control.ShowCounters(activity.Counters.Where(c => ReferenceEquals(c.Node, node)));
+        }
     }
 
     private void ClearIteratorConnectors()
@@ -283,6 +272,8 @@ public sealed class ExecutionPlanControl : Canvas
 
         _connectorByProducer.Clear();
         _arrowByProducer.Clear();
+
+        NodeControls.Clear();
 
         _selectedControl = null;
 
@@ -345,12 +336,19 @@ public sealed class ExecutionPlanControl : Canvas
 
         UpdateActiveHighlights();
 
-        foreach (var node in RequestedActivity)
+        foreach (var node in Activity.Requested)
         {
             if (IteratorConnectors.TryGetValue(node, out var connector))
             {
                 connector.Request.Light();
             }
+        }
+
+        foreach (var (node, control) in NodeControls)
+        {
+            control.ShowParts(Activity.Parts.Where(p => p.IsRunning && ReferenceEquals(p.Node, node)), TimeSpan.Zero);
+
+            control.ShowCounters(Activity.Counters.Where(c => ReferenceEquals(c.Node, node)));
         }
 
         UpdateFlows();
@@ -407,6 +405,8 @@ public sealed class ExecutionPlanControl : Canvas
         SetTop(control, point.Y);
 
         Children.Add(control);
+
+        NodeControls[node] = control;
     }
 
     private (Polyline Connector, Polygon Arrow) DrawConnector(Point parent, Point child, double childCostFraction,
@@ -516,7 +516,7 @@ public sealed class ExecutionPlanControl : Canvas
         return (response.Line, response.Head);
     }
 
-    private (Polyline Line, Polygon Head, ConnectorGlow Glow) AddIteratorLine(Point[] points, Point[] head, bool isDotted)
+    private (Polyline Line, Polygon Head, PlanHighlight Glow) AddIteratorLine(Point[] points, Point[] head, bool isDotted)
     {
         var line = CreateIteratorLine(points, ConnectorColor, isDotted);
 
@@ -534,7 +534,7 @@ public sealed class ExecutionPlanControl : Canvas
 
         Children.Add(glowHead);
 
-        return (line, arrow, new ConnectorGlow(glowLine, glowHead));
+        return (line, arrow, new PlanHighlight(glowLine, glowHead));
     }
 
     private static Polyline CreateIteratorLine(Point[] points, Color colour, bool isDotted)
@@ -741,6 +741,13 @@ public sealed class ExecutionPlanControl : Canvas
             openProperties.Click += (_, _) => PropertiesOpenRequested?.Invoke(this, node);
 
             flyout.Items.Add(openProperties);
+
+            if (IsFullTrace)
+            {
+                flyout.Items.Add(new MenuFlyoutSeparator());
+
+                flyout.Items.Add(MenuItems.Toggle("Show Counter", IsCounterShown(node), _ => CounterToggleRequested?.Invoke(this, node)));
+            }
 
             if (e.TryGetPosition(this, out var position))
             {
@@ -1037,77 +1044,7 @@ public sealed class ExecutionPlanControl : Canvas
 
     private readonly record struct FlowOverlay(Polyline Overlay, Storyboard? Storyboard, bool IsEmitting);
 
-    private sealed record IteratorConnector(ConnectorGlow Request, ConnectorGlow Response);
-
-    private sealed class ConnectorGlow
-    {
-        public ConnectorGlow(Shape line, Shape head)
-        {
-            Line = line;
-
-            Head = head;
-
-            Line.Opacity = 0;
-
-            Head.Opacity = 0;
-
-            Fader.Children.Add(CreateFade(line));
-
-            Fader.Children.Add(CreateFade(head));
-        }
-
-        private Shape Line { get; }
-
-        private Shape Head { get; }
-
-        private Storyboard Fader { get; } = new();
-
-        private bool IsLit { get; set; }
-
-        public void Light()
-        {
-            Fader.Stop();
-
-            SetOpacity(1);
-
-            IsLit = true;
-        }
-
-        public void Fade(TimeSpan duration)
-        {
-            if (!IsLit)
-            {
-                return;
-            }
-
-            IsLit = false;
-
-            Fader.Stop();
-
-            SetOpacity(0);
-
-            if (duration < MinimumFade)
-            {
-                return;
-            }
-
-            foreach (var animation in Fader.Children)
-            {
-                animation.Duration = new Duration(duration);
-            }
-
-            Fader.Begin();
-        }
-
-        public void Stop() => Fader.Stop();
-
-        private void SetOpacity(double opacity)
-        {
-            Line.Opacity = opacity;
-
-            Head.Opacity = opacity;
-        }
-    }
+    private sealed record IteratorConnector(PlanHighlight Request, PlanHighlight Response);
 
     private static void OnSelectedNodeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {

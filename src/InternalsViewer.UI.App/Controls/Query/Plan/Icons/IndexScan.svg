@@ -1,25 +1,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
     <g id="sql-execution-plan-btree-scan-icon">
 
-        <g stroke="#424242" stroke-width="2" fill="none" stroke-linejoin="round">
-            <path d="M 16 5 L 16 25" />
-            <path d="M 16 13 L 8 13 L 8 25" />
-            <path d="M 16 13 L 24 13 L 24 25" />
+        <g stroke="#424242" stroke-width="2" fill="none" stroke-linejoin="round" data-part="Branches">
+            <path d="M 16 5 L 16 25"/>
+            <path d="M 16 13 L 8 13 L 8 25"/>
+            <path d="M 16 13 L 24 13 L 24 25"/>
+        </g>
+
+        <g stroke="#0078D4" stroke-width="2" fill="none" stroke-linejoin="round" data-part="Arrow">
+            <path d="M 6 25 L 26 25"/>
+        </g>
+
+        <g fill="#0078D4" data-part="Arrow">
+            <polygon points="23,22 27,25 23,28"/>
         </g>
 
         <g fill="#0078D4">
-            <circle cx="16" cy="5" r="2" />
-            <circle cx="8" cy="25" r="2" />
-            <circle cx="16" cy="25" r="2" />
-            <circle cx="24" cy="25" r="2" />
-        </g>
-
-        <g stroke="#0078D4" stroke-width="2" fill="none" stroke-linejoin="round">
-            <path d="M 6 25 L 26 25" />
-        </g>
-
-        <g fill="#0078D4">
-            <polygon points="23,22 27,25 23,28" />
+            <circle cx="16" cy="5" r="2" data-part="Root Node"/>
+            <circle cx="8" cy="25" r="2" data-part="Leaf Node 1"/>
+            <circle cx="16" cy="25" r="2" data-part="Leaf Node 2"/>
+            <circle cx="24" cy="25" r="2" data-part="Leaf Node 3"/>
+            <circle cx="16" cy="13" r="2" display="none" data-part="Intermediate Node"/>
         </g>
 
     </g>

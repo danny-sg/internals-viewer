@@ -505,20 +505,51 @@ public sealed partial class TraceTimelineControl
 
         AddPaneItems(flyout);
 
-        var tracks = new MenuFlyoutSubItem { Text = "Tracks" };
+        flyout.Items.Add(CreateSubMenu("Tracks (All)", CreateTickTrackItems()));
 
-        foreach (var item in CreateTickTrackItems())
+        if (op is not null)
         {
-            tracks.Items.Add(item);
+            flyout.Items.Add(CreateSubMenu("Tracks (Operator)", CreateOperatorTrackItems(op)));
         }
-
-        flyout.Items.Add(tracks);
 
         flyout.Items.Add(new MenuFlyoutSeparator());
 
         flyout.Items.Add(CallStackItem());
 
         return flyout;
+    }
+
+    private static MenuFlyoutSubItem CreateSubMenu(string text, IEnumerable<MenuFlyoutItemBase> items)
+    {
+        var subMenu = new MenuFlyoutSubItem { Text = text };
+
+        foreach (var item in items)
+        {
+            subMenu.Items.Add(item);
+        }
+
+        return subMenu;
+    }
+
+    private IEnumerable<MenuFlyoutItemBase> CreateOperatorTrackItems(ExecutionOperatorEvent op)
+    {
+        foreach (var track in TickTracks ?? [])
+        {
+            var item = MenuItems.Toggle(track.MenuText,
+                                        _operators.IsTrackShown(op, track.Name),
+                                        isShown => SetOperatorTrack(op, track.Name, isShown));
+
+            item.IsEnabled = HiddenTickTracks?.Contains(track.Name) != true;
+
+            yield return item;
+        }
+    }
+
+    private void SetOperatorTrack(ExecutionOperatorEvent op, string track, bool isShown)
+    {
+        _operators.SetTrackShown(op, track, isShown);
+
+        Relayout();
     }
 
     internal IEnumerable<MenuFlyoutItemBase> CreateTickTrackItems()

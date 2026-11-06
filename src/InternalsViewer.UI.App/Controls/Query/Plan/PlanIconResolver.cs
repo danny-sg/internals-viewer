@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using System;
 using InternalsViewer.Query.Plans.Model;
 
@@ -35,7 +36,13 @@ public static class PlanIconResolver
         ["MERGE"] = "Merge",
     };
 
+    public static string IconFolder { get; } = Path.Combine(AppContext.BaseDirectory, "Controls", "Query", "Plan", "Icons");
+
     public static Uri Resolve(PlanNode node) => new(IconBase + ResolveAssetName(node) + ".svg");
+
+    public static string GetAssetName(PlanNode node) => ResolveAssetName(node);
+
+    public static string GetPath(string assetName) => Path.Combine(IconFolder, assetName + ".svg");
 
     private static string ResolveAssetName(PlanNode node)
     {

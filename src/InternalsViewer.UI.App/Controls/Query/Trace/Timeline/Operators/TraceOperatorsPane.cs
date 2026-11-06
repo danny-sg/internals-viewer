@@ -143,6 +143,11 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
         Rows = AddStatementRow(GetOperatorRows(timeline, lifetimes));
 
+        foreach (var gone in HiddenOperatorTracks.Keys.Where(o => !Rows.Any(r => ReferenceEquals(r.Operator, o))).ToList())
+        {
+            HiddenOperatorTracks.Remove(gone);
+        }
+
         CachedStripHeights = null;
 
         Details.Clear();

@@ -25,6 +25,11 @@ internal static class ColourHelpers
         return new SKColor(color.R, color.G, color.B, color.A);
     }
 
+    public static Windows.UI.Color ToWindowsColor(this SKColor color)
+    {
+        return Windows.UI.Color.FromArgb(color.Alpha, color.Red, color.Green, color.Blue);
+    }
+
     public static Color ToColor(this Windows.UI.Color color)
     {
         return Color.FromArgb(color.A, color.R, color.G, color.B);

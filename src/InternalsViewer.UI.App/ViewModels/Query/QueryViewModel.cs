@@ -6,6 +6,8 @@ using InternalsViewer.UI.App.Controls.Query.Timeline.Definition;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.Services.Query.Simulation;
 using InternalsViewer.UI.App.Services.Query.Trace;
+using InternalsViewer.UI.App.Models.Query.Plan;
+using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.UI.Plugins.FullTrace.Menus;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.ComponentModel;
@@ -397,7 +399,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         TickTrackStore = tickTrackStore;
 
-        OperatorTracks = new OperatorTracksViewModel(tickTrackStore, GetTickCount, message => AddMessage(message));
+        OperatorTracks = new OperatorTracksViewModel(tickTrackStore, message => AddMessage(message));
 
         TickTrackStore.PropertyChanged += OnTickTrackStoreChanged;
 
@@ -489,7 +491,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public event Action<string>? SqlTextImported;
 
-    public event Action<IReadOnlyList<PlanNode>, IReadOnlyList<PlanNode>>? PlanActivityChanged;
+    public event Action<PlanActivity>? PlanActivityChanged;
 
     public DatabaseSource Database { get; }
 
@@ -725,7 +727,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public bool IsFullTrace => FullTraceTimeline is not null;
 
-    public IReadOnlyList<PlanNode> RequestedPlanNodes { get; private set; } = [];
+    public PlanActivity PlanActivity { get; private set; } = PlanActivity.Empty;
 
     public ITimelineRulerSource? RulerSource => Layout.IsTrace ? TraceRuler : EventRuler;
 
@@ -746,6 +748,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private TraceTimelineTabViewModel? CreatedTraceTimelineTab { get; set; }
 
     private TracePosition? RowFlowPosition { get; set; }
+
+    private Dictionary<PlanNode, bool> CounterVisibility { get; } = new(ReferenceEqualityComparer.Instance);
 
     public void NavigateToEvent(EngineEvent engineEvent)
     {
@@ -872,7 +876,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             SetPagePlayhead(TracePageSpanBuilder.GetPosition(position));
 
-            UpdateRowFlow(position);
+            UpdatePlanActivity(position);
         }
     }
 
@@ -1529,19 +1533,132 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         return min == long.MaxValue ? 0 : min;
     }
 
-    private void UpdateRowFlow(TracePosition position)
+    private void UpdatePlanActivity(TracePosition position)
     {
         var marks = RowReturnMarks ?? TraceRowReturnMarkMap.Empty;
 
-        RequestedPlanNodes = GetPlanNodes(marks.GetRequested(position));
+        var previous = RowFlowPosition is { } from && from < position ? from : (TracePosition?)null;
 
-        IReadOnlyList<PlanNode> returned = RowFlowPosition is { } previous && previous < position
-            ? GetPlanNodes(marks.GetReturned(previous, position))
-            : [];
+        IReadOnlyList<PlanNode> returned = previous is { } after ? GetPlanNodes(marks.GetReturned(after, position)) : [];
+
+        PlanActivity = new PlanActivity(GetPlanNodes(marks.GetRequested(position)),
+                                        returned,
+                                        GetPartActivity(previous, position),
+                                        GetCounters(position));
 
         RowFlowPosition = position;
 
-        PlanActivityChanged?.Invoke(RequestedPlanNodes, returned);
+        PlanActivityChanged?.Invoke(PlanActivity);
+    }
+
+    private List<PlanPartActivity> GetPartActivity(TracePosition? previous, TracePosition position)
+    {
+        var parts = new List<PlanPartActivity>();
+
+        var hidden = _settingsViewModel.TraceTimelineHiddenTickTrackSet;
+
+        foreach (var track in TickTracks)
+        {
+            if (hidden.Contains(track.Name) || !track.Rules.Any(r => r.PlanPart is { Length: > 0 }))
+            {
+                continue;
+            }
+
+            foreach (var tick in track.Series.GetRunningTicks(position))
+            {
+                AddPartActivity(parts, track, tick, isRunning: true);
+            }
+
+            if (previous is not { } after)
+            {
+                continue;
+            }
+
+            foreach (var tick in track.Series.GetEndedTicks(after, position))
+            {
+                AddPartActivity(parts, track, tick, isRunning: false);
+            }
+        }
+
+        return parts;
+    }
+
+    private List<PlanCounter> GetCounters(TracePosition position)
+    {
+        var counters = new List<PlanCounter>();
+
+        var hidden = _settingsViewModel.TraceTimelineHiddenTickTrackSet;
+
+        foreach (var track in TickTracks)
+        {
+            var counted = Enumerable.Range(0, track.Rules.Count).Where(i => track.Rules[i].IsCounter).ToList();
+
+            if (hidden.Contains(track.Name) || counted.Count == 0)
+            {
+                continue;
+            }
+
+            var values = counted.Select(i => track.Values[i].Value).ToHashSet();
+
+            var ruleColour = TraceTickTracks.ParseColour(track.Rules[counted[0]].Colour);
+
+            foreach (var (operatorEvent, count) in track.Series.CountEnded(values, position))
+            {
+                if (operatorEvent.PlanNodeIdentifier is not { } identifier || ResolvePlanNode(identifier) is not { } node)
+                {
+                    continue;
+                }
+
+                var name = track.GetTitle?.Invoke(operatorEvent) ?? track.Name;
+
+                var colour = (track.GetTrackColour?.Invoke(operatorEvent) ?? ruleColour).ToWindowsColor();
+
+                if (IsCounterShown(node))
+                {
+                    counters.Add(new PlanCounter(node, name, count, colour));
+                }
+
+                if (track.IsStatementTrack && GetStatement(node) is { } statement && IsCounterShown(statement))
+                {
+                    counters.Add(new PlanCounter(statement, name, count, colour));
+                }
+            }
+        }
+
+        return counters;
+    }
+
+    public bool IsCounterShown(PlanNode node) => CounterVisibility.TryGetValue(node, out var isShown) ? isShown : node.IsStatement;
+
+    public void ToggleCounter(PlanNode node)
+    {
+        CounterVisibility[node] = !IsCounterShown(node);
+
+        if (RowFlowPosition is not { } position)
+        {
+            return;
+        }
+
+        PlanActivity = PlanActivity with { Counters = GetCounters(position) };
+
+        PlanActivityChanged?.Invoke(PlanActivity);
+    }
+
+    private PlanNode? GetStatement(PlanNode node)
+        => ExecutionPlans.SelectMany(p => p.Root).FirstOrDefault(r => r.IsStatement && r.Children.Any(c => ReferenceEquals(c, node)));
+
+    private void AddPartActivity(List<PlanPartActivity> parts, TraceTickTrack track, TraceTick tick, bool isRunning)
+    {
+        if (track.GetRule(tick)?.PlanPart is not { Length: > 0 } part
+            || tick.Operator.PlanNodeIdentifier is not { } identifier
+            || ResolvePlanNode(identifier) is not { } node)
+        {
+            return;
+        }
+
+        var colour = track.GetColour(tick) ?? TraceTickTracks.DefaultColour;
+
+        parts.Add(new PlanPartActivity(node, part, colour.ToWindowsColor(), isRunning));
     }
 
     private List<PlanNode> GetPlanNodes(IEnumerable<ExecutionOperatorEvent> operators)
@@ -2676,7 +2793,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         SelectedPlanNode = null;
         ActivePlanNodes = [];
         EmittingPlanNodes = [];
-        RequestedPlanNodes = [];
+        PlanActivity = PlanActivity.Empty;
+        CounterVisibility.Clear();
         RowFlowPosition = null;
 
         Events = [];

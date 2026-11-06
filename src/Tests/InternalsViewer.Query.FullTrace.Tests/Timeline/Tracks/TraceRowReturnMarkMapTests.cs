@@ -242,6 +242,37 @@ public class TraceRowReturnMarkMapTests
         Assert.Empty(marks.GetReturned(At(45), At(80)));
     }
 
+    [Fact]
+    public void Running_Ticks_Are_The_Calls_That_Contain_The_Position()
+    {
+        var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)], [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)]);
+
+        var running = marks.Ticks.GetRunningTicks(At(13)).OrderBy(t => t.Operator.PlanNodeIdentifier?.NodeId);
+
+        Assert.Equal([(Join, 0), (Scan, 0)], running.Select(t => (t.Operator, t.CallIndex)));
+    }
+
+    [Fact]
+    public void Ended_Ticks_Are_The_Latest_Call_Of_Each_Kind_To_Return_In_The_Range()
+    {
+        var marks = Build([(10, 100, RowStatus), (110, 120, RowStatus), (130, 140, EndStatus)],
+                          [(12, 15, RowStatus), (20, 25, RowStatus), (30, 35, EndStatus)]);
+
+        Assert.Equal([1, 2], marks.Ticks.GetEndedTicks(At(11), At(40)).Select(t => t.CallIndex).Order());
+    }
+
+    [Fact]
+    public void Ticks_Are_Counted_Once_They_Have_Returned()
+    {
+        var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)], [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)]);
+
+        byte[] rows = [(byte)RowReturnType.Returned, (byte)RowReturnType.Skipped];
+
+        var counts = new ulong[] { 20, 30, 80 }.Select(p => marks.Ticks.CountEnded(rows, At(p)).Single(c => c.Operator == Scan).Count);
+
+        Assert.Equal([1, 2, 2], counts);
+    }
+
     private static TraceRowReturnMarkMap Build((ulong Start, ulong End, ulong Status)[] joinCalls,
                                              (ulong Start, ulong End, ulong Status)[] scanCalls,
                                              ExecutionOperatorEvent? top = null,

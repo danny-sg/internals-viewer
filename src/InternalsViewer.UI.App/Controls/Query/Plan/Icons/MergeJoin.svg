@@ -15,14 +15,14 @@
                   x="4"
                   y="13"
                   width="8"
-                  height="16" />
+                  height="16" data-part="Left Input"/>
 
             <!-- right input -->
             <rect id="merge-join-right-input-rect"
                   x="20"
                   y="13"
                   width="8"
-                  height="16" />
+                  height="16" data-part="Right Input"/>
         </g>
     </g>
     <g id="merge-join-flow"
@@ -34,21 +34,21 @@
 
         <!-- central upward output path -->
         <path id="merge-join-output-path"
-              d="M 16 24 L 16 5" />
+              d="M 16 24 L 16 5" data-part="Arrow"/>
 
         <!-- left input merges into centre -->
         <path id="merge-join-left-merge-path"
-              d="M 8 23 L 16 15" />
+              d="M 8 23 L 16 15" data-part="Left Merge"/>
 
         <!-- right input merges into centre -->
         <path id="merge-join-right-merge-path"
-              d="M 24 23 L 16 15" />
+              d="M 24 23 L 16 15" data-part="Right Merge"/>
     </g>
 
     <!-- output arrowhead -->
     <g id="merge-join-arrowhead" fill="#0078D4">
         <polygon id="merge-join-output-arrowhead"
-                 points="13,6 16,2 19,6" />
+                 points="13,6 16,2 19,6" data-part="Arrow"/>
     </g>
 
     </svg>

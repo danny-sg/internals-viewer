@@ -8,8 +8,11 @@ using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks.Enums;
+using InternalsViewer.UI.App.Controls.Query.Plan;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.Services.Query.Trace;
+using Microsoft.UI;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Windows.UI;
@@ -59,6 +62,8 @@ public sealed partial class OperatorTrackDialog
 
         ValueLabel = existing?.Label ?? string.Empty;
 
+        PlanPart = existing?.PlanPart ?? string.Empty;
+
         HeightFactor = existing?.HeightFactor ?? 1;
 
         WidthFactor = existing?.WidthFactor ?? 1;
@@ -80,11 +85,25 @@ public sealed partial class OperatorTrackDialog
         CategoryColourBox.IsChecked = existing?.Colour == TraceTickDefinition.CategoryColour;
 
         ColourButton.IsEnabled = CategoryColourBox.IsChecked != true;
+
+        CounterBox.IsChecked = existing?.IsCounter == true;
+
+        var background = ColourHelpers.FromHex(existing?.Background);
+
+        BackgroundPicker.Color = background ?? Colors.White;
+
+        BackgroundSwatch.Background = new SolidColorBrush(BackgroundPicker.Color);
+
+        BackgroundBox.IsChecked = background is not null;
+
+        BackgroundButton.IsEnabled = background is not null;
     }
 
     public string TrackName { get; set; }
 
     public string ValueLabel { get; set; }
+
+    public string PlanPart { get; set; }
 
     public double HeightFactor { get; set; }
 
@@ -306,6 +325,21 @@ public sealed partial class OperatorTrackDialog
         sender.ItemsSource = Source.Tracks.Where(t => t.Contains(text, StringComparison.OrdinalIgnoreCase)).ToList();
     }
 
+    private void OnPlanPartTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
+    {
+        if (args.Reason != AutoSuggestionBoxTextChangeReason.UserInput)
+        {
+            return;
+        }
+
+        var text = sender.Text.Trim();
+
+        sender.ItemsSource = PlanIconParts.GetBindings()
+                                          .Where(b => b.Contains(text, StringComparison.OrdinalIgnoreCase))
+                                          .Take(MaximumSuggestions)
+                                          .ToList();
+    }
+
     private void OnFunctionTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
     {
         if (args.Reason != AutoSuggestionBoxTextChangeReason.UserInput)
@@ -337,6 +371,11 @@ public sealed partial class OperatorTrackDialog
     private void OnColourChanged(ColorPicker sender, ColorChangedEventArgs args)
         => ColourSwatch.Background = new SolidColorBrush(args.NewColor);
 
+    private void OnBackgroundBoxChanged(object sender, RoutedEventArgs e) => BackgroundButton.IsEnabled = BackgroundBox.IsChecked == true;
+
+    private void OnBackgroundChanged(ColorPicker sender, ColorChangedEventArgs args)
+        => BackgroundSwatch.Background = new SolidColorBrush(args.NewColor);
+
     private void OnAddClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
     {
         var function = FindFunction(FunctionBox.Text) ?? Function;
@@ -363,11 +402,7 @@ public sealed partial class OperatorTrackDialog
             return;
         }
 
-        var colour = ColourPicker.Color;
-
-        var colourText = CategoryColourBox.IsChecked == true
-            ? TraceTickDefinition.CategoryColour
-            : $"#{colour.R:X2}{colour.G:X2}{colour.B:X2}";
+        var colourText = CategoryColourBox.IsChecked == true ? TraceTickDefinition.CategoryColour : ToHex(ColourPicker.Color);
 
         Definition = new TraceTickDefinition(TrackName.Trim(),
                                              function?.Module ?? Existing!.Module,
@@ -378,10 +413,15 @@ public sealed partial class OperatorTrackDialog
                                              [.. Rows.Select(GetCondition)])
         {
             Label = string.IsNullOrWhiteSpace(ValueLabel) ? null : ValueLabel.Trim(),
+            PlanPart = string.IsNullOrWhiteSpace(PlanPart) ? null : PlanPart.Trim(),
+            IsCounter = CounterBox.IsChecked == true,
+            Background = BackgroundBox.IsChecked == true ? ToHex(BackgroundPicker.Color) : null,
             Source = Existing?.Source ?? TraceTickSourceType.Call,
             Value = Existing?.Value ?? 0
         };
     }
+
+    private static string ToHex(Color colour) => $"#{colour.R:X2}{colour.G:X2}{colour.B:X2}";
 
     private sealed record ConditionTarget(string Label, TraceConditionTarget Kind, ArgumentSlot? Slot, string Type);
 

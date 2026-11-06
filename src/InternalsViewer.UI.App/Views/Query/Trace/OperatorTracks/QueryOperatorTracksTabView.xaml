@@ -5,27 +5,53 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:results="using:InternalsViewer.UI.App.Controls.Results">
 
-    <Grid RowSpacing="8">
+    <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <StackPanel Orientation="Horizontal" Spacing="8" Margin="8,8,8,0">
-            <Button Content="Add" Click="OnAddClick"/>
+        <CommandBar Grid.Row="0"
+                    IsOpen="False"
+                    Padding="8,0,0,0"
+                    DefaultLabelPosition="Right"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Left"
+                    VerticalContentAlignment="Top"
+                    MinHeight="0"
+                    OverflowButtonVisibility="Collapsed"
+                    BorderThickness="0,0,0,1"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    Background="Transparent">
+            <AppBarButton Label="Add" Icon="Add" Click="OnAddClick"/>
 
-            <Button Content="Import" Command="{x:Bind ViewModel.OperatorTracks.ImportCommand, Mode=OneWay}"/>
+            <AppBarButton Label="Import" Command="{x:Bind ViewModel.OperatorTracks.ImportCommand, Mode=OneWay}">
+                <AppBarButton.Icon>
+                    <FontIcon Glyph="&#xE8B5;"/>
+                </AppBarButton.Icon>
+            </AppBarButton>
 
-            <Button Content="Export"
-                    Command="{x:Bind ViewModel.OperatorTracks.ExportCommand, Mode=OneWay}"
-                    IsEnabled="{x:Bind ViewModel.OperatorTracks.HasAddedTracks, Mode=OneWay}"/>
+            <AppBarButton Label="Export"
+                          Command="{x:Bind ViewModel.OperatorTracks.ExportCommand, Mode=OneWay}"
+                          IsEnabled="{x:Bind ViewModel.OperatorTracks.HasAddedTracks, Mode=OneWay}">
+                <AppBarButton.Icon>
+                    <FontIcon Glyph="&#xEDE1;"/>
+                </AppBarButton.Icon>
+            </AppBarButton>
 
-            <Button Content="Clear Added"
-                    Command="{x:Bind ViewModel.OperatorTracks.ClearCommand, Mode=OneWay}"
-                    IsEnabled="{x:Bind ViewModel.OperatorTracks.HasAddedTracks, Mode=OneWay}"/>
+            <AppBarSeparator/>
 
-            <Button Content="Reset Predefined" Command="{x:Bind ViewModel.OperatorTracks.ResetCommand, Mode=OneWay}"/>
-        </StackPanel>
+            <AppBarButton Label="Clear Added"
+                          Icon="Delete"
+                          Command="{x:Bind ViewModel.OperatorTracks.ClearCommand, Mode=OneWay}"
+                          IsEnabled="{x:Bind ViewModel.OperatorTracks.HasAddedTracks, Mode=OneWay}"/>
+
+            <AppBarButton Label="Reset Predefined" Command="{x:Bind ViewModel.OperatorTracks.ResetCommand, Mode=OneWay}">
+                <AppBarButton.Icon>
+                    <FontIcon Glyph="&#xE7A7;"/>
+                </AppBarButton.Icon>
+            </AppBarButton>
+        </CommandBar>
 
         <results:ResultsGridControl x:Name="TracksGrid"
                                     Grid.Row="1"

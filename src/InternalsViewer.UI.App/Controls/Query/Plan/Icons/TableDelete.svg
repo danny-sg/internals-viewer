@@ -8,12 +8,12 @@
     stroke="#424242"
     stroke-width="2"
     stroke-linejoin="round"
-    stroke-linecap="square"/>
+    stroke-linecap="square" data-part="Frame"/>
 
   <path
     d="M44 44L53 53M53 44L44 53"
     fill="none"
     stroke="#d40000"
     stroke-width="2"
-    stroke-linecap="square"/>
+    stroke-linecap="square" data-part="Action"/>
 </svg>

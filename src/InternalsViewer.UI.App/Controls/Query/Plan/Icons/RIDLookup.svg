@@ -6,7 +6,7 @@
            stroke="#424242"
            stroke-width="2"
            fill="none"
-           stroke-linejoin="round">
+           stroke-linejoin="round" data-part="Branches">
 
             <path id="rid-lookup-central-trunk-path"
                   d="M 16 5 L 16 25" />
@@ -21,20 +21,20 @@
         <!-- B-tree nodes -->
         <g id="rid-lookup-btree-data-nodes" fill="#424242">
             <circle id="rid-lookup-root-node-circle"
-                    cx="16" cy="5" r="2" />
+                    cx="16" cy="5" r="2" data-part="Root Node"/>
 
             <circle id="rid-lookup-leaf-node-left-circle"
-                    cx="8" cy="25" r="2" />
+                    cx="8" cy="25" r="2" data-part="Leaf Node 1"/>
 
             <circle id="rid-lookup-leaf-node-center-circle"
-                    cx="16" cy="25" r="2" />
+                    cx="16" cy="25" r="2" data-part="Leaf Node 2"/>
 
             <circle id="rid-lookup-leaf-node-right-circle"
-                    cx="24" cy="25" r="2" />
+                    cx="24" cy="25" r="2" data-part="Leaf Node 3"/>
         </g>
 
         <!-- magnifier background to keep overlay clean -->
-        <g id="rid-lookup-magnifier-background" fill="#FFFFFF">
+        <g id="rid-lookup-magnifier-background" fill="#FFFFFF" data-part="Magnifier">
             <circle cx="8" cy="24" r="5" />
         </g>
 
@@ -44,7 +44,7 @@
            stroke-width="2"
            fill="none"
            stroke-linejoin="round"
-           stroke-linecap="square">
+           stroke-linecap="square" data-part="Magnifier">
 
             <circle id="rid-lookup-magnifier-lens"
                     cx="8" cy="24" r="4" />

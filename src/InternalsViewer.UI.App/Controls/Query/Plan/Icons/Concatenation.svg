@@ -8,7 +8,7 @@
         stroke="#424242"
         stroke-width="2"
         stroke-linejoin="round"
-        stroke-linecap="square"/>
+        stroke-linecap="square" data-part="Input 1"/>
     <rect
         x="45"
         y="51"
@@ -18,7 +18,7 @@
         stroke="#424242"
         stroke-width="2"
         stroke-linejoin="round"
-        stroke-linecap="square"/>
+        stroke-linecap="square" data-part="Input 2"/>
 
     <path
      
@@ -26,12 +26,12 @@
         fill="none"
         stroke="#0078d4"
         stroke-width="2"
-        stroke-linecap="square"/>
+        stroke-linecap="square" data-part="Plus"/>
 
     <path
         d="M42.5 47H54.5"
         fill="none"
         stroke="#0078d4" 
         stroke-width="2"
-        stroke-linecap="square"/>
+        stroke-linecap="square" data-part="Plus"/>
 </svg>

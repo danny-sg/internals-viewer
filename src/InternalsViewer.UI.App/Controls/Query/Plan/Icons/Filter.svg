@@ -14,7 +14,7 @@
             stroke-width="2"
             fill="none"
             stroke-linejoin="round"
-            stroke-linecap="square">
+            stroke-linecap="square" data-part="Frame">
             <rect
                 id="compute-scalar-main-rect"
                 x="3"
@@ -26,6 +26,6 @@
             d="M11 11 L18 11 L15.5 14.5 L15.5 19 L13.5 20.5 L13.5 14.5 Z"
             fill="#0078D4"
             stroke="#0078D4"
-            stroke-width="0.8" />
+            stroke-width="0.8" data-part="Funnel"/>
     </g>
 </svg>
