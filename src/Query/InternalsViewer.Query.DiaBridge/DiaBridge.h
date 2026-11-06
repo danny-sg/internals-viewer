@@ -18,6 +18,8 @@ extern "C"
                                                 wchar_t *signatureBuffer, int signatureLength, wchar_t *decoratedBuffer,
                                                 int decoratedLength, unsigned int *rva, int *isFunction);
 
+    __declspec(dllexport) int SymbolCount(void *enumerator);
+
     __declspec(dllexport) void EndEnumSymbols(void *enumerator);
 
     __declspec(dllexport) void ClosePdb(void *session);

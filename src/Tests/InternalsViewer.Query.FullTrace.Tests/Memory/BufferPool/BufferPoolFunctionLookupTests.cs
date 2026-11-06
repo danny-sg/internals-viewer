@@ -8,22 +8,11 @@ namespace InternalsViewer.Query.FullTrace.Tests.Memory.BufferPool;
 public class BufferPoolFunctionLookupTests
 {
     [Fact]
-    public void Gets_And_Page_Read_Completions_Are_Collected()
+    public void Gets_And_Page_Read_Completions_Are_Found_By_Name()
     {
-        var collector = BufferPoolFunctionLookup.CreateCollector();
+        string[] names = ["BPool::Get", "BPool::GetFromDisk", "FCB::PostRead", "BPool::ReadPageCompletion"];
 
-        collector.VisitFunction(0x10, "BPool::Get");
-
-        collector.VisitFunction(0x20, "BPool::GetFromDisk");
-
-        collector.VisitFunction(0x30, "FCB::PostRead");
-
-        collector.VisitFunction(0x40, "BPool::ReadPageCompletion");
-
-        var functions = collector.Build().OrderBy(f => f.Key).Select(f => (f.Key, f.Value));
-
-        (ulong, BufferPoolFunctionType)[] expected = [(0x10, BufferPoolFunctionType.Get), (0x30, BufferPoolFunctionType.PostRead)];
-
-        Assert.Equal(expected, functions);
+        Assert.Equal([BufferPoolFunctionType.Get, null, BufferPoolFunctionType.PostRead, null],
+                     names.Select(n => BufferPoolFunctionLookup.GetFunctionType(n)));
     }
 }

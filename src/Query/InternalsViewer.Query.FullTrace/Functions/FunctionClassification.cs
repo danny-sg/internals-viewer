@@ -1,5 +1,8 @@
 using System.Runtime.InteropServices;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
+using InternalsViewer.Query.FullTrace.Memory.BufferPool.Enums;
+using InternalsViewer.Query.FullTrace.Output.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Functions;
 
@@ -23,6 +26,12 @@ internal readonly record struct FunctionClassification(bool IsExcluded,
                                                        bool InstanceClassesOnly,
                                                        AllocationFunction? AllocationFunction)
 {
+    public PlanNodeFunctionType? PlanNodeFunction { get; init; }
+
+    public OutputFunctionType? OutputFunction { get; init; }
+
+    public BufferPoolFunctionType? BufferPoolFunction { get; init; }
+
     public bool IsInstanceMethod => HasInstanceMethod && InstanceClassesOnly;
 
     public static void Add(Dictionary<uint, FunctionClassification> functions, uint rva, FunctionClassification classification)
@@ -36,5 +45,10 @@ internal readonly record struct FunctionClassification(bool IsExcluded,
         => new(IsExcluded && other.IsExcluded,
                HasInstanceMethod || other.HasInstanceMethod,
                InstanceClassesOnly && other.InstanceClassesOnly,
-               AllocationFunction == other.AllocationFunction ? AllocationFunction : null);
+               AllocationFunction == other.AllocationFunction ? AllocationFunction : null)
+        {
+            PlanNodeFunction = other.PlanNodeFunction is null ? null : PlanNodeFunction,
+            OutputFunction = OutputFunction ?? other.OutputFunction,
+            BufferPoolFunction = BufferPoolFunction ?? other.BufferPoolFunction
+        };
 }

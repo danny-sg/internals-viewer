@@ -1,6 +1,5 @@
 ﻿using InternalsViewer.UI.App.Messages;
 using CommunityToolkit.Mvvm.Messaging;
-using System;
 using InternalsViewer.UI.App.ViewModels.Columnstore;
 
 namespace InternalsViewer.UI.App.Views.Columnstore;

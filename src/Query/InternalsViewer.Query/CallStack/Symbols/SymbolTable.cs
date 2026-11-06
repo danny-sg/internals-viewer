@@ -37,15 +37,15 @@ internal sealed class SymbolTable
 
     private const ushort FirstFlag = 16;
 
-    private const ushort SameNameFlag = 32;
+    private const ushort FoldedNameFlag = 32;
 
-    private const ushort SameParametersFlag = 64;
+    private const ushort FoldedParametersFlag = 64;
 
     private const ushort ReturnBufferFlag = 128;
 
     private const ushort GeneratedFlag = 256;
 
-    private const ushort SameClassFlag = 512;
+    private const ushort FoldedClassFlag = 512;
 
     private const string ConstructorPrefix = "??0";
 
@@ -73,9 +73,12 @@ internal sealed class SymbolTable
         Chunks = chunks;
         ByAddress = byAddress;
         Cache = new TextChunk?[CacheSlots];
+        FunctionCount = flags.Count(f => (f & FirstFlag) != 0);
     }
 
     public int Count => Rvas.Length;
+
+    public int FunctionCount { get; }
 
     private uint[] Rvas { get; }
 
@@ -120,11 +123,11 @@ internal sealed class SymbolTable
 
     public bool IsFirst(int index) => (Flags[index] & FirstFlag) != 0;
 
-    public bool HasSameName(int index) => (Flags[index] & SameNameFlag) != 0;
+    public bool HasFoldedName(int index) => (Flags[index] & FoldedNameFlag) != 0;
 
-    public bool HasSameParameters(int index) => (Flags[index] & SameParametersFlag) != 0;
+    public bool HasFoldedParameters(int index) => (Flags[index] & FoldedParametersFlag) != 0;
 
-    public bool HasSameClass(int index) => (Flags[index] & SameClassFlag) != 0;
+    public bool HasFoldedClass(int index) => (Flags[index] & FoldedClassFlag) != 0;
 
     public bool IsGenerated(int index) => (Flags[index] & GeneratedFlag) != 0;
 
@@ -222,9 +225,9 @@ internal sealed class SymbolTable
 
     public static SymbolTable Load(DiaResolver resolver)
     {
-        var builder = new Builder();
-
         using var symbols = resolver.ReadSymbols(includeSignature: true, includeDecoratedName: true);
+
+        var builder = new Builder(symbols.Count);
 
         while (symbols.MoveNext())
         {
@@ -296,31 +299,31 @@ internal sealed class SymbolTable
         return low;
     }
 
-    internal sealed class Builder
+    internal sealed class Builder(int capacity = 0)
     {
         private const int InitialTextLength = 1 << 16;
 
-        private List<uint> Rvas { get; } = [];
+        private List<uint> Rvas { get; } = new(capacity);
 
-        private List<ushort> Flags { get; } = [];
+        private List<ushort> Flags { get; } = new(capacity);
 
-        private List<short> Separators { get; } = [];
+        private List<short> Separators { get; } = new(capacity);
 
-        private List<short> ParameterCounts { get; } = [];
+        private List<short> ParameterCounts { get; } = new(capacity);
 
-        private List<int> FirstParameters { get; } = [];
+        private List<int> FirstParameters { get; } = new(capacity);
 
-        private List<string?> ReturnTypes { get; } = [];
+        private List<string?> ReturnTypes { get; } = new(capacity);
 
-        private List<int> NameHashes { get; } = [];
+        private List<int> NameHashes { get; } = new(capacity);
 
-        private List<int?> ParameterHashes { get; } = [];
+        private List<int?> ParameterHashes { get; } = new(capacity);
 
         private StringInternPool Types { get; } = new();
 
         private List<string> ParameterTypes { get; } = [];
 
-        private List<int> ClassIds { get; } = [];
+        private List<int> ClassIds { get; } = new(capacity);
 
         private Dictionary<string, int> ClassIdLookup { get; } = new(StringComparer.Ordinal);
 
@@ -344,11 +347,28 @@ internal sealed class SymbolTable
                         ReadOnlySpan<char> signature,
                         ReadOnlySpan<char> decoratedName)
         {
-            var parsed = isFunction ? FunctionSignature.Parse(signature, decoratedName, Types) : null;
+            var first = ParameterTypes.Count;
+
+            var type = FunctionType.Free;
+
+            string? returnType = null;
+
+            var hasReturnBuffer = false;
+
+            var parsed = isFunction
+                         && FunctionSignature.TryParse(signature,
+                                                       decoratedName,
+                                                       Types,
+                                                       ParameterTypes,
+                                                       out type,
+                                                       out returnType,
+                                                       out hasReturnBuffer);
 
             Rvas.Add(rva);
 
-            Flags.Add((ushort)(GetFlags(isFunction, decoratedName, parsed) | (name.Contains('`') ? GeneratedFlag : 0)));
+            var flags = GetFlags(isFunction, decoratedName, parsed ? type : null, hasReturnBuffer);
+
+            Flags.Add((ushort)(flags | (name.Contains('`') ? GeneratedFlag : 0)));
 
             var separator = SymbolsHelper.FindClassMethodSeparator(name);
 
@@ -356,13 +376,11 @@ internal sealed class SymbolTable
 
             ClassIds.Add(separator > 0 ? GetClassId(name[..separator]) : -1);
 
-            ParameterCounts.Add((short)(parsed?.Parameters.Count ?? -1));
+            ParameterCounts.Add((short)(parsed ? ParameterTypes.Count - first : -1));
 
-            FirstParameters.Add(ParameterTypes.Count);
+            FirstParameters.Add(first);
 
-            ReturnTypes.Add(parsed?.ReturnType);
-
-            ParameterTypes.AddRange(parsed?.Parameters ?? []);
+            ReturnTypes.Add(returnType);
 
             NameHashes.Add(string.GetHashCode(name));
 
@@ -506,28 +524,32 @@ internal sealed class SymbolTable
                     parameters = ParameterHashes[index];
 
                     flags[index] |= FirstFlag;
+
+                    continue;
                 }
 
                 parameters ??= ParameterHashes[index];
 
-                if (NameHashes[index] == NameHashes[first])
+                var isOtherName = NameHashes[index] != NameHashes[first];
+
+                if (isOtherName)
                 {
-                    flags[index] |= SameNameFlag;
+                    flags[first] |= FoldedNameFlag;
                 }
 
-                if (ParameterHashes[index] is null || ParameterHashes[index] == parameters)
+                if (ParameterHashes[index] is { } hash && hash != parameters)
                 {
-                    flags[index] |= SameParametersFlag;
+                    flags[first] |= FoldedParametersFlag;
                 }
 
-                if (ClassIds[index] >= 0 && ClassIds[index] == ClassIds[first])
+                if (isOtherName && (ClassIds[index] < 0 || ClassIds[index] != ClassIds[first]))
                 {
-                    flags[index] |= SameClassFlag;
+                    flags[first] |= FoldedClassFlag;
                 }
             }
         }
 
-        private static ushort GetFlags(bool isFunction, ReadOnlySpan<char> decoratedName, FunctionSignature? parsed)
+        private static ushort GetFlags(bool isFunction, ReadOnlySpan<char> decoratedName, FunctionType? parsedType, bool hasReturnBuffer)
         {
             if (!isFunction)
             {
@@ -541,12 +563,12 @@ internal sealed class SymbolTable
                 flags |= ConstructorFlag;
             }
 
-            if ((parsed?.Type ?? FunctionSignature.GetFunctionType(decoratedName)) is { } type)
+            if ((parsedType ?? FunctionSignature.GetFunctionType(decoratedName)) is { } type)
             {
                 flags |= (ushort)(((int)type + 1) << TypeShift);
             }
 
-            if (parsed is { HasReturnBuffer: true })
+            if (hasReturnBuffer)
             {
                 flags |= ReturnBufferFlag;
             }
@@ -569,8 +591,6 @@ internal sealed class SymbolTable
 
         public int Index { get; private set; } = -1;
 
-        public Symbol First => table.FindFunction(Rva) ?? table.GetSymbol(Index);
-
         public uint Rva => table.GetRva(Index);
 
         public bool IsFunction => table.IsFunction(Index);
@@ -579,11 +599,11 @@ internal sealed class SymbolTable
 
         public bool IsFirst => table.IsFirst(Index);
 
-        public bool HasSameName => table.HasSameName(Index);
+        public bool HasFoldedName => table.HasFoldedName(Index);
 
-        public bool HasSameParameters => table.HasSameParameters(Index);
+        public bool HasFoldedParameters => table.HasFoldedParameters(Index);
 
-        public bool HasSameClass => table.HasSameClass(Index);
+        public bool HasFoldedClass => table.HasFoldedClass(Index);
 
         public bool IsGenerated => table.IsGenerated(Index);
 

@@ -1,5 +1,4 @@
 using InternalsViewer.Query.CallStack.Arguments;
-using InternalsViewer.Query.CallStack.Symbols;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.FullTrace.Arguments;
@@ -21,7 +20,7 @@ namespace InternalsViewer.Query.FullTrace.Functions;
 ///
 /// Free functions, and static functions with no instance class pointer in a register, are not instance methods.
 /// </remarks>
-internal static class PlanObjectInstanceMethodCollector
+internal static class InstanceMethodLookup
 {
     public static int? InstanceRegister(FunctionSignature? signature) => signature switch
     {
@@ -49,21 +48,6 @@ internal static class PlanObjectInstanceMethodCollector
         return IteratorSymbolLookup.IsPlanObject(className)
                || ((IteratorSymbolLookup.IsIterator(className) || IteratorSymbolLookup.IsQueryScan(className))
                    && IteratorSymbolLookup.IsIteratorMethod(methodName));
-    }
-
-    public static List<InstanceMethod> FindInstanceMethods(IEnumerable<uint> addresses, SymbolTable table)
-    {
-        var methods = new List<InstanceMethod>();
-
-        foreach (var rva in addresses)
-        {
-            if ((table.FindFunction(rva) is { } symbol ? InstanceRegister(symbol.Parsed) : 0) is { } register)
-            {
-                methods.Add(new InstanceMethod(rva, register));
-            }
-        }
-
-        return methods;
     }
 
     private static int? KeyedParameter(IReadOnlyList<string> parameters)

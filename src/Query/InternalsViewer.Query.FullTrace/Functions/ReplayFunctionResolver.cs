@@ -1,19 +1,11 @@
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.FullTrace.Iterators;
-using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using InternalsViewer.Internals.Engine.Loading;
-using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.CallStack.Symbols;
-using InternalsViewer.Query.FullTrace.Arguments;
-using InternalsViewer.Query.FullTrace.Locators;
-using InternalsViewer.Query.FullTrace.Memory.BufferPool;
-using InternalsViewer.Query.FullTrace.Output;
 using Microsoft.Extensions.Logging;
 using InternalsViewer.Query.FullTrace.Helpers;
-using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Functions;
 
@@ -87,8 +79,6 @@ namespace InternalsViewer.Query.FullTrace.Functions;
 /// </remarks>
 internal static class ReplayFunctionResolver
 {
-    private const string IteratorModule = "sqlmin";
-
     private static readonly string[] Modules = 
     [
         // Relational + Storage Engine
@@ -183,14 +173,14 @@ internal static class ReplayFunctionResolver
                                             CancellationToken cancellationToken)
     {
         return Task.WhenAll(modules.Where(m => !Cache.ContainsKey(GetKey(m)))
-                                   .Select(m => ResolvingOf(m, symbolsPath, logger, progress)))
+                                   .Select(m => GetOrResolve(m, symbolsPath, logger, progress)))
                    .WaitAsync(cancellationToken);
     }
 
-    private static Task ResolvingOf(TraceModule module,
-                                    string symbolsPath,
-                                    ILogger? logger,
-                                    IProgress<ProgressDetail>? progress)
+    private static Task GetOrResolve(TraceModule module,
+                                     string symbolsPath,
+                                     ILogger? logger,
+                                     IProgress<ProgressDetail>? progress)
         => Resolving.GetOrAdd(GetKey(module),
                               key => new Lazy<Task>(() => Task.Run(() => DownloadAndResolveAsync(key,
                                                                                                  module,
@@ -245,116 +235,5 @@ internal static class ReplayFunctionResolver
     }
 
     private static ReplayFunctionTable? GetFunctions(TraceModule module, string symbolsPath)
-    {
-        if (SymbolTableCache.Get(symbolsPath, module.Identity) is not { } table)
-        {
-            return null;
-        }
-
-        var mappings = CategoryMappings.Default;
-
-        var moduleName = module.Name;
-
-        var planNodes = new PlanNodeFunctionLookup.Collector();
-
-        var output = OutputFunctionLookup.CreateCollector();
-
-        var bufferPool = BufferPoolFunctionLookup.CreateCollector();
-
-        var vtables = new VtableResolver.Collector();
-
-        var functions = new Dictionary<uint, FunctionClassification>();
-
-        var symbols = table.Read();
-
-        while (symbols.MoveNext())
-        {
-            var rva = symbols.Rva;
-
-            var name = symbols.Name;
-
-            if (!symbols.IsFunction)
-            {
-                vtables.VisitData(rva, name);
-
-                continue;
-            }
-
-            planNodes.VisitFunction(rva, name);
-
-            output.VisitFunction(rva, name);
-
-            bufferPool.VisitFunction(rva, name);
-
-            FunctionClassification.Add(functions, rva, ClassifyFunction(mappings, moduleName, rva, name));
-        }
-
-        var iterates = string.Equals(moduleName, IteratorModule, StringComparison.OrdinalIgnoreCase);
-
-        InstanceMethod[] instanceMethods = iterates
-            ? [.. PlanObjectInstanceMethodCollector.FindInstanceMethods(functions.Where(f => f.Value.IsInstanceMethod).Select(f => f.Key), table)]
-            : [];
-
-        var reads = new LocatorReadResolver.Collector();
-
-        var addressMapFunctions = new AddressMapFunctionResolver.Collector();
-
-        var sites = new AllocationSiteResolver.Collector();
-
-        var visited = table.Read();
-
-        while (visited.MoveNext())
-        {
-            if (!visited.IsFunction || !functions.TryGetValue(visited.Rva, out var classification) || classification.IsExcluded)
-            {
-                continue;
-            }
-
-            var layout = visited.IsFirst && visited.Parsed is { } signature ? ArgumentLayout.GetLayout(signature) : null;
-
-            reads.Visit(visited, layout);
-
-            addressMapFunctions.Visit(visited, layout);
-
-            if (classification.AllocationFunction is { IsAllocation: true })
-            {
-                sites.Visit(visited, layout);
-            }
-        }
-
-        ulong[] excluded = [.. functions.Where(f => f.Value.IsExcluded).Select(f => (ulong)f.Key)];
-
-        var classes = vtables.Build();
-
-        return new ReplayFunctionTable(excluded,
-                                   instanceMethods,
-                                   reads.Build(),
-                                   [.. functions.Values.Select(f => f.AllocationFunction).OfType<AllocationFunction>().Select(sites.Apply)],
-                                   addressMapFunctions.Build())
-        {
-            PlanNodeFunctions = planNodes.Build(),
-            PlanObjects = PlanNodeFunctionLookup.GetPlanObjects(classes),
-            OutputFunctions = output.Build(),
-            OutputClasses = OutputFunctionLookup.GetValueClasses(classes),
-            BufferPoolFunctions = bufferPool.Build(),
-            Vtables = classes,
-            StackArguments = reads.BuildStackArguments()
-        };
-    }
-
-    private static FunctionClassification ClassifyFunction(CategoryMappings mappings, string module, uint rva, ReadOnlySpan<char> symbol)
-    {
-        return new(IsExcluded(mappings, module, symbol),
-                   PlanObjectInstanceMethodCollector.IsInstanceMethod(symbol),
-                   IteratorSymbolLookup.IsInstanceClass(symbol),
-                   AllocationFunction.Classify(rva, symbol));
-    }
-
-    private static bool IsExcluded(CategoryMappings mappings, string module, ReadOnlySpan<char> symbol)
-    {
-        SymbolsHelper.Split(symbol, out var className, out var methodName);
-
-        return mappings.Classify(module, className, methodName)
-                       .IsInstrumentation(mappings.ClassifyOperator(module, className, methodName).Iterator is not null);
-    }
+        => SymbolTableCache.Get(symbolsPath, module.Identity) is { } table ? ReplayFunctionScan.Scan(table, module.Name) : null;
 }

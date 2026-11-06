@@ -417,6 +417,18 @@ bool NextSymbolDetail(void *enumeratorHandle, wchar_t *nameBuffer, int nameLengt
     }
 }
 
+int SymbolCount(void *enumeratorHandle)
+{
+    if (!enumeratorHandle)
+    {
+        return 0;
+    }
+
+    LONG count = 0;
+
+    return SUCCEEDED(static_cast<EnumHandle *>(enumeratorHandle)->Symbols->get_Count(&count)) ? count : 0;
+}
+
 void EndEnumSymbols(void *enumeratorHandle)
 {
     delete static_cast<EnumHandle *>(enumeratorHandle);

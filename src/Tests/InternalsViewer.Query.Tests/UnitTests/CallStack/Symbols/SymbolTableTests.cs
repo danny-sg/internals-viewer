@@ -59,21 +59,18 @@ public class SymbolTableTests
 
         var reader = builder.Build().Read();
 
-        var functions = new List<(string, bool, bool, string)>();
+        var functions = new List<(string, bool, bool)>();
 
         while (reader.MoveNext())
         {
-            functions.Add((reader.Name.ToString(), reader.IsFirst, reader.HasSameName, reader.First.Name));
+            functions.Add((reader.Name.ToString(), reader.IsFirst, reader.HasFoldedName));
         }
 
-        Assert.Equal([("Startup", true, true, "Startup"),
-                      ("CQueryScan::StartupQuery", true, true, "CQueryScan::StartupQuery"),
-                      ("Begin", false, false, "Startup")],
-                     functions);
+        Assert.Equal([("Startup", true, true), ("CQueryScan::StartupQuery", true, false), ("Begin", false, false)], functions);
     }
 
     [Fact]
-    public void Folded_Functions_Are_Described_Against_The_First_At_Their_Address()
+    public void Functions_Folded_At_One_Address_Are_Summarised_On_The_First()
     {
         var builder = new SymbolTable.Builder();
 
@@ -90,34 +87,38 @@ public class SymbolTableTests
         {
             if (reader.IsFunction)
             {
-                functions.Add((reader.IsFirst, reader.HasSameName, reader.HasSameParameters));
+                functions.Add((reader.IsFirst, reader.HasFoldedName, reader.HasFoldedParameters));
             }
         }
 
-        Assert.Equal([(true, true, true), (false, true, false), (false, false, true)], functions);
+        Assert.Equal([(true, true, true), (false, false, false), (false, false, false)], functions);
     }
 
     [Fact]
-    public void Folded_Functions_Have_The_Same_Class_Only_When_Both_Are_Members_Of_It()
+    public void A_Function_Of_Another_Class_Folded_In_Is_Marked_On_The_First()
     {
         var builder = new SymbolTable.Builder();
 
         builder.Add(0x100, true, "Page::Fix", "Page::Fix(int)", "?Fix@Page@@QEAAXH@Z");
         builder.Add(0x100, true, "Page::Unfix", "Page::Unfix(int)", "?Unfix@Page@@QEAAXH@Z");
-        builder.Add(0x100, true, "Buffer::Fix", "Buffer::Fix(int)", "?Fix@Buffer@@QEAAXH@Z");
-        builder.Add(0x100, true, "Fix", "Fix(int)", "?Fix@@YAXH@Z");
-        builder.Add(0x200, true, "Startup", Startup, StartupDecorated);
+        builder.Add(0x200, true, "Page::Latch", "Page::Latch(int)", "?Latch@Page@@QEAAXH@Z");
+        builder.Add(0x200, true, "Buffer::Latch", "Buffer::Latch(int)", "?Latch@Buffer@@QEAAXH@Z");
+        builder.Add(0x300, true, "Page::Steal", "Page::Steal(int)", "?Steal@Page@@QEAAXH@Z");
+        builder.Add(0x300, true, "Steal", "Steal(int)", "?Steal@@YAXH@Z");
 
         var reader = builder.Build().Read();
 
-        var classes = new List<bool>();
+        var firsts = new List<(bool, bool)>();
 
         while (reader.MoveNext())
         {
-            classes.Add(reader.HasSameClass);
+            if (reader.IsFirst)
+            {
+                firsts.Add((reader.HasFoldedName, reader.HasFoldedClass));
+            }
         }
 
-        Assert.Equal([true, true, false, false, false], classes);
+        Assert.Equal([(true, false), (true, true), (true, true)], firsts);
     }
 
     [Fact]

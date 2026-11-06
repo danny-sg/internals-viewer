@@ -8,81 +8,22 @@ public class PlanNodeFunctionLookupTests
 {
     [Fact]
     public void Batch_Iterators_Are_Found_By_Their_Factory_And_The_Call_That_Hands_Over_A_Batch()
-    {
-        var collector = new PlanNodeFunctionLookup.Collector();
-
-        collector.VisitFunction(0x10, "CQScanHash::GetRow");
-        collector.VisitFunction(0x20, "CBpQScanFilter::BpGetBatchData");
-        collector.VisitFunction(0x30, "CBpQScanFilter::BpOpen");
-        collector.VisitFunction(0x40, "CBpXteFilter::PbpqsGet");
-
-        var functions = collector.Build().OrderBy(f => f.Key).Select(f => (f.Key, f.Value));
-
-        (ulong, PlanNodeFunctionType)[] expected =
-        [
-            (0x10, PlanNodeFunctionType.Iterator),
-            (0x20, PlanNodeFunctionType.BatchIterator),
-            (0x40, PlanNodeFunctionType.BatchFactory)
-        ];
-
-        Assert.Equal(expected, functions);
-    }
+        => Assert.Equal([PlanNodeFunctionType.Iterator, PlanNodeFunctionType.BatchIterator, null, PlanNodeFunctionType.BatchFactory],
+                        Types("CQScanHash::GetRow", "CBpQScanFilter::BpGetBatchData", "CBpQScanFilter::BpOpen", "CBpXteFilter::PbpqsGet"));
 
     [Fact]
     public void Every_Iterator_Method_Of_The_Batch_Helper_Is_A_Batch_Helper_Call()
-    {
-        var collector = new PlanNodeFunctionLookup.Collector();
-
-        collector.VisitFunction(0x10, "CQScanBatchHelper::GetRow");
-        collector.VisitFunction(0x20, "CQScanBatchHelper::Open");
-        collector.VisitFunction(0x30, "CQScanHash::GetRow");
-
-        var functions = collector.Build().OrderBy(f => f.Key).Select(f => (f.Key, f.Value));
-
-        (ulong, PlanNodeFunctionType)[] expected =
-        [
-            (0x10, PlanNodeFunctionType.BatchHelper),
-            (0x20, PlanNodeFunctionType.BatchHelper),
-            (0x30, PlanNodeFunctionType.Iterator)
-        ];
-
-        Assert.Equal(expected, functions);
-    }
+        => Assert.Equal([PlanNodeFunctionType.BatchHelper, PlanNodeFunctionType.BatchHelper, PlanNodeFunctionType.Iterator],
+                        Types("CQScanBatchHelper::GetRow", "CQScanBatchHelper::Open", "CQScanHash::GetRow"));
 
     [Fact]
     public void An_Open_Reached_Through_Its_Helper_Is_An_Iterator_Call()
-    {
-        var collector = new PlanNodeFunctionLookup.Collector();
-
-        collector.VisitFunction(0x10, "CQScanSortNew::OpenHelper");
-        collector.VisitFunction(0x20, "CQScanSortNew::BuildSortTable");
-
-        var functions = collector.Build().Select(f => (f.Key, f.Value));
-
-        (ulong, PlanNodeFunctionType)[] expected = [(0x10, PlanNodeFunctionType.Iterator)];
-
-        Assert.Equal(expected, functions);
-    }
+        => Assert.Equal([PlanNodeFunctionType.Iterator, null], Types("CQScanSortNew::OpenHelper", "CQScanSortNew::BuildSortTable"));
 
     [Fact]
     public void Constructors_And_The_Query_Teardown_Are_Found_By_Name()
-    {
-        var collector = new PlanNodeFunctionLookup.Collector();
-
-        collector.VisitFunction(0x10, "CQScanHash::CQScanHash");
-        collector.VisitFunction(0x20, "CQueryScan::DestroyQuery");
-        collector.VisitFunction(0x30, "CQueryScan::GetRow");
-
-        var functions = collector.Build().OrderBy(f => f.Key).Select(f => (f.Key, f.Value));
-
-        (ulong, PlanNodeFunctionType)[] expected =
-        [
-            (0x10, PlanNodeFunctionType.Constructor),
-            (0x20, PlanNodeFunctionType.Teardown)
-        ];
-
-        Assert.Equal(expected, functions);
-    }
+        => Assert.Equal([PlanNodeFunctionType.Constructor, PlanNodeFunctionType.Teardown, null],
+                        Types("CQScanHash::CQScanHash", "CQueryScan::DestroyQuery", "CQueryScan::GetRow"));
 
     [Fact]
     public void Plan_Objects_Are_Known_By_Their_VTables()
@@ -108,4 +49,6 @@ public class PlanNodeFunctionLookupTests
 
         Assert.Equal(PlanObjectClass.Row, PlanNodeFunctionLookup.GetPlanObjects(vtables)[0x7000]);
     }
+
+    private static PlanNodeFunctionType?[] Types(params string[] names) => [.. names.Select(n => PlanNodeFunctionLookup.GetFunctionType(n))];
 }

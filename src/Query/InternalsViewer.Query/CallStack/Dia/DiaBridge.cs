@@ -37,6 +37,9 @@ internal static class DiaBridge
                                                       out int isFunction);
 
     [DllImport("InternalsViewer.Query.DiaBridge.dll")]
+    public static extern int SymbolCount(IntPtr enumerator);
+
+    [DllImport("InternalsViewer.Query.DiaBridge.dll")]
     public static extern void EndEnumSymbols(IntPtr enumerator);
 
     [DllImport("InternalsViewer.Query.DiaBridge.dll")]

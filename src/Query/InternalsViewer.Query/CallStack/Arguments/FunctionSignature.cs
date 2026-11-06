@@ -50,39 +50,77 @@ public sealed record FunctionSignature(IReadOnlyList<string> Parameters,
     private const string StaticAccessCodes = "CDKLST";
 
     public static FunctionSignature? Parse(ReadOnlySpan<char> signature, ReadOnlySpan<char> decoratedName)
-        => Parse(signature, decoratedName, null);
+    {
+        var parameters = new List<string>();
 
-    internal static FunctionSignature? Parse(ReadOnlySpan<char> signature, ReadOnlySpan<char> decoratedName, StringInternPool? strings)
+        return TryParse(signature, decoratedName, null, parameters, out var type, out var returnType, out var hasReturnBuffer)
+            ? new FunctionSignature(parameters, type, returnType, hasReturnBuffer)
+            : null;
+    }
+
+    public static FunctionType? GetFunctionType(ReadOnlySpan<char> decoratedName) => FindFunctionCode(decoratedName)?.Type;
+
+    public static IReadOnlyList<string>? ParseParameters(ReadOnlySpan<char> signature)
     {
         if (!TryGetParameterList(signature, out var parameterList))
         {
             return null;
         }
 
-        var parameters = SplitParameters(parameterList, strings);
+        var parameters = new List<string>();
 
-        if (FindFunctionCode(decoratedName) is { } code)
-        {
-            var encodedReturn = decoratedName[code.End..];
+        SplitParameters(parameterList, null, parameters);
 
-            var returnType = DecodeReturnType(encodedReturn, decoratedName[1..code.Start]);
-
-            return new FunctionSignature(MarkEnums(parameters, decoratedName, strings),
-                                         code.Type,
-                                         returnType is null || strings is null ? returnType : strings.Intern(returnType),
-                                         IsClassReturnedByValue(encodedReturn));
-        }
-
-        return new FunctionSignature(parameters, IsScoped(signature) ? FunctionType.Member : FunctionType.Free, null);
+        return parameters;
     }
-
-    public static FunctionType? GetFunctionType(ReadOnlySpan<char> decoratedName) => FindFunctionCode(decoratedName)?.Type;
-
-    public static IReadOnlyList<string>? ParseParameters(ReadOnlySpan<char> signature)
-        => TryGetParameterList(signature, out var parameters) ? SplitParameters(parameters, null) : null;
 
     public static int HashParameters(ReadOnlySpan<char> signature)
         => TryGetParameterList(signature, out var parameters) ? string.GetHashCode(parameters) : 0;
+
+    internal static bool TryParse(ReadOnlySpan<char> signature,
+                                  ReadOnlySpan<char> decoratedName,
+                                  StringInternPool? strings,
+                                  List<string> parameters,
+                                  out FunctionType type,
+                                  out string? returnType,
+                                  out bool hasReturnBuffer)
+    {
+        type = FunctionType.Free;
+
+        returnType = null;
+
+        hasReturnBuffer = false;
+
+        if (!TryGetParameterList(signature, out var parameterList))
+        {
+            return false;
+        }
+
+        var first = parameters.Count;
+
+        SplitParameters(parameterList, strings, parameters);
+
+        if (FindFunctionCode(decoratedName) is not { } code)
+        {
+            type = IsScoped(signature) ? FunctionType.Member : FunctionType.Free;
+
+            return true;
+        }
+
+        var encodedReturn = decoratedName[code.End..];
+
+        var decoded = DecodeReturnType(encodedReturn, decoratedName[1..code.Start]);
+
+        MarkEnums(parameters, first, decoratedName, strings);
+
+        type = code.Type;
+
+        returnType = decoded is null || strings is null ? decoded : strings.Intern(decoded);
+
+        hasReturnBuffer = IsClassReturnedByValue(encodedReturn);
+
+        return true;
+    }
 
     private static bool TryGetParameterList(ReadOnlySpan<char> signature, out ReadOnlySpan<char> parameters)
     {
@@ -154,22 +192,20 @@ public sealed record FunctionSignature(IReadOnlyList<string> Parameters,
         return null;
     }
 
-    private static List<string> MarkEnums(List<string> parameters, ReadOnlySpan<char> decoratedName, StringInternPool? strings)
+    private static void MarkEnums(List<string> parameters, int first, ReadOnlySpan<char> decoratedName, StringInternPool? strings)
     {
         if (!decoratedName.Contains(EnumCode, StringComparison.Ordinal))
         {
-            return parameters;
+            return;
         }
 
-        for (var index = 0; index < parameters.Count; index++)
+        for (var index = first; index < parameters.Count; index++)
         {
             if (GetTargetName(parameters[index]) is { IsEmpty: false } target && IsEnum(decoratedName, target))
             {
                 parameters[index] = MarkEnum(parameters[index], strings);
             }
         }
-
-        return parameters;
     }
 
     private static string MarkEnum(string parameter, StringInternPool? strings)
@@ -481,13 +517,11 @@ public sealed record FunctionSignature(IReadOnlyList<string> Parameters,
         return -1;
     }
 
-    private static List<string> SplitParameters(ReadOnlySpan<char> parameters, StringInternPool? strings)
+    private static void SplitParameters(ReadOnlySpan<char> parameters, StringInternPool? strings, List<string> split)
     {
-        var split = new List<string>();
-
         if (parameters.IsEmpty)
         {
-            return split;
+            return;
         }
 
         while (FindTopLevelComma(parameters) is var comma and >= 0)
@@ -498,8 +532,6 @@ public sealed record FunctionSignature(IReadOnlyList<string> Parameters,
         }
 
         split.Add(GetText(parameters.Trim(), strings));
-
-        return split;
     }
 
     private static string GetText(ReadOnlySpan<char> text, StringInternPool? strings)

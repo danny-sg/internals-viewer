@@ -15,8 +15,6 @@ public sealed class TracePageAccessList
 {
     private const int ThisRegister = 0;
 
-    private const int BodyLength = PageData.Size - PageHeader.Size;
-
     private TracePageAccessList(TracePageAccess[] accesses)
     {
         Accesses = accesses;
@@ -44,7 +42,7 @@ public sealed class TracePageAccessList
     {
         var fetches = GetFetches(calls, pool);
 
-        var rows = reads is { Count: > 0 } ? GetReadRows(reads, pool, timeline) : GetPointerRows(calls, history, pool);
+        var rows = reads is { Count: > 0 } ? GetReadRows(calls, reads, pool, timeline) : GetPointerRows(calls, history, pool);
 
         var ordered = new List<TracePageAccess>();
 
@@ -119,11 +117,11 @@ public sealed class TracePageAccessList
         => calls.GetFirstNode(list)?.Frame is { Function.MethodName: BufferPoolFunctionLookup.GetMethod } frame
            && BufferPoolFunctionLookup.IsBufferPool(frame);
 
-    private static List<Candidate> GetReadRows(TracePageReadList reads, TraceBufferPool pool, TraceTimeline? timeline)
+    private static List<Candidate> GetReadRows(TraceCallStore calls, TracePageReadList reads, TraceBufferPool pool, TraceTimeline? timeline)
     {
         var candidates = new List<Candidate>(reads.Count);
 
-        AddReads(reads, pool, timeline, candidates);
+        AddReads(reads, pool, timeline, GetPostReads(calls), candidates);
 
         return IsSorted(candidates) ? candidates : [.. candidates.OrderBy(c => c.Access.Position)];
     }
@@ -152,16 +150,56 @@ public sealed class TracePageAccessList
         return [.. candidates.OrderBy(c => c.Access.Position)];
     }
 
+    private static Dictionary<uint, List<(TracePosition From, TracePosition To)>> GetPostReads(TraceCallStore calls)
+    {
+        var postReads = new Dictionary<uint, List<(TracePosition From, TracePosition To)>>();
+
+        foreach (var list in calls.GetCallLists())
+        {
+            if (!BufferPoolFunctionLookup.IsPostRead(calls.GetFirstNode(list)?.Frame))
+            {
+                continue;
+            }
+
+            for (var index = 0; index < list.Count; index++)
+            {
+                var call = list[index];
+
+                ref var spans = ref CollectionsMarshal.GetValueRefOrAddDefault(postReads, call.ThreadId, out _);
+
+                (spans ??= []).Add((call.FromPosition, call.ToPosition));
+            }
+        }
+
+        foreach (var spans in postReads.Values)
+        {
+            spans.Sort(static (left, right) => left.From.CompareTo(right.From));
+        }
+
+        return postReads;
+    }
+
+    private static bool IsPostRead(Dictionary<uint, List<(TracePosition From, TracePosition To)>> postReads,
+                                   uint thread,
+                                   TracePosition position)
+    {
+        if (!postReads.TryGetValue(thread, out var spans))
+        {
+            return false;
+        }
+
+        var index = SortedSearch.FirstAfter(CollectionsMarshal.AsSpan(spans), position, s => s.From) - 1;
+
+        return index >= 0 && position <= spans[index].To;
+    }
+
     private static void AddReads(TracePageReadList reads,
                                  TraceBufferPool pool,
                                  TraceTimeline? timeline,
+                                 Dictionary<uint, List<(TracePosition From, TracePosition To)>> postReads,
                                  List<Candidate> candidates)
     {
         var calls = new TraceInnermostCallLookup(timeline);
-
-        var first = candidates.Count;
-
-        var lengths = new List<int>(reads.Count);
 
         for (var index = 0; index < reads.Count; index++)
         {
@@ -174,7 +212,8 @@ public sealed class TracePageAccessList
 
             var (callNodeIndex, callIndex) = calls.GetCall(read.Thread, read.Position);
 
-            var isWholePage = reference.Offset == PageHeader.Size && reference.Offset + read.Length == PageData.Size;
+            var isWholePage = (reference.Offset == PageHeader.Size && reference.Offset + read.Length == PageData.Size)
+                              || IsPostRead(postReads, read.Thread, read.Position);
 
             var access = new TracePageAccess(read.Position,
                                              reference.Page,
@@ -184,98 +223,7 @@ public sealed class TracePageAccessList
                                              callIndex);
 
             candidates.Add(new Candidate(access, read.Thread, false));
-
-            lengths.Add(read.Length);
         }
-
-        MergeWholePageReads(candidates, first, lengths);
-    }
-
-    private static void MergeWholePageReads(List<Candidate> candidates, int first, List<int> lengths)
-    {
-        var totals = new Dictionary<ReadCall, int>();
-
-        for (var index = first; index < candidates.Count; index++)
-        {
-            if (GetReadCall(candidates[index]) is { } call)
-            {
-                CollectionsMarshal.GetValueRefOrAddDefault(totals, call, out _) += lengths[index - first];
-            }
-        }
-
-        var ranges = new Dictionary<ReadCall, List<(int Start, int End)>>();
-
-        foreach (var (call, total) in totals)
-        {
-            if (total >= BodyLength)
-            {
-                ranges[call] = [];
-            }
-        }
-
-        if (ranges.Count == 0)
-        {
-            return;
-        }
-
-        for (var index = first; index < candidates.Count; index++)
-        {
-            if (GetReadCall(candidates[index]) is { } call
-                && ranges.TryGetValue(call, out var callRanges)
-                && candidates[index].Access.Offset is { } offset)
-            {
-                callRanges.Add((offset, offset + lengths[index - first]));
-            }
-        }
-
-        HashSet<ReadCall> whole = [.. ranges.Where(r => CoversBody(r.Value)).Select(r => r.Key)];
-
-        var merged = new HashSet<ReadCall>();
-
-        var at = first;
-
-        for (var index = first; index < candidates.Count; index++)
-        {
-            var candidate = candidates[index];
-
-            if (GetReadCall(candidate) is { } call && whole.Contains(call))
-            {
-                if (!merged.Add(call))
-                {
-                    continue;
-                }
-
-                candidate = candidate with { Access = candidate.Access with { Offset = null } };
-            }
-
-            candidates[at++] = candidate;
-        }
-
-        candidates.RemoveRange(at, candidates.Count - at);
-    }
-
-    private static ReadCall? GetReadCall(Candidate candidate)
-        => candidate.Access is { CallNodeIndex: >= 0, Offset: not null } access
-            ? new ReadCall(candidate.Thread, access.CallNodeIndex, access.CallIndex, access.Page, access.DatabaseId)
-            : null;
-
-    private static bool CoversBody(List<(int Start, int End)> ranges)
-    {
-        ranges.Sort();
-
-        var covered = PageHeader.Size;
-
-        foreach (var (start, end) in ranges)
-        {
-            if (start > covered)
-            {
-                return false;
-            }
-
-            covered = Math.Max(covered, end);
-        }
-
-        return covered >= PageData.Size;
     }
 
     private static void AddRecordCalls(TraceCallStore calls, TraceBufferPool pool, List<Candidate> candidates)
@@ -376,8 +324,6 @@ public sealed class TracePageAccessList
     }
 
     private readonly record struct Candidate(TracePageAccess Access, uint Thread, bool IsSnapshot);
-
-    private readonly record struct ReadCall(uint Thread, int CallNodeIndex, int CallIndex, PageAddress Page, ushort DatabaseId);
 
     private sealed class SnapshotFilter
     {

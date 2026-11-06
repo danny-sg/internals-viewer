@@ -19,6 +19,8 @@ internal sealed class SymbolReader(IntPtr enumerator, bool includeSignature, boo
 
     private int DecoratedLength { get; set; }
 
+    public int Count => Enumerator == IntPtr.Zero ? 0 : DiaBridge.SymbolCount(Enumerator);
+
     public uint Rva { get; private set; }
 
     public bool IsFunction { get; private set; }

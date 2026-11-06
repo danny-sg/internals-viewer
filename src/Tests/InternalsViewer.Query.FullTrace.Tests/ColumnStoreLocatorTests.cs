@@ -107,7 +107,7 @@ public class ColumnStoreLocatorTests
                                           .Write(complete + 16, third)
                                           .Write(partial, first);
 
-        var hook = new LocatorHook(LocatorReadResolver.GetReads(0x1000, Fix()), builder);
+        var hook = new LocatorHook(LocatorReadLookup.GetReads(0x1000, Fix()), builder);
 
         hook.OnEntry(new TraceHookCall { FunctionAddress = 0x1000, CallIndex = 0, Arguments = new[] { 0ul, complete, 0ul, 0ul } }, replay);
         hook.OnEntry(new TraceHookCall { FunctionAddress = 0x1000, CallIndex = 1, Arguments = new[] { 0ul, partial, 0ul, 0ul } }, replay);

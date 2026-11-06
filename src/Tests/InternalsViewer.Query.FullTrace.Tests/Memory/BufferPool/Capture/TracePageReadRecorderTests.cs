@@ -40,6 +40,11 @@ public class TracePageReadRecorderTests
     public void Reads_Of_The_Page_Header_Are_Not_Page_Reads() => Assert.Empty(Record(Read(3, Frame + 0x20, 2)));
 
     [Fact]
+    public void A_Read_Crossing_From_The_Header_Into_The_Body_Keeps_Its_Body_Bytes()
+        => Assert.Equal([new TracePageRead(At(3), Thread, Frame + 0x60, 0x1FA0)],
+                        Record(Read(3, Frame + 0x40, 0x40), Read(4, Frame + 0x80, 0x1F80)));
+
+    [Fact]
     public void Touching_Reads_Across_Two_Frames_Are_Separate_Page_Reads()
         => Assert.Equal(2, Record(Read(3, OtherFrame - 4, 4), Read(4, OtherFrame + 0x60, 4)).Count);
 

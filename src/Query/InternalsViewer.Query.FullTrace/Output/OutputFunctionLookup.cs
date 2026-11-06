@@ -35,6 +35,9 @@ internal static class OutputFunctionLookup
         ["CValOdsRow::SetDataX"] = OutputFunctionType.Send
     };
 
+    private static Dictionary<string, OutputFunctionType>.AlternateLookup<ReadOnlySpan<char>> NameLookup { get; }
+        = Names.GetAlternateLookup<ReadOnlySpan<char>>();
+
     private static Dictionary<string, OutputValueClass> ValueClasses { get; } = new(StringComparer.Ordinal)
     {
         ["CValOdsRow"] = OutputValueClass.OutputRow,
@@ -47,7 +50,7 @@ internal static class OutputFunctionLookup
         ["CValXVarTable"] = OutputValueClass.VariantTable
     };
 
-    public static NamedFunctionCollector<OutputFunctionType> CreateCollector() => new(Names);
+    public static OutputFunctionType? GetFunctionType(ReadOnlySpan<char> name) => NameLookup.TryGetValue(name, out var type) ? type : null;
 
     public static AddressTable<OutputValueClass> GetValueClasses(IReadOnlyDictionary<ulong, string[]> vtables)
         => VtableResolver.GetFirstMatches(vtables, GetValueClass);

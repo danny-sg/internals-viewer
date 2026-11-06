@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
@@ -47,6 +48,8 @@ internal sealed partial class TraceOperatorsPane
     private const float BandLabelInset = 5f;
 
     private const float BorderOffset = 0.5f;
+
+    private const int MaximumListedValues = 12;
 
     private static readonly SKColor TickHoverColour = new(255, 255, 255, 200);
 
@@ -422,29 +425,120 @@ internal sealed partial class TraceOperatorsPane
             return string.Join(Environment.NewLine, lines);
         }
 
+        var together = GetTicksDrawnWith(hit, tick);
+
+        if (together.Count > 1)
+        {
+            lines[0] = $"{lines[0]} × {together.Count:N0}";
+        }
+
         if (track.Values.Count > 1)
         {
             lines.Add(GetValueLabel(track, tick.Value));
         }
 
-        lines.AddRange(track.GetDetails?.Invoke(tick) ?? []);
+        lines.AddRange(MergeDetails([.. together.Select(t => track.GetDetails?.Invoke(t).ToList() ?? [])]));
 
-        lines.Add(tick.Node.Symbol);
+        lines.Add(JoinValues(together.Select(t => t.Node.Symbol)));
 
-        lines.Add($"Thread {tick.Thread}  ·  Call {tick.CallIndex + 1:N0}");
+        lines.Add($"Thread {JoinValues(together.Select(t => t.Thread.ToString()))}  ·  "
+                  + $"Call {JoinValues(together.Select(t => (t.CallIndex + 1).ToString("N0")))}");
 
-        lines.Add(GetPositionLabel(tick.Span));
+        lines.Add(GetPositionLabel(together[0].Span.From.Position, together[^1].Span.To.Position));
 
         return string.Join(Environment.NewLine, lines);
     }
 
-    private string GetPositionLabel(TraceSpan span)
+    private List<TraceTick> GetTicksDrawnWith(TraceTickHit hit, TraceTick tick)
+    {
+        var row = Rows[hit.Row];
+
+        var scale = Host.Scale;
+
+        if (hit.TickTrack.Series.GetTicks(row.TickOperator, row.Lifetimes[hit.Track].Thread) is not { } ticks)
+        {
+            return [tick];
+        }
+
+        var width = GetTickWidth(hit.TickTrack, ticks.Count);
+
+        if (GetLength(tick.Span) * scale > width)
+        {
+            return [tick];
+        }
+
+        var (left, _) = GetTickEdges(tick.Span, width, scale);
+
+        var together = new List<TraceTick>();
+
+        for (var index = ticks.GetFirstEndingFrom(Axis, Host.ViewStart + (left - width) / scale);
+             index < ticks.Count && ticks.GetStart(Axis, index) <= Host.ViewStart + (left + width) / scale;
+             index++)
+        {
+            if (ticks.GetValue(index) != tick.Value)
+            {
+                continue;
+            }
+
+            var candidate = ticks.Get(index);
+
+            if (GetLength(candidate.Span) * scale <= width && Math.Abs(GetTickEdges(candidate.Span, width, scale).Left - left) <= width)
+            {
+                together.Add(candidate);
+            }
+        }
+
+        return together.Count == 0 ? [tick] : together;
+    }
+
+    private static IEnumerable<string> MergeDetails(List<List<string>> details)
+    {
+        for (var line = 0; line < details.Max(d => d.Count); line++)
+        {
+            var values = details.Where(d => line < d.Count).Select(d => d[line]).ToList();
+
+            var separator = values[0].IndexOf(' ');
+
+            var label = separator > 0 ? values[0][..separator] : string.Empty;
+
+            if (values.Distinct().Count() > 1
+                && label.All(char.IsLetter)
+                && label.Length > 0
+                && values.All(v => v.StartsWith($"{label} ", StringComparison.Ordinal)))
+            {
+                yield return $"{label}s {JoinValues(values.Select(v => v[(separator + 1)..]))}";
+            }
+            else
+            {
+                yield return JoinValues(values);
+            }
+        }
+    }
+
+    private static string JoinValues(IEnumerable<string> values)
+    {
+        var distinct = new List<string>();
+
+        foreach (var value in values)
+        {
+            if (distinct.Count == 0 || distinct[^1] != value)
+            {
+                distinct.Add(value);
+            }
+        }
+
+        return distinct.Count <= MaximumListedValues
+            ? string.Join(", ", distinct)
+            : $"{string.Join(", ", distinct.Take(MaximumListedValues))}, etc.";
+    }
+
+    private string GetPositionLabel(TracePosition from, TracePosition to)
     {
         var origin = Host.GetOrigin(TraceTimelineAxis.Position);
 
-        var start = TraceScale.GetValue(span.From.Position) - origin;
+        var start = TraceScale.GetValue(from) - origin;
 
-        var end = TraceScale.GetValue(span.To.Position) - origin;
+        var end = TraceScale.GetValue(to) - origin;
 
         return $"Position {Math.Floor(start):N0} to {Math.Floor(end):N0}";
     }

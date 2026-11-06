@@ -1,11 +1,10 @@
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.FullTrace.Functions;
 
-
 namespace InternalsViewer.Query.FullTrace.Tests.Functions;
 
 [Trait("Category", "Unit")]
-public class PlanObjectInstanceMethodCollectorTests
+public class InstanceMethodLookupTests
 {
     [Fact]
     public void A_Member_Function_Takes_Its_Iterator_As_This()
@@ -42,18 +41,18 @@ public class PlanObjectInstanceMethodCollectorTests
     [Fact]
     public void Every_Method_Of_A_Plan_Object_Is_Tracked()
     {
-        Assert.True(PlanObjectInstanceMethodCollector.IsPlanObjectMethod("CXteRange::QScanGet"));
-        Assert.True(PlanObjectInstanceMethodCollector.IsPlanObjectMethod("CBpXteHashAgg::PbpqsGet"));
-        Assert.False(PlanObjectInstanceMethodCollector.IsPlanObjectMethod("CQScanRangeNew::Open"));
+        Assert.True(InstanceMethodLookup.IsPlanObjectMethod("CXteRange::QScanGet"));
+        Assert.True(InstanceMethodLookup.IsPlanObjectMethod("CBpXteHashAgg::PbpqsGet"));
+        Assert.False(InstanceMethodLookup.IsPlanObjectMethod("CQScanRangeNew::Open"));
     }
 
     [Fact]
     public void An_Open_Reached_Through_Its_Helper_Is_An_Iterator_Method()
     {
-        Assert.True(PlanObjectInstanceMethodCollector.IsInstanceMethod("CQScanSortNew::OpenHelper"));
-        Assert.False(PlanObjectInstanceMethodCollector.IsInstanceMethod("CQScanSortNew::BuildSortTable"));
+        Assert.True(InstanceMethodLookup.IsInstanceMethod("CQScanSortNew::OpenHelper"));
+        Assert.False(InstanceMethodLookup.IsInstanceMethod("CQScanSortNew::BuildSortTable"));
     }
 
     private static int? Register(string signature, string decoratedName)
-        => PlanObjectInstanceMethodCollector.InstanceRegister(FunctionSignature.Parse(signature, decoratedName));
+        => InstanceMethodLookup.InstanceRegister(FunctionSignature.Parse(signature, decoratedName));
 }

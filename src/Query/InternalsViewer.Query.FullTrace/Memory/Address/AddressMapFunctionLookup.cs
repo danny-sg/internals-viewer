@@ -1,4 +1,3 @@
-using InternalsViewer.Query.FullTrace.Memory.Address;
 using InternalsViewer.Query.CallStack.Arguments;
 using InternalsViewer.Query.CallStack.Symbols;
 using InternalsViewer.Query.Events.Parsing;
@@ -6,7 +5,7 @@ using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Arguments.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Address.Enums;
 
-namespace InternalsViewer.Query.FullTrace.Functions;
+namespace InternalsViewer.Query.FullTrace.Memory.Address;
 
 /// <summary>
 /// Resolves functions that contribute to the memory map by declaring, constructing or visiting class instances
@@ -27,7 +26,7 @@ namespace InternalsViewer.Query.FullTrace.Functions;
 /// GetDeclared maps register passed class pointer arguments (and a class pointer return value in RAX) to their argument slot index and
 /// class name, skipping the hidden return buffer slot.
 /// </remarks>
-internal static class AddressMapFunctionResolver
+internal static class AddressMapFunctionLookup
 {
     internal static DeclaredClass[] GetDeclared(ArgumentLayout layout, StringInternPool? strings = null)
     {
@@ -78,86 +77,38 @@ internal static class AddressMapFunctionResolver
         return pointers is null ? [] : [.. pointers];
     }
 
-    /// <summary>
-    /// Collects memory map functions during symbol enumeration
-    /// </summary>
-    internal sealed class Collector
+    internal static AddressMapFunction? GetFunction(SymbolTable.Reader symbol, ArgumentLayout? layout, StringInternPool classes)
     {
-        private Dictionary<uint, AddressMapFunction> Found { get; } = [];
+        DeclaredClass[] declared = [];
 
-        private StringInternPool Classes { get; } = new();
+        int[] pointers = [];
 
-        public void Visit(SymbolTable.Reader symbol, ArgumentLayout? layout)
+        if (layout is not null && !symbol.HasFoldedParameters)
         {
-            if (!symbol.IsFirst)
-            {
-                Revisit(symbol);
+            declared = GetDeclared(layout, classes);
 
-                return;
-            }
-
-            DeclaredClass[] declared = [];
-
-            int[] pointers = [];
-
-            if (layout is not null)
-            {
-                declared = GetDeclared(layout, Classes);
-
-                pointers = GetPointers(layout);
-            }
-
-            var operation = symbol.FunctionType == FunctionType.Member
-                             ? symbol.IsConstructor
-                                 ? AddressMapOperation.Constructed
-                                 : AddressMapOperation.Visited
-                             : AddressMapOperation.Declared;
-
-            if (operation != AddressMapOperation.Declared || declared.Length > 0 || pointers.Length > 0)
-            {
-                Found[symbol.Rva] = new AddressMapFunction(symbol.Rva, operation) { DeclaredClasses = declared, Pointers = pointers };
-            }
+            pointers = GetPointers(layout);
         }
 
-        public AddressMapFunction[] Build() => [.. Found.Values];
+        var operation = symbol.FunctionType == FunctionType.Member
+                         ? symbol.IsConstructor
+                             ? AddressMapOperation.Constructed
+                             : AddressMapOperation.Visited
+                         : AddressMapOperation.Declared;
 
-        private void Revisit(SymbolTable.Reader symbol)
+        if (operation == AddressMapOperation.Constructed && symbol.HasFoldedName)
         {
-            if (!Found.TryGetValue(symbol.Rva, out var function))
-            {
-                return;
-            }
-
-            if (!symbol.HasSameName && function.Operation == AddressMapOperation.Constructed)
-            {
-                function = function with { Operation = AddressMapOperation.Visited };
-            }
-
-            if (!symbol.HasSameName
-                && function.Operation == AddressMapOperation.Visited
-                && !symbol.First.IsConstructor
-                && !symbol.HasSameClass)
-            {
-                function = function with
-                {
-                    Operation = AddressMapOperation.Declared,
-                    DeclaredClasses = [.. function.DeclaredClasses.Where(d => d.ArgumentSlot != ArgumentLayout.ReturnRegister)]
-                };
-            }
-
-            if (!symbol.HasSameParameters)
-            {
-                function = function with { DeclaredClasses = [], Pointers = [] };
-            }
-
-            if (function is { Operation: AddressMapOperation.Declared, DeclaredClasses.Length: 0, Pointers.Length: 0 })
-            {
-                Found.Remove(symbol.Rva);
-            }
-            else
-            {
-                Found[symbol.Rva] = function;
-            }
+            operation = AddressMapOperation.Visited;
         }
+        else if (operation == AddressMapOperation.Visited && symbol.HasFoldedClass)
+        {
+            operation = AddressMapOperation.Declared;
+
+            declared = [.. declared.Where(d => d.ArgumentSlot != ArgumentLayout.ReturnRegister)];
+        }
+
+        return operation != AddressMapOperation.Declared || declared.Length > 0 || pointers.Length > 0
+            ? new AddressMapFunction(symbol.Rva, operation) { DeclaredClasses = declared, Pointers = pointers }
+            : null;
     }
 }
