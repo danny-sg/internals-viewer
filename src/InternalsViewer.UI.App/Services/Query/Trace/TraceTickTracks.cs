@@ -1,6 +1,5 @@
 using System.Collections.Generic;
-using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Categories;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
@@ -10,6 +9,7 @@ using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline.Enums;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using SkiaSharp;
+using InternalsViewer.Query.FullTrace.Symbols.Categories;
 
 namespace InternalsViewer.UI.App.Services.Query.Trace;
 
@@ -159,7 +159,7 @@ public static class TraceTickTracks
 
     public static SKColor ParseColour(string colour) => SKColor.TryParse(colour, out var parsed) ? parsed : DefaultColour;
 
-    public static SKColor GetCategoryColour(CallStackNode node) => node.CategoryColour is { } hex ? ParseColour(hex) : DefaultColour;
+    public static SKColor GetCategoryColour(CallTreeNode node) => node.CategoryColour is { } hex ? ParseColour(hex) : DefaultColour;
 
     private static SKColor GetPassedUpColour(TraceRowReturnMarkMap marks, ExecutionOperatorEvent operatorEvent)
         => marks.IsBatch(operatorEvent) ? BatchColour : PassedUpColour;

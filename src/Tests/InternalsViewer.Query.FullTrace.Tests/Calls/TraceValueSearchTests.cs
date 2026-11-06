@@ -1,4 +1,4 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Calls;
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRowHelper;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
@@ -68,10 +68,10 @@ public class TraceValueSearchTests
     [Fact]
     public async Task Calls_The_Filter_Leaves_Out_Are_Not_Found()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
-        var kept = tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqlmin"), Rva = 0x10 }, 1);
-        var dropped = tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqlmin"), Rva = 0x20 }, 1);
+        var kept = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x10 }, 1);
+        var dropped = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x20 }, 1);
 
         var builder = new TraceCallStore.Builder();
 
@@ -81,7 +81,7 @@ public class TraceValueSearchTests
 
         store.MapNodes([kept, dropped]);
 
-        bool Include(CallStackNode? node) => !ReferenceEquals(node, dropped);
+        bool Include(CallTreeNode? node) => !ReferenceEquals(node, dropped);
 
         var search = new TraceValueSearch(store);
 

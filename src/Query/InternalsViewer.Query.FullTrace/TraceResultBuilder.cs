@@ -1,7 +1,7 @@
 using InternalsViewer.Query.FullTrace.Memory.Address;
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Arguments;
@@ -9,7 +9,6 @@ using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
-using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
@@ -19,13 +18,13 @@ namespace InternalsViewer.Query.FullTrace;
 
 internal sealed class TraceResultBuilder
 {
-    public TraceResultBuilder(CallStackTree callStack,
+    public TraceResultBuilder(CallTree callTree,
                               TraceCallStore callStore,
                               TraceTimeline timeline,
                               IReadOnlyList<EngineEvent> events,
                               IReadOnlyList<IteratorPlanNode> planNodes)
     {
-        CallStack = callStack;
+        CallTree = callTree;
         CallStore = callStore;
         Timeline = timeline;
         Events = events;
@@ -35,9 +34,13 @@ internal sealed class TraceResultBuilder
         timeline.SetCalls(callStore);
 
         PlanLink = IteratorPlanLinker.Link(planNodes, events);
+
+        OperatorFrames = IteratorInstanceMatcher.Match(callTree, events, PlanLink);
     }
 
     public IteratorPlanLink PlanLink { get; }
+
+    public OperatorFrameMap OperatorFrames { get; }
 
     public AllocationIndex Allocation { get; init; } = AllocationIndex.Empty;
 
@@ -49,7 +52,7 @@ internal sealed class TraceResultBuilder
 
     public TraceBufferPool BufferPool { get; init; } = TraceBufferPool.Empty;
 
-    private CallStackTree CallStack { get; }
+    private CallTree CallTree { get; }
 
     private TraceCallStore CallStore { get; }
 
@@ -70,15 +73,16 @@ internal sealed class TraceResultBuilder
         return Lifetimes;
     }
 
-    public TraceResult Build(IReadOnlyList<TraceOutputStructure> outputStructures)
+    public TraceResult Build()
     {
         var lifetimes = Lifetimes ?? BuildLifetimes();
 
         var enclosing = EnclosingOperatorCallIndex.Build(CallStore, lifetimes.OperatorsByInstance);
 
-        return new TraceResult(CallStack, CallStore, Timeline)
+        return new TraceResult(CallTree, CallStore, Timeline)
         {
             PlanLink = PlanLink,
+            OperatorFrames = OperatorFrames,
             PlanNodes = PlanNodes,
             Teardowns = Teardowns,
             HoBtAccess = HoBtAccessMap.Build(CallStore, Timeline.MappedNodes),
@@ -89,7 +93,6 @@ internal sealed class TraceResultBuilder
             MemoryObjects = MemoryObjectMap.Build(CallStore, Timeline.MappedNodes, MemoryObjectSnapshot),
             ObjectPool = ObjectPool,
             BufferPool = BufferPool,
-            OutputStructures = outputStructures,
             RowReturnMarks = TraceRowReturnMarkMap.Build(Timeline, CallStore, lifetimes, enclosing),
             Reads = TraceReadResolver.Build(Timeline, CallStore, lifetimes, enclosing),
             Evaluations = TraceEvaluationReader.Build(Timeline, CallStore, lifetimes, enclosing),

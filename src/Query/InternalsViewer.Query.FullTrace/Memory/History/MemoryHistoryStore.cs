@@ -2,7 +2,7 @@ using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using System.Buffers.Binary;
 using System.Collections;
 using System.Runtime.CompilerServices;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -414,7 +414,7 @@ public sealed partial class MemoryHistoryStore
     public bool IsCreatedWithin(int block, TracePosition from, TracePosition to)
         => GetCreatedPosition(block) is var created && from <= created && created <= to;
 
-    public CallStackNode? GetAllocatingCall(int block, TraceTimeline timeline)
+    public CallTreeNode? GetAllocatingCall(int block, TraceTimeline timeline)
         => timeline.NodeOf(BlockArray[block].CallNodeIndex)?.Ancestors().FirstOrDefault(n => !AllocationFunction.IsAllocatorFrame(n.Frame));
 
     private MemoryHistoryCall GetAllocationCall(int block, TraceTimeline timeline, int firstListed)
@@ -453,7 +453,7 @@ public sealed partial class MemoryHistoryStore
         };
     }
 
-    private static int GetCallIndex(TraceTimeline timeline, CallStackNode node, uint thread, TracePosition position)
+    private static int GetCallIndex(TraceTimeline timeline, CallTreeNode node, uint thread, TracePosition position)
     {
         foreach (var stack in timeline.GetStack(position))
         {
@@ -543,7 +543,7 @@ public sealed partial class MemoryHistoryStore
 
     private sealed record AddressOrder(int[] Blocks, AddressIndex Addresses);
 
-    private sealed class CallBuilder(CallStackNode? node, MemoryHistoryWrite first, ulong iterator)
+    private sealed class CallBuilder(CallTreeNode? node, MemoryHistoryWrite first, ulong iterator)
     {
         private List<MemoryHistoryRegion> Changed { get; } = [];
 

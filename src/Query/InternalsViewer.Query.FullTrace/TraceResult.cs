@@ -1,7 +1,7 @@
 using InternalsViewer.Query.FullTrace.Memory.Address;
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Export;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
@@ -9,7 +9,6 @@ using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.History;
-using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
@@ -17,9 +16,13 @@ using InternalsViewer.Query.Memory;
 
 namespace InternalsViewer.Query.FullTrace;
 
-public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallStore, TraceTimeline Timeline) : IRunExtra
+public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, TraceTimeline Timeline) : IRunExtra
 {
+    internal const int ActivityBuckets = 96;
+
     public IteratorPlanLink PlanLink { get; init; } = IteratorPlanLink.Empty;
+
+    public OperatorFrameMap OperatorFrames { get; init; } = OperatorFrameMap.Empty;
 
     internal IReadOnlyList<IteratorPlanNode> PlanNodes { get; init; } = [];
 
@@ -45,8 +48,6 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
 
     public MemoryHistoryStore MemoryHistory { get; init; } = MemoryHistoryStore.Empty;
 
-    internal IReadOnlyList<TraceOutputStructure> OutputStructures { get; init; } = [];
-
     public TraceRowReturnMarkMap RowReturnMarks { get; init; } = TraceRowReturnMarkMap.Empty;
 
     public TraceTickSeries Reads { get; init; } = TraceTickSeries.Empty;
@@ -57,11 +58,9 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
 
     public TraceTickSeries Seeks { get; init; } = TraceTickSeries.Empty;
 
-    public IReadOnlyList<CallStackNode> QueryRoots => Roots ??= QueryExecutionCropper.GetRoots(CallStack);
+    public IReadOnlyList<CallTreeNode> QueryRoots => Roots ??= QueryExecutionCropper.GetRoots(CallTree);
 
     public TraceTimeline QueryTimeline => CroppedTimeline ??= GetQueryTimeline();
-
-    public IReadOnlyList<TraceOutputRowSource> OutputSources => Sources ??= TraceOutputLineage.GetSources(Lifetimes, OutputStructures);
 
     internal EnclosingOperatorCallIndex EnclosingCalls
     {
@@ -69,15 +68,13 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
         init;
     }
 
-    private IReadOnlyList<CallStackNode>? Roots { get; set; }
-
-    private IReadOnlyList<TraceOutputRowSource>? Sources { get; set; }
+    private IReadOnlyList<CallTreeNode>? Roots { get; set; }
 
     private TraceTimeline? CroppedTimeline { get; set; }
 
     private TraceTimeline? ActivityWindow { get; set; }
 
-    private Dictionary<TraceTimeline, Dictionary<CallStackNode, int[]>> ActivityByWindow { get; } =
+    private Dictionary<TraceTimeline, Dictionary<CallTreeNode, int[]>> ActivityByWindow { get; } =
         new(ReferenceEqualityComparer.Instance);
 
     internal TraceResult WithPageAccesses()
@@ -102,7 +99,7 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
         yield return ("Buffer Pool Pages", BufferPool.Count, BufferPool.Bytes);
         yield return ("Page Reads", PageReads.Count, PageReads.Bytes);
         yield return ("Page Accesses", PageAccesses.Count, PageAccesses.Bytes);
-        yield return ("Call Tree Nodes", CallStack.Nodes().LongCount(), null);
+        yield return ("Call Tree Nodes", CallTree.Nodes().LongCount(), null);
         yield return ("Operator Lifetimes", Lifetimes.Count, null);
         yield return ("Read Ticks", Reads.Count, Reads.Bytes);
         yield return ("Evaluation Ticks", Evaluations.Count, Evaluations.Bytes);
@@ -121,18 +118,18 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
 
         ActivityWindow = window;
 
-        CallStack.SetCallActivity(() => GetCallActivity(window));
+        CallTree.SetCallActivity(() => GetCallActivity(window));
 
-        CallStack.ComputeActivity(CallStack.ActivityMinUs, CallStack.ActivityMaxUs, QueryRunner.ActivityBuckets);
+        CallTree.ComputeActivity(ActivityBuckets);
     }
 
-    private Dictionary<CallStackNode, int[]> GetCallActivity(TraceTimeline window)
+    private Dictionary<CallTreeNode, int[]> GetCallActivity(TraceTimeline window)
     {
         lock (ActivityByWindow)
         {
             if (!ActivityByWindow.TryGetValue(window, out var activity))
             {
-                activity = window.GetCallActivity(QueryRunner.ActivityBuckets);
+                activity = window.GetCallActivity(ActivityBuckets);
 
                 ActivityByWindow[window] = activity;
             }
@@ -143,6 +140,6 @@ public sealed record TraceResult(CallStackTree CallStack, TraceCallStore CallSto
 
     private TraceTimeline GetQueryTimeline()
         => QueryRoots.Count > 0
-            ? Timeline.CroppedTo(QueryRoots.ToHashSet<CallStackNode>(ReferenceEqualityComparer.Instance)) ?? Timeline
+            ? Timeline.CroppedTo(QueryRoots.ToHashSet<CallTreeNode>(ReferenceEqualityComparer.Instance)) ?? Timeline
             : Timeline;
 }

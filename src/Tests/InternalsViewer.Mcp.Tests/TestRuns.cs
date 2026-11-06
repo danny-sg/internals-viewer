@@ -1,11 +1,11 @@
-using InternalsViewer.Query.Helpers;
+using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Mcp.Documents;
 using InternalsViewer.Mcp.Tests.Documents;
 using InternalsViewer.Query;
-using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Locators;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
+using InternalsViewer.Query.FullTrace.Symbols;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
@@ -20,6 +20,7 @@ using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.Query.FullTrace.Locators;
 
 namespace InternalsViewer.Mcp.Tests;
 
@@ -133,7 +134,7 @@ internal static class TestRuns
             DurationUs = 5
         };
 
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var caller = tree.AddCall(tree.Root, Frame(0x10, "CQueryScan::GetRow+0x0", 0), 1);
 
@@ -148,12 +149,6 @@ internal static class TestRuns
         getRow.AllocatedBytes = 100;
 
         getRow.Allocations = 1;
-
-        getRow.Events.Add(diskRead);
-
-        diskRead.CallStack = getRow;
-
-        scan.EntryFrames = [getRow];
 
         var planNode = new PlanNode
         {
@@ -183,7 +178,6 @@ internal static class TestRuns
             IsSuccess = true,
             EngineEvents = [statement, scan, lockAcquired, diskRead, latch, wait, bufferRead],
             ExecutionPlans = [plan],
-            CallStackTree = tree,
             RowCount = 120,
             CropStartUs = 10,
             CropEndUs = 1010
@@ -207,7 +201,7 @@ internal static class TestRuns
         return (new McpDocumentResolver(new TestDocumentSource(document)), document);
     }
 
-    private static TraceResult FullTrace(CallStackTree tree, CallStackNode caller, CallStackNode getRow, ExecutionOperatorEvent scan)
+    private static TraceResult FullTrace(CallTree tree, CallTreeNode caller, CallTreeNode getRow, ExecutionOperatorEvent scan)
     {
         getRow.CallActivity = [0, 1, 2];
 
@@ -221,9 +215,9 @@ internal static class TestRuns
 
         timeline.MapNodes([caller, getRow, publish]);
 
-        tree.RemoveCallsUnder(node => node.IsExtendedEvents);
+        tree.RemoveCallsUnder(node => node.IsInstrumentation);
 
-        timeline.RemoveCallsUnder(node => node.IsExtendedEvents);
+        timeline.RemoveCallsUnder(node => node.IsInstrumentation);
 
         var memory = AllocationIndex.Build([new MemoryAllocation(7, At(22), At(23), 100, 0xA)], [new MemoryFree(7, At(31), At(32), 0xA)]);
 
@@ -239,20 +233,24 @@ internal static class TestRuns
 
         callStore.MapNodes([caller, getRow, publish]);
 
-        return new TraceResult(tree, callStore, timeline) { Allocation = memory, Lifetimes = lifetimes };
+        var frames = new OperatorFrameMap();
+
+        frames.SetEntryFrames(scan, [getRow]);
+
+        return new TraceResult(tree, callStore, timeline) { Allocation = memory, Lifetimes = lifetimes, OperatorFrames = frames };
     }
 
-    private static CallstackFrame Frame(ulong rva, string symbol, ulong instance = 0)
+    private static CallFrame Frame(ulong rva, string symbol, ulong instance = 0)
     {
         SymbolsHelper.SplitOffset(symbol, out var name, out var offset);
 
-        return new CallstackFrame
+        return new CallFrame
         {
             Module = new("sqlmin", "sqlmin.pdb", "0123456789ABCDEF0123456789ABCDEF", 2),
             Rva = (uint)rva,
             Address = 0x7FF0_0000_0000 + rva,
             InstanceAddress = instance,
-            Function = CallstackFunction.Parse("sqlmin", name),
+            Function = FrameFunction.Parse("sqlmin", name),
             Offset = offset
         };
     }

@@ -1,7 +1,7 @@
 using InternalsViewer.Query.FullTrace.Memory.Address;
 using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
-using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Arguments;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
+using InternalsViewer.Query.FullTrace.Symbols;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
 using InternalsViewer.Query.FullTrace.Iterators;
@@ -9,7 +9,7 @@ using InternalsViewer.Query.FullTrace.Iterators;
 namespace InternalsViewer.Query.FullTrace.Calls;
 
 public sealed class TraceReferenceFinder(TraceCallStore store,
-                                         CallStackTree? tree,
+                                         CallTree? tree,
                                          IReadOnlyDictionary<ulong, IteratorTarget> iterators,
                                          HoBtAccessMap hobtAccess,
                                          AddressMap addressMap,
@@ -21,7 +21,7 @@ public sealed class TraceReferenceFinder(TraceCallStore store,
 
     private TraceValueSearch Search { get; } = new(store);
 
-    private Lazy<Dictionary<ulong, CallstackFrame>> Frames { get; } = new(() => GetFrames(tree));
+    private Lazy<Dictionary<ulong, CallFrame>> Frames { get; } = new(() => GetFrames(tree));
 
     public static string GetIteratorName(IteratorTarget iterator)
         => $"{iterator.Label} {(iterator.IsPlanObject ? "Plan Object" : "Iterator")}";
@@ -29,7 +29,7 @@ public sealed class TraceReferenceFinder(TraceCallStore store,
     public static string? GetAllocationName(AddressMapEntry entry)
         => (entry.Site ?? entry.Allocator) is { } allocation ? $"{allocation} Allocation" : null;
 
-    public CallstackFrame? GetFrame(TraceValueUse use)
+    public CallFrame? GetFrame(TraceValueUse use)
         => use.First.Node?.Frame is { Function: not null } frame ? frame : Frames.Value.GetValueOrDefault(use.FunctionAddress);
 
     public async Task<TraceValueReferenceResult> FindAsync(ulong value, CancellationToken cancellationToken)
@@ -50,11 +50,11 @@ public sealed class TraceReferenceFinder(TraceCallStore store,
     public Task<IReadOnlyList<TraceValueCall>> GetCallsAsync(TraceValueUse use, ulong value, CancellationToken cancellationToken)
         => Search.GetTraceValueCallsAsync(use, value, cancellationToken);
 
-    private static Dictionary<ulong, CallstackFrame> GetFrames(CallStackTree? tree)
+    private static Dictionary<ulong, CallFrame> GetFrames(CallTree? tree)
     {
-        var frames = new Dictionary<ulong, CallstackFrame>();
+        var frames = new Dictionary<ulong, CallFrame>();
 
-        foreach (var frame in tree?.Nodes().Select(n => n.Frame).OfType<CallstackFrame>() ?? [])
+        foreach (var frame in tree?.Nodes().Select(n => n.Frame).OfType<CallFrame>() ?? [])
         {
             if (frame.Address != 0 && (!frames.TryGetValue(frame.Address, out var existing) || existing.Function is null))
             {

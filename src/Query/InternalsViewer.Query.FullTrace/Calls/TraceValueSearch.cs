@@ -1,4 +1,4 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Arguments;
 
 namespace InternalsViewer.Query.FullTrace.Calls;
@@ -7,16 +7,16 @@ public sealed class TraceValueSearch(TraceCallStore store)
 {
     public Task<IReadOnlyList<TraceValueUse>> GetValueUsesAsync(ulong value,
                                                                 CancellationToken cancellationToken,
-                                                                Func<CallStackNode?, bool>? include = null)
+                                                                Func<CallTreeNode?, bool>? include = null)
         => Task.Run<IReadOnlyList<TraceValueUse>>(() => GetValueUses(value, include, cancellationToken), cancellationToken);
 
     public Task<IReadOnlyList<TraceValueCall>> GetTraceValueCallsAsync(TraceValueUse use,
                                                                        ulong value,
                                                                        CancellationToken cancellationToken,
-                                                                       Func<CallStackNode?, bool>? include = null)
+                                                                       Func<CallTreeNode?, bool>? include = null)
         => Task.Run<IReadOnlyList<TraceValueCall>>(() => GetTraceValueCalls(use, value, include, cancellationToken), cancellationToken);
 
-    private List<TraceValueUse> GetValueUses(ulong value, Func<CallStackNode?, bool>? include, CancellationToken cancellationToken)
+    private List<TraceValueUse> GetValueUses(ulong value, Func<CallTreeNode?, bool>? include, CancellationToken cancellationToken)
     {
         var uses = new Dictionary<(ulong FunctionAddress, ulong InstanceAddress, string Location), TraceValueUse>();
 
@@ -78,7 +78,7 @@ public sealed class TraceValueSearch(TraceCallStore store)
 
     private List<TraceValueCall> GetTraceValueCalls(TraceValueUse use,
                                                     ulong value,
-                                                    Func<CallStackNode?, bool>? include,
+                                                    Func<CallTreeNode?, bool>? include,
                                                     CancellationToken cancellationToken)
     {
         var valueCalls = new List<TraceValueCall>();
@@ -112,7 +112,7 @@ public sealed class TraceValueSearch(TraceCallStore store)
         return valueCalls;
     }
 
-    private bool IsIncluded(TraceCallChunk columns, int callIndex, Func<CallStackNode?, bool>? include)
+    private bool IsIncluded(TraceCallChunk columns, int callIndex, Func<CallTreeNode?, bool>? include)
         => include is null || include(store.GetNode(columns.GetCallNodeIndex(callIndex)));
 
     private TraceValueCall GetValueCall(TraceCallChunk columns, int callIndex, int start)

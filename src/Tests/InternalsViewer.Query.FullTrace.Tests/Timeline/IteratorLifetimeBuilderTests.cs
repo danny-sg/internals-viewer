@@ -1,5 +1,5 @@
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Native;
@@ -31,7 +31,7 @@ public class IteratorLifetimeBuilderTests
     [Fact]
     public void An_Operator_Lives_From_Its_First_Call_To_Its_Last()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var caller = tree.AddCall(tree.Root, Frame(0x10, 0), 1);
         var open = tree.AddCall(caller, Frame(0x20, Hash), 1);
@@ -75,7 +75,7 @@ public class IteratorLifetimeBuilderTests
     [Fact]
     public void Memory_Allocated_Inside_A_Child_Operator_Is_In_Use_On_The_Child()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var caller = tree.AddCall(tree.Root, Frame(0x10, 0), 1);
         var open = tree.AddCall(caller, Frame(0x20, Hash), 1);
@@ -120,7 +120,7 @@ public class IteratorLifetimeBuilderTests
     [Fact]
     public void A_Batch_Helper_Is_A_Batch_To_Row_Operator_For_The_Node_It_Reports()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var caller = tree.AddCall(tree.Root, Frame(0x10, 0), 1);
         var helperRow = tree.AddCall(caller, Frame(0x70, BatchHelper), 1);
@@ -149,7 +149,7 @@ public class IteratorLifetimeBuilderTests
     [Fact]
     public void A_Batch_Helper_For_A_Node_The_Plan_Does_Not_Show_Adapts_The_Operator_Beneath_It()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var caller = tree.AddCall(tree.Root, Frame(0x10, 0), 1);
         var helperRow = tree.AddCall(caller, Frame(0x70, BatchHelper), 1);
@@ -211,7 +211,7 @@ public class IteratorLifetimeBuilderTests
 
     private static (TraceTimeline Timeline, ExecutionOperatorEvent Operator) BuildHashTimeline()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var caller = tree.AddCall(tree.Root, Frame(0x10, 0), 1);
         var getRow = tree.AddCall(caller, Frame(0x30, Hash), 2);
@@ -235,7 +235,7 @@ public class IteratorLifetimeBuilderTests
         Instances = [instance]
     };
 
-    private static CallstackFrame Frame(ulong address, ulong instance)
+    private static CallFrame Frame(ulong address, ulong instance)
         => new() { Module = new("sqlmin"), Rva = (uint)address, Address = address, InstanceAddress = instance };
 
     private static CallSpan Span(int callNodeIndex, ulong start, ulong end)

@@ -1,4 +1,4 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Memory.BufferPool;
@@ -29,10 +29,10 @@ internal static class BufferPoolFunctionLookup
     public static BufferPoolFunctionType? GetFunctionType(ReadOnlySpan<char> name)
         => NameLookup.TryGetValue(name, out var type) ? type : null;
 
-    public static bool IsBufferPool(CallstackFrame? frame)
+    public static bool IsBufferPool(CallFrame? frame)
         => frame is { Function.ClassName: BufferPoolClass } && frame.Module.Name.Equals(Module, StringComparison.OrdinalIgnoreCase);
 
-    public static bool IsPostRead(CallstackFrame? frame)
+    public static bool IsPostRead(CallFrame? frame)
         => frame is { Function: { ClassName: FileControlBlockClass, MethodName: PostReadMethod } }
            && frame.Module.Name.Equals(Module, StringComparison.OrdinalIgnoreCase);
 }

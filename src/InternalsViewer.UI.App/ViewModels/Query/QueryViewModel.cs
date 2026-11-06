@@ -22,7 +22,7 @@ using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Query;
 using InternalsViewer.Query.Recording;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
@@ -49,7 +49,7 @@ using InternalsViewer.UI.App.Services.Query.Timeline;
 using InternalsViewer.UI.App.ViewModels.Index;
 using InternalsViewer.UI.App.ViewModels.Query.Events;
 using InternalsViewer.UI.App.ViewModels.Query.Trace;
-using InternalsViewer.UI.App.ViewModels.Query.Trace.CallStack;
+using InternalsViewer.UI.App.ViewModels.Query.Trace.Calls;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryHistory;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.OperatorTracks;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
@@ -67,7 +67,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
-using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Transactions;
 using InternalsViewer.TransactionLog.LogRecords;
@@ -273,9 +272,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private bool _isHeatmap;
 
     [ObservableProperty]
-    private bool _isFlameGraphVisible = true;
-
-    [ObservableProperty]
     private bool _isAnnotationsVisible;
 
     [ObservableProperty]
@@ -316,7 +312,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private string? _statementName;
 
     [ObservableProperty]
-    private CallStackNode? _selectedCallNode;
+    private CallTreeNode? _selectedCallNode;
 
     [ObservableProperty]
     private string? _traceStatus;
@@ -329,11 +325,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private List<QueryResultSet> _resultSets = [];
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CallStackRoots))]
-    private CallStackTree? _callStack;
+    [NotifyPropertyChangedFor(nameof(CallTreeRoots))]
+    private CallTree? _callTree;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(SelectedCallstack))]
     private EngineEvent? _selectedEvent;
 
     [ObservableProperty]
@@ -489,7 +484,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public event Action<long>? PlayheadMoveRequested;
 
-    public event Action<CallStackNode, int>? CallNavigationRequested;
+    public event Action<CallTreeNode, int>? CallNavigationRequested;
 
     public event Action<string>? SqlTextImported;
 
@@ -532,20 +527,14 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     /// <summary>
     /// The top-level frames (thread starts) of the query's merged call stack tree, for the call tree view
     /// </summary>
-    public IEnumerable<CallStackNode> CallStackRoots => CroppedRoots ?? CallStack?.Root.ChildNodes ?? [];
+    public IEnumerable<CallTreeNode> CallTreeRoots => CroppedRoots ?? CallTree?.Root.ChildNodes ?? [];
 
-    public IReadOnlyList<CallStackNode>? CroppedRoots
-        => QueryOptions.CropToQuery && Trace is { QueryRoots.Count: > 0 } trace && ReferenceEquals(trace.CallStack, CallStack)
+    public IReadOnlyList<CallTreeNode>? CroppedRoots
+        => QueryOptions.CropToQuery && Trace is { QueryRoots.Count: > 0 } trace && ReferenceEquals(trace.CallTree, CallTree)
             ? trace.QueryRoots
             : null;
 
-    // The selected event's path is recovered by walking its leaf node up the shared call stack tree.
-    public List<CallstackFrame> SelectedCallstack
-        => SelectedEvent?.CallStack?.Path()
-                        .Where(f => f.Function is null
-                                 || (f.Module.Category.GetCategoryMetadata()?.IsInfrastructure != true
-                                  && f.Function.SymbolCategory.GetCategoryMetadata()?.IsInfrastructure != true))
-                        .ToList() ?? [];
+    public OperatorFrameMap OperatorFrames => Trace?.OperatorFrames ?? OperatorFrameMap.Empty;
 
     public IReadOnlyDictionary<int, string>? SelectedPlanNodeColumnNames
     {
@@ -731,8 +720,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public bool IsTraceTimelineHintVisible => TraceTimeline is null && !IsTraceLoading;
 
-    public bool IsFlameGraphEnabled => QueryOptions.IncludeCallStack && !Layout.IsTrace;
-
     public ITimelineRulerSource? RulerSource => Layout.IsTrace ? TraceRuler : EventRuler;
 
     public bool IsRulerAvailable => LastRun is not null && RulerSource is not null;
@@ -774,7 +761,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             IncludeLatch = QueryOptions.Options.IncludeLatch,
             IncludeColumnstore = QueryOptions.Options.IncludeColumnstore,
             IncludeMemory = QueryOptions.Options.IncludeMemory,
-            IncludeCallstack = QueryOptions.Options.IncludeCallStack,
             LockModeCategories = [.. QueryOptions.Options.IncludeLockModeCategories],
             CaptureHeapReads = QueryOptions.CaptureHeapReads,
             CaptureHeapWrites = QueryOptions.CaptureHeapWrites,
@@ -904,7 +890,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    public void OpenCallTree(CallStackNode? node, int callIndex)
+    public void OpenCallTree(CallTreeNode? node, int callIndex)
     {
         Layout.ShowCallTree();
 
@@ -949,11 +935,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     partial void OnSelectedEventChanged(EngineEvent? value) => SelectedEventProperties = value?.GetProperties() ?? [];
 
-    partial void OnCallStackChanged(CallStackTree? value)
+    partial void OnCallTreeChanged(CallTree? value)
     {
-        Symbols.CallStack = value;
+        Symbols.CallTree = value;
 
-        if (Trace is { } trace && !ReferenceEquals(trace.CallStack, value))
+        if (Trace is { } trace && !ReferenceEquals(trace.CallTree, value))
         {
             Trace = null;
         }
@@ -1112,10 +1098,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             RefreshTimelineDefinition();
         }
-        else if (e.PropertyName == nameof(QueryOptionsViewModel.IncludeCallStack))
-        {
-            OnPropertyChanged(nameof(IsFlameGraphEnabled));
-        }
         else if (e.PropertyName == nameof(QueryOptionsViewModel.RecordTimeTravel))
         {
             if (!ExecuteQueryCommand.IsRunning)
@@ -1136,7 +1118,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
         else if (e.PropertyName == nameof(QueryOptionsViewModel.CropToQuery)
                  && Trace is { } trace
-                 && ReferenceEquals(trace.CallStack, CallStack))
+                 && ReferenceEquals(trace.CallTree, CallTree))
         {
             TraceTimeline = ApplyCrop(trace);
         }
@@ -1148,13 +1130,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             return;
         }
-
-        if (Layout.IsTrace)
-        {
-            IsFlameGraphVisible = false;
-        }
-
-        OnPropertyChanged(nameof(IsFlameGraphEnabled));
 
         OnPropertyChanged(nameof(RulerSource));
 
@@ -1197,7 +1172,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         Events = [];
         FilteredEvents = [];
         TimelineDefinition = TimelineDefinition.Empty;
-        CallStack = null;
+        CallTree = null;
         SelectedEvent = null;
 
         _openIndexes.Clear();
@@ -1335,7 +1310,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                  dto.IncludeLatch,
                                  dto.IncludeColumnstore,
                                  dto.IncludeMemory,
-                                 dto.IncludeCallstack,
                                  lockCategories,
                                  dto.CaptureHeapReads,
                                  dto.CaptureHeapWrites,
@@ -2208,7 +2182,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    public void NavigateToCall(CallStackNode node, int callIndex)
+    public void NavigateToCall(CallTreeNode node, int callIndex)
     {
         SelectedCallNode = node;
 
@@ -2455,7 +2429,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         Events = results.EngineEvents;
 
-        CallStack = results.CallStackTree;
+        CallTree = null;
 
         ExecutionPlans = [.. results.ExecutionPlans.Where(p => !p.IsInternalPlan)];
 
@@ -2476,12 +2450,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         var traceTimeline = ApplyCrop(result);
 
-        CallStack = result.CallStack;
+        CallTree = result.CallTree;
 
-        var iterators = IteratorTarget.Build(result.CallStack, Events, result.PlanLink);
+        var iterators = IteratorTarget.Build(result.CallTree, Events, result.PlanLink, result.OperatorFrames);
 
         Arguments.SetSource(result.CallStore,
-                            result.CallStack,
+                            result.CallTree,
                             iterators,
                             result.HoBtAccess,
                             result.AddressMap,
@@ -2663,7 +2637,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         Events = [];
         FilteredEvents = [];
         TimelineDefinition = TimelineDefinition.Empty;
-        CallStack = null;
+        CallTree = null;
         SelectedEvent = null;
         ExecutionPlans = [];
 

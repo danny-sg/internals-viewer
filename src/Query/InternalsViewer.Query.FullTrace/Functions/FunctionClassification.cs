@@ -2,7 +2,6 @@ using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool.Enums;
-using InternalsViewer.Query.FullTrace.Output.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Functions;
 
@@ -28,8 +27,6 @@ internal readonly record struct FunctionClassification(bool IsExcluded,
 {
     public PlanNodeFunctionType? PlanNodeFunction { get; init; }
 
-    public OutputFunctionType? OutputFunction { get; init; }
-
     public BufferPoolFunctionType? BufferPoolFunction { get; init; }
 
     public bool IsInstanceMethod => HasInstanceMethod && InstanceClassesOnly;
@@ -48,7 +45,6 @@ internal readonly record struct FunctionClassification(bool IsExcluded,
                AllocationFunction == other.AllocationFunction ? AllocationFunction : null)
         {
             PlanNodeFunction = other.PlanNodeFunction is null ? null : PlanNodeFunction,
-            OutputFunction = OutputFunction ?? other.OutputFunction,
             BufferPoolFunction = BufferPoolFunction ?? other.BufferPoolFunction
         };
 }

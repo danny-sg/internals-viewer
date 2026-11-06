@@ -1,7 +1,7 @@
 using InternalsViewer.Query.FullTrace.Functions;
 using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
-using InternalsViewer.Query.Helpers;
+using InternalsViewer.Query.FullTrace.Symbols;
 
 namespace InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 

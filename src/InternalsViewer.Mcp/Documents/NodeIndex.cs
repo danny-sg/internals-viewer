@@ -1,4 +1,4 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 
 namespace InternalsViewer.Mcp.Documents;
 
@@ -6,9 +6,9 @@ public sealed class NodeIndex
 {
     private Lock Sync { get; } = new();
 
-    private Dictionary<CallStackNode, int> Ids { get; } = new(ReferenceEqualityComparer.Instance);
+    private Dictionary<CallTreeNode, int> Ids { get; } = new(ReferenceEqualityComparer.Instance);
 
-    private List<CallStackNode> Nodes { get; } = [];
+    private List<CallTreeNode> Nodes { get; } = [];
 
     public int Count
     {
@@ -21,7 +21,7 @@ public sealed class NodeIndex
         }
     }
 
-    public void AddTree(CallStackNode root)
+    public void AddTree(CallTreeNode root)
     {
         lock (Sync)
         {
@@ -32,7 +32,7 @@ public sealed class NodeIndex
         }
     }
 
-    public int GetId(CallStackNode node)
+    public int GetId(CallTreeNode node)
     {
         lock (Sync)
         {
@@ -40,7 +40,7 @@ public sealed class NodeIndex
         }
     }
 
-    public CallStackNode? GetNode(int id)
+    public CallTreeNode? GetNode(int id)
     {
         lock (Sync)
         {
@@ -48,7 +48,7 @@ public sealed class NodeIndex
         }
     }
 
-    public CallStackNode[] GetNodes()
+    public CallTreeNode[] GetNodes()
     {
         lock (Sync)
         {
@@ -56,9 +56,9 @@ public sealed class NodeIndex
         }
     }
 
-    public static IEnumerable<CallStackNode> PreOrder(CallStackNode root)
+    public static IEnumerable<CallTreeNode> PreOrder(CallTreeNode root)
     {
-        var stack = new Stack<CallStackNode>();
+        var stack = new Stack<CallTreeNode>();
 
         stack.Push(root);
 
@@ -75,7 +75,7 @@ public sealed class NodeIndex
         }
     }
 
-    private int Register(CallStackNode node)
+    private int Register(CallTreeNode node)
     {
         if (Ids.TryGetValue(node, out var id))
         {

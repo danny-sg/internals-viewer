@@ -3,7 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using InternalsViewer.Mcp.Interfaces.Commands;
 using InternalsViewer.Mcp.Models.Context.Queries;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
@@ -28,7 +28,7 @@ public partial class QueryViewModel : ITraceTimelineCommands
             throw new InvalidOperationException($"A track named '{request.Name}' already exists.");
         }
 
-        var node = (CallStack?.Nodes() ?? []).FirstOrDefault(n => IsFunction(n, request.Module, request.Function));
+        var node = (CallTree?.Nodes() ?? []).FirstOrDefault(n => IsFunction(n, request.Module, request.Function));
 
         var definition = new TraceTickDefinition(request.Name,
                                                  request.Module,
@@ -73,7 +73,7 @@ public partial class QueryViewModel : ITraceTimelineCommands
     public async Task StepSearchAsync(bool forward, int count)
         => (await RequireTimelineAsync()).StepSearch(forward, count);
 
-    public async Task SelectCallAsync(CallStackNode node, int callIndex, bool zoom)
+    public async Task SelectCallAsync(CallTreeNode node, int callIndex, bool zoom)
         => (await RequireTimelineAsync()).SelectCall(node, callIndex, zoom);
 
     public async Task ZoomAsync(bool toSelection) => (await RequireTimelineAsync()).Zoom(toSelection);
@@ -89,7 +89,7 @@ public partial class QueryViewModel : ITraceTimelineCommands
 
     public async Task<bool> ClearIndicatorAsync() => TraceTimeline is not null && (await RequireTimelineAsync()).ClearIndicator();
 
-    private static bool IsFunction(CallStackNode node, string module, string function)
+    private static bool IsFunction(CallTreeNode node, string module, string function)
         => node.Frame is { } frame && string.Equals(frame.Module.Name, module, StringComparison.OrdinalIgnoreCase) && node.Symbol == function;
 
     private async Task<ITraceTimelineController> RequireTimelineAsync()

@@ -1,5 +1,5 @@
 using System;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
@@ -65,7 +65,7 @@ public sealed partial class TraceTimelineControl : ITraceTimelineHost
         PlacePlayhead(position);
     }
 
-    void ITraceTimelineHost.ClickCall(CallStackNode node, int callIndex)
+    void ITraceTimelineHost.ClickCall(CallTreeNode node, int callIndex)
     {
         if (_visible is not { } timeline || FindCall(timeline, node, callIndex) is not { } hit)
         {
@@ -80,7 +80,7 @@ public sealed partial class TraceTimelineControl : ITraceTimelineHost
         }
     }
 
-    void ITraceTimelineHost.OpenCallTree(CallStackNode node, int callIndex) => CallTreeOpenRequested?.Invoke(node, callIndex);
+    void ITraceTimelineHost.OpenCallTree(CallTreeNode node, int callIndex) => CallTreeOpenRequested?.Invoke(node, callIndex);
 
     void ITraceTimelineHost.SelectMemoryWrite(int block, TracePosition? position) => MemoryWriteSelected?.Invoke(block, position);
 

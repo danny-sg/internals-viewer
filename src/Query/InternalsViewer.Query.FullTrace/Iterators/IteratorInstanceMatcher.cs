@@ -1,4 +1,4 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
 
@@ -6,20 +6,20 @@ namespace InternalsViewer.Query.FullTrace.Iterators;
 
 internal static class IteratorInstanceMatcher
 {
-    public static int Match(CallStackTree callStack, IReadOnlyList<EngineEvent> events, IteratorPlanLink planLink)
+    public static OperatorFrameMap Match(CallTree callTree, IReadOnlyList<EngineEvent> events, IteratorPlanLink planLink)
     {
         var hierarchy = OperatorHierarchy.Build(events);
 
+        var frames = new OperatorFrameMap();
+
         foreach (var operatorEvent in hierarchy.Operators)
         {
-            operatorEvent.EntryFrames = [];
-
             operatorEvent.Instances = [];
         }
 
         var assigned = new Dictionary<ExecutionOperatorEvent, List<IteratorInstance>>(ReferenceEqualityComparer.Instance);
 
-        foreach (var instance in IteratorInstance.Build(callStack).Where(i => !i.IsWrapper))
+        foreach (var instance in IteratorInstance.Build(callTree).Where(i => !i.IsWrapper))
         {
             if (planLink.GetNode(instance.Address) is not { } node
                 || hierarchy.At(node) is not { PlanNodeIdentifier.NodeId: >= 0 } operatorEvent)
@@ -39,34 +39,37 @@ internal static class IteratorInstanceMatcher
 
         foreach (var (operatorEvent, instances) in assigned)
         {
-            operatorEvent.EntryFrames = [.. instances.SelectMany(i => i.Entries).Distinct().OrderBy(e => e.Order)];
+            frames.SetEntryFrames(operatorEvent, [.. instances.SelectMany(i => i.Entries).Distinct().OrderBy(e => e.Order)]);
 
             operatorEvent.Instances = [.. instances.Select(i => i.Address).Distinct()];
         }
 
-        AssignStatements(hierarchy, assigned);
+        AssignStatements(hierarchy, assigned, frames);
 
-        hierarchy.SetExitFrames();
+        frames.SetExitFrames(hierarchy);
 
-        return assigned.Count;
+        frames.LabelEntryFrames(hierarchy.Operators);
+
+        return frames;
     }
 
     private static void AssignStatements(OperatorHierarchy hierarchy,
-                                         Dictionary<ExecutionOperatorEvent, List<IteratorInstance>> assigned)
+                                         Dictionary<ExecutionOperatorEvent, List<IteratorInstance>> assigned,
+                                         OperatorFrameMap frames)
     {
         foreach (var statement in hierarchy.Operators.Where(o => o.PlanNodeIdentifier!.NodeId < 0))
         {
             var entries = NearestAssigned(hierarchy, statement, assigned)
-                              .SelectMany(o => o.EntryFrames)
+                              .SelectMany(frames.GetEntryFrames)
                               .Select(e => e.Ancestors().Skip(1).FirstOrDefault(a => a.IsEntryFrameFor(statement.Name)))
-                              .OfType<CallStackNode>()
+                              .OfType<CallTreeNode>()
                               .Distinct()
                               .OrderBy(e => e.Order)
                               .ToList();
 
             if (entries.Count > 0)
             {
-                statement.EntryFrames = entries;
+                frames.SetEntryFrames(statement, entries);
             }
         }
     }
@@ -95,17 +98,17 @@ internal static class IteratorInstanceMatcher
     {
         public ulong Address { get; } = address;
 
-        public List<CallStackNode> Entries { get; } = [];
+        public List<CallTreeNode> Entries { get; } = [];
 
         public bool IsWrapper => !Entries.Any(e => e.IsOperatorBoundary) && Entries.Any(e => e.HasOperator);
 
-        public static IReadOnlyCollection<IteratorInstance> Build(CallStackTree callStack)
+        public static IReadOnlyCollection<IteratorInstance> Build(CallTree callTree)
         {
             var instances = new Dictionary<ulong, IteratorInstance>();
 
-            var pending = new Stack<(CallStackNode Node, ulong Context)>();
+            var pending = new Stack<(CallTreeNode Node, ulong Context)>();
 
-            foreach (var child in callStack.Root.ChildNodes)
+            foreach (var child in callTree.Root.ChildNodes)
             {
                 pending.Push((child, 0));
             }

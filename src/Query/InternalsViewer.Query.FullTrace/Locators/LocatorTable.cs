@@ -1,4 +1,3 @@
-using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.FullTrace.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Locators;

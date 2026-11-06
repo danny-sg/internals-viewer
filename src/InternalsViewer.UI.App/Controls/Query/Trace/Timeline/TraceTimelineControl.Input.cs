@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Enums;
@@ -450,7 +450,7 @@ public sealed partial class TraceTimelineControl
 
     private TraceResizeHandle? GetPaneResizeHandle(Point position) => ShowsOperators ? _operators.GetResizeHandle(position) : null;
 
-    private FlameHit? GetMarkHit(CallStackNode? node, int? callIndex)
+    private FlameHit? GetMarkHit(CallTreeNode? node, int? callIndex)
         => node is not null && callIndex is { } index && _visible is { } timeline ? FindCall(timeline, node, index) : null;
 
     private void OnPointerReleased(object sender, PointerRoutedEventArgs e)
@@ -740,7 +740,7 @@ public sealed partial class TraceTimelineControl
 
     private MenuFlyout CreateChartMenu(FlameHit? hit)
     {
-        CallStackNode? node = null;
+        CallTreeNode? node = null;
 
         var callIndex = -1;
 

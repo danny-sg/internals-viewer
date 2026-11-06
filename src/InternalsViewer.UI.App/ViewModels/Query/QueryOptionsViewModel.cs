@@ -68,12 +68,6 @@ public sealed partial class QueryOptionsViewModel : ObservableObject
         set => SetOption(_options.IncludeMemory, value, v => _options.IncludeMemory = v);
     }
 
-    public bool IncludeCallStack
-    {
-        get => _options.IncludeCallStack;
-        set => SetOption(_options.IncludeCallStack, value, v => _options.IncludeCallStack = v);
-    }
-
     public bool RecordTimeTravel
     {
         get => _options.RecordTimeTravel;
@@ -156,7 +150,6 @@ public sealed partial class QueryOptionsViewModel : ObservableObject
                         bool includeLatch,
                         bool includeColumnstore,
                         bool includeMemory,
-                        bool includeCallStack,
                         IEnumerable<LockModeCategory> lockModeCategories,
                         bool captureHeapReads,
                         bool captureHeapWrites,
@@ -169,7 +162,6 @@ public sealed partial class QueryOptionsViewModel : ObservableObject
         _options.IncludeLatch = includeLatch;
         _options.IncludeColumnstore = includeColumnstore;
         _options.IncludeMemory = includeMemory;
-        _options.IncludeCallStack = includeCallStack;
         _options.IncludeLockModeCategories = [.. lockModeCategories];
         _options.CaptureHeapReads = captureHeapReads;
         _options.CaptureHeapWrites = captureHeapWrites;
@@ -272,7 +264,6 @@ public sealed partial class QueryOptionsViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowLatches));
         OnPropertyChanged(nameof(IncludeColumnstore));
         OnPropertyChanged(nameof(IncludeMemory));
-        OnPropertyChanged(nameof(IncludeCallStack));
 
         RaiseLockCategoryChanges();
     }

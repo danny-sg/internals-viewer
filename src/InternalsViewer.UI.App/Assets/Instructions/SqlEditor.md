@@ -36,7 +36,7 @@ Disabling Read Ahead gives a simpler read and toggling it on and off allows you 
 > Trace Flag 652 doesn't disable read ahead for all scenarios - there are certain operators and access methods where it is ignored.
 > 
 > Read-ahead reads can be seen in the Events list and Timeline where the read covers a range of pages, e.g. 'Read (Disk): 64 pages from (Page Address)'
-> and the call stack will reference read ahead functions, e.g. `BPool::ReadAhead`.
+> and a Full Trace's Call Tree will reference read ahead functions, e.g. `BPool::ReadAhead`.
 
 ## Results
 

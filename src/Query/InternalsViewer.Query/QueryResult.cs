@@ -1,4 +1,3 @@
-using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Results;
@@ -16,7 +15,6 @@ public sealed record QueryResult
 
     public List<ExecutionPlan> ExecutionPlans { get; set; } = [];
 
-    public CallStackTree? CallStackTree { get; set; }
 
     public List<QueryResultSet> ResultSets { get; set; } = [];
 

@@ -1,9 +1,9 @@
-using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Locators;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
+using InternalsViewer.Query.FullTrace.Symbols;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.Allocation.Enums;
-using InternalsViewer.Query.Helpers;
+using InternalsViewer.Query.FullTrace.Locators;
 
 namespace InternalsViewer.Query.FullTrace.Memory.Allocation;
 
@@ -155,7 +155,7 @@ internal sealed record AllocationFunction(ulong Address,
     public static bool IsMemoryObjectClass(string? className)
         => className is not null && (className == MemoryObjectFactory || IsMemoryObject(className));
 
-    public static bool IsAllocatorFrame(CallstackFrame? frame)
+    public static bool IsAllocatorFrame(CallFrame? frame)
     {
         if (frame?.Function is not { } resolved)
         {
@@ -172,7 +172,7 @@ internal sealed record AllocationFunction(ulong Address,
                || Classify(0, $"{className}::{resolved.MethodName}") is not null;
     }
 
-    public static bool IsGrantFrame(CallstackFrame? frame)
+    public static bool IsGrantFrame(CallFrame? frame)
         => frame?.Function is { ClassName: null or "", MethodName: var methodName } && GrantFunctions.Contains(methodName);
 
     public bool IsCounted(TraceArgumentCall call) => FlagSlot < 0 || (call.Slot(FlagSlot) & FlagMask) != 0;

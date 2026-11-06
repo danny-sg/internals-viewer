@@ -1,4 +1,4 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Calls;
 
 namespace InternalsViewer.Query.FullTrace.Arguments;
@@ -30,7 +30,7 @@ public sealed class HoBtAccessMap
 
     private Dictionary<ulong, Lifetime[]> Lifetimes { get; }
 
-    public static HoBtAccessMap Build(TraceCallStore callStore, IReadOnlyList<CallStackNode?> nodes)
+    public static HoBtAccessMap Build(TraceCallStore callStore, IReadOnlyList<CallTreeNode?> nodes)
     {
         var destroyed = GetCalls(callStore, nodes, DestructorMethod).ToLookup(c => c.Slot(ObjectSlot), c => c.FromPosition);
 
@@ -88,9 +88,9 @@ public sealed class HoBtAccessMap
         return values[0] >> FullHoBtIdShift == 0 ? values[0] << PackedShift : values[0];
     }
 
-    private static IEnumerable<TraceArgumentCall> GetCalls(TraceCallStore callStore, IReadOnlyList<CallStackNode?> nodes, string method)
+    private static IEnumerable<TraceArgumentCall> GetCalls(TraceCallStore callStore, IReadOnlyList<CallTreeNode?> nodes, string method)
     {
-        var functions = nodes.OfType<CallStackNode>()
+        var functions = nodes.OfType<CallTreeNode>()
                              .Where(n => n.Frame?.Function is { ClassName: ClassName } resolved && resolved.MethodName == method)
                              .Select(n => (n.Frame!.Address, n.Frame.InstanceAddress))
                              .Distinct();

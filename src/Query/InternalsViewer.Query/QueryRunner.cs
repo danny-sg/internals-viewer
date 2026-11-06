@@ -1,8 +1,6 @@
 ﻿using System.Diagnostics;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Loading;
-using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Symbols;
 using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Consolidation;
 using InternalsViewer.Query.Events.Operators;
@@ -37,8 +35,6 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                                 ColumnstorePageMapper? columnstorePageMapper = null,
                                 ITimeTravelRecorder? timeTravelRecorder = null)
 {
-    internal const int ActivityBuckets = 96;
-
     private const string PreparingRecordingStep = "Preparing Full Trace Recording";
 
     private const string WarmingUpStep = "Warming Up";
@@ -50,8 +46,6 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
     private const string StoppingTraceStep = "Stopping Trace";
 
     private const string ReadingEventsStep = "Reading Events";
-
-    private const string CallStacksStep = "Resolving Call Stacks";
 
     private static readonly ProgressStep[] DirectSteps = [new(RunningStep, 100)];
 
@@ -93,7 +87,6 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
         List<EngineEvent>? events;
         List<ExecutionPlan>? executionPlans;
-        CallStackTree callStack;
         HashSet<uint> threadIds;
         List<QueryResultSet> resultSets;
         List<LogRecord> logRecords;
@@ -193,9 +186,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         var messages = new StepLoggerProgress(progress, Logger);
 
         var steps = new StepProgress(messages,
-                                     TraceSteps(recordable,
-                                                recordable && !payload.QueryOptions.ClearBufferPool,
-                                                eventOptions.CapturesCallStacks));
+                                     TraceSteps(recordable, recordable && !payload.QueryOptions.ClearBufferPool));
 
         try
         {
@@ -238,13 +229,13 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
             steps.Begin(ReadingEventsStep);
 
-            (events, executionPlans, callStack, threadIds) = await EventReader.GetEvents(filePath,
-                                                                                          connectionString,
-                                                                                          database,
-                                                                                          eventOptions.IncludeSystemObjects,
-                                                                                          details,
-                                                                                          cancellationToken,
-                                                                                          endMarker);
+            (events, executionPlans, threadIds) = await EventReader.GetEvents(filePath,
+                                                                               connectionString,
+                                                                               database,
+                                                                               eventOptions.IncludeSystemObjects,
+                                                                               details,
+                                                                               cancellationToken,
+                                                                               endMarker);
 
             Logger.LogInformation("{Events} event(s) read", events.Count);
 
@@ -273,30 +264,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
                 }
             }
 
-            var includeCallStack = eventOptions.CapturesCallStacks;
-
-            if (includeCallStack)
-            {
-                steps.Complete();
-
-                steps.Begin(CallStacksStep);
-
-                var unknownSymbols = await CallstackProcessor.Process(callStack, symbolsPath, messages, cancellationToken);
-
-                var keep = cropStart is null ? null : KeepSet(events);
-
-                callStack = callStack.CollapseToFunctions(keep is null ? null : keep.Contains);
-
-                OperatorCallStackMatcher.Match(events);
-
-                CallStackPlanNodeMatcher.Match(events);
-
-                OperatorEntryLabels.Apply(events);
-
-                ReadAheadClassifier.Classify(events);
-
-                LogUnknownSymbols(unknownSymbols);
-            }
+            ReadAheadClassifier.Classify(events);
 
             AllocationPageClassifier.Classify(events);
 
@@ -313,14 +281,6 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             if (cropStart is { } trimStart && cropEnd is { } trimEnd)
             {
                 events = [.. events.Where(e => e.TimeUs <= trimEnd && e.TimeUs + e.DurationUs >= trimStart)];
-            }
-
-            if (includeCallStack && events.Count > 0)
-            {
-                // Per-node activity histogram across the query window
-                callStack.ComputeActivity(cropStart ?? events.Min(e => e.TimeUs),
-                                          cropEnd ?? events.Max(e => e.TimeUs),
-                                          buckets: ActivityBuckets);
             }
 
             steps.Complete();
@@ -381,7 +341,6 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
             IsSuccess = true,
             EngineEvents = events,
             ExecutionPlans = executionPlans,
-            CallStackTree = fullTrace is null ? callStack : null,
             ResultSets = resultSets,
             LogRecords = logRecords,
             SessionId = sessionId,
@@ -503,21 +462,6 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
     /// any group, not just reads: locks are grouped too, and keying this on one group type silently drops every frame
     /// belonging to a grouped event from the tree, but only when cropping is on (uncropped there is no keep set).
     /// </remarks>
-    private static HashSet<EngineEvent> KeepSet(List<EngineEvent> events) => events.ExpandOwned();
-
-    private void LogUnknownSymbols(string[] unknownSymbols)
-    {
-        if (!Logger.IsEnabled(LogLevel.Debug))
-        {
-            return;
-        }
-
-        foreach (var symbol in unknownSymbols.Order(StringComparer.Ordinal))
-        {
-            Logger.LogDebug($"Unknown symbol: {symbol}");
-        }
-    }
-
     private async Task<MemoryClerkSnapshot> ReadMemoryClerks(string connectionString,
                                                            IProgress<ProgressDetail>? progress,
                                                            CancellationToken cancellationToken)
@@ -870,7 +814,7 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         return recording;
     }
 
-    private static List<ProgressStep> TraceSteps(bool recording, bool warmUp, bool callStacks)
+    private static List<ProgressStep> TraceSteps(bool recording, bool warmUp)
     {
         var steps = new List<ProgressStep>();
 
@@ -888,11 +832,6 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         steps.Add(new ProgressStep(RunningStep, 30));
         steps.Add(new ProgressStep(StoppingTraceStep, 10));
         steps.Add(new ProgressStep(ReadingEventsStep, 15));
-
-        if (callStacks)
-        {
-            steps.Add(new ProgressStep(CallStacksStep, 10));
-        }
 
         return steps;
     }

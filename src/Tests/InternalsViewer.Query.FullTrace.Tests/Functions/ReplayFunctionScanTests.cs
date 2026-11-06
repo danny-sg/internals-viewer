@@ -1,7 +1,6 @@
-using InternalsViewer.Query.CallStack.Locators;
-using InternalsViewer.Query.CallStack.Symbols;
 using InternalsViewer.Query.FullTrace.Functions;
 using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Symbols;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Functions;
 

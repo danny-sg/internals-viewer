@@ -9,7 +9,7 @@ using InternalsViewer.UI.App.Views.Query.Instructions;
 using InternalsViewer.UI.App.Views.Query.Plan;
 using InternalsViewer.UI.App.Views.Query.Sql;
 using InternalsViewer.UI.App.Views.Query.Timeline;
-using InternalsViewer.UI.App.Views.Query.Trace.CallStack;
+using InternalsViewer.UI.App.Views.Query.Trace.Calls;
 using InternalsViewer.UI.App.Views.Query.Trace.OperatorTracks;
 using InternalsViewer.UI.App.Views.Query.Trace.Timeline;
 using Microsoft.UI.Xaml.Controls;

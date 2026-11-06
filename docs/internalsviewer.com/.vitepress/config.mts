@@ -46,8 +46,8 @@ export default defineConfig({
                 text: "Allocations",
                 link: "docs/user-guide/query/Allocations",
               },
-              { text: "Call Stack", link: "docs/user-guide/query/CallStack" },
               { text: "Full Trace", link: "docs/user-guide/query/FullTrace" },
+              { text: "Call Tree", link: "docs/user-guide/query/CallStack" },
               { text: "Trace Timeline", link: "docs/user-guide/query/TraceTimeline" },
               { text: "Simulation", link: "docs/user-guide/query/Simulation" },
               {

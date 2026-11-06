@@ -1,8 +1,6 @@
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
-using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Categories;
-using InternalsViewer.Query.CallStack.Locators;
-using InternalsViewer.Query.CallStack.Locators.Enums;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
@@ -18,6 +16,8 @@ using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.Query.Plans.Model;
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRowHelper;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
+using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Symbols.Categories;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Timeline.Tracks;
 
@@ -172,7 +172,7 @@ public class TraceEvaluationReaderTests
 
         var timeline = builder.Build(Nodes);
 
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var filter = tree.AddCall(tree.Root, Frame(FilterIterator, "CQScanFilterNew", "GetRow", 0x10), 1);
 
@@ -184,7 +184,7 @@ public class TraceEvaluationReaderTests
 
         var tupleCompare = tree.AddCall(scan, Frame(0, "CEsExec", "FastTupleCompare", 0x40), 1);
 
-        CallStackNode[] nodes = [filter, scan, scanCompare, filterCompare, tupleCompare];
+        CallTreeNode[] nodes = [filter, scan, scanCompare, filterCompare, tupleCompare];
 
         timeline.MapNodes(nodes);
 
@@ -226,13 +226,13 @@ public class TraceEvaluationReaderTests
     private static ulong[] Call(ulong start, ulong end, int callNodeIndex)
         => Row(start, flags: Thread | TraceCallChunk.ReturnedFlag, callNodeIndex: callNodeIndex, endSequence: end);
 
-    private static CallstackFrame Frame(ulong instance, string className, string method, uint rva) => new()
+    private static CallFrame Frame(ulong instance, string className, string method, uint rva) => new()
     {
         Module = new("SqlTsEs"),
         Rva = rva,
         Address = Helper,
         InstanceAddress = instance,
-        Function = new CallstackFunction
+        Function = new FrameFunction
         {
             ClassName = className,
             MethodName = method,

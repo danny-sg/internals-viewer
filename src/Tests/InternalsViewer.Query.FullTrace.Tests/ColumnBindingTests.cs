@@ -1,4 +1,5 @@
-using InternalsViewer.Query.CallStack.Locators;
+using InternalsViewer.Query.FullTrace.Locators;
+
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 

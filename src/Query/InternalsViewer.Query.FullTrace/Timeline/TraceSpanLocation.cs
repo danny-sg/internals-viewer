@@ -1,4 +1,4 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 
 namespace InternalsViewer.Query.FullTrace.Timeline;
 
@@ -7,7 +7,7 @@ public readonly record struct TraceSpanLocation(int ThreadIndex,
                                                 int Depth,
                                                 TraceTimelineRow Row,
                                                 int Index,
-                                                CallStackNode Node)
+                                                CallTreeNode Node)
 {
     public int CallIndex => Row.GetCallIndex(Index);
 

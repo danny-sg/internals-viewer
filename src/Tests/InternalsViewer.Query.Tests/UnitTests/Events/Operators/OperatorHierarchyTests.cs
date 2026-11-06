@@ -1,6 +1,4 @@
 ﻿using InternalsViewer.Query.Events.Operators;
-using InternalsViewer.Query.Events.Reads;
-using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Plans.Model;
 
 namespace InternalsViewer.Query.Tests.UnitTests.Events.Operators;
@@ -56,28 +54,6 @@ public class OperatorHierarchyTests
                                                  Operator(1, "Hash Match", parent: 0)]);
 
         Assert.Equal([1], hierarchy.Descendants(hierarchy.Operators[0]).Select(o => o.PlanNodeIdentifier!.NodeId));
-    }
-
-    [Fact]
-    public void A_Scope_Is_The_Subtrees_Events_Expanded_Through_What_They_Own()
-    {
-        // The aggregate emits nothing itself — only the scan's reads exist — so scoping it to its own events would
-        // leave it blank. And the group carries the node id while its members carry the frames, so it must expand.
-        var member = new IoEvent { Name = "read" };
-
-        var group = new ReadEventGroup { Name = "Page Read", Events = [member], PlanNodeIdentifier = NodeId(2) };
-
-        var elsewhere = new IoEvent { Name = "read", PlanNodeIdentifier = NodeId(9) };
-
-        var operators = new List<EngineEvent> { Operator(1, "Stream Aggregate"), Operator(2, "Index Scan", parent: 1) };
-
-        var hierarchy = OperatorHierarchy.Build(operators);
-
-        var scope = hierarchy.ScopeOf(hierarchy.Operators[0], [.. operators, group, elsewhere]);
-
-        Assert.Contains(group, scope);
-        Assert.Contains(member, scope);
-        Assert.DoesNotContain(elsewhere, scope);
     }
 
     private static PlanNodeIdentifier NodeId(int nodeId) => new() { PlanHandleId = 1, NodeId = nodeId };

@@ -1,5 +1,4 @@
-using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Categories;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
@@ -12,6 +11,7 @@ using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.Query.Plans.Model;
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRowHelper;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
+using InternalsViewer.Query.FullTrace.Symbols.Categories;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Timeline.Tracks;
 
@@ -99,7 +99,7 @@ public class TraceSeekReaderTests
 
         var timeline = builder.Build(Nodes);
 
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var range = tree.AddCall(tree.Root, Frame(Helper, RangeIterator, "CQScanRangeNew", "GetRow"), 1);
 
@@ -109,7 +109,7 @@ public class TraceSeekReaderTests
 
         var rangeGet = tree.AddCall(range, Frame(GetFunction, BufferPool, "BPool", "Get"), 1);
 
-        CallStackNode[] nodes = [range, seek, seekGet, rangeGet];
+        CallTreeNode[] nodes = [range, seek, seekGet, rangeGet];
 
         timeline.MapNodes(nodes);
 
@@ -135,13 +135,13 @@ public class TraceSeekReaderTests
     private static ulong[] Call(ulong start, ulong end, int callNodeIndex)
         => Row(start, flags: Thread | TraceCallChunk.ReturnedFlag, callNodeIndex: callNodeIndex, endSequence: end);
 
-    private static CallstackFrame Frame(ulong address, ulong instance, string className, string method) => new()
+    private static CallFrame Frame(ulong address, ulong instance, string className, string method) => new()
     {
         Module = new("sqlmin"),
         Rva = 0x10,
         Address = address,
         InstanceAddress = instance,
-        Function = new CallstackFunction
+        Function = new FrameFunction
         {
             ClassName = className,
             MethodName = method,

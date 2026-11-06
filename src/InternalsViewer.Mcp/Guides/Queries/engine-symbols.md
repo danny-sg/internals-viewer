@@ -22,7 +22,7 @@ code's behaviour, not a published fact. Say so when you lean on it.
 ## Categories the app uses
 
 Internals Viewer classifies every frame into one of these categories with the rules in `mappings/` (copies of the
-pipe-delimited files the app embeds, taken from the Internals Viewer repository, `src/Query/InternalsViewer.Query/Mappings`, on 2026-10-27). `query_categories` totals calls per category and `query_functions`
+pipe-delimited files the app embeds, taken from the Internals Viewer repository, `src/Query/InternalsViewer.Query.FullTrace/Symbols/Categories/Mappings`, on 2026-10-27). `query_categories` totals calls per category and `query_functions`
 labels each function with its category. The categories, and the kind of class in each:
 
 | Category | What it covers | Typical classes |

@@ -1,6 +1,6 @@
 # MCP Server
 
-Internals Viewer can act as a Model Context Protocol (MCP) server, so an AI assistant such as Claude Code can read what you have open and move the app to the places it is explaining. It covers all five kinds of tab - Query, Allocations, Page, Index and Columnstore. The assistant works from the same evidence you see - the plan, the events, the call tree, the allocation map, the pages, the index structure, the columnstore segments and, for a Full Trace, the calls, timeline and memory - and the ids it quotes are the ones in the app.
+Internals Viewer can act as a Model Context Protocol (MCP) server, so an AI assistant such as Claude Code can read what you have open and move the app to the places it is explaining. It covers all five kinds of tab - Query, Allocations, Page, Index and Columnstore. The assistant works from the same evidence you see - the plan, the events, the allocation map, the pages, the index structure, the columnstore segments and, for a Full Trace, the call tree, the calls, timeline and memory - and the ids it quotes are the ones in the app.
 
 The server cannot connect to another database or server, run a query or start a trace. All it changes in the app is what is selected, scrolled, zoomed, trimmed, played or open, and the watches it pins itself, the way a click would, and it can open a page, an index or a columnstore index in a new tab, switch to a tab and close one. It can also turn the Query tab's menu toggles on and off, including Record Full Trace for the next run.
 
@@ -56,7 +56,7 @@ Internals Viewer has to be running for the bridge to connect. If it was not runn
 
 ## Starting a conversation
 
-The conversation starts in the assistant, not in the app. With a database and a Query tab open and a query run or imported, ask the assistant about it in plain language - "look at the query open in Internals Viewer and tell me why it read so many pages". It finds the open document, reads the summary, the plan, the reads and the call tree, and quotes the ids so you can find the same things in the app.
+The conversation starts in the assistant, not in the app. With a database and a Query tab open and a query run or imported, ask the assistant about it in plain language - "look at the query open in Internals Viewer and tell me why it read so many pages". It finds the open document, reads the summary, the plan, the reads and, for a Full Trace, the call tree, and quotes the ids so you can find the same things in the app.
 
 In Claude Code, `/mcp` shows the server and its tools, and the `explore` prompt it provides starts an investigation with the evidence-first approach built in. Asking it to walk you through an operator makes it open the operator in the plan, its calls in the Call Tree and their positions on the Trace Timeline as it explains, and asking "what is this?" after you have selected something in the app makes it look at your selection - the selected event, plan operator, call, page, slot, field and log record, the playhead, and the ranges the timelines are showing.
 
@@ -66,7 +66,7 @@ The server also carries its own reading guides - how to read what the tools retu
 
 - **The run** - the SQL, the plan with estimated and actual rows, the operators with their timing, and the messages.
 - **Events** - reads from disk and the buffer pool, waits, locks, latches, columnstore scans and log records.
-- **The call tree** - the engine functions behind each operator, the paths to a function, the hottest paths and the pages each function touched.
+- **The call tree** - for a Full Trace, the engine functions behind each operator, the paths to a function, the hottest paths and the pages each function touched.
 - **Full Trace** - every logged call with its arguments, its return value and the pages and rows it read, the timeline, the memory in use over the run, the memory map of what was allocated by class and allocation site, and the references to an address that the call tree's Find shows: its type and every function it was passed to, called on or returned by. Its cost is in instructions, never milliseconds, because a Full Trace has no clock.
 - **Memory History** - how each object the query used changed, field by field, with the function that made each change, the functions that read it, and the objects functions keep on their own stacks and hand to each other. The assistant points you at each change by its position on the Trace Timeline.
 - **The Object Graph** - the objects an object points to, and the objects those point to, with the object each pointer held at a position and how often it moved, the same graph the app draws.

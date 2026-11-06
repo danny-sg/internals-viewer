@@ -2,12 +2,12 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
-using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
 using InternalsViewer.Query.FullTrace.Timeline;
+using InternalsViewer.Query.FullTrace.Locators;
 
 namespace InternalsViewer.Query.FullTrace.Memory.BufferPool;
 

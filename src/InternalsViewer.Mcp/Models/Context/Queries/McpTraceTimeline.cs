@@ -1,4 +1,4 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 
 namespace InternalsViewer.Mcp.Models.Context.Queries;
 
@@ -15,7 +15,7 @@ public sealed record McpTraceTimeline
 
     public int? SearchMatches { get; init; }
 
-    public CallStackNode? SelectedNode { get; init; }
+    public CallTreeNode? SelectedNode { get; init; }
 
     public int SelectedCallIndex { get; init; } = -1;
 

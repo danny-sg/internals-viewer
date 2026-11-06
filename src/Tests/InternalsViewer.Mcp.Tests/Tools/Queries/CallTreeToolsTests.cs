@@ -20,7 +20,7 @@ public class CallTreeToolsTests
 
         Assert.Equal("[0] (root)", lines[0]);
         Assert.Equal($"  [1] {Caller}  calls=1", lines[1]);
-        Assert.Equal($"    [2] {GetRow}  calls=2  alloc=100 B/1  pages=1  rows=1  events=1", lines[2]);
+        Assert.Equal($"    [2] {GetRow}  calls=2  alloc=100 B/1  pages=1  rows=1", lines[2]);
         Assert.Equal(3, lines.Length);
     }
 
@@ -115,7 +115,7 @@ public class CallTreeToolsTests
         var lines = Lines(text);
 
         Assert.Equal($"[1] {Caller}  calls=1", lines[0]);
-        Assert.Equal($"  [2] {GetRow}  calls=2  alloc=100 B/1  pages=1  rows=1  events=1  pages: 1:336", lines[1]);
+        Assert.Equal($"  [2] {GetRow}  calls=2  alloc=100 B/1  pages=1  rows=1  pages: 1:336", lines[1]);
     }
 
     [Fact]
@@ -123,7 +123,7 @@ public class CallTreeToolsTests
     {
         var text = await Tools().CallTree(hot: 1, by: "alloc");
 
-        Assert.Equal([$"[2] {GetRow}  calls=2  alloc=100 B/1  pages=1  rows=1  events=1  inclusive alloc=100 B/1"], Lines(text));
+        Assert.Equal([$"[2] {GetRow}  calls=2  alloc=100 B/1  pages=1  rows=1  inclusive alloc=100 B/1"], Lines(text));
     }
 
     [Fact]
@@ -141,11 +141,11 @@ public class CallTreeToolsTests
     }
 
     [Fact]
-    public async Task Call_Tree_Falls_Back_To_The_Events_Tree_Without_A_Full_Trace()
+    public async Task A_Run_Without_A_Full_Trace_Has_No_Call_Tree()
     {
         var text = await Tools(withTrace: false).CallTree();
 
-        Assert.StartsWith($"    [2] {GetRow}", Lines(text)[2]);
+        Assert.Contains("no call tree in the run", text);
     }
 
     [Fact]

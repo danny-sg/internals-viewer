@@ -3,7 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using InternalsViewer.Mcp.Models.Context.Queries;
 using InternalsViewer.Mcp.Models.Context.Queries.Enums;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
@@ -220,7 +220,7 @@ public sealed partial class QueryTraceTimelineTabView : ITraceTimelineController
         }
     }
 
-    public void SelectCall(CallStackNode node, int callIndex, bool zoom)
+    public void SelectCall(CallTreeNode node, int callIndex, bool zoom)
     {
         if (!TraceTimeline.SelectCall(node, callIndex, zoom))
         {

@@ -1,5 +1,5 @@
 using InternalsViewer.Mcp.Documents;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace;
 
 namespace InternalsViewer.Mcp.Tests.Documents;
@@ -14,15 +14,15 @@ public class QueryCropTests
     [Fact]
     public void A_Call_Under_A_Crop_Root_Is_Visible_And_One_Beside_It_Is_Hidden()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
-        var execute = tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqllang"), Rva = 0x10 }, 1);
+        var execute = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Rva = 0x10 }, 1);
 
-        var scan = tree.AddCall(execute, new CallstackFrame { Module = new("sqlmin"), Rva = 0x20 }, 1);
+        var scan = tree.AddCall(execute, new CallFrame { Module = new("sqlmin"), Rva = 0x20 }, 1);
 
-        var compile = tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqllang"), Rva = 0x30 }, 1);
+        var compile = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Rva = 0x30 }, 1);
 
-        var roots = new HashSet<CallStackNode>([execute], ReferenceEqualityComparer.Instance);
+        var roots = new HashSet<CallTreeNode>([execute], ReferenceEqualityComparer.Instance);
 
         Assert.False(QueryCrop.IsHidden(execute, roots));
         Assert.False(QueryCrop.IsHidden(scan, roots));

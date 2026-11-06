@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
@@ -751,9 +751,9 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         }
     }
 
-    private void OnCallSelected(CallStackNode node, int callIndex) => ViewModel?.NavigateToCall(node, callIndex);
+    private void OnCallSelected(CallTreeNode node, int callIndex) => ViewModel?.NavigateToCall(node, callIndex);
 
-    private void OnCallTreeOpenRequested(CallStackNode? node, int callIndex) => ViewModel?.OpenCallTree(node, callIndex);
+    private void OnCallTreeOpenRequested(CallTreeNode? node, int callIndex) => ViewModel?.OpenCallTree(node, callIndex);
 
     private void OnCallMenuRequested(MenuFlyout menu, TraceMenuTarget target)
     {
@@ -796,7 +796,7 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
     }
 
 #pragma warning disable VSTHRD100
-    private async void OnTickTrackAddRequested(CallStackNode? node)
+    private async void OnTickTrackAddRequested(CallTreeNode? node)
     {
         if (ViewModel is { } viewModel && await OperatorTrackEditor.ShowAsync(XamlRoot, viewModel, null, node) is { } definition)
         {

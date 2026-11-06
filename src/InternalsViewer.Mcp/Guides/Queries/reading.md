@@ -22,8 +22,8 @@ inside a read group, the acquire half of an acquire and release pair, the object
 with `includeChildren` includes them. A `latch_acquired` and `latch_released` with the same page are one latch hold. `Lock` is
 the acquire and `lock_released` the release.
 
-**The call tree.** One node per distinct call path, not per function: `BPool::Get` reached from a seek and from a lookup is two
-nodes. Calls is how many times that path was taken (Full Trace only). Allocated bytes and allocations are the node's own. The
+**The call tree.** Only a Full Trace run has one. One node per distinct call path, not per function: `BPool::Get` reached from
+a seek and from a lookup is two nodes. Calls is how many times that path was taken. Allocated bytes and allocations are the node's own. The
 app shows the subtree total, which `query_calltree` with `hot` and `by` set to `inclusive-alloc`, and `inclusive`, give. `query_functions`
 adds every path of a function together. The root has an empty key. In a Full Trace the Extended Events and tracing machinery
 was cut out of the tree, so what is left is the query's own work, and SQLOS (`sqldk`) was not recorded, so only the calls into
@@ -62,6 +62,8 @@ Some things are absent by design. None of them is a gap in the capture or a sign
 - **Extended Events and tracing calls** are cut from a Full Trace call tree. Publishing an event is code that runs on the
   query's own thread, so the Extended Events machinery would otherwise dominate the tree. The actual-plan profiling wrappers
   (`CQScanProfileNew`, `CQScanLightProfileNew`) stay, because the operators run inside them.
+- **A run without Full Trace has no call stacks.** Its events carry no stack, and the call tree and every tool that reads
+  it need a Full Trace run.
 - **A Full Trace run's event session is minimal.** It captures the batch start and end, the per-operator profile, the actual
   plan and the parallelism waits that identify worker threads. Its lock, latch, page read and I/O detail comes from the calls
   instead. A run without Full Trace has those events.
@@ -98,8 +100,8 @@ Some things are absent by design. None of them is a gap in the capture or a sign
 - Know what was left out on purpose, listed below, so an absence is reported as "not captured" rather than as something
   missing or odd.
 - For "how did it do that" questions, line up the plan, the operators (start, first row, threads), the reads (disk against
-  buffer, read-ahead, extents) and the call tree of the operators involved. Each is one tool.
-- For "what did operator X do" questions use `query_calltree` with `operator`, then `query_calls` with `function` on the interesting
+  buffer, read-ahead, extents) and, in a Full Trace, the call tree of the operators involved. Each is one tool.
+- For "what did operator X do" questions in a Full Trace use `query_calltree` with `operator`, then `query_calls` with `function` on the interesting
   function and `instance` set to the operator's iterator address when it is a method of the iterator.
 - Count what the user asked for in the unit they asked for: reads (events) are not pages (an extent read is 8 pages, a
   buffer pool read is one), and a call tree node's calls are for one path, not the function. Two cross-checks: an operator's

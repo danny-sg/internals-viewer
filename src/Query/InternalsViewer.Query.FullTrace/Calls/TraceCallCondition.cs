@@ -1,11 +1,11 @@
 using System.Globalization;
-using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Locators;
-using InternalsViewer.Query.CallStack.Locators.Enums;
-using InternalsViewer.Query.CallStack.Symbols;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
+using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Symbols;
 
 namespace InternalsViewer.Query.FullTrace.Calls;
 
@@ -64,7 +64,7 @@ public sealed record TraceCallCondition(TraceConditionTarget Target,
         };
     }
 
-    public bool MatchesNode(CallStackNode node)
+    public bool MatchesNode(CallTreeNode node)
     {
         if (Target is not (TraceConditionTarget.CalledBy or TraceConditionTarget.CalledDirectlyBy))
         {
@@ -93,7 +93,7 @@ public sealed record TraceCallCondition(TraceConditionTarget Target,
     private static IEnumerable<string> GetLabels(ExecutionOperatorEvent operatorEvent)
         => [operatorEvent.Name, operatorEvent.OperatorDescription, operatorEvent.Label];
 
-    private static IEnumerable<CallStackNode> GetCallers(CallStackNode node)
+    private static IEnumerable<CallTreeNode> GetCallers(CallTreeNode node)
     {
         for (var caller = node.Parent; caller is not null; caller = caller.Parent)
         {
@@ -119,7 +119,7 @@ public sealed record TraceCallCondition(TraceConditionTarget Target,
 
     private static string GetPointee(string type) => type.IndexOfAny(Indirections) is var index and >= 0 ? type[..index] : type;
 
-    private bool IsFrameMatch(CallStackNode node)
+    private bool IsFrameMatch(CallTreeNode node)
     {
         if (node.Frame is not { } frame)
         {

@@ -10,7 +10,7 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Pages.Enums;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Iterators;
@@ -29,7 +29,7 @@ using Microsoft.UI;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryHistory;
 
-public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> openCall) : ObservableObject
+public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> openCall) : ObservableObject
 {
     private const string IteratorObject = "Iterator";
 
@@ -93,7 +93,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
 
     public TracePosition ShutdownStart { get; private set; } = TracePosition.Unknown;
 
-    private Action<CallStackNode, int> OpenCall { get; } = openCall;
+    private Action<CallTreeNode, int> OpenCall { get; } = openCall;
 
     private TraceResult? Trace { get; set; }
 
@@ -134,7 +134,9 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
 
         IsAvailable = Store.Blocks.Count > 0;
 
-        Iterators = trace is null ? new Dictionary<ulong, IteratorTarget>() : IteratorTarget.Build(trace.CallStack, events, trace.PlanLink);
+        Iterators = trace is null
+            ? new Dictionary<ulong, IteratorTarget>()
+            : IteratorTarget.Build(trace.CallTree, events, trace.PlanLink, trace.OperatorFrames);
 
         Batches = trace is null
             ? null
@@ -271,7 +273,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
         return GetObjectName(block);
     }
 
-    public CallStackNode? GetWriter(int callNodeIndex) => callNodeIndex >= 0 ? Trace?.Timeline.NodeOf(callNodeIndex) : null;
+    public CallTreeNode? GetWriter(int callNodeIndex) => callNodeIndex >= 0 ? Trace?.Timeline.NodeOf(callNodeIndex) : null;
 
     public Windows.UI.Color GetCategoryColour(int callNodeIndex)
         => ColourHelpers.FromHex(GetWriter(callNodeIndex)?.CategoryColour) ?? Colors.Gray;
@@ -280,7 +282,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
 
     public string GetWriterLabel(int callNodeIndex) => GetWriterLabel(GetWriter(callNodeIndex));
 
-    public TraceCallLink GetCallLink(uint thread, TracePoint point, CallStackNode? node)
+    public TraceCallLink GetCallLink(uint thread, TracePoint point, CallTreeNode? node)
     {
         if (Trace?.Timeline is not { } timeline
             || timeline.GetStack(point.Position).FirstOrDefault(s => s.ThreadId == thread) is not { } stack)
@@ -303,7 +305,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
             : new TraceCallLink(point, node, -1);
     }
 
-    public CallStackNode? GetAllocatingCall(int block)
+    public CallTreeNode? GetAllocatingCall(int block)
     {
         if (Trace is not { } trace)
         {
@@ -483,7 +485,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallStackNode, int> op
         return null;
     }
 
-    private static string GetWriterLabel(CallStackNode? writer) => writer?.Symbol ?? UnknownWriter;
+    private static string GetWriterLabel(CallTreeNode? writer) => writer?.Symbol ?? UnknownWriter;
 
     private string GetDatabasePrefix(TraceBufferReference reference)
         => IsQueryDatabase(reference) ? string.Empty : $"{GetDatabaseName(reference.DatabaseId)} ";

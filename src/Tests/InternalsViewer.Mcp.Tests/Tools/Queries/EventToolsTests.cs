@@ -62,14 +62,12 @@ public class EventToolsTests
     }
 
     [Fact]
-    public async Task Events_Shows_One_Event_With_Its_Call_Stack()
+    public async Task Events_Shows_One_Event()
     {
         var text = await Tools().Events(eventId: 3);
 
         Assert.StartsWith("[3] +0.090 ReadEventGroup", text);
         Assert.Contains("TopLevel: True  Plan node: 0", text);
-        Assert.Contains("CallStack:", text);
-        Assert.Contains("node 2: sqlmin!CQScanRowsetNew::GetRow < sqlmin!CQueryScan::GetRow", text);
     }
 
     [Fact]

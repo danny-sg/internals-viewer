@@ -48,10 +48,10 @@
                                 Tag="ExecutionPlan" />
             <NavigationViewItem Content="Simulation"
                                 Tag="Simulation" />
-            <NavigationViewItem Content="Call Stack"
-                                Tag="CallStack" />
             <NavigationViewItem Content="Full Trace"
                                 Tag="FullTrace" />
+            <NavigationViewItem Content="Call Tree"
+                                Tag="CallTree" />
             <NavigationViewItem Content="Log Records"
                                 Tag="LogRecords" />
         </NavigationView.MenuItems>

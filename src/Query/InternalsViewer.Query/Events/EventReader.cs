@@ -2,7 +2,6 @@
 using System.Diagnostics;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Loading;
-using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Consolidation;
 using InternalsViewer.Query.Events.Locks;
@@ -28,7 +27,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
     /// Due to the potentially high volume of events that could be read the reader is optimized for minimal memory allocations via
     /// a buffer based read.
     /// </remarks>
-    public async Task<(List<EngineEvent>, List<ExecutionPlan>, CallStackTree, HashSet<uint>)>
+    public async Task<(List<EngineEvent>, List<ExecutionPlan>, HashSet<uint>)>
         GetEvents(string filePath,
                   string connectionString,
                   DatabaseSource? database,
@@ -53,8 +52,6 @@ public sealed class EventReader(ILogger<EventReader> logger)
         await connection.OpenAsync(cancellationToken);
 
         DateTime? startTimeStamp = null;
-
-        var callStack = new CallStackTree();
 
         var xmlEventParser = new XmlEventParser();
 
@@ -106,7 +103,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
                     var engineEvent = eventResult is null
                                       ? null
-                                      : eventParser.ToEngineEvent(eventResult, database, planHandles, callStack);
+                                      : eventParser.ToEngineEvent(eventResult, database, planHandles);
 
                     if (engineEvent is not null)
                     {
@@ -167,7 +164,7 @@ public sealed class EventReader(ILogger<EventReader> logger)
 
         consolidatedEvents.AddRange(operatorEvents);
 
-        return (consolidatedEvents, executionPlans, callStack, threadIds);
+        return (consolidatedEvents, executionPlans, threadIds);
     }
 
     /// <summary>

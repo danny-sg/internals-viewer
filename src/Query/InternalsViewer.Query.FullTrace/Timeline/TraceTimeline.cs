@@ -1,6 +1,6 @@
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using System.Runtime.InteropServices;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
@@ -62,11 +62,11 @@ public sealed partial class TraceTimeline
 
     internal long Bytes => Threads.Sum(t => t.Bytes) + Parents.Length * (long)sizeof(int) + Nodes.Length * (long)IntPtr.Size;
 
-    internal CallStackNode?[] MappedNodes => Nodes;
+    internal CallTreeNode?[] MappedNodes => Nodes;
 
     private int[] Parents { get; }
 
-    private CallStackNode?[] Nodes { get; set; } = [];
+    private CallTreeNode?[] Nodes { get; set; } = [];
 
     private TraceCallStore? Calls { get; set; }
 
@@ -79,9 +79,9 @@ public sealed partial class TraceTimeline
     public TracePoint GetPoint(TracePosition position)
         => new(position, Threads.Select(t => t.Clock.GetInstructions(position)).DefaultIfEmpty().Max());
 
-    public CallStackNode? NodeOf(int callNodeIndex) => callNodeIndex >= 0 && callNodeIndex < Nodes.Length ? Nodes[callNodeIndex] : null;
+    public CallTreeNode? NodeOf(int callNodeIndex) => callNodeIndex >= 0 && callNodeIndex < Nodes.Length ? Nodes[callNodeIndex] : null;
 
-    public TraceSpanLocation? FindCall(CallStackNode node, int callIndex)
+    public TraceSpanLocation? FindCall(CallTreeNode node, int callIndex)
         => node.Frame is { } frame ? FindCall(frame.Address, frame.InstanceAddress, callIndex) : null;
 
     public TraceSpanLocation? FindCall(ulong functionAddress, ulong instanceAddress, int callIndex)
@@ -294,7 +294,7 @@ public sealed partial class TraceTimeline
 
     public TraceTimeline Where(Func<int, bool> include) => new([.. Threads.Select(t => t.Where(include))], this);
 
-    public TraceTimeline? RootedAt(Func<CallStackNode, bool> isRoot)
+    public TraceTimeline? RootedAt(Func<CallTreeNode, bool> isRoot)
     {
         var depths = new int[NodeCount];
 
@@ -345,9 +345,9 @@ public sealed partial class TraceTimeline
         return new TraceTimeline(threads, this);
     }
 
-    public TraceTimeline? CroppedTo(IReadOnlySet<CallStackNode> roots)
+    public TraceTimeline? CroppedTo(IReadOnlySet<CallTreeNode> roots)
     {
-        var known = new Dictionary<CallStackNode, int>(ReferenceEqualityComparer.Instance);
+        var known = new Dictionary<CallTreeNode, int>(ReferenceEqualityComparer.Instance);
 
         var depths = new int[NodeCount];
 
@@ -365,7 +365,7 @@ public sealed partial class TraceTimeline
             => row.GetCallNodeIndex(index) is var callNodeIndex && callNodeIndex >= 0 && callNodeIndex < depths.Length ? depths[callNodeIndex] : -1;
     }
 
-    internal void RemoveCallsUnder(Func<CallStackNode, bool> boundary)
+    internal void RemoveCallsUnder(Func<CallTreeNode, bool> boundary)
     {
         var removed = new bool[NodeCount];
 
@@ -395,7 +395,7 @@ public sealed partial class TraceTimeline
         SpanIds = null;
     }
 
-    public TraceTimeline Folded(Func<CallStackNode, bool> isFolded)
+    public TraceTimeline Folded(Func<CallTreeNode, bool> isFolded)
     {
         var folded = new bool[NodeCount];
 
@@ -446,7 +446,7 @@ public sealed partial class TraceTimeline
         return new TraceTimeline(threads, this);
     }
 
-    internal void MapNodes(CallStackNode?[] nodes) => Nodes = nodes;
+    internal void MapNodes(CallTreeNode?[] nodes) => Nodes = nodes;
 
     internal void SetCalls(TraceCallStore calls) => Calls = calls;
 
@@ -533,9 +533,9 @@ public sealed partial class TraceTimeline
         return span.From.Instructions + (ulong)((span.To.Instructions - span.From.Instructions) * fraction);
     }
 
-    internal Dictionary<CallStackNode, int[]> GetCallActivity(int buckets)
+    internal Dictionary<CallTreeNode, int[]> GetCallActivity(int buckets)
     {
-        var activity = new Dictionary<CallStackNode, int[]>(ReferenceEqualityComparer.Instance);
+        var activity = new Dictionary<CallTreeNode, int[]>(ReferenceEqualityComparer.Instance);
 
         var start = GetStart(TraceTimelineAxis.Position);
 
@@ -610,7 +610,7 @@ public sealed partial class TraceTimeline
         return merged;
     }
 
-    private static int DepthUnder(IReadOnlySet<CallStackNode> roots, CallStackNode node, Dictionary<CallStackNode, int> known)
+    private static int DepthUnder(IReadOnlySet<CallTreeNode> roots, CallTreeNode node, Dictionary<CallTreeNode, int> known)
     {
         if (known.TryGetValue(node, out var depth))
         {

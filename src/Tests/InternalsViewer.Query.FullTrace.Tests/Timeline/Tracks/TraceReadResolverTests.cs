@@ -1,8 +1,6 @@
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Categories;
-using InternalsViewer.Query.CallStack.Locators;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory;
@@ -17,6 +15,8 @@ using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.Query.Plans.Model;
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRowHelper;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
+using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Symbols.Categories;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Timeline.Tracks;
 
@@ -144,7 +144,7 @@ public class TraceReadResolverTests
 
         var timeline = builder.Build(Nodes);
 
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var join = tree.AddCall(tree.Root, Frame(Helper, JoinIterator, "CQScanNLJoinNew", "GetRow"), 1);
 
@@ -158,7 +158,7 @@ public class TraceReadResolverTests
 
         var fromDisk = tree.AddCall(scanGet, Frame(GetFromDiskFunction, BufferPool, "BPool", "GetFromDisk"), 1);
 
-        CallStackNode[] nodes = [join, scan, scanGet, readAhead, rootGet, fromDisk];
+        CallTreeNode[] nodes = [join, scan, scanGet, readAhead, rootGet, fromDisk];
 
         timeline.MapNodes(nodes);
 
@@ -211,13 +211,13 @@ public class TraceReadResolverTests
 
     private static Locator Page(short file, int page) => new(2, LocatorValueType.Page, ((ulong)(ushort)file << 32) | (uint)page);
 
-    private static CallstackFrame Frame(ulong address, ulong instance, string className, string method) => new()
+    private static CallFrame Frame(ulong address, ulong instance, string className, string method) => new()
     {
         Module = new("sqlmin"),
         Rva = 0x10,
         Address = address,
         InstanceAddress = instance,
-        Function = new CallstackFunction
+        Function = new FrameFunction
         {
             ClassName = className,
             MethodName = method,

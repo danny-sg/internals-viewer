@@ -17,8 +17,7 @@
                   MaxZoomFactor="2.0"
                   Background="White"
                   Padding="8">
-        <plan:ExecutionPlanControl HasFlameGraph="False"
-                                   Plan="{x:Bind ViewModel.SimulationPlan, Mode=OneWay}"
+        <plan:ExecutionPlanControl Plan="{x:Bind ViewModel.SimulationPlan, Mode=OneWay}"
                                    SelectedNode="{x:Bind ViewModel.ActivePlanNode, Mode=OneWay}"
                                    NodeSelected="OnNodeSelected" />
     </ScrollViewer>

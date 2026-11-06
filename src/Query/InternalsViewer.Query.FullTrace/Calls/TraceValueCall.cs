@@ -1,5 +1,5 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 
 namespace InternalsViewer.Query.FullTrace.Calls;
 
-public sealed record TraceValueCall(int CallIndex, TracePosition Position, CallStackNode? Node, uint Thread = 0);
+public sealed record TraceValueCall(int CallIndex, TracePosition Position, CallTreeNode? Node, uint Thread = 0);

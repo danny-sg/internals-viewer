@@ -1,4 +1,4 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.Allocation.Enums;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -33,9 +33,9 @@ internal static class AllocationMapper
 
         var scanned = timeline is null ? new ScannedCallList() : ScanSpans(GetCalls, byAddress, timeline, clerks ?? MemoryClerkSnapshot.Empty);
 
-        var plumbing = new Dictionary<CallStackNode, bool>(ReferenceEqualityComparer.Instance);
+        var plumbing = new Dictionary<CallTreeNode, bool>(ReferenceEqualityComparer.Instance);
 
-        var nested = new Dictionary<CallStackNode, bool>(ReferenceEqualityComparer.Instance);
+        var nested = new Dictionary<CallTreeNode, bool>(ReferenceEqualityComparer.Instance);
 
         var values = new Dictionary<ulong, CallValueBuffer>();
 
@@ -278,7 +278,7 @@ internal static class AllocationMapper
         return index < starts.Length && starts[index] < end ? index : -1;
     }
 
-    private static bool IsPlumbing(CallStackNode? node, Dictionary<CallStackNode, bool> plumbing)
+    private static bool IsPlumbing(CallTreeNode? node, Dictionary<CallTreeNode, bool> plumbing)
     {
         if (node is null)
         {
@@ -295,7 +295,7 @@ internal static class AllocationMapper
         return inside;
     }
 
-    private static bool IsNested(CallStackNode node, Dictionary<ulong, AllocationFunction> functions, Dictionary<CallStackNode, bool> nested)
+    private static bool IsNested(CallTreeNode node, Dictionary<ulong, AllocationFunction> functions, Dictionary<CallTreeNode, bool> nested)
     {
         if (!nested.TryGetValue(node, out var inside))
         {

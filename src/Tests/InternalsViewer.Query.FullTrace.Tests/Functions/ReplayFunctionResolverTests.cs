@@ -1,5 +1,5 @@
-using InternalsViewer.Query.CallStack.Categories;
 using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.FullTrace.Symbols.Categories;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Functions;
 

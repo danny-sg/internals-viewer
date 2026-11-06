@@ -11,16 +11,14 @@ using System.Diagnostics;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Loading;
 using InternalsViewer.Internals.Helpers;
-using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Arguments;
-using InternalsViewer.Query.CallStack.Symbols;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
+using InternalsViewer.Query.FullTrace.Symbols;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.History.Capture.Watches;
-using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Helpers;
 using Microsoft.Extensions.Logging;
@@ -88,15 +86,15 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         steps.Begin(CallTreeStep);
 
-        var (callStack, mapped) = await BuildCallStackAsync(replay, request.SymbolsPath, messages, cancellationToken);
+        var (callTree, mapped) = await BuildCallTreeAsync(replay, request.SymbolsPath, messages, cancellationToken);
 
-        var timeline = BuildTimeline(replay, callStack, mapped);
+        var timeline = BuildTimeline(replay, callTree, mapped);
 
         steps.Complete();
 
         steps.Begin(OperatorsStep);
 
-        var result = BuildResult(replay, functions, request, callStack, timeline);
+        var result = BuildResult(replay, functions, request, callTree, timeline);
 
         steps.Complete();
 
@@ -221,12 +219,12 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         return steps;
     }
 
-    private async Task<(CallStackTree CallStack, CallStackNode?[] Mapped)> BuildCallStackAsync(ReplayResult replay,
+    private async Task<(CallTree CallTree, CallTreeNode?[] Mapped)> BuildCallTreeAsync(ReplayResult replay,
                                                                                                string symbolsPath,
                                                                                                StepLoggerProgress messages,
                                                                                                CancellationToken cancellationToken)
     {
-        var (callStack, replayed) = CallTreeBuilder.Build(replay.Nodes, replay.Modules);
+        var (callTree, replayed) = CallTreeBuilder.Build(replay.Nodes, replay.Modules);
 
         Logger.LogInformation("{Calls} call(s) on {Paths} call path(s) replayed, {Logged} call(s) of {Functions} function(s) logged in "
                               + "{Size} MB, {Locators} page and row id(s) read, {UniqueLocators} unique",
@@ -238,19 +236,25 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                               replay.CallStore.LocatorCount,
                               replay.CallStore.UniqueLocatorCount);
 
-        var unknownSymbols = await CallstackProcessor.Process(callStack, symbolsPath, messages, cancellationToken);
+        var frames = callTree.Nodes().Select(node => node.Frame!).ToList();
 
-        LogUnknownSymbols(unknownSymbols);
+        await SymbolDownloader.DownloadSymbols(frames.Select(f => f.Module), symbolsPath, messages, cancellationToken);
 
-        LogUnknownEnums(callStack, symbolsPath);
+        using var resolver = new SymbolResolver(symbolsPath);
 
-        var collapsed = new Dictionary<CallStackNode, CallStackNode>(ReferenceEqualityComparer.Instance);
+        resolver.ResolveFunctions(frames);
 
-        callStack = callStack.CollapseToFunctions(collapsed: (original, node) => collapsed[original] = node);
+        LogUnknownSymbols(resolver.UnknownSymbols);
 
-        CallStackNode?[] mapped = [.. replayed.Select(node => collapsed.GetValueOrDefault(node))];
+        LogUnknownEnums(callTree, resolver);
 
-        return (callStack, mapped);
+        var collapsed = new Dictionary<CallTreeNode, CallTreeNode>(ReferenceEqualityComparer.Instance);
+
+        callTree = callTree.CollapseToFunctions(collapsed: (original, node) => collapsed[original] = node);
+
+        CallTreeNode?[] mapped = [.. replayed.Select(node => collapsed.GetValueOrDefault(node))];
+
+        return (callTree, mapped);
     }
 
     private void LogComponentSizes(TraceResult result)
@@ -274,7 +278,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         Logger.LogInformation("Measured components: {Size:N1} MB", measured / (1024d * 1024));
     }
 
-    private TraceTimeline BuildTimeline(ReplayResult replay, CallStackTree callStack, CallStackNode?[] mapped)
+    private TraceTimeline BuildTimeline(ReplayResult replay, CallTree callTree, CallTreeNode?[] mapped)
     {
         replay.CallStore.MapNodes(mapped);
 
@@ -282,7 +286,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         replay.Timeline.MapNodes(mapped);
 
-        callStack.RemoveCallsUnder(n => n.IsInstrumentation);
+        callTree.RemoveCallsUnder(n => n.IsInstrumentation);
 
         replay.Timeline.RemoveCallsUnder(n => n.IsInstrumentation);
 
@@ -290,7 +294,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         Logger.LogInformation("{Calls} call(s) after removing Extended Events and tracing, {Spans} call span(s) on {Threads} "
                               + "thread(s) in the trace timeline",
-                              callStack.Nodes().Sum(n => n.Calls),
+                              callTree.Nodes().Sum(n => n.Calls),
                               timeline.SpanCount,
                               timeline.Threads.Count);
 
@@ -300,7 +304,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
     private TraceResult BuildResult(ReplayResult replay,
                                     ReplayFunctionTable functions,
                                     TraceRequest request,
-                                    CallStackTree callStack,
+                                    CallTree callTree,
                                     TraceTimeline timeline)
     {
         var events = request.Events;
@@ -314,7 +318,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         var getAllocation = GetAllocation(replay.CallStore, functions.AllocationFunctions, memoryObjects);
 
-        var builder = new TraceResultBuilder(callStack, replay.CallStore, timeline, events, replay.PlanNodes)
+        var builder = new TraceResultBuilder(callTree, replay.CallStore, timeline, events, replay.PlanNodes)
         {
             Allocation = memory,
             AddressMap = AddressMap.Build(replay.AddressMap, timeline.NodeOf, getAllocation),
@@ -322,10 +326,6 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
             ObjectPool = request.ObjectPool,
             BufferPool = replay.BufferPool
         };
-
-        var matched = IteratorInstanceMatcher.Match(callStack, events, builder.PlanLink);
-
-        OperatorEntryLabels.Apply(events);
 
         Logger.LogInformation("{PlanObjects} plan object(s) linked to {PlanNodes} of {Operators} plan node(s), {Instances} iterator "
                               + "instance(s) linked to their plan node",
@@ -338,23 +338,16 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         LogOperators(operators, replay.PlanNodes, lifetimes);
 
-        var outputStructures = ResolveOutputStructures(replay, memory, lifetimes);
-
         Logger.LogInformation("{Matched} of {Operators} operator(s) matched to recorded iterators, {Allocations} allocation(s) of "
                               + "{Bytes}, {Lifetimes} operator lifetime(s) on {Threads} thread(s)",
-                              matched,
+                              operators.Count(o => o.Instances.Count > 0),
                               operators.Count(o => o.PlanNodeIdentifier is { NodeId: >= 0 }),
                               allocationCount,
                               StringHelpers.FormatSize(allocatedBytes),
                               lifetimes.Count,
                               lifetimes.Select(l => l.Thread).Distinct().Count());
 
-        if (events.Count > 0)
-        {
-            callStack.ComputeActivity(events.Min(e => e.TimeUs), events.Max(e => e.TimeUs), QueryRunner.ActivityBuckets);
-        }
-
-        return builder.Build(outputStructures);
+        return builder.Build();
     }
 
     private async Task<(MemoryHistoryStore History, TracePageReadList PageReads)?> RecordMemoryAsync(ReplaySession session,
@@ -386,7 +379,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         HashSet<ulong> iterators = [.. lifetimes.OperatorsByInstance.Keys, .. replay.PlanNodes.Select(p => p.Iterator)];
 
-        var owners = IteratorAllocationIndex.GetOwners([.. allocations.Select(a => a.Block)], replay.CallStore, iterators, replay.PlanNodes);
+        var owners = AllocationOwnerResolver.GetOwners([.. allocations.Select(a => a.Block)], replay.CallStore, iterators, replay.PlanNodes);
 
         var recording = new MemoryHistoryBuilder.Recording(allocations,
                                                            owners,
@@ -541,25 +534,6 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         return history;
     }
 
-    private List<TraceOutputStructure> ResolveOutputStructures(ReplayResult replay, AllocationIndex allocation, TraceOperatorLifetimeList lifetimes)
-    {
-        var allocations = IteratorAllocationIndex.Build(allocation,
-                                                    replay.CallStore,
-                                                    lifetimes.OperatorsByInstance.Keys.ToHashSet(),
-                                                    replay.PlanNodes);
-
-        List<TraceOutputStructure> structures = [.. replay.OutputAddresses.Select(a => TraceOutputStructure.Resolve(a, allocations))];
-
-        Logger.LogInformation("{Structures} output structure(s) resolved through {Blocks} allocation(s), "
-                              + "{Owned} of {Columns} column(s) owned",
-                              structures.Count,
-                              allocations.Count,
-                              structures.Sum(s => s.Owners.Count(o => o != 0)),
-                              structures.Sum(s => s.Owners.Count));
-
-        return structures;
-    }
-
     private void LogOperators(IReadOnlyList<ExecutionOperatorEvent> operators,
                               IReadOnlyList<IteratorPlanNode> planNodes,
                               IReadOnlyList<TraceOperatorLifetime> lifetimes)
@@ -588,7 +562,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         }
     }
 
-    private void LogUnknownSymbols(string[] unknownSymbols)
+    private void LogUnknownSymbols(IReadOnlyCollection<string> unknownSymbols)
     {
         if (!Logger.IsEnabled(LogLevel.Debug))
         {
@@ -601,27 +575,25 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         }
     }
 
-    private void LogUnknownEnums(CallStackTree callStack, string symbolsPath)
+    private void LogUnknownEnums(CallTree callTree, SymbolResolver resolver)
     {
         if (!Logger.IsEnabled(LogLevel.Debug))
         {
             return;
         }
 
-        using var resolver = new CallstackResolver(symbolsPath);
-
         var functions = new HashSet<string>(StringComparer.Ordinal);
 
         var unknown = new SortedDictionary<string, string>(StringComparer.Ordinal);
 
-        foreach (var node in callStack.Nodes())
+        foreach (var node in callTree.Nodes())
         {
             if (node.Frame is not { } frame)
             {
                 continue;
             }
 
-            var symbol = QualifiedSymbol.Of(frame);
+            var symbol = frame.QualifiedName;
 
             if (!functions.Add(symbol)
                 || resolver.ResolveSymbol(frame)?.Parsed is not { } signature)
@@ -646,7 +618,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         }
     }
 
-    private static Func<AddressEntry, CallStackNode?, AddressMapAllocation> GetAllocation(TraceCallStore store,
+    private static Func<AddressEntry, CallTreeNode?, AddressMapAllocation> GetAllocation(TraceCallStore store,
                                                                                           IReadOnlyList<AllocationFunction> functions,
                                                                                           AllocationMemoryObjectLookup memoryObjects)
     {

@@ -1,6 +1,5 @@
 ﻿using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Extensions;
-using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Files;
 using InternalsViewer.Query.Events.Latches;
@@ -19,8 +18,6 @@ namespace InternalsViewer.Query.Events.Parsing;
 
 internal sealed class EventParser
 {
-    private readonly StringInternPool _frameStrings = new();
-
     public bool IncludeSystemObjects { get; init; }
 
     /// <summary>
@@ -30,8 +27,7 @@ internal sealed class EventParser
 
     public EngineEvent? ToEngineEvent(EventResult e,
                                       DatabaseSource? database,
-                                      PlanHandleRegistry planHandles,
-                                      CallStackTree callStack)
+                                      PlanHandleRegistry planHandles)
     {
         var engineEvent = e.Name switch
         {
@@ -150,16 +146,6 @@ internal sealed class EventParser
         if (IsExcluded(engineEvent))
         {
             return null;
-        }
-
-        if (e.TryGetActionSpan("callstack", out var callstack))
-        {
-            var frames = XmlCallStackParser.ParseCallStack(callstack, _frameStrings);
-
-            if (frames.Count > 0)
-            {
-                engineEvent.CallStack = callStack.Add(frames, engineEvent);
-            }
         }
 
         return engineEvent;

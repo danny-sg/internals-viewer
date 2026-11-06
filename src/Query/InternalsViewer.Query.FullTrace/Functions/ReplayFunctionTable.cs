@@ -4,7 +4,6 @@ using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool.Enums;
-using InternalsViewer.Query.FullTrace.Output.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Functions;
 
@@ -19,10 +18,6 @@ internal sealed record ReplayFunctionTable(ulong[] ExcludedFunctions,
     public AddressTable<PlanNodeFunctionType> PlanNodeFunctions { get; init; } = AddressTable<PlanNodeFunctionType>.Empty;
 
     public AddressTable<PlanObjectClass> PlanObjects { get; init; } = AddressTable<PlanObjectClass>.Empty;
-
-    public AddressTable<OutputFunctionType> OutputFunctions { get; init; } = AddressTable<OutputFunctionType>.Empty;
-
-    public AddressTable<OutputValueClass> OutputClasses { get; init; } = AddressTable<OutputValueClass>.Empty;
 
     public AddressTable<BufferPoolFunctionType> BufferPoolFunctions { get; init; } = AddressTable<BufferPoolFunctionType>.Empty;
 
@@ -39,8 +34,6 @@ internal sealed record ReplayFunctionTable(ulong[] ExcludedFunctions,
         {
             PlanNodeFunctions = AddressTable<PlanNodeFunctionType>.Merge(modules.Select(m => (m.Table.PlanNodeFunctions, m.Address))),
             PlanObjects = AddressTable<PlanObjectClass>.Merge(modules.Select(m => (m.Table.PlanObjects, m.Address))),
-            OutputFunctions = AddressTable<OutputFunctionType>.Merge(modules.Select(m => (m.Table.OutputFunctions, m.Address))),
-            OutputClasses = AddressTable<OutputValueClass>.Merge(modules.Select(m => (m.Table.OutputClasses, m.Address))),
             BufferPoolFunctions = AddressTable<BufferPoolFunctionType>.Merge(modules.Select(m => (m.Table.BufferPoolFunctions, m.Address))),
             Vtables = AddressTable<string[]>.Merge(modules.Select(m => (m.Table.Vtables, m.Address))),
             StackArguments = AddressTable<int>.Merge(modules.Select(m => (m.Table.StackArguments, m.Address)))

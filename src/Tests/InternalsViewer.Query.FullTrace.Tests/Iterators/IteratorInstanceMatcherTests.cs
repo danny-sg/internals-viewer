@@ -1,8 +1,8 @@
-using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Categories;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.Query.FullTrace.Symbols.Categories;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Iterators;
 
@@ -12,7 +12,7 @@ public class IteratorInstanceMatcherTests
     [Fact]
     public void Each_Iterator_Takes_Its_Linked_Plan_Node_And_Wrappers_Are_Passed_Over()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var join = tree.AddCall(tree.Root, Iterator("CQScanNLJoinNew", "GetRow", 0x100, "Nested Loops"), 6);
 
@@ -23,18 +23,18 @@ public class IteratorInstanceMatcherTests
         var outer = Operator(1, "Index Seek", parent: 0);
         var inner = Operator(2, "Index Seek", parent: 0);
 
-        var matched = Match(tree, [loops, outer, inner], (0x100, 0), (0x200, 2), (0x300, 2), (0x400, 1), (0x500, 1));
+        var frames = Match(tree, [loops, outer, inner], (0x100, 0), (0x200, 2), (0x300, 2), (0x400, 1), (0x500, 1));
 
-        Assert.Equal(3, matched);
+        Assert.Equal(3, new[] { loops, outer, inner }.Count(o => o.Instances.Count > 0));
         Assert.Equal([0x500ul], outer.Instances);
         Assert.Equal([0x300ul], inner.Instances);
-        Assert.Equal(0x300ul, Assert.Single(inner.EntryFrames).Frame?.InstanceAddress);
+        Assert.Equal(0x300ul, Assert.Single(frames.GetEntryFrames(inner)).Frame?.InstanceAddress);
     }
 
     [Fact]
     public void An_Operator_Exits_Where_Its_Children_Are_Entered()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var join = tree.AddCall(tree.Root, Iterator("CQScanNLJoinNew", "GetRow", 0x100, "Nested Loops"), 6);
 
@@ -43,19 +43,19 @@ public class IteratorInstanceMatcherTests
 
         var loops = Operator(0, "Nested Loops");
 
-        Match(tree,
-              [loops, Operator(1, "Index Seek", parent: 0), Operator(2, "Index Seek", parent: 0)],
-              (0x100, 0),
-              (0x300, 1),
-              (0x500, 2));
+        var frames = Match(tree,
+                           [loops, Operator(1, "Index Seek", parent: 0), Operator(2, "Index Seek", parent: 0)],
+                           (0x100, 0),
+                           (0x300, 1),
+                           (0x500, 2));
 
-        Assert.Equal([0x300ul, 0x500ul], loops.ExitFrames.Select(f => f.Frame!.InstanceAddress).Order());
+        Assert.Equal([0x300ul, 0x500ul], frames.GetExitFrames(loops).Select(f => f.Frame!.InstanceAddress).Order());
     }
 
     [Fact]
     public void Every_Call_Into_An_Instance_From_Outside_It_Is_An_Entry()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var join = tree.AddCall(tree.Root, Iterator("CQScanNLJoinNew", "Open", 0x100, "Nested Loops"), 1);
 
@@ -67,15 +67,15 @@ public class IteratorInstanceMatcherTests
 
         var seek = Operator(1, "Index Seek", parent: 0);
 
-        Match(tree, [Operator(0, "Nested Loops"), seek], (0x100, 0), (0x300, 1));
+        var frames = Match(tree, [Operator(0, "Nested Loops"), seek], (0x100, 0), (0x300, 1));
 
-        Assert.Equal(["CQScanRangeNew::Open", "CQScanNew::GetRowOrReQualifyHelper"], seek.EntryFrames.Select(f => f.Symbol));
+        Assert.Equal(["CQScanRangeNew::Open", "CQScanNew::GetRowOrReQualifyHelper"], frames.GetEntryFrames(seek).Select(f => f.Symbol));
     }
 
     [Fact]
     public void Producers_On_Worker_Threads_Belong_To_Their_Parallelism_Node()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var query = tree.AddCall(tree.Root, Wrapper("CQueryScan", "GetRow", 0x10, "Iterator"), 2);
 
@@ -91,32 +91,32 @@ public class IteratorInstanceMatcherTests
         var gather = Operator(0, "Parallelism");
         var tableScan = Operator(1, "Table Scan", parent: 0);
 
-        Match(tree, [gather, tableScan], (0x100, 0), (0x200, 0), (0x400, 0), (0x300, 1), (0x500, 1));
+        var frames = Match(tree, [gather, tableScan], (0x100, 0), (0x200, 0), (0x400, 0), (0x300, 1), (0x500, 1));
 
-        Assert.Equal([0x100ul, 0x200ul, 0x400ul], gather.EntryFrames.Select(f => f.Frame!.InstanceAddress).Order());
-        Assert.Equal([0x300ul, 0x500ul], tableScan.EntryFrames.Select(f => f.Frame!.InstanceAddress).Order());
+        Assert.Equal([0x100ul, 0x200ul, 0x400ul], frames.GetEntryFrames(gather).Select(f => f.Frame!.InstanceAddress).Order());
+        Assert.Equal([0x300ul, 0x500ul], frames.GetEntryFrames(tableScan).Select(f => f.Frame!.InstanceAddress).Order());
     }
 
     [Fact]
     public void A_Plan_Node_With_No_Iterator_Of_Its_Own_Is_Passed_Over()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         tree.AddCall(tree.Root, Iterator("CQScanIndexNew", "GetRow", 0x100, "*Index Scan"), 3);
 
         var compute = Operator(0, "Compute Scalar");
         var scan = Operator(1, "Index Scan", parent: 0);
 
-        Match(tree, [compute, scan], (0x100, 1));
+        var frames = Match(tree, [compute, scan], (0x100, 1));
 
-        Assert.Empty(compute.EntryFrames);
-        Assert.Equal(0x100ul, Assert.Single(scan.EntryFrames).Frame?.InstanceAddress);
+        Assert.Empty(frames.GetEntryFrames(compute));
+        Assert.Equal(0x100ul, Assert.Single(frames.GetEntryFrames(scan)).Frame?.InstanceAddress);
     }
 
     [Fact]
     public void The_Statement_Is_Entered_Where_It_Runs_The_Plan()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var execute = tree.AddCall(tree.Root, Statement("CXStmtQuery", "ErsqExecuteQuery", "SELECT"), 1);
 
@@ -127,46 +127,16 @@ public class IteratorInstanceMatcherTests
         var select = Operator(-1, "SELECT");
         var seek = Operator(0, "Clustered Index Seek", parent: -1);
 
-        Match(tree, [select, seek], (0x100, 0));
+        var frames = Match(tree, [select, seek], (0x100, 0));
 
-        Assert.Equal("CXStmtQuery::ErsqExecuteQuery", Assert.Single(select.EntryFrames).Symbol);
-        Assert.Equal(0x100ul, Assert.Single(select.ExitFrames).Frame?.InstanceAddress);
-    }
-
-    [Fact]
-    public void Entry_Frames_From_Another_Call_Tree_Are_Replaced()
-    {
-        var sampled = new CallStackTree();
-
-        var stale = sampled.AddCall(sampled.Root, Statement("CXStmtQuery", "ErsqExecuteQuery", "SELECT"), 1);
-
-        var tree = new CallStackTree();
-
-        var execute = tree.AddCall(tree.Root, Statement("CXStmtQuery", "ErsqExecuteQuery", "SELECT"), 1);
-
-        var query = tree.AddCall(execute, Wrapper("CQueryScan", "GetRow", 0x10, "Iterator"), 2);
-
-        tree.AddCall(query, Iterator("CQScanRangeNew", "GetRow", 0x100, "*Index Seek"), 2);
-
-        var select = Operator(-1, "SELECT");
-        var seek = Operator(0, "Clustered Index Seek", parent: -1);
-        var unmatched = Operator(1, "Sort", parent: 0);
-
-        select.EntryFrames = [stale];
-        unmatched.EntryFrames = [stale];
-
-        var collapsed = tree.CollapseToFunctions();
-
-        IteratorInstanceMatcher.Match(collapsed, [select, seek, unmatched], LinkOf((0x100, 0)));
-
-        Assert.Same(collapsed.Root, Assert.Single(select.EntryFrames).Parent);
-        Assert.Empty(unmatched.EntryFrames);
+        Assert.Equal("CXStmtQuery::ErsqExecuteQuery", Assert.Single(frames.GetEntryFrames(select)).Symbol);
+        Assert.Equal(0x100ul, Assert.Single(frames.GetExitFrames(select)).Frame?.InstanceAddress);
     }
 
     [Fact]
     public void The_Statement_Is_Entered_Through_An_Operator_Below_An_Unmatched_One()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var execute = tree.AddCall(tree.Root, Statement("CXStmtQuery", "ErsqExecuteQuery", "SELECT"), 1);
 
@@ -178,16 +148,16 @@ public class IteratorInstanceMatcherTests
         var compute = Operator(0, "Compute Scalar", parent: -1);
         var seek = Operator(1, "Clustered Index Seek", parent: 0);
 
-        Match(tree, [select, compute, seek], (0x100, 1));
+        var frames = Match(tree, [select, compute, seek], (0x100, 1));
 
-        Assert.Empty(compute.EntryFrames);
-        Assert.Equal("CXStmtQuery::ErsqExecuteQuery", Assert.Single(select.EntryFrames).Symbol);
+        Assert.Empty(frames.GetEntryFrames(compute));
+        Assert.Equal("CXStmtQuery::ErsqExecuteQuery", Assert.Single(frames.GetEntryFrames(select)).Symbol);
     }
 
     [Fact]
     public void An_Unlinked_Iterator_Is_Not_Matched()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var join = tree.AddCall(tree.Root, Iterator("CQScanNLJoinNew", "GetRow", 0x100, "Nested Loops"), 6);
 
@@ -199,21 +169,23 @@ public class IteratorInstanceMatcherTests
         var outer = Operator(1, "Index Seek", parent: 0);
         var inner = Operator(2, "Index Seek", parent: 0);
 
-        Match(tree, [Operator(0, "Nested Loops"), outer, inner], (0x100, 0), (0x300, 1), (0x500, 2));
+        var frames = Match(tree, [Operator(0, "Nested Loops"), outer, inner], (0x100, 0), (0x300, 1), (0x500, 2));
 
-        Assert.DoesNotContain(0x900ul, outer.EntryFrames.Concat(inner.EntryFrames).Select(f => f.Frame!.InstanceAddress));
+        var entries = frames.GetEntryFrames(outer).Concat(frames.GetEntryFrames(inner));
+
+        Assert.DoesNotContain(0x900ul, entries.Select(f => f.Frame!.InstanceAddress));
     }
 
-    private static int Match(CallStackTree tree,
-                             IReadOnlyList<ExecutionOperatorEvent> operators,
-                             params (ulong InstanceAddress, int Node)[] links)
+    private static OperatorFrameMap Match(CallTree tree,
+                                          IReadOnlyList<ExecutionOperatorEvent> operators,
+                                          params (ulong InstanceAddress, int Node)[] links)
         => IteratorInstanceMatcher.Match(tree.CollapseToFunctions(), operators, LinkOf(links));
 
     private static IteratorPlanLink LinkOf(params (ulong InstanceAddress, int Node)[] links)
         => new(new Dictionary<ulong, PlanNodeIdentifier>(),
                links.ToDictionary(l => l.InstanceAddress, l => new PlanNodeIdentifier(1, l.Node)));
 
-    private static void Seek(CallStackTree tree, CallStackNode parent, ulong profile, ulong seek, long rows)
+    private static void Seek(CallTree tree, CallTreeNode parent, ulong profile, ulong seek, long rows)
     {
         var wrapper = tree.AddCall(parent, Wrapper("CQScanProfileNew", "GetRow", profile, "Profiling"), rows + 1);
 
@@ -230,19 +202,19 @@ public class IteratorInstanceMatcherTests
         ParentNodeId = parent,
     };
 
-    private static CallstackFrame Iterator(string className, string method, ulong instance, string? planOperator = null)
+    private static CallFrame Iterator(string className, string method, ulong instance, string? planOperator = null)
         => Resolved("sqlmin", className, method, instance, planOperator, planOperator);
 
-    private static CallstackFrame Wrapper(string className, string method, ulong instance, string iterator)
+    private static CallFrame Wrapper(string className, string method, ulong instance, string iterator)
         => Resolved("sqlmin", className, method, instance, iterator, planOperator: null);
 
-    private static CallstackFrame Statement(string className, string method, string planOperator)
+    private static CallFrame Statement(string className, string method, string planOperator)
         => Resolved("sqllang", className, method, instance: 0, planOperator, planOperator);
 
-    private static CallstackFrame Frame(string className, string method)
+    private static CallFrame Frame(string className, string method)
         => Resolved("sqlmin", className, method, instance: 0, iterator: null, planOperator: null);
 
-    private static CallstackFrame Resolved(string module,
+    private static CallFrame Resolved(string module,
                                            string className,
                                            string method,
                                            ulong instance,
@@ -252,7 +224,7 @@ public class IteratorInstanceMatcherTests
         Module = new(module),
         Rva = (uint)StringComparer.Ordinal.GetHashCode($"{className}::{method}"),
         InstanceAddress = instance,
-        Function = new CallstackFunction
+        Function = new FrameFunction
         {
             ClassName = className,
             MethodName = method,

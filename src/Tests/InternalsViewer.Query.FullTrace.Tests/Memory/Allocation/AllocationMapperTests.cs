@@ -1,6 +1,5 @@
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
-using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Categories;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.Allocation.Enums;
@@ -8,6 +7,7 @@ using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Memory;
+using InternalsViewer.Query.FullTrace.Symbols.Categories;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Memory.Allocation;
 
@@ -25,7 +25,7 @@ public class AllocationMapperTests
     [Fact]
     public void Allocations_Are_Attributed_To_Their_Frame_And_Its_Callers()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var caller = tree.AddCall(tree.Root, Frame(0x10), 1);
         var allocator = tree.AddCall(caller, Frame(Allocator), 2);
@@ -49,7 +49,7 @@ public class AllocationMapperTests
     [Fact]
     public void An_Allocation_Made_Inside_Another_Is_Not_Counted_Twice()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var caller = tree.AddCall(tree.Root, Frame(0x10), 1);
         var outer = tree.AddCall(caller, Frame(Allocator), 1);
@@ -73,7 +73,7 @@ public class AllocationMapperTests
     [Fact]
     public void Pages_Taken_By_A_Memory_Object_Are_Not_Counted_Again()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var caller = tree.AddCall(tree.Root, Frame(0x10), 1);
         var create = tree.AddCall(caller, Resolved(0x20, "sqldk", "MemoryObjectFactory", "CreateMemObject"), 1);
@@ -98,7 +98,7 @@ public class AllocationMapperTests
     [InlineData("MEMORYCLERK_SQLQUERYEXEC", 0ul)]
     public void Only_Memory_From_The_Workspace_Clerk_Counts_Against_The_Grant(string clerk, ulong expected)
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var caller = tree.AddCall(tree.Root, Frame(0x10), 1);
         var allocator = tree.AddCall(caller, Frame(Allocator), 1);
@@ -136,7 +136,7 @@ public class AllocationMapperTests
     [Fact]
     public void A_Memory_Object_Without_Pages_In_The_Recording_Takes_Its_Clerk_From_The_Snapshot()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var caller = tree.AddCall(tree.Root, Frame(0x10), 1);
         var allocator = tree.AddCall(caller, Resolved(Allocator, "sqldk", "CMemObj", "Alloc"), 1);
@@ -170,7 +170,7 @@ public class AllocationMapperTests
     {
         const ulong Parent = 0x8000;
 
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var caller = tree.AddCall(tree.Root, Frame(0x10), 1);
         var allocator = tree.AddCall(caller, Frame(Allocator), 1);
@@ -211,7 +211,7 @@ public class AllocationMapperTests
     [Fact]
     public void An_Allocation_Takes_The_Type_Of_The_Memory_Object_It_Came_From()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var caller = tree.AddCall(tree.Root, Frame(0x10), 1);
         var allocator = tree.AddCall(caller, Frame(Allocator), 1);
@@ -252,7 +252,7 @@ public class AllocationMapperTests
     {
         const ulong Parent = 0x8000;
 
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var caller = tree.AddCall(tree.Root, Frame(0x10), 1);
         var allocator = tree.AddCall(caller, Frame(Allocator), 1);
@@ -322,7 +322,7 @@ public class AllocationMapperTests
     private static ulong PeakWorkspace(TraceTimeline timeline, AllocationIndex allocation)
         => allocation.PeakWorkspaceDuring(timeline.Start.Position, timeline.End.Position.Next);
 
-    private static CallstackFrame Resolved(ulong address,
+    private static CallFrame Resolved(ulong address,
                                            string module,
                                            string className,
                                            string methodName,
@@ -333,7 +333,7 @@ public class AllocationMapperTests
             Module = new(module),
             Rva = (uint)address,
             Address = address,
-            Function = new CallstackFunction
+            Function = new FrameFunction
             {
                 ClassName = className,
                 MethodName = methodName,
@@ -344,7 +344,7 @@ public class AllocationMapperTests
 
     private static AllocationFunction Function(ulong address) => new(address, AllocationOperation.Allocate, 1, -1, 1);
 
-    private static CallstackFrame Frame(ulong address) => new() { Module = new("sqldk"), Rva = (uint)address, Address = address };
+    private static CallFrame Frame(ulong address) => new() { Module = new("sqldk"), Rva = (uint)address, Address = address };
 
     private static ulong[] Row(ulong sequence, ulong size, int callNodeIndex, ulong returned = 0, ulong receiver = 0)
         => TraceCallRowHelper.Row(sequence,

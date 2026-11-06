@@ -2,8 +2,8 @@ using System.Globalization;
 using System.Text;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Mcp.Documents;
-using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Locators;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
+using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Arguments;
@@ -117,7 +117,7 @@ public static class Format
         => $"[{context.Events.GetId(engineEvent)}] {Relative(engineEvent.TimeUs, cropStartUs)} " +
            $"{EventType(engineEvent)} {EventSummary(engineEvent)}";
 
-    public static string NodeLine(DocumentContext context, CallStackNode node)
+    public static string NodeLine(DocumentContext context, CallTreeNode node)
     {
         var parts = new List<string> { $"[{context.Nodes.GetId(node)}] {context.GetFunctionName(node)}" };
 
@@ -149,15 +149,10 @@ public static class Format
             }
         }
 
-        if (node.Events.Count > 0)
-        {
-            parts.Add($"events={node.Events.Count}");
-        }
-
         return string.Join("  ", parts);
     }
 
-    public static string CallPath(DocumentContext context, CallStackNode node, int depth, bool includeSelf = false)
+    public static string CallPath(DocumentContext context, CallTreeNode node, int depth, bool includeSelf = false)
     {
         var ancestors = node.Ancestors().Skip(includeSelf ? 0 : 1).ToList();
 

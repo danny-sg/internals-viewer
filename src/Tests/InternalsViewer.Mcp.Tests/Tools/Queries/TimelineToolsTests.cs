@@ -2,7 +2,6 @@ using InternalsViewer.Mcp.Tools.Queries;
 using InternalsViewer.Query.Export;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
-using InternalsViewer.Query.FullTrace.Output;
 using ModelContextProtocol;
 using static InternalsViewer.Mcp.Tests.TestRuns;
 
@@ -130,28 +129,6 @@ public class TimelineToolsTests
         Assert.Contains("Thread  Position  Instructions", text);
         Assert.Contains("64:0", text);
         Assert.Contains("100", text);
-    }
-
-    [Fact]
-    public async Task Output_Reports_When_There_Are_No_Structures()
-    {
-        var (resolver, _) = CreateResolver(Create());
-
-        Assert.Equal("no output structures in the trace", await new TimelineTools(resolver).Output());
-    }
-
-    [Fact]
-    public async Task Output_Lists_The_Owner_Of_Each_Column()
-    {
-        var run = WithTrace(Create(), t => t with { OutputStructures = [new TraceOutputStructure(0x1000, [Scan, 0x9001], Scan)] });
-
-        var (resolver, _) = CreateResolver(run);
-
-        var text = await new TimelineTools(resolver).Output();
-
-        Assert.Contains("output structures: 1 output rows", text);
-        Assert.Contains("0x1000", text);
-        Assert.Contains("0x9000, 0x9001", text);
     }
 
     private static QueryExportContent WithTrace(QueryExportContent run, Func<TraceResult, TraceResult> change)

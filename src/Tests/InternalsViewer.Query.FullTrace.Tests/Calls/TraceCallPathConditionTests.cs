@@ -1,5 +1,4 @@
-using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Categories;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Arguments.Enums;
@@ -7,6 +6,7 @@ using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.Query.FullTrace.Symbols.Categories;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Calls;
 
@@ -112,9 +112,9 @@ public class TraceCallPathConditionTests
     private static TraceCallCondition Pattern(TraceConditionTarget target, TraceConditionOperator comparison, string value)
         => new(target, null, string.Empty, comparison, value);
 
-    private static (CallStackNode ScanCompare, CallStackNode FilterCompare) BuildTree()
+    private static (CallTreeNode ScanCompare, CallTreeNode FilterCompare) BuildTree()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var filter = tree.AddCall(tree.Root, Frame("sqlmin", "CQScanFilterNew", "GetRow", 0x10), 1);
 
@@ -129,12 +129,12 @@ public class TraceCallPathConditionTests
         return (scanCompare, filterCompare);
     }
 
-    private static CallstackFrame Frame(string module, string className, string method, uint rva) => new()
+    private static CallFrame Frame(string module, string className, string method, uint rva) => new()
     {
         Module = new(module),
         Rva = rva,
         Address = rva,
-        Function = new CallstackFunction
+        Function = new FrameFunction
         {
             ClassName = className,
             MethodName = method,

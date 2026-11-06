@@ -1,4 +1,4 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Memory.History;
@@ -505,11 +505,11 @@ public class TraceMemoryPaneTests
 
         public void MovePlayhead(double position) => MovedTo = position;
 
-        public void ClickCall(CallStackNode node, int callIndex)
+        public void ClickCall(CallTreeNode node, int callIndex)
         {
         }
 
-        public void OpenCallTree(CallStackNode node, int callIndex)
+        public void OpenCallTree(CallTreeNode node, int callIndex)
         {
         }
 

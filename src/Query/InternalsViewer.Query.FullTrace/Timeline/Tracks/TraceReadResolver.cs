@@ -1,10 +1,10 @@
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Locators;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
+using InternalsViewer.Query.FullTrace.Locators;
 
 namespace InternalsViewer.Query.FullTrace.Timeline.Tracks;
 
@@ -26,7 +26,7 @@ public static class TraceReadResolver
                                      (f, c) => GetReadType(f) is { } type && GetPage(c) is not null ? (byte)type : null,
                                      enclosing ?? EnclosingOperatorCallIndex.Build(calls, lifetimes.OperatorsByInstance));
 
-    private static TraceReadType? GetReadType(CallstackFrame frame)
+    private static TraceReadType? GetReadType(CallFrame frame)
         => BufferPoolFunctionLookup.IsBufferPool(frame) && frame.Function is { } resolved
             ? resolved.MethodName switch
             {

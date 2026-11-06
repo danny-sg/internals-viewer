@@ -20,11 +20,15 @@ The **Events** menu selects what the trace captures:
 
 ![Events menu](/docs/user-guide/images/query-events-menu.png)
 
-Page I/O is always captured. **Locks** opens a submenu of lock categories to capture (**Read**, **Update**, **Write**, **Schema**, **Range**, **Bulk**, or **None**/**Default**) - by default this excludes **Schema** locks, since they are held for a large part of the query's lifetime and would otherwise dominate the [Locks](/docs/user-guide/query/Locks) band. **Waits** and **Latches** can be toggled independently, as can **Columnstore** (segment scans, rowgroup reads and elimination, object pool lookups, batch and bitmap filters, and aggregate pushdown - on by default, see [Columnstore](/docs/user-guide/query/Timeline#columnstore)), **Memory** (grants, spills, and sort warnings, listed in the Events pane) and **Call Stack** - see [Call Stack](/docs/user-guide/query/CallStack).
+<!-- Screenshot (update): the Events menu without the Call Stack option -->
 
-By default **Waits**, **Columnstore** and **Call Stack** are on, and **Latches** and **Memory** off.
+Page I/O is always captured. **Locks** opens a submenu of lock categories to capture (**Read**, **Update**, **Write**, **Schema**, **Range**, **Bulk**, or **None**/**Default**) - by default this excludes **Schema** locks, since they are held for a large part of the query's lifetime and would otherwise dominate the [Locks](/docs/user-guide/query/Locks) band. **Waits** and **Latches** can be toggled independently, as can **Columnstore** (segment scans, rowgroup reads and elimination, object pool lookups, batch and bitmap filters, and aggregate pushdown - on by default, see [Columnstore](/docs/user-guide/query/Timeline#columnstore)), and **Memory** (grants, spills, and sort warnings, listed in the Events pane).
 
-The lock categories, **Waits** and **Latches** also filter what is already loaded - turning one off hides its events and its band straight away, without running the query again. **Columnstore**, **Memory** and **Call Stack** change what the next run captures.
+By default **Waits** and **Columnstore** are on, and **Latches** and **Memory** off.
+
+The lock categories, **Waits** and **Latches** also filter what is already loaded - turning one off hides its events and its band straight away, without running the query again. **Columnstore** and **Memory** change what the next run captures.
+
+The trace does not capture the engine functions behind the events. To see them, record the query with [Full Trace](/docs/user-guide/query/FullTrace) and read its [Call Tree](/docs/user-guide/query/CallStack).
 
 ## Query menu
 
@@ -38,7 +42,7 @@ The lock categories, **Waits** and **Latches** also filter what is already loade
 
 ## Exporting a run
 
-**Export to file** saves the last run to an `.ivtrace` file - the SQL, the messages, the execution plan, the captured events and log records, and the call tree. For a [Full Trace](/docs/user-guide/query/FullTrace) run it also saves what the replay produced - the call tree, the Trace Timeline and every call's arguments - but not the recording itself, so a Full Trace can be looked at again without recording it again. It is available once a query has run, and for a Full Trace run once the recording has loaded. The result rows are not saved.
+**Export to file** saves the last run to an `.ivtrace` file - the SQL, the messages, the execution plan, and the captured events and log records. For a [Full Trace](/docs/user-guide/query/FullTrace) run it also saves what the replay produced - the call tree, the Trace Timeline and every call's arguments - but not the recording itself, so a Full Trace can be looked at again without recording it again. It is available once a query has run, and for a Full Trace run once the recording has loaded. The result rows are not saved.
 
 **Import from file** opens a saved run in the current Query tab, in place of whatever was there, and puts its SQL in the editor. Messages starts with the server and database it was exported from, followed by the messages from the original run.
 
@@ -62,7 +66,7 @@ The **View** menu opens additional panes:
 - **Allocations** - the allocation map, scoped to the query - see [Allocations](/docs/user-guide/query/Allocations)
 - **Execution Plan** - the captured plan, connected to the timeline - see [Execution Plan](/docs/user-guide/query/ExecutionPlan)
 - **Events** - the raw list of captured events behind the timeline - see [Events](/docs/user-guide/query/Events)
-- **Call Tree** - the query's call stacks merged into one tree, with **Members** and **Symbols** beside it on its submenu - see [Call Stack](/docs/user-guide/query/CallStack)
+- **Call Tree** - every call a [Full Trace](/docs/user-guide/query/FullTrace) recorded, merged into one tree, with **Members** and **Symbols** beside it on its submenu - see [Call Tree](/docs/user-guide/query/CallStack)
 - **Timeline** - the replay timeline - see [Timeline](/docs/user-guide/query/Timeline)
 - **Trace Timeline** - every call recorded by **Record Full Trace** on the Trace menu, which takes the Timeline's place while it is on - see [Trace Timeline](/docs/user-guide/query/TraceTimeline)
 - **Simulation** - steps through the query's plan operator by operator - see [Simulation](/docs/user-guide/query/Simulation)
@@ -73,7 +77,7 @@ Pages and indexes opened from the trace - by double-clicking a timeline event, c
 
 ## Trace menu
 
-**Record Full Trace** records each run with Microsoft's Time Travel Debugging while it is on, so the [Call Tree](/docs/user-guide/query/CallStack) holds every call the query made rather than the stacks sampled at each event - see [Full Trace](/docs/user-guide/query/FullTrace). It is for development and test instances only: it needs administrator consent, can restart the SQL Server service, slows the recorded query down considerably and writes very large files. The dialog shown when it is turned on explains the requirements, and the **Time Travel Warning** [setting](/docs/user-guide/settings#time-travel-warning) brings the dialog back once it has been dismissed. While it is on, a red **Full Trace** badge sits at the end of the menu bar - click it to turn recording off again.
+**Record Full Trace** records each run with Microsoft's Time Travel Debugging while it is on, so the [Call Tree](/docs/user-guide/query/CallStack) holds every call the query made - see [Full Trace](/docs/user-guide/query/FullTrace). It is for development and test instances only: it needs administrator consent, can restart the SQL Server service, slows the recorded query down considerably and writes very large files. The dialog shown when it is turned on explains the requirements, and the **Time Travel Warning** [setting](/docs/user-guide/settings#time-travel-warning) brings the dialog back once it has been dismissed. While it is on, a red **Full Trace** badge sits at the end of the menu bar - click it to turn recording off again.
 
 **Capture** chooses what a Full Trace records of the query's memory for the Memory History in the [Trace Timeline](/docs/user-guide/query/TraceTimeline#memory). **Heap Memory** has **Reads** and **Writes**, for the memory the query allocates, and **Stack Memory** covers the objects its functions keep on their own stacks and hand to each other. All three are on by default. Turning some off makes a large query's recording quicker to load and smaller. They apply from the next run. The **Memory History** run option turns them all off together.
 

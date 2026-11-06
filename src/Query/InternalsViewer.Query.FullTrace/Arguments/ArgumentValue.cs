@@ -5,7 +5,7 @@ using InternalsViewer.Internals.Engine.Database.Enums;
 using InternalsViewer.Internals.Engine.Indexes.Enums;
 using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Engine.Records.CdRecordType;
-using InternalsViewer.Query.CallStack.Arguments;
+using InternalsViewer.Query.FullTrace.Symbols;
 using InternalsViewer.Query.Events.BatchMode.Enums;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Parsing;

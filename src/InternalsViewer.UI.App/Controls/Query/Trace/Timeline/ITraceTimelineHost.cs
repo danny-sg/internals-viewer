@@ -1,5 +1,5 @@
 using System;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
@@ -45,9 +45,9 @@ internal interface ITraceTimelineHost
 
     void MovePlayhead(double position);
 
-    void ClickCall(CallStackNode node, int callIndex);
+    void ClickCall(CallTreeNode node, int callIndex);
 
-    void OpenCallTree(CallStackNode node, int callIndex);
+    void OpenCallTree(CallTreeNode node, int callIndex);
 
     void OnSelectedOperatorChanged(ExecutionOperatorEvent? selected);
 

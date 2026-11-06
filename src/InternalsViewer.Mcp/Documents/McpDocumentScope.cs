@@ -2,7 +2,7 @@ using InternalsViewer.Mcp.Interfaces.Commands;
 using InternalsViewer.Mcp.Interfaces.Tabs;
 using InternalsViewer.Mcp.Models.Context.Queries;
 using InternalsViewer.Query;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Export;
 using InternalsViewer.Query.FullTrace;
 using ModelContextProtocol;
@@ -33,7 +33,7 @@ public sealed class McpDocumentScope(
 
     public TraceResult RequireTrace()
         => Trace
-           ?? throw new McpException($"Document {Query.TabId} has no Full Trace. Only the events, plan and call stacks are available.");
+           ?? throw new McpException($"Document {Query.TabId} has no Full Trace. Only the events and plan are available.");
 
     public void RequireOperatorFrames()
     {
@@ -44,12 +44,12 @@ public sealed class McpDocumentScope(
         }
     }
 
-    public HashSet<CallStackNode>? GetCropRoots()
+    public HashSet<CallTreeNode>? GetCropRoots()
         => Trace is { QueryRoots.Count: > 0 } trace && Query.Options.Any(o => o is { Key: QueryCrop.OptionKey, IsOn: true })
-            ? new HashSet<CallStackNode>(trace.QueryRoots, ReferenceEqualityComparer.Instance)
+            ? new HashSet<CallTreeNode>(trace.QueryRoots, ReferenceEqualityComparer.Instance)
             : null;
 
-    public async Task<string?> UncropForAsync(List<(CallStackNode Node, int CallIndex)> calls,
+    public async Task<string?> UncropForAsync(List<(CallTreeNode Node, int CallIndex)> calls,
                                               List<TracePosition> positions,
                                               CancellationToken cancellationToken)
     {

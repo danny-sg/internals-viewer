@@ -19,4 +19,4 @@ Steps:
 `Install.ps1` adds the release's certificate to the trusted certificates on the machine, so only run it for a package downloaded from this repository's Releases page.
 :::
 
-An x86 package is also published, but use the x64 package where you can - the symbol resolution behind the [Call Stack](/docs/user-guide/query/CallStack) only ships for x64.
+An x86 package is also published, but use the x64 package where you can - the symbol resolution behind the [Call Tree](/docs/user-guide/query/CallStack) only ships for x64.

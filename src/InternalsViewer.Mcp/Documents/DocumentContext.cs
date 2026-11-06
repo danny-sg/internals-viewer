@@ -1,4 +1,4 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Export;
 using InternalsViewer.Query.FullTrace;
 
@@ -14,14 +14,9 @@ public sealed class DocumentContext
 
         Nodes = new NodeIndex();
 
-        if (run.Result.CallStackTree is { } tree)
+        if (Trace is { } trace)
         {
-            Nodes.AddTree(tree.Root);
-        }
-
-        if (Trace is { } trace && !ReferenceEquals(trace.CallStack.Root, run.Result.CallStackTree?.Root))
-        {
-            Nodes.AddTree(trace.CallStack.Root);
+            Nodes.AddTree(trace.CallTree.Root);
         }
 
         Events = new EventIndex(run.Result);
@@ -37,11 +32,11 @@ public sealed class DocumentContext
 
     private Lazy<FunctionNames>? Functions { get; set; }
 
-    public string GetFunctionName(CallStackNode node)
+    public string GetFunctionName(CallTreeNode node)
     {
-        if (node is { Frame: { } frame, Symbol: { Length: > 0 } symbol })
+        if (node.Frame is { } frame)
         {
-            return $"{frame.Module}!{symbol}";
+            return frame.QualifiedName;
         }
 
         if (node.Key.Length > 0)
@@ -54,7 +49,7 @@ public sealed class DocumentContext
 
     public string GetFunctionName(int nodeId) => Nodes.GetNode(nodeId) is { } node ? GetFunctionName(node) : $"node {nodeId}";
 
-    public CallstackFrame? GetFrame(ulong functionAddress, ulong instanceAddress)
+    public CallFrame? GetFrame(ulong functionAddress, ulong instanceAddress)
         => Nodes.GetNodes().Select(n => n.Frame)
                 .FirstOrDefault(f => f is not null && f.Address == functionAddress && f.InstanceAddress == instanceAddress)
            ?? Nodes.GetNodes().Select(n => n.Frame).FirstOrDefault(f => f is not null && f.Address == functionAddress);

@@ -1,13 +1,13 @@
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
-using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Categories;
-using InternalsViewer.Query.CallStack.Locators;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.Allocation.Enums;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 using InternalsViewer.Query.Memory;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
+using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Symbols.Categories;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Memory.Allocation;
 
@@ -173,10 +173,10 @@ public class AllocationFunctionTests
     [InlineData("CQScanHash", "PvGetGrantedPage", false)]
     public void Memory_Grant_Frames_Are_Known_By_Their_Function(string? className, string method, bool isGrant)
     {
-        var frame = new CallstackFrame
+        var frame = new CallFrame
         {
             Module = new("sqlmin"),
-            Function = new CallstackFunction { ClassName = className, MethodName = method, SymbolCategory = SymbolCategory.Unknown }
+            Function = new FrameFunction { ClassName = className, MethodName = method, SymbolCategory = SymbolCategory.Unknown }
         };
 
         Assert.Equal(isGrant, AllocationFunction.IsGrantFrame(frame));

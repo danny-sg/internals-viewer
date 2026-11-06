@@ -1,5 +1,4 @@
-using InternalsViewer.Query.CallStack.Arguments;
-using InternalsViewer.Query.CallStack.Symbols;
+using InternalsViewer.Query.FullTrace.Symbols;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.Events.Parsing;
 using InternalsViewer.Query.FullTrace.Memory.Address;

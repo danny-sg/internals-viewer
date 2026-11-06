@@ -36,7 +36,7 @@ The largest a trace file may grow, in MB - 150 by default, and up to 102,400. A 
 
 ### Symbols path
 
-The folder SQL Server's debugging symbols (PDB files) are downloaded to when resolving [Call Stack](/docs/user-guide/query/CallStack) events, and searched by **Search symbols**. Defaults to `C:\Symbols`, and **Browse…** picks another.
+The folder SQL Server's debugging symbols (PDB files) are downloaded to when resolving a [Full Trace](/docs/user-guide/query/FullTrace), and searched by **Search symbols**. Defaults to `C:\Symbols`, and **Browse…** picks another.
 
 ## Full Trace
 
@@ -83,7 +83,7 @@ Some choices are remembered without appearing on the Settings page, stored along
 - **Connections** - the [recent connections](/docs/user-guide/getting-started#recent-connections), with their passwords encrypted, and the last values entered on the **SQL Server** page, without the password
 - **SQL Editor** - the font size, the **Clear Buffer Pool** and **Disable Read-Ahead** toggles, whether **Results** and **History** are shown, and each database's query history
 - **Query view** - the pane layout, the timeline's visibility and the Query and Events menu options
-- **Call Stack** - the categories hidden by the [category filter](/docs/user-guide/query/CallStack#filtering-by-category), and the modules excluded from **Search symbols**
+- **Call Tree** - the categories hidden by the [category filter](/docs/user-guide/query/CallStack#filtering-by-category), and the modules excluded from **Search symbols**
 - **Trace Timeline** - whether **Memory** is on, and whether it shows **Allocated** or **In Use** - see [Memory](/docs/user-guide/query/TraceTimeline#memory)
 - **Execution Plan** - whether **Annotations** are shown
 - **Simulation** - whether the [Simulation](/docs/user-guide/query/Simulation) pane uses the nested or the flat **Layout**

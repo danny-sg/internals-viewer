@@ -25,8 +25,6 @@ In a lane, each call is a bar running from where it started to where it ended. T
 - **A gap beneath a bar** - the call working in its own code rather than in a call it made, or in Extended Events and tracing code, which is left out of the chart
 - **A pale strip** - calls too narrow to draw one by one, merged into a single strip. Zoom in to pull them apart
 
-The Trace Timeline is not the [Flame Graph](/docs/user-guide/query/ExecutionPlan#flame-graph) on the Execution Plan, which breaks each operator's bar down into the calls sampled from its events.
-
 ## Position and instructions
 
 TTD has no clock. A recording is a sequence of positions - a sequence number shared by every thread, plus the number of instructions the thread has executed since - so the ruler is never in milliseconds. **View > Scale** chooses what a bar's width means:

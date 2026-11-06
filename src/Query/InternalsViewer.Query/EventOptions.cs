@@ -12,10 +12,6 @@ public sealed record EventOptions
 
     public bool IncludeMemory { get; set; }
 
-    public bool IncludeCallStack { get; set; } = true;
-
-    public bool CapturesCallStacks => IncludeCallStack && !RecordTimeTravel;
-
     public bool RecordTimeTravel { get; set; }
 
     public bool CaptureHeapReads { get; set; } = true;

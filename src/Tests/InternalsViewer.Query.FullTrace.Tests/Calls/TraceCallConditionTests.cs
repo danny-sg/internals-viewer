@@ -1,10 +1,10 @@
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Query.CallStack.Locators;
-using InternalsViewer.Query.CallStack.Locators.Enums;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Arguments.Enums;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
+using InternalsViewer.Query.FullTrace.Locators;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Calls;
 

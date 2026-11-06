@@ -553,17 +553,6 @@ public sealed class EventTools(McpDocumentResolver documents)
             WriteChildren(builder, scope, "PoolLookup", [lookup]);
         }
 
-        if (engineEvent.CallStack is { } callStack)
-        {
-            builder.AppendLine();
-
-            builder.AppendLine("CallStack:");
-
-            var path = Format.CallPath(scope.Context, callStack, 64, includeSelf: true);
-
-            builder.AppendLine($"  node {scope.Context.Nodes.GetId(callStack)}: {path}");
-        }
-
         if (engineEvent is TransactionLogEvent { LogRecord: { } logRecord })
         {
             builder.AppendLine();

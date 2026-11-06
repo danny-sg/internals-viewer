@@ -1,6 +1,6 @@
-﻿# Call Stack
+﻿# Call Tree
 
-Enable **Call Stack** in the [Events menu](/docs/user-guide/query#events-menu) and every captured event carries the SQL Server call stack that produced it - the chain of internal engine functions that were executing at the moment the event fired. Internals Viewer combines the call stacks from every captured event into a single merged tree for the query - the **Call Tree**. For a run recorded with [Full Trace](/docs/user-guide/query/FullTrace) the tree holds every call the query made instead, with a count on each path. Each frame then shows the memory allocated beneath it, and the [Arguments](#arguments) tab lists the values each call was passed.
+The **Call Tree** holds every call a query made inside SQL Server - the chain of internal engine functions behind each plan operator - merged into a single tree with a count on each path. It is built from a run recorded with [Full Trace](/docs/user-guide/query/FullTrace). A query run without Full Trace captures events but not the code behind them, so its Call Tree is empty. Each frame shows the memory allocated beneath it, and the [Arguments](#arguments) tab lists the values each call was passed.
 
 The tree decodes one row per frame:
 
@@ -9,25 +9,29 @@ The tree decodes one row per frame:
 - **Symbol** - the function itself as `module!Class::Method`, resolved from SQL Server's debugging symbols, with the offset of the call within the function
 - **Target** badge - on an operator's frames, the table or index the operator works on, so two scans or seeks running the same code can be told apart. Its tooltip names the operator and its node in the plan
 
-The **Activity** column, on by default, shows a small histogram for each frame of when that function was active across the query - a picture of whether it was a one-off or ran throughout - with the selection's time highlighted. Drag the column's edge to resize it. **Signature** adds each function's parameter types from the symbols.
+The **Activity** column, on by default, shows a small histogram for each frame of when that function was active across the query - a picture of whether it was a one-off or ran throughout. Drag the column's edge to resize it. **Signature** adds each function's parameter types from the symbols.
 
 The **Call Tree** tab is laid out as a dock. It starts with the tree on its own, with **Arguments** beside it while [Full Trace](/docs/user-guide/query/FullTrace) is on. **Members** and **Symbols** are added from the **Call Tree** submenu of the View menu, or when something opens them: **List Members** or **Search symbols**. Drag a tab to move it to another group or to an edge. The panels beside the tree can be closed, which also clears them on the View menu, and come back when something opens them.
 
 <!-- Screenshot (new): the Call Tree tab's dock - the tree on the left, Members, Symbols and Arguments on the right -->
 
-An operator row marked **no stack** is one whose frames could not be found - the operator is inlined into its parent, captured no events of its own, or its iterator class is not in the mappings. It keeps its place in the plan but has nothing beneath it.
+An operator row marked **no stack** is one whose frames could not be found - its iterator is inlined into its parent, or the compiler folded its methods away. It keeps its place in the plan but has nothing beneath it.
 
-The tree gives visibility into the engine functions behind each event. Reading down the stack for a single page read during a scan, for example: the row scanner moving to the next row, the index page manager fetching the next page, the buffer pool getting the page, and a latch suspending while the I/O completes - how the operator actually executed, not just that it read a page.
+The tree gives visibility into the engine functions behind each operator. Reading down the path to a single page read during a scan, for example: the row scanner moving to the next row, the index page manager fetching the next page, the buffer pool getting the page, and a latch suspending while the I/O completes - how the operator actually executed, not just that it read a page.
 
 ## Focus
 
 ![Call Tree with Focus on](/docs/user-guide/images/query-view-call-tree.png)
 
-**Focus**, on by default, crops the tree to the event or operator currently selected - via the [Timeline](/docs/user-guide/query/Timeline), the [Execution Plan](/docs/user-guide/query/ExecutionPlan), or the Events pane. The header shows the selected event as a chip, with a **←** link to the right showing its parent (e.g. the statement it belongs to) - click it to navigate up to the parent's call stack. The **Back** and **Forward** buttons on the command bar, or the back and forward buttons on the mouse anywhere in the tab, undo/redo this navigation. Each step returns the tree with the frames that were open and the row that was selected, and the call that was selected in **Arguments**. Selecting a call in **Arguments** is a step of its own.
+<!-- Screenshot (update): a Full Trace Call Tree with Focus on an operator - the operator chip and the ← link in the header -->
+
+**Focus**, on by default, crops the tree to the plan operator currently selected - via the [Execution Plan](/docs/user-guide/query/ExecutionPlan) or the [Trace Timeline](/docs/user-guide/query/TraceTimeline#operators)'s Operators pane. Selecting an event focuses on the operator the event belongs to. The tree shows the operator's own work, from where its execution begins down to where it hands off to the operators nested beneath it. Each hand-off is a link to that operator. The header shows the selected operator as a chip, with a **←** link to the right showing its parent (e.g. the statement it belongs to) - click it to navigate up to the parent operator. The **Back** and **Forward** buttons on the command bar, or the back and forward buttons on the mouse anywhere in the tab, undo/redo this navigation. Each step returns the tree with the frames that were open and the row that was selected, and the call that was selected in **Arguments**. Selecting a call in **Arguments** is a step of its own.
 
 Turning Focus off shows the full call tree for the whole query, from the top-level statement execution down:
 
 ![Call Tree with Focus off](/docs/user-guide/images/call-tree-focus-off.png)
+
+<!-- Screenshot (update): a Full Trace Call Tree with Focus off -->
 
 ## Search and navigation
 
@@ -42,7 +46,7 @@ Right-clicking a node gives:
 - **Copy to Clipboard** - copies the frame's symbol as `module!Class::Method`
 - **Copy Call Tree to Clipboard** - copies a formatted, nested text representation of the stack from that node down
 - **List Members** - lists the members the symbols declare on the frame's class
-- **Show Arguments** - for a Full Trace run, lists every call of the function with its arguments and return value - see [Arguments](#arguments)
+- **Show Arguments** - lists every call of the function with its arguments and return value - see [Arguments](#arguments)
 
 A frame whose symbol did not resolve is copied as `module+offset`. Right-clicking a member in the Members pane gives **Copy Signature** and **Copy Symbol** - the member as `module!Class::Member`, without its parameters.
 
@@ -54,15 +58,15 @@ The filter button at the right of the Call Tree's command bar opens a row of cat
 
 ## Searching Symbols
 
-**Search symbols** on the Trace menu opens the **Symbols** tab. Typing three or more characters searches every public symbol in the modules the query's call stacks came from, so a function or class that never appeared in a stack can still be found. Each result has the same right-click actions as a member, to copy its signature or symbol. The first search of a module packs its PDB into an index, which takes a few seconds, and later searches are immediate.
+**Search symbols** on the Trace menu opens the **Symbols** tab. Typing three or more characters searches every public symbol in the modules the query's calls ran in, so a function or class that never appeared in the tree can still be found. Each result has the same right-click actions as a member, to copy its signature or symbol. The first search of a module packs its PDB into an index, which takes a few seconds, and later searches are immediate.
 
-The search box offers the symbol categories and plan operators from the call stack mappings as starting points: an empty box lists them all, categories first, and typing narrows them, so `Hash` offers **Hash Match**, **Hash Match (Aggregate)** and the build and probe phases. Choosing one puts its frame pattern in the box, such as `sqlmin!CQScanHash*`. A category, such as **Category: Query Operator**, searches every class and function the mappings file assigns to it. An operator with several implementations gets them all, joined with `|`: Sort searches `sqlmin!CBpQScanSort*|sqlmin!CQScanSort*|sqlmin!CQScanTopSort*`, and `|` works the same way in anything typed by hand, as an OR of searches.
+The search box offers the symbol categories and plan operators from the Call Tree's mappings as starting points: an empty box lists them all, categories first, and typing narrows them, so `Hash` offers **Hash Match**, **Hash Match (Aggregate)** and the build and probe phases. Choosing one puts its frame pattern in the box, such as `sqlmin!CQScanHash*`. A category, such as **Category: Query Operator**, searches every class and function the mappings file assigns to it. An operator with several implementations gets them all, joined with `|`: Sort searches `sqlmin!CBpQScanSort*|sqlmin!CQScanSort*|sqlmin!CQScanTopSort*`, and `|` works the same way in anything typed by hand, as an OR of searches.
 
 Plain text matches anywhere. Text with `*` or `?` is a pattern in WinDbg's style, matched against the whole name or signature, so `*XeSqlPkg::vector*` finds that class's members and `*::GetRow` every function of that name. A `module!` prefix confines the search to that module, so a symbol pasted from WinDbg such as `sqlmin!CBpQScanColumnStoreScan::BpGetNextBatch` finds exactly that function. The **Module**, **Class** and **Signature** toggles beside the box choose which parts are matched. None ticked searches all of them. Class matches the class name alone, and Signature reaches the parameter types, so `PageId` with Signature ticked lists the functions that take one.
 
 Results are a tree of module, then class, then the members found under it. Right-clicking a module gives **Expand all** and **Collapse all**, and a class **Expand All** and **Collapse All**. A module's menu also has **Exclude module**, which leaves that module out of every search from then on, and **Clear module exclusions**. The exclusions are kept in Settings, and while any are in force the last row of the results is a **Clear exclusions** link, with the excluded modules in its tooltip, so the way back stays in reach even when every module is excluded. The matched text is highlighted in each row, except where the row is exactly the text searched for.
 
-Results are capped per module. A search needs a query with Call Stack events to have run first, since that is how the modules and their exact symbol files are known.
+Results are capped per module. A search needs a [Full Trace](/docs/user-guide/query/FullTrace) run to have loaded first, since that is how the modules and their exact symbol files are known.
 
 ## Arguments
 
@@ -132,14 +136,10 @@ Right-click a value in a call and choose **Find** to open a tab for that value i
 
 <!-- Screenshot (new): a Find tab beside Arguments - Type, Called by and Referenced by, with one function expanded to its calls, each a signature with its values in place -->
 
-## Flame Graph
-
-When Call Stack events are captured, the [Execution Plan](/docs/user-guide/query/ExecutionPlan) can optionally display a Flame Graph - an icicle chart of the calls per operator.
-
 ## Symbols
 
-Turning stack frames into function names requires the debugging symbols (PDB files) for the exact SQL Server build being traced. Internals Viewer handles this automatically: the first time call stacks are processed, the required symbol files are downloaded from the Microsoft public symbol server and cached locally, and later traces resolve straight from the cache. Download progress is shown in Messages. There is nothing to install or configure - no debugging tools and no symbol server setup.
+Turning recorded calls into function names requires the debugging symbols (PDB files) for the exact SQL Server build being traced. Internals Viewer handles this automatically: the first time a Full Trace needs them, the required symbol files are downloaded from the Microsoft public symbol server and cached locally, and later traces resolve straight from the cache. Download progress is shown in Messages. There is nothing to install or configure - no debugging tools and no symbol server setup.
 
 The cache location is the **Symbols Path** [setting](/docs/user-guide/settings#symbols-path). The default is `C:\Symbols`.
 
-See [How query tracing works](/docs/deep-dives/query-tracing#resolving-call-stacks) for how the download and resolution work.
+See [How Full Trace works](/docs/deep-dives/full-trace#resolving-symbols) for how the download and resolution work.

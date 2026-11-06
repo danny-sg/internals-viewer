@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Iterators;
 using System.Collections;
 using System.ComponentModel;
 using System.Globalization;
@@ -215,6 +216,8 @@ public sealed class RunTools(McpDocumentResolver documents)
 
         scope.RequireOperatorFrames();
 
+        var operatorFrames = scope.Trace?.OperatorFrames ?? OperatorFrameMap.Empty;
+
         var operators = scope.Context.Events.GetEvents(includeChildren: true)
                              .OfType<ExecutionOperatorEvent>()
                              .OrderBy(o => o.PlanNodeIdentifier?.NodeId ?? -1)
@@ -237,7 +240,7 @@ public sealed class RunTools(McpDocumentResolver documents)
                       Format.Relative(operatorEvent.EmitStartUs, scope.CropStartUs),
                       operatorEvent.RowsProcessed,
                       operatorEvent.Threads.Count,
-                      operatorEvent.EntryFrames.Count,
+                      operatorFrames.GetEntryFrames(operatorEvent).Count,
                       operatorEvent.Instances.Count);
         }
 
@@ -254,12 +257,12 @@ public sealed class RunTools(McpDocumentResolver documents)
 
             builder.AppendLine($"Node {operatorEvent.PlanNodeIdentifier?.NodeId} {operatorEvent.OperatorDescription}:");
 
-            foreach (var frame in operatorEvent.EntryFrames)
+            foreach (var frame in operatorFrames.GetEntryFrames(operatorEvent))
             {
                 builder.AppendLine($"  entry {Format.NodeLine(scope.Context, frame)}");
             }
 
-            foreach (var frame in operatorEvent.ExitFrames)
+            foreach (var frame in operatorFrames.GetExitFrames(operatorEvent))
             {
                 builder.AppendLine($"  exit  {Format.NodeLine(scope.Context, frame)}");
             }

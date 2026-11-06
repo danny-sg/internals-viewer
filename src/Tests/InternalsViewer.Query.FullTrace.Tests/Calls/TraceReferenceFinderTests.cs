@@ -1,7 +1,7 @@
 using InternalsViewer.Query.FullTrace.Memory.Address;
 using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
-using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Arguments;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
+using InternalsViewer.Query.FullTrace.Symbols;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
@@ -70,9 +70,9 @@ public class TraceReferenceFinderTests
         Assert.Equal([0, 1], calls.Select(c => c.CallIndex));
     }
 
-    private static (TraceCallStore Store, CallStackTree Tree, CallStackNode GetRow) Create()
+    private static (TraceCallStore Store, CallTree Tree, CallTreeNode GetRow) Create()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var getRow = tree.AddCall(tree.Root, Frame(0x10, "CQScanTableScanNew::GetRow"), 2);
 
@@ -88,24 +88,24 @@ public class TraceReferenceFinderTests
     }
 
     private static TraceReferenceFinder Finder(TraceCallStore store,
-                                               CallStackTree tree,
+                                               CallTree tree,
                                                FunctionType type,
                                                Dictionary<ulong, IteratorTarget>? iterators = null)
         => new(store, tree, iterators ?? [], HoBtAccessMap.Empty, AddressMap.Empty, MemoryObjectMap.Empty, StorageIdMap.Empty,
                new Signatures(type));
 
-    private static CallstackFrame Frame(ulong rva, string symbol) => new()
+    private static CallFrame Frame(ulong rva, string symbol) => new()
     {
         Module = new("sqlmin"),
         Rva = (uint)rva,
         Address = 0x7FF0_0000_0000 + rva,
-        Function = CallstackFunction.Parse("sqlmin", symbol)
+        Function = FrameFunction.Parse("sqlmin", symbol)
     };
 
     private sealed class Signatures(FunctionType type) : ITraceSignatureSource
     {
-        public Task<ArgumentLayout?> GetLayoutAsync(CallstackFrame frame) => Task.FromResult<ArgumentLayout?>(null);
+        public Task<ArgumentLayout?> GetLayoutAsync(CallFrame frame) => Task.FromResult<ArgumentLayout?>(null);
 
-        public Task<FunctionType?> GetFunctionTypeAsync(CallstackFrame frame) => Task.FromResult<FunctionType?>(type);
+        public Task<FunctionType?> GetFunctionTypeAsync(CallFrame frame) => Task.FromResult<FunctionType?>(type);
     }
 }

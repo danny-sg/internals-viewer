@@ -19,7 +19,7 @@ is which.
 
 | To find out | Look at | Command |
 | --- | --- | --- |
-| Which plan node, iterator object and call tree frames an operator is | `ExecutionOperatorEvent` (`Instances`, `EntryFrames`, `ExitFrames`), `plannodes.bin` | `query_operators` with `frames`, `query_plannodes` |
+| Which plan node, iterator object and call tree frames an operator is | `ExecutionOperatorEvent` (`Instances`), `plannodes.bin`, matched to the call tree when the run loads | `query_operators` with `frames`, `query_plannodes` |
 | What the operator's code did, phase by phase, with counts | the call tree under its entry frames | `calltree --operator N`, then `--root <id> --depth D` to open a subtree |
 | Every method of its class, how often, with what arguments | the call log | `calls --grep "CQScanHash"`, `calls --function "CQScanHash::GetRow" --instance <this>` |
 | Which call handled a given pointer, key or page | the call log registers and locators | `calls --function X --value 0x295C5810060`, `locators --page 1:384` |
@@ -27,7 +27,6 @@ is which.
 | How its state changed, field by field, and who changed it | memory history (writes with writers) | `memoryhistory --kind iterator`, `--block N`, `--block N --field 0x3B8` |
 | Which blocks belong to an iterator, or were made by one function | memory history filters | `memoryhistory --iterator <this>`, `--allocated-in "CBpBatch::"`, `--address <hex>` |
 | How much work a call or an operator was | the timeline in instructions | `timeline --node <entry node id>`, `timeline --top 20` |
-| Which iterator produced each output column | `output.bin` owners, matched to `query_plannodes` | `query_output`, `query_plannodes` |
 | The memory grant against what was used | the plan's `MemoryGrantInfo`, the workspace curve | `query_plan`, `query_memory` |
 
 Positions are hex `Sequence:Steps` everywhere, and instructions are the only measure of cost. Nothing here is time.
@@ -56,9 +55,8 @@ Positions are hex `Sequence:Steps` everywhere, and instructions are the only mea
    through the run, which is how a counter, a pointer or a flag is understood: who sets it, when, to what.
 6. **Weigh it.** `timeline --node <entry node id>` totals the instructions under that call tree node, and
    `timeline --top 20 --node <id>` ranks its calls.
-7. **Tie it to the plan and the output.** `plan --detail` for predicates, seek keys, hash keys and the grant, with
-   the estimates as context for reading the plan rather than a subject; `query_output` and `query_plannodes` for which
-   iterator produced which output column.
+7. **Tie it to the plan.** `plan --detail` for predicates, seek keys, hash keys and the grant, with the estimates as
+   context for reading the plan rather than a subject. `query_plannodes` gives the iterator object behind each plan node.
 
 ## Worked example: a row mode Hash Match
 
@@ -162,8 +160,8 @@ To answer "what is the batch using these vectors for":
 3. Decide each vector's role from its writers. `memoryhistory --address <buffer>` then `--block N` names who wrote
    it: a scan's `Rbp*` decode means column data from the segment; `RbpExpr*`, `CBpQScanProject*` or an expression
    evaluator means a computed value; `CBpag*` an aggregate's working values; a filter means the selection vector
-   or a bitmap being narrowed. Match the vectors that reach the output through `query_output` and `query_plannodes`; the
-   rest are working vectors the operators use between themselves. "Scratch" is a role you establish from the
+   or a bitmap being narrowed. Match the vectors to their operators with `query_plannodes`. The ones the
+   top operator passes on reach the output, and the rest are working vectors the operators use between themselves. "Scratch" is a role you establish from the
    writers, not a label in the export.
 4. Show the narrowing: compare active rows and the selection vector's writes before and after `CBpQScanFilter`, and
    the `SegmentScanEvent` input and output rows per column with the pure and impure bucket counts (`query_columnstore`).

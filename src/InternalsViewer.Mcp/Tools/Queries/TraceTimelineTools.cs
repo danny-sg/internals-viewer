@@ -6,7 +6,7 @@ using InternalsViewer.Mcp.Interfaces.Commands;
 using InternalsViewer.Mcp.Models.Context.Queries;
 using InternalsViewer.Mcp.Models.Context.Queries.Enums;
 using InternalsViewer.Mcp.Tabs;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
@@ -722,7 +722,7 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
 
             var candidates = search.Calls;
 
-            List<(CallStackNode Node, int Index, TraceArgumentCall Call)> chosen = IsAll(target)
+            List<(CallTreeNode Node, int Index, TraceArgumentCall Call)> chosen = IsAll(target)
                 ? candidates
                 : [Choose(candidates, target.Which, target.N, reference)];
 
@@ -810,7 +810,7 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
         return scope.Selection.Playhead;
     }
 
-    private static TracePosition? GetReference(QueryContext query, List<(CallStackNode Node, int Index, TraceArgumentCall Call)> candidates)
+    private static TracePosition? GetReference(QueryContext query, List<(CallTreeNode Node, int Index, TraceArgumentCall Call)> candidates)
         => query.Timeline?.SelectedNode is { } selected
             ? candidates.Where(c => c.Node == selected && c.Index == query.Timeline.SelectedCallIndex)
                         .Select(c => (TracePosition?)c.Call.FromPosition)
@@ -830,7 +830,7 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
 
         var matches = new List<FunctionMatch>();
 
-        var candidates = new List<(CallStackNode Node, int Index, TraceArgumentCall Call)>();
+        var candidates = new List<(CallTreeNode Node, int Index, TraceArgumentCall Call)>();
 
         IReadOnlyList<TraceCallCondition> parsed = [];
 
@@ -891,13 +891,13 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
                "wrappers are left off it.";
     }
 
-    private static List<(CallStackNode Node, int Index, TraceArgumentCall Call)> CollectCalls(
+    private static List<(CallTreeNode Node, int Index, TraceArgumentCall Call)> CollectCalls(
         TraceResult trace,
-        List<CallStackNode> members,
+        List<CallTreeNode> members,
         IReadOnlyList<TraceCallCondition> parsed,
         CallPick pick)
     {
-        var calls = new List<(CallStackNode Node, int Index, TraceArgumentCall Call)>();
+        var calls = new List<(CallTreeNode Node, int Index, TraceArgumentCall Call)>();
 
         var step = pick.IsFromEnd ? -1 : 1;
 
@@ -971,8 +971,8 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
         return low;
     }
 
-    private static (CallStackNode Node, int Index, TraceArgumentCall Call) Choose(
-        List<(CallStackNode Node, int Index, TraceArgumentCall Call)> candidates,
+    private static (CallTreeNode Node, int Index, TraceArgumentCall Call) Choose(
+        List<(CallTreeNode Node, int Index, TraceArgumentCall Call)> candidates,
         string which,
         int? n,
         TracePosition? reference)
@@ -1014,7 +1014,7 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
         }
     }
 
-    private static bool Matches(TraceCallCondition condition, CallStackNode node)
+    private static bool Matches(TraceCallCondition condition, CallTreeNode node)
     {
         return condition.Target switch
         {
@@ -1023,10 +1023,10 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
         };
     }
 
-    private static string ConditionsText(CallStackNode node) => TraceConditions.Describe(node);
+    private static string ConditionsText(CallTreeNode node) => node.Frame?.QualifiedName ?? string.Empty;
 
     private async Task<IReadOnlyList<TraceCallCondition>> ParseConditionsAsync(McpDocumentScope scope,
-                                                                               CallStackNode node,
+                                                                               CallTreeNode node,
                                                                                IReadOnlyList<string>? conditions)
     {
         if (conditions is not { Count: > 0 })
@@ -1117,7 +1117,7 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
 
     private sealed record CallSearch(IReadOnlyList<FunctionMatch> Found,
                                      List<FunctionMatch> Matches,
-                                     List<(CallStackNode Node, int Index, TraceArgumentCall Call)> Calls,
+                                     List<(CallTreeNode Node, int Index, TraceArgumentCall Call)> Calls,
                                      IReadOnlyList<TraceCallCondition> Conditions,
                                      bool HasCalls);
 

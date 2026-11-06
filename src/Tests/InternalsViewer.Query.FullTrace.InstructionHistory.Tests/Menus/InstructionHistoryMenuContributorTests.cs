@@ -1,4 +1,4 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.InstructionHistory.Listing;
 using InternalsViewer.Query.FullTrace.InstructionHistory.Menus;
 using InternalsViewer.Query.FullTrace.InstructionHistory.Replay;
@@ -14,7 +14,7 @@ namespace InternalsViewer.Query.FullTrace.InstructionHistory.Tests.Menus;
 [Trait("Category", "Unit")]
 public class InstructionHistoryMenuContributorTests
 {
-    private static readonly CallStackNode Node = new() { Frame = new CallstackFrame { Address = 0x7FF8_0060_0000 } };
+    private static readonly CallTreeNode Node = new() { Frame = new CallFrame { Address = 0x7FF8_0060_0000 } };
 
     [Fact]
     public void A_Target_Without_A_Call_Adds_Nothing()

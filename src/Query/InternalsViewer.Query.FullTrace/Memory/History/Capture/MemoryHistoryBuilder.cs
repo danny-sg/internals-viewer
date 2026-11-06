@@ -1,6 +1,6 @@
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using System.Runtime.InteropServices;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Iterators;
@@ -682,7 +682,7 @@ internal static class MemoryHistoryBuilder
         {
             if (!PageSources.TryGetValue(callNodeIndex, out var source))
             {
-                CallStackNode[] ancestors = [.. timeline?.NodeOf(callNodeIndex)?.Ancestors() ?? []];
+                CallTreeNode[] ancestors = [.. timeline?.NodeOf(callNodeIndex)?.Ancestors() ?? []];
 
                 source = (ancestors.Any(n => BufferPoolFunctionLookup.IsBufferPool(n.Frame)),
                           ancestors.Any(n => AllocationFunction.IsGrantFrame(n.Frame)));
@@ -705,7 +705,7 @@ internal static class MemoryHistoryBuilder
             return iterator;
         }
 
-        private static bool IsIteratorCall(CallStackNode node)
+        private static bool IsIteratorCall(CallTreeNode node)
             => node.Frame is { InstanceAddress: not 0 } frame && IteratorSymbolLookup.IsIterator(frame);
     }
 

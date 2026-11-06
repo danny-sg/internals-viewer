@@ -1,7 +1,6 @@
 using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
 using System.Text;
-using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Categories;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Native;
@@ -9,6 +8,7 @@ using InternalsViewer.Query.FullTrace.Tests.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 using InternalsViewer.Query.Memory;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
+using InternalsViewer.Query.FullTrace.Symbols.Categories;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Memory.MemoryObject;
 
@@ -158,11 +158,11 @@ public class MemoryObjectMapTests
     {
         private const ulong ModuleBase = 0x7FF0_0000_0000;
 
-        private CallStackTree Tree { get; } = new();
+        private CallTree Tree { get; } = new();
 
-        private List<CallStackNode?> Nodes { get; } = [];
+        private List<CallTreeNode?> Nodes { get; } = [];
 
-        private Dictionary<string, (CallstackFrame Frame, List<ulong[]> Rows)> Functions { get; } = new();
+        private Dictionary<string, (CallFrame Frame, List<ulong[]> Rows)> Functions { get; } = new();
 
         public MemoryObjectMap Build(IReadOnlyDictionary<ulong, MemoryObjectInfo> types)
         {
@@ -184,12 +184,12 @@ public class MemoryObjectMapTests
             {
                 var rva = (uint)(0x1000 + Functions.Count * 0x100);
 
-                var frame = new CallstackFrame
+                var frame = new CallFrame
                 {
                     Module = new("sqldk"),
                     Rva = rva,
                     Address = ModuleBase + rva,
-                    Function = new CallstackFunction
+                    Function = new FrameFunction
                     {
                         ClassName = className,
                         MethodName = method,

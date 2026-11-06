@@ -1,4 +1,3 @@
-using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.FullTrace.Export;
 using InternalsViewer.Query.FullTrace.Helpers;
 

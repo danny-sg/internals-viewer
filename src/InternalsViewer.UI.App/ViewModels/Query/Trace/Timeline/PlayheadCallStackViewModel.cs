@@ -1,6 +1,6 @@
 using System;
-using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Stack;
-using InternalsViewer.UI.App.ViewModels.Query.Trace.CallStack;
+using InternalsViewer.UI.App.Models.Query.Trace.Calls.Stack;
+using InternalsViewer.UI.App.ViewModels.Query.Trace.Calls;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
 

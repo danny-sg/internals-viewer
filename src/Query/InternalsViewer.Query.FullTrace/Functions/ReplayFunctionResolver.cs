@@ -1,11 +1,10 @@
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
-using InternalsViewer.Query.CallStack;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using InternalsViewer.Internals.Engine.Loading;
-using InternalsViewer.Query.CallStack.Symbols;
 using Microsoft.Extensions.Logging;
 using InternalsViewer.Query.FullTrace.Helpers;
+using InternalsViewer.Query.FullTrace.Symbols;
 
 namespace InternalsViewer.Query.FullTrace.Functions;
 

@@ -1,5 +1,4 @@
-using InternalsViewer.Query.CallStack.Categories;
-using InternalsViewer.Query.CallStack.Symbols;
+using InternalsViewer.Query.FullTrace.Symbols;
 using InternalsViewer.Query.Events.Parsing;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Helpers;
@@ -9,8 +8,7 @@ using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory.Address;
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
-using InternalsViewer.Query.FullTrace.Output;
-using InternalsViewer.Query.Helpers;
+using InternalsViewer.Query.FullTrace.Symbols.Categories;
 
 namespace InternalsViewer.Query.FullTrace.Functions;
 
@@ -94,8 +92,6 @@ internal static class ReplayFunctionScan
         {
             PlanNodeFunctions = GetFunctionTable(functions, f => f.PlanNodeFunction),
             PlanObjects = PlanNodeFunctionLookup.GetPlanObjects(vtableClasses),
-            OutputFunctions = GetFunctionTable(functions, f => f.OutputFunction),
-            OutputClasses = OutputFunctionLookup.GetValueClasses(vtableClasses),
             BufferPoolFunctions = GetFunctionTable(functions, f => f.BufferPoolFunction),
             Vtables = vtableClasses,
             StackArguments = new AddressTable<int>(stackArguments)
@@ -138,7 +134,6 @@ internal static class ReplayFunctionScan
                AllocationFunction.Classify(rva, symbol))
         {
             PlanNodeFunction = PlanNodeFunctionLookup.GetFunctionType(symbol),
-            OutputFunction = OutputFunctionLookup.GetFunctionType(symbol),
             BufferPoolFunction = BufferPoolFunctionLookup.GetFunctionType(symbol)
         };
 

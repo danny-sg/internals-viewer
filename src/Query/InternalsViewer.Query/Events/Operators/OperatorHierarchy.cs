@@ -88,40 +88,6 @@ public sealed class OperatorHierarchy
     public IReadOnlyList<ExecutionOperatorEvent> Descendants(ExecutionOperatorEvent operatorEvent)
         => _descendants.GetValueOrDefault(operatorEvent.PlanNodeIdentifier!) ?? [];
 
-    /// <summary>
-    /// The plan nodes an operator covers: itself and everything beneath it
-    /// </summary>
-    public HashSet<PlanNodeIdentifier> Subtree(ExecutionOperatorEvent operatorEvent)
-        => [operatorEvent.PlanNodeIdentifier!, .. Descendants(operatorEvent).Select(d => d.PlanNodeIdentifier!)];
-
-    /// <summary>
-    /// The events an operator's work covers: its whole subtree's, expanded to everything they own
-    /// </summary>
-    /// <remarks>
-    /// The subtree rather than the operator's own events, because only the data-access leaves emit anything — scoping a
-    /// Stream Aggregate to its own events would leave it blank. Expanded because a group carries no call stack (its
-    /// members do) and a folded End is the release path of the Begin that survived.
-    /// </remarks>
-    public HashSet<EngineEvent> ScopeOf(ExecutionOperatorEvent operatorEvent, IEnumerable<EngineEvent> events)
-    {
-        var subtree = Subtree(operatorEvent);
-
-        return events.Where(e => e is not ExecutionOperatorEvent
-                                 && e.PlanNodeIdentifier is { } id
-                                 && subtree.Contains(id))
-                     .ExpandOwned();
-    }
-
-    public void SetExitFrames()
-    {
-        foreach (var operatorEvent in Operators)
-        {
-            operatorEvent.ExitFrames = [.. Descendants(operatorEvent).SelectMany(d => d.EntryFrames)
-                                                                     .Where(e => !operatorEvent.EntryFrames.Contains(e))
-                                                                     .Distinct()];
-        }
-    }
-
     private List<ExecutionOperatorEvent> Collect(ExecutionOperatorEvent operatorEvent)
     {
         var collected = new List<ExecutionOperatorEvent>();

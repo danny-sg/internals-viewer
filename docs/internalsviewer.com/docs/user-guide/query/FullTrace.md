@@ -1,8 +1,8 @@
 # Full Trace
 
-**Record Full Trace** on the [Trace menu](/docs/user-guide/query#trace-menu) records the query with Microsoft's [Time Travel Debugging](https://learn.microsoft.com/en-us/windows-hardware/drivers/debuggercmds/time-travel-debugging-overview) (TTD) and replays the recording, so the [Call Tree](/docs/user-guide/query/CallStack) holds every call the query made rather than the stacks captured when events fired.
+**Record Full Trace** on the [Trace menu](/docs/user-guide/query#trace-menu) records the query with Microsoft's [Time Travel Debugging](https://learn.microsoft.com/en-us/windows-hardware/drivers/debuggercmds/time-travel-debugging-overview) (TTD) and replays the recording, so the [Call Tree](/docs/user-guide/query/CallStack) holds every call the query made.
 
-The normal Call Tree is built from samples. A stack is captured each time an event fires - a page read, a lock, a latch - so the tree only holds the code that happened to be running at those moments. Work done between events is invisible, and the relational operators publish no events of their own, so a Hash Match or a Stream Aggregate is only seen when it calls down into something that does. TTD records every instruction the process executes, so nothing is missed - every call, how many times it was made, the memory it allocated and the values it was passed.
+A normal query trace captures events - a page read, a lock, a latch. They say what the engine did but not the code that did it, and the relational operators publish no events of their own, so a Hash Match or a Stream Aggregate does its work out of sight. A Full Trace is how to see the engine functions behind a query. TTD records every instruction the process executes, so nothing is missed - every call, how many times it was made, the memory it allocated and the values it was passed.
 
 ::: warning
 Full Trace is for development and test instances only. Every run needs administrator consent and can restart the SQL Server service, dropping every connection to it. The recorded query runs around 25 times slower, and a few seconds of recording writes several gigabytes.

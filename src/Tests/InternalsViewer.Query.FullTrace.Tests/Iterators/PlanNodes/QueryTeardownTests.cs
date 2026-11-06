@@ -1,4 +1,4 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -34,7 +34,7 @@ public class QueryTeardownTests
 
     private static TraceTimeline Build(CallSpan[] spans)
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var execute = tree.AddCall(tree.Root, Frame("CXStmtQuery", "ErsqExecuteQuery", 0x10), 1);
 
@@ -56,10 +56,10 @@ public class QueryTeardownTests
     private static CallSpan Span(int callNodeIndex, ulong start, ulong end, uint thread, uint flags = Returned)
         => new(1, start, 1, end, start, end, callNodeIndex, thread, 0, flags);
 
-    private static CallstackFrame Frame(string className, string methodName, uint rva) => new()
+    private static CallFrame Frame(string className, string methodName, uint rva) => new()
     {
         Module = new("sqlmin"),
         Rva = rva,
-        Function = new CallstackFunction { ClassName = className, MethodName = methodName }
+        Function = new FrameFunction { ClassName = className, MethodName = methodName }
     };
 }

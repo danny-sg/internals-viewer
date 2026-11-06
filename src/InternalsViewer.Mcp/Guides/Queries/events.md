@@ -5,7 +5,7 @@
 
 Each line is one event, `$type` naming its class. Fields shared by every event are described in
 [format.md](format.md#eventsjsonl). This file lists the fields each type adds and what the event means. Enum values
-are written as their names. Reference fields hold ids: event ids, log record ids or call tree node ids.
+are written as their names. Reference fields hold ids: event ids or log record ids.
 
 ## Page reads
 
@@ -94,8 +94,6 @@ the page being read, `BUF KP` the buffer being pinned without reading it.
 | `RowsProcessed` | Rows across all threads |
 | `Threads` | One `{ThreadId, StartUs, DurationUs, RowsProcessed}` per `query_thread_profile` thread. Thread 0 is the coordinator, 1..n the workers, so the worker count is the degree of parallelism |
 | `Cost` | Estimated subtree cost |
-| `EntryFrames` | Call tree node ids where this operator's execution begins. Several under parallelism or when an iterator is entered from more than one method. Empty when the operator was inlined or could not be matched |
-| `ExitFrames` | Call tree node ids where a child operator begins, ending this operator's segment |
 | `Instances` | Full Trace: the iterator object addresses (`this`) that ran this operator |
 | `Memory` | Full Trace, when present: `Allocated`, `Allocations`, `Freed`, `PeakInUse` bytes and `Uses` (`Caller`, `Allocator`, `Bytes`, `Allocations`) attributed to this operator |
 

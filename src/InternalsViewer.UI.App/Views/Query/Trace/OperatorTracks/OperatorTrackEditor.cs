@@ -1,7 +1,7 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.UI.App.Controls.Query.Trace.Dialogs;
 using InternalsViewer.UI.App.Services.Query.Trace;
@@ -16,7 +16,7 @@ internal static class OperatorTrackEditor
     public static async Task<TraceTickDefinition?> ShowAsync(XamlRoot root,
                                                              QueryViewModel viewModel,
                                                              TraceTickDefinition? existing,
-                                                             CallStackNode? node)
+                                                             CallTreeNode? node)
     {
         var functions = viewModel.GetFunctionChoices();
 

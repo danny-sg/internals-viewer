@@ -1,4 +1,4 @@
-using InternalsViewer.Query.CallStack.Arguments;
+using InternalsViewer.Query.FullTrace.Symbols;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Arguments;
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRowHelper;

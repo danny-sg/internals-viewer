@@ -161,7 +161,7 @@ internal static class ObjectPoolReadLinker
 
         for (var i = 0; i < sequence.Count; i++)
         {
-            if (sequence[i] is not ReadEventGroup { PoolLookup: { } owner, IsReadAhead: false } read || HasCallStack(read))
+            if (sequence[i] is not ReadEventGroup { PoolLookup: { } owner, IsReadAhead: false } read)
             {
                 continue;
             }
@@ -177,8 +177,6 @@ internal static class ObjectPoolReadLinker
             }
         }
     }
-
-    private static bool HasCallStack(ReadEventGroup read) => read.CallStack is not null || read.Events.Any(e => e.CallStack is not null);
 
     private static bool OwnsAnyPage(ObjectPoolEvent owner, ReadEventGroup read, Dictionary<PageAddress, List<ObjectPoolEvent>> lookupsByPage)
         => read.Pages.Any(p => lookupsByPage.TryGetValue(p, out var lookups) && lookups.Contains(owner));

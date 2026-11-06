@@ -2,7 +2,6 @@ using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.Events.BatchMode.Enums;
-using InternalsViewer.Query.CallStack.Locators;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -118,8 +117,8 @@ public class ColumnStoreLocatorTests
         Assert.Empty(calls[1].Locators);
     }
 
-    private static CallStack.Arguments.FunctionSignature Fix()
-        => CallStack.Arguments.FunctionSignature.Parse(
+    private static FullTrace.Symbols.FunctionSignature Fix()
+        => FullTrace.Symbols.FunctionSignature.Parse(
             "ColumnStoreObjectRef::Fix(ColumnStoreObjectKey const &,bool,HoBtAccess *,XDES *,DeserializeFromDiskConstructor *)",
             "?Fix@ColumnStoreObjectRef@@QEAAPEAVColumnStoreObject@@AEBVColumnStoreObjectKey@@_NPEAVHoBtAccess@@PEAVXDES@@"
             + "PEAUDeserializeFromDiskConstructor@@@Z")!;

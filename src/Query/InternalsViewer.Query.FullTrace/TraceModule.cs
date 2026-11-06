@@ -1,4 +1,4 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using System.Diagnostics;
 using System.Reflection.PortableExecutable;
 
@@ -14,7 +14,7 @@ internal sealed record TraceModule
         Path = path;
         StartAddress = startAddress;
         Size = size;
-        Identity = CallstackModule.Get(System.IO.Path.GetFileNameWithoutExtension(path), pdb, guid, age);
+        Identity = FrameModule.Get(System.IO.Path.GetFileNameWithoutExtension(path), pdb, guid, age);
     }
 
     public string Path { get; init; }
@@ -23,7 +23,7 @@ internal sealed record TraceModule
 
     public ulong Size { get; init; }
 
-    public CallstackModule Identity { get; init; }
+    public FrameModule Identity { get; init; }
 
     public Version? ProductVersion { get; init; }
 
@@ -74,13 +74,13 @@ internal sealed record TraceModule
     }
 
     /// <summary>
-    /// Creates a CallstackFrame for this module with the given address and instance
+    /// Creates a CallFrame for this module with the given address and instance
     /// </summary>
     /// <remarks>
     /// RVA (Relative Virtual Address) is calculated from the given address minus the module's base address (as RVA is relative to the
     /// module).
     /// </remarks>
-    internal CallstackFrame Frame(ulong functionAddress, ulong instanceAddress) => new()
+    internal CallFrame Frame(ulong functionAddress, ulong instanceAddress) => new()
     {
         Module = Identity,
         Address = functionAddress,

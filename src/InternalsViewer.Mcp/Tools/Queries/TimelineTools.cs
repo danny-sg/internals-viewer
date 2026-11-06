@@ -166,57 +166,6 @@ public sealed class TimelineTools(McpDocumentResolver documents)
         return builder.ToString();
     }
 
-    [McpServerTool(Name = "query_output", ReadOnly = true)]
-    [Description("Full Trace: the output row structures with the iterator object owning each column, and the plan operator " +
-                 "each column comes from")]
-    public async Task<string> Output([Description("Maximum output rows to list")] int limit = 50,
-                                     [Description(DocumentDescription)] string? document = null,
-                                     CancellationToken cancellationToken = default)
-    {
-        var scope = await Documents.ResolveAsync(document, cancellationToken);
-
-        var trace = scope.RequireTrace();
-
-        if (trace.OutputStructures.Count == 0)
-        {
-            return "no output structures in the trace";
-        }
-
-        var builder = new StringBuilder();
-
-        builder.AppendLine($"output structures: {trace.OutputStructures.Count} output rows, each column's owning iterator object");
-
-        var table = new TextTable("Output row", "Direct select owner", "Column owners");
-
-        foreach (var structure in trace.OutputStructures.Take(limit))
-        {
-            table.Add(Format.Hex(structure.OutputRow),
-                      Format.Hex(structure.DirectSelectOwner),
-                      string.Join(", ", structure.Owners.Select(Format.Hex)));
-        }
-
-        table.Write(builder);
-
-        builder.AppendIfNotEmpty(Format.More(trace.OutputStructures.Count, limit, "raise limit"));
-
-        if (trace.OutputSources.Count > 0)
-        {
-            builder.AppendLine();
-
-            builder.AppendLine("sources: the plan operator that produced each output column");
-
-            foreach (var source in trace.OutputSources)
-            {
-                var columns = source.IsWholeRow ? "whole row" : $"columns {string.Join(", ", source.Columns)}";
-
-                builder.AppendLine($"  node {source.Operator.PlanNodeIdentifier?.NodeId.ToString(CultureInfo.InvariantCulture) ?? "?"} " +
-                                   $"{source.Operator.OperatorDescription}: {columns}");
-            }
-        }
-
-        return builder.ToString();
-    }
-
     private static void AppendLongest(StringBuilder builder,
                                       McpDocumentScope scope,
                                       TraceTimeline timeline,

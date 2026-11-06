@@ -1,5 +1,5 @@
 using InternalsViewer.Mcp.Models.Context.Queries;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace;
 
 namespace InternalsViewer.Mcp.Interfaces.Commands;
@@ -23,7 +23,7 @@ public interface ITraceTimelineCommands
 
     Task StepSearchAsync(bool forward, int count);
 
-    Task SelectCallAsync(CallStackNode node, int callIndex, bool zoom);
+    Task SelectCallAsync(CallTreeNode node, int callIndex, bool zoom);
 
     Task ZoomAsync(bool toSelection);
 

@@ -53,37 +53,4 @@ public static class EngineEventExtensions
             }
         }
     }
-
-    /// <summary>
-    /// Expands a set of events to everything they own, by reference identity
-    /// </summary>
-    public static Dictionary<int, EngineEvent> BySequence(this IEnumerable<EngineEvent> events)
-    {
-        var bySequence = new Dictionary<int, EngineEvent>();
-
-        foreach (var engineEvent in events.ExpandOwned())
-        {
-            if (engineEvent is not IEventGroup)
-            {
-                bySequence.TryAdd(engineEvent.SequenceId, engineEvent);
-            }
-        }
-
-        return bySequence;
-    }
-
-    public static HashSet<EngineEvent> ExpandOwned(this IEnumerable<EngineEvent> events)
-    {
-        var expanded = new HashSet<EngineEvent>(ReferenceEqualityComparer.Instance);
-
-        foreach (var engineEvent in events)
-        {
-            foreach (var owned in engineEvent.SelfAndOwned())
-            {
-                expanded.Add(owned);
-            }
-        }
-
-        return expanded;
-    }
 }

@@ -1,9 +1,8 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using System.IO.Compression;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Locators;
-using InternalsViewer.Query.CallStack.Locators;
 
 namespace InternalsViewer.Query.FullTrace.Calls;
 
@@ -56,18 +55,18 @@ public sealed partial class TraceCallStore
 
     private Dictionary<(ulong FunctionAddress, ulong InstanceAddress), TraceCallList> Lists { get; }
 
-    private CallStackNode?[] Nodes { get; set; } = [];
+    private CallTreeNode?[] Nodes { get; set; } = [];
 
     private ChunkCache Columns { get; } = new(CachedColumns);
 
     public TraceCallList? GetCallList(ulong functionAddress, ulong instanceAddress)
         => Lists.GetValueOrDefault((functionAddress, instanceAddress));
 
-    public CallStackNode? GetNode(TraceArgumentCall call) => GetNode(call.CallNodeIndex);
+    public CallTreeNode? GetNode(TraceArgumentCall call) => GetNode(call.CallNodeIndex);
 
-    public CallStackNode? GetNode(int callNodeIndex) => callNodeIndex >= 0 && callNodeIndex < Nodes.Length ? Nodes[callNodeIndex] : null;
+    public CallTreeNode? GetNode(int callNodeIndex) => callNodeIndex >= 0 && callNodeIndex < Nodes.Length ? Nodes[callNodeIndex] : null;
 
-    public CallStackNode? GetFirstNode(TraceCallList calls) => GetNode(calls.GetCallNodeIndex(0));
+    public CallTreeNode? GetFirstNode(TraceCallList calls) => GetNode(calls.GetCallNodeIndex(0));
 
     public IEnumerable<TraceCallList> GetCallLists()
     {
@@ -80,7 +79,7 @@ public sealed partial class TraceCallStore
         }
     }
 
-    public IReadOnlyList<int> GetIncludedCalls(TraceCallList calls, Func<CallStackNode?, bool> include, CancellationToken cancellationToken)
+    public IReadOnlyList<int> GetIncludedCalls(TraceCallList calls, Func<CallTreeNode?, bool> include, CancellationToken cancellationToken)
     {
         var included = new List<int>(calls.Count);
 
@@ -100,7 +99,7 @@ public sealed partial class TraceCallStore
         return included;
     }
 
-    internal void MapNodes(CallStackNode?[] nodes) => Nodes = nodes;
+    internal void MapNodes(CallTreeNode?[] nodes) => Nodes = nodes;
 
     internal void ReleaseColumns() => Columns.Clear();
 

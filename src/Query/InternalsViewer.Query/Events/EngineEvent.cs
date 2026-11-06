@@ -1,6 +1,5 @@
 using InternalsViewer.Query.Events.Properties;
 using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Plans.Model;
 
 namespace InternalsViewer.Query.Events;
@@ -48,9 +47,6 @@ public partial record EngineEvent
     public virtual string Detail => Description;
 
     public PlanNodeIdentifier? PlanNodeIdentifier { get; set; }
-
-    [EventProperty("Call Stack")]
-    public CallStackNode? CallStack { get; set; }
 
     public EngineEvent? FoldedFrom { get; set; }
 

@@ -1,11 +1,11 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events.Operators;
 
 namespace InternalsViewer.Query.FullTrace.Timeline.Ticks;
 
 public readonly record struct TraceTick(byte Value,
                                         uint Thread,
-                                        CallStackNode Node,
+                                        CallTreeNode Node,
                                         TraceSpan Span,
                                         ExecutionOperatorEvent Operator,
                                         ExecutionOperatorEvent? Caller)

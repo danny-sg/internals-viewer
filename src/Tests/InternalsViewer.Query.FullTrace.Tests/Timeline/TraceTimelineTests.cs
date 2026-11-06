@@ -1,5 +1,5 @@
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Allocation;
@@ -144,11 +144,11 @@ public class TraceTimelineTests
                              Span(callNodeIndex: 1, start: 5, end: 30),
                              Span(callNodeIndex: 0, start: 0, end: 40));
 
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
-        var root = tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqlmin"), Rva = 0x10 }, 1);
-        var publish = tree.AddCall(root, new CallstackFrame { Module = new("sqlmin"), Rva = 0x20 }, 1);
-        var inner = tree.AddCall(publish, new CallstackFrame { Module = new("sqlmin"), Rva = 0x30 }, 1);
+        var root = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x10 }, 1);
+        var publish = tree.AddCall(root, new CallFrame { Module = new("sqlmin"), Rva = 0x20 }, 1);
+        var inner = tree.AddCall(publish, new CallFrame { Module = new("sqlmin"), Rva = 0x30 }, 1);
 
         timeline.MapNodes([root, publish, inner]);
 
@@ -167,14 +167,14 @@ public class TraceTimelineTests
                              Span(callNodeIndex: 1, start: 5, end: 30),
                              Span(callNodeIndex: 0, start: 0, end: 40));
 
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
-        var execute = tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqllang"), Rva = 0x20 }, 1);
-        var inner = tree.AddCall(execute, new CallstackFrame { Module = new("sqlmin"), Rva = 0x30 }, 1);
+        var execute = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Rva = 0x20 }, 1);
+        var inner = tree.AddCall(execute, new CallFrame { Module = new("sqlmin"), Rva = 0x30 }, 1);
 
         timeline.MapNodes([null, execute, inner]);
 
-        var cropped = timeline.CroppedTo(new HashSet<CallStackNode>(ReferenceEqualityComparer.Instance) { execute });
+        var cropped = timeline.CroppedTo(new HashSet<CallTreeNode>(ReferenceEqualityComparer.Instance) { execute });
 
         Assert.NotNull(cropped);
 
@@ -205,15 +205,15 @@ public class TraceTimelineTests
 
         var timeline = builder.Build(nodes);
 
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
-        var execute = tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqllang"), Rva = 0x20 }, 1);
-        var scan = tree.AddCall(execute, new CallstackFrame { Module = new("sqlmin"), Rva = 0x30 }, 1);
-        var read = tree.AddCall(scan, new CallstackFrame { Module = new("sqlmin"), Rva = 0x40 }, 1);
+        var execute = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Rva = 0x20 }, 1);
+        var scan = tree.AddCall(execute, new CallFrame { Module = new("sqlmin"), Rva = 0x30 }, 1);
+        var read = tree.AddCall(scan, new CallFrame { Module = new("sqlmin"), Rva = 0x40 }, 1);
 
         timeline.MapNodes([null, execute, scan, read]);
 
-        var cropped = timeline.CroppedTo(new HashSet<CallStackNode>(ReferenceEqualityComparer.Instance) { execute });
+        var cropped = timeline.CroppedTo(new HashSet<CallTreeNode>(ReferenceEqualityComparer.Instance) { execute });
 
         Assert.NotNull(cropped);
 
@@ -228,7 +228,7 @@ public class TraceTimelineTests
     {
         var (timeline, execute) = BuildAroundExecute();
 
-        var cropped = timeline.CroppedTo(new HashSet<CallStackNode>(ReferenceEqualityComparer.Instance) { execute });
+        var cropped = timeline.CroppedTo(new HashSet<CallTreeNode>(ReferenceEqualityComparer.Instance) { execute });
 
         Assert.NotNull(cropped);
 
@@ -301,7 +301,7 @@ public class TraceTimelineTests
 
         timeline.RemoveCallsUnder(n => ReferenceEquals(n, execute));
 
-        CallStackNode[] nodes = [.. Enumerable.Range(0, 4).Select(i => timeline.NodeOf(i)!)];
+        CallTreeNode[] nodes = [.. Enumerable.Range(0, 4).Select(i => timeline.NodeOf(i)!)];
 
         using var stream = new MemoryStream();
 
@@ -328,7 +328,7 @@ public class TraceTimelineTests
     {
         var (timeline, execute) = BuildAroundExecute();
 
-        var cropped = timeline.CroppedTo(new HashSet<CallStackNode>(ReferenceEqualityComparer.Instance) { execute });
+        var cropped = timeline.CroppedTo(new HashSet<CallTreeNode>(ReferenceEqualityComparer.Instance) { execute });
 
         var thread = Assert.Single(cropped!.Threads);
 
@@ -355,17 +355,17 @@ public class TraceTimelineTests
         var timeline = Build(Span(callNodeIndex: 1, start: 5, end: 30),
                              Span(callNodeIndex: 0, start: 0, end: 40, thread: 9));
 
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
-        var execute = tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqllang"), Rva = 0x20 }, 1);
+        var execute = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Rva = 0x20 }, 1);
 
-        var uncropped = new CallStackTree();
+        var uncropped = new CallTree();
 
-        var elsewhere = uncropped.AddCall(uncropped.Root, new CallstackFrame { Module = new("sqlmin"), Rva = 0x90 }, 1);
+        var elsewhere = uncropped.AddCall(uncropped.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x90 }, 1);
 
         timeline.MapNodes([elsewhere, execute, null]);
 
-        var cropped = timeline.CroppedTo(new HashSet<CallStackNode>(ReferenceEqualityComparer.Instance) { execute });
+        var cropped = timeline.CroppedTo(new HashSet<CallTreeNode>(ReferenceEqualityComparer.Instance) { execute });
 
         Assert.NotNull(cropped);
         Assert.Equal([7u], cropped.Threads.Select(t => t.ThreadId));
@@ -378,11 +378,11 @@ public class TraceTimelineTests
                              Span(callNodeIndex: 1, start: 5, end: 30),
                              Span(callNodeIndex: 0, start: 0, end: 40));
 
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
-        var root = tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqlmin"), Rva = 0x10 }, 1);
-        var folded = tree.AddCall(root, new CallstackFrame { Module = new("sqlmin"), Rva = 0x20 }, 1);
-        var inner = tree.AddCall(folded, new CallstackFrame { Module = new("sqlmin"), Rva = 0x30 }, 1);
+        var root = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x10 }, 1);
+        var folded = tree.AddCall(root, new CallFrame { Module = new("sqlmin"), Rva = 0x20 }, 1);
+        var inner = tree.AddCall(folded, new CallFrame { Module = new("sqlmin"), Rva = 0x30 }, 1);
 
         timeline.MapNodes([root, folded, inner]);
 
@@ -405,12 +405,12 @@ public class TraceTimelineTests
 
         var timeline = builder.Build([new(-1, 0, 0x1000, 0, 1), new(0, 0, 0x2000, 0, 1), new(1, 0, 0x3000, 0, 1), new(0, 0, 0x4000, 0, 2)]);
 
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
-        var root = tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqlmin"), Rva = 0x10 }, 1);
-        var folded = tree.AddCall(root, new CallstackFrame { Module = new("sqlmin"), Rva = 0x20 }, 1);
-        var inner = tree.AddCall(folded, new CallstackFrame { Module = new("sqlmin"), Rva = 0x30 }, 1);
-        var sibling = tree.AddCall(root, new CallstackFrame { Module = new("sqlmin"), Rva = 0x40 }, 2);
+        var root = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x10 }, 1);
+        var folded = tree.AddCall(root, new CallFrame { Module = new("sqlmin"), Rva = 0x20 }, 1);
+        var inner = tree.AddCall(folded, new CallFrame { Module = new("sqlmin"), Rva = 0x30 }, 1);
+        var sibling = tree.AddCall(root, new CallFrame { Module = new("sqlmin"), Rva = 0x40 }, 2);
 
         timeline.MapNodes([root, folded, inner, sibling]);
 
@@ -442,11 +442,11 @@ public class TraceTimelineTests
                              Span(callNodeIndex: 1, start: 5, end: 30),
                              Span(callNodeIndex: 0, start: 0, end: 40));
 
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
-        var outer = tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqllang"), Rva = 0x10 }, 1);
-        var execute = tree.AddCall(outer, new CallstackFrame { Module = new("sqllang"), Rva = 0x20 }, 1);
-        var inner = tree.AddCall(execute, new CallstackFrame { Module = new("sqlmin"), Rva = 0x30 }, 1);
+        var outer = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Rva = 0x10 }, 1);
+        var execute = tree.AddCall(outer, new CallFrame { Module = new("sqllang"), Rva = 0x20 }, 1);
+        var inner = tree.AddCall(execute, new CallFrame { Module = new("sqlmin"), Rva = 0x30 }, 1);
 
         timeline.MapNodes([outer, execute, inner]);
 
@@ -475,11 +475,11 @@ public class TraceTimelineTests
                              Span(callNodeIndex: 1, start: 5, end: 30),
                              Span(callNodeIndex: 0, start: 0, end: 40));
 
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
-        var outer = tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqllang"), Rva = 0x10 }, 1);
-        var execute = tree.AddCall(outer, new CallstackFrame { Module = new("sqllang"), Rva = 0x20 }, 1);
-        var inner = tree.AddCall(execute, new CallstackFrame { Module = new("sqlmin"), Rva = 0x30 }, 1);
+        var outer = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Rva = 0x10 }, 1);
+        var execute = tree.AddCall(outer, new CallFrame { Module = new("sqllang"), Rva = 0x20 }, 1);
+        var inner = tree.AddCall(execute, new CallFrame { Module = new("sqlmin"), Rva = 0x30 }, 1);
 
         timeline.MapNodes([outer, execute, inner]);
 
@@ -515,12 +515,12 @@ public class TraceTimelineTests
 
         var timeline = builder.Build(nodes);
 
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
-        var session = tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqllang"), Rva = 0x10 }, 1);
-        var statement = tree.AddCall(session, new CallstackFrame { Module = new("sqllang"), Rva = 0x20 }, 1);
-        var task = tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqlmin"), Rva = 0x30 }, 1);
-        var producer = tree.AddCall(task, new CallstackFrame { Module = new("sqlmin"), Rva = 0x40 }, 1);
+        var session = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Rva = 0x10 }, 1);
+        var statement = tree.AddCall(session, new CallFrame { Module = new("sqllang"), Rva = 0x20 }, 1);
+        var task = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x30 }, 1);
+        var producer = tree.AddCall(task, new CallFrame { Module = new("sqlmin"), Rva = 0x40 }, 1);
 
         timeline.MapNodes([session, statement, task, producer]);
 
@@ -588,10 +588,10 @@ public class TraceTimelineTests
     [Fact]
     public void Call_Activity_Counts_Each_Call_In_The_Bucket_Where_It_Starts()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
-        var root = tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqlmin"), Rva = 0x100 }, 3);
-        var child = tree.AddCall(root, new CallstackFrame { Module = new("sqlmin"), Rva = 0x200 }, 2);
+        var root = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x100 }, 3);
+        var child = tree.AddCall(root, new CallFrame { Module = new("sqlmin"), Rva = 0x200 }, 2);
 
         var timeline = Build(Span(callNodeIndex: 0, start: 0, end: 10),
                              Span(callNodeIndex: 0, start: 80, end: 85),
@@ -642,24 +642,24 @@ public class TraceTimelineTests
         Assert.Null(timeline.FindCall(nodes[2], 0));
     }
 
-    private static CallStackNode[] MapNodes(TraceTimeline timeline)
+    private static CallTreeNode[] MapNodes(TraceTimeline timeline)
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
-        var root = tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqlmin"), Rva = 0x10, Address = 0x1000 }, 1);
+        var root = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x10, Address = 0x1000 }, 1);
 
-        var child = tree.AddCall(root, new CallstackFrame { Module = new("sqlmin"), Rva = 0x20, Address = 0x2000 }, 1);
+        var child = tree.AddCall(root, new CallFrame { Module = new("sqlmin"), Rva = 0x20, Address = 0x2000 }, 1);
 
-        var leaf = tree.AddCall(child, new CallstackFrame { Module = new("sqlmin"), Rva = 0x30, Address = 0x3000 }, 1);
+        var leaf = tree.AddCall(child, new CallFrame { Module = new("sqlmin"), Rva = 0x30, Address = 0x3000 }, 1);
 
-        CallStackNode[] nodes = [root, child, leaf];
+        CallTreeNode[] nodes = [root, child, leaf];
 
         timeline.MapNodes(nodes);
 
         return nodes;
     }
 
-    private static (TraceTimeline Timeline, CallStackNode Execute) BuildAroundExecute()
+    private static (TraceTimeline Timeline, CallTreeNode Execute) BuildAroundExecute()
     {
         CallNode[] nodes =
         [
@@ -681,12 +681,12 @@ public class TraceTimelineTests
 
         var timeline = builder.Build(nodes);
 
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
-        var outside = tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqllang"), Rva = 0x10 }, 1);
-        var setup = tree.AddCall(outside, new CallstackFrame { Module = new("sqllang"), Rva = 0x18 }, 1);
-        var execute = tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqllang"), Rva = 0x20 }, 1);
-        var scan = tree.AddCall(execute, new CallstackFrame { Module = new("sqlmin"), Rva = 0x30 }, 1);
+        var outside = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Rva = 0x10 }, 1);
+        var setup = tree.AddCall(outside, new CallFrame { Module = new("sqllang"), Rva = 0x18 }, 1);
+        var execute = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Rva = 0x20 }, 1);
+        var scan = tree.AddCall(execute, new CallFrame { Module = new("sqlmin"), Rva = 0x30 }, 1);
 
         timeline.MapNodes([outside, setup, execute, scan]);
 

@@ -2,12 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.Recording;
-using InternalsViewer.UI.App.Controls.Query.Trace.CallStack;
+using InternalsViewer.UI.App.Controls.Query.Trace.Calls;
 using InternalsViewer.UI.App.Controls.Docking;
 using InternalsViewer.UI.App.Controls.HexView;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
@@ -120,7 +120,7 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
 
     public void MovePlayhead(TracePoint point) => RequestPlayhead(point);
 
-    public void ZoomToCall(CallStackNode node, int callIndex) => PlayheadStack.RequestChart(c => c.ZoomToCall(node, callIndex));
+    public void ZoomToCall(CallTreeNode node, int callIndex) => PlayheadStack.RequestChart(c => c.ZoomToCall(node, callIndex));
 
     public void ShowCallStack(TracePoint point)
     {
@@ -129,7 +129,7 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         ShowCallStack();
     }
 
-    public void FindInCallTree(CallStackNode node, int callIndex) => Query.OpenCallTree(node, callIndex);
+    public void FindInCallTree(CallTreeNode node, int callIndex) => Query.OpenCallTree(node, callIndex);
 
     public void FindReferences(ulong value)
     {

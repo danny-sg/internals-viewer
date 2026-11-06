@@ -12,7 +12,7 @@ public sealed partial class InstructionsGuideSource : IMcpGuideSource
 {
     private static readonly string[] Pages =
     [
-        "GettingStarted", "SqlEditor", "Timeline", "Events", "Allocations", "ExecutionPlan", "CallStack", "LogRecords", "FullTrace",
+        "GettingStarted", "SqlEditor", "Timeline", "Events", "Allocations", "ExecutionPlan", "CallTree", "LogRecords", "FullTrace",
         "Simulation"
     ];
 

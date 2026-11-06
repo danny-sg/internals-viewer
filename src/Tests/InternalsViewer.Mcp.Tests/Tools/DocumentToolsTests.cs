@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Mcp.Documents;
 using InternalsViewer.Mcp.Tools;
 using ModelContextProtocol;
@@ -28,7 +29,7 @@ public class DocumentToolsTests
 
         var (resolver, document) = TestRuns.CreateResolver(run);
 
-        var getRow = run.Result.CallStackTree!.Root.ChildNodes.Single().ChildNodes.Single();
+        var getRow = run.ExtraOf<TraceResult>()!.CallTree.Root.ChildNodes.Single().ChildNodes.Single();
 
         document.Recorded.Selection = new McpSelection { CallNode = getRow, Playhead = TestRuns.At(5, 1) };
 

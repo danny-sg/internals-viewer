@@ -43,7 +43,7 @@ Showing the storage engine at work is what Internals Viewer is for, and the call
 
 ## Sampling and recording
 
-The rest of the Query view is built from samples. A call stack is captured when an Extended Event fires, so the call tree only holds the code that was on the stack at those moments - and the relational operators fire no events of their own (see [How operator matching works](/docs/deep-dives/operator-matching)). Full Trace swaps sampling for a recording. Every instruction SQL Server's storage engine and query processor execute is recorded, the recording is replayed, and every call the query made is read back in order - with its arguments, its return value and the memory it allocated.
+The rest of the Query view is built from Extended Events. An event says what happened - a page read, a lock, a wait - but not the code that did it, and the relational operators fire no events of their own. Full Trace records the code instead. Every instruction SQL Server's storage engine and query processor execute is recorded, the recording is replayed, and every call the query made is read back in order - with its arguments, its return value and the memory it allocated.
 
 A sampling profiler such as ETW cannot do that. It sees where the CPU was at intervals, not every call, and it captures no memory, so there is nothing to read an argument's value from. A recording has both.
 
@@ -125,11 +125,15 @@ That is the slow part. The engine indexes the whole file before it will replay a
 
 ### Resolving symbols
 
-A recording knows addresses, not names, so the replay needs to know some functions by address before it starts. Each module's file is opened from the path the recording gives - the recording was made on this machine, so the files are there - and its PE debug directory names its PDB, with the GUID and age that pin the exact build. The PDBs are downloaded and cached exactly as for [sampled call stacks](/docs/deep-dives/query-tracing#resolving-call-stacks).
+A recording knows addresses, not names, so the replay needs to know some functions by address before it starts. Each module's file is opened from the path the recording gives - the recording was made on this machine, so the files are there - and its PE debug directory names its PDB, with the GUID and age that pin the exact build.
+
+Each PDB is fetched from the Microsoft public symbol server, using the standard symbol store path `https://msdl.microsoft.com/download/symbols/<pdb>/<GUID><age>/<pdb>`. The same folder layout is replicated under the local **Symbols Path** (default `C:\Symbols`), so each symbol file is only ever downloaded once - later recordings resolve from the cache. Each download shows in Messages as **Downloading** and the file name, with its progress and then the time it took, or **Not Found** when the symbol server does not have it. A file is downloaded under a temporary name and only renamed once it is complete, so an interrupted download never leaves a partial PDB in the cache.
+
+The PDBs are read with the Debug Interface Access (DIA) API. DIA normally comes with Visual Studio, but its redistributable `msdia140.dll` ships with Internals Viewer and is accessed registration-free through a small C++ bridge (`InternalsViewer.Query.DiaBridge`) - so there are no dependencies to install and no COM registration step.
 
 Then one walk over each PDB of `sqlmin.dll`, `sqllang.dll` and `sqldk.dll` sorts functions into the sets the replay needs:
 
-- **Excluded functions** - every function the Call Stack's category mappings put in Extended Events or tracing, around 9,000 of them, so the replay can skip them
+- **Excluded functions** - every function the Call Tree's category mappings put in Extended Events or tracing, around 9,000 of them, so the replay can skip them
 - **Instance methods** - `Open`, `GetRow`, `Close` and their batch mode and helper forms on every `CQScan*`, `CBpQScan*` and `CQueryScan*` class, and the methods of the plan's own `CXte*` and `CBpXte*` objects, whose calls are kept apart by the object they ran on
 - **Memory functions** - the allocators and frees, for counting memory
 - **Locator reads** - functions that take or return a page id, row id, page handle or page reference, columnstore object key, LSN or string, and pointer or reference arguments to simple values, for reading those values as the replay passes
@@ -197,7 +201,7 @@ The replay hands back addresses, counts, spans and values. The rest turns them i
 
 ### The call tree
 
-Each node's address is looked up in the module ranges and becomes a frame - module, offset, PDB and object - added to a call tree with its count. The frames are resolved to names with the same DIA bridge as sampled stacks, and calls from different places in the same function are merged into one node per function. A map from each raw node to its merged node is kept, so a call log row or a Trace Timeline bar always knows its frame - which is what **Go To Call** follows.
+Each node's address is looked up in the module ranges and becomes a frame - module, offset, PDB and object - added to a call tree with its count. The frames are resolved to names through the DIA bridge, giving the `module!Class::Method` symbol and the offset into the function, and calls from different places in the same function are merged into one node per function. Each frame is classified by a mapping dictionary into the **Module** badge (Storage Engine, Query Processor, SQL OS, SQL Server Host, etc.) and the **Category** badge (Rowset, B-Tree Navigation, Page Access, Buffer Pool, Latching, Locking, etc.) shown in the Call Tree. Frames belonging to infrastructure, such as scheduling and thread management, are flagged so the frames doing the actual work stand out. A map from each raw node to its merged node is kept, so a call log row or a Trace Timeline bar always knows its frame - which is what **Go To Call** follows.
 
 The whole recording is kept, compilation included, so what is worked out from it - objects, allocations and memory - sees every call. **Crop To Query** only changes what is shown, and can be switched without tracing again. Each thread's calls start well above the query - receiving the batch, compiling and setting up the statement - so with it on the Call Tree starts at the outermost `CXStmtQuery::ErsqExecuteQuery`, the statement's execution in `sqllang.dll`. It starts as the plan's iterators are built and returns just after they are torn down, so the batch work around it is left out - checks for schema changes and statement setup before it, and releasing locks and freeing memory after it. Switch **Crop To Query** off to see that work. A parallel worker's thread never runs beneath that frame, so a thread running operator code without it is shown from its top. The Trace Timeline is cropped to match.
 
@@ -205,7 +209,7 @@ Anything left beneath Extended Events or tracing frames is then removed from the
 
 ### Operators by iterator
 
-Sampled stacks have to work out which frames belong to which operator from the shape of the stacks, because a frame does not record which object it ran on. A recording does. Each operator is an iterator object - a `CQScan*` class in row mode, `CBpQScan*` in batch mode - and the call tree already keeps the calls of each object apart, so two Index Seeks under a Nested Loops stay separate even though they run the same code at the same addresses. Iterator methods whose code is shared with some other function by identical code folding are left out, since RCX there might be anything.
+A call stack on its own cannot say which frames belong to which operator, because a frame does not record which object it ran on. A recording does. Each operator is an iterator object - a `CQScan*` class in row mode, `CBpQScan*` in batch mode - and the call tree already keeps the calls of each object apart, so two Index Seeks under a Nested Loops stay separate even though they run the same code at the same addresses. Iterator methods whose code is shared with some other function by identical code folding are left out, since RCX there might be anything.
 
 The compiler gets in the way in one place. With profile-guided optimisation, `CQScanProfileNew::GetRow` - the wrapper that counts rows for the actual plan - does not call its child's `GetRow`. It calls `CQScanNew::GetRowOrReQualifyHelper` with the child iterator as its first parameter and the child's `GetRow` inlined into it, so for an Index Seek `CQScanRangeNew::GetRow` is never called at all. The helper is treated as an iterator method too, which works because its first parameter arrives in RCX just as `this` would. The statement's own frame is folded away in the same way, which is why a statement's entry is `CXStmtQuery::ErsqExecuteQuery`.
 
@@ -213,7 +217,7 @@ Which object belongs to which operator comes from how the plan is built. Before 
 
 That tree is aligned with the plan. A plan object scores against an operator when the iterator classes it constructed are ones the mappings give that operator, and loses points when they are not. Skipping a plan node or a plan object costs points too. The iterator each plan object built - its return value, or the object its constructor ran on - then takes that plan object's operator, and wrappers such as the profiling iterator are looked through to the iterator inside. This needs no row counts and no guesswork about stack shapes, only the calls that build the plan.
 
-The linked objects give each operator its entry frames - for the Call Tree's operator view and its target badge - and its lifetime, from its object's first method call to its last, for the Trace Timeline's Operators pane. The Arguments tab uses the same link to name an iterator or a plan object when its address turns up as a value.
+The linked objects give each operator its entry frames - for the Call Tree's operator view and its target badge, see [How operator matching works](/docs/deep-dives/operator-matching) - and its lifetime, from its object's first method call to its last, for the Trace Timeline's Operators pane. The Arguments tab uses the same link to name an iterator or a plan object when its address turns up as a value.
 
 ### Memory
 
@@ -267,10 +271,12 @@ The recording itself is deleted once it has replayed successfully. Everything ab
   - `TraceLoader.cs` - the load that ties the steps together
   - `ReplaySession.cs` and `Native/` - opening the recording and calling the bridge
   - `Functions/` - the function sets the replay needs, from the PDBs
-  - `CallTreeBuilder.cs` - mapping nodes to frames, and `QueryExecutionCropper.cs` - finding where the query's execution starts
+  - `Symbols/` - downloading PDBs (`SymbolDownloader.cs`), resolving frames through DIA (`SymbolResolver.cs`, `Dia/`), and the Module / Category classification and its mapping files (`Categories/`)
+  - `Calls/Tree/` - the call tree, with `CallTreeBuilder.cs` mapping nodes to frames
+  - `QueryExecutionCropper.cs` - finding where the query's execution starts
   - `CallLog/` and `Arguments/` - the compressed argument log, and reading its values by the function's signature
   - `Locators/` - the page, row, columnstore object and referenced value reads
-  - `Iterators/` - linking plan objects and iterators to the plan, and their lifetimes
+  - `Iterators/` - linking plan objects and iterators to the plan, matching operators to their call tree frames (`IteratorInstanceMatcher.cs`), and their lifetimes
   - `Memory/` - allocations, frees, clerks and memory in use
   - `Timeline/` - the Trace Timeline's spans and axes
   - `Export/` - the Full Trace part of an exported run

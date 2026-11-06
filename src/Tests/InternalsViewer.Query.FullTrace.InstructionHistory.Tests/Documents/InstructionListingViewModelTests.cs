@@ -1,4 +1,4 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.InstructionHistory.Documents;
 using InternalsViewer.Query.FullTrace.InstructionHistory.Listing;
 using InternalsViewer.Query.FullTrace.InstructionHistory.Replay;
@@ -9,7 +9,7 @@ namespace InternalsViewer.Query.FullTrace.InstructionHistory.Tests.Documents;
 [Trait("Category", "Unit")]
 public class InstructionListingViewModelTests
 {
-    private static readonly InstructionRequest Request = new(new CallstackFrame(), 1, new TracePosition(10, 0), new TracePosition(20, 0));
+    private static readonly InstructionRequest Request = new(new CallFrame(), 1, new TracePosition(10, 0), new TracePosition(20, 0));
 
     private static readonly Func<CancellationToken, Task<TraceInstructionHistory>> Replayed
         = _ => Task.FromResult(TraceInstructionHistory.Empty);

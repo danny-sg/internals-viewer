@@ -4,7 +4,7 @@ using InternalsViewer.Mcp.Models.Context.Queries;
 using InternalsViewer.Mcp.Models.Context.Queries.Enums;
 using InternalsViewer.Mcp.Tests.Documents;
 using InternalsViewer.Mcp.Tools.Queries;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace;
 using ModelContextProtocol;
 using static InternalsViewer.Mcp.Tests.TestRuns;
@@ -254,7 +254,7 @@ public class TraceTimelineToolsTests
 
         public Task StepSearchAsync(bool forward, int count) => throw new NotSupportedException();
 
-        public Task SelectCallAsync(CallStackNode node, int callIndex, bool zoom) => throw new NotSupportedException();
+        public Task SelectCallAsync(CallTreeNode node, int callIndex, bool zoom) => throw new NotSupportedException();
 
         public Task ZoomAsync(bool toSelection) => throw new NotSupportedException();
 

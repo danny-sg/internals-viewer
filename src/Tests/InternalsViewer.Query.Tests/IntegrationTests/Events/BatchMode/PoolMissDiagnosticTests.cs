@@ -47,7 +47,7 @@ public class PoolMissDiagnosticTests(ITestOutputHelper output)
 
         var payload = new ExecuteSqlPayload("SELECT * FROM Sales", new QueryOptions { DisableReadAhead = false }, StatementType.Select, null);
 
-        var result = await runner.TraceQuery(payload, database, new EventOptions { IncludeCallStack = false }, @"C:\Symbols", null,
+        var result = await runner.TraceQuery(payload, database, new EventOptions(), @"C:\Symbols", null,
                                              CancellationToken.None);
 
         Dump(result.EngineEvents);
@@ -75,7 +75,7 @@ public class PoolMissDiagnosticTests(ITestOutputHelper output)
 
         var path = @"C:\ProgramData\InternalsViewer\Traces\QueryReplay_05f9b1f209e948aea098245fe188f362_0_134342016891580000.xel";
 
-        var (events, _, callStack, _) = await reader.GetEvents(path, connectionString, database, false, null, CancellationToken.None);
+        var (events, _, _) = await reader.GetEvents(path, connectionString, database, false, null, CancellationToken.None);
 
         var unit = database.AllocationUnits.Values.First(a => a.TableName == "Sales"
                                                              && a.AllocationUnitType == InternalsViewer.Internals.Engine.Database.Enums.AllocationUnitType.InRowData);
@@ -86,12 +86,6 @@ public class PoolMissDiagnosticTests(ITestOutputHelper output)
 
         ObjectPoolPageLinker.Link(events, index.HobtId, reads, index.DeleteBitmapAllocationUnit);
 
-
-        await InternalsViewer.Query.CallStack.CallstackProcessor.Process(callStack, @"C:\Symbols", null, CancellationToken.None);
-
-        InternalsViewer.Query.CallStack.OperatorCallStackMatcher.Match(events);
-
-        InternalsViewer.Query.CallStack.CallStackPlanNodeMatcher.Match(events);
 
         ObjectPoolReadLinker.Link(events);
 
@@ -131,12 +125,6 @@ public class PoolMissDiagnosticTests(ITestOutputHelper output)
                         {
                             output.WriteLine($"     STACK read seq={r.SequenceId} t={(r.TimeUs - origin) / 1000.0:F3} type={r.ReadType} pages={r.PageCount}");
 
-                            foreach (var member in r.Events.Take(3))
-                            {
-                                output.WriteLine($"       member {member.GetType().Name} {member.Name}: {Stack(member)}");
-                            }
-
-                            output.WriteLine($"       group: {Stack(r)}");
                         }
                     }
 
@@ -180,20 +168,5 @@ public class PoolMissDiagnosticTests(ITestOutputHelper output)
                              + $"t={(group.Min(r => r.TimeUs) - origin) / 1000.0:F3}..{(group.Max(r => r.TimeUs) - origin) / 1000.0:F3} "
                              + $"withNode={group.Count(r => r.PlanNodeIdentifier is not null)}");
         }
-    }
-
-    private static string Stack(EngineEvent e)
-    {
-        var names = new List<string>();
-
-        for (var node = e.CallStack; node is not null && names.Count < 40; node = node.Parent)
-        {
-            if (node.Frame?.Function is { } f)
-            {
-                names.Add($"{f.ClassName}::{f.MethodName}");
-            }
-        }
-
-        return names.Count == 0 ? "(none)" : string.Join(" < ", names);
     }
 }

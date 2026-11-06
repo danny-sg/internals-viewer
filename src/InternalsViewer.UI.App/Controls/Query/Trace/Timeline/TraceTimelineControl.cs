@@ -2,7 +2,7 @@ using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -11,7 +11,7 @@ using InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Enums;
 using InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Memory;
 using InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Operators;
 using InternalsViewer.UI.App.Helpers;
-using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Stack;
+using InternalsViewer.UI.App.Models.Query.Trace.Calls.Stack;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
 using InternalsViewer.UI.Plugins.FullTrace.Menus;
@@ -121,13 +121,13 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     public static readonly DependencyProperty SelectedNodeProperty =
         DependencyProperty.Register(nameof(SelectedNode),
-                                    typeof(CallStackNode),
+                                    typeof(CallTreeNode),
                                     typeof(TraceTimelineControl),
                                     new PropertyMetadata(null, OnSelectedNodeChanged));
 
-    public CallStackNode? SelectedNode
+    public CallTreeNode? SelectedNode
     {
-        get => (CallStackNode?)GetValue(SelectedNodeProperty);
+        get => (CallTreeNode?)GetValue(SelectedNodeProperty);
         set => SetValue(SelectedNodeProperty, value);
     }
 
@@ -259,15 +259,15 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     private TraceTimeline? _timeline;
 
-    private CallStackNode? _highlightedNode;
+    private CallTreeNode? _highlightedNode;
 
-    private CallStackNode? _root;
+    private CallTreeNode? _root;
 
     private TraceTimeline? _rooted;
 
     private TraceTimeline? _visible;
 
-    private (TraceTimeline Timeline, CallStackNode? Root, IReadOnlySet<string>? Pruned, IReadOnlySet<string>? Hidden)? _visibleFor;
+    private (TraceTimeline Timeline, CallTreeNode? Root, IReadOnlySet<string>? Pruned, IReadOnlySet<string>? Hidden)? _visibleFor;
 
     private TraceTimelineAxis _axis = TraceTimelineAxis.Position;
 
@@ -478,11 +478,11 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         ActualThemeChanged += OnActualThemeChanged;
     }
 
-    public event Action<CallStackNode, int>? CallSelected;
+    public event Action<CallTreeNode, int>? CallSelected;
 
     public event Action? SelectionCleared;
 
-    public event Action<CallStackNode?, int>? CallTreeOpenRequested;
+    public event Action<CallTreeNode?, int>? CallTreeOpenRequested;
 
     public event Action<MenuFlyout, TraceMenuTarget>? CallMenuRequested;
 
@@ -528,7 +528,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     public void ZoomTo(TraceSpan span) => ZoomTo(TraceScale.GetValue(span.From, _axis), TraceScale.GetValue(span.To, _axis));
 
-    public void ScopeTo(CallStackNode node) => SetRoot(node);
+    public void ScopeTo(CallTreeNode node) => SetRoot(node);
 
     public IReadOnlyList<TraceThreadStack> GetCallStack()
     {
@@ -558,7 +558,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     public CallReference? GetSelectedCall() => GetCallReference(_selected);
 
-    public bool SelectCall(CallStackNode node, int callIndex, bool zoom)
+    public bool SelectCall(CallTreeNode node, int callIndex, bool zoom)
     {
         if (_visible is not { } timeline || FindCall(timeline, node, callIndex) is not { } hit)
         {
@@ -1066,7 +1066,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         _playhead = null;
     }
 
-    private void SetRoot(CallStackNode? root)
+    private void SetRoot(CallTreeNode? root)
     {
         if (ReferenceEquals(root, _root))
         {
@@ -1232,7 +1232,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         return any ? hidden : null;
     }
 
-    private static FlameHit? FindCall(TraceTimeline timeline, CallStackNode node, int callIndex)
+    private static FlameHit? FindCall(TraceTimeline timeline, CallTreeNode node, int callIndex)
         => timeline.FindCall(node, callIndex) is { } location ? new FlameHit(location.ThreadIndex, location.Depth, location.Index) : null;
 
     private void FindSelectedCall(CallReference? reference, bool bringIntoView)
@@ -1431,7 +1431,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
     {
         var control = (TraceTimelineControl)d;
 
-        control._highlightedNode = e.NewValue as CallStackNode;
+        control._highlightedNode = e.NewValue as CallTreeNode;
 
         control.FindNodeMatches(control._highlightedNode);
 

@@ -19,7 +19,6 @@ public sealed partial class QueryInstructionsTabView : UserControl
         ["ShowLatches"] = (o => o.ShowLatches, o => o.ShowLatches = !o.ShowLatches),
         ["IncludeColumnstore"] = (o => o.IncludeColumnstore, o => o.IncludeColumnstore = !o.IncludeColumnstore),
         ["IncludeMemory"] = (o => o.IncludeMemory, o => o.IncludeMemory = !o.IncludeMemory),
-        ["IncludeCallStack"] = (o => o.IncludeCallStack, o => o.IncludeCallStack = !o.IncludeCallStack),
         ["CropToQuery"] = (o => o.CropToQuery, o => o.CropToQuery = !o.CropToQuery),
         ["IncludeSystemObjects"] = (o => o.IncludeSystemObjects, o => o.IncludeSystemObjects = !o.IncludeSystemObjects)
     };

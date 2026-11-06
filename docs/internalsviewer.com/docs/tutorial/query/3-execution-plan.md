@@ -15,7 +15,7 @@ This makes the behaviour of the different operator types visible:
 [Joins](/docs/tutorial/query/6-joins) makes these behaviours concrete by tracing the same join three ways - but first, [Scans vs seeks](/docs/tutorial/query/4-scans-vs-seeks) compares the two access patterns underneath every plan.
 
 ::: tip
-If [Call Stack](/docs/user-guide/query/CallStack) events are captured, the **Flame Graph** toggle breaks each operator's time down into the engine calls that made it up - see [Execution Plan](/docs/user-guide/query/ExecutionPlan#flame-graph).
+To see the engine calls behind each operator, record the query with [Full Trace](/docs/user-guide/query/FullTrace) - selecting an operator then focuses the [Call Tree](/docs/user-guide/query/CallStack) on its calls.
 :::
 
 Next: [Scans vs seeks](/docs/tutorial/query/4-scans-vs-seeks)

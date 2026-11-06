@@ -1,7 +1,6 @@
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using System.Text;
-using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Categories;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.History;
@@ -14,6 +13,7 @@ using InternalsViewer.Query.FullTrace.Tests.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Timeline;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
+using InternalsViewer.Query.FullTrace.Symbols.Categories;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Memory.History.Capture;
 
@@ -352,7 +352,7 @@ public class MemoryHistoryBuilderTests
     [Fact]
     public void Clerk_Pages_Taken_For_A_Memory_Grant_Are_Kept()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var query = tree.AddCall(tree.Root, Frame("CQueryScan", "GetRow", 0x10), 1);
         var grant = tree.AddCall(query, Frame(string.Empty, "PbufGetGrantedBuf", 0x20), 1);
@@ -678,9 +678,9 @@ public class MemoryHistoryBuilderTests
                                           stack).Store;
     }
 
-    private static (TraceTimeline Timeline, (CallStackNode Query, CallStackNode GetRow, CallStackNode Scanner) Nodes) BuildTimeline()
+    private static (TraceTimeline Timeline, (CallTreeNode Query, CallTreeNode GetRow, CallTreeNode Scanner) Nodes) BuildTimeline()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var query = tree.AddCall(tree.Root, Frame("CQueryScan", "GetRow", 0x10), 1);
         var getRow = tree.AddCall(query, Frame("CQScanRangeNew", "GetRow", 0x20, Iterator), 3);
@@ -710,13 +710,13 @@ public class MemoryHistoryBuilderTests
         return (timeline, (query, getRow, scanner));
     }
 
-    private static CallstackFrame Frame(string className, string method, uint rva, ulong instance = 0) => new()
+    private static CallFrame Frame(string className, string method, uint rva, ulong instance = 0) => new()
     {
         Module = new("sqlmin"),
         Rva = rva,
         Address = rva,
         InstanceAddress = instance,
-        Function = new CallstackFunction
+        Function = new FrameFunction
         {
             ClassName = className,
             MethodName = method,

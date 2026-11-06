@@ -1,5 +1,5 @@
 using System.Text.RegularExpressions;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
@@ -37,8 +37,6 @@ public static class TraceConditions
 
         return conditions;
     }
-
-    public static string Describe(CallStackNode node) => $"{node.Frame?.Module}!{node.Symbol}";
 
     private static TraceCallCondition ParseOne(string spec, ArgumentLayout? layout)
     {

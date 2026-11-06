@@ -1,6 +1,5 @@
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
-using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Categories;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory;
@@ -14,6 +13,7 @@ using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.Query.Plans.Model;
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRowHelper;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
+using InternalsViewer.Query.FullTrace.Symbols.Categories;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Timeline.Tracks;
 
@@ -238,13 +238,13 @@ public class TraceRowReturnMarkMapTests
 
         var timeline = builder.Build(Nodes);
 
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var join = tree.AddCall(tree.Root, Frame(JoinIterator), 1);
 
         var scan = tree.AddCall(join, Frame(ScanIterator, childMethod), 1);
 
-        CallStackNode[] nodes = [join, scan];
+        CallTreeNode[] nodes = [join, scan];
 
         timeline.MapNodes(nodes);
 
@@ -281,13 +281,13 @@ public class TraceRowReturnMarkMapTests
     private static ulong[] Call((ulong Start, ulong End, ulong Status) call, int callNodeIndex)
         => Row(call.Start, flags: Thread | TraceCallChunk.ReturnedFlag, returnValue: call.Status, callNodeIndex: callNodeIndex, endSequence: call.End);
 
-    private static CallstackFrame Frame(ulong instance, string method = "GetRowOrReQualifyHelper") => new()
+    private static CallFrame Frame(ulong instance, string method = "GetRowOrReQualifyHelper") => new()
     {
         Module = new("sqlmin"),
         Rva = 0x10,
         Address = Helper,
         InstanceAddress = instance,
-        Function = new CallstackFunction
+        Function = new FrameFunction
         {
             ClassName = "CQScanNew",
             MethodName = method,

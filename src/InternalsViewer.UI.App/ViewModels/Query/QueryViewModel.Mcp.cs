@@ -9,7 +9,7 @@ using InternalsViewer.Mcp.Interfaces.Commands;
 using InternalsViewer.Mcp.Interfaces.Tabs;
 using InternalsViewer.Mcp.Models.Context;
 using InternalsViewer.Mcp.Models.Context.Queries;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Calls;
@@ -151,11 +151,6 @@ public partial class QueryViewModel : IMcpContextSource, IQueryCommands
             "Events",
             q => q.QueryOptions.IncludeMemory,
             (q, v) => q.QueryOptions.IncludeMemory = v),
-        new("call-stack",
-            "Call Stack",
-            "Events",
-            q => q.QueryOptions.IncludeCallStack,
-            (q, v) => q.QueryOptions.IncludeCallStack = v),
         new(FullTraceKey,
             "Record Full Trace",
             "Trace",
@@ -220,7 +215,7 @@ public partial class QueryViewModel : IMcpContextSource, IQueryCommands
             }
         };
 
-    public Task ShowCallAsync(CallStackNode node, int callIndex)
+    public Task ShowCallAsync(CallTreeNode node, int callIndex)
     {
         OpenCallTree(node, callIndex);
 
@@ -336,7 +331,7 @@ public partial class QueryViewModel : IMcpContextSource, IQueryCommands
         return Task.FromResult(MemoryHistory.RemoveTemporaryWatches());
     }
 
-    public async Task<McpFunctionSignature?> ResolveSignatureAsync(CallstackFrame frame)
+    public async Task<McpFunctionSignature?> ResolveSignatureAsync(CallFrame frame)
     {
         if (Arguments.Lookup is not { } lookup)
         {

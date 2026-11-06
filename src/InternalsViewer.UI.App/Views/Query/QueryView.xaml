@@ -145,8 +145,6 @@
                                    IsChecked="{x:Bind ViewModel.QueryOptions.IncludeColumnstore, Mode=TwoWay}"/>
                                 <ToggleMenuFlyoutItem Text="Memory"
                                    IsChecked="{x:Bind ViewModel.QueryOptions.IncludeMemory, Mode=TwoWay}"/>
-                                <ToggleMenuFlyoutItem Text="Call Stack"
-                                   IsChecked="{x:Bind ViewModel.QueryOptions.IncludeCallStack, Mode=TwoWay}"/>
                             </MenuBarItem>
 
                             <MenuBarItem Title="Trace">

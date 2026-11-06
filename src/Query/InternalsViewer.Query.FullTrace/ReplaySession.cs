@@ -13,7 +13,6 @@ using InternalsViewer.Query.Recording;
 using InternalsViewer.Query.FullTrace.Functions;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Hooks;
-using InternalsViewer.Query.FullTrace.Output;
 using InternalsViewer.Query.FullTrace.Stubs;
 using InternalsViewer.Query.FullTrace.Memory.History.Capture.StackObjects;
 using InternalsViewer.Query.FullTrace.Memory.History.Capture.Watches;
@@ -226,8 +225,6 @@ internal sealed class ReplaySession : IDisposable
 
         var planNodeHook = new PlanNodeHook(functions.PlanNodeFunctions, functions.PlanObjects, Offsets.PlanNode);
 
-        var output = new OutputHook(functions.OutputFunctions, functions.OutputClasses);
-
         var bufferPool = new BufferPoolHook(functions.BufferPoolFunctions);
 
         var stack = isStackRecorded ? new StackSnapshotHook(operations) : null;
@@ -236,7 +233,6 @@ internal sealed class ReplaySession : IDisposable
                                     new LocatorHook(functions.LocatorReads, store, images),
                                     new StackArgumentHook(functions.StackArguments, store),
                                     addressMap,
-                                    output,
                                     bufferPool,
                                     .. stack is null ? Array.Empty<ITraceHook>() : [stack]]);
 
@@ -308,7 +304,6 @@ internal sealed class ReplaySession : IDisposable
                                         timeline.Build(nodes),
                                         addressMap.Build(),
                                         bufferPool.Build(),
-                                        output.Build(),
                                         planNodeHook.GetPlanNodes())
                 {
                     Buffers = bufferPool.GetBuffers(),

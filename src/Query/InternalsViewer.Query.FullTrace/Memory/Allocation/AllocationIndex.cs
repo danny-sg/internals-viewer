@@ -7,13 +7,11 @@ public sealed partial class AllocationIndex
 {
     private AllocationIndex(Dictionary<uint, ThreadMemory> threads,
                             MemoryUsageCurve inUse,
-                            MemoryUsageCurve workspace,
-                            IReadOnlyList<MemoryBlock>? blocks = null)
+                            MemoryUsageCurve workspace)
     {
         Threads = threads;
         InUse = inUse;
         Workspace = workspace;
-        Blocks = blocks ?? [];
     }
 
     public static AllocationIndex Empty { get; } = new([], MemoryUsageCurve.Empty, MemoryUsageCurve.Empty);
@@ -25,8 +23,6 @@ public sealed partial class AllocationIndex
     internal int AllocationCount => Threads.Values.Sum(t => t.AllocationCount);
 
     internal long Bytes => Threads.Values.Sum(t => t.Bytes) + InUse.Bytes + Workspace.Bytes;
-
-    internal IReadOnlyList<MemoryBlock> Blocks { get; }
 
     private Dictionary<uint, ThreadMemory> Threads { get; }
 
@@ -122,13 +118,9 @@ public sealed partial class AllocationIndex
 
         var memory = threads.ToDictionary(t => t.Key, t => new ThreadMemory([.. t.Value.Allocations], [.. t.Value.Frees]));
 
-        MemoryBlock[] blocks = [.. kept.Select((a, index) => new MemoryBlock(a.Pointer, a.Bytes, a.Thread, a.Start, freedAt[index]))
-                                       .Where(b => b.Pointer != 0)];
-
         return new AllocationIndex(memory,
                                new MemoryUsageCurve([.. positions], [.. values]),
-                               new MemoryUsageCurve([.. workspacePositions], [.. workspaceValues]),
-                               blocks);
+                               new MemoryUsageCurve([.. workspacePositions], [.. workspaceValues]));
     }
 
     public (ulong Bytes, int Count) AllocatedDuring(uint thread, TracePosition start, TracePosition end)

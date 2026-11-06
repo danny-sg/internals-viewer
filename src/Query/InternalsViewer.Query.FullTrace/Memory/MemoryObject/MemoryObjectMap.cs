@@ -1,6 +1,6 @@
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Internals.Engine.Pages;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.Memory;
@@ -57,7 +57,7 @@ public sealed partial class MemoryObjectMap
     private int[] PageSizes { get; }
 
     public static MemoryObjectMap Build(TraceCallStore store,
-                                        IReadOnlyList<CallStackNode?> nodes,
+                                        IReadOnlyList<CallTreeNode?> nodes,
                                         IReadOnlyDictionary<ulong, MemoryObjectInfo> objects)
     {
         var claims = new Dictionary<(ulong Page, int Size), List<Claim>>();
@@ -138,10 +138,10 @@ public sealed partial class MemoryObjectMap
 
     private static ulong GetPage(ulong address, int size) => address & ~((ulong)size - 1);
 
-    private static IEnumerable<(ulong Address, ulong Instance, int[] Slots)> GetFunctions(IReadOnlyList<CallStackNode?> nodes)
-        => nodes.OfType<CallStackNode>()
+    private static IEnumerable<(ulong Address, ulong Instance, int[] Slots)> GetFunctions(IReadOnlyList<CallTreeNode?> nodes)
+        => nodes.OfType<CallTreeNode>()
                 .Select(n => n.Frame)
-                .OfType<CallstackFrame>()
+                .OfType<CallFrame>()
                 .Where(f => f.Function is { } resolved
                             && AllocationFunction.IsMemoryObjectClass(resolved.ClassName)
                             && PointerSlots.ContainsKey(resolved.MethodName))

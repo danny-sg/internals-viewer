@@ -1,6 +1,6 @@
 using InternalsViewer.Query.FullTrace.Memory.Address;
 using System.Buffers.Binary;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.Address.Enums;
 using InternalsViewer.Query.FullTrace.Memory.History;
@@ -30,7 +30,7 @@ public class ArrayAllocationMatcherTests
 
     private const int ColumnBytes = 0x160;
 
-    private static readonly CallStackNode[] Nodes = GetNodes();
+    private static readonly CallTreeNode[] Nodes = GetNodes();
 
     [Fact]
     public void An_Array_Is_Named_By_Its_Element_And_Its_Count()
@@ -66,20 +66,20 @@ public class ArrayAllocationMatcherTests
     private static AddressEntry Entry(AddressMapOperation operation, ulong address, ulong call, int callNodeIndex)
         => new(address, call, 0, 0, At(call), TracePosition.Unknown, callNodeIndex, 9, operation);
 
-    private static CallStackNode[] GetNodes()
+    private static CallTreeNode[] GetNodes()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         return [tree.AddCall(tree.Root, Frame(0x10, null, "operator new[]"), 1),
                 tree.AddCall(tree.Root, Frame(0x20, null, "operator new"), 1),
                 tree.AddCall(tree.Root, Frame(0x30, "CSIScanBucketColumn", "CSIScanBucketColumn"), 1)];
     }
 
-    private static CallstackFrame Frame(uint rva, string? className, string methodName) => new()
+    private static CallFrame Frame(uint rva, string? className, string methodName) => new()
     {
         Module = new("sqlmin"),
         Rva = rva,
         Address = rva,
-        Function = new CallstackFunction { ClassName = className, MethodName = methodName }
+        Function = new FrameFunction { ClassName = className, MethodName = methodName }
     };
 }

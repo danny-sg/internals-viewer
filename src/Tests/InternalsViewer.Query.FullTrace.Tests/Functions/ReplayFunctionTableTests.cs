@@ -8,9 +8,7 @@ using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.Allocation.Enums;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool.Enums;
-using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.FullTrace.Functions;
-using InternalsViewer.Query.FullTrace.Output.Enums;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Functions;
@@ -31,8 +29,6 @@ public class ReplayFunctionTableTests
         {
             PlanNodeFunctions = Map((0x150, PlanNodeFunctionType.Constructor)),
             PlanObjects = Map((0x158, PlanObjectClass.Row)),
-            OutputFunctions = Map((0x110, OutputFunctionType.Send)),
-            OutputClasses = Map((0x120, OutputValueClass.OutputRow)),
             BufferPoolFunctions = Map((0x130, BufferPoolFunctionType.Get)),
             StackArguments = Map((0x70, 3))
         };
@@ -46,8 +42,6 @@ public class ReplayFunctionTableTests
         Assert.Equal(Base + 0xA0, Assert.Single(rebased.AddressMapFunctions).Address);
         Assert.Equal((Base + 0x150, PlanNodeFunctionType.Constructor), Pair(Assert.Single(rebased.PlanNodeFunctions)));
         Assert.Equal((Base + 0x158, PlanObjectClass.Row), Pair(Assert.Single(rebased.PlanObjects)));
-        Assert.Equal((Base + 0x110, OutputFunctionType.Send), Pair(Assert.Single(rebased.OutputFunctions)));
-        Assert.Equal((Base + 0x120, OutputValueClass.OutputRow), Pair(Assert.Single(rebased.OutputClasses)));
         Assert.Equal((Base + 0x130, BufferPoolFunctionType.Get), Pair(Assert.Single(rebased.BufferPoolFunctions)));
         Assert.Equal((Base + 0x70, 3), Pair(Assert.Single(rebased.StackArguments)));
     }

@@ -1,5 +1,5 @@
 using System;
-using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Tree;
+using InternalsViewer.UI.App.Models.Query.Trace.Calls.Tree;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Helpers.Selectors;
@@ -17,8 +17,6 @@ public sealed class CallTreeNodeTemplateSelector : DataTemplateSelector
 
     public DataTemplate? LinkTemplate { get; set; }
 
-    public DataTemplate? EventTemplate { get; set; }
-
     public DataTemplate? FrameTemplate { get; set; }
 
     public DataTemplate? SignatureFrameTemplate { get; set; }
@@ -35,7 +33,6 @@ public sealed class CallTreeNodeTemplateSelector : DataTemplateSelector
     {
         TreeViewNode { Content: OperatorRow } when OperatorTemplate is not null => OperatorTemplate,
         TreeViewNode { Content: OperatorLink } when LinkTemplate is not null => LinkTemplate,
-        TreeViewNode { Content: EventRow } when EventTemplate is not null => EventTemplate,
         TreeViewNode node when IsRevealed?.Invoke(node) == true => SelectRevealedTemplate(),
         _ when ShowSignatures && SignatureFrameTemplate is not null => SignatureFrameTemplate,
         _ => FrameTemplate!,

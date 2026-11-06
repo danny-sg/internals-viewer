@@ -1,4 +1,4 @@
-using InternalsViewer.UI.App.Models.Query.Trace.CallStack.Values;
+using InternalsViewer.UI.App.Models.Query.Trace.Calls.Values;
 using Microsoft.UI.Xaml.Controls;
 
 namespace InternalsViewer.UI.App.Helpers.Selectors;

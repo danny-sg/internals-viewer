@@ -9,7 +9,7 @@ public class InstructionsGuideSourceTests
     public void Flatten_Turns_Ticks_And_App_Links_Into_Plain_Names()
     {
         const string markdown = "- [{{ShowWaits}}] [Waits](option:ShowWaits) - where the query waited\n" +
-                                "The [Timeline](view:Timeline) replays it, see [Call Stack](guide:CallStack).";
+                                "The [Timeline](view:Timeline) replays it, see [Call Stack](guide:CallTree).";
 
         var text = InstructionsGuideSource.Flatten(markdown);
 

@@ -1,4 +1,4 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.InstructionHistory.Listing;
 using InternalsViewer.Query.FullTrace.InstructionHistory.Replay;
 using InternalsViewer.Query.Recording;
@@ -8,7 +8,7 @@ namespace InternalsViewer.Query.FullTrace.InstructionHistory.Tests.Replay;
 [Trait("Category", "Unit")]
 public class InstructionHistoryReaderTests
 {
-    private static readonly InstructionRequest Request = new(new CallstackFrame(), 1, new TracePosition(10, 0), new TracePosition(20, 0));
+    private static readonly InstructionRequest Request = new(new CallFrame(), 1, new TracePosition(10, 0), new TracePosition(20, 0));
 
     [Fact]
     public async Task A_Run_Without_A_Recording_Cannot_Be_Replayed()

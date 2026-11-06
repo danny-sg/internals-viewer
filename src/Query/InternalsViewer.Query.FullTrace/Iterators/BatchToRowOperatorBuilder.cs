@@ -1,4 +1,4 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -60,9 +60,9 @@ internal static class BatchToRowOperatorBuilder
     {
         var owners = OperatorHierarchy.GetOperatorsByInstance(operators);
 
-        var seen = new HashSet<CallStackNode>(ReferenceEqualityComparer.Instance);
+        var seen = new HashSet<CallTreeNode>(ReferenceEqualityComparer.Instance);
 
-        var pending = new Queue<CallStackNode>();
+        var pending = new Queue<CallTreeNode>();
 
         for (var callNodeIndex = 0; callNodeIndex < timeline.NodeCount; callNodeIndex++)
         {

@@ -1,4 +1,4 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Timeline;
 
@@ -60,10 +60,10 @@ public sealed class InstanceMemoryCurveMap
         return new InstanceMemoryCurveMap(curves);
     }
 
-    public MemoryUsageCurve? GetCurve(uint thread, CallStackNode node)
+    public MemoryUsageCurve? GetCurve(uint thread, CallTreeNode node)
         => GetOwner(node) is { } instance ? Curves.GetValueOrDefault((thread, instance), MemoryUsageCurve.Empty) : null;
 
-    private static ulong? GetOwner(CallStackNode node)
+    private static ulong? GetOwner(CallTreeNode node)
         => node.Frame is { InstanceAddress: not 0 and var instance } frame && !IteratorSymbolLookup.IsPlanObject(frame)
             ? instance
             : null;

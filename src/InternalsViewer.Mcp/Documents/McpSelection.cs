@@ -1,4 +1,4 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.Plans.Model;
@@ -11,7 +11,7 @@ public sealed record McpSelection
 
     public PlanNode? PlanNode { get; init; }
 
-    public CallStackNode? CallNode { get; init; }
+    public CallTreeNode? CallNode { get; init; }
 
     public TracePosition? Playhead { get; init; }
 

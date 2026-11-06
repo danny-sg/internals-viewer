@@ -1,0 +1,42 @@
+﻿using System.Runtime.InteropServices;
+
+namespace InternalsViewer.Query.FullTrace.Symbols.Dia;
+
+internal static class DiaBridge
+{
+    [DllImport("InternalsViewer.Query.DiaBridge.dll", CharSet = CharSet.Unicode)]
+    public static extern IntPtr OpenPdb(string pdbPath);
+
+    // The native exports return the 1-byte C++ bool, which only guarantees AL on x64 — marshalling as the 4-byte Win32
+    // BOOL (UnmanagedType.Bool) reads the undefined upper bytes of EAX, so a returned false can read as true.
+    [DllImport("InternalsViewer.Query.DiaBridge.dll", CharSet = CharSet.Unicode)]
+    [return: MarshalAs(UnmanagedType.U1)]
+    public static extern unsafe bool ResolveRva(IntPtr session,
+                                                uint rva,
+                                                char* buffer,
+                                                int bufferLength);
+
+    [DllImport("InternalsViewer.Query.DiaBridge.dll", CharSet = CharSet.Unicode)]
+    public static extern IntPtr BeginEnumSymbols(IntPtr session, string prefix);
+
+    [DllImport("InternalsViewer.Query.DiaBridge.dll", CharSet = CharSet.Unicode)]
+    [return: MarshalAs(UnmanagedType.U1)]
+    public static extern unsafe bool NextSymbolDetail(IntPtr enumerator,
+                                                      char* nameBuffer,
+                                                      int nameLength,
+                                                      char* signatureBuffer,
+                                                      int signatureLength,
+                                                      char* decoratedBuffer,
+                                                      int decoratedLength,
+                                                      out uint rva,
+                                                      out int isFunction);
+
+    [DllImport("InternalsViewer.Query.DiaBridge.dll")]
+    public static extern int SymbolCount(IntPtr enumerator);
+
+    [DllImport("InternalsViewer.Query.DiaBridge.dll")]
+    public static extern void EndEnumSymbols(IntPtr enumerator);
+
+    [DllImport("InternalsViewer.Query.DiaBridge.dll")]
+    public static extern void ClosePdb(IntPtr session);
+}

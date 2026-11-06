@@ -5,7 +5,6 @@ using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
-using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.Query.Timeline.Renderers;
 using InternalsViewer.UI.App.Controls.Query.Timeline;
@@ -13,6 +12,7 @@ using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels.Query;
 using SkiaSharp;
 using Windows.Foundation;
+using InternalsViewer.Query.FullTrace.Symbols;
 
 namespace InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Operators;
 

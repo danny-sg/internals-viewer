@@ -3,7 +3,6 @@ using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Functions;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool.Enums;
-using InternalsViewer.Query.FullTrace.Output.Enums;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Functions;
@@ -70,15 +69,15 @@ public class FunctionClassificationTests
     }
 
     [Fact]
-    public void The_First_Output_And_Buffer_Pool_Function_At_An_Address_Is_Kept()
+    public void The_First_Buffer_Pool_Function_At_An_Address_Is_Kept()
     {
-        var send = Classification() with { OutputFunction = OutputFunctionType.Send, BufferPoolFunction = BufferPoolFunctionType.Get };
+        var get = Classification() with { BufferPoolFunction = BufferPoolFunctionType.Get };
 
-        var read = Classification() with { OutputFunction = OutputFunctionType.ValueRead };
+        var postRead = Classification() with { BufferPoolFunction = BufferPoolFunctionType.PostRead };
 
-        var folded = Fold(Classification(), send, read);
+        var folded = Fold(Classification(), get, postRead);
 
-        Assert.Equal((OutputFunctionType.Send, BufferPoolFunctionType.Get), (folded.OutputFunction, folded.BufferPoolFunction));
+        Assert.Equal(BufferPoolFunctionType.Get, folded.BufferPoolFunction);
     }
 
     private static FunctionClassification Fold(params FunctionClassification[] classifications)

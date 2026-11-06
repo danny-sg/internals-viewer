@@ -1,5 +1,5 @@
 using System.Runtime.InteropServices;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Helpers;
@@ -46,7 +46,7 @@ public sealed class TraceTickSeries
                                                    TraceTickDefinition definition,
                                                    EnclosingOperatorCallIndex enclosing)
     {
-        var nodes = new Dictionary<CallStackNode, bool>(ReferenceEqualityComparer.Instance);
+        var nodes = new Dictionary<CallTreeNode, bool>(ReferenceEqualityComparer.Instance);
 
         return Build(timeline,
                      calls,
@@ -61,8 +61,8 @@ public sealed class TraceTickSeries
     internal static TraceTickSeries FromCalls(TraceTimeline timeline,
                                               TraceCallStore calls,
                                               TraceOperatorLifetimeList lifetimes,
-                                              Func<CallstackFrame, bool> isFunction,
-                                              Func<CallstackFrame, TraceArgumentCall, byte?> getValue,
+                                              Func<CallFrame, bool> isFunction,
+                                              Func<CallFrame, TraceArgumentCall, byte?> getValue,
                                               EnclosingOperatorCallIndex enclosing)
         => Build(timeline, calls, lifetimes, enclosing, n => n.Frame is { } frame && isFunction(frame), getValue, null, null);
 
@@ -131,9 +131,9 @@ public sealed class TraceTickSeries
                                          TraceCallStore calls,
                                          TraceOperatorLifetimeList lifetimes,
                                          EnclosingOperatorCallIndex enclosing,
-                                         Func<CallStackNode, bool> isFunction,
-                                         Func<CallstackFrame, TraceArgumentCall, byte?> getValue,
-                                         Func<CallStackNode, bool>? isNode,
+                                         Func<CallTreeNode, bool> isFunction,
+                                         Func<CallFrame, TraceArgumentCall, byte?> getValue,
+                                         Func<CallTreeNode, bool>? isNode,
                                          Func<ExecutionOperatorEvent?, bool>? isOperator)
     {
         var sources = new List<TraceTickSource>();

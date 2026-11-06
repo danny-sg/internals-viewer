@@ -1,4 +1,4 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.InstructionHistory.Listing;
 using InternalsViewer.Query.FullTrace.InstructionHistory.Replay;
 using InternalsViewer.Query.FullTrace.InstructionHistory.Replay.Enums;
@@ -8,7 +8,7 @@ namespace InternalsViewer.Query.FullTrace.InstructionHistory.Tests.Listing;
 [Trait("Category", "Unit")]
 public class InstructionListingBuilderTests
 {
-    private static InstructionRequest Request { get; } = new(new CallstackFrame(), 1, new TracePosition(10, 0), new TracePosition(20, 0));
+    private static InstructionRequest Request { get; } = new(new CallFrame(), 1, new TracePosition(10, 0), new TracePosition(20, 0));
 
     private static Dictionary<ulong, string> Loop { get; } = new()
     {

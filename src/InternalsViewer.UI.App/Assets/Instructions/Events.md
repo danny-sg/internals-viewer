@@ -9,8 +9,9 @@ overhead to the trace. Tick an item to change what the next trace captures:
 - [{{IncludeColumnstore}}] [Columnstore](option:IncludeColumnstore) - segment scans, rowgroup reads and elimination, object
   pool lookups, filters and aggregate pushdown, for a Columnstore Index Scan
 - [{{IncludeMemory}}] [Memory](option:IncludeMemory) - memory grants, hash spills, and sort warnings
-- [{{IncludeCallStack}}] [Call Stack](option:IncludeCallStack) - the SQL Server call stack behind every event. The
-  first trace downloads the server's debugging symbols, so it takes a little longer
+
+The engine functions behind the events are not captured. Record a [Full Trace](guide:FullTrace) to see them in the
+[Call Tree](view:CallTree).
 
 Locks have their own submenu on the **Events** menu, choosing which lock categories to capture. Schema locks are
 excluded by default - they span most of the query, so they would dominate the Lock band.

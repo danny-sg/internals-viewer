@@ -3,7 +3,7 @@
 Query tracing allows you to run a SQL query and trace the individual engine events that occured and ran the query.
 
 This includes page reads (disk and buffer pool), locks, latches, waits, and log records if the query is a modification query. You can also 
-capture the call stack and execution plan.
+capture the execution plan, and record a [Full Trace](guide:FullTrace) to see every engine call the query made.
 
 Internals Viewer takes the raw captures and puts them together in a consolidated view that connects all of the information and allows you 
 to step through the query as it actually executed.

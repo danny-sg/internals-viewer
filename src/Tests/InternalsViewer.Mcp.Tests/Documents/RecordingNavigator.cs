@@ -2,7 +2,7 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Mcp.Documents;
 using InternalsViewer.Mcp.Interfaces.Commands;
 using InternalsViewer.Mcp.Models.Context.Queries;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Calls;
@@ -16,7 +16,7 @@ internal sealed class RecordingNavigator : IQueryCommands
 
     public McpSelection Selection { get; set; } = new();
 
-    public Task ShowCallAsync(CallStackNode node, int callIndex)
+    public Task ShowCallAsync(CallTreeNode node, int callIndex)
         => Record($"ShowCall {node.Symbol} {callIndex}");
 
     public Task ShowPageAsync(PageAddress pageAddress, ushort? slot)
@@ -48,7 +48,7 @@ internal sealed class RecordingNavigator : IQueryCommands
 
     public Task<int> ClearWatchesAsync() => Task.FromResult(0);
 
-    public Task<McpFunctionSignature?> ResolveSignatureAsync(CallstackFrame frame) => Task.FromResult<McpFunctionSignature?>(null);
+    public Task<McpFunctionSignature?> ResolveSignatureAsync(CallFrame frame) => Task.FromResult<McpFunctionSignature?>(null);
 
     public TraceValueReferenceResult? References { get; set; }
 

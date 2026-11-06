@@ -1,5 +1,4 @@
 using System.Runtime.InteropServices;
-using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Locators;

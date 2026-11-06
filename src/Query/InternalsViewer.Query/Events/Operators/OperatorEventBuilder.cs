@@ -225,11 +225,7 @@ internal sealed class OperatorEventBuilder
             DurationUs = end - start,
             Threads = BuildThreads(node, start),
             SequenceId = NearestSequenceId(start) - sequenceOffset,
-            OperatorDescription = description,
-            CallStack = EventsFor(node)
-                            .OfType<QueryThreadEvent>()
-                            .Select(e => e.CallStack)
-                            .FirstOrDefault(c => c is not null)
+            OperatorDescription = description
         };
 
         ApplyPhases(operatorEvent, node, emitStart, end);

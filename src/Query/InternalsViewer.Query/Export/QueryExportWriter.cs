@@ -1,11 +1,9 @@
 using System.IO.Compression;
 using System.Text.Json;
-using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Results;
 using InternalsViewer.TransactionLog.LogRecords;
-using InternalsViewer.Query.CallStack.Locators;
 
 namespace InternalsViewer.Query.Export;
 
@@ -13,21 +11,12 @@ public sealed class QueryExportWriter
 {
     private const int BufferSize = 1 << 16;
 
-    private const string EventsTree = "events";
-
-    private const string DetachedTree = "detached";
-
-    private QueryExportWriter(ZipArchive zip, ExportReferences references)
+    private QueryExportWriter(ZipArchive zip)
     {
         Zip = zip;
-        References = references;
     }
 
     private ZipArchive Zip { get; }
-
-    private ExportReferences References { get; }
-
-    public int IdOf(CallStackNode node) => References.Nodes.IdOf(node);
 
     public void WriteBinary(string name, CompressionLevel compression, Action<BinaryWriter> write)
     {
@@ -42,6 +31,8 @@ public sealed class QueryExportWriter
         write(writer);
     }
 
+    public void WriteLines<T>(string name, IEnumerable<T> items) => WriteLines(Zip, name, items, ExportPackage.Plain);
+
     internal static void Write(Stream stream,
                                QueryExportContent content,
                                IReadOnlyList<IQueryExportSection> sections,
@@ -49,14 +40,7 @@ public sealed class QueryExportWriter
     {
         var references = new ExportReferences(_ => null);
 
-        var collector = new QueryExportCollector();
-
-        foreach (var section in sections)
-        {
-            section.Collect(collector, content);
-        }
-
-        var trees = Collect(content, collector, references);
+        Collect(content.Result, references);
 
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -68,13 +52,6 @@ public sealed class QueryExportWriter
 
         var plans = WritePlans(zip, content.Result.ExecutionPlans);
 
-        WriteLines(zip, QueryExport.FramesEntry, references.Frames.InOrder().Select(f => FrameOf(f, references)), ExportPackage.Plain);
-
-        foreach (var (tree, roots) in trees)
-        {
-            WriteLines(zip, tree.File, roots.SelectMany(PreOrder).Select(n => NodeOf(n, references)), ExportPackage.Plain);
-        }
-
         cancellationToken.ThrowIfCancellationRequested();
 
         var options = ExportPackage.For(references);
@@ -83,7 +60,7 @@ public sealed class QueryExportWriter
 
         WriteLines(zip, QueryExport.EventsEntry, references.Events.InOrder(), options);
 
-        var writer = new QueryExportWriter(zip, references);
+        var writer = new QueryExportWriter(zip);
 
         foreach (var section in sections)
         {
@@ -92,184 +69,25 @@ public sealed class QueryExportWriter
             section.Write(writer, content);
         }
 
-        WriteJson(zip, QueryExport.ManifestEntry, ManifestOf(content, trees, plans, references), ExportPackage.Indented);
+        WriteJson(zip, QueryExport.ManifestEntry, ManifestOf(content, plans, references), ExportPackage.Indented);
     }
 
-    private static List<(ExportCallTree Tree, IReadOnlyList<CallStackNode> Roots)> Collect(QueryExportContent content,
-                                                                                         QueryExportCollector collector,
-                                                                                         ExportReferences references)
+    private static void Collect(QueryResult result, ExportReferences references)
     {
-        var result = content.Result;
-
         references.TopLevel.UnionWith(result.EngineEvents);
-
-        var roots = new List<CallStackNode>();
-
-        var detached = new List<CallStackNode>();
-
-        var known = new HashSet<CallStackNode>(ReferenceEqualityComparer.Instance);
-
-        void AddNode(CallStackNode? node)
-        {
-            if (node is null || references.Nodes.Contains(node))
-            {
-                return;
-            }
-
-            var top = AttachedRoot(node);
-
-            if (!known.Add(top))
-            {
-                return;
-            }
-
-            if (top.Parent is { } parent)
-            {
-                AddNode(parent);
-
-                detached.Add(top);
-            }
-            else
-            {
-                roots.Add(top);
-            }
-        }
-
-        AddNode(result.CallStackTree?.Root);
-
-        foreach (var (_, tree) in collector.Trees)
-        {
-            AddNode(tree.Root);
-        }
 
         var added = new List<EngineEvent>();
 
-        List<EngineEvent> pending = [.. result.EngineEvents];
-
-        var scannedEvents = 0;
-
-        var scannedRoots = 0;
-
-        var scannedDetached = 0;
-
-        var referencedScanned = collector.ReferencedNodes.Count == 0;
-
-        while (true)
+        foreach (var engineEvent in result.EngineEvents)
         {
-            foreach (var engineEvent in pending)
-            {
-                AddEvent(engineEvent, references, added);
-            }
-
-            pending.Clear();
-
-            for (; scannedEvents < added.Count; scannedEvents++)
-            {
-                foreach (var node in ExportPackage.ReferencesOf(added[scannedEvents]).OfType<CallStackNode>())
-                {
-                    AddNode(node);
-                }
-            }
-
-            for (; scannedRoots < roots.Count; scannedRoots++)
-            {
-                Register(roots[scannedRoots], references, pending);
-            }
-
-            for (; scannedDetached < detached.Count; scannedDetached++)
-            {
-                Register(detached[scannedDetached], references, pending);
-            }
-
-            if (pending.Count > 0)
-            {
-                continue;
-            }
-
-            if (referencedScanned)
-            {
-                break;
-            }
-
-            referencedScanned = true;
-
-            foreach (var node in collector.ReferencedNodes.SelectMany(n => n))
-            {
-                AddNode(node);
-            }
+            AddEvent(engineEvent, references, added);
         }
 
         foreach (var logRecord in result.LogRecords.Concat(added.SelectMany(e => ExportPackage.ReferencesOf(e).OfType<LogRecord>())))
         {
             references.LogRecords.Add(logRecord);
         }
-
-        var sectionTrees = new Dictionary<CallStackNode, (string Name, CallStackTree Tree)>(ReferenceEqualityComparer.Instance);
-
-        foreach (var sectionTree in collector.Trees)
-        {
-            sectionTrees[sectionTree.Tree.Root] = sectionTree;
-        }
-
-        var trees = new List<(ExportCallTree Tree, IReadOnlyList<CallStackNode> Roots)>(roots.Count + 1);
-
-        var named = false;
-
-        for (var index = 0; index < roots.Count; index++)
-        {
-            var root = roots[index];
-
-            if (sectionTrees.TryGetValue(root, out var sectionTree))
-            {
-                trees.Add((TreeOf(sectionTree.Name, sectionTree.Tree, false), [root]));
-
-                continue;
-            }
-
-            var isResultTree = ReferenceEquals(root, result.CallStackTree?.Root);
-
-            var name = named ? $"tree-{index}" : EventsTree;
-
-            named = true;
-
-            trees.Add((TreeOf(name, isResultTree ? result.CallStackTree : null, isResultTree), [root]));
-        }
-
-        if (detached.Count > 0)
-        {
-            trees.Add((new ExportCallTree { Name = DetachedTree, File = $"calltree-{DetachedTree}.jsonl", IsDetached = true }, detached));
-        }
-
-        return trees;
     }
-
-    private static void Register(CallStackNode root, ExportReferences references, List<EngineEvent> pending)
-    {
-        foreach (var node in PreOrder(root))
-        {
-            references.Nodes.Add(node);
-
-            if (node.Frame is { } frame)
-            {
-                references.Frames.Add(frame);
-            }
-
-            pending.AddRange(node.Events);
-        }
-    }
-
-    private static CallStackNode AttachedRoot(CallStackNode node)
-    {
-        while (node.Parent is { } parent && IsAttached(node, parent))
-        {
-            node = parent;
-        }
-
-        return node;
-    }
-
-    private static bool IsAttached(CallStackNode node, CallStackNode parent)
-        => parent.Children.TryGetValue(node.Key, out var child) && ReferenceEquals(child, node);
 
     private static void AddEvent(EngineEvent root, ExportReferences references, List<EngineEvent> added)
     {
@@ -314,91 +132,6 @@ public sealed class QueryExportWriter
         }
     }
 
-    private static ExportCallTree TreeOf(string name, CallStackTree? tree, bool isResultTree) => new()
-    {
-        Name = name,
-        File = $"calltree-{name}.jsonl",
-        RootId = 0,
-        IsResultTree = isResultTree,
-        ActivityFromTrace = tree?.ActivityFromTrace ?? false,
-        ActivityMinUs = tree?.ActivityMinUs ?? 0,
-        ActivityMaxUs = tree?.ActivityMaxUs ?? 0,
-        ActivityBuckets = tree?.ActivityBuckets ?? 0
-    };
-
-    private static IEnumerable<CallStackNode> PreOrder(CallStackNode root)
-    {
-        var stack = new Stack<CallStackNode>();
-
-        stack.Push(root);
-
-        while (stack.Count > 0)
-        {
-            var node = stack.Pop();
-
-            yield return node;
-
-            foreach (var child in node.Children.Values.Reverse())
-            {
-                stack.Push(child);
-            }
-        }
-    }
-
-    private static ExportedNode NodeOf(CallStackNode node, ExportReferences references) => new()
-    {
-        Id = references.Nodes.IdOf(node),
-        Parent = node.Parent is { } parent ? references.Nodes.IdOf(parent) : null,
-        Detached = node.Parent is { } owner && !IsAttached(node, owner),
-        Key = node.Key,
-        Function = node.Frame is { } frame && node.Symbol is { Length: > 0 } symbol ? $"{frame.Module}!{symbol}" : null,
-        Order = node.Order,
-        Frame = node.Frame is { } nodeFrame ? references.Frames.IdOf(nodeFrame) : null,
-        Rvas = node.Rvas.Count > 0 ? [.. node.Rvas.Order()] : null,
-        Calls = node.Calls,
-        AllocatedBytes = node.AllocatedBytes,
-        Allocations = node.Allocations,
-        Locators = LocatorsOf(node.Locators),
-        Events = node.Events.Count > 0 ? [.. node.Events.Select(references.Events.IdOf)] : null
-    };
-
-    private static ExportedLocators? LocatorsOf(LocatorSet? locators)
-    {
-        if (locators is null)
-        {
-            return null;
-        }
-
-        var ordered = locators.Ordered().ToList();
-
-        List<string> pages = [.. ordered.Where(l => l.ValueType == LocatorValueType.Page).Select(l => $"{l.Page.FileId}:{l.Page.PageId}")];
-
-        List<string> rows = [.. ordered.Where(l => l.ValueType == LocatorValueType.Row).Select(l => $"{l.Page.FileId}:{l.Page.PageId}:{l.Slot}")];
-
-        List<ulong[]> objects = [.. ordered.Where(l => l.ValueType == LocatorValueType.ColumnStoreObject).Select(l => new[] { l.Value, l.Detail })];
-
-        return new ExportedLocators
-        {
-            Pages = pages.Count > 0 ? pages : null,
-            Rows = rows.Count > 0 ? rows : null,
-            Objects = objects.Count > 0 ? objects : null
-        };
-    }
-
-    private static ExportedFrame FrameOf(CallstackFrame frame, ExportReferences references) => new()
-    {
-        Id = references.Frames.IdOf(frame),
-        Module = frame.Module.Name,
-        Address = frame.Address,
-        Pdb = frame.Module.Pdb,
-        Guid = frame.Module.Guid,
-        Age = frame.Module.Age,
-        Rva = frame.Rva,
-        Instance = frame.InstanceAddress,
-        Signature = frame.Function?.Signature,
-        Symbol = frame.Function is { } function && frame.Offset is { } offset ? $"{function.Name}+0x{offset:X}" : frame.Function?.Name
-    };
-
     private static List<ExportPlan> WritePlans(ZipArchive zip, IReadOnlyList<ExecutionPlan> plans)
     {
         var exported = new List<ExportPlan>(plans.Count);
@@ -429,7 +162,6 @@ public sealed class QueryExportWriter
     }
 
     private static ExportManifest ManifestOf(QueryExportContent content,
-                                              List<(ExportCallTree Tree, IReadOnlyList<CallStackNode> Roots)> trees,
                                               List<ExportPlan> plans,
                                               ExportReferences references)
     {
@@ -451,11 +183,9 @@ public sealed class QueryExportWriter
             EventOptions = content.EventOptions,
             ResultSets = [.. result.ResultSets.Select(s => new ExportResultSet([.. s.Columns.Select(ColumnOf)]))],
             Plans = plans,
-            CallTrees = [.. trees.Select(t => t.Tree with { RootId = t.Tree.IsDetached ? -1 : references.Nodes.IdOf(t.Roots[0]) })],
             ResultLogRecords = [.. result.LogRecords.Select(references.LogRecords.IdOf)],
             EventCount = references.Events.Count,
-            LogRecordCount = references.LogRecords.Count,
-            NodeCount = references.Nodes.Count
+            LogRecordCount = references.LogRecords.Count
         };
     }
 

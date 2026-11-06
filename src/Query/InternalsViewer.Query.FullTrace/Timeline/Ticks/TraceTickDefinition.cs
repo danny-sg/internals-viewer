@@ -1,4 +1,4 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
 
@@ -12,12 +12,12 @@ public sealed partial record TraceTickDefinition(string Name,
                                                  double WidthFactor,
                                                  IReadOnlyList<TraceCallCondition> Conditions)
 {
-    public bool IsFunction(CallStackNode node)
+    public bool IsFunction(CallTreeNode node)
         => node.Frame is { } frame && string.Equals(frame.Module.Name, Module, StringComparison.OrdinalIgnoreCase) && node.Symbol == Function;
 
     public bool MatchesCall(TraceArgumentCall call) => TraceCallCondition.MatchesAll(Conditions, call);
 
-    public bool MatchesNode(CallStackNode node) => Conditions.All(c => c.MatchesNode(node));
+    public bool MatchesNode(CallTreeNode node) => Conditions.All(c => c.MatchesNode(node));
 
     public bool MatchesOperator(ExecutionOperatorEvent? operatorEvent) => Conditions.All(c => c.MatchesOperator(operatorEvent));
 }

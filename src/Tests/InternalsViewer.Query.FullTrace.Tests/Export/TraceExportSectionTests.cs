@@ -1,14 +1,14 @@
-using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using System.IO.Compression;
 using System.Text.Json.Nodes;
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Locators;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
+using InternalsViewer.Query.FullTrace.Symbols;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Export;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Export;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Native;
@@ -58,7 +58,7 @@ public class TraceExportSectionTests
 
         var calls = fullTrace.CallStore.GetCallList(0x30, Scan)!;
 
-        var getRow = fullTrace.CallStack.Root.ChildNodes.Single().ChildNodes.Single();
+        var getRow = fullTrace.CallTree.Root.ChildNodes.Single().ChildNodes.Single();
 
         Assert.Equal(2, calls.Count);
         Assert.Equal(6ul, calls[1].IntegerSlots[0]);
@@ -71,16 +71,6 @@ public class TraceExportSectionTests
     }
 
     [Fact]
-    public async Task Imported_Entry_Frames_Point_Into_The_Full_Trace_Tree()
-    {
-        var imported = await Import(await Export(Content()));
-
-        var scan = Assert.Single(imported.Result.EngineEvents.OfType<ExecutionOperatorEvent>());
-
-        Assert.Same(imported.ExtraOf<TraceResult>()!.CallStack.Root, scan.EntryFrames[0].Parent!.Parent);
-    }
-
-    [Fact]
     public async Task A_Node_Removed_From_The_Full_Trace_Tree_Stays_Out_Of_It_On_Import()
     {
         var fullTrace = (await Import(await Export(Content()))).ExtraOf<TraceResult>()!;
@@ -89,7 +79,7 @@ public class TraceExportSectionTests
 
         Assert.Equal("XeSqlPkg::lock_acquired::Publish", publish.Symbol);
         Assert.Same(fullTrace.Timeline.NodeOf(0), publish.Parent);
-        Assert.DoesNotContain(publish, fullTrace.CallStack.Nodes());
+        Assert.DoesNotContain(publish, fullTrace.CallTree.Nodes());
     }
 
     [Fact]
@@ -99,7 +89,7 @@ public class TraceExportSectionTests
 
         var imported = await Import(export);
 
-        Assert.DoesNotContain(Entries(export).Keys, k => k.Contains(TraceExportSection.CallTreeName, StringComparison.Ordinal));
+        Assert.DoesNotContain(TraceExportSection.CallTreeEntry, Entries(export).Keys);
         Assert.Null(imported.ExtraOf<TraceResult>());
     }
 
@@ -177,7 +167,6 @@ public class TraceExportSectionTests
             SessionId = "QueryReplay_0123456789abcdef0123456789abcdef",
             IsSuccess = true,
             EngineEvents = [scan],
-            CallStackTree = new CallStackTree(),
             CropStartUs = 10,
             CropEndUs = 30
         };
@@ -194,7 +183,7 @@ public class TraceExportSectionTests
 
     private static TraceResult FullTrace(ExecutionOperatorEvent scan)
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var caller = tree.AddCall(tree.Root, Frame(0x10, "CQueryScan::GetRow+0x0", 0), 1);
 
@@ -212,8 +201,6 @@ public class TraceExportSectionTests
 
         getRow.CallActivity = [0, 1, 2];
 
-        scan.EntryFrames = [getRow];
-
         var publish = tree.AddCall(caller, Frame(0x50, "XeSqlPkg::lock_acquired::Publish+0x0"), 1);
 
         var builder = new TraceTimeline.Builder();
@@ -224,13 +211,15 @@ public class TraceExportSectionTests
 
         timeline.MapNodes([caller, getRow, publish]);
 
-        tree.RemoveCallsUnder(node => node.IsExtendedEvents);
+        tree.RemoveCallsUnder(node => node.IsInstrumentation);
 
-        timeline.RemoveCallsUnder(node => node.IsExtendedEvents);
+        timeline.RemoveCallsUnder(node => node.IsInstrumentation);
 
         var memory = AllocationIndex.Build([new MemoryAllocation(7, At(22), At(23), 100, 0xA)], [new MemoryFree(7, At(31), At(32), 0xA)]);
 
-        var lifetimes = IteratorLifetimeBuilder.Build(timeline, memory, [scan], [], []);
+        IteratorPlanNode[] planNodes = [new(Scan, PlanObject: 0xA000, BatchPlanObject: 0, Query: 0xB000, NodeId: 0)];
+
+        var lifetimes = IteratorLifetimeBuilder.Build(timeline, memory, [scan], planNodes, []);
 
         var storeBuilder = new TraceCallStore.Builder();
 
@@ -242,20 +231,20 @@ public class TraceExportSectionTests
 
         callStore.MapNodes([caller, getRow, publish]);
 
-        return new TraceResult(tree, callStore, timeline) { Allocation = memory, Lifetimes = lifetimes };
+        return new TraceResult(tree, callStore, timeline) { Allocation = memory, Lifetimes = lifetimes, PlanNodes = planNodes };
     }
 
-    private static CallstackFrame Frame(ulong rva, string symbol, ulong instance = 0)
+    private static CallFrame Frame(ulong rva, string symbol, ulong instance = 0)
     {
         SymbolsHelper.SplitOffset(symbol, out var name, out var offset);
 
-        return new CallstackFrame
+        return new CallFrame
         {
             Module = new("sqlmin", "sqlmin.pdb", "0123456789ABCDEF0123456789ABCDEF", 2),
             Rva = (uint)rva,
             Address = 0x7FF0_0000_0000 + rva,
             InstanceAddress = instance,
-            Function = CallstackFunction.Parse("sqlmin", name),
+            Function = FrameFunction.Parse("sqlmin", name),
             Offset = offset
         };
     }

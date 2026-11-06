@@ -22,7 +22,6 @@ public sealed class QueryLayoutState
 
     public bool IncludeMemory { get; set; }
 
-    public bool IncludeCallstack { get; set; }
 
     public bool IncludeColumnstore { get; set; } = true;
 

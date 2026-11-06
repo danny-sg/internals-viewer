@@ -14,7 +14,7 @@ public class NavigationToolsTests
         var text = await new NavigationTools(resolver).ShowCall(2, 1);
 
         Assert.Equal("ShowCall CQScanRowsetNew::GetRow 1", Assert.Single(document.Recorded.Calls));
-        Assert.Contains("[2] sqlmin!CQScanRowsetNew::GetRow  calls=2  alloc=100 B/1  pages=1  rows=1  events=1", text);
+        Assert.Contains("[2] sqlmin!CQScanRowsetNew::GetRow  calls=2  alloc=100 B/1  pages=1  rows=1", text);
         Assert.Contains("showing call #1", text);
     }
 

@@ -2,14 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Locators;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using SkiaSharp;
 using Windows.Foundation;
+using InternalsViewer.Query.FullTrace.Locators;
 
 namespace InternalsViewer.UI.App.Controls.Query.Trace.Timeline;
 
@@ -101,7 +101,7 @@ public sealed partial class TraceTimelineControl
 
     private bool[]? _memoryScope;
 
-    private CallStackNode? _memoryScopeNode;
+    private CallTreeNode? _memoryScopeNode;
 
     private TraceTimeline? _memoryScopeTimeline;
 
@@ -602,7 +602,7 @@ public sealed partial class TraceTimelineControl
 
     private static bool IsSearchMatch(bool[] matches, int callNodeIndex) => callNodeIndex >= 0 && callNodeIndex < matches.Length && matches[callNodeIndex];
 
-    private void FindNodeMatches(CallStackNode? selected)
+    private void FindNodeMatches(CallTreeNode? selected)
     {
         _colours.Clear();
 
@@ -637,9 +637,9 @@ public sealed partial class TraceTimelineControl
         return _memoryScope;
     }
 
-    private static HashSet<CallStackNode> GetMembers(CallStackNode node) => [.. node.MergedFrom.Count > 0 ? node.MergedFrom : [node]];
+    private static HashSet<CallTreeNode> GetMembers(CallTreeNode node) => [.. node.MergedFrom.Count > 0 ? node.MergedFrom : [node]];
 
-    private static bool[]? CallsUnder(TraceTimeline timeline, Func<CallStackNode, bool> isSelected)
+    private static bool[]? CallsUnder(TraceTimeline timeline, Func<CallTreeNode, bool> isSelected)
     {
         var under = new bool[timeline.NodeCount];
 

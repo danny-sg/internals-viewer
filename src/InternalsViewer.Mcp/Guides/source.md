@@ -20,9 +20,8 @@ holds `PageAddress` and `RowIdentifier`.
 The Extended Events capture and everything built on it. `Events/` holds one type per event with its parser (reads under
 `Events/Reads`, locks, latches, waits, columnstore and batch mode under `Events/BatchMode`) and the folding that turns
 raw events into the groups the app shows (`Events/Consolidation`). `Plans/` parses the execution plan XML into the model
-the `query_plan` tool reads. `CallStack/` builds the call tree from the captured frames, resolves symbols and classifies them:
-the category and operator rules are the text files in `Mappings/`, and `OperatorCallStackMatcher.cs` is what decides an
-operator's entry and exit frames. `Export/` writes and reads the `.ivtrace` export.
+the `query_plan` tool reads. `Export/` writes and reads the `.ivtrace` export. Call stacks are not captured here: the call
+tree is built by Full Trace.
 
 ## Full Trace, `src/Query/InternalsViewer.Query.FullTrace`
 
@@ -30,8 +29,10 @@ The Time Travel Debugging recording and replay. `Recording/` records SQL Server,
 through the native bridge, and `Hooks/` are the C# readers that run at each engine function of interest: `Calls/` is the
 call log those hooks fill, `Timeline/` the per-thread spans and the operator lifetimes, `Memory/` the allocations, the
 memory map and the memory history, `Iterators/` the link from iterator objects to plan nodes, `Output/` the output row
-lineage, `Locators/` the page and row arguments. `TraceLoader.cs` runs a load end to end and `TraceResult.cs` is what
-the tools read.
+lineage, `Locators/` the page and row arguments. `Calls/Tree/` is the call tree, and `Symbols/` downloads the PDBs,
+resolves frames to names and classifies them: the category and operator rules are the text files in
+`Symbols/Categories/Mappings/`. `Iterators/IteratorInstanceMatcher.cs` decides an operator's entry and exit frames.
+`TraceLoader.cs` runs a load end to end and `TraceResult.cs` is what the tools read.
 
 ## Execution simulation, `src/InternalsViewer.Execution`
 

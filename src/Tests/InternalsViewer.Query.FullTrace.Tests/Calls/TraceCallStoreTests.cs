@@ -1,14 +1,14 @@
 using System.IO.Compression;
 using System.Runtime.InteropServices;
 using System.Text;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Arguments;
-using InternalsViewer.Query.CallStack.Locators;
 
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRowHelper;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
+using InternalsViewer.Query.FullTrace.Locators;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Calls;
 
@@ -217,10 +217,10 @@ public class TraceCallStoreTests
     [Fact]
     public async Task A_Call_Leads_To_The_Call_Tree_Node_It_Was_Made_On()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
-        var first = tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqlmin"), Rva = 0x10 }, 1);
-        var second = tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqlmin"), Rva = 0x20 }, 1);
+        var first = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x10 }, 1);
+        var second = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x20 }, 1);
 
         var builder = new TraceCallStore.Builder();
 
@@ -355,9 +355,9 @@ public class TraceCallStoreTests
     [Fact]
     public void A_Value_Behind_A_Reference_Is_Not_Annotated_On_The_Call_Tree()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
-        var node = tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqlmin"), Rva = 0x10 }, 1);
+        var node = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x10 }, 1);
 
         var builder = new TraceCallStore.Builder();
 
@@ -377,10 +377,10 @@ public class TraceCallStoreTests
     [Fact]
     public void The_Pages_A_Call_Read_Are_Annotated_On_Its_Call_Tree_Node()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
-        var first = tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqlmin"), Rva = 0x10 }, 1);
-        var second = tree.AddCall(tree.Root, new CallstackFrame { Module = new("sqlmin"), Rva = 0x20 }, 1);
+        var first = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x10 }, 1);
+        var second = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x20 }, 1);
 
         var builder = new TraceCallStore.Builder();
 

@@ -118,25 +118,8 @@ internal static class EventConstants
         "sqlos.worker_address"
     ];
 
-    public static readonly string[] CallstackActions =
-    [
-        "package0.callstack"
-    ];
-
     public static readonly string[] TimeTravelActions =
     [
         "sqlos.system_thread_id"
-    ];
-
-    /// <summary>
-    /// Events to exclude from callstack tracing
-    /// </summary>
-    public static readonly string[] CallstackExcludeEvents =
-    [
-        "sqlserver.sql_transaction",
-        "sqlserver.sql_batch_starting",
-        "sqlserver.sql_batch_completed",
-        "sqlserver.query_post_execution_showplan",
-        "sqlserver.query_thread_profile",
     ];
 }

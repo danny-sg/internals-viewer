@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Memory.Address.Enums;
 using InternalsViewer.Query.Helpers;
@@ -92,15 +92,15 @@ public sealed partial class AddressMap
         => Entries.Values.Sum(e => e.Count(entry => Labels[entry.LabelIndex] is { Operation: AddressMapOperation.Allocated, Site: not null }));
 
     internal static AddressMap Build(IEnumerable<AddressEntry> entries,
-                                    Func<int, CallStackNode?> nodeOf,
-                                    Func<AddressEntry, CallStackNode?, AddressMapAllocation>? getAllocation = null)
+                                    Func<int, CallTreeNode?> nodeOf,
+                                    Func<AddressEntry, CallTreeNode?, AddressMapAllocation>? getAllocation = null)
         => new(entries.Select(e => GetEntry(e, nodeOf, getAllocation))
                       .GroupBy(e => e.Address)
                       .ToDictionary(g => g.Key, g => Link([.. g.OrderBy(e => e.FromPosition)])));
 
     private static AddressMapEntry GetEntry(AddressEntry entry,
-                                           Func<int, CallStackNode?> nodeOf,
-                                           Func<AddressEntry, CallStackNode?, AddressMapAllocation>? getAllocation)
+                                           Func<int, CallTreeNode?> nodeOf,
+                                           Func<AddressEntry, CallTreeNode?, AddressMapAllocation>? getAllocation)
     {
         var operation = entry.Operation;
 

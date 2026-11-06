@@ -1,10 +1,8 @@
-using InternalsViewer.Query.Helpers;
 using System.IO.Compression;
 using System.Text.Json.Nodes;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.Export;
-using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Latches;
 using InternalsViewer.Query.Events.Locks;
@@ -103,7 +101,6 @@ public class QueryExportTests
         var scan = Assert.Single(events.OfType<ExecutionOperatorEvent>());
 
         Assert.Same(Orders, latch.AllocationUnit);
-        Assert.Same(latch, Assert.Single(latch.CallStack!.Events));
         Assert.Equal(9, wait.FoldedFrom!.TimeUs);
         Assert.Same(transactionLog.LogRecord, split.LogRecords[0]);
         Assert.Same(transactionLog.LogRecord, imported.Result.LogRecords[0]);
@@ -176,8 +173,6 @@ public class QueryExportTests
 
     private static QueryExportContent Content()
     {
-        var tree = new CallStackTree();
-
         var latch = new LatchEvent
         {
             Name = "latch_acquired",
@@ -187,8 +182,6 @@ public class QueryExportTests
             LatchMode = (LatchMode)2,
             AllocationUnit = Orders
         };
-
-        latch.CallStack = tree.Add([Frame(0x2000, "BUF::AcquireLatch+0x10"), Frame(0x1234, "CQScanRowsetNew::GetRow+0x24")], latch);
 
         var io = new IoEvent { Name = "file_read_completed", TimeUs = 12, PageAddress = new PageAddress(1, 336), IsRead = true, IsRoot = true };
 
@@ -257,7 +250,6 @@ public class QueryExportTests
                 scan
             ],
             ExecutionPlans = [plan],
-            CallStackTree = tree,
             ResultSets = [new QueryResultSet { Columns = [new ResultColumn(0, "OrderId", typeof(int), false)] }],
             RowCount = 5,
             CropStartUs = 10,
@@ -272,20 +264,6 @@ public class QueryExportTests
             SqlText = "SELECT * FROM dbo.Orders",
             Messages = ["Running Query - Completed in 00:00:01"],
             Result = result
-        };
-    }
-
-    private static CallstackFrame Frame(ulong rva, string symbol)
-    {
-        SymbolsHelper.SplitOffset(symbol, out var name, out var offset);
-
-        return new CallstackFrame
-        {
-            Module = new("sqlmin", "sqlmin.pdb", "0123456789ABCDEF0123456789ABCDEF", 2),
-            Rva = (uint)rva,
-            Address = 0x7FF0_0000_0000 + rva,
-            Function = CallstackFunction.Parse("sqlmin", name),
-            Offset = offset
         };
     }
 }

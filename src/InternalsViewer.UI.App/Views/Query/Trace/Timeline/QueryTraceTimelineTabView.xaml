@@ -8,7 +8,7 @@
     xmlns:query="using:InternalsViewer.UI.App.Controls.Query"
     xmlns:trace="using:InternalsViewer.UI.App.Controls.Query.Trace.Timeline"
     xmlns:timeline="using:InternalsViewer.UI.App.Controls.Query.Timeline"
-    xmlns:callStack="using:InternalsViewer.UI.App.Controls.Query.Trace.CallStack"
+    xmlns:calls="using:InternalsViewer.UI.App.Controls.Query.Trace.Calls"
     xmlns:docking="using:InternalsViewer.UI.App.Controls.Docking"
     xmlns:selectors="using:InternalsViewer.UI.App.Helpers.Selectors"
     xmlns:models="using:InternalsViewer.UI.App.Models.Query.Trace.Timeline"
@@ -28,10 +28,10 @@
                 <StackPanel Grid.Row="0">
                     <Grid x:Name="SearchRow"
                           Visibility="Collapsed">
-                        <callStack:CallSearchBar x:Name="SearchBar"
+                        <calls:CallSearchBar x:Name="SearchBar"
                                                  MatchCount="{x:Bind TraceTimeline.SearchMatchCount, Mode=OneWay}"
                                                  KeyDown="OnSearchKeyDown">
-                            <callStack:CallSearchBar.SuggestionTemplateSelector>
+                            <calls:CallSearchBar.SuggestionTemplateSelector>
                                 <selectors:TraceSearchSuggestionTemplateSelector>
                                     <selectors:TraceSearchSuggestionTemplateSelector.CallTemplate>
                                         <DataTemplate x:DataType="models:CallSearchSuggestion">
@@ -79,8 +79,8 @@
                                         </DataTemplate>
                                     </selectors:TraceSearchSuggestionTemplateSelector.MemoryTemplate>
                                 </selectors:TraceSearchSuggestionTemplateSelector>
-                            </callStack:CallSearchBar.SuggestionTemplateSelector>
-                            <callStack:CallSearchBar.Commands>
+                            </calls:CallSearchBar.SuggestionTemplateSelector>
+                            <calls:CallSearchBar.Commands>
                                 <StackPanel Orientation="Horizontal" Spacing="2">
                                     <ToggleButton Content="Call"
                                                   IsChecked="True"
@@ -109,12 +109,12 @@
                                         <FontIcon Glyph="&#xE893;" FontSize="12"/>
                                     </Button>
                                 </StackPanel>
-                            </callStack:CallSearchBar.Commands>
-                        </callStack:CallSearchBar>
+                            </calls:CallSearchBar.Commands>
+                        </calls:CallSearchBar>
                     </Grid>
 
-                    <callStack:CategoryFilterPanel x:Name="CategoryFilter"
-                                                   CallStack="{x:Bind ViewModel.CallStack, Mode=OneWay}"/>
+                    <calls:CategoryFilterPanel x:Name="CategoryFilter"
+                                                   CallTree="{x:Bind ViewModel.CallTree, Mode=OneWay}"/>
 
                     <Border Background="{ThemeResource LayerFillColorDefaultBrush}"
                             Visibility="{x:Bind Settings.PinTimeline, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">

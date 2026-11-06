@@ -6,7 +6,7 @@ public sealed class QueryExport(IEnumerable<IQueryExportSection> sections)
 {
     public const string Extension = ".ivtrace";
 
-    internal const int FormatVersion = 1;
+    internal const int FormatVersion = 2;
 
     internal const uint BinaryMagic = 0x54465649;
 
@@ -15,8 +15,6 @@ public sealed class QueryExport(IEnumerable<IQueryExportSection> sections)
     internal const string QueryEntry = "query.sql";
 
     internal const string MessagesEntry = "messages.txt";
-
-    internal const string FramesEntry = "frames.jsonl";
 
     internal const string EventsEntry = "events.jsonl";
 

@@ -1,11 +1,11 @@
-using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Arguments;
-using InternalsViewer.Query.CallStack.Categories;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
+using InternalsViewer.Query.FullTrace.Symbols;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Tests.Memory.MemoryObject;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
+using InternalsViewer.Query.FullTrace.Symbols.Categories;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Arguments;
 
@@ -138,11 +138,11 @@ public class HoBtAccessMapTests
     {
         private const ulong ModuleBase = 0x7FF0_0000_0000;
 
-        private CallStackTree Tree { get; } = new();
+        private CallTree Tree { get; } = new();
 
-        private List<CallStackNode?> Nodes { get; } = [];
+        private List<CallTreeNode?> Nodes { get; } = [];
 
-        private Dictionary<string, (CallstackFrame Frame, List<ulong[]> Rows)> Functions { get; } = new();
+        private Dictionary<string, (CallFrame Frame, List<ulong[]> Rows)> Functions { get; } = new();
 
         public Recording Init(ulong access, ulong hobtId, ulong sequence) => Call("Init", sequence, access, 0, hobtId);
 
@@ -166,12 +166,12 @@ public class HoBtAccessMapTests
             {
                 var rva = (uint)(0x1000 + Functions.Count * 0x100);
 
-                var frame = new CallstackFrame
+                var frame = new CallFrame
                 {
                     Module = new("sqlmin"),
                     Rva = rva,
                     Address = ModuleBase + rva,
-                    Function = new CallstackFunction
+                    Function = new FrameFunction
                     {
                         ClassName = "HoBtAccess",
                         MethodName = method,

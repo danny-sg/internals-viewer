@@ -1,4 +1,4 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Export;
 
 namespace InternalsViewer.Query.FullTrace.Timeline;
@@ -9,7 +9,7 @@ public sealed partial class TraceTimeline
 
     private TraceTimeline(IReadOnlyList<TraceTimelineThread> threads,
                           int[] parents,
-                          CallStackNode?[] nodes,
+                          CallTreeNode?[] nodes,
                           TraceScale scale,
                           TracePoint start,
                           TracePoint end)
@@ -25,7 +25,7 @@ public sealed partial class TraceTimeline
 
     internal static bool IsCurrent(BinaryReader reader) => reader.ReadInt32() == -FormatVersion;
 
-    internal static TraceTimeline Read(BinaryReader reader, IReadOnlyList<CallStackNode> nodesById)
+    internal static TraceTimeline Read(BinaryReader reader, IReadOnlyList<CallTreeNode> nodesById)
     {
         if (!IsCurrent(reader))
         {
@@ -40,7 +40,7 @@ public sealed partial class TraceTimeline
 
         var parents = ExportBinary.ReadArray<int>(reader);
 
-        CallStackNode?[] nodes = [.. ExportBinary.ReadArray<int>(reader).Select(id => id < 0 ? null : nodesById[id])];
+        CallTreeNode?[] nodes = [.. ExportBinary.ReadArray<int>(reader).Select(id => id < 0 ? null : nodesById[id])];
 
         var threads = new TraceTimelineThread[reader.ReadInt32()];
 
@@ -71,7 +71,7 @@ public sealed partial class TraceTimeline
         return new TraceTimeline(threads, parents, nodes, scale, start, end);
     }
 
-    internal void Write(BinaryWriter writer, Func<CallStackNode, int> idOf)
+    internal void Write(BinaryWriter writer, Func<CallTreeNode, int> idOf)
     {
         writer.Write(-FormatVersion);
 

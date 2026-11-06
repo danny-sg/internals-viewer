@@ -2,7 +2,6 @@ using System.Buffers;
 using System.Collections.Concurrent;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
-using InternalsViewer.Query.CallStack.Locators;
 using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.Helpers;

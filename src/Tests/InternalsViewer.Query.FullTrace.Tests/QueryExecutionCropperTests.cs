@@ -1,9 +1,9 @@
-using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Categories;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
+using InternalsViewer.Query.FullTrace.Symbols.Categories;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
@@ -13,7 +13,7 @@ public class QueryExecutionCropperTests
     [Fact]
     public void The_Query_Is_Rooted_At_Its_Execution_Leaving_Out_Compilation()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var source = tree.AddCall(tree.AddCall(tree.Root, Frame("ThreadEntry", "m", 0x10), 1), Frame("CSQLSource", "Execute", 0x20), 1);
 
@@ -29,7 +29,7 @@ public class QueryExecutionCropperTests
     [Fact]
     public void The_Query_Is_Rooted_At_The_Statement_Leaving_Out_The_Batch_Around_It()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var thread = tree.AddCall(tree.Root, Frame("ThreadEntry", "m", 0x10), 1);
 
@@ -47,7 +47,7 @@ public class QueryExecutionCropperTests
     [Fact]
     public void An_Inner_Statement_Stays_Under_The_Statement_That_Ran_It()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var thread = tree.AddCall(tree.Root, Frame("ThreadEntry", "m", 0x10), 1);
 
@@ -63,7 +63,7 @@ public class QueryExecutionCropperTests
     [Fact]
     public void A_Thread_That_Never_Executes_The_Query_Keeps_Its_Own_Root()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         tree.AddCall(tree.AddCall(tree.Root, Frame("ThreadEntry", "m", 0x10), 1), Frame("CXStmtQuery", "ErsqExecuteQuery", 0x40), 1);
 
@@ -78,7 +78,7 @@ public class QueryExecutionCropperTests
     [Fact]
     public void A_Root_That_Neither_Executes_The_Query_Nor_Runs_The_Plan_Is_Dropped()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         tree.AddCall(tree.AddCall(tree.Root, Frame("ThreadEntry", "m", 0x10), 1), Frame("CXStmtQuery", "ErsqExecuteQuery", 0x40), 1);
 
@@ -92,7 +92,7 @@ public class QueryExecutionCropperTests
     [Fact]
     public void A_Tree_Without_The_Query_Execution_Is_Not_Cropped()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         tree.AddCall(tree.Root, Frame("ThreadEntry", "m", 0x10), 1);
 
@@ -102,7 +102,7 @@ public class QueryExecutionCropperTests
     [Fact]
     public void A_Trace_Keeps_Compilation_While_Its_Query_Timeline_Starts_At_The_Execution()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var source = tree.AddCall(tree.Root, Frame("CSQLSource", "Execute", 0x20), 1);
 
@@ -126,7 +126,7 @@ public class QueryExecutionCropperTests
     [Fact]
     public void Activity_Is_Spread_Over_The_Window_It_Is_Set_To()
     {
-        var tree = new CallStackTree { ActivityFromTrace = true };
+        var tree = new CallTree();
 
         var source = tree.AddCall(tree.Root, Frame("CSQLSource", "Execute", 0x20), 1);
 
@@ -157,16 +157,16 @@ public class QueryExecutionCropperTests
 
     private static CallSpan Span(int callNodeIndex, ulong start, ulong end) => new(1, start, 1, end, start, end, callNodeIndex, 7, 0, 1);
 
-    private static int[] Buckets(CallStackNode node)
+    private static int[] Buckets(CallTreeNode node)
         => [.. Enumerable.Range(0, node.ActivityCounts.Length).Where(i => node.ActivityCounts[i] > 0)];
 
-    private static CallstackFrame Frame(string className,
+    private static CallFrame Frame(string className,
                                         string methodName,
                                         uint rva,
                                         SymbolCategory category = SymbolCategory.Unknown) => new()
     {
         Module = new("sqllang"),
         Rva = rva,
-        Function = new CallstackFunction { ClassName = className, MethodName = methodName, SymbolCategory = category }
+        Function = new FrameFunction { ClassName = className, MethodName = methodName, SymbolCategory = category }
     };
 }

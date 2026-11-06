@@ -1,0 +1,191 @@
+using System;
+using System.Collections;
+using InternalsViewer.UI.App.Helpers;
+using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml.Controls;
+
+namespace InternalsViewer.UI.App.Controls.Query.Trace.Calls;
+
+public sealed partial class CallSearchBar : UserControl
+{
+    private const int SearchDelayMilliseconds = 300;
+
+    public static readonly DependencyProperty CommandsProperty =
+        DependencyProperty.Register(nameof(Commands), typeof(object), typeof(CallSearchBar), new PropertyMetadata(null));
+
+    public object? Commands
+    {
+        get => GetValue(CommandsProperty);
+        set => SetValue(CommandsProperty, value);
+    }
+
+    public static readonly DependencyProperty MatchCountProperty =
+        DependencyProperty.Register(nameof(MatchCount),
+                                    typeof(int?),
+                                    typeof(CallSearchBar),
+                                    new PropertyMetadata(null, OnMatchCountChanged));
+
+    public int? MatchCount
+    {
+        get => (int?)GetValue(MatchCountProperty);
+        set => SetValue(MatchCountProperty, value);
+    }
+
+    public static readonly DependencyProperty SuggestionsProperty =
+        DependencyProperty.Register(nameof(Suggestions),
+                                    typeof(object),
+                                    typeof(CallSearchBar),
+                                    new PropertyMetadata(null, OnSuggestionsChanged));
+
+    public object? Suggestions
+    {
+        get => GetValue(SuggestionsProperty);
+        set => SetValue(SuggestionsProperty, value);
+    }
+
+    public static readonly DependencyProperty SuggestionTemplateSelectorProperty =
+        DependencyProperty.Register(nameof(SuggestionTemplateSelector),
+                                    typeof(DataTemplateSelector),
+                                    typeof(CallSearchBar),
+                                    new PropertyMetadata(null));
+
+    public DataTemplateSelector? SuggestionTemplateSelector
+    {
+        get => (DataTemplateSelector?)GetValue(SuggestionTemplateSelectorProperty);
+        set => SetValue(SuggestionTemplateSelectorProperty, value);
+    }
+
+    public CallSearchBar()
+    {
+        InitializeComponent();
+    }
+
+    public event Action<string>? SearchTextChanged;
+
+    public event Action<bool>? StepRequested;
+
+    public event Action<object>? SuggestionChosen;
+
+    public string Text
+    {
+        get => SearchBox.Text;
+        set => SearchBox.Text = value;
+    }
+
+    private DispatcherQueueTimer SearchTimer => field ??= CreateSearchTimer();
+
+    private string PublishedSearch { get; set; } = string.Empty;
+
+    private bool IsTyping { get; set; }
+
+    public void FocusSearch() => SearchBox.Focus(FocusState.Programmatic);
+
+    public void CloseSuggestions()
+    {
+        IsTyping = false;
+
+        SearchBox.IsSuggestionListOpen = false;
+    }
+
+    public void Clear()
+    {
+        SearchTimer.Stop();
+
+        SearchBox.Text = string.Empty;
+
+        PublishSearch();
+    }
+
+    private static string GetMatchCountText(int? count) => count switch
+    {
+        null => string.Empty,
+        0 => "No Results",
+        1 => "1 Result",
+        _ => $"{count:N0} Results"
+    };
+
+    private static Visibility GetMatchCountVisibility(int? count) => count is null ? Visibility.Collapsed : Visibility.Visible;
+
+    private Visibility GetCommandsVisibility(object? commands) => commands is null ? Visibility.Collapsed : Visibility.Visible;
+
+    private DispatcherQueueTimer CreateSearchTimer()
+    {
+        var timer = DispatcherQueue.CreateTimer();
+
+        timer.Interval = TimeSpan.FromMilliseconds(SearchDelayMilliseconds);
+        timer.IsRepeating = false;
+
+        timer.Tick += OnSearchTimerTick;
+
+        return timer;
+    }
+
+    private void OnSearchTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
+    {
+        IsTyping = args.Reason == AutoSuggestionBoxTextChangeReason.UserInput;
+
+        if (IsTyping)
+        {
+            SearchTimer.Start();
+
+            return;
+        }
+
+        PublishSearch();
+    }
+
+    private void OnSearchQuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
+    {
+        if (args.ChosenSuggestion is { } chosen)
+        {
+            CloseSuggestions();
+
+            SuggestionChosen?.Invoke(chosen);
+
+            return;
+        }
+
+        if (!PublishSearch())
+        {
+            StepRequested?.Invoke(!KeyboardState.IsShiftDown());
+        }
+    }
+
+    private void OnSearchTimerTick(DispatcherQueueTimer sender, object args) => PublishSearch();
+
+    private bool PublishSearch()
+    {
+        SearchTimer.Stop();
+
+        var text = SearchBox.Text ?? string.Empty;
+
+        if (string.Equals(text, PublishedSearch, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        PublishedSearch = text;
+
+        SearchTextChanged?.Invoke(text);
+
+        return true;
+    }
+
+    private static void OnSuggestionsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var bar = (CallSearchBar)d;
+
+        bar.SearchBox.IsSuggestionListOpen = bar.IsTyping && e.NewValue is ICollection { Count: > 0 };
+    }
+
+    private static void OnMatchCountChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var bar = (CallSearchBar)d;
+
+        var count = e.NewValue as int?;
+
+        bar.MatchCountText.Text = GetMatchCountText(count);
+
+        bar.MatchCountText.Visibility = GetMatchCountVisibility(count);
+    }
+}

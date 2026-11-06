@@ -39,7 +39,7 @@ When you press Execute, Internals Viewer runs a sequence of steps on its connect
 | `transaction_log` | The log records of a traced data modification - the Log lane |
 | `memory_grant_updated_by_feedback` | Memory grant feedback, alongside the memory events |
 
-Each event also carries actions - `sql_text`, `session_id`, `request_id`, `database_id`, `plan_handle`, and `transaction_id` - used to tie events to the right statement and plan, and `sqlos.system_thread_id`, `task_address` and `worker_address`, which identify the thread and task behind each event and tie a parallel plan's events to its workers. The Events menu tailors the session: the page I/O events are always captured, the lock, wait, and memory events can be toggled, and enabling _Call Stack_ adds the `package0.callstack` action, attaching the raw SQL Server call stack to every event.
+Each event also carries actions - `sql_text`, `session_id`, `request_id`, `database_id`, `plan_handle`, and `transaction_id` - used to tie events to the right statement and plan, and `sqlos.system_thread_id`, `task_address` and `worker_address`, which identify the thread and task behind each event and tie a parallel plan's events to its workers. The Events menu tailors the session: the page I/O events are always captured, and the lock, wait, and memory events can be toggled. No call stacks are captured. The `package0.callstack` action only gives the code that happened to be on the stack as an event fired, which leaves most of the query's work out. The engine functions behind a query come from a [Full Trace](#full-trace) instead.
 
 ## Building the timeline
 
@@ -74,21 +74,11 @@ The phases propagate up the tree: a streaming operator can't emit rows before it
 
 Lock events get one more resolution step. A row lock doesn't report which row was locked - it reports a hash of the key (the same value the `%%lockres%%` virtual column exposes). Internals Viewer queries the table for matching key hashes to resolve them back to real rows, so a lock event can point at the actual record.
 
-## Resolving call stacks
-
-The `package0.callstack` action doesn't produce function names - each raw frame identifies the **module** that generated it, the name of its **PDB** (the symbol file mapping the compiled binary back to names), a **GUID + age** pinning the exact PDB revision for that build, and the **RVA** (relative virtual address) of the frame within the binary. Turning that into `sqlmin!IndexPageManager::GetNextPage` takes three steps:
-
-1. **Download** - each distinct PDB referenced by the trace is fetched from the Microsoft public symbol server, using the standard symbol store path `https://msdl.microsoft.com/download/symbols/<pdb>/<GUID><age>/<pdb>`. The same folder layout is replicated under the local **Symbols Path** (default `C:\Symbols`), so each symbol file is only ever downloaded once - subsequent traces resolve from the cache. Each download shows in Messages as **Downloading** and the file name, with its progress and then the time it took, or **Not Found** when the symbol server does not have it. A file is downloaded under a temporary name and only renamed once it is complete, so an interrupted download never leaves a partial PDB in the cache.
-
-2. **Resolve** - the RVA is mapped to a function name against the cached PDB using the Debug Interface Access (DIA) API, giving the `module!Class::Method` symbol and the offset into the function. DIA normally comes with Visual Studio, but its redistributable `msdia140.dll` ships with Internals Viewer and is accessed registration-free through a small C++ bridge (`InternalsViewer.Query.DiaBridge`) - so there are no dependencies to install and no COM registration step.
-
-3. **Classify** - the resolved symbols are classified by a mapping dictionary into the **Module** badge (Storage Engine, Query Processor, SQL OS, SQL Server Host, etc.) and the **Category** badge (Rowset, B-Tree Navigation, Page Access, Buffer Pool, Latching, Locking, etc.) shown in the Call Tree. Frames belonging to infrastructure - Extended Events publishing, scheduling, thread management - are flagged so the frames doing the actual work stand out.
-
 ## Full Trace
 
-Everything above is sampled. A call stack is captured when an event fires, so the call tree only ever holds the code that was on the stack at those moments, and the relational operators fire no events of their own - see [How operator matching works](/docs/deep-dives/operator-matching) for what that costs. **Record Full Trace** swaps sampling for a recording. [Time Travel Debugging](https://learn.microsoft.com/en-us/windows-hardware/drivers/debuggercmds/time-travel-debugging-overview) (TTD) records every instruction the storage engine and query processor execute, and the recording is replayed afterwards, so every call the query made can be read back in order, with its arguments.
+Everything above says what the engine did, not the code that did it, and the relational operators fire no events of their own. **Record Full Trace** records the code itself. [Time Travel Debugging](https://learn.microsoft.com/en-us/windows-hardware/drivers/debuggercmds/time-travel-debugging-overview) (TTD) records every instruction the storage engine and query processor execute, and the recording is replayed afterwards, so every call the query made can be read back in order, with its arguments.
 
-A recording changes most of the pipeline above. The event session is cut down to the few events needed to find the query's threads and match its operators, an elevated harness attaches the recorder and restarts SQL Server when it has to, and a native bridge replays the recording in a single pass to build the call tree, the Trace Timeline and a log of every call's arguments. Operators are matched by the iterator object each call ran on, and memory is counted from the calls to SQL Server's allocators.
+A recording changes most of the pipeline above. The event session is cut down to the few events needed to find the query's threads and match its operators, an elevated harness attaches the recorder and restarts SQL Server when it has to, and a native bridge replays the recording in a single pass to build the call tree, the Trace Timeline and a log of every call's arguments. The calls are resolved to function names from SQL Server's debugging symbols. Operators are matched by the iterator object each call ran on - see [How operator matching works](/docs/deep-dives/operator-matching) - and memory is counted from the calls to SQL Server's allocators.
 
 See [How Full Trace works](/docs/deep-dives/full-trace) for each of those parts.
 
@@ -111,7 +101,6 @@ The trace captures everything the modification did - the pages written, the lock
 - `src/Query/InternalsViewer.Query/Events/Consolidation/` - the passes that pair and group raw events, such as the reads behind a latch or the segment scans of a rowgroup
 - `src/Query/InternalsViewer.Query/Plans/Parsers/ExecutionPlanParser.cs` and `Events/Operators/EventPlanNodeMatcher.cs` - plan XML parsing and matching operators to profile events
 - `src/Query/InternalsViewer.Query/KeyHashLookup.cs` - resolving lock key hashes to rows
-- `src/Query/InternalsViewer.Query/CallStack/` - symbol download (`Symbols/SymbolDownloader.cs`), DIA resolution (`CallstackResolver.cs`), and the Module / Category classification (`Categories/`)
-- `src/Query/InternalsViewer.Query.FullTrace/` - recording and replaying with Time Travel Debugging - see [How Full Trace works](/docs/deep-dives/full-trace#in-the-source)
+- `src/Query/InternalsViewer.Query.FullTrace/` - recording and replaying with Time Travel Debugging, and resolving symbols - see [How Full Trace works](/docs/deep-dives/full-trace#in-the-source)
 - `src/Query/InternalsViewer.Query/Export/` - exporting a run to a file and importing it again
 - `src/InternalsViewer.TransactionLog/LogRecordReader.cs` - reading log records for modifications

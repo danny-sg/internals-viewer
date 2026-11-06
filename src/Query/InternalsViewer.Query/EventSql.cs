@@ -46,11 +46,6 @@ internal static class EventSql
             sessionActions.AddRange(EventConstants.TimeTravelActions);
         }
 
-        if (eventOptions.CapturesCallStacks)
-        {
-            sessionActions.AddRange(EventConstants.CallstackActions);
-        }
-
         var stringBuilder = new StringBuilder();
 
         stringBuilder.AppendLine($"CREATE EVENT SESSION [{sessionName}] ON SERVER");
@@ -68,15 +63,7 @@ internal static class EventSql
 
                 stringBuilder.Append("\n    ACTION (");
 
-                if (EventConstants.CallstackExcludeEvents.Contains(eventName))
-                {
-                    stringBuilder.Append(string.Join(", ",
-                                                     sessionActions.Except(EventConstants.CallstackActions)));
-                }
-                else
-                {
-                    stringBuilder.Append(string.Join(", ", sessionActions));
-                }
+                stringBuilder.Append(string.Join(", ", sessionActions));
 
                 stringBuilder.Append(")\n");
                 stringBuilder.Append("    WHERE (");

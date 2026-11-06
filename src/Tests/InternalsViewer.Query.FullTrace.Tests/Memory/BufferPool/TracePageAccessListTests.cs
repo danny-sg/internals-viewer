@@ -1,6 +1,5 @@
 using InternalsViewer.Internals.Engine.Address;
-using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Categories;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.History;
@@ -9,6 +8,7 @@ using InternalsViewer.Query.FullTrace.Memory.History.Capture.StackObjects;
 using InternalsViewer.Query.FullTrace.Memory.History.Capture.Watches;
 using InternalsViewer.Query.FullTrace.Tests.Memory.History;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
+using InternalsViewer.Query.FullTrace.Symbols.Categories;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Memory.BufferPool;
 
@@ -279,11 +279,11 @@ public class TracePageAccessListTests
 
         private const ulong Thread = 9;
 
-        private CallStackTree Tree { get; } = new();
+        private CallTree Tree { get; } = new();
 
-        private List<CallStackNode?> Nodes { get; } = [];
+        private List<CallTreeNode?> Nodes { get; } = [];
 
-        private Dictionary<string, (CallstackFrame Frame, List<ulong[]> Rows)> Functions { get; } = new();
+        private Dictionary<string, (CallFrame Frame, List<ulong[]> Rows)> Functions { get; } = new();
 
         public Recording Call(string? className,
                               string method,
@@ -299,12 +299,12 @@ public class TracePageAccessListTests
             {
                 var rva = (uint)(0x1000 + Functions.Count * 0x100);
 
-                var frame = new CallstackFrame
+                var frame = new CallFrame
                 {
                     Module = new("sqlmin"),
                     Rva = rva,
                     Address = ModuleBase + rva,
-                    Function = new CallstackFunction
+                    Function = new FrameFunction
                     {
                         ClassName = className,
                         MethodName = method,

@@ -1,12 +1,12 @@
-using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Arguments;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
+using InternalsViewer.Query.FullTrace.Symbols;
 using InternalsViewer.Query.FullTrace.Arguments;
 
 namespace InternalsViewer.Query.FullTrace.Calls;
 
 public interface ITraceSignatureSource
 {
-    Task<ArgumentLayout?> GetLayoutAsync(CallstackFrame frame);
+    Task<ArgumentLayout?> GetLayoutAsync(CallFrame frame);
 
-    Task<FunctionType?> GetFunctionTypeAsync(CallstackFrame frame);
+    Task<FunctionType?> GetFunctionTypeAsync(CallFrame frame);
 }

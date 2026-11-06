@@ -5,7 +5,6 @@ using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.Export.Converters;
-using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events;
 using InternalsViewer.TransactionLog.LogRecords;
 
@@ -58,7 +57,7 @@ internal static class ExportPackage
         {
             var current = property.GetValue(value);
 
-            if (current is EngineEvent or LogRecord or CallStackNode)
+            if (current is EngineEvent or LogRecord)
             {
                 yield return current;
             }
@@ -211,11 +210,7 @@ internal static class ExportPackage
 
     private static JsonConverter Reference(Type converter, Type baseType, ExportReferences references)
     {
-        object table = baseType == typeof(CallStackNode)
-            ? references.Nodes
-            : baseType == typeof(EngineEvent)
-                ? references.Events
-                : references.LogRecords;
+        object table = baseType == typeof(EngineEvent) ? references.Events : references.LogRecords;
 
         return (JsonConverter)Activator.CreateInstance(converter, table)!;
     }
@@ -227,11 +222,6 @@ internal static class ExportPackage
 
     private static Type? Base(Type type)
     {
-        if (type == typeof(CallStackNode))
-        {
-            return typeof(CallStackNode);
-        }
-
         if (typeof(EngineEvent).IsAssignableFrom(type))
         {
             return typeof(EngineEvent);

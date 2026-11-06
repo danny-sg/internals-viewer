@@ -19,8 +19,6 @@ public sealed partial class PlanNodeControl : UserControl
     private const byte ActiveBackgroundAlpha = 50;
 
     // A faint divider so adjacent frames read apart even at 3-4px row heights.
-    private static readonly SolidColorBrush IcicleDivider = new(Color.FromArgb(70, 0, 0, 0));
-
     public static readonly DependencyProperty NodeProperty =
         DependencyProperty.Register(nameof(Node), typeof(PlanNode), typeof(PlanNodeControl),
             new PropertyMetadata(null, OnNodeChanged));
@@ -39,17 +37,6 @@ public sealed partial class PlanNodeControl : UserControl
     {
         get => (double)GetValue(CostPercentProperty);
         set => SetValue(CostPercentProperty, value);
-    }
-
-    public static readonly DependencyProperty IcicleSegmentsProperty =
-        DependencyProperty.Register(nameof(IcicleSegments), typeof(IReadOnlyList<IcicleSegment>), typeof(PlanNodeControl),
-            new PropertyMetadata(null, OnIcicleSegmentsChanged));
-
-    /// <summary>The call-stack icicle for this operator (see <see cref="OperatorIcicle"/>); empty when it has none</summary>
-    public IReadOnlyList<IcicleSegment>? IcicleSegments
-    {
-        get => (IReadOnlyList<IcicleSegment>?)GetValue(IcicleSegmentsProperty);
-        set => SetValue(IcicleSegmentsProperty, value);
     }
 
     public static readonly DependencyProperty IsSelectedProperty =
@@ -117,40 +104,6 @@ public sealed partial class PlanNodeControl : UserControl
         => CostPercent < 0 ? Visibility.Collapsed : Visibility.Visible;
 
     public string ToolTipText => Node is null ? string.Empty : BuildToolTip(Node);
-
-    private void RenderIcicle()
-    {
-        IcicleCanvas.Children.Clear();
-
-        var segments = IcicleSegments;
-
-        if (segments is null || segments.Count == 0)
-        {
-            IcicleCanvas.Visibility = Visibility.Collapsed;
-            return;
-        }
-
-        IcicleCanvas.Visibility = Visibility.Visible;
-
-        foreach (var segment in segments)
-        {
-            var rectangle = new Rectangle
-            {
-                Width = segment.Width,
-                Height = segment.Height,
-                Fill = ParseBrush(segment.Colour),
-                Stroke = IcicleDivider,
-                StrokeThickness = 0.3
-            };
-
-            Canvas.SetLeft(rectangle, segment.X);
-            Canvas.SetTop(rectangle, segment.Y);
-
-            ToolTipService.SetToolTip(rectangle, segment.Symbol);
-
-            IcicleCanvas.Children.Add(rectangle);
-        }
-    }
 
     private static SolidColorBrush ParseBrush(string hex)
     {
@@ -277,9 +230,6 @@ public sealed partial class PlanNodeControl : UserControl
 
         control.RefreshAnnotations();
     }
-
-    private static void OnIcicleSegmentsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((PlanNodeControl)d).RenderIcicle();
 
     private static void OnIsSelectedChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((PlanNodeControl)d).UpdateStateVisual();

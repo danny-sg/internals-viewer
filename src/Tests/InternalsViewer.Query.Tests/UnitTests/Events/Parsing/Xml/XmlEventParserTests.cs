@@ -1,7 +1,6 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Database.Enums;
-using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.Locks;
 using InternalsViewer.Query.Events.Memory;
@@ -35,13 +34,11 @@ public class XmlEventParserTests
 
         private readonly PlanHandleRegistry _planHandles = planHandles ?? new PlanHandleRegistry();
 
-        private readonly CallStackTree _callStack = new();
-
         public EngineEvent? Parse(string xml)
         {
             var result = _xml.ParseEvent(xml);
 
-            return result is null ? null : _events.ToEngineEvent(result, null, _planHandles, _callStack);
+            return result is null ? null : _events.ToEngineEvent(result, null, _planHandles);
         }
     }
 
@@ -469,7 +466,7 @@ public class XmlEventParserTests
 
         var result = new XmlEventParser().ParseEvent(xml)!;
 
-        var engineEvent = new EventParser().ToEngineEvent(result, database, new PlanHandleRegistry(), new CallStackTree());
+        var engineEvent = new EventParser().ToEngineEvent(result, database, new PlanHandleRegistry());
 
         var lookup = Assert.IsType<ObjectPoolEvent>(engineEvent);
 

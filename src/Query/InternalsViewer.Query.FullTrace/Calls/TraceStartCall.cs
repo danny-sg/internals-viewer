@@ -1,9 +1,9 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Timeline;
 
 namespace InternalsViewer.Query.FullTrace.Calls;
 
-public sealed record TraceStartCall(CallStackNode Node, TraceArgumentCall Call)
+public sealed record TraceStartCall(CallTreeNode Node, TraceArgumentCall Call)
 {
     public static TraceStartCall? Find(TraceCallStore store, TraceTimeline timeline)
     {

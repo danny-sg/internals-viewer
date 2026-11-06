@@ -70,25 +70,11 @@ public class EventSqlTests
     }
 
     [Fact]
-    public void GetCreateSessionSql_Includes_Callstack_Action_Only_When_Requested()
-    {
-        var withCallstack = EventSql.GetCreateSessionSql(
-            "Sess", @"C:\Trace\Sess.xel", 1, false, new EventOptions { IncludeCallStack = true });
-
-        var withoutCallstack = EventSql.GetCreateSessionSql(
-            "Sess", @"C:\Trace\Sess.xel", 1, false, new EventOptions { IncludeCallStack = false });
-
-        Assert.Contains("package0.callstack", withCallstack);
-        Assert.DoesNotContain("package0.callstack", withoutCallstack);
-    }
-
-    [Fact]
     public void GetCreateSessionSql_Captures_Only_Batch_And_Operator_Events_When_Recording_Time_Travel()
     {
         var options = new EventOptions
         {
             RecordTimeTravel = true,
-            IncludeCallStack = true,
             IncludeLatch = true
         };
 

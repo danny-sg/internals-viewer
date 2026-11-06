@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -226,7 +226,7 @@ public sealed partial class TraceTimelineControl
 
     public event Action<string, bool>? TickTrackVisibilityChanged;
 
-    public event Action<CallStackNode?>? TickTrackAddRequested;
+    public event Action<CallTreeNode?>? TickTrackAddRequested;
 
     public event Action<int, TracePosition?>? MemoryWriteSelected;
 

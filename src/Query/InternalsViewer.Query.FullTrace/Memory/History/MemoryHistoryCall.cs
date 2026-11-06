@@ -1,8 +1,8 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 
 namespace InternalsViewer.Query.FullTrace.Memory.History;
 
-public sealed record MemoryHistoryCall(CallStackNode? Node,
+public sealed record MemoryHistoryCall(CallTreeNode? Node,
                                        ulong Iterator,
                                        int CallIndex,
                                        TracePosition Position,

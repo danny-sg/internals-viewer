@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
@@ -26,9 +26,9 @@ public sealed partial class TraceTimelineControl
         Visibility = Visibility.Collapsed
     };
 
-    private readonly Dictionary<(CallStackNode Node, int CallIndex, TraceTimelineAxis Axis), MarkedCall?> _markedCalls = [];
+    private readonly Dictionary<(CallTreeNode Node, int CallIndex, TraceTimelineAxis Axis), MarkedCall?> _markedCalls = [];
 
-    private (CallStackNode Node, int CallIndex)? _marked;
+    private (CallTreeNode Node, int CallIndex)? _marked;
 
     private TracePoint[] _markedPoints = [];
 
@@ -42,7 +42,7 @@ public sealed partial class TraceTimelineControl
 
     private TraceTimeline? Overview => FullTimeline ?? _timeline;
 
-    public void MarkCall(CallStackNode? node, int callIndex)
+    public void MarkCall(CallTreeNode? node, int callIndex)
     {
         _marked = node is not null && callIndex >= 0 ? (node, callIndex) : null;
 
@@ -63,7 +63,7 @@ public sealed partial class TraceTimelineControl
         _canvas.Invalidate();
     }
 
-    public void MovePlayheadTo(CallStackNode node, int callIndex)
+    public void MovePlayheadTo(CallTreeNode node, int callIndex)
     {
         if (RevealCall(node, callIndex) is not { } start)
         {
@@ -86,7 +86,7 @@ public sealed partial class TraceTimelineControl
         PlacePlayhead(TraceScale.GetValue(point, _axis));
     }
 
-    public void ZoomToCall(CallStackNode node, int callIndex)
+    public void ZoomToCall(CallTreeNode node, int callIndex)
     {
         if (RevealSpan(node, callIndex) is not { } span)
         {
@@ -103,10 +103,10 @@ public sealed partial class TraceTimelineControl
         ZoomTo(span);
     }
 
-    private double? RevealCall(CallStackNode node, int callIndex)
+    private double? RevealCall(CallTreeNode node, int callIndex)
         => RevealSpan(node, callIndex) is { } span ? TraceScale.GetValue(span.From, _axis) : null;
 
-    private TraceSpan? RevealSpan(CallStackNode node, int callIndex)
+    private TraceSpan? RevealSpan(CallTreeNode node, int callIndex)
     {
         if (GetCall(node, callIndex) is not { } found)
         {
@@ -354,7 +354,7 @@ public sealed partial class TraceTimelineControl
 
     private MarkedCall? GetMarkedCall() => _marked is { } marked ? GetCall(marked.Node, marked.CallIndex) : null;
 
-    private MarkedCall? GetCall(CallStackNode node, int callIndex)
+    private MarkedCall? GetCall(CallTreeNode node, int callIndex)
     {
         if (callIndex < 0 || Overview is not { } timeline)
         {

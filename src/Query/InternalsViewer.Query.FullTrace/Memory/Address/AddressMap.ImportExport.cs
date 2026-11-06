@@ -1,4 +1,4 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Memory.Address.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Memory.Address;
@@ -74,7 +74,7 @@ public sealed partial class AddressMap
         }
     }
 
-    internal static AddressMap Read(BinaryReader reader, Func<int, CallStackNode?> nodeOf)
+    internal static AddressMap Read(BinaryReader reader, Func<int, CallTreeNode?> nodeOf)
     {
         var version = ReadVersion(reader);
 

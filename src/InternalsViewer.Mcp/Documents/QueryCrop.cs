@@ -1,4 +1,4 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace;
 
 namespace InternalsViewer.Mcp.Documents;
@@ -7,7 +7,7 @@ public static class QueryCrop
 {
     public const string OptionKey = "crop-to-query";
 
-    public static bool IsHidden(CallStackNode node, HashSet<CallStackNode> roots) => !node.Ancestors().Any(roots.Contains);
+    public static bool IsHidden(CallTreeNode node, HashSet<CallTreeNode> roots) => !node.Ancestors().Any(roots.Contains);
 
     public static bool IsHidden(TracePosition position, TracePosition start, TracePosition end) => position < start || position > end;
 

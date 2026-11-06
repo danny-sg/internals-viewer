@@ -1,5 +1,5 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 
 namespace InternalsViewer.Mcp.Models.Context.Queries;
 
-public sealed record McpIndicatorTarget(CallStackNode Node, int CallIndex, string? Label);
+public sealed record McpIndicatorTarget(CallTreeNode Node, int CallIndex, string? Label);

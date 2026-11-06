@@ -32,12 +32,6 @@ public sealed class ExecutionPlanControl : Canvas
     private const double VerticalGap = 22;
     private const double CanvasMargin = 24;
 
-    // Extra height reserved under a node for its call-stack icicle, only when the plan has captured stacks to show.
-    private const double IcicleStripHeight = 28;
-    private const double IcicleWidth = 134;
-    private const double IcicleHeight = 24;
-    private const int MaxIcicleLevels = 8;
-
     private readonly Dictionary<PlanNode, IReadOnlyList<PlanNodeAnnotation>> _annotationsByNode = [];
 
     private readonly List<double> _columnWidths = [];
@@ -87,16 +81,6 @@ public sealed class ExecutionPlanControl : Canvas
     {
         get => (bool)GetValue(AreAnnotationsVisibleProperty);
         set => SetValue(AreAnnotationsVisibleProperty, value);
-    }
-
-    public static readonly DependencyProperty HasFlameGraphProperty =
-        DependencyProperty.Register(nameof(HasFlameGraph), typeof(bool), typeof(ExecutionPlanControl),
-            new PropertyMetadata(true, OnPlanChanged));
-
-    public bool HasFlameGraph
-    {
-        get => (bool)GetValue(HasFlameGraphProperty);
-        set => SetValue(HasFlameGraphProperty, value);
     }
 
     public static readonly DependencyProperty SelectedNodeProperty =
@@ -155,9 +139,6 @@ public sealed class ExecutionPlanControl : Canvas
     // producer so the set can be reconciled incrementally as the active operators change each tick.
     private readonly Dictionary<PlanNode, FlowOverlay> _flows = [];
 
-    // Node height grows to make room for the icicle when the plan has linked call stacks, else stays compact.
-    private double _nodeHeight = BaseNodeHeight;
-
     // The plan's operators as a tree, so each node's icicle can be weighted by the events its whole subtree drove.
     // Rebuilt with the diagram rather than per node, which would invert the parent links once for every operator.
     private OperatorHierarchy _hierarchy = OperatorHierarchy.Build([]);
@@ -195,7 +176,7 @@ public sealed class ExecutionPlanControl : Canvas
 
     public event EventHandler<PlanNode>? PropertiesOpenRequested;
     
-    private double RowPitch => _nodeHeight + VerticalGap;
+    private double RowPitch => BaseNodeHeight + VerticalGap;
 
     private void Rebuild()
     {
@@ -217,9 +198,6 @@ public sealed class ExecutionPlanControl : Canvas
         }
 
         _hierarchy = OperatorHierarchy.Build(Events ?? []);
-
-        // Reserve the icicle strip only when this plan actually has linked call stacks to draw.
-        _nodeHeight = HasFlameGraph && HasLinkedCallstacks() ? BaseNodeHeight + IcicleStripHeight : BaseNodeHeight;
 
         MeasureColumns();
 
@@ -265,43 +243,13 @@ public sealed class ExecutionPlanControl : Canvas
         var maxY = positions.Values.Max(p => p.Y);
 
         Width = maxX + CanvasMargin;
-        Height = maxY + _nodeHeight + CanvasMargin;
+        Height = maxY + BaseNodeHeight + CanvasMargin;
 
         SelectByNode(SelectedNode);
 
         UpdateActiveHighlights();
 
         UpdateFlows();
-    }
-
-    private bool HasLinkedCallstacks()
-    {
-        if (Plan is null || Events is null)
-        {
-            return false;
-        }
-
-        foreach (var e in Events)
-        {
-            if (e is ExecutionOperatorEvent || e.PlanNodeIdentifier is not { } id || id.PlanHandleId != Plan.PlanHandleId)
-            {
-                continue;
-            }
-
-            if (e is IEventGroup group)
-            {
-                if (group.Events.Any(c => c.CallStack is not null))
-                {
-                    return true;
-                }
-            }
-            else if (e.CallStack is not null)
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private double AssignPositions(PlanNode node,
@@ -348,19 +296,8 @@ public sealed class ExecutionPlanControl : Canvas
             CostPercent = costFraction,
             AreAnnotationsVisible = AreAnnotationsVisible,
             Width = WidthOf(node),
-            Height = _nodeHeight
+            Height = BaseNodeHeight
         };
-
-        if (HasFlameGraph && Plan is { } plan && Events is { } events)
-        {
-            var id = new PlanNodeIdentifier(plan.PlanHandleId, node.NodeId);
-
-            if (_hierarchy.Operators.FirstOrDefault(o => o.PlanNodeIdentifier == id) is { } operatorEvent)
-            {
-                control.IcicleSegments =
-                    OperatorIcicle.Build(operatorEvent, _hierarchy, events, IcicleWidth, IcicleHeight, MaxIcicleLevels);
-            }
-        }
 
         SetLeft(control, point.X);
         SetTop(control, point.Y);
@@ -371,8 +308,8 @@ public sealed class ExecutionPlanControl : Canvas
     private (Polyline Connector, Polygon Arrow) DrawConnector(Point parent, Point child, double childCostFraction,
                                                              PlanNode parentNode, PlanNode childNode)
     {
-        var start = new Point(child.X, child.Y + _nodeHeight / 2);
-        var end = new Point(parent.X + WidthOf(parentNode), parent.Y + _nodeHeight / 2);
+        var start = new Point(child.X, child.Y + BaseNodeHeight / 2);
+        var end = new Point(parent.X + WidthOf(parentNode), parent.Y + BaseNodeHeight / 2);
 
         var elbowX = (start.X + end.X) / 2;
 
@@ -438,7 +375,7 @@ public sealed class ExecutionPlanControl : Canvas
 
         var startX = creator.X + BaseNodeWidth / 2;
 
-        var startY = probe.Y > creator.Y ? creator.Y + _nodeHeight : creator.Y;
+        var startY = probe.Y > creator.Y ? creator.Y + BaseNodeHeight : creator.Y;
 
         var laneY = probe.Y - VerticalGap / 2;
 

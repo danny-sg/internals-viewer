@@ -1,6 +1,6 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Mcp.Models.Context.Queries;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Calls;
@@ -13,7 +13,7 @@ namespace InternalsViewer.Mcp.Interfaces.Commands;
 /// </summary>
 public interface IQueryCommands
 {
-    Task ShowCallAsync(CallStackNode node, int callIndex);
+    Task ShowCallAsync(CallTreeNode node, int callIndex);
 
     Task ShowPageAsync(PageAddress pageAddress, ushort? slot);
 
@@ -33,7 +33,7 @@ public interface IQueryCommands
 
     Task<int> ClearWatchesAsync();
 
-    Task<McpFunctionSignature?> ResolveSignatureAsync(CallstackFrame frame);
+    Task<McpFunctionSignature?> ResolveSignatureAsync(CallFrame frame);
 
     Task<TraceValueReferenceResult?> FindReferencesAsync(ulong value);
 

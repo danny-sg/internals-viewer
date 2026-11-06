@@ -1,11 +1,12 @@
+using InternalsViewer.Query.FullTrace.Iterators;
 using System.ComponentModel;
 using System.Text;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Mcp.Documents;
 using InternalsViewer.Mcp.Formatting;
-using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Categories;
-using InternalsViewer.Query.CallStack.Locators;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
+using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Symbols.Categories;
 using InternalsViewer.Query.Events.Operators;
 using ModelContextProtocol;
 using ModelContextProtocol.Server;
@@ -25,9 +26,7 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
     [Description("Print, search or rank the call tree of engine functions: the subtree under a node or under a plan operator's entry " +
                  "frames, the nodes whose function name matches a regex with their call paths, the call path to a node, or the hottest " +
                  "nodes by calls or allocations")]
-    public async Task<string> CallTree([Description("Call tree name: fulltrace (the default, falling back to events) or events")]
-                                       string tree = "fulltrace",
-                                       [Description("Start at this call tree node id")] int? root = null,
+    public async Task<string> CallTree([Description("Start at this call tree node id")] int? root = null,
                                        [Description("Start at the entry frames of this plan node id and stop at its exit frames")]
                                        int? @operator = null,
                                        [Description("Levels to print below the root; deeper subtrees are marked")] int depth = 6,
@@ -58,7 +57,7 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
             return builder.ToString();
         }
 
-        var (roots, stop, scoped) = SelectRoots(scope, tree, root, @operator, builder);
+        var (roots, stop, scoped) = SelectRoots(scope, root, @operator, builder);
 
         if (roots.Count == 0)
         {
@@ -229,7 +228,7 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
             return builder.ToString();
         }
 
-        var nodesByPage = new Dictionary<PageAddress, List<CallStackNode>>();
+        var nodesByPage = new Dictionary<PageAddress, List<CallTreeNode>>();
 
         var slotsByPage = new Dictionary<PageAddress, SortedSet<int>>();
 
@@ -304,7 +303,7 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
 
         var pattern = grep is null ? null : Parse.Pattern(grep);
 
-        var seen = new HashSet<CallstackFrame>(ReferenceEqualityComparer.Instance);
+        var seen = new HashSet<CallFrame>(ReferenceEqualityComparer.Instance);
 
         var builder = new StringBuilder();
 
@@ -343,26 +342,27 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
         return builder.ToString();
     }
 
-    private static (List<CallStackNode> Roots, HashSet<CallStackNode> Stop, bool Scoped) SelectRoots(McpDocumentScope scope,
-                                                                                                     string tree,
+    private static (List<CallTreeNode> Roots, HashSet<CallTreeNode> Stop, bool Scoped) SelectRoots(McpDocumentScope scope,
                                                                                                      int? root,
                                                                                                      int? operatorNodeId,
                                                                                                      StringBuilder builder)
     {
-        var stop = new HashSet<CallStackNode>(ReferenceEqualityComparer.Instance);
+        var stop = new HashSet<CallTreeNode>(ReferenceEqualityComparer.Instance);
 
         if (operatorNodeId is { } nodeId)
         {
             scope.RequireOperatorFrames();
 
-            var roots = new List<CallStackNode>();
+            var frames = scope.Trace?.OperatorFrames ?? OperatorFrameMap.Empty;
+
+            var roots = new List<CallTreeNode>();
 
             foreach (var operatorEvent in scope.Result.EngineEvents.OfType<ExecutionOperatorEvent>()
                                                .Where(o => o.PlanNodeIdentifier?.NodeId == nodeId))
             {
-                roots.AddRange(operatorEvent.EntryFrames);
+                roots.AddRange(frames.GetEntryFrames(operatorEvent));
 
-                stop.UnionWith(operatorEvent.ExitFrames);
+                stop.UnionWith(frames.GetExitFrames(operatorEvent));
 
                 builder.AppendLine($"Node {nodeId} {operatorEvent.OperatorDescription}: {roots.Count} entry frames, " +
                                    $"cut at {stop.Count} exit frames");
@@ -381,7 +381,7 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
             return ([GetNode(scope.Context, rootId)], stop, true);
         }
 
-        if (GetTreeRoot(scope, tree) is { } treeRoot)
+        if (scope.Trace?.CallTree.Root is { } treeRoot)
         {
             return ([treeRoot], stop, false);
         }
@@ -391,20 +391,11 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
         return ([], stop, false);
     }
 
-    private static CallStackNode? GetTreeRoot(McpDocumentScope scope, string tree)
+    private static HashSet<CallTreeNode> GetSubtree(List<CallTreeNode> roots, HashSet<CallTreeNode> stop)
     {
-        var traceRoot = scope.Trace?.CallStack.Root;
+        var subtree = new HashSet<CallTreeNode>(ReferenceEqualityComparer.Instance);
 
-        var eventsRoot = scope.Result.CallStackTree?.Root;
-
-        return string.Equals(tree, "events", StringComparison.OrdinalIgnoreCase) ? eventsRoot ?? traceRoot : traceRoot ?? eventsRoot;
-    }
-
-    private static HashSet<CallStackNode> GetSubtree(List<CallStackNode> roots, HashSet<CallStackNode> stop)
-    {
-        var subtree = new HashSet<CallStackNode>(ReferenceEqualityComparer.Instance);
-
-        var stack = new Stack<CallStackNode>(roots);
+        var stack = new Stack<CallTreeNode>(roots);
 
         while (stack.Count > 0)
         {
@@ -424,10 +415,10 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
         return subtree;
     }
 
-    private static IEnumerable<CallStackNode> GetCandidates(DocumentContext context, HashSet<CallStackNode>? within)
+    private static IEnumerable<CallTreeNode> GetCandidates(DocumentContext context, HashSet<CallTreeNode>? within)
         => within is null ? context.Nodes.GetNodes() : context.Nodes.GetNodes().Where(within.Contains);
 
-    private static void WritePath(StringBuilder builder, DocumentContext context, CallStackNode target, int width)
+    private static void WritePath(StringBuilder builder, DocumentContext context, CallTreeNode target, int width)
     {
         foreach (var node in target.Ancestors().Reverse())
         {
@@ -441,7 +432,7 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
 
     private static void WriteMatches(StringBuilder builder,
                                      DocumentContext context,
-                                     IEnumerable<CallStackNode> candidates,
+                                     IEnumerable<CallTreeNode> candidates,
                                      string find,
                                      bool scoped,
                                      int limit,
@@ -468,12 +459,12 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
 
     private static void WriteHot(StringBuilder builder,
                                  DocumentContext context,
-                                 IEnumerable<CallStackNode> candidates,
+                                 IEnumerable<CallTreeNode> candidates,
                                  SubtreeTotals totals,
                                  int top,
                                  string by)
     {
-        Func<CallStackNode, long> key = by switch
+        Func<CallTreeNode, long> key = by switch
         {
             "calls" => n => n.Calls,
             "alloc" => n => n.AllocatedBytes,
@@ -493,8 +484,8 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
 
     private static void WriteTree(StringBuilder builder,
                                   DocumentContext context,
-                                  List<CallStackNode> roots,
-                                  HashSet<CallStackNode> stop,
+                                  List<CallTreeNode> roots,
+                                  HashSet<CallTreeNode> stop,
                                   SubtreeTotals totals,
                                   int depth,
                                   int minCalls,
@@ -507,7 +498,7 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
 
         foreach (var root in roots)
         {
-            var stack = new Stack<(CallStackNode Node, int Level)>();
+            var stack = new Stack<(CallTreeNode Node, int Level)>();
 
             stack.Push((root, 0));
 
@@ -562,7 +553,7 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
         }
     }
 
-    private static void WriteNodeLocators(StringBuilder builder, DocumentContext context, CallStackNode node)
+    private static void WriteNodeLocators(StringBuilder builder, DocumentContext context, CallTreeNode node)
     {
         builder.AppendLine(Format.NodeLine(context, node));
 
@@ -653,7 +644,7 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
         return [.. totals.Values];
     }
 
-    private static string GetCategory(CallStackNode node)
+    private static string GetCategory(CallTreeNode node)
         => node.Frame?.Function?.SymbolCategory.GetCategoryMetadata()?.Name ?? UnknownCategory;
 
     private static string NormaliseCategory(string category) => category.Replace(" ", string.Empty).ToLowerInvariant();
@@ -665,17 +656,17 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
         return separator >= 0 ? name[(separator + 1)..] : name;
     }
 
-    private static string CalledFrom(DocumentContext context, CallStackNode node, int pathDepth)
+    private static string CalledFrom(DocumentContext context, CallTreeNode node, int pathDepth)
         => string.Join(" < ", node.Ancestors().Skip(1).Take(pathDepth).Select(context.GetFunctionName));
 
     private static string SlotList(IEnumerable<int> slots) => $"[{string.Join(", ", slots)}]";
 
-    private static IEnumerable<Locator> GetLocators(CallStackNode node) => node.Locators?.Ordered() ?? [];
+    private static IEnumerable<Locator> GetLocators(CallTreeNode node) => node.Locators?.Ordered() ?? [];
 
-    private static IEnumerable<PageAddress> GetPages(CallStackNode node)
+    private static IEnumerable<PageAddress> GetPages(CallTreeNode node)
         => GetLocators(node).Where(l => l.ValueType == LocatorValueType.Page).Select(l => l.Page);
 
-    private static CallStackNode GetNode(DocumentContext context, int id)
+    private static CallTreeNode GetNode(DocumentContext context, int id)
         => context.Nodes.GetNode(id) ?? throw new McpException($"No call tree node {id}.");
 
     private static TValue GetOrAdd<TValue>(Dictionary<PageAddress, TValue> dictionary, PageAddress page) where TValue : new()
@@ -728,17 +719,17 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
 
     private sealed class SubtreeTotals
     {
-        private Dictionary<CallStackNode, (long Calls, long Allocated, long Allocations)> Cache { get; } =
+        private Dictionary<CallTreeNode, (long Calls, long Allocated, long Allocations)> Cache { get; } =
             new(ReferenceEqualityComparer.Instance);
 
-        public (long Calls, long Allocated, long Allocations) Get(CallStackNode root)
+        public (long Calls, long Allocated, long Allocations) Get(CallTreeNode root)
         {
             if (Cache.TryGetValue(root, out var cached))
             {
                 return cached;
             }
 
-            var stack = new Stack<(CallStackNode Node, bool Expanded)>();
+            var stack = new Stack<(CallTreeNode Node, bool Expanded)>();
 
             stack.Push((root, false));
 

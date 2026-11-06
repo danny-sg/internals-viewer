@@ -30,13 +30,9 @@ internal sealed record ExportManifest
 
     public IReadOnlyList<ExportPlan> Plans { get; init; } = [];
 
-    public IReadOnlyList<ExportCallTree> CallTrees { get; init; } = [];
-
     public IReadOnlyList<int> ResultLogRecords { get; init; } = [];
 
     public int EventCount { get; init; }
 
     public int LogRecordCount { get; init; }
-
-    public int NodeCount { get; init; }
 }

@@ -1,15 +1,12 @@
-using System.Globalization;
 using System.IO.Compression;
 using System.Text.Json;
 using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Query.CallStack;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Parsers;
 using InternalsViewer.Query.Results;
 using InternalsViewer.TransactionLog.LogRecords;
-using InternalsViewer.Query.CallStack.Locators;
 
 namespace InternalsViewer.Query.Export;
 
@@ -17,28 +14,15 @@ public sealed class QueryExportReader
 {
     private const int BufferSize = 1 << 16;
 
-    private QueryExportReader(ZipArchive zip,
-                              ExportReferences references,
-                              List<(ExportCallTree Exported, CallStackTree? Tree)> trees,
-                              IReadOnlyList<EngineEvent> events)
+    private QueryExportReader(ZipArchive zip, IReadOnlyList<EngineEvent> events)
     {
         Zip = zip;
-        References = references;
-        Trees = trees;
         Events = events;
     }
 
     public IReadOnlyList<EngineEvent> Events { get; }
 
-    public IReadOnlyList<CallStackNode> Nodes => field ??= [.. References.Nodes.InOrder()];
-
     private ZipArchive Zip { get; }
-
-    private ExportReferences References { get; }
-
-    private List<(ExportCallTree Exported, CallStackTree? Tree)> Trees { get; }
-
-    public CallStackTree? CallTree(string name) => Trees.FirstOrDefault(t => t.Exported.Name == name).Tree;
 
     public bool HasEntry(string name) => Zip.GetEntry(name) is not null;
 
@@ -55,13 +39,16 @@ public sealed class QueryExportReader
 
         var version = reader.ReadInt32();
 
-        if (version > QueryExport.FormatVersion)
+        if (version != QueryExport.FormatVersion)
         {
-            throw new InvalidDataException($"{name} was exported by a newer version of Internals Viewer (format {version})");
+            throw new InvalidDataException($"{name} was exported in format {version}, this version of Internals Viewer reads format "
+                                           + $"{QueryExport.FormatVersion}");
         }
 
         return read(reader);
     }
+
+    public IEnumerable<T> ReadLines<T>(string name) => ReadLines<T>(Zip, name, ExportPackage.Plain);
 
     internal static QueryExportContent Read(Stream stream,
                                             Func<long, AllocationUnit?> allocationUnitOf,
@@ -72,25 +59,13 @@ public sealed class QueryExportReader
 
         var manifest = ReadJson<ExportManifest>(zip, QueryExport.ManifestEntry, ExportPackage.Plain);
 
-        if (manifest.FormatVersion > QueryExport.FormatVersion)
+        if (manifest.FormatVersion != QueryExport.FormatVersion)
         {
-            throw new InvalidDataException($"The run was exported by a newer version of Internals Viewer (format {manifest.FormatVersion})");
+            throw new InvalidDataException($"The run was exported in format {manifest.FormatVersion}, this version of Internals Viewer "
+                                           + $"reads format {QueryExport.FormatVersion}");
         }
 
         var references = new ExportReferences(allocationUnitOf);
-
-        var functions = new CallstackFunctionLookup();
-
-        foreach (var frame in ReadLines<ExportedFrame>(zip, QueryExport.FramesEntry, ExportPackage.Plain))
-        {
-            references.Frames.Register(frame.Id, FrameOf(frame, functions));
-        }
-
-        var nodeEvents = new List<(CallStackNode Node, int[] Events)>();
-
-        var trees = manifest.CallTrees.Select(t => (Exported: t, Tree: ReadTree(zip, t, references, nodeEvents))).ToList();
-
-        cancellationToken.ThrowIfCancellationRequested();
 
         var options = ExportPackage.For(references);
 
@@ -102,11 +77,6 @@ public sealed class QueryExportReader
         {
             throw new InvalidDataException($"The run file is incomplete: {eventCount:N0} of {manifest.EventCount:N0} events and "
                                            + $"{logRecordCount:N0} of {manifest.LogRecordCount:N0} log records could be read");
-        }
-
-        foreach (var (node, events) in nodeEvents)
-        {
-            node.Events.AddRange(events.Select(id => references.Events[id]));
         }
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -123,7 +93,6 @@ public sealed class QueryExportReader
             IsSuccess = manifest.IsSuccess,
             EngineEvents = references.TopLevelOrder,
             ExecutionPlans = plans,
-            CallStackTree = trees.FirstOrDefault(t => t.Exported.IsResultTree).Tree,
             ResultSets = resultSets,
             Message = manifest.Message,
             RowCount = manifest.RowCount,
@@ -132,7 +101,7 @@ public sealed class QueryExportReader
             LogRecords = [.. manifest.ResultLogRecords.Select(id => references.LogRecords[id])]
         };
 
-        var reader = new QueryExportReader(zip, references, trees, result.EngineEvents);
+        var reader = new QueryExportReader(zip, result.EngineEvents);
 
         var extras = new List<IRunExtra>();
 
@@ -146,8 +115,6 @@ public sealed class QueryExportReader
             }
         }
 
-        OperatorEntryLabels.Apply(result.EngineEvents);
-
         return new QueryExportContent
         {
             ServerName = manifest.ServerName,
@@ -160,61 +127,6 @@ public sealed class QueryExportReader
             Extras = extras,
             ExportedAt = manifest.ExportedAt
         };
-    }
-
-    private static CallStackTree? ReadTree(ZipArchive zip,
-                                           ExportCallTree exported,
-                                           ExportReferences references,
-                                           List<(CallStackNode Node, int[] Events)> nodeEvents)
-    {
-        var tree = exported.IsDetached ? null : new CallStackTree { ActivityFromTrace = exported.ActivityFromTrace };
-
-        tree?.RestoreActivity(exported.ActivityMinUs, exported.ActivityMaxUs, exported.ActivityBuckets);
-
-        foreach (var line in ReadLines<ExportedNode>(zip, exported.File, ExportPackage.Plain))
-        {
-            var isRoot = tree is not null && line.Id == exported.RootId;
-
-            var node = isRoot
-                ? tree!.Root
-                : new CallStackNode
-                {
-                    Frame = line.Frame is { } frame ? references.Frames[frame] : null,
-                    Key = line.Key,
-                    Order = line.Order
-                };
-
-            if (line.Parent is { } parentId && !isRoot)
-            {
-                var parent = references.Nodes[parentId];
-
-                node.Parent = parent;
-
-                if (!line.Detached)
-                {
-                    parent.Children[node.Key] = node;
-                }
-            }
-
-            node.Rvas.UnionWith(line.Rvas ?? []);
-
-            node.Calls = line.Calls;
-
-            node.AllocatedBytes = line.AllocatedBytes;
-
-            node.Allocations = line.Allocations;
-
-            node.Locators = LocatorsOf(line.Locators);
-
-            references.Nodes.Register(line.Id, node);
-
-            if (line.Events is { Length: > 0 } events)
-            {
-                nodeEvents.Add((node, events));
-            }
-        }
-
-        return tree;
     }
 
     private static List<ExecutionPlan> ReadPlans(ZipArchive zip, IReadOnlyList<ExportPlan> exported)
@@ -249,71 +161,6 @@ public sealed class QueryExportReader
         }
 
         return plans;
-    }
-
-    private static CallstackFrame FrameOf(ExportedFrame exported, CallstackFunctionLookup functions)
-    {
-        var frame = new CallstackFrame
-        {
-            Module = CallstackModule.Get(exported.Module, exported.Pdb, exported.Guid, exported.Age),
-            Address = exported.Address,
-            Rva = exported.Rva,
-            InstanceAddress = exported.Instance
-        };
-
-        if (exported.Symbol is { } symbol)
-        {
-            functions.Resolve(frame, symbol);
-
-            frame.Function!.Signature ??= exported.Signature;
-        }
-
-        return frame;
-    }
-
-    private static LocatorSet? LocatorsOf(ExportedLocators? exported)
-    {
-        if (exported is null)
-        {
-            return null;
-        }
-
-        var locators = new LocatorSet();
-
-        foreach (var page in exported.Pages ?? [])
-        {
-            locators.Add(new Locator(0, LocatorValueType.Page, LocatorValue(page, 2)));
-        }
-
-        foreach (var row in exported.Rows ?? [])
-        {
-            locators.Add(new Locator(0, LocatorValueType.Row, LocatorValue(row, 3)));
-        }
-
-        foreach (var columnStoreObject in exported.Objects ?? [])
-        {
-            locators.Add(new Locator(0, LocatorValueType.ColumnStoreObject, columnStoreObject[0], columnStoreObject[1]));
-        }
-
-        return locators;
-    }
-
-    private static ulong LocatorValue(string text, int parts)
-    {
-        var values = text.Split(':');
-
-        if (values.Length != parts)
-        {
-            throw new InvalidDataException($"'{text}' is not a page or row id");
-        }
-
-        var fileId = (ushort)short.Parse(values[0], CultureInfo.InvariantCulture);
-
-        var pageId = uint.Parse(values[1], CultureInfo.InvariantCulture);
-
-        var slot = parts == 3 ? ulong.Parse(values[2], CultureInfo.InvariantCulture) : 0;
-
-        return (slot << 48) | ((ulong)fileId << 32) | pageId;
     }
 
     private static QueryResultSet ResultSetOf(ExportResultSet resultSet) => new()

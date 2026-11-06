@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 
 namespace InternalsViewer.UI.App.Controls.Query.Trace.Timeline;
@@ -95,5 +95,5 @@ public sealed partial class TraceTimelineControl
         return true;
     }
 
-    private readonly record struct TimelineLocation(double? Playhead, TraceTimelineAxis Axis, CallStackNode? Node, int CallIndex);
+    private readonly record struct TimelineLocation(double? Playhead, TraceTimelineAxis Axis, CallTreeNode? Node, int CallIndex);
 }

@@ -1,5 +1,5 @@
 using System.Runtime.InteropServices;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
@@ -87,11 +87,11 @@ internal static class TraceSeekReader
         return TraceTickSeries.FromSources(timeline, sources, lifetimes, enclosing);
     }
 
-    private static bool IsSeek(CallstackFrame frame)
+    private static bool IsSeek(CallFrame frame)
         => frame is { Function: { ClassName: PageManagerClass, MethodName: GetPageWithKeyMethod } }
            && frame.Module.Name.Equals(Module, StringComparison.OrdinalIgnoreCase);
 
-    private static bool IsFetch(CallstackFrame frame)
+    private static bool IsFetch(CallFrame frame)
         => BufferPoolFunctionLookup.IsBufferPool(frame) && frame.Function?.MethodName == BufferPoolFunctionLookup.GetMethod;
 
     private static List<Seek> GetThreadSeeks(Dictionary<uint, List<Seek>> seeks, uint thread)

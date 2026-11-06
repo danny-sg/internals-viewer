@@ -1,4 +1,4 @@
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Helpers;
 using ModelContextProtocol;
 
@@ -14,7 +14,7 @@ public sealed record FunctionMatch(
     long Calls,
     string? Operator,
     IReadOnlyList<string> Callers,
-    IReadOnlyList<CallStackNode> Members);
+    IReadOnlyList<CallTreeNode> Members);
 
 /// <summary>
 /// Ranks the distinct functions of a call graph against free text
@@ -39,7 +39,7 @@ public static class FunctionSearch
 
     private const int MaximumListed = 8;
 
-    public static IReadOnlyList<FunctionMatch> Resolve(IEnumerable<CallStackNode> nodes, string text, bool mergeBest)
+    public static IReadOnlyList<FunctionMatch> Resolve(IEnumerable<CallTreeNode> nodes, string text, bool mergeBest)
     {
         var matches = Search(nodes, text, ResolveCandidates);
 
@@ -60,7 +60,7 @@ public static class FunctionSearch
             "Use a more specific name or module!name, look with trace_find_functions, or set allMatches to take them all.");
     }
 
-    public static IReadOnlyList<FunctionMatch> Search(IEnumerable<CallStackNode> nodes, string text, int limit)
+    public static IReadOnlyList<FunctionMatch> Search(IEnumerable<CallTreeNode> nodes, string text, int limit)
     {
         var words = text.Split([' ', '\t', ',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
@@ -69,16 +69,16 @@ public static class FunctionSearch
             return [];
         }
 
-        var groups = new Dictionary<string, List<CallStackNode>>(StringComparer.OrdinalIgnoreCase);
+        var groups = new Dictionary<string, List<CallTreeNode>>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var node in nodes)
         {
-            if (node.Frame is null || node.Symbol.Length == 0)
+            if (node.Frame is not { } frame)
             {
                 continue;
             }
 
-            var name = $"{node.Frame.Module}!{node.Symbol}";
+            var name = frame.QualifiedName;
 
             if (!groups.TryGetValue(name, out var list))
             {

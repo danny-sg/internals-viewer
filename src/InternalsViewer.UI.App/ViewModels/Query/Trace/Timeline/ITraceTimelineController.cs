@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using InternalsViewer.Mcp.Models.Context.Queries;
-using InternalsViewer.Query.CallStack;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
@@ -20,7 +20,7 @@ public interface ITraceTimelineController
 
     void StepSearch(bool forward, int count);
 
-    void SelectCall(CallStackNode node, int callIndex, bool zoom);
+    void SelectCall(CallTreeNode node, int callIndex, bool zoom);
 
     void Zoom(bool toSelection);
 

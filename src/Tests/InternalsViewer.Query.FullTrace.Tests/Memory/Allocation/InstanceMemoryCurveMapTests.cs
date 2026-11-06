@@ -1,11 +1,11 @@
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
-using InternalsViewer.Query.CallStack;
-using InternalsViewer.Query.CallStack.Categories;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Timeline;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
+using InternalsViewer.Query.FullTrace.Symbols.Categories;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Memory.Allocation;
 
@@ -64,7 +64,7 @@ public class InstanceMemoryCurveMapTests
 
     private static (InstanceMemoryCurveMap Curves, Nodes Nodes) Build()
     {
-        var tree = new CallStackTree();
+        var tree = new CallTree();
 
         var query = tree.AddCall(tree.Root, Frame("CQueryScan", "GetRow", 0x10, QueryScan), 1);
         var hash = tree.AddCall(query, Frame("CQScanHash", "GetRow", 0x20, HashMatch), 2);
@@ -87,13 +87,13 @@ public class InstanceMemoryCurveMapTests
         return (InstanceMemoryCurveMap.Build(timeline, memory), new Nodes(query, hash, allocator, plan));
     }
 
-    private static CallstackFrame Frame(string className, string method, uint rva, ulong instance = 0) => new()
+    private static CallFrame Frame(string className, string method, uint rva, ulong instance = 0) => new()
     {
         Module = new("sqlmin"),
         Rva = rva,
         Address = rva,
         InstanceAddress = instance,
-        Function = new CallstackFunction
+        Function = new FrameFunction
         {
             ClassName = className,
             MethodName = method,
@@ -104,5 +104,5 @@ public class InstanceMemoryCurveMapTests
     private static CallSpan Span(int callNodeIndex, ulong start, ulong end, uint callIndex)
         => new(start, 0, end, 0, start, end, callNodeIndex, Thread, callIndex, 1);
 
-    private sealed record Nodes(CallStackNode Query, CallStackNode Hash, CallStackNode Allocator, CallStackNode Plan);
+    private sealed record Nodes(CallTreeNode Query, CallTreeNode Hash, CallTreeNode Allocator, CallTreeNode Plan);
 }

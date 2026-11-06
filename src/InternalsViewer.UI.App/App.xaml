@@ -8,7 +8,7 @@
     xmlns:ui="using:Windows.UI" xmlns:models="using:InternalsViewer.UI.App.Models"
     xmlns:page="using:InternalsViewer.UI.App.Helpers.Converters.Page"
     xmlns:plan="using:InternalsViewer.UI.App.Helpers.Converters.Plan"
-    xmlns:callStack="using:InternalsViewer.UI.App.Helpers.Converters.CallStack">
+    xmlns:calls="using:InternalsViewer.UI.App.Helpers.Converters.Calls">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -30,7 +30,7 @@
             <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
             <converters:NullToVisibilityConverter x:Key="InverseNullToVisibilityConverter" IsInverse="True"/>
             <plan:MarkStyleConverter x:Key="MarkStyleConverter"/>
-            <callStack:OperatorCategoryToBrushConverter x:Key="OperatorCategoryToBrushConverter"/>
+            <calls:OperatorCategoryToBrushConverter x:Key="OperatorCategoryToBrushConverter"/>
             <converters:BoolToCornerRadiusConverter x:Key="CategoryBadgeCornerConverter"
                                                     TrueRadius="3,0,0,3"
                                                     FalseRadius="3"/>
