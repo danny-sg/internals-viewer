@@ -61,7 +61,6 @@ public class AllocationIndexTests
         var call = index.InUseWithin(7, At(0), At(40));
 
         Assert.Equal((0ul, 50ul), (call.PeakDuring(At(10), At(15)), call.PeakDuring(At(25), At(40))));
-        Assert.Equal(50ul, index.RetainedBy(7, At(0), At(40)));
     }
 
     [Fact]
@@ -72,16 +71,6 @@ public class AllocationIndexTests
         Assert.Equal(100ul, index.FreedDuring(9, At(0), At(40)));
         Assert.Equal(0ul, index.FreedDuring(7, At(0), At(40)));
         Assert.Equal(0ul, index.PeakInUseDuring(At(35), At(35)));
-    }
-
-    [Fact]
-    public void A_Call_Retains_What_It_Allocated_And_Did_Not_Free_By_Its_End()
-    {
-        var index = AllocationIndex.Build([new(7, At(10), At(11), 100, 0xA), new(7, At(20), At(21), 50, 0xB)], [new(7, At(30), At(31), 0xA)]);
-
-        Assert.Equal(150ul, index.RetainedBy(7, At(0), At(25)));
-        Assert.Equal(50ul, index.RetainedBy(7, At(0), At(40)));
-        Assert.Equal(100ul, index.FreedDuring(7, At(0), At(40)));
     }
 
     [Fact]

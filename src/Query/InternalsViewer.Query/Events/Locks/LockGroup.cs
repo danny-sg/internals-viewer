@@ -12,8 +12,6 @@ public sealed partial record LockGroup : EngineEvent, IEventGroup
 {
     public required IReadOnlyList<EngineEvent> Events { get; init; }
 
-    public int LockCount => Events.Count;
-
     public override string Description
     {
         get

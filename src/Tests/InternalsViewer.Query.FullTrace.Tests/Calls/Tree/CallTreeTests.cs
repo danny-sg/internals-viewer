@@ -55,7 +55,7 @@ public class CallTreeTests(ITestOutputHelper output)
               Y::m (1 calls)
 
             """.ReplaceLineEndings("\n"),
-            projected.Render().ReplaceLineEndings("\n"));
+            Render(projected).ReplaceLineEndings("\n"));
     }
 
     [Fact]
@@ -85,7 +85,7 @@ public class CallTreeTests(ITestOutputHelper output)
               Z::m (1 calls)
 
             """.ReplaceLineEndings("\n"),
-            projected.Render().ReplaceLineEndings("\n"));
+            Render(projected).ReplaceLineEndings("\n"));
     }
 
     [Fact]
@@ -113,7 +113,7 @@ public class CallTreeTests(ITestOutputHelper output)
             Statement::m
 
             """.ReplaceLineEndings("\n"),
-            projected.Render().ReplaceLineEndings("\n"));
+            Render(projected).ReplaceLineEndings("\n"));
     }
 
     [Fact]
@@ -137,7 +137,7 @@ public class CallTreeTests(ITestOutputHelper output)
               BufRead::m (1 calls)
 
             """.ReplaceLineEndings("\n"),
-            projected.Render().ReplaceLineEndings("\n"));
+            Render(projected).ReplaceLineEndings("\n"));
     }
 
     [Fact]
@@ -159,7 +159,7 @@ public class CallTreeTests(ITestOutputHelper output)
 
         collapsed.RemoveCallsUnder(node => node.IsInstrumentation);
 
-        output.WriteLine(collapsed.Render());
+        output.WriteLine(Render(collapsed));
 
         Assert.DoesNotContain(collapsed.Nodes(), node => node.Symbol is "Publish::m" or "memcpy::m");
         Assert.Equal(3, collapsed.Nodes().Single(node => node.Symbol == "ReadPage::m").Calls);
@@ -236,6 +236,9 @@ public class CallTreeTests(ITestOutputHelper output)
         Assert.Equal([0, 3], y.ActivityCounts);
         Assert.Equal(1, builds);
     }
+
+    private static string Render(CallTree tree)
+        => string.Concat(tree.Root.Children.Values.OrderBy(c => c.Order).Select(CallTree.Render));
 
     private static void Path(CallTree tree, params CallFrame[] frames)
     {

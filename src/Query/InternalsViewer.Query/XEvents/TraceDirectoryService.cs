@@ -101,37 +101,6 @@ public sealed class TraceDirectoryService(ILogger<TraceDirectoryService> logger)
         }
     }
 
-    /// <summary>
-    /// Whether every local SQL Server service already has 'Modify' access to the directory
-    /// </summary>
-    public bool HasPermissions(string directory)
-    {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory))
-            {
-                return false;
-            }
-
-            var services = FindSqlServices();
-
-            if (services.Count == 0)
-            {
-                return false;
-            }
-
-            var security = new DirectoryInfo(directory).GetAccessControl();
-
-            return services.All(s => HasModify(security, AccountOf(s)));
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to check trace directory permissions on {Directory}", directory);
-
-            return false;
-        }
-    }
-
     private static bool HasModify(DirectorySecurity security, string account) =>
         security.GetAccessRules(true, true, typeof(NTAccount))
                 .Cast<FileSystemAccessRule>()

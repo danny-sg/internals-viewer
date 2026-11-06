@@ -266,14 +266,6 @@ internal static class EventPlanNodeMatcher
                op.Contains("Lookup");
     }
 
-    private static bool IsLogOperator(string op)
-    {
-        return op.Contains("Insert") ||
-               op.Contains("Update") ||
-               op.Contains("Delete") ||
-               (op.Contains("Merge") && !op.Contains("Merge Join"));
-    }
-
     private static PlanNode? FindReadTarget(PlanNode node)
     {
         if (IsReadOperator(node.PhysicalOperator))

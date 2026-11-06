@@ -101,15 +101,6 @@ public sealed class TraceCallList : IReadOnlyList<TraceArgumentCall>
         return Columns.Read(chunk, callIndex, static (columns, offset) => columns.GetThread(offset));
     }
 
-    public ulong? GetReturnValue(int index)
-    {
-        var (chunk, callIndex) = GetLocation(index);
-
-        return Columns.Read(chunk,
-                            callIndex,
-                            static (columns, offset) => columns.IsReturned(offset) ? columns.GetReturnValue(offset) : (ulong?)null);
-    }
-
     internal int GetCallNodeIndex(int index)
     {
         var (chunk, callIndex) = GetLocation(index);

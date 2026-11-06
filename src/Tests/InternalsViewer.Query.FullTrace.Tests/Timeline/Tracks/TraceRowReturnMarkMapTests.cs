@@ -35,6 +35,9 @@ public class TraceRowReturnMarkMapTests
 
     private const ulong EndStatus = 0x40EC6;
 
+    private static int GetCount(TraceRowReturnMarkMap marks, ExecutionOperatorEvent operatorEvent, uint thread, RowReturnType type)
+        => marks.Ticks.GetTicks(operatorEvent, thread)?.All.Count(t => t.Value == (byte)type) ?? 0;
+
     private static readonly ExecutionOperatorEvent Join = new()
     {
         Name = "Merge Join",
@@ -71,9 +74,9 @@ public class TraceRowReturnMarkMapTests
         var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)], [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)]);
 
         Assert.Equal((1, 1, 1),
-                     (marks.GetCount(Scan, Thread, RowReturnType.Returned),
-                      marks.GetCount(Scan, Thread, RowReturnType.Skipped),
-                      marks.GetCount(Scan, Thread, RowReturnType.End)));
+                     (GetCount(marks, Scan, Thread, RowReturnType.Returned),
+                      GetCount(marks, Scan, Thread, RowReturnType.Skipped),
+                      GetCount(marks, Scan, Thread, RowReturnType.End)));
     }
 
     [Fact]
@@ -82,9 +85,9 @@ public class TraceRowReturnMarkMapTests
         var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)], [(12, 15, RowStatus), (55, 60, EndStatus)]);
 
         Assert.Equal((1, 0, 1),
-                     (marks.GetCount(Join, Thread, RowReturnType.Returned),
-                      marks.GetCount(Join, Thread, RowReturnType.Skipped),
-                      marks.GetCount(Join, Thread, RowReturnType.End)));
+                     (GetCount(marks, Join, Thread, RowReturnType.Returned),
+                      GetCount(marks, Join, Thread, RowReturnType.Skipped),
+                      GetCount(marks, Join, Thread, RowReturnType.End)));
     }
 
     [Fact]
@@ -94,7 +97,7 @@ public class TraceRowReturnMarkMapTests
                           [(12, 15, RowStatus), (20, 25, RowStatus), (30, 35, EndStatus)]);
 
         Assert.Equal((0, 2),
-                     (marks.GetCount(Scan, Thread, RowReturnType.Returned), marks.GetCount(Scan, Thread, RowReturnType.Skipped)));
+                     (GetCount(marks, Scan, Thread, RowReturnType.Returned), GetCount(marks, Scan, Thread, RowReturnType.Skipped)));
     }
 
     [Fact]
@@ -105,8 +108,8 @@ public class TraceRowReturnMarkMapTests
                           bottom: BlockingInput);
 
         Assert.Equal((2, 0),
-                     (marks.GetCount(BlockingInput, Thread, RowReturnType.Returned),
-                      marks.GetCount(BlockingInput, Thread, RowReturnType.Skipped)));
+                     (GetCount(marks, BlockingInput, Thread, RowReturnType.Returned),
+                      GetCount(marks, BlockingInput, Thread, RowReturnType.Skipped)));
     }
 
     [Fact]
@@ -119,8 +122,8 @@ public class TraceRowReturnMarkMapTests
                           bottom: BlockingInput);
 
         Assert.Equal((2, 0),
-                     (marks.GetCount(BlockingInput, Thread, RowReturnType.Returned),
-                      marks.GetCount(BlockingInput, Thread, RowReturnType.Skipped)));
+                     (GetCount(marks, BlockingInput, Thread, RowReturnType.Returned),
+                      GetCount(marks, BlockingInput, Thread, RowReturnType.Skipped)));
     }
 
     [Fact]
@@ -138,9 +141,9 @@ public class TraceRowReturnMarkMapTests
                           top: filter);
 
         Assert.Equal((1, 1, 0),
-                     (marks.GetCount(Scan, Thread, RowReturnType.Returned),
-                      marks.GetCount(Scan, Thread, RowReturnType.Rejected),
-                      marks.GetCount(Scan, Thread, RowReturnType.Skipped)));
+                     (GetCount(marks, Scan, Thread, RowReturnType.Returned),
+                      GetCount(marks, Scan, Thread, RowReturnType.Rejected),
+                      GetCount(marks, Scan, Thread, RowReturnType.Skipped)));
     }
 
     [Fact]
@@ -150,7 +153,7 @@ public class TraceRowReturnMarkMapTests
                           [(12, 15, RowStatus), (55, 60, EndStatus)],
                           childMethod: "BpGetNextBatch");
 
-        Assert.Equal((true, false, 1), (marks.IsBatch(Scan), marks.IsBatch(Join), marks.GetCount(Scan, Thread, RowReturnType.Returned)));
+        Assert.Equal((true, false, 1), (marks.IsBatch(Scan), marks.IsBatch(Join), GetCount(marks, Scan, Thread, RowReturnType.Returned)));
     }
 
     [Fact]
@@ -174,7 +177,7 @@ public class TraceRowReturnMarkMapTests
                           joinOpens: [(10, 40)]);
 
         Assert.Equal((0, 2),
-                     (marks.GetCount(Scan, Thread, RowReturnType.Returned), marks.GetCount(Scan, Thread, RowReturnType.Skipped)));
+                     (GetCount(marks, Scan, Thread, RowReturnType.Returned), GetCount(marks, Scan, Thread, RowReturnType.Skipped)));
         Assert.All(marks.Ticks.GetTicks(Scan, Thread)!.All, t => Assert.Same(Join, t.Caller));
     }
 

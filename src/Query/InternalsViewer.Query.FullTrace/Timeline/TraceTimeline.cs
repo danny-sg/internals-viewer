@@ -492,29 +492,6 @@ public sealed partial class TraceTimeline
 
     internal int GetSpanId(int lane, int depth, int index) => GetSpanIds().GetId(lane, depth, index);
 
-    internal int GetInnermostSpanId(uint thread, TracePosition position)
-    {
-        for (var lane = 0; lane < Threads.Count; lane++)
-        {
-            if (Threads[lane].ThreadId != thread)
-            {
-                continue;
-            }
-
-            var rows = Threads[lane].Rows;
-
-            for (var depth = rows.Count - 1; depth >= 0; depth--)
-            {
-                if (rows[depth].GetIndex(position) is >= 0 and var index)
-                {
-                    return GetSpanId(lane, depth, index);
-                }
-            }
-        }
-
-        return -1;
-    }
-
     internal int FindSpanId(int callNodeIndex, int callIndex, TracePosition position)
     {
         if (callNodeIndex < 0)

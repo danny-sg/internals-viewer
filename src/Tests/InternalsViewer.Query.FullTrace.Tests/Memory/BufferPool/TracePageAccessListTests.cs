@@ -266,7 +266,9 @@ public class TracePageAccessListTests
 
         var stack = new StackSnapshotResult([new StackObject(StackAddress, 8, 9, 6, At(5), At(50))], [new(runs, data)], 2);
 
-        return MemoryHistoryBuilder.Build([], [], new Dictionary<ulong, TracePosition>(), WatchResult.Empty, null, stack).Store;
+        var recording = new MemoryHistoryBuilder.Recording([], [], new Dictionary<ulong, TracePosition>(), null, stack);
+
+        return recording.Build(WatchResult.Empty).Store;
     }
 
     private static List<TracePageAccess> Read(TracePageAccessList list) => [.. Enumerable.Range(0, list.Count).Select(i => list[i])];

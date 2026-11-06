@@ -48,15 +48,6 @@ public sealed record FunctionSignature(IReadOnlyList<string> Parameters,
 
     private const string StaticAccessCodes = "CDKLST";
 
-    public static FunctionSignature? Parse(ReadOnlySpan<char> signature, ReadOnlySpan<char> decoratedName)
-    {
-        var parameters = new List<string>();
-
-        return TryParse(signature, decoratedName, null, parameters, out var type, out var returnType, out var hasReturnBuffer)
-            ? new FunctionSignature(parameters, type, returnType, hasReturnBuffer)
-            : null;
-    }
-
     public static FunctionType? GetFunctionType(ReadOnlySpan<char> decoratedName) => FindFunctionCode(decoratedName)?.Type;
 
     public static int HashParameters(ReadOnlySpan<char> signature)

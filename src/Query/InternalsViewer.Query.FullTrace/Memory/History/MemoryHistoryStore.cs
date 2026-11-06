@@ -1,7 +1,6 @@
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using System.Buffers.Binary;
 using System.Collections;
-using System.Runtime.CompilerServices;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
@@ -45,15 +44,9 @@ public sealed partial class MemoryHistoryStore
 
     public int ReadCount => Reads.Count;
 
-    public bool HasReads => ReadStarts.Length > 0;
-
-    internal long Bytes => WriteBytes + ReadBytes + InstanceBytes;
-
     internal long WriteBytes => Writes.Bytes;
 
     internal long ReadBytes => Reads.Bytes + ReadStarts.Length * (long)sizeof(int);
-
-    internal long InstanceBytes => Instances.Length * (long)Unsafe.SizeOf<MemoryHistoryInstance>();
 
     private MemoryHistoryBlock[] BlockArray { get; }
 
@@ -140,13 +133,6 @@ public sealed partial class MemoryHistoryStore
         known.Slice(write.Offset, write.Length).Fill(true);
     }
 
-    public ulong GetInstructions(int index)
-    {
-        var write = Writes[index];
-
-        return GetInstructions(write.SpanId, write.Position);
-    }
-
     public TracePoint GetPoint(int index)
     {
         var write = Writes[index];
@@ -226,23 +212,6 @@ public sealed partial class MemoryHistoryStore
         return index >= 0 && position < instances[index].ToPosition ? index : -1;
     }
 
-    public bool[] GetChangingBytes(int block)
-    {
-        var changing = new bool[BlockArray[block].Size];
-
-        using var writes = GetBlockWrites(block);
-
-        foreach (var write in writes)
-        {
-            if (write.Type == MemoryHistoryAccessType.Changed)
-            {
-                changing.AsSpan(write.Offset, write.Length).Fill(true);
-            }
-        }
-
-        return changing;
-    }
-
     public bool TryGetWrittenValue(MemoryHistoryWrite write, int offset, out uint value)
     {
         var start = offset - write.Offset;
@@ -257,61 +226,6 @@ public sealed partial class MemoryHistoryStore
         value = BinaryPrimitives.ReadUInt32LittleEndian(GetBytes(write)[start..]);
 
         return true;
-    }
-
-    public IReadOnlyList<MemoryHistoryCall> GetCalls(int block, TraceTimeline timeline, TracePosition from, TracePosition to)
-    {
-        if (block < 0 || block >= BlockArray.Length)
-        {
-            return [];
-        }
-
-        var calls = new Dictionary<int, CallBuilder>();
-
-        var ordered = new List<CallBuilder>();
-
-        using var writes = GetBlockWrites(block);
-
-        var image = new byte[BlockArray[block].Size];
-
-        var firstListed = -1;
-
-        for (var index = 0; index < writes.Length; index++)
-        {
-            var write = writes[index];
-
-            var bytes = writes.GetBytes(index);
-
-            if (IsChange(write, from, to))
-            {
-                if (firstListed < 0)
-                {
-                    firstListed = index;
-                }
-
-                if (!calls.TryGetValue(write.SpanId, out var call))
-                {
-                    var first = GetWrite(BlockArray[block].FirstWrite + index, write);
-
-                    call = new CallBuilder(timeline.NodeOf(first.CallNodeIndex), first, GetIterator(first));
-
-                    calls[write.SpanId] = call;
-
-                    ordered.Add(call);
-                }
-
-                call.Add(index, write, bytes, image);
-            }
-
-            bytes.CopyTo(image.AsSpan(write.Offset));
-        }
-
-        if (firstListed < 0)
-        {
-            return [];
-        }
-
-        return [GetAllocationCall(block, timeline, firstListed), .. ordered.Select(c => c.Build()).OrderBy(c => c.Position)];
     }
 
     public MemoryHistoryWrite GetWrite(int index) => GetWrite(index, Writes[index]);
@@ -349,63 +263,6 @@ public sealed partial class MemoryHistoryStore
     public CallTreeNode? GetAllocatingCall(int block, TraceTimeline timeline)
         => timeline.NodeOf(BlockArray[block].CallNodeIndex)?.Ancestors().FirstOrDefault(n => !AllocationFunction.IsAllocatorFrame(n.Frame));
 
-    private MemoryHistoryCall GetAllocationCall(int block, TraceTimeline timeline, int firstListed)
-    {
-        var allocation = BlockArray[block];
-
-        using var writes = GetBlockWrites(block);
-
-        var first = GetWrite(allocation.FirstWrite);
-
-        var node = allocation.IsInline ? timeline.NodeOf(first.CallNodeIndex) : GetAllocatingCall(block, timeline);
-
-        var regions = new List<MemoryHistoryRegion>();
-
-        for (var index = 0; index < firstListed; index++)
-        {
-            regions.Add(new MemoryHistoryRegion(writes[index].Offset, writes[index].Length));
-        }
-
-        var initialised = MemoryHistoryRegion.Merge(regions);
-
-        var (callIndex, position) = allocation.IsInline
-            ? (first.CallIndex, first.Position)
-            : (node is null ? -1 : GetCallIndex(timeline, node, allocation.Thread, allocation.FromPosition), allocation.FromPosition);
-
-        return new MemoryHistoryCall(node,
-                                     allocation.Iterator,
-                                     callIndex,
-                                     position,
-                                     firstListed - 1,
-                                     firstListed,
-                                     initialised,
-                                     initialised)
-        {
-            IsAllocation = true
-        };
-    }
-
-    private static int GetCallIndex(TraceTimeline timeline, CallTreeNode node, uint thread, TracePosition position)
-    {
-        foreach (var stack in timeline.GetStack(position))
-        {
-            if (stack.ThreadId != thread)
-            {
-                continue;
-            }
-
-            foreach (var call in stack.Calls)
-            {
-                if (ReferenceEquals(timeline.NodeOf(call.CallNodeIndex), node))
-                {
-                    return call.CallIndex;
-                }
-            }
-        }
-
-        return -1;
-    }
-
     private WriteRange GetBlockWrites(int block) => new(Writes, BlockArray[block].FirstWrite, BlockArray[block].WriteCount);
 
     private MemoryHistoryWrite GetWrite(int index, MemoryHistoryAccessEntry write)
@@ -421,9 +278,6 @@ public sealed partial class MemoryHistoryStore
 
     private bool IsLiveAt(int block, ulong address, TracePosition position)
         => address < BlockArray[block].Address + (ulong)BlockArray[block].Size && IsLive(block, position);
-
-    private static bool IsChange(MemoryHistoryAccessEntry write, TracePosition from, TracePosition to)
-        => from <= write.Position && write.Position <= to && write.Type == MemoryHistoryAccessType.Changed;
 
     private int GetBlock(AddressOrder order, ulong address, TracePosition position)
     {
@@ -474,45 +328,6 @@ public sealed partial class MemoryHistoryStore
 
     private sealed record AddressOrder(int[] Blocks, AddressIndex Addresses);
 
-    private sealed class CallBuilder(CallTreeNode? node, MemoryHistoryWrite first, ulong iterator)
-    {
-        private List<MemoryHistoryRegion> Changed { get; } = [];
-
-        private Dictionary<int, (byte Before, byte After)> Values { get; } = [];
-
-        private int ChangeCount { get; set; }
-
-        private int LastWrite { get; set; }
-
-        public void Add(int writeIndex, MemoryHistoryAccessEntry write, ReadOnlySpan<byte> bytes, byte[] image)
-        {
-            ChangeCount++;
-
-            LastWrite = writeIndex;
-
-            Changed.Add(new MemoryHistoryRegion(write.Offset, write.Length));
-
-            for (var index = 0; index < write.Length; index++)
-            {
-                var offset = write.Offset + index;
-
-                var before = Values.TryGetValue(offset, out var value) ? value.Before : image[offset];
-
-                Values[offset] = (before, bytes[index]);
-            }
-        }
-
-        public MemoryHistoryCall Build()
-            => new(node,
-                   iterator,
-                   first.CallIndex,
-                   first.Position,
-                   LastWrite,
-                   ChangeCount,
-                   MemoryHistoryRegion.Merge(Changed),
-                   MemoryHistoryRegion.Merge(Values.Where(v => v.Value.Before != v.Value.After).Select(v => new MemoryHistoryRegion(v.Key, 1))));
-    }
-
     private readonly struct WriteRange : IDisposable
     {
         public WriteRange(MemoryHistoryAccessTable table, int first, int count)
@@ -541,8 +356,6 @@ public sealed partial class MemoryHistoryStore
         public int GetFirstAfter(TracePosition position, int from = 0)
             => Table.GetLowerBound(First + from, First + Length, position, strict: true) - First;
 
-        public Enumerator GetEnumerator() => new(this);
-
         public void Dispose() => Table.ReturnWindow(Window);
 
         private int Load(int index)
@@ -553,15 +366,6 @@ public sealed partial class MemoryHistoryStore
             }
 
             return First + index - Window.First;
-        }
-
-        public struct Enumerator(WriteRange range)
-        {
-            public readonly MemoryHistoryAccessEntry Current => range[Index];
-
-            private int Index { get; set; } = -1;
-
-            public bool MoveNext() => ++Index < range.Length;
         }
     }
 

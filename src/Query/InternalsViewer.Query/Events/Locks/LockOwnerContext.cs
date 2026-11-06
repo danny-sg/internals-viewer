@@ -5,8 +5,6 @@ public sealed record LockOwnerContext
     public LockOwnerType OwnerType { get; set; }
 
     public long? TransactionId { get; init; }
-    
-    public int? SessionId { get; init; }
 
     public ulong WorkspaceId { get; set; }
 

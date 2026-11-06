@@ -27,8 +27,6 @@ public sealed class MemoryHistoryGraph
         IsTruncated = isTruncated;
     }
 
-    public static MemoryHistoryGraph Empty { get; } = new([], [], [], false);
-
     public List<MemoryHistoryGraphNode> Nodes { get; }
 
     public List<MemoryHistoryGraphEdge> Edges { get; }

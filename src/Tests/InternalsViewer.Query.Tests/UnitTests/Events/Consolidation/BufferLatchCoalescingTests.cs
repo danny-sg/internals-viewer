@@ -97,10 +97,8 @@ public class BufferLatchCoalescingTests
 
         Assert.Same(head, Assert.Single(result));
 
-        var owned = head.SelfAndOwned().ToList();
-
-        Assert.Contains(duplicate, owned);
-        Assert.Contains(release, owned);
+        Assert.Same(duplicate, head.FoldedFrom);
+        Assert.Same(release, duplicate.FoldedFrom);
     }
 
     private static LatchEvent Latch(int page,

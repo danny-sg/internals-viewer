@@ -1,13 +1,12 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Query.Interfaces.Events;
 
 namespace InternalsViewer.Query.Events.Splits;
 
 /// <summary>
 /// Page split event parser
 /// </summary>
-internal class PageSplitEventParser : IEventParser<PageSplitEvent>
+internal class PageSplitEventParser
 {
     public static PageSplitEvent Map(DatabaseSource? databaseSource, EventResult e)
     {

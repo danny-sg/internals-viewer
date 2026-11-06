@@ -44,6 +44,16 @@ public class EvaluationTrackTests
 
     private const byte FalseValue = 0;
 
+    private static TraceTickSeries FromDefinition(TraceTimeline timeline,
+                                                  TraceCallStore calls,
+                                                  TraceOperatorLifetimeList lifetimes,
+                                                  TraceTickDefinition definition)
+        => TraceTickSeries.FromDefinition(timeline,
+                                          calls,
+                                          lifetimes,
+                                          definition,
+                                          EnclosingOperatorCallIndex.Build(calls, lifetimes.OperatorsByInstance));
+
     private static readonly ExecutionOperatorEvent Filter = new()
     {
         Name = "Filter",
@@ -71,7 +81,7 @@ public class EvaluationTrackTests
     [Fact]
     public void An_Evaluation_Spans_Its_Call_And_Keeps_Its_Result()
     {
-        var evaluation = Build().All.Single(e => e.Span.From.Position == At(20));
+        var evaluation = Build().GetAllTicks().Single(e => e.Span.From.Position == At(20));
 
         Assert.Equal((FalseValue, At(22)), (evaluation.Value, evaluation.Span.To.Position));
     }
@@ -79,7 +89,7 @@ public class EvaluationTrackTests
     [Fact]
     public void An_Evaluation_Belongs_To_The_Innermost_Operator_Call_Around_It()
     {
-        Assert.Equal([Scan, Scan, Filter], Build().All.OrderBy(e => e.Span.From.Position).Select(e => e.Operator));
+        Assert.Equal([Scan, Scan, Filter], Build().GetAllTicks().OrderBy(e => e.Span.From.Position).Select(e => e.Operator));
     }
 
     [Fact]
@@ -91,7 +101,7 @@ public class EvaluationTrackTests
     [Fact]
     public void Expression_Service_Functions_Other_Than_The_Evaluations_Are_Not_Read()
     {
-        Assert.DoesNotContain(Build().All, e => e.FunctionAddress == TupleCompare);
+        Assert.DoesNotContain(Build().GetAllTicks(), e => e.FunctionAddress == TupleCompare);
     }
 
     [Fact]
@@ -112,9 +122,9 @@ public class EvaluationTrackTests
 
         var definition = Definition(TraceConditionTarget.CalledBy, "CQScanTableScanNew::GetRow");
 
-        var ticks = TraceTickSeries.FromDefinition(timeline, calls, lifetimes, definition);
+        var ticks = FromDefinition(timeline, calls, lifetimes, definition);
 
-        Assert.Equal((3, true), (ticks.Count, ticks.All.All(t => ReferenceEquals(t.Operator, Scan))));
+        Assert.Equal((3, true), (ticks.Count, ticks.GetAllTicks().All(t => ReferenceEquals(t.Operator, Scan))));
     }
 
     [Fact]
@@ -122,9 +132,9 @@ public class EvaluationTrackTests
     {
         var (timeline, calls, lifetimes) = BuildTrace();
 
-        var ticks = TraceTickSeries.FromDefinition(timeline, calls, lifetimes, Definition(TraceConditionTarget.Operator, "Filter"));
+        var ticks = FromDefinition(timeline, calls, lifetimes, Definition(TraceConditionTarget.Operator, "Filter"));
 
-        Assert.Equal((2, true), (ticks.Count, ticks.All.All(t => ReferenceEquals(t.Operator, Filter))));
+        Assert.Equal((2, true), (ticks.Count, ticks.GetAllTicks().All(t => ReferenceEquals(t.Operator, Filter))));
     }
 
     [Fact]

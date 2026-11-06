@@ -1,10 +1,9 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Query.Interfaces.Events;
 
 namespace InternalsViewer.Query.Events.Latches;
 
-internal class LatchEventParser : IEventParser<LatchEvent>
+internal class LatchEventParser
 {
     public static LatchEvent Map(DatabaseSource? databaseSource, EventResult e)
     {

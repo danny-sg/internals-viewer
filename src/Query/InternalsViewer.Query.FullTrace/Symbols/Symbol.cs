@@ -14,8 +14,6 @@ public readonly struct Symbol
 
     public bool IsFunction => Table.IsFunction(Index);
 
-    public bool IsConstructor => Table.IsConstructor(Index);
-
     public FunctionType? FunctionType => Table.GetFunctionType(Index);
 
     public string Name => Table.GetName(Index);

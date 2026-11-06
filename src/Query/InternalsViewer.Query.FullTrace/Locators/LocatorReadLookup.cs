@@ -8,15 +8,6 @@ public static class LocatorReadLookup
 {
     private const int StackCandidateParameters = 4;
 
-    internal static List<LocatorRead> GetReads(ulong function, FunctionSignature signature)
-    {
-        var reads = new List<LocatorRead>();
-
-        AddReads(reads, function, signature, ArgumentLayout.GetLayout(signature));
-
-        return reads;
-    }
-
     internal static void AddReads(List<LocatorRead> reads, ulong function, FunctionSignature signature, ArgumentLayout layout)
     {
         var slots = layout.Slots;

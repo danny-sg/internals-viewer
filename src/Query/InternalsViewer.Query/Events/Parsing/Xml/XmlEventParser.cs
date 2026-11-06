@@ -31,13 +31,6 @@ internal sealed class XmlEventParser
         _result = new EventResult { Name = string.Empty, Data = _data, Actions = _actions };
     }
 
-    public EventResult? ParseEvent(string xml)
-    {
-        var buffer = xml.ToCharArray();
-
-        return ParseEvent(buffer, buffer.Length);
-    }
-
     /// <summary>
     /// Reads one event field or null if the XML holds no event
     /// </summary>

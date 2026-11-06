@@ -32,7 +32,9 @@ public sealed class ExecutionPlanControl : Canvas
     private const double VerticalGap = 22;
     private const double CanvasMargin = 24;
     private const double ConnectorThickness = 1.25;
-    private const double IteratorLineOffset = 5;
+    private const double IteratorLineOffset = 3;
+    private const double LanePitch = IteratorLineOffset * 2 + 10;
+    private const double IteratorHeadHalfWidth = 4;
 
     private readonly Dictionary<PlanNode, IReadOnlyList<PlanNodeAnnotation>> _annotationsByNode = [];
 
@@ -45,13 +47,18 @@ public sealed class ExecutionPlanControl : Canvas
 
     private double ColumnWidth(int depth) => depth < _columnWidths.Count ? _columnWidths[depth] : BaseNodeWidth;
 
+    private double GapAfter(int depth)
+        => IsFullTrace && depth < ColumnFanOuts.Count
+            ? HorizontalGap + Math.Max(ColumnFanOuts[depth] - 1, 0) * LanePitch
+            : HorizontalGap;
+
     private double ColumnX(int depth)
     {
         var x = CanvasMargin;
 
         for (var d = 0; d < depth; d++)
         {
-            x += ColumnWidth(d) + HorizontalGap;
+            x += ColumnWidth(d) + GapAfter(d);
         }
 
         return x;
@@ -67,7 +74,9 @@ public sealed class ExecutionPlanControl : Canvas
 
     private static readonly Color IteratorColour = Color.FromArgb(255, 0, 176, 80);
 
-    private static readonly TimeSpan ReturnFadeDuration = TimeSpan.FromSeconds(0.6);
+    private static readonly TimeSpan MinimumFade = TimeSpan.FromMilliseconds(100);
+
+    private static readonly TimeSpan MaximumFade = TimeSpan.FromMilliseconds(600);
 
     public static readonly DependencyProperty PlanProperty =
         DependencyProperty.Register(nameof(Plan), typeof(ExecutionPlan), typeof(ExecutionPlanControl),
@@ -117,16 +126,6 @@ public sealed class ExecutionPlanControl : Canvas
     {
         get => (IReadOnlyList<PlanNode>?)GetValue(EmittingNodesProperty);
         set => SetValue(EmittingNodesProperty, value);
-    }
-
-    public static readonly DependencyProperty RequestedNodesProperty =
-        DependencyProperty.Register(nameof(RequestedNodes), typeof(IReadOnlyList<PlanNode>), typeof(ExecutionPlanControl),
-            new PropertyMetadata(null, OnRequestedNodesChanged));
-
-    public IReadOnlyList<PlanNode>? RequestedNodes
-    {
-        get => (IReadOnlyList<PlanNode>?)GetValue(RequestedNodesProperty);
-        set => SetValue(RequestedNodesProperty, value);
     }
 
     public static readonly DependencyProperty IsFullTraceProperty =
@@ -201,103 +200,50 @@ public sealed class ExecutionPlanControl : Canvas
 
     private double RowPitch => BaseNodeHeight + VerticalGap;
 
-    private Dictionary<PlanNode, GetConnector> GetConnectors { get; } = [];
+    private Dictionary<PlanNode, IteratorConnector> IteratorConnectors { get; } = [];
 
-    private Dictionary<PlanNode, Storyboard> ReturnFlashes { get; } = [];
+    private List<int> ColumnFanOuts { get; } = [];
 
-    private SolidColorBrush ConnectorBrush { get; } = new(ConnectorColor);
+    private IReadOnlyList<PlanNode> RequestedActivity { get; set; } = [];
 
-    private SolidColorBrush IteratorBrush { get; } = new(IteratorColour);
+    private long LastActivity { get; set; }
 
-    public void FlashReturned(IReadOnlyList<PlanNode> nodes)
+    public void ShowActivity(IReadOnlyList<PlanNode> requested, IReadOnlyList<PlanNode> returned)
     {
-        foreach (var node in nodes)
-        {
-            if (GetReturnFlash(node) is { } flash)
-            {
-                flash.Stop();
+        var now = Environment.TickCount64;
 
-                flash.Begin();
+        var fade = TimeSpan.FromMilliseconds(Math.Min(now - LastActivity, MaximumFade.TotalMilliseconds));
+
+        LastActivity = now;
+
+        RequestedActivity = requested;
+
+        foreach (var (node, connector) in IteratorConnectors)
+        {
+            if (requested.Contains(node))
+            {
+                connector.Request.Light();
+            }
+            else
+            {
+                connector.Request.Fade(fade);
+            }
+
+            if (!returned.Contains(node))
+            {
+                connector.Response.Fade(fade);
+            }
+            else
+            {
+                connector.Response.Light();
+
+                if (fade >= MinimumFade)
+                {
+                    connector.Response.Fade(fade);
+                }
             }
         }
     }
-
-    private void UpdateRequestedConnectors()
-    {
-        var requested = RequestedNodes;
-
-        foreach (var (node, get) in GetConnectors)
-        {
-            var brush = requested is not null && requested.Contains(node) ? IteratorBrush : ConnectorBrush;
-
-            if (!ReferenceEquals(get.Line.Stroke, brush))
-            {
-                get.Line.Stroke = brush;
-
-                get.Arrow.Fill = brush;
-            }
-        }
-    }
-
-    private Storyboard? GetReturnFlash(PlanNode node)
-    {
-        if (ReturnFlashes.TryGetValue(node, out var flash))
-        {
-            return flash;
-        }
-
-        if (!_connectorByProducer.TryGetValue(node, out var connector) || !_arrowByProducer.TryGetValue(node, out var arrow))
-        {
-            return null;
-        }
-
-        var line = new Polyline
-        {
-            Stroke = IteratorBrush,
-            StrokeThickness = connector.StrokeThickness,
-            StrokeLineJoin = PenLineJoin.Miter,
-            IsHitTestVisible = false,
-            Opacity = 0
-        };
-
-        if (IsFullTrace)
-        {
-            line.StrokeDashArray = CreateResponseDashes();
-        }
-
-        foreach (var point in connector.Points)
-        {
-            line.Points.Add(point);
-        }
-
-        var head = new Polygon
-        {
-            Fill = IteratorBrush,
-            IsHitTestVisible = false,
-            Opacity = 0
-        };
-
-        foreach (var point in arrow.Points)
-        {
-            head.Points.Add(point);
-        }
-
-        Children.Add(line);
-
-        Children.Add(head);
-
-        flash = new Storyboard();
-
-        flash.Children.Add(CreateFade(line));
-
-        flash.Children.Add(CreateFade(head));
-
-        ReturnFlashes[node] = flash;
-
-        return flash;
-    }
-
-    private static DoubleCollection CreateResponseDashes() => [2, 2];
 
     private static DoubleAnimation CreateFade(UIElement target)
     {
@@ -305,7 +251,6 @@ public sealed class ExecutionPlanControl : Canvas
         {
             From = 1,
             To = 0,
-            Duration = new Duration(ReturnFadeDuration),
             EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
         };
 
@@ -318,14 +263,14 @@ public sealed class ExecutionPlanControl : Canvas
 
     private void ClearIteratorConnectors()
     {
-        foreach (var flash in ReturnFlashes.Values)
+        foreach (var connector in IteratorConnectors.Values)
         {
-            flash.Stop();
+            connector.Request.Stop();
+
+            connector.Response.Stop();
         }
 
-        ReturnFlashes.Clear();
-
-        GetConnectors.Clear();
+        IteratorConnectors.Clear();
     }
 
     private void Rebuild()
@@ -364,13 +309,13 @@ public sealed class ExecutionPlanControl : Canvas
 
         foreach (var (node, point) in positions)
         {
-            foreach (var child in node.Children)
+            for (var lane = 0; lane < node.Children.Count; lane++)
             {
-                var (connector, arrow) = DrawConnector(point,
-                                                       positions[child],
-                                                       RelativeCost(child, totalCost),
-                                                       node,
-                                                       child);
+                var child = node.Children[lane];
+
+                var (connector, arrow) = IsFullTrace
+                    ? DrawIteratorConnector(point, positions[child], node, child, lane)
+                    : DrawConnector(point, positions[child], RelativeCost(child, totalCost), node, child);
 
                 _connectorByProducer[child] = connector;
                 _arrowByProducer[child] = arrow;
@@ -400,7 +345,13 @@ public sealed class ExecutionPlanControl : Canvas
 
         UpdateActiveHighlights();
 
-        UpdateRequestedConnectors();
+        foreach (var node in RequestedActivity)
+        {
+            if (IteratorConnectors.TryGetValue(node, out var connector))
+            {
+                connector.Request.Light();
+            }
+        }
 
         UpdateFlows();
     }
@@ -446,7 +397,7 @@ public sealed class ExecutionPlanControl : Canvas
         var control = new PlanNodeControl
         {
             Node = node,
-            CostPercent = costFraction,
+            CostPercent = IsFullTrace ? -1 : costFraction,
             AreAnnotationsVisible = AreAnnotationsVisible,
             Width = WidthOf(node),
             Height = BaseNodeHeight
@@ -466,26 +417,18 @@ public sealed class ExecutionPlanControl : Canvas
 
         var elbowX = (start.X + end.X) / 2;
 
-        var thickness = IsFullTrace ? ConnectorThickness : ConnectorThickness + 4.0 * Math.Clamp(childCostFraction, 0, 1);
+        var thickness = ConnectorThickness + 4.0 * Math.Clamp(childCostFraction, 0, 1);
 
         // Scale the arrowhead with the line so a thick "many rows" connector gets a proportionally larger
         // head that still reads as an arrow; it must stay wider than the shaft so the shaft can't poke out.
         var headHalfWidth = Math.Max(4.5, thickness * 1.4);
         var headLength = headHalfWidth * 2.0;
 
-        var offset = IsFullTrace ? IteratorLineOffset : 0;
-
-        if (IsFullTrace)
-        {
-            GetConnectors[childNode] = DrawGetConnector(start, end, elbowX + offset, end.Y - offset, start.Y - offset, thickness,
-                                                        headLength, headHalfWidth);
-        }
-
         var brush = new SolidColorBrush(ConnectorColor);
 
         // Stop the shaft at the (last) arrowhead's base rather than the node edge, so the squared line end
         // is hidden behind the head and doesn't stick out past the (zero-width) tip.
-        var shaftEnd = new Point(end.X + headLength, end.Y + offset);
+        var shaftEnd = new Point(end.X + headLength, end.Y);
 
         var connector = new Polyline
         {
@@ -494,21 +437,16 @@ public sealed class ExecutionPlanControl : Canvas
             StrokeLineJoin = PenLineJoin.Miter,
             Points =
             {
-                new Point(start.X, start.Y + offset),
-                new Point(elbowX - offset, start.Y + offset),
-                new Point(elbowX - offset, end.Y + offset),
+                start,
+                new Point(elbowX, start.Y),
+                new Point(elbowX, end.Y),
                 shaftEnd
             }
         };
 
-        if (IsFullTrace)
-        {
-            connector.StrokeDashArray = CreateResponseDashes();
-        }
-
         Children.Add(connector);
 
-        var arrow = MakeArrowhead(end.X, end.Y + offset, headLength, headHalfWidth, brush);
+        var arrow = MakeArrowhead(end.X, end.Y, headLength, headHalfWidth, brush);
         Children.Add(arrow);
 
         // Hash join inputs are labelled Build (the blocking side) / Probe (the streaming side) near the
@@ -516,51 +454,126 @@ public sealed class ExecutionPlanControl : Canvas
         if (OperatorClassifier.IsHashJoin(parentNode))
         {
             var label = OperatorClassifier.RoleOf(parentNode, childNode) == InputRole.Blocking ? "Build" : "Probe";
-            AddBranchLabel(label, elbowX + offset, start.Y - offset);
+            AddBranchLabel(label, elbowX, start.Y);
         }
 
         return (connector, arrow);
     }
 
-    private GetConnector DrawGetConnector(Point start,
-                                          Point end,
-                                          double elbowX,
-                                          double parentY,
-                                          double childY,
-                                          double thickness,
-                                          double headLength,
-                                          double headHalfWidth)
+    private (Polyline Connector, Polygon Arrow) DrawIteratorConnector(Point parent,
+                                                                     Point child,
+                                                                     PlanNode parentNode,
+                                                                     PlanNode childNode,
+                                                                     int lane)
     {
-        var line = new Polyline
-        {
-            Stroke = ConnectorBrush,
-            StrokeThickness = thickness,
-            StrokeLineJoin = PenLineJoin.Miter,
-            Points =
-            {
-                new Point(end.X, parentY),
-                new Point(elbowX, parentY),
-                new Point(elbowX, childY),
-                new Point(start.X - headLength, childY)
-            }
-        };
+        const double offset = IteratorLineOffset;
 
-        var arrow = new Polygon
+        const double halfWidth = IteratorHeadHalfWidth;
+
+        const double headLength = IteratorHeadHalfWidth * 2;
+
+        var lanes = parentNode.Children.Count;
+
+        var laneSpacing = lanes > 1 ? Math.Min(LanePitch, (BaseNodeHeight / 2 - offset * 2) / (lanes - 1)) : 0;
+
+        var childX = child.X;
+
+        var childY = child.Y + BaseNodeHeight / 2;
+
+        var parentX = parent.X + WidthOf(parentNode);
+
+        var parentY = parent.Y + BaseNodeHeight / 2 + lane * laneSpacing;
+
+        var elbowX = (childX + parentX) / 2 + ((lanes - 1) / 2.0 - lane) * LanePitch;
+
+        var request = AddIteratorLine([new Point(parentX, parentY - offset),
+                                       new Point(elbowX + offset, parentY - offset),
+                                       new Point(elbowX + offset, childY - offset),
+                                       new Point(childX - headLength, childY - offset)],
+                                      [new Point(childX, childY - offset),
+                                       new Point(childX - headLength, childY - offset - halfWidth),
+                                       new Point(childX - headLength, childY - offset + halfWidth)],
+                                      isDotted: true);
+
+        var response = AddIteratorLine([new Point(childX, childY + offset),
+                                        new Point(elbowX - offset, childY + offset),
+                                        new Point(elbowX - offset, parentY + offset),
+                                        new Point(parentX + headLength, parentY + offset)],
+                                       [new Point(parentX, parentY + offset),
+                                        new Point(parentX + headLength, parentY + offset - halfWidth),
+                                        new Point(parentX + headLength, parentY + offset + halfWidth)],
+                                       isDotted: false);
+
+        IteratorConnectors[childNode] = new IteratorConnector(request.Glow, response.Glow);
+
+        if (OperatorClassifier.IsHashJoin(parentNode))
         {
-            Fill = ConnectorBrush,
-            Points =
-            {
-                new Point(start.X, childY),
-                new Point(start.X - headLength, childY - headHalfWidth),
-                new Point(start.X - headLength, childY + headHalfWidth)
-            }
-        };
+            var label = OperatorClassifier.RoleOf(parentNode, childNode) == InputRole.Blocking ? "Build" : "Probe";
+
+            AddBranchLabel(label, elbowX + offset, childY - offset);
+        }
+
+        return (response.Line, response.Head);
+    }
+
+    private (Polyline Line, Polygon Head, ConnectorGlow Glow) AddIteratorLine(Point[] points, Point[] head, bool isDotted)
+    {
+        var line = CreateIteratorLine(points, ConnectorColor, isDotted);
+
+        var arrow = CreateIteratorHead(head, ConnectorColor);
+
+        var glowLine = CreateIteratorLine(points, IteratorColour, isDotted);
+
+        var glowHead = CreateIteratorHead(head, IteratorColour);
 
         Children.Add(line);
 
         Children.Add(arrow);
 
-        return new GetConnector(line, arrow);
+        Children.Add(glowLine);
+
+        Children.Add(glowHead);
+
+        return (line, arrow, new ConnectorGlow(glowLine, glowHead));
+    }
+
+    private static Polyline CreateIteratorLine(Point[] points, Color colour, bool isDotted)
+    {
+        var line = new Polyline
+        {
+            Stroke = new SolidColorBrush(colour),
+            StrokeThickness = ConnectorThickness,
+            StrokeLineJoin = PenLineJoin.Miter,
+            IsHitTestVisible = false
+        };
+
+        if (isDotted)
+        {
+            line.StrokeDashArray = [2, 2];
+        }
+
+        foreach (var point in points)
+        {
+            line.Points.Add(point);
+        }
+
+        return line;
+    }
+
+    private static Polygon CreateIteratorHead(Point[] points, Color colour)
+    {
+        var head = new Polygon
+        {
+            Fill = new SolidColorBrush(colour),
+            IsHitTestVisible = false
+        };
+
+        foreach (var point in points)
+        {
+            head.Points.Add(point);
+        }
+
+        return head;
     }
 
     private void DrawBitmapConnector(Point creator, Point probe, BitmapProbe bitmapProbe)
@@ -1024,7 +1037,77 @@ public sealed class ExecutionPlanControl : Canvas
 
     private readonly record struct FlowOverlay(Polyline Overlay, Storyboard? Storyboard, bool IsEmitting);
 
-    private sealed record GetConnector(Polyline Line, Polygon Arrow);
+    private sealed record IteratorConnector(ConnectorGlow Request, ConnectorGlow Response);
+
+    private sealed class ConnectorGlow
+    {
+        public ConnectorGlow(Shape line, Shape head)
+        {
+            Line = line;
+
+            Head = head;
+
+            Line.Opacity = 0;
+
+            Head.Opacity = 0;
+
+            Fader.Children.Add(CreateFade(line));
+
+            Fader.Children.Add(CreateFade(head));
+        }
+
+        private Shape Line { get; }
+
+        private Shape Head { get; }
+
+        private Storyboard Fader { get; } = new();
+
+        private bool IsLit { get; set; }
+
+        public void Light()
+        {
+            Fader.Stop();
+
+            SetOpacity(1);
+
+            IsLit = true;
+        }
+
+        public void Fade(TimeSpan duration)
+        {
+            if (!IsLit)
+            {
+                return;
+            }
+
+            IsLit = false;
+
+            Fader.Stop();
+
+            SetOpacity(0);
+
+            if (duration < MinimumFade)
+            {
+                return;
+            }
+
+            foreach (var animation in Fader.Children)
+            {
+                animation.Duration = new Duration(duration);
+            }
+
+            Fader.Begin();
+        }
+
+        public void Stop() => Fader.Stop();
+
+        private void SetOpacity(double opacity)
+        {
+            Line.Opacity = opacity;
+
+            Head.Opacity = opacity;
+        }
+    }
 
     private static void OnSelectedNodeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
@@ -1048,9 +1131,6 @@ public sealed class ExecutionPlanControl : Canvas
     private static void OnEmittingNodesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((ExecutionPlanControl)d).UpdateFlows();
 
-    private static void OnRequestedNodesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((ExecutionPlanControl)d).UpdateRequestedConnectors();
-
     // The icicles (and the node height that makes room for them) depend on the events, so rebuild when they arrive.
     private static void OnEventsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((ExecutionPlanControl)d).Rebuild();
@@ -1073,6 +1153,8 @@ public sealed class ExecutionPlanControl : Canvas
 
         _columnWidths.Clear();
 
+        ColumnFanOuts.Clear();
+
         if (Plan is null)
         {
             return;
@@ -1093,7 +1175,11 @@ public sealed class ExecutionPlanControl : Canvas
         while (_columnWidths.Count <= depth)
         {
             _columnWidths.Add(BaseNodeWidth);
+
+            ColumnFanOuts.Add(0);
         }
+
+        ColumnFanOuts[depth] = Math.Max(ColumnFanOuts[depth], node.Children.Count);
 
         if (annotations.Count > 0)
         {

@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Native;
 
@@ -65,5 +66,27 @@ internal static class TraceCallRowHelper
         }
 
         return columns;
+    }
+
+    public static void Add(this TraceCallStore.Builder builder,
+                           ulong functionAddress,
+                           ulong instanceAddress,
+                           ReadOnlySpan<ulong> columns,
+                           int calls)
+    {
+        var values = new ulong[Math.Max(columns.Length, calls * TraceCallChunk.ValueCount)];
+
+        columns.CopyTo(values);
+
+        var handle = GCHandle.Alloc(values, GCHandleType.Pinned);
+
+        try
+        {
+            builder.Add(functionAddress, instanceAddress, handle.AddrOfPinnedObject(), calls);
+        }
+        finally
+        {
+            handle.Free();
+        }
     }
 }

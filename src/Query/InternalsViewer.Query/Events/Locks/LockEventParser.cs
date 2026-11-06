@@ -2,11 +2,10 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Extensions;
-using InternalsViewer.Query.Interfaces.Events;
 
 namespace InternalsViewer.Query.Events.Locks;
 
-internal class LockEventParser: IEventParser<LockEvent>
+internal class LockEventParser
 {
     /// <summary>
     /// Parses a lock event

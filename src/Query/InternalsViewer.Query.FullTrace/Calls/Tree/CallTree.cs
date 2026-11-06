@@ -322,18 +322,6 @@ public sealed class CallTree
         }
     }
 
-    public string Render()
-    {
-        var builder = new StringBuilder();
-
-        foreach (var child in Root.Children.Values.OrderBy(c => c.Order))
-        {
-            RenderNode(child, 0, builder);
-        }
-
-        return builder.ToString();
-    }
-
     /// <summary>
     /// Renders a single node and its descendants to the same indented text as <see cref="Render()"/>
     /// </summary>

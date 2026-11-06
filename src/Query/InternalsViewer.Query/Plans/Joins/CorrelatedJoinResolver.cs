@@ -57,40 +57,10 @@ public static class CorrelatedJoinResolver
         => OperatorClassifier.IsLookup(inner)
            && inner.PhysicalOperator.Contains("RID", StringComparison.OrdinalIgnoreCase);
 
-    public static CorrelatedJoin? ResolveFromInner(PlanNode root, PlanNode inner)
-    {
-        if (FindParent(root, inner) is not { } parent)
-        {
-            return null;
-        }
-
-        var join = Resolve(parent);
-
-        return join?.Inner == inner ? join : null;
-    }
-
     private static bool OutputsColumn(PlanNode outer, CorrelatedSeekColumn column)
     {
         return outer.OutputColumns.Any(o => string.Equals(Trim(o.Table), column.OuterTable, StringComparison.OrdinalIgnoreCase)
                                             && string.Equals(Trim(o.Column), column.OuterColumn, StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static PlanNode? FindParent(PlanNode node, PlanNode target)
-    {
-        foreach (var child in node.Children)
-        {
-            if (child == target)
-            {
-                return node;
-            }
-
-            if (FindParent(child, target) is { } found)
-            {
-                return found;
-            }
-        }
-
-        return null;
     }
 
     private static string Trim(string name)

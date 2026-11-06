@@ -129,13 +129,6 @@ public sealed partial class TraceCallStore
         }
     }
 
-    internal static TraceCallChunk Decompress(Chunk chunk)
-    {
-        ulong[] buffer = [];
-
-        return Decompress(chunk, ref buffer);
-    }
-
     internal static TraceCallChunk Decompress(Chunk chunk, ref ulong[] buffer)
     {
         var length = chunk.Length;

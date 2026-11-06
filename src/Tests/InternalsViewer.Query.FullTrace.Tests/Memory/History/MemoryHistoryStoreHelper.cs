@@ -45,11 +45,10 @@ internal static class MemoryHistoryStoreHelper
             data.AddRange(bytes);
         }
 
-        return MemoryHistoryBuilder.Build([.. blocks.Select(b => new MemoryHistoryAllocation(b, false, IsArray: isArray))],
-                                          new ulong[blocks.Length],
-                                          new Dictionary<ulong, TracePosition>(),
-                                          new WatchResult([new([.. hits], [.. data])], 1),
-                                          timeline).Store;
+        return new MemoryHistoryBuilder.Recording([.. blocks.Select(b => new MemoryHistoryAllocation(b, false, IsArray: isArray))],
+                                                  new ulong[blocks.Length],
+                                                  new Dictionary<ulong, TracePosition>(),
+                                                  timeline).Build(new WatchResult([new([.. hits], [.. data])], 1)).Store;
     }
 
     public static MemoryHistoryStore BuildWithReads(MemoryBlock[] blocks,

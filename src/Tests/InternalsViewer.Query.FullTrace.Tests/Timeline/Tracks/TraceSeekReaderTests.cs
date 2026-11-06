@@ -50,7 +50,7 @@ public class TraceSeekReaderTests
     [Fact]
     public void A_Seek_Is_One_Tick_Over_The_Whole_Descent()
     {
-        var seek = Assert.Single(Build().All, t => t.Value == (byte)TraceSeekMarkType.Seek);
+        var seek = Assert.Single(Build().GetAllTicks(), t => t.Value == (byte)TraceSeekMarkType.Seek);
 
         Assert.Equal((At(20), At(40)), (seek.Span.From.Position, seek.Span.To.Position));
     }
@@ -58,7 +58,10 @@ public class TraceSeekReaderTests
     [Fact]
     public void Each_Page_Fetched_In_The_Descent_Is_Marked_Where_Its_Fetch_Starts()
     {
-        var descents = Build().All.Where(t => t.Value != (byte)TraceSeekMarkType.Seek).OrderBy(t => t.Span.From.Position).ToList();
+        var descents = Build().GetAllTicks()
+                              .Where(t => t.Value != (byte)TraceSeekMarkType.Seek)
+                              .OrderBy(t => t.Span.From.Position)
+                              .ToList();
 
         Assert.Equal([(TraceSeekMarkType.Root, At(22), At(22)),
                       (TraceSeekMarkType.Intermediate, At(26), At(26)),
@@ -88,7 +91,7 @@ public class TraceSeekReaderTests
 
     [Fact]
     public void A_Seek_And_Its_Descents_Belong_To_The_Operator_Call_Around_Them()
-        => Assert.All(Build().All, t => Assert.Same(Range, t.Operator));
+        => Assert.All(Build().GetAllTicks(), t => Assert.Same(Range, t.Operator));
 
     private static TraceTickSeries Build()
     {

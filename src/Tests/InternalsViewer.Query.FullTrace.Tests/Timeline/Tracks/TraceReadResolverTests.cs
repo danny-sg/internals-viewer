@@ -71,7 +71,7 @@ public class TraceReadResolverTests
     {
         var (reads, calls) = Build();
 
-        var read = Assert.Single(reads.All, r => r.Value == (byte)TraceReadType.Page && r.Operator is not null);
+        var read = Assert.Single(reads.GetAllTicks(), r => r.Value == (byte)TraceReadType.Page && r.Operator is not null);
 
         Assert.Equal(((new PageAddress(1, 1056), 1, false), At(20), At(25)),
                      (GetRead(calls, read), read.Span.From.Position, read.Span.To.Position));
@@ -82,7 +82,7 @@ public class TraceReadResolverTests
     {
         var (reads, calls) = Build();
 
-        var read = Assert.Single(reads.All, r => r.Value == (byte)TraceReadType.ReadAhead);
+        var read = Assert.Single(reads.GetAllTicks(), r => r.Value == (byte)TraceReadType.ReadAhead);
 
         Assert.Equal((new PageAddress(1, 1536), 40, true), GetRead(calls, read));
     }
@@ -92,14 +92,14 @@ public class TraceReadResolverTests
     {
         var reads = Build().Reads;
 
-        Assert.Same(Scan, reads.All.Single(r => r.Value == (byte)TraceReadType.Page && r.Operator is not null).Operator);
+        Assert.Same(Scan, reads.GetAllTicks().Single(r => r.Value == (byte)TraceReadType.Page && r.Operator is not null).Operator);
 
-        Assert.Same(Join, reads.All.Single(r => r.Value == (byte)TraceReadType.ReadAhead).Operator);
+        Assert.Same(Join, reads.GetAllTicks().Single(r => r.Value == (byte)TraceReadType.ReadAhead).Operator);
     }
 
     [Fact]
     public void A_Read_Outside_Every_Operator_Call_Is_Not_Kept()
-        => Assert.DoesNotContain(Build().Reads.All, r => r.Span.From.Position == At(70));
+        => Assert.DoesNotContain(Build().Reads.GetAllTicks(), r => r.Span.From.Position == At(70));
 
     [Fact]
     public void Buffer_Pool_Functions_Other_Than_Get_And_ReadAhead_Are_Not_Reads()

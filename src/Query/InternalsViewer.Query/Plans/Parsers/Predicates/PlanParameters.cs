@@ -15,8 +15,6 @@ internal sealed class PlanParameters
 {
     private Dictionary<string, AccessValue> Values { get; } = new(StringComparer.OrdinalIgnoreCase);
 
-    public static PlanParameters Empty { get; } = new();
-
     /// <summary>
     /// Reads every parameter reachable from a plan element
     /// </summary>

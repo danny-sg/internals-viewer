@@ -1,5 +1,4 @@
 ﻿using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Query.Interfaces.Events;
 using InternalsViewer.TransactionLog;
 
 namespace InternalsViewer.Query.Events.Transactions;
@@ -7,7 +6,7 @@ namespace InternalsViewer.Query.Events.Transactions;
 /// <summary>
 /// Transaction log operation event parser
 /// </summary>
-internal class TransactionLogEventParser : IEventParser<TransactionLogEvent>
+internal class TransactionLogEventParser
 {
     public static TransactionLogEvent Map(DatabaseSource? databaseSource, EventResult e)
     {

@@ -35,12 +35,4 @@ internal static class ShowplanOperators
     {
         return scanType is "LE" or "GE" or "EQ" or "IS";
     }
-
-    /// <summary>
-    /// Whether a ScanType describes the start of a range rather than the end
-    /// </summary>
-    public static bool IsStartBoundary(string? scanType)
-    {
-        return scanType is "GT" or "GE";
-    }
 }

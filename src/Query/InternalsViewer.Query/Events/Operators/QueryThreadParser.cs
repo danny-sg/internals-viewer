@@ -1,9 +1,8 @@
 ﻿using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Query.Interfaces.Events;
 
 namespace InternalsViewer.Query.Events.Operators;
 
-internal class QueryThreadParser : IEventParser<QueryThreadEvent>
+internal class QueryThreadParser
 {
     public static QueryThreadEvent Map(DatabaseSource? databaseSource, EventResult e)
     {

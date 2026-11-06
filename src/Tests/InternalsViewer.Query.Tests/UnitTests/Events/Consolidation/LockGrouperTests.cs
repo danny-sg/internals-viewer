@@ -17,7 +17,7 @@ public class LockGrouperTests
 
         var group = Assert.IsType<LockGroup>(Assert.Single(result));
 
-        Assert.Equal(2, group.LockCount);
+        Assert.Equal(2, group.Events.Count);
         Assert.Contains(a, group.Events);
         Assert.Contains(b, group.Events);
     }

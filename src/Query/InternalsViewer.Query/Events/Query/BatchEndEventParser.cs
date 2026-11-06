@@ -1,9 +1,8 @@
 ﻿using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Query.Interfaces.Events;
 
 namespace InternalsViewer.Query.Events.Query;
 
-internal class BatchEndEventParser : IEventParser<BatchEndEvent>
+internal class BatchEndEventParser
 {
     public static BatchEndEvent Map(DatabaseSource? databaseSource, EventResult e)
     {

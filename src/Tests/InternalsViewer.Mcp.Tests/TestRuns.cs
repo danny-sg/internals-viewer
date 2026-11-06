@@ -54,6 +54,29 @@ internal static class TestRuns
 
     public static TracePosition At(ulong sequence, ulong steps = 0) => new(sequence, steps);
 
+    public static int GetInnermostSpanId(this TraceTimeline timeline, uint thread, TracePosition position)
+    {
+        for (var lane = 0; lane < timeline.Threads.Count; lane++)
+        {
+            if (timeline.Threads[lane].ThreadId != thread)
+            {
+                continue;
+            }
+
+            var rows = timeline.Threads[lane].Rows;
+
+            for (var depth = rows.Count - 1; depth >= 0; depth--)
+            {
+                if (rows[depth].GetIndex(position) is >= 0 and var index)
+                {
+                    return timeline.GetSpanId(lane, depth, index);
+                }
+            }
+        }
+
+        return -1;
+    }
+
     public static QueryExportContent Create(bool withTrace = true)
     {
         var scan = new ExecutionOperatorEvent

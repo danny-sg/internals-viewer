@@ -82,9 +82,6 @@ public static class OperatorClassifier
     public static bool IsDataModification(PlanNode n) =>
         IsInsert(n) || IsUpdate(n) || IsDelete(n) || IsMerge(n);
 
-    public static bool IsLeaf(PlanNode n) =>
-        IsScan(n) || IsSeek(n) || IsLookup(n);
-
     public static bool IsPartialAggregate(PlanNode n) =>
         Contains(n.LogicalOperator, "Partial");
 
@@ -96,18 +93,6 @@ public static class OperatorClassifier
 
     public static bool IsBlocking(PlanNode n) =>
         IsSort(n) || IsHashAggregate(n) || IsEagerSpool(n);
-
-    public static bool IsStreaming(PlanNode n) =>
-        !IsBlocking(n);
-
-    public static bool IsJoin(PlanNode n) =>
-        IsHash(n) || IsNestedLoop(n) || IsMergeJoin(n);
-
-    public static bool IsMemoryOperator(PlanNode n) =>
-        IsHash(n) || IsSort(n);
-
-    public static bool IsLoopDriven(PlanNode n) =>
-        IsNestedLoop(n);
 
     public static bool IsHashJoin(PlanNode n) =>
         IsHash(n) && n.Children.Count >= 2;
@@ -155,16 +140,6 @@ public static class OperatorClassifier
         }
 
         return n.Children[0];
-    }
-
-    public static PlanNode? GetInnerChild(PlanNode n)
-    {
-        if (!IsNestedLoop(n) || n.Children.Count < 2)
-        {
-            return null;
-        }
-
-        return n.Children[1];
     }
 
     public static OperatorCategory GetCategory(PlanNode n)

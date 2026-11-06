@@ -1,9 +1,8 @@
 ﻿using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Query.Interfaces.Events;
 
 namespace InternalsViewer.Query.Events.Waits;
 
-internal class WaitEventParser : IEventParser<WaitEvent>
+internal class WaitEventParser
 {
     public static WaitEvent? Map(DatabaseSource? databaseSource, EventResult e)
     {

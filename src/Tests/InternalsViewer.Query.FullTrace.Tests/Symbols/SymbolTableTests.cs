@@ -39,7 +39,6 @@ public class SymbolTableTests
             Assert.Equal(($"Name{number}", $"Signature{number}"), (symbol.Name, symbol.Signature));
             Assert.Equal(symbol.Name, reader.Name.ToString());
             Assert.Equal(symbol.Signature, reader.Signature.ToString());
-            Assert.Equal($"Decorated{number}", reader.DecoratedName.ToString());
         }
 
         Assert.False(reader.MoveNext());
@@ -134,7 +133,7 @@ public class SymbolTableTests
 
         var (member, free, constructor) = (table.GetSymbol(0), table.GetSymbol(1), table.GetSymbol(2));
 
-        var expected = FunctionSignature.Parse(StartupQuery, StartupQueryDecorated)!;
+        var expected = FunctionSignatureHelper.Parse(StartupQuery, StartupQueryDecorated)!;
 
         var parsed = member.Parsed!;
 

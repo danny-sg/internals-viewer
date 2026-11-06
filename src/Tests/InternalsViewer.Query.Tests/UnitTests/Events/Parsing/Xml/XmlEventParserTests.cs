@@ -36,7 +36,9 @@ public class XmlEventParserTests
 
         public EngineEvent? Parse(string xml)
         {
-            var result = _xml.ParseEvent(xml);
+            var buffer = xml.ToCharArray();
+
+            var result = _xml.ParseEvent(buffer, buffer.Length);
 
             return result is null ? null : _events.ToEngineEvent(result, null, _planHandles);
         }
@@ -464,7 +466,9 @@ public class XmlEventParserTests
             },
         };
 
-        var result = new XmlEventParser().ParseEvent(xml)!;
+        var buffer = xml.ToCharArray();
+
+        var result = new XmlEventParser().ParseEvent(buffer, buffer.Length)!;
 
         var engineEvent = new EventParser().ToEngineEvent(result, database, new PlanHandleRegistry());
 

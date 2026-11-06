@@ -1,11 +1,10 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Query.Events.Reads;
-using InternalsViewer.Query.Interfaces.Events;
 
 namespace InternalsViewer.Query.Events.Files;
 
-internal class IoEventParser : IEventParser<IoEvent>
+internal class IoEventParser
 {
     public static IoEvent Map(DatabaseSource? databaseSource, EventResult e)
     {

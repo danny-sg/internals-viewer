@@ -8,8 +8,6 @@ public sealed partial class TraceThreadClock
         Starts = starts;
     }
 
-    public static TraceThreadClock Empty { get; } = new([], []);
-
     public int Count => Sequences.Length;
 
     internal long Bytes => Sequences.Length * (long)sizeof(uint)

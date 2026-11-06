@@ -198,11 +198,12 @@ public class LocatorReadLookupTests
     [Fact]
     public void The_Stack_Arguments_Of_A_Function_Are_Counted()
     {
-        var signature = FunctionSignature.Parse("IndexPageManager::GetPageWithKey(SEBindings const *,BTreeMgr::BTREE_SEEK_OPTION,AccessMode,"
-                                                + "HPageHandle &,SearchInfo &,SEBindings *,unsigned char *,unsigned long,"
-                                                + "HPageIdVersionId *,bool)",
-                                                "?GetPageWithKey@IndexPageManager@@QEAAXPEBVSEBindings@@W4BTREE_SEEK_OPTION@BTreeMgr@@"
-                                                + "W4AccessMode@@AEAVHPageHandle@@AEAVSearchInfo@@PEAV2@PEAEKPEAVHPageIdVersionId@@_N@Z")!;
+        var signature = FunctionSignatureHelper.Parse(
+            "IndexPageManager::GetPageWithKey(SEBindings const *,BTreeMgr::BTREE_SEEK_OPTION,AccessMode,"
+            + "HPageHandle &,SearchInfo &,SEBindings *,unsigned char *,unsigned long,"
+            + "HPageIdVersionId *,bool)",
+            "?GetPageWithKey@IndexPageManager@@QEAAXPEBVSEBindings@@W4BTREE_SEEK_OPTION@BTreeMgr@@"
+            + "W4AccessMode@@AEAVHPageHandle@@AEAVSearchInfo@@PEAV2@PEAEKPEAVHPageIdVersionId@@_N@Z")!;
 
         Assert.Equal(7, LocatorReadLookup.GetStackSlotCount(ArgumentLayout.GetLayout(signature)));
     }
@@ -220,7 +221,7 @@ public class LocatorReadLookupTests
     {
         var signature = new FunctionSignature([.. Enumerable.Repeat("int", 15), "PageId const &"], FunctionType.Member, "void");
 
-        Assert.Empty(LocatorReadLookup.GetReads(Function, signature));
+        Assert.Empty(GetReads(Function, signature));
     }
 
     [Fact]
@@ -228,7 +229,7 @@ public class LocatorReadLookupTests
     {
         var signature = new FunctionSignature([.. Enumerable.Repeat("int", 14), "PageId const &"], FunctionType.Member, "void");
 
-        Assert.Equal([new LocatorRead(Function, 15, false, LocatorValueType.Page)], LocatorReadLookup.GetReads(Function, signature));
+        Assert.Equal([new LocatorRead(Function, 15, false, LocatorValueType.Page)], GetReads(Function, signature));
     }
 
     [Theory]
@@ -323,9 +324,18 @@ public class LocatorReadLookupTests
         Assert.Equal(new LocatorRead(Function, 1, false, LocatorValueType.Bindings), BindingRead(signature));
     }
 
+    private static List<LocatorRead> GetReads(ulong function, FunctionSignature signature)
+    {
+        var reads = new List<LocatorRead>();
+
+        LocatorReadLookup.AddReads(reads, function, signature, ArgumentLayout.GetLayout(signature));
+
+        return reads;
+    }
+
     private static LocatorRead BindingRead(FunctionSignature signature)
-        => Assert.Single(LocatorReadLookup.GetReads(Function, signature), r => r.ValueType == LocatorValueType.Bindings);
+        => Assert.Single(GetReads(Function, signature), r => r.ValueType == LocatorValueType.Bindings);
 
     private static List<LocatorRead> Reads(string signature, string decoratedName)
-        => [.. LocatorReadLookup.GetReads(Function, FunctionSignature.Parse(signature, decoratedName)!)];
+        => [.. GetReads(Function, FunctionSignatureHelper.Parse(signature, decoratedName)!)];
 }

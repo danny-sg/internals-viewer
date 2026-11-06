@@ -23,14 +23,8 @@ public static class EventResultExtensions
     public static string GetString(this EventResult e, string key)
         => TryGetSpan(e.Data, e.Buffer, key, out var span) ? Decode(span) : string.Empty;
 
-    public static bool TryGetActionSpan(this EventResult e, string key, out ReadOnlySpan<char> span)
-        => TryGetSpan(e.Actions, e.Buffer, key, out span);
-
     public static bool? GetBool(this EventResult e, string key)
         => TryGetSpan(e.Data, e.Buffer, key, out var span) ? Decode(span) == "true" : null;
-
-    public static bool GetBoolAction(this EventResult e, string key)
-        => TryGetSpan(e.Actions, e.Buffer, key, out var span) && Decode(span) == "true";
 
     public static ulong? GetUlong(this EventResult e, string key)
         => TryGetSpan(e.Data, e.Buffer, key, out var span) && TryParseUlong(span, out var value) ? value : null;

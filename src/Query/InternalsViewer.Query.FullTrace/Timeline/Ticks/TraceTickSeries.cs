@@ -25,14 +25,12 @@ public sealed class TraceTickSeries
 
     public long Bytes { get; }
 
-    public IEnumerable<TraceTick> All => Indexes.Values.SelectMany(t => t.Values).SelectMany(i => i.All);
-
     private Dictionary<ExecutionOperatorEvent, Dictionary<uint, TraceTickIndex>> Indexes { get; }
 
     public TraceTickIndex? GetTicks(ExecutionOperatorEvent operatorEvent, uint thread)
         => Indexes.TryGetValue(operatorEvent, out var threads) ? threads.GetValueOrDefault(thread) : null;
 
-    private IEnumerable<TraceTickIndex> AllIndexes => Indexes.Values.SelectMany(t => t.Values);
+    internal IEnumerable<TraceTickIndex> AllIndexes => Indexes.Values.SelectMany(t => t.Values);
 
     public IEnumerable<ExecutionOperatorEvent> GetRunning(TracePosition position)
         => Indexes.Where(o => o.Value.Values.Any(i => i.IsRunning(position))).Select(o => o.Key);
@@ -79,12 +77,6 @@ public sealed class TraceTickSeries
         return new TraceTickTrackSeries(Combine(trace.Timeline, [.. rules.Take(count).Select(getSeries)]),
                                         [.. Enumerable.Range(0, count).Select(i => (byte)i)]);
     }
-
-    public static TraceTickSeries FromDefinition(TraceTimeline timeline,
-                                                 TraceCallStore calls,
-                                                 TraceOperatorLifetimeList lifetimes,
-                                                 TraceTickDefinition definition)
-        => FromDefinition(timeline, calls, lifetimes, definition, EnclosingOperatorCallIndex.Build(calls, lifetimes.OperatorsByInstance));
 
     internal static TraceTickSeries FromDefinition(TraceTimeline timeline,
                                                    TraceCallStore calls,

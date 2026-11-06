@@ -294,6 +294,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private TraceTimeline? _traceTimeline;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsFullTrace))]
     private TraceTimeline? _fullTraceTimeline;
 
     [ObservableProperty]
@@ -347,9 +348,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     [ObservableProperty]
     private IReadOnlyList<PlanNode> _emittingPlanNodes = [];
-
-    [ObservableProperty]
-    private IReadOnlyList<PlanNode> _requestedPlanNodes = [];
 
     [ObservableProperty]
     private bool _isPlanPropertiesVisible;
@@ -491,7 +489,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public event Action<string>? SqlTextImported;
 
-    public event Action<IReadOnlyList<PlanNode>>? PlanRowsReturned;
+    public event Action<IReadOnlyList<PlanNode>, IReadOnlyList<PlanNode>>? PlanActivityChanged;
 
     public DatabaseSource Database { get; }
 
@@ -724,6 +722,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     }
 
     public bool IsTraceTimelineHintVisible => TraceTimeline is null && !IsTraceLoading;
+
+    public bool IsFullTrace => FullTraceTimeline is not null;
+
+    public IReadOnlyList<PlanNode> RequestedPlanNodes { get; private set; } = [];
 
     public ITimelineRulerSource? RulerSource => Layout.IsTrace ? TraceRuler : EventRuler;
 
@@ -1531,21 +1533,15 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     {
         var marks = RowReturnMarks ?? TraceRowReturnMarkMap.Empty;
 
-        var requested = GetPlanNodes(marks.GetRequested(position));
+        RequestedPlanNodes = GetPlanNodes(marks.GetRequested(position));
 
-        if (!RequestedPlanNodes.SequenceEqual(requested))
-        {
-            RequestedPlanNodes = requested;
-        }
-
-        if (RowFlowPosition is { } previous
-            && previous < position
-            && GetPlanNodes(marks.GetReturned(previous, position)) is { Count: > 0 } returned)
-        {
-            PlanRowsReturned?.Invoke(returned);
-        }
+        IReadOnlyList<PlanNode> returned = RowFlowPosition is { } previous && previous < position
+            ? GetPlanNodes(marks.GetReturned(previous, position))
+            : [];
 
         RowFlowPosition = position;
+
+        PlanActivityChanged?.Invoke(RequestedPlanNodes, returned);
     }
 
     private List<PlanNode> GetPlanNodes(IEnumerable<ExecutionOperatorEvent> operators)

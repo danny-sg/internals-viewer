@@ -117,8 +117,6 @@ internal static class MemoryHistoryBuilder
         return [.. allocations.OrderBy(a => a.Block.Start).ThenBy(a => a.Block.Pointer)];
     }
 
-    public static WatchRange[] GetRanges(IEnumerable<MemoryBlock> blocks) => GetRanges(blocks, []);
-
     public static WatchRange[] GetRanges(IEnumerable<MemoryBlock> blocks, IEnumerable<WatchRange> others)
     {
         var ranges = blocks.Select(b => new WatchRange(b.Pointer, b.Bytes)).Concat(others);
@@ -162,14 +160,6 @@ internal static class MemoryHistoryBuilder
 
         return positions;
     }
-
-    public static (MemoryHistoryStore Store, MemoryHistoryCaptureCounter Counts) Build(IReadOnlyList<MemoryHistoryAllocation> allocations,
-                                                                                  IReadOnlyList<ulong> owners,
-                                                                                  IReadOnlyDictionary<ulong, TracePosition> iterators,
-                                                                                  WatchResult watched,
-                                                                                  TraceTimeline? timeline,
-                                                                                  StackSnapshotResult? stack = null)
-        => new Recording(allocations, owners, iterators, timeline, stack).Build(watched);
 
     private static bool IsWatched(AllocationFunction function)
         => !function.IsVirtual

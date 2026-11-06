@@ -61,9 +61,6 @@ public sealed partial class TraceCallStore
             GetChunks(functionAddress, instanceAddress).Add(chunk);
         }
 
-        public void Add(ulong functionAddress, ulong instanceAddress, ReadOnlySpan<ulong> columns, int calls)
-            => GetChunks(functionAddress, instanceAddress).Add(Task.FromResult(Compress([.. columns], calls)));
-
         public void AddToPosition(ulong functionAddress,
                                   ulong instanceAddress,
                                   uint callIndex,

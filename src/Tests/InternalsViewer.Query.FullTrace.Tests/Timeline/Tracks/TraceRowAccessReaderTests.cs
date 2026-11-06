@@ -57,13 +57,13 @@ public class TraceRowAccessReaderTests
     [Fact]
     public void A_Row_Access_Is_A_Point_Where_The_Record_Was_Used()
     {
-        var access = Assert.Single(Build().All);
+        var access = Assert.Single(Build().GetAllTicks());
 
         Assert.Equal((At(20), At(20), "Record::HasNullbitMap"), (access.Span.From.Position, access.Span.To.Position, access.Node.Symbol));
     }
 
     [Fact]
-    public void A_Row_Access_Belongs_To_The_Operator_Call_Around_It() => Assert.Same(Range, Assert.Single(Build().All).Operator);
+    public void A_Row_Access_Belongs_To_The_Operator_Call_Around_It() => Assert.Same(Range, Assert.Single(Build().GetAllTicks()).Operator);
 
     private static TraceTickSeries Build()
     {

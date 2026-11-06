@@ -2,11 +2,10 @@
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Query.Events.Reads;
-using InternalsViewer.Query.Interfaces.Events;
 
 namespace InternalsViewer.Query.Events.Files;
 
-internal class FileEventParser : IEventParser<FileEvent>
+internal class FileEventParser
 {
     public static FileEvent Map(DatabaseSource? databaseSource, EventResult e)
     {

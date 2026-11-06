@@ -39,14 +39,6 @@ public class InstanceMethodLookupTests
     }
 
     [Fact]
-    public void Every_Method_Of_A_Plan_Object_Is_Tracked()
-    {
-        Assert.True(InstanceMethodLookup.IsPlanObjectMethod("CXteRange::QScanGet"));
-        Assert.True(InstanceMethodLookup.IsPlanObjectMethod("CBpXteHashAgg::PbpqsGet"));
-        Assert.False(InstanceMethodLookup.IsPlanObjectMethod("CQScanRangeNew::Open"));
-    }
-
-    [Fact]
     public void An_Open_Reached_Through_Its_Helper_Is_An_Iterator_Method()
     {
         Assert.True(InstanceMethodLookup.IsInstanceMethod("CQScanSortNew::OpenHelper"));
@@ -54,5 +46,5 @@ public class InstanceMethodLookupTests
     }
 
     private static int? Register(string signature, string decoratedName)
-        => InstanceMethodLookup.InstanceRegister(FunctionSignature.Parse(signature, decoratedName));
+        => InstanceMethodLookup.InstanceRegister(FunctionSignatureHelper.Parse(signature, decoratedName));
 }

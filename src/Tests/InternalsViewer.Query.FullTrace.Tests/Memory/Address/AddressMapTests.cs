@@ -192,10 +192,8 @@ public class AddressMapTests
                                   NodeOf,
                                   (_, _) => new AddressMapAllocation(0x378, null, "MEMOBJ_EXECUTE"));
 
-        Assert.Equal(("MEMOBJ_EXECUTE", "MEMOBJ_EXECUTE", "MEMOBJ_EXECUTE"),
-                     (map.GetEntry(Address, At(10))?.MemoryObject,
-                      map.GetEntry(Address, At(15))?.MemoryObject,
-                      map.GetMemoryObject(Address, At(10), At(20))));
+        Assert.Equal(("MEMOBJ_EXECUTE", "MEMOBJ_EXECUTE"),
+                     (map.GetEntry(Address, At(10))?.MemoryObject, map.GetEntry(Address, At(15))?.MemoryObject));
     }
 
     [Fact]

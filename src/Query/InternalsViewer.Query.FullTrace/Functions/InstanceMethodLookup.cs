@@ -28,13 +28,6 @@ internal static class InstanceMethodLookup
         _ => null
     };
 
-    public static bool IsPlanObjectMethod(ReadOnlySpan<char> symbol)
-    {
-        SymbolsHelper.Split(symbol, out var className, out _);
-
-        return className.Length > 0 && IteratorSymbolLookup.IsPlanObject(className);
-    }
-
     public static bool IsInstanceMethod(ReadOnlySpan<char> symbol)
     {
         SymbolsHelper.Split(symbol, out var className, out var methodName);

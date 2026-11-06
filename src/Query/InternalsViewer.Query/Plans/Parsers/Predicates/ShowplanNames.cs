@@ -24,11 +24,6 @@ internal static class ShowplanNames
     public const string Aggregate = "Aggregate";
     public const string Convert = "Convert";
     public const string ParameterList = "ParameterList";
-    public const string ScalarExpressionList = "ScalarExpressionList";
-    public const string SeekPredicates = "SeekPredicates";
-    public const string SeekPredicateNew = "SeekPredicateNew";
-    public const string SeekPredicate = "SeekPredicate";
-    public const string SeekPredicatePart = "SeekPredicatePart";
     public const string SeekKeys = "SeekKeys";
     public const string Prefix = "Prefix";
     public const string StartRange = "StartRange";
@@ -42,7 +37,6 @@ internal static class ShowplanNames
     public const string ConstValue = "ConstValue";
     public const string ParameterCompiledValue = "ParameterCompiledValue";
     public const string ParameterRuntimeValue = "ParameterRuntimeValue";
-    public const string Implicit = "Implicit";
     public const string ScanType = "ScanType";
     public const string Column = "Column";
     public const string FunctionName = "FunctionName";

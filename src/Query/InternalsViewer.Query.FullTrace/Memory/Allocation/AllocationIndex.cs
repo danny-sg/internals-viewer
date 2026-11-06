@@ -129,9 +129,6 @@ public sealed partial class AllocationIndex
     public ulong FreedDuring(uint thread, TracePosition start, TracePosition end)
         => Threads.TryGetValue(thread, out var memory) ? memory.FreedDuring(start, end) : 0;
 
-    public ulong RetainedBy(uint thread, TracePosition start, TracePosition end)
-        => Threads.TryGetValue(thread, out var memory) ? memory.RetainedBy(start, end) : 0;
-
     public IEnumerable<(TracePosition Position, ulong Bytes)> GetAllocations(uint thread)
         => Threads.TryGetValue(thread, out var memory) ? memory.Allocations() : [];
 
@@ -295,23 +292,6 @@ public sealed partial class AllocationIndex
             }
 
             return [.. changes.Select(GetCurve)];
-        }
-
-        public ulong RetainedBy(TracePosition start, TracePosition end)
-        {
-            ulong retained = 0;
-
-            for (var index = SortedSearch.FirstAtOrAfter(AllocationStarts, start);
-                 index < AllocationStarts.Length && AllocationStarts[index] < end;
-                 index++)
-            {
-                if (FreedAt[index] >= end)
-                {
-                    retained += AllocationBytes[index];
-                }
-            }
-
-            return retained;
         }
 
         private static MemoryUsageCurve GetCurve(List<(TracePosition Position, long Bytes)> changes)

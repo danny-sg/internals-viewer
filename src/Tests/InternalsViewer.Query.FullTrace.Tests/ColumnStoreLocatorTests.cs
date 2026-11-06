@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Locators;
@@ -106,7 +107,13 @@ public class ColumnStoreLocatorTests
                                           .Write(complete + 16, third)
                                           .Write(partial, first);
 
-        var hook = new LocatorHook(LocatorReadLookup.GetReads(0x1000, Fix()), builder);
+        var signature = Fix();
+
+        var reads = new List<LocatorRead>();
+
+        LocatorReadLookup.AddReads(reads, 0x1000, signature, ArgumentLayout.GetLayout(signature));
+
+        var hook = new LocatorHook(reads, builder);
 
         hook.OnEntry(new TraceHookCall { FunctionAddress = 0x1000, CallIndex = 0, Arguments = new[] { 0ul, complete, 0ul, 0ul } }, replay);
         hook.OnEntry(new TraceHookCall { FunctionAddress = 0x1000, CallIndex = 1, Arguments = new[] { 0ul, partial, 0ul, 0ul } }, replay);
@@ -118,7 +125,7 @@ public class ColumnStoreLocatorTests
     }
 
     private static FullTrace.Symbols.FunctionSignature Fix()
-        => FullTrace.Symbols.FunctionSignature.Parse(
+        => FunctionSignatureHelper.Parse(
             "ColumnStoreObjectRef::Fix(ColumnStoreObjectKey const &,bool,HoBtAccess *,XDES *,DeserializeFromDiskConstructor *)",
             "?Fix@ColumnStoreObjectRef@@QEAAPEAVColumnStoreObject@@AEBVColumnStoreObjectKey@@_NPEAVHoBtAccess@@PEAVXDES@@"
             + "PEAUDeserializeFromDiskConstructor@@@Z")!;

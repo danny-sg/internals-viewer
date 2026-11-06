@@ -70,41 +70,6 @@ public class CorrelatedJoinResolverTests
     }
 
     [Fact]
-    public void ResolveFromInner_Finds_The_Owning_Join()
-    {
-        var inner = Lookup();
-
-        var join = Join(Seek(), inner);
-
-        var root = new PlanNode
-        {
-            NodeId = 0,
-            PhysicalOperator = "SELECT",
-            Children = [join]
-        };
-
-        var result = CorrelatedJoinResolver.ResolveFromInner(root, inner);
-
-        Assert.NotNull(result);
-        Assert.Same(join, result.Join);
-        Assert.Same(inner, result.Inner);
-    }
-
-    [Fact]
-    public void ResolveFromInner_Returns_Null_When_The_Parent_Is_Not_A_Correlated_Join()
-    {
-        var inner = Lookup();
-
-        inner.PredicateInfo = new PredicateInfo();
-
-        var join = Join(Seek(), inner);
-
-        var result = CorrelatedJoinResolver.ResolveFromInner(join, inner);
-
-        Assert.Null(result);
-    }
-
-    [Fact]
     public void Outer_Reference_Is_Composed_From_Table_And_Column()
     {
         var column = new CorrelatedSeekColumn("Id", "ClusteredTable", "Id");

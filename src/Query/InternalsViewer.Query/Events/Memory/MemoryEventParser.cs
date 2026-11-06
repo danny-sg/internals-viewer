@@ -1,9 +1,8 @@
 ﻿using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Query.Interfaces.Events;
 
 namespace InternalsViewer.Query.Events.Memory;
 
-internal class MemoryEventParser : IEventParser<MemoryEvent>
+internal class MemoryEventParser
 {
     public static MemoryEvent Map(DatabaseSource? databaseSource, EventResult e)
     {

@@ -1,9 +1,8 @@
 ﻿using InternalsViewer.Internals.Engine.Database;
-using InternalsViewer.Query.Interfaces.Events;
 
 namespace InternalsViewer.Query.Events.Transactions;
 
-internal class TransactionEventParser : IEventParser<TransactionEvent>
+internal class TransactionEventParser
 {
     public static TransactionEvent Map(DatabaseSource? databaseSource, EventResult e)
     {

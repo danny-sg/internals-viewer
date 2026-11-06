@@ -51,12 +51,6 @@ public sealed partial class AddressMap
     public string? GetClassName(ulong address, TracePosition from, TracePosition to)
         => GetLabelValue(address, from, to, static l => l.ClassName);
 
-    public string? GetAllocator(ulong address, TracePosition from, TracePosition to)
-        => GetLabelValue(address, from, to, static l => l.Allocator);
-
-    public string? GetMemoryObject(ulong address, TracePosition from, TracePosition to)
-        => GetLabelValue(address, from, to, static l => l.MemoryObject);
-
     public (AddressMapEntry Entry, ulong Offset)? GetContaining(ulong address, TracePosition position)
     {
         if (!position.IsKnown)

@@ -1,14 +1,11 @@
 ﻿using InternalsViewer.Internals.Engine.Address;
 using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.Query;
 
-internal sealed class KeyHashLookup(ILogger<KeyHashLookup> logger)
+internal static class KeyHashLookup
 {
     private const int BatchSize = 2000;
-
-    public ILogger<KeyHashLookup> Logger { get; } = logger;
 
     public static async Task<Dictionary<string, RowIdentifier>>
         GetKeyHashRowIdentifiers(string schemaName,

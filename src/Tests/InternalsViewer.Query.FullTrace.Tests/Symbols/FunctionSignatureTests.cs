@@ -8,8 +8,8 @@ public class FunctionSignatureTests
     [Fact]
     public void A_Member_Function_Is_Read_From_Its_Decorated_Name()
     {
-        var signature = FunctionSignature.Parse("CQScanRangeNew::SetRange(unsigned __int64 *)",
-                                                "?SetRange@CQScanRangeNew@@IEAAXPEA_K@Z");
+        var signature = FunctionSignatureHelper.Parse("CQScanRangeNew::SetRange(unsigned __int64 *)",
+                                                      "?SetRange@CQScanRangeNew@@IEAAXPEA_K@Z");
 
         Assert.NotNull(signature);
         Assert.Equal(FunctionType.Member, signature.Type);
@@ -20,7 +20,7 @@ public class FunctionSignatureTests
     [Fact]
     public void A_Static_Member_Function_Has_No_This()
     {
-        var signature = FunctionSignature.Parse(
+        var signature = FunctionSignatureHelper.Parse(
             "CQScanNew::GetRowOrReQualifyHelper(CQScanNew *,unsigned __int64 *,unsigned __int64 *,bool)",
             "?GetRowOrReQualifyHelper@CQScanNew@@SAJPEAV1@PEA_K1_N@Z");
 
@@ -33,7 +33,7 @@ public class FunctionSignatureTests
     [Fact]
     public void Enum_Parameters_Are_Marked_From_The_Decorated_Name()
     {
-        var signature = FunctionSignature.Parse(
+        var signature = FunctionSignatureHelper.Parse(
             "BPool::Get(RecoveryUnit &,PageId const &,int &,LatchBase::LATCH_TYPE,LatchSuspendInfo *,bool)",
             "?Get@BPool@@QEAAPEAUBUF@@AEAVRecoveryUnit@@AEBVPageId@@AEAHW4LATCH_TYPE@LatchBase@@PEAVLatchSuspendInfo@@_N@Z");
 
@@ -45,7 +45,8 @@ public class FunctionSignatureTests
     [Fact]
     public void An_Enum_Scoped_By_A_Name_Back_Reference_Is_Marked()
     {
-        var signature = FunctionSignature.Parse("LatchBase::Release(LatchBase::LATCH_TYPE)", "?Release@LatchBase@@QEAA_NW4LATCH_TYPE@1@@Z");
+        var signature = FunctionSignatureHelper.Parse("LatchBase::Release(LatchBase::LATCH_TYPE)",
+                                                      "?Release@LatchBase@@QEAA_NW4LATCH_TYPE@1@@Z");
 
         Assert.NotNull(signature);
         Assert.Equal(["enum LatchBase::LATCH_TYPE"], signature.Parameters);
@@ -55,7 +56,7 @@ public class FunctionSignatureTests
     [Fact]
     public void An_Enum_Returned_By_Value_Is_Named_With_Its_Scope()
     {
-        var signature = FunctionSignature.Parse(
+        var signature = FunctionSignatureHelper.Parse(
             "LatchBase::AcquireInternal(LatchBase::LATCH_TYPE,unsigned long,LatchSuspendInfo *,LatchBase::SubLatchInfo *,"
             + "LatchBase::Releasor,unsigned __int64 *,SOS_LsAccessCache *,LatchBase::LatchYieldBehavior)",
             "?AcquireInternal@LatchBase@@AEAA?AW4AcquireResult@1@W4LATCH_TYPE@1@KPEAVLatchSuspendInfo@@PEAUSubLatchInfo@1@"
@@ -70,7 +71,7 @@ public class FunctionSignatureTests
     [Fact]
     public void A_Class_Returned_By_Value_Is_Named_And_Written_Through_A_Buffer()
     {
-        var signature = FunctionSignature.Parse("BlobNode::ChildPID(int)", "?ChildPID@BlobNode@@QEBA?AVPageId@@H@Z");
+        var signature = FunctionSignatureHelper.Parse("BlobNode::ChildPID(int)", "?ChildPID@BlobNode@@QEBA?AVPageId@@H@Z");
 
         Assert.NotNull(signature);
         Assert.Equal("PageId", signature.ReturnType);
@@ -80,7 +81,7 @@ public class FunctionSignatureTests
     [Fact]
     public void A_Pointer_To_A_Class_Is_Named()
     {
-        var signature = FunctionSignature.Parse("Record::GetBackPtr(void)", "?GetBackPtr@Record@@QEBAPEFBURowId@@XZ");
+        var signature = FunctionSignatureHelper.Parse("Record::GetBackPtr(void)", "?GetBackPtr@Record@@QEBAPEFBURowId@@XZ");
 
         Assert.NotNull(signature);
         Assert.Equal("RowId const *", signature.ReturnType);
@@ -90,7 +91,7 @@ public class FunctionSignatureTests
     [Fact]
     public void A_Virtual_Member_Returning_Bool_Is_Decoded()
     {
-        var signature = FunctionSignature.Parse("CFoo::IsReady(void)", "?IsReady@CFoo@@UEBA_NXZ");
+        var signature = FunctionSignatureHelper.Parse("CFoo::IsReady(void)", "?IsReady@CFoo@@UEBA_NXZ");
 
         Assert.NotNull(signature);
         Assert.Equal(FunctionType.Member, signature.Type);
@@ -101,7 +102,7 @@ public class FunctionSignatureTests
     [Fact]
     public void A_Free_Function_Has_No_This()
     {
-        var signature = FunctionSignature.Parse("GetHoBtLockInternal(int)", "?GetHoBtLockInternal@@YAHH@Z");
+        var signature = FunctionSignatureHelper.Parse("GetHoBtLockInternal(int)", "?GetHoBtLockInternal@@YAHH@Z");
 
         Assert.NotNull(signature);
         Assert.Equal(FunctionType.Free, signature.Type);
@@ -111,7 +112,7 @@ public class FunctionSignatureTests
     [Fact]
     public void A_Static_Member_Of_A_Template_Is_Found_Past_The_Template_Arguments()
     {
-        var signature = FunctionSignature.Parse("Filter<int>::Apply(int)", "?Apply@?$Filter@H@@SAXH@Z");
+        var signature = FunctionSignatureHelper.Parse("Filter<int>::Apply(int)", "?Apply@?$Filter@H@@SAXH@Z");
 
         Assert.NotNull(signature);
         Assert.Equal(FunctionType.Static, signature.Type);
@@ -120,7 +121,7 @@ public class FunctionSignatureTests
     [Fact]
     public void Without_A_Decorated_Name_A_Scoped_Function_Is_Assumed_To_Be_A_Member()
     {
-        var signature = FunctionSignature.Parse("CFoo::Bar(int)", null);
+        var signature = FunctionSignatureHelper.Parse("CFoo::Bar(int)", null);
 
         Assert.NotNull(signature);
         Assert.Equal(FunctionType.Member, signature.Type);
@@ -139,7 +140,7 @@ public class FunctionSignatureTests
     [Fact]
     public void Template_Arguments_Do_Not_Split_Parameters()
     {
-        var signature = FunctionSignature.Parse("Foo(Map<int,long>,char *)", "?Foo@@YAXV?$Map@HJ@@PEAD@Z");
+        var signature = FunctionSignatureHelper.Parse("Foo(Map<int,long>,char *)", "?Foo@@YAXV?$Map@HJ@@PEAD@Z");
 
         Assert.NotNull(signature);
         Assert.Equal(["Map<int,long>", "char *"], signature.Parameters);
@@ -148,8 +149,9 @@ public class FunctionSignatureTests
     [Fact]
     public void An_Enum_Passed_By_Reference_Is_Marked_As_An_Enum()
     {
-        var signature = FunctionSignature.Parse("GetHoBtLockInternal(XDES *,unsigned __int64,HoBtAccess &,LCK_MODE &)",
-                                                "?GetHoBtLockInternal@@YA?AW4LCK_RESULT@@PEAVXDES@@_KAEAVHoBtAccess@@AEAW4LCK_MODE@@@Z");
+        var signature = FunctionSignatureHelper.Parse(
+            "GetHoBtLockInternal(XDES *,unsigned __int64,HoBtAccess &,LCK_MODE &)",
+            "?GetHoBtLockInternal@@YA?AW4LCK_RESULT@@PEAVXDES@@_KAEAVHoBtAccess@@AEAW4LCK_MODE@@@Z");
 
         Assert.NotNull(signature);
         Assert.Equal(["XDES *", "unsigned __int64", "HoBtAccess &", "enum LCK_MODE &"], signature.Parameters);
@@ -159,6 +161,6 @@ public class FunctionSignatureTests
     [Fact]
     public void A_Signature_Without_A_Parameter_List_Is_Not_Parsed()
     {
-        Assert.Null(FunctionSignature.Parse("CFoo::Bar", null));
+        Assert.Null(FunctionSignatureHelper.Parse("CFoo::Bar", null));
     }
 }

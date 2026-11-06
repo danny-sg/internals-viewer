@@ -21,8 +21,6 @@ public sealed record TraceOperatorLifetime(uint Thread,
 
     public TracePoint End => Calls[^1].To;
 
-    private TracePoint[] Tos { get; } = [.. Calls.Select(c => c.To)];
-
     public double GetStart(TraceTimelineAxis axis) => Scale.GetValue(Start, axis);
 
     public double GetEnd(TraceTimelineAxis axis) => Scale.GetValue(End, axis);
@@ -30,6 +28,4 @@ public sealed record TraceOperatorLifetime(uint Thread,
     public double GetConstructed(TraceTimelineAxis axis) => Scale.GetValue(Constructed, axis);
 
     public double GetDestroyed(TraceTimelineAxis axis) => Scale.GetValue(Destroyed, axis);
-
-    public int GetFirstEndingAfter(TraceTimelineAxis axis, double value, int from = 0) => Scale.GetFirstAfter(Tos, axis, value, from);
 }

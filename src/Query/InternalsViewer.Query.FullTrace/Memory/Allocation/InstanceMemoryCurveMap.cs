@@ -11,8 +11,6 @@ public sealed class InstanceMemoryCurveMap
         Curves = curves;
     }
 
-    public static InstanceMemoryCurveMap Empty { get; } = new([]);
-
     private Dictionary<(uint Thread, ulong Instance), MemoryUsageCurve> Curves { get; }
 
     public static InstanceMemoryCurveMap Build(TraceTimeline timeline, AllocationIndex allocation)

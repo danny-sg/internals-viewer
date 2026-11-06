@@ -1,10 +1,9 @@
 ﻿using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Extensions;
-using InternalsViewer.Query.Interfaces.Events;
 
 namespace InternalsViewer.Query.Events.Locks;
 
-internal class LockEscalationEventParser : IEventParser<LockEscalationEvent>
+internal class LockEscalationEventParser
 {
     public static LockEscalationEvent Map(DatabaseSource? databaseSource, EventResult e)
     {
