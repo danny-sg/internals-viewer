@@ -61,10 +61,9 @@ public class IteratorLifetimeBuilderTests
             Name = "Hash Match",
             OperatorDescription = "Hash Match",
             PlanNodeIdentifier = new PlanNodeIdentifier { PlanHandleId = 1, NodeId = 1 },
-            Instances = [Hash]
         };
 
-        var lifetime = Assert.Single(IteratorLifetimeBuilder.Build(timeline, AllocationIndex.Empty, [hashMatch], [], []));
+        var lifetime = Assert.Single(IteratorLifetimeBuilder.Build(timeline, AllocationIndex.Empty, Owners((Hash, hashMatch)), [], []));
 
         var axis = TraceTimelineAxis.Instructions;
 
@@ -101,11 +100,11 @@ public class IteratorLifetimeBuilderTests
 
         var memory = AllocationIndex.Build([new(7, At(5), At(6), 100, 0xA), new(7, At(22), At(23), 50, 0xB)], [new(7, At(41), At(42), 0xA)]);
 
-        var hashMatch = Operator("Hash Match", 1, Hash);
+        var hashMatch = Operator("Hash Match", 1);
 
-        var scan = Operator("Index Scan", 2, Scan);
+        var scan = Operator("Index Scan", 2);
 
-        var lifetimes = IteratorLifetimeBuilder.Build(timeline, memory, [hashMatch, scan], [], []);
+        var lifetimes = IteratorLifetimeBuilder.Build(timeline, memory, Owners((Hash, hashMatch), (Scan, scan)), [], []);
 
         var hashLifetime = lifetimes.Single(l => ReferenceEquals(l.Operator, hashMatch));
 
@@ -134,13 +133,13 @@ public class IteratorLifetimeBuilderTests
 
         timeline.MapNodes([caller, helperRow, scanBatch]);
 
-        var scan = Operator("Columnstore Index Scan", 2, Scan) with { NodeLevel = 2 };
+        var scan = Operator("Columnstore Index Scan", 2) with { NodeLevel = 2 };
 
         IteratorPlanNode[] planNodes = [new(BatchHelper, 0xA0, 0, Query, 2, IsBatchHelper: true)];
 
-        var lifetimes = IteratorLifetimeBuilder.Build(timeline, AllocationIndex.Empty, [scan], planNodes, []);
+        var lifetimes = IteratorLifetimeBuilder.Build(timeline, AllocationIndex.Empty, Owners((Scan, scan)), planNodes, []);
 
-        var adapter = Assert.Single(lifetimes, l => l.Operator.Instances.Contains(BatchHelper)).Operator;
+        var adapter = Assert.Single(lifetimes, l => l.Instances.Contains(BatchHelper)).Operator;
 
         Assert.Equal(("Batch To Row Adapter", OperatorCategory.Adapter, 2), (adapter.Name, adapter.Category, adapter.NodeLevel));
         Assert.Null(adapter.PlanNodeIdentifier);
@@ -167,13 +166,13 @@ public class IteratorLifetimeBuilderTests
 
         timeline.MapNodes([caller, helperRow, filterBatch, scanBatch]);
 
-        var scan = Operator("Columnstore Index Scan", 2, Scan) with { NodeLevel = 2 };
+        var scan = Operator("Columnstore Index Scan", 2) with { NodeLevel = 2 };
 
         IteratorPlanNode[] planNodes = [new(BatchHelper, 0xA0, 0, Query, 1, IsBatchHelper: true)];
 
-        var lifetimes = IteratorLifetimeBuilder.Build(timeline, AllocationIndex.Empty, [scan], planNodes, []);
+        var lifetimes = IteratorLifetimeBuilder.Build(timeline, AllocationIndex.Empty, Owners((Scan, scan)), planNodes, []);
 
-        var adapter = Assert.Single(lifetimes, l => l.Operator.Instances.Contains(BatchHelper)).Operator;
+        var adapter = Assert.Single(lifetimes, l => l.Instances.Contains(BatchHelper)).Operator;
 
         Assert.Equal(("Batch To Row Adapter", 2), (adapter.Name, adapter.NodeLevel));
     }
@@ -187,7 +186,9 @@ public class IteratorLifetimeBuilderTests
 
         QueryTeardown[] teardowns = [new(Thread, new TracePoint(At(15), 15)), new(Thread, new TracePoint(At(70), 70))];
 
-        var lifetime = Assert.Single(IteratorLifetimeBuilder.Build(timeline, AllocationIndex.Empty, [hashMatch], planNodes, teardowns));
+        var lifetimes = IteratorLifetimeBuilder.Build(timeline, AllocationIndex.Empty, Owners((Hash, hashMatch)), planNodes, teardowns);
+
+        var lifetime = Assert.Single(lifetimes);
 
         Assert.Equal((5d, 70d, 5d, 70d, 20d, 45d),
                      (lifetime.GetConstructed(TraceTimelineAxis.Position),
@@ -203,7 +204,7 @@ public class IteratorLifetimeBuilderTests
     {
         var (timeline, hashMatch) = BuildHashTimeline();
 
-        var lifetime = Assert.Single(IteratorLifetimeBuilder.Build(timeline, AllocationIndex.Empty, [hashMatch], [], []));
+        var lifetime = Assert.Single(IteratorLifetimeBuilder.Build(timeline, AllocationIndex.Empty, Owners((Hash, hashMatch)), [], []));
 
         Assert.Equal((0d, 100d),
                      (lifetime.GetConstructed(TraceTimelineAxis.Instructions), lifetime.GetDestroyed(TraceTimelineAxis.Instructions)));
@@ -224,15 +225,17 @@ public class IteratorLifetimeBuilderTests
 
         timeline.MapNodes([caller, getRow]);
 
-        return (timeline, Operator("Hash Match", 1, Hash));
+        return (timeline, Operator("Hash Match", 1));
     }
 
-    private static ExecutionOperatorEvent Operator(string name, int nodeId, ulong instance) => new()
+    private static Dictionary<ulong, ExecutionOperatorEvent> Owners(params (ulong Instance, ExecutionOperatorEvent Operator)[] owners)
+        => owners.ToDictionary(o => o.Instance, o => o.Operator);
+
+    private static ExecutionOperatorEvent Operator(string name, int nodeId) => new()
     {
         Name = name,
         OperatorDescription = name,
         PlanNodeIdentifier = new PlanNodeIdentifier { PlanHandleId = 1, NodeId = nodeId },
-        Instances = [instance]
     };
 
     private static CallFrame Frame(ulong address, ulong instance)

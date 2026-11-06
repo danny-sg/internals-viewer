@@ -526,6 +526,8 @@ public sealed class TimelineRuler : UserControl, IDisposable
 
         DrawTicks(canvas, source, state, area, width);
 
+        DrawCuts(canvas, state, area, e.Info.Height / dpi);
+
         canvas.DrawLine(0, RulerHeight, width, RulerHeight, Paints.Tick);
 
         DrawMarks(canvas, source, state, area);
@@ -579,6 +581,19 @@ public sealed class TimelineRuler : UserControl, IDisposable
             if (x + LabelGap + Paints.Font.MeasureText(label) < width)
             {
                 canvas.DrawText(label, x + LabelGap, baseline, SKTextAlign.Left, Paints.Font, Paints.Label);
+            }
+        }
+    }
+
+    private void DrawCuts(SKCanvas canvas, TimelineRulerState state, TimelineRulerArea area, float height)
+    {
+        foreach (var cut in state.Cuts)
+        {
+            var x = (float)TimelineRulerLayout.GetX(state, area, cut);
+
+            if (x >= area.Left && x <= area.Right)
+            {
+                canvas.DrawLine(x, 0, x, height, Paints.Cut);
             }
         }
     }

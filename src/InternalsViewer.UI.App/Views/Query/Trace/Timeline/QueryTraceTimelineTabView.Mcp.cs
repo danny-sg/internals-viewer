@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using InternalsViewer.Mcp.Models.Context.Queries;
@@ -8,6 +9,10 @@ using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
+using InternalsViewer.Query.FullTrace.Timeline.Ticks;
+using InternalsViewer.Query.FullTrace.Timeline.Ticks.Enums;
+using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
+using InternalsViewer.UI.App.Services.Query.Trace;
 using InternalsViewer.UI.App.Controls.Query.Trace.Timeline;
 using InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Enums;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
@@ -134,13 +139,7 @@ public sealed partial class QueryTraceTimelineTabView : ITraceTimelineController
             Options = [.. TimelineOptions.Select(o => new McpOption(o.Key, o.Label, o.Group, o.Get(this), IsChoice: o.IsChoice))],
             Tracks =
             [
-                .. (TraceTimeline.TickTracks ?? []).Select(t => new McpTimelineTrack(t.Name,
-                                                                                    t.IsCustom,
-                                                                                    !hidden.Contains(t.Name),
-                                                                                    t.Series.Count,
-                                                                                    t.Definition?.Module ?? string.Empty,
-                                                                                    t.Definition?.Function ?? string.Empty,
-                                                                                    [.. (t.Definition?.Conditions ?? []).Select(DescribeCondition)]))
+                .. (TraceTimeline.TickTracks ?? []).Select(t => GetTrack(t, hidden))
             ]
         };
     }
@@ -292,6 +291,18 @@ public sealed partial class QueryTraceTimelineTabView : ITraceTimelineController
         TraceIndicatorClose.Cleared => McpIndicatorClose.Cleared,
         _ => McpIndicatorClose.Gone
     };
+
+    private static McpTimelineTrack GetTrack(TraceTickTrack track, IReadOnlySet<string> hidden)
+        => new(track.Name,
+               track.IsCustom,
+               !hidden.Contains(track.Name),
+               track.Series.Count,
+               track.Rules.FirstOrDefault(r => r.Module.Length > 0)?.Module ?? string.Empty,
+               string.Join(", ", track.Rules.Select(GetFunctionText).Distinct()),
+               [.. track.Rules.SelectMany(r => r.Conditions).Select(DescribeCondition)]);
+
+    private static string GetFunctionText(TraceTickDefinition rule)
+        => rule.Source == TraceTickSourceType.Call ? rule.Function : TraceTickTracks.GetSourceText(rule.Source);
 
     private static string DescribeCondition(TraceCallCondition condition)
     {

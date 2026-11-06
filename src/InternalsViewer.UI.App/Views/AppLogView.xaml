@@ -12,7 +12,7 @@
     <UserControl.Resources>
         <logging1:LogLevelToBrushConverter x:Key="LogLevelToBrushConverter"/>
     </UserControl.Resources>
-    <Grid>
+    <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>

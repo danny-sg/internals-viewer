@@ -15,6 +15,8 @@ public sealed record TraceOperatorLifetime(uint Thread,
 
     public TracePoint Destroyed { get; init; } = Calls[^1].To;
 
+    public IReadOnlyList<ulong> Instances { get; init; } = [];
+
     public TracePoint Start => Calls[0].From;
 
     public TracePoint End => Calls[^1].To;

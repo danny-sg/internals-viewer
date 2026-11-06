@@ -36,7 +36,6 @@ public class TraceSeekReaderTests
     {
         Name = "Clustered Index Seek",
         OperatorDescription = "Clustered Index Seek",
-        Instances = [RangeIterator],
         PlanNodeIdentifier = new PlanNodeIdentifier(1, 0)
     };
 
@@ -127,7 +126,12 @@ public class TraceSeekReaderTests
 
         timeline.SetCalls(calls);
 
-        var lifetimes = new TraceOperatorLifetimeList([new(Thread, Range, 0, [Whole()], MemoryUsageCurve.Empty, timeline.Scale)]);
+        var lifetime = new TraceOperatorLifetime(Thread, Range, 0, [Whole()], MemoryUsageCurve.Empty, timeline.Scale)
+        {
+            Instances = [RangeIterator]
+        };
+
+        var lifetimes = new TraceOperatorLifetimeList([lifetime]);
 
         return TraceSeekReader.Build(timeline, calls, lifetimes, EnclosingOperatorCallIndex.Build(calls, lifetimes.OperatorsByInstance));
     }

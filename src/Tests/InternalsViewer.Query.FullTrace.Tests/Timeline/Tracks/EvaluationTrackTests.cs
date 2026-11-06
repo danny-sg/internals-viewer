@@ -1,4 +1,7 @@
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
+using InternalsViewer.Query.FullTrace.Arguments;
+using InternalsViewer.Query.FullTrace.Arguments.Enums;
+using InternalsViewer.Query.FullTrace.Timeline.Ticks.Enums;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Locators.Enums;
 using InternalsViewer.Query.Events.Operators;
@@ -12,7 +15,6 @@ using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
-using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.Query.Plans.Model;
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRowHelper;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
@@ -22,7 +24,7 @@ using InternalsViewer.Query.FullTrace.Symbols.Categories;
 namespace InternalsViewer.Query.FullTrace.Tests.Timeline.Tracks;
 
 [Trait("Category", "Unit")]
-public class TraceEvaluationReaderTests
+public class EvaluationTrackTests
 {
     private const uint Thread = 7;
 
@@ -38,11 +40,14 @@ public class TraceEvaluationReaderTests
 
     private const int ResultRegister = 2;
 
+    private const string EvaluationsTrack = "Evaluations";
+
+    private const byte FalseValue = 0;
+
     private static readonly ExecutionOperatorEvent Filter = new()
     {
         Name = "Filter",
         OperatorDescription = "Filter",
-        Instances = [FilterIterator],
         PlanNodeIdentifier = new PlanNodeIdentifier(1, 0)
     };
 
@@ -50,7 +55,6 @@ public class TraceEvaluationReaderTests
     {
         Name = "Table Scan",
         OperatorDescription = "Table Scan",
-        Instances = [ScanIterator],
         PlanNodeIdentifier = new PlanNodeIdentifier(1, 1),
         ParentNodeId = 0
     };
@@ -64,25 +68,12 @@ public class TraceEvaluationReaderTests
         new(1, 0, TupleCompare, 0, 1)
     ];
 
-    [Theory]
-    [InlineData(VariantStatus.Value, 0ul, TraceEvaluationResult.False)]
-    [InlineData(VariantStatus.Value, 1ul, TraceEvaluationResult.True)]
-    [InlineData(VariantStatus.Value, 0x1_0000_0001ul, TraceEvaluationResult.True)]
-    [InlineData(VariantStatus.Null, 0ul, TraceEvaluationResult.Unknown)]
-    [InlineData(VariantStatus.Null, 1ul, TraceEvaluationResult.Unknown)]
-    public void The_Variant_Status_And_Value_Give_The_Result(VariantStatus status, ulong value, TraceEvaluationResult expected)
-        => Assert.Equal(expected, TraceEvaluationReader.GetResult(new VariantLocator(VariantLocator.Create(0, status, value, 0))));
-
-    [Fact]
-    public void A_Value_That_Is_Not_A_Boolean_Has_No_Result()
-        => Assert.Null(TraceEvaluationReader.GetResult(new VariantLocator(VariantLocator.Create(0, VariantStatus.Value, 0xFF, 0))));
-
     [Fact]
     public void An_Evaluation_Spans_Its_Call_And_Keeps_Its_Result()
     {
         var evaluation = Build().All.Single(e => e.Span.From.Position == At(20));
 
-        Assert.Equal((TraceEvaluationResult.False, At(22)), ((TraceEvaluationResult)evaluation.Value, evaluation.Span.To.Position));
+        Assert.Equal((FalseValue, At(22)), (evaluation.Value, evaluation.Span.To.Position));
     }
 
     [Fact]
@@ -136,6 +127,101 @@ public class TraceEvaluationReaderTests
         Assert.Equal((2, true), (ticks.Count, ticks.All.All(t => ReferenceEquals(t.Operator, Filter))));
     }
 
+    [Fact]
+    public void Rules_With_The_Same_Name_Share_One_Track_With_A_Value_For_Each_Rule()
+    {
+        var track = FromRules(BuildResult(),
+                              Definition(TraceConditionTarget.CalledBy, "CQScanTableScanNew::GetRow"),
+                              Definition(TraceConditionTarget.Operator, "Filter"));
+
+        var counts = track.Series.GetValueCounts();
+
+        Assert.Equal<byte>([0, 1], track.Values);
+
+        Assert.Equal((3, 2), (counts[0], counts[1]));
+    }
+
+    [Fact]
+    public void A_Call_Matched_By_Two_Rules_Of_A_Track_Takes_The_First()
+    {
+        var track = FromRules(BuildResult(),
+                              Definition(TraceConditionTarget.CalledBy, "CQScanTableScanNew::GetRow"),
+                              Rule("CEsExec::FastCompare1"));
+
+        var counts = track.Series.GetValueCounts();
+
+        Assert.Equal((5, 3, 2), (track.Series.Count, counts[0], counts[1]));
+    }
+
+    [Fact]
+    public void A_Function_Can_List_Alternatives_And_Wildcards()
+    {
+        var trace = BuildResult();
+
+        Assert.Equal((5, 6),
+                     (TraceTickSeries.FromDefinition(trace, Rule("CEsExec::Missing|CEsExec::FastCompare1")).Count,
+                      TraceTickSeries.FromDefinition(trace, Rule("CEsExec::Fast*")).Count));
+    }
+
+    [Fact]
+    public void A_Locator_Condition_Checks_The_Register_It_Names_Or_Every_Register()
+    {
+        var trace = BuildResult();
+
+        var anyRegister = Rule("CEsExec::FastCompare1", HasLocator(null, "Variant"));
+
+        var slot = new ArgumentSlot("Value", "bool", ArgumentLocation.Register, 1, "RDX");
+
+        var otherRegister = Rule("CEsExec::FastCompare1", HasLocator(slot, "Variant"));
+
+        Assert.Equal((4, 0),
+                     (TraceTickSeries.FromDefinition(trace, anyRegister).Count,
+                      TraceTickSeries.FromDefinition(trace, otherRegister).Count));
+    }
+
+    [Fact]
+    public void A_Track_Made_Of_A_Whole_Source_Keeps_Its_Ticks_And_Values()
+    {
+        var trace = BuildResult();
+
+        var source = Evaluations(trace);
+
+        trace = trace with { Seeks = source };
+
+        var track = FromRules(trace, SourceRule(2), SourceRule(0));
+
+        Assert.Same(source, track.Series);
+
+        Assert.Equal<byte>([2, 0], track.Values);
+    }
+
+    [Fact]
+    public void A_Source_Rule_With_Conditions_Keeps_Only_The_Ticks_It_Matches()
+    {
+        var trace = BuildResult();
+
+        trace = trace with { Seeks = Evaluations(trace) };
+
+        Assert.Equal((1, 0),
+                     (TraceTickSeries.FromDefinition(trace, SourceRule(2, InOperator("Filter"))).Count,
+                      TraceTickSeries.FromDefinition(trace, SourceRule(0, InOperator("Filter"))).Count));
+    }
+
+    private static TraceTickTrackSeries FromRules(TraceResult trace, params TraceTickDefinition[] rules)
+        => TraceTickSeries.FromRules(trace, rules, r => TraceTickSeries.FromDefinition(trace, r));
+
+    private static TraceTickDefinition Rule(string function, params TraceCallCondition[] conditions)
+        => new("Compares", "SqlTsEs", function, "#FFFFFF", 1, 1, conditions);
+
+    private static TraceTickDefinition SourceRule(byte value, params TraceCallCondition[] conditions)
+        => new("Seek", string.Empty, string.Empty, "#FFFFFF", 1, 1, conditions) { Source = TraceTickSourceType.Seek, Value = value };
+
+    private static TraceCallCondition HasLocator(ArgumentSlot? slot, string type)
+        => new(TraceConditionTarget.Locator, slot, string.Empty, TraceConditionOperator.Equal, type);
+
+    private static TraceCallCondition InOperator(string name)
+        => new(TraceConditionTarget.Operator, null, string.Empty, TraceConditionOperator.Equal, name);
+
     private static TraceTickDefinition Definition(TraceConditionTarget target, string value)
         => new("Compares",
                "SqlTsEs",
@@ -145,11 +231,16 @@ public class TraceEvaluationReaderTests
                1,
                [new TraceCallCondition(target, null, string.Empty, TraceConditionOperator.Equal, value)]);
 
-    private static TraceTickSeries Build()
+    private static TraceTickSeries Build() => Evaluations(BuildResult());
+
+    private static TraceTickSeries Evaluations(TraceResult trace)
+        => FromRules(trace, [.. TraceTickDefinition.GetPredefined().Where(d => d.Name == EvaluationsTrack)]).Series;
+
+    private static TraceResult BuildResult()
     {
         var (timeline, calls, lifetimes) = BuildTrace();
 
-        return TraceEvaluationReader.Build(timeline, calls, lifetimes);
+        return new TraceResult(new CallTree(), calls, timeline) { Lifetimes = lifetimes };
     }
 
     private static (TraceTimeline Timeline, TraceCallStore Calls, TraceOperatorLifetimeList Lifetimes) BuildTrace()
@@ -216,8 +307,8 @@ public class TraceEvaluationReaderTests
 
         TraceOperatorLifetime[] lifetimes =
         [
-            new(Thread, Filter, 0, [Whole()], MemoryUsageCurve.Empty, timeline.Scale),
-            new(Thread, Scan, 1, [Whole()], MemoryUsageCurve.Empty, timeline.Scale)
+            new(Thread, Filter, 0, [Whole()], MemoryUsageCurve.Empty, timeline.Scale) { Instances = [FilterIterator] },
+            new(Thread, Scan, 1, [Whole()], MemoryUsageCurve.Empty, timeline.Scale) { Instances = [ScanIterator] }
         ];
 
         return (timeline, calls, new TraceOperatorLifetimeList(lifetimes));

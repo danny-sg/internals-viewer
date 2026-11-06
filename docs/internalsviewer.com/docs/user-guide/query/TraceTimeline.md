@@ -22,7 +22,7 @@ In a lane, each call is a bar running from where it started to where it ended. T
 
 - **A wide bar** - a call that ran for a long stretch, and on the Instructions axis, one that executed a lot of code
 - **A run of thin bars** - the same function called over and over, such as a scan's `GetRow` once per row
-- **A gap beneath a bar** - the call working in its own code rather than in a call it made, or in Extended Events and tracing code, which is left out of the chart
+- **A gap beneath a bar** - the call working in its own code rather than in a call it made. Extended Events and tracing code is left out of the chart, and where it took up a noticeable stretch of a thread that stretch is cut out too, so the calls either side of it close up. On the **Position** axis a stretch is only cut when no other thread started or finished a call during it. A faint dotted line on the ruler marks each place a stretch was cut
 - **A pale strip** - calls too narrow to draw one by one, merged into a single strip. Zoom in to pull them apart
 
 ## Position and instructions
@@ -129,20 +129,25 @@ This shows something the lanes cannot. An operator is only on a thread's stack w
 
 ## Operator tracks
 
-Each operator bar can carry thin strips of ticks, one strip per track. A tick is one call, drawn as a faint bar across the call with a solid tick at its end. A strip only appears on an operator that has ticks on it, so an operator the track has nothing to say about keeps its full height for its name. Three tracks are built in:
+Each operator bar can carry thin strips of ticks, one strip per track. A tick is one call, drawn as a faint bar across the call with a solid tick at its end. A strip only appears on an operator that has ticks on it. Every operator keeps the same room for its name, so an operator with more strips is drawn taller and the others give up the height for it.
+
+Every track is made of rules. A rule picks out the calls to tick and gives them a label and a colour. Rules that share a track name make one track, each rule one kind of tick on it, so a track can show several kinds of call side by side. These tracks come predefined:
 
 - **GetRow/GetBatch** - along the top, a tick for every `GetRow` or `GetBatch` call the operator answered, coloured by what happened to the row (see below)
-- **Reads** - along the bottom, the operator's requests to the buffer pool
-- **Evaluations** - above the reads, the predicates the operator evaluated
+- **Reads** - along the bottom, the operator's requests to the buffer pool, page reads and read-aheads
+- **Evaluations** - above the reads, the predicates the operator evaluated, coloured by whether they were true, false or NULL
+- **Row Access** - the rows the operator read on buffer pool pages, with the page and slot, coloured by the category of the function that read the row
+- **Seek** - each b-tree seek, with the root, intermediate and leaf pages it went through
 
 Each track has a toggle under **View > Operators**, and in the Operators pane's right-click menu. Turning a built-in track off is remembered between sessions.
 
-You can add your own tracks for any function. **Add to Operators**, in the right-click menu of any call in the chart, adds one for that call's function. **Custom...**, under **View > Operators** or in the pane's right-click menu, adds one for a function you pick. A custom track has a tick on the operator each call was made inside, on a lighter strip so it stands apart from the built-in tracks. A call made outside every operator has no tick. The dialog sets:
+You can add your own rules for any function. **Add to Operators**, in the right-click menu of any call in the chart, adds one for that call's function. **Custom...**, under **View > Operators** or in the pane's right-click menu, adds one for a function you pick. A rule ticks the operator each call was made inside. A track you start has a lighter strip so it stands apart from the predefined tracks. A call made outside every operator has no tick. The dialog sets:
 
 - **Function** - the function whose calls are ticked. Type part of its name to pick it from the functions in the trace
-- **Name** - the track's name in the **View** menu and its tooltips, the function's name to start with
-- **Colour** - the colour of its ticks, the function's category colour to start with
-- **Height** and **Width** - how tall the strip is and how wide each tick is, as a multiple of the built-in tracks, so **1.5** is half as tall or wide again
+- **Track** - the track's name in the **View** menu and its tooltips, the function's name to start with. Pick an existing track to add the rule to it
+- **Label** - what this rule's ticks are called on the track, in its tooltips and its counts. The function's name when left empty
+- **Colour** - the colour of its ticks, the function's category colour to start with. **Category Colour** colours each tick by the category of the function that made it instead, which suits a rule that matches several functions
+- **Height** and **Width** - how tall the strip is and how wide each tick is, as a multiple of the predefined tracks, so **1.5** is half as tall or wide again. A track takes them from its first rule
 - **Conditions** - which calls get a tick. A call gets a tick only when every condition matches, and with no conditions every call does. Each condition is one of:
   - **An argument or the return value**, an operator and a value. A number, such as `0`, `-1` or `0x1F`, is compared with the argument's value at its own size. Anything else is compared with the value as the **Arguments** table shows it, such as `true`, a page like `1:1536` or `NULL`.
   - **Called By** a function, anywhere up the call stack, or **Called Directly By** a function, the call's immediate caller. The value is a function name, matched the same way as in the Call Tree's search, so `*Scan*::GetRow` matches any scan's `GetRow` and `sqlmin!` limits it to one module. Use **!=** to tick calls that were not made from it.
@@ -150,9 +155,9 @@ You can add your own tracks for any function. **Add to Operators**, in the right
 
 For example, `CEsExec::FastCompare1` with **Called By** `CQScanTableScanNew::GetRow` ticks the predicates a scan evaluated itself, while **Operator** `Filter` ticks only a Filter's. A scan below a Filter is also called by the Filter, so **Called By** the Filter's `GetRow` would include the scan's too. Use **Called Directly By** or **Operator** to pick out the Filter alone.
 
-The same function can be added more than once, such as one track for `GetRow` calls that returned a row and another for those that did not. Custom tracks last until Internals Viewer is closed, and every trace you open shows them. Turning one off in the **View** menu hides it like a built-in track. **Clear All** in the **View** menu removes every custom track.
+The same function can be added more than once, such as one rule for `GetRow` calls that returned a row and another for those that did not, both on one track in two colours. A call that two rules of the same track pick out gets one tick, from the rule that comes first. The rules you add are saved, and every trace you open in this or a later session shows them. Turning a track off in the **View** menu hides it like a predefined one.
 
-**Operator Tracks**, on the Trace menu, opens a tab listing the custom tracks with their function, conditions, colour, height, width and how many ticks each has in the current trace. **Add** opens the same dialog, **Edit** and **Delete** change or remove a track, and **Export** and **Import** save the tracks to a file and load them back, into this or any later session.
+**Operator Tracks**, on the Trace menu, opens a tab listing every rule, predefined and added, with its track, label, function, conditions, colour, height, width, how many ticks it has in the current trace and whether you added it. **Add** opens the same dialog, and **Edit** and **Delete** change or remove a rule. A predefined rule you change or delete comes back in the next session, or straight away with **Reset Predefined**. **Clear Added** removes every rule you added. **Export** and **Import** save the rules you added to a file and load them back.
 
 - Hovering over a strip names it in a label at the left of the operator, beneath a strip along the top and above one along the bottom, and shows how many ticks of each kind the operator has on that thread
 - Hovering over a tick outlines its call in red in the lanes below, and shows what kind of tick it is, its function, thread and position

@@ -336,11 +336,11 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         var lifetimes = builder.BuildLifetimes();
 
-        LogOperators(operators, replay.PlanNodes, lifetimes);
+        LogOperators(operators, replay.PlanNodes, builder.OperatorFrames, lifetimes);
 
         Logger.LogInformation("{Matched} of {Operators} operator(s) matched to recorded iterators, {Allocations} allocation(s) of "
                               + "{Bytes}, {Lifetimes} operator lifetime(s) on {Threads} thread(s)",
-                              operators.Count(o => o.Instances.Count > 0),
+                              operators.Count(o => builder.OperatorFrames.GetInstances(o).Count > 0),
                               operators.Count(o => o.PlanNodeIdentifier is { NodeId: >= 0 }),
                               allocationCount,
                               StringHelpers.FormatSize(allocatedBytes),
@@ -536,6 +536,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
     private void LogOperators(IReadOnlyList<ExecutionOperatorEvent> operators,
                               IReadOnlyList<IteratorPlanNode> planNodes,
+                              OperatorFrameMap frames,
                               IReadOnlyList<TraceOperatorLifetime> lifetimes)
     {
         if (!Logger.IsEnabled(LogLevel.Debug))
@@ -552,13 +553,13 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         foreach (var operatorEvent in operators)
         {
             Logger.LogDebug($"Operator: {operatorEvent.OperatorDescription} node {operatorEvent.PlanNodeIdentifier} instances "
-                            + string.Join(", ", operatorEvent.Instances.Select(i => $"0x{i:X}")));
+                            + string.Join(", ", frames.GetInstances(operatorEvent).Select(i => $"0x{i:X}")));
         }
 
         foreach (var lifetime in lifetimes)
         {
             Logger.LogDebug($"Operator lifetime: {lifetime.Operator.OperatorDescription} on thread {lifetime.Thread} instances "
-                            + string.Join(", ", lifetime.Operator.Instances.Select(i => $"0x{i:X}")));
+                            + string.Join(", ", lifetime.Instances.Select(i => $"0x{i:X}")));
         }
     }
 

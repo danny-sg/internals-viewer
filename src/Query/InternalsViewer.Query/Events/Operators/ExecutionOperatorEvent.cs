@@ -95,6 +95,4 @@ public sealed partial record ExecutionOperatorEvent : EngineEvent
     /// the workers, so the worker count (degree of parallelism) is the number of non-zero ids.
     /// </remarks>
     public IReadOnlyList<OperatorThread> Threads { get; set; } = [];
-
-    public IReadOnlyList<ulong> Instances { get; set; } = [];
 }

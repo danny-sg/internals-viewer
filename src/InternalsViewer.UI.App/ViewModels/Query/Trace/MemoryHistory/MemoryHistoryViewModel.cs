@@ -115,7 +115,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
     private MagicBytesMatcher? MagicBytes { get; set; }
 
-    private ArrayAllocationMatcher? ArrayAllocations { get; set; }
+    private AddressMap? Map { get; set; }
 
     private short DatabaseId { get; set; }
 
@@ -144,7 +144,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
         MagicBytes = trace is null ? null : new MagicBytesMatcher(Store);
 
-        ArrayAllocations = trace is null ? null : new ArrayAllocationMatcher(Store, trace.AddressMap);
+        Map = trace?.AddressMap;
 
         Workfiles = trace is null ? null : new WorkfileLayoutResolver(database, i => GetPlanNode(i, resolvePlanNode));
 
@@ -434,10 +434,17 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
         => GetBufferLabel(block)
            ?? Batches?.GetPart(block)?.Name
            ?? MagicBytes?.GetClassName(block)
-           ?? ArrayAllocations?.GetClassName(block)
+           ?? GetArrayLabel(block)
            ?? GetMemoryObjectPageLabel(Store.Blocks[block])
            ?? GetMapLabel(Store.Blocks[block])
            ?? (Store.Blocks[block].IsIterator ? IteratorObject : string.Empty);
+
+    private string? GetArrayLabel(int block)
+        => Store.GetArray(block) is { } array
+           && Store.Blocks[block] is var allocation
+           && Map?.GetClassName(array.FirstElement, allocation.FromPosition, allocation.ToPosition) is { } element
+            ? $"{element}[{array.Count}]"
+            : null;
 
     private PlanNode? GetPlanNode(ulong iterator, Func<PlanNodeIdentifier, PlanNode?> resolvePlanNode)
         => Iterators.TryGetValue(iterator, out var target) && target.Operator?.PlanNodeIdentifier is { } identifier

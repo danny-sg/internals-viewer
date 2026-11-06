@@ -3,6 +3,7 @@
 public enum AllocationOperation
 {
     Allocate,
+    AllocateArray,
     Reallocate,
     Free,
     Create

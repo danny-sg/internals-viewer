@@ -32,7 +32,10 @@ internal static class OperatorTrackEditor
                 ? TraceTickTracks.GetCategoryColour(node)
                 : TraceTickTracks.DefaultColour;
 
-        var source = new OperatorTrackDialogSource(functions, viewModel.GetOperatorChoices(), viewModel.GetLayoutAsync);
+        var source = new OperatorTrackDialogSource(functions,
+                                                   viewModel.GetOperatorChoices(),
+                                                   viewModel.GetTrackNames(),
+                                                   viewModel.GetLayoutAsync);
 
         var dialog = new OperatorTrackDialog(source,
                                              existing,

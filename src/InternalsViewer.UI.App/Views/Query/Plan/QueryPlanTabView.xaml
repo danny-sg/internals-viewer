@@ -40,6 +40,8 @@
                       Background="White"
                       Padding="8">
             <ItemsRepeater x:Name="PlanRepeater"
+                           HorizontalAlignment="Left"
+                           VerticalAlignment="Top"
                            ItemsSource="{x:Bind ViewModel.ExecutionPlans, Mode=OneWay}"
                            Layout="{StaticResource PlanStackLayout}"
                            ItemTemplate="{StaticResource ExecutionPlanTemplate}" />

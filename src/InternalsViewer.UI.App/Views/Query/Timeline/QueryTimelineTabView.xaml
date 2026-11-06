@@ -13,10 +13,12 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <timeline:TimelineRuler x:Name="Ruler"
-                                Source="{x:Bind EventTimeline}"
-                                IsPinned="{x:Bind Settings.PinTimeline, Mode=TwoWay}"
-                                Visibility="{x:Bind Settings.PinTimeline, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
+        <Border Background="{ThemeResource SolidBackgroundFillColorTertiaryBrush}"
+                Visibility="{x:Bind Settings.PinTimeline, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+            <timeline:TimelineRuler x:Name="Ruler"
+                                    Source="{x:Bind EventTimeline}"
+                                    IsPinned="{x:Bind Settings.PinTimeline, Mode=TwoWay}"/>
+        </Border>
 
         <timeline:EventTimelineControl x:Name="EventTimeline"
                                        Grid.Row="1"

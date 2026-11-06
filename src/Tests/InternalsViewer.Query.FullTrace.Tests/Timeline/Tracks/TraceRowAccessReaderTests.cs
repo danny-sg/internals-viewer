@@ -44,7 +44,6 @@ public class TraceRowAccessReaderTests
     {
         Name = "Clustered Index Seek",
         OperatorDescription = "Clustered Index Seek",
-        Instances = [RangeIterator],
         PlanNodeIdentifier = new PlanNodeIdentifier(1, 0)
     };
 
@@ -106,7 +105,12 @@ public class TraceRowAccessReaderTests
 
         var accesses = TracePageAccessList.Build(calls, MemoryHistoryStore.Empty, pool.Build());
 
-        var lifetimes = new TraceOperatorLifetimeList([new(Thread, Range, 0, [Whole()], MemoryUsageCurve.Empty, timeline.Scale)]);
+        var lifetime = new TraceOperatorLifetime(Thread, Range, 0, [Whole()], MemoryUsageCurve.Empty, timeline.Scale)
+        {
+            Instances = [RangeIterator]
+        };
+
+        var lifetimes = new TraceOperatorLifetimeList([lifetime]);
 
         var enclosing = EnclosingOperatorCallIndex.Build(calls, lifetimes.OperatorsByInstance);
 

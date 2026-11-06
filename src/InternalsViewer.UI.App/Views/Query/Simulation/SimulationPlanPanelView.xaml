@@ -17,7 +17,9 @@
                   MaxZoomFactor="2.0"
                   Background="White"
                   Padding="8">
-        <plan:ExecutionPlanControl Plan="{x:Bind ViewModel.SimulationPlan, Mode=OneWay}"
+        <plan:ExecutionPlanControl HorizontalAlignment="Left"
+                                   VerticalAlignment="Top"
+                                   Plan="{x:Bind ViewModel.SimulationPlan, Mode=OneWay}"
                                    SelectedNode="{x:Bind ViewModel.ActivePlanNode, Mode=OneWay}"
                                    NodeSelected="OnNodeSelected" />
     </ScrollViewer>

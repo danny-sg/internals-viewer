@@ -229,7 +229,6 @@ public class QueryExportTests
             OperatorDescription = "Clustered Index Scan",
             PlanNodeIdentifier = new PlanNodeIdentifier { PlanHandleId = 1, NodeId = 0 },
             Threads = [new OperatorThread(0, 10, 20, 5)],
-            Instances = [Scan]
         };
 
         var plan = ExecutionPlanParser.Parse(PlanXml, (short)3);

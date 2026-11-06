@@ -116,7 +116,7 @@
                     <calls:CategoryFilterPanel x:Name="CategoryFilter"
                                                    CallTree="{x:Bind ViewModel.CallTree, Mode=OneWay}"/>
 
-                    <Border Background="{ThemeResource LayerFillColorDefaultBrush}"
+                    <Border Background="{ThemeResource SolidBackgroundFillColorTertiaryBrush}"
                             Visibility="{x:Bind Settings.PinTimeline, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                         <timeline:TimelineRuler x:Name="Ruler"
                                                 Source="{x:Bind TraceTimeline}"

@@ -83,7 +83,7 @@ Pages and indexes opened from the trace - by double-clicking a timeline event, c
 
 **Search symbols** is covered in [Searching Symbols](/docs/user-guide/query/CallStack#searching-symbols).
 
-**Operator Tracks** opens the Operator Tracks tab, which lists the tracks you have added to the Trace Timeline's operators - see [Operator tracks](/docs/user-guide/query/TraceTimeline#operator-tracks).
+**Operator Tracks** opens the Operator Tracks tab, which lists the rules behind the Trace Timeline's operator tracks, predefined and added - see [Operator tracks](/docs/user-guide/query/TraceTimeline#operator-tracks).
 
 ## Layout
 

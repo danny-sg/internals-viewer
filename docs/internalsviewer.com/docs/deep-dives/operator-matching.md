@@ -32,7 +32,7 @@ object is exactly one operator.
 
 ## Finding where an object starts
 
-The matcher walks the call tree down from each thread's root, carrying the iterator object the walk is currently inside.
+Internals Viewer walks the call tree down from each thread's root, carrying the iterator object the walk is currently inside.
 A frame called on a different object from the one around it is where that object's execution begins - an **entry
 frame**. Frames called on the same object further down are part of the same execution and are not entries. Frames of
 functions that are not iterator methods carry no object and leave the walk where it is. Plan objects (`CXte*`,
@@ -90,11 +90,11 @@ where it ran.
 
 ## In the source
 
-- `src/Query/InternalsViewer.Query.FullTrace/Iterators/IteratorInstanceMatcher.cs` - finding each object's entry frames
+- `src/Query/InternalsViewer.Query.FullTrace/Iterators/OperatorFrameMap.cs` - finding each object's entry frames
   and assigning them to operators and statements
 - `src/Query/InternalsViewer.Query.FullTrace/Iterators/OperatorFrameMap.cs` - the entry and exit frames of each operator
 - `src/Query/InternalsViewer.Query.FullTrace/Iterators/IteratorPlanLinker.cs` - linking iterator and plan objects to plan
   nodes
 - `src/Query/InternalsViewer.Query.FullTrace/Symbols/Categories/Mappings/Operators.txt` - which frames name an iterator
   and which start a plan operator
-- `src/Tests/InternalsViewer.Query.FullTrace.Tests/Iterators/IteratorInstanceMatcherTests.cs` - the cases above
+- `src/Tests/InternalsViewer.Query.FullTrace.Tests/Iterators/OperatorFrameMapBuildTests.cs` - the cases above

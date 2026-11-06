@@ -6,7 +6,7 @@ namespace InternalsViewer.Query.FullTrace.Memory.History;
 
 public sealed partial class MemoryHistoryStore
 {
-    private const int FormatVersion = 14;
+    private const int FormatVersion = 15;
 
     private const int InstancesVersion = 10;
 
@@ -55,6 +55,8 @@ public sealed partial class MemoryHistoryStore
             writer.Write(block.FirstInstance);
 
             writer.Write(block.InstanceCount);
+
+            writer.Write(block.IsArray);
         }
 
         Writes.Write(writer);
@@ -115,7 +117,8 @@ public sealed partial class MemoryHistoryStore
             {
                 IsStack = version >= InstancesVersion && reader.ReadBoolean(),
                 FirstInstance = version >= InstancesVersion ? reader.ReadInt32() : 0,
-                InstanceCount = version >= InstancesVersion ? reader.ReadInt32() : 0
+                InstanceCount = version >= InstancesVersion ? reader.ReadInt32() : 0,
+                IsArray = version >= FormatVersion && reader.ReadBoolean()
             };
         }
 

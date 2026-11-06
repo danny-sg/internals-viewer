@@ -150,7 +150,8 @@ internal sealed record AllocationFunction(ulong Address,
 
     public int LineSlot { get; init; } = -1;
 
-    public bool IsAllocation => Operation is AllocationOperation.Allocate or AllocationOperation.Reallocate;
+    public bool IsAllocation
+        => Operation is AllocationOperation.Allocate or AllocationOperation.AllocateArray or AllocationOperation.Reallocate;
 
     public static bool IsMemoryObjectClass(string? className)
         => className is not null && (className == MemoryObjectFactory || IsMemoryObject(className));
@@ -230,8 +231,10 @@ internal sealed record AllocationFunction(ulong Address,
         {
             return symbol switch
             {
-                "operator new" or "operator new[]"
+                "operator new"
                     => new(address, AllocationOperation.Allocate, 0, -1, 1),
+                "operator new[]"
+                    => new(address, AllocationOperation.AllocateArray, 0, -1, 1),
                 "operator delete" or "operator delete[]"
                     => new(address, AllocationOperation.Free, -1, 0, 1),
                 _ => null

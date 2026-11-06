@@ -262,21 +262,6 @@ public class MemoryHistoryBuilderTests
     }
 
     [Fact]
-    public void A_Summary_Counts_Every_Change_And_Names_The_Operators_On_Their_Stacks()
-    {
-        var (timeline, _) = BuildTimeline();
-
-        var store = Build([Block(Owned, 0x10, from: 1)],
-                          [Write(5, Owned, new byte[0x10]), Write(15, Owned + 8, 1), Write(35, Owned + 8, 2), Write(50, Owned, 9)],
-                          timeline: timeline);
-
-        var summary = store.GetSummary(0, default, TracePosition.Unknown);
-
-        Assert.Equal([Iterator], summary.Operators);
-        Assert.Equal((3, 3, 2), (summary.CallCount, summary.ChangeCount, summary.ChangingByteCount));
-    }
-
-    [Fact]
     public void An_Object_Is_Created_At_Its_Allocation_Or_Its_First_Write_When_Inline()
     {
         var store = Build([Block(Page, 0x2000, from: 1), Block(Owned, 0x10, from: 20)],
@@ -297,7 +282,6 @@ public class MemoryHistoryBuilderTests
         var store = Build([Block(Owned, 0x10, from: 1)], [Write(15, Owned, 1)], timeline: timeline);
 
         Assert.Empty(store.GetCalls(0, timeline, default, TracePosition.Unknown));
-        Assert.Equal(0, store.GetSummary(0, default, TracePosition.Unknown).ChangeCount);
     }
 
     [Fact]

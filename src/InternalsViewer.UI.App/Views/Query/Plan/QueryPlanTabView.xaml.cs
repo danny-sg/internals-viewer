@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using System.Collections.Generic;
+using System.ComponentModel;
 using System;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.Query.Plan;
@@ -102,6 +103,7 @@ public sealed partial class QueryPlanTabView : UserControl
             p.SelectedNode = ViewModel?.SelectedPlanNode;
             p.ActiveNodes = ViewModel?.ActivePlanNodes;
             p.EmittingNodes = ViewModel?.EmittingPlanNodes;
+            p.RequestedNodes = ViewModel?.RequestedPlanNodes;
             p.Events = ViewModel?.Events;
             p.AreAnnotationsVisible = ViewModel?.IsAnnotationsVisible == true;
         });
@@ -121,6 +123,8 @@ public sealed partial class QueryPlanTabView : UserControl
         if (_subscribed is not null)
         {
             _subscribed.PropertyChanged += OnViewModelPropertyChanged;
+
+            _subscribed.PlanRowsReturned += OnPlanRowsReturned;
         }
     }
 
@@ -129,9 +133,14 @@ public sealed partial class QueryPlanTabView : UserControl
         if (_subscribed is not null)
         {
             _subscribed.PropertyChanged -= OnViewModelPropertyChanged;
+
+            _subscribed.PlanRowsReturned -= OnPlanRowsReturned;
+
             _subscribed = null;
         }
     }
+
+    private void OnPlanRowsReturned(IReadOnlyList<PlanNode> nodes) => ApplyToPlans(p => p.FlashReturned(nodes));
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -158,6 +167,9 @@ public sealed partial class QueryPlanTabView : UserControl
             case nameof(QueryViewModel.EmittingPlanNodes):
                 ApplyToPlans(p => p.EmittingNodes = _subscribed.EmittingPlanNodes);
                 break;
+            case nameof(QueryViewModel.RequestedPlanNodes):
+                ApplyToPlans(p => p.RequestedNodes = _subscribed.RequestedPlanNodes);
+                break;
             case nameof(QueryViewModel.Events):
                 ApplyToPlans(p => p.Events = _subscribed.Events);
                 break;
@@ -171,6 +183,7 @@ public sealed partial class QueryPlanTabView : UserControl
             planControl.SelectedNode = viewModel.SelectedPlanNode;
             planControl.ActiveNodes = viewModel.ActivePlanNodes;
             planControl.EmittingNodes = viewModel.EmittingPlanNodes;
+            planControl.RequestedNodes = viewModel.RequestedPlanNodes;
             planControl.Events = viewModel.Events;
             planControl.AreAnnotationsVisible = viewModel.IsAnnotationsVisible;
 

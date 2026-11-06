@@ -64,7 +64,6 @@
         </TabView>
 
         <Grid x:Name="TabContentHost"
-              Grid.Row="1"
-              Background="{ThemeResource LayerFillColorDefaultBrush}"/>
+              Grid.Row="1"/>
     </Grid>
 </winUiEx:WindowEx>

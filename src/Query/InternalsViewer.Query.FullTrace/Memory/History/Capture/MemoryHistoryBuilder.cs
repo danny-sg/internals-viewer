@@ -30,7 +30,7 @@ internal static class MemoryHistoryBuilder
                                                            MemoryBlock[]? buffers = null,
                                                            MemoryBlock[]? pages = null)
     {
-        var events = new List<(TracePosition Position, ulong Pointer, ulong Bytes, uint Thread, bool IsClerkPage)>();
+        var events = new List<(TracePosition Position, ulong Pointer, ulong Bytes, uint Thread, bool IsClerkPage, bool IsArray)>();
 
         foreach (var function in functions.Where(IsWatched))
         {
@@ -50,25 +50,31 @@ internal static class MemoryHistoryBuilder
 
                 var thread = list.GetThread(index);
 
-                if (function.Operation != AllocationOperation.Allocate && function.GetPointer(call) is not 0 and var released)
+                if (function.Operation is not (AllocationOperation.Allocate or AllocationOperation.AllocateArray)
+                    && function.GetPointer(call) is not 0 and var released)
                 {
-                    events.Add((list.GetFromPosition(index), released, 0, thread, false));
+                    events.Add((list.GetFromPosition(index), released, 0, thread, false, false));
                 }
 
                 if (function.IsAllocation
                     && call.ReturnedValue >= TraceAddress.MinAddress
                     && function.GetByteCount(call) is > 0 and <= MaximumBlockSize and var bytes)
                 {
-                    events.Add((list.GetToPosition(index), call.ReturnedValue, bytes, thread, function.CarriesClerk));
+                    events.Add((list.GetToPosition(index),
+                                call.ReturnedValue,
+                                bytes,
+                                thread,
+                                function.CarriesClerk,
+                                function.Operation == AllocationOperation.AllocateArray));
                 }
             }
         }
 
-        var live = new Dictionary<ulong, List<(ulong Bytes, uint Thread, TracePosition Start, bool IsClerkPage)>>();
+        var live = new Dictionary<ulong, List<(ulong Bytes, uint Thread, TracePosition Start, bool IsClerkPage, bool IsArray)>>();
 
         var allocations = new List<MemoryHistoryAllocation>();
 
-        foreach (var (position, pointer, bytes, thread, isClerkPage) in events.OrderBy(e => e.Position))
+        foreach (var (position, pointer, bytes, thread, isClerkPage, isArray) in events.OrderBy(e => e.Position))
         {
             if (bytes == 0)
             {
@@ -76,7 +82,8 @@ internal static class MemoryHistoryBuilder
                 {
                     allocations.AddRange(released.Select(r => new MemoryHistoryAllocation(
                                                              new MemoryBlock(pointer, r.Bytes, r.Thread, r.Start, position),
-                                                             r.IsClerkPage)));
+                                                             r.IsClerkPage,
+                                                             IsArray: r.IsArray)));
                 }
 
                 continue;
@@ -88,7 +95,7 @@ internal static class MemoryHistoryBuilder
 
             if (!open.Exists(o => o.Bytes == bytes))
             {
-                open.Add((bytes, thread, position, isClerkPage));
+                open.Add((bytes, thread, position, isClerkPage, isArray));
             }
         }
 
@@ -96,7 +103,8 @@ internal static class MemoryHistoryBuilder
         {
             allocations.AddRange(open.Select(o => new MemoryHistoryAllocation(
                                                      new MemoryBlock(pointer, o.Bytes, o.Thread, o.Start, TracePosition.Unknown),
-                                                     o.IsClerkPage)));
+                                                     o.IsClerkPage,
+                                                     IsArray: o.IsArray)));
         }
 
         allocations.AddRange((buffers ?? []).Select(b => new MemoryHistoryAllocation(b, IsClerkPage: false, IsBuffer: true)));
@@ -226,6 +234,7 @@ internal static class MemoryHistoryBuilder
                                             written[index])
             {
                 IsStack = block.IsStack,
+                IsArray = block.IsArray,
                 FirstInstance = firstInstance,
                 InstanceCount = block.Instances.Count
             });
@@ -263,7 +272,8 @@ internal static class MemoryHistoryBuilder
                                             allocation.Thread,
                                             allocation.Start,
                                             allocation.End,
-                                            allocations[index].IsBuffer));
+                                            allocations[index].IsBuffer,
+                                            isArray: allocations[index].IsArray));
             }
 
             Sites = AddStackSites();
@@ -720,7 +730,8 @@ internal static class MemoryHistoryBuilder
                                       TracePosition toPosition,
                                       bool isBuffer = false,
                                       bool isStack = false,
-                                      int callNodeIndex = -1)
+                                      int callNodeIndex = -1,
+                                      bool isArray = false)
     {
         public ulong Iterator { get; } = iterator;
 
@@ -737,6 +748,8 @@ internal static class MemoryHistoryBuilder
         public bool IsBuffer { get; } = isBuffer;
 
         public bool IsStack { get; } = isStack;
+
+        public bool IsArray { get; } = isArray;
 
         public int CallNodeIndex { get; } = callNodeIndex;
 

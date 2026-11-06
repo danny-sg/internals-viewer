@@ -25,6 +25,8 @@ public class TraceReadResolverTests
 {
     private const uint Thread = 7;
 
+    private const string ReadsTrack = "Reads";
+
     private const ulong Helper = 0x1000;
 
     private const ulong GetFunction = 0x2000;
@@ -43,7 +45,6 @@ public class TraceReadResolverTests
     {
         Name = "Nested Loops",
         OperatorDescription = "Nested Loops",
-        Instances = [JoinIterator],
         PlanNodeIdentifier = new PlanNodeIdentifier(1, 0)
     };
 
@@ -51,7 +52,6 @@ public class TraceReadResolverTests
     {
         Name = "Table Scan",
         OperatorDescription = "Table Scan",
-        Instances = [ScanIterator],
         PlanNodeIdentifier = new PlanNodeIdentifier(1, 1),
         ParentNodeId = 0
     };
@@ -73,8 +73,8 @@ public class TraceReadResolverTests
 
         var read = Assert.Single(reads.All, r => r.Value == (byte)TraceReadType.Page && r.Operator is not null);
 
-        Assert.Equal(((new PageAddress(1, 1056), 1), At(20), At(25)),
-                     (GetRead(calls, read, TraceReadType.Page), read.Span.From.Position, read.Span.To.Position));
+        Assert.Equal(((new PageAddress(1, 1056), 1, false), At(20), At(25)),
+                     (GetRead(calls, read), read.Span.From.Position, read.Span.To.Position));
     }
 
     [Fact]
@@ -84,7 +84,7 @@ public class TraceReadResolverTests
 
         var read = Assert.Single(reads.All, r => r.Value == (byte)TraceReadType.ReadAhead);
 
-        Assert.Equal((new PageAddress(1, 1536), 40), GetRead(calls, read, TraceReadType.ReadAhead));
+        Assert.Equal((new PageAddress(1, 1536), 40, true), GetRead(calls, read));
     }
 
     [Fact]
@@ -190,15 +190,19 @@ public class TraceReadResolverTests
 
         TraceOperatorLifetime[] lifetimes =
         [
-            new(Thread, Join, 0, [Whole()], MemoryUsageCurve.Empty, timeline.Scale),
-            new(Thread, Scan, 1, [Whole()], MemoryUsageCurve.Empty, timeline.Scale)
+            new(Thread, Join, 0, [Whole()], MemoryUsageCurve.Empty, timeline.Scale) { Instances = [JoinIterator] },
+            new(Thread, Scan, 1, [Whole()], MemoryUsageCurve.Empty, timeline.Scale) { Instances = [ScanIterator] }
         ];
 
-        return (TraceReadResolver.Build(timeline, calls, new TraceOperatorLifetimeList(lifetimes)), calls);
+        var trace = new TraceResult(new CallTree(), calls, timeline) { Lifetimes = new TraceOperatorLifetimeList(lifetimes) };
+
+        TraceTickDefinition[] rules = [.. TraceTickDefinition.GetPredefined().Where(d => d.Name == ReadsTrack)];
+
+        return (TraceTickSeries.FromRules(trace, rules, r => TraceTickSeries.FromDefinition(trace, r)).Series, calls);
     }
 
-    private static (PageAddress Page, int PageCount)? GetRead(TraceCallStore calls, TraceTick read, TraceReadType type)
-        => TraceReadResolver.GetRead(calls.GetCallList(read.FunctionAddress, read.InstanceAddress)![read.CallIndex], type);
+    private static (PageAddress Page, int PageCount, bool IsReadAhead)? GetRead(TraceCallStore calls, TraceTick read)
+        => TraceReadResolver.GetRead(read.Node.Frame!, calls.GetCallList(read.FunctionAddress, read.InstanceAddress)![read.CallIndex]);
 
     private static ulong[] Call(ulong start, ulong end, int callNodeIndex, ulong pageCount = 0)
     {

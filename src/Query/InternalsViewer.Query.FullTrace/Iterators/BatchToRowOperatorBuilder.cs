@@ -10,11 +10,11 @@ internal static class BatchToRowOperatorBuilder
 {
     private const string OperatorName = "Batch To Row Adapter";
 
-    public static List<ExecutionOperatorEvent> Create(TraceTimeline timeline,
-                                                      IReadOnlyList<IteratorPlanNode> planNodes,
-                                                      IReadOnlyList<ExecutionOperatorEvent> operators)
+    public static Dictionary<ulong, ExecutionOperatorEvent> Create(TraceTimeline timeline,
+                                                                   IReadOnlyList<IteratorPlanNode> planNodes,
+                                                                   IReadOnlyDictionary<ulong, ExecutionOperatorEvent> owners)
     {
-        var adapters = new List<ExecutionOperatorEvent>();
+        var adapters = new Dictionary<ulong, ExecutionOperatorEvent>();
 
         if (planNodes.Count == 0)
         {
@@ -23,24 +23,30 @@ internal static class BatchToRowOperatorBuilder
 
         var query = planNodes[0].Query;
 
-        var planHandle = operators.FirstOrDefault(o => o.Instances.Count > 0)?.PlanNodeIdentifier?.PlanHandleId;
+        var operators = owners.Values.Distinct<ExecutionOperatorEvent>(ReferenceEqualityComparer.Instance).ToList();
+
+        var planHandle = operators.FirstOrDefault()?.PlanNodeIdentifier?.PlanHandleId;
 
         foreach (var helpers in planNodes.Where(n => n.IsBatchHelper && n.Query == query).GroupBy(n => n.NodeId))
         {
             HashSet<ulong> instances = [.. helpers.Select(h => h.Iterator)];
 
-            if ((GetAdaptedOperator(operators, planHandle, helpers.Key) ?? GetSubOperator(timeline, operators, instances)) is { } source)
+            if ((GetAdaptedOperator(operators, planHandle, helpers.Key) ?? GetSubOperator(timeline, owners, instances)) is { } source)
             {
-                adapters.Add(new ExecutionOperatorEvent
+                var adapter = new ExecutionOperatorEvent
                 {
                     Name = OperatorName,
                     OperatorDescription = OperatorName,
                     LogicalOperator = OperatorName,
                     Category = OperatorCategory.Adapter,
                     NodeLevel = source.NodeLevel,
-                    IsBlockingInput = source.IsBlockingInput,
-                    Instances = [.. instances]
-                });
+                    IsBlockingInput = source.IsBlockingInput
+                };
+
+                foreach (var instance in instances)
+                {
+                    adapters.TryAdd(instance, adapter);
+                }
             }
         }
 
@@ -55,11 +61,9 @@ internal static class BatchToRowOperatorBuilder
                                          && (planHandle is null || node.PlanHandleId == planHandle));
 
     private static ExecutionOperatorEvent? GetSubOperator(TraceTimeline timeline,
-                                                              IReadOnlyList<ExecutionOperatorEvent> operators,
+                                                              IReadOnlyDictionary<ulong, ExecutionOperatorEvent> owners,
                                                               HashSet<ulong> helpers)
     {
-        var owners = OperatorHierarchy.GetOperatorsByInstance(operators);
-
         var seen = new HashSet<CallTreeNode>(ReferenceEqualityComparer.Instance);
 
         var pending = new Queue<CallTreeNode>();

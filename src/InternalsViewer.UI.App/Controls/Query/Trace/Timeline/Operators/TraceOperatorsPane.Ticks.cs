@@ -51,6 +51,8 @@ internal sealed partial class TraceOperatorsPane
 
     private const int MaximumListedValues = 12;
 
+    private const int MaximumListedMethods = 2;
+
     private static readonly SKColor TickHoverColour = new(255, 255, 255, 200);
 
     private static readonly SKColor BandHoverColour = new(255, 255, 255, 0x80);
@@ -59,14 +61,27 @@ internal sealed partial class TraceOperatorsPane
 
     private TraceTickTrack[] VisibleTracks { get; set; } = [];
 
+    private float[]? CachedStripHeights { get; set; }
+
+    private float[] RowStripHeights => CachedStripHeights ??= [.. Rows.Select(GetRowStripHeight)];
+
     public void SetTracks(IReadOnlyList<TraceTickTrack>? tracks, IReadOnlySet<string>? hidden)
     {
         VisibleTracks = [.. (tracks ?? []).Where(t => hidden?.Contains(t.Name) != true).OrderBy(t => t.Location).ThenBy(t => t.Ordinal)];
+
+        CachedStripHeights = null;
+
+        LayoutVersion++;
 
         Hover = TraceOperatorsHover.None;
     }
 
     public TraceTick? GetTickAt(Point position) => GetTickHit(position)?.Tick;
+
+    private static TraceTickIndex? GetTicks(TraceOperatorRow row, uint thread, TraceTickTrack tickTrack)
+        => (!row.IsStatement || tickTrack.IsStatementTrack) && tickTrack.Series.GetTicks(row.TickOperator, thread) is { Count: > 0 } ticks
+            ? ticks
+            : null;
 
     private static float GetStripHeight(SKRect bar)
     {
@@ -132,6 +147,28 @@ internal sealed partial class TraceOperatorsPane
 
     private double GetLength(TraceSpan span) => TraceScale.GetValue(span.To, Axis) - TraceScale.GetValue(span.From, Axis);
 
+    private float GetRowStripHeight(TraceOperatorRow row)
+    {
+        var height = 0f;
+
+        foreach (var lifetime in row.Lifetimes)
+        {
+            var lane = 0f;
+
+            foreach (var tickTrack in VisibleTracks)
+            {
+                if (GetTicks(row, lifetime.Thread, tickTrack) is not null)
+                {
+                    lane += StripHeight * tickTrack.HeightFactor;
+                }
+            }
+
+            height = Math.Max(height, lane);
+        }
+
+        return height * row.Lifetimes.Length;
+    }
+
     private List<TickStrip> GetStrips(int row, int track, SKRect bar)
     {
         var strips = new List<TickStrip>();
@@ -153,8 +190,7 @@ internal sealed partial class TraceOperatorsPane
 
         foreach (var tickTrack in VisibleTracks)
         {
-            if ((operatorRow.IsStatement && !tickTrack.IsStatementTrack)
-                || tickTrack.Series.GetTicks(operatorRow.TickOperator, thread) is not { Count: > 0 } ticks)
+            if (GetTicks(operatorRow, thread, tickTrack) is not { } ticks)
             {
                 continue;
             }
@@ -439,7 +475,7 @@ internal sealed partial class TraceOperatorsPane
 
         lines.AddRange(MergeDetails([.. together.Select(t => track.GetDetails?.Invoke(t).ToList() ?? [])]));
 
-        lines.Add(JoinValues(together.Select(t => t.Node.Symbol)));
+        lines.Add(GetMethodLine(together));
 
         lines.Add($"Thread {JoinValues(together.Select(t => t.Thread.ToString()))}  ·  "
                   + $"Call {JoinValues(together.Select(t => (t.CallIndex + 1).ToString("N0")))}");
@@ -513,6 +549,13 @@ internal sealed partial class TraceOperatorsPane
                 yield return JoinValues(values);
             }
         }
+    }
+
+    private static string GetMethodLine(List<TraceTick> ticks)
+    {
+        var methods = ticks.Select(t => t.Node.Symbol).Distinct().ToList();
+
+        return methods.Count > MaximumListedMethods ? $"{methods.Count:N0} Methods" : string.Join(", ", methods);
     }
 
     private static string JoinValues(IEnumerable<string> values)

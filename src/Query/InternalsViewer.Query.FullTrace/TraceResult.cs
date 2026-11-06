@@ -50,10 +50,6 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
     public TraceRowReturnMarkMap RowReturnMarks { get; init; } = TraceRowReturnMarkMap.Empty;
 
-    public TraceTickSeries Reads { get; init; } = TraceTickSeries.Empty;
-
-    public TraceTickSeries Evaluations { get; init; } = TraceTickSeries.Empty;
-
     public TraceTickSeries RowAccesses { get; init; } = TraceTickSeries.Empty;
 
     public TraceTickSeries Seeks { get; init; } = TraceTickSeries.Empty;
@@ -101,8 +97,6 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
         yield return ("Page Accesses", PageAccesses.Count, PageAccesses.Bytes);
         yield return ("Call Tree Nodes", CallTree.Nodes().LongCount(), null);
         yield return ("Operator Lifetimes", Lifetimes.Count, null);
-        yield return ("Read Ticks", Reads.Count, Reads.Bytes);
-        yield return ("Evaluation Ticks", Evaluations.Count, Evaluations.Bytes);
         yield return ("Row Access Ticks", RowAccesses.Count, RowAccesses.Bytes);
         yield return ("Seek Ticks", Seeks.Count, Seeks.Bytes);
         yield return ("Row Return Marks", RowReturnMarks.Count, RowReturnMarks.Ticks.Bytes);

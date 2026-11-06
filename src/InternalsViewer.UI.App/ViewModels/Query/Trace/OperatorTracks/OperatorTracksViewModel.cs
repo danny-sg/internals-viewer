@@ -11,6 +11,7 @@ using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
+using InternalsViewer.Query.FullTrace.Timeline.Ticks.Enums;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Services.Query.Trace;
@@ -20,7 +21,9 @@ namespace InternalsViewer.UI.App.ViewModels.Query.Trace.OperatorTracks;
 
 public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposable
 {
-    private const int NameWidth = 220;
+    private const int NameWidth = 160;
+
+    private const int LabelWidth = 160;
 
     private const int FunctionWidth = 320;
 
@@ -39,7 +42,7 @@ public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposa
     private const string Extension = ".json";
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasTracks))]
+    [NotifyPropertyChangedFor(nameof(HasAddedTracks))]
     private QueryResultSet? _tracksTable;
 
     [ObservableProperty]
@@ -60,7 +63,7 @@ public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposa
 
     public event Action<TraceTickDefinition>? EditRequested;
 
-    public bool HasTracks => Store.Definitions.Count > 0;
+    public bool HasAddedTracks => Store.AddedDefinitions.Count > 0;
 
     private TraceTickTrackStore Store { get; }
 
@@ -83,6 +86,7 @@ public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposa
             TraceConditionTarget.CalledBy => "Called By",
             TraceConditionTarget.CalledDirectlyBy => "Called Directly By",
             TraceConditionTarget.Operator => "Operator",
+            TraceConditionTarget.Locator => condition.Argument is { } slot ? $"{slot.Name} Locator" : "Locator",
             _ => condition.Argument?.Name ?? "Argument"
         };
 
@@ -101,6 +105,9 @@ public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposa
 
     [RelayCommand]
     private void Clear() => Store.Clear();
+
+    [RelayCommand]
+    private void Reset() => Store.Reset();
 
     [RelayCommand]
     private async Task Export()
@@ -124,9 +131,9 @@ public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposa
         {
             await using var stream = File.Create(file.Path);
 
-            await TraceTickDefinition.WriteAsync(stream, Store.Definitions, CancellationToken.None);
+            await TraceTickDefinition.WriteAsync(stream, Store.AddedDefinitions, CancellationToken.None);
 
-            AddMessage($"{Store.Definitions.Count:N0} operator track(s) exported to {file.Path}");
+            AddMessage($"{Store.AddedDefinitions.Count:N0} operator track rule(s) exported to {file.Path}");
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
@@ -158,7 +165,7 @@ public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposa
 
             Store.AddRange(definitions);
 
-            AddMessage($"{definitions.Count:N0} operator track(s) imported from {file.Path}");
+            AddMessage($"{definitions.Count:N0} operator track rule(s) imported from {file.Path}");
         }
         catch (Exception exception) when (exception is IOException or JsonException or UnauthorizedAccessException)
         {
@@ -178,23 +185,27 @@ public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposa
     {
         var columns = new List<ResultColumn>
         {
-            new(0, "Name", typeof(string), false) { Width = NameWidth },
-            new(1, "Function", typeof(string), false) { Width = FunctionWidth },
-            new(2, "Conditions", typeof(string), false) { Width = ConditionsWidth },
-            new(3, "Colour", typeof(string), false) { Width = ColourWidth },
-            new(4, "Height", typeof(double), false) { Width = FactorWidth, Alignment = ResultAlignment.Right },
-            new(5, "Width", typeof(double), false) { Width = FactorWidth, Alignment = ResultAlignment.Right },
-            new(6, "Ticks", typeof(int), false) { Width = CountWidth, Alignment = ResultAlignment.Right },
-            new(7, string.Empty, typeof(string), false) { Width = ActionsWidth }
+            new(0, "Track", typeof(string), false) { Width = NameWidth },
+            new(1, "Label", typeof(string), false) { Width = LabelWidth },
+            new(2, "Function", typeof(string), false) { Width = FunctionWidth },
+            new(3, "Conditions", typeof(string), false) { Width = ConditionsWidth },
+            new(4, "Colour", typeof(string), false) { Width = ColourWidth },
+            new(5, "Height", typeof(double), false) { Width = FactorWidth, Alignment = ResultAlignment.Right },
+            new(6, "Width", typeof(double), false) { Width = FactorWidth, Alignment = ResultAlignment.Right },
+            new(7, "Ticks", typeof(int), false) { Width = CountWidth, Alignment = ResultAlignment.Right },
+            new(8, "Added", typeof(string), false) { Width = CountWidth },
+            new(9, string.Empty, typeof(string), false) { Width = ActionsWidth }
         };
 
         var rows = Store.Definitions.Select((d, index) => new ResultRow<long>([d.Name,
-                                                                              $"{d.Module}!{d.Function}",
+                                                                              d.GetLabel(),
+                                                                              GetFunctionText(d),
                                                                               Describe(d.Conditions),
                                                                               d.Colour,
                                                                               d.HeightFactor,
                                                                               d.WidthFactor,
                                                                               GetTickCount(d),
+                                                                              Store.IsAdded(d) ? "Yes" : "No",
                                                                               GetActions(d)])
                                                              {
                                                                  Id = index
@@ -203,6 +214,11 @@ public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposa
 
         return new QueryResultSet { Columns = columns, Rows = rows };
     }
+
+    private static string GetFunctionText(TraceTickDefinition definition)
+        => definition.Source == TraceTickSourceType.Call
+            ? $"{definition.Module}!{definition.Function}"
+            : TraceTickTracks.GetSourceText(definition.Source);
 
     private ActionLinks GetActions(TraceTickDefinition definition)
         => new([new ActionLink("Edit", () => EditRequested?.Invoke(definition)), new ActionLink("Delete", () => Store.Remove(definition))]);

@@ -2,7 +2,6 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
-using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.Query.FullTrace.Locators;
 
@@ -12,19 +11,10 @@ public static class TraceReadResolver
 {
     private const int PageCountSlot = 3;
 
-    public static (PageAddress Page, int PageCount)? GetRead(TraceArgumentCall call, TraceReadType type)
-        => GetPage(call) is { } page ? (page, GetPageCount(call, type)) : null;
-
-    internal static TraceTickSeries Build(TraceTimeline timeline,
-                                          TraceCallStore calls,
-                                          TraceOperatorLifetimeList lifetimes,
-                                          EnclosingOperatorCallIndex? enclosing = null)
-        => TraceTickSeries.FromCalls(timeline,
-                                     calls,
-                                     lifetimes,
-                                     f => GetReadType(f) is not null,
-                                     (f, c) => GetReadType(f) is { } type && GetPage(c) is not null ? (byte)type : null,
-                                     enclosing ?? EnclosingOperatorCallIndex.Build(calls, lifetimes.OperatorsByInstance));
+    public static (PageAddress Page, int PageCount, bool IsReadAhead)? GetRead(CallFrame frame, TraceArgumentCall call)
+        => GetReadType(frame) is { } type && GetPage(call) is { } page
+            ? (page, GetPageCount(call, type), type == TraceReadType.ReadAhead)
+            : null;
 
     private static TraceReadType? GetReadType(CallFrame frame)
         => BufferPoolFunctionLookup.IsBufferPool(frame) && frame.Function is { } resolved

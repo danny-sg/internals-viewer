@@ -276,7 +276,7 @@ The recording itself is deleted once it has replayed successfully. Everything ab
   - `QueryExecutionCropper.cs` - finding where the query's execution starts
   - `CallLog/` and `Arguments/` - the compressed argument log, and reading its values by the function's signature
   - `Locators/` - the page, row, columnstore object and referenced value reads
-  - `Iterators/` - linking plan objects and iterators to the plan, matching operators to their call tree frames (`IteratorInstanceMatcher.cs`), and their lifetimes
+  - `Iterators/` - linking plan objects and iterators to the plan, finding each operator's call tree frames (`OperatorFrameMap.cs`), and their lifetimes
   - `Memory/` - allocations, frees, clerks and memory in use
   - `Timeline/` - the Trace Timeline's spans and axes
   - `Export/` - the Full Trace part of an exported run

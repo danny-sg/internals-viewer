@@ -1,0 +1,281 @@
+[
+  {
+    "Name": "GetRow",
+    "Module": "",
+    "Function": "",
+    "Colour": "#C8C8C8",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Skipped",
+    "Source": "RowReturn",
+    "Value": 1
+  },
+  {
+    "Name": "GetRow",
+    "Module": "",
+    "Function": "",
+    "Colour": "#F04848",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Rejected",
+    "Source": "RowReturn",
+    "Value": 5
+  },
+  {
+    "Name": "GetRow",
+    "Module": "",
+    "Function": "",
+    "Colour": "#00B050",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Returned",
+    "Source": "RowReturn",
+    "Value": 0
+  },
+  {
+    "Name": "GetRow",
+    "Module": "",
+    "Function": "",
+    "Colour": "#FFC857",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Fake Row",
+    "Source": "RowReturn",
+    "Value": 3
+  },
+  {
+    "Name": "GetRow",
+    "Module": "",
+    "Function": "",
+    "Colour": "#C084FC",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Other Status",
+    "Source": "RowReturn",
+    "Value": 4
+  },
+  {
+    "Name": "GetRow",
+    "Module": "",
+    "Function": "",
+    "Colour": "#F0F0F0",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "End",
+    "Source": "RowReturn",
+    "Value": 2
+  },
+  {
+    "Name": "Reads",
+    "Module": "sqlmin",
+    "Function": "BPool::Get",
+    "Colour": "#0026E4",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [
+      {
+        "Target": "Locator",
+        "Argument": null,
+        "Type": "",
+        "Operator": "Equal",
+        "Value": "Page"
+      }
+    ],
+    "Label": "Page Read"
+  },
+  {
+    "Name": "Reads",
+    "Module": "sqlmin",
+    "Function": "BPool::ReadAhead",
+    "Colour": "#0026E4",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [
+      {
+        "Target": "Locator",
+        "Argument": null,
+        "Type": "",
+        "Operator": "Equal",
+        "Value": "Page"
+      }
+    ],
+    "Label": "Read Ahead"
+  },
+  {
+    "Name": "Evaluations",
+    "Module": "*",
+    "Function": "CEsExec::FastCompare|CEsExec::FastCompare1|CEsExec::GeneralEval|CEsExec::GeneralEval4",
+    "Colour": "#F04848",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [
+      {
+        "Target": "Locator",
+        "Argument": {
+          "Name": "Result",
+          "Type": "bool",
+          "Location": "Register",
+          "Index": 2,
+          "Source": "R8"
+        },
+        "Type": "",
+        "Operator": "Equal",
+        "Value": "Variant"
+      },
+      {
+        "Target": "Argument",
+        "Argument": {
+          "Name": "Result",
+          "Type": "bool",
+          "Location": "Register",
+          "Index": 2,
+          "Source": "R8"
+        },
+        "Type": "bool",
+        "Operator": "Equal",
+        "Value": "0"
+      }
+    ],
+    "Label": "False"
+  },
+  {
+    "Name": "Evaluations",
+    "Module": "*",
+    "Function": "CEsExec::FastCompare|CEsExec::FastCompare1|CEsExec::GeneralEval|CEsExec::GeneralEval4",
+    "Colour": "#9E9E9E",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [
+      {
+        "Target": "Locator",
+        "Argument": {
+          "Name": "Result",
+          "Type": "bool",
+          "Location": "Register",
+          "Index": 2,
+          "Source": "R8"
+        },
+        "Type": "",
+        "Operator": "Equal",
+        "Value": "Variant"
+      },
+      {
+        "Target": "Argument",
+        "Argument": {
+          "Name": "Result",
+          "Type": "bool",
+          "Location": "Register",
+          "Index": 2,
+          "Source": "R8"
+        },
+        "Type": "bool",
+        "Operator": "Equal",
+        "Value": "NULL"
+      }
+    ],
+    "Label": "NULL"
+  },
+  {
+    "Name": "Evaluations",
+    "Module": "*",
+    "Function": "CEsExec::FastCompare|CEsExec::FastCompare1|CEsExec::GeneralEval|CEsExec::GeneralEval4",
+    "Colour": "#5CD66B",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [
+      {
+        "Target": "Locator",
+        "Argument": {
+          "Name": "Result",
+          "Type": "bool",
+          "Location": "Register",
+          "Index": 2,
+          "Source": "R8"
+        },
+        "Type": "",
+        "Operator": "Equal",
+        "Value": "Variant"
+      },
+      {
+        "Target": "Argument",
+        "Argument": {
+          "Name": "Result",
+          "Type": "bool",
+          "Location": "Register",
+          "Index": 2,
+          "Source": "R8"
+        },
+        "Type": "bool",
+        "Operator": "Equal",
+        "Value": "1"
+      }
+    ],
+    "Label": "True"
+  },
+  {
+    "Name": "Row Access",
+    "Module": "",
+    "Function": "",
+    "Colour": "Category",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Row Access",
+    "Source": "RowAccess",
+    "Value": 0
+  },
+  {
+    "Name": "Seek",
+    "Module": "",
+    "Function": "",
+    "Colour": "#4472C4",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Seek",
+    "Source": "Seek",
+    "Value": 0
+  },
+  {
+    "Name": "Seek",
+    "Module": "",
+    "Function": "",
+    "Colour": "#0026E4",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Root Page",
+    "Source": "Seek",
+    "Value": 1
+  },
+  {
+    "Name": "Seek",
+    "Module": "",
+    "Function": "",
+    "Colour": "#0026E4",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Intermediate Page",
+    "Source": "Seek",
+    "Value": 2
+  },
+  {
+    "Name": "Seek",
+    "Module": "",
+    "Function": "",
+    "Colour": "#0026E4",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Leaf Page",
+    "Source": "Seek",
+    "Value": 3
+  }
+]

@@ -55,6 +55,11 @@ public sealed class TraceRowReturnMarkMap
     public int GetCount(ExecutionOperatorEvent operatorEvent, uint thread, RowReturnType type)
         => GetReturns(operatorEvent, thread) is { } returns ? returns.GetPoints(type).Length : 0;
 
+    public IEnumerable<ExecutionOperatorEvent> GetRequested(TracePosition position) => Ticks.GetRunning(position);
+
+    public IEnumerable<ExecutionOperatorEvent> GetReturned(TracePosition after, TracePosition upTo)
+        => Ticks.GetEnding(after, upTo, static v => v != (byte)RowReturnType.End);
+
     internal static TraceRowReturnMarkMap Build(TraceTimeline timeline,
                                               TraceCallStore calls,
                                               TraceOperatorLifetimeList lifetimes,

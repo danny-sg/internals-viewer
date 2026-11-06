@@ -18,17 +18,19 @@
 
             <Button Content="Export"
                     Command="{x:Bind ViewModel.OperatorTracks.ExportCommand, Mode=OneWay}"
-                    IsEnabled="{x:Bind ViewModel.OperatorTracks.HasTracks, Mode=OneWay}"/>
+                    IsEnabled="{x:Bind ViewModel.OperatorTracks.HasAddedTracks, Mode=OneWay}"/>
 
-            <Button Content="Clear All"
+            <Button Content="Clear Added"
                     Command="{x:Bind ViewModel.OperatorTracks.ClearCommand, Mode=OneWay}"
-                    IsEnabled="{x:Bind ViewModel.OperatorTracks.HasTracks, Mode=OneWay}"/>
+                    IsEnabled="{x:Bind ViewModel.OperatorTracks.HasAddedTracks, Mode=OneWay}"/>
+
+            <Button Content="Reset Predefined" Command="{x:Bind ViewModel.OperatorTracks.ResetCommand, Mode=OneWay}"/>
         </StackPanel>
 
         <results:ResultsGridControl x:Name="TracksGrid"
                                     Grid.Row="1"
                                     ResultSet="{x:Bind ViewModel.OperatorTracks.TracksTable, Mode=OneWay}"
                                     SelectedRow="{x:Bind ViewModel.OperatorTracks.SelectedTrackRow, Mode=TwoWay}"
-                                    RowName="track"/>
+                                    RowName="rule"/>
     </Grid>
 </UserControl>

@@ -167,12 +167,17 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
     }
 
     [McpServerTool(Name = "trace_track_add")]
-    [Description("Add a custom track to the Operators pane that marks every call of a function, e.g. 'search page' to show " +
+    [Description("Add a rule to the Operators pane that marks every call of a function, e.g. 'search page' to show " +
                  "where a b-tree is searched. The function is resolved with a fuzzy search of the call graph and the track is " +
-                 "named after it unless a name is given. Conditions narrow which calls are marked")]
+                 "named after it unless a name is given. Rules with the same track name share one track, each rule a value " +
+                 "with its own label and colour. Conditions narrow which calls are marked")]
     public async Task<string> AddTrack([Description("Function words, e.g. 'SearchPage' or 'sqlmin!BTreeRow'")] string function,
-                                       [Description("Track name; the function name when omitted")] string? name = null,
-                                       [Description("Hex colour such as #D13438; taken from the function's category when omitted")]
+                                       [Description("Track name; the function name when omitted. An existing track name " +
+                                                    "adds this rule to that track")] string? name = null,
+                                       [Description("Label of this rule on its track; the function name when omitted")]
+                                       string? label = null,
+                                       [Description("Hex colour such as #D13438, or Category to colour each call by its function's category; " +
+                                                    "taken from the function's category when omitted")]
                                        string? colour = null,
                                        [Description(ConditionsDescription)] IReadOnlyList<string>? conditions = null,
                                        [Description(TabDescription)] string? tab = null,
@@ -188,19 +193,17 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
 
         var trackName = name ?? node.Symbol;
 
-        if (timeline?.Tracks.FirstOrDefault(t => t.IsCustom && string.Equals(t.Name, trackName, StringComparison.OrdinalIgnoreCase))
-            is { } existing)
-        {
-            throw new McpException($"A track named '{existing.Name}' already exists. Remove it first or choose another name.");
-        }
-
         var parsed = await ParseConditionsAsync(scope, node, conditions);
 
-        var request = new McpTrackRequest(trackName, node.Frame!.Module.Name, node.Symbol, colour, parsed);
+        var request = new McpTrackRequest(trackName, node.Frame!.Module.Name, node.Symbol, colour, parsed, label);
 
         await scope.RunAsync<ITraceTimelineCommands>(c => c.AddTrackAsync(request), cancellationToken);
 
-        return $"Added the {request.Name} track for {request.Module}!{request.Function}.";
+        var combined = timeline?.Tracks.Any(t => string.Equals(t.Name, trackName, StringComparison.OrdinalIgnoreCase)) == true;
+
+        return combined
+            ? $"Added {request.Module}!{request.Function} to the {request.Name} track."
+            : $"Added the {request.Name} track for {request.Module}!{request.Function}.";
     }
 
     [McpServerTool(Name = "trace_track_set")]
@@ -225,8 +228,9 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
     }
 
     [McpServerTool(Name = "trace_track_remove")]
-    [Description("Remove a custom Operators track by name, or all custom tracks when no name is given")]
-    public async Task<string> RemoveTrack([Description("Custom track name; omit to clear all custom tracks")] string? name = null,
+    [Description("Remove the rules added to an Operators track by name, or every added rule when no name is given. " +
+                 "Predefined rules stay")]
+    public async Task<string> RemoveTrack([Description("Track name; omit to remove every added rule")] string? name = null,
                                           [Description(TabDescription)] string? tab = null,
                                           CancellationToken cancellationToken = default)
     {
@@ -241,20 +245,20 @@ public sealed class TraceTimelineTools(McpDocumentResolver documents)
                 var custom = timeline.Tracks.Where(t => t.IsCustom).Select(t => t.Name).ToList();
 
                 throw new McpException(
-                    $"No custom track '{name}'. Custom tracks: {(custom.Count == 0 ? "none" : string.Join(", ", custom))}.");
+                    $"No track '{name}'. Tracks with added rules: {(custom.Count == 0 ? "none" : string.Join(", ", custom))}.");
             }
 
             if (!track.IsCustom)
             {
-                throw new McpException($"{track.Name} is a built-in track. Built-in tracks can be hidden with trace_track_set.");
+                throw new McpException($"{track.Name} has no added rules. Predefined tracks can be hidden with trace_track_set.");
             }
         }
 
         var removed = await session.RunAsync<ITraceTimelineCommands, int>(c => c.RemoveTracksAsync(name), cancellationToken);
 
         return name is null
-            ? $"Removed {removed} custom tracks."
-            : $"Removed the {FindTrack(session.Before.Timeline, name)?.Name ?? name} track.";
+            ? $"Removed {removed} added rules."
+            : $"Removed {removed} added rules from the {FindTrack(session.Before.Timeline, name)?.Name ?? name} track.";
     }
 
     [McpServerTool(Name = "trace_step")]

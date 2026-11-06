@@ -349,6 +349,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private IReadOnlyList<PlanNode> _emittingPlanNodes = [];
 
     [ObservableProperty]
+    private IReadOnlyList<PlanNode> _requestedPlanNodes = [];
+
+    [ObservableProperty]
     private bool _isPlanPropertiesVisible;
 
     [ObservableProperty]
@@ -487,6 +490,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public event Action<CallTreeNode, int>? CallNavigationRequested;
 
     public event Action<string>? SqlTextImported;
+
+    public event Action<IReadOnlyList<PlanNode>>? PlanRowsReturned;
 
     public DatabaseSource Database { get; }
 
@@ -738,6 +743,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private TraceTimelineTabViewModel? CreatedTraceTimelineTab { get; set; }
 
+    private TracePosition? RowFlowPosition { get; set; }
+
     public void NavigateToEvent(EngineEvent engineEvent)
     {
         SelectedEvent = engineEvent;
@@ -862,6 +869,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         if (Trace is not null)
         {
             SetPagePlayhead(TracePageSpanBuilder.GetPosition(position));
+
+            UpdateRowFlow(position);
         }
     }
 
@@ -1516,6 +1525,42 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
 
         return min == long.MaxValue ? 0 : min;
+    }
+
+    private void UpdateRowFlow(TracePosition position)
+    {
+        var marks = RowReturnMarks ?? TraceRowReturnMarkMap.Empty;
+
+        var requested = GetPlanNodes(marks.GetRequested(position));
+
+        if (!RequestedPlanNodes.SequenceEqual(requested))
+        {
+            RequestedPlanNodes = requested;
+        }
+
+        if (RowFlowPosition is { } previous
+            && previous < position
+            && GetPlanNodes(marks.GetReturned(previous, position)) is { Count: > 0 } returned)
+        {
+            PlanRowsReturned?.Invoke(returned);
+        }
+
+        RowFlowPosition = position;
+    }
+
+    private List<PlanNode> GetPlanNodes(IEnumerable<ExecutionOperatorEvent> operators)
+    {
+        var nodes = new List<PlanNode>();
+
+        foreach (var operatorEvent in operators)
+        {
+            if (operatorEvent.PlanNodeIdentifier is { } identifier && ResolvePlanNode(identifier) is { } node && !nodes.Contains(node))
+            {
+                nodes.Add(node);
+            }
+        }
+
+        return nodes;
     }
 
     private PlanNode? ResolvePlanNode(PlanNodeIdentifier identifier)
@@ -2471,7 +2516,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         RowReturnMarks = result.RowReturnMarks;
 
-        CustomTickTracks.Clear();
+        ClearTickTrackCache();
 
         RefreshTickTracks();
 
@@ -2621,6 +2666,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         ResetTickTracks();
 
+        CreatedTraceTimelineTab?.CloseCallStack();
+
         SelectedCallNode = null;
 
         IsError = false;
@@ -2633,6 +2680,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         SelectedPlanNode = null;
         ActivePlanNodes = [];
         EmittingPlanNodes = [];
+        RequestedPlanNodes = [];
+        RowFlowPosition = null;
 
         Events = [];
         FilteredEvents = [];

@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace InternalsViewer.UI.App.Models.Query.Timeline;
 
 public readonly record struct TimelineRulerState(double ViewStart,
@@ -9,4 +11,7 @@ public readonly record struct TimelineRulerState(double ViewStart,
                                                  double ContentRight,
                                                  double? Playhead,
                                                  double? CropStart,
-                                                 double? CropEnd);
+                                                 double? CropEnd)
+{
+    public IReadOnlyList<double> Cuts { get; init; } = [];
+}

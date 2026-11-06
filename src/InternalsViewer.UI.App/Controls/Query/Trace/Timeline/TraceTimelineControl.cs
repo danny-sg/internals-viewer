@@ -287,6 +287,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     private List<FlameHit> _reportedPlayheadFrames = [];
 
+    private double? _framesPlayhead;
+
     private int _reportedVersion = -1;
 
     private TraceTimelineAxis _reportedAxis;
@@ -699,6 +701,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         _reportedSelected = null;
         _hoverBlock = null;
         _reportedPlayheadFrames.Clear();
+        _framesPlayhead = null;
         _inUseCurves.Clear();
         _spikes.Clear();
         _reversedSpikes.Clear();
@@ -1259,9 +1262,11 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     private void ReportCallStack()
     {
-        var playheadFrames = _playhead == _reportedPlayhead && _version == _reportedVersion && _axis == _reportedAxis
+        var playheadFrames = _playhead == _framesPlayhead && _version == _reportedVersion && _axis == _reportedAxis
             ? _reportedPlayheadFrames
             : GetPlayheadFrames();
+
+        _framesPlayhead = _playhead;
 
         if (_stackFrame == _reportedStackFrame
             && _selected == _reportedSelected

@@ -7,7 +7,9 @@ using InternalsViewer.Query.FullTrace.Arguments.Enums;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
+using InternalsViewer.Query.FullTrace.Timeline.Ticks.Enums;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
+using InternalsViewer.UI.App.Services.Query.Trace;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Windows.UI;
@@ -55,6 +57,8 @@ public sealed partial class OperatorTrackDialog
 
         TrackName = existing?.Name ?? function?.Symbol ?? string.Empty;
 
+        ValueLabel = existing?.Label ?? string.Empty;
+
         HeightFactor = existing?.HeightFactor ?? 1;
 
         WidthFactor = existing?.WidthFactor ?? 1;
@@ -65,14 +69,22 @@ public sealed partial class OperatorTrackDialog
 
         PrimaryButtonText = existing is null ? "Add" : "Save";
 
-        FunctionBox.Text = function?.Label ?? (existing is null ? string.Empty : $"{existing.Module}!{existing.Function}");
+        FunctionBox.Text = function?.Label ?? GetFunctionText(existing);
+
+        FunctionBox.IsEnabled = existing is not { Source: not TraceTickSourceType.Call };
 
         ColourPicker.Color = colour;
 
         ColourSwatch.Background = new SolidColorBrush(colour);
+
+        CategoryColourBox.IsChecked = existing?.Colour == TraceTickDefinition.CategoryColour;
+
+        ColourButton.IsEnabled = CategoryColourBox.IsChecked != true;
     }
 
     public string TrackName { get; set; }
+
+    public string ValueLabel { get; set; }
 
     public double HeightFactor { get; set; }
 
@@ -275,6 +287,25 @@ public sealed partial class OperatorTrackDialog
         await LoadTargetsAsync();
     }
 
+    private static string GetFunctionText(TraceTickDefinition? definition) => definition switch
+    {
+        null => string.Empty,
+        { Source: TraceTickSourceType.Call } => $"{definition.Module}!{definition.Function}",
+        _ => TraceTickTracks.GetSourceText(definition.Source)
+    };
+
+    private void OnTrackTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
+    {
+        if (args.Reason != AutoSuggestionBoxTextChangeReason.UserInput)
+        {
+            return;
+        }
+
+        var text = sender.Text.Trim();
+
+        sender.ItemsSource = Source.Tracks.Where(t => t.Contains(text, StringComparison.OrdinalIgnoreCase)).ToList();
+    }
+
     private void OnFunctionTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
     {
         if (args.Reason != AutoSuggestionBoxTextChangeReason.UserInput)
@@ -301,6 +332,8 @@ public sealed partial class OperatorTrackDialog
 
     private void OnAddConditionClick(object sender, RoutedEventArgs e) => AddRow(null);
 
+    private void OnCategoryColourChanged(object sender, RoutedEventArgs e) => ColourButton.IsEnabled = CategoryColourBox.IsChecked != true;
+
     private void OnColourChanged(ColorPicker sender, ColorChangedEventArgs args)
         => ColourSwatch.Background = new SolidColorBrush(args.NewColor);
 
@@ -308,11 +341,10 @@ public sealed partial class OperatorTrackDialog
     {
         var function = FindFunction(FunctionBox.Text) ?? Function;
 
-        var isSavedFunction = function is null
-                              && Existing is not null
-                              && string.Equals(FunctionBox.Text.Trim(),
-                                               $"{Existing.Module}!{Existing.Function}",
-                                               StringComparison.OrdinalIgnoreCase);
+        var isSavedFunction = Existing is { Source: not TraceTickSourceType.Call }
+                              || (function is null
+                                  && Existing is not null
+                                  && string.Equals(FunctionBox.Text.Trim(), GetFunctionText(Existing), StringComparison.OrdinalIgnoreCase));
 
         var error = function is null && !isSavedFunction ? "Choose a function from the list"
                     : string.IsNullOrWhiteSpace(TrackName) ? "Enter a name for the track"
@@ -333,13 +365,22 @@ public sealed partial class OperatorTrackDialog
 
         var colour = ColourPicker.Color;
 
+        var colourText = CategoryColourBox.IsChecked == true
+            ? TraceTickDefinition.CategoryColour
+            : $"#{colour.R:X2}{colour.G:X2}{colour.B:X2}";
+
         Definition = new TraceTickDefinition(TrackName.Trim(),
                                              function?.Module ?? Existing!.Module,
                                              function?.Symbol ?? Existing!.Function,
-                                             $"#{colour.R:X2}{colour.G:X2}{colour.B:X2}",
+                                             colourText,
                                              HeightFactor,
                                              WidthFactor,
-                                             [.. Rows.Select(GetCondition)]);
+                                             [.. Rows.Select(GetCondition)])
+        {
+            Label = string.IsNullOrWhiteSpace(ValueLabel) ? null : ValueLabel.Trim(),
+            Source = Existing?.Source ?? TraceTickSourceType.Call,
+            Value = Existing?.Value ?? 0
+        };
     }
 
     private sealed record ConditionTarget(string Label, TraceConditionTarget Kind, ArgumentSlot? Slot, string Type);
@@ -349,4 +390,5 @@ public sealed partial class OperatorTrackDialog
 
 public sealed record OperatorTrackDialogSource(IReadOnlyList<TraceFunctionChoice> Functions,
                                                IReadOnlyList<string> Operators,
+                                               IReadOnlyList<string> Tracks,
                                                Func<TraceFunctionChoice, Task<ArgumentLayout?>> GetLayout);

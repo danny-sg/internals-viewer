@@ -288,8 +288,8 @@ public class TraceTimelineTests
 
         var thread = Assert.Single(timeline.Threads);
 
-        Assert.Equal([[0d, 70d], [2d, 72d]], thread.Rows.Select(r => Starts(r)));
-        Assert.Equal([[10d, 80d], [8d, 78d]], thread.Rows.Select(r => Ends(r)));
+        Assert.Equal([[0d, 30d], [2d, 32d]], thread.Rows.Select(r => Starts(r)));
+        Assert.Equal([[10d, 40d], [8d, 38d]], thread.Rows.Select(r => Ends(r)));
         Assert.Equal([0, 0, 1, 1], thread.Rows.SelectMany(r => Enumerable.Range(0, r.Count).Select(r.GetCallNodeIndex)));
         Assert.Equal(4, thread.Calls);
     }
@@ -316,8 +316,8 @@ public class TraceTimelineTests
 
         var thread = Assert.Single(TraceTimeline.Read(reader, nodes).Threads);
 
-        Assert.Equal([[0d, 70d], [2d, 72d]], thread.Rows.Select(r => Starts(r)));
-        Assert.Equal([[10d, 80d], [8d, 78d]], thread.Rows.Select(r => Ends(r)));
+        Assert.Equal([[0d, 30d], [2d, 32d]], thread.Rows.Select(r => Starts(r)));
+        Assert.Equal([[10d, 40d], [8d, 38d]], thread.Rows.Select(r => Ends(r)));
         Assert.Equal([0, 0, 1, 1], thread.Rows.SelectMany(r => Enumerable.Range(0, r.Count).Select(r.GetCallNodeIndex)));
         Assert.Equal(4, thread.Calls);
         Assert.Equal(0, thread.Rows.Sum(r => r.Bytes));
@@ -657,6 +657,112 @@ public class TraceTimelineTests
         timeline.MapNodes(nodes);
 
         return nodes;
+    }
+
+    [Fact]
+    public void A_Material_Removed_Call_Is_Cut_From_Both_Axes()
+    {
+        var (timeline, execute) = BuildAroundExecute();
+
+        timeline.RemoveCallsUnder(n => ReferenceEquals(n, execute));
+
+        var thread = Assert.Single(timeline.Threads);
+
+        Assert.Equal([(new TracePosition(1, 20), new TracePosition(1, 60))], thread.Clock.GetDeadSpans());
+        Assert.Equal(1 + 30d / 81, thread.Rows[0].GetStart(TraceTimelineAxis.Position, 1), 9);
+        Assert.Equal(40d, timeline.End.Instructions);
+    }
+
+    [Fact]
+    public void A_Cut_Is_Marked_Where_The_Calls_Either_Side_Meet_On_Each_Axis()
+    {
+        var (timeline, execute) = BuildAroundExecute();
+
+        timeline.RemoveCallsUnder(n => ReferenceEquals(n, execute));
+
+        Assert.Equal([20d], timeline.GetCuts(Instructions));
+        Assert.Equal(1 + 20d / 81, Assert.Single(timeline.GetCuts(TraceTimelineAxis.Position)), 9);
+    }
+
+    [Fact]
+    public void A_Call_The_Replay_Excluded_Is_A_Dead_Span_And_Not_A_Call()
+    {
+        var timeline = Build(Span(callNodeIndex: 0, start: 0, end: 1000), Span(callNodeIndex: -2, start: 100, end: 500));
+
+        var thread = Assert.Single(timeline.Threads);
+
+        Assert.Equal((1L, 600d), (thread.Calls, timeline.End.Instructions));
+        Assert.Equal([(new TracePosition(1, 100), new TracePosition(1, 500))], thread.Clock.GetDeadSpans());
+        Assert.Equal([1 + 100d / 1001], timeline.GetCuts(TraceTimelineAxis.Position));
+    }
+
+    [Fact]
+    public void A_Removed_Call_Too_Small_To_Matter_Leaves_No_Dead_Span()
+    {
+        var timeline = Build(Span(callNodeIndex: 0, start: 0, end: 1000), Span(callNodeIndex: 1, start: 100, end: 105));
+
+        RemoveChild(timeline);
+
+        var thread = Assert.Single(timeline.Threads);
+
+        Assert.Empty(thread.Clock.GetDeadSpans());
+        Assert.Equal(1000d, timeline.End.Instructions);
+    }
+
+    [Fact]
+    public void Small_Removed_Calls_With_Nothing_Between_Them_Are_One_Dead_Span()
+    {
+        var timeline = Build(Span(callNodeIndex: 0, start: 0, end: 1000),
+                             Span(callNodeIndex: 1, start: 100, end: 105),
+                             Span(callNodeIndex: 1, start: 106, end: 111, callIndex: 1));
+
+        RemoveChild(timeline);
+
+        var thread = Assert.Single(timeline.Threads);
+
+        Assert.Equal([(new TracePosition(1, 100), new TracePosition(1, 111))], thread.Clock.GetDeadSpans());
+        Assert.Equal(989d, timeline.End.Instructions);
+    }
+
+    [Fact]
+    public void A_Dead_Span_Another_Thread_Is_Busy_In_Stays_On_The_Position_Axis()
+    {
+        var timeline = Build(Span(callNodeIndex: 0, start: 0, end: 100),
+                             Span(callNodeIndex: 1, start: 20, end: 60),
+                             Span(callNodeIndex: 0, start: 30, end: 40, thread: 8));
+
+        RemoveChild(timeline);
+
+        var busy = timeline.Threads.Single(t => t.ThreadId == 7);
+
+        Assert.Equal(60d, busy.Rows[0].GetEnd(Instructions, 0));
+        Assert.Equal(1 + 100d / 101, busy.Rows[0].GetEnd(TraceTimelineAxis.Position, 0), 9);
+    }
+
+    [Fact]
+    public void A_Position_In_A_Cut_Reads_As_The_Cut_And_A_Value_After_It_Reads_Back()
+    {
+        var scale = new TraceScale(100);
+
+        scale.SetCuts([(new TracePosition(1, 20), new TracePosition(1, 60))]);
+
+        Assert.Equal(1.2, scale.GetValue(new TracePosition(1, 20)), 9);
+        Assert.Equal(1.2, scale.GetValue(new TracePosition(1, 40)), 9);
+        Assert.Equal(1.3, scale.GetValue(new TracePosition(1, 70)), 9);
+        Assert.Equal(new TracePosition(1, 70), scale.GetPosition(1.3));
+    }
+
+    private static void RemoveChild(TraceTimeline timeline)
+    {
+        var tree = new CallTree();
+
+        var root = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x10 }, 1);
+        var publish = tree.AddCall(root, new CallFrame { Module = new("sqlmin"), Rva = 0x20 }, 2);
+        var inner = tree.AddCall(publish, new CallFrame { Module = new("sqlmin"), Rva = 0x30 }, 1);
+
+        timeline.MapNodes([root, publish, inner]);
+
+        timeline.RemoveCallsUnder(n => ReferenceEquals(n, publish));
     }
 
     private static (TraceTimeline Timeline, CallTreeNode Execute) BuildAroundExecute()

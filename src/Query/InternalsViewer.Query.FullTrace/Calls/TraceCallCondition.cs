@@ -17,9 +17,13 @@ public sealed record TraceCallCondition(TraceConditionTarget Target,
 {
     private const string HexPrefix = "0x";
 
+    private const string NullValue = "NULL";
+
+    private const string BooleanType = "bool";
+
     private static readonly char[] Indirections = ['*', '&'];
 
-    public bool IsCallCondition => Target is TraceConditionTarget.Argument or TraceConditionTarget.Return;
+    public bool IsCallCondition => Target is TraceConditionTarget.Argument or TraceConditionTarget.Return or TraceConditionTarget.Locator;
 
     public static bool MatchesAll(IReadOnlyList<TraceCallCondition> conditions, TraceArgumentCall call)
     {
@@ -41,12 +45,24 @@ public sealed record TraceCallCondition(TraceConditionTarget Target,
             return true;
         }
 
+        if (Target == TraceConditionTarget.Locator)
+        {
+            var hasLocator = HasLocator(call);
+
+            return Operator == TraceConditionOperator.NotEqual ? !hasLocator : hasLocator;
+        }
+
         if (GetRaw(call) is not { } raw)
         {
             return false;
         }
 
         var locator = call.GetLocator(Target == TraceConditionTarget.Return ? ArgumentLayout.ReturnRegister : Argument?.Index ?? -1);
+
+        if (IsNullTest(locator, out var isNull))
+        {
+            return Operator == TraceConditionOperator.NotEqual ? !isNull : isNull;
+        }
 
         var comparison = TryParseNumber(Value, out var expected)
             ? GetNumber(raw, locator)?.CompareTo(expected)
@@ -133,6 +149,44 @@ public sealed record TraceCallCondition(TraceConditionTarget Target,
                && SymbolIndex.Matches(symbol, SymbolSearchFields.All, frame.Function?.ClassName ?? string.Empty, node.Symbol, string.Empty);
     }
 
+    private bool HasLocator(TraceArgumentCall call)
+    {
+        if (!Enum.TryParse<LocatorValueType>(Value.Trim(), ignoreCase: true, out var type))
+        {
+            return false;
+        }
+
+        if (Argument is { } slot)
+        {
+            return call.GetLocator(slot.Index)?.ValueType == type;
+        }
+
+        foreach (var locator in call.Locators)
+        {
+            if (locator.ValueType == type)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool IsNullTest(Locator? locator, out bool isNull)
+    {
+        if (locator is not { ValueType: LocatorValueType.Variant } variant
+            || !string.Equals(Value.Trim(), NullValue, StringComparison.OrdinalIgnoreCase))
+        {
+            isNull = false;
+
+            return false;
+        }
+
+        isNull = new VariantLocator(variant).Status == VariantStatus.Null;
+
+        return true;
+    }
+
     private ulong? GetRaw(TraceArgumentCall call) => Target switch
     {
         TraceConditionTarget.Return => call.Returned ? call.ReturnValue : null,
@@ -141,6 +195,8 @@ public sealed record TraceCallCondition(TraceConditionTarget Target,
 
     private Int128? GetNumber(ulong raw, Locator? locator) => locator switch
     {
+        { ValueType: LocatorValueType.Variant } variant when string.Equals(Type, BooleanType, StringComparison.OrdinalIgnoreCase)
+            => new VariantLocator(variant).TryGetBoolean(out var value) ? (value ? 1 : 0) : (Int128?)null,
         { ValueType: LocatorValueType.Variant } variant when new VariantLocator(variant).Status == VariantStatus.Value
             => (long)variant.Value,
         { ValueType: LocatorValueType.Variant } => null,

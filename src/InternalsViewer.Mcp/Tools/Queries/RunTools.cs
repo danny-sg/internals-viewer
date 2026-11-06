@@ -241,7 +241,7 @@ public sealed class RunTools(McpDocumentResolver documents)
                       operatorEvent.RowsProcessed,
                       operatorEvent.Threads.Count,
                       operatorFrames.GetEntryFrames(operatorEvent).Count,
-                      operatorEvent.Instances.Count);
+                      operatorFrames.GetInstances(operatorEvent).Count);
         }
 
         table.Write(builder);
@@ -267,7 +267,7 @@ public sealed class RunTools(McpDocumentResolver documents)
                 builder.AppendLine($"  exit  {Format.NodeLine(scope.Context, frame)}");
             }
 
-            foreach (var instance in operatorEvent.Instances)
+            foreach (var instance in operatorFrames.GetInstances(operatorEvent))
             {
                 builder.AppendLine($"  iterator instance {Format.Hex(instance)}");
             }

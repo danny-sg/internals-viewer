@@ -71,7 +71,6 @@ internal static class TestRuns
             EmitStartUs = 120,
             RowsProcessed = 120,
             Threads = [new OperatorThread(0, 50, 900, 120)],
-            Instances = [Scan]
         };
 
         var statement = new ExecutionOperatorEvent
@@ -221,7 +220,13 @@ internal static class TestRuns
 
         var memory = AllocationIndex.Build([new MemoryAllocation(7, At(22), At(23), 100, 0xA)], [new MemoryFree(7, At(31), At(32), 0xA)]);
 
-        var lifetimes = IteratorLifetimeBuilder.Build(timeline, memory, [scan], [], []);
+        var frames = new OperatorFrameMap();
+
+        frames.SetInstances(scan, [Scan]);
+
+        frames.SetEntryFrames(scan, [getRow]);
+
+        var lifetimes = IteratorLifetimeBuilder.Build(timeline, memory, frames.OperatorsByInstance, [], []);
 
         var storeBuilder = new TraceCallStore.Builder();
 
@@ -232,10 +237,6 @@ internal static class TestRuns
         var callStore = storeBuilder.Build();
 
         callStore.MapNodes([caller, getRow, publish]);
-
-        var frames = new OperatorFrameMap();
-
-        frames.SetEntryFrames(scan, [getRow]);
 
         return new TraceResult(tree, callStore, timeline) { Allocation = memory, Lifetimes = lifetimes, OperatorFrames = frames };
     }

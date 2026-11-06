@@ -104,6 +104,14 @@ internal sealed class TraceTimelinePaints : IDisposable
         PathEffect = SKPathEffect.CreateDash([2f, 2f], 0)
     };
 
+    public SKPaint Cut { get; } = new()
+    {
+        Style = SKPaintStyle.Stroke,
+        StrokeWidth = 1f,
+        Color = new SKColor(255, 255, 255, 40),
+        PathEffect = SKPathEffect.CreateDash([1f, 2f], 0)
+    };
+
     public SKPaint TickHighlight { get; } = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 2f, Color = new SKColor(230, 60, 60) };
 
     public SKPaint SearchMatch { get; } = new() { Style = SKPaintStyle.Fill, Color = new SKColor(255, 214, 0, 191) };
@@ -174,6 +182,7 @@ internal sealed class TraceTimelinePaints : IDisposable
 
         Label.Color = isDark ? new SKColor(0xD8, 0xD8, 0xD8) : new SKColor(0x30, 0x30, 0x30);
         Tick.Color = isDark ? new SKColor(0x70, 0x70, 0x70) : SKColors.LightGray;
+        Cut.Color = isDark ? new SKColor(255, 255, 255, 40) : new SKColor(0, 0, 0, 36);
         Hover.Color = isDark ? SKColors.White : SKColors.Black;
         Selection.Color = isDark ? new SKColor(255, 200, 0) : new SKColor(0xE0, 0x7A, 0x00);
         Edge.Color = isDark ? new SKColor(255, 255, 255, 70) : new SKColor(0, 0, 0, 90);

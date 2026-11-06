@@ -16,6 +16,8 @@ public sealed record MemoryHistoryBlock(ulong Iterator,
 {
     public bool IsStack { get; init; }
 
+    public bool IsArray { get; init; }
+
     public int FirstInstance { get; init; }
 
     public int InstanceCount { get; init; }

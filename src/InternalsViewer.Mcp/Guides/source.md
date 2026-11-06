@@ -31,7 +31,7 @@ call log those hooks fill, `Timeline/` the per-thread spans and the operator lif
 memory map and the memory history, `Iterators/` the link from iterator objects to plan nodes, `Output/` the output row
 lineage, `Locators/` the page and row arguments. `Calls/Tree/` is the call tree, and `Symbols/` downloads the PDBs,
 resolves frames to names and classifies them: the category and operator rules are the text files in
-`Symbols/Categories/Mappings/`. `Iterators/IteratorInstanceMatcher.cs` decides an operator's entry and exit frames.
+`Symbols/Categories/Mappings/`. `Iterators/OperatorFrameMap.cs` decides an operator's entry and exit frames.
 `TraceLoader.cs` runs a load end to end and `TraceResult.cs` is what the tools read.
 
 ## Execution simulation, `src/InternalsViewer.Execution`

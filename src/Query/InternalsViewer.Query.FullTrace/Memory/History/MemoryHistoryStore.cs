@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Helpers;
 
@@ -12,6 +13,8 @@ namespace InternalsViewer.Query.FullTrace.Memory.History;
 
 public sealed partial class MemoryHistoryStore
 {
+    private const int ArrayCountSize = sizeof(ulong);
+
     internal const int WriteCacheSlots = 128;
 
     internal const int ReadCacheSlots = 32;
@@ -66,10 +69,17 @@ public sealed partial class MemoryHistoryStore
 
     private MemoryHistoryInstance[] Instances { get; }
 
+    private BlockCache<uint> ArrayCounts => field ??= new(FindArrayCount);
+
     private AddressOrder Addresses => field ??= GetAddressOrder(isStack: false);
 
     private AddressOrder StackAddresses => field ??= GetAddressOrder(isStack: true);
 
+
+    public (ulong FirstElement, uint Count)? GetArray(int block)
+        => BlockArray[block].IsArray && ArrayCounts.Get(block) is > 0 and var count
+            ? (BlockArray[block].Address + ArrayCountSize, count)
+            : null;
 
     public IReadOnlyList<MemoryHistoryWrite> GetWrites(int block)
         => block >= 0 && block < BlockArray.Length
@@ -304,35 +314,6 @@ public sealed partial class MemoryHistoryStore
         return [GetAllocationCall(block, timeline, firstListed), .. ordered.Select(c => c.Build()).OrderBy(c => c.Position)];
     }
 
-    public MemoryHistorySummary GetSummary(int block, TracePosition from, TracePosition to) => GetSummaries([block], from, to)[0];
-
-    public MemoryHistorySummary[] GetSummaries(int[] blocks, TracePosition from, TracePosition to)
-    {
-        var summaries = new MemoryHistorySummary[blocks.Length];
-
-        var calls = new HashSet<int>();
-
-        var changing = Array.Empty<bool>();
-
-        for (var index = 0; index < blocks.Length; index++)
-        {
-            var size = BlockArray[blocks[index]].Size;
-
-            if (changing.Length < size)
-            {
-                changing = new bool[size];
-            }
-
-            changing.AsSpan(0, size).Clear();
-
-            calls.Clear();
-
-            summaries[index] = GetSummary(blocks[index], from, to, calls, changing.AsSpan(0, size));
-        }
-
-        return summaries;
-    }
-
     public MemoryHistoryWrite GetWrite(int index) => GetWrite(index, Writes[index]);
 
     public (int First, int Count) GetChangedWriteRange(int block, TracePosition from, TracePosition to)
@@ -358,55 +339,6 @@ public sealed partial class MemoryHistoryStore
 
     public (int Offset, int Length) GetChangedExtent(MemoryHistoryWrite write)
         => (write.Offset, write.Type == MemoryHistoryAccessType.Changed ? write.Length : 0);
-
-    private MemoryHistorySummary GetSummary(int block,
-                                            TracePosition from,
-                                            TracePosition to,
-                                            HashSet<int> calls,
-                                            Span<bool> changing)
-    {
-        var operators = new Dictionary<ulong, int>();
-
-        var changeCount = 0;
-
-        var lastCall = int.MinValue;
-
-        var (iterator, iteratorCount) = (0ul, 0);
-
-        using var writes = GetBlockWrites(block);
-
-        foreach (var write in writes)
-        {
-            if (write.Position < from || write.Position > to || !MarkChanged(write, changing))
-            {
-                continue;
-            }
-
-            changeCount++;
-
-            if (write.SpanId == lastCall)
-            {
-                iteratorCount++;
-
-                continue;
-            }
-
-            lastCall = write.SpanId;
-
-            calls.Add(lastCall);
-
-            AddOperator(operators, iterator, iteratorCount);
-
-            (iterator, iteratorCount) = (Iterators.GetValueOrDefault(GetCall(write.SpanId).CallNodeIndex), 1);
-        }
-
-        AddOperator(operators, iterator, iteratorCount);
-
-        return new MemoryHistorySummary([.. operators.OrderByDescending(o => o.Value).Select(o => o.Key)],
-                                        calls.Count,
-                                        changeCount,
-                                        changing.Count(true));
-    }
 
     public TracePosition GetCreatedPosition(int block)
         => BlockArray[block] is { IsInline: true, WriteCount: > 0 } inline ? Writes[inline.FirstWrite].Position : BlockArray[block].FromPosition;
@@ -490,26 +422,6 @@ public sealed partial class MemoryHistoryStore
     private bool IsLiveAt(int block, ulong address, TracePosition position)
         => address < BlockArray[block].Address + (ulong)BlockArray[block].Size && IsLive(block, position);
 
-    private static bool MarkChanged(MemoryHistoryAccessEntry write, Span<bool> changing)
-    {
-        if (write.Type != MemoryHistoryAccessType.Changed)
-        {
-            return false;
-        }
-
-        changing.Slice(write.Offset, write.Length).Fill(true);
-
-        return true;
-    }
-
-    private static void AddOperator(Dictionary<ulong, int> operators, ulong iterator, int count)
-    {
-        if (iterator != 0 && count > 0)
-        {
-            operators[iterator] = operators.GetValueOrDefault(iterator) + count;
-        }
-    }
-
     private static bool IsChange(MemoryHistoryAccessEntry write, TracePosition from, TracePosition to)
         => from <= write.Position && write.Position <= to && write.Type == MemoryHistoryAccessType.Changed;
 
@@ -539,6 +451,25 @@ public sealed partial class MemoryHistoryStore
         return new AddressOrder(blocks,
                                 new AddressIndex([.. blocks.Select(b => BlockArray[b].Address)],
                                                  blocks.Length == 0 ? 0 : (ulong)blocks.Max(b => BlockArray[b].Size)));
+    }
+
+    private uint FindArrayCount(int block)
+    {
+        var elementBytes = BlockArray[block].Size - ArrayCountSize;
+
+        foreach (var write in GetWrites(block))
+        {
+            if (TryGetWrittenValue(write, 0, out var count)
+                && TryGetWrittenValue(write, sizeof(uint), out var high)
+                && high == 0
+                && count > 0
+                && elementBytes % count == 0)
+            {
+                return count;
+            }
+        }
+
+        return 0;
     }
 
     private sealed record AddressOrder(int[] Blocks, AddressIndex Addresses);

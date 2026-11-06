@@ -591,7 +591,7 @@ namespace
 
         void RecordSpan(StackFrame const& frame, uint32_t thread, ThreadClock const& end, uint32_t flags)
         {
-            if (LogSpans == nullptr || frame.Node == ExcludedNode)
+            if (LogSpans == nullptr)
             {
                 return;
             }

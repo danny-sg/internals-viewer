@@ -10,11 +10,16 @@ internal static class IteratorLifetimeBuilder
 {
     public static TraceOperatorLifetimeList Build(TraceTimeline timeline,
                                                AllocationIndex allocation,
-                                               IReadOnlyList<ExecutionOperatorEvent> operators,
+                                               IReadOnlyDictionary<ulong, ExecutionOperatorEvent> operators,
                                                IReadOnlyList<IteratorPlanNode> planNodes,
                                                IReadOnlyList<QueryTeardown> teardowns)
     {
-        var owners = OperatorHierarchy.GetOperatorsByInstance(operators.Concat(BatchToRowOperatorBuilder.Create(timeline, planNodes, operators)));
+        var owners = new Dictionary<ulong, ExecutionOperatorEvent>(operators);
+
+        foreach (var (instance, adapter) in BatchToRowOperatorBuilder.Create(timeline, planNodes, operators))
+        {
+            owners.TryAdd(instance, adapter);
+        }
 
         var lifetimes = new List<TraceOperatorLifetime>();
 
@@ -81,7 +86,8 @@ internal static class IteratorLifetimeBuilder
                 lifetimes.Add(new TraceOperatorLifetime(thread.ThreadId, owner, spans[0].CallNodeIndex, spans, curves[index], timeline.Scale)
                 {
                     Constructed = constructed.Count > 0 ? GetEarliest(constructed[0], spans[0].From) : timeline.Start,
-                    Destroyed = destroyed.Count > 0 ? destroyed[0] : timeline.End
+                    Destroyed = destroyed.Count > 0 ? destroyed[0] : timeline.End,
+                    Instances = [.. instances]
                 });
             }
         }

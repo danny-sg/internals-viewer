@@ -1,9 +1,11 @@
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
@@ -18,7 +20,9 @@ public sealed partial class QueryViewModel
 
     private TraceTickTrackStore TickTrackStore { get; }
 
-    private Dictionary<TraceTickDefinition, TraceTickTrack> CustomTickTracks { get; } = new(ReferenceEqualityComparer.Instance);
+    private Dictionary<TraceTickDefinition, TraceTickSeries> RuleSeries { get; } = new(ReferenceEqualityComparer.Instance);
+
+    private Dictionary<string, TickTrackCache> TrackSeries { get; } = new(StringComparer.OrdinalIgnoreCase);
 
     public void AddTickTrack(TraceTickDefinition definition) => TickTrackStore.Add(definition);
 
@@ -30,7 +34,7 @@ public sealed partial class QueryViewModel
                .Where(n => n.Frame is { Function: not null } && n.Symbol.Length > 0)
                .Select(n => new TraceFunctionChoice(n.Frame!.Module.Name, n.Symbol, n.Frame))
                .DistinctBy(c => (c.Module.ToLowerInvariant(), c.Symbol))
-               .OrderBy(c => c.Symbol, System.StringComparer.OrdinalIgnoreCase)];
+               .OrderBy(c => c.Symbol, StringComparer.OrdinalIgnoreCase)];
 
     public async Task<ArgumentLayout?> GetLayoutAsync(TraceFunctionChoice function)
         => Arguments.Lookup is { } lookup ? await lookup.GetLayoutAsync(function.Frame) : null;
@@ -38,8 +42,23 @@ public sealed partial class QueryViewModel
     public IReadOnlyList<string> GetOperatorChoices()
         => [.. Events.OfType<ExecutionOperatorEvent>().Select(o => o.Label).Distinct()];
 
+    public IReadOnlyList<string> GetTrackNames()
+        => [.. TickTrackStore.Definitions.Select(d => d.Name).Distinct(StringComparer.OrdinalIgnoreCase)];
+
     public int? GetTickCount(TraceTickDefinition definition)
-        => CustomTickTracks.TryGetValue(definition, out var track) ? track.Series.Count : null;
+    {
+        foreach (var cache in TrackSeries.Values)
+        {
+            var index = Array.FindIndex(cache.Rules, r => ReferenceEquals(r, definition));
+
+            if (index >= 0)
+            {
+                return cache.Counts[cache.Series.Values[index]];
+            }
+        }
+
+        return null;
+    }
 
     [RelayCommand]
     private void ShowOperatorTracks() => Layout.ShowOperatorTracks();
@@ -54,11 +73,18 @@ public sealed partial class QueryViewModel
 
     private void ResetTickTracks()
     {
-        CustomTickTracks.Clear();
+        ClearTickTrackCache();
 
         TickTracks = [];
 
         OperatorTracks.Refresh();
+    }
+
+    private void ClearTickTrackCache()
+    {
+        RuleSeries.Clear();
+
+        TrackSeries.Clear();
     }
 
     private void RefreshTickTracks()
@@ -72,36 +98,55 @@ public sealed partial class QueryViewModel
 
         var definitions = TickTrackStore.Definitions;
 
-        foreach (var stale in CustomTickTracks.Keys.Where(k => !definitions.Contains(k, ReferenceEqualityComparer.Instance)).ToList())
+        foreach (var stale in RuleSeries.Keys.Where(k => !definitions.Contains(k, ReferenceEqualityComparer.Instance)).ToList())
         {
-            CustomTickTracks.Remove(stale);
+            RuleSeries.Remove(stale);
         }
 
-        List<TraceTickTrack> custom = [];
+        var groups = definitions.GroupBy(d => d.Name, StringComparer.OrdinalIgnoreCase).ToList();
 
-        for (var index = 0; index < definitions.Count; index++)
+        var names = groups.Select(g => g.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var stale in TrackSeries.Keys.Where(k => !names.Contains(k)).ToList())
         {
-            var definition = definitions[index];
+            TrackSeries.Remove(stale);
+        }
 
-            if (!CustomTickTracks.TryGetValue(definition, out var track))
+        List<TraceTickTrack> tracks = [];
+
+        for (var index = 0; index < groups.Count; index++)
+        {
+            TraceTickDefinition[] rules = [.. groups[index]];
+
+            if (!TrackSeries.TryGetValue(groups[index].Key, out var cache)
+                || !cache.Rules.SequenceEqual(rules, ReferenceEqualityComparer.Instance))
             {
-                var series = TraceTickSeries.FromDefinition(trace, definition);
+                var series = TraceTickSeries.FromRules(trace, rules, r => GetRuleSeries(trace, r));
 
-                track = TraceTickTracks.Custom(definition, series);
+                cache = new TickTrackCache(rules, series, series.Series.GetValueCounts());
 
-                CustomTickTracks[definition] = track;
+                TrackSeries[groups[index].Key] = cache;
             }
 
-            custom.Add(track with { Ordinal = TraceTickTracks.CustomOrdinal + index });
+            tracks.Add(TraceTickTracks.Create(trace, rules, cache.Series, index, TickTrackStore.IsAdded));
         }
 
-        TickTracks = [TraceTickTracks.GetRows(trace.RowReturnMarks),
-                      TraceTickTracks.Evaluations(trace.Evaluations),
-                      TraceTickTracks.Reads(trace.Reads, trace.CallStore),
-                      TraceTickTracks.RowAccesses(trace.RowAccesses, trace.PageAccesses, trace.BufferPool),
-                      TraceTickTracks.Seeks(trace.Seeks, trace.PageAccesses),
-                      .. custom];
+        TickTracks = tracks;
 
         OperatorTracks.Refresh();
     }
+
+    private TraceTickSeries GetRuleSeries(TraceResult trace, TraceTickDefinition rule)
+    {
+        if (!RuleSeries.TryGetValue(rule, out var series))
+        {
+            series = TraceTickSeries.FromDefinition(trace, rule);
+
+            RuleSeries[rule] = series;
+        }
+
+        return series;
+    }
+
+    private sealed record TickTrackCache(TraceTickDefinition[] Rules, TraceTickTrackSeries Series, int[] Counts);
 }

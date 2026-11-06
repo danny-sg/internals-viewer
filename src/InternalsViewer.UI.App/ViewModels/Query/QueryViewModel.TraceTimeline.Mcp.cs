@@ -23,11 +23,6 @@ public partial class QueryViewModel : ITraceTimelineCommands
 
     public Task AddTrackAsync(McpTrackRequest request)
     {
-        if (TickTrackStore.Definitions.Any(d => string.Equals(d.Name, request.Name, StringComparison.OrdinalIgnoreCase)))
-        {
-            throw new InvalidOperationException($"A track named '{request.Name}' already exists.");
-        }
-
         var node = (CallTree?.Nodes() ?? []).FirstOrDefault(n => IsFunction(n, request.Module, request.Function));
 
         var definition = new TraceTickDefinition(request.Name,
@@ -36,7 +31,10 @@ public partial class QueryViewModel : ITraceTimelineCommands
                                                  request.Colour ?? node?.CategoryColour ?? DefaultTrackColour,
                                                  1,
                                                  1,
-                                                 request.Conditions);
+                                                 request.Conditions)
+        {
+            Label = request.Label
+        };
 
         AddTickTrack(definition);
 
@@ -50,19 +48,16 @@ public partial class QueryViewModel : ITraceTimelineCommands
     {
         if (name is null)
         {
-            var count = TickTrackStore.Definitions.Count;
+            var count = TickTrackStore.AddedDefinitions.Count;
 
             TickTrackStore.Clear();
 
             return Task.FromResult(count);
         }
 
-        var definition = TickTrackStore.Definitions.FirstOrDefault(d => string.Equals(d.Name, name, StringComparison.OrdinalIgnoreCase))
-                         ?? throw new InvalidOperationException($"No custom track '{name}'.");
+        var removed = TickTrackStore.RemoveTrack(name);
 
-        TickTrackStore.Remove(definition);
-
-        return Task.FromResult(1);
+        return removed > 0 ? Task.FromResult(removed) : throw new InvalidOperationException($"No rules were added to a track '{name}'.");
     }
 
     public async Task StepAsync(McpStepMode mode, string? track, bool forward, int count)

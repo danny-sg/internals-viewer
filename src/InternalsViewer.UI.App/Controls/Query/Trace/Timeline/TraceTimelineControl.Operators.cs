@@ -437,7 +437,7 @@ public sealed partial class TraceTimelineControl
             return;
         }
 
-        var instances = new HashSet<ulong>(selected.Instances);
+        HashSet<ulong> instances = [.. Lifetimes.Where(l => ReferenceEquals(l.Operator, selected)).SelectMany(l => l.Instances)];
 
         var found = new Dictionary<int, List<SelectedRegion>>();
 

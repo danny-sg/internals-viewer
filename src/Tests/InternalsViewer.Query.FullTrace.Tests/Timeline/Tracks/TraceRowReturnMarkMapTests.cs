@@ -39,7 +39,6 @@ public class TraceRowReturnMarkMapTests
     {
         Name = "Merge Join",
         OperatorDescription = "Merge Join",
-        Instances = [JoinIterator],
         PlanNodeIdentifier = new PlanNodeIdentifier(1, 0)
     };
 
@@ -47,7 +46,6 @@ public class TraceRowReturnMarkMapTests
     {
         Name = "Index Scan",
         OperatorDescription = "Index Scan",
-        Instances = [ScanIterator],
         PlanNodeIdentifier = new PlanNodeIdentifier(1, 1),
         ParentNodeId = 0
     };
@@ -56,7 +54,6 @@ public class TraceRowReturnMarkMapTests
     {
         Name = "Index Scan",
         OperatorDescription = "Index Scan",
-        Instances = [ScanIterator],
         PlanNodeIdentifier = new PlanNodeIdentifier(1, 1),
         ParentNodeId = 0,
         IsBlockingInput = true
@@ -133,7 +130,6 @@ public class TraceRowReturnMarkMapTests
         {
             Name = "Filter",
             OperatorDescription = "Filter",
-            Instances = [JoinIterator],
             PlanNodeIdentifier = new PlanNodeIdentifier(1, 0)
         };
 
@@ -222,6 +218,27 @@ public class TraceRowReturnMarkMapTests
         Assert.Equal<(double?, double?, double?)>((15, 25, null), previous);
     }
 
+    [Fact]
+    public void Operators_Are_Requested_While_A_GetRow_Call_To_Them_Is_Running()
+    {
+        var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)], [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)]);
+
+        Assert.Equal([Join, Scan], marks.GetRequested(At(13)).OrderBy(o => o.PlanNodeIdentifier?.NodeId));
+        Assert.Equal([Join], marks.GetRequested(At(30)));
+        Assert.Empty(marks.GetRequested(At(45)));
+    }
+
+    [Fact]
+    public void Operators_Have_Returned_When_A_GetRow_Call_Other_Than_The_End_Returns_In_The_Range()
+    {
+        var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)], [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)]);
+
+        Assert.Equal([Scan], marks.GetReturned(At(14), At(30)));
+        Assert.Equal([Join], marks.GetReturned(At(30), At(45)));
+        Assert.Empty(marks.GetReturned(At(15), At(20)));
+        Assert.Empty(marks.GetReturned(At(45), At(80)));
+    }
+
     private static TraceRowReturnMarkMap Build((ulong Start, ulong End, ulong Status)[] joinCalls,
                                              (ulong Start, ulong End, ulong Status)[] scanCalls,
                                              ExecutionOperatorEvent? top = null,
@@ -271,8 +288,8 @@ public class TraceRowReturnMarkMapTests
 
         TraceOperatorLifetime[] lifetimes =
         [
-            new(Thread, top ?? Join, 0, [Whole()], MemoryUsageCurve.Empty, timeline.Scale),
-            new(Thread, bottom ?? Scan, 1, [Whole()], MemoryUsageCurve.Empty, timeline.Scale)
+            new(Thread, top ?? Join, 0, [Whole()], MemoryUsageCurve.Empty, timeline.Scale) { Instances = [JoinIterator] },
+            new(Thread, bottom ?? Scan, 1, [Whole()], MemoryUsageCurve.Empty, timeline.Scale) { Instances = [ScanIterator] }
         ];
 
         return TraceRowReturnMarkMap.Build(timeline, calls, new TraceOperatorLifetimeList(lifetimes));

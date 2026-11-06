@@ -52,9 +52,9 @@ public sealed partial class TraceTimeline
 
     public TraceScale Scale { get; }
 
-    public TracePoint Start { get; }
+    public TracePoint Start { get; private set; }
 
-    public TracePoint End { get; }
+    public TracePoint End { get; private set; }
 
     public int NodeCount => Parents.Length;
 
@@ -71,6 +71,15 @@ public sealed partial class TraceTimeline
     private TraceCallStore? Calls { get; set; }
 
     private TraceSpanIdIndex? SpanIds { get; set; }
+
+    private double[]? InstructionCuts { get; set; }
+
+    public IReadOnlyList<double> GetCuts(TraceTimelineAxis axis)
+        => axis == TraceTimelineAxis.Position
+            ? Scale.Cuts
+            : InstructionCuts ??= [.. Threads.SelectMany(t => t.Clock.GetDeadSpans().Select(s => (double)t.Clock.GetInstructions(s.From)))
+                                             .Distinct()
+                                             .Order()];
 
     public double GetStart(TraceTimelineAxis axis) => Scale.GetValue(Start, axis);
 
@@ -385,14 +394,45 @@ public sealed partial class TraceTimeline
             return;
         }
 
+        Func<int, bool> isRemoved = n => n >= 0 && n < removed.Length && removed[n];
+
         foreach (var thread in Threads)
         {
-            thread.RemoveAll(n => n >= 0 && n < removed.Length && removed[n]);
+            thread.Clock.AddDeadSpans(thread.GetMaterialDeadSpans([], isRemoved, Scale));
+
+            thread.RemoveAll(isRemoved);
         }
 
         SpanCount = Threads.Sum(t => t.Calls);
 
         SpanIds = null;
+
+        InstructionCuts = null;
+
+        SetCuts();
+
+        if (Threads.Count > 0)
+        {
+            End = new TracePoint(Threads.Max(t => t.End.Position), Threads.Max(t => t.End.Instructions));
+        }
+    }
+
+    internal void SetCuts()
+    {
+        List<(TracePosition From, TracePosition To)> cuts = [];
+
+        foreach (var thread in Threads)
+        {
+            foreach (var (from, to) in thread.Clock.GetDeadSpans())
+            {
+                if (Threads.All(t => ReferenceEquals(t, thread) || !t.HasBoundaryWithin(from, to)))
+                {
+                    cuts.Add((from, to));
+                }
+            }
+        }
+
+        Scale.SetCuts(cuts);
     }
 
     public TraceTimeline Folded(Func<CallTreeNode, bool> isFolded)
@@ -790,12 +830,18 @@ public sealed partial class TraceTimeline
                                  .OrderBy(t => t.Start.Position)
                                  .ToList();
 
-            return new TraceTimeline(threads, parents, scale);
+            var timeline = new TraceTimeline(threads, parents, scale);
+
+            timeline.SetCuts();
+
+            return timeline;
         }
     }
 
     private sealed class ThreadSpanList
     {
+        private const int ExcludedNode = -2;
+
         private const int ChunkShift = 11;
 
         private const int ChunkSize = 1 << ChunkShift;
@@ -810,13 +856,10 @@ public sealed partial class TraceTimeline
 
         private int Count { get; set; }
 
+        private List<(TracePosition From, TracePosition To)> Excluded { get; } = [];
+
         public void Add(CallSpan span)
         {
-            if ((Count & ChunkMask) == 0)
-            {
-                Chunks.Add(new PendingSpan[ChunkSize]);
-            }
-
             var from = new TracePosition(span.StartSequence, span.StartSteps);
 
             var to = new TracePosition(span.EndSequence, span.EndSteps);
@@ -825,11 +868,23 @@ public sealed partial class TraceTimeline
 
             Clock.Add(to, span.EndInstructions);
 
+            MaximumSteps = Math.Max(MaximumSteps, Math.Max(span.StartSteps, span.EndSteps));
+
+            if (span.CallNodeIndex == ExcludedNode)
+            {
+                Excluded.Add((from, to));
+
+                return;
+            }
+
+            if ((Count & ChunkMask) == 0)
+            {
+                Chunks.Add(new PendingSpan[ChunkSize]);
+            }
+
             Chunks[^1]![Count & ChunkMask] = new PendingSpan(from, to, span.CallNodeIndex, span.CallIndex, (byte)span.Flags);
 
             Count++;
-
-            MaximumSteps = Math.Max(MaximumSteps, Math.Max(span.StartSteps, span.EndSteps));
         }
 
         public TraceTimelineThread Build(uint threadId, int[] depths, TraceScale scale)
@@ -892,7 +947,13 @@ public sealed partial class TraceTimeline
                 rows[depth] = new TraceTimelineRow(scale, clock, store, starts[depth], rowCounts[depth]);
             }
 
-            return new TraceTimelineThread(threadId, clock, store, rows, count);
+            var thread = new TraceTimelineThread(threadId, clock, store, rows, count);
+
+            clock.AddDeadSpans(thread.GetMaterialDeadSpans(Excluded, _ => false, scale));
+
+            Excluded.Clear();
+
+            return thread;
         }
 
         private static int GetDepth(in PendingSpan span, int[] depths)

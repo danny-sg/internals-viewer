@@ -10,4 +10,5 @@ public sealed record McpTrackRequest(
     string Module,
     string Function,
     string? Colour,
-    IReadOnlyList<TraceCallCondition> Conditions);
+    IReadOnlyList<TraceCallCondition> Conditions,
+    string? Label = null);

@@ -31,7 +31,8 @@ internal static class MemoryHistoryStoreHelper
 
     public static MemoryHistoryStore Build(MemoryBlock[] blocks,
                                            (ulong Sequence, ulong Address, byte[] Bytes)[] writes,
-                                           TraceTimeline? timeline = null)
+                                           TraceTimeline? timeline = null,
+                                           bool isArray = false)
     {
         var data = new List<byte>();
 
@@ -44,7 +45,7 @@ internal static class MemoryHistoryStoreHelper
             data.AddRange(bytes);
         }
 
-        return MemoryHistoryBuilder.Build([.. blocks.Select(b => new MemoryHistoryAllocation(b, false))],
+        return MemoryHistoryBuilder.Build([.. blocks.Select(b => new MemoryHistoryAllocation(b, false, IsArray: isArray))],
                                           new ulong[blocks.Length],
                                           new Dictionary<ulong, TracePosition>(),
                                           new WatchResult([new([.. hits], [.. data])], 1),

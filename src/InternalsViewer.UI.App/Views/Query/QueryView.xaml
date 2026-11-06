@@ -10,7 +10,7 @@
     xmlns:timeline="using:InternalsViewer.UI.App.Controls.Query.Timeline"
     mc:Ignorable="d">
 
-    <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
+    <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -18,7 +18,8 @@
         </Grid.RowDefinitions>
 
         <!-- Menu/Command Bar -->
-        <Border BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+        <Border Background="{ThemeResource LayerFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
                 BorderThickness="0,0,0,0">
             <CommandBar DefaultLabelPosition="Right" 
                         OverflowButtonVisibility="Collapsed"
@@ -100,7 +101,7 @@
                                 <ToggleMenuFlyoutItem Text="Track query"
                                    IsChecked="{x:Bind ViewModel.TrackQuery, Mode=TwoWay}"/>
                                 <MenuFlyoutSeparator/>
-                                <ToggleMenuFlyoutItem Text="Crop To query"
+                                <ToggleMenuFlyoutItem Text="Crop to query"
                                    IsChecked="{x:Bind ViewModel.QueryOptions.CropToQuery, Mode=TwoWay}"/>
                                 <ToggleMenuFlyoutItem Text="Include system objects"
                                    IsChecked="{x:Bind ViewModel.QueryOptions.IncludeSystemObjects, Mode=TwoWay}"/>
@@ -210,20 +211,23 @@
         </Border>
 
         <Border Grid.Row="1"
-                Margin="0,8,0,0"
-                Padding="0,4,0,0"
-                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                BorderThickness="0,1,0,1"
+                BorderBrush="{ThemeResource LayerFillColorDefaultBrush}"
+                BorderThickness="0,8,0,0"
                 Visibility="{x:Bind GetRulerVisibility(Settings.PinTimeline, ViewModel.IsRulerAvailable), Mode=OneWay}">
-            <timeline:TimelineRuler x:Name="PinnedRuler"
-                                    Source="{x:Bind ViewModel.RulerSource, Mode=OneWay}"
-                                    IsPinned="{x:Bind Settings.PinTimeline, Mode=TwoWay}"/>
+            <Border Padding="0,4,0,0"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="0,1,0,1">
+                <timeline:TimelineRuler x:Name="PinnedRuler"
+                                        Source="{x:Bind ViewModel.RulerSource, Mode=OneWay}"
+                                        IsPinned="{x:Bind Settings.PinTimeline, Mode=TwoWay}"/>
+            </Border>
         </Border>
 
         <!--Tabs (dockable / splittable document region)-->
-        <docking:DockHost x:Name="DockHostControl"
-                          Grid.Row="2"
-                          Layout="{x:Bind ViewModel.Layout.Dock, Mode=OneWay}"/>
+        <Border Grid.Row="2" Background="{ThemeResource LayerFillColorDefaultBrush}">
+            <docking:DockHost x:Name="DockHostControl"
+                              Layout="{x:Bind ViewModel.Layout.Dock, Mode=OneWay}"/>
+        </Border>
 
     </Grid>
 </Page>

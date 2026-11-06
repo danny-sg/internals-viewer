@@ -116,6 +116,13 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
 
     public void ShowCallStack() => IsCallStackVisible = true;
 
+    public void CloseCallStack()
+    {
+        PlayheadStack.Clear();
+
+        IsCallStackVisible = false;
+    }
+
     public void RequestPlayhead(TracePoint point) => PlayheadRequested?.Invoke(this, point);
 
     public void MovePlayhead(TracePoint point) => RequestPlayhead(point);

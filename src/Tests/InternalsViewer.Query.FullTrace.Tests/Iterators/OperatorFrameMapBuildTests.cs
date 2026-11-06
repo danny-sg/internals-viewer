@@ -7,7 +7,7 @@ using InternalsViewer.Query.FullTrace.Symbols.Categories;
 namespace InternalsViewer.Query.FullTrace.Tests.Iterators;
 
 [Trait("Category", "Unit")]
-public class IteratorInstanceMatcherTests
+public class OperatorFrameMapBuildTests
 {
     [Fact]
     public void Each_Iterator_Takes_Its_Linked_Plan_Node_And_Wrappers_Are_Passed_Over()
@@ -25,9 +25,9 @@ public class IteratorInstanceMatcherTests
 
         var frames = Match(tree, [loops, outer, inner], (0x100, 0), (0x200, 2), (0x300, 2), (0x400, 1), (0x500, 1));
 
-        Assert.Equal(3, new[] { loops, outer, inner }.Count(o => o.Instances.Count > 0));
-        Assert.Equal([0x500ul], outer.Instances);
-        Assert.Equal([0x300ul], inner.Instances);
+        Assert.Equal(3, new[] { loops, outer, inner }.Count(o => frames.GetInstances(o).Count > 0));
+        Assert.Equal([0x500ul], frames.GetInstances(outer));
+        Assert.Equal([0x300ul], frames.GetInstances(inner));
         Assert.Equal(0x300ul, Assert.Single(frames.GetEntryFrames(inner)).Frame?.InstanceAddress);
     }
 
@@ -179,7 +179,7 @@ public class IteratorInstanceMatcherTests
     private static OperatorFrameMap Match(CallTree tree,
                                           IReadOnlyList<ExecutionOperatorEvent> operators,
                                           params (ulong InstanceAddress, int Node)[] links)
-        => IteratorInstanceMatcher.Match(tree.CollapseToFunctions(), operators, LinkOf(links));
+        => OperatorFrameMap.Build(tree.CollapseToFunctions(), operators, LinkOf(links));
 
     private static IteratorPlanLink LinkOf(params (ulong InstanceAddress, int Node)[] links)
         => new(new Dictionary<ulong, PlanNodeIdentifier>(),

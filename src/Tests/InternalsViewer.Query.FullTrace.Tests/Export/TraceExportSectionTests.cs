@@ -157,7 +157,6 @@ public class TraceExportSectionTests
             OperatorDescription = "Clustered Index Scan",
             PlanNodeIdentifier = new PlanNodeIdentifier { PlanHandleId = 1, NodeId = 0 },
             Threads = [new OperatorThread(0, 10, 20, 5)],
-            Instances = [Scan]
         };
 
         var fullTrace = FullTrace(scan);
@@ -219,7 +218,9 @@ public class TraceExportSectionTests
 
         IteratorPlanNode[] planNodes = [new(Scan, PlanObject: 0xA000, BatchPlanObject: 0, Query: 0xB000, NodeId: 0)];
 
-        var lifetimes = IteratorLifetimeBuilder.Build(timeline, memory, [scan], planNodes, []);
+        var owners = new Dictionary<ulong, ExecutionOperatorEvent> { [Scan] = scan };
+
+        var lifetimes = IteratorLifetimeBuilder.Build(timeline, memory, owners, planNodes, []);
 
         var storeBuilder = new TraceCallStore.Builder();
 

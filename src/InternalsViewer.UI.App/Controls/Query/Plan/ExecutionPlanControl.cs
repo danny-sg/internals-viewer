@@ -63,6 +63,10 @@ public sealed class ExecutionPlanControl : Canvas
     // Branch labels (Build / Probe) sit near the child end of a hash join's input connectors.
     private static readonly Color BranchLabelColor = Color.FromArgb(255, 160, 160, 160);
 
+    private static readonly Color ReturnedColour = Color.FromArgb(255, 0, 176, 80);
+
+    private static readonly TimeSpan ReturnFadeDuration = TimeSpan.FromSeconds(0.6);
+
     public static readonly DependencyProperty PlanProperty =
         DependencyProperty.Register(nameof(Plan), typeof(ExecutionPlan), typeof(ExecutionPlanControl),
             new PropertyMetadata(null, OnPlanChanged));
@@ -113,6 +117,16 @@ public sealed class ExecutionPlanControl : Canvas
         set => SetValue(EmittingNodesProperty, value);
     }
 
+    public static readonly DependencyProperty RequestedNodesProperty =
+        DependencyProperty.Register(nameof(RequestedNodes), typeof(IReadOnlyList<PlanNode>), typeof(ExecutionPlanControl),
+            new PropertyMetadata(null, OnRequestedNodesChanged));
+
+    public IReadOnlyList<PlanNode>? RequestedNodes
+    {
+        get => (IReadOnlyList<PlanNode>?)GetValue(RequestedNodesProperty);
+        set => SetValue(RequestedNodesProperty, value);
+    }
+
     public static readonly DependencyProperty EventsProperty =
         DependencyProperty.Register(nameof(Events), typeof(IReadOnlyList<EngineEvent>), typeof(ExecutionPlanControl),
             new PropertyMetadata(null, OnEventsChanged));
@@ -131,9 +145,6 @@ public sealed class ExecutionPlanControl : Canvas
     // that connector's arrowhead (recoloured to match the flow line while the producer is active).
     private readonly Dictionary<PlanNode, Polyline> _connectorByProducer = [];
     private readonly Dictionary<PlanNode, Polygon> _arrowByProducer = [];
-
-    // The second chevron of an ordered read node's double arrowhead, recoloured alongside the primary.
-    private readonly Dictionary<PlanNode, Polygon> _secondaryArrowByProducer = [];
 
     // Per-emitting-producer animated data-flow overlay marching along its outgoing connector. Keyed by
     // producer so the set can be reconciled incrementally as the active operators change each tick.
@@ -175,18 +186,113 @@ public sealed class ExecutionPlanControl : Canvas
     public event EventHandler<PlanNode>? CallTreeOpenRequested;
 
     public event EventHandler<PlanNode>? PropertiesOpenRequested;
-    
+
     private double RowPitch => BaseNodeHeight + VerticalGap;
+
+    private Dictionary<PlanNode, Storyboard> ReturnFlashes { get; } = [];
+
+    public void FlashReturned(IReadOnlyList<PlanNode> nodes)
+    {
+        foreach (var node in nodes)
+        {
+            if (!_connectorByProducer.TryGetValue(node, out var connector) || !_arrowByProducer.TryGetValue(node, out var arrow))
+            {
+                continue;
+            }
+
+            if (!ReturnFlashes.TryGetValue(node, out var flash))
+            {
+                flash = CreateReturnFlash(connector, arrow);
+
+                ReturnFlashes[node] = flash;
+            }
+
+            flash.Stop();
+
+            flash.Begin();
+        }
+    }
+
+    private Storyboard CreateReturnFlash(Polyline connector, Polygon arrow)
+    {
+        var brush = new SolidColorBrush(ReturnedColour);
+
+        var line = new Polyline
+        {
+            Stroke = brush,
+            StrokeThickness = connector.StrokeThickness,
+            StrokeLineJoin = PenLineJoin.Miter,
+            IsHitTestVisible = false,
+            Opacity = 0
+        };
+
+        foreach (var point in connector.Points)
+        {
+            line.Points.Add(point);
+        }
+
+        var head = new Polygon
+        {
+            Fill = brush,
+            IsHitTestVisible = false,
+            Opacity = 0
+        };
+
+        foreach (var point in arrow.Points)
+        {
+            head.Points.Add(point);
+        }
+
+        Children.Add(line);
+
+        Children.Add(head);
+
+        var storyboard = new Storyboard();
+
+        storyboard.Children.Add(CreateFade(line));
+
+        storyboard.Children.Add(CreateFade(head));
+
+        return storyboard;
+    }
+
+    private static DoubleAnimation CreateFade(UIElement target)
+    {
+        var animation = new DoubleAnimation
+        {
+            From = 1,
+            To = 0,
+            Duration = new Duration(ReturnFadeDuration),
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
+        };
+
+        Storyboard.SetTarget(animation, target);
+
+        Storyboard.SetTargetProperty(animation, "Opacity");
+
+        return animation;
+    }
+
+    private void StopReturnFlashes()
+    {
+        foreach (var flash in ReturnFlashes.Values)
+        {
+            flash.Stop();
+        }
+
+        ReturnFlashes.Clear();
+    }
 
     private void Rebuild()
     {
         StopAllFlows();
 
+        StopReturnFlashes();
+
         Children.Clear();
 
         _connectorByProducer.Clear();
         _arrowByProducer.Clear();
-        _secondaryArrowByProducer.Clear();
 
         _selectedControl = null;
 
@@ -322,13 +428,9 @@ public sealed class ExecutionPlanControl : Canvas
 
         var brush = new SolidColorBrush(ConnectorColor);
 
-        // An ordered read (e.g. an ordered index scan) gets a second chevron directly behind the first (no
-        // gap) - a double arrowhead reading as "ordered output".
-        var isOrdered = childNode.ScanInfo?.IsOutputOrdered == true;
-
         // Stop the shaft at the (last) arrowhead's base rather than the node edge, so the squared line end
         // is hidden behind the head and doesn't stick out past the (zero-width) tip.
-        var shaftEnd = new Point(end.X + (isOrdered ? 2 * headLength : headLength), end.Y);
+        var shaftEnd = new Point(end.X + headLength, end.Y);
 
         var connector = new Polyline
         {
@@ -348,14 +450,6 @@ public sealed class ExecutionPlanControl : Canvas
 
         var arrow = MakeArrowhead(end.X, end.Y, headLength, headHalfWidth, brush);
         Children.Add(arrow);
-
-        if (isOrdered)
-        {
-            // Second chevron's tip sits exactly on the first's base, so the two heads touch.
-            var secondary = MakeArrowhead(end.X + headLength, end.Y, headLength, headHalfWidth, brush);
-            Children.Add(secondary);
-            _secondaryArrowByProducer[childNode] = secondary;
-        }
 
         // Hash join inputs are labelled Build (the blocking side) / Probe (the streaming side) near the
         // child end of the line.
@@ -660,11 +754,15 @@ public sealed class ExecutionPlanControl : Canvas
     {
         var active = ActiveNodes;
 
+        var requested = RequestedNodes;
+
         foreach (var child in Children)
         {
             if (child is PlanNodeControl { Node: { } node } nodeControl)
             {
                 nodeControl.IsActive = active is not null && active.Contains(node);
+
+                nodeControl.IsRequested = requested is not null && requested.Contains(node);
             }
         }
     }
@@ -725,11 +823,6 @@ public sealed class ExecutionPlanControl : Canvas
         if (_arrowByProducer.TryGetValue(producer, out var arrow))
         {
             arrow.Fill = new SolidColorBrush(colour);
-        }
-
-        if (_secondaryArrowByProducer.TryGetValue(producer, out var secondaryArrow))
-        {
-            secondaryArrow.Fill = new SolidColorBrush(colour);
         }
 
         var overlay = new Polyline
@@ -793,11 +886,6 @@ public sealed class ExecutionPlanControl : Canvas
             {
                 arrow.Fill = new SolidColorBrush(ConnectorColor);
             }
-
-            if (_secondaryArrowByProducer.TryGetValue(producer, out var secondaryArrow))
-            {
-                secondaryArrow.Fill = new SolidColorBrush(ConnectorColor);
-            }
         }
     }
 
@@ -853,6 +941,9 @@ public sealed class ExecutionPlanControl : Canvas
 
     private static void OnEmittingNodesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((ExecutionPlanControl)d).UpdateFlows();
+
+    private static void OnRequestedNodesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((ExecutionPlanControl)d).UpdateActiveHighlights();
 
     // The icicles (and the node height that makes room for them) depend on the events, so rebuild when they arrive.
     private static void OnEventsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

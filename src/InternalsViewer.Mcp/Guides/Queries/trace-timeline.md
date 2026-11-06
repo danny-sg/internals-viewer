@@ -9,8 +9,9 @@ and never milliseconds. The `trace_` tools change what the user sees, so say wha
 - `trace_options` lists the panes, the scale, the highlights, the operator tracks, the selected call, the pins and the open
   indicator. `trace_set_option` changes one, for example `pane-calls` to show the flame chart.
 - Use the Operators pane for the query's iterator view and the Memory pane for detail.
-- `trace_track_add` marks a function on the Operators pane, for example `SearchPage`. `trace_track_set` shows or hides a track
-  and `trace_track_remove` clears tracks.
+- `trace_track_add` adds a rule that marks a function on the Operators pane, for example `SearchPage`. A rule given an
+  existing track's name joins that track as another kind of tick with its own label and colour. `trace_track_set` shows or
+  hides a track and `trace_track_remove` removes the rules that were added.
 
 ## Finding and moving
 

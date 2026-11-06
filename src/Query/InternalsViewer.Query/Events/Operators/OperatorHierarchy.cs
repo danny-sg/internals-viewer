@@ -50,21 +50,6 @@ public sealed class OperatorHierarchy
     public static OperatorHierarchy Build(IEnumerable<EngineEvent> events)
         => new([.. events.OfType<ExecutionOperatorEvent>().Where(o => o.PlanNodeIdentifier is not null)]);
 
-    public static Dictionary<ulong, ExecutionOperatorEvent> GetOperatorsByInstance(IEnumerable<ExecutionOperatorEvent> operators)
-    {
-        var owners = new Dictionary<ulong, ExecutionOperatorEvent>();
-
-        foreach (var operatorEvent in operators)
-        {
-            foreach (var instance in operatorEvent.Instances)
-            {
-                owners.TryAdd(instance, operatorEvent);
-            }
-        }
-
-        return owners;
-    }
-
     public IEnumerable<ExecutionOperatorEvent> Children(ExecutionOperatorEvent operatorEvent)
         => _childrenByParent[(operatorEvent.PlanNodeIdentifier!.PlanHandleId, operatorEvent.PlanNodeIdentifier.NodeId)];
 

@@ -18,7 +18,16 @@
                         QuerySubmitted="OnFunctionSubmitted"
                         LostFocus="OnFunctionLostFocus"/>
 
-        <TextBox x:Name="NameBox" Header="Name" Text="{x:Bind TrackName, Mode=TwoWay}"/>
+        <AutoSuggestBox x:Name="NameBox"
+                        Header="Track"
+                        PlaceholderText="A new track, or an existing one to combine with"
+                        Text="{x:Bind TrackName, Mode=TwoWay}"
+                        TextChanged="OnTrackTextChanged"/>
+
+        <TextBox x:Name="LabelBox"
+                 Header="Label"
+                 PlaceholderText="The function name when empty"
+                 Text="{x:Bind ValueLabel, Mode=TwoWay}"/>
 
         <Grid ColumnSpacing="12">
             <Grid.ColumnDefinitions>
@@ -64,6 +73,11 @@
                        SpinButtonPlacementMode="Compact"
                        Value="{x:Bind WidthFactor, Mode=TwoWay}"/>
         </Grid>
+
+        <CheckBox x:Name="CategoryColourBox"
+                  Content="Category Colour"
+                  Checked="OnCategoryColourChanged"
+                  Unchecked="OnCategoryColourChanged"/>
 
         <StackPanel Spacing="4">
             <TextBlock Text="Conditions"/>

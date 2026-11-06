@@ -35,7 +35,7 @@ internal sealed class TraceResultBuilder
 
         PlanLink = IteratorPlanLinker.Link(planNodes, events);
 
-        OperatorFrames = IteratorInstanceMatcher.Match(callTree, events, PlanLink);
+        OperatorFrames = OperatorFrameMap.Build(callTree, events, PlanLink);
     }
 
     public IteratorPlanLink PlanLink { get; }
@@ -68,7 +68,7 @@ internal sealed class TraceResultBuilder
 
     public TraceOperatorLifetimeList BuildLifetimes()
     {
-        Lifetimes = IteratorLifetimeBuilder.Build(Timeline, Allocation, [.. Events.OfType<ExecutionOperatorEvent>()], PlanNodes, Teardowns);
+        Lifetimes = IteratorLifetimeBuilder.Build(Timeline, Allocation, OperatorFrames.OperatorsByInstance, PlanNodes, Teardowns);
 
         return Lifetimes;
     }
@@ -94,8 +94,6 @@ internal sealed class TraceResultBuilder
             ObjectPool = ObjectPool,
             BufferPool = BufferPool,
             RowReturnMarks = TraceRowReturnMarkMap.Build(Timeline, CallStore, lifetimes, enclosing),
-            Reads = TraceReadResolver.Build(Timeline, CallStore, lifetimes, enclosing),
-            Evaluations = TraceEvaluationReader.Build(Timeline, CallStore, lifetimes, enclosing),
             Seeks = TraceSeekReader.Build(Timeline, CallStore, lifetimes, enclosing)
         };
     }

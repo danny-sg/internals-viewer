@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
+using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Timeline.Ticks;
 
@@ -81,6 +82,30 @@ public sealed class TraceTickIndex
 
     public byte GetValue(int index) => Entries[index].Value;
 
+    public bool IsRunning(TracePosition position)
+    {
+        var index = SortedSearch.FirstAfter<TracePoint, TracePosition>(Froms, position, static p => p.Position) - 1;
+
+        return index >= 0 && RunningEnds[index].Position > position;
+    }
+
+    public bool HasEndBetween(TracePosition after, TracePosition upTo, Func<byte, bool> include)
+    {
+        for (var index = SortedSearch.FirstAfter<TracePoint, TracePosition>(RunningEnds, after, static p => p.Position);
+             index < Count && Froms[index].Position <= upTo;
+             index++)
+        {
+            var end = Tos[index].Position;
+
+            if (end > after && end <= upTo && include(Entries[index].Value))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public double GetStart(TraceTimelineAxis axis, int index) => Scale.GetValue(Froms[index], axis);
 
     public double GetEnd(TraceTimelineAxis axis, int index) => Scale.GetValue(Tos[index], axis);
@@ -160,6 +185,13 @@ public sealed class TraceTickIndex
 
         return nearest >= 0 ? Get(nearest) : null;
     }
+
+    internal TraceTickSource GetSource(int index)
+        => new(Thread, Entries[index].SpanIndex, Entries[index].Value, Froms[index], Tos[index])
+        {
+            Operator = Operator,
+            Caller = Callers?[index]
+        };
 
     private bool IsInside(int inner, int outer)
         => Froms[outer].Position <= Froms[inner].Position

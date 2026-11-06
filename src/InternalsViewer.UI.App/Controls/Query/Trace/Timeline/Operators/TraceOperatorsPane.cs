@@ -70,9 +70,11 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
             var tracks = 0;
 
-            foreach (var row in Rows)
+            var strips = 0f;
+
+            for (var row = 0; row < Rows.Length; row++)
             {
-                if (GetFixedHeight(row) is { } value)
+                if (GetFixedHeight(Rows[row]) is { } value)
                 {
                     height += value;
                 }
@@ -80,11 +82,13 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
                 {
                     flexible++;
 
-                    tracks = Math.Max(tracks, row.Lifetimes.Length);
+                    tracks = Math.Max(tracks, Rows[row].Lifetimes.Length);
+
+                    strips += RowStripHeights[row];
                 }
             }
 
-            return height + flexible * tracks * MinimumTrackHeight;
+            return height + flexible * tracks * MinimumTrackHeight + strips;
         }
     }
 
@@ -138,6 +142,8 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
         TraceScale = timeline?.Scale ?? TraceScale.Default;
 
         Rows = AddStatementRow(GetOperatorRows(timeline, lifetimes));
+
+        CachedStripHeights = null;
 
         Details.Clear();
 
@@ -304,6 +310,8 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
         Rows = [];
 
         VisibleTracks = [];
+
+        CachedStripHeights = null;
 
         StatementEvent = null;
 
@@ -554,25 +562,35 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
         var flexible = 0;
 
-        foreach (var row in Rows)
+        var stripHeights = RowStripHeights;
+
+        var strips = 0f;
+
+        for (var row = 0; row < Rows.Length; row++)
         {
-            if (GetFixedHeight(row) is { } value)
+            if (GetFixedHeight(Rows[row]) is { } value)
             {
                 fixedHeight += value;
             }
             else
             {
                 flexible++;
+
+                strips += stripHeights[row];
             }
         }
 
-        var shared = flexible == 0 ? 0 : Math.Max((available - fixedHeight) / flexible, MinimumRowHeight);
+        var spare = available - fixedHeight - flexible * MinimumRowHeight;
+
+        var stripScale = strips > spare ? Math.Max(spare, 0) / strips : 1;
+
+        var shared = flexible == 0 ? 0 : Math.Max((available - fixedHeight - strips * stripScale) / flexible, MinimumRowHeight);
 
         var rowTop = top + OperatorsPadding;
 
         for (var row = 0; row < Rows.Length; row++)
         {
-            heights[row] = GetFixedHeight(Rows[row]) ?? shared;
+            heights[row] = GetFixedHeight(Rows[row]) ?? shared + stripHeights[row] * stripScale;
 
             tops[row] = rowTop;
 

@@ -6,5 +6,6 @@ public enum TraceConditionTarget
     Return,
     CalledBy,
     CalledDirectlyBy,
-    Operator
+    Operator,
+    Locator
 }

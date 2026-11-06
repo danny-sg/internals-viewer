@@ -28,7 +28,10 @@ public sealed partial class TraceTimelineControl : ITimelineRulerSource
                                      _overlay.ActualWidth,
                                      _playhead,
                                      IsTrimmed ? TrimFrom : null,
-                                     IsTrimmed ? TrimTo : null);
+                                     IsTrimmed ? TrimTo : null)
+            {
+                Cuts = _visible.GetCuts(_axis)
+            };
 
     public double? GetRulerOffset(UIElement relativeTo) => TimelineRuler.GetContentOffset(_overlay, relativeTo);
 

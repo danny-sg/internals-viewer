@@ -5,7 +5,7 @@ namespace InternalsViewer.Query.FullTrace.Timeline;
 
 public sealed partial class TraceTimeline
 {
-    private const int FormatVersion = 3;
+    private const int FormatVersion = 4;
 
     private TraceTimeline(IReadOnlyList<TraceTimelineThread> threads,
                           int[] parents,
@@ -68,7 +68,11 @@ public sealed partial class TraceTimeline
             threads[index] = new TraceTimelineThread(threadId, clock, store, rows, calls);
         }
 
-        return new TraceTimeline(threads, parents, nodes, scale, start, end);
+        var timeline = new TraceTimeline(threads, parents, nodes, scale, start, end);
+
+        timeline.SetCuts();
+
+        return timeline;
     }
 
     internal void Write(BinaryWriter writer, Func<CallTreeNode, int> idOf)
