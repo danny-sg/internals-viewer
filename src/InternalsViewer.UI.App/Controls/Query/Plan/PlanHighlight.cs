@@ -6,9 +6,9 @@ namespace InternalsViewer.UI.App.Controls.Query.Plan;
 
 internal sealed class PlanHighlight
 {
-    private static readonly TimeSpan MinimumFade = TimeSpan.FromMilliseconds(100);
+    private static readonly TimeSpan MinimumFade = TimeSpan.FromMilliseconds(50);
 
-    private static readonly TimeSpan MaximumFade = TimeSpan.FromMilliseconds(600);
+    private static readonly TimeSpan MaximumFade = TimeSpan.FromMilliseconds(250);
 
     public PlanHighlight(params UIElement[] elements)
     {
@@ -28,8 +28,9 @@ internal sealed class PlanHighlight
 
     private bool IsLit { get; set; }
 
-    public static TimeSpan GetFade(long elapsedMilliseconds)
-        => TimeSpan.FromMilliseconds(Math.Min(elapsedMilliseconds, MaximumFade.TotalMilliseconds));
+    private long? LitAt { get; set; }
+
+    private TimeSpan FadeDuration { get; set; } = MaximumFade;
 
     public void Light()
     {
@@ -37,10 +38,21 @@ internal sealed class PlanHighlight
 
         SetOpacity(1);
 
+        if (!IsLit)
+        {
+            var now = Environment.TickCount64;
+
+            FadeDuration = LitAt is { } previous
+                ? TimeSpan.FromMilliseconds(Math.Min(now - previous, MaximumFade.TotalMilliseconds))
+                : MaximumFade;
+
+            LitAt = now;
+        }
+
         IsLit = true;
     }
 
-    public void Fade(TimeSpan duration)
+    public void Fade()
     {
         if (!IsLit)
         {
@@ -53,14 +65,14 @@ internal sealed class PlanHighlight
 
         SetOpacity(0);
 
-        if (duration < MinimumFade)
+        if (FadeDuration < MinimumFade)
         {
             return;
         }
 
         foreach (var animation in Fader.Children)
         {
-            animation.Duration = new Duration(duration);
+            animation.Duration = new Duration(FadeDuration);
         }
 
         Fader.Begin();

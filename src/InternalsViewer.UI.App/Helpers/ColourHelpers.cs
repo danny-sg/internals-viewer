@@ -36,9 +36,16 @@ internal static class ColourHelpers
     }
 
     public static Windows.UI.Color? FromHex(string? hex)
-        => hex?.TrimStart('#') is { Length: 6 } digits && uint.TryParse(digits, NumberStyles.HexNumber, null, out var rgb)
-            ? Windows.UI.Color.FromArgb(0xFF, (byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb)
-            : null;
+    {
+        if (hex?.TrimStart('#') is not { Length: 6 or 8 } digits || !uint.TryParse(digits, NumberStyles.HexNumber, null, out var value))
+        {
+            return null;
+        }
+
+        var alpha = digits.Length == 8 ? (byte)(value >> 24) : byte.MaxValue;
+
+        return Windows.UI.Color.FromArgb(alpha, (byte)(value >> 16), (byte)(value >> 8), (byte)value);
+    }
 
     /// <summary>
     /// Return the background colour for a given colour, used for gradients

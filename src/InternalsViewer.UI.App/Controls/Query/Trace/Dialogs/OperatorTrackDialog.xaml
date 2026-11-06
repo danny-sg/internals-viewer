@@ -73,7 +73,7 @@
                     <Button.Flyout>
                         <Flyout>
                             <ColorPicker x:Name="BackgroundPicker"
-                                         IsAlphaEnabled="False"
+                                         IsAlphaEnabled="True"
                                          IsMoreButtonVisible="False"
                                          ColorChanged="OnBackgroundChanged"/>
                         </Flyout>

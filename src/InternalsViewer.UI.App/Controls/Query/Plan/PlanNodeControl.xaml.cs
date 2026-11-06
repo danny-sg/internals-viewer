@@ -142,7 +142,7 @@ public sealed partial class PlanNodeControl : UserControl
         CounterBadge.Visibility = Visibility.Visible;
     }
 
-    public void ShowParts(IEnumerable<PlanPartActivity> parts, TimeSpan fade)
+    public void ShowParts(IEnumerable<PlanPartActivity> parts)
     {
         if (Node is not { } node)
         {
@@ -176,7 +176,7 @@ public sealed partial class PlanNodeControl : UserControl
             }
             else
             {
-                layer.Highlight.Fade(fade);
+                layer.Highlight.Fade();
             }
         }
     }

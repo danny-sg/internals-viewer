@@ -15,10 +15,17 @@ public class ColourHelpersTests
     }
 
     [Fact]
-    public void A_Hex_Colour_That_Is_Not_Six_Digits_Is_Not_Read()
+    public void An_Eight_Digit_Hex_Colour_Is_Read_With_Its_Alpha_First()
+    {
+        Assert.Equal(Windows.UI.Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF), ColourHelpers.FromHex("#40FFFFFF"));
+    }
+
+    [Fact]
+    public void A_Hex_Colour_That_Is_Not_Six_Or_Eight_Digits_Is_Not_Read()
     {
         Assert.Null(ColourHelpers.FromHex(null));
         Assert.Null(ColourHelpers.FromHex("#FFF"));
+        Assert.Null(ColourHelpers.FromHex("#FFFFFFF"));
         Assert.Null(ColourHelpers.FromHex("#GGGGGG"));
     }
 

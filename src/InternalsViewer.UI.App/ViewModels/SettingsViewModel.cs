@@ -50,6 +50,9 @@ public partial class SettingsViewModel(SettingsService settingsService,
     private const string TraceTimelineShowMemoryReadsKey = "TraceTimelineShowMemoryReads";
     private const string TraceTimelineShowBufferLatchesKey = "TraceTimelineShowBufferLatches";
     private const string TraceTimelineShowBuffersKey = "TraceTimelineShowBuffers";
+    private const string TraceTimelineShowOperatorsKey = "TraceTimelineShowOperators";
+    private const string TraceTimelineShowMemoryHistoryKey = "TraceTimelineShowMemoryHistory";
+    private const string TraceTimelineShowCallsKey = "TraceTimelineShowCalls";
     private const string PinTimelineKey = "PinTimeline";
 
     private const string TraceTimelineHiddenTickTracksKey = "TraceTimelineHiddenTickTracks";
@@ -113,6 +116,15 @@ public partial class SettingsViewModel(SettingsService settingsService,
 
     [ObservableProperty]
     private bool _traceTimelineShowMemory;
+
+    [ObservableProperty]
+    private bool _traceTimelineShowOperators = true;
+
+    [ObservableProperty]
+    private bool _traceTimelineShowMemoryHistory = true;
+
+    [ObservableProperty]
+    private bool _traceTimelineShowCalls = true;
 
     [ObservableProperty]
     private TraceTimelineMemoryMode _traceTimelineMemoryMode;
@@ -254,6 +266,12 @@ public partial class SettingsViewModel(SettingsService settingsService,
         CallTreePrunedCategories = await SettingsService.ReadSettingAsync<string>(CallTreePrunedCategoriesKey) ?? string.Empty;
 
         TraceTimelineShowMemory = await SettingsService.ReadSettingAsync<bool?>(TraceTimelineShowMemoryKey) ?? false;
+
+        TraceTimelineShowOperators = await SettingsService.ReadSettingAsync<bool?>(TraceTimelineShowOperatorsKey) ?? true;
+
+        TraceTimelineShowMemoryHistory = await SettingsService.ReadSettingAsync<bool?>(TraceTimelineShowMemoryHistoryKey) ?? true;
+
+        TraceTimelineShowCalls = await SettingsService.ReadSettingAsync<bool?>(TraceTimelineShowCallsKey) ?? true;
 
         TraceTimelineMemoryMode = await SettingsService.ReadSettingAsync<TraceTimelineMemoryMode?>(TraceTimelineMemoryModeKey)
                                ?? TraceTimelineMemoryMode.Allocated;
@@ -452,6 +470,21 @@ public partial class SettingsViewModel(SettingsService settingsService,
     partial void OnTraceTimelineMemorySizeToFitChanged(bool value)
     {
         _ = SettingsService.SaveSettingAsync(TraceTimelineMemorySizeToFitKey, value);
+    }
+
+    partial void OnTraceTimelineShowOperatorsChanged(bool value)
+    {
+        _ = SettingsService.SaveSettingAsync(TraceTimelineShowOperatorsKey, value);
+    }
+
+    partial void OnTraceTimelineShowMemoryHistoryChanged(bool value)
+    {
+        _ = SettingsService.SaveSettingAsync(TraceTimelineShowMemoryHistoryKey, value);
+    }
+
+    partial void OnTraceTimelineShowCallsChanged(bool value)
+    {
+        _ = SettingsService.SaveSettingAsync(TraceTimelineShowCallsKey, value);
     }
 
     partial void OnTraceTimelineShowMemoryWritesChanged(bool value)

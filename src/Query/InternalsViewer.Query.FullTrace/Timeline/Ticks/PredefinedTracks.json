@@ -113,7 +113,7 @@
   {
     "Name": "Evaluations",
     "Module": "*",
-    "Function": "CEsExec::FastCompare|CEsExec::FastCompare1|CEsExec::GeneralEval|CEsExec::GeneralEval4",
+    "Function": "CEsExec::FastCompare|CEsExec::FastCompare1|CEsExec::GeneralEval|CEsExec::GeneralEval4|CEsExec::FastTupleCompare",
     "Colour": "#F04848",
     "HeightFactor": 1,
     "WidthFactor": 1,
@@ -150,7 +150,7 @@
   {
     "Name": "Evaluations",
     "Module": "*",
-    "Function": "CEsExec::FastCompare|CEsExec::FastCompare1|CEsExec::GeneralEval|CEsExec::GeneralEval4",
+    "Function": "CEsExec::FastCompare|CEsExec::FastCompare1|CEsExec::GeneralEval|CEsExec::GeneralEval4|CEsExec::FastTupleCompare",
     "Colour": "#9E9E9E",
     "HeightFactor": 1,
     "WidthFactor": 1,
@@ -230,7 +230,7 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Row Access",
-    "Background": "#FFFFFF",
+    "Background": "#69FFFFFF",
     "Source": "RowAccess",
     "Value": 0
   },
@@ -289,7 +289,9 @@
     "Name": "Hash Probe",
     "Module": "sqlmin",
     "Function": "CHashWorkfilePartitionGroup::Lookup",
-    "Colour": "#000000",
+    "Colour": "#00A119",
+    "PlanPart": "Hash Match.Hash Table",
+    "Background": "#69FFFFFF",
     "HeightFactor": 1,
     "WidthFactor": 1,
     "Conditions": [
@@ -315,6 +317,7 @@
     "Module": "sqlmin",
     "Function": "CHashWorkfilePartitionGroup::Lookup",
     "Colour": "#D13438",
+    "PlanPart": "Hash Match.Hash Table",
     "HeightFactor": 1,
     "WidthFactor": 1,
     "Conditions": [

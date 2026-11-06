@@ -421,7 +421,10 @@ public sealed partial class OperatorTrackDialog
         };
     }
 
-    private static string ToHex(Color colour) => $"#{colour.R:X2}{colour.G:X2}{colour.B:X2}";
+    private static string ToHex(Color colour)
+        => colour.A == byte.MaxValue
+            ? $"#{colour.R:X2}{colour.G:X2}{colour.B:X2}"
+            : $"#{colour.A:X2}{colour.R:X2}{colour.G:X2}{colour.B:X2}";
 
     private sealed record ConditionTarget(string Label, TraceConditionTarget Kind, ArgumentSlot? Slot, string Type);
 

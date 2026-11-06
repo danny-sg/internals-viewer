@@ -209,16 +209,8 @@ public sealed class ExecutionPlanControl : Canvas
 
     private PlanActivity Activity { get; set; } = PlanActivity.Empty;
 
-    private long LastActivity { get; set; }
-
     public void ShowActivity(PlanActivity activity)
     {
-        var now = Environment.TickCount64;
-
-        var fade = PlanHighlight.GetFade(now - LastActivity);
-
-        LastActivity = now;
-
         Activity = activity;
 
         foreach (var (node, connector) in IteratorConnectors)
@@ -229,7 +221,7 @@ public sealed class ExecutionPlanControl : Canvas
             }
             else
             {
-                connector.Request.Fade(fade);
+                connector.Request.Fade();
             }
 
             if (activity.Returned.Contains(node))
@@ -238,13 +230,13 @@ public sealed class ExecutionPlanControl : Canvas
             }
             else
             {
-                connector.Response.Fade(fade);
+                connector.Response.Fade();
             }
         }
 
         foreach (var (node, control) in NodeControls)
         {
-            control.ShowParts(activity.Parts.Where(p => ReferenceEquals(p.Node, node)), fade);
+            control.ShowParts(activity.Parts.Where(p => ReferenceEquals(p.Node, node)));
 
             control.ShowCounters(activity.Counters.Where(c => ReferenceEquals(c.Node, node)));
         }
@@ -346,7 +338,7 @@ public sealed class ExecutionPlanControl : Canvas
 
         foreach (var (node, control) in NodeControls)
         {
-            control.ShowParts(Activity.Parts.Where(p => p.IsRunning && ReferenceEquals(p.Node, node)), TimeSpan.Zero);
+            control.ShowParts(Activity.Parts.Where(p => p.IsRunning && ReferenceEquals(p.Node, node)));
 
             control.ShowCounters(Activity.Counters.Where(c => ReferenceEquals(c.Node, node)));
         }

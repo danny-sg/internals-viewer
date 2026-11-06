@@ -600,6 +600,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     public void StepPlayhead(bool forward, PlayheadStepMode mode, string? track)
     {
+        StopPlay();
+
         switch (mode)
         {
             case PlayheadStepMode.SameCall when _nodeMatches is { } matches:

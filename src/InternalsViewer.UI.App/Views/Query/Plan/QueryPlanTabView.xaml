@@ -36,7 +36,7 @@
                       VerticalScrollMode="Enabled"
                       ZoomMode="Enabled"
                       MinZoomFactor="0.25"
-                      MaxZoomFactor="2.0"
+                      MaxZoomFactor="4.0"
                       Background="White"
                       Padding="8">
             <ItemsRepeater x:Name="PlanRepeater"
