@@ -18,8 +18,6 @@ public sealed partial class PlanNodeControl : UserControl
 {
     private const byte ActiveBackgroundAlpha = 50;
 
-    private static readonly Color RequestedColour = Color.FromArgb(170, 255, 140, 0);
-
     // A faint divider so adjacent frames read apart even at 3-4px row heights.
     public static readonly DependencyProperty NodeProperty =
         DependencyProperty.Register(nameof(Node), typeof(PlanNode), typeof(PlanNodeControl),
@@ -59,16 +57,6 @@ public sealed partial class PlanNodeControl : UserControl
     {
         get => (bool)GetValue(IsActiveProperty);
         set => SetValue(IsActiveProperty, value);
-    }
-
-    public static readonly DependencyProperty IsRequestedProperty =
-        DependencyProperty.Register(nameof(IsRequested), typeof(bool), typeof(PlanNodeControl),
-            new PropertyMetadata(false, OnIsRequestedChanged));
-
-    public bool IsRequested
-    {
-        get => (bool)GetValue(IsRequestedProperty);
-        set => SetValue(IsRequestedProperty, value);
     }
 
     public static readonly DependencyProperty AreAnnotationsVisibleProperty =
@@ -131,11 +119,7 @@ public sealed partial class PlanNodeControl : UserControl
 
     private void UpdateStateVisual()
     {
-        if (IsRequested)
-        {
-            NodeImageBorder.Background = new SolidColorBrush(RequestedColour);
-        }
-        else if (IsActive && Node is { } node)
+        if (IsActive && Node is { } node)
         {
             var type = EventColourProvider.GetOperatorColour(node).ToWindowsColor();
 
@@ -251,9 +235,6 @@ public sealed partial class PlanNodeControl : UserControl
         => ((PlanNodeControl)d).UpdateStateVisual();
 
     private static void OnIsActiveChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((PlanNodeControl)d).UpdateStateVisual();
-
-    private static void OnIsRequestedChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((PlanNodeControl)d).UpdateStateVisual();
 
     private static void OnAnnotationsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

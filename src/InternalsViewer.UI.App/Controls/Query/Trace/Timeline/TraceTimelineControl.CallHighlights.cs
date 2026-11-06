@@ -109,25 +109,16 @@ public sealed partial class TraceTimelineControl
     {
         var band = _axis == TraceTimelineAxis.Position ? _positionHighlights : _instructionHighlights;
 
-        if (band.Starts.Length == 0)
+        if (band.Starts.Length == 0 || timeline.Threads.Count == 0 || _laneTops.Length == 0)
         {
             return;
         }
 
-        for (var lane = 0; lane < timeline.Threads.Count && lane < _laneTops.Length; lane++)
+        var top = Math.Max(ContentTop + _laneTops[0] - (float)_scrollY + LaneHeaderHeight, ContentTop);
+
+        if (top < bottom)
         {
-            var laneTop = ContentTop + _laneTops[lane] - (float)_scrollY;
-
-            var rowsTop = laneTop + LaneHeaderHeight;
-
-            var laneBottom = laneTop + LaneHeight(timeline.Threads[lane]) - LaneGap;
-
-            if (laneBottom <= ContentTop || rowsTop >= bottom)
-            {
-                continue;
-            }
-
-            DrawHighlightBand(canvas, band, rowsTop, Math.Min(laneBottom, bottom), width, scale);
+            DrawHighlightBand(canvas, band, top, bottom, width, scale);
         }
     }
 

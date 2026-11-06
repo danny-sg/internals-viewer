@@ -1363,6 +1363,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         control.ClearMark();
 
         control.Reset();
+
+        control.SetMemoryBlocks();
     }
 
     private static void OnFullTimelineChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -1428,6 +1430,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         control.HideToolTip();
 
         control.RebuildVisible();
+
+        control.SetMemoryBlocks();
 
         control.ApplyScroll();
     }

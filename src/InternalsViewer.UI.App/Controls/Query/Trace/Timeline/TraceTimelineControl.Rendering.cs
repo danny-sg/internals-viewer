@@ -138,9 +138,11 @@ public sealed partial class TraceTimelineControl
 
             var lanesBottom = height - (int)BandHeight;
 
-            canvas.ClipRect(new SKRect(0, ContentTop, width, lanesBottom));
+            canvas.ClipRect(new SKRect(0, ContentTop, width, height));
 
-            DrawCallHighlights(canvas, visible, lanesBottom, width, scale);
+            DrawCallHighlights(canvas, visible, height, width, scale);
+
+            canvas.ClipRect(new SKRect(0, ContentTop, width, lanesBottom));
 
             DrawLanes(canvas, visible, lanesBottom, width, scale);
 

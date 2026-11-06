@@ -31,6 +31,8 @@ public sealed class ExecutionPlanControl : Canvas
     private const double HorizontalGap = 46;
     private const double VerticalGap = 22;
     private const double CanvasMargin = 24;
+    private const double ConnectorThickness = 1.25;
+    private const double IteratorLineOffset = 5;
 
     private readonly Dictionary<PlanNode, IReadOnlyList<PlanNodeAnnotation>> _annotationsByNode = [];
 
@@ -63,7 +65,7 @@ public sealed class ExecutionPlanControl : Canvas
     // Branch labels (Build / Probe) sit near the child end of a hash join's input connectors.
     private static readonly Color BranchLabelColor = Color.FromArgb(255, 160, 160, 160);
 
-    private static readonly Color ReturnedColour = Color.FromArgb(255, 0, 176, 80);
+    private static readonly Color IteratorColour = Color.FromArgb(255, 0, 176, 80);
 
     private static readonly TimeSpan ReturnFadeDuration = TimeSpan.FromSeconds(0.6);
 
@@ -125,6 +127,16 @@ public sealed class ExecutionPlanControl : Canvas
     {
         get => (IReadOnlyList<PlanNode>?)GetValue(RequestedNodesProperty);
         set => SetValue(RequestedNodesProperty, value);
+    }
+
+    public static readonly DependencyProperty IsFullTraceProperty =
+        DependencyProperty.Register(nameof(IsFullTrace), typeof(bool), typeof(ExecutionPlanControl),
+            new PropertyMetadata(false, OnIsFullTraceChanged));
+
+    public bool IsFullTrace
+    {
+        get => (bool)GetValue(IsFullTraceProperty);
+        set => SetValue(IsFullTraceProperty, value);
     }
 
     public static readonly DependencyProperty EventsProperty =
@@ -189,42 +201,69 @@ public sealed class ExecutionPlanControl : Canvas
 
     private double RowPitch => BaseNodeHeight + VerticalGap;
 
+    private Dictionary<PlanNode, GetConnector> GetConnectors { get; } = [];
+
     private Dictionary<PlanNode, Storyboard> ReturnFlashes { get; } = [];
+
+    private SolidColorBrush ConnectorBrush { get; } = new(ConnectorColor);
+
+    private SolidColorBrush IteratorBrush { get; } = new(IteratorColour);
 
     public void FlashReturned(IReadOnlyList<PlanNode> nodes)
     {
         foreach (var node in nodes)
         {
-            if (!_connectorByProducer.TryGetValue(node, out var connector) || !_arrowByProducer.TryGetValue(node, out var arrow))
+            if (GetReturnFlash(node) is { } flash)
             {
-                continue;
+                flash.Stop();
+
+                flash.Begin();
             }
-
-            if (!ReturnFlashes.TryGetValue(node, out var flash))
-            {
-                flash = CreateReturnFlash(connector, arrow);
-
-                ReturnFlashes[node] = flash;
-            }
-
-            flash.Stop();
-
-            flash.Begin();
         }
     }
 
-    private Storyboard CreateReturnFlash(Polyline connector, Polygon arrow)
+    private void UpdateRequestedConnectors()
     {
-        var brush = new SolidColorBrush(ReturnedColour);
+        var requested = RequestedNodes;
+
+        foreach (var (node, get) in GetConnectors)
+        {
+            var brush = requested is not null && requested.Contains(node) ? IteratorBrush : ConnectorBrush;
+
+            if (!ReferenceEquals(get.Line.Stroke, brush))
+            {
+                get.Line.Stroke = brush;
+
+                get.Arrow.Fill = brush;
+            }
+        }
+    }
+
+    private Storyboard? GetReturnFlash(PlanNode node)
+    {
+        if (ReturnFlashes.TryGetValue(node, out var flash))
+        {
+            return flash;
+        }
+
+        if (!_connectorByProducer.TryGetValue(node, out var connector) || !_arrowByProducer.TryGetValue(node, out var arrow))
+        {
+            return null;
+        }
 
         var line = new Polyline
         {
-            Stroke = brush,
+            Stroke = IteratorBrush,
             StrokeThickness = connector.StrokeThickness,
             StrokeLineJoin = PenLineJoin.Miter,
             IsHitTestVisible = false,
             Opacity = 0
         };
+
+        if (IsFullTrace)
+        {
+            line.StrokeDashArray = CreateResponseDashes();
+        }
 
         foreach (var point in connector.Points)
         {
@@ -233,7 +272,7 @@ public sealed class ExecutionPlanControl : Canvas
 
         var head = new Polygon
         {
-            Fill = brush,
+            Fill = IteratorBrush,
             IsHitTestVisible = false,
             Opacity = 0
         };
@@ -247,14 +286,18 @@ public sealed class ExecutionPlanControl : Canvas
 
         Children.Add(head);
 
-        var storyboard = new Storyboard();
+        flash = new Storyboard();
 
-        storyboard.Children.Add(CreateFade(line));
+        flash.Children.Add(CreateFade(line));
 
-        storyboard.Children.Add(CreateFade(head));
+        flash.Children.Add(CreateFade(head));
 
-        return storyboard;
+        ReturnFlashes[node] = flash;
+
+        return flash;
     }
+
+    private static DoubleCollection CreateResponseDashes() => [2, 2];
 
     private static DoubleAnimation CreateFade(UIElement target)
     {
@@ -273,7 +316,7 @@ public sealed class ExecutionPlanControl : Canvas
         return animation;
     }
 
-    private void StopReturnFlashes()
+    private void ClearIteratorConnectors()
     {
         foreach (var flash in ReturnFlashes.Values)
         {
@@ -281,13 +324,15 @@ public sealed class ExecutionPlanControl : Canvas
         }
 
         ReturnFlashes.Clear();
+
+        GetConnectors.Clear();
     }
 
     private void Rebuild()
     {
         StopAllFlows();
 
-        StopReturnFlashes();
+        ClearIteratorConnectors();
 
         Children.Clear();
 
@@ -355,6 +400,8 @@ public sealed class ExecutionPlanControl : Canvas
 
         UpdateActiveHighlights();
 
+        UpdateRequestedConnectors();
+
         UpdateFlows();
     }
 
@@ -419,18 +466,26 @@ public sealed class ExecutionPlanControl : Canvas
 
         var elbowX = (start.X + end.X) / 2;
 
-        var thickness = 1.25 + 4.0 * Math.Clamp(childCostFraction, 0, 1);
+        var thickness = IsFullTrace ? ConnectorThickness : ConnectorThickness + 4.0 * Math.Clamp(childCostFraction, 0, 1);
 
         // Scale the arrowhead with the line so a thick "many rows" connector gets a proportionally larger
         // head that still reads as an arrow; it must stay wider than the shaft so the shaft can't poke out.
         var headHalfWidth = Math.Max(4.5, thickness * 1.4);
         var headLength = headHalfWidth * 2.0;
 
+        var offset = IsFullTrace ? IteratorLineOffset : 0;
+
+        if (IsFullTrace)
+        {
+            GetConnectors[childNode] = DrawGetConnector(start, end, elbowX + offset, end.Y - offset, start.Y - offset, thickness,
+                                                        headLength, headHalfWidth);
+        }
+
         var brush = new SolidColorBrush(ConnectorColor);
 
         // Stop the shaft at the (last) arrowhead's base rather than the node edge, so the squared line end
         // is hidden behind the head and doesn't stick out past the (zero-width) tip.
-        var shaftEnd = new Point(end.X + headLength, end.Y);
+        var shaftEnd = new Point(end.X + headLength, end.Y + offset);
 
         var connector = new Polyline
         {
@@ -439,16 +494,21 @@ public sealed class ExecutionPlanControl : Canvas
             StrokeLineJoin = PenLineJoin.Miter,
             Points =
             {
-                start,
-                new Point(elbowX, start.Y),
-                new Point(elbowX, end.Y),
+                new Point(start.X, start.Y + offset),
+                new Point(elbowX - offset, start.Y + offset),
+                new Point(elbowX - offset, end.Y + offset),
                 shaftEnd
             }
         };
 
+        if (IsFullTrace)
+        {
+            connector.StrokeDashArray = CreateResponseDashes();
+        }
+
         Children.Add(connector);
 
-        var arrow = MakeArrowhead(end.X, end.Y, headLength, headHalfWidth, brush);
+        var arrow = MakeArrowhead(end.X, end.Y + offset, headLength, headHalfWidth, brush);
         Children.Add(arrow);
 
         // Hash join inputs are labelled Build (the blocking side) / Probe (the streaming side) near the
@@ -456,10 +516,51 @@ public sealed class ExecutionPlanControl : Canvas
         if (OperatorClassifier.IsHashJoin(parentNode))
         {
             var label = OperatorClassifier.RoleOf(parentNode, childNode) == InputRole.Blocking ? "Build" : "Probe";
-            AddBranchLabel(label, elbowX, start.Y);
+            AddBranchLabel(label, elbowX + offset, start.Y - offset);
         }
 
         return (connector, arrow);
+    }
+
+    private GetConnector DrawGetConnector(Point start,
+                                          Point end,
+                                          double elbowX,
+                                          double parentY,
+                                          double childY,
+                                          double thickness,
+                                          double headLength,
+                                          double headHalfWidth)
+    {
+        var line = new Polyline
+        {
+            Stroke = ConnectorBrush,
+            StrokeThickness = thickness,
+            StrokeLineJoin = PenLineJoin.Miter,
+            Points =
+            {
+                new Point(end.X, parentY),
+                new Point(elbowX, parentY),
+                new Point(elbowX, childY),
+                new Point(start.X - headLength, childY)
+            }
+        };
+
+        var arrow = new Polygon
+        {
+            Fill = ConnectorBrush,
+            Points =
+            {
+                new Point(start.X, childY),
+                new Point(start.X - headLength, childY - headHalfWidth),
+                new Point(start.X - headLength, childY + headHalfWidth)
+            }
+        };
+
+        Children.Add(line);
+
+        Children.Add(arrow);
+
+        return new GetConnector(line, arrow);
     }
 
     private void DrawBitmapConnector(Point creator, Point probe, BitmapProbe bitmapProbe)
@@ -754,15 +855,11 @@ public sealed class ExecutionPlanControl : Canvas
     {
         var active = ActiveNodes;
 
-        var requested = RequestedNodes;
-
         foreach (var child in Children)
         {
             if (child is PlanNodeControl { Node: { } node } nodeControl)
             {
                 nodeControl.IsActive = active is not null && active.Contains(node);
-
-                nodeControl.IsRequested = requested is not null && requested.Contains(node);
             }
         }
     }
@@ -776,6 +873,13 @@ public sealed class ExecutionPlanControl : Canvas
     /// </summary>
     private void UpdateFlows()
     {
+        if (IsFullTrace)
+        {
+            StopAllFlows();
+
+            return;
+        }
+
         var active = ActiveNodes;
         var emitting = EmittingNodes;
 
@@ -920,6 +1024,8 @@ public sealed class ExecutionPlanControl : Canvas
 
     private readonly record struct FlowOverlay(Polyline Overlay, Storyboard? Storyboard, bool IsEmitting);
 
+    private sealed record GetConnector(Polyline Line, Polygon Arrow);
+
     private static void OnSelectedNodeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var control = (ExecutionPlanControl)d;
@@ -943,7 +1049,7 @@ public sealed class ExecutionPlanControl : Canvas
         => ((ExecutionPlanControl)d).UpdateFlows();
 
     private static void OnRequestedNodesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((ExecutionPlanControl)d).UpdateActiveHighlights();
+        => ((ExecutionPlanControl)d).UpdateRequestedConnectors();
 
     // The icicles (and the node height that makes room for them) depend on the events, so rebuild when they arrive.
     private static void OnEventsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -953,6 +1059,9 @@ public sealed class ExecutionPlanControl : Canvas
         => ((ExecutionPlanControl)d).Rebuild();
 
     private static void OnAnnotationsVisibleChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((ExecutionPlanControl)d).Rebuild();
+
+    private static void OnIsFullTraceChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((ExecutionPlanControl)d).Rebuild();
 
     /// <summary>

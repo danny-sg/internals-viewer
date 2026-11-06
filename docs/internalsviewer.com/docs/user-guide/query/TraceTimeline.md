@@ -87,7 +87,7 @@ Choosing a call in the [Arguments](/docs/user-guide/query/CallStack#arguments) t
 
 <!-- Screenshot: one call chosen in the Arguments tab, outlined in the Trace Timeline -->
 
-The Call Tree's [category filter](/docs/user-guide/query/CallStack#filtering-by-category) applies here as well. A hidden category's calls are taken out and the calls they made move up into their place, so a category you have kept is never lost beneath one you have hidden. A category hidden with **Hide With Callees** takes everything beneath its calls with it.
+The Call Tree's [category filter](/docs/user-guide/query/CallStack#filtering-by-category) applies here as well. A hidden category's calls are taken out and the calls they made move up into their place, so a category you have kept is never lost beneath one you have hidden. A category hidden with **Hide With Callees** takes everything beneath its calls with it. The Memory History lane follows the filter too. A block is left out when every read and write to it was made by a call the filter has taken out.
 
 ## Scoping to a function
 
@@ -138,6 +138,7 @@ Every track is made of rules. A rule picks out the calls to tick and gives them 
 - **Evaluations** - above the reads, the predicates the operator evaluated, coloured by whether they were true, false or NULL
 - **Row Access** - the rows the operator read on buffer pool pages, with the page and slot, coloured by the category of the function that read the row
 - **Seek** - each b-tree seek, with the root, intermediate and leaf pages it went through
+- **Hash Probe** - each probe row a hash join looked up in its hash table, as a **Hit** when the lookup found a build row and a **Miss** when it did not
 
 Each track has a toggle under **View > Operators**, and in the Operators pane's right-click menu. Turning a built-in track off is remembered between sessions.
 

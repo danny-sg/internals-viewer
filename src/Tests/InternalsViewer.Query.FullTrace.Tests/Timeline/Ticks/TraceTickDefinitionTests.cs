@@ -9,7 +9,7 @@ public class TraceTickDefinitionTests
     [Fact]
     public void The_Predefined_Rules_Make_The_Built_In_Tracks_In_Order()
     {
-        Assert.Equal(["GetRow", "Reads", "Evaluations", "Row Access", "Seek"],
+        Assert.Equal(["GetRow", "Reads", "Evaluations", "Row Access", "Seek", "Hash Probe"],
                      TraceTickDefinition.GetPredefined().Select(d => d.Name).Distinct());
     }
 

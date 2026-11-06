@@ -109,6 +109,10 @@ public sealed partial class TraceTimelineControl
 
     private int? _memoryWritersBlock;
 
+    private (TraceTimeline Timeline, IReadOnlySet<string>? Pruned, IReadOnlySet<string>? Hidden, bool[]? Excluded)? _excludedFor;
+
+    private (IReadOnlyList<TraceMemoryBlock> Blocks, bool[] Excluded, TraceMemoryBlock[] Included)? _includedBlocks;
+
     public void StepSearch(bool forward)
     {
         var call = GetAdjacentSearchMatch(forward);
@@ -218,9 +222,9 @@ public sealed partial class TraceTimelineControl
     {
         _memoryMatchStarts = null;
 
-        IReadOnlyList<TraceMemoryBlock> blocks = ShowBuffers || MemoryBlocks is not { } all
-            ? MemoryBlocks ?? []
-            : [.. all.Where(b => !b.IsBuffer)];
+        var included = GetIncludedBlocks(MemoryBlocks ?? []);
+
+        IReadOnlyList<TraceMemoryBlock> blocks = ShowBuffers ? included : [.. included.Where(b => !b.IsBuffer)];
 
         TraceMemoryBlock[] matches = IsMemorySearch && _searchTerms.Length > 0 ? [.. blocks.Where(MatchesMemorySearch)] : [];
 
@@ -236,6 +240,81 @@ public sealed partial class TraceTimelineControl
         _memory.SetBlocks(shown);
 
         return true;
+    }
+
+    private IReadOnlyList<TraceMemoryBlock> GetIncludedBlocks(IReadOnlyList<TraceMemoryBlock> blocks)
+    {
+        if (GetExcludedNodes() is not { } excluded)
+        {
+            return blocks;
+        }
+
+        if (_includedBlocks is { } cached && ReferenceEquals(cached.Blocks, blocks) && ReferenceEquals(cached.Excluded, excluded))
+        {
+            return cached.Included;
+        }
+
+        TraceMemoryBlock[] included = [.. blocks.Where(b => IsIncluded(b, excluded))];
+
+        _includedBlocks = (blocks, excluded, included);
+
+        return included;
+    }
+
+    private static bool IsIncluded(TraceMemoryBlock block, bool[] excluded)
+    {
+        var reads = block.Reads?.Count ?? 0;
+
+        return block.Writes.Count + reads == 0
+               || HasIncludedAccess(block.Writes, excluded)
+               || (block.Reads is { } blockReads && HasIncludedAccess(blockReads, excluded));
+    }
+
+    private static bool HasIncludedAccess(TraceMemoryWrites accesses, bool[] excluded)
+    {
+        for (var index = 0; index < accesses.Count; index++)
+        {
+            var callNodeIndex = accesses.GetCallNodeIndex(index);
+
+            if (callNodeIndex < 0 || callNodeIndex >= excluded.Length || !excluded[callNodeIndex])
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool[]? GetExcludedNodes()
+    {
+        if (_timeline is not { } timeline)
+        {
+            return null;
+        }
+
+        if (_excludedFor is { } cached
+            && ReferenceEquals(cached.Timeline, timeline)
+            && ReferenceEquals(cached.Pruned, PrunedCategories)
+            && ReferenceEquals(cached.Hidden, HiddenCategories))
+        {
+            return cached.Excluded;
+        }
+
+        var excluded = PrunedNodes(timeline);
+
+        if (HiddenCategories is { Count: > 0 } hidden)
+        {
+            excluded ??= new bool[timeline.NodeCount];
+
+            for (var callNodeIndex = 0; callNodeIndex < excluded.Length; callNodeIndex++)
+            {
+                excluded[callNodeIndex] |= timeline.NodeOf(callNodeIndex) is { Frame: not null } node && hidden.Contains(node.Category);
+            }
+        }
+
+        _excludedFor = (timeline, PrunedCategories, HiddenCategories, excluded);
+
+        return excluded;
     }
 
     private bool IsShowing(IReadOnlyList<TraceMemoryBlock> blocks)

@@ -277,5 +277,55 @@
     "Label": "Leaf Page",
     "Source": "Seek",
     "Value": 3
+  },
+  {
+    "Name": "Hash Probe",
+    "Module": "sqlmin",
+    "Function": "CHashWorkfilePartitionGroup::Lookup",
+    "Colour": "#000000",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [
+      {
+        "Target": "CalledBy",
+        "Argument": null,
+        "Type": "",
+        "Operator": "Equal",
+        "Value": "CQScanHash::ConsumeProbe"
+      },
+      {
+        "Target": "Return",
+        "Argument": null,
+        "Type": "int",
+        "Operator": "Equal",
+        "Value": "0x1"
+      }
+    ],
+    "Label": "Hit"
+  },
+  {
+    "Name": "Hash Probe",
+    "Module": "sqlmin",
+    "Function": "CHashWorkfilePartitionGroup::Lookup",
+    "Colour": "#D13438",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [
+      {
+        "Target": "CalledBy",
+        "Argument": null,
+        "Type": "",
+        "Operator": "Equal",
+        "Value": "CQScanHash::ConsumeProbe"
+      },
+      {
+        "Target": "Return",
+        "Argument": null,
+        "Type": "int",
+        "Operator": "Equal",
+        "Value": "0x0"
+      }
+    ],
+    "Label": "Miss"
   }
 ]

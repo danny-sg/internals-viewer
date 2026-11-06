@@ -8,7 +8,7 @@ Each operator shows its name, object, and cost percentage, plus a small bar trac
 
 During replay the plan animates what is happening at the playhead - active operators highlight, rows streaming between operators are drawn as moving flow lines (thicker lines carry more rows), and operators blocked waiting on their input are marked. The plan can be zoomed with **Ctrl + mouse wheel** and panned by dragging.
 
-For a [Full Trace](/docs/user-guide/query/FullTrace) run the plan also follows the [Trace Timeline](/docs/user-guide/query/TraceTimeline) playhead. An operator turns orange while a GetRow or GetNextBatch call to it is running, so a request can be seen travelling down the plan. When the call returns a row or a batch, the connector to the operator above flashes green and fades. Moving the playhead forward through a run of rows shows them ticking across the plan.
+For a [Full Trace](/docs/user-guide/query/FullTrace) run the plan also follows the [Trace Timeline](/docs/user-guide/query/TraceTimeline) playhead. The line into an operator turns orange while a GetRow or GetNextBatch call to it is running, so a request can be seen travelling down the plan. When the call returns a row or a batch, the line and its arrow flash green and fade. Moving the playhead forward through a run of rows shows them ticking across the plan.
 
 Selecting an operator (on the plan, the Timeline's Plan band, or the Events pane) highlights it and, for a [Full Trace](/docs/user-guide/query/FullTrace) run, focuses the [Call Tree](/docs/user-guide/query/CallStack) on that operator's frames.
 
