@@ -5,5 +5,7 @@ public enum TraceTickSourceType
     Call,
     RowReturn,
     RowAccess,
-    Seek
+    Seek,
+    PageFetch,
+    Open
 }

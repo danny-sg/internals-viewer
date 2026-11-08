@@ -612,6 +612,10 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
                 StepToTick(forward, tickTrack);
                 break;
 
+            case PlayheadStepMode.Tracks:
+                StepToTrackStep(forward);
+                break;
+
             default:
                 StepTo(forward, matches: null, allRows: false);
                 break;

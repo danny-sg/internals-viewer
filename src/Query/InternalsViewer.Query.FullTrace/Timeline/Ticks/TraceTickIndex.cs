@@ -121,6 +121,41 @@ public sealed class TraceTickIndex
         return EndsByValue.TryGetValue(value, out var ends) ? SortedSearch.FirstAfter<TracePosition>(ends, upTo) : 0;
     }
 
+    public TraceTick? GetLatest(TracePosition position)
+    {
+        var index = SortedSearch.FirstAfter<TracePoint, TracePosition>(Froms, position, static p => p.Position) - 1;
+
+        return index >= 0 ? Get(index) : null;
+    }
+
+    public TraceTick? GetNext(TracePosition after, Func<byte, bool> include)
+    {
+        for (var index = SortedSearch.FirstAfter<TracePoint, TracePosition>(Froms, after, static p => p.Position); index < Count; index++)
+        {
+            if (include(Entries[index].Value))
+            {
+                return Get(index);
+            }
+        }
+
+        return null;
+    }
+
+    public TraceTick? GetPrevious(TracePosition before, Func<byte, bool> include)
+    {
+        var start = SortedSearch.FirstAtOrAfter<TracePoint, TracePosition>(Froms, before, static p => p.Position);
+
+        for (var index = start - 1; index >= 0; index--)
+        {
+            if (include(Entries[index].Value))
+            {
+                return Get(index);
+            }
+        }
+
+        return null;
+    }
+
     public List<TraceTick> GetRunningTicks(TracePosition position) => GetLatestTicks(position, position, isRunning: true);
 
     public List<TraceTick> GetEndedTicks(TracePosition after, TracePosition upTo) => GetLatestTicks(after, upTo, isRunning: false);

@@ -48,6 +48,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
     private const string SameCallStepText = "Same Call";
 
+    private const string TracksStepText = "Tracks";
+
     private const int MemoryRefreshMilliseconds = 50;
 
     private const int StackRefreshMilliseconds = 100;
@@ -138,6 +140,12 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
     private TraceTimelineTabViewModel? Tab { get; set; }
 
     private QueryViewModel? RulerOwner { get; set; }
+
+    private QueryLayoutViewModel? GuideLayout { get; set; }
+
+    private (PlayheadStepMode Mode, string? Track)? StepModeBeforeGuide { get; set; }
+
+    private (bool Operators, bool Memory, bool Calls)? PanesBeforeGuide { get; set; }
 
     private UiThrottle MemoryThrottle { get; }
         = new(Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread(), TimeSpan.FromMilliseconds(MemoryRefreshMilliseconds));
@@ -264,6 +272,8 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         AttachRuler(null);
 
+        AttachGuide(null);
+
         Ruler.Dispose();
 
         TraceTimeline.Dispose();
@@ -276,6 +286,76 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         AttachTab(ViewModel?.TraceTimelineTab);
 
         AttachRuler(ViewModel);
+
+        AttachGuide(ViewModel?.Layout);
+    }
+
+    private void AttachGuide(QueryLayoutViewModel? layout)
+    {
+        if (ReferenceEquals(GuideLayout, layout))
+        {
+            return;
+        }
+
+        GuideLayout?.PropertyChanged -= OnLayoutPropertyChanged;
+
+        GuideLayout = layout;
+
+        layout?.PropertyChanged += OnLayoutPropertyChanged;
+
+        ApplyGuideStepMode();
+    }
+
+    private void OnLayoutPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(QueryLayoutViewModel.IsGuideMode))
+        {
+            ApplyGuideStepMode();
+        }
+    }
+
+    private void ApplyGuideStepMode()
+    {
+        if (GuideLayout?.IsGuideMode == true)
+        {
+            if (TraceTimeline.StepMode != PlayheadStepMode.Tracks)
+            {
+                StepModeBeforeGuide = (TraceTimeline.StepMode, TraceTimeline.StepTrack);
+
+                TraceTimeline.SetStepMode(PlayheadStepMode.Tracks, null);
+            }
+
+            PanesBeforeGuide ??= (TraceTimeline.ShowOperators, TraceTimeline.ShowMemoryHistory, TraceTimeline.ShowFlameChart);
+
+            SetPanes(operators: true, memory: false, calls: false);
+
+            return;
+        }
+
+        if (StepModeBeforeGuide is { } previous)
+        {
+            StepModeBeforeGuide = null;
+
+            TraceTimeline.SetStepMode(previous.Mode, previous.Track);
+        }
+
+        if (PanesBeforeGuide is { } panes)
+        {
+            PanesBeforeGuide = null;
+
+            SetPanes(panes.Operators, panes.Memory, panes.Calls);
+        }
+    }
+
+    private void SetPanes(bool operators, bool memory, bool calls)
+    {
+        TraceTimeline.ShowOperators = operators;
+
+        TraceTimeline.ShowMemoryHistory = memory;
+
+        TraceTimeline.ShowFlameChart = calls;
+
+        OnPaneVisibilityChanged();
     }
 
     private void AttachRuler(QueryViewModel? owner)
@@ -463,7 +543,9 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
         menu.Opening += (_, _) => FillStepMenu(menu);
 
-        return TabCommands.Menu(_stepLabel, "Choose what Previous Frame and Next Frame step to", menu);
+        return TabCommands.Menu(_stepLabel,
+                                "Choose what Previous Frame and Next Frame step to. With Tracks or a track, Play steps through their ticks",
+                                menu);
     }
 
     private void FillStepMenu(MenuFlyout menu)
@@ -473,6 +555,10 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         menu.Items.Add(StepItem(CallStepText, PlayheadStepMode.Call, null));
 
         menu.Items.Add(StepItem(SameCallStepText, PlayheadStepMode.SameCall, null));
+
+        menu.Items.Add(new MenuFlyoutSeparator());
+
+        menu.Items.Add(StepItem(TracksStepText, PlayheadStepMode.Tracks, null));
 
         var tracks = TraceTimeline.GetStepTracks().ToList();
 
@@ -506,6 +592,7 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         var text = TraceTimeline.StepMode switch
         {
             PlayheadStepMode.SameCall => SameCallStepText,
+            PlayheadStepMode.Tracks => TracksStepText,
             PlayheadStepMode.Track => TraceTimeline.GetStepTrack(TraceTimeline.StepTrack)?.MenuText ?? CallStepText,
             _ => CallStepText
         };

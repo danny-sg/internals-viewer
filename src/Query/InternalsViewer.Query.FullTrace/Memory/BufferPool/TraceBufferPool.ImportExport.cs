@@ -1,5 +1,6 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Engine.Pages.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Memory.BufferPool;
 
@@ -7,9 +8,11 @@ public sealed partial class TraceBufferPool
 {
     private const int FirstVersion = 1;
 
-    private const int FormatVersion = 3;
+    private const int FormatVersion = 4;
 
     private const int LayoutVersion = 3;
+
+    private const int PageTypeVersion = 4;
 
     internal static bool IsSupported(BinaryReader reader) => -reader.ReadInt32() is >= FirstVersion and <= FormatVersion;
 
@@ -45,6 +48,8 @@ public sealed partial class TraceBufferPool
             writer.Write(page.PageId);
 
             writer.Write(databaseId);
+
+            writer.Write((byte)layout.PageHeader.PageType);
 
             writer.Write(layout.OffsetTable.Length);
 
@@ -85,6 +90,8 @@ public sealed partial class TraceBufferPool
 
             var databaseId = reader.ReadUInt16();
 
+            var type = version >= PageTypeVersion ? (PageType)reader.ReadByte() : PageType.None;
+
             var offsets = new ushort[reader.ReadInt32()];
 
             for (var slot = 0; slot < offsets.Length; slot++)
@@ -92,7 +99,7 @@ public sealed partial class TraceBufferPool
                 offsets[slot] = reader.ReadUInt16();
             }
 
-            layouts[(page, databaseId)] = new PageData { PageAddress = page, OffsetTable = offsets };
+            layouts[(page, databaseId)] = CreateLayout(page, offsets, type);
         }
 
         return new TraceBufferPool(pages, layouts);

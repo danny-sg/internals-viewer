@@ -1,4 +1,5 @@
 using System.Text;
+using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks.Enums;
 
@@ -10,7 +11,7 @@ public class TraceTickDefinitionTests
     [Fact]
     public void The_Predefined_Rules_Make_The_Built_In_Tracks_In_Order()
     {
-        Assert.Equal(["GetRow", "Reads", "Evaluations", "Row Access", "Seek", "Hash Probe"],
+        Assert.Equal(["GetRow", "Reads", "Evaluations", "Row Access", "Seek", "Hash Table", "Open"],
                      TraceTickDefinition.GetPredefined().Select(d => d.Name).Distinct());
     }
 
@@ -64,9 +65,85 @@ public class TraceTickDefinitionTests
     }
 
     [Fact]
+    public void A_Rule_Keeps_Its_Description_Through_The_File_Format()
+    {
+        var rule = new TraceTickDefinition("Reads", string.Empty, string.Empty, "#9B6BD6", 1, 1, [])
+        {
+            Description = "The PFS is used to check if an IAM extent is allocated"
+        };
+
+        using var stream = new MemoryStream();
+
+        TraceTickDefinition.Write(stream, [rule]);
+
+        stream.Position = 0;
+
+        var read = Assert.Single(TraceTickDefinition.Read(stream));
+
+        Assert.Equal("The PFS is used to check if an IAM extent is allocated", read.Description);
+    }
+
+    [Fact]
+    public void A_Rule_Keeps_Its_Return_Description_Through_The_File_Format()
+    {
+        var rule = new TraceTickDefinition("GetRow", string.Empty, string.Empty, "#00B050", 1, 1, [])
+        {
+            ReturnDescription = "GetRow returns to parent operator"
+        };
+
+        using var stream = new MemoryStream();
+
+        TraceTickDefinition.Write(stream, [rule]);
+
+        stream.Position = 0;
+
+        var read = Assert.Single(TraceTickDefinition.Read(stream));
+
+        Assert.Equal("GetRow returns to parent operator", read.ReturnDescription);
+    }
+
+    [Fact]
+    public void Every_GetRow_Rule_Describes_The_Call_And_The_Return()
+    {
+        var rules = TraceTickDefinition.GetPredefined().Where(d => d.Name == "GetRow").ToList();
+
+        Assert.All(rules, r => Assert.Equal(("{ParentOperatorName} calls `GetRow` from {OperatorName}", true),
+                                            (r.Description, r.ReturnDescription?.Contains("{OperatorName}") == true)));
+    }
+
+    [Fact]
+    public void Every_Predefined_Rule_Has_A_Description()
+    {
+        Assert.All(TraceTickDefinition.GetPredefined(), r => Assert.False(string.IsNullOrEmpty(r.Description), r.GetLabel()));
+    }
+
+    [Fact]
+    public void Placeholders_Are_Replaced_By_Name_And_Unknown_Ones_Are_Left()
+    {
+        var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["OperatorName"] = "Table Scan",
+            ["ParentOperatorName"] = "Top"
+        };
+
+        var text = TraceTickDefinition.Format("{ParentOperatorName} calls `GetRow` from {operatorname} at {Unknown}",
+                                              n => values.GetValueOrDefault(n));
+
+        Assert.Equal("Top calls `GetRow` from Table Scan at {Unknown}", text);
+    }
+
+    [Fact]
+    public void The_Reads_Track_Marks_IAM_And_PFS_Page_Fetches()
+    {
+        var fetches = TraceTickDefinition.GetPredefined().Where(d => d is { Name: "Reads", Source: TraceTickSourceType.PageFetch });
+
+        Assert.Equal([(byte)PageType.Iam, (byte)PageType.Pfs], fetches.Select(d => d.Value));
+    }
+
+    [Fact]
     public void The_Row_Access_Track_Has_A_White_Background()
     {
-        Assert.Equal("#FFFFFF", TraceTickDefinition.GetPredefined().Single(d => d.Name == "Row Access").Background);
+        Assert.EndsWith("FFFFFF", TraceTickDefinition.GetPredefined().Single(d => d.Name == "Row Access").Background);
     }
 
     [Fact]
@@ -85,6 +162,30 @@ public class TraceTickDefinitionTests
         var read = TraceTickDefinition.Read(stream);
 
         Assert.Equal((1, true, false), (text.Split("IsCounter").Length - 1, read[0].IsCounter, read[1].IsCounter));
+    }
+
+    [Fact]
+    public void An_Operator_Lights_Its_Active_Part_From_Its_Open_Until_It_Is_Closed()
+    {
+        var open = TraceTickDefinition.GetPredefined().Single(d => d.Name == "Open");
+
+        Assert.Equal((TraceTickSourceType.Open, "Active"), (open.Source, open.PlanPart));
+    }
+
+    [Fact]
+    public void The_Hash_Table_Build_Is_A_Phase()
+    {
+        var build = TraceTickDefinition.GetPredefined().Single(d => d is { Name: "Hash Table", Label: "Build" });
+
+        Assert.Equal((true, "CQScanHash::ConsumeBuild"), (build.IsPhase, build.Function));
+    }
+
+    [Fact]
+    public void A_Rule_Without_A_Title_Is_Titled_With_Its_Label()
+    {
+        var rule = new TraceTickDefinition("Evaluations", "*", "CEsExec::GeneralEval4", "#F04848", 1, 1, []) { Label = "False" };
+
+        Assert.Equal(("False", "Evaluate Expression"), (rule.GetTitle(), (rule with { Title = "Evaluate Expression" }).GetTitle()));
     }
 
     [Fact]

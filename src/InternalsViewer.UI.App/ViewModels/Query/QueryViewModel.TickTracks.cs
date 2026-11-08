@@ -8,6 +8,7 @@ using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
+using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.Services.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.OperatorTracks;
@@ -45,8 +46,40 @@ public sealed partial class QueryViewModel
     public IReadOnlyList<string> GetTrackNames()
         => [.. TickTrackStore.Definitions.Select(d => d.Name).Distinct(StringComparer.OrdinalIgnoreCase)];
 
+    private static PlanNode? FindParent(IEnumerable<PlanNode> nodes, PlanNode node)
+    {
+        foreach (var candidate in nodes)
+        {
+            if (candidate.Children.Any(c => ReferenceEquals(c, node)))
+            {
+                return candidate;
+            }
+
+            if (FindParent(candidate.Children, node) is { } parent)
+            {
+                return parent;
+            }
+        }
+
+        return null;
+    }
+
     [RelayCommand]
     private void ShowOperatorTracks() => Layout.ShowOperatorTracks();
+
+    private string GetParentOperatorName(TraceTick tick)
+    {
+        if (tick.Caller is { } caller)
+        {
+            return caller.OperatorDescription;
+        }
+
+        return tick.Operator.PlanNodeIdentifier is { } identifier
+               && ResolvePlanNode(identifier) is { } node
+               && FindParent(ExecutionPlans.SelectMany(p => p.Root), node) is { } parent
+            ? parent.PhysicalOperator
+            : string.Empty;
+    }
 
     private void OnTickTrackStoreChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -111,7 +144,7 @@ public sealed partial class QueryViewModel
                 TrackSeries[groups[index].Key] = cache;
             }
 
-            tracks.Add(TraceTickTracks.Create(trace, rules, cache.Series, index, TickTrackStore.IsAdded));
+            tracks.Add(TraceTickTracks.Create(trace, rules, cache.Series, index, TickTrackStore.IsAdded, GetParentOperatorName));
         }
 
         TickTracks = tracks;

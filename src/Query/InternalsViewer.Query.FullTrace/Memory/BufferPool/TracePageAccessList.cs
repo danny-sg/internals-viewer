@@ -34,6 +34,20 @@ public sealed class TracePageAccessList
 
     public TracePageAccess? GetRowAccess(TracePosition position) => Find(position, isRow: true);
 
+    public double? GetSlotFraction(TracePosition position, TraceBufferPool pool)
+    {
+        if (GetRowAccess(position) is not { Offset: { } offset } access
+            || pool.GetLayout(access.Page, access.DatabaseId) is not { } layout
+            || layout.GetSlot(offset) is not { } slot)
+        {
+            return null;
+        }
+
+        var count = layout.OffsetTable.Length;
+
+        return count > 1 ? (double)slot / (count - 1) : 0;
+    }
+
     public static TracePageAccessList Build(TraceCallStore calls,
                                             MemoryHistoryStore history,
                                             TraceBufferPool pool,
@@ -304,10 +318,17 @@ public sealed class TracePageAccessList
             return candidate;
         }
 
+        if (IsOffsetTable(layout, offset))
+        {
+            return null;
+        }
+
         return layout.GetSlot(offset) is { } slot && layout.OffsetTable[slot] >= PageHeader.Size
             ? candidate with { Access = access with { Offset = layout.OffsetTable[slot] } }
             : null;
     }
+
+    private static bool IsOffsetTable(PageData layout, int offset) => offset >= PageData.Size - layout.OffsetTable.Length * sizeof(ushort);
 
     private static bool IsRepeat(Dictionary<uint, TracePageAccess> previous, Candidate candidate)
     {

@@ -31,9 +31,7 @@
                 </AppBarButton.Icon>
             </AppBarButton>
 
-            <AppBarButton Label="Export"
-                          Command="{x:Bind ViewModel.OperatorTracks.ExportCommand, Mode=OneWay}"
-                          IsEnabled="{x:Bind ViewModel.OperatorTracks.HasAddedTracks, Mode=OneWay}">
+            <AppBarButton Label="Export" Command="{x:Bind ViewModel.OperatorTracks.ExportCommand, Mode=OneWay}">
                 <AppBarButton.Icon>
                     <FontIcon Glyph="&#xEDE1;"/>
                 </AppBarButton.Icon>

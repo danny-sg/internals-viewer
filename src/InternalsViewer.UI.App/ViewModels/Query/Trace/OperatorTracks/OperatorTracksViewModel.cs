@@ -29,6 +29,8 @@ public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposa
 
     private const int ConditionsWidth = 360;
 
+    private const int DescriptionWidth = 360;
+
     private const int ColourWidth = 90;
 
     private const int FactorWidth = 70;
@@ -125,9 +127,9 @@ public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposa
         {
             await using var stream = File.Create(file.Path);
 
-            await TraceTickDefinition.WriteAsync(stream, Store.AddedDefinitions, CancellationToken.None);
+            await TraceTickDefinition.WriteAsync(stream, Store.Definitions, CancellationToken.None);
 
-            AddMessage($"{Store.AddedDefinitions.Count:N0} operator track rule(s) exported to {file.Path}");
+            AddMessage($"{Store.Definitions.Count:N0} operator track rule(s) exported to {file.Path}");
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
@@ -181,19 +183,25 @@ public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposa
         {
             new(0, "Track", typeof(string), false) { Width = NameWidth },
             new(1, "Label", typeof(string), false) { Width = LabelWidth },
-            new(2, "Function", typeof(string), false) { Width = FunctionWidth },
-            new(3, "Conditions", typeof(string), false) { Width = ConditionsWidth },
-            new(4, "Colour", typeof(string), false) { Width = ColourWidth },
-            new(5, "Background", typeof(string), false) { Width = ColourWidth },
-            new(6, "Height", typeof(double), false) { Width = FactorWidth, Alignment = ResultAlignment.Right },
-            new(7, "Width", typeof(double), false) { Width = FactorWidth, Alignment = ResultAlignment.Right },
-            new(8, string.Empty, typeof(string), false) { Width = ActionsWidth }
+            new(2, "Title", typeof(string), false) { Width = LabelWidth },
+            new(3, "Function", typeof(string), false) { Width = FunctionWidth },
+            new(4, "Conditions", typeof(string), false) { Width = ConditionsWidth },
+            new(5, "Description", typeof(string), false) { Width = DescriptionWidth },
+            new(6, "Return Description", typeof(string), false) { Width = DescriptionWidth },
+            new(7, "Colour", typeof(string), false) { Width = ColourWidth },
+            new(8, "Background", typeof(string), false) { Width = ColourWidth },
+            new(9, "Height", typeof(double), false) { Width = FactorWidth, Alignment = ResultAlignment.Right },
+            new(10, "Width", typeof(double), false) { Width = FactorWidth, Alignment = ResultAlignment.Right },
+            new(11, string.Empty, typeof(string), false) { Width = ActionsWidth }
         };
 
         var rows = Store.Definitions.Select((d, index) => new ResultRow<long>([d.Name,
                                                                               d.GetLabel(),
+                                                                              d.Title ?? string.Empty,
                                                                               GetFunctionText(d),
                                                                               Describe(d.Conditions),
+                                                                              d.Description ?? string.Empty,
+                                                                              d.ReturnDescription ?? string.Empty,
                                                                               d.Colour,
                                                                               d.Background ?? string.Empty,
                                                                               d.HeightFactor,

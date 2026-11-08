@@ -35,6 +35,7 @@ public sealed class ExecutionPlanControl : Canvas
     private const double IteratorLineOffset = 3;
     private const double LanePitch = IteratorLineOffset * 2 + 10;
     private const double IteratorHeadHalfWidth = 4;
+    private const double IdleIteratorOpacity = 25;
 
     private readonly Dictionary<PlanNode, IReadOnlyList<PlanNodeAnnotation>> _annotationsByNode = [];
 
@@ -183,6 +184,8 @@ public sealed class ExecutionPlanControl : Canvas
         PointerCaptureLost += OnPointerCaptureLost;
         ContextRequested += OnContextRequested;
         DoubleTapped += OnDoubleTapped;
+        Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
     }
 
     public event EventHandler<PlanNode?>? NodeSelected;
@@ -197,6 +200,8 @@ public sealed class ExecutionPlanControl : Canvas
 
     public event EventHandler<PlanNode>? CounterToggleRequested;
 
+    public event EventHandler<PlanPage>? PageOpenRequested;
+
     public Func<PlanNode, bool> IsCounterShown { get; set; } = static n => n.IsStatement;
 
     private double RowPitch => BaseNodeHeight + VerticalGap;
@@ -208,6 +213,12 @@ public sealed class ExecutionPlanControl : Canvas
     private Dictionary<PlanNode, PlanNodeControl> NodeControls { get; } = [];
 
     private PlanActivity Activity { get; set; } = PlanActivity.Empty;
+
+    private double RenderScale { get; set; } = 1;
+
+    private double Zoom { get; set; } = 1;
+
+    private XamlRoot? ScaleRoot { get; set; }
 
     public void ShowActivity(PlanActivity activity)
     {
@@ -239,6 +250,73 @@ public sealed class ExecutionPlanControl : Canvas
             control.ShowParts(activity.Parts.Where(p => ReferenceEquals(p.Node, node)));
 
             control.ShowCounters(activity.Counters.Where(c => ReferenceEquals(c.Node, node)));
+
+            control.SetGreyed(IsFullTrace && activity.HasActivePart && !node.IsStatement);
+
+            control.ShowPage(activity.Pages.FirstOrDefault(p => ReferenceEquals(p.Node, node)));
+        }
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        DetachScale();
+
+        _scrollViewer = FindAncestor<ScrollViewer>(this);
+
+        ScaleRoot = XamlRoot;
+
+        _scrollViewer?.ViewChanged += OnViewChanged;
+
+        ScaleRoot?.Changed += OnXamlRootChanged;
+
+        UpdateRenderScale();
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        if (!IsLoaded)
+        {
+            DetachScale();
+        }
+    }
+
+    private void DetachScale()
+    {
+        _scrollViewer?.ViewChanged -= OnViewChanged;
+
+        ScaleRoot?.Changed -= OnXamlRootChanged;
+
+        ScaleRoot = null;
+    }
+
+    private void OnViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
+    {
+        if (!e.IsIntermediate)
+        {
+            UpdateRenderScale();
+        }
+    }
+
+    private void OnXamlRootChanged(XamlRoot sender, XamlRootChangedEventArgs args) => UpdateRenderScale();
+
+    private void UpdateRenderScale()
+    {
+        var zoom = _scrollViewer?.ZoomFactor ?? 1;
+
+        var scale = (ScaleRoot?.RasterizationScale ?? 1) * zoom;
+
+        if (Math.Abs(scale - RenderScale) < 0.01 && Math.Abs(zoom - Zoom) < 0.01)
+        {
+            return;
+        }
+
+        RenderScale = scale;
+
+        Zoom = zoom;
+
+        foreach (var control in NodeControls.Values)
+        {
+            control.SetRenderScale(scale, zoom);
         }
     }
 
@@ -341,6 +419,10 @@ public sealed class ExecutionPlanControl : Canvas
             control.ShowParts(Activity.Parts.Where(p => p.IsRunning && ReferenceEquals(p.Node, node)));
 
             control.ShowCounters(Activity.Counters.Where(c => ReferenceEquals(c.Node, node)));
+
+            control.SetGreyed(IsFullTrace && Activity.HasActivePart && !node.IsStatement);
+
+            control.ShowPage(Activity.Pages.FirstOrDefault(p => ReferenceEquals(p.Node, node)));
         }
 
         UpdateFlows();
@@ -399,7 +481,13 @@ public sealed class ExecutionPlanControl : Canvas
         Children.Add(control);
 
         NodeControls[node] = control;
+
+        control.PageOpenRequested += OnNodePageOpenRequested;
+
+        control.SetRenderScale(RenderScale, Zoom);
     }
+
+    private void OnNodePageOpenRequested(object? sender, PlanPage page) => PageOpenRequested?.Invoke(this, page);
 
     private (Polyline Connector, Polygon Arrow) DrawConnector(Point parent, Point child, double childCostFraction,
                                                              PlanNode parentNode, PlanNode childNode)
@@ -513,6 +601,10 @@ public sealed class ExecutionPlanControl : Canvas
         var line = CreateIteratorLine(points, ConnectorColor, isDotted);
 
         var arrow = CreateIteratorHead(head, ConnectorColor);
+
+        line.Opacity = IdleIteratorOpacity;
+
+        arrow.Opacity = IdleIteratorOpacity;
 
         var glowLine = CreateIteratorLine(points, IteratorColour, isDotted);
 
@@ -848,7 +940,7 @@ public sealed class ExecutionPlanControl : Canvas
 
         if (nodeControl is not null)
         {
-            nodeControl.IsSelected = true;
+            nodeControl.IsSelected = !IsFullTrace;
 
             if (bringIntoView)
             {

@@ -62,6 +62,12 @@ public sealed partial class OperatorTrackDialog
 
         ValueLabel = existing?.Label ?? string.Empty;
 
+        StepTitle = existing?.Title ?? string.Empty;
+
+        Description = existing?.Description ?? string.Empty;
+
+        ReturnDescription = existing?.ReturnDescription ?? string.Empty;
+
         PlanPart = existing?.PlanPart ?? string.Empty;
 
         HeightFactor = existing?.HeightFactor ?? 1;
@@ -88,6 +94,8 @@ public sealed partial class OperatorTrackDialog
 
         CounterBox.IsChecked = existing?.IsCounter == true;
 
+        PhaseBox.IsChecked = existing?.IsPhase == true;
+
         var background = ColourHelpers.FromHex(existing?.Background);
 
         BackgroundPicker.Color = background ?? Colors.White;
@@ -102,6 +110,12 @@ public sealed partial class OperatorTrackDialog
     public string TrackName { get; set; }
 
     public string ValueLabel { get; set; }
+
+    public string StepTitle { get; set; }
+
+    public string Description { get; set; }
+
+    public string ReturnDescription { get; set; }
 
     public string PlanPart { get; set; }
 
@@ -413,8 +427,13 @@ public sealed partial class OperatorTrackDialog
                                              [.. Rows.Select(GetCondition)])
         {
             Label = string.IsNullOrWhiteSpace(ValueLabel) ? null : ValueLabel.Trim(),
+            Title = string.IsNullOrWhiteSpace(StepTitle) ? null : StepTitle.Trim(),
+            Description = string.IsNullOrWhiteSpace(Description) ? null : Description.Trim(),
+            ReturnDescription = string.IsNullOrWhiteSpace(ReturnDescription) ? null : ReturnDescription.Trim(),
             PlanPart = string.IsNullOrWhiteSpace(PlanPart) ? null : PlanPart.Trim(),
+            PlanPartColour = Existing?.PlanPartColour,
             IsCounter = CounterBox.IsChecked == true,
+            IsPhase = PhaseBox.IsChecked == true,
             Background = BackgroundBox.IsChecked == true ? ToHex(BackgroundPicker.Color) : null,
             Source = Existing?.Source ?? TraceTickSourceType.Call,
             Value = Existing?.Value ?? 0

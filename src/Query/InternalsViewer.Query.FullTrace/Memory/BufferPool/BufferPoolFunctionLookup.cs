@@ -17,10 +17,15 @@ internal static class BufferPoolFunctionLookup
 
     public const string PostReadMethod = "PostRead";
 
+    public const string LatchClass = "LatchBase";
+
+    public const string LatchReleaseMethod = "ReleaseInternal";
+
     private static Dictionary<string, BufferPoolFunctionType> Names { get; } = new(StringComparer.Ordinal)
     {
         [$"{BufferPoolClass}::{GetMethod}"] = BufferPoolFunctionType.Get,
-        [$"{FileControlBlockClass}::{PostReadMethod}"] = BufferPoolFunctionType.PostRead
+        [$"{FileControlBlockClass}::{PostReadMethod}"] = BufferPoolFunctionType.PostRead,
+        [$"{LatchClass}::{LatchReleaseMethod}"] = BufferPoolFunctionType.LatchRelease
     };
 
     private static Dictionary<string, BufferPoolFunctionType>.AlternateLookup<ReadOnlySpan<char>> NameLookup { get; }

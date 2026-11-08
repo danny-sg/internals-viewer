@@ -38,7 +38,9 @@ public static class PlanIconResolver
 
     public static string IconFolder { get; } = Path.Combine(AppContext.BaseDirectory, "Controls", "Query", "Plan", "Icons");
 
-    public static Uri Resolve(PlanNode node) => new(IconBase + ResolveAssetName(node) + ".svg");
+    public static Uri Resolve(PlanNode node) => GetUri(ResolveAssetName(node));
+
+    public static Uri GetUri(string assetName) => new(IconBase + assetName + ".svg");
 
     public static string GetAssetName(PlanNode node) => ResolveAssetName(node);
 

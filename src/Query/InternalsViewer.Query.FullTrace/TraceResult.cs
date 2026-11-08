@@ -52,7 +52,11 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
     public TraceTickSeries RowAccesses { get; init; } = TraceTickSeries.Empty;
 
+    public TraceTickSeries PageFetches { get; init; } = TraceTickSeries.Empty;
+
     public TraceTickSeries Seeks { get; init; } = TraceTickSeries.Empty;
+
+    public TraceTickSeries Opens => field ??= TraceOperatorOpenReader.Build(Timeline, Lifetimes);
 
     public IReadOnlyList<CallTreeNode> QueryRoots => Roots ??= QueryExecutionCropper.GetRoots(CallTree);
 
@@ -79,7 +83,9 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
         var rowAccesses = TraceRowAccessReader.Build(Timeline, accesses, Lifetimes, EnclosingCalls);
 
-        return this with { PageAccesses = accesses, RowAccesses = rowAccesses };
+        var pageFetches = TracePageFetchReader.Build(Timeline, accesses, BufferPool, Lifetimes, EnclosingCalls);
+
+        return this with { PageAccesses = accesses, RowAccesses = rowAccesses, PageFetches = pageFetches };
     }
 
     internal IEnumerable<(string Component, long Items, long? Bytes)> GetComponentSizes()
@@ -98,7 +104,9 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
         yield return ("Call Tree Nodes", CallTree.Nodes().LongCount(), null);
         yield return ("Operator Lifetimes", Lifetimes.Count, null);
         yield return ("Row Access Ticks", RowAccesses.Count, RowAccesses.Bytes);
+        yield return ("Page Fetch Ticks", PageFetches.Count, PageFetches.Bytes);
         yield return ("Seek Ticks", Seeks.Count, Seeks.Bytes);
+        yield return ("Open Ticks", Opens.Count, Opens.Bytes);
         yield return ("Row Return Marks", RowReturnMarks.Count, RowReturnMarks.Ticks.Bytes);
         yield return ("HoBt Accesses", HoBtAccess.Count, null);
     }

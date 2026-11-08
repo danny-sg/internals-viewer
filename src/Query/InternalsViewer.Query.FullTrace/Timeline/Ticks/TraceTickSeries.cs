@@ -43,6 +43,74 @@ public sealed class TraceTickSeries
     public IEnumerable<TraceTick> GetEndedTicks(TracePosition after, TracePosition upTo)
         => AllIndexes.SelectMany(i => i.GetEndedTicks(after, upTo));
 
+    public IEnumerable<TraceTick> GetTicks(Func<byte, bool> include)
+    {
+        foreach (var index in AllIndexes)
+        {
+            for (var position = 0; position < index.Count; position++)
+            {
+                if (include(index.GetValue(position)))
+                {
+                    yield return index.Get(position);
+                }
+            }
+        }
+    }
+
+    public TraceTick? GetNext(TracePosition after, Func<byte, bool> include)
+    {
+        TraceTick? next = null;
+
+        foreach (var index in AllIndexes)
+        {
+            if (index.GetNext(after, include) is { } tick
+                && (next is not { } current || tick.Span.From.Position < current.Span.From.Position))
+            {
+                next = tick;
+            }
+        }
+
+        return next;
+    }
+
+    public TraceTick? GetPrevious(TracePosition before, Func<byte, bool> include)
+    {
+        TraceTick? previous = null;
+
+        foreach (var index in AllIndexes)
+        {
+            if (index.GetPrevious(before, include) is { } tick
+                && (previous is not { } current || tick.Span.From.Position > current.Span.From.Position))
+            {
+                previous = tick;
+            }
+        }
+
+        return previous;
+    }
+
+    public IEnumerable<TraceTick> GetLatestTicks(TracePosition position)
+    {
+        foreach (var threads in Indexes.Values)
+        {
+            TraceTick? latest = null;
+
+            foreach (var index in threads.Values)
+            {
+                if (index.GetLatest(position) is { } tick
+                    && (latest is not { } current || tick.Span.From.Position > current.Span.From.Position))
+                {
+                    latest = tick;
+                }
+            }
+
+            if (latest is { } found)
+            {
+                yield return found;
+            }
+        }
+    }
+
     public IEnumerable<(ExecutionOperatorEvent Operator, int Count)> CountEnded(IReadOnlyCollection<byte> values, TracePosition upTo)
     {
         foreach (var (operatorEvent, threads) in Indexes)
@@ -185,6 +253,8 @@ public sealed class TraceTickSeries
         TraceTickSourceType.RowReturn => trace.RowReturnMarks.Ticks,
         TraceTickSourceType.RowAccess => trace.RowAccesses,
         TraceTickSourceType.Seek => trace.Seeks,
+        TraceTickSourceType.PageFetch => trace.PageFetches,
+        TraceTickSourceType.Open => trace.Opens,
         _ => Empty
     };
 

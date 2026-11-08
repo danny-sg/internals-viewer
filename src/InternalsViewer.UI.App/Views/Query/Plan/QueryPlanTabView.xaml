@@ -9,6 +9,7 @@
     xmlns:plan="using:InternalsViewer.UI.App.Controls.Query.Plan"
     xmlns:plans="using:InternalsViewer.Query.Plans"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
+    xmlns:results="using:InternalsViewer.UI.App.Controls.Results"
     mc:Ignorable="d">
     <UserControl.Resources>
         <StackLayout Orientation="Vertical" Spacing="24" x:Key="PlanStackLayout" />
@@ -28,29 +29,191 @@
             <RowDefinition Height="{x:Bind DetailRowHeight, Mode=OneTime}" />
         </Grid.RowDefinitions>
 
-        <ScrollViewer Grid.Row="0"
-                      Grid.Column="0"
-                      HorizontalScrollBarVisibility="Auto"
-                      VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollMode="Enabled"
-                      VerticalScrollMode="Enabled"
-                      ZoomMode="Enabled"
-                      MinZoomFactor="0.25"
-                      MaxZoomFactor="4.0"
-                      Background="White"
-                      Padding="8">
-            <ItemsRepeater x:Name="PlanRepeater"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center"
-                           ItemsSource="{x:Bind ViewModel.ExecutionPlans, Mode=OneWay}"
-                           Layout="{StaticResource PlanStackLayout}"
-                           ItemTemplate="{StaticResource ExecutionPlanTemplate}" />
-        </ScrollViewer>
+        <Grid Grid.Row="0" Grid.Column="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="{x:Bind GetStepsWidth(ViewModel.Layout.IsGuideMode, ViewModel.IsGuideStepsVisible), Mode=OneWay}" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="3*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="{x:Bind GetGuidePaneHeight(ViewModel.Layout.IsGuideMode), Mode=OneWay}"
+                               MinHeight="{x:Bind GetGuidePaneMinHeight(ViewModel.Layout.IsGuideMode), Mode=OneWay}" />
+            </Grid.RowDefinitions>
 
-        <query:NoQueryHint Grid.Row="0"
-                           Grid.Column="0"
-                           Layout="{x:Bind ViewModel.Layout, Mode=OneWay}"
-                           Visibility="{x:Bind ViewModel.IsNoQueryHintVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+            <Slider Grid.Row="0"
+                    Margin="12,0,12,0"
+                    Minimum="0"
+                    Maximum="{x:Bind ViewModel.GuideStepMaximum, Mode=OneWay}"
+                    StepFrequency="1"
+                    IsThumbToolTipEnabled="False"
+                    Value="{x:Bind ViewModel.GuideStepIndex, Mode=TwoWay}"
+                    Visibility="{x:Bind ViewModel.Layout.IsGuideMode, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                    ToolTipService.ToolTip="How far through the steps the current step is. Drag to move through them" />
+
+            <ScrollViewer x:Name="PlanScroller"
+                          Grid.Row="1"
+                          HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollMode="Enabled"
+                          VerticalScrollMode="Enabled"
+                          ZoomMode="Enabled"
+                          MinZoomFactor="0.25"
+                          MaxZoomFactor="4.0"
+                          Background="White"
+                          Padding="8">
+                <ItemsRepeater x:Name="PlanRepeater"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               ItemsSource="{x:Bind ViewModel.ExecutionPlans, Mode=OneWay}"
+                               Layout="{StaticResource PlanStackLayout}"
+                               ItemTemplate="{StaticResource ExecutionPlanTemplate}" />
+            </ScrollViewer>
+
+            <query:NoQueryHint Grid.Row="1"
+                               Layout="{x:Bind ViewModel.Layout, Mode=OneWay}"
+                               Visibility="{x:Bind ViewModel.IsNoQueryHintVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+
+            <controls:GridSplitter Grid.Row="2"
+                                   Grid.Column="0"
+                                   Height="4"
+                                   HorizontalAlignment="Stretch"
+                                   VerticalAlignment="Stretch"
+                                   ResizeBehavior="PreviousAndNext"
+                                   ResizeDirection="Rows"
+                                   Visibility="{x:Bind ViewModel.Layout.IsGuideMode, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                   Background="{ThemeResource ControlStrokeColorDefaultBrush}">
+                <controls:GridSplitter.Template>
+                    <ControlTemplate TargetType="controls:GridSplitter">
+                        <Grid Background="{TemplateBinding Background}" />
+                    </ControlTemplate>
+                </controls:GridSplitter.Template>
+            </controls:GridSplitter>
+
+            <Grid Grid.Row="3"
+                  Visibility="{x:Bind ViewModel.Layout.IsGuideMode, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <StackPanel Grid.Row="0"
+                            Orientation="Horizontal"
+                            Spacing="6"
+                            Padding="12,6,12,6"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="0,0,0,1">
+                    <Image Width="24"
+                           Height="24"
+                           VerticalAlignment="Center"
+                           Source="{x:Bind GetIconSource(ViewModel.GuideOperatorIcon), Mode=OneWay}" />
+                    <TextBlock Text="{x:Bind ViewModel.GuideOperatorName, Mode=OneWay}"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+                <Grid Grid.Row="1" Background="White">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Spacing="4" Padding="12,8,12,10">
+                            <controls:MarkdownTextBlock x:Name="GuideNameText"
+                                                        Text="{x:Bind ViewModel.GuideName, Mode=OneWay}"
+                                                        FontSize="12"
+                                                        FontWeight="Bold">
+                                                        <controls:MarkdownTextBlock.Resources>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="FontFamily" Value="Consolas" />
+                                                            </Style>
+                                                        </controls:MarkdownTextBlock.Resources>
+                            </controls:MarkdownTextBlock>
+                            <controls:MarkdownTextBlock x:Name="GuideDescriptionText"
+                                                        Text="{x:Bind ViewModel.GuideDescription, Mode=OneWay}"
+                                                        FontSize="12">
+                                                        <controls:MarkdownTextBlock.Resources>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="FontFamily" Value="Consolas" />
+                                                            </Style>
+                                                        </controls:MarkdownTextBlock.Resources>
+                            </controls:MarkdownTextBlock>
+                        </StackPanel>
+                    </ScrollViewer>
+                    <Grid Grid.Row="1" Padding="12,0,12,10">
+                        <Button HorizontalAlignment="Left"
+                                Command="{x:Bind ViewModel.GuidePreviousCommand}"
+                                ToolTipService.ToolTip="Previous Step">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE892;" FontSize="12" />
+                                <TextBlock Text="Previous" />
+                            </StackPanel>
+                        </Button>
+                        <Button HorizontalAlignment="Right"
+                                Command="{x:Bind ViewModel.GuideNextCommand}"
+                                ToolTipService.ToolTip="Next Step">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="Next" />
+                                <FontIcon Glyph="&#xE893;" FontSize="12" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </Grid>
+            </Grid>
+
+            <controls:GridSplitter Grid.Row="0"
+                                   Grid.RowSpan="4"
+                                   Grid.Column="1"
+                                   Width="4"
+                                   HorizontalAlignment="Stretch"
+                                   VerticalAlignment="Stretch"
+                                   ResizeBehavior="PreviousAndNext"
+                                   ResizeDirection="Columns"
+                                   Visibility="{x:Bind GetStepsVisibility(ViewModel.Layout.IsGuideMode, ViewModel.IsGuideStepsVisible), Mode=OneWay}"
+                                   Background="{ThemeResource ControlStrokeColorDefaultBrush}">
+                <controls:GridSplitter.Template>
+                    <ControlTemplate TargetType="controls:GridSplitter">
+                        <Grid Background="{TemplateBinding Background}" />
+                    </ControlTemplate>
+                </controls:GridSplitter.Template>
+            </controls:GridSplitter>
+
+            <Grid Grid.Row="0"
+                  Grid.RowSpan="4"
+                  Grid.Column="2"
+                  Visibility="{x:Bind GetStepsVisibility(ViewModel.Layout.IsGuideMode, ViewModel.IsGuideStepsVisible), Mode=OneWay}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="40" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Grid Grid.Row="0"
+                      Padding="8,4,16,4"
+                      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                      BorderThickness="0,0,0,1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0"
+                               Margin="4,0,0,1"
+                               VerticalAlignment="Center"
+                               Text="Steps" />
+                    <Button Grid.Column="1"
+                            Click="{x:Bind CloseStepsPane}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="0"
+                            VerticalAlignment="Center">
+                        <FontIcon Glyph="&#xE711;" FontSize="12" />
+                    </Button>
+                </Grid>
+                <results:ResultsGridControl Grid.Row="1"
+                                            ResultSet="{x:Bind ViewModel.GuideStepsTable, Mode=OneWay}"
+                                            SelectedRow="{x:Bind ViewModel.SelectedGuideStep, Mode=TwoWay}"
+                                            RowName="step" />
+            </Grid>
+        </Grid>
 
         <controls:GridSplitter Grid.Row="0"
                                Grid.Column="1"

@@ -505,6 +505,14 @@ internal sealed partial class TraceOperatorsPane
             lines.Add(GetValueLabel(track, tick.Value));
         }
 
+        if (track.GetRule(tick) is { } rule)
+        {
+            if (TraceTickTracks.GetText(track, tick, rule.Description) is { } description)
+            {
+                lines.Add(TraceTickTracks.ToPlainText(description));
+            }
+        }
+
         lines.AddRange(MergeDetails([.. together.Select(t => track.GetDetails?.Invoke(t).ToList() ?? [])]));
 
         lines.Add(GetMethodLine(together));

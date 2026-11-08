@@ -29,8 +29,14 @@ public sealed partial class QueryView : Microsoft.UI.Xaml.Controls.Page, IDispos
 
     private static ITimeTravelRecorder TimeTravel => App.GetService<ITimeTravelRecorder>();
 
-    public Visibility GetRulerVisibility(bool isPinned, bool isAvailable)
-        => isPinned && isAvailable ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility GetRulerVisibility(bool isPinned, bool isAvailable, bool isTrace, bool isTraceTimelineVisible)
+        => IsRulerShown(isPinned, isAvailable, isTrace, isTraceTimelineVisible) ? Visibility.Visible : Visibility.Collapsed;
+
+    public Visibility GetTransportVisibility(bool isPinned, bool isAvailable, bool isTrace, bool isTraceTimelineVisible, bool isGuideMode)
+        => IsRulerShown(isPinned, isAvailable, isTrace, isTraceTimelineVisible) || isGuideMode ? Visibility.Visible : Visibility.Collapsed;
+
+    private static bool IsRulerShown(bool isPinned, bool isAvailable, bool isTrace, bool isTraceTimelineVisible)
+        => isPinned && isAvailable && (!isTrace || isTraceTimelineVisible);
 
     public void Dispose()
     {
@@ -66,9 +72,35 @@ public sealed partial class QueryView : Microsoft.UI.Xaml.Controls.Page, IDispos
     {
         var item = (ToggleMenuFlyoutItem)sender;
 
-        var record = item.IsChecked;
+        var record = item.IsChecked && await ConfirmTimeTravelAsync();
 
-        if (record && Settings.ShowTimeTravelWarning)
+        ViewModel.QueryOptions.RecordTimeTravel = record;
+
+        item.IsChecked = record;
+    }
+
+    private async void OnGuideModeClick(object sender, RoutedEventArgs e)
+    {
+        var item = (ToggleMenuFlyoutItem)sender;
+
+        var isGuideMode = item.IsChecked;
+
+        if (isGuideMode && !ViewModel.QueryOptions.RecordTimeTravel)
+        {
+            isGuideMode = await ConfirmTimeTravelAsync();
+
+            ViewModel.QueryOptions.RecordTimeTravel = isGuideMode;
+        }
+
+        ViewModel.Layout.IsGuideMode = isGuideMode;
+
+        item.IsChecked = isGuideMode;
+    }
+#pragma warning restore VSTHRD100
+
+    private async Task<bool> ConfirmTimeTravelAsync()
+    {
+        if (Settings.ShowTimeTravelWarning)
         {
             var dialog = new TimeTravelWarningDialog
             {
@@ -76,24 +108,19 @@ public sealed partial class QueryView : Microsoft.UI.Xaml.Controls.Page, IDispos
                 Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
             };
 
-            record = await dialog.ShowAsync() == ContentDialogResult.Primary;
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+            {
+                return false;
+            }
 
-            if (record && dialog.DoNotShowAgain)
+            if (dialog.DoNotShowAgain)
             {
                 Settings.ShowTimeTravelWarning = false;
             }
         }
 
-        if (record)
-        {
-            record = await PrepareTimeTravelAsync();
-        }
-
-        ViewModel.QueryOptions.RecordTimeTravel = record;
-
-        item.IsChecked = record;
+        return await PrepareTimeTravelAsync();
     }
-#pragma warning restore VSTHRD100
 
     private async Task<bool> PrepareTimeTravelAsync()
     {

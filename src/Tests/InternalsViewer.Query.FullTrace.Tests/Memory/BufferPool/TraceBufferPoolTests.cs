@@ -1,4 +1,5 @@
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
@@ -62,6 +63,26 @@ public class TraceBufferPoolTests
         var read = TraceBufferPool.Read(new BinaryReader(stream));
 
         Assert.Equal([0x60, 0x90], read.GetLayout(First, Database)?.OffsetTable ?? []);
+    }
+
+    [Fact]
+    public void A_Page_Type_Round_Trips_Through_An_Export()
+    {
+        var builder = new TraceBufferPool.Builder();
+
+        builder.Add(new TraceBufferPage(Frame, First, Database, At(2)));
+
+        builder.AddLayout(First, Database, [0x60, 0x90], PageType.Iam);
+
+        using var stream = new MemoryStream();
+
+        builder.Build().Write(new BinaryWriter(stream));
+
+        stream.Position = 0;
+
+        var read = TraceBufferPool.Read(new BinaryReader(stream));
+
+        Assert.Equal(PageType.Iam, read.GetLayout(First, Database)?.PageHeader.PageType);
     }
 
     [Fact]

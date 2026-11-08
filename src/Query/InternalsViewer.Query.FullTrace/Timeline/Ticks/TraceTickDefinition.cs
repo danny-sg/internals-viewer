@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
@@ -17,18 +18,39 @@ public sealed partial record TraceTickDefinition(string Name,
 {
     public const string CategoryColour = "Category";
 
+    public const string OperatorNamePlaceholder = "OperatorName";
+
+    public const string ParentOperatorNamePlaceholder = "ParentOperatorName";
+
+    public const string FunctionPlaceholder = "Function";
+
+    public const string PagePlaceholder = "Page";
+
+    public const string SlotPlaceholder = "Slot";
+
     private const string AnyModule = "*";
 
     private const char FunctionSeparator = '|';
 
     public string? Label { get; init; }
 
+    public string? Title { get; init; }
+
+    public string? Description { get; init; }
+
+    public string? ReturnDescription { get; init; }
+
     public string? PlanPart { get; init; }
+
+    public string? PlanPartColour { get; init; }
 
     public string? Background { get; init; }
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool IsCounter { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool IsPhase { get; init; }
 
     public TraceTickSourceType Source { get; init; }
 
@@ -40,6 +62,11 @@ public sealed partial record TraceTickDefinition(string Name,
 
     public string GetLabel() => Label ?? Function;
 
+    public string GetTitle() => Title ?? GetLabel();
+
+    public static string Format(string text, Func<string, string?> getValue)
+        => PlaceholderPattern().Replace(text, m => getValue(m.Groups[1].Value) ?? m.Value);
+
     public bool IsFunction(CallTreeNode node)
         => node.Frame is { } frame
            && (Module == AnyModule || string.Equals(frame.Module.Name, Module, StringComparison.OrdinalIgnoreCase))
@@ -50,4 +77,7 @@ public sealed partial record TraceTickDefinition(string Name,
     public bool MatchesNode(CallTreeNode node) => Conditions.All(c => c.MatchesNode(node));
 
     public bool MatchesOperator(ExecutionOperatorEvent? operatorEvent) => Conditions.All(c => c.MatchesOperator(operatorEvent));
+
+    [GeneratedRegex(@"\{(\w+)\}")]
+    private static partial Regex PlaceholderPattern();
 }

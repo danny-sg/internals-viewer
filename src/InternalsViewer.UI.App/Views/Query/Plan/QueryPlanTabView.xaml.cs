@@ -1,21 +1,35 @@
 ﻿using System.ComponentModel;
 using System;
+using CommunityToolkit.WinUI.Controls;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.Query.Plan;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Plan;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace InternalsViewer.UI.App.Views.Query.Plan;
 
 /// <summary>Dock document hosting the execution plan diagrams for the active query</summary>
 public sealed partial class QueryPlanTabView : UserControl
 {
+    private const double StepsStar = 2;
+
+    private const double GuideFontSize = 12;
+
+    private const double GuidePaneMinHeight = 200;
+
+    private const double MaximumFitZoom = 1.5;
+
     private QueryViewModel? _subscribed;
 
     public QueryPlanTabView()
     {
         InitializeComponent();
+
+        UpdateGuideConfig();
 
         // Keep-alive: this view is reused across re-layout, so subscriptions follow the load lifecycle
         // rather than DataContext changes (reparenting fires Unloaded/Loaded without a DataContext change).
@@ -23,6 +37,10 @@ public sealed partial class QueryPlanTabView : UserControl
         Unloaded += OnUnloaded;
         DataContextChanged += OnDataContextChanged;
         PlanRepeater.ElementPrepared += OnPlanElementPrepared;
+
+        PlanRepeater.SizeChanged += OnPlanAreaSizeChanged;
+
+        PlanScroller.SizeChanged += OnPlanAreaSizeChanged;
     }
 
     public QueryViewModel? ViewModel => DataContext as QueryViewModel;
@@ -87,6 +105,18 @@ public sealed partial class QueryPlanTabView : UserControl
 
     public string DockToggleTooltip => IsPropertiesPaneDockedBottom ? "Dock Right" : "Dock Bottom";
 
+    public GridLength GetStepsWidth(bool isGuideMode, bool isStepsVisible)
+        => isGuideMode && isStepsVisible ? new GridLength(StepsStar, GridUnitType.Star) : new GridLength(0);
+
+    public Visibility GetStepsVisibility(bool isGuideMode, bool isStepsVisible)
+        => isGuideMode && isStepsVisible ? Visibility.Visible : Visibility.Collapsed;
+
+    public ImageSource? GetIconSource(Uri? icon) => icon is null ? null : new SvgImageSource(icon);
+
+    public GridLength GetGuidePaneHeight(bool isGuideMode) => isGuideMode ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+
+    public double GetGuidePaneMinHeight(bool isGuideMode) => isGuideMode ? GuidePaneMinHeight : 0;
+
     private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
     {
         RefreshDetailPane();
@@ -134,6 +164,8 @@ public sealed partial class QueryPlanTabView : UserControl
             _subscribed.PropertyChanged += OnViewModelPropertyChanged;
 
             _subscribed.PlanActivityChanged += OnPlanActivityChanged;
+
+            _subscribed.Layout.PropertyChanged += OnLayoutPropertyChanged;
         }
     }
 
@@ -144,6 +176,8 @@ public sealed partial class QueryPlanTabView : UserControl
             _subscribed.PropertyChanged -= OnViewModelPropertyChanged;
 
             _subscribed.PlanActivityChanged -= OnPlanActivityChanged;
+
+            _subscribed.Layout.PropertyChanged -= OnLayoutPropertyChanged;
 
             _subscribed = null;
         }
@@ -163,6 +197,9 @@ public sealed partial class QueryPlanTabView : UserControl
             case nameof(QueryViewModel.IsPlanPropertiesVisible):
             case nameof(QueryViewModel.IsPlanPropertiesDockedBottom):
                 RefreshDetailPane();
+                break;
+            case nameof(QueryViewModel.GuideCodeColour):
+                UpdateGuideConfig();
                 break;
             case nameof(QueryViewModel.IsAnnotationsVisible):
                 ApplyToPlans(p => p.AreAnnotationsVisible = _subscribed.IsAnnotationsVisible);
@@ -217,13 +254,85 @@ public sealed partial class QueryPlanTabView : UserControl
             planControl.CounterToggleRequested -= OnCounterToggleRequested;
             planControl.CounterToggleRequested += OnCounterToggleRequested;
 
+            planControl.PageOpenRequested -= OnPageOpenRequested;
+            planControl.PageOpenRequested += OnPageOpenRequested;
+
             planControl.IsCounterShown = viewModel.IsCounterShown;
         }
+    }
+
+    private static MarkdownConfig CreateGuideConfig(string? colour)
+    {
+        var themes = new MarkdownThemes
+        {
+            ParagraphMargin = new Thickness(0),
+            InlineCodeFontSize = GuideFontSize,
+            InlineCodeBorderThickness = new Thickness(0),
+            InlineCodePadding = new Thickness(3, 0, 3, 1)
+        };
+
+        if (ColourHelpers.FromHex(colour) is { } background)
+        {
+            themes.InlineCodeBackground = new SolidColorBrush(background);
+
+            var foreground = System.Drawing.Color.White.ContrastingWith(background.ToColor());
+
+            themes.InlineCodeForeground = new SolidColorBrush(foreground.ToWindowsColor());
+        }
+
+        return new MarkdownConfig { Themes = themes };
+    }
+
+    private void UpdateGuideConfig()
+    {
+        GuideNameText.Config = CreateGuideConfig(ViewModel?.GuideCodeColour);
+
+        GuideDescriptionText.Config = CreateGuideConfig(ViewModel?.GuideCodeColour);
+    }
+
+    private void OnLayoutPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(QueryLayoutViewModel.IsGuideMode))
+        {
+            DispatcherQueue.TryEnqueue(FitPlan);
+        }
+    }
+
+    private void OnPlanAreaSizeChanged(object sender, SizeChangedEventArgs e) => FitPlan();
+
+    private void FitPlan()
+    {
+        if (ViewModel?.Layout.IsGuideMode != true
+            || PlanRepeater.ActualWidth <= 0
+            || PlanRepeater.ActualHeight <= 0
+            || PlanScroller.ViewportWidth <= 0
+            || PlanScroller.ViewportHeight <= 0)
+        {
+            return;
+        }
+
+        var width = PlanRepeater.ActualWidth + PlanScroller.Padding.Left + PlanScroller.Padding.Right;
+
+        var height = PlanRepeater.ActualHeight + PlanScroller.Padding.Top + PlanScroller.Padding.Bottom;
+
+        var zoom = Math.Clamp(Math.Min(PlanScroller.ViewportWidth / width, PlanScroller.ViewportHeight / height),
+                              PlanScroller.MinZoomFactor,
+                              Math.Min(PlanScroller.MaxZoomFactor, MaximumFitZoom));
+
+        PlanScroller.ChangeView(0, 0, (float)zoom, disableAnimation: true);
     }
 
     private void CloseDetailPane()
     {
         IsPropertiesPaneVisible = false;
+    }
+
+    private void CloseStepsPane()
+    {
+        if (ViewModel is { } viewModel)
+        {
+            viewModel.IsGuideStepsVisible = false;
+        }
     }
 
     private void ToggleDetailPaneDock()
@@ -251,6 +360,10 @@ public sealed partial class QueryPlanTabView : UserControl
         IsPropertiesPaneVisible = true;
     }
 
+    private void OnCounterToggleRequested(object? sender, PlanNode node) => ViewModel?.ToggleCounter(node);
+
+    private void OnPageOpenRequested(object? sender, PlanPage page) => ViewModel?.OpenPage(page.Page, page.Slot);
+
     /// <summary>
     /// Routes a click on a plan node through the same selection every other view goes through
     /// </summary>
@@ -262,8 +375,6 @@ public sealed partial class QueryPlanTabView : UserControl
     /// The identifier rather than the node: a PlanNode knows its own id but not which plan it belongs to, and the view
     /// model keys everything on both.
     /// </remarks>
-    private void OnCounterToggleRequested(object? sender, PlanNode node) => ViewModel?.ToggleCounter(node);
-
     private void OnPlanNodeSelected(object? sender, PlanNode? node)
     {
         if (node is null || sender is not ExecutionPlanControl { Plan: { } plan })

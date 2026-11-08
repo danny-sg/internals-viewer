@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Memory.BufferPool;
@@ -109,6 +110,9 @@ public sealed partial class TraceBufferPool
         return new TraceBufferReference(page.Page, page.DatabaseId, (int)(address - buffer), IsBuffer: true);
     }
 
+    private static PageData CreateLayout(PageAddress page, ushort[] offsets, PageType type)
+        => new() { PageAddress = page, OffsetTable = offsets, PageHeader = new PageHeader { PageType = type } };
+
     private static (ulong, TracePosition) GetFrameKey(TraceBufferPage page) => (page.Frame, page.Position);
 
     private static (ulong, TracePosition) GetBufferKey(TraceBufferPage page) => (page.Buffer, page.Position);
@@ -121,8 +125,8 @@ public sealed partial class TraceBufferPool
 
         public void Add(TraceBufferPage page) => Pages.Add(page);
 
-        public void AddLayout(PageAddress page, ushort databaseId, ushort[] offsets)
-            => Layouts[(page, databaseId)] = new PageData { PageAddress = page, OffsetTable = offsets };
+        public void AddLayout(PageAddress page, ushort databaseId, ushort[] offsets, PageType type = PageType.None)
+            => Layouts[(page, databaseId)] = CreateLayout(page, offsets, type);
 
         public TraceBufferPool Build()
         {

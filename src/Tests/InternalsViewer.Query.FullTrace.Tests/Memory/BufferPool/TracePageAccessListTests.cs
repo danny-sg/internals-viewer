@@ -163,11 +163,11 @@ public class TracePageAccessListTests
     }
 
     [Fact]
-    public void A_Slot_Array_Read_Is_An_Access_To_The_Row_Its_Entry_Points_At()
+    public void A_Slot_Array_Read_Is_Not_A_Row_Access()
     {
-        var reads = Reads((6, 9, 0x1FFC, 2), (7, 9, 0x5B3, 4));
+        var reads = Reads((6, 9, 0x1FFA, 2), (7, 9, 0x5B3, 4));
 
-        Assert.Equal([(At(6), (int?)0x5B3)], RowAccesses(reads).Select(a => (a.Position, a.Offset)));
+        Assert.Equal([(At(7), (int?)0x5B3)], RowAccesses(reads).Select(a => (a.Position, a.Offset)));
     }
 
     [Fact]

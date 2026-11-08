@@ -1,5 +1,6 @@
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Memory;
@@ -17,6 +18,8 @@ public class BufferPoolHookTests
 
     private const ulong PostRead = 0x7FFA_A07C_B8C0;
 
+    private const ulong Release = 0x7FFA_A079_F640;
+
     private const ulong Buffer = 0x216_A5DE_33C0;
 
     private const ulong Frame = 0x20A_5448_0000;
@@ -28,10 +31,46 @@ public class BufferPoolHookTests
     private const ulong OtherFileControlBlock = 0x261_90E4_2500;
 
     [Fact]
-    public void Every_Get_And_Page_Read_Is_Hooked_At_Its_Entry_And_Return()
+    public void Every_Get_And_Page_Read_Is_Hooked_At_Its_Entry_And_Return_And_A_Latch_Release_At_Its_Entry()
         => Assert.Equal([new TraceHookFunction(Get, TraceHookEvents.Entry | TraceHookEvents.Return),
-                         new TraceHookFunction(PostRead, TraceHookEvents.Entry | TraceHookEvents.Return)],
+                         new TraceHookFunction(PostRead, TraceHookEvents.Entry | TraceHookEvents.Return),
+                         new TraceHookFunction(Release, TraceHookEvents.Entry)],
                         Create().Functions);
+
+    [Fact]
+    public void A_Fetched_Page_Reads_Its_Header_And_Slots_When_Its_Latch_Is_Released()
+    {
+        var hook = Create();
+
+        var replay = Replay();
+
+        hook.OnReturn(Return(Buffer, 5), replay);
+
+        replay.Write(Frame + 0x01, (byte)PageType.Iam)
+              .Write(Frame + 0x16, (ushort)2)
+              .Write(Frame + 0x1FFE, (ushort)0x60)
+              .Write(Frame + 0x1FFC, (ushort)0x8C);
+
+        hook.OnEntry(LatchRelease(Buffer, 8), replay);
+
+        var layout = hook.Build().GetLayout(new PageAddress(1, 100), 6);
+
+        Assert.Equal((PageType.Iam, 2), (layout?.PageHeader.PageType, layout?.OffsetTable.Length));
+    }
+
+    [Fact]
+    public void A_Slot_The_Engine_Never_Read_Is_Left_Unknown()
+    {
+        var hook = Create();
+
+        var replay = Replay().Write(Frame + 0x16, (ushort)3).Write(Frame + 0x1FFE, (ushort)0x60).Write(Frame + 0x1FFC, (ushort)0x90);
+
+        hook.OnReturn(Return(Buffer, 5), replay);
+
+        hook.OnEntry(LatchRelease(Buffer, 8), replay);
+
+        Assert.Equal([0x60, 0x90, 0], hook.Build().GetLayout(new PageAddress(1, 100), 6)?.OffsetTable ?? []);
+    }
 
     [Fact]
     public void A_Fetched_Buffer_Records_Its_Frame_Page_And_Database()
@@ -53,6 +92,21 @@ public class BufferPoolHookTests
         hook.OnReturn(Return(Buffer, 5), replay);
 
         Assert.Equal([0x60, 0x90], hook.Build().GetLayout(new PageAddress(1, 100), 6)?.OffsetTable ?? []);
+    }
+
+    [Fact]
+    public void A_Fetched_Page_Records_The_Page_Type_From_Its_Header()
+    {
+        var hook = Create();
+
+        var replay = Replay().Write(Frame + 0x01, (byte)PageType.Iam)
+                             .Write(Frame + 0x16, (ushort)2)
+                             .Write(Frame + 0x1FFE, (ushort)0x60)
+                             .Write(Frame + 0x1FFC, (ushort)0x8C);
+
+        hook.OnReturn(Return(Buffer, 5), replay);
+
+        Assert.Equal(PageType.Iam, hook.Build().GetLayout(new PageAddress(1, 100), 6)?.PageHeader.PageType);
     }
 
     [Fact]
@@ -150,8 +204,12 @@ public class BufferPoolHookTests
         => new(new(new Dictionary<ulong, BufferPoolFunctionType>
         {
             [Get] = BufferPoolFunctionType.Get,
-            [PostRead] = BufferPoolFunctionType.PostRead
+            [PostRead] = BufferPoolFunctionType.PostRead,
+            [Release] = BufferPoolFunctionType.LatchRelease
         }));
+
+    private static TraceHookCall LatchRelease(ulong buffer, ulong sequence)
+        => new() { FunctionAddress = Release, Id = 9, Position = At(sequence), Arguments = new[] { buffer + 0x98 } };
 
     private static FakeTraceReplay Replay()
         => new FakeTraceReplay().Write(Buffer, Frame)

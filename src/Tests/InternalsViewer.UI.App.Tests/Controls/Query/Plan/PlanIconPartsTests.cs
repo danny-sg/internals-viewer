@@ -55,6 +55,25 @@ public class PlanIconPartsTests
         Assert.Equal((Red, null), ((string?)path.Attribute("stroke"), (string?)path.Attribute("fill")));
     }
 
+    [Theory]
+    [InlineData(0, "14.5")]
+    [InlineData(0.5, "16.5")]
+    [InlineData(1, "18.5")]
+    public void A_Ranged_Part_Is_Placed_By_Its_Fraction_On_Whole_Pixels(double fraction, string expected)
+    {
+        const string icon = """
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="32 0 16 32">
+              <line data-part="Page Row" data-range="14.5 18.5" x1="36" y1="14.5" x2="44" y2="14.5" stroke="#808080"/>
+            </svg>
+            """;
+
+        var overlay = XDocument.Parse(PlanIconParts.CreateOverlay(XDocument.Parse(icon), "Page Row", Red, fraction)!);
+
+        var line = overlay.Descendants().Single(e => e.Name.LocalName == "line");
+
+        Assert.Equal((expected, expected), ((string?)line.Attribute("y1"), (string?)line.Attribute("y2")));
+    }
+
     [Fact]
     public void An_Icon_Without_The_Part_Has_No_Overlay()
     {
@@ -76,6 +95,77 @@ public class PlanIconPartsTests
                       PlanIconParts.GetParts(icon, "Leaf Node").Count > 1);
 
         Assert.Equal((1, 1, true), levels);
+    }
+
+    [Theory]
+    [InlineData("IndexSeek")]
+    [InlineData("ClusteredIndexScan")]
+    [InlineData("TableScan")]
+    [InlineData("KeyLookup")]
+    [InlineData("RIDLookup")]
+    public void A_Scan_Seek_Or_Lookup_Icon_Draws_A_Page_With_Its_Parts(string icon)
+    {
+        Assert.Equal(["Page"], PlanIconParts.HasPage(icon) ? PlanIconParts.GetParts(PlanIconParts.PageIcon, "Page", owner: icon) : []);
+    }
+
+    [Fact]
+    public void An_Operator_Without_Pages_Draws_No_Page()
+    {
+        Assert.False(PlanIconParts.HasPage("Top"));
+    }
+
+    [Fact]
+    public void A_Page_Part_Named_With_An_Operator_Only_Binds_To_That_Operators_Page()
+    {
+        const string binding = "Table Scan.Page";
+
+        var counts = (PlanIconParts.GetParts(PlanIconParts.PageIcon, binding, owner: "TableScan").Count,
+                      PlanIconParts.GetParts(PlanIconParts.PageIcon, binding, owner: "IndexSeek").Count);
+
+        Assert.Equal((1, 0), counts);
+    }
+
+    [Fact]
+    public void Active_Binds_To_Every_Operator_Icon_But_Not_The_Page()
+    {
+        var parts = (PlanIconParts.GetParts("Top", "Active").Count,
+                     PlanIconParts.GetParts(PlanIconParts.PageIcon, "Active", owner: "TableScan").Count);
+
+        Assert.Equal((1, 0), parts);
+    }
+
+    [Fact]
+    public void An_Inactive_Icon_Turns_Every_Colour_Grey_And_Keeps_None()
+    {
+        const string icon = """
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+              <rect stroke="#424242" fill="none"/>
+              <path fill="#0078D4" style="fill:#d40000"/>
+            </svg>
+            """;
+
+        var inactive = XDocument.Parse(PlanIconParts.CreateInactive(XDocument.Parse(icon)));
+
+        var colours = inactive.Descendants()
+                              .SelectMany(e => e.Attributes())
+                              .Where(a => a.Name.LocalName is "fill" or "stroke" or "style")
+                              .Select(a => a.Value);
+
+        Assert.Equal(["#A0A0A0", "none", "#AFAFAF", "fill:#9F9F9F"], colours);
+    }
+
+    [Fact]
+    public void Every_Operator_Icon_Is_Square()
+    {
+        var sizes = Directory.EnumerateFiles(PlanIconResolver.IconFolder, "*.svg")
+                             .Where(p => Path.GetFileNameWithoutExtension(p) != PlanIconParts.PageIcon)
+                             .Select(XDocument.Load)
+                             .Select(d => ((string?)d.Root!.Attribute("viewBox"))?.Split(' ') is [_, _, var width, var height]
+                                              ? (width, height)
+                                              : (string.Empty, string.Empty))
+                             .Distinct();
+
+        Assert.Equal([("32", "32")], sizes);
     }
 
     [Fact]

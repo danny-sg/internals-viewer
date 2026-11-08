@@ -1,6 +1,6 @@
-using System.Buffers.Binary;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Services.Pages.Parsers;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Helpers;
@@ -53,8 +53,13 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
 
     private const int PageNumberArgument = 2;
 
+    private const int LatchArgument = 0;
+
     public IEnumerable<TraceHookFunction> Functions
-        => functions.Select(f => new TraceHookFunction(f.Key, TraceHookEvents.Entry | TraceHookEvents.Return));
+        => functions.Select(f => new TraceHookFunction(f.Key,
+                                                       f.Value == BufferPoolFunctionType.LatchRelease
+                                                           ? TraceHookEvents.Entry
+                                                           : TraceHookEvents.Entry | TraceHookEvents.Return));
 
     private TraceBufferPool.Builder Pages { get; } = new();
 
@@ -70,6 +75,8 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
 
     private HashSet<(ulong Frame, PageAddress Page)> Layouts { get; } = [];
 
+    private Dictionary<ulong, FrameLayout> PendingLayouts { get; } = [];
+
     private static int MaximumSlotCount => (PageData.Size - PageHeader.Size) / sizeof(ushort);
 
     public TraceBufferPool Build()
@@ -80,11 +87,16 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
             {
                 Pages.Add(new TraceBufferPage(read.Frame, read.Page, databaseId, read.Position));
 
-                if (read.Offsets is { } offsets && Layouts.Add((read.Frame, read.Page)))
+                if (read.Layout is { Offsets: { } offsets } layout && Layouts.Add((read.Frame, read.Page)))
                 {
-                    Pages.AddLayout(read.Page, databaseId, offsets);
+                    Pages.AddLayout(read.Page, databaseId, offsets, layout.Type);
                 }
             }
+        }
+
+        foreach (var buffer in PendingLayouts.Keys.ToList())
+        {
+            FinishLayout(buffer);
         }
 
         return Pages.Build();
@@ -94,12 +106,23 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
         => [.. Buffers.Select(b => new MemoryBlock(b.Key, BufferDescriptor.Size, b.Value.Thread, b.Value.Position, TracePosition.Unknown))];
 
     public void OnEntry(in TraceHookCall call, ITraceReplay replay)
-        => Starts[(call.Thread, call.Id)] = IsPostRead(call) && call.Arguments.Length > PageNumberArgument
+    {
+        var type = functions.TryGetValue(call.FunctionAddress, out var value) ? value : BufferPoolFunctionType.Get;
+
+        if (type == BufferPoolFunctionType.LatchRelease)
+        {
+            OnLatchRelease(call, replay);
+
+            return;
+        }
+
+        Starts[(call.Thread, call.Id)] = type == BufferPoolFunctionType.PostRead && call.Arguments.Length > PageNumberArgument
             ? new CallStart(call.Position,
                             call.Arguments[FileControlBlockArgument],
                             call.Arguments[FrameArgument],
                             (uint)call.Arguments[PageNumberArgument])
             : new CallStart(call.Position, 0, 0, 0);
+    }
 
     public void OnAbandoned(in TraceHookCall call) => Starts.Remove((call.Thread, call.Id));
 
@@ -128,11 +151,13 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
             return;
         }
 
-        var read = new PageRead(start.FileControlBlock,
-                                start.Frame,
-                                new PageAddress(fileId, (int)pageId),
-                                start.Position,
-                                ReadLayout(start.Frame, replay));
+        var page = new PageAddress(fileId, (int)pageId);
+
+        var layout = new FrameLayout(start.Frame, page, 0);
+
+        layout.Update(replay);
+
+        var read = new PageRead(start.FileControlBlock, start.Frame, page, start.Position, layout);
 
         Reads.Add(read);
 
@@ -163,7 +188,7 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
 
         Pages.Add(new TraceBufferPage(frame, page, databaseId, start, buffer));
 
-        AddLayout(frame, page, databaseId, replay);
+        TrackLayout(buffer, frame, page, databaseId, replay);
 
         if (!Buffers.TryGetValue(buffer, out var first) || start < first.Position)
         {
@@ -171,38 +196,59 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
         }
     }
 
-    private void AddLayout(ulong frame, PageAddress page, ushort databaseId, ITraceReplay replay)
+    private void TrackLayout(ulong buffer, ulong frame, PageAddress page, ushort databaseId, ITraceReplay replay)
     {
-        if (!Layouts.Contains((frame, page)) && ReadLayout(frame, replay) is { } offsets)
+        if (Layouts.Contains((frame, page)))
         {
-            Layouts.Add((frame, page));
+            return;
+        }
 
-            Pages.AddLayout(page, databaseId, offsets);
+        if (PendingLayouts.TryGetValue(buffer, out var pending) && (pending.Frame != frame || pending.Page != page))
+        {
+            FinishLayout(buffer);
+        }
+
+        if (!PendingLayouts.TryGetValue(buffer, out var layout))
+        {
+            layout = new FrameLayout(frame, page, databaseId);
+
+            PendingLayouts[buffer] = layout;
+        }
+
+        UpdateLayout(buffer, layout, replay);
+    }
+
+    private void OnLatchRelease(in TraceHookCall call, ITraceReplay replay)
+    {
+        if (call.Arguments.Length > LatchArgument
+            && call.Arguments[LatchArgument] - BufferDescriptor.LatchWaitersOffset is var buffer
+            && PendingLayouts.TryGetValue(buffer, out var layout))
+        {
+            UpdateLayout(buffer, layout, replay);
         }
     }
 
-    private static ushort[]? ReadLayout(ulong frame, ITraceReplay replay)
+    private void UpdateLayout(ulong buffer, FrameLayout layout, ITraceReplay replay)
     {
-        if (!replay.TryRead(frame + PageHeaderParser.SlotCountOffset, out ushort count) || count > MaximumSlotCount)
+        layout.Update(replay);
+
+        if (layout.IsComplete)
         {
-            return null;
+            FinishLayout(buffer);
+        }
+    }
+
+    private void FinishLayout(ulong buffer)
+    {
+        if (!PendingLayouts.Remove(buffer, out var layout) || layout.Offsets is not { } offsets)
+        {
+            return;
         }
 
-        var bytes = new byte[count * sizeof(ushort)];
-
-        if (replay.Read(frame + PageData.Size - (ulong)bytes.Length, bytes) != bytes.Length)
+        if (Layouts.Add((layout.Frame, layout.Page)))
         {
-            return null;
+            Pages.AddLayout(layout.Page, layout.DatabaseId, offsets, layout.Type);
         }
-
-        var offsets = new ushort[count];
-
-        for (var slot = 0; slot < count; slot++)
-        {
-            offsets[slot] = BinaryPrimitives.ReadUInt16LittleEndian(bytes.AsSpan(bytes.Length - (slot + 1) * sizeof(ushort)));
-        }
-
-        return offsets;
     }
 
     private bool IsPostRead(in TraceHookCall call)
@@ -214,5 +260,54 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
                                             ulong Frame,
                                             PageAddress Page,
                                             TracePosition Position,
-                                            ushort[]? Offsets);
+                                            FrameLayout Layout);
+
+    private sealed class FrameLayout(ulong frame, PageAddress page, ushort databaseId)
+    {
+        public ulong Frame => frame;
+
+        public PageAddress Page => page;
+
+        public ushort DatabaseId => databaseId;
+
+        public PageType Type { get; private set; } = PageType.None;
+
+        public ushort[]? Offsets { get; private set; }
+
+        public bool IsComplete => Type != PageType.None && Offsets is not null && Unknown == 0;
+
+        private int Unknown { get; set; }
+
+        public void Update(ITraceReplay replay)
+        {
+            if (Type == PageType.None && replay.TryRead(frame + PageHeaderParser.PageTypeOffset, out byte type))
+            {
+                Type = (PageType)type;
+            }
+
+            if (Offsets is null)
+            {
+                if (!replay.TryRead(frame + PageHeaderParser.SlotCountOffset, out ushort count) || count > MaximumSlotCount)
+                {
+                    return;
+                }
+
+                Offsets = new ushort[count];
+
+                Unknown = count;
+            }
+
+            for (var slot = 0; slot < Offsets.Length && Unknown > 0; slot++)
+            {
+                if (Offsets[slot] == 0
+                    && replay.TryRead(frame + PageData.Size - (ulong)((slot + 1) * sizeof(ushort)), out ushort offset)
+                    && offset != 0)
+                {
+                    Offsets[slot] = offset;
+
+                    Unknown--;
+                }
+            }
+        }
+    }
 }

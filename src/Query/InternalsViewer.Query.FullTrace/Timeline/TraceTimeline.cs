@@ -100,16 +100,17 @@ public sealed partial class TraceTimeline
             return null;
         }
 
-        var callNodeIndex = calls.GetCallNodeIndex(callIndex);
+        return Find(calls.GetThread(callIndex), calls.GetFromPosition(callIndex), calls.GetCallNodeIndex(callIndex), callIndex);
+    }
 
+    public TraceSpanLocation? FindSpan(uint thread, TraceSpan span) => Find(thread, span.From.Position, span.CallNodeIndex, span.CallIndex);
+
+    private TraceSpanLocation? Find(uint thread, TracePosition from, int callNodeIndex, int callIndex)
+    {
         if (NodeOf(callNodeIndex) is not { } callNode)
         {
             return null;
         }
-
-        var thread = calls.GetThread(callIndex);
-
-        var from = calls.GetFromPosition(callIndex);
 
         var depth = DepthOf(callNodeIndex);
 

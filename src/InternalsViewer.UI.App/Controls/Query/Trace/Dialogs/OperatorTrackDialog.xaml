@@ -27,7 +27,32 @@
         <TextBox x:Name="LabelBox"
                  Header="Label"
                  PlaceholderText="The function name when empty"
+                 ToolTipService.ToolTip="Markdown. {OperatorName} is the tick's operator and {ParentOperatorName} the operator that called it"
                  Text="{x:Bind ValueLabel, Mode=TwoWay}"/>
+
+        <TextBox x:Name="TitleBox"
+                 Header="Title"
+                 PlaceholderText="The name of each Guide Mode step, the label when empty"
+                 ToolTipService.ToolTip="Markdown. {OperatorName} is the tick's operator and {ParentOperatorName} the operator that called it"
+                 Text="{x:Bind StepTitle, Mode=TwoWay}"/>
+
+        <TextBox x:Name="DescriptionBox"
+                 Header="Description"
+                 PlaceholderText="What happens, such as {ParentOperatorName} calls `GetRow` from {OperatorName}"
+                 ToolTipService.ToolTip="Markdown. {OperatorName} is the tick's operator and {ParentOperatorName} the operator that called it"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap"
+                 MinHeight="64"
+                 Text="{x:Bind Description, Mode=TwoWay}"/>
+
+        <TextBox x:Name="ReturnDescriptionBox"
+                 Header="Return Description"
+                 PlaceholderText="What happens at the return, such as `GetRow` returns from {OperatorName} to {ParentOperatorName}"
+                 ToolTipService.ToolTip="Markdown. {OperatorName} is the tick's operator and {ParentOperatorName} the operator that called it"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap"
+                 MinHeight="64"
+                 Text="{x:Bind ReturnDescription, Mode=TwoWay}"/>
 
         <AutoSuggestBox x:Name="PlanPartBox"
                         Header="Plan Part"
@@ -38,6 +63,10 @@
         <CheckBox x:Name="CounterBox"
                   Content="Counter"
                   ToolTipService.ToolTip="Count these ticks on the operator's plan icon as the playhead passes them"/>
+
+        <CheckBox x:Name="PhaseBox"
+                  Content="Phase"
+                  ToolTipService.ToolTip="Guide Mode steps over the steps inside each tick, from its start to its end"/>
 
         <Grid ColumnSpacing="12">
             <Grid.ColumnDefinitions>

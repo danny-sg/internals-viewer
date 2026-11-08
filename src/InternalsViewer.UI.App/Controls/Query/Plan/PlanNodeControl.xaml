@@ -26,21 +26,27 @@
                     <Border x:Name="NodeImageBorder"
                             BorderThickness="2"
                             CornerRadius="2"
-                            Width="38"
+                            Width="70"
                             Height="38"
                             HorizontalAlignment="Center" >
-                        <Grid x:Name="IconLayers">
-                            <Image Source="{x:Bind IconSource}"
-                                   Name="NodeImage"
+                        <Grid x:Name="IconLayers"
+                              Width="64"
+                              Height="32"
+                              Margin="1"
+                              HorizontalAlignment="Left"
+                              VerticalAlignment="Top">
+                            <Image x:Name="NodeImage"
+                                   Source="{x:Bind IconSource}"
                                    Width="32"
                                    Height="32"
+                                   Stretch="Fill"
                                    HorizontalAlignment="Center" />
                         </Grid>
                     </Border>
                     <Border x:Name="CounterBadge"
                             HorizontalAlignment="Right"
                             VerticalAlignment="Top"
-                            Margin="0,-4,-14,0"
+                            Margin="0,-4,-8,0"
                             MinWidth="16"
                             Padding="4,0,4,1"
                             CornerRadius="8"
@@ -52,7 +58,8 @@
                                    TextAlignment="Center" />
                     </Border>
                 </Grid>
-                <TextBlock Text="{x:Bind OperatorName}"
+                <TextBlock x:Name="OperatorNameText"
+                           Text="{x:Bind OperatorName}"
                            FontSize="11"
                            FontWeight="SemiBold"
                            TextAlignment="Center"
@@ -65,6 +72,14 @@
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            Visibility="{x:Bind DetailVisibility}"
                            HorizontalAlignment="Center" />
+                <TextBlock x:Name="PageLink"
+                           FontSize="12"
+                           HorizontalAlignment="Center"
+                           Visibility="Collapsed">
+                    <Hyperlink Click="OnPageLinkClick" Foreground="Navy" UnderlineStyle="None">
+                        <Run x:Name="PageText" />
+                    </Hyperlink>
+                </TextBlock>
                 <TextBlock Text="{x:Bind CostText}"
                            FontSize="10"
                            TextAlignment="Center"

@@ -17,6 +17,8 @@ public sealed record TraceTickTrack(string Name, TraceTickLocation Location, int
 
     public Func<TraceTick, TraceTickDefinition?> GetRule { get; init; } = _ => null;
 
+    public Func<TraceTick, string, string?> GetPlaceholder { get; init; } = static (_, _) => null;
+
     public SKColor? Colour { get; init; }
 
     public Func<ExecutionOperatorEvent, SKColor?>? GetTrackColour { get; init; }

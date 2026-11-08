@@ -15,7 +15,7 @@ public static class PageHeaderParser
     public const byte LsnOffset = 40;
 
     internal const byte PreviousPageOffset = 8;
-    internal const byte PageTypeOffset = 1;
+    public const byte PageTypeOffset = 1;
     internal const byte LevelOffset = 3;
     internal const byte FixedLengthOffset = 14;
     internal const byte NextPageOffset = 16;

@@ -10,10 +10,12 @@ using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Plan;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
 using Microsoft.UI;
+using Windows.Foundation;
 using Windows.UI;
 
 namespace InternalsViewer.UI.App.Controls.Query.Plan;
@@ -21,6 +23,18 @@ namespace InternalsViewer.UI.App.Controls.Query.Plan;
 public sealed partial class PlanNodeControl : UserControl
 {
     private const byte ActiveBackgroundAlpha = 50;
+
+    private const double IconSize = 32;
+
+    private const double IndicatorWidth = 16;
+
+    private const int BaseLayerCount = 1;
+
+    private const double FractionSteps = 8;
+
+    private const double PageFontSize = 12;
+
+    private const double MinimumOperatorFontSize = 10;
 
     // A faint divider so adjacent frames read apart even at 3-4px row heights.
     public static readonly DependencyProperty NodeProperty =
@@ -76,7 +90,11 @@ public sealed partial class PlanNodeControl : UserControl
     public PlanNodeControl()
     {
         InitializeComponent();
+
+        EffectiveViewportChanged += OnEffectiveViewportChanged;
     }
+
+    public event EventHandler<PlanPage>? PageOpenRequested;
 
     public const double AnnotationColumnWidth = 104;
 
@@ -93,7 +111,7 @@ public sealed partial class PlanNodeControl : UserControl
         AnnotationBadges.Visibility = annotations.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    public SvgImageSource? IconSource => Node is null ? null : new SvgImageSource(PlanIconResolver.Resolve(Node));
+    public SvgImageSource? IconSource => Node is null ? null : CreatedIconSource ??= CreateIconSource(Node);
 
     public string OperatorName => Node?.PhysicalOperator ?? string.Empty;
 
@@ -109,9 +127,105 @@ public sealed partial class PlanNodeControl : UserControl
 
     public string ToolTipText => Node is null ? string.Empty : BuildToolTip(Node);
 
-    private Dictionary<(string Part, Color Colour), PartLayer> PartLayers { get; } = [];
+    private Dictionary<(string Icon, string Part, Color Colour, double? Fraction), PartLayer> PartLayers { get; } = [];
 
     private string CounterToolTip { get; set; } = string.Empty;
+
+    private double RenderScale { get; set; } = 1;
+
+    private double Zoom { get; set; } = 1;
+
+    private PlanPage? CurrentPage { get; set; }
+
+    private double RasterScale { get; set; } = 1;
+
+    private bool IsGreyed { get; set; }
+
+    private SvgImageSource? CreatedIconSource { get; set; }
+
+    public void SetRenderScale(double scale, double zoom)
+    {
+        RenderScale = scale;
+
+        Zoom = zoom;
+
+        UpdatePageLink();
+
+        if (GetPixels(IconSize, scale) != GetPixels(IconSize, RasterScale)
+            || GetPixels(IndicatorWidth, scale) != GetPixels(IndicatorWidth, RasterScale))
+        {
+            RasterScale = scale;
+
+            RefreshSources();
+        }
+
+        SnapToPixels();
+    }
+
+    private void RefreshSources()
+    {
+        if (CreatedIconSource is not null && Node is { } node)
+        {
+            CreatedIconSource = CreateIconSource(node);
+
+            NodeImage.Source = CreatedIconSource;
+        }
+
+        foreach (var layer in PartLayers.Values.Where(l => l.Svg is not null))
+        {
+            layer.Image.Source = CreateOverlaySource(layer.Svg!, layer.Image.Width);
+        }
+    }
+
+    private static double GetPixels(double size, double scale) => Math.Max(1, Math.Round(size * scale));
+
+    private static HorizontalAlignment GetAlignment(string icon)
+        => icon == PlanIconParts.PageIcon ? HorizontalAlignment.Right : HorizontalAlignment.Center;
+
+    public void SetGreyed(bool isGreyed)
+    {
+        if (isGreyed == IsGreyed)
+        {
+            return;
+        }
+
+        IsGreyed = isGreyed;
+
+        if (CreatedIconSource is not null && Node is { } node)
+        {
+            CreatedIconSource = CreateIconSource(node);
+
+            NodeImage.Source = CreatedIconSource;
+        }
+    }
+
+    private SvgImageSource CreateIconSource(PlanNode node)
+    {
+        if (IsGreyed && PlanIconParts.GetInactiveIcon(PlanIconResolver.GetAssetName(node)) is { } inactive)
+        {
+            return CreateOverlaySource(inactive, IconSize);
+        }
+
+        var source = new SvgImageSource(PlanIconResolver.Resolve(node));
+
+        SetRasterSize(source, IconSize);
+
+        return source;
+    }
+
+    public void ShowPage(PlanPage? page)
+    {
+        if (page == CurrentPage)
+        {
+            return;
+        }
+
+        CurrentPage = page;
+
+        PageText.Text = page?.Address ?? string.Empty;
+
+        UpdatePageLink();
+    }
 
     public void ShowCounters(IEnumerable<PlanCounter> counters)
     {
@@ -151,19 +265,32 @@ public sealed partial class PlanNodeControl : UserControl
 
         var icon = PlanIconResolver.GetAssetName(node);
 
-        var lit = new HashSet<(string Part, Color Colour)>();
+        var hasPage = PlanIconParts.HasPage(icon);
+
+        var lit = new HashSet<(string Icon, string Part, Color Colour, double? Fraction)>();
 
         foreach (var activity in parts)
         {
-            foreach (var part in PlanIconParts.GetParts(icon, activity.Part))
+            var fraction = activity.Fraction is { } value ? Math.Round(value * FractionSteps) / FractionSteps : (double?)null;
+
+            var iconParts = PlanIconParts.GetParts(icon, activity.Part)
+                                         .Where(p => !node.IsStatement || p != PlanIconParts.ActivePart)
+                                         .Select(p => (Icon: icon, Part: p));
+
+            var pageParts = hasPage
+                ? PlanIconParts.GetParts(PlanIconParts.PageIcon, activity.Part, owner: icon)
+                               .Select(p => (Icon: PlanIconParts.PageIcon, Part: p))
+                : [];
+
+            foreach (var (partIcon, part) in iconParts.Concat(pageParts))
             {
-                var key = (part, activity.Colour);
+                var key = (partIcon, part, activity.Colour, fraction);
 
                 lit.Add(key);
 
                 if (!PartLayers.ContainsKey(key))
                 {
-                    PartLayers[key] = AddPartLayer(icon, part, activity.Colour);
+                    PartLayers[key] = AddPartLayer(partIcon, part, activity.Colour, fraction, activity.Rank);
                 }
             }
         }
@@ -181,29 +308,115 @@ public sealed partial class PlanNodeControl : UserControl
         }
     }
 
-    private PartLayer AddPartLayer(string icon, string part, Color colour)
+    private PartLayer AddPartLayer(string icon, string part, Color colour, double? fraction, int rank)
     {
+        var alignment = GetAlignment(icon);
+
         var order = PlanIconParts.GetOrder(icon, part);
 
         var image = new Image
         {
-            Width = NodeImage.Width,
-            Height = NodeImage.Height,
-            HorizontalAlignment = HorizontalAlignment.Center,
+            Width = alignment == HorizontalAlignment.Center ? IconSize : IndicatorWidth,
+            Height = IconSize,
+            Stretch = Stretch.Fill,
+            HorizontalAlignment = alignment,
             IsHitTestVisible = false
         };
 
-        var position = 1 + PartLayers.Values.Count(l => l.Order <= order);
+        var position = BaseLayerCount
+                       + PartLayers.Values.Count(l => l.Alignment < alignment
+                                                      || (l.Alignment == alignment
+                                                          && (l.Order < order || (l.Order == order && l.Rank <= rank))));
 
         IconLayers.Children.Insert(Math.Min(position, IconLayers.Children.Count), image);
 
-        _ = LoadPartLayerAsync(image, icon, part, colour);
+        SnapToPixels(image);
 
-        return new PartLayer(order, new PlanHighlight(image));
+        var svg = PlanIconParts.GetOverlay(icon, part, colour, fraction);
+
+        if (svg is not null)
+        {
+            image.Source = CreateOverlaySource(svg, image.Width);
+        }
+
+        return new PartLayer(order, rank, alignment, image, new PlanHighlight(image), svg);
     }
 
-    private static async Task LoadPartLayerAsync(Image image, string icon, string part, Color colour)
-        => image.Source = await PlanIconParts.GetOverlayAsync(icon, part, colour);
+    private SvgImageSource CreateOverlaySource(string svg, double width)
+    {
+        var source = new SvgImageSource();
+
+        SetRasterSize(source, width);
+
+        _ = PlanIconParts.LoadAsync(source, svg);
+
+        return source;
+    }
+
+    private void SetRasterSize(SvgImageSource source, double width)
+    {
+        source.RasterizePixelWidth = GetPixels(width, RasterScale);
+
+        source.RasterizePixelHeight = GetPixels(IconSize, RasterScale);
+    }
+
+    private void SnapToPixels()
+    {
+        foreach (var image in IconLayers.Children.OfType<Image>())
+        {
+            SnapToPixels(image);
+        }
+    }
+
+    private void SnapToPixels(Image image)
+    {
+        if (!IsLoaded || XamlRoot is not { } root)
+        {
+            return;
+        }
+
+        if (image.RenderTransform is not CompositeTransform snap)
+        {
+            snap = new CompositeTransform();
+
+            image.RenderTransform = snap;
+        }
+
+        var left = image.HorizontalAlignment == HorizontalAlignment.Right
+            ? IconLayers.Width - image.Width
+            : (IconLayers.Width - image.Width) / 2;
+
+        var origin = IconLayers.TransformToVisual(null).TransformPoint(new Point(left, 0));
+
+        snap.ScaleX = GetPixels(image.Width, RasterScale) / (image.Width * RenderScale);
+
+        snap.ScaleY = GetPixels(IconSize, RasterScale) / (IconSize * RenderScale);
+
+        snap.TranslateX = GetPixelSnap(origin.X * root.RasterizationScale);
+
+        snap.TranslateY = GetPixelSnap(origin.Y * root.RasterizationScale);
+    }
+
+    private double GetPixelSnap(double pixel) => (Math.Round(pixel) - pixel) / RenderScale;
+
+    private void OnEffectiveViewportChanged(FrameworkElement sender, EffectiveViewportChangedEventArgs args) => SnapToPixels();
+
+    private void OnPageLinkClick(Hyperlink sender, HyperlinkClickEventArgs args)
+    {
+        if (CurrentPage is { } page)
+        {
+            PageOpenRequested?.Invoke(this, page);
+        }
+    }
+
+    private void UpdatePageLink()
+    {
+        PageLink.FontSize = PageFontSize / Zoom;
+
+        PageLink.Visibility = CurrentPage is not null && OperatorNameText.FontSize * Zoom >= MinimumOperatorFontSize
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
 
     private static string FormatCount(int count) => count switch
     {
@@ -333,6 +546,11 @@ public sealed partial class PlanNodeControl : UserControl
     {
         var control = (PlanNodeControl)d;
 
+        if (e.Property == NodeProperty)
+        {
+            control.CreatedIconSource = null;
+        }
+
         control.Bindings.Update();
 
         control.RefreshAnnotations();
@@ -347,5 +565,5 @@ public sealed partial class PlanNodeControl : UserControl
     private static void OnAnnotationsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((PlanNodeControl)d).RefreshAnnotations();
 
-    private sealed record PartLayer(int Order, PlanHighlight Highlight);
+    private sealed record PartLayer(int Order, int Rank, HorizontalAlignment Alignment, Image Image, PlanHighlight Highlight, string? Svg);
 }
