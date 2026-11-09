@@ -45,6 +45,8 @@ public sealed partial class QueryPlanTabView : UserControl
 
     private const double OtherStepOpacity = 0.45;
 
+    private const double StickyTolerance = 0.5;
+
     private QueryViewModel? _subscribed;
 
     public QueryPlanTabView()
@@ -135,13 +137,18 @@ public sealed partial class QueryPlanTabView : UserControl
 
     private GuideStepItem? HoveredStep { get; set; }
 
+    private ScrollViewer? GuideScroller { get; set; }
+
     public static ImageSource? GetStepIcon(Uri? icon) => icon is null ? null : new SvgImageSource(icon);
 
     public static double GetStepOpacity(bool isCurrent) => isCurrent ? 1 : OtherStepOpacity;
 
     public static Brush? GetStepBackground(bool isCurrent) => isCurrent ? CurrentStepBrush : null;
 
-    public static Brush? GetStepRowBackground(bool isCurrent, bool isHovered) => isCurrent != isHovered ? CurrentStepBrush : null;
+    public static double GetStepRowOpacity(bool isCurrent, bool isSticking) => GetStepOpacity(isCurrent || isSticking);
+
+    public static Brush? GetStepRowBackground(bool isCurrent, bool isHovered, bool isSticking)
+        => (isCurrent || isSticking) != isHovered ? CurrentStepBrush : null;
 
     public static Visibility GetCurrentVisibility(bool isCurrent) => isCurrent ? Visibility.Visible : Visibility.Collapsed;
 
@@ -257,6 +264,9 @@ public sealed partial class QueryPlanTabView : UserControl
             case nameof(QueryViewModel.CurrentGuideStep):
                 ScrollToCurrentStep();
                 break;
+            case nameof(QueryViewModel.GuideStepGroups):
+                DispatcherQueue.TryEnqueue(UpdateStickyStep);
+                break;
             case nameof(QueryViewModel.IsGuideDetailsVisible):
                 DispatcherQueue.TryEnqueue(ScrollToCurrentStep);
                 break;
@@ -341,11 +351,96 @@ public sealed partial class QueryPlanTabView : UserControl
 
         var top = container.TransformToVisual(content).TransformPoint(new Point(0, 0)).Y;
 
-        var header = GuideStepList.GroupHeaderContainerFromItemContainer(container) is FrameworkElement groupHeader
-            ? groupHeader.ActualHeight
-            : 0;
+        var offset = top - GetHeadingHeight(container) - GetStickyHeight(step);
 
-        scroller.ChangeView(null, Math.Max(0, top - header), null, disableAnimation: false);
+        scroller.ChangeView(null, Math.Max(0, offset), null, disableAnimation: false);
+    }
+
+    private double GetHeadingHeight(ListViewItem container)
+        => GuideStepList.GroupHeaderContainerFromItemContainer(container) is FrameworkElement heading ? heading.ActualHeight : 0;
+
+    private double GetStickyHeight(GuideStepItem step)
+    {
+        if (step.Parent is not { IsSticky: true } sticky)
+        {
+            return 0;
+        }
+
+        return GuideStepList.ContainerFromItem(sticky) is FrameworkElement container ? container.ActualHeight : StickyStepHost.ActualHeight;
+    }
+
+    private void OnGuideStepListSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (GuideScroller is null && GuideStepList.FindDescendant<ScrollViewer>() is { } scroller)
+        {
+            GuideScroller = scroller;
+
+            scroller.ViewChanged += OnGuideStepsScrolled;
+        }
+
+        UpdateStickyStep();
+    }
+
+    private void OnGuideStepsScrolled(object? sender, ScrollViewerViewChangedEventArgs e) => UpdateStickyStep();
+
+    private void UpdateStickyStep()
+    {
+        var sticky = GetStickyStep();
+
+        if (!ReferenceEquals(StickyStep.Content, sticky))
+        {
+            (StickyStep.Content as GuideStepItem)?.IsSticking = false;
+
+            sticky?.IsSticking = true;
+
+            StickyStep.Content = sticky;
+        }
+
+        StickyStepHost.Visibility = sticky is null ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private GuideStepItem? GetStickyStep()
+    {
+        if (GuideStepList.ItemsPanelRoot is not ItemsStackPanel { FirstVisibleIndex: >= 0 } panel)
+        {
+            return null;
+        }
+
+        for (var index = panel.FirstVisibleIndex; index <= panel.LastVisibleIndex; index++)
+        {
+            if (GuideStepList.ContainerFromIndex(index) is not ListViewItem { Content: GuideStepItem step } container)
+            {
+                continue;
+            }
+
+            var heading = GetHeadingHeight(container);
+
+            var top = container.TransformToVisual(GuideStepList).TransformPoint(new Point(0, 0)).Y;
+
+            if (top + container.ActualHeight <= heading)
+            {
+                continue;
+            }
+
+            StickyStepHost.Margin = new Thickness(0, heading, 0, 0);
+
+            if (step.IsSticky)
+            {
+                return top < heading - StickyTolerance ? step : null;
+            }
+
+            return step.Parent is { IsSticky: true } parent ? parent : null;
+        }
+
+        return null;
+    }
+
+    private void OnStickyStepTapped(object sender, TappedRoutedEventArgs e)
+    {
+        if (StickyStep.Content is GuideStepItem step)
+        {
+            ViewModel?.SelectGuideStep(step);
+        }
     }
 
     private void OnGuideStepPointerEntered(object sender, PointerRoutedEventArgs e)
@@ -372,6 +467,8 @@ public sealed partial class QueryPlanTabView : UserControl
         if (sender is FrameworkElement { DataContext: GuideStepItem step })
         {
             ViewModel?.ToggleGuideStep(step);
+
+            DispatcherQueue.TryEnqueue(UpdateStickyStep);
         }
     }
 

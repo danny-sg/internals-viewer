@@ -73,6 +73,48 @@ public class BufferPoolHookTests
     }
 
     [Fact]
+    public void A_Page_Whose_Slot_Count_Was_Never_Read_Keeps_The_Slots_The_Engine_Read()
+    {
+        var hook = Create();
+
+        var replay = Replay();
+
+        hook.OnReturn(Return(Buffer, 5), replay);
+
+        replay.Write(Frame + 0x1FFE, (ushort)0x60).Write(Frame + 0x1FFC, (ushort)0x90);
+
+        hook.OnEntry(LatchRelease(Buffer, 8), replay);
+
+        Assert.Equal([0x60, 0x90], hook.Build().GetLayout(new PageAddress(1, 100), 6)?.OffsetTable ?? []);
+    }
+
+    [Fact]
+    public void A_Slot_Count_Read_Later_Replaces_The_Slots_Found_Without_It()
+    {
+        var hook = Create();
+
+        var replay = Replay().Write(Frame + 0x1FFE, (ushort)0x60);
+
+        hook.OnReturn(Return(Buffer, 5), replay);
+
+        replay.Write(Frame + 0x16, (ushort)3);
+
+        hook.OnEntry(LatchRelease(Buffer, 8), replay);
+
+        Assert.Equal([0x60, 0, 0], hook.Build().GetLayout(new PageAddress(1, 100), 6)?.OffsetTable ?? []);
+    }
+
+    [Fact]
+    public void A_Page_With_Nothing_Read_Has_No_Layout()
+    {
+        var hook = Create();
+
+        hook.OnReturn(Return(Buffer, 5), Replay());
+
+        Assert.Null(hook.Build().GetLayout(new PageAddress(1, 100), 6));
+    }
+
+    [Fact]
     public void A_Fetched_Buffer_Records_Its_Frame_Page_And_Database()
     {
         var hook = Create();

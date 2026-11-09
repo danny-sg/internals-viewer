@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.Execution.AccessPaths.Text;
+using InternalsViewer.Internals.Providers.Metadata;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Arguments;
@@ -40,6 +42,8 @@ public sealed partial class QueryViewModel
     private ILookup<(PlanNode Puller, ExpressionPullSite Site), ExpressionPull>? CreatedExpressionPulls { get; set; }
 
     private Dictionary<PlanNode, Dictionary<string, PredicateText>> PlanValues { get; } = [];
+
+    private Dictionary<PlanNode, List<(string Column, SqlDbType? Type)>> SeekKeyColumns { get; } = [];
 
     public void AddTickTrack(TraceTickDefinition definition) => TickTrackStore.Add(definition);
 
@@ -124,6 +128,8 @@ public sealed partial class QueryViewModel
         CreatedExpressionPulls = null;
 
         PlanValues.Clear();
+
+        SeekKeyColumns.Clear();
 
         RuleSeries.Clear();
 
@@ -273,8 +279,46 @@ public sealed partial class QueryViewModel
         }
 
         return name.Equals(TraceTickDefinition.CurrentRangePlaceholder, StringComparison.OrdinalIgnoreCase)
-            ? PlanNodePropertyBuilder.GetSeekRange(values, Trace?.GetSeekRange(tick) ?? 0)
+            ? GetCurrentRange(tick, node, values)
             : values.GetValueOrDefault(name[TraceTickDefinition.ExecutionPlanPrefix.Length..]);
+    }
+
+    private PredicateText? GetCurrentRange(TraceTick tick, PlanNode node, Dictionary<string, PredicateText> values)
+        => Trace is not { } trace
+            ? PlanNodePropertyBuilder.GetSeekRange(values, 0)
+            : GetSeekKeyText(trace, tick, node) ?? PlanNodePropertyBuilder.GetSeekRange(values, trace.GetSeekRange(tick));
+
+    private PredicateText? GetSeekKeyText(TraceResult trace, TraceTick tick, PlanNode node)
+    {
+        return node.PredicateInfo is { IsCorrelatedEquality: true } info
+            ? TraceTickTracks.GetSeekKeyText(GetSeekKeyColumns(node, info), trace.GetSeekKeys(tick))
+            : null;
+    }
+
+    private List<(string Column, SqlDbType? Type)> GetSeekKeyColumns(PlanNode node, PredicateInfo info)
+    {
+        if (!SeekKeyColumns.TryGetValue(node, out var columns))
+        {
+            columns = [.. info.CorrelatedSeekColumns.Select(c => (c.Column, GetColumnType(node, c.Column)))];
+
+            SeekKeyColumns[node] = columns;
+        }
+
+        return columns;
+    }
+
+    private SqlDbType? GetColumnType(PlanNode node, string name)
+    {
+        if (FindAllocationUnit(node) is not { } unit)
+        {
+            return null;
+        }
+
+        var structure = IndexStructureProvider.GetIndexStructure(Database, unit.AllocationUnitId);
+
+        return structure.Columns.Concat(structure.TableStructure?.Columns ?? [])
+                                .FirstOrDefault(c => string.Equals(c.ColumnName, name, StringComparison.OrdinalIgnoreCase))
+                                ?.DataType;
     }
 
     private ExpressionCatalog? GetPlanExpressions(ExecutionOperatorEvent operatorEvent)

@@ -20,6 +20,92 @@
         <DataTemplate x:Key="ExecutionPlanTemplate" x:DataType="plans:ExecutionPlan">
             <plan:ExecutionPlanControl Plan="{x:Bind}" />
         </DataTemplate>
+        <DataTemplate x:Key="GuideStepTemplate" x:DataType="planModels:GuideStepItem">
+            <Grid Background="{x:Bind local:QueryPlanTabView.GetStepRowBackground(IsCurrent, IsHovered, IsSticking), Mode=OneWay}"
+                  PointerEntered="OnGuideStepPointerEntered"
+                  PointerExited="OnGuideStepPointerExited"
+                  Padding="0,6,12,8"
+                  BorderBrush="#E5E5E5"
+                  BorderThickness="0,0,0,1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="28" />
+                    <ColumnDefinition Width="{x:Bind local:QueryPlanTabView.GetStepIndentWidth(Depth)}" />
+                    <ColumnDefinition Width="22" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="2"
+                        Width="18"
+                        Height="18"
+                        Padding="0"
+                        VerticalAlignment="Top"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Click="OnGuideStepToggle"
+                        Visibility="{x:Bind local:QueryPlanTabView.GetChevronVisibility(HasNestedSteps)}"
+                        ToolTipService.ToolTip="Show or hide the steps inside this call">
+                    <FontIcon FontSize="10"
+                              Glyph="{x:Bind local:QueryPlanTabView.GetChevronGlyph(IsExpanded), Mode=OneWay}" />
+                </Button>
+                <FontIcon Grid.Column="0"
+                          Glyph="&#xE72A;"
+                          FontSize="12"
+                          Foreground="#F7630C"
+                          VerticalAlignment="Top"
+                          Margin="0,2,0,0"
+                          Visibility="{x:Bind local:QueryPlanTabView.GetCurrentVisibility(IsCurrent), Mode=OneWay}" />
+                <StackPanel Grid.Column="3"
+                            Spacing="4"
+                            Opacity="{x:Bind local:QueryPlanTabView.GetStepRowOpacity(IsCurrent, IsSticking), Mode=OneWay}">
+                    <controls:MarkdownTextBlock Config="{x:Bind Config}"
+                                                Text="{x:Bind Name}"
+                                                FontSize="12"
+                                                FontWeight="Bold"
+                                                OnLinkClicked="OnGuideLinkClicked">
+                        <controls:MarkdownTextBlock.Resources>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="FontFamily" Value="Consolas" />
+                            </Style>
+                            <Style TargetType="RichTextBlock">
+                                <Setter Property="IsTextSelectionEnabled" Value="False" />
+                            </Style>
+                        </controls:MarkdownTextBlock.Resources>
+                    </controls:MarkdownTextBlock>
+                    <controls:MarkdownTextBlock Config="{x:Bind Config}"
+                                                Text="{x:Bind Description}"
+                                                FontSize="12"
+                                                Visibility="{x:Bind local:QueryPlanTabView.GetDescriptionVisibility(HasDescription)}"
+                                                OnLinkClicked="OnGuideLinkClicked">
+                        <controls:MarkdownTextBlock.Resources>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="FontFamily" Value="Consolas" />
+                            </Style>
+                            <Style TargetType="RichTextBlock">
+                                <Setter Property="IsTextSelectionEnabled" Value="False" />
+                            </Style>
+                        </controls:MarkdownTextBlock.Resources>
+                    </controls:MarkdownTextBlock>
+                    <query:PredicateTextBox Text="{x:Bind Predicate}"
+                                            HasBackground="False"
+                                            TextPadding="0"
+                                            IsHitTestVisible="False"
+                                            Visibility="{x:Bind local:QueryPlanTabView.GetPredicateVisibility(HasPredicate)}" />
+                    <controls:MarkdownTextBlock Config="{x:Bind Config}"
+                                                Text="{x:Bind Details}"
+                                                FontSize="12"
+                                                Visibility="{x:Bind local:QueryPlanTabView.GetDetailsVisibility(Details, IsDetailsVisible), Mode=OneWay}"
+                                                OnLinkClicked="OnGuideLinkClicked">
+                        <controls:MarkdownTextBlock.Resources>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="FontFamily" Value="Consolas" />
+                            </Style>
+                            <Style TargetType="RichTextBlock">
+                                <Setter Property="IsTextSelectionEnabled" Value="False" />
+                            </Style>
+                        </controls:MarkdownTextBlock.Resources>
+                    </controls:MarkdownTextBlock>
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
     </UserControl.Resources>
     <Grid>
         <Grid.ColumnDefinitions>
@@ -224,7 +310,9 @@
                           ItemsSource="{x:Bind GuideStepSource.View, Mode=OneWay}"
                           SelectionMode="None"
                           IsItemClickEnabled="True"
-                          ItemClick="OnGuideStepClick">
+                          ItemClick="OnGuideStepClick"
+                          SizeChanged="OnGuideStepListSizeChanged"
+                          ItemTemplate="{StaticResource GuideStepTemplate}">
                     <ListView.ItemsPanel>
                         <ItemsPanelTemplate>
                             <ItemsStackPanel AreStickyGroupHeadersEnabled="True" />
@@ -289,95 +377,17 @@
                             </GroupStyle.HeaderTemplate>
                         </GroupStyle>
                     </ListView.GroupStyle>
-                    <ListView.ItemTemplate>
-                        <DataTemplate x:DataType="planModels:GuideStepItem">
-                            <Grid Background="{x:Bind local:QueryPlanTabView.GetStepRowBackground(IsCurrent, IsHovered), Mode=OneWay}"
-                                  PointerEntered="OnGuideStepPointerEntered"
-                                  PointerExited="OnGuideStepPointerExited"
-                                  Padding="0,6,12,8"
-                                  BorderBrush="#E5E5E5"
-                                  BorderThickness="0,0,0,1">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="28" />
-                                    <ColumnDefinition Width="{x:Bind local:QueryPlanTabView.GetStepIndentWidth(Depth)}" />
-                                    <ColumnDefinition Width="22" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Button Grid.Column="2"
-                                        Width="18"
-                                        Height="18"
-                                        Padding="0"
-                                        VerticalAlignment="Top"
-                                        Background="Transparent"
-                                        BorderThickness="0"
-                                        Click="OnGuideStepToggle"
-                                        Visibility="{x:Bind local:QueryPlanTabView.GetChevronVisibility(HasNestedSteps)}"
-                                        ToolTipService.ToolTip="Show or hide the steps inside this call">
-                                    <FontIcon FontSize="10"
-                                              Glyph="{x:Bind local:QueryPlanTabView.GetChevronGlyph(IsExpanded), Mode=OneWay}" />
-                                </Button>
-                                <FontIcon Grid.Column="0"
-                                          Glyph="&#xE72A;"
-                                          FontSize="12"
-                                          Foreground="#F7630C"
-                                          VerticalAlignment="Top"
-                                          Margin="0,2,0,0"
-                                          Visibility="{x:Bind local:QueryPlanTabView.GetCurrentVisibility(IsCurrent), Mode=OneWay}" />
-                                <StackPanel Grid.Column="3"
-                                            Spacing="4"
-                                            Opacity="{x:Bind local:QueryPlanTabView.GetStepOpacity(IsCurrent), Mode=OneWay}">
-                                    <controls:MarkdownTextBlock Config="{x:Bind Config}"
-                                                                Text="{x:Bind Name}"
-                                                                FontSize="12"
-                                                                FontWeight="Bold"
-                                                                OnLinkClicked="OnGuideLinkClicked">
-                                        <controls:MarkdownTextBlock.Resources>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="FontFamily" Value="Consolas" />
-                                            </Style>
-                                            <Style TargetType="RichTextBlock">
-                                                <Setter Property="IsTextSelectionEnabled" Value="False" />
-                                            </Style>
-                                        </controls:MarkdownTextBlock.Resources>
-                                    </controls:MarkdownTextBlock>
-                                    <controls:MarkdownTextBlock Config="{x:Bind Config}"
-                                                                Text="{x:Bind Description}"
-                                                                FontSize="12"
-                                                                Visibility="{x:Bind local:QueryPlanTabView.GetDescriptionVisibility(HasDescription)}"
-                                                                OnLinkClicked="OnGuideLinkClicked">
-                                        <controls:MarkdownTextBlock.Resources>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="FontFamily" Value="Consolas" />
-                                            </Style>
-                                            <Style TargetType="RichTextBlock">
-                                                <Setter Property="IsTextSelectionEnabled" Value="False" />
-                                            </Style>
-                                        </controls:MarkdownTextBlock.Resources>
-                                    </controls:MarkdownTextBlock>
-                                    <query:PredicateTextBox Text="{x:Bind Predicate}"
-                                                            HasBackground="False"
-                                                            TextPadding="0"
-                                                            IsHitTestVisible="False"
-                                                            Visibility="{x:Bind local:QueryPlanTabView.GetPredicateVisibility(HasPredicate)}" />
-                                    <controls:MarkdownTextBlock Config="{x:Bind Config}"
-                                                                Text="{x:Bind Details}"
-                                                                FontSize="12"
-                                                                Visibility="{x:Bind local:QueryPlanTabView.GetDetailsVisibility(Details, IsDetailsVisible), Mode=OneWay}"
-                                                                OnLinkClicked="OnGuideLinkClicked">
-                                        <controls:MarkdownTextBlock.Resources>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="FontFamily" Value="Consolas" />
-                                            </Style>
-                                            <Style TargetType="RichTextBlock">
-                                                <Setter Property="IsTextSelectionEnabled" Value="False" />
-                                            </Style>
-                                        </controls:MarkdownTextBlock.Resources>
-                                    </controls:MarkdownTextBlock>
-                                </StackPanel>
-                            </Grid>
-                        </DataTemplate>
-                    </ListView.ItemTemplate>
                 </ListView>
+                <Border x:Name="StickyStepHost"
+                        Grid.Row="3"
+                        VerticalAlignment="Top"
+                        Background="#F7F7F7"
+                        Visibility="Collapsed"
+                        Tapped="OnStickyStepTapped">
+                    <ContentPresenter x:Name="StickyStep"
+                                      HorizontalContentAlignment="Stretch"
+                                      ContentTemplate="{StaticResource GuideStepTemplate}" />
+                </Border>
             </Grid>
         </Grid>
 

@@ -281,7 +281,8 @@ public sealed partial class QueryViewModel
                                          depth,
                                          nesting[index].End,
                                          TraceTickTracks.GetStepPredicate(step),
-                                         GetStepPlacement(step))
+                                         GetStepPlacement(step),
+                                         TraceTickTracks.IsStickyStep(step, index, nesting))
             {
                 IsDetailsVisible = IsGuideDetailsVisible
             };

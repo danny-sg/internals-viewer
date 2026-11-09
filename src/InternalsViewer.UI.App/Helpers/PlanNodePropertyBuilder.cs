@@ -2,8 +2,10 @@
 using System.Globalization;
 using System.Text;
 using System.Linq;
+using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.Plans.Joins;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Operators;
 using InternalsViewer.UI.App.Models.Query;
@@ -13,6 +15,8 @@ namespace InternalsViewer.UI.App.Helpers;
 public static class PlanNodePropertyBuilder
 {
     private const string SeekPredicatesName = "Seek Predicates";
+
+    private const int UnboundColumnOrdinal = -1;
 
     public static Dictionary<string, PredicateText> GetValues(PlanNode node, ExpressionCatalog? expressions)
     {
@@ -316,11 +320,11 @@ public static class PlanNodePropertyBuilder
             }
             else if (predicateInfo.IsCorrelatedSeek)
             {
-                var value = string.Join(", ", predicateInfo.CorrelatedSeekColumns.Select(c => $"{c.Column} = {c.OuterReference}"));
+                var text = Expand(GetCorrelatedSeekText(predicateInfo), expressions);
 
-                predicateGroup.Children.Add(new PlanNodeProperty(SeekPredicatesName, value)
+                predicateGroup.Children.Add(new PlanNodeProperty(SeekPredicatesName, text.ToString())
                 {
-                    IsValueMonospace = true,
+                    Predicate = text,
                     Tooltip = "The seek value is bound from the outer row of the join on each execution"
                 });
             }
@@ -650,6 +654,18 @@ public static class PlanNodePropertyBuilder
 
         return new PredicateText([new PredicateToken(PredicateTokenType.Column, text)]);
     }
+
+    private static PredicateText GetCorrelatedSeekText(PredicateInfo predicateInfo)
+    {
+        List<AccessPredicate> comparisons = [.. predicateInfo.CorrelatedSeekColumns.Select(GetCorrelatedComparison)];
+
+        return PredicateText.From(comparisons is [var single] ? single : new AccessPredicate.And([.. comparisons]));
+    }
+
+    private static AccessPredicate GetCorrelatedComparison(CorrelatedSeekColumn column)
+        => new AccessPredicate.Comparison(GetUnboundColumn(column.Column), column.Comparison, GetUnboundColumn(column.OuterReference));
+
+    private static AccessExpression GetUnboundColumn(string name) => new AccessExpression.Column(UnboundColumnOrdinal, name);
 
     private static PredicateText Expand(PredicateText text, ExpressionCatalog? expressions)
     {

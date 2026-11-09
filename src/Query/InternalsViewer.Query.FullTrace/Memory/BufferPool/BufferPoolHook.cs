@@ -274,7 +274,9 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
 
         public ushort[]? Offsets { get; private set; }
 
-        public bool IsComplete => Type != PageType.None && Offsets is not null && Unknown == 0;
+        public bool IsComplete => Type != PageType.None && IsCountKnown && Unknown == 0;
+
+        private bool IsCountKnown { get; set; }
 
         private int Unknown { get; set; }
 
@@ -285,23 +287,25 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
                 Type = (PageType)type;
             }
 
-            if (Offsets is null)
+            if (!IsCountKnown)
             {
                 if (!replay.TryRead(frame + PageHeaderParser.SlotCountOffset, out ushort count) || count > MaximumSlotCount)
                 {
+                    Offsets = ReadLeadingOffsets(replay) ?? Offsets;
+
                     return;
                 }
 
                 Offsets = new ushort[count];
 
                 Unknown = count;
+
+                IsCountKnown = true;
             }
 
             for (var slot = 0; slot < Offsets.Length && Unknown > 0; slot++)
             {
-                if (Offsets[slot] == 0
-                    && replay.TryRead(frame + PageData.Size - (ulong)((slot + 1) * sizeof(ushort)), out ushort offset)
-                    && offset != 0)
+                if (Offsets[slot] == 0 && replay.TryRead(GetSlotAddress(slot), out ushort offset) && offset != 0)
                 {
                     Offsets[slot] = offset;
 
@@ -309,5 +313,19 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
                 }
             }
         }
+
+        private ushort[]? ReadLeadingOffsets(ITraceReplay replay)
+        {
+            var offsets = new List<ushort>();
+
+            while (offsets.Count < MaximumSlotCount && replay.TryRead(GetSlotAddress(offsets.Count), out ushort offset) && offset != 0)
+            {
+                offsets.Add(offset);
+            }
+
+            return offsets.Count > 0 ? [.. offsets] : null;
+        }
+
+        private ulong GetSlotAddress(int slot) => frame + PageData.Size - (ulong)((slot + 1) * sizeof(ushort));
     }
 }

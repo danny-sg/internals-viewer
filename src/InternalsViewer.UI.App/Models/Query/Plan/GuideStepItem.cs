@@ -19,7 +19,8 @@ public sealed partial class GuideStepItem(int index,
                                           int depth,
                                           int end,
                                           PredicateText? predicate = null,
-                                          PlanStepPlacement placement = PlanStepPlacement.Operator)
+                                          PlanStepPlacement placement = PlanStepPlacement.Operator,
+                                          bool isSticky = false)
     : ObservableObject
 {
     private const double CodeFontSize = 12;
@@ -35,6 +36,9 @@ public sealed partial class GuideStepItem(int index,
 
     [ObservableProperty]
     private bool _isHovered;
+
+    [ObservableProperty]
+    private bool _isSticking;
 
     public int Index => index;
 
@@ -59,6 +63,8 @@ public sealed partial class GuideStepItem(int index,
     public PredicateText? Predicate => predicate;
 
     public PlanStepPlacement Placement => placement;
+
+    public bool IsSticky => isSticky;
 
     public bool HasPredicate => predicate is { IsEmpty: false };
 

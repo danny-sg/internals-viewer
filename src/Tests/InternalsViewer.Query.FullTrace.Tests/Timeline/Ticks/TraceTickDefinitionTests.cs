@@ -218,6 +218,17 @@ public class TraceTickDefinitionTests
     }
 
     [Fact]
+    public void A_Build_Row_Is_Marked_When_The_Build_Inserts_It()
+    {
+        var rule = TraceTickDefinition.GetPredefined().Single(d => d is { Name: "Hash Table", Label: "Insert" });
+
+        var condition = Assert.Single(rule.Conditions);
+
+        Assert.Equal(("CHashWorkfilePartitionGroup::Insert", TraceConditionTarget.CalledDirectlyBy, "CQScanHash::ConsumeBuild"),
+                     (rule.Function, condition.Target, condition.Value));
+    }
+
+    [Fact]
     public void The_Hash_Table_Build_Is_A_Phase()
     {
         var build = TraceTickDefinition.GetPredefined().Single(d => d is { Name: "Hash Table", Label: "Build" });

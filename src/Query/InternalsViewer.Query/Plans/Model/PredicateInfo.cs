@@ -58,4 +58,10 @@ public sealed class PredicateInfo
     public ImmutableArray<CorrelatedSeekColumn> CorrelatedSeekColumns { get; init; } = [];
 
     public bool IsCorrelatedSeek => !CorrelatedSeekColumns.IsDefaultOrEmpty;
+
+    public bool IsCorrelatedEquality
+        => !HasSeekBounds
+           && IsCorrelatedSeek
+           && CorrelatedSeekColumns.All(c => c.IsEquality)
+           && CorrelatedSeekColumns.DistinctBy(c => c.Column).Count() == CorrelatedSeekColumns.Length;
 }

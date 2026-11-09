@@ -26,6 +26,8 @@ public class TraceSeekReaderTests
 
     private const ulong GetFunction = 0x3000;
 
+    private const ulong RowLookupFunction = 0x4000;
+
     private const ulong PageManager = 0x1F4_0000_0100;
 
     private const ulong BufferPool = 0x1F4_0000_0200;
@@ -92,6 +94,78 @@ public class TraceSeekReaderTests
     [Fact]
     public void A_Seek_And_Its_Descents_Belong_To_The_Operator_Call_Around_Them()
         => Assert.All(Build().GetAllTicks(), t => Assert.Same(Range, t.Operator));
+
+    [Fact]
+    public void A_Seek_Covers_The_Row_Lookup_Around_Its_Descent()
+    {
+        var seek = Assert.Single(BuildRowLookup().GetAllTicks(), t => t.Value == (byte)TraceSeekMarkType.Seek);
+
+        Assert.Equal((At(15), At(45)), (seek.Span.From.Position, seek.Span.To.Position));
+    }
+
+    [Fact]
+    public void The_Pages_Of_A_Row_Lookup_Still_Come_From_The_Descent()
+    {
+        var levels = BuildRowLookup().GetAllTicks().Where(t => t.Value != (byte)TraceSeekMarkType.Seek).Select(t => t.Span.From.Position);
+
+        Assert.Equal([At(22)], levels);
+    }
+
+    private static TraceTickSeries BuildRowLookup()
+    {
+        CallNode[] callNodes =
+        [
+            new(-1, Helper, RangeIterator, 1),
+            new(0, RowLookupFunction, 0, 1),
+            new(1, GetPageWithKeyFunction, PageManager, 1),
+            new(2, GetFunction, BufferPool, 2)
+        ];
+
+        var builder = new TraceTimeline.Builder();
+
+        builder.Add([Span(0, 10, 60), Span(1, 15, 45), Span(2, 20, 40), Span(3, 22, 23), Span(3, 42, 43, 1)]);
+
+        var timeline = builder.Build(callNodes);
+
+        var tree = new CallTree();
+
+        var range = tree.AddCall(tree.Root, Frame(Helper, RangeIterator, "CQScanRangeNew", "GetRow"), 1);
+
+        var lookup = tree.AddCall(range, Frame(RowLookupFunction, 0, string.Empty, "GetRowForKeyValue"), 1);
+
+        var seek = tree.AddCall(lookup, Frame(GetPageWithKeyFunction, PageManager, "IndexPageManager", "GetPageWithKey"), 1);
+
+        var get = tree.AddCall(seek, Frame(GetFunction, BufferPool, "BPool", "Get"), 2);
+
+        CallTreeNode[] nodes = [range, lookup, seek, get];
+
+        timeline.MapNodes(nodes);
+
+        var store = new TraceCallStore.Builder();
+
+        store.Add(Helper, RangeIterator, Chunk(Call(10, 60, 0)), 1);
+
+        store.Add(RowLookupFunction, 0, Chunk(Call(15, 45, 1)), 1);
+
+        store.Add(GetPageWithKeyFunction, PageManager, Chunk(Call(20, 40, 2)), 1);
+
+        store.Add(GetFunction, BufferPool, Chunk(Call(22, 23, 3), Call(42, 43, 3)), 2);
+
+        var calls = store.Build();
+
+        calls.MapNodes(nodes);
+
+        timeline.SetCalls(calls);
+
+        var lifetime = new TraceOperatorLifetime(Thread, Range, 0, [Whole()], MemoryUsageCurve.Empty, timeline.Scale)
+        {
+            Instances = [RangeIterator]
+        };
+
+        var lifetimes = new TraceOperatorLifetimeList([lifetime]);
+
+        return TraceSeekReader.Build(timeline, calls, lifetimes, EnclosingOperatorCallIndex.Build(calls, lifetimes.OperatorsByInstance));
+    }
 
     private static TraceTickSeries Build()
     {

@@ -16,6 +16,8 @@ internal static class TraceSeekReader
 
     private const string GetPageWithKeyMethod = "GetPageWithKey";
 
+    private const string RowLookupMethod = "GetRowForKeyValue";
+
     public static TraceTickSeries Build(TraceTimeline timeline,
                                         TraceCallStore calls,
                                         TraceOperatorLifetimeList lifetimes,
@@ -48,7 +50,7 @@ internal static class TraceSeekReader
 
                 if (isSeek)
                 {
-                    GetThreadSeeks(seeks, location.Thread.ThreadId).Add(new Seek(location, []));
+                    GetThreadSeeks(seeks, location.Thread.ThreadId).Add(new Seek(location, GetTickLocation(timeline, calls, location), []));
                 }
                 else
                 {
@@ -74,7 +76,7 @@ internal static class TraceSeekReader
 
         foreach (var seek in seeks.Values.SelectMany(s => s))
         {
-            sources.Add(TraceTickSource.FromCall(seek.Location, (byte)TraceSeekMarkType.Seek));
+            sources.Add(TraceTickSource.FromCall(seek.TickLocation, (byte)TraceSeekMarkType.Seek));
 
             for (var index = 0; index < seek.Fetches.Count; index++)
             {
@@ -86,6 +88,23 @@ internal static class TraceSeekReader
 
         return TraceTickSeries.FromSources(timeline, sources, lifetimes, enclosing);
     }
+
+    private static TraceSpanLocation GetTickLocation(TraceTimeline timeline, TraceCallStore calls, TraceSpanLocation descent)
+    {
+        if (descent.Node.Parent?.Frame is not { } caller
+            || !IsRowLookup(caller)
+            || calls.GetCallList(caller.Address, caller.InstanceAddress) is not { } list)
+        {
+            return descent;
+        }
+
+        var index = list.IndexOfEnclosing(descent.From.Position, descent.Thread.ThreadId);
+
+        return index >= 0 && timeline.FindCall(list.FunctionAddress, list.InstanceAddress, index) is { } location ? location : descent;
+    }
+
+    private static bool IsRowLookup(CallFrame frame)
+        => frame is { Function.MethodName: RowLookupMethod } && frame.Module.Name.Equals(Module, StringComparison.OrdinalIgnoreCase);
 
     private static bool IsSeek(CallFrame frame)
         => frame is { Function: { ClassName: PageManagerClass, MethodName: GetPageWithKeyMethod } }
@@ -118,5 +137,5 @@ internal static class TraceSeekReader
     private static TraceSeekMarkType GetLevel(int index, int count)
         => index == 0 ? TraceSeekMarkType.Root : index == count - 1 ? TraceSeekMarkType.Leaf : TraceSeekMarkType.Intermediate;
 
-    private sealed record Seek(TraceSpanLocation Location, List<TraceSpanLocation> Fetches);
+    private sealed record Seek(TraceSpanLocation Location, TraceSpanLocation TickLocation, List<TraceSpanLocation> Fetches);
 }

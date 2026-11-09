@@ -7,6 +7,7 @@ using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
+using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -65,6 +66,8 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
     internal TraceTickSeries SeekRanges => field ??= TraceSeekRangeReader.Build(Timeline, CallStore, Lifetimes, EnclosingCalls);
 
+    internal TraceTickSeries SeekKeys => field ??= TraceSeekRangeReader.BuildKeys(Timeline, CallStore, Lifetimes, EnclosingCalls);
+
     internal EnclosingOperatorCallIndex PullerCalls
         => field ??= EnclosingOperatorCallIndex.Build(CallStore,
                                                       Lifetimes.OperatorsByInstance
@@ -88,6 +91,9 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
     public int GetSeekRange(TraceTick tick)
         => TraceSeekRangeReader.GetRange(SeekRanges, CallStore, tick.Operator, tick.Thread, tick.Span.From.Position);
+
+    public List<VariantLocator> GetSeekKeys(TraceTick tick)
+        => TraceSeekRangeReader.GetKeys(SeekKeys, CallStore, tick.Operator, tick.Thread, tick.Span.From.Position);
 
     internal TraceResult WithPageAccesses()
     {

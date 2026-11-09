@@ -430,7 +430,7 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Seek",
-    "Description": "{OperatorName} seek range in b-tree <Predicate>{ExecutionPlan.CurrentRange}</Predicate>",
+    "Description": "{OperatorName} seek range in B-Tree <Predicate>{ExecutionPlan.CurrentRange}</Predicate>",
     "Source": "Seek",
     "Value": 0
   },
@@ -443,7 +443,7 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Root Page",
-    "Description": "Read Index Root Page {Page} <Predicate>{ExecutionPlan.CurrentRange}</Predicate>",
+    "Description": "Read Index Root Page {Page}",
     "PlanPart": "Root Node",
     "PlanPartColour": "#F7630C",
     "Source": "Seek",
@@ -458,7 +458,7 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Intermediate Page",
-    "Description": "Read Index Intermediate Page {Page} <Predicate>{ExecutionPlan.CurrentRange}</Predicate>",
+    "Description": "Read Index Intermediate Page {Page}",
     "PlanPart": "Intermediate Node",
     "PlanPartColour": "#F7630C",
     "Source": "Seek",
@@ -473,7 +473,7 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Leaf Page",
-    "Description": "Read Index Leaf Page {Page} <Predicate>{ExecutionPlan.CurrentRange}</Predicate>",
+    "Description": "Read Index Leaf Page {Page}",
     "PlanPart": "Leaf Node",
     "PlanPartColour": "#F7630C",
     "Source": "Seek",
@@ -494,6 +494,28 @@
     "Description": "{OperatorName} Consume build input into hash table",
     "ReturnDescription": "{OperatorName} has built its hash table, so it can start probing it",
     "IsPhase": true
+  },
+  {
+    "Name": "Hash Table",
+    "Module": "sqlmin",
+    "Function": "CHashWorkfilePartitionGroup::Insert",
+    "Colour": "#C239B3",
+    "PlanPart": "Hash Match.Bucket",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [
+      {
+        "Target": "CalledDirectlyBy",
+        "Argument": null,
+        "Type": "",
+        "Operator": "Equal",
+        "Value": "CQScanHash::ConsumeBuild"
+      }
+    ],
+    "Label": "Insert",
+    "Title": "Hash Insert",
+    "Description": "Insert build row into hash table"
   },
   {
     "Name": "Hash Table",

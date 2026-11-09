@@ -1,16 +1,21 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Data;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
+using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Text;
+using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
+using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Symbols.Categories;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
@@ -178,6 +183,8 @@ public static partial class TraceTickTracks
                 open[step.Tick.Thread] = calls;
             }
 
+            RemoveEndedSeeks(steps, calls, step);
+
             var isNesting = IsNestingStep(step);
 
             if (step.IsReturn && isNesting && calls.FindLastIndex(c => IsSameTick(steps[c], step)) is >= 0 and var position)
@@ -193,7 +200,14 @@ public static partial class TraceTickTracks
                 continue;
             }
 
-            nesting[index] = new TraceStepNesting(calls.Count > 0 ? calls[^1] : -1, index);
+            var parent = calls.Count > 0 ? calls[^1] : -1;
+
+            nesting[index] = new TraceStepNesting(parent, index);
+
+            if (parent >= 0)
+            {
+                nesting[parent] = nesting[parent] with { End = index };
+            }
 
             if (!step.IsReturn && isNesting)
             {
@@ -203,6 +217,9 @@ public static partial class TraceTickTracks
 
         return nesting;
     }
+
+    public static bool IsStickyStep(TraceTrackStep step, int index, TraceStepNesting[] nesting)
+        => step.Rule.Source == TraceTickSourceType.Seek && nesting[index].End > index;
 
     public static int GetStepIndex(List<TraceTrackStep> steps, TracePosition? current, bool forward)
     {
@@ -279,6 +296,32 @@ public static partial class TraceTickTracks
         return tokens.Count > 0 ? new PredicateText(tokens.ToImmutable()) : null;
     }
 
+    public static PredicateText? GetSeekKeyText(List<(string Column, SqlDbType? Type)> columns, List<VariantLocator> keys)
+    {
+        if (keys.Count == 0 || keys.Count != columns.Count)
+        {
+            return null;
+        }
+
+        var values = ImmutableArray.CreateBuilder<AccessValue>(keys.Count);
+
+        for (var index = 0; index < keys.Count; index++)
+        {
+            var (column, type) = columns[index];
+
+            if (keys[index].Status != VariantStatus.Value
+                || type is not { } dataType
+                || GetInteger(dataType, keys[index].Value) is not { } value)
+            {
+                return null;
+            }
+
+            values.Add(AccessValue.FromInteger(dataType, value).WithColumnName(column));
+        }
+
+        return PredicateText.From(SeekBounds.Equality(new AccessKey(values.ToImmutable())));
+    }
+
     public static string GetStepDetails(TraceTrackStep step)
         => step.IsReturn ? string.Empty : GetText(step.Track, step.Tick, step.Rule.Details) ?? string.Empty;
 
@@ -349,7 +392,21 @@ public static partial class TraceTickTracks
     }
 
     private static bool IsNestingStep(TraceTrackStep step)
-        => step.Rule.Source != TraceTickSourceType.Open && !string.IsNullOrEmpty(step.Rule.ReturnDescription);
+        => IsSeekSpan(step)
+           || (step.Rule.Source != TraceTickSourceType.Open && !string.IsNullOrEmpty(step.Rule.ReturnDescription));
+
+    private static bool IsSeekSpan(TraceTrackStep step)
+        => step.Rule.Source == TraceTickSourceType.Seek && step.Tick.Span.To.Position > step.Tick.Span.From.Position;
+
+    private static void RemoveEndedSeeks(List<TraceTrackStep> steps, List<int> calls, TraceTrackStep step)
+    {
+        while (calls.Count > 0
+               && steps[calls[^1]].Rule.Source == TraceTickSourceType.Seek
+               && steps[calls[^1]].Tick.Span.To.Position < step.Point.Position)
+        {
+            calls.RemoveAt(calls.Count - 1);
+        }
+    }
 
     private static bool IsSameTick(TraceTrackStep left, TraceTrackStep right)
         => ReferenceEquals(left.Track, right.Track) && left.Tick.Span.From.Position == right.Tick.Span.From.Position;
@@ -378,6 +435,15 @@ public static partial class TraceTickTracks
                 => GetSlot(trace, tick)?.ToString(CultureInfo.CurrentCulture) ?? UnknownValue,
             _ => null
         };
+
+    private static long? GetInteger(SqlDbType type, ulong value) => type switch
+    {
+        SqlDbType.TinyInt => (byte)value,
+        SqlDbType.SmallInt => (short)value,
+        SqlDbType.Int => (int)value,
+        SqlDbType.BigInt => (long)value,
+        _ => null
+    };
 
     private static bool IsPlaceholder(string name, string placeholder) => name.Equals(placeholder, StringComparison.OrdinalIgnoreCase);
 

@@ -42,6 +42,8 @@ public sealed class ExecutionPlanControl : Canvas
     private const double CurrentArrowSize = 20;
     private const double CurrentArrowThickness = 3.5;
     private const double CurrentArrowGap = 1;
+    private const double CurrentArrowMoveSeconds = 0.3;
+    private const double CurrentArrowOvershoot = 0.3;
     private const double CallArrowRotation = -90;
     private const double ReturnArrowRotation = 90;
     private const double CalculatorWidth = 14;
@@ -252,6 +254,8 @@ public sealed class ExecutionPlanControl : Canvas
     private Polyline CurrentArrow { get; } = CreateCurrentArrow();
 
     private CompositeTransform CurrentArrowTransform { get; } = new() { CenterX = CurrentArrowSize / 2, CenterY = CurrentArrowSize / 2 };
+
+    private Storyboard? CurrentArrowMove { get; set; }
 
     private DispatcherQueueTimer RenderSettleTimer => field ??= CreateRenderSettleTimer();
 
@@ -1201,14 +1205,24 @@ public sealed class ExecutionPlanControl : Canvas
         return source;
     }
 
-    private void UpdateCurrentArrow()
+    private void UpdateCurrentArrow(bool isAnimated = false)
     {
         if (CurrentStep is not { } step || !NodeControls.TryGetValue(step.Node, out var control))
         {
+            CurrentArrowMove?.Stop();
+
             CurrentArrow.Visibility = Visibility.Collapsed;
 
             return;
         }
+
+        var isMoving = isAnimated && CurrentArrow.Visibility == Visibility.Visible;
+
+        var shownLeft = GetLeft(CurrentArrow) + CurrentArrowTransform.TranslateX;
+
+        var shownTop = GetTop(CurrentArrow) + CurrentArrowTransform.TranslateY;
+
+        var shownRotation = CurrentArrowTransform.Rotation;
 
         var scale = Math.Min(1 / Zoom, (CanvasMargin + PlanNodeControl.IconTop - CurrentArrowGap) / CurrentArrowSize);
 
@@ -1220,17 +1234,63 @@ public sealed class ExecutionPlanControl : Canvas
 
         var lineRotation = step.Placement == PlanStepPlacement.Call ? CallArrowRotation : ReturnArrowRotation;
 
-        CurrentArrowTransform.Rotation = line is null ? 0 : lineRotation;
+        var rotation = line is null ? 0 : lineRotation;
 
         var aboveIcon = GetTop(control) + PlanNodeControl.IconTop - CurrentArrowGap - CurrentArrowSize * scale / 2;
 
         var centreX = line?.MiddleX ?? GetLeft(control) + BaseNodeWidth / 2;
 
-        SetLeft(CurrentArrow, centreX - CurrentArrowSize / 2);
+        var left = centreX - CurrentArrowSize / 2;
 
-        SetTop(CurrentArrow, aboveIcon - CurrentArrowSize / 2);
+        var top = aboveIcon - CurrentArrowSize / 2;
+
+        CurrentArrowTransform.Rotation = rotation;
+
+        SetLeft(CurrentArrow, left);
+
+        SetTop(CurrentArrow, top);
 
         CurrentArrow.Visibility = Visibility.Visible;
+
+        if (isMoving)
+        {
+            AnimateCurrentArrow(shownLeft - left, shownTop - top, shownRotation, rotation);
+        }
+    }
+
+    private void AnimateCurrentArrow(double offsetX, double offsetY, double fromRotation, double rotation)
+    {
+        CurrentArrowMove?.Stop();
+
+        var move = new Storyboard();
+
+        move.Children.Add(CreateCurrentArrowAnimation(nameof(CompositeTransform.TranslateX), offsetX, 0));
+
+        move.Children.Add(CreateCurrentArrowAnimation(nameof(CompositeTransform.TranslateY), offsetY, 0));
+
+        move.Children.Add(CreateCurrentArrowAnimation(nameof(CompositeTransform.Rotation), fromRotation, rotation));
+
+        CurrentArrowMove = move;
+
+        move.Begin();
+    }
+
+    private DoubleAnimation CreateCurrentArrowAnimation(string property, double from, double to)
+    {
+        var animation = new DoubleAnimation
+        {
+            From = from,
+            To = to,
+            Duration = new Duration(TimeSpan.FromSeconds(CurrentArrowMoveSeconds)),
+            EasingFunction = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = CurrentArrowOvershoot },
+            FillBehavior = FillBehavior.Stop
+        };
+
+        Storyboard.SetTarget(animation, CurrentArrowTransform);
+
+        Storyboard.SetTargetProperty(animation, property);
+
+        return animation;
     }
 
     private void UpdateActiveHighlights()
@@ -1485,7 +1545,7 @@ public sealed class ExecutionPlanControl : Canvas
     }
 
     private static void OnCurrentStepChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((ExecutionPlanControl)d).UpdateCurrentArrow();
+        => ((ExecutionPlanControl)d).UpdateCurrentArrow(isAnimated: true);
 
     private static void OnActiveNodesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {

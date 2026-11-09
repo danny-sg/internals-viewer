@@ -1,8 +1,11 @@
-﻿using InternalsViewer.Execution.AccessPaths.Text;
+﻿using System.Data;
+using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
+using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
@@ -129,6 +132,85 @@ public class TraceTickTracksTests
     }
 
     [Fact]
+    public void The_Pages_Of_A_Seek_Nest_Under_It_Until_The_Seek_Ends()
+    {
+        var seek = Rule with { Source = TraceTickSourceType.Seek };
+
+        List<TraceTrackStep> steps = [Step(1, 4, seek), Step(2, 2, seek), Step(3, 3, seek), Step(5, 5, Rule)];
+
+        Assert.Equal([new TraceStepNesting(-1, 2),
+                      new TraceStepNesting(0, 1),
+                      new TraceStepNesting(0, 2),
+                      new TraceStepNesting(-1, 3)],
+                     TraceTickTracks.GetStepNesting(steps));
+    }
+
+    [Fact]
+    public void A_Step_At_The_Same_Point_As_A_Page_Nests_Under_The_Seek_Not_The_Page()
+    {
+        var seek = Rule with { Source = TraceTickSourceType.Seek };
+
+        List<TraceTrackStep> steps = [Step(1, 9, seek), Step(2, 2, seek), Step(2, 2, Rule)];
+
+        Assert.Equal([-1, 0, 0], TraceTickTracks.GetStepNesting(steps).Select(n => n.Parent));
+    }
+
+    [Fact]
+    public void Only_A_Seek_With_Pages_Under_It_Sticks()
+    {
+        var seek = Rule with { Source = TraceTickSourceType.Seek };
+
+        List<TraceTrackStep> steps = [Step(1, 4, seek), Step(2, 2, seek), Step(5, 5, Rule)];
+
+        var nesting = TraceTickTracks.GetStepNesting(steps);
+
+        Assert.Equal([true, false, false], steps.Select((s, index) => TraceTickTracks.IsStickyStep(s, index, nesting)));
+    }
+
+    [Theory]
+    [InlineData(SqlDbType.Int, 0xDEAD_0000_0000_0005UL, "Id = 5")]
+    [InlineData(SqlDbType.Int, 0xFFFF_FFFFUL, "Id = -1")]
+    [InlineData(SqlDbType.BigInt, 5UL, "Id = 5")]
+    [InlineData(SqlDbType.SmallInt, 0xFFFFUL, "Id = -1")]
+    [InlineData(SqlDbType.TinyInt, 0xFFUL, "Id = 255")]
+    public void An_Integer_Key_Is_Read_At_The_Width_Of_Its_Column(SqlDbType type, ulong value, string expected)
+        => Assert.Equal(expected, KeyText([("Id", type)], [Key(VariantStatus.Value, value)]));
+
+    [Fact]
+    public void A_Compound_Key_Is_Written_In_Key_Order()
+    {
+        var text = KeyText([("OrderId", SqlDbType.Int), ("LineId", SqlDbType.SmallInt)],
+                           [Key(VariantStatus.Value, 1), Key(VariantStatus.Value, 2)]);
+
+        Assert.Equal("(OrderId, LineId) = (1, 2)", text);
+    }
+
+    [Fact]
+    public void A_Different_Number_Of_Values_And_Columns_Has_No_Value_Text()
+        => Assert.Null(KeyText([("OrderId", SqlDbType.Int), ("LineId", SqlDbType.SmallInt)], [Key(VariantStatus.Value, 1)]));
+
+    [Fact]
+    public void One_Column_That_Is_Not_An_Integer_Leaves_The_Whole_Key_Without_Value_Text()
+    {
+        var text = KeyText([("OrderId", SqlDbType.Int), ("Code", SqlDbType.VarChar)],
+                           [Key(VariantStatus.Value, 1), Key(VariantStatus.Value, 2)]);
+
+        Assert.Null(text);
+    }
+
+    [Fact]
+    public void A_Key_That_Is_Not_An_Integer_Has_No_Value_Text()
+        => Assert.Null(KeyText([("Id", SqlDbType.VarChar)], [Key(VariantStatus.Value, 5)]));
+
+    [Fact]
+    public void A_Key_Of_Unknown_Type_Has_No_Value_Text()
+        => Assert.Null(KeyText([("Id", null)], [Key(VariantStatus.Value, 5)]));
+
+    [Fact]
+    public void A_Null_Key_Has_No_Value_Text()
+        => Assert.Null(KeyText([("Id", SqlDbType.Int)], [Key(VariantStatus.Null, 0)]));
+
+    [Fact]
     public void An_Open_Tick_Does_Not_Hold_Other_Steps_Inside_It()
     {
         var open = PhaseRule with { Source = TraceTickSourceType.Open };
@@ -188,6 +270,11 @@ public class TraceTickTracksTests
 
         Assert.Equal("Evaluate", TraceTickTracks.GetText(track, tick, "Evaluate <Predicate>{ExecutionPlan.Predicate}</Predicate>"));
     }
+
+    private static VariantLocator Key(VariantStatus status, ulong value) => new(VariantLocator.Create(1, status, value, 4));
+
+    private static string? KeyText(List<(string Column, SqlDbType? Type)> columns, List<VariantLocator> keys)
+        => TraceTickTracks.GetSeekKeyText(columns, keys)?.ToString();
 
     private static TraceTrackStep PredicateStep(string description)
     {

@@ -118,12 +118,18 @@ internal sealed class SeekPredicateParser(ColumnOrdinalResolver? resolveOrdinal 
 
         var values = ImmutableArray.CreateBuilder<AccessValue>();
 
+        var isConstant = true;
+
+        var comparison = ShowplanOperators.ParseComparison(GetScanType(boundary)) ?? ComparisonOperator.Equal;
+
         for (var index = 0; index < expressions.Count; index++)
         {
             var parsed = Expressions.Parse(expressions[index]);
 
             if (parsed is not AccessExpression.Constant constant)
             {
+                isConstant = false;
+
                 if (parsed is AccessExpression.Column
                     && Expressions.ParseColumnReference(expressions[index]) is { } outerColumn)
                 {
@@ -131,10 +137,11 @@ internal sealed class SeekPredicateParser(ColumnOrdinalResolver? resolveOrdinal 
 
                     _correlatedColumns.Add(new CorrelatedSeekColumn(TrimName(seekColumn),
                                                                     TrimName(outerColumn.Table),
-                                                                    TrimName(outerColumn.Column)));
+                                                                    TrimName(outerColumn.Column),
+                                                                    comparison));
                 }
 
-                return [];
+                continue;
             }
 
             var columnName = columnNames is not null && index < columnNames.Count ? columnNames[index] : null;
@@ -142,7 +149,7 @@ internal sealed class SeekPredicateParser(ColumnOrdinalResolver? resolveOrdinal 
             values.Add(constant.Value.WithColumnName(columnName));
         }
 
-        return values.ToImmutable();
+        return isConstant ? values.ToImmutable() : [];
     }
 
     private static string TrimName(string? name)
