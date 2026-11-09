@@ -22,7 +22,7 @@ public sealed partial class PageSlotListControl : UserControl
         DependencyProperty.Register(nameof(SelectedSlot),
                                     typeof(PageSlot),
                                     typeof(PageSlotListControl),
-                                    new PropertyMetadata(null));
+                                    new PropertyMetadata(null, OnSelectedSlotChanged));
 
     public PageSlot? SelectedSlot
     {
@@ -42,6 +42,14 @@ public sealed partial class PageSlotListControl : UserControl
             SlotListView.SelectedItem = null;
 
             SelectedSlot = null;
+        }
+    }
+
+    private static void OnSelectedSlotChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (e.NewValue is PageSlot slot)
+        {
+            ((PageSlotListControl)d).SlotListView.ScrollIntoView(slot);
         }
     }
 }

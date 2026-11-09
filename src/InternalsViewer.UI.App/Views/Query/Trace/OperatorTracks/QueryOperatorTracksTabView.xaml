@@ -25,6 +25,12 @@
                     Background="Transparent">
             <AppBarButton Label="Add" Icon="Add" Click="OnAddClick"/>
 
+            <AppBarButton Label="Add Watch" Click="OnAddWatchClick">
+                <AppBarButton.Icon>
+                    <FontIcon Glyph="&#xE7B3;"/>
+                </AppBarButton.Icon>
+            </AppBarButton>
+
             <AppBarButton Label="Import" Command="{x:Bind ViewModel.OperatorTracks.ImportCommand, Mode=OneWay}">
                 <AppBarButton.Icon>
                     <FontIcon Glyph="&#xE8B5;"/>

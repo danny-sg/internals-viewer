@@ -10,12 +10,14 @@ using InternalsViewer.Query.Plans.Operators;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Plan;
+using InternalsViewer.UI.App.Services.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media.Animation;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
 using Microsoft.UI;
@@ -36,6 +38,12 @@ public sealed class ExecutionPlanControl : Canvas
     private const double LanePitch = IteratorLineOffset * 2 + 10;
     private const double IteratorHeadHalfWidth = 4;
     private const double IdleIteratorOpacity = 25;
+    private const double CurrentArrowSize = 20;
+    private const double CurrentArrowThickness = 3.5;
+    private const double CurrentArrowGap = 1;
+    private const double CalculatorWidth = 14;
+    private const double CalculatorHeight = 17;
+    private const double CalculatorOffset = 12;
 
     private readonly Dictionary<PlanNode, IReadOnlyList<PlanNodeAnnotation>> _annotationsByNode = [];
 
@@ -74,6 +82,10 @@ public sealed class ExecutionPlanControl : Canvas
     private static readonly Color BranchLabelColor = Color.FromArgb(255, 160, 160, 160);
 
     private static readonly Color IteratorColour = Color.FromArgb(255, 0, 176, 80);
+
+    private static readonly Color CurrentArrowColour = Color.FromArgb(255, 0xF7, 0x63, 0x0C);
+
+    private static readonly Point[] CurrentArrowPoints = [new(10, 2), new(10, 17), new(3, 10), new(10, 17), new(17, 10)];
 
 
     public static readonly DependencyProperty PlanProperty =
@@ -136,6 +148,16 @@ public sealed class ExecutionPlanControl : Canvas
         set => SetValue(IsFullTraceProperty, value);
     }
 
+    public static readonly DependencyProperty CurrentNodeProperty =
+        DependencyProperty.Register(nameof(CurrentNode), typeof(PlanNode), typeof(ExecutionPlanControl),
+            new PropertyMetadata(null, OnCurrentNodeChanged));
+
+    public PlanNode? CurrentNode
+    {
+        get => (PlanNode?)GetValue(CurrentNodeProperty);
+        set => SetValue(CurrentNodeProperty, value);
+    }
+
     public static readonly DependencyProperty EventsProperty =
         DependencyProperty.Register(nameof(Events), typeof(IReadOnlyList<EngineEvent>), typeof(ExecutionPlanControl),
             new PropertyMetadata(null, OnEventsChanged));
@@ -177,6 +199,8 @@ public sealed class ExecutionPlanControl : Canvas
     public ExecutionPlanControl()
     {
         Background = new SolidColorBrush(Colors.Transparent);
+
+        CurrentArrow.RenderTransform = CurrentArrowScale;
 
         PointerPressed += OnPointerPressed;
         PointerMoved += OnPointerMoved;
@@ -220,13 +244,19 @@ public sealed class ExecutionPlanControl : Canvas
 
     private XamlRoot? ScaleRoot { get; set; }
 
+    private Polyline CurrentArrow { get; } = CreateCurrentArrow();
+
+    private ScaleTransform CurrentArrowScale { get; } = new();
+
+    private Dictionary<PlanNode, EvaluationCalculator> Calculators { get; } = [];
+
     public void ShowActivity(PlanActivity activity)
     {
         Activity = activity;
 
         foreach (var (node, connector) in IteratorConnectors)
         {
-            if (activity.Requested.Contains(node))
+            if (IsOnPath(node, activity.Requested))
             {
                 connector.Request.Light();
             }
@@ -235,7 +265,7 @@ public sealed class ExecutionPlanControl : Canvas
                 connector.Request.Fade();
             }
 
-            if (activity.Returned.Contains(node))
+            if (IsOnPath(node, activity.Returned))
             {
                 connector.Response.Light();
             }
@@ -251,10 +281,14 @@ public sealed class ExecutionPlanControl : Canvas
 
             control.ShowCounters(activity.Counters.Where(c => ReferenceEquals(c.Node, node)));
 
-            control.SetGreyed(IsFullTrace && activity.HasActivePart && !node.IsStatement);
+            control.SetGreyed(IsGreyed(node, activity));
 
             control.ShowPage(activity.Pages.FirstOrDefault(p => ReferenceEquals(p.Node, node)));
+
+            control.ShowWatches(activity.Watches.Where(w => ReferenceEquals(w.Node, node)));
         }
+
+        ShowEvaluations(activity);
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -318,6 +352,15 @@ public sealed class ExecutionPlanControl : Canvas
         {
             control.SetRenderScale(scale, zoom);
         }
+
+        foreach (var calculator in Calculators.Values)
+        {
+            calculator.Idle.Source = CreateCalculatorSource(isInactive: true);
+
+            calculator.Lit.Source = CreateCalculatorSource(isInactive: false);
+        }
+
+        UpdateCurrentArrow();
     }
 
     private void ClearIteratorConnectors()
@@ -330,6 +373,13 @@ public sealed class ExecutionPlanControl : Canvas
         }
 
         IteratorConnectors.Clear();
+
+        foreach (var calculator in Calculators.Values)
+        {
+            calculator.Highlight.Stop();
+        }
+
+        Calculators.Clear();
     }
 
     private void Rebuild()
@@ -370,13 +420,15 @@ public sealed class ExecutionPlanControl : Canvas
 
         foreach (var (node, point) in positions)
         {
-            for (var lane = 0; lane < node.Children.Count; lane++)
+            var children = GetChildren(node);
+
+            for (var lane = 0; lane < children.Count; lane++)
             {
-                var child = node.Children[lane];
+                var child = children[lane];
 
                 var (connector, arrow) = IsFullTrace
                     ? DrawIteratorConnector(point, positions[child], node, child, lane)
-                    : DrawConnector(point, positions[child], RelativeCost(child, totalCost), node, child);
+                    : DrawConnector(point, positions[child], RelativeCost(GetOperator(child), totalCost), node, child);
 
                 _connectorByProducer[child] = connector;
                 _arrowByProducer[child] = arrow;
@@ -396,6 +448,12 @@ public sealed class ExecutionPlanControl : Canvas
             AddNode(node, point, RelativeCost(node, totalCost));
         }
 
+        AddCalculators();
+
+        Children.Add(CurrentArrow);
+
+        UpdateCurrentArrow();
+
         var maxX = positions.Max(p => p.Value.X + WidthOf(p.Key));
         var maxY = positions.Values.Max(p => p.Y);
 
@@ -406,9 +464,9 @@ public sealed class ExecutionPlanControl : Canvas
 
         UpdateActiveHighlights();
 
-        foreach (var node in Activity.Requested)
+        foreach (var (node, connector) in IteratorConnectors)
         {
-            if (IteratorConnectors.TryGetValue(node, out var connector))
+            if (IsOnPath(node, Activity.Requested))
             {
                 connector.Request.Light();
             }
@@ -420,12 +478,16 @@ public sealed class ExecutionPlanControl : Canvas
 
             control.ShowCounters(Activity.Counters.Where(c => ReferenceEquals(c.Node, node)));
 
-            control.SetGreyed(IsFullTrace && Activity.HasActivePart && !node.IsStatement);
+            control.SetGreyed(IsGreyed(node, Activity));
 
             control.ShowPage(Activity.Pages.FirstOrDefault(p => ReferenceEquals(p.Node, node)));
+
+            control.ShowWatches(Activity.Watches.Where(w => ReferenceEquals(w.Node, node)));
         }
 
         UpdateFlows();
+
+        ShowEvaluations(Activity);
     }
 
     private double AssignPositions(PlanNode node,
@@ -437,7 +499,9 @@ public sealed class ExecutionPlanControl : Canvas
 
         double y;
 
-        if (node.Children.Count == 0)
+        var children = GetChildren(node);
+
+        if (children.Count == 0)
         {
             y = CanvasMargin + leaf.Next * RowPitch;
             leaf.Next++;
@@ -446,9 +510,9 @@ public sealed class ExecutionPlanControl : Canvas
         {
             var first = 0d;
 
-            for (var i = 0; i < node.Children.Count; i++)
+            for (var i = 0; i < children.Count; i++)
             {
-                var childY = AssignPositions(node.Children[i], depth + 1, positions, leaf);
+                var childY = AssignPositions(children[i], depth + 1, positions, leaf);
 
                 if (i == 0)
                 {
@@ -533,7 +597,7 @@ public sealed class ExecutionPlanControl : Canvas
         // child end of the line.
         if (OperatorClassifier.IsHashJoin(parentNode))
         {
-            var label = OperatorClassifier.RoleOf(parentNode, childNode) == InputRole.Blocking ? "Build" : "Probe";
+            var label = OperatorClassifier.RoleOf(parentNode, GetOperator(childNode)) == InputRole.Blocking ? "Build" : "Probe";
             AddBranchLabel(label, elbowX, start.Y);
         }
 
@@ -588,7 +652,7 @@ public sealed class ExecutionPlanControl : Canvas
 
         if (OperatorClassifier.IsHashJoin(parentNode))
         {
-            var label = OperatorClassifier.RoleOf(parentNode, childNode) == InputRole.Blocking ? "Build" : "Probe";
+            var label = OperatorClassifier.RoleOf(parentNode, parentNode.Children[lane]) == InputRole.Blocking ? "Build" : "Probe";
 
             AddBranchLabel(label, elbowX + offset, childY - offset);
         }
@@ -752,7 +816,7 @@ public sealed class ExecutionPlanControl : Canvas
 
     private void OnPointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        var nodeControl = FindAncestor<PlanNodeControl>(e.OriginalSource as DependencyObject);
+        var nodeControl = FindOperatorControl(e.OriginalSource);
 
         if (nodeControl is not null)
         {
@@ -766,7 +830,7 @@ public sealed class ExecutionPlanControl : Canvas
 
     private void OnDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
-        var nodeControl = FindAncestor<PlanNodeControl>(e.OriginalSource as DependencyObject);
+        var nodeControl = FindOperatorControl(e.OriginalSource);
 
         if (nodeControl?.Node is { } node)
         {
@@ -780,7 +844,7 @@ public sealed class ExecutionPlanControl : Canvas
 
     private void OnContextRequested(UIElement sender, ContextRequestedEventArgs e)
     {
-        var nodeControl = FindAncestor<PlanNodeControl>(e.OriginalSource as DependencyObject);
+        var nodeControl = FindOperatorControl(e.OriginalSource);
 
         if (nodeControl?.Node is { } node)
         {
@@ -955,6 +1019,105 @@ public sealed class ExecutionPlanControl : Canvas
         return true;
     }
 
+    private bool IsGreyed(PlanNode node, PlanActivity activity)
+        => IsFullTrace && !node.IsStatement && (activity.HasActivePart || OperatorClassifier.IsComputeScalar(node));
+
+    private void ShowEvaluations(PlanActivity activity)
+    {
+        foreach (var (puller, calculator) in Calculators)
+        {
+            SetLit(calculator.Highlight, activity.Parts.Any(p => ReferenceEquals(p.Puller, puller)));
+        }
+    }
+
+    private void AddCalculators()
+    {
+        if (!IsFullTrace || Plan is null)
+        {
+            return;
+        }
+
+        foreach (var pulls in ExpressionPullResolver.Resolve(Plan).Where(p => p.OutputExpressions.Count > 0).GroupBy(p => p.Puller))
+        {
+            if (NodeControls.ContainsKey(pulls.Key))
+            {
+                Calculators[pulls.Key] = AddCalculator(pulls.Key, pulls.SelectMany(p => p.OutputExpressions).Distinct());
+            }
+        }
+    }
+
+    private EvaluationCalculator AddCalculator(PlanNode puller, IEnumerable<string> expressions)
+    {
+        var idle = AddCalculatorImage(puller, isInactive: true);
+
+        var lit = AddCalculatorImage(puller, isInactive: false);
+
+        lit.IsHitTestVisible = false;
+
+        ToolTipService.SetToolTip(idle, string.Join(Environment.NewLine, expressions.Select(TraceTickTracks.ShortenExpression)));
+
+        return new EvaluationCalculator(idle, lit, new PlanHighlight(lit));
+    }
+
+    private Image AddCalculatorImage(PlanNode puller, bool isInactive)
+    {
+        var image = new Image
+        {
+            Width = CalculatorWidth,
+            Height = CalculatorHeight,
+            Stretch = Stretch.Fill,
+            Source = CreateCalculatorSource(isInactive)
+        };
+
+        SetLeft(image, GetLeft(NodeControls[puller]) + BaseNodeWidth / 2 - CalculatorOffset - CalculatorWidth);
+
+        SetTop(image, GetTop(NodeControls[puller]) + PlanNodeControl.IconTop - CalculatorHeight - CurrentArrowGap);
+
+        Children.Add(image);
+
+        return image;
+    }
+
+    private SvgImageSource CreateCalculatorSource(bool isInactive)
+    {
+        var source = new SvgImageSource
+        {
+            RasterizePixelWidth = Math.Max(1, Math.Round(CalculatorWidth * RenderScale)),
+            RasterizePixelHeight = Math.Max(1, Math.Round(CalculatorHeight * RenderScale))
+        };
+
+        if (PlanIconParts.GetCalculatorIcon(isInactive) is { } svg)
+        {
+            _ = PlanIconParts.LoadAsync(source, svg);
+        }
+
+        return source;
+    }
+
+    private void UpdateCurrentArrow()
+    {
+        if (CurrentNode is not { } node || !NodeControls.TryGetValue(node, out var control))
+        {
+            CurrentArrow.Visibility = Visibility.Collapsed;
+
+            return;
+        }
+
+        var scale = Math.Min(1 / Zoom, (CanvasMargin + PlanNodeControl.IconTop - CurrentArrowGap) / CurrentArrowSize);
+
+        CurrentArrowScale.ScaleX = scale;
+
+        CurrentArrowScale.ScaleY = scale;
+
+        var size = CurrentArrowSize * scale;
+
+        SetLeft(CurrentArrow, GetLeft(control) + BaseNodeWidth / 2 - size / 2);
+
+        SetTop(CurrentArrow, GetTop(control) + PlanNodeControl.IconTop - size - CurrentArrowGap);
+
+        CurrentArrow.Visibility = Visibility.Visible;
+    }
+
     private void UpdateActiveHighlights()
     {
         var active = ActiveNodes;
@@ -984,8 +1147,8 @@ public sealed class ExecutionPlanControl : Canvas
             return;
         }
 
-        var active = ActiveNodes;
-        var emitting = EmittingNodes;
+        var active = WithAdapters(ActiveNodes);
+        var emitting = WithAdapters(EmittingNodes);
 
         // Tear down overlays whose producer is no longer active (or lost its connector), or whose
         // streaming/blocked state changed - those are rebuilt below with the new colour and tooltip.
@@ -1108,6 +1271,69 @@ public sealed class ExecutionPlanControl : Canvas
         _flows.Clear();
     }
 
+    private static Polyline CreateCurrentArrow()
+    {
+        var arrow = new Polyline
+        {
+            Width = CurrentArrowSize,
+            Height = CurrentArrowSize,
+            Stroke = new SolidColorBrush(CurrentArrowColour),
+            StrokeThickness = CurrentArrowThickness,
+            StrokeLineJoin = PenLineJoin.Round,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round,
+            IsHitTestVisible = false
+        };
+
+        foreach (var point in CurrentArrowPoints)
+        {
+            arrow.Points.Add(point);
+        }
+
+        return arrow;
+    }
+
+    private static void SetLit(PlanHighlight highlight, bool isLit)
+    {
+        if (isLit)
+        {
+            highlight.Light();
+        }
+        else
+        {
+            highlight.Fade();
+        }
+    }
+
+    private bool IsOnPath(PlanNode node, IReadOnlyList<PlanNode> active)
+        => active.Contains(node) || (OperatorClassifier.IsComputeScalar(node) && GetChildren(node).Any(c => IsOnPath(c, active)));
+
+    private List<PlanNode> GetChildren(PlanNode node)
+        => node.IsAdapter ? [SkipDeferred(node.Children[0])] : [.. node.Children.Select(GetShownChild)];
+
+    private PlanNode GetShownChild(PlanNode child)
+    {
+        if (child.Adapter is { } adapter)
+        {
+            return adapter;
+        }
+
+        return IsDeferred(child) ? GetShownChild(child.Children[0]) : child;
+    }
+
+    private PlanNode SkipDeferred(PlanNode node) => IsDeferred(node) ? GetShownChild(node.Children[0]) : node;
+
+    private bool IsDeferred(PlanNode node)
+        => IsFullTrace && OperatorClassifier.IsComputeScalar(node) && !node.IsBatchMode && node.Children.Count == 1;
+
+    private static PlanNode GetOperator(PlanNode node) => node.IsAdapter ? node.Children[0] : node;
+
+    private static List<PlanNode>? WithAdapters(IReadOnlyList<PlanNode>? nodes)
+        => nodes is null ? null : [.. nodes, .. nodes.Select(n => n.Adapter).OfType<PlanNode>()];
+
+    private static PlanNodeControl? FindOperatorControl(object source)
+        => FindAncestor<PlanNodeControl>(source as DependencyObject) is { Node.IsAdapter: false } control ? control : null;
+
     private static T? FindAncestor<T>(DependencyObject? start) where T : DependencyObject
     {
         for (var current = start; current is not null; current = VisualTreeHelper.GetParent(current))
@@ -1130,6 +1356,8 @@ public sealed class ExecutionPlanControl : Canvas
 
     private sealed record IteratorConnector(PlanHighlight Request, PlanHighlight Response);
 
+    private sealed record EvaluationCalculator(Image Idle, Image Lit, PlanHighlight Highlight);
+
     private static void OnSelectedNodeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var control = (ExecutionPlanControl)d;
@@ -1140,6 +1368,9 @@ public sealed class ExecutionPlanControl : Canvas
             control.SelectByNode((PlanNode?)e.NewValue);
         }
     }
+
+    private static void OnCurrentNodeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((ExecutionPlanControl)d).UpdateCurrentArrow();
 
     private static void OnActiveNodesChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
@@ -1207,7 +1438,7 @@ public sealed class ExecutionPlanControl : Canvas
             _columnWidths[depth] = BaseNodeWidth + PlanNodeControl.AnnotationColumnWidth;
         }
 
-        foreach (var child in node.Children)
+        foreach (var child in GetChildren(node))
         {
             MeasureNode(child, depth + 1);
         }

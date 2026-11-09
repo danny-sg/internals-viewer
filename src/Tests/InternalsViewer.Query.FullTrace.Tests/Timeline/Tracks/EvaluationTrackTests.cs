@@ -190,6 +190,23 @@ public class EvaluationTrackTests
     }
 
     [Fact]
+    public void A_Pulled_Value_Is_Evaluated_On_The_Compute_Scalar_With_The_Puller_As_Its_Caller()
+    {
+        var computeScalar = new ExecutionOperatorEvent
+        {
+            Name = "Compute Scalar",
+            OperatorDescription = "Compute Scalar",
+            PlanNodeIdentifier = new PlanNodeIdentifier(1, 2)
+        };
+
+        var rule = Rule("CEsExec::FastCompare1") with { Source = TraceTickSourceType.Evaluate };
+
+        var series = TraceTickSeries.FromEvaluations(BuildResult(), rule, null, o => ReferenceEquals(o, Filter) ? [computeScalar] : []);
+
+        Assert.Equal([(computeScalar, Filter), (computeScalar, Filter)], series.GetAllTicks().Select(t => (t.Operator, t.Caller)));
+    }
+
+    [Fact]
     public void A_Track_Made_Of_A_Whole_Source_Keeps_Its_Ticks_And_Values()
     {
         var trace = BuildResult();

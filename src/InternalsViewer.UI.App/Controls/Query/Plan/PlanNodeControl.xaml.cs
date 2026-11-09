@@ -36,6 +36,10 @@ public sealed partial class PlanNodeControl : UserControl
 
     private const double MinimumOperatorFontSize = 10;
 
+    private const string BatchToRowDescription = "Converts batches from its input to rows. The plan XML does not list it";
+
+    private const string RowToBatchDescription = "Collects rows from its input into batches. The plan XML does not list it";
+
     // A faint divider so adjacent frames read apart even at 3-4px row heights.
     public static readonly DependencyProperty NodeProperty =
         DependencyProperty.Register(nameof(Node), typeof(PlanNode), typeof(PlanNodeControl),
@@ -137,6 +141,8 @@ public sealed partial class PlanNodeControl : UserControl
 
     private PlanPage? CurrentPage { get; set; }
 
+    private List<PlanWatch> CurrentWatches { get; set; } = [];
+
     private double RasterScale { get; set; } = 1;
 
     private bool IsGreyed { get; set; }
@@ -150,6 +156,8 @@ public sealed partial class PlanNodeControl : UserControl
         Zoom = zoom;
 
         UpdatePageLink();
+
+        UpdateWatchTable();
 
         if (GetPixels(IconSize, scale) != GetPixels(IconSize, RasterScale)
             || GetPixels(IndicatorWidth, scale) != GetPixels(IndicatorWidth, RasterScale))
@@ -227,6 +235,33 @@ public sealed partial class PlanNodeControl : UserControl
         UpdatePageLink();
     }
 
+    public void ShowWatches(IEnumerable<PlanWatch> watches)
+    {
+        List<PlanWatch> shown = [.. watches];
+
+        if (shown.SequenceEqual(CurrentWatches))
+        {
+            return;
+        }
+
+        CurrentWatches = shown;
+
+        WatchTable.Children.Clear();
+
+        WatchTable.RowDefinitions.Clear();
+
+        for (var index = 0; index < shown.Count; index++)
+        {
+            WatchTable.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            AddWatchText(shown[index].Label, index, isLabel: true);
+
+            AddWatchText(shown[index].Value, index, isLabel: false);
+        }
+
+        UpdateWatchTable();
+    }
+
     public void ShowCounters(IEnumerable<PlanCounter> counters)
     {
         var shown = counters.ToList();
@@ -274,7 +309,7 @@ public sealed partial class PlanNodeControl : UserControl
             var fraction = activity.Fraction is { } value ? Math.Round(value * FractionSteps) / FractionSteps : (double?)null;
 
             var iconParts = PlanIconParts.GetParts(icon, activity.Part)
-                                         .Where(p => !node.IsStatement || p != PlanIconParts.ActivePart)
+                                         .Where(p => p != PlanIconParts.ActivePart || CanBeActive(node))
                                          .Select(p => (Icon: icon, Part: p));
 
             var pageParts = hasPage
@@ -409,6 +444,38 @@ public sealed partial class PlanNodeControl : UserControl
         }
     }
 
+    private void AddWatchText(string text, int row, bool isLabel)
+    {
+        var block = new TextBlock
+        {
+            Text = text,
+            HorizontalAlignment = isLabel ? HorizontalAlignment.Right : HorizontalAlignment.Left
+        };
+
+        if (isLabel)
+        {
+            block.Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
+        }
+
+        Grid.SetRow(block, row);
+
+        Grid.SetColumn(block, isLabel ? 0 : 1);
+
+        WatchTable.Children.Add(block);
+    }
+
+    private void UpdateWatchTable()
+    {
+        foreach (var block in WatchTable.Children.OfType<TextBlock>())
+        {
+            block.FontSize = PageFontSize / Zoom;
+        }
+
+        WatchTable.Visibility = CurrentWatches.Count > 0 && OperatorNameText.FontSize * Zoom >= MinimumOperatorFontSize
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
+
     private void UpdatePageLink()
     {
         PageLink.FontSize = PageFontSize / Zoom;
@@ -417,6 +484,8 @@ public sealed partial class PlanNodeControl : UserControl
             ? Visibility.Visible
             : Visibility.Collapsed;
     }
+
+    private static bool CanBeActive(PlanNode node) => !node.IsStatement && !OperatorClassifier.IsComputeScalar(node);
 
     private static string FormatCount(int count) => count switch
     {
@@ -490,6 +559,11 @@ public sealed partial class PlanNodeControl : UserControl
 
     private string BuildToolTip(PlanNode node)
     {
+        if (node.IsAdapter)
+        {
+            return $"{node.PhysicalOperator}\n{(node.Children[0].IsBatchMode ? BatchToRowDescription : RowToBatchDescription)}";
+        }
+
         var builder = new StringBuilder();
 
         builder.Append(node.PhysicalOperator);

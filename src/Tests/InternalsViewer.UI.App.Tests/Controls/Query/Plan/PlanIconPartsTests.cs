@@ -55,6 +55,23 @@ public class PlanIconPartsTests
         Assert.Equal((Red, null), ((string?)path.Attribute("stroke"), (string?)path.Attribute("fill")));
     }
 
+    [Fact]
+    public void A_Part_Icon_Keeps_Only_That_Part_And_Crops_To_It()
+    {
+        const string icon = """
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+              <rect data-part="Frame" x="3" y="5" width="23" height="20"/>
+              <g data-part="Calculator"><circle cx="20" cy="21" r="1"/></g>
+            </svg>
+            """;
+
+        var part = XDocument.Parse(PlanIconParts.CreatePartIcon(XDocument.Parse(icon), "Calculator", "15 12 14 17"));
+
+        var shapes = part.Descendants().Count(e => e.Name.LocalName is "rect" or "circle");
+
+        Assert.Equal(("15 12 14 17", 1), ((string?)part.Root?.Attribute("viewBox"), shapes));
+    }
+
     [Theory]
     [InlineData(0, "14.5")]
     [InlineData(0.5, "16.5")]

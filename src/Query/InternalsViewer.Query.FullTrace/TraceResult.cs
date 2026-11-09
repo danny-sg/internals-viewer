@@ -13,6 +13,7 @@ using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.Query.Memory;
+using InternalsViewer.Query.Plans.Operators;
 
 namespace InternalsViewer.Query.FullTrace;
 
@@ -61,6 +62,12 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
     public IReadOnlyList<CallTreeNode> QueryRoots => Roots ??= QueryExecutionCropper.GetRoots(CallTree);
 
     public TraceTimeline QueryTimeline => CroppedTimeline ??= GetQueryTimeline();
+
+    internal EnclosingOperatorCallIndex PullerCalls
+        => field ??= EnclosingOperatorCallIndex.Build(CallStore,
+                                                      Lifetimes.OperatorsByInstance
+                                                               .Where(o => !OperatorClassifier.IsComputeScalar(o.Value))
+                                                               .ToDictionary(o => o.Key, o => o.Value));
 
     internal EnclosingOperatorCallIndex EnclosingCalls
     {

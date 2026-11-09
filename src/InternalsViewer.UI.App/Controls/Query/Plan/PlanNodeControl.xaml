@@ -80,6 +80,15 @@
                         <Run x:Name="PageText" />
                     </Hyperlink>
                 </TextBlock>
+                <Grid x:Name="WatchTable"
+                      HorizontalAlignment="Center"
+                      ColumnSpacing="4"
+                      Visibility="Collapsed">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                </Grid>
                 <TextBlock Text="{x:Bind CostText}"
                            FontSize="10"
                            TextAlignment="Center"

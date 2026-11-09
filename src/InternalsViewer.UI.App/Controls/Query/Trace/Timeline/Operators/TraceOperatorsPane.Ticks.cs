@@ -53,11 +53,17 @@ internal sealed partial class TraceOperatorsPane
 
     private const int MaximumListedMethods = 2;
 
+    private const float ValueMarkWidth = 2f;
+
+    private const float ValueTextInset = 3f;
+
     private static readonly SKColor TickHoverColour = new(255, 255, 255, 200);
 
     private static readonly SKColor BandHoverColour = new(255, 255, 255, 0x80);
 
     private static readonly SKColor BandLabelBorderColour = new(0, 0, 0, 0x40);
+
+    private static readonly SKColor ValueTextColour = new(235, 235, 235);
 
     private TraceTickTrack[] VisibleTracks { get; set; } = [];
 
@@ -277,6 +283,13 @@ internal sealed partial class TraceOperatorsPane
 
             canvas.DrawRect(bar.Left, strip.Top, bar.Width, strip.Height, Paints.Fill);
 
+            if (strip.Track.GetText is { } getText)
+            {
+                DrawValues(canvas, strip, bar, colour, Paints.Fill.Color, scale, getText);
+
+                continue;
+            }
+
             var width = GetTickWidth(strip.Track, strip.Ticks.Count);
 
             foreach (var value in strip.Track.Values)
@@ -349,6 +362,81 @@ internal sealed partial class TraceOperatorsPane
             {
                 nextPixel = MathF.Floor(right) + 1;
             }
+        }
+    }
+
+    private void DrawValues(SKCanvas canvas,
+                            TickStrip strip,
+                            SKRect bar,
+                            SKColor operatorColour,
+                            SKColor background,
+                            double scale,
+                            Func<TraceTick, string?> getText)
+    {
+        var ticks = strip.Ticks;
+
+        var top = strip.Top + 1;
+
+        var height = strip.Height - 2;
+
+        var font = Paints.Font;
+
+        var metrics = font.Metrics;
+
+        var textHeight = metrics.Descent - metrics.Ascent;
+
+        var baseline = top + (height - textHeight) / 2 - metrics.Ascent;
+
+        var visibleLeft = Math.Max(bar.Left, 0);
+
+        var visibleRight = Math.Min(bar.Right, Host.Width);
+
+        var nextPixel = float.MinValue;
+
+        var first = ticks.GetFirstEndingFrom(Axis, Host.ViewStart);
+
+        for (var index = first; index < ticks.Count && ticks.GetStart(Axis, index) <= Host.ViewEnd; index++)
+        {
+            var tick = ticks.Get(index);
+
+            var (left, right) = GetTickEdges(tick.Span, ValueMarkWidth, scale);
+
+            var isThinned = right - left <= ValueMarkWidth;
+
+            if (isThinned && left < nextPixel)
+            {
+                continue;
+            }
+
+            var colour = strip.Track.GetColour(tick) ?? operatorColour;
+
+            Paints.Fill.Color = colour.WithAlpha(TickBodyAlpha);
+
+            canvas.DrawRect(left, top, Math.Max(right - left - TickBodyGap, 0), height, Paints.Fill);
+
+            Paints.Fill.Color = colour.WithAlpha(byte.MaxValue);
+
+            canvas.DrawRect(left, top, ValueMarkWidth, height, Paints.Fill);
+
+            if (isThinned)
+            {
+                nextPixel = MathF.Floor(right) + 1;
+
+                continue;
+            }
+
+            var textLeft = Math.Max(left + ValueMarkWidth, visibleLeft) + ValueTextInset;
+
+            var textRight = Math.Min(right, visibleRight) - ValueTextInset;
+
+            if (height < font.Size || getText(tick) is not { } text || textLeft + font.MeasureText(text) > textRight)
+            {
+                continue;
+            }
+
+            Paints.Text.Color = TimelineColours.IsLight(background) ? SKColors.Black : ValueTextColour;
+
+            canvas.DrawText(text, textLeft, baseline, SKTextAlign.Left, font, Paints.Text);
         }
     }
 
@@ -510,6 +598,11 @@ internal sealed partial class TraceOperatorsPane
             if (TraceTickTracks.GetText(track, tick, rule.Description) is { } description)
             {
                 lines.Add(TraceTickTracks.ToPlainText(description));
+            }
+
+            if (TraceTickTracks.GetText(track, tick, rule.Details) is { } details)
+            {
+                lines.Add(TraceTickTracks.ToPlainText(details));
             }
         }
 

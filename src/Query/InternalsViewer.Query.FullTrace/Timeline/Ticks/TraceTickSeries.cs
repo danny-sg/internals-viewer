@@ -4,6 +4,8 @@ using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks.Enums;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks;
+using InternalsViewer.Query.Plans.Operators;
 
 namespace InternalsViewer.Query.FullTrace.Timeline.Ticks;
 
@@ -139,10 +141,89 @@ public sealed class TraceTickSeries
         return counts;
     }
 
-    public static TraceTickSeries FromDefinition(TraceResult trace, TraceTickDefinition definition)
-        => definition.Source == TraceTickSourceType.Call
-            ? FromDefinition(trace.Timeline, trace.CallStore, trace.Lifetimes, definition, trace.EnclosingCalls)
-            : FromSource(trace.Timeline, GetSource(trace, definition.Source), definition);
+    public static TraceTickSeries FromDefinition(TraceResult trace, TraceTickDefinition definition) => definition.Source switch
+    {
+        TraceTickSourceType.Call => FromDefinition(trace.Timeline, trace.CallStore, trace.Lifetimes, definition, trace.EnclosingCalls),
+        TraceTickSourceType.Watch => TraceWatch.Build(trace, definition).Series,
+        _ => FromSource(trace.Timeline, GetSource(trace, definition.Source), definition)
+    };
+
+    public static TraceTickSeries FromEvaluations(TraceResult trace,
+                                                  TraceTickDefinition definition,
+                                                  ExecutionOperatorEvent? statement,
+                                                  Func<ExecutionOperatorEvent, IReadOnlyList<ExecutionOperatorEvent>> getPulled)
+    {
+        var owners = trace.Lifetimes.OperatorsByInstance;
+
+        var nodes = new Dictionary<CallTreeNode, bool>(ReferenceEqualityComparer.Instance);
+
+        var evaluations = new List<(TraceTickSource Source, ExecutionOperatorEvent? Owner)>();
+
+        foreach (var list in trace.CallStore.GetCallLists())
+        {
+            if (trace.CallStore.GetFirstNode(list) is not { Frame: not null } first || !definition.IsFunction(first))
+            {
+                continue;
+            }
+
+            var owner = owners.GetValueOrDefault(list.InstanceAddress);
+
+            for (var index = 0; index < list.Count; index++)
+            {
+                if (trace.Timeline.FindCall(list.FunctionAddress, list.InstanceAddress, index) is not { } location)
+                {
+                    continue;
+                }
+
+                if (!nodes.TryGetValue(location.Node, out var isMatch))
+                {
+                    isMatch = definition.MatchesNode(location.Node);
+
+                    nodes[location.Node] = isMatch;
+                }
+
+                if (isMatch)
+                {
+                    evaluations.Add((TraceTickSource.FromCall(location, 0), owner));
+                }
+            }
+        }
+
+        var points = evaluations.Select(e => e.Source)
+                                .Select(s => new SweepSpan<TracePosition>(s.Thread.ThreadId, s.From.Position, s.To.Position, 0))
+                                .ToList();
+
+        var pullers = trace.PullerCalls.GetEnclosing(points, includeRowReturns: true);
+
+        var pulled = new Dictionary<ExecutionOperatorEvent, IReadOnlyList<ExecutionOperatorEvent>>(ReferenceEqualityComparer.Instance);
+
+        var sources = new List<TraceTickSource>();
+
+        for (var index = 0; index < evaluations.Count; index++)
+        {
+            var (source, owner) = evaluations[index];
+
+            var puller = owners.GetValueOrDefault(pullers[index]) ?? statement;
+
+            if (owner is not null && OperatorClassifier.IsComputeScalar(owner))
+            {
+                sources.Add(source with { Operator = owner, Caller = puller });
+            }
+            else if (puller is not null)
+            {
+                if (!pulled.TryGetValue(puller, out var computeScalars))
+                {
+                    computeScalars = getPulled(puller);
+
+                    pulled[puller] = computeScalars;
+                }
+
+                sources.AddRange(computeScalars.Select(c => source with { Operator = c, Caller = puller }));
+            }
+        }
+
+        return Create(trace.Timeline, sources);
+    }
 
     public static TraceTickTrackSeries FromRules(TraceResult trace,
                                                  IReadOnlyList<TraceTickDefinition> rules,
@@ -155,7 +236,9 @@ public sealed class TraceTickSeries
 
         if (rules.Count == 1)
         {
-            return new TraceTickTrackSeries(getSeries(rules[0]), [rules[0].Source == TraceTickSourceType.Call ? (byte)0 : rules[0].Value]);
+            var value = rules[0].Source is TraceTickSourceType.Call or TraceTickSourceType.Evaluate ? (byte)0 : rules[0].Value;
+
+            return new TraceTickTrackSeries(getSeries(rules[0]), [value]);
         }
 
         var count = Math.Min(rules.Count, byte.MaxValue + 1);
@@ -177,7 +260,7 @@ public sealed class TraceTickSeries
                      lifetimes,
                      enclosing,
                      definition.IsFunction,
-                     (_, call) => definition.MatchesCall(call) ? (byte)0 : null,
+                     (_, call) => definition.MatchesCall(call) ? 0 : null,
                      node => nodes.TryGetValue(node, out var isMatch) ? isMatch : nodes[node] = definition.MatchesNode(node),
                      definition.MatchesOperator);
     }
@@ -245,7 +328,9 @@ public sealed class TraceTickSeries
 
     private static bool IsWholeSource(IReadOnlyList<TraceTickDefinition> rules)
         => rules.Count > 0
-           && rules.All(r => r.Source != TraceTickSourceType.Call && r.Source == rules[0].Source && r.Conditions.Count == 0)
+           && rules.All(r => r.Source is not (TraceTickSourceType.Call or TraceTickSourceType.Watch or TraceTickSourceType.Evaluate)
+                             && r.Source == rules[0].Source
+                             && r.Conditions.Count == 0)
            && rules.Select(r => r.Value).Distinct().Count() == rules.Count;
 
     private static TraceTickSeries GetSource(TraceResult trace, TraceTickSourceType source) => source switch
@@ -284,7 +369,7 @@ public sealed class TraceTickSeries
 
     private static TraceTickSeries Combine(TraceTimeline timeline, IReadOnlyList<TraceTickSeries> series)
     {
-        var seen = new HashSet<(uint Thread, int SpanIndex, TracePosition From)>();
+        var seen = new HashSet<(uint Thread, int SpanIndex, TracePosition From, int? NodeId)>();
 
         var sources = new List<TraceTickSource>();
 
@@ -296,7 +381,9 @@ public sealed class TraceTickSeries
                 {
                     var source = index.GetSource(position);
 
-                    if (seen.Add((source.Thread.ThreadId, source.SpanIndex, source.From.Position)))
+                    var nodeId = source.Operator?.PlanNodeIdentifier?.NodeId;
+
+                    if (seen.Add((source.Thread.ThreadId, source.SpanIndex, source.From.Position, nodeId)))
                     {
                         sources.Add(source with { Value = (byte)value });
                     }

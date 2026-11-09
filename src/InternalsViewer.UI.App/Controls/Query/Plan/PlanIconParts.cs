@@ -29,6 +29,14 @@ internal static partial class PlanIconParts
 
     private const string RangeAttribute = "data-range";
 
+    private const string ViewBoxAttribute = "viewBox";
+
+    private const string ComputeScalarIcon = "ComputeScalar";
+
+    private const string CalculatorPart = "Calculator";
+
+    private const string CalculatorViewBox = "15 12 14 17";
+
     private const string FillAttribute = "fill";
 
     private const string StrokeAttribute = "stroke";
@@ -50,6 +58,10 @@ internal static partial class PlanIconParts
     private static Dictionary<string, string?> InactiveIcons { get; } = new(StringComparer.OrdinalIgnoreCase);
 
     private static IReadOnlyList<string>? Bindings { get; set; }
+
+    private static string? CalculatorIcon { get; set; }
+
+    private static string? InactiveCalculatorIcon { get; set; }
 
     public static IReadOnlyList<string> GetBindings() => Bindings ??= FindBindings();
 
@@ -79,6 +91,20 @@ internal static partial class PlanIconParts
 
     public static bool IsActiveBinding(string? binding)
         => binding is { Length: > 0 } && binding[(binding.LastIndexOf(IconSeparator) + 1)..].Trim() == ActivePart;
+
+    public static string? GetCalculatorIcon(bool isInactive)
+    {
+        CalculatorIcon ??= GetIcon(ComputeScalarIcon) is { } loaded
+            ? CreatePartIcon(loaded.Document, CalculatorPart, CalculatorViewBox)
+            : null;
+
+        if (!isInactive || CalculatorIcon is null)
+        {
+            return CalculatorIcon;
+        }
+
+        return InactiveCalculatorIcon ??= CreateInactive(XDocument.Parse(CalculatorIcon));
+    }
 
     public static string? GetInactiveIcon(string icon)
     {
@@ -152,6 +178,20 @@ internal static partial class PlanIconParts
                 shape.Remove();
             }
         }
+
+        return document.ToString(SaveOptions.DisableFormatting);
+    }
+
+    internal static string CreatePartIcon(XDocument icon, string part, string viewBox)
+    {
+        var document = new XDocument(icon);
+
+        foreach (var shape in document.Descendants().Where(e => Shapes.Contains(e.Name.LocalName) && GetPartName(e) != part).ToList())
+        {
+            shape.Remove();
+        }
+
+        document.Root?.SetAttributeValue(ViewBoxAttribute, viewBox);
 
         return document.ToString(SaveOptions.DisableFormatting);
     }

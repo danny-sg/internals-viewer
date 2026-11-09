@@ -135,11 +135,13 @@ Every track is made of rules. A rule picks out the calls to tick and gives them 
 
 - **GetRow/GetBatch** - along the top, a tick for every `GetRow` or `GetBatch` call the operator answered, coloured by what happened to the row (see below)
 - **Read** - along the bottom, the operator's requests to the buffer pool, page reads and read-aheads. A request for an IAM or a PFS page has its own colour, as an **IAM Read** or a **PFS Read**
-- **Evaluations** - above the reads, the predicates the operator evaluated, coloured by whether they were true, false or NULL. A Stream Aggregate's comparison of each row with its current group is a **Same Group** tick when the row joins the group, and a **Group Changed** tick when the row starts a new group and the finished group is returned
+- **Evaluations** - above the reads, the predicates the operator evaluated, coloured by whether they were true, false or NULL. A Stream Aggregate's comparison of each row with its current group is a **No Change** tick when the row joins the group, which lights the operator's sum symbols green as the row is added to its aggregates, and a **Change** tick when the row starts a new group and the finished group is returned
 - **Row Access** - the rows the operator read on buffer pool pages, with the page and slot, coloured by the category of the function that read the row. Reading a slot's entry in the page's slot array is not a row access, only reading the row itself. A row read while a seek searches a page for its key, under `PageRef::SearchPage`, is a **Search Page** tick instead
 - **Seek** - each b-tree seek, with the root, intermediate and leaf pages it went through. In the Execution Plan the seek's icon lights its root, intermediate and leaf node in turn
 - **Open** - each operator from its first call, its Open, to its last, when it is closed. In the [Execution Plan](/docs/user-guide/query/ExecutionPlan) the operator's icon is in colour for as long as the operator is open, and grey otherwise
 - **Hash Table** - each hash join's **Build** of its hash table, and each probe row it looked up in it, as a **Hit** when the lookup found a build row and a **Miss** when it did not
+- **Hash Aggregate** - a batch mode Hash Match (Aggregate): its **Build** from its input batches, each **Push Batch** into its local hash table with the **Look Up** of the group keys and the **Aggregate** of the values, its **Merge** of the local groups into the global hash table through **Repartition** and **Partition Page**, and each **Output Batch** it fills with finished groups
+- **Compute Scalar** - each time a Compute Scalar's expression runs, on the operator that needed it, such as **Row Send**, **Filter**, **Sort**, **Hash Build**, **Hash Probe**, **Stream Aggregate**, **Seek Key**, **Startup** for a runtime constant, and **Batch** for a batch mode Compute Scalar
 - **Sort** - each sort's **Build** of its sort table from its input, each **Push Row** of an input row into the table during the build, and each **Sorted Row** it read back from the table in order
 
 Each track has a toggle under **View > Operators**, and under **Tracks (All)** in the Operators pane's right-click menu. Turning a built-in track off is remembered between sessions. The **Open** track starts off. Right-clicking an operator also gives **Tracks (Operator)**, which turns a track off or on for that operator alone, until the next run.
@@ -150,7 +152,7 @@ You can add your own rules for any function. **Add to Operators**, in the right-
 - **Track** - the track's name in the **View** menu and its tooltips, the function's name to start with. Pick an existing track to add the rule to it
 - **Label** - what this rule's ticks are called on the track, in its tooltips and its counts. The function's name when left empty
 - **Title** - the name of each of the rule's [Guide Mode](/docs/user-guide/query/ExecutionPlan#guide-mode) steps, such as `Evaluate Expression` for the **Evaluations** rules, whose labels are `True`, `False` and `NULL`. The label when left empty
-- **Description** - what happens at each tick and why, added to its tooltip under its label and shown at its Guide Mode step. It is Markdown, so `` `GetRow` `` shows as code in Guide Mode. The label and the description can hold placeholders, filled in for each tick:
+- **Description** - what happens at each tick, added to its tooltip under its label and shown at its Guide Mode step. It is Markdown, so `` `GetRow` `` shows as code in Guide Mode. The label and the description can hold placeholders, filled in for each tick:
   - `{OperatorName}` - the operator the tick is on
   - `{ParentOperatorName}` - the operator that called it, or its parent in the plan
   - `{Function}` - the function the tick is a call to
@@ -158,10 +160,11 @@ You can add your own rules for any function. **Add to Operators**, in the right-
   - `{Slot}` - the slot of the row a **Row Access** tick read
 
   A placeholder the tick has no value for shows as `?`. Every predefined rule has a description, such as **Row Access**'s `Read row data at Slot {Slot} on Page {Page}`
+- **Details** - a longer explanation of why it happens, added to the tick's tooltip below its description and shown at its Guide Mode step when **Details** is on. It can hold the same placeholders as the description
 - **Return Description** - what happens at the end of each call, for a second Guide Mode step at the return. The predefined **GetRow/GetBatch** rules describe the call as `` {ParentOperatorName} calls `GetRow` from {OperatorName} ``, and the return by what happened to the row, such as `` `GetRow` returns a row from {OperatorName} to {ParentOperatorName} `` for **Returned**
 - **Plan Part** - a part of the operator's icon in the [Execution Plan](/docs/user-guide/query/ExecutionPlan) to light in the rule's colour while the playhead is inside one of its calls, such as `Root Node`. `Active` is the whole icon in its own colours, and while a rule bound to it is turned on, the icons are grey until it lights them. Every icon names its parts the same way, so each b-tree icon has a `Root Node`, an `Intermediate Node` and `Leaf Node 1`, `Leaf Node 2` and so on from left to right. A part named without its number, such as `Leaf Node`, lights every part of that kind. Put an operator in front, such as `Index Seek.Root Node`, to light that operator's icon only
 - **Counter** - counts the rule's ticks on the operator's icon in the Execution Plan, each one once its call has returned at the playhead. The counter rules of a track add up to one count, and the predefined **GetRow/GetBatch** track counts the rows each operator returned this way
-- **Phase** - [Guide Mode](/docs/user-guide/query/ExecutionPlan#guide-mode)'s **Next Phase** and **Previous Phase** stop at the start and the end of each of the rule's ticks, stepping over the steps inside. The predefined **Hash Table** and **Sort** tracks' **Build** rules are phases
+- **Phase** - [Guide Mode](/docs/user-guide/query/ExecutionPlan#guide-mode)'s **Next Phase** and **Previous Phase** stop at the start and the end of each of the rule's ticks, stepping over the steps inside. The predefined **Hash Table**, **Hash Aggregate** and **Sort** tracks' **Build** rules are phases, and so is **Hash Aggregate**'s **Merge**
 - **Colour** - the colour of its ticks, the function's category colour to start with. **Category Colour** colours each tick by the category of the function that made it instead, which suits a rule that matches several functions
 - **Background** - the colour behind the track's strip, turned on with **Background Colour**. Lower its alpha to let the operator's colour show through. Without one the strip is a shade of the operator's colour. A track takes it from its first rule, and the predefined **Row Access** track has a translucent white background
 - **Height** and **Width** - how tall the strip is and how wide each tick is, as a multiple of the predefined tracks, so **1.5** is half as tall or wide again. A track takes them from its first rule
@@ -180,6 +183,20 @@ The same function can be added more than once, such as one rule for `GetRow` cal
 - Hovering over a tick outlines its call in red in the lanes below, and shows what kind of tick it is, its rule's description, its function, thread and position
 - **Click** a tick to select its call in the chart
 - **Double-click** a tick to zoom to it
+
+### Watches
+
+A watch follows a value inside each operator's object, such as a row counter, as the query runs. **Add Watch** in the Operator Tracks tab's command bar adds one. It needs a Full Trace recorded with **Memory History**, which keeps every write to the objects the query made.
+
+- **Class** - the class of the operator's object, such as `CQScanTopNew`. Type part of it to pick one of the classes in the trace
+- **Offset** - where the value starts in the object, in bytes, as decimal or `0x` hex
+- **Length** - how many bytes the value takes
+- **Data Type** - how to show the value, such as `Int` or `SmallInt`, or **Hex** for its bytes as they are in memory
+- **Label** - the name shown beside the value
+
+On the track, each stretch of the strip is one value, from the write that set it to the next write that changed it. The value is written in the stretch when it is wide enough, and hovering over it shows the value and where it is in the object. In the [Execution Plan](/docs/user-guide/query/ExecutionPlan) the label and value at the playhead show under the operator's icon, below its page. A watch is not a [Guide Mode](/docs/user-guide/query/ExecutionPlan#guide-mode) step.
+
+The predefined **Rows Remaining** watch, on the **Watches** track, follows how many rows a **Top** still has to return. It starts at the Top's row count when the operator opens, and goes down by one with each row.
 
 ### GetRow returns
 

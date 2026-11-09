@@ -5,6 +5,7 @@ using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
+using InternalsViewer.Query.FullTrace.Timeline.Ticks.Enums;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline.Enums;
 using InternalsViewer.UI.App.Services.Query.Trace;
@@ -92,9 +93,50 @@ public class TraceTickTracksTests
     [Fact]
     public void Plain_Text_Keeps_Only_The_Text_Of_A_Link()
     {
+        Assert.Equal("[Id]*(20)", TraceTickTracks.ShortenExpression("[Demo].[dbo].[Table].[Id] as [c].[Id]*(20)"));
+
         var markdown = $"Read **row** data on Page {TraceTickTracks.GetPageLink(new PageAddress(1, 200), 5)} `GetRow`";
 
         Assert.Equal("Read row data on Page (1:200) GetRow", TraceTickTracks.ToPlainText(markdown));
+    }
+
+    [Fact]
+    public void Steps_Inside_A_Call_Nest_Under_It_And_End_With_Its_Return()
+    {
+        var nesting = TraceTickTracks.GetStepNesting(CreateSteps());
+
+        Assert.Equal([new TraceStepNesting(-1, 0),
+                      new TraceStepNesting(-1, 4),
+                      new TraceStepNesting(1, 2),
+                      new TraceStepNesting(1, 3),
+                      new TraceStepNesting(1, 4),
+                      new TraceStepNesting(-1, 5)],
+                     nesting);
+    }
+
+    [Fact]
+    public void A_Call_Inside_A_Call_Nests_One_Level_Further()
+    {
+        List<TraceTrackStep> steps =
+        [
+            Step(1, 9, PhaseRule),
+            Step(2, 5, PhaseRule),
+            Step(3, 3, Rule),
+            Step(2, 5, PhaseRule, isReturn: true),
+            Step(1, 9, PhaseRule, isReturn: true)
+        ];
+
+        Assert.Equal([-1, 0, 1, 1, 0], TraceTickTracks.GetStepNesting(steps).Select(n => n.Parent));
+    }
+
+    [Fact]
+    public void An_Open_Tick_Does_Not_Hold_Other_Steps_Inside_It()
+    {
+        var open = PhaseRule with { Source = TraceTickSourceType.Open };
+
+        List<TraceTrackStep> steps = [Step(1, 3, open), Step(2, 2, Rule), Step(1, 3, open, isReturn: true)];
+
+        Assert.Equal([-1, -1, -1], TraceTickTracks.GetStepNesting(steps).Select(n => n.Parent));
     }
 
     private static List<TraceTrackStep> CreateSteps()

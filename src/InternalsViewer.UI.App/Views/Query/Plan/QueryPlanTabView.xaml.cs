@@ -12,6 +12,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Foundation;
+using Microsoft.UI.Xaml.Input;
 
 namespace InternalsViewer.UI.App.Views.Query.Plan;
 
@@ -19,6 +20,22 @@ namespace InternalsViewer.UI.App.Views.Query.Plan;
 public sealed partial class QueryPlanTabView : UserControl
 {
     private const double GuidePaneMinHeight = 200;
+
+    private const double StepIndent = 16;
+
+    private const string ExpandedGlyph = "\uE70D";
+
+    private const string CollapsedGlyph = "\uE76C";
+
+    private const double DefaultBodyShare = 6;
+
+    private const double DefaultDetailShare = 4;
+
+    private const double DefaultPlanShare = 3;
+
+    private const double DefaultStepsShare = 1;
+
+    private const double FullShare = 1;
 
     private const double MaximumFitZoom = 1.5;
 
@@ -76,21 +93,27 @@ public sealed partial class QueryPlanTabView : UserControl
         }
     }
 
+    public GridLength PlanPaneHeight => GetStar(ViewModel?.Layout.PlanStepsSplit?.First ?? DefaultPlanShare);
+
     public GridLength BodyColumnWidth
-        => IsPropertiesPaneVisible && !IsPropertiesPaneDockedBottom
-            ? new GridLength(6, GridUnitType.Star)
-            : new GridLength(1, GridUnitType.Star);
+        => GetStar(IsPropertiesPaneVisible && !IsPropertiesPaneDockedBottom
+                       ? ViewModel?.Layout.PlanColumnSplit?.First ?? DefaultBodyShare
+                       : FullShare);
 
     public GridLength DetailColumnWidth
-        => IsPropertiesPaneVisible && !IsPropertiesPaneDockedBottom ? new GridLength(4, GridUnitType.Star) : new GridLength(0);
+        => IsPropertiesPaneVisible && !IsPropertiesPaneDockedBottom
+            ? GetStar(ViewModel?.Layout.PlanColumnSplit?.Second ?? DefaultDetailShare)
+            : new GridLength(0);
 
     public GridLength BodyRowHeight
-        => IsPropertiesPaneVisible && IsPropertiesPaneDockedBottom
-            ? new GridLength(6, GridUnitType.Star)
-            : new GridLength(1, GridUnitType.Star);
+        => GetStar(IsPropertiesPaneVisible && IsPropertiesPaneDockedBottom
+                       ? ViewModel?.Layout.PlanRowSplit?.First ?? DefaultBodyShare
+                       : FullShare);
 
     public GridLength DetailRowHeight
-        => IsPropertiesPaneVisible && IsPropertiesPaneDockedBottom ? new GridLength(4, GridUnitType.Star) : new GridLength(0);
+        => IsPropertiesPaneVisible && IsPropertiesPaneDockedBottom
+            ? GetStar(ViewModel?.Layout.PlanRowSplit?.Second ?? DefaultDetailShare)
+            : new GridLength(0);
 
     public Visibility DetailPaneVisibility
         => IsPropertiesPaneVisible ? Visibility.Visible : Visibility.Collapsed;
@@ -110,21 +133,40 @@ public sealed partial class QueryPlanTabView : UserControl
 
     private static SolidColorBrush CurrentStepBrush { get; } = new(Colors.White);
 
+    private GuideStepItem? HoveredStep { get; set; }
+
     public static ImageSource? GetStepIcon(Uri? icon) => icon is null ? null : new SvgImageSource(icon);
 
     public static double GetStepOpacity(bool isCurrent) => isCurrent ? 1 : OtherStepOpacity;
 
     public static Brush? GetStepBackground(bool isCurrent) => isCurrent ? CurrentStepBrush : null;
 
+    public static Brush? GetStepRowBackground(bool isCurrent, bool isHovered) => isCurrent != isHovered ? CurrentStepBrush : null;
+
     public static Visibility GetCurrentVisibility(bool isCurrent) => isCurrent ? Visibility.Visible : Visibility.Collapsed;
+
+    public static GridLength GetStepIndentWidth(int depth) => new(depth * StepIndent);
+
+    public static Thickness GetStepIndent(int depth) => new(depth * StepIndent, 0, 0, 0);
+
+    public static Visibility GetChevronVisibility(bool hasNestedSteps) => hasNestedSteps ? Visibility.Visible : Visibility.Collapsed;
+
+    public static string GetChevronGlyph(bool isExpanded) => isExpanded ? ExpandedGlyph : CollapsedGlyph;
+
+    public static Visibility GetDetailsVisibility(string details, bool isVisible)
+        => isVisible && details.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
 
     public static string GetPlayLabel(bool isPlaying) => isPlaying ? "Pause" : "Play";
 
     public static string GetPlayGlyph(bool isPlaying) => isPlaying ? "\uE769" : "\uE768";
 
-    public GridLength GetGuidePaneHeight(bool isGuideMode) => isGuideMode ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+    public GridLength GetGuidePaneHeight(bool isGuideMode, bool isVisible)
+        => isGuideMode && isVisible ? GetStar(ViewModel?.Layout.PlanStepsSplit?.Second ?? DefaultStepsShare) : new GridLength(0);
 
-    public double GetGuidePaneMinHeight(bool isGuideMode) => isGuideMode ? GuidePaneMinHeight : 0;
+    public double GetGuidePaneMinHeight(bool isGuideMode, bool isVisible) => isGuideMode && isVisible ? GuidePaneMinHeight : 0;
+
+    public Visibility GetGuidePaneVisibility(bool isGuideMode, bool isVisible)
+        => isGuideMode && isVisible ? Visibility.Visible : Visibility.Collapsed;
 
     private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
     {
@@ -142,6 +184,7 @@ public sealed partial class QueryPlanTabView : UserControl
             p.SelectedNode = ViewModel?.SelectedPlanNode;
             p.ActiveNodes = ViewModel?.ActivePlanNodes;
             p.EmittingNodes = ViewModel?.EmittingPlanNodes;
+            p.CurrentNode = ViewModel?.CurrentGuideNode;
             p.IsFullTrace = ViewModel?.IsFullTrace == true;
             p.ShowActivity(ViewModel?.PlanActivity ?? PlanActivity.Empty);
             p.Events = ViewModel?.Events;
@@ -210,6 +253,9 @@ public sealed partial class QueryPlanTabView : UserControl
             case nameof(QueryViewModel.CurrentGuideStep):
                 ScrollToCurrentStep();
                 break;
+            case nameof(QueryViewModel.IsGuideDetailsVisible):
+                DispatcherQueue.TryEnqueue(ScrollToCurrentStep);
+                break;
             case nameof(QueryViewModel.IsAnnotationsVisible):
                 ApplyToPlans(p => p.AreAnnotationsVisible = _subscribed.IsAnnotationsVisible);
                 break;
@@ -221,6 +267,9 @@ public sealed partial class QueryPlanTabView : UserControl
                 break;
             case nameof(QueryViewModel.EmittingPlanNodes):
                 ApplyToPlans(p => p.EmittingNodes = _subscribed.EmittingPlanNodes);
+                break;
+            case nameof(QueryViewModel.CurrentGuideNode):
+                ApplyToPlans(p => p.CurrentNode = _subscribed.CurrentGuideNode);
                 break;
             case nameof(QueryViewModel.IsFullTrace):
                 ApplyToPlans(p => p.IsFullTrace = _subscribed.IsFullTrace);
@@ -238,6 +287,7 @@ public sealed partial class QueryPlanTabView : UserControl
             planControl.SelectedNode = viewModel.SelectedPlanNode;
             planControl.ActiveNodes = viewModel.ActivePlanNodes;
             planControl.EmittingNodes = viewModel.EmittingPlanNodes;
+            planControl.CurrentNode = viewModel.CurrentGuideNode;
             planControl.IsFullTrace = viewModel.IsFullTrace;
             planControl.ShowActivity(viewModel.PlanActivity);
             planControl.Events = viewModel.Events;
@@ -272,7 +322,7 @@ public sealed partial class QueryPlanTabView : UserControl
 
     private void ScrollToCurrentStep()
     {
-        if (ViewModel?.CurrentGuideStep is not { } step)
+        if (ViewModel?.CurrentGuideStep is not { IsShown: true } step)
         {
             return;
         }
@@ -292,6 +342,33 @@ public sealed partial class QueryPlanTabView : UserControl
             : 0;
 
         scroller.ChangeView(null, Math.Max(0, top - header), null, disableAnimation: false);
+    }
+
+    private void OnGuideStepPointerEntered(object sender, PointerRoutedEventArgs e)
+        => SetHoveredStep((sender as FrameworkElement)?.DataContext as GuideStepItem);
+
+    private void OnGuideStepPointerExited(object sender, PointerRoutedEventArgs e) => SetHoveredStep(null);
+
+    private void SetHoveredStep(GuideStepItem? step)
+    {
+        if (ReferenceEquals(step, HoveredStep))
+        {
+            return;
+        }
+
+        HoveredStep?.IsHovered = false;
+
+        HoveredStep = step;
+
+        HoveredStep?.IsHovered = true;
+    }
+
+    private void OnGuideStepToggle(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: GuideStepItem step })
+        {
+            ViewModel?.ToggleGuideStep(step);
+        }
     }
 
     private void OnGuideStepClick(object sender, ItemClickEventArgs e)
@@ -374,6 +451,31 @@ public sealed partial class QueryPlanTabView : UserControl
         return cleanScale / rasterizationScale;
     }
 
+    private static GridLength GetStar(double share) => new(share, GridUnitType.Star);
+
+    private void OnSplitterMoved(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel?.Layout is not { } layout)
+        {
+            return;
+        }
+
+        if (ReferenceEquals(sender, StepsSplitter))
+        {
+            layout.PlanStepsSplit = new PaneSplit(PlanRow.Height.Value, StepsRow.Height.Value);
+        }
+        else if (ReferenceEquals(sender, DetailColumnSplitter))
+        {
+            layout.PlanColumnSplit = new PaneSplit(BodyColumn.Width.Value, DetailColumn.Width.Value);
+        }
+        else if (ReferenceEquals(sender, DetailRowSplitter))
+        {
+            layout.PlanRowSplit = new PaneSplit(BodyRow.Height.Value, DetailRow.Height.Value);
+        }
+    }
+
+    private void CloseStepsPane() => ViewModel?.IsGuideStepsVisible = false;
+
     private void CloseDetailPane()
     {
         IsPropertiesPaneVisible = false;
@@ -406,7 +508,7 @@ public sealed partial class QueryPlanTabView : UserControl
 
     private void OnCounterToggleRequested(object? sender, PlanNode node) => ViewModel?.ToggleCounter(node);
 
-    private void OnPageOpenRequested(object? sender, PlanPage page) => ViewModel?.OpenPage(page.Page, page.Slot);
+    private void OnPageOpenRequested(object? sender, PlanPage page) => ViewModel?.OpenOperatorPage(page);
 
     /// <summary>
     /// Routes a click on a plan node through the same selection every other view goes through

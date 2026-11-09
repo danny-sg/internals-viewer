@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Query.Plans.Model;
+﻿using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.Plans.Model;
 
 namespace InternalsViewer.Query.Plans.Operators;
 
@@ -24,6 +25,9 @@ public static class OperatorClassifier
 
     public static bool IsComputeScalar(PlanNode n) =>
         EqualsOp(n.PhysicalOperator, "Compute Scalar");
+
+    public static bool IsComputeScalar(ExecutionOperatorEvent e) =>
+        EqualsOp(e.OperatorDescription, "Compute Scalar");
 
     public static bool IsTop(PlanNode n) =>
         EqualsOp(n.PhysicalOperator, "Top");
@@ -144,6 +148,11 @@ public static class OperatorClassifier
 
     public static OperatorCategory GetCategory(PlanNode n)
     {
+        if (n.IsAdapter)
+        {
+            return OperatorCategory.Adapter;
+        }
+
         if (Contains(n.LogicalOperator, "Aggregate"))
         {
             return OperatorCategory.Transformation;

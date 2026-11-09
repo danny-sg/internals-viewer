@@ -16,7 +16,8 @@ internal static class OperatorTrackEditor
     public static async Task<TraceTickDefinition?> ShowAsync(XamlRoot root,
                                                              QueryViewModel viewModel,
                                                              TraceTickDefinition? existing,
-                                                             CallTreeNode? node)
+                                                             CallTreeNode? node,
+                                                             bool isWatch = false)
     {
         var functions = viewModel.GetFunctionChoices();
 
@@ -35,12 +36,14 @@ internal static class OperatorTrackEditor
         var source = new OperatorTrackDialogSource(functions,
                                                    viewModel.GetOperatorChoices(),
                                                    viewModel.GetTrackNames(),
+                                                   viewModel.GetIteratorClasses(),
                                                    viewModel.GetLayoutAsync);
 
         var dialog = new OperatorTrackDialog(source,
                                              existing,
                                              function,
-                                             Color.FromArgb(0xFF, colour.Red, colour.Green, colour.Blue))
+                                             Color.FromArgb(0xFF, colour.Red, colour.Green, colour.Blue),
+                                             isWatch)
         {
             XamlRoot = root,
             Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style

@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks.Enums;
 using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.Query.Plans.Operators;
 using InternalsViewer.UI.App.Controls.Query.Plan;
 using InternalsViewer.UI.App.Models.Query.Plan;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
@@ -22,13 +24,22 @@ public sealed partial class QueryViewModel
     private double _guideStepMaximum;
 
     [ObservableProperty]
-    private IReadOnlyList<GuideStepGroup> _guideStepGroups = [];
+    private ObservableCollection<GuideStepGroup> _guideStepGroups = [];
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CurrentGuideNode))]
     private GuideStepItem? _currentGuideStep;
 
     [ObservableProperty]
     private bool _isGuidePlaying;
+
+    [ObservableProperty]
+    private bool _isGuideStepsVisible = true;
+
+    [ObservableProperty]
+    private bool _isGuideDetailsVisible;
+
+    public PlanNode? CurrentGuideNode => CurrentGuideStep?.Group.Node;
 
     public GuideTransport GuidePlayback => CreatedGuidePlayback ??= CreateGuidePlayback();
 
@@ -40,6 +51,8 @@ public sealed partial class QueryViewModel
 
     private List<GuideStepItem> GuideStepItems { get; set; } = [];
 
+    private GuideStepTree GuideTree { get; set; } = new([], []);
+
     private IReadOnlySet<string>? GuideStepsHidden { get; set; }
 
     private bool IsSelectingGuideStep { get; set; }
@@ -50,6 +63,8 @@ public sealed partial class QueryViewModel
 
         GoToGuideStep(item.Index);
     }
+
+    public void ToggleGuideStep(GuideStepItem item) => GuideTree.Toggle(item);
 
     [RelayCommand]
     private void GuidePlay() => GuidePlayback.TogglePlay();
@@ -134,12 +149,11 @@ public sealed partial class QueryViewModel
 
         var playhead = TraceTimelineTab.Playhead;
 
-        if (current >= 0 && steps[current].Point.Position == playhead)
-        {
-            return forward ? current + 1 : current - 1;
-        }
+        var next = current >= 0 && steps[current].Point.Position == playhead
+            ? (forward ? current + 1 : current - 1)
+            : TraceTickTracks.GetStepIndex(steps, playhead, forward);
 
-        return TraceTickTracks.GetStepIndex(steps, playhead, forward);
+        return GuideTree.GetShownIndex(next, forward);
     }
 
     private int GetPhaseGuideIndex(int current, bool forward) => TraceTickTracks.GetPhaseStepIndex(GetGuideSteps(), current, forward);
@@ -168,9 +182,9 @@ public sealed partial class QueryViewModel
             return -1;
         }
 
-        var first = items[current].Group[0].Index;
+        var first = items[current].Group.FirstIndex;
 
-        return first < current ? first : items[current - 1].Group[0].Index;
+        return first < current ? first : items[current - 1].Group.FirstIndex;
     }
 
     private void GoToGuideStep(int index)
@@ -186,6 +200,11 @@ public sealed partial class QueryViewModel
         SetCurrent(CurrentGuideStep, isCurrent: false);
 
         var item = index < GuideStepItems.Count ? GuideStepItems[index] : null;
+
+        if (item is not null)
+        {
+            GuideTree.Reveal(item);
+        }
 
         SetCurrent(item, isCurrent: true);
 
@@ -225,7 +244,9 @@ public sealed partial class QueryViewModel
     {
         var items = new List<GuideStepItem>(steps.Count);
 
-        var groups = new List<GuideStepGroup>();
+        var groups = new ObservableCollection<GuideStepGroup>();
+
+        var nesting = TraceTickTracks.GetStepNesting(steps);
 
         GuideStepGroup? group = null;
 
@@ -235,9 +256,15 @@ public sealed partial class QueryViewModel
 
             var (operatorName, operatorNode) = GetStepOperator(step);
 
+            var parent = nesting[index].Parent >= 0 ? items[nesting[index].Parent] : null;
+
+            var depth = parent is null ? 0 : parent.Depth + 1;
+
             if (group is null || group.OperatorName != operatorName)
             {
-                group = new GuideStepGroup(operatorName, operatorNode is null ? null : PlanIconResolver.Resolve(operatorNode));
+                var icon = operatorNode is null ? null : PlanIconResolver.Resolve(operatorNode);
+
+                group = new GuideStepGroup(operatorName, operatorNode, icon, index, depth);
 
                 groups.Add(group);
             }
@@ -245,8 +272,15 @@ public sealed partial class QueryViewModel
             var item = new GuideStepItem(index,
                                          TraceTickTracks.GetStepName(step),
                                          TraceTickTracks.GetStepDescription(step),
+                                         TraceTickTracks.GetStepDetails(step),
                                          step.Tick.Node.CategoryColour,
-                                         group);
+                                         group,
+                                         parent,
+                                         depth,
+                                         nesting[index].End)
+            {
+                IsDetailsVisible = IsGuideDetailsVisible
+            };
 
             group.Add(item);
 
@@ -258,6 +292,8 @@ public sealed partial class QueryViewModel
         GuideStepItems = items;
 
         GuideStepGroups = groups;
+
+        GuideTree = new GuideStepTree(items, groups);
     }
 
     private static void SetCurrent(GuideStepItem? item, bool isCurrent)
@@ -276,23 +312,39 @@ public sealed partial class QueryViewModel
     {
         var operatorEvent = step.Tick.Operator;
 
-        if (step.IsReturn || step.Rule.Source != TraceTickSourceType.RowReturn)
+        if (step.IsReturn || step.Rule.Source is not (TraceTickSourceType.RowReturn or TraceTickSourceType.Evaluate))
         {
             return (operatorEvent.Label, GetPlanNode(operatorEvent));
         }
 
         if (step.Tick.Caller is { } caller)
         {
-            return (caller.Label, GetPlanNode(caller));
+            var callerNode = GetPlanNode(caller);
+
+            return (callerNode is { IsStatement: true } ? callerNode.PhysicalOperator : caller.Label, callerNode);
         }
 
-        return GetPlanNode(operatorEvent) is { } node && FindParent(ExecutionPlans.SelectMany(p => p.Root), node) is { } parent
+        return GetPlanNode(operatorEvent) is { } node && GetPlanParent(node) is { } parent
             ? (parent.PhysicalOperator, parent)
             : (operatorEvent.Label, GetPlanNode(operatorEvent));
     }
 
     private PlanNode? GetPlanNode(ExecutionOperatorEvent operatorEvent)
-        => operatorEvent.PlanNodeIdentifier is { } identifier ? ResolvePlanNode(identifier) : null;
+        => operatorEvent.AdaptedNode is { } adapted
+            ? ResolvePlanNode(adapted)?.Adapter
+            : operatorEvent.PlanNodeIdentifier is { } identifier ? ResolvePlanNode(identifier) : null;
+
+    private PlanNode? GetPlanParent(PlanNode node)
+    {
+        var parent = FindParent(ExecutionPlans.SelectMany(p => p.Root), node.IsAdapter ? node.Children[0] : node);
+
+        while (parent is not null && OperatorClassifier.IsComputeScalar(parent))
+        {
+            parent = FindParent(ExecutionPlans.SelectMany(p => p.Root), parent);
+        }
+
+        return parent;
+    }
 
     private void ResetGuide()
     {
@@ -327,6 +379,14 @@ public sealed partial class QueryViewModel
         else
         {
             BuildGuideStepGroups([]);
+        }
+    }
+
+    partial void OnIsGuideDetailsVisibleChanged(bool value)
+    {
+        foreach (var item in GuideStepItems.Where(i => i.Details.Length > 0))
+        {
+            item.IsDetailsVisible = value;
         }
     }
 

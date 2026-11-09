@@ -187,12 +187,13 @@ public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposa
             new(3, "Function", typeof(string), false) { Width = FunctionWidth },
             new(4, "Conditions", typeof(string), false) { Width = ConditionsWidth },
             new(5, "Description", typeof(string), false) { Width = DescriptionWidth },
-            new(6, "Return Description", typeof(string), false) { Width = DescriptionWidth },
-            new(7, "Colour", typeof(string), false) { Width = ColourWidth },
-            new(8, "Background", typeof(string), false) { Width = ColourWidth },
-            new(9, "Height", typeof(double), false) { Width = FactorWidth, Alignment = ResultAlignment.Right },
-            new(10, "Width", typeof(double), false) { Width = FactorWidth, Alignment = ResultAlignment.Right },
-            new(11, string.Empty, typeof(string), false) { Width = ActionsWidth }
+            new(6, "Details", typeof(string), false) { Width = DescriptionWidth },
+            new(7, "Return Description", typeof(string), false) { Width = DescriptionWidth },
+            new(8, "Colour", typeof(string), false) { Width = ColourWidth },
+            new(9, "Background", typeof(string), false) { Width = ColourWidth },
+            new(10, "Height", typeof(double), false) { Width = FactorWidth, Alignment = ResultAlignment.Right },
+            new(11, "Width", typeof(double), false) { Width = FactorWidth, Alignment = ResultAlignment.Right },
+            new(12, string.Empty, typeof(string), false) { Width = ActionsWidth }
         };
 
         var rows = Store.Definitions.Select((d, index) => new ResultRow<long>([d.Name,
@@ -201,6 +202,7 @@ public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposa
                                                                               GetFunctionText(d),
                                                                               Describe(d.Conditions),
                                                                               d.Description ?? string.Empty,
+                                                                              d.Details ?? string.Empty,
                                                                               d.ReturnDescription ?? string.Empty,
                                                                               d.Colour,
                                                                               d.Background ?? string.Empty,
@@ -215,10 +217,12 @@ public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposa
         return new QueryResultSet { Columns = columns, Rows = rows };
     }
 
-    private static string GetFunctionText(TraceTickDefinition definition)
-        => definition.Source == TraceTickSourceType.Call
-            ? $"{definition.Module}!{definition.Function}"
-            : TraceTickTracks.GetSourceText(definition.Source);
+    private static string GetFunctionText(TraceTickDefinition definition) => definition.Source switch
+    {
+        TraceTickSourceType.Call => $"{definition.Module}!{definition.Function}",
+        TraceTickSourceType.Watch => TraceTickTracks.GetWatchTarget(definition),
+        _ => TraceTickTracks.GetSourceText(definition.Source)
+    };
 
     private ActionLinks GetActions(TraceTickDefinition definition)
     {

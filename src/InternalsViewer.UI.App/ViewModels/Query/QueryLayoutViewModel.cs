@@ -15,6 +15,8 @@ using InternalsViewer.UI.App.Views.Query.Trace.Timeline;
 using Microsoft.UI.Xaml.Controls;
 using QueryPlanTabCommands = InternalsViewer.UI.App.Views.Query.Plan.QueryPlanTabCommands;
 
+using InternalsViewer.UI.App.Models.Query.Plan;
+
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
 /// <summary>
@@ -156,6 +158,12 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     public event Action? SelectionChanged;
 
     public DockLayoutViewModel Dock { get; }
+
+    public PaneSplit? PlanStepsSplit { get; set; }
+
+    public PaneSplit? PlanColumnSplit { get; set; }
+
+    public PaneSplit? PlanRowSplit { get; set; }
 
     public bool CanShowEventViews => !IsTrace;
 

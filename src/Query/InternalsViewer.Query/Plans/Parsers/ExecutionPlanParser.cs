@@ -12,6 +12,12 @@ namespace InternalsViewer.Query.Plans.Parsers;
 
 public static class ExecutionPlanParser
 {
+    private const string BatchToRowAdapter = "Batch To Row Adapter";
+
+    private const string RowToBatchAdapter = "Row To Batch Adapter";
+
+    private const int AdapterNodeId = -2;
+
     public static ExecutionPlan Parse(string xml, PlanHandleRegistry planHandles)
     {
         var doc = XDocument.Parse(xml);
@@ -45,6 +51,8 @@ public static class ExecutionPlanParser
                                                .ToList();
 
         var statementNode = BuildStatementNode(statementElement, queryPlan, rootRelationalOperators);
+
+        AddAdapters(statementNode);
 
         plan.Root.Add(statementNode);
 
@@ -101,6 +109,34 @@ public static class ExecutionPlanParser
             EstimatedCost = subtreeCost,
             QueryMemoryGrant = ParseQueryMemoryGrant(queryPlan),
             Children = rootRelOps
+        };
+    }
+
+    private static void AddAdapters(PlanNode parent)
+    {
+        foreach (var child in parent.Children)
+        {
+            if (child.IsBatchMode != parent.IsBatchMode)
+            {
+                child.Adapter = CreateAdapter(child);
+            }
+
+            AddAdapters(child);
+        }
+    }
+
+    private static PlanNode CreateAdapter(PlanNode child)
+    {
+        var name = child.IsBatchMode ? BatchToRowAdapter : RowToBatchAdapter;
+
+        return new PlanNode
+        {
+            NodeId = AdapterNodeId,
+            IsAdapter = true,
+            PhysicalOperator = name,
+            LogicalOperator = name,
+            NodeLevel = child.NodeLevel,
+            Children = [child]
         };
     }
 
@@ -163,6 +199,8 @@ public static class ExecutionPlanParser
         ExtractObjectInfo(element, node);
 
         node.OutputColumns = ParseOutputColumns(element);
+        node.ReferencedValues = [.. GetValueReferences(element).Select(e => GetStringAttribute(e, "Column"))];
+        node.OuterReferences = ParseOuterReferences(element);
         node.DefinedValues = ParseDefinedValues(element, parameters);
         node.ProbedBitmaps = ParseProbedBitmaps(element);
         node.SortColumns = ParseSortColumns(element);
@@ -653,6 +691,7 @@ public static class ExecutionPlanParser
             {
                 Columns = columns,
                 Expression = scalar?.Attribute("ScalarString")?.Value,
+                References = scalar is null ? [] : [.. GetValueReferences(scalar).Select(e => GetStringAttribute(e, "Column"))],
                 ParsedExpression = expressionParser.ParseExpression(scalar),
                 DataType = ParseConvertDataType(scalar)
             });
@@ -660,6 +699,30 @@ public static class ExecutionPlanParser
 
         return result;
     }
+
+    private static IEnumerable<XElement> GetValueReferences(XElement element)
+    {
+        foreach (var child in element.Elements().Where(e => e.Name.LocalName is not ("RelOp" or "OutputList" or "OuterReferences")))
+        {
+            if (child.Name.LocalName == "ColumnReference" && child.Attribute("Table") is null)
+            {
+                yield return child;
+            }
+
+            foreach (var nested in GetValueReferences(child))
+            {
+                yield return nested;
+            }
+        }
+    }
+
+    private static HashSet<string> ParseOuterReferences(XElement element)
+        => [.. element.Elements()
+                      .Where(e => e.Name.LocalName == "NestedLoops")
+                      .Elements()
+                      .Where(e => e.Name.LocalName == "OuterReferences")
+                      .Elements()
+                      .Select(e => GetStringAttribute(e, "Column"))];
 
     private static List<string> ParseProbedBitmaps(XElement relOp)
     {

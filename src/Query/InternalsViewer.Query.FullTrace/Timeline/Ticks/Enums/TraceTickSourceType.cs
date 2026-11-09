@@ -7,5 +7,7 @@ public enum TraceTickSourceType
     RowAccess,
     Seek,
     PageFetch,
-    Open
+    Open,
+    Watch,
+    Evaluate
 }

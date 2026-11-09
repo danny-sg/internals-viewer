@@ -11,22 +11,13 @@
                 VerticalAlignment="Center"
                 Margin="0,0,8,0"
                 Spacing="4">
-        <StackPanel Orientation="Horizontal"
-                    Spacing="4"
-                    Visibility="{x:Bind ViewModel.Layout.IsGuideMode, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-            <Button Style="{StaticResource TabCommandButtonStyle}"
-                    Command="{x:Bind ViewModel.GuidePreviousCommand}"
-                    ToolTipService.ToolTip="Previous Step">
-                <FontIcon Glyph="&#xE892;" FontSize="12" />
-            </Button>
-            <Button Style="{StaticResource TabCommandButtonStyle}"
-                    Command="{x:Bind ViewModel.GuideNextCommand}"
-                    ToolTipService.ToolTip="Next Step">
-                <FontIcon Glyph="&#xE893;" FontSize="12" />
-            </Button>
-            <AppBarSeparator />
-        </StackPanel>
         <ToggleButton Style="{StaticResource TabCommandToggleStyle}"
+                      Visibility="{x:Bind ViewModel.Layout.IsGuideMode, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                      IsChecked="{x:Bind ViewModel.IsGuideStepsVisible, Mode=TwoWay}">
+            <TextBlock Text="Steps" VerticalAlignment="Center" />
+        </ToggleButton>
+        <ToggleButton Style="{StaticResource TabCommandToggleStyle}"
+                      Visibility="{x:Bind ViewModel.IsFullTrace, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"
                       IsChecked="{x:Bind ViewModel.IsAnnotationsVisible, Mode=TwoWay}">
             <TextBlock Text="Annotations" VerticalAlignment="Center" />
         </ToggleButton>

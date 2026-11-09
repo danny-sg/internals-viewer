@@ -6,6 +6,7 @@ using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.Query.Helpers;
+using InternalsViewer.Query.Plans.Operators;
 
 namespace InternalsViewer.Query.FullTrace.Timeline.Tracks;
 
@@ -88,10 +89,12 @@ public sealed class TraceRowReturnMarkMap
                     continue;
                 }
 
+                var shownCaller = GetShownCaller(group, index, groupsByInstance, owners);
+
                 ticks.Add(TraceTickSource.FromCall(location, (byte)type) with
                 {
                     Operator = operatorEvent,
-                    Caller = ReferenceEquals(caller, operatorEvent) ? null : caller
+                    Caller = ReferenceEquals(shownCaller, operatorEvent) ? null : shownCaller
                 });
             }
         }
@@ -139,6 +142,26 @@ public sealed class TraceRowReturnMarkMap
         }
 
         return [.. grouped.Select(g => new CallGroup(g.Key.InstanceAddress, g.Key.Thread, GetOutermost(g.Value), batches.Contains(g.Key)))];
+    }
+
+    private static ExecutionOperatorEvent? GetShownCaller(CallGroup group,
+                                                          int index,
+                                                          Dictionary<(ulong InstanceAddress, uint Thread), CallGroup> groups,
+                                                          IReadOnlyDictionary<ulong, ExecutionOperatorEvent> owners)
+    {
+        var enclosing = group.Enclosing[index];
+
+        var position = group.Calls[index].FromPosition;
+
+        while (enclosing != 0
+               && OperatorClassifier.IsComputeScalar(owners[enclosing])
+               && groups.TryGetValue((enclosing, group.Thread), out var parent)
+               && parent.GetCallAt(position) is { } parentIndex)
+        {
+            enclosing = parent.Enclosing[parentIndex];
+        }
+
+        return enclosing == 0 ? null : owners[enclosing];
     }
 
     private static GetRowCall[] GetOutermost(List<GetRowCall> calls) => [.. Outermost.Of(calls, c => c.FromPosition, c => c.ToPosition)];
@@ -207,5 +230,12 @@ public sealed class TraceRowReturnMarkMap
         public TracePosition[] RowEnds { get; } = [.. calls.Where(c => c.Status == RowStatus).Select(c => c.ToPosition)];
 
         public ulong[] Enclosing { get; } = new ulong[calls.Length];
+
+        public int? GetCallAt(TracePosition position)
+        {
+            var index = SortedSearch.FirstAfter<GetRowCall, TracePosition>(Calls, position, static c => c.FromPosition) - 1;
+
+            return index >= 0 && Calls[index].ToPosition.CompareTo(position) >= 0 ? index : null;
+        }
     }
 }

@@ -143,6 +143,7 @@ public class IteratorLifetimeBuilderTests
 
         Assert.Equal(("Batch To Row Adapter", OperatorCategory.Adapter, 2), (adapter.Name, adapter.Category, adapter.NodeLevel));
         Assert.Null(adapter.PlanNodeIdentifier);
+        Assert.Equal(scan.PlanNodeIdentifier, adapter.AdaptedNode);
     }
 
     [Fact]

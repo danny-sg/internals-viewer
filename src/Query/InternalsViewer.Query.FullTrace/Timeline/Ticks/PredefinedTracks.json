@@ -8,9 +8,9 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Skipped",
-    "Title": "GetRow",
-    "Description": "{ParentOperatorName} → {OperatorName} `GetRow`",
-    "ReturnDescription": "`GetRow` returns a row from {OperatorName} that {ParentOperatorName} takes without returning a row of its own",
+    "Title": "{RowCall}",
+    "Description": "{ParentOperatorName} → {OperatorName} `{RowCall}`",
+    "ReturnDescription": "`{RowCall}` returns a {RowUnit} from {OperatorName} that {ParentOperatorName} takes without returning a {RowUnit} of its own",
     "PlanPart": "Page",
     "PlanPartColour": "#808080",
     "IsCounter": true,
@@ -26,9 +26,9 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Rejected",
-    "Title": "GetRow",
-    "Description": "{ParentOperatorName} → {OperatorName} `GetRow`",
-    "ReturnDescription": "`GetRow` returns a row from {OperatorName} that fails {ParentOperatorName}'s predicate",
+    "Title": "{RowCall}",
+    "Description": "{ParentOperatorName} → {OperatorName} `{RowCall}`",
+    "ReturnDescription": "`{RowCall}` returns a {RowUnit} from {OperatorName} that fails {ParentOperatorName}'s predicate",
     "PlanPart": "Page",
     "PlanPartColour": "#808080",
     "IsCounter": true,
@@ -44,9 +44,9 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Returned",
-    "Title": "GetRow",
-    "Description": "{ParentOperatorName} → {OperatorName} `GetRow`",
-    "ReturnDescription": "`GetRow` returns a row from {OperatorName} to {ParentOperatorName}",
+    "Title": "{RowCall}",
+    "Description": "{ParentOperatorName} → {OperatorName} `{RowCall}`",
+    "ReturnDescription": "`{RowCall}` returns a {RowUnit} from {OperatorName} to {ParentOperatorName}",
     "PlanPart": "Page",
     "PlanPartColour": "#808080",
     "IsCounter": true,
@@ -62,9 +62,9 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Fake Row",
-    "Title": "GetRow",
-    "Description": "{ParentOperatorName} → {OperatorName} `GetRow`",
-    "ReturnDescription": "`GetRow` returns from {OperatorName} to {ParentOperatorName} without a real row",
+    "Title": "{RowCall}",
+    "Description": "{ParentOperatorName} → {OperatorName} `{RowCall}`",
+    "ReturnDescription": "`{RowCall}` returns from {OperatorName} to {ParentOperatorName} without a real {RowUnit}",
     "PlanPart": "Page",
     "PlanPartColour": "#808080",
     "Source": "RowReturn",
@@ -79,9 +79,9 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Other Status",
-    "Title": "GetRow",
-    "Description": "{ParentOperatorName} → {OperatorName} `GetRow`",
-    "ReturnDescription": "`GetRow` returns from {OperatorName} to {ParentOperatorName}",
+    "Title": "{RowCall}",
+    "Description": "{ParentOperatorName} → {OperatorName} `{RowCall}`",
+    "ReturnDescription": "`{RowCall}` returns from {OperatorName} to {ParentOperatorName}",
     "PlanPart": "Page",
     "PlanPartColour": "#808080",
     "Source": "RowReturn",
@@ -96,9 +96,9 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "End",
-    "Title": "GetRow",
-    "Description": "{ParentOperatorName} → {OperatorName} `GetRow`",
-    "ReturnDescription": "`GetRow` returns from {OperatorName} with no more rows, so {ParentOperatorName} knows its input is finished",
+    "Title": "{RowCall}",
+    "Description": "{ParentOperatorName} → {OperatorName} `{RowCall}`",
+    "ReturnDescription": "`{RowCall}` returns from {OperatorName} with no more data, so {ParentOperatorName} knows its input is finished",
     "PlanPart": "Page",
     "PlanPartColour": "#808080",
     "Source": "RowReturn",
@@ -113,7 +113,8 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "IAM Read",
-    "Description": "Read IAM Page {Page}. The IAM maps the extents in this part of the file that belong to the object",
+    "Description": "Read IAM Page {Page}",
+    "Details": "The IAM maps the extents in this part of the file that belong to the object",
     "PlanPart": "IAM Page",
     "Source": "PageFetch",
     "Value": 10
@@ -127,7 +128,8 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "PFS Read",
-    "Description": "Read PFS Page {Page}. The PFS is used to check if an IAM extent page is allocated",
+    "Description": "Read PFS Page {Page}",
+    "Details": "The PFS is used to check if an IAM extent page is allocated",
     "PlanPart": "PFS Page",
     "Source": "PageFetch",
     "Value": 11
@@ -213,9 +215,10 @@
         "Value": "1"
       }
     ],
-    "Label": "Same Group",
+    "Label": "No Change",
     "Title": "Check Group",
-    "Description": "Check if group changed with `{Function}` → same group, so add row to it"
+    "Description": "Check if group changed with `{Function}` → No Change, so add row to group",
+    "PlanPart": "Stream Aggregate.Sum"
   },
   {
     "Name": "Evaluations",
@@ -259,9 +262,9 @@
         "Value": "0"
       }
     ],
-    "Label": "Group Changed",
+    "Label": "Change",
     "Title": "Check Group",
-    "Description": "Check if group changed with `{Function}` → new group, so return finished group"
+    "Description": "Check if group changed with `{Function}` → Change, so return finished group"
   },
   {
     "Name": "Evaluations",
@@ -442,6 +445,7 @@
     "Label": "Root Page",
     "Description": "Read Index Root Page {Page}",
     "PlanPart": "Root Node",
+    "PlanPartColour": "#F7630C",
     "Source": "Seek",
     "Value": 1
   },
@@ -456,6 +460,7 @@
     "Label": "Intermediate Page",
     "Description": "Read Index Intermediate Page {Page}",
     "PlanPart": "Intermediate Node",
+    "PlanPartColour": "#F7630C",
     "Source": "Seek",
     "Value": 2
   },
@@ -470,6 +475,7 @@
     "Label": "Leaf Page",
     "Description": "Read Index Leaf Page {Page}",
     "PlanPart": "Leaf Node",
+    "PlanPartColour": "#F7630C",
     "Source": "Seek",
     "Value": 3
   },
@@ -547,6 +553,123 @@
     "Description": "Look up probe row in hash table (no match)"
   },
   {
+    "Name": "Hash Aggregate",
+    "Module": "sqlmin",
+    "Function": "CBpQScanHashAggNew::ProcessInput",
+    "Colour": "#8764B8",
+    "PlanPart": "Hash Match.Hash Table",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Build",
+    "Title": "Hash Aggregate Build",
+    "Description": "{OperatorName} Consume input batches into hash table",
+    "Details": "Batch mode aggregates in two stages. Each input batch goes into a local hash table, then the local groups are repartitioned by hash and merged into a global hash table",
+    "ReturnDescription": "{OperatorName} has aggregated its input, so it can return groups",
+    "IsPhase": true
+  },
+  {
+    "Name": "Hash Aggregate",
+    "Module": "sqlmin",
+    "Function": "CBpagAggregateInMemory::PushNextBatch",
+    "Colour": "#C239B3",
+    "PlanPart": "Hash Match.Input",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Push Batch",
+    "Title": "Push Batch",
+    "Description": "Push input batch into local hash table"
+  },
+  {
+    "Name": "Hash Aggregate",
+    "Module": "sqlmin",
+    "Function": "CBpagHashTable::FLookup",
+    "Colour": "#00A119",
+    "PlanPart": "Hash Match.Bucket",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Look Up",
+    "Title": "Look Up Groups",
+    "Description": "Look up group keys in hash table"
+  },
+  {
+    "Name": "Hash Aggregate",
+    "Module": "sqlmin",
+    "Function": "CBpagAggregateExpression::TryAggregateUsingQE",
+    "Colour": "#5CD66B",
+    "PlanPart": "Hash Match.Bucket",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Aggregate",
+    "Title": "Aggregate",
+    "Description": "Apply aggregate to batch values"
+  },
+  {
+    "Name": "Hash Aggregate",
+    "Module": "sqlmin",
+    "Function": "CBpagAggregateInMemory::FinishProcessingInput",
+    "Colour": "#A78BFA",
+    "PlanPart": "Hash Match.Hash Table",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Merge",
+    "Title": "Merge Groups",
+    "Description": "Merge local groups into global hash table",
+    "ReturnDescription": "Global hash table holds every group",
+    "IsPhase": true
+  },
+  {
+    "Name": "Hash Aggregate",
+    "Module": "sqlmin",
+    "Function": "CBpagAggregateInMemory::RepartitionBatch",
+    "Colour": "#E8A33D",
+    "PlanPart": "Hash Match.Hash Table",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Repartition",
+    "Title": "Repartition",
+    "Description": "Repartition local groups by hash"
+  },
+  {
+    "Name": "Hash Aggregate",
+    "Module": "sqlmin",
+    "Function": "CBpagRepartitioningPage::CBpagPageScanner::GetBatchOfRows",
+    "Colour": "#C239B3",
+    "PlanPart": "Hash Match.Input",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Partition Page",
+    "Title": "Partition Page",
+    "Description": "Read groups from partition page"
+  },
+  {
+    "Name": "Hash Aggregate",
+    "Module": "sqlmin",
+    "Function": "CBpagAggregateInMemory::FGetOutputBatch",
+    "Colour": "#0078D4",
+    "PlanPart": "Hash Match.Arrow",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Output Batch",
+    "Title": "Output Batch",
+    "Description": "Fill output batch with groups from hash table"
+  },
+  {
     "Name": "Sort",
     "Module": "sqlmin",
     "Function": "CQScanSortNew::BuildSortTable",
@@ -589,6 +712,264 @@
     "Label": "Sorted Row",
     "Title": "Get Sorted Row",
     "Description": "Get next row in sort order from sort table"
+  },
+  {
+    "Name": "Compute Scalar",
+    "Module": "sqlmin",
+    "Function": "CBpQScanProject::BpGetBatchData",
+    "Colour": "#0078D4",
+    "PlanPart": "Compute Scalar.Calculator",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Batch",
+    "Title": "Evaluate",
+    "Description": "Evaluate `{Expression}`",
+    "Details": "A Compute Scalar only forwards `BpGetNextBatch`. The expression runs when the operator above asks for the batch data, once for the whole batch",
+    "Source": "Evaluate",
+    "Value": 0
+  },
+  {
+    "Name": "Compute Scalar",
+    "Module": "*",
+    "Function": "CEsExec::GeneralEval4",
+    "Colour": "#0078D4",
+    "PlanPart": "Compute Scalar.Calculator",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [
+      {
+        "Target": "CalledDirectlyBy",
+        "Argument": null,
+        "Type": "",
+        "Operator": "Equal",
+        "Value": "CXStmtQuery::ErsqExecuteQuery"
+      }
+    ],
+    "Label": "Row Send",
+    "Title": "Evaluate",
+    "Description": "Evaluate `{Expression}`",
+    "Details": "A Compute Scalar has no iterator in row mode. The expression runs as part of the operator that needs the value",
+    "Source": "Evaluate",
+    "Value": 0
+  },
+  {
+    "Name": "Compute Scalar",
+    "Module": "*",
+    "Function": "CEsExec::GeneralEval4",
+    "Colour": "#0078D4",
+    "PlanPart": "Compute Scalar.Calculator",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [
+      {
+        "Target": "CalledDirectlyBy",
+        "Argument": null,
+        "Type": "",
+        "Operator": "Equal",
+        "Value": "CQScanFilterNew::GetRow"
+      }
+    ],
+    "Label": "Filter",
+    "Title": "Evaluate",
+    "Description": "Evaluate `{Expression}`",
+    "Details": "A Compute Scalar has no iterator in row mode. The expression runs as part of the operator that needs the value",
+    "Source": "Evaluate",
+    "Value": 0
+  },
+  {
+    "Name": "Compute Scalar",
+    "Module": "*",
+    "Function": "CEsExec::GeneralEval4",
+    "Colour": "#0078D4",
+    "PlanPart": "Compute Scalar.Calculator",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [
+      {
+        "Target": "CalledDirectlyBy",
+        "Argument": null,
+        "Type": "",
+        "Operator": "Equal",
+        "Value": "CQScanSortNew::PushRow"
+      }
+    ],
+    "Label": "Sort",
+    "Title": "Evaluate",
+    "Description": "Evaluate `{Expression}`",
+    "Details": "A Compute Scalar has no iterator in row mode. The expression runs as part of the operator that needs the value",
+    "Source": "Evaluate",
+    "Value": 0
+  },
+  {
+    "Name": "Compute Scalar",
+    "Module": "*",
+    "Function": "CEsExec::GeneralEval4",
+    "Colour": "#0078D4",
+    "PlanPart": "Compute Scalar.Calculator",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [
+      {
+        "Target": "CalledDirectlyBy",
+        "Argument": null,
+        "Type": "",
+        "Operator": "Equal",
+        "Value": "CQScanSortNew::BuildSortTable"
+      }
+    ],
+    "Label": "Sort First Row",
+    "Title": "Evaluate",
+    "Description": "Evaluate `{Expression}`",
+    "Details": "A Compute Scalar has no iterator in row mode. The expression runs as part of the operator that needs the value",
+    "Source": "Evaluate",
+    "Value": 0
+  },
+  {
+    "Name": "Compute Scalar",
+    "Module": "*",
+    "Function": "CEsExec::FastHash",
+    "Colour": "#0078D4",
+    "PlanPart": "Compute Scalar.Calculator",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [
+      {
+        "Target": "CalledBy",
+        "Argument": null,
+        "Type": "",
+        "Operator": "Equal",
+        "Value": "CQScanHash::ConsumeBuild"
+      }
+    ],
+    "Label": "Hash Build",
+    "Title": "Evaluate",
+    "Description": "Evaluate `{Expression}`",
+    "Details": "A Compute Scalar has no iterator in row mode. The expression runs as part of the operator that needs the value",
+    "Source": "Evaluate",
+    "Value": 0
+  },
+  {
+    "Name": "Compute Scalar",
+    "Module": "*",
+    "Function": "CEsExec::FastHash",
+    "Colour": "#0078D4",
+    "PlanPart": "Compute Scalar.Calculator",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [
+      {
+        "Target": "CalledBy",
+        "Argument": null,
+        "Type": "",
+        "Operator": "Equal",
+        "Value": "CQScanHash::ConsumeProbe"
+      }
+    ],
+    "Label": "Hash Probe",
+    "Title": "Evaluate",
+    "Description": "Evaluate `{Expression}`",
+    "Details": "A Compute Scalar has no iterator in row mode. The expression runs as part of the operator that needs the value",
+    "Source": "Evaluate",
+    "Value": 1
+  },
+  {
+    "Name": "Compute Scalar",
+    "Module": "*",
+    "Function": "CEsExec::GeneralEval4",
+    "Colour": "#0078D4",
+    "PlanPart": "Compute Scalar.Calculator",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [
+      {
+        "Target": "CalledDirectlyBy",
+        "Argument": null,
+        "Type": "",
+        "Operator": "Equal",
+        "Value": "CQScanStreamAggregateNew::GetRowHelper"
+      }
+    ],
+    "Label": "Stream Aggregate",
+    "Title": "Evaluate",
+    "Description": "Evaluate `{Expression}`",
+    "Details": "A Compute Scalar has no iterator in row mode. The expression runs as part of the operator that needs the value",
+    "Source": "Evaluate",
+    "Value": 0
+  },
+  {
+    "Name": "Compute Scalar",
+    "Module": "*",
+    "Function": "CEsExec::GeneralEval4",
+    "Colour": "#0078D4",
+    "PlanPart": "Compute Scalar.Calculator",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [
+      {
+        "Target": "CalledDirectlyBy",
+        "Argument": null,
+        "Type": "",
+        "Operator": "Equal",
+        "Value": "CQScanRangeNew::SetRange"
+      }
+    ],
+    "Label": "Seek Key",
+    "Title": "Evaluate",
+    "Description": "Evaluate `{Expression}`",
+    "Details": "A Compute Scalar has no iterator in row mode. The expression runs as part of the operator that needs the value",
+    "Source": "Evaluate",
+    "Value": 0
+  },
+  {
+    "Name": "Compute Scalar",
+    "Module": "*",
+    "Function": "CEsExec::GeneralEval4",
+    "Colour": "#0078D4",
+    "PlanPart": "Compute Scalar.Calculator",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [
+      {
+        "Target": "CalledDirectlyBy",
+        "Argument": null,
+        "Type": "",
+        "Operator": "Equal",
+        "Value": "CValCachedExpr::GetDataX"
+      }
+    ],
+    "Label": "Startup",
+    "Title": "Evaluate",
+    "Description": "Evaluate `{Expression}` once at query startup",
+    "Details": "A Compute Scalar has no iterator in row mode. The expression runs as part of the operator that needs the value",
+    "Source": "Evaluate",
+    "Value": 2
+  },
+  {
+    "Name": "Watches",
+    "Module": "*",
+    "Function": "CQScanTopNew",
+    "Colour": "#0078D4",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Rows Remaining",
+    "Description": "Rows {OperatorName} still has to return",
+    "Source": "Watch",
+    "Offset": 72,
+    "Length": 8,
+    "DataType": "BigInt"
   },
   {
     "Name": "Open",

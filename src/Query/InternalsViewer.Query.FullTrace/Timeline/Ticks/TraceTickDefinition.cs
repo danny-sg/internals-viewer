@@ -28,6 +28,12 @@ public sealed partial record TraceTickDefinition(string Name,
 
     public const string SlotPlaceholder = "Slot";
 
+    public const string RowCallPlaceholder = "RowCall";
+
+    public const string RowUnitPlaceholder = "RowUnit";
+
+    public const string ExpressionPlaceholder = "Expression";
+
     private const string AnyModule = "*";
 
     private const char FunctionSeparator = '|';
@@ -37,6 +43,8 @@ public sealed partial record TraceTickDefinition(string Name,
     public string? Title { get; init; }
 
     public string? Description { get; init; }
+
+    public string? Details { get; init; }
 
     public string? ReturnDescription { get; init; }
 
@@ -56,6 +64,14 @@ public sealed partial record TraceTickDefinition(string Name,
 
     public byte Value { get; init; }
 
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int Offset { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int Length { get; init; }
+
+    public string? DataType { get; init; }
+
     private GlobPattern[] Functions
         => field ??= [.. Function.Split(FunctionSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                                  .Select(GlobPattern.Parse)];
@@ -66,6 +82,8 @@ public sealed partial record TraceTickDefinition(string Name,
 
     public static string Format(string text, Func<string, string?> getValue)
         => PlaceholderPattern().Replace(text, m => getValue(m.Groups[1].Value) ?? m.Value);
+
+    public bool MatchesName(string name) => Functions.Length == 0 || Functions.Any(f => f.Matches(name));
 
     public bool IsFunction(CallTreeNode node)
         => node.Frame is { } frame

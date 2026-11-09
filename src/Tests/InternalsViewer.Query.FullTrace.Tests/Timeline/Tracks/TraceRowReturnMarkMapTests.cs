@@ -310,6 +310,21 @@ public class TraceRowReturnMarkMapTests
         Assert.Equal([1, 2, 2], counts);
     }
 
+    [Fact]
+    public void A_Call_Made_Through_A_Compute_Scalar_Does_Not_Name_It_As_The_Caller()
+    {
+        var computeScalar = new ExecutionOperatorEvent
+        {
+            Name = "Compute Scalar",
+            OperatorDescription = "Compute Scalar",
+            PlanNodeIdentifier = new PlanNodeIdentifier(1, 0)
+        };
+
+        var marks = Build([(10, 40, RowStatus)], [(15, 20, RowStatus)], top: computeScalar);
+
+        Assert.Null(marks.Ticks.GetTicks(Scan, Thread)!.All.Single().Caller);
+    }
+
     private static TraceRowReturnMarkMap Build((ulong Start, ulong End, ulong Status)[] joinCalls,
                                              (ulong Start, ulong End, ulong Status)[] scanCalls,
                                              ExecutionOperatorEvent? top = null,

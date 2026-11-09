@@ -6,6 +6,7 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.ViewModels.Page;
 using Microsoft.UI.Input;
+using Microsoft.UI.Xaml.Controls;
 using InternalsViewer.UI.App.Controls;
 using InternalsViewer.UI.App.Models.Logging;
 
@@ -13,6 +14,14 @@ namespace InternalsViewer.UI.App.Views;
 
 public sealed partial class PageView : IDisposable
 {
+    private const double MinimumTabsWidth = 200;
+
+    private const int WideTabsRow = 1;
+
+    private const int NarrowTabsRow = 3;
+
+    private const int WideTabsColumn = 2;
+
     public PageView()
     {
         InitializeComponent();
@@ -25,6 +34,8 @@ public sealed partial class PageView : IDisposable
     }
 
     public PageTabViewModel ViewModel => (PageTabViewModel)DataContext;
+
+    private bool IsNarrow { get; set; }
 
     public Visibility GetTabContentVisibility(int selectedIndex, bool isTabVisible, int index)
     {
@@ -43,6 +54,33 @@ public sealed partial class PageView : IDisposable
         PfsControl.Dispose();
 
         (DataContext as PageTabViewModel)?.Dispose();
+    }
+
+    private void OnContentGridSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        var isNarrow = ContentGrid.ActualWidth < DataColumn.ActualWidth + SlotColumn.ActualWidth + MinimumTabsWidth;
+
+        if (isNarrow != IsNarrow)
+        {
+            IsNarrow = isNarrow;
+
+            ApplyTabsLayout();
+        }
+    }
+
+    private void ApplyTabsLayout()
+    {
+        Grid.SetRow(TabsArea, IsNarrow ? NarrowTabsRow : WideTabsRow);
+
+        Grid.SetColumn(TabsArea, IsNarrow ? 0 : WideTabsColumn);
+
+        Grid.SetColumnSpan(TabsArea, IsNarrow ? ContentGrid.ColumnDefinitions.Count : 1);
+
+        ContentRow.Height = new GridLength(1, GridUnitType.Star);
+
+        TabsRow.Height = IsNarrow ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+
+        TabsSplitter.Visibility = IsNarrow ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void OnLogRecordClicked(LogRecordItem item)

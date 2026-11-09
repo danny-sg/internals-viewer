@@ -15,8 +15,11 @@ using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
+using InternalsViewer.Query.Plans.Operators;
+using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline.Enums;
+using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline.Memory;
 using SkiaSharp;
 
 namespace InternalsViewer.UI.App.Services.Query.Trace;
@@ -28,6 +31,12 @@ public static partial class TraceTickTracks
     private const string GetRowsMenuText = "GetRow/GetBatch";
 
     private const string BatchReturnsTitle = "GetBatch";
+
+    private const string RowReturnsTitle = "GetRow";
+
+    private const string BatchUnit = "batch";
+
+    private const string RowUnit = "row";
 
     private const float MarkTickWidth = 2f;
 
@@ -50,7 +59,9 @@ public static partial class TraceTickTracks
                                         TraceTickTrackSeries series,
                                         int ordinal,
                                         Func<TraceTickDefinition, bool> isAdded,
-                                        Func<TraceTick, string> getParentName)
+                                        Func<TraceTick, string> getParentName,
+                                        Func<TraceTick, string> getExpression,
+                                        Func<TraceTickDefinition, TraceWatch> getWatch)
     {
         var colours = rules.Select(r => ParseColour(r.Colour)).ToArray();
 
@@ -65,7 +76,7 @@ public static partial class TraceTickTracks
             Values = [.. rules.Select((r, index) => new TraceTickValue(series.Values[index], r.GetLabel()))],
             GetColour = t => ruleByValue[t.Value] is >= 0 and var rule ? GetColour(rules[rule], colours[rule], t, categoryColours) : null,
             GetRule = t => ruleByValue[t.Value] is >= 0 and var rule ? rules[rule] : null,
-            GetPlaceholder = (t, name) => GetPlaceholder(trace, t, name, getParentName),
+            GetPlaceholder = (t, name) => GetPlaceholder(trace, t, name, getParentName, getExpression),
             Colour = colours[0],
             Background = SKColor.TryParse(first.Background, out var background) ? background : isAdded(first) ? LightBackground : null,
             HeightFactor = (float)first.HeightFactor,
@@ -79,6 +90,7 @@ public static partial class TraceTickTracks
         {
             TraceTickSourceType.RowReturn => WithRowReturns(track, trace.RowReturnMarks, rules, colours, ruleByValue),
             TraceTickSourceType.Seek => track with { TickWidth = MarkTickWidth },
+            TraceTickSourceType.Watch => WithWatches(track, rules, ruleByValue, getWatch),
             _ => track
         };
     }
@@ -90,8 +102,15 @@ public static partial class TraceTickTracks
         TraceTickSourceType.Seek => "Seek",
         TraceTickSourceType.PageFetch => "Page Fetch",
         TraceTickSourceType.Open => "Operator Open",
+        TraceTickSourceType.Watch => "Watch",
+        TraceTickSourceType.Evaluate => "Compute Scalar Evaluate",
         _ => string.Empty
     };
+
+    public static string GetWatchTarget(TraceTickDefinition definition) => $"{definition.Function} + 0x{definition.Offset:X}";
+
+    public static string FormatWatchValue(TraceTickDefinition definition, byte[] value)
+        => MemoryWatchRowViewModel.GetValue(new HexWatch(0, value.Length, definition.DataType), value);
 
     public static string? GetText(TraceTickTrack track, TraceTick tick, string? text)
         => string.IsNullOrEmpty(text) ? null : TraceTickDefinition.Format(text, name => track.GetPlaceholder(tick, name));
@@ -102,14 +121,14 @@ public static partial class TraceTickTracks
 
         foreach (var track in tracks)
         {
-            if (hidden?.Contains(track.Name) == true)
+            if (hidden?.Contains(track.Name) == true || track.GetText is not null)
             {
                 continue;
             }
 
             foreach (var tick in track.Series.GetTicks(static _ => true))
             {
-                if (track.GetRule(tick) is not { } rule)
+                if (track.GetRule(tick) is not { } rule || IsForwardingCall(tick, rule))
                 {
                     continue;
                 }
@@ -126,6 +145,49 @@ public static partial class TraceTickTracks
         steps.Sort(static (left, right) => left.Point.Position.CompareTo(right.Point.Position));
 
         return steps;
+    }
+
+    public static TraceStepNesting[] GetStepNesting(List<TraceTrackStep> steps)
+    {
+        var nesting = new TraceStepNesting[steps.Count];
+
+        var open = new Dictionary<uint, List<int>>();
+
+        for (var index = 0; index < steps.Count; index++)
+        {
+            var step = steps[index];
+
+            if (!open.TryGetValue(step.Tick.Thread, out var calls))
+            {
+                calls = [];
+
+                open[step.Tick.Thread] = calls;
+            }
+
+            var isNesting = IsNestingStep(step);
+
+            if (step.IsReturn && isNesting && calls.FindLastIndex(c => IsSameTick(steps[c], step)) is >= 0 and var position)
+            {
+                var call = calls[position];
+
+                calls.RemoveRange(position, calls.Count - position);
+
+                nesting[index] = new TraceStepNesting(call, index);
+
+                nesting[call] = nesting[call] with { End = index };
+
+                continue;
+            }
+
+            nesting[index] = new TraceStepNesting(calls.Count > 0 ? calls[^1] : -1, index);
+
+            if (!step.IsReturn && isNesting)
+            {
+                calls.Add(index);
+            }
+        }
+
+        return nesting;
     }
 
     public static int GetStepIndex(List<TraceTrackStep> steps, TracePosition? current, bool forward)
@@ -180,6 +242,11 @@ public static partial class TraceTickTracks
 
     public static string GetStepDescription(TraceTrackStep step)
         => GetText(step.Track, step.Tick, step.IsReturn ? step.Rule.ReturnDescription : step.Rule.Description) ?? string.Empty;
+
+    public static string GetStepDetails(TraceTrackStep step)
+        => step.IsReturn ? string.Empty : GetText(step.Track, step.Tick, step.Rule.Details) ?? string.Empty;
+
+    public static string ShortenExpression(string expression) => QualifiedColumnRegex().Replace(expression, "$1");
 
     public static string ToPlainText(string markdown)
         => MarkdownLinkRegex().Replace(markdown, "$1").Replace(BoldMarker, string.Empty).Replace(CodeMarker, string.Empty);
@@ -247,12 +314,30 @@ public static partial class TraceTickTracks
         return category;
     }
 
-    private static string? GetPlaceholder(TraceResult trace, TraceTick tick, string name, Func<TraceTick, string> getParentName)
+    private static bool IsNestingStep(TraceTrackStep step)
+        => step.Rule.Source != TraceTickSourceType.Open && !string.IsNullOrEmpty(step.Rule.ReturnDescription);
+
+    private static bool IsSameTick(TraceTrackStep left, TraceTrackStep right)
+        => ReferenceEquals(left.Track, right.Track) && left.Tick.Span.From.Position == right.Tick.Span.From.Position;
+
+    private static bool IsForwardingCall(TraceTick tick, TraceTickDefinition rule)
+        => rule.Source is TraceTickSourceType.RowReturn or TraceTickSourceType.Open && OperatorClassifier.IsComputeScalar(tick.Operator);
+
+    private static string? GetPlaceholder(TraceResult trace,
+                                          TraceTick tick,
+                                          string name,
+                                          Func<TraceTick, string> getParentName,
+                                          Func<TraceTick, string> getExpression)
         => name switch
         {
             _ when IsPlaceholder(name, TraceTickDefinition.OperatorNamePlaceholder) => tick.Operator.OperatorDescription,
             _ when IsPlaceholder(name, TraceTickDefinition.ParentOperatorNamePlaceholder) => getParentName(tick),
+            _ when IsPlaceholder(name, TraceTickDefinition.ExpressionPlaceholder) => getExpression(tick),
             _ when IsPlaceholder(name, TraceTickDefinition.FunctionPlaceholder) => tick.Node.Symbol,
+            _ when IsPlaceholder(name, TraceTickDefinition.RowCallPlaceholder)
+                => trace.RowReturnMarks.IsBatch(tick.Operator) ? BatchReturnsTitle : RowReturnsTitle,
+            _ when IsPlaceholder(name, TraceTickDefinition.RowUnitPlaceholder)
+                => trace.RowReturnMarks.IsBatch(tick.Operator) ? BatchUnit : RowUnit,
             _ when IsPlaceholder(name, TraceTickDefinition.PagePlaceholder)
                 => GetPage(trace, tick) is { } page ? GetPageLink(page, GetSlot(trace, tick)) : UnknownValue,
             _ when IsPlaceholder(name, TraceTickDefinition.SlotPlaceholder)
@@ -335,6 +420,25 @@ public static partial class TraceTickTracks
         };
     }
 
+    private static TraceTickTrack WithWatches(TraceTickTrack track,
+                                              IReadOnlyList<TraceTickDefinition> rules,
+                                              int[] ruleByValue,
+                                              Func<TraceTickDefinition, TraceWatch> getWatch)
+    {
+        string? GetText(TraceTick tick)
+            => ruleByValue[tick.Value] is >= 0 and var rule && getWatch(rules[rule]).GetValue(tick) is { } value
+                ? FormatWatchValue(rules[rule], value)
+                : null;
+
+        return track with
+        {
+            GetText = GetText,
+            GetDetails = t => ruleByValue[t.Value] is >= 0 and var rule && GetText(t) is { } text
+                                  ? [$"{rules[rule].GetLabel()} {text}", GetWatchTarget(rules[rule])]
+                                  : []
+        };
+    }
+
     private static IEnumerable<string> GetDetails(TraceResult trace, TraceTickDefinition rule, TraceTick tick) => rule.Source switch
     {
         TraceTickSourceType.RowAccess => GetRowAccessDetails(tick, trace.PageAccesses, trace.BufferPool),
@@ -377,4 +481,7 @@ public static partial class TraceTickTracks
 
     [GeneratedRegex(@"\[([^\]]*)\]\([^)]*\)")]
     private static partial Regex MarkdownLinkRegex();
+
+    [GeneratedRegex(@"(?:\[[^\]]*\]\.){3}(\[[^\]]*\])(?: as \[[^\]]*\]\.\[[^\]]*\])?")]
+    private static partial Regex QualifiedColumnRegex();
 }

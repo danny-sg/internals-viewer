@@ -18,7 +18,7 @@ public static class PlanIconResolver
         "ComputeScalar", "Filter", "Top", "TopN", "Parallelism", "Concatenation", "ConstantScan",
         "TableSpool", "IndexSpool", "RowCountSpool", "Spool", "Segment", "Sequence", "SequenceProject",
         "Assert", "Bitmap", "Split", "Collapse", "MergeInterval", "WindowAggregate", "WindowSpool",
-        "Result", "Default", "ColumnstoreIndexScan"
+        "Result", "Default", "ColumnstoreIndexScan", "BatchToRowAdapter", "RowToBatchAdapter"
     };
 
     private static readonly Dictionary<string, string> LogicalOverrides = new(StringComparer.OrdinalIgnoreCase)

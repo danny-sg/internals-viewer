@@ -22,6 +22,10 @@ public sealed class PlanNode
 
     public bool IsStatement { get; set; }
 
+    public bool IsAdapter { get; set; }
+
+    public PlanNode? Adapter { get; set; }
+
     public int NodeLevel { get; set; }
 
     public HashInfo? HashInfo { get; set; }
@@ -31,6 +35,10 @@ public sealed class PlanNode
     public PredicateInfo? PredicateInfo { get; set; }
 
     public List<ColumnReference> OutputColumns { get; set; } = [];
+
+    public HashSet<string> ReferencedValues { get; set; } = [];
+
+    public HashSet<string> OuterReferences { get; set; } = [];
 
     public List<DefinedValueInfo> DefinedValues { get; set; } = [];
 

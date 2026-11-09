@@ -1433,6 +1433,116 @@ public class ExecutionPlanParserTests
         Assert.False(plan.NodesById[0].HashInfo?.IsBitmapCreator);
     }
 
+    private const string AdapterXml = """
+        <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan">
+          <BatchSequence>
+            <Batch>
+              <Statements>
+                <StmtSimple StatementType="SELECT" StatementSubTreeCost="1">
+                  <QueryPlan>
+                    <RelOp NodeId="0" PhysicalOp="Compute Scalar" LogicalOp="Compute Scalar" EstimatedExecutionMode="Batch">
+                      <OutputList />
+                      <ComputeScalar>
+                        <RelOp NodeId="1" PhysicalOp="Compute Scalar" LogicalOp="Compute Scalar" EstimatedExecutionMode="Batch">
+                          <OutputList />
+                          <ComputeScalar>
+                            <RelOp NodeId="2" PhysicalOp="Compute Scalar" LogicalOp="Compute Scalar" EstimatedExecutionMode="Row">
+                              <OutputList />
+                            </RelOp>
+                          </ComputeScalar>
+                        </RelOp>
+                      </ComputeScalar>
+                    </RelOp>
+                  </QueryPlan>
+                </StmtSimple>
+              </Statements>
+            </Batch>
+          </BatchSequence>
+        </ShowPlanXML>
+        """;
+
+    [Fact]
+    public void A_Batch_Operator_Under_A_Row_Parent_Has_A_Batch_To_Row_Adapter()
+    {
+        var node = Parse(AdapterXml).NodesById[0];
+
+        Assert.Equal("Batch To Row Adapter", node.Adapter?.PhysicalOperator);
+        Assert.Same(node, node.Adapter?.Children.Single());
+    }
+
+    [Fact]
+    public void A_Row_Operator_Under_A_Batch_Parent_Has_A_Row_To_Batch_Adapter()
+    {
+        var node = Parse(AdapterXml).NodesById[2];
+
+        Assert.Equal("Row To Batch Adapter", node.Adapter?.PhysicalOperator);
+    }
+
+    [Fact]
+    public void An_Operator_In_The_Same_Mode_As_Its_Parent_Has_No_Adapter()
+    {
+        Assert.Null(Parse(AdapterXml).NodesById[1].Adapter);
+    }
+
+    [Fact]
+    public void An_Adapter_Is_Not_A_Node_Of_The_Plan()
+    {
+        var plan = Parse(AdapterXml);
+
+        Assert.DoesNotContain(plan.NodesById.Values, n => n.IsAdapter);
+        Assert.Same(plan.NodesById[0], plan.Root[0].Children[0]);
+    }
+
+    private const string ValueReferenceXml = """
+        <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan">
+          <BatchSequence>
+            <Batch>
+              <Statements>
+                <StmtSimple StatementType="SELECT" StatementSubTreeCost="1">
+                  <QueryPlan>
+                    <RelOp NodeId="0" PhysicalOp="Nested Loops" LogicalOp="Inner Join" EstimatedExecutionMode="Row">
+                      <OutputList><ColumnReference Column="Expr1" /></OutputList>
+                      <NestedLoops Optimized="0">
+                        <OuterReferences><ColumnReference Column="Expr1" /></OuterReferences>
+                        <RelOp NodeId="1" PhysicalOp="Compute Scalar" LogicalOp="Compute Scalar" EstimatedExecutionMode="Row">
+                          <OutputList><ColumnReference Column="Expr1" /></OutputList>
+                          <ComputeScalar>
+                            <DefinedValues>
+                              <DefinedValue>
+                                <ColumnReference Column="Expr1" />
+                                <ScalarOperator ScalarString="getdate()">
+                                  <Identifier><ColumnReference Column="ConstExpr2" /></Identifier>
+                                </ScalarOperator>
+                              </DefinedValue>
+                            </DefinedValues>
+                          </ComputeScalar>
+                        </RelOp>
+                      </NestedLoops>
+                    </RelOp>
+                  </QueryPlan>
+                </StmtSimple>
+              </Statements>
+            </Batch>
+          </BatchSequence>
+        </ShowPlanXML>
+        """;
+
+    [Fact]
+    public void Outer_References_Are_Read_Apart_From_The_Values_An_Operator_Uses()
+    {
+        var node = Parse(ValueReferenceXml).NodesById[0];
+
+        Assert.Equal(["Expr1"], node.OuterReferences.ToArray());
+
+        Assert.Empty(node.ReferencedValues);
+    }
+
+    [Fact]
+    public void A_Defined_Value_Lists_The_Values_Its_Expression_Reads()
+    {
+        Assert.Equal(["ConstExpr2"], Parse(ValueReferenceXml).NodesById[1].DefinedValues[0].References);
+    }
+
     [Fact]
     public void A_Probe_Belongs_Only_To_The_Operator_Whose_Predicate_Holds_It()
     {

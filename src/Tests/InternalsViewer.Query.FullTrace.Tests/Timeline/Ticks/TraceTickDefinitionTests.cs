@@ -12,7 +12,8 @@ public class TraceTickDefinitionTests
     [Fact]
     public void The_Predefined_Rules_Make_The_Built_In_Tracks_In_Order()
     {
-        Assert.Equal(["GetRow", "Read", "Evaluations", "Row Access", "Seek", "Hash Table", "Sort", "Open"],
+        Assert.Equal(["GetRow", "Read", "Evaluations", "Row Access", "Seek", "Hash Table", "Hash Aggregate", "Sort", "Compute Scalar",
+                      "Watches", "Open"],
                      TraceTickDefinition.GetPredefined().Select(d => d.Name).Distinct());
     }
 
@@ -108,8 +109,27 @@ public class TraceTickDefinitionTests
     {
         var rules = TraceTickDefinition.GetPredefined().Where(d => d.Name == "GetRow").ToList();
 
-        Assert.All(rules, r => Assert.Equal(("{ParentOperatorName} calls `GetRow` from {OperatorName}", true),
+        Assert.All(rules, r => Assert.Equal(("{ParentOperatorName} → {OperatorName} `{RowCall}`", true),
                                             (r.Description, r.ReturnDescription?.Contains("{OperatorName}") == true)));
+    }
+
+    [Fact]
+    public void Hash_Aggregate_Build_And_Merge_Are_Phases()
+    {
+        var rules = TraceTickDefinition.GetPredefined().Where(d => d.Name == "Hash Aggregate").ToList();
+
+        Assert.Equal(["Build", "Merge"], rules.Where(r => r.IsPhase).Select(r => r.GetLabel()));
+    }
+
+    [Fact]
+    public void Every_Compute_Scalar_Rule_Is_An_Evaluation_That_Names_Its_Expression()
+    {
+        var rules = TraceTickDefinition.GetPredefined().Where(d => d.Name == "Compute Scalar").ToList();
+
+        Assert.NotEmpty(rules);
+
+        Assert.All(rules, r => Assert.Equal((TraceTickSourceType.Evaluate, true),
+                                            (r.Source, r.Description?.Contains("{Expression}") == true)));
     }
 
     [Fact]
@@ -202,13 +222,43 @@ public class TraceTickDefinitionTests
     }
 
     [Fact]
+    public void A_Rule_Keeps_Its_Details_Through_The_File_Format()
+    {
+        var rule = new TraceTickDefinition("Track", "sqlmin", "Function", "#FFFFFF", 1, 1, []) { Details = "Why it happens" };
+
+        using var stream = new MemoryStream();
+
+        TraceTickDefinition.Write(stream, [rule]);
+
+        stream.Position = 0;
+
+        Assert.Equal("Why it happens", Assert.Single(TraceTickDefinition.Read(stream)).Details);
+    }
+
+    [Fact]
+    public void The_Iam_And_Pfs_Reads_Explain_Themselves_In_Their_Details()
+    {
+        var fetches = TraceTickDefinition.GetPredefined().Where(d => d is { Name: "Read", Source: TraceTickSourceType.PageFetch });
+
+        Assert.All(fetches, f => Assert.Equal((false, false), (string.IsNullOrEmpty(f.Details), f.Description!.Contains(". "))));
+    }
+
+    [Fact]
+    public void The_Top_Watch_Follows_The_Rows_Still_To_Return()
+    {
+        var watch = TraceTickDefinition.GetPredefined().Single(d => d.Source == TraceTickSourceType.Watch);
+
+        Assert.Equal(("CQScanTopNew", 0x48, 8, "BigInt"), (watch.Function, watch.Offset, watch.Length, watch.DataType));
+    }
+
+    [Fact]
     public void A_Stream_Aggregate_Group_Check_Comes_Before_The_Other_Evaluations()
     {
         const string groupCheck = "CQScanStreamAggregateNew::GetRow";
 
         var rules = TraceTickDefinition.GetPredefined().Where(d => d.Name == "Evaluations");
 
-        Assert.Equal([("Same Group", groupCheck), ("Group Changed", groupCheck), ("False", null), ("NULL", null), ("True", null)],
+        Assert.Equal([("No Change", groupCheck), ("Change", groupCheck), ("False", null), ("NULL", null), ("True", null)],
                      rules.Select(r => (r.GetLabel(),
                                         r.Conditions.FirstOrDefault(c => c.Target == TraceConditionTarget.CalledDirectlyBy)?.Value)));
     }

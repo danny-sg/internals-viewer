@@ -53,6 +53,15 @@ public sealed partial class QueryOperatorTracksTabView : UserControl
         }
     }
 
+    private async void OnAddWatchClick(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel is { } viewModel
+            && await OperatorTrackEditor.ShowAsync(XamlRoot, viewModel, null, null, isWatch: true) is { } definition)
+        {
+            viewModel.AddTickTrack(definition);
+        }
+    }
+
     private async void OnEditRequested(TraceTickDefinition existing)
     {
         if (ViewModel is { } viewModel && await OperatorTrackEditor.ShowAsync(XamlRoot, viewModel, existing, null) is { } definition)

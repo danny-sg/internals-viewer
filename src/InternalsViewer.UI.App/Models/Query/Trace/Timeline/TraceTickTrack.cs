@@ -39,6 +39,8 @@ public sealed record TraceTickTrack(string Name, TraceTickLocation Location, int
 
     public Func<TraceTick, IEnumerable<string>>? GetDetails { get; init; }
 
+    public Func<TraceTick, string?>? GetText { get; init; }
+
     public IReadOnlyList<TraceTickDefinition> Rules { get; init; } = [];
 
     public bool IsCustom { get; init; }

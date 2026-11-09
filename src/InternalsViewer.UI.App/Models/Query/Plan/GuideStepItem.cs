@@ -7,7 +7,15 @@ using Microsoft.UI.Xaml.Media;
 
 namespace InternalsViewer.UI.App.Models.Query.Plan;
 
-public sealed partial class GuideStepItem(int index, string name, string description, string? codeColour, GuideStepGroup group)
+public sealed partial class GuideStepItem(int index,
+                                          string name,
+                                          string description,
+                                          string details,
+                                          string? codeColour,
+                                          GuideStepGroup group,
+                                          GuideStepItem? parent,
+                                          int depth,
+                                          int end)
     : ObservableObject
 {
     private const double CodeFontSize = 12;
@@ -15,15 +23,36 @@ public sealed partial class GuideStepItem(int index, string name, string descrip
     [ObservableProperty]
     private bool _isCurrent;
 
+    [ObservableProperty]
+    private bool _isDetailsVisible;
+
+    [ObservableProperty]
+    private bool _isExpanded = true;
+
+    [ObservableProperty]
+    private bool _isHovered;
+
     public int Index => index;
 
     public string Name => name;
 
     public string Description => description;
 
+    public string Details => details;
+
     public MarkdownConfig Config => GetConfig(codeColour);
 
     public GuideStepGroup Group => group;
+
+    public GuideStepItem? Parent => parent;
+
+    public int Depth => depth;
+
+    public int End => end;
+
+    public bool HasNestedSteps => end > index;
+
+    public bool IsShown { get; set; } = true;
 
     private static Dictionary<string, MarkdownConfig> Configs { get; } = new(StringComparer.OrdinalIgnoreCase);
 

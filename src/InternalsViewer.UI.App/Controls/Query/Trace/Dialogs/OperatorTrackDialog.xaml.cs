@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
+using InternalsViewer.Internals.Converters.Decoder;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Arguments.Enums;
 using InternalsViewer.Query.FullTrace.Calls;
@@ -33,6 +35,14 @@ public sealed partial class OperatorTrackDialog
 
     private const string FunctionPlaceholder = "Function, such as CQScanFilterNew::GetRow";
 
+    private const string HexType = "Hex";
+
+    private const string AnyModule = "*";
+
+    private const int DefaultWatchLength = 4;
+
+    private const string DefaultWatchTrack = "Watches";
+
     private static readonly (string Label, TraceConditionOperator Operator)[] Operators =
     [
         ("=", TraceConditionOperator.Equal),
@@ -50,9 +60,15 @@ public sealed partial class OperatorTrackDialog
         new("Operator", TraceConditionTarget.Operator, null, string.Empty)
     ];
 
-    public OperatorTrackDialog(OperatorTrackDialogSource source, TraceTickDefinition? existing, TraceFunctionChoice? function, Color colour)
+    public OperatorTrackDialog(OperatorTrackDialogSource source,
+                               TraceTickDefinition? existing,
+                               TraceFunctionChoice? function,
+                               Color colour,
+                               bool isWatch = false)
     {
         Source = source;
+
+        IsWatch = isWatch || existing?.Source == TraceTickSourceType.Watch;
 
         Existing = existing;
 
@@ -65,6 +81,8 @@ public sealed partial class OperatorTrackDialog
         StepTitle = existing?.Title ?? string.Empty;
 
         Description = existing?.Description ?? string.Empty;
+
+        Details = existing?.Details ?? string.Empty;
 
         ReturnDescription = existing?.ReturnDescription ?? string.Empty;
 
@@ -105,6 +123,11 @@ public sealed partial class OperatorTrackDialog
         BackgroundBox.IsChecked = background is not null;
 
         BackgroundButton.IsEnabled = background is not null;
+
+        if (IsWatch)
+        {
+            ShowWatchFields(existing);
+        }
     }
 
     public string TrackName { get; set; }
@@ -114,6 +137,8 @@ public sealed partial class OperatorTrackDialog
     public string StepTitle { get; set; }
 
     public string Description { get; set; }
+
+    public string Details { get; set; }
 
     public string ReturnDescription { get; set; }
 
@@ -128,6 +153,8 @@ public sealed partial class OperatorTrackDialog
     private OperatorTrackDialogSource Source { get; }
 
     private TraceTickDefinition? Existing { get; }
+
+    private bool IsWatch { get; }
 
     private TraceFunctionChoice? Function { get; set; }
 
@@ -301,7 +328,7 @@ public sealed partial class OperatorTrackDialog
 
     private async Task SetFunctionAsync(TraceFunctionChoice? function)
     {
-        if (function is null || ReferenceEquals(function, Function))
+        if (IsWatch || function is null || ReferenceEquals(function, Function))
         {
             return;
         }
@@ -363,9 +390,9 @@ public sealed partial class OperatorTrackDialog
 
         var text = sender.Text.Trim();
 
-        sender.ItemsSource = Source.Functions.Where(f => f.Label.Contains(text, StringComparison.OrdinalIgnoreCase))
-                                             .Take(MaximumSuggestions)
-                                             .ToList();
+        sender.ItemsSource = IsWatch
+            ? Source.Classes.Where(c => c.Contains(text, StringComparison.OrdinalIgnoreCase)).Take(MaximumSuggestions).ToList()
+            : Source.Functions.Where(f => f.Label.Contains(text, StringComparison.OrdinalIgnoreCase)).Take(MaximumSuggestions).ToList();
     }
 
 #pragma warning disable VSTHRD100
@@ -390,8 +417,140 @@ public sealed partial class OperatorTrackDialog
     private void OnBackgroundChanged(ColorPicker sender, ColorChangedEventArgs args)
         => BackgroundSwatch.Background = new SolidColorBrush(args.NewColor);
 
+    private void OnLengthChanged(NumberBox sender, NumberBoxValueChangedEventArgs args) => SetDataTypes(DataTypeBox.SelectedItem as string);
+
+    private void ShowWatchFields(TraceTickDefinition? existing)
+    {
+        Title = existing is null ? "Add Watch" : "Edit Watch";
+
+        FunctionBox.Header = "Class";
+
+        FunctionBox.PlaceholderText = "The operator's iterator class, such as CQScanTopNew";
+
+        FunctionBox.Text = existing?.Function ?? string.Empty;
+
+        FunctionBox.IsEnabled = true;
+
+        LabelBox.PlaceholderText = "The name shown beside the value, such as Rows";
+
+        if (string.IsNullOrWhiteSpace(TrackName))
+        {
+            TrackName = DefaultWatchTrack;
+
+            NameBox.Text = TrackName;
+        }
+
+        WatchFields.Visibility = Visibility.Visible;
+
+        OffsetBox.Text = existing is null ? string.Empty : $"0x{existing.Offset:X}";
+
+        LengthBox.Value = existing is { Length: > 0 } ? existing.Length : DefaultWatchLength;
+
+        SetDataTypes(existing?.DataType);
+
+        UIElement[] hidden = [TitleBox, DescriptionBox, DetailsBox, ReturnDescriptionBox, PlanPartBox, CounterBox, PhaseBox];
+
+        foreach (var element in hidden)
+        {
+            element.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private void SetDataTypes(string? selected)
+    {
+        var length = double.IsNaN(LengthBox.Value) ? DefaultWatchLength : Math.Max(1, (int)LengthBox.Value);
+
+        List<string> types = [HexType, .. DataDecoder.Decode(new byte[length]).Select(r => r.DataType).Distinct()];
+
+        DataTypeBox.ItemsSource = types;
+
+        DataTypeBox.SelectedItem = selected is not null && types.Contains(selected) ? selected : HexType;
+    }
+
+    private static int? ParseOffset(string text)
+    {
+        var trimmed = text.Trim();
+
+        if (trimmed.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+        {
+            return int.TryParse(trimmed[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var hex) && hex >= 0 ? hex : null;
+        }
+
+        return int.TryParse(trimmed, NumberStyles.None, CultureInfo.InvariantCulture, out var value) ? value : null;
+    }
+
+    private bool ShowError(string? error, ContentDialogButtonClickEventArgs args)
+    {
+        if (error is null)
+        {
+            return false;
+        }
+
+        ErrorText.Text = error;
+
+        ErrorText.Visibility = Visibility.Visible;
+
+        args.Cancel = true;
+
+        return true;
+    }
+
+    private string GetColourText() => CategoryColourBox.IsChecked == true ? TraceTickDefinition.CategoryColour : ToHex(ColourPicker.Color);
+
+    private string? GetBackgroundText() => BackgroundBox.IsChecked == true ? ToHex(BackgroundPicker.Color) : null;
+
+    private string? GetLabelText() => string.IsNullOrWhiteSpace(ValueLabel) ? null : ValueLabel.Trim();
+
+    private void AddWatch(ContentDialogButtonClickEventArgs args)
+    {
+        var className = FunctionBox.Text.Trim();
+
+        var offset = ParseOffset(OffsetBox.Text);
+
+        var length = double.IsNaN(LengthBox.Value) ? 0 : (int)LengthBox.Value;
+
+        var error = className.Length == 0 ? "Enter the operator's iterator class, such as CQScanTopNew"
+                    : offset is null ? "Enter an offset, such as 0x40 or 64"
+                    : length <= 0 ? "Enter a length of at least 1"
+                    : string.IsNullOrWhiteSpace(TrackName) ? "Enter a name for the track"
+                    : !IsFactor(HeightFactor) || !IsFactor(WidthFactor) ? "Enter a height and width greater than 0, such as 1 or 1.5"
+                    : Rows.Any(r => string.IsNullOrWhiteSpace(r.Value.Text)) ? "Enter a value for every condition, or remove it"
+                    : null;
+
+        if (ShowError(error, args))
+        {
+            return;
+        }
+
+        Definition = new TraceTickDefinition(TrackName.Trim(),
+                                             AnyModule,
+                                             className,
+                                             GetColourText(),
+                                             HeightFactor,
+                                             WidthFactor,
+                                             [.. Rows.Select(GetCondition)])
+        {
+            Label = GetLabelText(),
+            Description = Existing?.Description,
+            Details = Existing?.Details,
+            Background = GetBackgroundText(),
+            Source = TraceTickSourceType.Watch,
+            Offset = offset!.Value,
+            Length = length,
+            DataType = DataTypeBox.SelectedItem is string type && type != HexType ? type : null,
+            Value = Existing?.Value ?? 0
+        };
+    }
+
     private void OnAddClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
     {
+        if (IsWatch)
+        {
+            AddWatch(args);
+
+            return;
+        }
+
         var function = FindFunction(FunctionBox.Text) ?? Function;
 
         var isSavedFunction = Existing is { Source: not TraceTickSourceType.Call }
@@ -405,36 +564,29 @@ public sealed partial class OperatorTrackDialog
                     : Rows.Any(r => string.IsNullOrWhiteSpace(r.Value.Text)) ? "Enter a value for every condition, or remove it"
                     : null;
 
-        if (error is not null)
+        if (ShowError(error, args))
         {
-            ErrorText.Text = error;
-
-            ErrorText.Visibility = Visibility.Visible;
-
-            args.Cancel = true;
-
             return;
         }
-
-        var colourText = CategoryColourBox.IsChecked == true ? TraceTickDefinition.CategoryColour : ToHex(ColourPicker.Color);
 
         Definition = new TraceTickDefinition(TrackName.Trim(),
                                              function?.Module ?? Existing!.Module,
                                              function?.Symbol ?? Existing!.Function,
-                                             colourText,
+                                             GetColourText(),
                                              HeightFactor,
                                              WidthFactor,
                                              [.. Rows.Select(GetCondition)])
         {
-            Label = string.IsNullOrWhiteSpace(ValueLabel) ? null : ValueLabel.Trim(),
+            Label = GetLabelText(),
             Title = string.IsNullOrWhiteSpace(StepTitle) ? null : StepTitle.Trim(),
             Description = string.IsNullOrWhiteSpace(Description) ? null : Description.Trim(),
+            Details = string.IsNullOrWhiteSpace(Details) ? null : Details.Trim(),
             ReturnDescription = string.IsNullOrWhiteSpace(ReturnDescription) ? null : ReturnDescription.Trim(),
             PlanPart = string.IsNullOrWhiteSpace(PlanPart) ? null : PlanPart.Trim(),
             PlanPartColour = Existing?.PlanPartColour,
             IsCounter = CounterBox.IsChecked == true,
             IsPhase = PhaseBox.IsChecked == true,
-            Background = BackgroundBox.IsChecked == true ? ToHex(BackgroundPicker.Color) : null,
+            Background = GetBackgroundText(),
             Source = Existing?.Source ?? TraceTickSourceType.Call,
             Value = Existing?.Value ?? 0
         };
@@ -453,4 +605,5 @@ public sealed partial class OperatorTrackDialog
 public sealed record OperatorTrackDialogSource(IReadOnlyList<TraceFunctionChoice> Functions,
                                                IReadOnlyList<string> Operators,
                                                IReadOnlyList<string> Tracks,
+                                               IReadOnlyList<string> Classes,
                                                Func<TraceFunctionChoice, Task<ArgumentLayout?>> GetLayout);
