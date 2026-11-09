@@ -71,7 +71,7 @@ public class TraceCallStoreTests
 
         var store = builder.Build();
 
-        Assert.Equal(calls, store.Calls);
+        Assert.Equal(calls, store.CallCount);
         Assert.True(store.Size < calls * TraceCallChunk.ValueCount * sizeof(ulong) / 10);
     }
 

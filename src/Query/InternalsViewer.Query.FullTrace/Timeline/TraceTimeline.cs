@@ -17,7 +17,7 @@ public sealed partial class TraceTimeline
         Threads = threads;
         Parents = parents;
         Scale = scale;
-        SpanCount = threads.Sum(t => t.Calls);
+        SpanCount = threads.Sum(t => t.CallCount);
 
         if (threads.Count == 0)
         {
@@ -25,6 +25,7 @@ public sealed partial class TraceTimeline
         }
 
         Start = new TracePoint(threads.Min(t => t.Start.Position), 0);
+
         End = new TracePoint(threads.Max(t => t.End.Position), threads.Max(t => t.End.Instructions));
     }
 
@@ -34,7 +35,7 @@ public sealed partial class TraceTimeline
         Parents = source.Parents;
         Nodes = source.Nodes;
         Scale = source.Scale;
-        SpanCount = threads.Sum(t => t.Calls);
+        SpanCount = threads.Sum(t => t.CallCount);
         Start = source.Start;
         End = source.End;
         Calls = source.Calls;
@@ -338,15 +339,15 @@ public sealed partial class TraceTimeline
                                                                            : -1))
                             .ToList();
 
-        var windows = Windows(rooted.Where(t => t.Calls > 0 && t.Rows.Count > 0).Select(t => t.Rows[0]));
+        var windows = Windows(rooted.Where(t => t is { CallCount: > 0, Rows.Count: > 0 }).Select(t => t.Rows[0]));
 
         var threads = new List<TraceTimelineThread>();
 
         for (var lane = 0; lane < Threads.Count; lane++)
         {
-            var thread = rooted[lane].Calls > 0 ? rooted[lane] : During(Threads[lane], windows, depths);
+            var thread = rooted[lane].CallCount > 0 ? rooted[lane] : During(Threads[lane], windows, depths);
 
-            if (thread.Calls > 0)
+            if (thread.CallCount > 0)
             {
                 threads.Add(thread);
             }
@@ -366,12 +367,12 @@ public sealed partial class TraceTimeline
             depths[callNodeIndex] = NodeOf(callNodeIndex) is { } callNode ? DepthUnder(roots, callNode, known) : -1;
         }
 
-        List<TraceTimelineThread> threads = [.. Threads.Select(t => Regroup(t, (_, row, index) => DepthOf(row, index)))
-                                                       .Where(t => t.Calls > 0)];
+        List<TraceTimelineThread> threads = [.. Threads.Select(t => Regroup(t, (_, row, index) => GetRowDepth(row, index)))
+                                                       .Where(t => t.CallCount > 0)];
 
         return threads.Count > 0 ? new TraceTimeline(threads, this, fit: true) : null;
 
-        int DepthOf(TraceTimelineRow row, int index)
+        int GetRowDepth(TraceTimelineRow row, int index)
             => row.GetCallNodeIndex(index) is var callNodeIndex && callNodeIndex >= 0 && callNodeIndex < depths.Length ? depths[callNodeIndex] : -1;
     }
 
@@ -404,7 +405,7 @@ public sealed partial class TraceTimeline
             thread.RemoveAll(isRemoved);
         }
 
-        SpanCount = Threads.Sum(t => t.Calls);
+        SpanCount = Threads.Sum(t => t.CallCount);
 
         SpanIds = null;
 
@@ -659,16 +660,6 @@ public sealed partial class TraceTimeline
     {
         TracePosition[] windowEnds = [.. windows.Select(w => w.End)];
 
-        bool Overlaps(TraceTimelineRow row, int index)
-        {
-            var first = SortedSearch.FirstAtOrAfter<TracePosition>(windowEnds, row.GetFrom(index).Position);
-
-            return first < windows.Count && windows[first].Start <= row.GetTo(index).Position;
-        }
-
-        int DepthOf(TraceTimelineRow row, int index)
-            => row.GetCallNodeIndex(index) is var callNodeIndex && callNodeIndex >= 0 && callNodeIndex < depths.Length ? depths[callNodeIndex] : 0;
-
         var shallowest = int.MaxValue;
 
         foreach (var row in thread.Rows)
@@ -677,14 +668,24 @@ public sealed partial class TraceTimeline
             {
                 if (Overlaps(row, index))
                 {
-                    shallowest = Math.Min(shallowest, DepthOf(row, index));
+                    shallowest = Math.Min(shallowest, GetRowDepth(row, index));
                 }
             }
         }
 
         return shallowest == int.MaxValue
             ? new TraceTimelineThread(thread.ThreadId, thread.Clock, thread.Store, [], 0)
-            : Regroup(thread, (_, row, index) => Overlaps(row, index) ? DepthOf(row, index) - shallowest : -1);
+            : Regroup(thread, (_, row, index) => Overlaps(row, index) ? GetRowDepth(row, index) - shallowest : -1);
+
+        bool Overlaps(TraceTimelineRow row, int index)
+        {
+            var first = SortedSearch.FirstAtOrAfter(windowEnds, row.GetFrom(index).Position);
+
+            return first < windows.Count && windows[first].Start <= row.GetTo(index).Position;
+        }
+
+        int GetRowDepth(TraceTimelineRow row, int index)
+            => row.GetCallNodeIndex(index) is var callNodeIndex && callNodeIndex >= 0 && callNodeIndex < depths.Length ? depths[callNodeIndex] : 0;
     }
 
     private TraceTimelineThread Regroup(TraceTimelineThread thread, Func<int, TraceTimelineRow, int, int> depthOf)
@@ -794,7 +795,7 @@ public sealed partial class TraceTimeline
 
             for (var index = 0; index < nodes.Length; index++)
             {
-                var parent = nodes[index].Parent;
+                var parent = nodes[index].ParentIndex;
 
                 parents[index] = parent >= 0 && parent < index ? parent : -1;
 
@@ -804,7 +805,7 @@ public sealed partial class TraceTimeline
             var scale = new TraceScale(Threads.Values.Select(t => t.MaximumSteps).DefaultIfEmpty(0ul).Max() + 1d);
 
             var threads = Threads.Select(t => t.Value.Build(t.Key, depths, scale))
-                                 .Where(t => t.Calls > 0)
+                                 .Where(t => t.CallCount > 0)
                                  .OrderBy(t => t.Start.Position)
                                  .ToList();
 

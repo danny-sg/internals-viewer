@@ -114,7 +114,7 @@ public class QueryExecutionCropperTests
 
         builder.Add([Span(0, 0, 100), Span(1, 10, 20), Span(2, 30, 90)]);
 
-        var timeline = builder.Build([new(-1, 0, 0x20, 0, 1), new(0, 0, 0x30, 0, 1), new(0, 0, 0x40, 0, 1)]);
+        var timeline = builder.Build([new(-1, 0x20, 0, 1), new(0, 0x30, 0, 1), new(0, 0x40, 0, 1)]);
 
         timeline.MapNodes([source, transform, execute]);
 
@@ -140,7 +140,7 @@ public class QueryExecutionCropperTests
 
         builder.Add([Span(0, 0, 100), Span(1, 10, 20), Span(2, 30, 90), Span(3, 32, 35), Span(3, 80, 85)]);
 
-        var timeline = builder.Build([new(-1, 0, 0x20, 0, 1), new(0, 0, 0x30, 0, 1), new(0, 0, 0x40, 0, 1), new(2, 0, 0x50, 0, 1)]);
+        var timeline = builder.Build([new(-1, 0x20, 0, 1), new(0, 0x30, 0, 1), new(0, 0x40, 0, 1), new(2, 0x50, 0, 1)]);
 
         timeline.MapNodes([source, transform, execute, scan]);
 

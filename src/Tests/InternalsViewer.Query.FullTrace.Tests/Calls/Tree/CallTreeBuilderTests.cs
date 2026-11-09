@@ -14,8 +14,8 @@ public class CallTreeBuilderTests
     [Fact]
     public void Build_Adds_Each_Call_Under_Its_Caller()
     {
-        CallNode[] calls = [new CallNode(-1, 0, SqlMinBase + 0x100, 0, 1),
-                            new CallNode(0, 0, SqlMinBase + 0x200, 0, 12)];
+        CallNode[] calls = [new CallNode(-1, SqlMinBase + 0x100, 0, 1),
+                            new CallNode(0, SqlMinBase + 0x200, 0, 12)];
 
         var (tree, _) = CallTreeBuilder.Build(calls, Modules);
 
@@ -24,30 +24,30 @@ public class CallTreeBuilderTests
 
         Assert.Equal("sqlmin", root.Frame?.Module.Name);
         Assert.Equal(0x100u, root.Frame?.Rva);
-        Assert.Equal(1, root.Calls);
+        Assert.Equal(1, root.CallCount);
         Assert.Equal(0x200u, child.Frame?.Rva);
-        Assert.Equal(12, child.Calls);
+        Assert.Equal(12, child.CallCount);
     }
 
     [Fact]
     public void Build_Keeps_Calls_On_Different_Instances_Apart()
     {
-        CallNode[] calls = [new CallNode(-1, 0, SqlMinBase + 0x100, 0, 1),
-                            new CallNode(0, 0, SqlMinBase + 0x200, 0xA0, 3),
-                            new CallNode(0, 0, SqlMinBase + 0x200, 0xB0, 4)];
+        CallNode[] calls = [new CallNode(-1, SqlMinBase + 0x100, 0, 1),
+                            new CallNode(0, SqlMinBase + 0x200, 0xA0, 3),
+                            new CallNode(0, SqlMinBase + 0x200, 0xB0, 4)];
 
         var (tree, _) = CallTreeBuilder.Build(calls, Modules);
 
         var children = Assert.Single(tree.Root.ChildNodes).ChildNodes.OrderBy(c => c.Order).ToList();
 
         Assert.Equal([0xA0ul, 0xB0ul], children.Select(c => c.Frame!.InstanceAddress));
-        Assert.Equal([3L, 4L], children.Select(c => c.Calls));
+        Assert.Equal([3L, 4L], children.Select(c => c.CallCount));
     }
 
     [Fact]
     public void Build_Marks_An_Address_Outside_Every_Module_As_Unknown()
     {
-        CallNode[] calls = [new CallNode(-1, 0, 0x1234, 0, 1)];
+        CallNode[] calls = [new CallNode(-1, 0x1234, 0, 1)];
 
         var (tree, _) = CallTreeBuilder.Build(calls, Modules);
 
@@ -60,7 +60,7 @@ public class CallTreeBuilderTests
     [Fact]
     public void Build_Marks_An_Address_Past_The_End_Of_A_Module_As_Unknown()
     {
-        CallNode[] calls = [new CallNode(-1, 0, SqlMinBase + 0x10000, 0, 1)];
+        CallNode[] calls = [new CallNode(-1, SqlMinBase + 0x10000, 0, 1)];
 
         var (tree, _) = CallTreeBuilder.Build(calls, Modules);
 

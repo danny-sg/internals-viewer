@@ -58,12 +58,12 @@ public class TraceReadResolverTests
 
     private static readonly CallNode[] Nodes =
     [
-        new(-1, 0, Helper, JoinIterator, 1),
-        new(0, 0, Helper, ScanIterator, 1),
-        new(1, 0, GetFunction, BufferPool, 1),
-        new(0, 0, ReadAheadFunction, BufferPool, 1),
-        new(-1, 0, GetFunction, BufferPool, 1),
-        new(2, 0, GetFromDiskFunction, BufferPool, 1)
+        new(-1, Helper, JoinIterator, 1),
+        new(0, Helper, ScanIterator, 1),
+        new(1, GetFunction, BufferPool, 1),
+        new(0, ReadAheadFunction, BufferPool, 1),
+        new(-1, GetFunction, BufferPool, 1),
+        new(2, GetFromDiskFunction, BufferPool, 1)
     ];
 
     [Fact]

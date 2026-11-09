@@ -148,10 +148,10 @@ public sealed class TraceTickSeries
         _ => FromSource(trace.Timeline, GetSource(trace, definition.Source), definition)
     };
 
-    public static TraceTickSeries FromEvaluations(TraceResult trace,
-                                                  TraceTickDefinition definition,
-                                                  ExecutionOperatorEvent? statement,
-                                                  Func<ExecutionOperatorEvent, IReadOnlyList<ExecutionOperatorEvent>> getPulled)
+    public static TraceTickSeries FromAssignedCalls(TraceResult trace,
+                                                    TraceTickDefinition definition,
+                                                    ExecutionOperatorEvent? statement,
+                                                    Func<ExecutionOperatorEvent, IReadOnlyList<ExecutionOperatorEvent>> getOperators)
     {
         var owners = trace.Lifetimes.OperatorsByInstance;
 
@@ -195,7 +195,7 @@ public sealed class TraceTickSeries
 
         var pullers = trace.PullerCalls.GetEnclosing(points, includeRowReturns: true);
 
-        var pulled = new Dictionary<ExecutionOperatorEvent, IReadOnlyList<ExecutionOperatorEvent>>(ReferenceEqualityComparer.Instance);
+        var assigned = new Dictionary<ExecutionOperatorEvent, IReadOnlyList<ExecutionOperatorEvent>>(ReferenceEqualityComparer.Instance);
 
         var sources = new List<TraceTickSource>();
 
@@ -211,14 +211,14 @@ public sealed class TraceTickSeries
             }
             else if (puller is not null)
             {
-                if (!pulled.TryGetValue(puller, out var computeScalars))
+                if (!assigned.TryGetValue(puller, out var operators))
                 {
-                    computeScalars = getPulled(puller);
+                    operators = getOperators(puller);
 
-                    pulled[puller] = computeScalars;
+                    assigned[puller] = operators;
                 }
 
-                sources.AddRange(computeScalars.Select(c => source with { Operator = c, Caller = puller }));
+                sources.AddRange(operators.Select(o => source with { Operator = o, Caller = puller }));
             }
         }
 
@@ -328,7 +328,10 @@ public sealed class TraceTickSeries
 
     private static bool IsWholeSource(IReadOnlyList<TraceTickDefinition> rules)
         => rules.Count > 0
-           && rules.All(r => r.Source is not (TraceTickSourceType.Call or TraceTickSourceType.Watch or TraceTickSourceType.Evaluate)
+           && rules.All(r => r.Source is not (TraceTickSourceType.Call
+                                              or TraceTickSourceType.Watch
+                                              or TraceTickSourceType.Evaluate
+                                              or TraceTickSourceType.Statement)
                              && r.Source == rules[0].Source
                              && r.Conditions.Count == 0)
            && rules.Select(r => r.Value).Distinct().Count() == rules.Count;

@@ -151,6 +151,10 @@ public sealed partial class QueryPlanTabView : UserControl
 
     public static Visibility GetChevronVisibility(bool hasNestedSteps) => hasNestedSteps ? Visibility.Visible : Visibility.Collapsed;
 
+    public static Visibility GetPredicateVisibility(bool hasPredicate) => hasPredicate ? Visibility.Visible : Visibility.Collapsed;
+
+    public static Visibility GetDescriptionVisibility(bool hasDescription) => hasDescription ? Visibility.Visible : Visibility.Collapsed;
+
     public static string GetChevronGlyph(bool isExpanded) => isExpanded ? ExpandedGlyph : CollapsedGlyph;
 
     public static Visibility GetDetailsVisibility(string details, bool isVisible)
@@ -184,7 +188,7 @@ public sealed partial class QueryPlanTabView : UserControl
             p.SelectedNode = ViewModel?.SelectedPlanNode;
             p.ActiveNodes = ViewModel?.ActivePlanNodes;
             p.EmittingNodes = ViewModel?.EmittingPlanNodes;
-            p.CurrentNode = ViewModel?.CurrentGuideNode;
+            p.CurrentStep = ViewModel?.CurrentGuideMarker;
             p.IsFullTrace = ViewModel?.IsFullTrace == true;
             p.ShowActivity(ViewModel?.PlanActivity ?? PlanActivity.Empty);
             p.Events = ViewModel?.Events;
@@ -268,8 +272,8 @@ public sealed partial class QueryPlanTabView : UserControl
             case nameof(QueryViewModel.EmittingPlanNodes):
                 ApplyToPlans(p => p.EmittingNodes = _subscribed.EmittingPlanNodes);
                 break;
-            case nameof(QueryViewModel.CurrentGuideNode):
-                ApplyToPlans(p => p.CurrentNode = _subscribed.CurrentGuideNode);
+            case nameof(QueryViewModel.CurrentGuideMarker):
+                ApplyToPlans(p => p.CurrentStep = _subscribed.CurrentGuideMarker);
                 break;
             case nameof(QueryViewModel.IsFullTrace):
                 ApplyToPlans(p => p.IsFullTrace = _subscribed.IsFullTrace);
@@ -287,7 +291,7 @@ public sealed partial class QueryPlanTabView : UserControl
             planControl.SelectedNode = viewModel.SelectedPlanNode;
             planControl.ActiveNodes = viewModel.ActivePlanNodes;
             planControl.EmittingNodes = viewModel.EmittingPlanNodes;
-            planControl.CurrentNode = viewModel.CurrentGuideNode;
+            planControl.CurrentStep = viewModel.CurrentGuideMarker;
             planControl.IsFullTrace = viewModel.IsFullTrace;
             planControl.ShowActivity(viewModel.PlanActivity);
             planControl.Events = viewModel.Events;
@@ -436,6 +440,8 @@ public sealed partial class QueryPlanTabView : UserControl
         var zoom = Math.Max(GetCleanZoom(fit), PlanScroller.MinZoomFactor);
 
         PlanScroller.ChangeView(0, 0, (float)zoom, disableAnimation: true);
+
+        ApplyToPlans(p => p.ScheduleRenderRefresh());
     }
 
     private double GetCleanZoom(double zoom)

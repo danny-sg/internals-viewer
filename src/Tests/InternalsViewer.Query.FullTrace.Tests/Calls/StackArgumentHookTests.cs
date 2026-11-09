@@ -116,7 +116,7 @@ public class StackArgumentHookTests
         => new()
         {
             FunctionAddress = Function,
-            Id = 40,
+            CallId = 40,
             CallIndex = 0,
             Arguments = new ulong[] { 0, 0, 0, 0 },
             StackPointer = StackPointer,

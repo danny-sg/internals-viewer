@@ -290,7 +290,7 @@ public class LocatorHookTests
         => new()
         {
             FunctionAddress = Function,
-            Id = 40,
+            CallId = 40,
             CallIndex = 0,
             Arguments = arguments,
             ReturnValue = returnValue,

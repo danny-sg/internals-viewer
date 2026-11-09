@@ -18,7 +18,7 @@ public sealed partial class TraceTimeline
         Parents = parents;
         Nodes = nodes;
         Scale = scale;
-        SpanCount = threads.Sum(t => t.Calls);
+        SpanCount = threads.Sum(t => t.CallCount);
         Start = start;
         End = end;
     }
@@ -95,7 +95,7 @@ public sealed partial class TraceTimeline
         {
             writer.Write(thread.ThreadId);
 
-            writer.Write(thread.Calls);
+            writer.Write(thread.CallCount);
 
             thread.Clock.Write(writer);
 

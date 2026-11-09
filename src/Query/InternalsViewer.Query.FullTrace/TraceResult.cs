@@ -63,6 +63,8 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
     public TraceTimeline QueryTimeline => CroppedTimeline ??= GetQueryTimeline();
 
+    internal TraceTickSeries SeekRanges => field ??= TraceSeekRangeReader.Build(Timeline, CallStore, Lifetimes, EnclosingCalls);
+
     internal EnclosingOperatorCallIndex PullerCalls
         => field ??= EnclosingOperatorCallIndex.Build(CallStore,
                                                       Lifetimes.OperatorsByInstance
@@ -84,6 +86,9 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
     private Dictionary<TraceTimeline, Dictionary<CallTreeNode, int[]>> ActivityByWindow { get; } =
         new(ReferenceEqualityComparer.Instance);
 
+    public int GetSeekRange(TraceTick tick)
+        => TraceSeekRangeReader.GetRange(SeekRanges, CallStore, tick.Operator, tick.Thread, tick.Span.From.Position);
+
     internal TraceResult WithPageAccesses()
     {
         var accesses = TracePageAccessList.Build(CallStore, MemoryHistory, BufferPool, PageReads, Timeline);
@@ -98,7 +103,7 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
     internal IEnumerable<(string Component, long Items, long? Bytes)> GetComponentSizes()
     {
         yield return ("Timeline Spans", Timeline.SpanCount, Timeline.Bytes);
-        yield return ("Call Log Calls", CallStore.Calls, CallStore.Size);
+        yield return ("Call Log Calls", CallStore.CallCount, CallStore.Size);
         yield return ("Locator Entries", CallStore.LocatorCount, CallStore.LocatorTableBytes);
         yield return ("Unique Locators", CallStore.UniqueLocatorCount, CallStore.UniqueLocatorBytes);
         yield return ("Memory Map Entries", AddressMap.Count, AddressMap.Bytes);

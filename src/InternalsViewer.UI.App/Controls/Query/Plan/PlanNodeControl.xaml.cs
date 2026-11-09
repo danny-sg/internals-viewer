@@ -26,6 +26,8 @@ public sealed partial class PlanNodeControl : UserControl
 
     private const double IconSize = 32;
 
+    private const double IconFrameHeight = 38;
+
     private const double IndicatorWidth = 16;
 
     private const int BaseLayerCount = 1;
@@ -103,6 +105,10 @@ public sealed partial class PlanNodeControl : UserControl
     public const double AnnotationColumnWidth = 104;
 
     public const double IconTop = 4;
+
+    public const double IconCentre = IconTop + IconFrameHeight / 2;
+
+    public const double IconHalfWidth = IconSize / 2;
 
     private void RefreshAnnotations()
     {
@@ -309,7 +315,7 @@ public sealed partial class PlanNodeControl : UserControl
             var fraction = activity.Fraction is { } value ? Math.Round(value * FractionSteps) / FractionSteps : (double?)null;
 
             var iconParts = PlanIconParts.GetParts(icon, activity.Part)
-                                         .Where(p => p != PlanIconParts.ActivePart || CanBeActive(node))
+                                         .Where(p => !node.IsStatement || p != PlanIconParts.ActivePart)
                                          .Select(p => (Icon: icon, Part: p));
 
             var pageParts = hasPage
@@ -484,8 +490,6 @@ public sealed partial class PlanNodeControl : UserControl
             ? Visibility.Visible
             : Visibility.Collapsed;
     }
-
-    private static bool CanBeActive(PlanNode node) => !node.IsStatement && !OperatorClassifier.IsComputeScalar(node);
 
     private static string FormatCount(int count) => count switch
     {

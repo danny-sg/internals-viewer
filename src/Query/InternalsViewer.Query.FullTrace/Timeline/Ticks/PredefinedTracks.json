@@ -303,7 +303,7 @@
     ],
     "Label": "False",
     "Title": "Evaluate Expression",
-    "Description": "Evaluate predicate with `{Function}` → false"
+    "Description": "Evaluate predicate with `{Function}` → false <Predicate>{ExecutionPlan.Predicate}</Predicate>"
   },
   {
     "Name": "Evaluations",
@@ -342,7 +342,7 @@
     ],
     "Label": "NULL",
     "Title": "Evaluate Expression",
-    "Description": "Evaluate predicate with `{Function}` → NULL"
+    "Description": "Evaluate predicate with `{Function}` → NULL <Predicate>{ExecutionPlan.Predicate}</Predicate>"
   },
   {
     "Name": "Evaluations",
@@ -381,7 +381,7 @@
     ],
     "Label": "True",
     "Title": "Evaluate Expression",
-    "Description": "Evaluate predicate with `{Function}` → true"
+    "Description": "Evaluate predicate with `{Function}` → true <Predicate>{ExecutionPlan.Predicate}</Predicate>"
   },
   {
     "Name": "Row Access",
@@ -430,7 +430,7 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Seek",
-    "Description": "{OperatorName} seek range in b-tree",
+    "Description": "{OperatorName} seek range in b-tree <Predicate>{ExecutionPlan.CurrentRange}</Predicate>",
     "Source": "Seek",
     "Value": 0
   },
@@ -443,7 +443,7 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Root Page",
-    "Description": "Read Index Root Page {Page}",
+    "Description": "Read Index Root Page {Page} <Predicate>{ExecutionPlan.CurrentRange}</Predicate>",
     "PlanPart": "Root Node",
     "PlanPartColour": "#F7630C",
     "Source": "Seek",
@@ -458,7 +458,7 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Intermediate Page",
-    "Description": "Read Index Intermediate Page {Page}",
+    "Description": "Read Index Intermediate Page {Page} <Predicate>{ExecutionPlan.CurrentRange}</Predicate>",
     "PlanPart": "Intermediate Node",
     "PlanPartColour": "#F7630C",
     "Source": "Seek",
@@ -473,7 +473,7 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Leaf Page",
-    "Description": "Read Index Leaf Page {Page}",
+    "Description": "Read Index Leaf Page {Page} <Predicate>{ExecutionPlan.CurrentRange}</Predicate>",
     "PlanPart": "Leaf Node",
     "PlanPartColour": "#F7630C",
     "Source": "Seek",
@@ -725,7 +725,7 @@
     "Conditions": [],
     "Label": "Batch",
     "Title": "Evaluate",
-    "Description": "Evaluate `{Expression}`",
+    "Description": "<Predicate>{Expression}</Predicate>",
     "Details": "A Compute Scalar only forwards `BpGetNextBatch`. The expression runs when the operator above asks for the batch data, once for the whole batch",
     "Source": "Evaluate",
     "Value": 0
@@ -750,7 +750,7 @@
     ],
     "Label": "Row Send",
     "Title": "Evaluate",
-    "Description": "Evaluate `{Expression}`",
+    "Description": "<Predicate>{Expression}</Predicate>",
     "Details": "A Compute Scalar has no iterator in row mode. The expression runs as part of the operator that needs the value",
     "Source": "Evaluate",
     "Value": 0
@@ -775,7 +775,7 @@
     ],
     "Label": "Filter",
     "Title": "Evaluate",
-    "Description": "Evaluate `{Expression}`",
+    "Description": "<Predicate>{Expression}</Predicate>",
     "Details": "A Compute Scalar has no iterator in row mode. The expression runs as part of the operator that needs the value",
     "Source": "Evaluate",
     "Value": 0
@@ -800,7 +800,7 @@
     ],
     "Label": "Sort",
     "Title": "Evaluate",
-    "Description": "Evaluate `{Expression}`",
+    "Description": "<Predicate>{Expression}</Predicate>",
     "Details": "A Compute Scalar has no iterator in row mode. The expression runs as part of the operator that needs the value",
     "Source": "Evaluate",
     "Value": 0
@@ -825,7 +825,7 @@
     ],
     "Label": "Sort First Row",
     "Title": "Evaluate",
-    "Description": "Evaluate `{Expression}`",
+    "Description": "<Predicate>{Expression}</Predicate>",
     "Details": "A Compute Scalar has no iterator in row mode. The expression runs as part of the operator that needs the value",
     "Source": "Evaluate",
     "Value": 0
@@ -850,7 +850,7 @@
     ],
     "Label": "Hash Build",
     "Title": "Evaluate",
-    "Description": "Evaluate `{Expression}`",
+    "Description": "<Predicate>{Expression}</Predicate>",
     "Details": "A Compute Scalar has no iterator in row mode. The expression runs as part of the operator that needs the value",
     "Source": "Evaluate",
     "Value": 0
@@ -875,7 +875,7 @@
     ],
     "Label": "Hash Probe",
     "Title": "Evaluate",
-    "Description": "Evaluate `{Expression}`",
+    "Description": "<Predicate>{Expression}</Predicate>",
     "Details": "A Compute Scalar has no iterator in row mode. The expression runs as part of the operator that needs the value",
     "Source": "Evaluate",
     "Value": 1
@@ -900,7 +900,7 @@
     ],
     "Label": "Stream Aggregate",
     "Title": "Evaluate",
-    "Description": "Evaluate `{Expression}`",
+    "Description": "<Predicate>{Expression}</Predicate>",
     "Details": "A Compute Scalar has no iterator in row mode. The expression runs as part of the operator that needs the value",
     "Source": "Evaluate",
     "Value": 0
@@ -925,7 +925,7 @@
     ],
     "Label": "Seek Key",
     "Title": "Evaluate",
-    "Description": "Evaluate `{Expression}`",
+    "Description": "<Predicate>{Expression}</Predicate>",
     "Details": "A Compute Scalar has no iterator in row mode. The expression runs as part of the operator that needs the value",
     "Source": "Evaluate",
     "Value": 0
@@ -949,8 +949,8 @@
       }
     ],
     "Label": "Startup",
-    "Title": "Evaluate",
-    "Description": "Evaluate `{Expression}` once at query startup",
+    "Title": "Evaluate Once At Startup",
+    "Description": "<Predicate>{Expression}</Predicate>",
     "Details": "A Compute Scalar has no iterator in row mode. The expression runs as part of the operator that needs the value",
     "Source": "Evaluate",
     "Value": 2
@@ -970,6 +970,24 @@
     "Offset": 72,
     "Length": 8,
     "DataType": "BigInt"
+  },
+  {
+    "Name": "Statement",
+    "Module": "sqllang",
+    "Function": "CXStmtQuery::InitForExecute",
+    "Colour": "#0078D4",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Initialise",
+    "Title": "Initialise Statement",
+    "Description": "Set up query and get first row in `{Function}`",
+    "Details": "The statement asks for its first row here. Every row after it is fetched through `CQueryScan::GetRow`",
+    "ReturnDescription": "Query is set up and has asked for its first row",
+    "IsPhase": true,
+    "Source": "Statement",
+    "Value": 0
   },
   {
     "Name": "Open",

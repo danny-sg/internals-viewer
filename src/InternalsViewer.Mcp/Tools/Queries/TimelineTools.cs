@@ -64,7 +64,7 @@ public sealed class TimelineTools(McpDocumentResolver documents)
             var (first, last) = GetBounds(timelineThread);
 
             threads.Add(timelineThread.ThreadId,
-                        timelineThread.Calls,
+                        timelineThread.CallCount,
                         timelineThread.Rows.Sum(r => (long)r.Count),
                         timelineThread.Rows.Count,
                         first is { } firstPosition ? Format.Position(firstPosition) : string.Empty,

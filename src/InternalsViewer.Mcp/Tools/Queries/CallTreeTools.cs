@@ -440,7 +440,7 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
     {
         var pattern = Parse.Pattern(find);
 
-        var matches = candidates.Where(n => pattern.IsMatch(context.GetFunctionName(n))).OrderByDescending(n => n.Calls).ToList();
+        var matches = candidates.Where(n => pattern.IsMatch(context.GetFunctionName(n))).OrderByDescending(n => n.CallCount).ToList();
 
         builder.AppendLine($"{matches.Count} matching nodes{(scoped ? " in the selected subtree" : string.Empty)}, most calls first");
 
@@ -466,7 +466,7 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
     {
         Func<CallTreeNode, long> key = by switch
         {
-            "calls" => n => n.Calls,
+            "calls" => n => n.CallCount,
             "alloc" => n => n.AllocatedBytes,
             "inclusive-alloc" => n => totals.Get(n).Allocated,
             _ => throw new McpException($"'{by}' is not a ranking. Use calls, alloc or inclusive-alloc.")
@@ -632,11 +632,11 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
 
             total.Nodes++;
 
-            total.Calls += node.Calls;
+            total.Calls += node.CallCount;
 
             total.Allocated += node.AllocatedBytes;
 
-            total.Allocations += node.Allocations;
+            total.Allocations += node.AllocationCount;
 
             total.Pages.UnionWith(GetPages(node));
         }
@@ -757,11 +757,11 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
                     continue;
                 }
 
-                var calls = node.Calls;
+                var calls = node.CallCount;
 
                 var allocated = node.AllocatedBytes;
 
-                var allocations = node.Allocations;
+                var allocations = node.AllocationCount;
 
                 foreach (var child in node.Children.Values)
                 {

@@ -196,7 +196,7 @@ public class TraceExportSectionTests
 
         getRow.AllocatedBytes = 100;
 
-        getRow.Allocations = 1;
+        getRow.AllocationCount = 1;
 
         getRow.CallActivity = [0, 1, 2];
 
@@ -206,7 +206,7 @@ public class TraceExportSectionTests
 
         builder.Add([Span(0, 0, 100), Span(1, 20, 25), Span(1, 30, 35), Span(2, 40, 41)]);
 
-        var timeline = builder.Build([new(-1, 0, 0x10, 0, 1), new(0, 0, 0x30, Scan, 2), new(0, 0, 0x50, 0, 1)]);
+        var timeline = builder.Build([new(-1, 0x10, 0, 1), new(0, 0x30, Scan, 2), new(0, 0x50, 0, 1)]);
 
         timeline.MapNodes([caller, getRow, publish]);
 

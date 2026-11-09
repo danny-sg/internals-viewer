@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
+using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.FullTrace;
@@ -48,6 +50,10 @@ public static partial class TraceTickTracks
 
     private const string PageLinkScheme = "page";
 
+    private const string PredicateOpenTag = "<Predicate>";
+
+    private const string PredicateCloseTag = "</Predicate>";
+
     private static readonly SKColor PassedUpColour = SKColor.Parse(SymbolCategory.QueryOperator.GetCategoryMetadata()!.ForegroundColor);
 
     private static readonly SKColor BatchColour = SKColor.Parse(SymbolCategory.ColumnStore.GetCategoryMetadata()!.ForegroundColor);
@@ -60,7 +66,7 @@ public static partial class TraceTickTracks
                                         int ordinal,
                                         Func<TraceTickDefinition, bool> isAdded,
                                         Func<TraceTick, string> getParentName,
-                                        Func<TraceTick, string> getExpression,
+                                        Func<TraceTick, string, PredicateText?> getPredicate,
                                         Func<TraceTickDefinition, TraceWatch> getWatch)
     {
         var colours = rules.Select(r => ParseColour(r.Colour)).ToArray();
@@ -76,7 +82,8 @@ public static partial class TraceTickTracks
             Values = [.. rules.Select((r, index) => new TraceTickValue(series.Values[index], r.GetLabel()))],
             GetColour = t => ruleByValue[t.Value] is >= 0 and var rule ? GetColour(rules[rule], colours[rule], t, categoryColours) : null,
             GetRule = t => ruleByValue[t.Value] is >= 0 and var rule ? rules[rule] : null,
-            GetPlaceholder = (t, name) => GetPlaceholder(trace, t, name, getParentName, getExpression),
+            GetPlaceholder = (t, name) => GetPlaceholder(trace, t, name, getParentName, getPredicate),
+            GetPredicate = getPredicate,
             Colour = colours[0],
             Background = SKColor.TryParse(first.Background, out var background) ? background : isAdded(first) ? LightBackground : null,
             HeightFactor = (float)first.HeightFactor,
@@ -90,6 +97,7 @@ public static partial class TraceTickTracks
         {
             TraceTickSourceType.RowReturn => WithRowReturns(track, trace.RowReturnMarks, rules, colours, ruleByValue),
             TraceTickSourceType.Seek => track with { TickWidth = MarkTickWidth },
+            TraceTickSourceType.Statement => track with { IsStatementTrack = true },
             TraceTickSourceType.Watch => WithWatches(track, rules, ruleByValue, getWatch),
             _ => track
         };
@@ -104,6 +112,7 @@ public static partial class TraceTickTracks
         TraceTickSourceType.Open => "Operator Open",
         TraceTickSourceType.Watch => "Watch",
         TraceTickSourceType.Evaluate => "Compute Scalar Evaluate",
+        TraceTickSourceType.Statement => "Statement Call",
         _ => string.Empty
     };
 
@@ -113,7 +122,12 @@ public static partial class TraceTickTracks
         => MemoryWatchRowViewModel.GetValue(new HexWatch(0, value.Length, definition.DataType), value);
 
     public static string? GetText(TraceTickTrack track, TraceTick tick, string? text)
-        => string.IsNullOrEmpty(text) ? null : TraceTickDefinition.Format(text, name => track.GetPlaceholder(tick, name));
+        => string.IsNullOrEmpty(text)
+            ? null
+            : TraceTickDefinition.Format(text, name => track.GetPlaceholder(tick, name))
+                                 .Replace(PredicateOpenTag, string.Empty)
+                                 .Replace(PredicateCloseTag, string.Empty)
+                                 .TrimEnd();
 
     public static List<TraceTrackStep> GetSteps(IEnumerable<TraceTickTrack> tracks, IReadOnlySet<string>? hidden)
     {
@@ -241,12 +255,32 @@ public static partial class TraceTickTracks
     public static string GetStepName(TraceTrackStep step) => GetText(step.Track, step.Tick, step.Rule.GetTitle()) ?? string.Empty;
 
     public static string GetStepDescription(TraceTrackStep step)
-        => GetText(step.Track, step.Tick, step.IsReturn ? step.Rule.ReturnDescription : step.Rule.Description) ?? string.Empty;
+        => GetText(step.Track, step.Tick, PredicateTagRegex().Replace(GetDescriptionTemplate(step), string.Empty)) ?? string.Empty;
+
+    public static PredicateText? GetStepPredicate(TraceTrackStep step)
+    {
+        var tokens = ImmutableArray.CreateBuilder<PredicateToken>();
+
+        foreach (Match match in PredicateTagRegex().Matches(GetDescriptionTemplate(step)))
+        {
+            if (step.Track.GetPredicate(step.Tick, match.Groups[1].Value) is not { IsEmpty: false } predicate)
+            {
+                continue;
+            }
+
+            if (tokens.Count > 0)
+            {
+                tokens.Add(new PredicateToken(PredicateTokenType.Space, Environment.NewLine));
+            }
+
+            tokens.AddRange(predicate.Tokens);
+        }
+
+        return tokens.Count > 0 ? new PredicateText(tokens.ToImmutable()) : null;
+    }
 
     public static string GetStepDetails(TraceTrackStep step)
         => step.IsReturn ? string.Empty : GetText(step.Track, step.Tick, step.Rule.Details) ?? string.Empty;
-
-    public static string ShortenExpression(string expression) => QualifiedColumnRegex().Replace(expression, "$1");
 
     public static string ToPlainText(string markdown)
         => MarkdownLinkRegex().Replace(markdown, "$1").Replace(BoldMarker, string.Empty).Replace(CodeMarker, string.Empty);
@@ -327,12 +361,12 @@ public static partial class TraceTickTracks
                                           TraceTick tick,
                                           string name,
                                           Func<TraceTick, string> getParentName,
-                                          Func<TraceTick, string> getExpression)
+                                          Func<TraceTick, string, PredicateText?> getPredicate)
         => name switch
         {
             _ when IsPlaceholder(name, TraceTickDefinition.OperatorNamePlaceholder) => tick.Operator.OperatorDescription,
             _ when IsPlaceholder(name, TraceTickDefinition.ParentOperatorNamePlaceholder) => getParentName(tick),
-            _ when IsPlaceholder(name, TraceTickDefinition.ExpressionPlaceholder) => getExpression(tick),
+            _ when IsPredicatePlaceholder(name) => getPredicate(tick, name)?.ToString() ?? string.Empty,
             _ when IsPlaceholder(name, TraceTickDefinition.FunctionPlaceholder) => tick.Node.Symbol,
             _ when IsPlaceholder(name, TraceTickDefinition.RowCallPlaceholder)
                 => trace.RowReturnMarks.IsBatch(tick.Operator) ? BatchReturnsTitle : RowReturnsTitle,
@@ -346,6 +380,13 @@ public static partial class TraceTickTracks
         };
 
     private static bool IsPlaceholder(string name, string placeholder) => name.Equals(placeholder, StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsPredicatePlaceholder(string name)
+        => IsPlaceholder(name, TraceTickDefinition.ExpressionPlaceholder)
+           || name.StartsWith(TraceTickDefinition.ExecutionPlanPrefix, StringComparison.OrdinalIgnoreCase);
+
+    private static string GetDescriptionTemplate(TraceTrackStep step)
+        => (step.IsReturn ? step.Rule.ReturnDescription : step.Rule.Description) ?? string.Empty;
 
     private static PageAddress? GetPage(TraceResult trace, TraceTick tick)
         => trace.PageAccesses.GetRowAccess(tick.Span.From.Position)?.Page
@@ -482,6 +523,6 @@ public static partial class TraceTickTracks
     [GeneratedRegex(@"\[([^\]]*)\]\([^)]*\)")]
     private static partial Regex MarkdownLinkRegex();
 
-    [GeneratedRegex(@"(?:\[[^\]]*\]\.){3}(\[[^\]]*\])(?: as \[[^\]]*\]\.\[[^\]]*\])?")]
-    private static partial Regex QualifiedColumnRegex();
+    [GeneratedRegex(@"<Predicate>\s*\{([\w.]+)\}\s*</Predicate>")]
+    private static partial Regex PredicateTagRegex();
 }

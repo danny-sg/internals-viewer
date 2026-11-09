@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline.Enums;
@@ -18,6 +19,8 @@ public sealed record TraceTickTrack(string Name, TraceTickLocation Location, int
     public Func<TraceTick, TraceTickDefinition?> GetRule { get; init; } = _ => null;
 
     public Func<TraceTick, string, string?> GetPlaceholder { get; init; } = static (_, _) => null;
+
+    public Func<TraceTick, string, PredicateText?> GetPredicate { get; init; } = static (_, _) => null;
 
     public SKColor? Colour { get; init; }
 

@@ -88,9 +88,9 @@ namespace InternalsViewer.Query.FullTrace.Native;
 ///
 ///    The callbacks are:
 ///
-///    - Call Log
+///    - Chunk Callback
 ///
-///      The call log has one row per call with start sequence and steps, thread, registers (RCX, RDX, R8, R9), return value, node
+///      A call-log chunk has one row per call with start sequence and steps, thread, registers (RCX, RDX, R8, R9), return value, node
 ///      index in the tree, and end sequence and steps. Bit 32 of the thread value is set when the call returns.
 ///
 ///      Calls are buffered per function and instance. A call's row is written when the call is made, but its return value and end
@@ -104,8 +104,8 @@ namespace InternalsViewer.Query.FullTrace.Native;
 ///                   functions that never reach 16,384 don't hold memory until the end
 ///          End    - Everything left is flushed when the replay finishes
 ///
-///      The call log is transposed to columns in the bridge as part of the flush process, then the columns are returned to the managed
-///      code via a callback. Chunks are compressed after they have been returned to the managed code.
+///      A call-log chunk is transposed to columns in the bridge as part of the flush process, then the columns are returned to the managed
+///      code via the chunk callback. Chunks are compressed after they have been returned to the managed code.
 ///
 ///    - Call End
 ///
@@ -216,7 +216,7 @@ internal static class ReplayBridge
                                           int excludedFunctionCount,
                                           HookFunction[] hookFunctions,
                                           int hookFunctionCount,
-                                          CallChunkCallback? logCalls,
+                                          CallChunkCallback? onChunk,
                                           CallEndCallback? logCallEnds,
                                           CallSpanCallback? logSpans,
                                           HookCallback? onHook,

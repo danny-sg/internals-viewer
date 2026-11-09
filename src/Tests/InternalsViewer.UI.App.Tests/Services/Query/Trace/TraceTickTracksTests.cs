@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Internals.Engine.Address;
+﻿using InternalsViewer.Execution.AccessPaths.Text;
+using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
@@ -93,8 +94,6 @@ public class TraceTickTracksTests
     [Fact]
     public void Plain_Text_Keeps_Only_The_Text_Of_A_Link()
     {
-        Assert.Equal("[Id]*(20)", TraceTickTracks.ShortenExpression("[Demo].[dbo].[Table].[Id] as [c].[Id]*(20)"));
-
         var markdown = $"Read **row** data on Page {TraceTickTracks.GetPageLink(new PageAddress(1, 200), 5)} `GetRow`";
 
         Assert.Equal("Read row data on Page (1:200) GetRow", TraceTickTracks.ToPlainText(markdown));
@@ -137,6 +136,66 @@ public class TraceTickTracksTests
         List<TraceTrackStep> steps = [Step(1, 3, open), Step(2, 2, Rule), Step(1, 3, open, isReturn: true)];
 
         Assert.Equal([-1, -1, -1], TraceTickTracks.GetStepNesting(steps).Select(n => n.Parent));
+    }
+
+    [Fact]
+    public void A_Predicate_Tag_Is_Taken_Out_Of_The_Description_And_Resolved()
+    {
+        var step = PredicateStep("Evaluate<Predicate>{ExecutionPlan.Predicate}</Predicate>");
+
+        var predicate = TraceTickTracks.GetStepPredicate(step)?.ToString();
+
+        Assert.Equal(("Evaluate", "[Id] = 1"), (TraceTickTracks.GetStepDescription(step), predicate));
+    }
+
+    [Fact]
+    public void A_Description_Without_A_Tag_Has_No_Predicate()
+    {
+        Assert.Null(TraceTickTracks.GetStepPredicate(PredicateStep("Evaluate")));
+    }
+
+    [Fact]
+    public void A_Property_The_Operator_Does_Not_Have_Shows_No_Predicate()
+    {
+        Assert.Null(TraceTickTracks.GetStepPredicate(PredicateStep("<Predicate>{ExecutionPlan.Other}</Predicate>")));
+    }
+
+    [Fact]
+    public void Tooltip_Text_Drops_The_Tags_But_Keeps_The_Value()
+    {
+        var track = Track with { GetPlaceholder = (_, _) => "[Id] = 1" };
+
+        var tick = PredicateStep("Evaluate").Tick;
+
+        const string description = "Evaluate <Predicate>{ExecutionPlan.Predicate}</Predicate>";
+
+        Assert.Equal("Evaluate [Id] = 1", TraceTickTracks.GetText(track, tick, description));
+    }
+
+    [Fact]
+    public void Tooltip_Text_Leaves_Out_A_Property_The_Operator_Does_Not_Have()
+    {
+        var track = TraceTickTracks.Create(null!,
+                                           [Rule],
+                                           new TraceTickTrackSeries(TraceTickSeries.Empty, [0]),
+                                           0,
+                                           _ => false,
+                                           _ => string.Empty,
+                                           (_, _) => null,
+                                           _ => null!);
+
+        var tick = PredicateStep("Evaluate").Tick;
+
+        Assert.Equal("Evaluate", TraceTickTracks.GetText(track, tick, "Evaluate <Predicate>{ExecutionPlan.Predicate}</Predicate>"));
+    }
+
+    private static TraceTrackStep PredicateStep(string description)
+    {
+        var text = new PredicateText([new PredicateToken(PredicateTokenType.Column, "[Id] = 1")]);
+
+        var track = Track with { GetPredicate = (_, name) => name == "ExecutionPlan.Predicate" ? text : null };
+
+        return Step(1, 1, Rule with { Description = description }) with { Track = track };
     }
 
     private static List<TraceTrackStep> CreateSteps()

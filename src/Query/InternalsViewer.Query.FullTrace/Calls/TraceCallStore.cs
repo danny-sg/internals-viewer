@@ -26,14 +26,14 @@ public sealed partial class TraceCallStore
                                                               Columns,
                                                               locators.GetValueOrDefault(f.Key)));
 
-        Calls = functions.Values.Sum(f => f.Sum(c => (long)c.Calls));
+        CallCount = functions.Values.Sum(f => f.Sum(c => (long)c.Calls));
         Size = functions.Values.Sum(f => f.Sum(c => (long)c.Columns.Length));
         LocatorCount = locators.Values.Sum(l => (long)l.Count);
     }
 
     public int FunctionCount => Functions.Count;
 
-    public long Calls { get; }
+    public long CallCount { get; }
 
     public long Size { get; }
 

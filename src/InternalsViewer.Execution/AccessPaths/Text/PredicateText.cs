@@ -37,6 +37,11 @@ public sealed record PredicateText(ImmutableArray<PredicateToken> Tokens)
         return new PredicateText(PredicateWriter.Write(bounds));
     }
 
+    public static PredicateText From(AccessExpression expression)
+    {
+        return new PredicateText(PredicateWriter.Write(expression));
+    }
+
     public static PredicateText From(AccessStep.Probe probe)
     {
         return new PredicateText(PredicateWriter.Write(probe));

@@ -47,7 +47,7 @@ public static class ActivityBandBrush
 
         var total = node.ActivityCounts.Sum(count => (long)count);
 
-        return total > node.Calls ? $"{node.CallsLabel}\n{total:N0} Calls Including Children" : node.CallsLabel;
+        return total > node.CallCount ? $"{node.CallsLabel}\n{total:N0} Calls Including Children" : node.CallsLabel;
     }
 
     private static CallTreeNode? Frame(object? content) => (content as TreeViewNode)?.Content as CallTreeNode;

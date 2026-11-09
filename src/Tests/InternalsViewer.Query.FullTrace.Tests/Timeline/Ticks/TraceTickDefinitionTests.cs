@@ -13,7 +13,7 @@ public class TraceTickDefinitionTests
     public void The_Predefined_Rules_Make_The_Built_In_Tracks_In_Order()
     {
         Assert.Equal(["GetRow", "Read", "Evaluations", "Row Access", "Seek", "Hash Table", "Hash Aggregate", "Sort", "Compute Scalar",
-                      "Watches", "Open"],
+                      "Watches", "Statement", "Open"],
                      TraceTickDefinition.GetPredefined().Select(d => d.Name).Distinct());
     }
 
@@ -130,6 +130,21 @@ public class TraceTickDefinitionTests
 
         Assert.All(rules, r => Assert.Equal((TraceTickSourceType.Evaluate, true),
                                             (r.Source, r.Description?.Contains("{Expression}") == true)));
+    }
+
+    [Fact]
+    public void Initialising_The_Statement_Is_A_Phase_With_A_Return()
+    {
+        var rule = TraceTickDefinition.GetPredefined().Single(d => d.Name == "Statement");
+
+        Assert.Equal((TraceTickSourceType.Statement, true, false),
+                     (rule.Source, rule.IsPhase, string.IsNullOrEmpty(rule.ReturnDescription)));
+    }
+
+    [Fact]
+    public void A_Placeholder_Can_Name_A_Plan_Property()
+    {
+        Assert.Equal("ExecutionPlan.Predicate", TraceTickDefinition.Format("{ExecutionPlan.Predicate}", n => n));
     }
 
     [Fact]

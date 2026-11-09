@@ -10,6 +10,7 @@ using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Operators;
 using InternalsViewer.UI.App.Controls.Query.Plan;
 using InternalsViewer.UI.App.Models.Query.Plan;
+using InternalsViewer.UI.App.Models.Query.Plan.Enums;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.Services.Query.Trace;
 
@@ -27,7 +28,7 @@ public sealed partial class QueryViewModel
     private ObservableCollection<GuideStepGroup> _guideStepGroups = [];
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CurrentGuideNode))]
+    [NotifyPropertyChangedFor(nameof(CurrentGuideMarker))]
     private GuideStepItem? _currentGuideStep;
 
     [ObservableProperty]
@@ -39,7 +40,8 @@ public sealed partial class QueryViewModel
     [ObservableProperty]
     private bool _isGuideDetailsVisible;
 
-    public PlanNode? CurrentGuideNode => CurrentGuideStep?.Group.Node;
+    public PlanStepMarker? CurrentGuideMarker
+        => CurrentGuideStep is { Group.Node: { } node } step ? new PlanStepMarker(node, step.Placement) : null;
 
     public GuideTransport GuidePlayback => CreatedGuidePlayback ??= CreateGuidePlayback();
 
@@ -277,7 +279,9 @@ public sealed partial class QueryViewModel
                                          group,
                                          parent,
                                          depth,
-                                         nesting[index].End)
+                                         nesting[index].End,
+                                         TraceTickTracks.GetStepPredicate(step),
+                                         GetStepPlacement(step))
             {
                 IsDetailsVisible = IsGuideDetailsVisible
             };
@@ -310,23 +314,23 @@ public sealed partial class QueryViewModel
 
     private (string Name, PlanNode? Node) GetStepOperator(TraceTrackStep step)
     {
-        var operatorEvent = step.Tick.Operator;
+        var isEvaluation = step.Rule.Source == TraceTickSourceType.Evaluate;
 
-        if (step.IsReturn || step.Rule.Source is not (TraceTickSourceType.RowReturn or TraceTickSourceType.Evaluate))
+        var operatorEvent = isEvaluation && step.Tick.Caller is { } caller ? caller : step.Tick.Operator;
+
+        var node = GetPlanNode(operatorEvent);
+
+        return (node is { IsStatement: true } ? node.PhysicalOperator : operatorEvent.Label, node);
+    }
+
+    private static PlanStepPlacement GetStepPlacement(TraceTrackStep step)
+    {
+        if (step.Rule.Source != TraceTickSourceType.RowReturn)
         {
-            return (operatorEvent.Label, GetPlanNode(operatorEvent));
+            return PlanStepPlacement.Operator;
         }
 
-        if (step.Tick.Caller is { } caller)
-        {
-            var callerNode = GetPlanNode(caller);
-
-            return (callerNode is { IsStatement: true } ? callerNode.PhysicalOperator : caller.Label, callerNode);
-        }
-
-        return GetPlanNode(operatorEvent) is { } node && GetPlanParent(node) is { } parent
-            ? (parent.PhysicalOperator, parent)
-            : (operatorEvent.Label, GetPlanNode(operatorEvent));
+        return step.IsReturn ? PlanStepPlacement.Return : PlanStepPlacement.Call;
     }
 
     private PlanNode? GetPlanNode(ExecutionOperatorEvent operatorEvent)

@@ -84,11 +84,11 @@ internal static class TraceCallTreeExport
                 }
             }
 
-            node.Calls = line.Calls;
+            node.CallCount = line.Calls;
 
             node.AllocatedBytes = line.AllocatedBytes;
 
-            node.Allocations = line.Allocations;
+            node.AllocationCount = line.Allocations;
 
             node.Locators = LocatorsOf(line.Locators);
 
@@ -163,9 +163,9 @@ internal static class TraceCallTreeExport
         Function = node.Frame?.QualifiedName,
         Order = node.Order,
         Frame = node.Frame is { } nodeFrame ? frames[nodeFrame] : null,
-        Calls = node.Calls,
+        Calls = node.CallCount,
         AllocatedBytes = node.AllocatedBytes,
-        Allocations = node.Allocations,
+        Allocations = node.AllocationCount,
         Locators = LocatorsOf(node.Locators)
     };
 

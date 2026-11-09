@@ -1,7 +1,9 @@
 using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.WinUI.Controls;
+using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.Models.Query.Plan.Enums;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Media;
 
@@ -15,7 +17,9 @@ public sealed partial class GuideStepItem(int index,
                                           GuideStepGroup group,
                                           GuideStepItem? parent,
                                           int depth,
-                                          int end)
+                                          int end,
+                                          PredicateText? predicate = null,
+                                          PlanStepPlacement placement = PlanStepPlacement.Operator)
     : ObservableObject
 {
     private const double CodeFontSize = 12;
@@ -51,6 +55,14 @@ public sealed partial class GuideStepItem(int index,
     public int End => end;
 
     public bool HasNestedSteps => end > index;
+
+    public PredicateText? Predicate => predicate;
+
+    public PlanStepPlacement Placement => placement;
+
+    public bool HasPredicate => predicate is { IsEmpty: false };
+
+    public bool HasDescription => description.Length > 0;
 
     public bool IsShown { get; set; } = true;
 

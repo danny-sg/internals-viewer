@@ -49,9 +49,9 @@ public class TraceRowAccessReaderTests
 
     private static readonly CallNode[] Nodes =
     [
-        new(-1, 0, Helper, RangeIterator, 1),
-        new(0, 0, GetFunction, BufferPool, 1),
-        new(0, 0, RecordFunction, 0, 1)
+        new(-1, Helper, RangeIterator, 1),
+        new(0, GetFunction, BufferPool, 1),
+        new(0, RecordFunction, 0, 1)
     ];
 
     [Fact]

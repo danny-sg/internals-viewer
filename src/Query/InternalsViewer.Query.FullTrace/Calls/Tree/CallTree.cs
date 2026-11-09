@@ -31,7 +31,7 @@ public sealed class CallTree
     {
         var node = Child(parent, frame, RvaKey);
 
-        node.Calls += calls;
+        node.CallCount += calls;
 
         return node;
     }
@@ -66,7 +66,7 @@ public sealed class CallTree
         var projected = new CallTree();
 
         // Insert leaves earliest-event-first so the projected nodes are created — and thus ordered — as first seen.
-        var leaves = Nodes().Where(node => node.Calls > 0).OrderBy(node => node.Order);
+        var leaves = Nodes().Where(node => node.CallCount > 0).OrderBy(node => node.Order);
 
         var segment = new Segmenter(projected, cutAt, stopBelow);
 
@@ -94,11 +94,11 @@ public sealed class CallTree
 
             var leaf = segment.ProjectedOf(node);
 
-            leaf.Calls += node.Calls;
+            leaf.CallCount += node.CallCount;
 
             leaf.AllocatedBytes += node.AllocatedBytes;
 
-            leaf.Allocations += node.Allocations;
+            leaf.AllocationCount += node.AllocationCount;
 
             AddLocators(leaf, node.Locators);
 
@@ -154,18 +154,18 @@ public sealed class CallTree
     {
         if (below)
         {
-            node.Calls = 0;
+            node.CallCount = 0;
 
             node.CallActivity = [];
 
             node.AllocatedBytes = 0;
 
-            node.Allocations = 0;
+            node.AllocationCount = 0;
 
             node.Locators = null;
         }
 
-        var keep = node.Calls > 0;
+        var keep = node.CallCount > 0;
 
         foreach (var child in node.Children.Values.ToList())
         {
@@ -340,9 +340,9 @@ public sealed class CallTree
 
         builder.Append(node.Symbol.Length > 0 ? node.Symbol : node.Key);
 
-        if (node.Calls > 0)
+        if (node.CallCount > 0)
         {
-            builder.Append($" ({node.Calls} calls)");
+            builder.Append($" ({node.CallCount} calls)");
         }
 
         builder.AppendLine();

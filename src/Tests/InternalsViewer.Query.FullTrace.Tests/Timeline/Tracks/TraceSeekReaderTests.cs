@@ -41,10 +41,10 @@ public class TraceSeekReaderTests
 
     private static readonly CallNode[] Nodes =
     [
-        new(-1, 0, Helper, RangeIterator, 1),
-        new(0, 0, GetPageWithKeyFunction, PageManager, 1),
-        new(1, 0, GetFunction, BufferPool, 3),
-        new(0, 0, GetFunction, BufferPool, 1)
+        new(-1, Helper, RangeIterator, 1),
+        new(0, GetPageWithKeyFunction, PageManager, 1),
+        new(1, GetFunction, BufferPool, 3),
+        new(0, GetFunction, BufferPool, 1)
     ];
 
     [Fact]

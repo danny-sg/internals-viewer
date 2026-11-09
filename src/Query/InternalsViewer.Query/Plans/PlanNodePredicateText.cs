@@ -94,6 +94,36 @@ public static class PlanNodePredicateText
         return seek.Length > 0 && seek == residual;
     }
 
+    public static PredicateText GetText(this DefinedValueInfo value, ExpressionCatalog? expressions)
+    {
+        var text = value.ParsedExpression is { } expression ? PredicateText.From(expression) : PredicateText.Empty;
+
+        if (text.IsEmpty || text.Tokens.Any(t => t.Type == PredicateTokenType.Unknown))
+        {
+            text = new PredicateText([new PredicateToken(PredicateTokenType.Column, value.Expression ?? string.Empty)]);
+        }
+
+        return expressions?.Expand(text) ?? text;
+    }
+
+    public static PredicateText GetText(this IEnumerable<DefinedValueInfo> values, ExpressionCatalog? expressions)
+    {
+        var tokens = ImmutableArray.CreateBuilder<PredicateToken>();
+
+        foreach (var value in values)
+        {
+            if (tokens.Count > 0)
+            {
+                tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, ","));
+                tokens.Add(new PredicateToken(PredicateTokenType.Space, " "));
+            }
+
+            tokens.AddRange(value.GetText(expressions).Tokens);
+        }
+
+        return new PredicateText(tokens.ToImmutable());
+    }
+
     private static string Normalize(PredicateText text)
     {
         return PredicateWriter.ToText(text.Tokens)

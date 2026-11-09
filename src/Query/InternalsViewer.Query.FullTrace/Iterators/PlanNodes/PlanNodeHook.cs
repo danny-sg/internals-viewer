@@ -48,7 +48,7 @@ internal sealed class PlanNodeHook(AddressTable<PlanNodeFunctionType> functions,
         switch (type)
         {
             case PlanNodeFunctionType.BatchFactory:
-                Factories[call.Id] = new PendingFactory(iterator, new TracePoint(call.Position, call.Instructions));
+                Factories[call.CallId] = new PendingFactory(iterator, new TracePoint(call.Position, call.Instructions));
                 return;
 
             case PlanNodeFunctionType.Constructor:
@@ -72,7 +72,7 @@ internal sealed class PlanNodeHook(AddressTable<PlanNodeFunctionType> functions,
 
     public void OnReturn(in TraceHookCall call, ITraceReplay replay)
     {
-        if (Factories.Remove(call.Id, out var factory)
+        if (Factories.Remove(call.CallId, out var factory)
             && call.ReturnValue >= TraceAddress.MinAddress
             && !PlanNodes.ContainsKey(call.ReturnValue))
         {
@@ -84,7 +84,7 @@ internal sealed class PlanNodeHook(AddressTable<PlanNodeFunctionType> functions,
         }
     }
 
-    public void OnAbandoned(in TraceHookCall call) => Factories.Remove(call.Id);
+    public void OnAbandoned(in TraceHookCall call) => Factories.Remove(call.CallId);
 
     public IReadOnlyList<IteratorPlanNode> GetPlanNodes() => [.. PlanNodes.Values];
 

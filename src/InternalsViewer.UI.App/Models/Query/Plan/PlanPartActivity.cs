@@ -5,5 +5,5 @@ namespace InternalsViewer.UI.App.Models.Query.Plan;
 
 public sealed record PlanPartActivity(PlanNode Node, string Part, Color Colour, bool IsRunning, double? Fraction, int Rank)
 {
-    public PlanNode? Puller { get; init; }
+    public PlanNode? CalculatorNode { get; init; }
 }

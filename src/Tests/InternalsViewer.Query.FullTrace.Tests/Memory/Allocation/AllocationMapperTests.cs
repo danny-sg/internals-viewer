@@ -41,7 +41,7 @@ public class AllocationMapperTests
         var (_, allocations, bytes, _) = AllocationMapper.Map(store, [Function(Allocator)], null);
 
         Assert.Equal((300ul, 2L), (bytes, allocations));
-        Assert.Equal((300L, 2L), (allocator.AllocatedBytes, allocator.Allocations));
+        Assert.Equal((300L, 2L), (allocator.AllocatedBytes, allocator.AllocationCount));
         Assert.Equal((300L, 2L), (caller.AllocatedBytesIncludingChildren, caller.AllocationsIncludingChildren));
         Assert.Equal(0L, caller.AllocatedBytes);
     }
@@ -117,7 +117,7 @@ public class AllocationMapperTests
 
         timelineBuilder.Add([Span(0, 0, 40, uint.MaxValue), Span(1, 10, 20, 0), Span(2, 12, 13, 0)]);
 
-        var timeline = timelineBuilder.Build([new(-1, 0, 0x10, 0, 1), new(0, 0, Allocator, 0, 1), new(1, 0, Inner, 0, 1)]);
+        var timeline = timelineBuilder.Build([new(-1, 0x10, 0, 1), new(0, Allocator, 0, 1), new(1, Inner, 0, 1)]);
 
         timeline.MapNodes([caller, allocator, pages]);
 
@@ -153,7 +153,7 @@ public class AllocationMapperTests
 
         timelineBuilder.Add([Span(0, 0, 40, uint.MaxValue), Span(1, 10, 20, 0)]);
 
-        var timeline = timelineBuilder.Build([new(-1, 0, 0x10, 0, 1), new(0, 0, Allocator, 0, 1)]);
+        var timeline = timelineBuilder.Build([new(-1, 0x10, 0, 1), new(0, Allocator, 0, 1)]);
 
         timeline.MapNodes([caller, allocator]);
 
@@ -191,10 +191,10 @@ public class AllocationMapperTests
 
         timelineBuilder.Add([Span(0, 0, 40, uint.MaxValue), Span(1, 10, 20, 0), Span(2, 11, 19, 0), Span(3, 12, 18, 0)]);
 
-        var timeline = timelineBuilder.Build([new(-1, 0, 0x10, 0, 1),
-                                              new(0, 0, Allocator, 0, 1),
-                                              new(1, 0, Inner, 0, 1),
-                                              new(2, 0, Parent, 0, 1)]);
+        var timeline = timelineBuilder.Build([new(-1, 0x10, 0, 1),
+                                              new(0, Allocator, 0, 1),
+                                              new(1, Inner, 0, 1),
+                                              new(2, Parent, 0, 1)]);
 
         timeline.MapNodes([caller, allocator, child, parent]);
 
@@ -230,7 +230,7 @@ public class AllocationMapperTests
 
         timelineBuilder.Add([Span(0, 0, 40, uint.MaxValue), Span(1, 10, 20, 0), Span(2, 11, 19, 0)]);
 
-        var timeline = timelineBuilder.Build([new(-1, 0, 0x10, 0, 1), new(0, 0, Allocator, 0, 1), new(1, 0, Inner, 0, 1)]);
+        var timeline = timelineBuilder.Build([new(-1, 0x10, 0, 1), new(0, Allocator, 0, 1), new(1, Inner, 0, 1)]);
 
         timeline.MapNodes([caller, allocator, memoryObject]);
 
@@ -273,10 +273,10 @@ public class AllocationMapperTests
 
         timelineBuilder.Add([Span(0, 0, 40, uint.MaxValue), Span(1, 10, 20, 0), Span(2, 11, 19, 0), Span(3, 12, 18, 0)]);
 
-        var timeline = timelineBuilder.Build([new(-1, 0, 0x10, 0, 1),
-                                              new(0, 0, Allocator, 0, 1),
-                                              new(1, 0, Inner, 0, 1),
-                                              new(2, 0, Parent, 0, 1)]);
+        var timeline = timelineBuilder.Build([new(-1, 0x10, 0, 1),
+                                              new(0, Allocator, 0, 1),
+                                              new(1, Inner, 0, 1),
+                                              new(2, Parent, 0, 1)]);
 
         timeline.MapNodes([caller, allocator, child, parent]);
 

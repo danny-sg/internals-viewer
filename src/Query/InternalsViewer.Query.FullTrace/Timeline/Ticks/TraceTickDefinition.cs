@@ -34,6 +34,10 @@ public sealed partial record TraceTickDefinition(string Name,
 
     public const string ExpressionPlaceholder = "Expression";
 
+    public const string ExecutionPlanPrefix = "ExecutionPlan.";
+
+    public const string CurrentRangePlaceholder = ExecutionPlanPrefix + "CurrentRange";
+
     private const string AnyModule = "*";
 
     private const char FunctionSeparator = '|';
@@ -98,6 +102,6 @@ public sealed partial record TraceTickDefinition(string Name,
 
     public bool MatchesOperator(ExecutionOperatorEvent? operatorEvent) => Conditions.All(c => c.MatchesOperator(operatorEvent));
 
-    [GeneratedRegex(@"\{(\w+)\}")]
+    [GeneratedRegex(@"\{([\w.]+)\}")]
     private static partial Regex PlaceholderPattern();
 }

@@ -121,14 +121,14 @@ public static class Format
     {
         var parts = new List<string> { $"[{context.Nodes.GetId(node)}] {context.GetFunctionName(node)}" };
 
-        if (node.Calls > 0)
+        if (node.CallCount > 0)
         {
-            parts.Add($"calls={Number(node.Calls)}");
+            parts.Add($"calls={Number(node.CallCount)}");
         }
 
         if (node.AllocatedBytes > 0)
         {
-            parts.Add($"alloc={Bytes(node.AllocatedBytes)}/{Number(node.Allocations)}");
+            parts.Add($"alloc={Bytes(node.AllocatedBytes)}/{Number(node.AllocationCount)}");
         }
 
         if (node.Locators is { } locators)

@@ -47,7 +47,7 @@ public class ExpressionPullResolverTests
 
         var pull = Assert.Single(ExpressionPullResolver.Resolve(Plan(Statement(sort))));
 
-        Assert.Equal((sort, 2), (pull.Puller, pull.Expressions.Count));
+        Assert.Equal((sort, 2), (pull.Puller, pull.Values.Count));
     }
 
     [Fact]
@@ -129,7 +129,7 @@ public class ExpressionPullResolverTests
     {
         var pull = Assert.Single(ExpressionPullResolver.Resolve(Plan(Statement(ComputeScalar(Value)))));
 
-        Assert.Equal([Value], pull.OutputExpressions);
+        Assert.Equal([Value], pull.OutputValues.Select(v => v.Expression));
     }
 
     [Fact]
@@ -139,7 +139,7 @@ public class ExpressionPullResolverTests
 
         var pulls = ExpressionPullResolver.Resolve(Plan(Statement(filter)));
 
-        Assert.Empty(pulls.Single(p => ReferenceEquals(p.Puller, filter)).OutputExpressions);
+        Assert.Empty(pulls.Single(p => ReferenceEquals(p.Puller, filter)).OutputValues);
     }
 
     [Fact]
@@ -149,7 +149,9 @@ public class ExpressionPullResolverTests
 
         var pull = Assert.Single(ExpressionPullResolver.Resolve(Plan(Statement(sort))));
 
-        Assert.Equal(([Value, Other], [Other]), (pull.Expressions.ToArray(), pull.OutputExpressions.ToArray()), ArrayPairComparer);
+        var output = pull.OutputValues.Select(v => v.Expression!).ToArray();
+
+        Assert.Equal(([Value, Other], [Other]), (pull.Values.Select(v => v.Expression!).ToArray(), output), ArrayPairComparer);
     }
 
     [Fact]
@@ -159,7 +161,7 @@ public class ExpressionPullResolverTests
 
         var pull = Assert.Single(ExpressionPullResolver.Resolve(Plan(Statement(hash))));
 
-        Assert.Empty(pull.OutputExpressions);
+        Assert.Empty(pull.OutputValues);
     }
 
     [Fact]
@@ -169,7 +171,7 @@ public class ExpressionPullResolverTests
 
         var pull = Assert.Single(ExpressionPullResolver.Resolve(Plan(Statement(hash))));
 
-        Assert.Equal([Value], pull.OutputExpressions);
+        Assert.Equal([Value], pull.OutputValues.Select(v => v.Expression));
     }
 
     private static EqualityComparer<(string[], string[])> ArrayPairComparer { get; }

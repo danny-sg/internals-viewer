@@ -23,13 +23,13 @@ public class CallTreeTests(ITestOutputHelper output)
         var callee = tree.AddCall(second, new CallFrame { Module = new("sqlmin"), Rva = 0x40 }, 1);
 
         first.AllocatedBytes = 100;
-        first.Allocations = 1;
+        first.AllocationCount = 1;
         callee.AllocatedBytes = 50;
-        callee.Allocations = 2;
+        callee.AllocationCount = 2;
 
         var merged = CallTreeNode.Merge([first, second]);
 
-        Assert.Equal((5L, 150L, 3L), (merged.Calls, merged.AllocatedBytesIncludingChildren, merged.AllocationsIncludingChildren));
+        Assert.Equal((5L, 150L, 3L), (merged.CallCount, merged.AllocatedBytesIncludingChildren, merged.AllocationsIncludingChildren));
         Assert.Equal([first, second], merged.MergedFrom);
         Assert.Equal(first.Key, merged.Key);
         Assert.Empty(merged.Children);
@@ -162,8 +162,8 @@ public class CallTreeTests(ITestOutputHelper output)
         output.WriteLine(Render(collapsed));
 
         Assert.DoesNotContain(collapsed.Nodes(), node => node.Symbol is "Publish::m" or "memcpy::m");
-        Assert.Equal(3, collapsed.Nodes().Single(node => node.Symbol == "ReadPage::m").Calls);
-        Assert.Equal(1, collapsed.Nodes().Single(node => node.Symbol == "PreWait::m").Calls);
+        Assert.Equal(3, collapsed.Nodes().Single(node => node.Symbol == "ReadPage::m").CallCount);
+        Assert.Equal(1, collapsed.Nodes().Single(node => node.Symbol == "PreWait::m").CallCount);
     }
 
     [Fact]

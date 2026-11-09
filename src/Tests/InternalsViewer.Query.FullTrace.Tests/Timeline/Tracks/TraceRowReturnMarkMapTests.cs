@@ -64,8 +64,8 @@ public class TraceRowReturnMarkMapTests
 
     private static readonly CallNode[] Nodes =
     [
-        new(-1, 0, Helper, JoinIterator, 2),
-        new(0, 0, Helper, ScanIterator, 3)
+        new(-1, Helper, JoinIterator, 2),
+        new(0, Helper, ScanIterator, 3)
     ];
 
     [Fact]

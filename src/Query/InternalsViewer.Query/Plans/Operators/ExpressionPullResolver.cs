@@ -38,12 +38,11 @@ public static class ExpressionPullResolver
 
     private static void AddPulls(PlanNode computeScalar, List<PlanNode> ancestors, List<ExpressionPull> pulls)
     {
-        var sites = new Dictionary<(PlanNode Puller, ExpressionPullSite Site), (List<string> All, List<string> Output)>();
+        var sites = new Dictionary<(PlanNode Puller, ExpressionPullSite Site),
+                                   (List<DefinedValueInfo> All, List<DefinedValueInfo> Output)>();
 
         foreach (var value in computeScalar.DefinedValues)
         {
-            var expression = value.Expression ?? string.Empty;
-
             foreach (var (puller, site, isOutput) in GetPullers(computeScalar, value, ancestors).Distinct())
             {
                 if (!sites.TryGetValue((puller, site), out var expressions))
@@ -53,11 +52,11 @@ public static class ExpressionPullResolver
                     sites[(puller, site)] = expressions;
                 }
 
-                expressions.All.Add(expression);
+                expressions.All.Add(value);
 
                 if (isOutput)
                 {
-                    expressions.Output.Add(expression);
+                    expressions.Output.Add(value);
                 }
             }
         }

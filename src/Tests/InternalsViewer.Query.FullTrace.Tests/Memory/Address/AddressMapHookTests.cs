@@ -58,7 +58,7 @@ public class AddressMapHookTests
 
         hook.OnEntry(Call(Constructor, 10, arguments: [StackObject, 0, 0, 0]), replay);
 
-        hook.OnFrameEnded(new TraceHookCall { Id = 5, Position = At(99), Thread = Thread });
+        hook.OnFrameEnded(new TraceHookCall { CallId = 5, Position = At(99), Thread = Thread });
 
         Assert.Equal(At(99), Assert.Single(hook.Build()).ToPosition);
     }
@@ -246,7 +246,7 @@ public class AddressMapHookTests
         => new()
         {
             FunctionAddress = function,
-            Id = id,
+            CallId = id,
             Position = At(id),
             Thread = Thread,
             CallNodeIndex = 7,

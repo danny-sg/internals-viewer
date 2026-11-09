@@ -117,7 +117,8 @@ internal sealed partial class TraceOperatorsPane
     private TraceTickIndex? GetTicks(TraceOperatorRow row, uint thread, TraceTickTrack tickTrack)
         => (!row.IsStatement || tickTrack.IsStatementTrack)
            && IsTrackShown(row.Operator, tickTrack.Name)
-           && tickTrack.Series.GetTicks(row.TickOperator, thread) is { Count: > 0 } ticks
+           && (tickTrack.Series.GetTicks(row.TickOperator, thread)
+               ?? tickTrack.Series.GetTicks(row.Operator, thread)) is { Count: > 0 } ticks
             ? ticks
             : null;
 

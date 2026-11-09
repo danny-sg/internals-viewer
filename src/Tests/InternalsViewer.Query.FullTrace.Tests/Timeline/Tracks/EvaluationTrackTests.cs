@@ -71,11 +71,11 @@ public class EvaluationTrackTests
 
     private static readonly CallNode[] Nodes =
     [
-        new(-1, 0, Helper, FilterIterator, 1),
-        new(0, 0, Helper, ScanIterator, 1),
-        new(1, 0, Compare, 0, 3),
-        new(0, 0, Compare, 0, 2),
-        new(1, 0, TupleCompare, 0, 1)
+        new(-1, Helper, FilterIterator, 1),
+        new(0, Helper, ScanIterator, 1),
+        new(1, Compare, 0, 3),
+        new(0, Compare, 0, 2),
+        new(1, TupleCompare, 0, 1)
     ];
 
     [Fact]
@@ -201,7 +201,7 @@ public class EvaluationTrackTests
 
         var rule = Rule("CEsExec::FastCompare1") with { Source = TraceTickSourceType.Evaluate };
 
-        var series = TraceTickSeries.FromEvaluations(BuildResult(), rule, null, o => ReferenceEquals(o, Filter) ? [computeScalar] : []);
+        var series = TraceTickSeries.FromAssignedCalls(BuildResult(), rule, null, o => ReferenceEquals(o, Filter) ? [computeScalar] : []);
 
         Assert.Equal([(computeScalar, Filter), (computeScalar, Filter)], series.GetAllTicks().Select(t => (t.Operator, t.Caller)));
     }

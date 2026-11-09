@@ -9,5 +9,6 @@ public enum TraceTickSourceType
     PageFetch,
     Open,
     Watch,
-    Evaluate
+    Evaluate,
+    Statement
 }

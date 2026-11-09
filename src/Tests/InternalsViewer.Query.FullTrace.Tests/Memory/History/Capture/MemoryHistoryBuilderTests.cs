@@ -260,7 +260,7 @@ public class MemoryHistoryBuilderTests
 
         builder.Add([Span(0, 0, 100, 0), Span(1, 10, 20, 0), Span(2, 12, 18, 0)]);
 
-        var timeline = builder.Build([new(-1, 0, 0x10, 0, 1), new(0, 0, 0x20, 0, 1), new(1, 0, 0x30, 0, 1)]);
+        var timeline = builder.Build([new(-1, 0x10, 0, 1), new(0, 0x20, 0, 1), new(1, 0x30, 0, 1)]);
 
         timeline.MapNodes([query, grant, steal]);
 
@@ -316,7 +316,7 @@ public class MemoryHistoryBuilderTests
 
         builder.Add([new CallSpan(0, 0, 100, 0, start, start + 100, 0, Thread, 0, 1)]);
 
-        var timeline = builder.Build([new(-1, 0, 0x10, 0, 1)]);
+        var timeline = builder.Build([new(-1, 0x10, 0, 1)]);
 
         var built = Build([Block(Owned, 0x10, from: 1)], [Write(50, Owned, 1)], timeline: timeline);
 
@@ -591,11 +591,11 @@ public class MemoryHistoryBuilderTests
                      Span(3, 23, 27, 0),
                      Span(4, 60, 70, 0)]);
 
-        var timeline = builder.Build([new(-1, 0, 0x10, 0, 1),
-                                      new(0, 0, 0x20, Iterator, 3),
-                                      new(1, 0, 0x30, 0, 2),
-                                      new(1, 0, 0x40, 0, 1),
-                                      new(0, 0, 0x50, 0, 1)]);
+        var timeline = builder.Build([new(-1, 0x10, 0, 1),
+                                      new(0, 0x20, Iterator, 3),
+                                      new(1, 0x30, 0, 2),
+                                      new(1, 0x40, 0, 1),
+                                      new(0, 0x50, 0, 1)]);
 
         timeline.MapNodes([query, getRow, scanner, pages, bufferPool]);
 

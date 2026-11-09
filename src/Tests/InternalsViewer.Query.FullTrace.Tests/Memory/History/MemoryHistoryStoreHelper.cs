@@ -26,7 +26,7 @@ internal static class MemoryHistoryStoreHelper
 
         builder.Add([.. calls.Select((c, i) => new CallSpan(c.From, 0, c.To, 0, c.From, c.To, 0, Thread, (uint)i, 1))]);
 
-        return builder.Build([new CallNode(-1, 0, 0x10, 0, (ulong)calls.Length)]);
+        return builder.Build([new CallNode(-1, 0x10, 0, (ulong)calls.Length)]);
     }
 
     public static MemoryHistoryStore Build(MemoryBlock[] blocks,

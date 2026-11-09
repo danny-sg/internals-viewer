@@ -18,6 +18,7 @@ namespace InternalsViewer.Query.FullTrace.Hooks;
 /// Arguments are indexed 0-16.
 ///
 /// - 0-3 are registers, captured by the native bridge at entry:
+/// 
 ///     0 = RCX
 ///     1 = RDX
 ///     2 = R8
@@ -122,13 +123,13 @@ internal abstract class ArgumentHook<TRead> : ITraceHook
 
             arguments.CopyTo(saved);
 
-            Starts[call.Id] = saved;
+            Starts[call.CallId] = saved;
         }
     }
 
     public void OnReturn(in TraceHookCall call, ITraceReplay replay)
     {
-        if (!Starts.Remove(call.Id, out var arguments))
+        if (!Starts.Remove(call.CallId, out var arguments))
         {
             return;
         }
@@ -149,7 +150,7 @@ internal abstract class ArgumentHook<TRead> : ITraceHook
 
     public void OnAbandoned(in TraceHookCall call)
     {
-        if (Starts.Remove(call.Id, out var arguments))
+        if (Starts.Remove(call.CallId, out var arguments))
         {
             FreeArguments.Push(arguments);
         }

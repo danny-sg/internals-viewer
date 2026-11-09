@@ -116,7 +116,7 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
             return;
         }
 
-        Starts[(call.Thread, call.Id)] = type == BufferPoolFunctionType.PostRead && call.Arguments.Length > PageNumberArgument
+        Starts[(call.Thread, call.CallId)] = type == BufferPoolFunctionType.PostRead && call.Arguments.Length > PageNumberArgument
             ? new CallStart(call.Position,
                             call.Arguments[FileControlBlockArgument],
                             call.Arguments[FrameArgument],
@@ -124,11 +124,11 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
             : new CallStart(call.Position, 0, 0, 0);
     }
 
-    public void OnAbandoned(in TraceHookCall call) => Starts.Remove((call.Thread, call.Id));
+    public void OnAbandoned(in TraceHookCall call) => Starts.Remove((call.Thread, call.CallId));
 
     public void OnReturn(in TraceHookCall call, ITraceReplay replay)
     {
-        var start = Starts.Remove((call.Thread, call.Id), out var entry) ? entry : new CallStart(call.Position, 0, 0, 0);
+        var start = Starts.Remove((call.Thread, call.CallId), out var entry) ? entry : new CallStart(call.Position, 0, 0, 0);
 
         if (IsPostRead(call))
         {

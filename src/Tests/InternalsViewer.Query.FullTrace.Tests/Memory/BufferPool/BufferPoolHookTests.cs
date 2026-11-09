@@ -176,9 +176,10 @@ public class BufferPoolHookTests
 
         hook.OnReturn(Return(Buffer, 9), Replay());
 
-        hook.OnEntry(new TraceHookCall { FunctionAddress = Get, Id = 1, Thread = 7, Position = At(3) }, new FakeTraceReplay());
+        hook.OnEntry(new TraceHookCall { FunctionAddress = Get, CallId = 1, Thread = 7, Position = At(3) }, new FakeTraceReplay());
 
-        hook.OnReturn(new TraceHookCall { FunctionAddress = Get, Id = 1, Thread = 7, ReturnValue = Buffer, Position = At(5) }, Replay());
+        hook.OnReturn(new TraceHookCall { FunctionAddress = Get, CallId = 1, Thread = 7, ReturnValue = Buffer, Position = At(5) },
+                      Replay());
 
         Assert.Equal([new MemoryBlock(Buffer, BufferDescriptor.Size, 7, At(3), TracePosition.Unknown)], hook.GetBuffers());
     }
@@ -209,7 +210,7 @@ public class BufferPoolHookTests
         }));
 
     private static TraceHookCall LatchRelease(ulong buffer, ulong sequence)
-        => new() { FunctionAddress = Release, Id = 9, Position = At(sequence), Arguments = new[] { buffer + 0x98 } };
+        => new() { FunctionAddress = Release, CallId = 9, Position = At(sequence), Arguments = new[] { buffer + 0x98 } };
 
     private static FakeTraceReplay Replay()
         => new FakeTraceReplay().Write(Buffer, Frame)
@@ -228,17 +229,17 @@ public class BufferPoolHookTests
         hook.OnEntry(new TraceHookCall
                      {
                          FunctionAddress = PostRead,
-                         Id = id,
+                         CallId = id,
                          Position = At(sequence),
                          Arguments = new[] { fileControlBlock, frame, page, 0ul }
                      },
                      replay);
 
-        hook.OnReturn(new TraceHookCall { FunctionAddress = PostRead, Id = id, Position = At(sequence + 1) }, replay);
+        hook.OnReturn(new TraceHookCall { FunctionAddress = PostRead, CallId = id, Position = At(sequence + 1) }, replay);
     }
 
-    private static TraceHookCall GetCall(ulong sequence) => new() { FunctionAddress = Get, Id = 1, Position = At(sequence) };
+    private static TraceHookCall GetCall(ulong sequence) => new() { FunctionAddress = Get, CallId = 1, Position = At(sequence) };
 
     private static TraceHookCall Return(ulong buffer, ulong sequence)
-        => new() { FunctionAddress = Get, Id = 1, ReturnValue = buffer, Position = At(sequence) };
+        => new() { FunctionAddress = Get, CallId = 1, ReturnValue = buffer, Position = At(sequence) };
 }

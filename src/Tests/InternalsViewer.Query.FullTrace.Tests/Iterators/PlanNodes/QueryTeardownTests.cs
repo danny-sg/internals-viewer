@@ -46,7 +46,7 @@ public class QueryTeardownTests
 
         builder.Add(spans);
 
-        var timeline = builder.Build([new(-1, 0, 0x10, 0, 1), new(0, 0, 0x20, 0, 1), new(0, 0, 0x30, 0, 1)]);
+        var timeline = builder.Build([new(-1, 0x10, 0, 1), new(0, 0x20, 0, 1), new(0, 0x30, 0, 1)]);
 
         timeline.MapNodes([execute, scan, teardown]);
 

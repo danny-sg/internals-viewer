@@ -6,7 +6,7 @@ internal readonly ref struct TraceHookCall
 
     public ulong InstanceAddress { get; init; }
 
-    public ulong Id { get; init; }
+    public ulong CallId { get; init; }
 
     public uint CallIndex { get; init; }
 

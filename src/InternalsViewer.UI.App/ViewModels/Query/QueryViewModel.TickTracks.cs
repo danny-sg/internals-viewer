@@ -4,15 +4,18 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
+using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
+using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Plans.Enums;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Operators;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.Services.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.OperatorTracks;
@@ -35,6 +38,8 @@ public sealed partial class QueryViewModel
         => CreatedExpressionPulls ??= ExecutionPlans.SelectMany(ExpressionPullResolver.Resolve).ToLookup(p => (p.Puller, p.Site));
 
     private ILookup<(PlanNode Puller, ExpressionPullSite Site), ExpressionPull>? CreatedExpressionPulls { get; set; }
+
+    private Dictionary<PlanNode, Dictionary<string, PredicateText>> PlanValues { get; } = [];
 
     public void AddTickTrack(TraceTickDefinition definition) => TickTrackStore.Add(definition);
 
@@ -118,6 +123,8 @@ public sealed partial class QueryViewModel
     {
         CreatedExpressionPulls = null;
 
+        PlanValues.Clear();
+
         RuleSeries.Clear();
 
         RuleWatches.Clear();
@@ -177,7 +184,7 @@ public sealed partial class QueryViewModel
                                               index,
                                               TickTrackStore.IsAdded,
                                               GetParentOperatorName,
-                                              GetEvaluatedExpression,
+                                              GetStepPredicate,
                                               r => GetRuleWatch(trace, r)));
         }
 
@@ -193,12 +200,19 @@ public sealed partial class QueryViewModel
 
         if (!RuleSeries.TryGetValue(rule, out var series))
         {
-            series = rule.Source == TraceTickSourceType.Evaluate
-                ? TraceTickSeries.FromEvaluations(trace,
-                                                  rule,
-                                                  GetStatementOperator(),
-                                                  p => GetPulledComputeScalars(p, (ExpressionPullSite)rule.Value))
-                : TraceTickSeries.FromDefinition(trace, rule);
+            var statement = GetStatementOperator();
+
+            series = rule.Source switch
+            {
+                TraceTickSourceType.Evaluate
+                    => TraceTickSeries.FromAssignedCalls(trace,
+                                                         rule,
+                                                         statement,
+                                                         p => GetPulledComputeScalars(p, (ExpressionPullSite)rule.Value)),
+                TraceTickSourceType.Statement
+                    => TraceTickSeries.FromAssignedCalls(trace, rule, statement, _ => statement is null ? [] : [statement]),
+                _ => TraceTickSeries.FromDefinition(trace, rule)
+            };
 
             RuleSeries[rule] = series;
         }
@@ -222,11 +236,11 @@ public sealed partial class QueryViewModel
                                                 .OfType<ExecutionOperatorEvent>()];
     }
 
-    private string GetEvaluatedExpression(TraceTick tick)
+    private IReadOnlyList<DefinedValueInfo> GetEvaluatedValues(TraceTick tick)
     {
         if (GetPlanNode(tick.Operator) is not { } computeScalar)
         {
-            return string.Empty;
+            return [];
         }
 
         var puller = tick.Caller is { } caller ? GetPlanNode(caller) : null;
@@ -235,9 +249,39 @@ public sealed partial class QueryViewModel
                                   .Where(p => ReferenceEquals(p.ComputeScalar, computeScalar))
                                   .FirstOrDefault(p => ReferenceEquals(p.Puller, puller));
 
-        IEnumerable<string?> expressions = pull?.Expressions ?? computeScalar.DefinedValues.Select(d => d.Expression);
+        return pull?.Values ?? computeScalar.DefinedValues;
+    }
 
-        return string.Join(", ", expressions.OfType<string>().Select(TraceTickTracks.ShortenExpression));
+    private PredicateText? GetStepPredicate(TraceTick tick, string name)
+    {
+        if (name.Equals(TraceTickDefinition.ExpressionPlaceholder, StringComparison.OrdinalIgnoreCase))
+        {
+            return GetEvaluatedValues(tick).GetText(GetPlanExpressions(tick.Operator));
+        }
+
+        if (!name.StartsWith(TraceTickDefinition.ExecutionPlanPrefix, StringComparison.OrdinalIgnoreCase)
+            || GetPlanNode(tick.Operator) is not { } node)
+        {
+            return null;
+        }
+
+        if (!PlanValues.TryGetValue(node, out var values))
+        {
+            values = PlanNodePropertyBuilder.GetValues(node, GetPlanExpressions(tick.Operator));
+
+            PlanValues[node] = values;
+        }
+
+        return name.Equals(TraceTickDefinition.CurrentRangePlaceholder, StringComparison.OrdinalIgnoreCase)
+            ? PlanNodePropertyBuilder.GetSeekRange(values, Trace?.GetSeekRange(tick) ?? 0)
+            : values.GetValueOrDefault(name[TraceTickDefinition.ExecutionPlanPrefix.Length..]);
+    }
+
+    private ExpressionCatalog? GetPlanExpressions(ExecutionOperatorEvent operatorEvent)
+    {
+        var plan = ExecutionPlans.FirstOrDefault(p => p.PlanHandleId == operatorEvent.PlanNodeIdentifier?.PlanHandleId);
+
+        return (plan ?? ExecutionPlans.FirstOrDefault())?.Expressions;
     }
 
     private TraceWatch GetRuleWatch(TraceResult trace, TraceTickDefinition rule)

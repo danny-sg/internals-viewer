@@ -228,9 +228,9 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         Logger.LogInformation("{Calls} call(s) on {Paths} call path(s) replayed, {Logged} call(s) of {Functions} function(s) logged in "
                               + "{Size} MB, {Locators} page and row id(s) read, {UniqueLocators} unique",
-                              replay.Nodes.Sum(n => (long)n.Calls),
+                              replay.Nodes.Sum(n => (long)n.CallCount),
                               replay.Nodes.Length,
-                              replay.CallStore.Calls,
+                              replay.CallStore.CallCount,
                               replay.CallStore.FunctionCount,
                               replay.CallStore.Size / (1024 * 1024),
                               replay.CallStore.LocatorCount,
@@ -294,7 +294,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         Logger.LogInformation("{Calls} call(s) after removing Extended Events and tracing, {Spans} call span(s) on {Threads} "
                               + "thread(s) in the trace timeline",
-                              callTree.Nodes().Sum(n => n.Calls),
+                              callTree.Nodes().Sum(n => n.CallCount),
                               timeline.SpanCount,
                               timeline.Threads.Count);
 

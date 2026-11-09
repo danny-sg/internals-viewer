@@ -88,7 +88,7 @@ internal sealed class AddressMapHook(Dictionary<ulong, AddressMapFunction> opera
 
     public void OnFrameEnded(in TraceHookCall call)
     {
-        if (!OwnedEntries.Remove(call.Id, out var owned))
+        if (!OwnedEntries.Remove(call.CallId, out var owned))
         {
             return;
         }
@@ -163,13 +163,13 @@ internal sealed class AddressMapHook(Dictionary<ulong, AddressMapFunction> opera
         => function.Operation != AddressMapOperation.Declared || function.DeclaredClasses.Length > 0;
 
     private static ulong GetOwner(ReadOnlySpan<TraceHookFrame> frames, ulong address)
-        => TraceHookFrameLookup.GetOwnerIndex(frames, address) is >= 0 and var index ? frames[index].Id : 0;
+        => TraceHookFrameLookup.GetOwnerIndex(frames, address) is >= 0 and var index ? frames[index].CallId : 0;
 
     private static bool IsActive(ReadOnlySpan<TraceHookFrame> frames, ulong call)
     {
         foreach (var frame in frames)
         {
-            if (frame.Id == call)
+            if (frame.CallId == call)
             {
                 return true;
             }
@@ -235,11 +235,11 @@ internal sealed class AddressMapHook(Dictionary<ulong, AddressMapFunction> opera
                 return;
             }
 
-            if (operation == AddressMapOperation.Allocated && existing == AddressMapOperation.Allocated && entry.Frame > call.Id)
+            if (operation == AddressMapOperation.Allocated && existing == AddressMapOperation.Allocated && entry.Frame > call.CallId)
             {
                 Entries[latest] = entry with
                 {
-                    Frame = call.Id,
+                    Frame = call.CallId,
                     CallIndex = (int)call.CallIndex,
                     FromPosition = call.Position,
                     CallNodeIndex = call.CallNodeIndex
@@ -268,7 +268,7 @@ internal sealed class AddressMapHook(Dictionary<ulong, AddressMapFunction> opera
         }
 
         Entries.Add(new AddressEntry(address,
-                                     call.Id,
+                                     call.CallId,
                                      (int)call.CallIndex,
                                      owner,
                                      call.Position,

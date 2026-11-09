@@ -25,9 +25,9 @@ internal static class CallTreeBuilder
         {
             var call = calls[i];
 
-            var parent = call.Parent < 0 ? callTree.Root : nodes[call.Parent];
+            var parent = call.ParentIndex < 0 ? callTree.Root : nodes[call.ParentIndex];
 
-            nodes[i] = callTree.AddCall(parent, CreateFrame(ordered, starts, call), (long)call.Calls);
+            nodes[i] = callTree.AddCall(parent, CreateFrame(ordered, starts, call), (long)call.CallCount);
         }
 
         return (callTree, nodes);

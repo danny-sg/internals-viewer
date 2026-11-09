@@ -1577,7 +1577,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             foreach (var tick in track.Series.GetRunningTicks(position))
             {
-                AddPartActivity(parts, track, tick, isRunning: true);
+                AddPartActivity(parts, track, tick, position, isRunning: true);
             }
 
             if (previous is not { } after)
@@ -1587,7 +1587,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             foreach (var tick in track.Series.GetEndedTicks(after, position))
             {
-                AddPartActivity(parts, track, tick, isRunning: false);
+                AddPartActivity(parts, track, tick, position, isRunning: false);
             }
         }
 
@@ -1735,9 +1735,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private PlanNode? GetStatement(PlanNode node)
         => ExecutionPlans.SelectMany(p => p.Root).FirstOrDefault(r => r.IsStatement && r.Children.Any(c => ReferenceEquals(c, node)));
 
-    private void AddPartActivity(List<PlanPartActivity> parts, TraceTickTrack track, TraceTick tick, bool isRunning)
+    private void AddPartActivity(List<PlanPartActivity> parts, TraceTickTrack track, TraceTick tick, TracePosition position, bool isRunning)
     {
-        if (track.GetRule(tick) is not { PlanPart: { Length: > 0 } part } rule || GetPlanNode(tick.Operator) is not { } node)
+        if (track.GetRule(tick) is not { PlanPart: { Length: > 0 } part } rule
+            || GetPlanNode(tick.Operator) is not { } node
+            || (rule.Source == TraceTickSourceType.RowReturn && !IsInsideCall(tick, position)))
         {
             return;
         }
@@ -1752,9 +1754,15 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         parts.Add(new PlanPartActivity(node, part, colour.ToWindowsColor(), isRunning, fraction, track.Ordinal)
         {
-            Puller = rule.Source == TraceTickSourceType.Evaluate && tick.Caller is { } caller ? GetPlanNode(caller) : null
+            CalculatorNode = rule.Source == TraceTickSourceType.Evaluate ? GetCalculatorNode(node, tick) : null
         });
     }
+
+    private static bool IsInsideCall(TraceTick tick, TracePosition position)
+        => tick.Span.From.Position < position && position < tick.Span.To.Position;
+
+    private PlanNode GetCalculatorNode(PlanNode computeScalar, TraceTick tick)
+        => !computeScalar.IsBatchMode && tick.Caller is { } caller && GetPlanNode(caller) is { } puller ? puller : computeScalar;
 
     private List<PlanNode> GetPlanNodes(IEnumerable<ExecutionOperatorEvent> operators)
     {

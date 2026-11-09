@@ -60,7 +60,7 @@ public class StackSnapshotHookTests
 
         hook.OnEntry(Call(Method, 10, At(10, 4), [StackObject, 0, 0, 0]), replay);
 
-        hook.OnFrameEnded(new TraceHookCall { Id = 5, Position = At(99), Thread = Thread });
+        hook.OnFrameEnded(new TraceHookCall { CallId = 5, Position = At(99), Thread = Thread });
 
         var item = Assert.Single(hook.Build().Objects);
 
@@ -133,7 +133,7 @@ public class StackSnapshotHookTests
         => new()
         {
             FunctionAddress = function,
-            Id = id,
+            CallId = id,
             Position = position,
             Thread = Thread,
             CallNodeIndex = 7,

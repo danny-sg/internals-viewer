@@ -137,7 +137,7 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
 
     public void OnReturn(in TraceHookCall call, ITraceReplay replay)
     {
-        if (PendingSnapshots.Remove(call.Id, out var pending))
+        if (PendingSnapshots.Remove(call.CallId, out var pending))
         {
             var position = GetPositionBefore(call.Position);
 
@@ -165,7 +165,7 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
 
     public void OnAbandoned(in TraceHookCall call)
     {
-        if (PendingSnapshots.Remove(call.Id, out var pending))
+        if (PendingSnapshots.Remove(call.CallId, out var pending))
         {
             Lists.Return(pending);
         }
@@ -173,7 +173,7 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
 
     public void OnFrameEnded(in TraceHookCall call)
     {
-        if (!FrameCandidates.Remove(call.Id, out var owned))
+        if (!FrameCandidates.Remove(call.CallId, out var owned))
         {
             return;
         }
@@ -186,7 +186,7 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
 
             target.ReleaseImage();
 
-            Index.Remove((call.Id, target.Address));
+            Index.Remove((call.CallId, target.Address));
         }
 
         Lists.Return(owned);
@@ -288,11 +288,11 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
             return;
         }
 
-        if (!PendingSnapshots.TryGetValue(call.Id, out var pending))
+        if (!PendingSnapshots.TryGetValue(call.CallId, out var pending))
         {
             pending = Lists.Rent();
 
-            PendingSnapshots[call.Id] = pending;
+            PendingSnapshots[call.CallId] = pending;
         }
 
         if (!pending.Contains(index))
@@ -303,22 +303,22 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
 
     private int GetCandidateIndex(TraceHookFrame frame, ulong address, TracePosition position, uint thread, ITraceReplay replay)
     {
-        if (Index.TryGetValue((frame.Id, address), out var index))
+        if (Index.TryGetValue((frame.CallId, address), out var index))
         {
             return index;
         }
 
         index = Candidates.Count;
 
-        Index[(frame.Id, address)] = index;
+        Index[(frame.CallId, address)] = index;
 
-        if (!FrameCandidates.TryGetValue(frame.Id, out var owned))
+        if (!FrameCandidates.TryGetValue(frame.CallId, out var owned))
         {
             owned = Lists.Rent();
 
-            FrameCandidates[frame.Id] = owned;
+            FrameCandidates[frame.CallId] = owned;
 
-            replay.WatchFrame(thread, frame.Id);
+            replay.WatchFrame(thread, frame.CallId);
         }
 
         var size = (int)Math.Min(frame.StackPointer - address, MaximumSize);

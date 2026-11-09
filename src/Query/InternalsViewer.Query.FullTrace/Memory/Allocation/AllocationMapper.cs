@@ -88,7 +88,7 @@ internal static class AllocationMapper
 
                 node.AllocatedBytes += (long)callValues.Bytes[index];
 
-                node.Allocations++;
+                node.AllocationCount++;
 
                 bytes += callValues.Bytes[index];
 
