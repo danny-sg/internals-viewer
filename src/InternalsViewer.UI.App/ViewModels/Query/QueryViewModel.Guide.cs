@@ -3,13 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.Events.Operators;
-using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks.Enums;
 using InternalsViewer.Query.Plans.Model;
-using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Controls.Query.Plan;
+using InternalsViewer.UI.App.Models.Query.Plan;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.Services.Query.Trace;
 
@@ -17,28 +15,6 @@ namespace InternalsViewer.UI.App.ViewModels.Query;
 
 public sealed partial class QueryViewModel
 {
-    private const string GuideHint = "Select Next to step to the first tick";
-
-    private const int GuidePositionWidth = 90;
-
-    private const int GuideOperatorWidth = 180;
-
-    private const int GuideNameWidth = 160;
-
-    private const int GuideDescriptionWidth = 420;
-
-    [ObservableProperty]
-    private string _guideName = string.Empty;
-
-    [ObservableProperty]
-    private string _guideDescription = GuideHint;
-
-    [ObservableProperty]
-    private string _guideOperatorName = string.Empty;
-
-    [ObservableProperty]
-    private Uri? _guideOperatorIcon;
-
     [ObservableProperty]
     private double _guideStepIndex;
 
@@ -46,18 +22,15 @@ public sealed partial class QueryViewModel
     private double _guideStepMaximum;
 
     [ObservableProperty]
-    private string? _guideCodeColour;
+    private IReadOnlyList<GuideStepGroup> _guideStepGroups = [];
 
     [ObservableProperty]
-    private bool _isGuideStepsVisible = true;
+    private GuideStepItem? _currentGuideStep;
 
     [ObservableProperty]
-    private QueryResultSet? _guideStepsTable;
+    private bool _isGuidePlaying;
 
-    [ObservableProperty]
-    private ResultRow<long>? _selectedGuideStep;
-
-    public GuideTransport GuidePlayback => CreatedGuidePlayback ??= new GuideTransport(StepGuide);
+    public GuideTransport GuidePlayback => CreatedGuidePlayback ??= CreateGuidePlayback();
 
     public ITimelineTransport? TransportSource => Layout.IsGuideMode ? GuidePlayback : RulerSource;
 
@@ -65,9 +38,21 @@ public sealed partial class QueryViewModel
 
     private List<TraceTrackStep>? GuideSteps { get; set; }
 
+    private List<GuideStepItem> GuideStepItems { get; set; } = [];
+
     private IReadOnlySet<string>? GuideStepsHidden { get; set; }
 
     private bool IsSelectingGuideStep { get; set; }
+
+    public void SelectGuideStep(GuideStepItem item)
+    {
+        GuidePlayback.Stop();
+
+        GoToGuideStep(item.Index);
+    }
+
+    [RelayCommand]
+    private void GuidePlay() => GuidePlayback.TogglePlay();
 
     [RelayCommand]
     private void GuideNext() => GuidePlayback.Step(forward: true);
@@ -75,16 +60,48 @@ public sealed partial class QueryViewModel
     [RelayCommand]
     private void GuidePrevious() => GuidePlayback.Step(forward: false);
 
-    private bool StepGuide(bool forward)
+    [RelayCommand]
+    private void GuideNextPhase() => StepGuideManually(forward: true, GetPhaseGuideIndex);
+
+    [RelayCommand]
+    private void GuidePreviousPhase() => StepGuideManually(forward: false, GetPhaseGuideIndex);
+
+    [RelayCommand]
+    private void GuideNextOperator() => StepGuideManually(forward: true, GetOperatorGuideIndex);
+
+    [RelayCommand]
+    private void GuidePreviousOperator() => StepGuideManually(forward: false, GetOperatorGuideIndex);
+
+    private GuideTransport CreateGuidePlayback()
+    {
+        var playback = new GuideTransport(StepGuide);
+
+        playback.PlayStateChanged += OnGuidePlayStateChanged;
+
+        return playback;
+    }
+
+    private void OnGuidePlayStateChanged(bool isPlaying) => IsGuidePlaying = isPlaying;
+
+    private bool StepGuide(bool forward) => StepGuide(forward, GetNextGuideIndex);
+
+    private void StepGuideManually(bool forward, Func<int, bool, int> getIndex)
+    {
+        GuidePlayback.Stop();
+
+        StepGuide(forward, getIndex);
+    }
+
+    private bool StepGuide(bool forward, Func<int, bool, int> getIndex)
     {
         if (Trace is null)
         {
             return false;
         }
 
-        var index = TraceTickTracks.GetStepIndex(GetGuideSteps(), TraceTimelineTab.Playhead, forward);
+        var index = getIndex(GetCurrentGuideIndex(), forward);
 
-        if (index < 0)
+        if (index < 0 || index >= GetGuideSteps().Count)
         {
             return false;
         }
@@ -94,34 +111,85 @@ public sealed partial class QueryViewModel
         return true;
     }
 
-    private void GoToGuideStep(int index)
+    private int GetCurrentGuideIndex()
+    {
+        if (TraceTimelineTab.Playhead is not { } position)
+        {
+            return -1;
+        }
+
+        var steps = GetGuideSteps();
+
+        if (CurrentGuideStep is { Index: var index } && index < steps.Count && steps[index].Point.Position == position)
+        {
+            return index;
+        }
+
+        return TraceTickTracks.GetLatestStepIndex(steps, position);
+    }
+
+    private int GetNextGuideIndex(int current, bool forward)
     {
         var steps = GetGuideSteps();
 
-        var step = steps[index];
+        var playhead = TraceTimelineTab.Playhead;
 
-        GuideCodeColour = step.Tick.Node.CategoryColour;
+        if (current >= 0 && steps[current].Point.Position == playhead)
+        {
+            return forward ? current + 1 : current - 1;
+        }
 
-        GuideName = TraceTickTracks.GetStepName(step);
+        return TraceTickTracks.GetStepIndex(steps, playhead, forward);
+    }
 
-        GuideDescription = TraceTickTracks.GetStepDescription(step);
+    private int GetPhaseGuideIndex(int current, bool forward) => TraceTickTracks.GetPhaseStepIndex(GetGuideSteps(), current, forward);
 
-        var (operatorName, operatorNode) = GetStepOperator(step);
+    private int GetOperatorGuideIndex(int current, bool forward)
+    {
+        var items = GuideStepItems;
 
-        GuideOperatorName = operatorName;
+        if (forward)
+        {
+            var group = current >= 0 && current < items.Count ? items[current].Group : null;
 
-        GuideOperatorIcon = operatorNode is null ? null : PlanIconResolver.Resolve(operatorNode);
+            for (var index = current + 1; index < items.Count; index++)
+            {
+                if (!ReferenceEquals(items[index].Group, group))
+                {
+                    return index;
+                }
+            }
+
+            return -1;
+        }
+
+        if (current <= 0 || current >= items.Count)
+        {
+            return -1;
+        }
+
+        var first = items[current].Group[0].Index;
+
+        return first < current ? first : items[current - 1].Group[0].Index;
+    }
+
+    private void GoToGuideStep(int index)
+    {
+        var step = GetGuideSteps()[index];
 
         IsSelectingGuideStep = true;
 
         GuideStepIndex = index;
 
-        if (GuideStepsTable is { } table && index < table.Rows.Count)
-        {
-            SelectedGuideStep = table.Rows[index];
-        }
-
         IsSelectingGuideStep = false;
+
+        SetCurrent(CurrentGuideStep, isCurrent: false);
+
+        var item = index < GuideStepItems.Count ? GuideStepItems[index] : null;
+
+        SetCurrent(item, isCurrent: true);
+
+        CurrentGuideStep = item;
 
         TraceTimelineTab.SetPlayhead(step.Point.Position);
 
@@ -148,37 +216,60 @@ public sealed partial class QueryViewModel
 
         GuideStepMaximum = Math.Max(0, steps.Count - 1);
 
-        GuideStepsTable = Layout.IsGuideMode && IsGuideStepsVisible && Trace is { } trace ? BuildGuideStepsTable(trace, steps) : null;
+        BuildGuideStepGroups(Layout.IsGuideMode ? steps : []);
 
         return steps;
     }
 
-    private QueryResultSet BuildGuideStepsTable(TraceResult trace, List<TraceTrackStep> steps)
+    private void BuildGuideStepGroups(List<TraceTrackStep> steps)
     {
-        var columns = new List<ResultColumn>
+        var items = new List<GuideStepItem>(steps.Count);
+
+        var groups = new List<GuideStepGroup>();
+
+        GuideStepGroup? group = null;
+
+        for (var index = 0; index < steps.Count; index++)
         {
-            new(0, "Position", typeof(long), false) { Width = GuidePositionWidth, Alignment = ResultAlignment.Right },
-            new(1, "Operator", typeof(string), false) { Width = GuideOperatorWidth },
-            new(2, "Name", typeof(string), false) { Width = GuideNameWidth },
-            new(3, "Description", typeof(string), false) { Width = GuideDescriptionWidth }
-        };
+            var step = steps[index];
 
-        var origin = (QueryOptions.CropToQuery ? trace.QueryTimeline : trace.Timeline).GetStart(TraceTimelineAxis.Position);
+            var (operatorName, operatorNode) = GetStepOperator(step);
 
-        var scale = trace.Timeline.Scale;
+            if (group is null || group.OperatorName != operatorName)
+            {
+                group = new GuideStepGroup(operatorName, operatorNode is null ? null : PlanIconResolver.Resolve(operatorNode));
 
-        long GetTimelinePosition(TraceTrackStep step) => (long)Math.Floor(scale.GetValue(step.Point, TraceTimelineAxis.Position) - origin);
+                groups.Add(group);
+            }
 
-        var rows = steps.Select((s, index) => new ResultRow<long>([GetTimelinePosition(s),
-                                                                   GetStepOperator(s).Name,
-                                                                   TraceTickTracks.ToPlainText(TraceTickTracks.GetStepName(s)),
-                                                                   TraceTickTracks.ToPlainText(TraceTickTracks.GetStepDescription(s))])
-                                              {
-                                                  Id = index
-                                              })
-                        .ToArray();
+            var item = new GuideStepItem(index,
+                                         TraceTickTracks.GetStepName(step),
+                                         TraceTickTracks.GetStepDescription(step),
+                                         step.Tick.Node.CategoryColour,
+                                         group);
 
-        return new QueryResultSet { Columns = columns, Rows = rows };
+            group.Add(item);
+
+            items.Add(item);
+        }
+
+        CurrentGuideStep = null;
+
+        GuideStepItems = items;
+
+        GuideStepGroups = groups;
+    }
+
+    private static void SetCurrent(GuideStepItem? item, bool isCurrent)
+    {
+        if (item is null)
+        {
+            return;
+        }
+
+        item.IsCurrent = isCurrent;
+
+        item.Group.IsCurrent = isCurrent;
     }
 
     private (string Name, PlanNode? Node) GetStepOperator(TraceTrackStep step)
@@ -207,15 +298,9 @@ public sealed partial class QueryViewModel
     {
         CreatedGuidePlayback?.Stop();
 
-        GuideName = string.Empty;
+        SetCurrent(CurrentGuideStep, isCurrent: false);
 
-        GuideDescription = GuideHint;
-
-        GuideOperatorName = string.Empty;
-
-        GuideOperatorIcon = null;
-
-        GuideCodeColour = null;
+        CurrentGuideStep = null;
 
         IsSelectingGuideStep = true;
 
@@ -235,15 +320,15 @@ public sealed partial class QueryViewModel
 
         GuideSteps = null;
 
-        GuideStepsTable = null;
-
         if (Layout.IsGuideMode)
         {
             RefreshGuideSteps();
         }
+        else
+        {
+            BuildGuideStepGroups([]);
+        }
     }
-
-    partial void OnIsGuideStepsVisibleChanged(bool value) => RefreshGuideSteps();
 
     partial void OnGuideStepIndexChanged(double value)
     {
@@ -259,14 +344,6 @@ public sealed partial class QueryViewModel
             GuidePlayback.Stop();
 
             GoToGuideStep(index);
-        }
-    }
-
-    partial void OnSelectedGuideStepChanged(ResultRow<long>? value)
-    {
-        if (!IsSelectingGuideStep && value?.Id is { } index)
-        {
-            GoToGuideStep((int)index);
         }
     }
 }

@@ -24,10 +24,6 @@
                     ToolTipService.ToolTip="Next Step">
                 <FontIcon Glyph="&#xE893;" FontSize="12" />
             </Button>
-            <ToggleButton Style="{StaticResource TabCommandToggleStyle}"
-                          IsChecked="{x:Bind ViewModel.IsGuideStepsVisible, Mode=TwoWay}">
-                <TextBlock Text="Steps" VerticalAlignment="Center" />
-            </ToggleButton>
             <AppBarSeparator />
         </StackPanel>
         <ToggleButton Style="{StaticResource TabCommandToggleStyle}"

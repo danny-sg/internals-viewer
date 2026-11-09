@@ -43,6 +43,20 @@ public class TraceCallPathConditionTests
     }
 
     [Fact]
+    public void Called_By_Within_Also_Matches_The_Call_Itself()
+    {
+        var (scanCompare, _) = BuildTree();
+
+        var sessionNode = scanCompare.Parent!;
+
+        const string session = "HeapDataSetSession::GetNextRowValuesInternal";
+
+        var condition = Pattern(TraceConditionTarget.CalledBy, TraceConditionOperator.Equal, session);
+
+        Assert.Equal((false, true), (condition.MatchesNode(sessionNode), condition.MatchesNode(sessionNode, isWithin: true)));
+    }
+
+    [Fact]
     public void Not_Equal_Matches_Calls_Without_That_Caller()
     {
         var (scanCompare, filterCompare) = BuildTree();

@@ -68,6 +68,8 @@ public partial class SettingsViewModel(SettingsService settingsService,
     private const string DefaultCallTreeHiddenCategories =
         "Compilation;Metadata;Networking;Query Store;Security;Tracing;Transaction Management";
 
+    private const string DefaultTraceTimelineHiddenTickTracks = "Open";
+
     private const double DefaultMaxTraceSizeMb = 150;
 
     [ObservableProperty]
@@ -149,7 +151,7 @@ public partial class SettingsViewModel(SettingsService settingsService,
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(TraceTimelineHiddenTickTrackSet))]
-    private string _traceTimelineHiddenTickTracks = string.Empty;
+    private string _traceTimelineHiddenTickTracks = DefaultTraceTimelineHiddenTickTracks;
 
     [ObservableProperty]
     private bool _decodeValues = true;
@@ -192,7 +194,8 @@ public partial class SettingsViewModel(SettingsService settingsService,
 
     public IReadOnlySet<string> CallTreePrunedCategorySet { get; private set; } = SplitCategories(string.Empty);
 
-    public IReadOnlySet<string> TraceTimelineHiddenTickTrackSet { get; private set; } = SplitCategories(string.Empty);
+    public IReadOnlySet<string> TraceTimelineHiddenTickTrackSet { get; private set; }
+        = SplitCategories(DefaultTraceTimelineHiddenTickTracks);
 
     private SettingsService SettingsService { get; } = settingsService;
 
@@ -288,7 +291,8 @@ public partial class SettingsViewModel(SettingsService settingsService,
 
         PinTimeline = await SettingsService.ReadSettingAsync<bool?>(PinTimelineKey) ?? true;
 
-        TraceTimelineHiddenTickTracks = await SettingsService.ReadSettingAsync<string>(TraceTimelineHiddenTickTracksKey) ?? string.Empty;
+        TraceTimelineHiddenTickTracks = await SettingsService.ReadSettingAsync<string>(TraceTimelineHiddenTickTracksKey)
+                                        ?? DefaultTraceTimelineHiddenTickTracks;
 
         DecodeValues = await SettingsService.ReadSettingAsync<bool?>(DecodeValuesKey) ?? true;
 

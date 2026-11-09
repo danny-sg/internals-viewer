@@ -80,7 +80,7 @@ public sealed record TraceCallCondition(TraceConditionTarget Target,
         };
     }
 
-    public bool MatchesNode(CallTreeNode node)
+    public bool MatchesNode(CallTreeNode node, bool isWithin = false)
     {
         if (Target is not (TraceConditionTarget.CalledBy or TraceConditionTarget.CalledDirectlyBy))
         {
@@ -89,7 +89,7 @@ public sealed record TraceCallCondition(TraceConditionTarget Target,
 
         var isMatch = Target == TraceConditionTarget.CalledDirectlyBy
             ? node.Parent is { } parent && IsFrameMatch(parent)
-            : GetCallers(node).Any(IsFrameMatch);
+            : (isWithin && IsFrameMatch(node)) || GetCallers(node).Any(IsFrameMatch);
 
         return Operator == TraceConditionOperator.NotEqual ? !isMatch : isMatch;
     }

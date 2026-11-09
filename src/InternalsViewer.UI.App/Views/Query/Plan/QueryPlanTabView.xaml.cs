@@ -1,35 +1,38 @@
 ﻿using System.ComponentModel;
 using System;
+using CommunityToolkit.WinUI;
 using CommunityToolkit.WinUI.Controls;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.Query.Plan;
-using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Plan;
+using InternalsViewer.UI.App.Services.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Query;
+using Microsoft.UI;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Windows.Foundation;
 
 namespace InternalsViewer.UI.App.Views.Query.Plan;
 
 /// <summary>Dock document hosting the execution plan diagrams for the active query</summary>
 public sealed partial class QueryPlanTabView : UserControl
 {
-    private const double StepsStar = 2;
-
-    private const double GuideFontSize = 12;
-
     private const double GuidePaneMinHeight = 200;
 
     private const double MaximumFitZoom = 1.5;
+
+    private const double CleanScaleStep = 0.5;
+
+    private const double ScaleTolerance = 0.000001;
+
+    private const double OtherStepOpacity = 0.45;
 
     private QueryViewModel? _subscribed;
 
     public QueryPlanTabView()
     {
         InitializeComponent();
-
-        UpdateGuideConfig();
 
         // Keep-alive: this view is reused across re-layout, so subscriptions follow the load lifecycle
         // rather than DataContext changes (reparenting fires Unloaded/Loaded without a DataContext change).
@@ -105,13 +108,19 @@ public sealed partial class QueryPlanTabView : UserControl
 
     public string DockToggleTooltip => IsPropertiesPaneDockedBottom ? "Dock Right" : "Dock Bottom";
 
-    public GridLength GetStepsWidth(bool isGuideMode, bool isStepsVisible)
-        => isGuideMode && isStepsVisible ? new GridLength(StepsStar, GridUnitType.Star) : new GridLength(0);
+    private static SolidColorBrush CurrentStepBrush { get; } = new(Colors.White);
 
-    public Visibility GetStepsVisibility(bool isGuideMode, bool isStepsVisible)
-        => isGuideMode && isStepsVisible ? Visibility.Visible : Visibility.Collapsed;
+    public static ImageSource? GetStepIcon(Uri? icon) => icon is null ? null : new SvgImageSource(icon);
 
-    public ImageSource? GetIconSource(Uri? icon) => icon is null ? null : new SvgImageSource(icon);
+    public static double GetStepOpacity(bool isCurrent) => isCurrent ? 1 : OtherStepOpacity;
+
+    public static Brush? GetStepBackground(bool isCurrent) => isCurrent ? CurrentStepBrush : null;
+
+    public static Visibility GetCurrentVisibility(bool isCurrent) => isCurrent ? Visibility.Visible : Visibility.Collapsed;
+
+    public static string GetPlayLabel(bool isPlaying) => isPlaying ? "Pause" : "Play";
+
+    public static string GetPlayGlyph(bool isPlaying) => isPlaying ? "\uE769" : "\uE768";
 
     public GridLength GetGuidePaneHeight(bool isGuideMode) => isGuideMode ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
 
@@ -198,8 +207,8 @@ public sealed partial class QueryPlanTabView : UserControl
             case nameof(QueryViewModel.IsPlanPropertiesDockedBottom):
                 RefreshDetailPane();
                 break;
-            case nameof(QueryViewModel.GuideCodeColour):
-                UpdateGuideConfig();
+            case nameof(QueryViewModel.CurrentGuideStep):
+                ScrollToCurrentStep();
                 break;
             case nameof(QueryViewModel.IsAnnotationsVisible):
                 ApplyToPlans(p => p.AreAnnotationsVisible = _subscribed.IsAnnotationsVisible);
@@ -261,33 +270,62 @@ public sealed partial class QueryPlanTabView : UserControl
         }
     }
 
-    private static MarkdownConfig CreateGuideConfig(string? colour)
+    private void ScrollToCurrentStep()
     {
-        var themes = new MarkdownThemes
+        if (ViewModel?.CurrentGuideStep is not { } step)
         {
-            ParagraphMargin = new Thickness(0),
-            InlineCodeFontSize = GuideFontSize,
-            InlineCodeBorderThickness = new Thickness(0),
-            InlineCodePadding = new Thickness(3, 0, 3, 1)
-        };
-
-        if (ColourHelpers.FromHex(colour) is { } background)
-        {
-            themes.InlineCodeBackground = new SolidColorBrush(background);
-
-            var foreground = System.Drawing.Color.White.ContrastingWith(background.ToColor());
-
-            themes.InlineCodeForeground = new SolidColorBrush(foreground.ToWindowsColor());
+            return;
         }
 
-        return new MarkdownConfig { Themes = themes };
+        if (GuideStepList.ContainerFromItem(step) is not ListViewItem container
+            || GuideStepList.FindDescendant<ScrollViewer>() is not { Content: UIElement content } scroller)
+        {
+            GuideStepList.ScrollIntoView(step, ScrollIntoViewAlignment.Leading);
+
+            return;
+        }
+
+        var top = container.TransformToVisual(content).TransformPoint(new Point(0, 0)).Y;
+
+        var header = GuideStepList.GroupHeaderContainerFromItemContainer(container) is FrameworkElement groupHeader
+            ? groupHeader.ActualHeight
+            : 0;
+
+        scroller.ChangeView(null, Math.Max(0, top - header), null, disableAnimation: false);
     }
 
-    private void UpdateGuideConfig()
+    private void OnGuideStepClick(object sender, ItemClickEventArgs e)
     {
-        GuideNameText.Config = CreateGuideConfig(ViewModel?.GuideCodeColour);
+        if (e.ClickedItem is GuideStepItem step)
+        {
+            ViewModel?.SelectGuideStep(step);
+        }
+    }
 
-        GuideDescriptionText.Config = CreateGuideConfig(ViewModel?.GuideCodeColour);
+    private void OnGuideLinkClicked(object? sender, LinkClickedEventArgs e)
+    {
+        if (!TraceTickTracks.TryGetPageLink(e.Uri, out var page, out var slot))
+        {
+            return;
+        }
+
+        e.Handled = true;
+
+        ViewModel?.OpenPage(page, slot);
+
+        if (sender is MarkdownTextBlock block)
+        {
+            DispatcherQueue.TryEnqueue(() => Rerender(block));
+        }
+    }
+
+    private static void Rerender(MarkdownTextBlock block)
+    {
+        var text = block.Text;
+
+        block.Text = string.Empty;
+
+        block.Text = text;
     }
 
     private void OnLayoutPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -315,24 +353,30 @@ public sealed partial class QueryPlanTabView : UserControl
 
         var height = PlanRepeater.ActualHeight + PlanScroller.Padding.Top + PlanScroller.Padding.Bottom;
 
-        var zoom = Math.Clamp(Math.Min(PlanScroller.ViewportWidth / width, PlanScroller.ViewportHeight / height),
-                              PlanScroller.MinZoomFactor,
-                              Math.Min(PlanScroller.MaxZoomFactor, MaximumFitZoom));
+        var fit = Math.Min(Math.Min(PlanScroller.ViewportWidth / width, PlanScroller.ViewportHeight / height),
+                           Math.Min(PlanScroller.MaxZoomFactor, MaximumFitZoom));
+
+        var zoom = Math.Max(GetCleanZoom(fit), PlanScroller.MinZoomFactor);
 
         PlanScroller.ChangeView(0, 0, (float)zoom, disableAnimation: true);
+    }
+
+    private double GetCleanZoom(double zoom)
+    {
+        var rasterizationScale = XamlRoot?.RasterizationScale ?? 1;
+
+        var scale = (zoom * rasterizationScale) + ScaleTolerance;
+
+        var cleanScale = scale >= 1
+            ? Math.Floor(scale / CleanScaleStep) * CleanScaleStep
+            : Math.Pow(2, Math.Floor(Math.Log2(scale)));
+
+        return cleanScale / rasterizationScale;
     }
 
     private void CloseDetailPane()
     {
         IsPropertiesPaneVisible = false;
-    }
-
-    private void CloseStepsPane()
-    {
-        if (ViewModel is { } viewModel)
-        {
-            viewModel.IsGuideStepsVisible = false;
-        }
     }
 
     private void ToggleDetailPaneDock()

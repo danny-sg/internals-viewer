@@ -2495,6 +2495,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             ShowTrace(result, request.TraceFile);
 
+            Layout.ShowGuidePlan();
+
             LastRun = LastRun is { } run ? run with { Extras = [.. run.Extras, result] } : null;
 
             AddMessage(new ProgressDetail(TraceLoadedStep) { IsStep = true, Elapsed = Stopwatch.GetElapsedTime(started) });
@@ -2659,6 +2661,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             }
 
             ShowTrace(fullTrace, null);
+
+            Layout.ShowGuidePlan();
         }
 
         LastRun = run;

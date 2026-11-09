@@ -9,7 +9,7 @@
     "Conditions": [],
     "Label": "Skipped",
     "Title": "GetRow",
-    "Description": "{ParentOperatorName} calls `GetRow` from {OperatorName}",
+    "Description": "{ParentOperatorName} → {OperatorName} `GetRow`",
     "ReturnDescription": "`GetRow` returns a row from {OperatorName} that {ParentOperatorName} takes without returning a row of its own",
     "PlanPart": "Page",
     "PlanPartColour": "#808080",
@@ -27,7 +27,7 @@
     "Conditions": [],
     "Label": "Rejected",
     "Title": "GetRow",
-    "Description": "{ParentOperatorName} calls `GetRow` from {OperatorName}",
+    "Description": "{ParentOperatorName} → {OperatorName} `GetRow`",
     "ReturnDescription": "`GetRow` returns a row from {OperatorName} that fails {ParentOperatorName}'s predicate",
     "PlanPart": "Page",
     "PlanPartColour": "#808080",
@@ -45,7 +45,7 @@
     "Conditions": [],
     "Label": "Returned",
     "Title": "GetRow",
-    "Description": "{ParentOperatorName} calls `GetRow` from {OperatorName}",
+    "Description": "{ParentOperatorName} → {OperatorName} `GetRow`",
     "ReturnDescription": "`GetRow` returns a row from {OperatorName} to {ParentOperatorName}",
     "PlanPart": "Page",
     "PlanPartColour": "#808080",
@@ -63,7 +63,7 @@
     "Conditions": [],
     "Label": "Fake Row",
     "Title": "GetRow",
-    "Description": "{ParentOperatorName} calls `GetRow` from {OperatorName}",
+    "Description": "{ParentOperatorName} → {OperatorName} `GetRow`",
     "ReturnDescription": "`GetRow` returns from {OperatorName} to {ParentOperatorName} without a real row",
     "PlanPart": "Page",
     "PlanPartColour": "#808080",
@@ -80,7 +80,7 @@
     "Conditions": [],
     "Label": "Other Status",
     "Title": "GetRow",
-    "Description": "{ParentOperatorName} calls `GetRow` from {OperatorName}",
+    "Description": "{ParentOperatorName} → {OperatorName} `GetRow`",
     "ReturnDescription": "`GetRow` returns from {OperatorName} to {ParentOperatorName}",
     "PlanPart": "Page",
     "PlanPartColour": "#808080",
@@ -97,7 +97,7 @@
     "Conditions": [],
     "Label": "End",
     "Title": "GetRow",
-    "Description": "{ParentOperatorName} calls `GetRow` from {OperatorName}",
+    "Description": "{ParentOperatorName} → {OperatorName} `GetRow`",
     "ReturnDescription": "`GetRow` returns from {OperatorName} with no more rows, so {ParentOperatorName} knows its input is finished",
     "PlanPart": "Page",
     "PlanPartColour": "#808080",
@@ -105,7 +105,7 @@
     "Value": 2
   },
   {
-    "Name": "Reads",
+    "Name": "Read",
     "Module": "",
     "Function": "",
     "Colour": "#E8A33D",
@@ -113,13 +113,13 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "IAM Read",
-    "Description": "Reads IAM page {Page}. The IAM maps the extents in this part of the file that belong to the object",
+    "Description": "Read IAM Page {Page}. The IAM maps the extents in this part of the file that belong to the object",
     "PlanPart": "IAM Page",
     "Source": "PageFetch",
     "Value": 10
   },
   {
-    "Name": "Reads",
+    "Name": "Read",
     "Module": "",
     "Function": "",
     "Colour": "#9B6BD6",
@@ -127,13 +127,13 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "PFS Read",
-    "Description": "Reads PFS page {Page}. The PFS is used to check if an IAM extent is allocated",
+    "Description": "Read PFS Page {Page}. The PFS is used to check if an IAM extent page is allocated",
     "PlanPart": "PFS Page",
     "Source": "PageFetch",
     "Value": 11
   },
   {
-    "Name": "Reads",
+    "Name": "Read",
     "Module": "sqlmin",
     "Function": "BPool::Get",
     "Colour": "#0026E4",
@@ -149,11 +149,11 @@
       }
     ],
     "Label": "Page Read",
-    "Description": "Gets page {Page} from the buffer pool",
+    "Description": "Get Page {Page} from the buffer pool",
     "PlanPart": "Page"
   },
   {
-    "Name": "Reads",
+    "Name": "Read",
     "Module": "sqlmin",
     "Function": "BPool::ReadAhead",
     "Colour": "#0026E4",
@@ -169,7 +169,99 @@
       }
     ],
     "Label": "Read Ahead",
-    "Description": "Asks the buffer pool to read the pages ahead of the scan from disk, starting at page {Page}"
+    "Description": "Asks the buffer pool to read the pages ahead of the scan from disk, starting at Page {Page}"
+  },
+  {
+    "Name": "Evaluations",
+    "Module": "*",
+    "Function": "CEsExec::FastCompare|CEsExec::FastCompare1|CEsExec::GeneralEval|CEsExec::GeneralEval4",
+    "Colour": "#5CD66B",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [
+      {
+        "Target": "CalledDirectlyBy",
+        "Argument": null,
+        "Type": "",
+        "Operator": "Equal",
+        "Value": "CQScanStreamAggregateNew::GetRow"
+      },
+      {
+        "Target": "Locator",
+        "Argument": {
+          "Name": "Result",
+          "Type": "bool",
+          "Location": "Register",
+          "Index": 2,
+          "Source": "R8"
+        },
+        "Type": "",
+        "Operator": "Equal",
+        "Value": "Variant"
+      },
+      {
+        "Target": "Argument",
+        "Argument": {
+          "Name": "Result",
+          "Type": "bool",
+          "Location": "Register",
+          "Index": 2,
+          "Source": "R8"
+        },
+        "Type": "bool",
+        "Operator": "Equal",
+        "Value": "1"
+      }
+    ],
+    "Label": "Same Group",
+    "Title": "Check Group",
+    "Description": "Check if group changed with `{Function}` → same group, so add row to it"
+  },
+  {
+    "Name": "Evaluations",
+    "Module": "*",
+    "Function": "CEsExec::FastCompare|CEsExec::FastCompare1|CEsExec::GeneralEval|CEsExec::GeneralEval4|CEsExec::FastTupleCompare",
+    "Colour": "#FFB900",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [
+      {
+        "Target": "CalledDirectlyBy",
+        "Argument": null,
+        "Type": "",
+        "Operator": "Equal",
+        "Value": "CQScanStreamAggregateNew::GetRow"
+      },
+      {
+        "Target": "Locator",
+        "Argument": {
+          "Name": "Result",
+          "Type": "bool",
+          "Location": "Register",
+          "Index": 2,
+          "Source": "R8"
+        },
+        "Type": "",
+        "Operator": "Equal",
+        "Value": "Variant"
+      },
+      {
+        "Target": "Argument",
+        "Argument": {
+          "Name": "Result",
+          "Type": "bool",
+          "Location": "Register",
+          "Index": 2,
+          "Source": "R8"
+        },
+        "Type": "bool",
+        "Operator": "Equal",
+        "Value": "0"
+      }
+    ],
+    "Label": "Group Changed",
+    "Title": "Check Group",
+    "Description": "Check if group changed with `{Function}` → new group, so return finished group"
   },
   {
     "Name": "Evaluations",
@@ -208,7 +300,7 @@
     ],
     "Label": "False",
     "Title": "Evaluate Expression",
-    "Description": "Evaluates a predicate with `{Function}`, which is false"
+    "Description": "Evaluate predicate with `{Function}` → false"
   },
   {
     "Name": "Evaluations",
@@ -247,7 +339,7 @@
     ],
     "Label": "NULL",
     "Title": "Evaluate Expression",
-    "Description": "Evaluates a predicate with `{Function}`, which is NULL"
+    "Description": "Evaluate predicate with `{Function}` → NULL"
   },
   {
     "Name": "Evaluations",
@@ -286,7 +378,30 @@
     ],
     "Label": "True",
     "Title": "Evaluate Expression",
-    "Description": "Evaluates a predicate with `{Function}`, which is true"
+    "Description": "Evaluate predicate with `{Function}` → true"
+  },
+  {
+    "Name": "Row Access",
+    "Module": "",
+    "Function": "",
+    "Colour": "Category",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [
+      {
+        "Target": "CalledBy",
+        "Argument": null,
+        "Type": "",
+        "Operator": "Equal",
+        "Value": "PageRef::SearchPage"
+      }
+    ],
+    "Label": "Search Page",
+    "Description": "Search Page {Page} at Slot {Slot}",
+    "PlanPart": "Page Row",
+    "Background": "#69FFFFFF",
+    "Source": "RowAccess",
+    "Value": 0
   },
   {
     "Name": "Row Access",
@@ -297,7 +412,7 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Row Access",
-    "Description": "Reads row data at slot {Slot} on page {Page}",
+    "Description": "Read row data at Slot {Slot} on Page {Page}",
     "PlanPart": "Page Row",
     "Background": "#69FFFFFF",
     "Source": "RowAccess",
@@ -312,7 +427,7 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Seek",
-    "Description": "{OperatorName} seeks down the b-tree to the rows it needs",
+    "Description": "{OperatorName} seek range in b-tree",
     "Source": "Seek",
     "Value": 0
   },
@@ -325,7 +440,7 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Root Page",
-    "Description": "Reads root page {Page}, the top of the b-tree, to find the page below it",
+    "Description": "Read Index Root Page {Page}",
     "PlanPart": "Root Node",
     "Source": "Seek",
     "Value": 1
@@ -339,7 +454,7 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Intermediate Page",
-    "Description": "Reads intermediate page {Page} to find the page below it",
+    "Description": "Read Index Intermediate Page {Page}",
     "PlanPart": "Intermediate Node",
     "Source": "Seek",
     "Value": 2
@@ -353,7 +468,7 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Leaf Page",
-    "Description": "Reads leaf page {Page}, where the rows are",
+    "Description": "Read Index Leaf Page {Page}",
     "PlanPart": "Leaf Node",
     "Source": "Seek",
     "Value": 3
@@ -370,7 +485,7 @@
     "Conditions": [],
     "Label": "Build",
     "Title": "Hash Build",
-    "Description": "{OperatorName} reads its build input into the hash table",
+    "Description": "{OperatorName} Consume build input into hash table",
     "ReturnDescription": "{OperatorName} has built its hash table, so it can start probing it",
     "IsPhase": true
   },
@@ -401,7 +516,7 @@
     ],
     "Label": "Hit",
     "Title": "Hash Probe",
-    "Description": "Looks up a probe row in the hash table and finds a matching build row"
+    "Description": "Look up probe row in hash table (match)"
   },
   {
     "Name": "Hash Table",
@@ -429,7 +544,51 @@
     ],
     "Label": "Miss",
     "Title": "Hash Probe",
-    "Description": "Looks up a probe row in the hash table and finds no match"
+    "Description": "Look up probe row in hash table (no match)"
+  },
+  {
+    "Name": "Sort",
+    "Module": "sqlmin",
+    "Function": "CQScanSortNew::BuildSortTable",
+    "Colour": "#8764B8",
+    "PlanPart": "Sort.Labels",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Build",
+    "Title": "Sort Build",
+    "Description": "{OperatorName} Build sort table from input rows",
+    "ReturnDescription": "{OperatorName} has sorted its input, so it can return rows in order",
+    "IsPhase": true
+  },
+  {
+    "Name": "Sort",
+    "Module": "sqlmin",
+    "Function": "CQScanSortNew::PushRow",
+    "Colour": "#C239B3",
+    "PlanPart": "Sort.Frame",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Push Row",
+    "Title": "Push Row",
+    "Description": "Push input row into sort table"
+  },
+  {
+    "Name": "Sort",
+    "Module": "sqlmin",
+    "Function": "RowsetSorted::GetNextSortedRowInternal",
+    "Colour": "#0078D4",
+    "PlanPart": "Sort.Arrow",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Sorted Row",
+    "Title": "Get Sorted Row",
+    "Description": "Get next row in sort order from sort table"
   },
   {
     "Name": "Open",
@@ -440,8 +599,8 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Open",
-    "Description": "{ParentOperatorName} opens {OperatorName}, which stays open until it is closed",
-    "ReturnDescription": "{OperatorName} is closed",
+    "Description": "{ParentOperatorName} → `Open` {OperatorName}",
+    "ReturnDescription": "{OperatorName} closed",
     "PlanPart": "Active",
     "Source": "Open",
     "Value": 0

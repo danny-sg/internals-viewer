@@ -258,6 +258,14 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         Show(_documentsByKey[TraceTimelineKey]);
     }
 
+    public void ShowGuidePlan()
+    {
+        if (IsGuideMode)
+        {
+            Dock.Activate(_documentsByKey[PlanKey]);
+        }
+    }
+
     public void ShowOperatorTracks()
     {
         IsOperatorTracksVisible = true;
@@ -379,11 +387,15 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
         _isTraceBeforeGuide = IsTrace;
 
-        Dock.SetRoot(IsTrace
-                         ? new TabGroupNode(_documentsByKey[SqlKey], _documentsByKey[TraceTimelineKey], _documentsByKey[PlanKey])
-                         : new TabGroupNode(_documentsByKey[SqlKey], _documentsByKey[PlanKey]));
+        DocumentViewModel[] documents = IsTrace
+            ? [_documentsByKey[SqlKey], _documentsByKey[TraceTimelineKey], _documentsByKey[PlanKey]]
+            : [_documentsByKey[SqlKey], _documentsByKey[PlanKey]];
 
-        Dock.Activate(_documentsByKey[PlanKey]);
+        var selected = Dock.Groups().Select(g => g.SelectedDocument).FirstOrDefault(d => d is not null && documents.Contains(d));
+
+        Dock.SetRoot(new TabGroupNode(documents));
+
+        Dock.Activate(selected ?? _documentsByKey[SqlKey]);
     }
 
     private void SetGuideTimeline(bool isTrace)

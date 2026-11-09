@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.FullTrace;
@@ -20,7 +21,7 @@ using SkiaSharp;
 
 namespace InternalsViewer.UI.App.Services.Query.Trace;
 
-public static class TraceTickTracks
+public static partial class TraceTickTracks
 {
     public static readonly SKColor LightBackground = new(0xFF, 0xFF, 0xFF, 0x40);
 
@@ -35,6 +36,8 @@ public static class TraceTickTracks
     private const string CodeMarker = "`";
 
     private const string UnknownValue = "?";
+
+    private const string PageLinkScheme = "page";
 
     private static readonly SKColor PassedUpColour = SKColor.Parse(SymbolCategory.QueryOperator.GetCategoryMetadata()!.ForegroundColor);
 
@@ -134,7 +137,43 @@ public static class TraceTickTracks
 
         ReadOnlySpan<TraceTrackStep> span = CollectionsMarshal.AsSpan(steps);
 
-        return forward ? GetNextStepIndex(span, position) : GetPreviousStepIndex(span, position);
+        if (!forward)
+        {
+            return FirstStepAtOrAfter(span, position) - 1;
+        }
+
+        var next = SortedSearch.FirstAfter<TraceTrackStep, TracePosition>(span, position, GetStepPosition);
+
+        return next < span.Length ? next : -1;
+    }
+
+    public static int GetLatestStepIndex(List<TraceTrackStep> steps, TracePosition position)
+        => SortedSearch.FirstAfter<TraceTrackStep, TracePosition>(CollectionsMarshal.AsSpan(steps), position, GetStepPosition) - 1;
+
+    public static int GetPhaseStepIndex(List<TraceTrackStep> steps, int current, bool forward)
+    {
+        ReadOnlySpan<TraceTrackStep> span = CollectionsMarshal.AsSpan(steps);
+
+        var target = -1;
+
+        for (var index = 0; index < span.Length; index++)
+        {
+            if (!IsPhaseStart(span[index]))
+            {
+                continue;
+            }
+
+            target = GetNearerBoundary(target, index, current, forward);
+
+            var end = FirstStepAtOrAfter(span, span[index].Tick.Span.To.Position);
+
+            if (end < span.Length)
+            {
+                target = GetNearerBoundary(target, end, current, forward);
+            }
+        }
+
+        return target;
     }
 
     public static string GetStepName(TraceTrackStep step) => GetText(step.Track, step.Tick, step.Rule.GetTitle()) ?? string.Empty;
@@ -142,7 +181,47 @@ public static class TraceTickTracks
     public static string GetStepDescription(TraceTrackStep step)
         => GetText(step.Track, step.Tick, step.IsReturn ? step.Rule.ReturnDescription : step.Rule.Description) ?? string.Empty;
 
-    public static string ToPlainText(string markdown) => markdown.Replace(BoldMarker, string.Empty).Replace(CodeMarker, string.Empty);
+    public static string ToPlainText(string markdown)
+        => MarkdownLinkRegex().Replace(markdown, "$1").Replace(BoldMarker, string.Empty).Replace(CodeMarker, string.Empty);
+
+    public static string GetPageLink(PageAddress page, int? slot)
+    {
+        var target = slot is { } value
+            ? string.Create(CultureInfo.InvariantCulture, $"{page.FileId}:{page.PageId}:{value}")
+            : string.Create(CultureInfo.InvariantCulture, $"{page.FileId}:{page.PageId}");
+
+        return $"[{page}]({PageLinkScheme}:{target})";
+    }
+
+    public static bool TryGetPageLink(Uri? uri, out PageAddress page, out ushort? slot)
+    {
+        page = PageAddress.Empty;
+
+        slot = null;
+
+        if (uri is null || !uri.Scheme.Equals(PageLinkScheme, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var parts = uri.OriginalString[(PageLinkScheme.Length + 1)..].Split(':');
+
+        if (parts.Length < 2
+            || !short.TryParse(parts[0], CultureInfo.InvariantCulture, out var fileId)
+            || !int.TryParse(parts[1], CultureInfo.InvariantCulture, out var pageId))
+        {
+            return false;
+        }
+
+        page = new PageAddress(fileId, pageId);
+
+        if (parts.Length > 2 && ushort.TryParse(parts[2], CultureInfo.InvariantCulture, out var slotId))
+        {
+            slot = slotId;
+        }
+
+        return true;
+    }
 
     public static SKColor ParseColour(string colour) => SKColor.TryParse(colour, out var parsed) ? parsed : DefaultColour;
 
@@ -174,7 +253,8 @@ public static class TraceTickTracks
             _ when IsPlaceholder(name, TraceTickDefinition.OperatorNamePlaceholder) => tick.Operator.OperatorDescription,
             _ when IsPlaceholder(name, TraceTickDefinition.ParentOperatorNamePlaceholder) => getParentName(tick),
             _ when IsPlaceholder(name, TraceTickDefinition.FunctionPlaceholder) => tick.Node.Symbol,
-            _ when IsPlaceholder(name, TraceTickDefinition.PagePlaceholder) => GetPage(trace, tick)?.ToString() ?? UnknownValue,
+            _ when IsPlaceholder(name, TraceTickDefinition.PagePlaceholder)
+                => GetPage(trace, tick) is { } page ? GetPageLink(page, GetSlot(trace, tick)) : UnknownValue,
             _ when IsPlaceholder(name, TraceTickDefinition.SlotPlaceholder)
                 => GetSlot(trace, tick)?.ToString(CultureInfo.CurrentCulture) ?? UnknownValue,
             _ => null
@@ -206,47 +286,14 @@ public static class TraceTickTracks
     private static int FirstStepAtOrAfter(ReadOnlySpan<TraceTrackStep> steps, TracePosition position)
         => SortedSearch.FirstAtOrAfter<TraceTrackStep, TracePosition>(steps, position, GetStepPosition);
 
-    private static int GetNextStepIndex(ReadOnlySpan<TraceTrackStep> steps, TracePosition position)
+    private static int GetNearerBoundary(int target, int boundary, int current, bool forward)
     {
-        for (var index = FirstStepAtOrAfter(steps, position); index < steps.Length && GetStepPosition(steps[index]) == position; index++)
+        if (forward ? boundary <= current : boundary >= current)
         {
-            if (IsPhaseStart(steps[index]) && steps[index].Tick.Span.To.Position > position)
-            {
-                var after = FirstStepAtOrAfter(steps, steps[index].Tick.Span.To.Position);
-
-                return after < steps.Length ? after : -1;
-            }
+            return target;
         }
 
-        var next = SortedSearch.FirstAfter<TraceTrackStep, TracePosition>(steps, position, GetStepPosition);
-
-        return next < steps.Length ? next : -1;
-    }
-
-    private static int GetPreviousStepIndex(ReadOnlySpan<TraceTrackStep> steps, TracePosition position)
-    {
-        var previous = FirstStepAtOrAfter(steps, position) - 1;
-
-        if (previous < 0)
-        {
-            return -1;
-        }
-
-        var target = GetStepPosition(steps[previous]);
-
-        for (var index = 0; index < previous; index++)
-        {
-            var phase = steps[index];
-
-            var end = phase.Tick.Span.To.Position;
-
-            if (IsPhaseStart(phase) && GetStepPosition(phase) < target && target < end && end <= position)
-            {
-                return index;
-            }
-        }
-
-        return previous;
+        return target < 0 || (forward ? boundary < target : boundary > target) ? boundary : target;
     }
 
     private static int[] GetRuleByValue(byte[] values)
@@ -327,4 +374,7 @@ public static class TraceTickTracks
             ? $"{read.PageCount:N0} {(read.PageCount == 1 ? "Page" : "Pages")} From {read.Page}"
             : $"Page {read.Page}";
     }
+
+    [GeneratedRegex(@"\[([^\]]*)\]\([^)]*\)")]
+    private static partial Regex MarkdownLinkRegex();
 }

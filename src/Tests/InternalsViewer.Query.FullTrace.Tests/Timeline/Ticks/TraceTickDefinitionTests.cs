@@ -1,5 +1,6 @@
 using System.Text;
 using InternalsViewer.Internals.Engine.Pages.Enums;
+using InternalsViewer.Query.FullTrace.Calls.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks.Enums;
 
@@ -11,7 +12,7 @@ public class TraceTickDefinitionTests
     [Fact]
     public void The_Predefined_Rules_Make_The_Built_In_Tracks_In_Order()
     {
-        Assert.Equal(["GetRow", "Reads", "Evaluations", "Row Access", "Seek", "Hash Table", "Open"],
+        Assert.Equal(["GetRow", "Read", "Evaluations", "Row Access", "Seek", "Hash Table", "Sort", "Open"],
                      TraceTickDefinition.GetPredefined().Select(d => d.Name).Distinct());
     }
 
@@ -133,9 +134,9 @@ public class TraceTickDefinitionTests
     }
 
     [Fact]
-    public void The_Reads_Track_Marks_IAM_And_PFS_Page_Fetches()
+    public void The_Read_Track_Marks_IAM_And_PFS_Page_Fetches()
     {
-        var fetches = TraceTickDefinition.GetPredefined().Where(d => d is { Name: "Reads", Source: TraceTickSourceType.PageFetch });
+        var fetches = TraceTickDefinition.GetPredefined().Where(d => d is { Name: "Read", Source: TraceTickSourceType.PageFetch });
 
         Assert.Equal([(byte)PageType.Iam, (byte)PageType.Pfs], fetches.Select(d => d.Value));
     }
@@ -143,7 +144,16 @@ public class TraceTickDefinitionTests
     [Fact]
     public void The_Row_Access_Track_Has_A_White_Background()
     {
-        Assert.EndsWith("FFFFFF", TraceTickDefinition.GetPredefined().Single(d => d.Name == "Row Access").Background);
+        Assert.EndsWith("FFFFFF", TraceTickDefinition.GetPredefined().First(d => d.Name == "Row Access").Background);
+    }
+
+    [Fact]
+    public void Row_Reads_Made_Searching_A_Page_Come_Before_The_Other_Row_Reads()
+    {
+        var rules = TraceTickDefinition.GetPredefined().Where(d => d.Name == "Row Access").ToList();
+
+        Assert.Equal([("Search Page", "PageRef::SearchPage"), ("Row Access", null)],
+                     rules.Select(r => (r.GetLabel(), r.Conditions.FirstOrDefault()?.Value)));
     }
 
     [Fact]
@@ -178,6 +188,29 @@ public class TraceTickDefinitionTests
         var build = TraceTickDefinition.GetPredefined().Single(d => d is { Name: "Hash Table", Label: "Build" });
 
         Assert.Equal((true, "CQScanHash::ConsumeBuild"), (build.IsPhase, build.Function));
+    }
+
+    [Fact]
+    public void The_Sort_Build_Is_A_Phase_Around_Its_Pushed_Rows()
+    {
+        var rules = TraceTickDefinition.GetPredefined().Where(d => d.Name == "Sort").ToList();
+
+        Assert.Equal([("Build", "CQScanSortNew::BuildSortTable", true),
+                      ("Push Row", "CQScanSortNew::PushRow", false),
+                      ("Sorted Row", "RowsetSorted::GetNextSortedRowInternal", false)],
+                     rules.Select(r => (r.GetLabel(), r.Function, r.IsPhase)));
+    }
+
+    [Fact]
+    public void A_Stream_Aggregate_Group_Check_Comes_Before_The_Other_Evaluations()
+    {
+        const string groupCheck = "CQScanStreamAggregateNew::GetRow";
+
+        var rules = TraceTickDefinition.GetPredefined().Where(d => d.Name == "Evaluations");
+
+        Assert.Equal([("Same Group", groupCheck), ("Group Changed", groupCheck), ("False", null), ("NULL", null), ("True", null)],
+                     rules.Select(r => (r.GetLabel(),
+                                        r.Conditions.FirstOrDefault(c => c.Target == TraceConditionTarget.CalledDirectlyBy)?.Value)));
     }
 
     [Fact]

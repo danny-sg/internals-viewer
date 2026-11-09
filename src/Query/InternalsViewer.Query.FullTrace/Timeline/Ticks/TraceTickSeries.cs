@@ -272,7 +272,7 @@ public sealed class TraceTickSeries
             for (var position = 0; position < index.Count; position++)
             {
                 if (index.GetValue(position) == definition.Value
-                    && (definition.Conditions.Count == 0 || definition.MatchesNode(index.Get(position).Node)))
+                    && (definition.Conditions.Count == 0 || definition.MatchesWithin(index.Get(position).Node)))
                 {
                     sources.Add(index.GetSource(position));
                 }

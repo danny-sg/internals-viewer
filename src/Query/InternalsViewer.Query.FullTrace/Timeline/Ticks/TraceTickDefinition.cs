@@ -76,6 +76,8 @@ public sealed partial record TraceTickDefinition(string Name,
 
     public bool MatchesNode(CallTreeNode node) => Conditions.All(c => c.MatchesNode(node));
 
+    public bool MatchesWithin(CallTreeNode node) => Conditions.All(c => c.MatchesNode(node, isWithin: true));
+
     public bool MatchesOperator(ExecutionOperatorEvent? operatorEvent) => Conditions.All(c => c.MatchesOperator(operatorEvent));
 
     [GeneratedRegex(@"\{(\w+)\}")]
