@@ -74,6 +74,24 @@ public class TraceRowAccessReaderTests
                      (access.Span.From.Position, access.Span.To.Position, access.Node.Symbol, access.Operator));
     }
 
+    [Fact]
+    public void Header_Reads_In_Two_Calls_Are_A_Tick_Each()
+    {
+        var reads = new TracePageReadList([new TracePageRead(At(13), Thread, BufferFrame + 0x10, 4),
+                                           new TracePageRead(At(21), Thread, BufferFrame + 0x16, 2)]);
+
+        Assert.Equal([At(13), At(21)], Build(reads).GetAllTicks().Select(t => t.Span.From.Position));
+    }
+
+    [Fact]
+    public void Header_Reads_In_One_Call_Are_One_Tick()
+    {
+        var reads = new TracePageReadList([new TracePageRead(At(20), Thread, BufferFrame + 0x10, 4),
+                                           new TracePageRead(At(21), Thread, BufferFrame + 0x16, 2)]);
+
+        Assert.Equal(At(20), Assert.Single(Build(reads).GetAllTicks()).Span.From.Position);
+    }
+
     private static TraceTickSeries Build(TracePageReadList? headerReads = null)
     {
         var builder = new TraceTimeline.Builder();

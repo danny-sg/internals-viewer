@@ -36,7 +36,10 @@ internal sealed class TracePageReadRecorder(TraceBufferPool pool)
 
         AddRun(OpenHeaders, hit, frame, hit.Address, Math.Min(end, body));
 
-        AddRun(OpenBodies, hit, frame, Math.Max(hit.Address, body), end);
+        if (AddRun(OpenBodies, hit, frame, Math.Max(hit.Address, body), end) && OpenHeaders.Remove(hit.Thread, out var header))
+        {
+            Reads.Add(header.ToRead());
+        }
     }
 
     public TracePageReadList Build()
@@ -59,11 +62,11 @@ internal sealed class TracePageReadRecorder(TraceBufferPool pool)
         return new TracePageReadList(reads);
     }
 
-    private void AddRun(Dictionary<uint, Run> runs, WatchHit hit, ulong frame, ulong address, ulong end)
+    private bool AddRun(Dictionary<uint, Run> runs, WatchHit hit, ulong frame, ulong address, ulong end)
     {
         if (address >= end)
         {
-            return;
+            return false;
         }
 
         var position = hit.Position;
@@ -74,7 +77,7 @@ internal sealed class TracePageReadRecorder(TraceBufferPool pool)
         {
             runs[hit.Thread] = run.Extend(address, end, position);
 
-            return;
+            return true;
         }
 
         if (isOpen)
@@ -85,6 +88,8 @@ internal sealed class TracePageReadRecorder(TraceBufferPool pool)
         runs[hit.Thread] = new Run(hit.Thread, frame, position, position, address, end);
 
         Recorded++;
+
+        return true;
     }
 
     private static ulong GetFrame(ulong address) => address - address % PageData.Size;

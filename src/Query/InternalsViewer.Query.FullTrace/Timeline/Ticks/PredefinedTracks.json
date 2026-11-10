@@ -384,7 +384,7 @@
     "Description": "Evaluate predicate with `{Function}` → true <Predicate>{ExecutionPlan.Predicate}</Predicate>"
   },
   {
-    "Name": "Row Access",
+    "Name": "Page",
     "Module": "",
     "Function": "",
     "Colour": "Category",
@@ -407,7 +407,7 @@
     "Value": 0
   },
   {
-    "Name": "Row Access",
+    "Name": "Page",
     "Module": "",
     "Function": "",
     "Colour": "Category",
@@ -422,7 +422,7 @@
     "Value": 0
   },
   {
-    "Name": "Page Header Access",
+    "Name": "Page",
     "Module": "",
     "Function": "",
     "Colour": "Category",
@@ -430,7 +430,7 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Page Header Access",
-    "Description": "Read Header of Page {Page}",
+    "Description": "Read `{HeaderField}` from Header of Page {Page}",
     "Background": "#69FFFFFF",
     "Source": "PageHeaderAccess",
     "Value": 0

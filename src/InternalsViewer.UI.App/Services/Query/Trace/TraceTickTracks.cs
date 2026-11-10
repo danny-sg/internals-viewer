@@ -437,6 +437,10 @@ public static partial class TraceTickTracks
                 => GetPage(trace, tick) is { } page ? GetPageLink(page, GetSlot(trace, tick)) : UnknownValue,
             _ when IsPlaceholder(name, TraceTickDefinition.SlotPlaceholder)
                 => GetSlot(trace, tick)?.ToString(CultureInfo.CurrentCulture) ?? UnknownValue,
+            _ when IsPlaceholder(name, TraceTickDefinition.HeaderFieldPlaceholder)
+                => trace.PageAccesses.GetHeaderAccess(tick.Span.From.Position) is { } header
+                    ? string.Join(TraceTickDefinition.ListSeparator, header.GetFields())
+                    : UnknownValue,
             _ when IsPlaceholder(name, TraceTickDefinition.PartitionPlaceholder)
                 => trace.HashTables.GetLocation(tick)?.Partition.ToString(CultureInfo.CurrentCulture) ?? UnknownValue,
             _ when IsPlaceholder(name, TraceTickDefinition.BucketPlaceholder)
@@ -464,7 +468,7 @@ public static partial class TraceTickTracks
 
     private static PageAddress? GetPage(TraceResult trace, TraceTick tick)
         => trace.PageAccesses.GetRowAccess(tick.Span.From.Position)?.Page
-           ?? trace.PageAccesses.GetHeaderAccess(tick.Span.From.Position)?.Page
+           ?? trace.PageAccesses.GetHeaderAccess(tick.Span.From.Position)?.Access.Page
            ?? trace.PageAccesses.GetFetch(tick.Span.From.Position)?.Page
            ?? GetRead(tick, trace.CallStore)?.Page;
 
@@ -586,9 +590,16 @@ public static partial class TraceTickTracks
 
     private static IEnumerable<string> GetHeaderAccessDetails(TraceTick tick, TracePageAccessList accesses)
     {
-        if (accesses.GetHeaderAccess(tick.Span.From.Position) is { } access)
+        if (accesses.GetHeaderAccess(tick.Span.From.Position) is not { } header)
         {
-            yield return $"Page {access.Page}";
+            yield break;
+        }
+
+        yield return $"Page {header.Access.Page}";
+
+        foreach (var field in header.GetFields())
+        {
+            yield return field;
         }
     }
 

@@ -36,11 +36,11 @@ internal static class TraceRowAccessReader
     {
         var sources = new List<TraceTickSource>();
 
-        foreach (var access in accesses.HeaderAccesses)
+        foreach (var header in accesses.HeaderAccesses)
         {
-            if (GetLocation(timeline, access) is { } location)
+            if (GetLocation(timeline, header.Access) is { } location)
             {
-                sources.Add(GetSource(location, access));
+                sources.Add(GetSource(location, header.Access));
             }
         }
 

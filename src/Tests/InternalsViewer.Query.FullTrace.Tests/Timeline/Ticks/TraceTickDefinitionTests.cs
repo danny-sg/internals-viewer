@@ -12,8 +12,8 @@ public class TraceTickDefinitionTests
     [Fact]
     public void The_Predefined_Rules_Make_The_Built_In_Tracks_In_Order()
     {
-        Assert.Equal(["GetRow", "Read", "Evaluations", "Row Access", "Page Header Access", "Seek", "Hash Table", "Hash Aggregate", "Sort",
-                      "Compute Scalar", "Watches", "Statement", "Open"],
+        Assert.Equal(["GetRow", "Read", "Evaluations", "Page", "Seek", "Hash Table", "Hash Aggregate", "Sort", "Compute Scalar",
+                      "Watches", "Statement", "Open"],
                      TraceTickDefinition.GetPredefined().Select(d => d.Name).Distinct());
     }
 
@@ -177,20 +177,51 @@ public class TraceTickDefinitionTests
     }
 
     [Fact]
-    public void The_Row_Access_Track_Has_A_White_Background()
+    public void The_Page_Track_Has_A_White_Background()
     {
-        Assert.EndsWith("FFFFFF", TraceTickDefinition.GetPredefined().First(d => d.Name == "Row Access").Background);
+        Assert.EndsWith("FFFFFF", TraceTickDefinition.GetPredefined().First(d => d.Name == "Page").Background);
     }
+
+    [Fact]
+    public void The_Page_Track_Holds_Row_And_Header_Accesses()
+        => Assert.Equal(["Search Page", "Row Access", "Page Header Access"],
+                        TraceTickDefinition.GetPredefined().Where(d => d.Name == "Page").Select(d => d.GetLabel()));
 
     [Fact]
     public void The_Page_Header_Access_Track_Has_Its_Own_Source()
         => Assert.Equal(TraceTickSourceType.PageHeaderAccess,
-                        TraceTickDefinition.GetPredefined().Single(d => d.Name == "Page Header Access").Source);
+                        TraceTickDefinition.GetPredefined().Single(d => d.Label == "Page Header Access").Source);
+
+    [Fact]
+    public void Header_Fields_In_Backticks_Are_Each_Quoted()
+        => Assert.Equal("Read `Page Type`, `Internal Object Id` from Header",
+                        TraceTickDefinition.Format("Read `{HeaderField}` from Header", _ => "Page Type, Internal Object Id"));
+
+    [Fact]
+    public void One_Header_Field_In_Backticks_Is_Quoted_Once()
+        => Assert.Equal("Read `Slot Count`", TraceTickDefinition.Format("Read `{HeaderField}`", _ => "Slot Count"));
+
+    [Fact]
+    public void Header_Fields_Without_Backticks_Stay_As_One_List()
+        => Assert.Equal("Read Page Type, Slot Count", TraceTickDefinition.Format("Read {HeaderField}", _ => "Page Type, Slot Count"));
+
+    [Fact]
+    public void A_Function_In_Backticks_Keeps_The_Commas_In_Its_Name()
+        => Assert.Equal("`Run<int, int>`", TraceTickDefinition.Format("`{Function}`", _ => "Run<int, int>"));
+
+    [Fact]
+    public void A_Placeholder_Without_A_Value_Stays_As_Written()
+        => Assert.Equal("`{Unknown}` and {Other}", TraceTickDefinition.Format("`{Unknown}` and {Other}", _ => null));
+
+    [Fact]
+    public void The_Page_Header_Access_Description_Names_The_Field_Read()
+        => Assert.Contains($"{{{TraceTickDefinition.HeaderFieldPlaceholder}}}",
+                           TraceTickDefinition.GetPredefined().Single(d => d.Label == "Page Header Access").Description);
 
     [Fact]
     public void Row_Reads_Made_Searching_A_Page_Come_Before_The_Other_Row_Reads()
     {
-        var rules = TraceTickDefinition.GetPredefined().Where(d => d.Name == "Row Access").ToList();
+        var rules = TraceTickDefinition.GetPredefined().Where(d => d.Source == TraceTickSourceType.RowAccess).ToList();
 
         Assert.Equal([("Search Page", "PageRef::SearchPage"), ("Row Access", null)],
                      rules.Select(r => (r.GetLabel(), r.Conditions.FirstOrDefault()?.Value)));

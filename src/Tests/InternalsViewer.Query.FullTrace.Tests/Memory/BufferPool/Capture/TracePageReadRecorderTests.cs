@@ -51,6 +51,13 @@ public class TracePageReadRecorderTests
                         Record(Read(3, Frame + 0x5B3, 4), Read(4, Frame + 0x16, 2), Read(5, Frame + 0x5B7, 4)));
 
     [Fact]
+    public void A_Row_Read_Between_Reads_Of_One_Header_Field_Keeps_Both_Header_Reads()
+        => Assert.Equal([new TracePageRead(At(3), Thread, Frame + 0x16, 2),
+                         new TracePageRead(At(4), Thread, Frame + 0x5B3, 4),
+                         new TracePageRead(At(5), Thread, Frame + 0x16, 2)],
+                        Record(Read(3, Frame + 0x16, 2), Read(4, Frame + 0x5B3, 4), Read(5, Frame + 0x16, 2)));
+
+    [Fact]
     public void Touching_Reads_Across_Two_Frames_Are_Separate_Page_Reads()
         => Assert.Equal(2, Record(Read(3, OtherFrame - 4, 4), Read(4, OtherFrame + 0x60, 4)).Count);
 

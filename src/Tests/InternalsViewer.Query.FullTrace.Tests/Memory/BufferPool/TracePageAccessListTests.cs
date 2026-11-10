@@ -179,8 +179,17 @@ public class TracePageAccessListTests
 
         var header = Assert.Single(accesses.HeaderAccesses);
 
-        Assert.Equal((0, At(6), Page), (accesses.Count, header.Position, header.Page));
+        Assert.Equal((0, At(6), Page), (accesses.Count, header.Access.Position, header.Access.Page));
     }
+
+    [Fact]
+    public void A_Header_Access_Names_The_Field_It_Read()
+        => Assert.Equal(["Log Sequence Number"], Assert.Single(Headers(Reads((6, 9, 0x28, 10))).HeaderAccesses).GetFields());
+
+    [Fact]
+    public void Header_Reads_Merged_Into_One_Access_Name_Every_Field()
+        => Assert.Equal(["Page Type", "Slot Count"],
+                        Assert.Single(Headers(Reads((6, 9, 0x01, 1), (7, 9, 0x16, 2))).HeaderAccesses).GetFields());
 
     [Theory]
     [InlineData(0x5F, 1)]
@@ -190,12 +199,12 @@ public class TracePageAccessListTests
 
     [Fact]
     public void Header_Reads_Of_One_Page_In_A_Row_Are_One_Header_Access()
-        => Assert.Equal([At(6)], Headers(Reads((6, 9, 0x01, 1), (7, 9, 0x16, 2))).HeaderAccesses.Select(a => a.Position));
+        => Assert.Equal([At(6)], Headers(Reads((6, 9, 0x01, 1), (7, 9, 0x16, 2))).HeaderAccesses.Select(a => a.Access.Position));
 
     [Fact]
     public void A_Row_Read_Between_Header_Reads_Starts_A_New_Header_Access()
         => Assert.Equal([At(6), At(8)],
-                        Headers(Reads((6, 9, 0x16, 2), (7, 9, 0x5B3, 4), (8, 9, 0x16, 2))).HeaderAccesses.Select(a => a.Position));
+                        Headers(Reads((6, 9, 0x16, 2), (7, 9, 0x5B3, 4), (8, 9, 0x16, 2))).HeaderAccesses.Select(a => a.Access.Position));
 
     [Fact]
     public void A_Header_Read_Between_Reads_Of_One_Row_Leaves_One_Row_Access()
@@ -219,7 +228,9 @@ public class TracePageAccessListTests
         var accesses = Headers(Reads((6, 9, 0x16, 2)));
 
         Assert.Equal((Page, (PageAddress?)null, (TracePageAccess?)null),
-                     (accesses.GetHeaderAccess(At(6))?.Page, accesses.GetHeaderAccess(At(7))?.Page, accesses.GetRowAccess(At(6))));
+                     (accesses.GetHeaderAccess(At(6))?.Access.Page,
+                      accesses.GetHeaderAccess(At(7))?.Access.Page,
+                      accesses.GetRowAccess(At(6))));
     }
 
     [Fact]

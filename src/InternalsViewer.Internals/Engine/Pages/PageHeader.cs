@@ -71,7 +71,7 @@ public sealed class PageHeader : DataStructure
     /// Leaf level = 0
     /// Root/Intermediate level = > 0
     /// </remarks>
-    [DataStructureItem(ItemType.IndexLevel)]
+    [DataStructureItem(ItemType.IndexLevel, "Index Level")]
     public byte Level { get; set; }
 
     /// <summary>
@@ -86,7 +86,7 @@ public sealed class PageHeader : DataStructure
     [DataStructureItem(ItemType.FreeCount)]
     public ushort FreeCount { get; set; }
 
-    [DataStructureItem(ItemType.FreeDataOffset)]
+    [DataStructureItem(ItemType.FreeDataOffset, "Free Data Offset")]
     public ushort FreeData { get; set; }
 
     /// <summary>
@@ -104,7 +104,7 @@ public sealed class PageHeader : DataStructure
     /// <summary>
     /// Last transaction reserved count
     /// </summary>
-    [DataStructureItem(ItemType.TransactionReserved)]
+    [DataStructureItem(ItemType.TransactionReserved, "Transaction Reserved")]
     public short TransactionReservedCount { get; set; }
 
     [DataStructureItem(ItemType.TornBits)]
@@ -125,7 +125,7 @@ public sealed class PageHeader : DataStructure
     /// <summary>
     /// LSN (Log Sequence Number) of the last change to the page
     /// </summary>
-    [DataStructureItem(ItemType.Lsn)]
+    [DataStructureItem(ItemType.Lsn, "Log Sequence Number")]
     public LogSequenceNumber Lsn { get; set; }
 
     [DataStructureItem(ItemType.HeaderVersion)]

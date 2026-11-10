@@ -28,6 +28,8 @@ public sealed partial record TraceTickDefinition(string Name,
 
     public const string SlotPlaceholder = "Slot";
 
+    public const string HeaderFieldPlaceholder = "HeaderField";
+
     public const string PartitionPlaceholder = "Partition";
 
     public const string BucketPlaceholder = "Bucket";
@@ -41,6 +43,8 @@ public sealed partial record TraceTickDefinition(string Name,
     public const string ExecutionPlanPrefix = "ExecutionPlan.";
 
     public const string CurrentRangePlaceholder = ExecutionPlanPrefix + "CurrentRange";
+
+    public const string ListSeparator = ", ";
 
     private const string AnyModule = "*";
 
@@ -89,7 +93,7 @@ public sealed partial record TraceTickDefinition(string Name,
     public string GetTitle() => Title ?? GetLabel();
 
     public static string Format(string text, Func<string, string?> getValue)
-        => PlaceholderPattern().Replace(text, m => getValue(m.Groups[1].Value) ?? m.Value);
+        => PlaceholderPattern().Replace(text, m => GetPlaceholderText(m, getValue));
 
     public bool MatchesName(string name) => Functions.Length == 0 || Functions.Any(f => f.Matches(name));
 
@@ -106,6 +110,22 @@ public sealed partial record TraceTickDefinition(string Name,
 
     public bool MatchesOperator(ExecutionOperatorEvent? operatorEvent) => Conditions.All(c => c.MatchesOperator(operatorEvent));
 
-    [GeneratedRegex(@"\{([\w.]+)\}")]
+    private static string GetPlaceholderText(Match match, Func<string, string?> getValue)
+    {
+        var name = match.Groups["name"].Value;
+
+        if (getValue(name) is not { } value)
+        {
+            return match.Value;
+        }
+
+        var quote = match.Groups["quote"].Value;
+
+        var items = name.Equals(HeaderFieldPlaceholder, StringComparison.OrdinalIgnoreCase) ? value.Split(ListSeparator) : [value];
+
+        return string.Join(ListSeparator, items.Select(i => $"{quote}{i}{quote}"));
+    }
+
+    [GeneratedRegex(@"(?<quote>`?)\{(?<name>[\w.]+)\}\k<quote>")]
     private static partial Regex PlaceholderPattern();
 }
