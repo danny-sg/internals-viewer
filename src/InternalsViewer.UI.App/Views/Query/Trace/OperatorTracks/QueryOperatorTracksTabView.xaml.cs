@@ -1,4 +1,4 @@
-using InternalsViewer.Query.FullTrace.Timeline.Ticks;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.OperatorTracks;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml.Controls;
@@ -62,7 +62,7 @@ public sealed partial class QueryOperatorTracksTabView : UserControl
         }
     }
 
-    private async void OnEditRequested(TraceTickDefinition existing)
+    private async void OnEditRequested(TraceTrackRule existing)
     {
         if (ViewModel is { } viewModel && await OperatorTrackEditor.ShowAsync(XamlRoot, viewModel, existing, null) is { } definition)
         {

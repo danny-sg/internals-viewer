@@ -10,8 +10,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
-using InternalsViewer.Query.FullTrace.Timeline.Ticks;
-using InternalsViewer.Query.FullTrace.Timeline.Ticks.Enums;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Services.Query.Trace;
@@ -59,7 +59,7 @@ public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposa
         Refresh();
     }
 
-    public event Action<TraceTickDefinition>? EditRequested;
+    public event Action<TraceTrackRule>? EditRequested;
 
     public bool HasAddedTracks => Store.AddedDefinitions.Count > 0;
 
@@ -127,7 +127,7 @@ public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposa
         {
             await using var stream = File.Create(file.Path);
 
-            await TraceTickDefinition.WriteAsync(stream, Store.Definitions, CancellationToken.None);
+            await TraceTrackRule.WriteAsync(stream, Store.Definitions, CancellationToken.None);
 
             AddMessage($"{Store.Definitions.Count:N0} operator track rule(s) exported to {file.Path}");
         }
@@ -157,7 +157,7 @@ public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposa
         {
             await using var stream = File.OpenRead(file.Path);
 
-            var definitions = await TraceTickDefinition.ReadAsync(stream, CancellationToken.None);
+            var definitions = await TraceTrackRule.ReadAsync(stream, CancellationToken.None);
 
             Store.AddRange(definitions);
 
@@ -217,14 +217,14 @@ public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposa
         return new QueryResultSet { Columns = columns, Rows = rows };
     }
 
-    private static string GetFunctionText(TraceTickDefinition definition) => definition.Source switch
+    private static string GetFunctionText(TraceTrackRule definition) => definition.Source switch
     {
         TraceTickSourceType.Call => $"{definition.Module}!{definition.Function}",
         TraceTickSourceType.Watch => TraceTickTracks.GetWatchTarget(definition),
         _ => TraceTickTracks.GetSourceText(definition.Source)
     };
 
-    private ActionLinks GetActions(TraceTickDefinition definition)
+    private ActionLinks GetActions(TraceTrackRule definition)
     {
         var edit = new ActionLink("Edit", () => EditRequested?.Invoke(definition));
 

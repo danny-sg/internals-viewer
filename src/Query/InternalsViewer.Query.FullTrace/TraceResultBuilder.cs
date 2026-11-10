@@ -10,7 +10,6 @@ using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Timeline;
-using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.Query.Memory;
 
@@ -93,7 +92,6 @@ internal sealed class TraceResultBuilder(CallTree callTree,
             HoBtAccess = HoBtAccessMap.Build(CallStore, Timeline.MappedNodes),
             Allocation = Allocation,
             Lifetimes = Lifetimes,
-            EnclosingCalls = enclosing,
             AddressMap = AddressMap,
             MemoryObjects = MemoryObjects,
             ObjectPool = ObjectPool,
@@ -101,11 +99,15 @@ internal sealed class TraceResultBuilder(CallTree callTree,
             PageReads = pageReads,
             PageAccesses = pageAccesses,
             MemoryHistory = memoryHistory,
-            RowReturnMarks = TraceRowReturnMarkMap.Build(Timeline, CallStore, Lifetimes, enclosing),
-            RowAccesses = TraceRowAccessTrackBuilder.Build(Timeline, pageAccesses, Lifetimes, enclosing),
-            PageHeaderAccesses = TraceRowAccessTrackBuilder.BuildHeaders(Timeline, pageAccesses, Lifetimes, enclosing),
-            PageFetches = TracePageFetchTrackBuilder.Build(Timeline, pageAccesses, BufferPool, Lifetimes, enclosing),
-            Seeks = TraceSeekTrackBuilder.Build(Timeline, CallStore, Lifetimes, enclosing)
+            SourceTracks = new TraceSourceTrackMap(Timeline, CallStore, Lifetimes)
+            {
+                EnclosingCalls = enclosing,
+                RowReturns = TraceRowReturnMarkMap.Build(Timeline, CallStore, Lifetimes, enclosing),
+                RowAccesses = TraceRowAccessTrackBuilder.Build(Timeline, CallStore, pageAccesses, BufferPool, Lifetimes, enclosing),
+                PageHeaderAccesses = TraceRowAccessTrackBuilder.BuildHeaders(Timeline, pageAccesses, Lifetimes, enclosing),
+                PageFetches = TracePageFetchTrackBuilder.Build(Timeline, pageAccesses, BufferPool, Lifetimes, enclosing),
+                Seeks = TraceSeekTrackBuilder.Build(Timeline, CallStore, Lifetimes, enclosing)
+            }
         };
 
         CallStore.ReleaseColumns();

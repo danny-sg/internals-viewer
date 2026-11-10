@@ -33,8 +33,6 @@ public sealed partial class TraceTimelineRow
 
     public TraceScale Scale { get; }
 
-    internal long Bytes => Indexes is null ? 0 : Indexes.Length * (long)sizeof(int);
-
     private TraceThreadClock Clock { get; }
 
     private TraceSpanStore Store { get; }

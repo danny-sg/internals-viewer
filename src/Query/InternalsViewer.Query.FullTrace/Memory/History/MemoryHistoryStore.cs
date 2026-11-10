@@ -44,10 +44,6 @@ public sealed partial class MemoryHistoryStore
 
     public int ReadCount => Reads.Count;
 
-    internal long WriteBytes => Writes.Bytes;
-
-    internal long ReadBytes => Reads.Bytes + ReadStarts.Length * (long)sizeof(int);
-
     private MemoryHistoryBlock[] BlockArray { get; }
 
     private MemoryHistoryAccessTable Writes { get; }

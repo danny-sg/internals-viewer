@@ -4,17 +4,17 @@ using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Symbols.Categories;
-using InternalsViewer.Query.FullTrace.Timeline.Ticks.Enums;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 
-namespace InternalsViewer.Query.FullTrace.Timeline.Ticks;
+namespace InternalsViewer.Query.FullTrace.Timeline.Tracks;
 
-public sealed partial record TraceTickDefinition(string Name,
-                                                 string Module,
-                                                 string Function,
-                                                 string Colour,
-                                                 double HeightFactor,
-                                                 double WidthFactor,
-                                                 IReadOnlyList<TraceCallCondition> Conditions)
+public sealed partial record TraceTrackRule(string Name,
+                                            string Module,
+                                            string Function,
+                                            string Colour,
+                                            double HeightFactor,
+                                            double WidthFactor,
+                                            IReadOnlyList<TraceCallCondition> Conditions)
 {
     public const string CategoryColour = "Category";
 

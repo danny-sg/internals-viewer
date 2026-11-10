@@ -30,7 +30,7 @@ public sealed class TraceHashTableMap(TraceResult trace)
 
     private Dictionary<ExecutionOperatorEvent, Layout?> Layouts { get; } = new(ReferenceEqualityComparer.Instance);
 
-    public (int Partition, int Bucket)? GetLocation(TraceTick tick)
+    public (ulong Group, int Partition, int Bucket)? GetLocation(TraceTick tick)
     {
         if (tick.Node.Frame is not { Function: { ClassName: PartitionGroupClass, MethodName: InsertMethod or LookupMethod } }
             || trace.CallStore.GetCallList(tick.FunctionAddress, tick.InstanceAddress) is not { } list
@@ -41,9 +41,17 @@ public sealed class TraceHashTableMap(TraceResult trace)
 
         var call = list[tick.CallIndex];
 
-        return GetLayout(tick, call) is { } layout
-            ? GetLocation((uint)call.GetSlot(HashArgument), layout.PartitionMask, layout.PartitionShift, layout.BucketMask)
-            : null;
+        if (GetLayout(tick, call) is not { } layout)
+        {
+            return null;
+        }
+
+        var (partition, bucket) = GetLocation((uint)call.GetSlot(HashArgument),
+                                              layout.PartitionMask,
+                                              layout.PartitionShift,
+                                              layout.BucketMask);
+
+        return (call.GetSlot(PartitionGroupArgument), partition, bucket);
     }
 
     internal static (int Partition, int Bucket) GetLocation(uint hash, uint partitionMask, int partitionShift, uint bucketMask)

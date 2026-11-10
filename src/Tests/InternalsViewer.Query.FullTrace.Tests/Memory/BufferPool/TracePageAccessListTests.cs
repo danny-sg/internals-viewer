@@ -357,7 +357,7 @@ public class TracePageAccessListTests
 
         var stack = new StackSnapshotResult([new StackObject(StackAddress, 8, 9, 6, At(5), At(50))], [new(runs, data)], 2);
 
-        var recording = new MemoryHistoryBuilder.Recording([], [], new Dictionary<ulong, TracePosition>(), null, stack);
+        var recording = new MemoryHistoryBuilder([], [], new Dictionary<ulong, TracePosition>(), null, stack);
 
         return recording.Build(WatchResult.Empty).Store;
     }

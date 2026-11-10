@@ -14,8 +14,6 @@ internal sealed partial class LocatorTable
 
     public int Count => CallIndexes.Count;
 
-    public long Bytes => CallIndexes.Bytes + Palette.Length * sizeof(int) + PaletteIndexes.Bytes;
-
     private BitPackedArray CallIndexes { get; }
 
     private int[] Palette { get; }

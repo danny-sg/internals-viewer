@@ -106,7 +106,7 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
 
     private List<DocumentViewModel> MemoryDocuments { get; } = [];
 
-    private List<DocumentViewModel> GraphDocuments { get; } = [];
+    private List<DocumentViewModel> PlayheadDocuments { get; } = [];
 
     private List<DocumentViewModel> PluginDocuments { get; } = [];
 
@@ -246,9 +246,9 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
 
         var key = $"Graph:{block}";
 
-        if (GraphDocuments.FirstOrDefault(d => d.Key == key) is { } existing)
+        if (PlayheadDocuments.FirstOrDefault(d => d.Key == key) is { } existing)
         {
-            ShowGraph(existing);
+            ShowPlayheadDocument(existing);
 
             return;
         }
@@ -260,14 +260,37 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
     {
         var key = $"Graph:Call:{start.Call.FromPosition}";
 
-        if (GraphDocuments.FirstOrDefault(d => d.Key == key) is { } existing)
+        if (PlayheadDocuments.FirstOrDefault(d => d.Key == key) is { } existing)
         {
-            ShowGraph(existing);
+            ShowPlayheadDocument(existing);
 
             return;
         }
 
         AddGraph(key, new MemoryReferenceGraphViewModel(Query.MemoryHistory, start, this));
+    }
+
+    public void OpenHashTable(ulong group, int partition)
+    {
+        if (Trace is not { } trace)
+        {
+            return;
+        }
+
+        var key = $"HashTable:{group:X}";
+
+        if (PlayheadDocuments.FirstOrDefault(d => d.Key == key) is { } existing)
+        {
+            ((MemoryHashTableViewModel)existing.Content).ShowPartition(partition);
+
+            ShowPlayheadDocument(existing);
+
+            return;
+        }
+
+        AddPlayheadDocument(key,
+                            new MemoryHashTableViewModel(Query.MemoryHistory, trace.CallStore, group, partition),
+                            static () => new MemoryHashTableView());
     }
 
     public List<TraceMenuItem> GetMenuItems(TraceMenuTarget target)
@@ -302,9 +325,9 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
     {
         Query.MemoryHistory.SetScope(start, end);
 
-        foreach (var document in GraphDocuments)
+        foreach (var document in PlayheadDocuments)
         {
-            ((MemoryReferenceGraphViewModel)document.Content).RefreshScope();
+            (document.Content as MemoryReferenceGraphViewModel)?.RefreshScope();
         }
     }
 
@@ -315,7 +338,7 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
             Dock.Close(document);
         }
 
-        foreach (var document in GraphDocuments.ToList())
+        foreach (var document in PlayheadDocuments.ToList())
         {
             Query.Layout.Close(document);
         }
@@ -335,9 +358,9 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
             ((PlayheadMemoryViewModel)document.Content).SetPlayhead(position);
         }
 
-        foreach (var document in GraphDocuments)
+        foreach (var document in PlayheadDocuments)
         {
-            ((MemoryReferenceGraphViewModel)document.Content).SetPlayhead(position);
+            ((IPlayheadDocument)document.Content).SetPlayhead(position);
         }
     }
 
@@ -369,16 +392,16 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
 
         MemoryDocuments.Clear();
 
-        foreach (var document in GraphDocuments)
+        foreach (var document in PlayheadDocuments)
         {
             Query.Layout.Close(document);
 
             Query.Layout.RemoveDocument(document.Key, out _);
 
-            DisposeGraph(document);
+            DisposePlayheadDocument(document);
         }
 
-        GraphDocuments.Clear();
+        PlayheadDocuments.Clear();
 
         foreach (var document in PluginDocuments)
         {
@@ -548,29 +571,35 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
     }
 
     private void AddGraph(string key, MemoryReferenceGraphViewModel graph)
-    {
-        graph.SetPlayhead(Playhead);
+        => AddPlayheadDocument(key, graph, static () => new MemoryReferenceGraphView(), () => CreateGraphCommands(graph));
 
-        var document = new DocumentViewModel(graph.Title,
-                                             graph,
-                                             static () => new MemoryReferenceGraphView(),
+    private void AddPlayheadDocument(string key,
+                                     IPlayheadDocument content,
+                                     Func<FrameworkElement> viewFactory,
+                                     Func<FrameworkElement>? commandsFactory = null)
+    {
+        content.SetPlayhead(Playhead);
+
+        var document = new DocumentViewModel(content.Title,
+                                             content,
+                                             viewFactory,
                                              keepAlive: true,
                                              key: key,
                                              persist: false,
-                                             commandsFactory: () => CreateGraphCommands(graph));
+                                             commandsFactory: commandsFactory);
 
         Query.Layout.RegisterDocument(key, document);
 
-        ShowGraph(document);
+        ShowPlayheadDocument(document);
 
-        GraphDocuments.Add(document);
+        PlayheadDocuments.Add(document);
     }
 
-    private void ShowGraph(DocumentViewModel document)
+    private void ShowPlayheadDocument(DocumentViewModel document)
     {
         var dock = Query.Layout.Dock;
 
-        if (GraphDocuments.FirstOrDefault(d => d != document && dock.Contains(d)) is { } neighbour)
+        if (PlayheadDocuments.FirstOrDefault(d => d != document && dock.Contains(d)) is { } neighbour)
         {
             dock.ShowBeside(document, neighbour);
         }
@@ -582,11 +611,11 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
 
     private void OnQueryDocumentClosed(object? sender, DocumentViewModel document)
     {
-        if (GraphDocuments.Remove(document))
+        if (PlayheadDocuments.Remove(document))
         {
             Query.Layout.RemoveDocument(document.Key, out _);
 
-            DisposeGraph(document);
+            DisposePlayheadDocument(document);
         }
         else if (PluginDocuments.Remove(document))
         {
@@ -621,11 +650,11 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         }
     }
 
-    private static void DisposeGraph(DocumentViewModel document)
+    private static void DisposePlayheadDocument(DocumentViewModel document)
     {
         document.DisposeView();
 
-        ((MemoryReferenceGraphViewModel)document.Content).Close();
+        ((IPlayheadDocument)document.Content).Close();
     }
 
     private void DisposeMemory(DocumentViewModel document)

@@ -23,8 +23,6 @@ public sealed partial class TraceBufferPool
 
     public int Count => Pages.Length;
 
-    public long Bytes => (Pages.Length + Buffers.Length) * (long)Unsafe.SizeOf<TraceBufferPage>() + BufferStarts.Length * sizeof(ulong);
-
     internal TracePosition? FirstPosition => Pages.Length == 0 ? null : Pages.Min(p => p.Position);
 
     private TraceBufferPage[] Pages { get; }

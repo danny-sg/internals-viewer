@@ -45,7 +45,7 @@ internal static class MemoryHistoryStoreHelper
             data.AddRange(bytes);
         }
 
-        return new MemoryHistoryBuilder.Recording([.. blocks.Select(b => new MemoryHistoryAllocation(b, false, IsArray: isArray))],
+        return new MemoryHistoryBuilder([.. blocks.Select(b => new MemoryHistoryAllocation(b, false, IsArray: isArray))],
                                                   new ulong[blocks.Length],
                                                   new Dictionary<ulong, TracePosition>(),
                                                   timeline).Build(new WatchResult([new([.. hits], [.. data])], 1)).Store;
@@ -67,7 +67,7 @@ internal static class MemoryHistoryStoreHelper
             data.AddRange(bytes);
         }
 
-        var recording = new MemoryHistoryBuilder.Recording([.. blocks.Select(b => new MemoryHistoryAllocation(b, false))],
+        var recording = new MemoryHistoryBuilder([.. blocks.Select(b => new MemoryHistoryAllocation(b, false))],
                                                            new ulong[blocks.Length],
                                                            new Dictionary<ulong, TracePosition>(),
                                                            timeline);

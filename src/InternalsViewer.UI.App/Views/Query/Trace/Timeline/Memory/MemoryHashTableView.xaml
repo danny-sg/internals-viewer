@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Views.Query.Trace.Timeline.Memory.MemoryHashTableView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:simulation="using:InternalsViewer.UI.App.Controls.Query.Simulation">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0"
+              Padding="12,6"
+              ColumnSpacing="12"
+              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+              BorderThickness="0,0,0,1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0"
+                       Text="Partition"
+                       FontSize="12"
+                       VerticalAlignment="Center"
+                       Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+            <ComboBox Grid.Column="1"
+                      MinWidth="80"
+                      FontSize="12"
+                      VerticalAlignment="Center"
+                      ItemsSource="{x:Bind ViewModel.PartitionNames, Mode=OneWay}"
+                      SelectedIndex="{x:Bind ViewModel.SelectedPartition, Mode=TwoWay}" />
+            <TextBlock Grid.Column="2"
+                       FontSize="12"
+                       VerticalAlignment="Center"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       Text="{x:Bind ViewModel.Summary, Mode=OneWay}" />
+        </Grid>
+
+        <simulation:HashTableGrid Grid.Row="1"
+                                  IsBucketCountVisible="False"
+                                  Title="{x:Bind ViewModel.PartitionTitle, Mode=OneWay}"
+                                  SubTitle="{x:Bind ViewModel.PartitionSummary, Mode=OneWay}"
+                                  Columns="{x:Bind ViewModel.Columns, Mode=OneWay}"
+                                  Buckets="{x:Bind ViewModel.Buckets, Mode=OneWay}" />
+    </Grid>
+</UserControl>

@@ -3,10 +3,12 @@
     x:Class="InternalsViewer.UI.App.Controls.Query.Plan.GuideStepLabel"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ 
     xmlns:controls="using:CommunityToolkit.WinUI.Controls">
     <Button Style="{StaticResource TabCommandButtonStyle}"
             Background="{ThemeResource SolidBackgroundFillColorTertiaryBrush}"
             MaxWidth="480"
+            Padding="10,8,10,8"
             IsTabStop="False"
             Click="OnClick"
             ToolTipService.ToolTip="Move to the next step. Shift + Click moves to the previous step">
@@ -20,7 +22,7 @@
                     <Setter Property="FontFamily" Value="Consolas" />
                 </Style>
             </StackPanel.Resources>
-            <controls:MarkdownTextBlock x:Name="NameText" FontSize="12" FontWeight="Bold" />
+            <controls:MarkdownTextBlock x:Name="NameText" FontSize="12" FontWeight="Bold" Padding="0,0,0,4"/>
             <controls:MarkdownTextBlock x:Name="DescriptionText" FontSize="12" />
         </StackPanel>
     </Button>

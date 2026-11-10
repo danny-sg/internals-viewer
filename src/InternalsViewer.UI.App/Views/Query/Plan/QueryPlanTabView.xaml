@@ -32,6 +32,7 @@
                     <ColumnDefinition Width="{x:Bind local:QueryPlanTabView.GetStepIndentWidth(Depth)}" />
                     <ColumnDefinition Width="22" />
                     <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <Button Grid.Column="2"
                         Width="18"
@@ -60,6 +61,13 @@
                           Margin="6,-2,0,-6"
                           IsHitTestVisible="False"
                           Visibility="{x:Bind local:QueryPlanTabView.GetCurrentVisibility(IsCurrent), Mode=OneWay}" />
+                <TextBlock Grid.Column="4"
+                           Margin="12,1,0,0"
+                           VerticalAlignment="Top"
+                           FontSize="11"
+                           Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                           Text="{x:Bind PositionText, Mode=OneWay}"
+                           ToolTipService.ToolTip="Position on the Trace Timeline" />
                 <StackPanel Grid.Column="3"
                             Spacing="4">
                     <controls:MarkdownTextBlock Config="{x:Bind Config}"
@@ -140,12 +148,14 @@
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
-                <Border Grid.Row="0"
+                <Border x:Name="PlanCommandBarHost"
+                        Grid.Row="0"
                         Background="{ThemeResource LayerFillColorDefaultBrush}"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                         BorderThickness="0,0,0,1"
-                        Visibility="{x:Bind ViewModel.Layout.IsGuideMode, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <CommandBar IsOpen="False"
+                        Visibility="{x:Bind GetGuideBarVisibility(ViewModel.Layout.IsGuideMode, ViewModel.IsGuideStepsVisible), Mode=OneWay}">
+                    <CommandBar x:Name="GuideCommandBar"
+                                IsOpen="False"
                                 Padding="8,0,0,0"
                                 DefaultLabelPosition="Right"
                                 VerticalAlignment="Center"
@@ -288,6 +298,7 @@
                   Visibility="{x:Bind GetGuidePaneVisibility(ViewModel.Layout.IsGuideMode, ViewModel.IsGuideStepsVisible), Mode=OneWay}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="40" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
                 <Grid Grid.Row="0"
@@ -321,8 +332,13 @@
                         <FontIcon Glyph="&#xE711;" FontSize="12" />
                     </Button>
                 </Grid>
+                <Border x:Name="StepsCommandBarHost"
+                        Grid.Row="1"
+                        Background="{ThemeResource LayerFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="0,0,0,1" />
                 <ListView x:Name="GuideStepList"
-                          Grid.Row="1"
+                          Grid.Row="2"
                           Background="{ThemeResource SolidBackgroundFillColorTertiaryBrush}"
                           ItemsSource="{x:Bind GuideStepSource.View, Mode=OneWay}"
                           SelectionMode="None"
@@ -395,7 +411,7 @@
                     </ListView.GroupStyle>
                 </ListView>
                 <Border x:Name="StickyStepHost"
-                        Grid.Row="1"
+                        Grid.Row="2"
                         VerticalAlignment="Top"
                         Background="{ThemeResource SolidBackgroundFillColorTertiaryBrush}"
                         Visibility="Collapsed"

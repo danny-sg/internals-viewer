@@ -27,8 +27,6 @@ public sealed class TraceTimelineThread
 
     internal TraceSpanStore Store { get; }
 
-    internal long Bytes => Clock.Bytes + Store.Bytes + Rows.Sum(r => r.Bytes);
-
     public int Depth
     {
         get

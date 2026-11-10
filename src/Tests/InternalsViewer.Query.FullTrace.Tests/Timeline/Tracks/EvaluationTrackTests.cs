@@ -1,7 +1,7 @@
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Arguments.Enums;
-using InternalsViewer.Query.FullTrace.Timeline.Ticks.Enums;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Locators.Enums;
 using InternalsViewer.Query.Events.Operators;
@@ -48,12 +48,12 @@ public class EvaluationTrackTests
     private static TraceTickSeries FromDefinition(TraceTimeline timeline,
                                                   TraceCallStore calls,
                                                   TraceOperatorLifetimeList lifetimes,
-                                                  TraceTickDefinition definition)
-        => TraceTickSeries.Build(timeline,
-                                 calls,
-                                 lifetimes,
-                                 definition,
-                                 EnclosingOperatorCallIndex.Build(calls, lifetimes.OperatorsByInstance));
+                                                  TraceTrackRule definition)
+        => TraceTrackBuilder.Build(timeline,
+                                   calls,
+                                   lifetimes,
+                                   definition,
+                                   EnclosingOperatorCallIndex.Build(calls, lifetimes.OperatorsByInstance));
 
     private static readonly ExecutionOperatorEvent Filter = new()
     {
@@ -170,8 +170,8 @@ public class EvaluationTrackTests
         var trace = BuildResult();
 
         Assert.Equal((5, 6),
-                     (TraceTickSeries.Build(trace, Rule("CEsExec::Missing|CEsExec::FastCompare1")).Count,
-                      TraceTickSeries.Build(trace, Rule("CEsExec::Fast*")).Count));
+                     (TraceTrackBuilder.Build(trace, Rule("CEsExec::Missing|CEsExec::FastCompare1")).Count,
+                      TraceTrackBuilder.Build(trace, Rule("CEsExec::Fast*")).Count));
     }
 
     [Fact]
@@ -186,8 +186,8 @@ public class EvaluationTrackTests
         var otherRegister = Rule("CEsExec::FastCompare1", HasLocator(slot, "Variant"));
 
         Assert.Equal((4, 0),
-                     (TraceTickSeries.Build(trace, anyRegister).Count,
-                      TraceTickSeries.Build(trace, otherRegister).Count));
+                     (TraceTrackBuilder.Build(trace, anyRegister).Count,
+                      TraceTrackBuilder.Build(trace, otherRegister).Count));
     }
 
     [Fact]
@@ -202,7 +202,7 @@ public class EvaluationTrackTests
 
         var rule = Rule("CEsExec::FastCompare1") with { Source = TraceTickSourceType.Evaluate };
 
-        var series = TraceTickSeries.BuildAssigned(BuildResult(), rule, null, o => ReferenceEquals(o, Filter) ? [computeScalar] : []);
+        var series = TraceTrackBuilder.BuildAssigned(BuildResult(), rule, null, o => ReferenceEquals(o, Filter) ? [computeScalar] : []);
 
         Assert.Equal([(computeScalar, Filter), (computeScalar, Filter)], series.GetAllTicks().Select(t => (t.Operator, t.Caller)));
     }
@@ -214,7 +214,7 @@ public class EvaluationTrackTests
 
         var source = Evaluations(trace);
 
-        trace = trace with { Seeks = source };
+        trace = trace with { SourceTracks = new TraceSourceTrackMap(trace.Timeline, trace.CallStore, trace.Lifetimes) { Seeks = source } };
 
         var track = FromRules(trace, SourceRule(2), SourceRule(0));
 
@@ -228,20 +228,23 @@ public class EvaluationTrackTests
     {
         var trace = BuildResult();
 
-        trace = trace with { Seeks = Evaluations(trace) };
+        trace = trace with
+        {
+            SourceTracks = new TraceSourceTrackMap(trace.Timeline, trace.CallStore, trace.Lifetimes) { Seeks = Evaluations(trace) }
+        };
 
         Assert.Equal((1, 0),
-                     (TraceTickSeries.Build(trace, SourceRule(2, InOperator("Filter"))).Count,
-                      TraceTickSeries.Build(trace, SourceRule(0, InOperator("Filter"))).Count));
+                     (TraceTrackBuilder.Build(trace, SourceRule(2, InOperator("Filter"))).Count,
+                      TraceTrackBuilder.Build(trace, SourceRule(0, InOperator("Filter"))).Count));
     }
 
-    private static TraceTickTrackSeries FromRules(TraceResult trace, params TraceTickDefinition[] rules)
-        => TraceTickSeries.BuildTrack(trace, rules, r => TraceTickSeries.Build(trace, r));
+    private static TraceTickTrackSeries FromRules(TraceResult trace, params TraceTrackRule[] rules)
+        => TraceTrackBuilder.BuildTrack(trace, rules, r => TraceTrackBuilder.Build(trace, r));
 
-    private static TraceTickDefinition Rule(string function, params TraceCallCondition[] conditions)
+    private static TraceTrackRule Rule(string function, params TraceCallCondition[] conditions)
         => new("Compares", "SqlTsEs", function, "#FFFFFF", 1, 1, conditions);
 
-    private static TraceTickDefinition SourceRule(byte value, params TraceCallCondition[] conditions)
+    private static TraceTrackRule SourceRule(byte value, params TraceCallCondition[] conditions)
         => new("Seek", string.Empty, string.Empty, "#FFFFFF", 1, 1, conditions) { Source = TraceTickSourceType.Seek, Value = value };
 
     private static TraceCallCondition HasLocator(ArgumentSlot? slot, string type)
@@ -250,7 +253,7 @@ public class EvaluationTrackTests
     private static TraceCallCondition InOperator(string name)
         => new(TraceConditionTarget.Operator, null, string.Empty, TraceConditionOperator.Equal, name);
 
-    private static TraceTickDefinition Definition(TraceConditionTarget target, string value)
+    private static TraceTrackRule Definition(TraceConditionTarget target, string value)
         => new("Compares",
                "SqlTsEs",
                "CEsExec::FastCompare1",
@@ -262,7 +265,7 @@ public class EvaluationTrackTests
     private static TraceTickSeries Build() => Evaluations(BuildResult());
 
     private static TraceTickSeries Evaluations(TraceResult trace)
-        => FromRules(trace, [.. TraceTickDefinition.GetPredefined().Where(d => d.Name == EvaluationsTrack)]).Series;
+        => FromRules(trace, [.. TraceTrackRule.GetPredefined().Where(d => d.Name == EvaluationsTrack)]).Series;
 
     private static TraceResult BuildResult()
     {

@@ -223,23 +223,6 @@ public class TraceRowReturnMarkMapTests
     }
 
     [Fact]
-    public void The_Next_And_Previous_Tick_Start_After_And_Before_A_Position_Across_Operators()
-    {
-        var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)], [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)]);
-
-        var next = (marks.Ticks.GetNext(At(12), _ => true)?.Span.From.Instructions,
-                    marks.Ticks.GetNext(At(20), _ => true)?.Span.From.Instructions,
-                    marks.Ticks.GetNext(At(55), _ => true)?.Span.From.Instructions);
-
-        var previous = (marks.Ticks.GetPrevious(At(20), _ => true)?.Span.From.Instructions,
-                        marks.Ticks.GetPrevious(At(50), _ => true)?.Span.From.Instructions,
-                        marks.Ticks.GetPrevious(At(10), _ => true)?.Span.From.Instructions);
-
-        Assert.Equal<(ulong?, ulong?, ulong?)>((20, 50, null), next);
-        Assert.Equal<(ulong?, ulong?, ulong?)>((12, 20, null), previous);
-    }
-
-    [Fact]
     public void Every_Included_Tick_Is_Listed_Across_Operators()
     {
         var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)], [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)]);
@@ -247,16 +230,6 @@ public class TraceRowReturnMarkMapTests
         var ends = marks.Ticks.GetTicks(v => v == (byte)RowReturnType.End).Select(t => t.Span.From.Instructions).Order();
 
         Assert.Equal([50ul, 55ul], ends);
-    }
-
-    [Fact]
-    public void The_Next_Tick_Skips_Values_That_Are_Not_Included()
-    {
-        var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)], [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)]);
-
-        var next = marks.Ticks.GetNext(At(10), v => v == (byte)RowReturnType.End);
-
-        Assert.Equal((50ul, Join), (next?.Span.From.Instructions ?? 0, next?.Operator));
     }
 
     [Fact]

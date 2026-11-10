@@ -107,7 +107,7 @@ internal static class TraceSeekRangeTrackBuilder
             }
         }
 
-        return TraceTickSeries.Build(timeline, sources, lifetimes, enclosing);
+        return TraceTrackBuilder.Build(timeline, sources, lifetimes, enclosing);
     }
 
     private static TraceArgumentCall? GetCall(TraceCallStore calls, TraceTick tick)

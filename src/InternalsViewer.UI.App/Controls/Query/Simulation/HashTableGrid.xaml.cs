@@ -44,6 +44,12 @@ public sealed partial class HashTableGrid : UserControl
                                     typeof(HashTableGrid),
                                     new PropertyMetadata(16));
 
+    public static readonly DependencyProperty IsBucketCountVisibleProperty =
+        DependencyProperty.Register(nameof(IsBucketCountVisible),
+                                    typeof(bool),
+                                    typeof(HashTableGrid),
+                                    new PropertyMetadata(true));
+
     public HashTableGrid()
     {
         InitializeComponent();
@@ -61,6 +67,12 @@ public sealed partial class HashTableGrid : UserControl
     {
         get => (int)GetValue(BucketCountProperty);
         set => SetValue(BucketCountProperty, value);
+    }
+
+    public bool IsBucketCountVisible
+    {
+        get => (bool)GetValue(IsBucketCountVisibleProperty);
+        set => SetValue(IsBucketCountVisibleProperty, value);
     }
 
     public IReadOnlyList<HashBucketModel>? Buckets

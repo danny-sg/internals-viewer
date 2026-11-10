@@ -3,7 +3,7 @@ using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Iterators;
 
-namespace InternalsViewer.Query.FullTrace.Timeline.Ticks;
+namespace InternalsViewer.Query.FullTrace.Timeline.Tracks;
 
 internal sealed class EnclosingOperatorCallIndex
 {

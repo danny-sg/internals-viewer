@@ -20,9 +20,8 @@ using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Symbols.Categories;
 using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
-using InternalsViewer.Query.FullTrace.Timeline.Ticks.Enums;
-using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.Query.Plans.Operators;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
@@ -56,11 +55,13 @@ public static partial class TraceTickTracks
 
     private const string PageLinkScheme = "page";
 
+    private const string HashLinkScheme = "hash";
+
     private const string PredicateOpenTag = "<Predicate>";
 
     private const string PredicateCloseTag = "</Predicate>";
 
-    private const string ResultToken = "{" + TraceTickDefinition.ResultPlaceholder + "}";
+    private const string ResultToken = "{" + TraceTrackRule.ResultPlaceholder + "}";
 
     private static readonly SKColor PassedUpColour = SKColor.Parse(SymbolCategory.QueryOperator.GetCategoryMetadata()!.ForegroundColor);
 
@@ -69,13 +70,13 @@ public static partial class TraceTickTracks
     public static SKColor DefaultColour => PassedUpColour;
 
     public static TraceTickTrack Create(TraceResult trace,
-                                        IReadOnlyList<TraceTickDefinition> rules,
+                                        IReadOnlyList<TraceTrackRule> rules,
                                         TraceTickTrackSeries series,
                                         int ordinal,
-                                        Func<TraceTickDefinition, bool> isAdded,
+                                        Func<TraceTrackRule, bool> isAdded,
                                         Func<TraceTick, string> getParentName,
                                         Func<TraceTick, string, PredicateText?> getPredicate,
-                                        Func<TraceTickDefinition, TraceWatch> getWatch)
+                                        Func<TraceTrackRule, TraceWatch> getWatch)
     {
         var colours = rules.Select(r => ParseColour(r.Colour)).ToArray();
 
@@ -108,7 +109,7 @@ public static partial class TraceTickTracks
 
         return first.Source switch
         {
-            TraceTickSourceType.RowReturn => WithRowReturns(track, trace.RowReturnMarks, rules, colours, ruleByValue),
+            TraceTickSourceType.RowReturn => WithRowReturns(track, trace.SourceTracks.RowReturns, rules, colours, ruleByValue),
             TraceTickSourceType.Seek => track with { TickWidth = MarkTickWidth },
             TraceTickSourceType.Statement => track with { IsStatementTrack = true },
             TraceTickSourceType.Watch => WithWatches(track, rules, ruleByValue, getWatch),
@@ -130,15 +131,15 @@ public static partial class TraceTickTracks
         _ => string.Empty
     };
 
-    public static string GetWatchTarget(TraceTickDefinition definition) => $"{definition.Function} + 0x{definition.Offset:X}";
+    public static string GetWatchTarget(TraceTrackRule definition) => $"{definition.Function} + 0x{definition.Offset:X}";
 
-    public static string FormatWatchValue(TraceTickDefinition definition, byte[] value)
+    public static string FormatWatchValue(TraceTrackRule definition, byte[] value)
         => MemoryWatchRowViewModel.GetValue(new HexWatch(0, value.Length, definition.DataType), value);
 
     public static string? GetText(TraceTickTrack track, TraceTick tick, string? text)
         => string.IsNullOrEmpty(text)
             ? null
-            : TraceTickDefinition.Format(text, name => track.GetPlaceholder(tick, name))
+            : TraceTrackRule.Format(text, name => track.GetPlaceholder(tick, name))
                                  .Replace(PredicateOpenTag, string.Empty)
                                  .Replace(PredicateCloseTag, string.Empty)
                                  .TrimEnd();
@@ -149,7 +150,7 @@ public static partial class TraceTickTracks
     public static List<TraceTrackStep> GetPlanSteps(IEnumerable<TraceTickTrack> tracks, IReadOnlySet<string> additional)
         => GetRuleSteps(tracks, r => IsPlanStep(r, additional));
 
-    public static bool IsPlanStep(TraceTickDefinition rule, IReadOnlySet<string> additional)
+    public static bool IsPlanStep(TraceTrackRule rule, IReadOnlySet<string> additional)
         => rule.IsPlanDefault || additional.Contains(rule.GetPlanStepKey());
 
     public static TraceStepNesting[] GetStepNesting(List<TraceTrackStep> steps)
@@ -229,7 +230,7 @@ public static partial class TraceTickTracks
     public static int GetLatestStepIndex(List<TraceTrackStep> steps, TracePosition position)
         => SortedSearch.FirstAfter<TraceTrackStep, TracePosition>(CollectionsMarshal.AsSpan(steps), position, GetStepPosition) - 1;
 
-    public static SKColor GetPlanPartColour(TraceTickTrack track, TraceTick tick, TraceTickDefinition rule)
+    public static SKColor GetPlanPartColour(TraceTickTrack track, TraceTick tick, TraceTrackRule rule)
         => rule.PlanPartColour is { } colour ? ParseColour(colour) : track.GetColour(tick) ?? DefaultColour;
 
     public static int GetPhaseStepIndex(List<TraceTrackStep> steps, int current, bool forward)
@@ -311,11 +312,25 @@ public static partial class TraceTickTracks
         return PredicateText.From(SeekBounds.Equality(new AccessKey(values.ToImmutable())));
     }
 
+    public static Locator? GetRowId(TraceResult trace, TraceTick tick)
+        => tick.Node.Frame is not null
+           && trace.CallStore.GetCallList(tick.FunctionAddress, tick.InstanceAddress) is { } list
+           && tick.CallIndex < list.Count
+            ? list[tick.CallIndex].Locators.Where(l => l.ValueType == LocatorValueType.Row).Select(l => (Locator?)l).FirstOrDefault()
+            : null;
+
+    public static PredicateText GetRowIdText(Locator rowId)
+        => new([new PredicateToken(PredicateTokenType.Column, "RID"),
+                new PredicateToken(PredicateTokenType.Space, " "),
+                new PredicateToken(PredicateTokenType.Operator, "="),
+                new PredicateToken(PredicateTokenType.Space, " "),
+                new PredicateToken(PredicateTokenType.Literal, rowId.ToString())]);
+
     public static string GetStepDetails(TraceTrackStep step)
         => step.IsReturn ? string.Empty : GetText(step.Track, step.Tick, step.Rule.Details) ?? string.Empty;
 
     public static string? GetStepCodeColour(TraceTrackStep step)
-        => step.Rule.Colour != TraceTickDefinition.CategoryColour
+        => step.Rule.Colour != TraceTrackRule.CategoryColour
            && GetDescriptionTemplate(step).Contains(ResultToken, StringComparison.OrdinalIgnoreCase)
             ? step.Rule.Colour
             : step.Tick.Node.CategoryColour;
@@ -362,16 +377,37 @@ public static partial class TraceTickTracks
         return true;
     }
 
+    public static string GetHashLink(ulong group, int partition, int bucket)
+        => string.Create(CultureInfo.InvariantCulture, $"[{bucket}]({HashLinkScheme}:{group:X}:{partition})");
+
+    public static bool TryGetHashLink(Uri? uri, out ulong group, out int partition)
+    {
+        group = 0;
+
+        partition = 0;
+
+        if (uri is null || !uri.Scheme.Equals(HashLinkScheme, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var parts = uri.OriginalString[(HashLinkScheme.Length + 1)..].Split(':');
+
+        return parts.Length == 2
+               && ulong.TryParse(parts[0], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out group)
+               && int.TryParse(parts[1], CultureInfo.InvariantCulture, out partition);
+    }
+
     public static SKColor ParseColour(string colour) => SKColor.TryParse(colour, out var parsed) ? parsed : DefaultColour;
 
     public static SKColor GetCategoryColour(CallTreeNode node) => node.CategoryColour is { } hex ? ParseColour(hex) : DefaultColour;
 
-    private static SKColor GetColour(TraceTickDefinition rule,
+    private static SKColor GetColour(TraceTrackRule rule,
                                      SKColor colour,
                                      TraceTick tick,
                                      Dictionary<CallTreeNode, SKColor> categoryColours)
     {
-        if (rule.Colour != TraceTickDefinition.CategoryColour)
+        if (rule.Colour != TraceTrackRule.CategoryColour)
         {
             return colour;
         }
@@ -406,7 +442,7 @@ public static partial class TraceTickTracks
     private static bool IsSameTick(TraceTrackStep left, TraceTrackStep right)
         => ReferenceEquals(left.Track, right.Track) && left.Tick.Span.From.Position == right.Tick.Span.From.Position;
 
-    private static bool IsForwardingCall(TraceTick tick, TraceTickDefinition rule)
+    private static bool IsForwardingCall(TraceTick tick, TraceTrackRule rule)
         => rule.Source is TraceTickSourceType.RowReturn or TraceTickSourceType.Open && OperatorClassifier.IsComputeScalar(tick.Operator);
 
     private static string? GetPlaceholder(TraceResult trace,
@@ -417,27 +453,29 @@ public static partial class TraceTickTracks
                                           string? result)
         => name switch
         {
-            _ when IsPlaceholder(name, TraceTickDefinition.OperatorNamePlaceholder) => tick.Operator.OperatorDescription,
-            _ when IsPlaceholder(name, TraceTickDefinition.ParentOperatorNamePlaceholder) => getParentName(tick),
+            _ when IsPlaceholder(name, TraceTrackRule.OperatorNamePlaceholder) => tick.Operator.OperatorDescription,
+            _ when IsPlaceholder(name, TraceTrackRule.ParentOperatorNamePlaceholder) => getParentName(tick),
             _ when IsPredicatePlaceholder(name) => getPredicate(tick, name)?.ToString() ?? string.Empty,
-            _ when IsPlaceholder(name, TraceTickDefinition.FunctionPlaceholder) => tick.Node.Symbol,
-            _ when IsPlaceholder(name, TraceTickDefinition.RowCallPlaceholder)
-                => trace.RowReturnMarks.IsBatch(tick.Operator) ? BatchReturnsTitle : RowReturnsTitle,
-            _ when IsPlaceholder(name, TraceTickDefinition.RowUnitPlaceholder)
-                => trace.RowReturnMarks.IsBatch(tick.Operator) ? BatchUnit : RowUnit,
-            _ when IsPlaceholder(name, TraceTickDefinition.PagePlaceholder)
+            _ when IsPlaceholder(name, TraceTrackRule.FunctionPlaceholder) => tick.Node.Symbol,
+            _ when IsPlaceholder(name, TraceTrackRule.RowCallPlaceholder)
+                => trace.SourceTracks.RowReturns.IsBatch(tick.Operator) ? BatchReturnsTitle : RowReturnsTitle,
+            _ when IsPlaceholder(name, TraceTrackRule.RowUnitPlaceholder)
+                => trace.SourceTracks.RowReturns.IsBatch(tick.Operator) ? BatchUnit : RowUnit,
+            _ when IsPlaceholder(name, TraceTrackRule.PagePlaceholder)
                 => GetPage(trace, tick) is { } page ? GetPageLink(page, GetSlot(trace, tick)) : UnknownValue,
-            _ when IsPlaceholder(name, TraceTickDefinition.SlotPlaceholder)
+            _ when IsPlaceholder(name, TraceTrackRule.SlotPlaceholder)
                 => GetSlot(trace, tick)?.ToString(CultureInfo.CurrentCulture) ?? UnknownValue,
-            _ when IsPlaceholder(name, TraceTickDefinition.HeaderFieldPlaceholder)
+            _ when IsPlaceholder(name, TraceTrackRule.HeaderFieldPlaceholder)
                 => trace.PageAccesses.GetHeaderAccess(tick.Span.From.Position) is { } header
-                    ? string.Join(TraceTickDefinition.ListSeparator, header.GetFields())
+                    ? string.Join(TraceTrackRule.ListSeparator, header.GetFields())
                     : UnknownValue,
-            _ when IsPlaceholder(name, TraceTickDefinition.ResultPlaceholder) => result,
-            _ when IsPlaceholder(name, TraceTickDefinition.PartitionPlaceholder)
+            _ when IsPlaceholder(name, TraceTrackRule.ResultPlaceholder) => result,
+            _ when IsPlaceholder(name, TraceTrackRule.PartitionPlaceholder)
                 => trace.HashTables.GetLocation(tick)?.Partition.ToString(CultureInfo.CurrentCulture) ?? UnknownValue,
-            _ when IsPlaceholder(name, TraceTickDefinition.BucketPlaceholder)
-                => trace.HashTables.GetLocation(tick)?.Bucket.ToString(CultureInfo.CurrentCulture) ?? UnknownValue,
+            _ when IsPlaceholder(name, TraceTrackRule.BucketPlaceholder)
+                => trace.HashTables.GetLocation(tick) is { } location
+                    ? GetHashLink(location.Group, location.Partition, location.Bucket)
+                    : UnknownValue,
             _ => null
         };
 
@@ -453,8 +491,8 @@ public static partial class TraceTickTracks
     private static bool IsPlaceholder(string name, string placeholder) => name.Equals(placeholder, StringComparison.OrdinalIgnoreCase);
 
     private static bool IsPredicatePlaceholder(string name)
-        => IsPlaceholder(name, TraceTickDefinition.ExpressionPlaceholder)
-           || name.StartsWith(TraceTickDefinition.ExecutionPlanPrefix, StringComparison.OrdinalIgnoreCase);
+        => IsPlaceholder(name, TraceTrackRule.ExpressionPlaceholder)
+           || name.StartsWith(TraceTrackRule.ExecutionPlanPrefix, StringComparison.OrdinalIgnoreCase);
 
     private static string GetDescriptionTemplate(TraceTrackStep step)
         => (step.IsReturn ? step.Rule.ReturnDescription : step.Rule.Description) ?? string.Empty;
@@ -463,12 +501,13 @@ public static partial class TraceTickTracks
         => trace.PageAccesses.GetRowAccess(tick.Span.From.Position)?.Page
            ?? trace.PageAccesses.GetHeaderAccess(tick.Span.From.Position)?.Access.Page
            ?? trace.PageAccesses.GetFetch(tick.Span.From.Position)?.Page
-           ?? GetRead(tick, trace.CallStore)?.Page;
+           ?? GetRead(tick, trace.CallStore)?.Page
+           ?? GetRowId(trace, tick)?.Page;
 
     private static int? GetSlot(TraceResult trace, TraceTick tick)
         => trace.PageAccesses.GetRowAccess(tick.Span.From.Position) is { Offset: { } offset } access
             ? trace.BufferPool.GetLayout(access.Page, access.DatabaseId)?.GetSlot(offset)
-            : null;
+            : GetRowId(trace, tick)?.Slot;
 
     private static (PageAddress Page, int PageCount, bool IsReadAhead)? GetRead(TraceTick tick, TraceCallStore calls)
         => tick.Node.Frame is { } frame
@@ -510,7 +549,7 @@ public static partial class TraceTickTracks
 
     private static TraceTickTrack WithRowReturns(TraceTickTrack track,
                                                  TraceRowReturnMarkMap marks,
-                                                 IReadOnlyList<TraceTickDefinition> rules,
+                                                 IReadOnlyList<TraceTrackRule> rules,
                                                  SKColor[] colours,
                                                  int[] ruleByValue)
     {
@@ -534,9 +573,9 @@ public static partial class TraceTickTracks
     }
 
     private static TraceTickTrack WithWatches(TraceTickTrack track,
-                                              IReadOnlyList<TraceTickDefinition> rules,
+                                              IReadOnlyList<TraceTrackRule> rules,
                                               int[] ruleByValue,
-                                              Func<TraceTickDefinition, TraceWatch> getWatch)
+                                              Func<TraceTrackRule, TraceWatch> getWatch)
     {
         string? GetText(TraceTick tick)
             => ruleByValue[tick.Value] is >= 0 and var rule && getWatch(rules[rule]).GetValue(tick) is { } value
@@ -552,7 +591,7 @@ public static partial class TraceTickTracks
         };
     }
 
-    private static IEnumerable<string> GetDetails(TraceResult trace, TraceTickDefinition rule, TraceTick tick) => rule.Source switch
+    private static IEnumerable<string> GetDetails(TraceResult trace, TraceTrackRule rule, TraceTick tick) => rule.Source switch
     {
         TraceTickSourceType.RowAccess => GetRowAccessDetails(tick, trace.PageAccesses, trace.BufferPool),
         TraceTickSourceType.PageHeaderAccess => GetHeaderAccessDetails(tick, trace.PageAccesses),
@@ -581,7 +620,7 @@ public static partial class TraceTickTracks
         yield return pool.GetLayout(access.Page, access.DatabaseId)?.GetSlot(offset) is { } slot ? $"Slot {slot}" : $"Offset 0x{offset:X}";
     }
 
-    private static List<TraceTrackStep> GetRuleSteps(IEnumerable<TraceTickTrack> tracks, Func<TraceTickDefinition, bool> isIncluded)
+    private static List<TraceTrackStep> GetRuleSteps(IEnumerable<TraceTickTrack> tracks, Func<TraceTrackRule, bool> isIncluded)
     {
         var steps = new List<TraceTrackStep>();
 

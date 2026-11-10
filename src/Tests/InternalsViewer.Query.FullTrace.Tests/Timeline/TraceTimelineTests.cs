@@ -241,7 +241,6 @@ public class TraceTimelineTests
         Assert.Equal([[20d], [25d, 35d]], rows.Select(r => Starts(r)));
         Assert.Equal([2, 3, 3], rows.SelectMany(r => Enumerable.Range(0, r.Count).Select(r.GetCallNodeIndex)));
         Assert.Same(source.Store, thread.Store);
-        Assert.Equal(0, rows.Sum(r => r.Bytes));
     }
 
     [Fact]
@@ -259,8 +258,6 @@ public class TraceTimelineTests
         Assert.Equal([8d, 60d, 78d], Ends(row));
         Assert.Equal([1, 2, 1], Enumerable.Range(0, row.Count).Select(row.GetCallNodeIndex));
         Assert.Same(source.Store, thread.Store);
-        Assert.Equal(3 * sizeof(int), row.Bytes);
-        Assert.Equal(0, thread.Rows[1].Bytes);
     }
 
     [Fact]
@@ -276,7 +273,6 @@ public class TraceTimelineTests
         Assert.Equal([[10d, 80d], [8d, 30d, 40d, 78d]], thread.Rows.Select(r => Ends(r)));
         Assert.Same(source.Store, thread.Store);
         Assert.Same(source.Rows[1], thread.Rows[1]);
-        Assert.Equal(2 * sizeof(int), thread.Rows[0].Bytes);
     }
 
     [Fact]
@@ -320,7 +316,6 @@ public class TraceTimelineTests
         Assert.Equal([[10d, 40d], [8d, 38d]], thread.Rows.Select(r => Ends(r)));
         Assert.Equal([0, 0, 1, 1], thread.Rows.SelectMany(r => Enumerable.Range(0, r.Count).Select(r.GetCallNodeIndex)));
         Assert.Equal(4, thread.CallCount);
-        Assert.Equal(0, thread.Rows.Sum(r => r.Bytes));
     }
 
     [Fact]

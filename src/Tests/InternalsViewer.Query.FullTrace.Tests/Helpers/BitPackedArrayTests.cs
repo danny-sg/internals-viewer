@@ -21,7 +21,6 @@ public class BitPackedArrayTests
         var packed = BitPackedArray.Pack([0, 0, 0]);
 
         Assert.Equal(0, packed.Width);
-        Assert.Equal(0, packed.Bytes);
         Assert.Equal([0, 0, 0], Enumerable.Range(0, packed.Count).Select(i => packed[i]));
     }
 

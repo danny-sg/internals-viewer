@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.WinUI.Controls;
 using InternalsViewer.Execution.AccessPaths.Text;
+using InternalsViewer.Query.FullTrace;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Plan.Enums;
 using Microsoft.UI;
@@ -20,7 +21,8 @@ public sealed partial class GuideStepItem(int index,
                                           int end,
                                           PredicateText? predicate = null,
                                           PlanStepPlacement placement = PlanStepPlacement.Operator,
-                                          bool isSticky = false)
+                                          bool isSticky = false,
+                                          TracePosition position = default)
     : ObservableObject
 {
     private const double CodeFontSize = 12;
@@ -36,6 +38,9 @@ public sealed partial class GuideStepItem(int index,
 
     [ObservableProperty]
     private bool _isSticking;
+
+    [ObservableProperty]
+    private string _positionText = string.Empty;
 
     public int Index => index;
 
@@ -62,6 +67,8 @@ public sealed partial class GuideStepItem(int index,
     public PlanStepPlacement Placement => placement;
 
     public bool IsSticky => isSticky;
+
+    public TracePosition Position => position;
 
     public bool HasPredicate => predicate is { IsEmpty: false };
 

@@ -1,13 +1,12 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
-using InternalsViewer.Query.FullTrace.Memory.BufferPool.Capture;
 using InternalsViewer.Query.FullTrace.Native;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 
-namespace InternalsViewer.Query.FullTrace.Tests.Memory.BufferPool.Capture;
+namespace InternalsViewer.Query.FullTrace.Tests.Memory.BufferPool;
 
 [Trait("Category", "Unit")]
-public class TracePageReadRecorderTests
+public class TracePageReadListBuilderTests
 {
     private const ulong Frame = 0x20A_5448_0000;
 
@@ -65,7 +64,7 @@ public class TracePageReadRecorderTests
     public void Reads_On_Different_Threads_Are_Kept_Apart()
         => Assert.Equal(2, Record(Read(3, Frame + 0x5B3, 4), Read(4, Frame + 0x5B7, 4, OtherThread)).Count);
 
-    private static TracePageReadRecorder Recorder()
+    private static TracePageReadList.Builder Recorder()
     {
         var builder = new TraceBufferPool.Builder();
 
@@ -73,7 +72,7 @@ public class TracePageReadRecorderTests
 
         builder.Add(new TraceBufferPage(OtherFrame, new PageAddress(1, 406), Database, At(2)));
 
-        return new TracePageReadRecorder(builder.Build());
+        return new TracePageReadList.Builder(builder.Build());
     }
 
     private static List<TracePageRead> Record(params WatchHit[] hits)

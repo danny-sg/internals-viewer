@@ -27,8 +27,6 @@ public sealed partial class AddressMap
 
     public int Count => Entries.Values.Sum(e => e.Length);
 
-    internal long Bytes => Count * (long)Unsafe.SizeOf<StoredEntry>() + Labels.Length * (long)Unsafe.SizeOf<Label>();
-
     private Dictionary<ulong, StoredEntry[]> Entries { get; }
 
     private Label[] Labels { get; }

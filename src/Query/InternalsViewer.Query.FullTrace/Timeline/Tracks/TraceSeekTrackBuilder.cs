@@ -86,7 +86,7 @@ internal static class TraceSeekTrackBuilder
             }
         }
 
-        return TraceTickSeries.Build(timeline, sources, lifetimes, enclosing);
+        return TraceTrackBuilder.Build(timeline, sources, lifetimes, enclosing);
     }
 
     private static TraceSpanLocation GetTickLocation(TraceTimeline timeline, TraceCallStore calls, TraceSpanLocation descent)

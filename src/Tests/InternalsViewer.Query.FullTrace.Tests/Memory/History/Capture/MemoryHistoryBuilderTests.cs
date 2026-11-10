@@ -157,7 +157,7 @@ public class MemoryHistoryBuilderTests
     [Fact]
     public void Overlapping_Allocations_Are_Watched_As_One_Range()
     {
-        var ranges = MemoryHistoryBuilder.GetRanges([Block(Page, 0x2000, from: 1),
+        var ranges = MemoryWatchPlanner.GetRanges([Block(Page, 0x2000, from: 1),
                                                      Block(Page + 0x100, 0x20, from: 2),
                                                      Block(Owned, 0x10, from: 3)], []);
 
@@ -167,7 +167,7 @@ public class MemoryHistoryBuilderTests
     [Fact]
     public void Other_Ranges_Join_The_Allocations_They_Overlap()
     {
-        var ranges = MemoryHistoryBuilder.GetRanges([Block(Page, 0x2000, from: 1)],
+        var ranges = MemoryWatchPlanner.GetRanges([Block(Page, 0x2000, from: 1)],
                                                     [new WatchRange(Page + 0x1000, 0x2000), new WatchRange(Owned, 0x10)]);
 
         Assert.Equal([new WatchRange(Page, 0x3000), new WatchRange(Owned, 0x10)], ranges);
@@ -178,7 +178,7 @@ public class MemoryHistoryBuilderTests
     {
         var store = new TraceCallStore.Builder().Build();
 
-        var allocations = MemoryHistoryBuilder.GetAllocations(store,
+        var allocations = MemoryWatchPlanner.GetAllocations(store,
                                                               [],
                                                               [Block(Page, 0x2000, from: 1)],
                                                               [Block(Page, 0x2000, from: 2), Block(Owned, 0x2000, from: 3)]);
@@ -380,7 +380,7 @@ public class MemoryHistoryBuilderTests
                                        new([ChunkHit.Create(Hit(3, Owned, 1), 0)], [1])],
                                       1);
 
-        var (store, _) = new MemoryHistoryBuilder.Recording([new MemoryHistoryAllocation(Block(Owned, 0x10, from: 1), false)],
+        var (store, _) = new MemoryHistoryBuilder([new MemoryHistoryAllocation(Block(Owned, 0x10, from: 1), false)],
                                                             [0],
                                                             new Dictionary<ulong, TracePosition>(),
                                                             null).Build(watched);
@@ -398,7 +398,7 @@ public class MemoryHistoryBuilderTests
                                        new([ChunkHit.Create(other, 0)], [2])],
                                       1);
 
-        var (store, _) = new MemoryHistoryBuilder.Recording([new MemoryHistoryAllocation(Block(Owned, 0x10, from: 1), false)],
+        var (store, _) = new MemoryHistoryBuilder([new MemoryHistoryAllocation(Block(Owned, 0x10, from: 1), false)],
                                                             [0],
                                                             new Dictionary<ulong, TracePosition>(),
                                                             null).Build(watched);
@@ -417,7 +417,7 @@ public class MemoryHistoryBuilderTests
                                                       [1, 1, 1, 1])],
                                       2);
 
-        var (_, counts) = new MemoryHistoryBuilder.Recording([new MemoryHistoryAllocation(Block(Owned, 0x10, from: 1), false),
+        var (_, counts) = new MemoryHistoryBuilder([new MemoryHistoryAllocation(Block(Owned, 0x10, from: 1), false),
                                                               new MemoryHistoryAllocation(Block(Page, 0x2000, from: 1), true)],
                                                              [0, 0],
                                                              new Dictionary<ulong, TracePosition>(),
@@ -431,7 +431,7 @@ public class MemoryHistoryBuilderTests
     {
         var watched = new WatchResult([new([ChunkHit.Create(Hit(2, Owned, 1), 0)], [1])], 1);
 
-        var (store, counts) = new MemoryHistoryBuilder.Recording([new MemoryHistoryAllocation(Block(Owned, 0xC0, from: 1),
+        var (store, counts) = new MemoryHistoryBuilder([new MemoryHistoryAllocation(Block(Owned, 0xC0, from: 1),
                                                                                               IsClerkPage: true,
                                                                                               IsBuffer: true)],
                                                                  [0],
@@ -444,7 +444,7 @@ public class MemoryHistoryBuilderTests
     [Fact]
     public void The_Watch_Keeps_Only_Writes_That_Touch_A_Live_Allocation()
     {
-        var keep = MemoryHistoryBuilder.GetWatchFilter([new MemoryHistoryAllocation(Block(Owned, 0x10, from: 2, to: 6), false)]);
+        var keep = MemoryWatchPlanner.GetWatchFilter([new MemoryHistoryAllocation(Block(Owned, 0x10, from: 2, to: 6), false)]);
 
         Assert.Equal([false, true, true, false, false],
                      [keep(Hit(1, Owned, 4)),
@@ -479,7 +479,7 @@ public class MemoryHistoryBuilderTests
                                        [new(runs, [1, 2, 3, 4, 1, 2, 7, 4])],
                                        2);
 
-        var recording = new MemoryHistoryBuilder.Recording([], [], new Dictionary<ulong, TracePosition>(), null, stack);
+        var recording = new MemoryHistoryBuilder([], [], new Dictionary<ulong, TracePosition>(), null, stack);
 
         var store = recording.Build(WatchResult.Empty).Store;
 
@@ -502,7 +502,7 @@ public class MemoryHistoryBuilderTests
                                        [new(runs, [1, 2, 3, 4, 1, 2, 7, 4])],
                                        2);
 
-        var recording = new MemoryHistoryBuilder.Recording([new MemoryHistoryAllocation(Block(Owned, 0x10, from: 1), false)],
+        var recording = new MemoryHistoryBuilder([new MemoryHistoryAllocation(Block(Owned, 0x10, from: 1), false)],
                                                            [0],
                                                            new Dictionary<ulong, TracePosition>(),
                                                            null,
@@ -564,7 +564,7 @@ public class MemoryHistoryBuilderTests
             data.AddRange(bytes);
         }
 
-        return new MemoryHistoryBuilder.Recording([],
+        return new MemoryHistoryBuilder([],
                                                   [],
                                                   new Dictionary<ulong, TracePosition>(),
                                                   null,
@@ -648,7 +648,7 @@ public class MemoryHistoryBuilderTests
 
         var allocations = blocks.Select(b => new MemoryHistoryAllocation(b, clerkPages?.Contains(b.Address) ?? false)).ToList();
 
-        var recording = new MemoryHistoryBuilder.Recording(allocations,
+        var recording = new MemoryHistoryBuilder(allocations,
                                                            owners ?? new ulong[blocks.Length],
                                                            iterators ?? new Dictionary<ulong, TracePosition>(),
                                                            timeline);

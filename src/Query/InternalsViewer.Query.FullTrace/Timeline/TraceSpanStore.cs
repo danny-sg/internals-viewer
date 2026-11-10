@@ -12,8 +12,6 @@ internal sealed class TraceSpanStore(int count)
 
     public byte[] Flags { get; } = new byte[count];
 
-    public long Bytes => Froms.Length * (2L * sizeof(ulong) + sizeof(int) + sizeof(uint) + sizeof(byte));
-
     public int GetCallIndex(int index) => Calls[index] == uint.MaxValue ? -1 : (int)Calls[index];
 
     public void Set(int index, TracePosition from, TracePosition to, int callNodeIndex, uint callIndex, byte flags)

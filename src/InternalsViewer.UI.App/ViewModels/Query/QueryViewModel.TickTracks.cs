@@ -11,10 +11,11 @@ using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
-using InternalsViewer.Query.FullTrace.Timeline.Ticks.Enums;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Plans.Enums;
+using InternalsViewer.Query.Plans.Joins;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Operators;
 using InternalsViewer.UI.App.Helpers;
@@ -30,10 +31,6 @@ public sealed partial class QueryViewModel
 
     private TraceTickTrackStore TickTrackStore { get; }
 
-    private Dictionary<TraceTickDefinition, TraceTickSeries> RuleSeries { get; } = new(ReferenceEqualityComparer.Instance);
-
-    private Dictionary<TraceTickDefinition, TraceWatch> RuleWatches { get; } = new(ReferenceEqualityComparer.Instance);
-
     private Dictionary<string, TickTrackCache> TrackSeries { get; } = new(StringComparer.OrdinalIgnoreCase);
 
     private ILookup<(PlanNode Puller, ExpressionPullSite Site), ExpressionPull> ExpressionPulls
@@ -45,9 +42,9 @@ public sealed partial class QueryViewModel
 
     private Dictionary<PlanNode, List<(string Column, SqlDbType? Type)>> SeekKeyColumns { get; } = [];
 
-    public void AddTickTrack(TraceTickDefinition definition) => TickTrackStore.Add(definition);
+    public void AddTickTrack(TraceTrackRule definition) => TickTrackStore.Add(definition);
 
-    public void ReplaceTickTrack(TraceTickDefinition existing, TraceTickDefinition definition)
+    public void ReplaceTickTrack(TraceTrackRule existing, TraceTrackRule definition)
         => TickTrackStore.Replace(existing, definition);
 
     public IReadOnlyList<TraceFunctionChoice> GetFunctionChoices()
@@ -131,10 +128,6 @@ public sealed partial class QueryViewModel
 
         SeekKeyColumns.Clear();
 
-        RuleSeries.Clear();
-
-        RuleWatches.Clear();
-
         TrackSeries.Clear();
     }
 
@@ -149,16 +142,6 @@ public sealed partial class QueryViewModel
 
         var definitions = TickTrackStore.Definitions;
 
-        foreach (var stale in RuleSeries.Keys.Where(k => !definitions.Contains(k, ReferenceEqualityComparer.Instance)).ToList())
-        {
-            RuleSeries.Remove(stale);
-        }
-
-        foreach (var stale in RuleWatches.Keys.Where(k => !definitions.Contains(k, ReferenceEqualityComparer.Instance)).ToList())
-        {
-            RuleWatches.Remove(stale);
-        }
-
         var groups = definitions.GroupBy(d => d.Name, StringComparer.OrdinalIgnoreCase).ToList();
 
         var names = groups.Select(g => g.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -172,12 +155,12 @@ public sealed partial class QueryViewModel
 
         for (var index = 0; index < groups.Count; index++)
         {
-            TraceTickDefinition[] rules = [.. groups[index]];
+            TraceTrackRule[] rules = [.. groups[index]];
 
             if (!TrackSeries.TryGetValue(groups[index].Key, out var cache)
                 || !cache.Rules.SequenceEqual(rules, ReferenceEqualityComparer.Instance))
             {
-                var series = TraceTickSeries.BuildTrack(trace, rules, r => GetRuleSeries(trace, r));
+                var series = TraceTrackBuilder.Build(trace, rules, GetStatementOperator(), GetPulledComputeScalars);
 
                 cache = new TickTrackCache(rules, series);
 
@@ -191,39 +174,10 @@ public sealed partial class QueryViewModel
                                               TickTrackStore.IsAdded,
                                               GetParentOperatorName,
                                               GetStepPredicate,
-                                              r => GetRuleWatch(trace, r)));
+                                              cache.Series.GetWatch));
         }
 
         TickTracks = tracks;
-    }
-
-    private TraceTickSeries GetRuleSeries(TraceResult trace, TraceTickDefinition rule)
-    {
-        if (rule.Source == TraceTickSourceType.Watch)
-        {
-            return GetRuleWatch(trace, rule).Series;
-        }
-
-        if (!RuleSeries.TryGetValue(rule, out var series))
-        {
-            var statement = GetStatementOperator();
-
-            series = rule.Source switch
-            {
-                TraceTickSourceType.Evaluate
-                    => TraceTickSeries.BuildAssigned(trace,
-                                                     rule,
-                                                     statement,
-                                                     p => GetPulledComputeScalars(p, (ExpressionPullSite)rule.Value)),
-                TraceTickSourceType.Statement
-                    => TraceTickSeries.BuildAssigned(trace, rule, statement, _ => statement is null ? [] : [statement]),
-                _ => TraceTickSeries.Build(trace, rule)
-            };
-
-            RuleSeries[rule] = series;
-        }
-
-        return series;
     }
 
     private ExecutionOperatorEvent? GetStatementOperator()
@@ -260,12 +214,12 @@ public sealed partial class QueryViewModel
 
     private PredicateText? GetStepPredicate(TraceTick tick, string name)
     {
-        if (name.Equals(TraceTickDefinition.ExpressionPlaceholder, StringComparison.OrdinalIgnoreCase))
+        if (name.Equals(TraceTrackRule.ExpressionPlaceholder, StringComparison.OrdinalIgnoreCase))
         {
             return GetEvaluatedValues(tick).GetText(GetPlanExpressions(tick.Operator));
         }
 
-        if (!name.StartsWith(TraceTickDefinition.ExecutionPlanPrefix, StringComparison.OrdinalIgnoreCase)
+        if (!name.StartsWith(TraceTrackRule.ExecutionPlanPrefix, StringComparison.OrdinalIgnoreCase)
             || GetPlanNode(tick.Operator) is not { } node)
         {
             return null;
@@ -278,20 +232,27 @@ public sealed partial class QueryViewModel
             PlanValues[node] = values;
         }
 
-        return name.Equals(TraceTickDefinition.CurrentRangePlaceholder, StringComparison.OrdinalIgnoreCase)
+        return name.Equals(TraceTrackRule.CurrentRangePlaceholder, StringComparison.OrdinalIgnoreCase)
             ? GetCurrentRange(tick, node, values)
-            : values.GetValueOrDefault(name[TraceTickDefinition.ExecutionPlanPrefix.Length..]);
+            : values.GetValueOrDefault(name[TraceTrackRule.ExecutionPlanPrefix.Length..]);
     }
 
     private PredicateText? GetCurrentRange(TraceTick tick, PlanNode node, Dictionary<string, PredicateText> values)
         => Trace is not { } trace
             ? PlanNodePropertyBuilder.GetSeekRange(values, 0)
-            : GetSeekKeyText(trace, tick, node) ?? PlanNodePropertyBuilder.GetSeekRange(values, trace.GetSeekRange(tick));
+            : GetRowIdText(trace, tick, node)
+              ?? GetSeekKeyText(trace, tick, node)
+              ?? PlanNodePropertyBuilder.GetSeekRange(values, trace.SourceTracks.GetSeekRange(tick));
+
+    private static PredicateText? GetRowIdText(TraceResult trace, TraceTick tick, PlanNode node)
+        => CorrelatedJoinResolver.IsRidLookup(node) && TraceTickTracks.GetRowId(trace, tick) is { } rowId
+            ? TraceTickTracks.GetRowIdText(rowId)
+            : null;
 
     private PredicateText? GetSeekKeyText(TraceResult trace, TraceTick tick, PlanNode node)
     {
         return node.PredicateInfo is { IsCorrelatedEquality: true } info
-            ? TraceTickTracks.GetSeekKeyText(GetSeekKeyColumns(node, info), trace.GetSeekKeys(tick))
+            ? TraceTickTracks.GetSeekKeyText(GetSeekKeyColumns(node, info), trace.SourceTracks.GetSeekKeys(tick))
             : null;
     }
 
@@ -328,17 +289,5 @@ public sealed partial class QueryViewModel
         return (plan ?? ExecutionPlans.FirstOrDefault())?.Expressions;
     }
 
-    private TraceWatch GetRuleWatch(TraceResult trace, TraceTickDefinition rule)
-    {
-        if (!RuleWatches.TryGetValue(rule, out var watch))
-        {
-            watch = TraceWatch.Build(trace, rule);
-
-            RuleWatches[rule] = watch;
-        }
-
-        return watch;
-    }
-
-    private sealed record TickTrackCache(TraceTickDefinition[] Rules, TraceTickTrackSeries Series);
+    private sealed record TickTrackCache(TraceTrackRule[] Rules, TraceTickTrackSeries Series);
 }

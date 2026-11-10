@@ -7,14 +7,11 @@ using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
-using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Timeline;
-using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.Query.Memory;
-using InternalsViewer.Query.Plans.Operators;
 
 namespace InternalsViewer.Query.FullTrace;
 
@@ -50,39 +47,17 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
     public MemoryHistoryStore MemoryHistory { get; init; } = MemoryHistoryStore.Empty;
 
-    public TraceRowReturnMarkMap RowReturnMarks { get; init; } = TraceRowReturnMarkMap.Empty;
-
-    public TraceTickSeries RowAccesses { get; init; } = TraceTickSeries.Empty;
-
-    public TraceTickSeries PageHeaderAccesses { get; init; } = TraceTickSeries.Empty;
-
-    public TraceTickSeries PageFetches { get; init; } = TraceTickSeries.Empty;
-
-    public TraceTickSeries Seeks { get; init; } = TraceTickSeries.Empty;
-
-    public TraceTickSeries Opens => field ??= TraceOperatorOpenTrackBuilder.Build(Timeline, Lifetimes);
+    public TraceSourceTrackMap SourceTracks
+    {
+        get => field ??= new TraceSourceTrackMap(Timeline, CallStore, Lifetimes);
+        init;
+    }
 
     public TraceHashTableMap HashTables => field ??= new TraceHashTableMap(this);
 
     public IReadOnlyList<CallTreeNode> QueryRoots => Roots ??= QueryExecutionCropper.GetRoots(CallTree);
 
     public TraceTimeline QueryTimeline => CroppedTimeline ??= GetQueryTimeline();
-
-    internal TraceTickSeries SeekRanges => field ??= TraceSeekRangeTrackBuilder.Build(Timeline, CallStore, Lifetimes, EnclosingCalls);
-
-    internal TraceTickSeries SeekKeys => field ??= TraceSeekRangeTrackBuilder.BuildKeys(Timeline, CallStore, Lifetimes, EnclosingCalls);
-
-    internal EnclosingOperatorCallIndex PullerCalls
-        => field ??= EnclosingOperatorCallIndex.Build(CallStore,
-                                                      Lifetimes.OperatorsByInstance
-                                                               .Where(o => !OperatorClassifier.IsComputeScalar(o.Value))
-                                                               .ToDictionary(o => o.Key, o => o.Value));
-
-    internal EnclosingOperatorCallIndex EnclosingCalls
-    {
-        get => field ??= EnclosingOperatorCallIndex.Build(CallStore, Lifetimes.OperatorsByInstance);
-        init;
-    }
 
     private IReadOnlyList<CallTreeNode>? Roots { get; set; }
 
@@ -92,36 +67,6 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
     private Dictionary<TraceTimeline, Dictionary<CallTreeNode, int[]>> ActivityByWindow { get; } =
         new(ReferenceEqualityComparer.Instance);
-
-    public int GetSeekRange(TraceTick tick)
-        => TraceSeekRangeTrackBuilder.GetRange(SeekRanges, CallStore, tick.Operator, tick.Thread, tick.Span.From.Position);
-
-    public List<VariantLocator> GetSeekKeys(TraceTick tick)
-        => TraceSeekRangeTrackBuilder.GetKeys(SeekKeys, CallStore, tick.Operator, tick.Thread, tick.Span.From.Position);
-
-    internal IEnumerable<(string Component, long Items, long? Bytes)> GetComponentSizes()
-    {
-        yield return ("Timeline Spans", Timeline.SpanCount, Timeline.Bytes);
-        yield return ("Call Log Calls", CallStore.CallCount, CallStore.Size);
-        yield return ("Locator Entries", CallStore.LocatorCount, CallStore.LocatorTableBytes);
-        yield return ("Unique Locators", CallStore.UniqueLocatorCount, CallStore.UniqueLocatorBytes);
-        yield return ("Memory Map Entries", AddressMap.Count, AddressMap.Bytes);
-        yield return ("Memory Allocations", Allocation.AllocationCount, Allocation.Bytes);
-        yield return ("Memory History Writes", MemoryHistory.WriteCount, MemoryHistory.WriteBytes);
-        yield return ("Memory History Reads", MemoryHistory.ReadCount, MemoryHistory.ReadBytes);
-        yield return ("Buffer Pool Pages", BufferPool.Count, BufferPool.Bytes);
-        yield return ("Page Reads", PageReads.Count, PageReads.Bytes);
-        yield return ("Page Accesses", PageAccesses.Count, PageAccesses.Bytes);
-        yield return ("Call Tree Nodes", CallTree.GetNodes().LongCount(), null);
-        yield return ("Operator Lifetimes", Lifetimes.Count, null);
-        yield return ("Row Access Ticks", RowAccesses.Count, RowAccesses.Bytes);
-        yield return ("Page Header Access Ticks", PageHeaderAccesses.Count, PageHeaderAccesses.Bytes);
-        yield return ("Page Fetch Ticks", PageFetches.Count, PageFetches.Bytes);
-        yield return ("Seek Ticks", Seeks.Count, Seeks.Bytes);
-        yield return ("Open Ticks", Opens.Count, Opens.Bytes);
-        yield return ("Row Return Marks", RowReturnMarks.Count, RowReturnMarks.Ticks.Bytes);
-        yield return ("HoBt Accesses", HoBtAccess.Count, null);
-    }
 
     public void SetActivityWindow(TraceTimeline window)
     {

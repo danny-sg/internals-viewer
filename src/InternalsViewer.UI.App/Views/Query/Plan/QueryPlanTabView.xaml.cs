@@ -173,15 +173,22 @@ public sealed partial class QueryPlanTabView : UserControl
     public Visibility GetGuidePaneVisibility(bool isGuideMode, bool isVisible)
         => isGuideMode && isVisible ? Visibility.Visible : Visibility.Collapsed;
 
+    public Visibility GetGuideBarVisibility(bool isGuideMode, bool isStepsVisible)
+        => isGuideMode && !isStepsVisible ? Visibility.Visible : Visibility.Collapsed;
+
     private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
     {
         RefreshDetailPane();
         Subscribe();
+
+        PlaceGuideCommandBar();
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         Subscribe();
+
+        PlaceGuideCommandBar();
 
         // Reflect any state that changed while this tab was hidden.
         ApplyToPlans(p =>
@@ -263,6 +270,7 @@ public sealed partial class QueryPlanTabView : UserControl
                 DispatcherQueue.TryEnqueue(UpdateStickyStep);
                 break;
             case nameof(QueryViewModel.IsGuideStepsVisible):
+                PlaceGuideCommandBar();
                 DispatcherQueue.TryEnqueue(ScrollToCurrentStep);
                 break;
             case nameof(QueryViewModel.IsAnnotationsVisible):
@@ -484,14 +492,20 @@ public sealed partial class QueryPlanTabView : UserControl
 
     private void OnGuideLinkClicked(object? sender, LinkClickedEventArgs e)
     {
-        if (!TraceTickTracks.TryGetPageLink(e.Uri, out var page, out var slot))
+        if (TraceTickTracks.TryGetPageLink(e.Uri, out var page, out var slot))
+        {
+            ViewModel?.OpenPage(page, slot);
+        }
+        else if (TraceTickTracks.TryGetHashLink(e.Uri, out var group, out var partition))
+        {
+            ViewModel?.OpenHashTable(group, partition);
+        }
+        else
         {
             return;
         }
 
         e.Handled = true;
-
-        ViewModel?.OpenPage(page, slot);
 
         if (sender is MarkdownTextBlock block)
         {
@@ -580,6 +594,22 @@ public sealed partial class QueryPlanTabView : UserControl
     }
 
     private void CloseStepsPane() => ViewModel?.IsGuideStepsVisible = false;
+
+    private void PlaceGuideCommandBar()
+    {
+        var host = ViewModel?.IsGuideStepsVisible == true ? StepsCommandBarHost : PlanCommandBarHost;
+
+        if (ReferenceEquals(host.Child, GuideCommandBar))
+        {
+            return;
+        }
+
+        PlanCommandBarHost.Child = null;
+
+        StepsCommandBarHost.Child = null;
+
+        host.Child = GuideCommandBar;
+    }
 
     private void CloseDetailPane()
     {

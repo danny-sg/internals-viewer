@@ -128,19 +128,6 @@ public sealed class TraceTickIndex
         return index >= 0 ? Get(index) : null;
     }
 
-    public TraceTick? GetNext(TracePosition after, Func<byte, bool> include)
-    {
-        for (var index = SortedSearch.FirstAfter<TracePoint, TracePosition>(Froms, after, static p => p.Position); index < Count; index++)
-        {
-            if (include(Entries[index].Value))
-            {
-                return Get(index);
-            }
-        }
-
-        return null;
-    }
-
     public TraceTick? GetPrevious(TracePosition before, Func<byte, bool> include)
     {
         var start = SortedSearch.FirstAtOrAfter<TracePoint, TracePosition>(Froms, before, static p => p.Position);

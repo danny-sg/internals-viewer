@@ -17,8 +17,6 @@ internal sealed partial class BitPackedArray
 
     public int Width { get; }
 
-    public long Bytes => Words.Length * sizeof(ulong);
-
     private ulong[] Words { get; }
 
     public int this[int index]

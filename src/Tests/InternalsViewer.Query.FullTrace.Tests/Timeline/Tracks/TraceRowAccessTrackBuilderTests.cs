@@ -10,6 +10,7 @@ using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.Query.Plans.Model;
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRowHelper;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
@@ -28,6 +29,8 @@ public class TraceRowAccessTrackBuilderTests
     private const ulong GetFunction = 0x2000;
 
     private const ulong RecordFunction = 0x3000;
+
+    private const ulong SearchFunction = 0x4000;
 
     private const ulong BufferPool = 0x1F4_0000_0100;
 
@@ -53,6 +56,14 @@ public class TraceRowAccessTrackBuilderTests
         new(-1, Helper, RangeIterator, 1),
         new(0, GetFunction, BufferPool, 1),
         new(0, RecordFunction, 0, 1)
+    ];
+
+    private static readonly CallNode[] SearchNodes =
+    [
+        new(-1, Helper, RangeIterator, 1),
+        new(0, GetFunction, BufferPool, 1),
+        new(0, SearchFunction, 0, 1),
+        new(2, RecordFunction, 0, 1)
     ];
 
     [Fact]
@@ -93,6 +104,14 @@ public class TraceRowAccessTrackBuilderTests
         Assert.Equal(At(20), Assert.Single(Build(reads).GetAllTicks()).Span.From.Position);
     }
 
+    [Fact]
+    public void A_Row_Read_At_The_Slot_A_Page_Search_Returns_Is_Found()
+        => Assert.Equal((byte)TraceRowAccessType.Found, Assert.Single(BuildSearch(returnedSlot: 1).GetAllTicks()).Value);
+
+    [Fact]
+    public void A_Row_Read_At_Another_Slot_In_A_Page_Search_Is_Not_Found()
+        => Assert.Equal((byte)TraceRowAccessType.Access, Assert.Single(BuildSearch(returnedSlot: 0).GetAllTicks()).Value);
+
     private static TraceTickSeries Build(TracePageReadList? headerReads = null)
     {
         var builder = new TraceTimeline.Builder();
@@ -121,8 +140,50 @@ public class TraceRowAccessTrackBuilderTests
 
         store.Add(RecordFunction, 0, Chunk(Call(20, 22, 2, rcx: BufferFrame + 0x5B3)), 1);
 
-        var calls = store.Build();
+        return BuildTicks(timeline, store.Build(), nodes, headerReads, offsets: null);
+    }
 
+    private static TraceTickSeries BuildSearch(ulong returnedSlot)
+    {
+        var builder = new TraceTimeline.Builder();
+
+        builder.Add([Span(0, 10, 60), Span(1, 12, 14), Span(2, 16, 30), Span(3, 20, 22)]);
+
+        var timeline = builder.Build(SearchNodes);
+
+        var tree = new CallTree();
+
+        var range = tree.AddCall(tree.Root, Frame(Helper, RangeIterator, "CQScanRangeNew", "GetRow"), 1);
+
+        var get = tree.AddCall(range, Frame(GetFunction, BufferPool, "BPool", "Get"), 1);
+
+        var search = tree.AddCall(range, Frame(SearchFunction, 0, "PageRef", "SearchPage"), 1);
+
+        var record = tree.AddCall(search, Frame(RecordFunction, 0, "Record", "HasNullbitMap"), 1);
+
+        CallTreeNode[] nodes = [range, get, search, record];
+
+        timeline.MapNodes(nodes);
+
+        var store = new TraceCallStore.Builder();
+
+        store.Add(Helper, RangeIterator, Chunk(Call(10, 60, 0)), 1);
+
+        store.Add(GetFunction, BufferPool, Chunk(Call(12, 14, 1, returnValue: Buffer)), 1);
+
+        store.Add(SearchFunction, 0, Chunk(Call(16, 30, 2, returnValue: returnedSlot)), 1);
+
+        store.Add(RecordFunction, 0, Chunk(Call(20, 22, 3, rcx: BufferFrame + 0x5B3)), 1);
+
+        return BuildTicks(timeline, store.Build(), nodes, headerReads: null, offsets: [0x60, 0x5B0]);
+    }
+
+    private static TraceTickSeries BuildTicks(TraceTimeline timeline,
+                                              TraceCallStore calls,
+                                              CallTreeNode[] nodes,
+                                              TracePageReadList? headerReads,
+                                              ushort[]? offsets)
+    {
         calls.MapNodes(nodes);
 
         timeline.SetCalls(calls);
@@ -131,7 +192,14 @@ public class TraceRowAccessTrackBuilderTests
 
         pool.Add(new TraceBufferPage(BufferFrame, Page, Database, At(1), Buffer));
 
-        var accesses = TracePageAccessList.Build(calls, MemoryHistoryStore.Empty, pool.Build(), headerReads, timeline);
+        if (offsets is not null)
+        {
+            pool.AddLayout(Page, Database, offsets);
+        }
+
+        var buffers = pool.Build();
+
+        var accesses = TracePageAccessList.Build(calls, MemoryHistoryStore.Empty, buffers, headerReads, timeline);
 
         var lifetime = new TraceOperatorLifetime(Thread, Range, 0, [Whole()], MemoryUsageCurve.Empty, timeline.Scale)
         {
@@ -143,7 +211,7 @@ public class TraceRowAccessTrackBuilderTests
         var enclosing = EnclosingOperatorCallIndex.Build(calls, lifetimes.OperatorsByInstance);
 
         return headerReads is null
-            ? TraceRowAccessTrackBuilder.Build(timeline, accesses, lifetimes, enclosing)
+            ? TraceRowAccessTrackBuilder.Build(timeline, calls, accesses, buffers, lifetimes, enclosing)
             : TraceRowAccessTrackBuilder.BuildHeaders(timeline, accesses, lifetimes, enclosing);
     }
 

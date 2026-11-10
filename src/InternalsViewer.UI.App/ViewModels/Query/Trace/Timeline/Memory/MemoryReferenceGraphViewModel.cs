@@ -16,7 +16,7 @@ using Windows.Foundation;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline.Memory;
 
-public sealed partial class MemoryReferenceGraphViewModel : ObservableObject
+public sealed partial class MemoryReferenceGraphViewModel : ObservableObject, IPlayheadDocument
 {
     private const string TitleSuffix = " Graph";
 

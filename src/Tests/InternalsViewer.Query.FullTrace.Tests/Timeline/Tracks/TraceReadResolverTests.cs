@@ -198,9 +198,9 @@ public class TraceReadResolverTests
 
         var trace = new TraceResult(new CallTree(), calls, timeline) { Lifetimes = new TraceOperatorLifetimeList(lifetimes) };
 
-        TraceTickDefinition[] rules = [.. TraceTickDefinition.GetPredefined().Where(d => d.Name == ReadsTrack)];
+        TraceTrackRule[] rules = [.. TraceTrackRule.GetPredefined().Where(d => d.Name == ReadsTrack)];
 
-        return (TraceTickSeries.BuildTrack(trace, rules, r => TraceTickSeries.Build(trace, r)).Series, calls);
+        return (TraceTrackBuilder.BuildTrack(trace, rules, r => TraceTrackBuilder.Build(trace, r)).Series, calls);
     }
 
     private static (PageAddress Page, int PageCount, bool IsReadAhead)? GetRead(TraceCallStore calls, TraceTick read)

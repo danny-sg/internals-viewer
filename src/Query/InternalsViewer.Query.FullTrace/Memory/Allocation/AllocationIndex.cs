@@ -20,10 +20,6 @@ public sealed partial class AllocationIndex
 
     public bool HasWorkspace => !Workspace.IsEmpty;
 
-    internal int AllocationCount => Threads.Values.Sum(t => t.AllocationCount);
-
-    internal long Bytes => Threads.Values.Sum(t => t.Bytes) + InUse.Bytes + Workspace.Bytes;
-
     private Dictionary<uint, ThreadMemory> Threads { get; }
 
     private MemoryUsageCurve InUse { get; }
@@ -174,16 +170,6 @@ public sealed partial class AllocationIndex
             FreeStarts = [.. frees.Select(f => f.Start)];
             FreeTotals = GetRunningTotals([.. frees.Select(f => f.Bytes)]);
         }
-
-        public int AllocationCount => AllocationStarts.Length;
-
-        public long Bytes
-            => (AllocationStarts.Length
-                + AllocationBytes.Length
-                + FreedAt.Length
-                + AllocationTotals.Length
-                + FreeStarts.Length
-                + FreeTotals.Length) * (long)sizeof(ulong);
 
         private TracePosition[] AllocationStarts { get; }
 

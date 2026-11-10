@@ -10,10 +10,6 @@ public sealed partial class TraceThreadClock
 
     public int Count => Sequences.Length;
 
-    internal long Bytes => Sequences.Length * (long)sizeof(uint)
-                           + Starts.Length * (long)sizeof(ulong)
-                           + DeadFroms.Length * 3L * sizeof(ulong);
-
     private uint[] Sequences { get; }
 
     private ulong[] Starts { get; }

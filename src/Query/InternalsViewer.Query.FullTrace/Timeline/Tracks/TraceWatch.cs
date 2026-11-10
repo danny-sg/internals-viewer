@@ -21,7 +21,7 @@ public sealed class TraceWatch
 
     private Dictionary<ExecutionOperatorEvent, Dictionary<uint, List<Change>>> Changes { get; }
 
-    public static TraceWatch Build(TraceResult trace, TraceTickDefinition definition)
+    public static TraceWatch Build(TraceResult trace, TraceTrackRule definition)
     {
         if (definition.Length <= 0 || definition.Offset < 0)
         {
@@ -71,7 +71,7 @@ public sealed class TraceWatch
     }
 
     private static void AddChanges(TraceResult trace,
-                                   TraceTickDefinition definition,
+                                   TraceTrackRule definition,
                                    TraceOperatorLifetime lifetime,
                                    ulong instance,
                                    List<TraceTickSource> sources,
@@ -123,7 +123,7 @@ public sealed class TraceWatch
     }
 
     private static List<(MemoryHistoryWrite Write, byte[] Value)> ReadChanges(MemoryHistoryStore store,
-                                                                              TraceTickDefinition definition,
+                                                                              TraceTrackRule definition,
                                                                               TraceOperatorLifetime lifetime,
                                                                               ulong address)
     {

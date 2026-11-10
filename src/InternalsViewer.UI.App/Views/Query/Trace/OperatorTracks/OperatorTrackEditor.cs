@@ -2,7 +2,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
-using InternalsViewer.Query.FullTrace.Timeline.Ticks;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.UI.App.Controls.Query.Trace.Dialogs;
 using InternalsViewer.UI.App.Services.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Query;
@@ -13,11 +13,11 @@ namespace InternalsViewer.UI.App.Views.Query.Trace.OperatorTracks;
 
 internal static class OperatorTrackEditor
 {
-    public static async Task<TraceTickDefinition?> ShowAsync(XamlRoot root,
-                                                             QueryViewModel viewModel,
-                                                             TraceTickDefinition? existing,
-                                                             CallTreeNode? node,
-                                                             bool isWatch = false)
+    public static async Task<TraceTrackRule?> ShowAsync(XamlRoot root,
+                                                        QueryViewModel viewModel,
+                                                        TraceTrackRule? existing,
+                                                        CallTreeNode? node,
+                                                        bool isWatch = false)
     {
         var functions = viewModel.GetFunctionChoices();
 

@@ -9,7 +9,8 @@ using InternalsViewer.Query.FullTrace.Locators.Enums;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
-using InternalsViewer.Query.FullTrace.Timeline.Ticks.Enums;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline.Enums;
 using InternalsViewer.UI.App.Services.Query.Trace;
@@ -23,9 +24,9 @@ public class TraceTickTracksTests
 {
     private static TraceTickTrack Track { get; } = new("Track", TraceTickLocation.Bottom, 0, TraceTickSeries.Empty);
 
-    private static TraceTickDefinition Rule { get; } = new("Track", string.Empty, string.Empty, string.Empty, 1, 1, []);
+    private static TraceTrackRule Rule { get; } = new("Track", string.Empty, string.Empty, string.Empty, 1, 1, []);
 
-    private static TraceTickDefinition PhaseRule { get; } = Rule with { IsPhase = true, ReturnDescription = "Built" };
+    private static TraceTrackRule PhaseRule { get; } = Rule with { IsPhase = true, ReturnDescription = "Built" };
 
     private static ExecutionOperatorEvent Operator { get; } = new() { OperatorDescription = string.Empty };
 
@@ -318,6 +319,26 @@ public class TraceTickTracksTests
         Assert.Equal(step.Tick.Node.CategoryColour, TraceTickTracks.GetStepCodeColour(step));
     }
 
+    [Fact]
+    public void A_Hash_Link_Shows_The_Bucket_And_Gives_Back_The_Group_And_Partition()
+    {
+        var link = TraceTickTracks.GetHashLink(0x16F6788B820, 3, 42);
+
+        var start = link.IndexOf('(');
+
+        Assert.True(TraceTickTracks.TryGetHashLink(new Uri(link[(start + 1)..^1]), out var group, out var partition));
+
+        Assert.Equal(("[42]", 0x16F6788B820UL, 3), (link[..start], group, partition));
+    }
+
+    [Fact]
+    public void A_Row_Id_Shows_As_File_Page_And_Slot()
+    {
+        var rowId = new Locator(1, LocatorValueType.Row, (115UL << 48) | (1UL << 32) | 2675);
+
+        Assert.Equal("RID = (1:2675:115)", TraceTickTracks.GetRowIdText(rowId).ToString());
+    }
+
     private static VariantLocator Key(VariantStatus status, ulong value) => new(VariantLocator.Create(1, status, value, 4));
 
     private static string? KeyText(List<(string Column, SqlDbType? Type)> columns, List<VariantLocator> keys)
@@ -343,7 +364,7 @@ public class TraceTickTracksTests
             Step(6, 6, Rule)
         ];
 
-    private static TraceTrackStep Step(ulong from, ulong to, TraceTickDefinition rule, bool isReturn = false)
+    private static TraceTrackStep Step(ulong from, ulong to, TraceTrackRule rule, bool isReturn = false)
     {
         var span = new TraceSpan(new TracePoint(Position(from), from), new TracePoint(Position(to), to), 0, 0, TraceSpanFlags.Returned);
 

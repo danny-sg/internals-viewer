@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.FullTrace.Timeline.Ticks.Enums;
+namespace InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 
 public enum TraceTickSourceType
 {

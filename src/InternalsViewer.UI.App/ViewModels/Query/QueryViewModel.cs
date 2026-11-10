@@ -10,7 +10,7 @@ using InternalsViewer.UI.App.Services.Query.Trace;
 using InternalsViewer.UI.App.Models.Query.Plan;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
-using InternalsViewer.Query.FullTrace.Timeline.Ticks.Enums;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.UI.Plugins.FullTrace.Menus;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.ComponentModel;
@@ -889,6 +889,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             SetPagePlayhead(TracePageSpanBuilder.GetPosition(position));
 
+            FollowGuidePlayhead(position);
+
             UpdatePlanActivity(position);
         }
     }
@@ -959,7 +961,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         TraceTimelineTab.OpenMemory(block, target.Address, position ?? target.FromPosition);
     }
 
-    partial void OnTraceTimelineChanged(TraceTimeline? value) => MemoryHistory.SetWindow(value);
+    partial void OnTraceTimelineChanged(TraceTimeline? value)
+    {
+        MemoryHistory.SetWindow(value);
+
+        SetGuidePositionText();
+    }
 
     partial void OnSelectedEventChanged(EngineEvent? value) => SelectedEventProperties = value?.GetProperties() ?? [];
 
@@ -1060,6 +1067,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public void OpenPage(PageAddress pageAddress, ushort? slot = null) => _ = OpenPageAsync(pageAddress, slot);
 
     public void OpenPageAtOffset(PageAddress pageAddress, int offset) => _ = OpenPageAsync(pageAddress, offset: offset);
+
+    public void OpenHashTable(ulong group, int partition) => TraceTimelineTab.OpenHashTable(group, partition);
 
     public Task OpenPageAsync(PageAddress pageAddress, ushort? slot = null, int? offset = null)
     {
@@ -1586,6 +1595,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         var hidden = _settingsViewModel.TraceTimelineHiddenTickTrackSet;
 
+        var step = GetGuideStepAt(position);
+
         foreach (var track in TickTracks)
         {
             if (hidden.Contains(track.Name) || !track.Rules.Any(r => r.PlanPart is { Length: > 0 }))
@@ -1595,7 +1606,20 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             foreach (var tick in track.Series.GetRunningTicks(position))
             {
-                AddPartActivity(parts, track, tick, position, isRunning: true);
+                if (step is null || tick.Span.From.Position < position)
+                {
+                    AddPartActivity(parts, track, tick, position, isRunning: true);
+                }
+            }
+
+            if (step is not null)
+            {
+                if (ReferenceEquals(step.Track, track))
+                {
+                    AddPartActivity(parts, track, step.Tick, position, isRunning: true);
+                }
+
+                continue;
             }
 
             if (previous is not { } after)
@@ -1661,9 +1685,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             return pages;
         }
 
-        var rows = trace.RowAccesses.GetLatestTicks(position).ToDictionary(t => t.Operator, ReferenceEqualityComparer.Instance);
+        var rows = trace.SourceTracks.RowAccesses.GetLatestTicks(position).ToDictionary(t => t.Operator, ReferenceEqualityComparer.Instance);
 
-        foreach (var tick in trace.PageFetches.GetLatestTicks(position))
+        foreach (var tick in trace.SourceTracks.PageFetches.GetLatestTicks(position))
         {
             if (tick.Operator.PlanNodeIdentifier is not { } identifier
                 || ResolvePlanNode(identifier) is not { } node
@@ -2767,7 +2791,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         TraceLifetimes = result.Lifetimes;
 
-        RowReturnMarks = result.RowReturnMarks;
+        RowReturnMarks = result.SourceTracks.RowReturns;
 
         ClearTickTrackCache();
 

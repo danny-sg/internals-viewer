@@ -8,8 +8,8 @@ using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Arguments.Enums;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
-using InternalsViewer.Query.FullTrace.Timeline.Ticks;
-using InternalsViewer.Query.FullTrace.Timeline.Ticks.Enums;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.UI.App.Controls.Query.Plan;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
@@ -61,7 +61,7 @@ public sealed partial class OperatorTrackDialog
     ];
 
     public OperatorTrackDialog(OperatorTrackDialogSource source,
-                               TraceTickDefinition? existing,
+                               TraceTrackRule? existing,
                                TraceFunctionChoice? function,
                                Color colour,
                                bool isWatch = false)
@@ -106,7 +106,7 @@ public sealed partial class OperatorTrackDialog
 
         ColourSwatch.Background = new SolidColorBrush(colour);
 
-        CategoryColourBox.IsChecked = existing?.Colour == TraceTickDefinition.CategoryColour;
+        CategoryColourBox.IsChecked = existing?.Colour == TraceTrackRule.CategoryColour;
 
         ColourButton.IsEnabled = CategoryColourBox.IsChecked != true;
 
@@ -150,11 +150,11 @@ public sealed partial class OperatorTrackDialog
 
     public double WidthFactor { get; set; }
 
-    public TraceTickDefinition? Definition { get; private set; }
+    public TraceTrackRule? Definition { get; private set; }
 
     private OperatorTrackDialogSource Source { get; }
 
-    private TraceTickDefinition? Existing { get; }
+    private TraceTrackRule? Existing { get; }
 
     private bool IsWatch { get; }
 
@@ -349,7 +349,7 @@ public sealed partial class OperatorTrackDialog
         await LoadTargetsAsync();
     }
 
-    private static string GetFunctionText(TraceTickDefinition? definition) => definition switch
+    private static string GetFunctionText(TraceTrackRule? definition) => definition switch
     {
         null => string.Empty,
         { Source: TraceTickSourceType.Call } => $"{definition.Module}!{definition.Function}",
@@ -421,7 +421,7 @@ public sealed partial class OperatorTrackDialog
 
     private void OnLengthChanged(NumberBox sender, NumberBoxValueChangedEventArgs args) => SetDataTypes(DataTypeBox.SelectedItem as string);
 
-    private void ShowWatchFields(TraceTickDefinition? existing)
+    private void ShowWatchFields(TraceTrackRule? existing)
     {
         Title = existing is null ? "Add Watch" : "Edit Watch";
 
@@ -497,7 +497,7 @@ public sealed partial class OperatorTrackDialog
         return true;
     }
 
-    private string GetColourText() => CategoryColourBox.IsChecked == true ? TraceTickDefinition.CategoryColour : ToHex(ColourPicker.Color);
+    private string GetColourText() => CategoryColourBox.IsChecked == true ? TraceTrackRule.CategoryColour : ToHex(ColourPicker.Color);
 
     private string? GetBackgroundText() => BackgroundBox.IsChecked == true ? ToHex(BackgroundPicker.Color) : null;
 
@@ -524,13 +524,13 @@ public sealed partial class OperatorTrackDialog
             return;
         }
 
-        Definition = new TraceTickDefinition(TrackName.Trim(),
-                                             AnyModule,
-                                             className,
-                                             GetColourText(),
-                                             HeightFactor,
-                                             WidthFactor,
-                                             [.. Rows.Select(GetCondition)])
+        Definition = new TraceTrackRule(TrackName.Trim(),
+                                        AnyModule,
+                                        className,
+                                        GetColourText(),
+                                        HeightFactor,
+                                        WidthFactor,
+                                        [.. Rows.Select(GetCondition)])
         {
             Label = GetLabelText(),
             Description = Existing?.Description,
@@ -571,13 +571,13 @@ public sealed partial class OperatorTrackDialog
             return;
         }
 
-        Definition = new TraceTickDefinition(TrackName.Trim(),
-                                             function?.Module ?? Existing!.Module,
-                                             function?.Symbol ?? Existing!.Function,
-                                             GetColourText(),
-                                             HeightFactor,
-                                             WidthFactor,
-                                             [.. Rows.Select(GetCondition)])
+        Definition = new TraceTrackRule(TrackName.Trim(),
+                                        function?.Module ?? Existing!.Module,
+                                        function?.Symbol ?? Existing!.Function,
+                                        GetColourText(),
+                                        HeightFactor,
+                                        WidthFactor,
+                                        [.. Rows.Select(GetCondition)])
         {
             Label = GetLabelText(),
             Title = string.IsNullOrWhiteSpace(StepTitle) ? null : StepTitle.Trim(),

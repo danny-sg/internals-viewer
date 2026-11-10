@@ -10,7 +10,7 @@
     "Label": "Skipped",
     "Title": "{RowCall}",
     "Description": "{ParentOperatorName} → {OperatorName} `{RowCall}`",
-    "ReturnDescription": "`{RowCall}` returns a {RowUnit} from {OperatorName} that {ParentOperatorName} takes without returning a {RowUnit} of its own",
+    "ReturnDescription": "`{RowCall}` returns from {OperatorName}",
     "PlanPart": "Page",
     "PlanPartColour": "#808080",
     "IsCounter": true,
@@ -64,7 +64,7 @@
     "Label": "Fake Row",
     "Title": "{RowCall}",
     "Description": "{ParentOperatorName} → {OperatorName} `{RowCall}`",
-    "ReturnDescription": "`{RowCall}` returns from {OperatorName} to {ParentOperatorName} without a real {RowUnit}",
+    "ReturnDescription": "`{RowCall}` returns",
     "PlanPart": "Page",
     "PlanPartColour": "#808080",
     "Source": "RowReturn",
@@ -81,7 +81,7 @@
     "Label": "Other Status",
     "Title": "{RowCall}",
     "Description": "{ParentOperatorName} → {OperatorName} `{RowCall}`",
-    "ReturnDescription": "`{RowCall}` returns from {OperatorName} to {ParentOperatorName}",
+    "ReturnDescription": "`{RowCall}` returns",
     "PlanPart": "Page",
     "PlanPartColour": "#808080",
     "Source": "RowReturn",
@@ -98,7 +98,7 @@
     "Label": "End",
     "Title": "{RowCall}",
     "Description": "{ParentOperatorName} → {OperatorName} `{RowCall}`",
-    "ReturnDescription": "`{RowCall}` returns from {OperatorName} with no more data, so {ParentOperatorName} knows its input is finished",
+    "ReturnDescription": "`{RowCall}` returns from {OperatorName} (end of data result)",
     "PlanPart": "Page",
     "PlanPartColour": "#808080",
     "Source": "RowReturn",
@@ -217,7 +217,7 @@
     ],
     "Label": "No Change",
     "Title": "Check Group",
-    "Description": "Check group changed → `{Result}`: add row to group",
+    "Description": "Check group changed → `{Result}` → add row to group",
     "PlanPart": "Stream Aggregate.Sum"
   },
   {
@@ -264,7 +264,7 @@
     ],
     "Label": "Change",
     "Title": "Check Group",
-    "Description": "Check group changed → `{Result}`: Return group"
+    "Description": "Check group changed → `{Result}` → Return group"
   },
   {
     "Name": "Evaluations",
@@ -303,7 +303,7 @@
     ],
     "Label": "False",
     "Title": "Evaluate Expression",
-    "Description": "Evaluate predicate → `{Result}` <Predicate>{ExecutionPlan.Predicate}</Predicate>"
+    "Description": "Evaluate predicate <Predicate>{Expression}</Predicate> → `{Result}`"
   },
   {
     "Name": "Evaluations",
@@ -342,7 +342,7 @@
     ],
     "Label": "NULL",
     "Title": "Evaluate Expression",
-    "Description": "Evaluate predicate → `{Result}` <Predicate>{ExecutionPlan.Predicate}</Predicate>"
+    "Description": "Evaluate predicate <Predicate>{ExecutionPlan.Expression}</Predicate> → `{Result}`"
   },
   {
     "Name": "Evaluations",
@@ -381,7 +381,7 @@
     ],
     "Label": "True",
     "Title": "Evaluate Expression",
-    "Description": "Evaluate predicate → `{Result}` <Predicate>{ExecutionPlan.Predicate}</Predicate>"
+    "Description": "Evaluate predicate <Predicate>{ExecutionPlan.Predicate}</Predicate> → `{Result}`"
   },
   {
     "Name": "Page",
@@ -405,6 +405,30 @@
     "Background": "#69FFFFFF",
     "Source": "RowAccess",
     "Value": 0
+  },
+  {
+    "Name": "Page",
+    "Module": "",
+    "Function": "",
+    "Colour": "#00B050",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [
+      {
+        "Target": "CalledBy",
+        "Argument": null,
+        "Type": "",
+        "Operator": "Equal",
+        "Value": "PageRef::SearchPage"
+      }
+    ],
+    "Label": "Found",
+    "Title": "Search Page",
+    "Description": "Search Page {Page} at Slot {Slot} → `{Result}`",
+    "PlanPart": "Page Row",
+    "Background": "#69FFFFFF",
+    "Source": "RowAccess",
+    "Value": 1
   },
   {
     "Name": "Page",
@@ -495,6 +519,17 @@
     "PlanPartColour": "#F7630C",
     "Source": "Seek",
     "Value": 3
+  },
+  {
+    "Name": "Seek",
+    "Module": "sqlmin",
+    "Function": "HeapDataSetSession::GetRowByRID",
+    "Colour": "#4472C4",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "RID Lookup",
+    "Description": "Look up row by RID on Page {Page} <Predicate>{ExecutionPlan.CurrentRange}</Predicate>"
   },
   {
     "Name": "Hash Table",

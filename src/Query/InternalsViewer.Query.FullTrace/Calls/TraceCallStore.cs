@@ -42,12 +42,6 @@ public sealed partial class TraceCallStore
 
     public int UniqueLocatorCount => UniqueLocators.Length;
 
-    internal long LocatorTableBytes => Locators.Values.Sum(t => t.Bytes);
-
-    internal long UniqueLocatorBytes
-        => UniqueLocators.Length * (long)Unsafe.SizeOf<Locator>()
-           + UniqueLocators.Sum(l => l.Text is { } text ? 22L + 2L * text.Length : 0);
-
     internal IReadOnlyDictionary<(ulong FunctionAddress, ulong InstanceAddress), Chunk[]> Functions { get; }
 
     internal IReadOnlyDictionary<(ulong FunctionAddress, ulong InstanceAddress), LocatorTable> Locators { get; }

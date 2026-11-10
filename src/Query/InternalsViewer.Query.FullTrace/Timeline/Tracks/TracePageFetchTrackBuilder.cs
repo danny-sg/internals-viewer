@@ -30,7 +30,7 @@ internal static class TracePageFetchTrackBuilder
             sources.Add(TraceTickSource.Create(location, (byte)GetPageType(access, pool)));
         }
 
-        return TraceTickSeries.Build(timeline, sources, lifetimes, enclosing);
+        return TraceTrackBuilder.Build(timeline, sources, lifetimes, enclosing);
     }
 
     internal static PageType GetPageType(TracePageAccess access, TraceBufferPool pool)

@@ -2,9 +2,9 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace InternalsViewer.Query.FullTrace.Timeline.Ticks;
+namespace InternalsViewer.Query.FullTrace.Timeline.Tracks;
 
-public sealed partial record TraceTickDefinition
+public sealed partial record TraceTrackRule
 {
     private const string PredefinedFile = ".PredefinedTracks.json";
 
@@ -15,10 +15,10 @@ public sealed partial record TraceTickDefinition
         Converters = { new JsonStringEnumConverter() }
     };
 
-    public static Task WriteAsync(Stream stream, IReadOnlyList<TraceTickDefinition> definitions, CancellationToken cancellationToken)
+    public static Task WriteAsync(Stream stream, IReadOnlyList<TraceTrackRule> definitions, CancellationToken cancellationToken)
         => JsonSerializer.SerializeAsync(stream, definitions, Options, cancellationToken);
 
-    public static IReadOnlyList<TraceTickDefinition> GetPredefined()
+    public static IReadOnlyList<TraceTrackRule> GetPredefined()
     {
         var assembly = Assembly.GetExecutingAssembly();
 
@@ -29,12 +29,12 @@ public sealed partial record TraceTickDefinition
         return Read(stream);
     }
 
-    public static void Write(Stream stream, IReadOnlyList<TraceTickDefinition> definitions)
+    public static void Write(Stream stream, IReadOnlyList<TraceTrackRule> definitions)
         => JsonSerializer.Serialize(stream, definitions, Options);
 
-    public static IReadOnlyList<TraceTickDefinition> Read(Stream stream)
-        => JsonSerializer.Deserialize<List<TraceTickDefinition>>(stream, Options) ?? [];
+    public static IReadOnlyList<TraceTrackRule> Read(Stream stream)
+        => JsonSerializer.Deserialize<List<TraceTrackRule>>(stream, Options) ?? [];
 
-    public static async Task<IReadOnlyList<TraceTickDefinition>> ReadAsync(Stream stream, CancellationToken cancellationToken)
-        => await JsonSerializer.DeserializeAsync<List<TraceTickDefinition>>(stream, Options, cancellationToken) ?? [];
+    public static async Task<IReadOnlyList<TraceTrackRule>> ReadAsync(Stream stream, CancellationToken cancellationToken)
+        => await JsonSerializer.DeserializeAsync<List<TraceTrackRule>>(stream, Options, cancellationToken) ?? [];
 }

@@ -28,9 +28,6 @@ public sealed class TracePageAccessList
 
     public int Count => Accesses.Length;
 
-    public long Bytes => Accesses.Length * (long)Unsafe.SizeOf<TracePageAccess>()
-                         + HeaderAccesses.Length * (long)Unsafe.SizeOf<TracePageHeaderAccess>();
-
     public TracePageHeaderAccess[] HeaderAccesses { get; }
 
     private TracePageAccess[] Accesses { get; }

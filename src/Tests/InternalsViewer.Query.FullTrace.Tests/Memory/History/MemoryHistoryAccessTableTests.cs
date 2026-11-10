@@ -94,7 +94,7 @@ public class MemoryHistoryAccessTableTests
     {
         var table = MemoryHistoryAccessTable.Build([], [], CacheSlots);
 
-        Assert.Equal((0, 0L), (table.Count, table.Bytes));
+        Assert.Equal(0, table.Count);
     }
 
     private static void AssertWrites(MemoryHistoryAccessTable table, IEnumerable<int> indexes)
