@@ -16,9 +16,9 @@ public class SqlTypeInfoTests
     [InlineData(0x0000003C0000003Cul, 0x0000000004130008ul, "money")]
     [InlineData(0x0000000100000001ul, 0ul, "type 0x01")]
     public void A_Type_Is_Written_As_In_TSql(ulong header, ulong details, string expected)
-        => Assert.Equal(expected, SqlTypeInfo.From(header, details).ToString());
+        => Assert.Equal(expected, SqlTypeInfo.Create(header, details).ToString());
 
     [Fact]
     public void A_Type_Without_Its_Length_Is_Written_Without_One()
-        => Assert.Equal("nvarchar NOT NULL", SqlTypeInfo.From(0x01E7, 0).ToString());
+        => Assert.Equal("nvarchar NOT NULL", SqlTypeInfo.Create(0x01E7, 0).ToString());
 }

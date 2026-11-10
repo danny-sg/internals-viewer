@@ -107,6 +107,7 @@
                            VerticalAlignment="Center"
                            TextTrimming="WordEllipsis" />
                 <predicates:PredicateTextBox Text="{x:Bind ((models:PlanNodeProperty)Content).Predicate}"
+                                             ToolTipService.ToolTip="{x:Bind ((models:PlanNodeProperty)Content).Tooltip}"
                                              TextPadding="0"
                                              HasBackground="False"
                                              HorizontalAlignment="Stretch"

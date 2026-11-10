@@ -9,6 +9,7 @@ using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 using InternalsViewer.Query.Memory;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 using InternalsViewer.Query.FullTrace.Symbols.Categories;
+using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Memory.MemoryObject;
 
@@ -151,7 +152,7 @@ public class MemoryObjectMapTests
                                  .Build(Types);
 
         Assert.Equal([(0x1A75F280000ul, 0x2000ul, At(10)), (0x1A75F284000ul, 0x2000ul, At(20))],
-                     map.GetPageBlocks().Select(b => (b.Pointer, b.Bytes, b.Start)).Order());
+                     map.GetPageBlocks().Select(b => (b.Address, b.Size, b.FromPosition)).Order());
     }
 
     private sealed class Recording
@@ -205,7 +206,7 @@ public class MemoryObjectMapTests
             }
 
             function.Rows.Add(TraceCallRowHelper.Row(sequence,
-                                                flags: returned != 0 ? TraceCallChunk.ReturnedFlag : 0,
+                                                flags: returned != 0 ? TraceCallColumnSet.ReturnedFlag : 0,
                                                 rcx: rcx,
                                                 rdx: rdx,
                                                 returnValue: returned,

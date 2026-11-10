@@ -1,7 +1,7 @@
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Arguments.Enums;
-using InternalsViewer.Query.FullTrace.Timeline.Ticks.Enums;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Locators.Enums;
 using InternalsViewer.Query.Events.Operators;
@@ -20,6 +20,7 @@ using static InternalsViewer.Query.FullTrace.Tests.TraceCallRowHelper;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Symbols.Categories;
+using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Timeline.Tracks;
 
@@ -47,12 +48,12 @@ public class EvaluationTrackTests
     private static TraceTickSeries FromDefinition(TraceTimeline timeline,
                                                   TraceCallStore calls,
                                                   TraceOperatorLifetimeList lifetimes,
-                                                  TraceTickDefinition definition)
-        => TraceTickSeries.FromDefinition(timeline,
-                                          calls,
-                                          lifetimes,
-                                          definition,
-                                          EnclosingOperatorCallIndex.Build(calls, lifetimes.OperatorsByInstance));
+                                                  TraceTrackRule definition)
+        => TraceTrackBuilder.Build(timeline,
+                                   calls,
+                                   lifetimes,
+                                   definition,
+                                   EnclosingOperatorCallIndex.Build(calls, lifetimes.OperatorsByInstance));
 
     private static readonly ExecutionOperatorEvent Filter = new()
     {
@@ -71,11 +72,11 @@ public class EvaluationTrackTests
 
     private static readonly CallNode[] Nodes =
     [
-        new(-1, 0, Helper, FilterIterator, 1),
-        new(0, 0, Helper, ScanIterator, 1),
-        new(1, 0, Compare, 0, 3),
-        new(0, 0, Compare, 0, 2),
-        new(1, 0, TupleCompare, 0, 1)
+        new(-1, Helper, FilterIterator, 1),
+        new(0, Helper, ScanIterator, 1),
+        new(1, Compare, 0, 3),
+        new(0, Compare, 0, 2),
+        new(1, TupleCompare, 0, 1)
     ];
 
     [Fact]
@@ -169,8 +170,8 @@ public class EvaluationTrackTests
         var trace = BuildResult();
 
         Assert.Equal((5, 6),
-                     (TraceTickSeries.FromDefinition(trace, Rule("CEsExec::Missing|CEsExec::FastCompare1")).Count,
-                      TraceTickSeries.FromDefinition(trace, Rule("CEsExec::Fast*")).Count));
+                     (TraceTrackBuilder.Build(trace, Rule("CEsExec::Missing|CEsExec::FastCompare1")).Count,
+                      TraceTrackBuilder.Build(trace, Rule("CEsExec::Fast*")).Count));
     }
 
     [Fact]
@@ -185,8 +186,25 @@ public class EvaluationTrackTests
         var otherRegister = Rule("CEsExec::FastCompare1", HasLocator(slot, "Variant"));
 
         Assert.Equal((4, 0),
-                     (TraceTickSeries.FromDefinition(trace, anyRegister).Count,
-                      TraceTickSeries.FromDefinition(trace, otherRegister).Count));
+                     (TraceTrackBuilder.Build(trace, anyRegister).Count,
+                      TraceTrackBuilder.Build(trace, otherRegister).Count));
+    }
+
+    [Fact]
+    public void A_Pulled_Value_Is_Evaluated_On_The_Compute_Scalar_With_The_Puller_As_Its_Caller()
+    {
+        var computeScalar = new ExecutionOperatorEvent
+        {
+            Name = "Compute Scalar",
+            OperatorDescription = "Compute Scalar",
+            PlanNodeIdentifier = new PlanNodeIdentifier(1, 2)
+        };
+
+        var rule = Rule("CEsExec::FastCompare1") with { Source = TraceTickSourceType.Evaluate };
+
+        var series = TraceTrackBuilder.BuildAssigned(BuildResult(), rule, null, o => ReferenceEquals(o, Filter) ? [computeScalar] : []);
+
+        Assert.Equal([(computeScalar, Filter), (computeScalar, Filter)], series.GetAllTicks().Select(t => (t.Operator, t.Caller)));
     }
 
     [Fact]
@@ -196,7 +214,7 @@ public class EvaluationTrackTests
 
         var source = Evaluations(trace);
 
-        trace = trace with { Seeks = source };
+        trace = trace with { SourceTracks = new TraceSourceTrackMap(trace.Timeline, trace.CallStore, trace.Lifetimes) { Seeks = source } };
 
         var track = FromRules(trace, SourceRule(2), SourceRule(0));
 
@@ -210,20 +228,23 @@ public class EvaluationTrackTests
     {
         var trace = BuildResult();
 
-        trace = trace with { Seeks = Evaluations(trace) };
+        trace = trace with
+        {
+            SourceTracks = new TraceSourceTrackMap(trace.Timeline, trace.CallStore, trace.Lifetimes) { Seeks = Evaluations(trace) }
+        };
 
         Assert.Equal((1, 0),
-                     (TraceTickSeries.FromDefinition(trace, SourceRule(2, InOperator("Filter"))).Count,
-                      TraceTickSeries.FromDefinition(trace, SourceRule(0, InOperator("Filter"))).Count));
+                     (TraceTrackBuilder.Build(trace, SourceRule(2, InOperator("Filter"))).Count,
+                      TraceTrackBuilder.Build(trace, SourceRule(0, InOperator("Filter"))).Count));
     }
 
-    private static TraceTickTrackSeries FromRules(TraceResult trace, params TraceTickDefinition[] rules)
-        => TraceTickSeries.FromRules(trace, rules, r => TraceTickSeries.FromDefinition(trace, r));
+    private static TraceTickTrackSeries FromRules(TraceResult trace, params TraceTrackRule[] rules)
+        => TraceTrackBuilder.BuildTrack(trace, rules, r => TraceTrackBuilder.Build(trace, r));
 
-    private static TraceTickDefinition Rule(string function, params TraceCallCondition[] conditions)
+    private static TraceTrackRule Rule(string function, params TraceCallCondition[] conditions)
         => new("Compares", "SqlTsEs", function, "#FFFFFF", 1, 1, conditions);
 
-    private static TraceTickDefinition SourceRule(byte value, params TraceCallCondition[] conditions)
+    private static TraceTrackRule SourceRule(byte value, params TraceCallCondition[] conditions)
         => new("Seek", string.Empty, string.Empty, "#FFFFFF", 1, 1, conditions) { Source = TraceTickSourceType.Seek, Value = value };
 
     private static TraceCallCondition HasLocator(ArgumentSlot? slot, string type)
@@ -232,7 +253,7 @@ public class EvaluationTrackTests
     private static TraceCallCondition InOperator(string name)
         => new(TraceConditionTarget.Operator, null, string.Empty, TraceConditionOperator.Equal, name);
 
-    private static TraceTickDefinition Definition(TraceConditionTarget target, string value)
+    private static TraceTrackRule Definition(TraceConditionTarget target, string value)
         => new("Compares",
                "SqlTsEs",
                "CEsExec::FastCompare1",
@@ -244,7 +265,7 @@ public class EvaluationTrackTests
     private static TraceTickSeries Build() => Evaluations(BuildResult());
 
     private static TraceTickSeries Evaluations(TraceResult trace)
-        => FromRules(trace, [.. TraceTickDefinition.GetPredefined().Where(d => d.Name == EvaluationsTrack)]).Series;
+        => FromRules(trace, [.. TraceTrackRule.GetPredefined().Where(d => d.Name == EvaluationsTrack)]).Series;
 
     private static TraceResult BuildResult()
     {
@@ -325,7 +346,7 @@ public class EvaluationTrackTests
     }
 
     private static ulong[] Call(ulong start, ulong end, int callNodeIndex)
-        => Row(start, flags: Thread | TraceCallChunk.ReturnedFlag, callNodeIndex: callNodeIndex, endSequence: end);
+        => Row(start, flags: Thread | TraceCallColumnSet.ReturnedFlag, callNodeIndex: callNodeIndex, endSequence: end);
 
     private static CallFrame Frame(ulong instance, string className, string method, uint rva) => new()
     {

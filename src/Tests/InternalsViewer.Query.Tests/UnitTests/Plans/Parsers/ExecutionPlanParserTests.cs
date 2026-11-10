@@ -252,6 +252,65 @@ public class ExecutionPlanParserTests
         Assert.False(node.ScanInfo!.IsLookup);
     }
 
+    private const string RidLookupXml =
+        """
+        <?xml version="1.0"?>
+        <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan"
+                     Version="1.7" Build="16.0.0">
+          <BatchSequence>
+            <Batch>
+              <Statements>
+                <StmtSimple StatementType="SELECT" StatementSubTreeCost="0.0032831">
+                  <QueryPlan>
+                    <RelOp NodeId="0"
+                           PhysicalOp="RID Lookup"
+                           LogicalOp="RID Lookup"
+                           EstimatedTotalSubtreeCost="0.0032831"
+                           EstimateRows="1"
+                           Parallel="0">
+                      <OutputList>
+                        <ColumnReference Database="[db]" Schema="[dbo]" Table="[HeapTable]" Column="FixedTextField"/>
+                      </OutputList>
+                      <IndexScan Lookup="1" Ordered="1" ScanDirection="FORWARD" Storage="RowStore">
+                        <Object Database="[db]" Schema="[dbo]" Table="[HeapTable]" TableReferenceId="-1" IndexKind="Heap"/>
+                        <SeekPredicates>
+                          <SeekPredicateNew>
+                            <SeekKeys>
+                              <Prefix ScanType="EQ">
+                                <RangeColumns>
+                                  <ColumnReference Column="Bmk1000"/>
+                                </RangeColumns>
+                                <RangeExpressions>
+                                  <ScalarOperator ScalarString="[Bmk1000]">
+                                    <Identifier>
+                                      <ColumnReference Column="Bmk1000"/>
+                                    </Identifier>
+                                  </ScalarOperator>
+                                </RangeExpressions>
+                              </Prefix>
+                            </SeekKeys>
+                          </SeekPredicateNew>
+                        </SeekPredicates>
+                      </IndexScan>
+                    </RelOp>
+                  </QueryPlan>
+                </StmtSimple>
+              </Statements>
+            </Batch>
+          </BatchSequence>
+        </ShowPlanXML>
+        """;
+
+    [Fact]
+    public void A_RID_Lookup_Seeks_On_The_Bookmark_From_The_Outer_Row()
+    {
+        var predicateInfo = Parse(RidLookupXml).NodesById[0].PredicateInfo!;
+
+        var column = Assert.Single(predicateInfo.CorrelatedSeekColumns);
+
+        Assert.Equal((false, "Bmk1000", "Bmk1000"), (predicateInfo.HasUntranslatedPredicate, column.Column, column.OuterReference));
+    }
+
     // ------------------------------------------------------------------
     // Table Scan (no run-time information, no IndexScan child)
     // ------------------------------------------------------------------
@@ -1431,6 +1490,116 @@ public class ExecutionPlanParserTests
         var plan = Parse(HashMatchXml);
 
         Assert.False(plan.NodesById[0].HashInfo?.IsBitmapCreator);
+    }
+
+    private const string AdapterXml = """
+        <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan">
+          <BatchSequence>
+            <Batch>
+              <Statements>
+                <StmtSimple StatementType="SELECT" StatementSubTreeCost="1">
+                  <QueryPlan>
+                    <RelOp NodeId="0" PhysicalOp="Compute Scalar" LogicalOp="Compute Scalar" EstimatedExecutionMode="Batch">
+                      <OutputList />
+                      <ComputeScalar>
+                        <RelOp NodeId="1" PhysicalOp="Compute Scalar" LogicalOp="Compute Scalar" EstimatedExecutionMode="Batch">
+                          <OutputList />
+                          <ComputeScalar>
+                            <RelOp NodeId="2" PhysicalOp="Compute Scalar" LogicalOp="Compute Scalar" EstimatedExecutionMode="Row">
+                              <OutputList />
+                            </RelOp>
+                          </ComputeScalar>
+                        </RelOp>
+                      </ComputeScalar>
+                    </RelOp>
+                  </QueryPlan>
+                </StmtSimple>
+              </Statements>
+            </Batch>
+          </BatchSequence>
+        </ShowPlanXML>
+        """;
+
+    [Fact]
+    public void A_Batch_Operator_Under_A_Row_Parent_Has_A_Batch_To_Row_Adapter()
+    {
+        var node = Parse(AdapterXml).NodesById[0];
+
+        Assert.Equal("Batch To Row Adapter", node.Adapter?.PhysicalOperator);
+        Assert.Same(node, node.Adapter?.Children.Single());
+    }
+
+    [Fact]
+    public void A_Row_Operator_Under_A_Batch_Parent_Has_A_Row_To_Batch_Adapter()
+    {
+        var node = Parse(AdapterXml).NodesById[2];
+
+        Assert.Equal("Row To Batch Adapter", node.Adapter?.PhysicalOperator);
+    }
+
+    [Fact]
+    public void An_Operator_In_The_Same_Mode_As_Its_Parent_Has_No_Adapter()
+    {
+        Assert.Null(Parse(AdapterXml).NodesById[1].Adapter);
+    }
+
+    [Fact]
+    public void An_Adapter_Is_Not_A_Node_Of_The_Plan()
+    {
+        var plan = Parse(AdapterXml);
+
+        Assert.DoesNotContain(plan.NodesById.Values, n => n.IsAdapter);
+        Assert.Same(plan.NodesById[0], plan.Root[0].Children[0]);
+    }
+
+    private const string ValueReferenceXml = """
+        <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan">
+          <BatchSequence>
+            <Batch>
+              <Statements>
+                <StmtSimple StatementType="SELECT" StatementSubTreeCost="1">
+                  <QueryPlan>
+                    <RelOp NodeId="0" PhysicalOp="Nested Loops" LogicalOp="Inner Join" EstimatedExecutionMode="Row">
+                      <OutputList><ColumnReference Column="Expr1" /></OutputList>
+                      <NestedLoops Optimized="0">
+                        <OuterReferences><ColumnReference Column="Expr1" /></OuterReferences>
+                        <RelOp NodeId="1" PhysicalOp="Compute Scalar" LogicalOp="Compute Scalar" EstimatedExecutionMode="Row">
+                          <OutputList><ColumnReference Column="Expr1" /></OutputList>
+                          <ComputeScalar>
+                            <DefinedValues>
+                              <DefinedValue>
+                                <ColumnReference Column="Expr1" />
+                                <ScalarOperator ScalarString="getdate()">
+                                  <Identifier><ColumnReference Column="ConstExpr2" /></Identifier>
+                                </ScalarOperator>
+                              </DefinedValue>
+                            </DefinedValues>
+                          </ComputeScalar>
+                        </RelOp>
+                      </NestedLoops>
+                    </RelOp>
+                  </QueryPlan>
+                </StmtSimple>
+              </Statements>
+            </Batch>
+          </BatchSequence>
+        </ShowPlanXML>
+        """;
+
+    [Fact]
+    public void Outer_References_Are_Read_Apart_From_The_Values_An_Operator_Uses()
+    {
+        var node = Parse(ValueReferenceXml).NodesById[0];
+
+        Assert.Equal(["Expr1"], node.OuterReferences.ToArray());
+
+        Assert.Empty(node.ReferencedValues);
+    }
+
+    [Fact]
+    public void A_Defined_Value_Lists_The_Values_Its_Expression_Reads()
+    {
+        Assert.Equal(["ConstExpr2"], Parse(ValueReferenceXml).NodesById[1].DefinedValues[0].References);
     }
 
     [Fact]

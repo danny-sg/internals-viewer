@@ -81,7 +81,7 @@ internal sealed record Stub(ulong Address, StubOperation[] Operations)
 
     private static bool Accept(ReadOnlySpan<ulong> values, Span<ulong> registers, ulong target)
     {
-        if (target < TraceAddress.MinAddress)
+        if (target < TraceAddress.MinimumAddress)
         {
             return false;
         }

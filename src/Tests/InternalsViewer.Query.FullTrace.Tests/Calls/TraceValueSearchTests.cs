@@ -26,11 +26,11 @@ public class TraceValueSearchTests
     {
         var builder = new TraceCallStore.Builder();
 
-        builder.Add(0x1000, 0, Chunk(Row(1, returnValue: 0xD0), Row(2, flags: TraceCallChunk.ReturnedFlag, returnValue: 0xD0)), 2);
+        builder.Add(0x1000, 0, Chunk(Row(1, returnValue: 0xD0), Row(2, flags: TraceCallColumnSet.ReturnedFlag, returnValue: 0xD0)), 2);
 
         var use = Assert.Single(await new TraceValueSearch(builder.Build()).GetValueUsesAsync(0xD0, CancellationToken.None));
 
-        Assert.Equal(("RAX", 1, 1), (use.Location, use.Calls, use.First.CallIndex));
+        Assert.Equal(("RAX", 1, 1), (use.Location, use.CallCount, use.First.CallIndex));
     }
 
     [Fact]
@@ -43,7 +43,7 @@ public class TraceValueSearchTests
 
         var use = Assert.Single(await new TraceValueSearch(builder.Build()).GetValueUsesAsync(0xA0, CancellationToken.None));
 
-        Assert.Equal(20, use.Calls);
+        Assert.Equal(20, use.CallCount);
         Assert.Equal((0, At(100)), (use.First.CallIndex, use.First.Position));
         Assert.Equal((19, At(119)), (use.Last.CallIndex, use.Last.Position));
     }
@@ -54,7 +54,7 @@ public class TraceValueSearchTests
         var builder = new TraceCallStore.Builder();
 
         builder.Add(0x1000, 0, Chunk(Row(10, flags: 7, rcx: 0xA0), Row(11, flags: 7, rcx: 0xB0)), 2);
-        builder.Add(0x1000, 0, Chunk(Row(12, flags: 8 | TraceCallChunk.ReturnedFlag, rcx: 0xA0, returnValue: 0xA0)), 1);
+        builder.Add(0x1000, 0, Chunk(Row(12, flags: 8 | TraceCallColumnSet.ReturnedFlag, rcx: 0xA0, returnValue: 0xA0)), 1);
 
         var search = new TraceValueSearch(builder.Build());
 
@@ -89,7 +89,7 @@ public class TraceValueSearchTests
 
         var calls = await search.GetTraceValueCallsAsync(use, 0xA0, CancellationToken.None, Include);
 
-        Assert.Equal(2, use.Calls);
+        Assert.Equal(2, use.CallCount);
         Assert.Equal([0, 2], calls.Select(c => c.CallIndex));
         Assert.Equal([0, 2], store.GetIncludedCalls(store.GetCallList(0x1000, 0)!, Include, CancellationToken.None));
     }
@@ -100,7 +100,7 @@ public class TraceValueSearchTests
         var builder = new TraceCallStore.Builder();
 
         builder.Add(0x1000, 0, Chunk(Row(50, rcx: 0xA0)), 1);
-        builder.Add(0x2000, 0, Chunk(Row(10, flags: TraceCallChunk.ReturnedFlag, returnValue: 0xA0)), 1);
+        builder.Add(0x2000, 0, Chunk(Row(10, flags: TraceCallColumnSet.ReturnedFlag, returnValue: 0xA0)), 1);
 
         var uses = await new TraceValueSearch(builder.Build()).GetValueUsesAsync(0xA0, CancellationToken.None);
 

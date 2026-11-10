@@ -25,13 +25,13 @@ public sealed class CallTree
     public CallTreeNode Root { get; }
 
     // Incrementing so each node records the order it was first created (first seen).
-    private int _order;
+    private int NextOrder { get; set; }
 
     public CallTreeNode AddCall(CallTreeNode parent, CallFrame frame, long calls)
     {
-        var node = Child(parent, frame, RvaKey);
+        var node = GetChild(parent, frame, GetRvaKey);
 
-        node.Calls += calls;
+        node.CallCount += calls;
 
         return node;
     }
@@ -66,7 +66,7 @@ public sealed class CallTree
         var projected = new CallTree();
 
         // Insert leaves earliest-event-first so the projected nodes are created — and thus ordered — as first seen.
-        var leaves = Nodes().Where(node => node.Calls > 0).OrderBy(node => node.Order);
+        var leaves = GetNodes().Where(node => node.CallCount > 0).OrderBy(node => node.Order);
 
         var segment = new Segmenter(projected, cutAt, stopBelow);
 
@@ -80,25 +80,25 @@ public sealed class CallTree
                 continue;
             }
 
-            var nested = segment.StopOf(node);
+            var nested = segment.GetStop(node);
 
             // Only a leaf reached without crossing a nested operator's frame belongs to this segment; past one, the
             // events are that operator's and just the frames above it are borrowed. Record where it was cut, so the
             // segment can show what it handed off to rather than simply stopping.
             if (nested is not null)
             {
-                segment.ProjectedOf(nested.Parent!).CutBelow.Add(nested);
+                segment.GetProjected(nested.Parent!).CutBelow.Add(nested);
 
                 continue;
             }
 
-            var leaf = segment.ProjectedOf(node);
+            var leaf = segment.GetProjected(node);
 
-            leaf.Calls += node.Calls;
+            leaf.CallCount += node.CallCount;
 
             leaf.AllocatedBytes += node.AllocatedBytes;
 
-            leaf.Allocations += node.Allocations;
+            leaf.AllocationCount += node.AllocationCount;
 
             AddLocators(leaf, node.Locators);
 
@@ -154,18 +154,18 @@ public sealed class CallTree
     {
         if (below)
         {
-            node.Calls = 0;
+            node.CallCount = 0;
 
             node.CallActivity = [];
 
             node.AllocatedBytes = 0;
 
-            node.Allocations = 0;
+            node.AllocationCount = 0;
 
             node.Locators = null;
         }
 
-        var keep = node.Calls > 0;
+        var keep = node.CallCount > 0;
 
         foreach (var child in node.Children.Values.ToList())
         {
@@ -180,13 +180,13 @@ public sealed class CallTree
         return keep;
     }
 
-    private CallTreeNode Child(CallTreeNode parent, CallFrame frame, Func<CallFrame, string> keyOf)
+    private CallTreeNode GetChild(CallTreeNode parent, CallFrame frame, Func<CallFrame, string> getKey)
     {
-        var key = keyOf(frame);
+        var key = getKey(frame);
 
         if (!parent.Children.TryGetValue(key, out var child))
         {
-            child = new CallTreeNode { Frame = frame, Parent = parent, Key = key, Order = _order++ };
+            child = new CallTreeNode { Frame = frame, Parent = parent, Key = key, Order = NextOrder++ };
 
             parent.Children[key] = child;
         }
@@ -300,7 +300,7 @@ public sealed class CallTree
         }
     }
 
-    public IEnumerable<CallTreeNode> Nodes()
+    public IEnumerable<CallTreeNode> GetNodes()
     {
         var stack = new Stack<CallTreeNode>();
 
@@ -340,9 +340,9 @@ public sealed class CallTree
 
         builder.Append(node.Symbol.Length > 0 ? node.Symbol : node.Key);
 
-        if (node.Calls > 0)
+        if (node.CallCount > 0)
         {
-            builder.Append($" ({node.Calls} calls)");
+            builder.Append($" ({node.CallCount} calls)");
         }
 
         builder.AppendLine();
@@ -353,14 +353,14 @@ public sealed class CallTree
         }
     }
 
-    private static string RvaKey(CallFrame frame)
+    private static string GetRvaKey(CallFrame frame)
         => frame.InstanceAddress == 0 ? $"{frame.Module.Name}!{frame.Rva}" : $"{frame.Module.Name}!{frame.Rva}@{frame.InstanceAddress:X}";
 
-    private static string FunctionKey(CallFrame frame)
+    private static string GetFunctionKey(CallFrame frame)
     {
         if (frame.Function is not { } function)
         {
-            return RvaKey(frame);
+            return GetRvaKey(frame);
         }
 
         var key = $"{frame.Module.Name}!{function.ClassName}::{function.MethodName}";
@@ -397,7 +397,7 @@ public sealed class CallTree
             return member;
         }
 
-        public CallTreeNode? StopOf(CallTreeNode node)
+        public CallTreeNode? GetStop(CallTreeNode node)
         {
             if (stopBelow is null || IsTop(node))
             {
@@ -406,7 +406,7 @@ public sealed class CallTree
 
             if (!Stops.TryGetValue(node, out var stop))
             {
-                stop = StopOf(node.Parent!) ?? (stopBelow(node) ? node : null);
+                stop = GetStop(node.Parent!) ?? (stopBelow(node) ? node : null);
 
                 Stops[node] = stop;
             }
@@ -416,13 +416,13 @@ public sealed class CallTree
 
         public IEnumerable<KeyValuePair<CallTreeNode, CallTreeNode>> Projections => Projected;
 
-        public CallTreeNode ProjectedOf(CallTreeNode node)
+        public CallTreeNode GetProjected(CallTreeNode node)
         {
             if (!Projected.TryGetValue(node, out var result))
             {
-                var parent = IsTop(node) ? projected.Root : ProjectedOf(node.Parent!);
+                var parent = IsTop(node) ? projected.Root : GetProjected(node.Parent!);
 
-                result = projected.Child(parent, node.Frame!, FunctionKey);
+                result = projected.GetChild(parent, node.Frame!, GetFunctionKey);
 
                 result.AddPlanOperators(node.PlanOperators);
 

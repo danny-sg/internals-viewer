@@ -1,3 +1,5 @@
+using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
+
 namespace InternalsViewer.Query.FullTrace.Symbols.Categories;
 
 internal sealed class RuleIndex
@@ -35,7 +37,7 @@ internal sealed class RuleIndex
 
     private int[] Unindexed { get; }
 
-    public Enumerator Candidates(ReadOnlySpan<char> className, ReadOnlySpan<char> methodName) => new(this, className, methodName);
+    public Enumerator GetCandidates(ReadOnlySpan<char> className, ReadOnlySpan<char> methodName) => new(this, className, methodName);
 
     private static bool IsIndexable(GlobPattern pattern) => pattern.Shape is GlobShape.Exact or GlobShape.Prefix;
 
@@ -98,7 +100,7 @@ internal sealed class RuleIndex
             {
                 var value = Stage == ClassStage ? ClassName : MethodName;
 
-                if (Depth == value.Length || Node.Child(value[Depth]) is not { } child)
+                if (Depth == value.Length || Node.GetChild(value[Depth]) is not { } child)
                 {
                     Stage++;
 
@@ -146,7 +148,7 @@ internal sealed class RuleIndex
 
         private Node[] Children { get; set; } = [];
 
-        public Node? Child(char value)
+        public Node? GetChild(char value)
         {
             var index = Keys.AsSpan().IndexOf(char.ToUpperInvariant(value));
 

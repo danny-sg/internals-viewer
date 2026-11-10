@@ -2,5 +2,5 @@ namespace InternalsViewer.Query.FullTrace;
 
 internal static class TraceAddress
 {
-    public const ulong MinAddress = 0x10000;
+    public const ulong MinimumAddress = 0x10000;
 }

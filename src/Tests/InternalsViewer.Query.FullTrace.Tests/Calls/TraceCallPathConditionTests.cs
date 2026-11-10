@@ -4,9 +4,10 @@ using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Arguments.Enums;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
-using InternalsViewer.Query.FullTrace.Timeline.Ticks;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.FullTrace.Symbols.Categories;
+using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Calls;
 
@@ -40,6 +41,20 @@ public class TraceCallPathConditionTests
         var condition = Pattern(target, TraceConditionOperator.Equal, pattern);
 
         Assert.Equal((isScanMatch, isFilterMatch), (condition.MatchesNode(scanCompare), condition.MatchesNode(filterCompare)));
+    }
+
+    [Fact]
+    public void Called_By_Within_Also_Matches_The_Call_Itself()
+    {
+        var (scanCompare, _) = BuildTree();
+
+        var sessionNode = scanCompare.Parent!;
+
+        const string session = "HeapDataSetSession::GetNextRowValuesInternal";
+
+        var condition = Pattern(TraceConditionTarget.CalledBy, TraceConditionOperator.Equal, session);
+
+        Assert.Equal((false, true), (condition.MatchesNode(sessionNode), condition.MatchesNode(sessionNode, isWithin: true)));
     }
 
     [Fact]
@@ -80,30 +95,30 @@ public class TraceCallPathConditionTests
     [Fact]
     public async Task A_Definition_Round_Trips_Through_Its_File()
     {
-        var definition = new TraceTickDefinition("Scan Compares",
-                                                 "SqlTsEs",
-                                                 "CEsExec::FastCompare1",
-                                                 "#5CD66B",
-                                                 1.5,
-                                                 2,
-                                                 [
-                                                     new TraceCallCondition(TraceConditionTarget.Argument,
-                                                                            Count,
-                                                                            "int",
-                                                                            TraceConditionOperator.GreaterThan,
-                                                                            "0x10"),
-                                                     Pattern(TraceConditionTarget.CalledBy,
-                                                             TraceConditionOperator.Equal,
-                                                             "CQScanTableScanNew::GetRow")
-                                                 ]);
+        var definition = new TraceTrackRule("Scan Compares",
+                                            "SqlTsEs",
+                                            "CEsExec::FastCompare1",
+                                            "#5CD66B",
+                                            1.5,
+                                            2,
+                                            [
+                                                new TraceCallCondition(TraceConditionTarget.Argument,
+                                                                       Count,
+                                                                       "int",
+                                                                       TraceConditionOperator.GreaterThan,
+                                                                       "0x10"),
+                                                Pattern(TraceConditionTarget.CalledBy,
+                                                        TraceConditionOperator.Equal,
+                                                        "CQScanTableScanNew::GetRow")
+                                            ]);
 
         using var stream = new MemoryStream();
 
-        await TraceTickDefinition.WriteAsync(stream, [definition], CancellationToken.None);
+        await TraceTrackRule.WriteAsync(stream, [definition], CancellationToken.None);
 
         stream.Position = 0;
 
-        var read = Assert.Single(await TraceTickDefinition.ReadAsync(stream, CancellationToken.None));
+        var read = Assert.Single(await TraceTrackRule.ReadAsync(stream, CancellationToken.None));
 
         Assert.Equal(definition with { Conditions = [] }, read with { Conditions = [] });
         Assert.Equal(definition.Conditions, read.Conditions);

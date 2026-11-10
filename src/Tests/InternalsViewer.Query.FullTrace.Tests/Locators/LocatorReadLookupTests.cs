@@ -1,5 +1,7 @@
 using InternalsViewer.Query.FullTrace.Symbols;
+using InternalsViewer.Query.FullTrace.Symbols.Enums;
 using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 using InternalsViewer.Query.FullTrace.Arguments;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Locators;
@@ -104,7 +106,7 @@ public class LocatorReadLookupTests
     {
         var reads = Reads("BlobNode::ChildPID(int)", "?ChildPID@BlobNode@@QEBA?AVPageId@@H@Z");
 
-        Assert.Equal([new LocatorRead(Function, ArgumentLayout.ReturnRegister, true, LocatorValueType.Page)], reads);
+        Assert.Equal([new LocatorRead(Function, ArgumentLayout.ReturnArgumentSlot, true, LocatorValueType.Page)], reads);
     }
 
     [Fact]
@@ -112,7 +114,7 @@ public class LocatorReadLookupTests
     {
         var reads = Reads("Record::GetBackPtr(void)", "?GetBackPtr@Record@@QEBAPEFBURowId@@XZ");
 
-        Assert.Equal([new LocatorRead(Function, ArgumentLayout.ReturnRegister, true, LocatorValueType.Row)], reads);
+        Assert.Equal([new LocatorRead(Function, ArgumentLayout.ReturnArgumentSlot, true, LocatorValueType.Row)], reads);
     }
 
     [Fact]
@@ -298,7 +300,7 @@ public class LocatorReadLookupTests
                                               FunctionType.Member,
                                               "long");
 
-        Assert.Equal(new LocatorRead(Function, 3, false, LocatorValueType.Bindings, CountRegister: 2), BindingRead(signature));
+        Assert.Equal(new LocatorRead(Function, 3, false, LocatorValueType.Bindings, CountArgumentSlot: 2), BindingRead(signature));
     }
 
     [Fact]
@@ -313,7 +315,7 @@ public class LocatorReadLookupTests
                                               FunctionType.Member,
                                               "AccBindings *");
 
-        Assert.Equal(new LocatorRead(Function, 6, false, LocatorValueType.Bindings, CountRegister: 5), BindingRead(signature));
+        Assert.Equal(new LocatorRead(Function, 6, false, LocatorValueType.Bindings, CountArgumentSlot: 5), BindingRead(signature));
     }
 
     [Fact]

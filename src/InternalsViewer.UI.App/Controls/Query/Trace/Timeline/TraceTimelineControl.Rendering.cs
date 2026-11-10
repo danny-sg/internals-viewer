@@ -264,7 +264,7 @@ public sealed partial class TraceTimelineControl
         {
             var row = thread.Rows[depth];
 
-            return index => Allocation.AllocatedDuring(thread.ThreadId, row.GetFrom(index).Position, row.GetTo(index).Position).Count > 0;
+            return index => Allocation.GetAllocatedDuring(thread.ThreadId, row.GetFrom(index).Position, row.GetTo(index).Position).Count > 0;
         }
 
         return _raisedRows.TryGetValue((lane, depth), out var raised) ? index => Array.BinarySearch(raised.Indexes, index) >= 0 : null;
@@ -527,7 +527,7 @@ public sealed partial class TraceTimelineControl
     private SKColor GetPaneColour(int callNodeIndex) => GetCategoryColour(callNodeIndex);
 
     private SKColor GetCategoryColour(int callNodeIndex)
-        => _timeline?.NodeOf(callNodeIndex)?.CategoryColour is { } hex ? Parse(hex) : _paints.Unknown;
+        => _timeline?.GetNode(callNodeIndex)?.CategoryColour is { } hex ? Parse(hex) : _paints.Unknown;
 
     private SKColor Parse(string hex)
     {
@@ -545,7 +545,7 @@ public sealed partial class TraceTimelineControl
     {
         if (!_labels.TryGetValue(callNodeIndex, out var label))
         {
-            label = _timeline?.NodeOf(callNodeIndex)?.Symbol is { Length: > 0 } symbol ? symbol : "Unknown";
+            label = _timeline?.GetNode(callNodeIndex)?.Symbol is { Length: > 0 } symbol ? symbol : "Unknown";
 
             _labels[callNodeIndex] = label;
         }

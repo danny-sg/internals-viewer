@@ -45,7 +45,7 @@ internal static class ReplayFunctionScan
 
             var signature = symbol.Parsed;
 
-            if (iterates && classification.IsInstanceMethod && InstanceMethodLookup.InstanceRegister(signature) is { } register)
+            if (iterates && classification.IsInstanceMethod && InstanceMethodLookup.GetInstanceRegister(signature) is { } register)
             {
                 instanceMethods.Add(new InstanceMethod(symbol.Rva, register));
             }
@@ -102,7 +102,7 @@ internal static class ReplayFunctionScan
                                                                              string moduleName,
                                                                              VtableResolver.Collector vtables)
     {
-        var mappings = CategoryMappings.Default;
+        var mappings = CategoryRuleTable.Default;
 
         var functions = new Dictionary<uint, FunctionClassification>(table.FunctionCount);
 
@@ -127,7 +127,7 @@ internal static class ReplayFunctionScan
         return functions;
     }
 
-    private static FunctionClassification ClassifyFunction(CategoryMappings mappings, string module, uint rva, ReadOnlySpan<char> symbol)
+    private static FunctionClassification ClassifyFunction(CategoryRuleTable mappings, string module, uint rva, ReadOnlySpan<char> symbol)
         => new(IsExcluded(mappings, module, symbol),
                InstanceMethodLookup.IsInstanceMethod(symbol),
                IteratorSymbolLookup.IsInstanceClass(symbol),
@@ -154,11 +154,11 @@ internal static class ReplayFunctionScan
         return new(table);
     }
 
-    private static bool IsExcluded(CategoryMappings mappings, string module, ReadOnlySpan<char> symbol)
+    private static bool IsExcluded(CategoryRuleTable mappings, string module, ReadOnlySpan<char> symbol)
     {
-        SymbolsHelper.Split(symbol, out var className, out var methodName);
+        SymbolHelper.Split(symbol, out var className, out var methodName);
 
         return mappings.Classify(module, className, methodName)
-                       .IsInstrumentation(mappings.ClassifyOperator(module, className, methodName).Iterator is not null);
+                       .IsInstrumentation(mappings.ClassifyOperator(module, className, methodName).OperatorName is not null);
     }
 }

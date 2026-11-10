@@ -1,6 +1,7 @@
 ﻿using InternalsViewer.Query.FullTrace.Calls.Tree;
 using Xunit.Abstractions;
 using InternalsViewer.Query.FullTrace.Symbols.Categories;
+using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Calls.Tree;
 
@@ -23,13 +24,13 @@ public class CallTreeTests(ITestOutputHelper output)
         var callee = tree.AddCall(second, new CallFrame { Module = new("sqlmin"), Rva = 0x40 }, 1);
 
         first.AllocatedBytes = 100;
-        first.Allocations = 1;
+        first.AllocationCount = 1;
         callee.AllocatedBytes = 50;
-        callee.Allocations = 2;
+        callee.AllocationCount = 2;
 
         var merged = CallTreeNode.Merge([first, second]);
 
-        Assert.Equal((5L, 150L, 3L), (merged.Calls, merged.AllocatedBytesIncludingChildren, merged.AllocationsIncludingChildren));
+        Assert.Equal((5L, 150L, 3L), (merged.CallCount, merged.AllocatedBytesIncludingChildren, merged.AllocationsIncludingChildren));
         Assert.Equal([first, second], merged.MergedFrom);
         Assert.Equal(first.Key, merged.Key);
         Assert.Empty(merged.Children);
@@ -44,7 +45,7 @@ public class CallTreeTests(ITestOutputHelper output)
 
         var collapsed = tree.CollapseToFunctions();
 
-        var boundary = collapsed.Nodes().Single(n => n.Symbol == "Seek::m");
+        var boundary = collapsed.GetNodes().Single(n => n.Symbol == "Seek::m");
 
         var projected = collapsed.Project(cutAt: node => ReferenceEquals(node, boundary));
 
@@ -72,7 +73,7 @@ public class CallTreeTests(ITestOutputHelper output)
 
         var collapsed = tree.CollapseToFunctions();
 
-        var boundaries = collapsed.Nodes().Where(n => n.Symbol == "Seek::m").ToList();
+        var boundaries = collapsed.GetNodes().Where(n => n.Symbol == "Seek::m").ToList();
 
         Assert.Equal(2, boundaries.Count);
 
@@ -101,9 +102,9 @@ public class CallTreeTests(ITestOutputHelper output)
 
         var collapsed = tree.CollapseToFunctions();
 
-        var statement = collapsed.Nodes().Single(n => n.Symbol == "Statement::m");
+        var statement = collapsed.GetNodes().Single(n => n.Symbol == "Statement::m");
 
-        var exits = collapsed.Nodes().Where(n => n.Symbol is "Agg::m" or "Seek::m").ToList();
+        var exits = collapsed.GetNodes().Where(n => n.Symbol is "Agg::m" or "Seek::m").ToList();
 
         var projected = collapsed.Project(cutAt: node => ReferenceEquals(node, statement), stopBelow: exits.Contains);
 
@@ -127,7 +128,7 @@ public class CallTreeTests(ITestOutputHelper output)
 
         var collapsed = tree.CollapseToFunctions();
 
-        var seek = collapsed.Nodes().Single(n => n.Symbol == "Seek::m");
+        var seek = collapsed.GetNodes().Single(n => n.Symbol == "Seek::m");
 
         var projected = collapsed.Project(cutAt: node => ReferenceEquals(node, seek), stopBelow: _ => false);
 
@@ -161,9 +162,9 @@ public class CallTreeTests(ITestOutputHelper output)
 
         output.WriteLine(Render(collapsed));
 
-        Assert.DoesNotContain(collapsed.Nodes(), node => node.Symbol is "Publish::m" or "memcpy::m");
-        Assert.Equal(3, collapsed.Nodes().Single(node => node.Symbol == "ReadPage::m").Calls);
-        Assert.Equal(1, collapsed.Nodes().Single(node => node.Symbol == "PreWait::m").Calls);
+        Assert.DoesNotContain(collapsed.GetNodes(), node => node.Symbol is "Publish::m" or "memcpy::m");
+        Assert.Equal(3, collapsed.GetNodes().Single(node => node.Symbol == "ReadPage::m").CallCount);
+        Assert.Equal(1, collapsed.GetNodes().Single(node => node.Symbol == "PreWait::m").CallCount);
     }
 
     [Fact]
@@ -183,10 +184,10 @@ public class CallTreeTests(ITestOutputHelper output)
 
         collapsed.ComputeActivity(3);
 
-        var root = collapsed.Nodes().Single(node => node.Symbol == "X::m");
+        var root = collapsed.GetNodes().Single(node => node.Symbol == "X::m");
 
         Assert.Equal([1, 3, 1], root.ActivityCounts);
-        Assert.Equal([0, 3, 1], collapsed.Nodes().Single(node => node.Symbol == "Y::m").ActivityCounts);
+        Assert.Equal([0, 3, 1], collapsed.GetNodes().Single(node => node.Symbol == "Y::m").ActivityCounts);
     }
 
     [Fact]
@@ -208,7 +209,7 @@ public class CallTreeTests(ITestOutputHelper output)
 
         collapsed.ComputeActivity(2);
 
-        Assert.Equal([1, 0], Assert.Single(collapsed.Nodes()).ActivityCounts);
+        Assert.Equal([1, 0], Assert.Single(collapsed.GetNodes()).ActivityCounts);
     }
 
     [Fact]

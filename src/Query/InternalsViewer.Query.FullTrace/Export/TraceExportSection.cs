@@ -73,8 +73,8 @@ internal sealed class TraceExportSection : IQueryExportSection
     public IRunExtra? Read(QueryExportReader reader)
     {
         if (TraceCallTreeExport.Read(reader) is not (var tree, var nodes)
-            || !reader.ReadBinary(CallStoreEntry, TraceCallStore.IsCurrent)
-            || !reader.ReadBinary(TimelineEntry, TraceTimeline.IsCurrent))
+            || !reader.ReadBinary(CallStoreEntry, TraceCallStore.IsSupported)
+            || !reader.ReadBinary(TimelineEntry, TraceTimeline.IsSupported))
         {
             return null;
         }
@@ -93,7 +93,7 @@ internal sealed class TraceExportSection : IQueryExportSection
         {
             Allocation = memory,
             AddressMap = reader.HasEntry(AddressMapEntry) && reader.ReadBinary(AddressMapEntry, AddressMap.IsSupported)
-                ? reader.ReadBinary(AddressMapEntry, r => AddressMap.Read(r, timeline.NodeOf))
+                ? reader.ReadBinary(AddressMapEntry, r => AddressMap.Read(r, timeline.GetNode))
                 : AddressMap.Empty,
             MemoryObjectSnapshot = reader.HasEntry(MemoryObjectsEntry) && reader.ReadBinary(MemoryObjectsEntry, MemoryObjectMap.IsSupported)
                 ? reader.ReadBinary(MemoryObjectsEntry, MemoryObjectMap.ReadObjects)
@@ -106,20 +106,16 @@ internal sealed class TraceExportSection : IQueryExportSection
                 : TraceBufferPool.Empty
         };
 
-        var result = builder.Build() with
-        {
-            MemoryHistory = reader.HasEntry(MemoryHistoryEntry) && reader.ReadBinary(MemoryHistoryEntry, MemoryHistoryStore.IsSupported)
-                ? reader.ReadBinary(MemoryHistoryEntry, r => MemoryHistoryStore.Read(r, timeline))
-                : MemoryHistoryStore.Empty,
-            PageReads = reader.HasEntry(PageReadsEntry) && reader.ReadBinary(PageReadsEntry, TracePageReadList.IsSupported)
-                ? reader.ReadBinary(PageReadsEntry, TracePageReadList.Read)
-                : TracePageReadList.Empty
-        };
+        builder.Link();
 
-        result = result.WithPageAccesses();
+        var memoryHistory = reader.HasEntry(MemoryHistoryEntry) && reader.ReadBinary(MemoryHistoryEntry, MemoryHistoryStore.IsSupported)
+            ? reader.ReadBinary(MemoryHistoryEntry, r => MemoryHistoryStore.Read(r, timeline))
+            : MemoryHistoryStore.Empty;
 
-        callStore.ReleaseColumns();
+        var pageReads = reader.HasEntry(PageReadsEntry) && reader.ReadBinary(PageReadsEntry, TracePageReadList.IsSupported)
+            ? reader.ReadBinary(PageReadsEntry, TracePageReadList.Read)
+            : TracePageReadList.Empty;
 
-        return result;
+        return builder.Build(memoryHistory, pageReads);
     }
 }

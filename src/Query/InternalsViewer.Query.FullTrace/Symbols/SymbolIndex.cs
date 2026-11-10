@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using InternalsViewer.Query.Helpers;
+using InternalsViewer.Query.FullTrace.Symbols.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Symbols;
 
@@ -19,7 +20,7 @@ namespace InternalsViewer.Query.FullTrace.Symbols;
 /// </remarks>
 internal sealed class SymbolIndex
 {
-    private SymbolIndex(PackedStrings classes, PackedStrings names, PackedStrings signatures, SymbolTable table, int[] entries)
+    private SymbolIndex(PackedStringList classes, PackedStringList names, PackedStringList signatures, SymbolTable table, int[] entries)
     {
         Classes = classes;
         Names = names;
@@ -30,11 +31,11 @@ internal sealed class SymbolIndex
 
     public int Count => Entries.Length;
 
-    private PackedStrings Classes { get; }
+    private PackedStringList Classes { get; }
 
-    private PackedStrings Names { get; }
+    private PackedStringList Names { get; }
 
-    private PackedStrings Signatures { get; }
+    private PackedStringList Signatures { get; }
 
     private SymbolTable Table { get; }
 
@@ -42,11 +43,11 @@ internal sealed class SymbolIndex
 
     public static SymbolIndex Build(SymbolTable table)
     {
-        var classes = new PackedStrings.Builder();
+        var classes = new PackedStringList.Builder();
 
-        var names = new PackedStrings.Builder();
+        var names = new PackedStringList.Builder();
 
-        var signatures = new PackedStrings.Builder();
+        var signatures = new PackedStringList.Builder();
 
         var entries = new List<int>();
 
@@ -109,7 +110,7 @@ internal sealed class SymbolIndex
             Signatures.Search(query, limit, entries);
         }
 
-        return entries.Take(limit).Select(Hit).ToList();
+        return entries.Take(limit).Select(GetHit).ToList();
     }
 
     /// <summary>
@@ -162,9 +163,9 @@ internal sealed class SymbolIndex
     /// <summary>
     /// The first symbols in the index, for a search satisfied by the module's name alone
     /// </summary>
-    public IReadOnlyList<Symbol> First(int limit) => Enumerable.Range(0, Math.Min(limit, Count)).Select(Hit).ToList();
+    public IReadOnlyList<Symbol> GetFirst(int limit) => Enumerable.Range(0, Math.Min(limit, Count)).Select(GetHit).ToList();
 
-    private Symbol Hit(int entry) => Table.GetSymbol(Entries[entry]);
+    private Symbol GetHit(int entry) => Table.GetSymbol(Entries[entry]);
 
     /// <summary>
     /// A search text folded to lower-case ASCII, with the longest wildcard-free run picked out to scan for
@@ -186,7 +187,7 @@ internal sealed class SymbolIndex
 
         public static SearchQuery? Parse(string text)
         {
-            var folded = PackedStrings.Fold(text.Trim());
+            var folded = PackedStringList.Fold(text.Trim());
 
             if (folded.Length == 0)
             {
@@ -195,7 +196,7 @@ internal sealed class SymbolIndex
 
             var isPattern = folded.Contains((byte)'*') || folded.Contains((byte)'?');
 
-            return new SearchQuery(folded, isPattern ? LongestLiteral(folded) : folded, isPattern);
+            return new SearchQuery(folded, isPattern ? GetLongestLiteral(folded) : folded, isPattern);
         }
 
         /// <summary>
@@ -203,7 +204,7 @@ internal sealed class SymbolIndex
         /// </summary>
         public bool IsMatch(string value)
         {
-            var folded = PackedStrings.Fold(value);
+            var folded = PackedStringList.Fold(value);
 
             return IsPattern ? Matches(folded) : folded.AsSpan().IndexOf(Literal) >= 0;
         }
@@ -254,7 +255,7 @@ internal sealed class SymbolIndex
             return patternIndex == pattern.Length;
         }
 
-        private static byte[] LongestLiteral(byte[] pattern)
+        private static byte[] GetLongestLiteral(byte[] pattern)
         {
             var best = ReadOnlySpan<byte>.Empty;
 
@@ -280,7 +281,7 @@ internal sealed class SymbolIndex
     /// <summary>
     /// Lower-cased ASCII strings in one buffer, each found by a binary search of its start offset
     /// </summary>
-    private sealed class PackedStrings(byte[] bytes, int[] starts)
+    private sealed class PackedStringList(byte[] bytes, int[] starts)
     {
         private byte[] Bytes { get; } = bytes;
 
@@ -331,7 +332,7 @@ internal sealed class SymbolIndex
 
                 var absolute = position + offset;
 
-                var entry = EntryAt(absolute);
+                var entry = GetEntry(absolute);
 
                 var end = Starts[entry + 1];
 
@@ -370,7 +371,7 @@ internal sealed class SymbolIndex
             }
         }
 
-        private int EntryAt(int offset)
+        private int GetEntry(int offset)
         {
             var index = Array.BinarySearch(Starts, offset);
 
@@ -379,22 +380,22 @@ internal sealed class SymbolIndex
 
         public sealed class Builder
         {
-            private readonly MemoryStream _bytes = new();
+            private MemoryStream Bytes { get; } = new();
 
-            private readonly List<int> _starts = [];
+            private List<int> Starts { get; } = [];
 
             public void Add(ReadOnlySpan<char> text)
             {
-                _starts.Add((int)_bytes.Length);
+                Starts.Add((int)Bytes.Length);
 
-                _bytes.Write(Fold(text));
+                Bytes.Write(Fold(text));
             }
 
-            public PackedStrings Build()
+            public PackedStringList Build()
             {
-                _starts.Add((int)_bytes.Length);
+                Starts.Add((int)Bytes.Length);
 
-                return new PackedStrings(_bytes.ToArray(), _starts.ToArray());
+                return new PackedStringList(Bytes.ToArray(), Starts.ToArray());
             }
         }
     }

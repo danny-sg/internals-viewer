@@ -1,5 +1,6 @@
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Symbols.Categories;
+using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Functions;
 
@@ -21,9 +22,9 @@ public class ReplayFunctionResolverTests
     [InlineData("CQScanLightProfileNew", "GetRow")]
     public void A_Profile_Wrapper_Is_Tracing_But_Its_Calls_Stay_In_The_Replay(string className, string methodName)
     {
-        var category = CategoryMappings.Default.Classify("sqlmin", className, methodName);
+        var category = CategoryRuleTable.Default.Classify("sqlmin", className, methodName);
 
-        var iterator = CategoryMappings.Default.ClassifyOperator("sqlmin", className, methodName).Iterator;
+        var iterator = CategoryRuleTable.Default.ClassifyOperator("sqlmin", className, methodName).OperatorName;
 
         Assert.Equal(SymbolCategory.Tracing, category);
         Assert.False(category.IsInstrumentation(iterator is not null));

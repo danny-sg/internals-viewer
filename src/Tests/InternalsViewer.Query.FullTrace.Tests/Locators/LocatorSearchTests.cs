@@ -1,5 +1,6 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Locators;
 
@@ -17,7 +18,7 @@ public class LocatorSearchTests
     {
         Assert.True(LocatorSearch.TryParse(text, out var search));
 
-        Assert.Equal(LocatorSearch.ForPage(new PageAddress(1, 336), null), search);
+        Assert.Equal(LocatorSearch.CreatePageSearch(new PageAddress(1, 336), null), search);
     }
 
     [Theory]
@@ -28,7 +29,7 @@ public class LocatorSearchTests
     {
         Assert.True(LocatorSearch.TryParse(text, out var search));
 
-        Assert.Equal(LocatorSearch.ForPage(new PageAddress(1, 336), 5), search);
+        Assert.Equal(LocatorSearch.CreatePageSearch(new PageAddress(1, 336), 5), search);
     }
 
     [Theory]

@@ -1,5 +1,6 @@
 using System.Text;
 using InternalsViewer.Query.Interfaces;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Locators;
 
@@ -11,7 +12,7 @@ public readonly record struct TextLocator(Locator Locator)
 
     public bool IsTruncated => Locator.Detail != 0;
 
-    public static Locator? Read(IMemoryReader memory, int register, ulong address, LocatorValueType valueType)
+    public static Locator? Read(IMemoryReader memory, int argumentSlot, ulong address, LocatorValueType valueType)
     {
         var width = valueType == LocatorValueType.WideText ? 2 : 1;
 
@@ -34,7 +35,7 @@ public readonly record struct TextLocator(Locator Locator)
 
         var text = width == 2 ? Encoding.Unicode.GetString(characters) : Encoding.Latin1.GetString(characters);
 
-        return new Locator(register, valueType, (ulong)text.Length, end < 0 ? 1ul : 0, text);
+        return new Locator(argumentSlot, valueType, (ulong)text.Length, end < 0 ? 1ul : 0, text);
     }
 
     public override string ToString() => IsTruncated ? $"{Text} (Truncated)" : Text;

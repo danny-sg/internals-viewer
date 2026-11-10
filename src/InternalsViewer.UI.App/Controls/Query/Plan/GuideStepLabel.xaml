@@ -1,0 +1,84 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Controls.Query.Plan.GuideStepLabel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ 
+    xmlns:winUi="using:CommunityToolkit.WinUI"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls">
+    <UserControl.Resources>
+        <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="LightGray" />
+        <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="LightGray" />
+
+        <Style x:Key="StepChevronButtonStyle" TargetType="Button" BasedOn="{StaticResource TabCommandButtonStyle}">
+            <Setter Property="Padding" Value="6,0,6,0" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+            <Setter Property="IsTabStop" Value="False" />
+        </Style>
+    </UserControl.Resources>
+    <Grid PointerPressed="OnPointerPressed">
+        <Border x:Name="ShadowTarget" />
+        <Border CornerRadius="4"
+                Background="{ThemeResource SolidBackgroundFillColorTertiaryBrush}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0"
+                        Style="{StaticResource StepChevronButtonStyle}"
+                        ToolTipService.ToolTip="Previous Step"
+                        AutomationProperties.Name="Previous Step"
+                        Click="OnPreviousClick">
+                    <FontIcon Glyph="&#xE76B;" FontSize="10" />
+                </Button>
+                <Grid Grid.Column="1" MaxWidth="468">
+                    <Grid.Resources>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="FontFamily" Value="Consolas" />
+                        </Style>
+                        <Style TargetType="RichTextBlock">
+                            <Setter Property="IsTextSelectionEnabled" Value="False" />
+                        </Style>
+                    </Grid.Resources>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Button Grid.Row="0"
+                            Style="{StaticResource TabCommandButtonStyle}"
+                            Padding="4,8,4,8"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            IsTabStop="False"
+                            ToolTipService.ToolTip="Next Step"
+                            AutomationProperties.Name="Next Step"
+                            Click="OnNextClick">
+                        <controls:MarkdownTextBlock x:Name="NameText" FontSize="12" FontWeight="Bold" IsHitTestVisible="False" />
+                    </Button>
+                    <controls:MarkdownTextBlock x:Name="DescriptionText"
+                                                Grid.Row="1"
+                                                Margin="4,0,4,8"
+                                                FontSize="12"
+                                                OnLinkClicked="OnDescriptionLinkClicked" />
+                </Grid>
+                <Button Grid.Column="2"
+                        Style="{StaticResource StepChevronButtonStyle}"
+                        ToolTipService.ToolTip="Next Step"
+                        AutomationProperties.Name="Next Step"
+                        Click="OnNextClick">
+                    <FontIcon Glyph="&#xE76C;" FontSize="10" />
+                </Button>
+            </Grid>
+
+            <winUi:Effects.Shadow>
+                <winUi:AttachedDropShadow CastTo="{x:Bind ShadowTarget}"
+                                          CornerRadius="4"
+                                          BlurRadius="10"
+                                          Opacity="0.2"
+                                          Offset="4,4" />
+            </winUi:Effects.Shadow>
+        </Border>
+    </Grid>
+</UserControl>

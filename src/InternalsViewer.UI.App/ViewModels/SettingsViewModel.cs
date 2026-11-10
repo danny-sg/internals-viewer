@@ -41,6 +41,7 @@ public partial class SettingsViewModel(SettingsService settingsService,
     private const string WinDbgPathKey = "WinDbgPath";
     private const string SymbolSearchExcludedModulesKey = "SymbolSearchExcludedModules";
     private const string ShowTimeTravelWarningKey = "ShowTimeTravelWarning";
+    private const string IsTracePromptEnabledKey = "IsTracePromptEnabled";
     private const string CallTreeHiddenCategoriesKey = "CallTreeHiddenCategories";
     private const string CallTreePrunedCategoriesKey = "CallTreePrunedCategories";
     private const string TraceTimelineShowMemoryKey = "FlameChartShowMemory";
@@ -56,6 +57,7 @@ public partial class SettingsViewModel(SettingsService settingsService,
     private const string PinTimelineKey = "PinTimeline";
 
     private const string TraceTimelineHiddenTickTracksKey = "TraceTimelineHiddenTickTracks";
+    private const string PlanAdditionalStepsKey = "PlanAdditionalSteps";
     private const string DecodeValuesKey = "DecodeValues";
     private const string McpServerEnabledKey = "McpServerEnabled";
     private const string McpServerPortKey = "McpServerPort";
@@ -67,6 +69,8 @@ public partial class SettingsViewModel(SettingsService settingsService,
 
     private const string DefaultCallTreeHiddenCategories =
         "Compilation;Metadata;Networking;Query Store;Security;Tracing;Transaction Management";
+
+    private const string DefaultTraceTimelineHiddenTickTracks = "Open";
 
     private const double DefaultMaxTraceSizeMb = 150;
 
@@ -105,6 +109,9 @@ public partial class SettingsViewModel(SettingsService settingsService,
 
     [ObservableProperty]
     private bool _showTimeTravelWarning = true;
+
+    [ObservableProperty]
+    private bool _isTracePromptEnabled = true;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CallTreeHiddenCategorySet))]
@@ -149,7 +156,11 @@ public partial class SettingsViewModel(SettingsService settingsService,
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(TraceTimelineHiddenTickTrackSet))]
-    private string _traceTimelineHiddenTickTracks = string.Empty;
+    private string _traceTimelineHiddenTickTracks = DefaultTraceTimelineHiddenTickTracks;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PlanAdditionalStepSet))]
+    private string _planAdditionalSteps = string.Empty;
 
     [ObservableProperty]
     private bool _decodeValues = true;
@@ -192,7 +203,10 @@ public partial class SettingsViewModel(SettingsService settingsService,
 
     public IReadOnlySet<string> CallTreePrunedCategorySet { get; private set; } = SplitCategories(string.Empty);
 
-    public IReadOnlySet<string> TraceTimelineHiddenTickTrackSet { get; private set; } = SplitCategories(string.Empty);
+    public IReadOnlySet<string> TraceTimelineHiddenTickTrackSet { get; private set; }
+        = SplitCategories(DefaultTraceTimelineHiddenTickTracks);
+
+    public IReadOnlySet<string> PlanAdditionalStepSet { get; private set; } = SplitCategories(string.Empty);
 
     private SettingsService SettingsService { get; } = settingsService;
 
@@ -260,6 +274,8 @@ public partial class SettingsViewModel(SettingsService settingsService,
 
         ShowTimeTravelWarning = await SettingsService.ReadSettingAsync<bool?>(ShowTimeTravelWarningKey) ?? true;
 
+        IsTracePromptEnabled = await SettingsService.ReadSettingAsync<bool?>(IsTracePromptEnabledKey) ?? true;
+
         CallTreeHiddenCategories = await SettingsService.ReadSettingAsync<string>(CallTreeHiddenCategoriesKey)
                                    ?? DefaultCallTreeHiddenCategories;
 
@@ -288,7 +304,10 @@ public partial class SettingsViewModel(SettingsService settingsService,
 
         PinTimeline = await SettingsService.ReadSettingAsync<bool?>(PinTimelineKey) ?? true;
 
-        TraceTimelineHiddenTickTracks = await SettingsService.ReadSettingAsync<string>(TraceTimelineHiddenTickTracksKey) ?? string.Empty;
+        TraceTimelineHiddenTickTracks = await SettingsService.ReadSettingAsync<string>(TraceTimelineHiddenTickTracksKey)
+                                        ?? DefaultTraceTimelineHiddenTickTracks;
+
+        PlanAdditionalSteps = await SettingsService.ReadSettingAsync<string>(PlanAdditionalStepsKey) ?? string.Empty;
 
         DecodeValues = await SettingsService.ReadSettingAsync<bool?>(DecodeValuesKey) ?? true;
 
@@ -427,6 +446,11 @@ public partial class SettingsViewModel(SettingsService settingsService,
         _ = SettingsService.SaveSettingAsync(SymbolSearchExcludedModulesKey, value);
     }
 
+    partial void OnIsTracePromptEnabledChanged(bool value)
+    {
+        _ = SettingsService.SaveSettingAsync(IsTracePromptEnabledKey, value);
+    }
+
     partial void OnShowTimeTravelWarningChanged(bool value)
     {
         _ = SettingsService.SaveSettingAsync(ShowTimeTravelWarningKey, value);
@@ -448,6 +472,13 @@ public partial class SettingsViewModel(SettingsService settingsService,
         CallTreePrunedCategorySet = SplitCategories(value);
 
         _ = SettingsService.SaveSettingAsync(CallTreePrunedCategoriesKey, value);
+    }
+
+    partial void OnPlanAdditionalStepsChanged(string value)
+    {
+        PlanAdditionalStepSet = SplitCategories(value);
+
+        _ = SettingsService.SaveSettingAsync(PlanAdditionalStepsKey, value);
     }
 
     partial void OnTraceTimelineHiddenTickTracksChanged(string value)

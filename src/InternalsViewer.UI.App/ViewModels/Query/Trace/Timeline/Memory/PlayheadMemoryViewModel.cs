@@ -5,7 +5,9 @@ using System.Collections.Specialized;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.History;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Pages;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
@@ -73,6 +75,12 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
     [ObservableProperty]
     private int? _scrollToOffset;
 
+    [ObservableProperty]
+    private bool _isHashTableVisible;
+
+    [ObservableProperty]
+    private string _hashTableText = string.Empty;
+
     public PlayheadMemoryViewModel(MemoryHistoryViewModel history)
     {
         History = history;
@@ -82,6 +90,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         Reads = new MemoryReadsViewModel(this);
 
         References = new MemoryReferencesViewModel(this);
+
+        WorkfilePage = new MemoryPageViewModel(ShowMarkers);
 
         HexLoader = new PlayheadLoader<HexImage?>(TimeSpan.FromMilliseconds(LoadInterval), ApplyHex);
     }
@@ -106,7 +116,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     public MemoryBatchViewModel Batch { get; } = new();
 
-    public MemoryPageViewModel WorkfilePage { get; } = new();
+    public MemoryPageViewModel WorkfilePage { get; }
 
     public MemoryBindingsViewModel Bindings { get; } = new();
 
@@ -133,6 +143,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
     private List<MemoryHistoryPointer> Pointers { get; set; } = [];
 
     private ObservableCollection<Marker>? WriterMarkers { get; set; }
+
+    private ulong HashTableGroup { get; set; }
 
     public void Open(int block, ulong address, TracePosition position)
     {
@@ -175,9 +187,11 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         Batch.Load(this);
 
-        WorkfilePage.Load(this);
+        WorkfilePage.Load(History, block);
 
         Bindings.Load(this);
+
+        FindHashTable();
 
         ApplyMarkers();
 
@@ -228,6 +242,12 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         WorkfilePage.Clear();
 
         Bindings.Clear();
+
+        HashTableGroup = 0;
+
+        IsHashTableVisible = false;
+
+        HashTableText = string.Empty;
 
         Writes.Clear();
 
@@ -290,6 +310,34 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         return History.IsQueryDatabase(page)
             ? new ActionLinks([new ActionLink(text, () => Navigator?.OpenBufferPage(page))]) { Suffix = label }
             : $"{text}  {label}";
+    }
+
+    public object GetPointerCell(ulong pointer)
+    {
+        var text = $"0x{pointer:X16}";
+
+        if (pointer == 0)
+        {
+            return text;
+        }
+
+        if (History.GetBlock(pointer, Position) < 0)
+        {
+            return GetBufferPageCell(text, pointer, Position) ?? text;
+        }
+
+        return new ActionLinks([new ActionLink(text, () => RequestMemory(pointer))])
+        {
+            Suffix = History.GetPointerTarget(pointer, Position)
+        };
+    }
+
+    public void OpenHashTable()
+    {
+        if (HashTableGroup != 0)
+        {
+            Navigator?.OpenHashTable(HashTableGroup);
+        }
     }
 
     public void GoToWrite(int index)
@@ -528,6 +576,34 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
     }
 
     private void OnWatchesChanged(object? sender, NotifyCollectionChangedEventArgs e) => Writes.Load();
+
+    private void FindHashTable()
+    {
+        HashTableGroup = History.CallStore is { } calls ? GetHashTableGroup(calls) : 0;
+
+        IsHashTableVisible = HashTableGroup != 0;
+
+        HashTableText = IsHashTableVisible ? $"0x{HashTableGroup:X16}" : string.Empty;
+    }
+
+    private ulong GetHashTableGroup(TraceCallStore calls)
+    {
+        var block = History.Store.Blocks[Block];
+
+        foreach (var group in TraceHashTableReader.GetGroups(calls))
+        {
+            var accesses = TraceHashTableReader.GetAccesses(calls, group);
+
+            List<TracePosition> positions = accesses.Count > 0 ? [OpenedAt, accesses[^1].Position] : [OpenedAt];
+
+            if (positions.Any(p => TraceHashTableReader.Read(History.Store, group, p)?.Contains(block.Address, block.Size) == true))
+            {
+                return group;
+            }
+        }
+
+        return 0;
+    }
 
     private int? GetReadIndex(int index)
     {

@@ -8,7 +8,7 @@ public sealed record TraceStartCall(CallTreeNode Node, TraceArgumentCall Call)
     public static TraceStartCall? Find(TraceCallStore store, TraceTimeline timeline)
     {
         if (timeline.GetFirstRootCall() is not { } root
-            || timeline.NodeOf(root.Span.CallNodeIndex) is not { Frame: { } frame } node
+            || timeline.GetNode(root.Span.CallNodeIndex) is not { Frame: { } frame } node
             || store.GetCallList(frame.Address, frame.InstanceAddress) is not { } calls)
         {
             return null;

@@ -1,3 +1,5 @@
+using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
+
 namespace InternalsViewer.Query.FullTrace.Symbols.Categories;
 
 /// <summary>
@@ -70,8 +72,8 @@ internal static class MappingParser
                 Module = GlobPattern.Parse(cells[0]),
                 Class = GlobPattern.Parse(cells[1]),
                 Function = GlobPattern.Parse(cells[2]),
-                Iterator = Optional(cells, 3),
-                PlanOperator = PlanOperators(Optional(cells, 4)),
+                OperatorName = GetOptional(cells, 3),
+                PlanOperator = ParsePlanOperators(GetOptional(cells, 4)),
                 DefinitionOrder = order++,
             };
         }
@@ -79,13 +81,13 @@ internal static class MappingParser
 
     // Blank is empty, not GlobPattern.Parse("") — an empty pattern is match-anything, which for the plan operator would
     // make every unmapped frame an operator boundary.
-    private static IReadOnlyList<GlobPattern> PlanOperators(string? cell)
+    private static IReadOnlyList<GlobPattern> ParsePlanOperators(string? cell)
         => cell is null
             ? []
             : [.. cell.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                       .Select(GlobPattern.Parse)];
 
-    private static string? Optional(string[] cells, int index)
+    private static string? GetOptional(string[] cells, int index)
         => index < cells.Length && !string.IsNullOrWhiteSpace(cells[index]) ? cells[index] : null;
 
     private static IEnumerable<string[]> ReadRows(TextReader reader, int minCells)

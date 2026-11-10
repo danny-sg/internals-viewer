@@ -80,21 +80,7 @@ public sealed class RunTools(McpDocumentResolver documents)
 
         builder.AppendLine($"Lock categories captured: {(categories.Count > 0 ? string.Join(", ", categories) : "none")}");
 
-        if (scope.Trace is { } trace)
-        {
-            builder.AppendLine("Full Trace:    yes");
-
-            foreach (var (component, items, bytes) in trace.GetComponentSizes())
-            {
-                var size = bytes is { } byteCount ? $"  {Format.Bytes(byteCount)}" : string.Empty;
-
-                builder.AppendLine($"  {component,-22} {Format.Number(items),14}{size}");
-            }
-        }
-        else
-        {
-            builder.AppendLine("Full Trace:    no");
-        }
+        builder.AppendLine(scope.Trace is null ? "Full Trace:    no" : "Full Trace:    yes");
 
         builder.AppendLine();
 

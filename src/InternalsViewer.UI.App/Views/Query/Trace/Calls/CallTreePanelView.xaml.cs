@@ -586,14 +586,14 @@ public sealed partial class CallTreePanelView : UserControl, IDocumentCommands, 
 
         if (locators.Count == 1)
         {
-            OpenLocator(locators.Ordered().First());
+            OpenLocator(locators.GetOrdered().First());
 
             return;
         }
 
         var menu = new MenuFlyout();
 
-        foreach (var locator in locators.Ordered().Take(ListedLocators))
+        foreach (var locator in locators.GetOrdered().Take(ListedLocators))
         {
             menu.Items.Add(MenuItems.Create(locator.ToString(), () => OpenLocator(locator)));
         }

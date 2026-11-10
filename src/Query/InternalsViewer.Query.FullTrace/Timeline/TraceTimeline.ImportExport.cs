@@ -18,16 +18,16 @@ public sealed partial class TraceTimeline
         Parents = parents;
         Nodes = nodes;
         Scale = scale;
-        SpanCount = threads.Sum(t => t.Calls);
+        SpanCount = threads.Sum(t => t.CallCount);
         Start = start;
         End = end;
     }
 
-    internal static bool IsCurrent(BinaryReader reader) => reader.ReadInt32() == -FormatVersion;
+    internal static bool IsSupported(BinaryReader reader) => reader.ReadInt32() == -FormatVersion;
 
     internal static TraceTimeline Read(BinaryReader reader, IReadOnlyList<CallTreeNode> nodesById)
     {
-        if (!IsCurrent(reader))
+        if (!IsSupported(reader))
         {
             throw new InvalidDataException("The trace timeline was exported in an earlier format and must be re-recorded");
         }
@@ -75,7 +75,7 @@ public sealed partial class TraceTimeline
         return timeline;
     }
 
-    internal void Write(BinaryWriter writer, Func<CallTreeNode, int> idOf)
+    internal void Write(BinaryWriter writer, Func<CallTreeNode, int> getId)
     {
         writer.Write(-FormatVersion);
 
@@ -87,7 +87,7 @@ public sealed partial class TraceTimeline
 
         ExportBinary.WriteArray(writer, Parents);
 
-        ExportBinary.WriteArray(writer, [.. Nodes.Select(node => node is null ? -1 : idOf(node))]);
+        ExportBinary.WriteArray(writer, [.. Nodes.Select(node => node is null ? -1 : getId(node))]);
 
         writer.Write(Threads.Count);
 
@@ -95,7 +95,7 @@ public sealed partial class TraceTimeline
         {
             writer.Write(thread.ThreadId);
 
-            writer.Write(thread.Calls);
+            writer.Write(thread.CallCount);
 
             thread.Clock.Write(writer);
 

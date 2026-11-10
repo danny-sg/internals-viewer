@@ -171,7 +171,7 @@ public sealed partial class CategoryFilterPanel : UserControl
     {
         CategoryBadges.Children.Clear();
 
-        var categories = (CallTree?.Nodes() ?? [])
+        var categories = (CallTree?.GetNodes() ?? [])
                          .Where(n => n.Frame is not null)
                          .GroupBy(n => n.Category)
                          .Select(g => (Category: g.Key, Colour: g.First().CategoryColour))

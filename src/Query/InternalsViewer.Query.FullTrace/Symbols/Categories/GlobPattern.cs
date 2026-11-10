@@ -1,3 +1,5 @@
+using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
+
 namespace InternalsViewer.Query.FullTrace.Symbols.Categories;
 
 /// <summary>
@@ -11,8 +13,6 @@ namespace InternalsViewer.Query.FullTrace.Symbols.Categories;
 /// </remarks>
 public readonly struct GlobPattern
 {
-    private readonly string _pattern;
-
     /// <summary>
     /// Specificity of this pattern — higher is more specific (exact ≫ literal-length glob &gt; wildcard)
     /// </summary>
@@ -21,7 +21,7 @@ public readonly struct GlobPattern
     /// <summary>
     /// The pattern as written in the mapping file
     /// </summary>
-    public string Text => _pattern;
+    public string Text { get; }
 
     /// <summary>
     /// Whether the pattern matches anything at all, being blank or the lone wildcard
@@ -37,7 +37,7 @@ public readonly struct GlobPattern
 
     private GlobPattern(string pattern, GlobShape shape, string literal, int score)
     {
-        _pattern = pattern;
+        Text = pattern;
         Shape = shape;
         Literal = literal;
         Score = score;
@@ -59,7 +59,7 @@ public readonly struct GlobPattern
 
         var literalLength = pattern.Count(c => c != '*');
 
-        var (shape, literal) = ShapeOf(pattern);
+        var (shape, literal) = GetShape(pattern);
 
         return new GlobPattern(pattern, shape, literal, score: literalLength);
     }
@@ -72,10 +72,10 @@ public readonly struct GlobPattern
             GlobShape.Prefix => value.StartsWith(Literal, StringComparison.OrdinalIgnoreCase),
             GlobShape.Suffix => value.EndsWith(Literal, StringComparison.OrdinalIgnoreCase),
             GlobShape.Contains => value.Contains(Literal, StringComparison.OrdinalIgnoreCase),
-            _ => GlobMatch(_pattern, value)
+            _ => IsGlobMatch(Text, value)
         };
 
-    private static (GlobShape Shape, string Literal) ShapeOf(string pattern)
+    private static (GlobShape Shape, string Literal) GetShape(string pattern)
     {
         var leading = pattern[0] == '*';
 
@@ -98,7 +98,7 @@ public readonly struct GlobPattern
 
     // Case-insensitive glob: '*' matches any run (including empty). Two-pointer walk with a remembered star position, so
     // no regex and no catastrophic backtracking on the simple patterns the mapping files use.
-    private static bool GlobMatch(string pattern, ReadOnlySpan<char> value)
+    private static bool IsGlobMatch(string pattern, ReadOnlySpan<char> value)
     {
         int p = 0, v = 0, star = -1, mark = 0;
 

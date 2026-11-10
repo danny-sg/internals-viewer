@@ -48,11 +48,11 @@ public class IteratorLifetimeBuilderTests
                      Span(2, 30, 35),
                      Span(4, 40, 45)]);
 
-        var timeline = builder.Build([new(-1, 0, 0x10, 0, 1),
-                                      new(0, 0, 0x20, Hash, 1),
-                                      new(0, 0, 0x30, Hash, 2),
-                                      new(2, 0, 0x40, Hash, 1),
-                                      new(0, 0, 0x50, Hash, 1)]);
+        var timeline = builder.Build([new(-1, 0x10, 0, 1),
+                                      new(0, 0x20, Hash, 1),
+                                      new(0, 0x30, Hash, 2),
+                                      new(2, 0x40, Hash, 1),
+                                      new(0, 0x50, Hash, 1)]);
 
         timeline.MapNodes([caller, open, getRow, helper, close]);
 
@@ -90,11 +90,11 @@ public class IteratorLifetimeBuilderTests
                      Span(3, 21, 24),
                      Span(4, 40, 45)]);
 
-        var timeline = builder.Build([new(-1, 0, 0x10, 0, 1),
-                                      new(0, 0, 0x20, Hash, 1),
-                                      new(0, 0, 0x30, Hash, 1),
-                                      new(2, 0, 0x60, Scan, 1),
-                                      new(0, 0, 0x50, Hash, 1)]);
+        var timeline = builder.Build([new(-1, 0x10, 0, 1),
+                                      new(0, 0x20, Hash, 1),
+                                      new(0, 0x30, Hash, 1),
+                                      new(2, 0x60, Scan, 1),
+                                      new(0, 0x50, Hash, 1)]);
 
         timeline.MapNodes([caller, open, getRow, scanRow, close]);
 
@@ -111,9 +111,9 @@ public class IteratorLifetimeBuilderTests
         var scanLifetime = lifetimes.Single(l => ReferenceEquals(l.Operator, scan));
 
         Assert.Equal((100ul, 0ul, 50ul),
-                     (hashLifetime.InUse.PeakDuring(At(0), At(40)),
-                      hashLifetime.InUse.PeakDuring(At(42), At(45)),
-                      scanLifetime.InUse.PeakDuring(At(21), At(24))));
+                     (hashLifetime.InUse.GetPeakDuring(At(0), At(40)),
+                      hashLifetime.InUse.GetPeakDuring(At(42), At(45)),
+                      scanLifetime.InUse.GetPeakDuring(At(21), At(24))));
     }
 
     [Fact]
@@ -129,7 +129,7 @@ public class IteratorLifetimeBuilderTests
 
         builder.Add([Span(0, 0, 100), Span(1, 10, 50), Span(2, 20, 30)]);
 
-        var timeline = builder.Build([new(-1, 0, 0x10, 0, 1), new(0, 0, 0x70, BatchHelper, 1), new(1, 0, 0x60, Scan, 1)]);
+        var timeline = builder.Build([new(-1, 0x10, 0, 1), new(0, 0x70, BatchHelper, 1), new(1, 0x60, Scan, 1)]);
 
         timeline.MapNodes([caller, helperRow, scanBatch]);
 
@@ -143,6 +143,7 @@ public class IteratorLifetimeBuilderTests
 
         Assert.Equal(("Batch To Row Adapter", OperatorCategory.Adapter, 2), (adapter.Name, adapter.Category, adapter.NodeLevel));
         Assert.Null(adapter.PlanNodeIdentifier);
+        Assert.Equal(scan.PlanNodeIdentifier, adapter.AdaptedNode);
     }
 
     [Fact]
@@ -159,10 +160,10 @@ public class IteratorLifetimeBuilderTests
 
         builder.Add([Span(0, 0, 100), Span(1, 10, 50), Span(2, 15, 45), Span(3, 20, 30)]);
 
-        var timeline = builder.Build([new(-1, 0, 0x10, 0, 1),
-                                      new(0, 0, 0x70, BatchHelper, 1),
-                                      new(1, 0, 0x80, BatchFilter, 1),
-                                      new(2, 0, 0x60, Scan, 1)]);
+        var timeline = builder.Build([new(-1, 0x10, 0, 1),
+                                      new(0, 0x70, BatchHelper, 1),
+                                      new(1, 0x80, BatchFilter, 1),
+                                      new(2, 0x60, Scan, 1)]);
 
         timeline.MapNodes([caller, helperRow, filterBatch, scanBatch]);
 
@@ -221,7 +222,7 @@ public class IteratorLifetimeBuilderTests
 
         builder.Add([Span(0, 0, 100), Span(1, 20, 25), Span(1, 40, 45)]);
 
-        var timeline = builder.Build([new(-1, 0, 0x10, 0, 1), new(0, 0, 0x30, Hash, 2)]);
+        var timeline = builder.Build([new(-1, 0x10, 0, 1), new(0, 0x30, Hash, 2)]);
 
         timeline.MapNodes([caller, getRow]);
 

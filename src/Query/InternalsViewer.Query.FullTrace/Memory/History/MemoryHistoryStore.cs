@@ -44,10 +44,6 @@ public sealed partial class MemoryHistoryStore
 
     public int ReadCount => Reads.Count;
 
-    internal long WriteBytes => Writes.Bytes;
-
-    internal long ReadBytes => Reads.Bytes + ReadStarts.Length * (long)sizeof(int);
-
     private MemoryHistoryBlock[] BlockArray { get; }
 
     private MemoryHistoryAccessTable Writes { get; }
@@ -67,7 +63,6 @@ public sealed partial class MemoryHistoryStore
     private AddressOrder Addresses => field ??= GetAddressOrder(isStack: false);
 
     private AddressOrder StackAddresses => field ??= GetAddressOrder(isStack: true);
-
 
     public (ulong FirstElement, uint Count)? GetArray(int block)
         => BlockArray[block].IsArray && ArrayCounts.Get(block) is > 0 and var count
@@ -261,7 +256,7 @@ public sealed partial class MemoryHistoryStore
         => GetCreatedPosition(block) is var created && from <= created && created <= to;
 
     public CallTreeNode? GetAllocatingCall(int block, TraceTimeline timeline)
-        => timeline.NodeOf(BlockArray[block].CallNodeIndex)?.Ancestors().FirstOrDefault(n => !AllocationFunction.IsAllocatorFrame(n.Frame));
+        => timeline.GetNode(BlockArray[block].CallNodeIndex)?.GetAncestors().FirstOrDefault(n => !AllocationFunction.IsAllocatorFrame(n.Frame));
 
     private WriteRange GetBlockWrites(int block) => new(Writes, BlockArray[block].FirstWrite, BlockArray[block].WriteCount);
 

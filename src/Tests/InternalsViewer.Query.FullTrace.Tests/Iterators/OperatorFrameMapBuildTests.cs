@@ -3,6 +3,7 @@ using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.FullTrace.Symbols.Categories;
+using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Iterators;
 
@@ -229,7 +230,7 @@ public class OperatorFrameMapBuildTests
             ClassName = className,
             MethodName = method,
             SymbolCategory = iterator is null ? SymbolCategory.Unknown : SymbolCategory.QueryOperator,
-            Iterator = iterator,
+            OperatorName = iterator,
             PlanOperator = planOperator is null ? [] : [GlobPattern.Parse(planOperator)],
         },
     };

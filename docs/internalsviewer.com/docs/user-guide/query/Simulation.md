@@ -129,7 +129,7 @@ Where the plan switches between batch and row mode, an adapter is added to conve
 Parallelism, spools, Bitmap, Adaptive Join, window aggregates, Constant Scan, Assert and the data modification operators cannot be simulated, so a parallel plan can only be simulated beneath its exchanges.
 
 ::: warning
-A residual predicate the simulation cannot translate is skipped rather than stopping it, so the simulation can return rows SQL Server filtered out. The plan's [annotations](/docs/user-guide/query/ExecutionPlan#command-bar) mark these with **Untranslated Predicate**, and the Description says so.
+A residual predicate the simulation cannot translate is skipped rather than stopping it, so the simulation can return rows SQL Server filtered out. The plan's [annotations](/docs/user-guide/query/ExecutionPlan#view-menu) mark these with **Untranslated Predicate**, and the Description says so.
 :::
 
 ::: details How this works

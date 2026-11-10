@@ -1,4 +1,5 @@
 using InternalsViewer.Query.FullTrace.Symbols;
+using InternalsViewer.Query.FullTrace.Symbols.Enums;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.Events.Parsing;
 using InternalsViewer.Query.FullTrace.Memory.Address;
@@ -141,7 +142,7 @@ public class AddressMapFunctionLookupTests
                                               FunctionType.Member,
                                               "AccBindings *");
 
-        Assert.Equal([(1, "XDES"), (2, "HoBtAccess"), (ArgumentLayout.ReturnRegister, "AccBindings")],
+        Assert.Equal([(1, "XDES"), (2, "HoBtAccess"), (ArgumentLayout.ReturnArgumentSlot, "AccBindings")],
                      AddressMapFunctionLookup.GetDeclared(ArgumentLayout.GetLayout(signature)).Select(d => (Slot: d.ArgumentSlot, d.Name)));
     }
 

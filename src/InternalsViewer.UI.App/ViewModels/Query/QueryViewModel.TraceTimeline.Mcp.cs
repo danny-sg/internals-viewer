@@ -5,7 +5,7 @@ using InternalsViewer.Mcp.Interfaces.Commands;
 using InternalsViewer.Mcp.Models.Context.Queries;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace;
-using InternalsViewer.Query.FullTrace.Timeline.Ticks;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
@@ -23,15 +23,15 @@ public partial class QueryViewModel : ITraceTimelineCommands
 
     public Task AddTrackAsync(McpTrackRequest request)
     {
-        var node = (CallTree?.Nodes() ?? []).FirstOrDefault(n => IsFunction(n, request.Module, request.Function));
+        var node = (CallTree?.GetNodes() ?? []).FirstOrDefault(n => IsFunction(n, request.Module, request.Function));
 
-        var definition = new TraceTickDefinition(request.Name,
-                                                 request.Module,
-                                                 request.Function,
-                                                 request.Colour ?? node?.CategoryColour ?? DefaultTrackColour,
-                                                 1,
-                                                 1,
-                                                 request.Conditions)
+        var definition = new TraceTrackRule(request.Name,
+                                            request.Module,
+                                            request.Function,
+                                            request.Colour ?? node?.CategoryColour ?? DefaultTrackColour,
+                                            1,
+                                            1,
+                                            request.Conditions)
         {
             Label = request.Label
         };

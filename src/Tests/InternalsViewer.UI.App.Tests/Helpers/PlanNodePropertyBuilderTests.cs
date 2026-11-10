@@ -1,4 +1,9 @@
 ﻿using InternalsViewer.Query.Events.Operators;
+using System.Data;
+using InternalsViewer.Execution.AccessPaths.Predicates;
+using InternalsViewer.Execution.AccessPaths.Search;
+using InternalsViewer.Execution.AccessPaths.Values;
+using InternalsViewer.Query.Plans.Joins;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query;
@@ -109,6 +114,57 @@ public class PlanNodePropertyBuilderTests
     }
 
     [Fact]
+    public void Every_Property_Can_Be_Read_By_Its_Name_Without_Spaces()
+    {
+        var values = PlanNodePropertyBuilder.GetValues(new PlanNode { PhysicalOperator = "Filter" }, null);
+
+        Assert.Equal("Filter", values["physicaloperator"].ToString());
+    }
+
+    [Fact]
+    public void The_Current_Range_Is_The_Plan_Range_With_That_Number()
+    {
+        var node = new PlanNode { PredicateInfo = new PredicateInfo { SeekBounds = [EqualTo(100), EqualTo(500)] } };
+
+        var values = PlanNodePropertyBuilder.GetValues(node, null);
+
+        Assert.Contains("500", PlanNodePropertyBuilder.GetSeekRange(values, 1)?.ToString());
+    }
+
+    [Fact]
+    public void The_Current_Range_Of_A_Correlated_Seek_Is_Its_Seek_Predicate()
+    {
+        var node = new PlanNode
+        {
+            PredicateInfo = new PredicateInfo { CorrelatedSeekColumns = [new CorrelatedSeekColumn("Id", "T", "OuterId")] }
+        };
+
+        var values = PlanNodePropertyBuilder.GetValues(node, null);
+
+        Assert.Contains("OuterId", PlanNodePropertyBuilder.GetSeekRange(values, 0)?.ToString());
+    }
+
+    [Fact]
+    public void A_Correlated_Seek_Is_Written_With_The_Comparison_From_The_Plan()
+        => Assert.Equal("Id > T.OuterId", CorrelatedText(new CorrelatedSeekColumn("Id", "T", "OuterId", ComparisonOperator.GreaterThan)));
+
+    [Fact]
+    public void Compound_Correlated_Keys_Are_Joined_With_And()
+    {
+        var text = CorrelatedText(new CorrelatedSeekColumn("OrderId", "T", "OrderId"), new CorrelatedSeekColumn("LineId", "T", "LineId"));
+
+        Assert.Equal("OrderId = T.OrderId AND LineId = T.LineId", text);
+    }
+
+    [Fact]
+    public void An_Outer_Expression_Is_Written_Without_A_Table()
+        => Assert.Equal("Id = Expr1001", CorrelatedText(new CorrelatedSeekColumn("Id", string.Empty, "Expr1001")));
+
+    [Fact]
+    public void A_Scan_Has_No_Current_Range()
+        => Assert.Null(PlanNodePropertyBuilder.GetSeekRange(PlanNodePropertyBuilder.GetValues(new PlanNode(), null), 0));
+
+    [Fact]
     public void Rows_Pushed_Down_Are_Shown_With_Only_The_Refusal_Reasons_That_Occurred()
     {
         var node = new PlanNode
@@ -165,4 +221,14 @@ public class PlanNodePropertyBuilderTests
 
     private static List<PlanNodeProperty> Storage(List<PlanNodeProperty> properties)
         => properties.Single(p => p.Name == "Storage").Children;
+
+    private static string CorrelatedText(params CorrelatedSeekColumn[] columns)
+    {
+        var node = new PlanNode { PredicateInfo = new PredicateInfo { CorrelatedSeekColumns = [.. columns] } };
+
+        return PlanNodePropertyBuilder.GetValues(node, null)["SeekPredicates"].ToString();
+    }
+
+    private static SeekBounds EqualTo(int value)
+        => SeekBounds.Equality(new AccessKey([AccessValue.FromInteger(SqlDbType.Int, value).WithColumnName("Id")]));
 }

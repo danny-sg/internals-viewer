@@ -122,6 +122,10 @@
                              PlaceholderText="WinDbgX.exe"
                              MinWidth="800"/>
                 </controls:SettingsCard>
+                <controls:SettingsCard Header="Trace Prompt"
+                                       Description="Offer Full Trace and Guide Mode when a Query tab opens">
+                    <ToggleSwitch IsOn="{x:Bind ViewModel.IsTracePromptEnabled, Mode=TwoWay}"/>
+                </controls:SettingsCard>
                 <controls:SettingsCard Header="Time Travel Warning"
                                        Description="Explain what recording a Full Trace does each time Record Full Trace is turned on">
                     <ToggleSwitch IsOn="{x:Bind ViewModel.ShowTimeTravelWarning, Mode=TwoWay}"/>

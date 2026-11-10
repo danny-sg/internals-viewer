@@ -6,7 +6,13 @@ namespace InternalsViewer.UI.App.Models.Query.Plan;
 public sealed record PlanActivity(IReadOnlyList<PlanNode> Requested,
                                   IReadOnlyList<PlanNode> Returned,
                                   IReadOnlyList<PlanPartActivity> Parts,
-                                  IReadOnlyList<PlanCounter> Counters)
+                                  IReadOnlyList<PlanCounter> Counters,
+                                  IReadOnlyList<PlanPage> Pages,
+                                  IReadOnlyList<PlanWatch> Watches)
 {
-    public static PlanActivity Empty { get; } = new([], [], [], []);
+    public static PlanActivity Empty { get; } = new([], [], [], [], [], []);
+
+    public bool HasActivePart { get; init; }
+
+    public bool IsPlaying { get; init; }
 }

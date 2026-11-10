@@ -109,8 +109,8 @@ public static class FunctionSearch
             matches.Add(new FunctionMatch(name,
                                           score,
                                           members.Count,
-                                          members.Sum(m => m.Calls),
-                                          members.Select(m => m.Operator).FirstOrDefault(o => o is not null),
+                                          members.Sum(m => m.CallCount),
+                                          members.Select(m => m.OperatorName).FirstOrDefault(o => o is not null),
                                           callers,
                                           members));
         }

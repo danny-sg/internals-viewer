@@ -152,6 +152,9 @@
                                 <ToggleMenuFlyoutItem Text="Record Full Trace"
                                                       IsChecked="{x:Bind ViewModel.QueryOptions.RecordTimeTravel, Mode=OneWay}"
                                                       Click="OnRecordTimeTravelClick"/>
+                                <ToggleMenuFlyoutItem Text="Guide Mode"
+                                                      IsChecked="{x:Bind ViewModel.Layout.IsGuideMode, Mode=OneWay}"
+                                                      Click="OnGuideModeClick"/>
                                 <MenuFlyoutSubItem Text="Capture">
                                     <MenuFlyoutSubItem Text="Heap Memory">
                                         <ToggleMenuFlyoutItem Text="Reads"
@@ -180,9 +183,9 @@
                         <StackPanel Grid.Column="5"
                                     Orientation="Horizontal"
                                     VerticalAlignment="Center"
-                                    Visibility="{x:Bind GetRulerVisibility(Settings.PinTimeline, ViewModel.IsRulerAvailable), Mode=OneWay}">
+                                    Visibility="{x:Bind GetTransportVisibility(Settings.PinTimeline, ViewModel.IsRulerAvailable, ViewModel.Layout.IsTrace, ViewModel.Layout.IsTraceTimelineVisible, ViewModel.Layout.IsGuideMode), Mode=OneWay}">
                             <timeline:PinnedTransport x:Name="PinnedTransport"
-                                                      Source="{x:Bind ViewModel.RulerSource, Mode=OneWay}"/>
+                                                      Source="{x:Bind ViewModel.TransportSource, Mode=OneWay}"/>
                         </StackPanel>
                         <ToggleButton Grid.Column="3"
                                       Margin="-6,1,0,0"
@@ -213,7 +216,7 @@
         <Border Grid.Row="1"
                 BorderBrush="{ThemeResource LayerFillColorDefaultBrush}"
                 BorderThickness="0,8,0,0"
-                Visibility="{x:Bind GetRulerVisibility(Settings.PinTimeline, ViewModel.IsRulerAvailable), Mode=OneWay}">
+                Visibility="{x:Bind GetRulerVisibility(Settings.PinTimeline, ViewModel.IsRulerAvailable, ViewModel.Layout.IsTrace, ViewModel.Layout.IsTraceTimelineVisible), Mode=OneWay}">
             <Border Padding="0,4,0,0"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     BorderThickness="0,1,0,1">

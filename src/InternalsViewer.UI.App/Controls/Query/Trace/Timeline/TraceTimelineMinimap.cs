@@ -472,7 +472,7 @@ public sealed class TraceTimelineMinimap : UserControl, IDisposable
                          float top,
                          float height)
     {
-        _run.Color = ColourOf(timeline.NodeOf(callNodeIndex)?.CategoryColour, isGrey);
+        _run.Color = ColourOf(timeline.GetNode(callNodeIndex)?.CategoryColour, isGrey);
 
         canvas.DrawRect(new SKRect(left, top, Math.Max(right, left + RunGap), top + height), _run);
     }

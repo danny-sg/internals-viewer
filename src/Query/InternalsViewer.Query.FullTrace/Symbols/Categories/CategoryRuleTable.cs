@@ -1,0 +1,186 @@
+using System.Reflection;
+using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
+
+namespace InternalsViewer.Query.FullTrace.Symbols.Categories;
+
+public sealed class CategoryRuleTable
+{
+    private CategoryRuleTable(IReadOnlyDictionary<string, ModuleCategory> modules,
+                             IReadOnlyList<SymbolCategoryRule> rules,
+                             IReadOnlyList<SymbolCategoryRule> fallbacks,
+                             IReadOnlyList<OperatorRule> operators)
+    {
+        Modules = modules;
+        Rules = rules;
+        Fallbacks = fallbacks;
+        Operators = operators;
+
+        RuleIndex = new RuleIndex([.. rules.Select(r => (r.Class, r.Function))]);
+
+        FallbackIndex = new RuleIndex([.. fallbacks.Select(r => (r.Class, r.Function))]);
+
+        OperatorIndex = new RuleIndex([.. operators.Select(o => (o.Class, o.Function))]);
+    }
+
+    public IReadOnlyList<SymbolCategoryRule> Rules { get; }
+
+    public IReadOnlyList<OperatorRule> Operators { get; }
+
+    private IReadOnlyDictionary<string, ModuleCategory> Modules { get; }
+
+    private IReadOnlyList<SymbolCategoryRule> Fallbacks { get; }
+
+    private RuleIndex RuleIndex { get; }
+
+    private RuleIndex FallbackIndex { get; }
+
+    private RuleIndex OperatorIndex { get; }
+
+    public ModuleCategory GetModuleCategory(string? module) =>
+        !string.IsNullOrWhiteSpace(module) && Modules.TryGetValue(module, out var category)
+            ? category
+            : ModuleCategory.Unknown;
+
+    public SymbolCategory Classify(string? module, ReadOnlySpan<char> className, ReadOnlySpan<char> methodName)
+        => Classify(Rules, RuleIndex, module, className, methodName)
+           ?? Classify(Fallbacks, FallbackIndex, module, className, methodName)
+           ?? SymbolCategory.Unknown;
+
+    public (string? OperatorName, IReadOnlyList<GlobPattern> PlanOperator) ClassifyOperator(string? module,
+                                                                                            ReadOnlySpan<char> className,
+                                                                                            ReadOnlySpan<char> methodName)
+    {
+        var badge = -1;
+        var boundary = -1;
+
+        var badgeScore = default(RuleScore);
+        var boundaryScore = default(RuleScore);
+
+        foreach (var index in OperatorIndex.GetCandidates(className, methodName))
+        {
+            var rule = Operators[index];
+
+            if (!rule.TryScore(module, className, methodName, out var score))
+            {
+                continue;
+            }
+
+            if (rule.OperatorName is not null && Improves(index, score, badge, badgeScore))
+            {
+                badge = index;
+
+                badgeScore = score;
+            }
+
+            if (rule.PlanOperator.Count > 0 && Improves(index, score, boundary, boundaryScore))
+            {
+                boundary = index;
+
+                boundaryScore = score;
+            }
+        }
+
+        return (badge >= 0 ? Operators[badge].OperatorName : null, boundary >= 0 ? Operators[boundary].PlanOperator : []);
+    }
+
+    public static CategoryRuleTable Load(TextReader modules,
+                                         TextReader symbols,
+                                         TextReader? operators = null,
+                                         TextReader? overrideModules = null,
+                                         TextReader? overrideSymbols = null,
+                                         TextReader? fallbacks = null)
+    {
+        var moduleMap = new Dictionary<string, ModuleCategory>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var (module, category) in MappingParser.ParseModules(modules))
+        {
+            moduleMap[module] = category;
+        }
+
+        var rules = MappingParser.ParseSymbols(symbols).ToList();
+
+        if (overrideModules is not null)
+        {
+            // A later download can correct a module's category.
+            foreach (var (module, category) in MappingParser.ParseModules(overrideModules))
+            {
+                moduleMap[module] = category;
+            }
+        }
+
+        if (overrideSymbols is not null)
+        {
+            // Appended after the core rules, so a same-specificity override rule wins the tie.
+            rules.AddRange(MappingParser.ParseSymbols(overrideSymbols, startOrder: rules.Count));
+        }
+
+        return new CategoryRuleTable(moduleMap,
+                                     rules,
+                                     fallbacks is null ? [] : [.. MappingParser.ParseSymbols(fallbacks)],
+                                     operators is null ? [] : [.. MappingParser.ParseOperators(operators)]);
+    }
+
+    private static readonly Lazy<CategoryRuleTable> DefaultLazy = new(LoadDefault);
+
+    /// <summary>
+    /// The mappings loaded from the embedded core files
+    /// </summary>
+    public static CategoryRuleTable Default => DefaultLazy.Value;
+
+    private const string ModulesFile = "ModuleCategories.txt";
+
+    private const string SymbolsFile = "SymbolCategories.txt";
+
+    private const string OperatorsFile = "Operators.txt";
+
+    private const string FallbacksFile = "FallbackCategories.txt";
+
+    private static CategoryRuleTable LoadDefault()
+    {
+        var assembly = typeof(CategoryRuleTable).Assembly;
+
+        using var modules = OpenResource(assembly, ModulesFile);
+
+        using var symbols = OpenResource(assembly, SymbolsFile);
+
+        using var operators = OpenResource(assembly, OperatorsFile);
+
+        using var fallbacks = OpenResource(assembly, FallbacksFile);
+
+        return Load(modules, symbols, operators, fallbacks: fallbacks);
+    }
+
+    private static SymbolCategory? Classify(IReadOnlyList<SymbolCategoryRule> rules,
+                                            RuleIndex index,
+                                            string? module,
+                                            ReadOnlySpan<char> className,
+                                            ReadOnlySpan<char> methodName)
+    {
+        var best = -1;
+
+        var bestScore = default(RuleScore);
+
+        foreach (var candidate in index.GetCandidates(className, methodName))
+        {
+            if (rules[candidate].TryScore(module, className, methodName, out var score) && Improves(candidate, score, best, bestScore))
+            {
+                best = candidate;
+
+                bestScore = score;
+            }
+        }
+
+        return best >= 0 ? rules[best].Category : null;
+    }
+
+    private static bool Improves(int index, RuleScore score, int best, RuleScore bestScore)
+        => best < 0 || score.IsBetterThan(bestScore) || (!bestScore.IsBetterThan(score) && index < best);
+
+    private static StreamReader OpenResource(Assembly assembly, string fileName)
+    {
+        var name = assembly.GetManifestResourceNames()
+                           .Single(n => n.EndsWith(fileName, StringComparison.OrdinalIgnoreCase));
+
+        return new StreamReader(assembly.GetManifestResourceStream(name)!);
+    }
+}

@@ -97,7 +97,7 @@ internal sealed class ReplaySession : IDisposable
 
     public async Task<ReplayResult> ReplayAsync(IReadOnlyCollection<uint> threadIds,
                                                 ReplayFunctionTable functions,
-                                                bool isStackRecorded,
+                                                bool isStackCaptured,
                                                 IProgress<double>? progress,
                                                 CancellationToken cancellationToken)
     {
@@ -105,7 +105,7 @@ internal sealed class ReplaySession : IDisposable
 
         try
         {
-            return await Task.Run(() => Replay([.. threadIds], functions, isStackRecorded, progress, cancellationToken),
+            return await Task.Run(() => Replay([.. threadIds], functions, isStackCaptured, progress, cancellationToken),
                                   cancellationToken);
         }
         finally
@@ -182,7 +182,7 @@ internal sealed class ReplaySession : IDisposable
 
     private ReplayResult Replay(uint[] threads,
                                 ReplayFunctionTable functions,
-                                bool isStackRecorded,
+                                bool isStackCaptured,
                                 IProgress<double>? progress,
                                 CancellationToken cancellationToken)
     {
@@ -227,7 +227,7 @@ internal sealed class ReplaySession : IDisposable
 
         var bufferPool = new BufferPoolHook(functions.BufferPoolFunctions);
 
-        var stack = isStackRecorded ? new StackSnapshotHook(operations) : null;
+        var stack = isStackCaptured ? new StackSnapshotHook(operations) : null;
 
         var hooks = new TraceHookDispatcher([planNodeHook,
                                     new LocatorHook(functions.LocatorReads, store, images),
@@ -406,7 +406,7 @@ internal sealed class ReplaySession : IDisposable
 
                 chunk.Slice((int)hit.Offset, (int)hit.Size).CopyTo(data.AsSpan(offset));
 
-                hits[kept++] = ChunkHit.From(hit, offset);
+                hits[kept++] = ChunkHit.Create(hit, offset);
 
                 offset += (int)hit.Size;
             }

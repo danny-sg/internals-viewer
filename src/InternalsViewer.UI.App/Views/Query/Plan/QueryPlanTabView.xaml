@@ -9,52 +9,426 @@
     xmlns:plan="using:InternalsViewer.UI.App.Controls.Query.Plan"
     xmlns:plans="using:InternalsViewer.Query.Plans"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
+    xmlns:local="using:InternalsViewer.UI.App.Views.Query.Plan"
+    xmlns:planModels="using:InternalsViewer.UI.App.Models.Query.Plan"
     mc:Ignorable="d">
     <UserControl.Resources>
         <StackLayout Orientation="Vertical" Spacing="24" x:Key="PlanStackLayout" />
+        <CollectionViewSource x:Name="GuideStepSource"
+                              IsSourceGrouped="True"
+                              Source="{x:Bind ViewModel.GuideStepGroups, Mode=OneWay}" />
         <DataTemplate x:Key="ExecutionPlanTemplate" x:DataType="plans:ExecutionPlan">
             <plan:ExecutionPlanControl Plan="{x:Bind}" />
+        </DataTemplate>
+        <DataTemplate x:Key="GuideStepTemplate" x:DataType="planModels:GuideStepItem">
+            <Grid Background="{x:Bind local:QueryPlanTabView.GetStepRowBackground(IsCurrent, IsHovered, IsSticking), Mode=OneWay}"
+                  PointerEntered="OnGuideStepPointerEntered"
+                  PointerExited="OnGuideStepPointerExited"
+                  Padding="0,6,12,8"
+                  BorderBrush="#E5E5E5"
+                  BorderThickness="0,0,0,1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="28" />
+                    <ColumnDefinition Width="{x:Bind local:QueryPlanTabView.GetStepIndentWidth(Depth)}" />
+                    <ColumnDefinition Width="22" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="2"
+                        Width="18"
+                        Height="18"
+                        Padding="0"
+                        VerticalAlignment="Top"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Click="OnGuideStepToggle"
+                        Visibility="{x:Bind local:QueryPlanTabView.GetChevronVisibility(HasNestedSteps)}"
+                        ToolTipService.ToolTip="Show or hide the steps inside this call">
+                    <FontIcon FontSize="10"
+                              Glyph="{x:Bind local:QueryPlanTabView.GetChevronGlyph(IsExpanded), Mode=OneWay}" />
+                </Button>
+                <Polyline Grid.Column="0"
+                          Width="20"
+                          Height="20"
+                          Points="2,10 17,10 10,3 17,10 10,17"
+                          Stroke="#F7630C"
+                          StrokeThickness="3.5"
+                          StrokeLineJoin="Round"
+                          StrokeStartLineCap="Round"
+                          StrokeEndLineCap="Round"
+                          HorizontalAlignment="Left"
+                          VerticalAlignment="Top"
+                          Margin="6,-2,0,-6"
+                          IsHitTestVisible="False"
+                          Visibility="{x:Bind local:QueryPlanTabView.GetCurrentVisibility(IsCurrent), Mode=OneWay}" />
+                <TextBlock Grid.Column="4"
+                           Margin="12,1,0,0"
+                           VerticalAlignment="Top"
+                           FontSize="11"
+                           Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                           Text="{x:Bind PositionText, Mode=OneWay}"
+                           ToolTipService.ToolTip="Position on the Trace Timeline" />
+                <StackPanel Grid.Column="3"
+                            Spacing="4">
+                    <controls:MarkdownTextBlock Config="{x:Bind Config}"
+                                                Text="{x:Bind Name}"
+                                                FontSize="12"
+                                                FontWeight="Bold"
+                                                OnLinkClicked="OnGuideLinkClicked">
+                        <controls:MarkdownTextBlock.Resources>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="FontFamily" Value="Consolas" />
+                            </Style>
+                            <Style TargetType="RichTextBlock">
+                                <Setter Property="IsTextSelectionEnabled" Value="False" />
+                            </Style>
+                        </controls:MarkdownTextBlock.Resources>
+                    </controls:MarkdownTextBlock>
+                    <controls:MarkdownTextBlock Config="{x:Bind Config}"
+                                                Text="{x:Bind Description}"
+                                                FontSize="12"
+                                                Visibility="{x:Bind local:QueryPlanTabView.GetDescriptionVisibility(HasDescription)}"
+                                                OnLinkClicked="OnGuideLinkClicked">
+                        <controls:MarkdownTextBlock.Resources>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="FontFamily" Value="Consolas" />
+                            </Style>
+                            <Style TargetType="RichTextBlock">
+                                <Setter Property="IsTextSelectionEnabled" Value="False" />
+                            </Style>
+                        </controls:MarkdownTextBlock.Resources>
+                    </controls:MarkdownTextBlock>
+                    <query:PredicateTextBox Text="{x:Bind Predicate}"
+                                            HasBackground="False"
+                                            TextPadding="0"
+                                            IsHitTestVisible="False"
+                                            Visibility="{x:Bind local:QueryPlanTabView.GetPredicateVisibility(HasPredicate)}" />
+                    <controls:MarkdownTextBlock Config="{x:Bind Config}"
+                                                Text="{x:Bind Details}"
+                                                FontSize="12"
+                                                Visibility="{x:Bind local:QueryPlanTabView.GetDetailsVisibility(Details)}"
+                                                OnLinkClicked="OnGuideLinkClicked">
+                        <controls:MarkdownTextBlock.Resources>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="FontFamily" Value="Consolas" />
+                            </Style>
+                            <Style TargetType="RichTextBlock">
+                                <Setter Property="IsTextSelectionEnabled" Value="False" />
+                            </Style>
+                        </controls:MarkdownTextBlock.Resources>
+                    </controls:MarkdownTextBlock>
+                </StackPanel>
+            </Grid>
         </DataTemplate>
     </UserControl.Resources>
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="{x:Bind BodyColumnWidth, Mode=OneTime}" />
+            <ColumnDefinition x:Name="BodyColumn" Width="{x:Bind BodyColumnWidth, Mode=OneTime}" />
             <ColumnDefinition Width="Auto" />
-            <ColumnDefinition Width="{x:Bind DetailColumnWidth, Mode=OneTime}" />
+            <ColumnDefinition x:Name="DetailColumn" Width="{x:Bind DetailColumnWidth, Mode=OneTime}" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
-            <RowDefinition Height="{x:Bind BodyRowHeight, Mode=OneTime}" />
+            <RowDefinition x:Name="BodyRow" Height="{x:Bind BodyRowHeight, Mode=OneTime}" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="{x:Bind DetailRowHeight, Mode=OneTime}" />
+            <RowDefinition x:Name="DetailRow" Height="{x:Bind DetailRowHeight, Mode=OneTime}" />
         </Grid.RowDefinitions>
 
-        <ScrollViewer Grid.Row="0"
-                      Grid.Column="0"
-                      HorizontalScrollBarVisibility="Auto"
-                      VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollMode="Enabled"
-                      VerticalScrollMode="Enabled"
-                      ZoomMode="Enabled"
-                      MinZoomFactor="0.25"
-                      MaxZoomFactor="4.0"
-                      Background="White"
-                      Padding="8">
-            <ItemsRepeater x:Name="PlanRepeater"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center"
-                           ItemsSource="{x:Bind ViewModel.ExecutionPlans, Mode=OneWay}"
-                           Layout="{StaticResource PlanStackLayout}"
-                           ItemTemplate="{StaticResource ExecutionPlanTemplate}" />
-        </ScrollViewer>
+        <Grid Grid.Row="0" Grid.Column="0">
+            <Grid.RowDefinitions>
+                <RowDefinition x:Name="PlanRow" Height="{x:Bind PlanPaneHeight, Mode=OneTime}" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition x:Name="StepsRow"
+                               Height="{x:Bind GetGuidePaneHeight(ViewModel.Layout.IsGuideMode, ViewModel.IsGuideStepsVisible), Mode=OneWay}"
+                               MinHeight="{x:Bind GetGuidePaneMinHeight(ViewModel.Layout.IsGuideMode, ViewModel.IsGuideStepsVisible), Mode=OneWay}" />
+            </Grid.RowDefinitions>
 
-        <query:NoQueryHint Grid.Row="0"
-                           Grid.Column="0"
-                           Layout="{x:Bind ViewModel.Layout, Mode=OneWay}"
-                           Visibility="{x:Bind ViewModel.IsNoQueryHintVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+            <Grid Grid.Row="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
 
-        <controls:GridSplitter Grid.Row="0"
+                <Border x:Name="PlanCommandBarHost"
+                        Grid.Row="0"
+                        Background="{ThemeResource LayerFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="0,0,0,1"
+                        Visibility="{x:Bind GetGuideBarVisibility(ViewModel.Layout.IsGuideMode, ViewModel.IsGuideStepsVisible), Mode=OneWay}">
+                    <CommandBar x:Name="GuideCommandBar"
+                                IsOpen="False"
+                                Padding="8,0,0,0"
+                                DefaultLabelPosition="Right"
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Left"
+                                VerticalContentAlignment="Top"
+                                MinHeight="0"
+                                OverflowButtonVisibility="Collapsed"
+                                BorderThickness="0"
+    >
+                        <AppBarButton Label="{x:Bind local:QueryPlanTabView.GetPlayLabel(ViewModel.IsGuidePlaying), Mode=OneWay}"
+                                      Command="{x:Bind ViewModel.GuidePlayCommand}">
+                            <AppBarButton.Icon>
+                                <FontIcon Glyph="{x:Bind local:QueryPlanTabView.GetPlayGlyph(ViewModel.IsGuidePlaying), Mode=OneWay}" />
+                            </AppBarButton.Icon>
+                        </AppBarButton>
+                        <AppBarSeparator />
+                        <AppBarElementContainer VerticalContentAlignment="Center">
+                            <SplitButton Command="{x:Bind ViewModel.GuidePreviousCommand}"
+                                         Margin="4,0,0,0"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         ToolTipService.ToolTip="Previous Step">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE892;" FontSize="16" />
+                                    <TextBlock Text="Previous" />
+                                </StackPanel>
+                                <SplitButton.Flyout>
+                                    <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                                        <MenuFlyoutItem Text="Previous Step"
+                                                        Command="{x:Bind ViewModel.GuidePreviousCommand}">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon Glyph="&#xE892;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                        <MenuFlyoutItem Text="Previous Phase"
+                                                        Command="{x:Bind ViewModel.GuidePreviousPhaseCommand}">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon Glyph="&#xEB9E;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                        <MenuFlyoutItem Text="Previous Operator"
+                                                        Command="{x:Bind ViewModel.GuidePreviousOperatorCommand}">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon Glyph="&#xE70E;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                        <MenuFlyoutItem Text="Start"
+                                                        Command="{x:Bind ViewModel.GuideStartCommand}">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon Glyph="&#xE80F;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                    </MenuFlyout>
+                                </SplitButton.Flyout>
+                            </SplitButton>
+                        </AppBarElementContainer>
+                        <AppBarElementContainer VerticalContentAlignment="Center">
+                            <SplitButton Command="{x:Bind ViewModel.GuideNextCommand}"
+                                         Margin="4,0,0,0"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         ToolTipService.ToolTip="Next Step">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon Glyph="&#xE893;" FontSize="16" />
+                                    <TextBlock Text="Next" />
+                                </StackPanel>
+                                <SplitButton.Flyout>
+                                    <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                                        <MenuFlyoutItem Text="Next Step"
+                                                        Command="{x:Bind ViewModel.GuideNextCommand}">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon Glyph="&#xE893;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                        <MenuFlyoutItem Text="Next Phase"
+                                                        Command="{x:Bind ViewModel.GuideNextPhaseCommand}">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon Glyph="&#xEB9D;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                        <MenuFlyoutItem Text="Next Operator"
+                                                        Command="{x:Bind ViewModel.GuideNextOperatorCommand}">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon Glyph="&#xE70D;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                    </MenuFlyout>
+                                </SplitButton.Flyout>
+                            </SplitButton>
+                        </AppBarElementContainer>
+                    </CommandBar>
+                </Border>
+
+                <ScrollViewer x:Name="PlanScroller"
+                              Grid.Row="1"
+                              HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollMode="Enabled"
+                              VerticalScrollMode="Enabled"
+                              ZoomMode="Enabled"
+                              MinZoomFactor="0.25"
+                              MaxZoomFactor="4.0"
+                              Background="White"
+                              Padding="8"
+                              ContextRequested="OnPlanContextRequested"
+                              Tapped="OnPlanBackgroundTapped">
+                    <ItemsRepeater x:Name="PlanRepeater"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   ItemsSource="{x:Bind ViewModel.ExecutionPlans, Mode=OneWay}"
+                                   Layout="{StaticResource PlanStackLayout}"
+                                   ItemTemplate="{StaticResource ExecutionPlanTemplate}" />
+                </ScrollViewer>
+
+                <query:NoQueryHint Grid.Row="1"
+                                   Layout="{x:Bind ViewModel.Layout, Mode=OneWay}"
+                                   Visibility="{x:Bind ViewModel.IsNoQueryHintVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+            </Grid>
+
+            <controls:GridSplitter x:Name="StepsSplitter"
+                                   Grid.Row="1"
+                                   Height="4"
+                                   ManipulationCompleted="OnSplitterMoved"
+                                   KeyUp="OnSplitterMoved"
+                                   HorizontalAlignment="Stretch"
+                                   VerticalAlignment="Stretch"
+                                   ResizeBehavior="PreviousAndNext"
+                                   ResizeDirection="Rows"
+                                   Visibility="{x:Bind GetGuidePaneVisibility(ViewModel.Layout.IsGuideMode, ViewModel.IsGuideStepsVisible), Mode=OneWay}"
+                                   Background="{ThemeResource ControlStrokeColorDefaultBrush}">
+                <controls:GridSplitter.Template>
+                    <ControlTemplate TargetType="controls:GridSplitter">
+                        <Grid Background="{TemplateBinding Background}" />
+                    </ControlTemplate>
+                </controls:GridSplitter.Template>
+            </controls:GridSplitter>
+
+            <Grid Grid.Row="2"
+                  Background="White"
+                  Visibility="{x:Bind GetGuidePaneVisibility(ViewModel.Layout.IsGuideMode, ViewModel.IsGuideStepsVisible), Mode=OneWay}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="40" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Grid Grid.Row="0"
+                      Padding="8,4,16,4"
+                      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                      BorderThickness="0,0,0,1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0"
+                               Margin="4,0,0,1"
+                               VerticalAlignment="Center"
+                               Text="Steps" />
+                    <Slider Grid.Column="1"
+                            Margin="16,0"
+                            VerticalAlignment="Center"
+                            Minimum="0"
+                            Maximum="{x:Bind ViewModel.GuideStepMaximum, Mode=OneWay}"
+                            StepFrequency="1"
+                            IsThumbToolTipEnabled="False"
+                            Value="{x:Bind ViewModel.GuideStepIndex, Mode=TwoWay}"
+                            ToolTipService.ToolTip="How far through the steps the current step is. Drag to move through them" />
+                    <Button Grid.Column="2"
+                            Click="{x:Bind CloseStepsPane}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="0"
+                            VerticalAlignment="Center">
+                        <FontIcon Glyph="&#xE711;" FontSize="12" />
+                    </Button>
+                </Grid>
+                <Border x:Name="StepsCommandBarHost"
+                        Grid.Row="1"
+                        Background="{ThemeResource LayerFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="0,0,0,1" />
+                <ListView x:Name="GuideStepList"
+                          Grid.Row="2"
+                          Background="{ThemeResource SolidBackgroundFillColorTertiaryBrush}"
+                          ItemsSource="{x:Bind GuideStepSource.View, Mode=OneWay}"
+                          SelectionMode="None"
+                          IsItemClickEnabled="True"
+                          ItemClick="OnGuideStepClick"
+                          SizeChanged="OnGuideStepListSizeChanged"
+                          ItemTemplate="{StaticResource GuideStepTemplate}">
+                    <ListView.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <ItemsStackPanel AreStickyGroupHeadersEnabled="True" />
+                        </ItemsPanelTemplate>
+                    </ListView.ItemsPanel>
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
+                            <Setter Property="MinHeight" Value="0" />
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="Margin" Value="0" />
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                    <ListView.GroupStyle>
+                        <GroupStyle>
+                            <GroupStyle.HeaderContainerStyle>
+                                <Style TargetType="ListViewHeaderItem">
+                                    <Setter Property="MinHeight" Value="0" />
+                                    <Setter Property="Padding" Value="0" />
+                                    <Setter Property="Margin" Value="0" />
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                    <Setter Property="Background" Value="{ThemeResource SolidBackgroundFillColorTertiaryBrush}" />
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListViewHeaderItem">
+                                                <ContentPresenter Background="{TemplateBinding Background}"
+                                                                  Content="{TemplateBinding Content}"
+                                                                  ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                                  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                                  VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </GroupStyle.HeaderContainerStyle>
+                            <GroupStyle.HeaderTemplate>
+                                <DataTemplate x:DataType="planModels:GuideStepGroup">
+                                    <Grid Background="{x:Bind local:QueryPlanTabView.GetStepBackground(IsCurrent), Mode=OneWay}"
+                                          Padding="0,6,12,4"
+                                          BorderBrush="#E5E5E5"
+                                          BorderThickness="0,0,0,1">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="28" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="1"
+                                                    Orientation="Horizontal"
+                                                    Spacing="6"
+                                                    Margin="{x:Bind local:QueryPlanTabView.GetStepIndent(Depth)}">
+                                            <Image Width="24"
+                                                   Height="24"
+                                                   VerticalAlignment="Center"
+                                                   Source="{x:Bind local:QueryPlanTabView.GetStepIcon(Icon)}" />
+                                            <TextBlock Text="{x:Bind OperatorName}"
+                                                       FontSize="12"
+                                                       FontWeight="SemiBold"
+                                                       VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </GroupStyle.HeaderTemplate>
+                        </GroupStyle>
+                    </ListView.GroupStyle>
+                </ListView>
+                <Border x:Name="StickyStepHost"
+                        Grid.Row="2"
+                        VerticalAlignment="Top"
+                        Background="{ThemeResource SolidBackgroundFillColorTertiaryBrush}"
+                        Visibility="Collapsed"
+                        Tapped="OnStickyStepTapped">
+                    <ContentPresenter x:Name="StickyStep"
+                                      HorizontalContentAlignment="Stretch"
+                                      ContentTemplate="{StaticResource GuideStepTemplate}" />
+                </Border>
+            </Grid>
+        </Grid>
+
+        <controls:GridSplitter x:Name="DetailColumnSplitter"
+                               Grid.Row="0"
                                Grid.Column="1"
                                Width="4"
+                               ManipulationCompleted="OnSplitterMoved"
+                               KeyUp="OnSplitterMoved"
                                HorizontalAlignment="Stretch"
                                VerticalAlignment="Stretch"
                                ResizeBehavior="PreviousAndNext"
@@ -68,9 +442,12 @@
             </controls:GridSplitter.Template>
         </controls:GridSplitter>
 
-        <controls:GridSplitter Grid.Row="1"
+        <controls:GridSplitter x:Name="DetailRowSplitter"
+                               Grid.Row="1"
                                Grid.Column="0"
                                Height="4"
+                               ManipulationCompleted="OnSplitterMoved"
+                               KeyUp="OnSplitterMoved"
                                HorizontalAlignment="Stretch"
                                VerticalAlignment="Stretch"
                                ResizeBehavior="PreviousAndNext"

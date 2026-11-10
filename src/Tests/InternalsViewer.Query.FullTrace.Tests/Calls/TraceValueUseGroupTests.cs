@@ -1,4 +1,5 @@
 using InternalsViewer.Query.FullTrace.Symbols;
+using InternalsViewer.Query.FullTrace.Symbols.Enums;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
@@ -45,7 +46,7 @@ public class TraceValueUseGroupTests
 
         var group = Assert.Single(TraceValueUseGroup.Build(uses, GetFunctionType));
 
-        Assert.Equal(1_203, group.Calls);
+        Assert.Equal(1_203, group.CallCount);
     }
 
     private static FunctionType? GetFunctionType(TraceValueUse use) => use.FunctionAddress switch

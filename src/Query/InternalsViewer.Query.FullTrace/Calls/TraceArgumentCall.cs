@@ -33,13 +33,13 @@ public sealed record TraceArgumentCall(TracePosition FromPosition,
     public ulong? GetStackValue(int position)
         => position >= ArgumentLayout.RegisterCount && position < IntegerSlots.Length ? IntegerSlots[position] : null;
 
-    public ulong Slot(int index) => index >= 0 && index < IntegerSlots.Length ? IntegerSlots[index] : 0;
+    public ulong GetSlot(int index) => index >= 0 && index < IntegerSlots.Length ? IntegerSlots[index] : 0;
 
-    public Locator? GetLocator(int register)
+    public Locator? GetLocator(int argumentSlot)
     {
         foreach (var locator in Locators)
         {
-            if (locator.Register == register)
+            if (locator.ArgumentSlot == argumentSlot)
             {
                 return locator;
             }

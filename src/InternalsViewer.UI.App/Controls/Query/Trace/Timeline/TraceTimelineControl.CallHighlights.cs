@@ -68,7 +68,7 @@ public sealed partial class TraceTimelineControl
 
         for (var callNodeIndex = 0; callNodeIndex < highlights.Length; callNodeIndex++)
         {
-            highlights[callNodeIndex] = timeline.NodeOf(callNodeIndex) is { } callNode ? HighlightOf(callNode.Symbol) : -1;
+            highlights[callNodeIndex] = timeline.GetNode(callNodeIndex) is { } callNode ? HighlightOf(callNode.Symbol) : -1;
 
             any |= highlights[callNodeIndex] >= 0;
         }

@@ -28,5 +28,5 @@ internal sealed record ExportedNode
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public long Allocations { get; init; }
 
-    public ExportedLocators? Locators { get; init; }
+    public ExportedLocatorSet? Locators { get; init; }
 }

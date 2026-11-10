@@ -6,7 +6,7 @@ namespace InternalsViewer.Query.FullTrace.Hooks;
 
 internal sealed class TraceHookDispatcher
 {
-    private const uint AllHooks = uint.MaxValue;
+    private const uint AllHookMask = uint.MaxValue;
 
     public TraceHookDispatcher(IReadOnlyList<ITraceHook> hooks)
     {
@@ -40,8 +40,8 @@ internal sealed class TraceHookDispatcher
 
                 functions[index] = functions[index] with
                 {
-                    Events = functions[index].Events | (uint)function.Events,
-                    Hook = functions[index].Hook | bit
+                    EventMask = functions[index].EventMask | (uint)function.Events,
+                    HookMask = functions[index].HookMask | bit
                 };
             }
         }
@@ -66,13 +66,13 @@ internal sealed class TraceHookDispatcher
             return;
         }
 
-        var hooks = source->Hook;
+        var hookMask = source->HookMask;
 
         var call = new TraceHookCall
         {
             FunctionAddress = source->FunctionAddress,
             InstanceAddress = source->InstanceAddress,
-            Id = source->Id,
+            CallId = source->CallId,
             CallIndex = source->CallIndex,
             Thread = source->Thread,
             CallNodeIndex = source->CallNodeIndex,
@@ -92,7 +92,7 @@ internal sealed class TraceHookDispatcher
         {
             for (var hook = 0; hook < All.Length; hook++)
             {
-                if (hooks == AllHooks || (hooks & (1u << hook)) != 0)
+                if (hookMask == AllHookMask || (hookMask & (1u << hook)) != 0)
                 {
                     Dispatch(All[hook], source->Type, call);
                 }

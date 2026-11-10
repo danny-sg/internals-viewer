@@ -10,7 +10,6 @@ using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Timeline;
-using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.Query.Memory;
 
@@ -48,21 +47,17 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
     public MemoryHistoryStore MemoryHistory { get; init; } = MemoryHistoryStore.Empty;
 
-    public TraceRowReturnMarkMap RowReturnMarks { get; init; } = TraceRowReturnMarkMap.Empty;
+    public TraceSourceTrackMap SourceTracks
+    {
+        get => field ??= new TraceSourceTrackMap(Timeline, CallStore, Lifetimes);
+        init;
+    }
 
-    public TraceTickSeries RowAccesses { get; init; } = TraceTickSeries.Empty;
-
-    public TraceTickSeries Seeks { get; init; } = TraceTickSeries.Empty;
+    public TraceHashTableMap HashTables => field ??= new TraceHashTableMap(this);
 
     public IReadOnlyList<CallTreeNode> QueryRoots => Roots ??= QueryExecutionCropper.GetRoots(CallTree);
 
     public TraceTimeline QueryTimeline => CroppedTimeline ??= GetQueryTimeline();
-
-    internal EnclosingOperatorCallIndex EnclosingCalls
-    {
-        get => field ??= EnclosingOperatorCallIndex.Build(CallStore, Lifetimes.OperatorsByInstance);
-        init;
-    }
 
     private IReadOnlyList<CallTreeNode>? Roots { get; set; }
 
@@ -72,36 +67,6 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
     private Dictionary<TraceTimeline, Dictionary<CallTreeNode, int[]>> ActivityByWindow { get; } =
         new(ReferenceEqualityComparer.Instance);
-
-    internal TraceResult WithPageAccesses()
-    {
-        var accesses = TracePageAccessList.Build(CallStore, MemoryHistory, BufferPool, PageReads, Timeline);
-
-        var rowAccesses = TraceRowAccessReader.Build(Timeline, accesses, Lifetimes, EnclosingCalls);
-
-        return this with { PageAccesses = accesses, RowAccesses = rowAccesses };
-    }
-
-    internal IEnumerable<(string Component, long Items, long? Bytes)> GetComponentSizes()
-    {
-        yield return ("Timeline Spans", Timeline.SpanCount, Timeline.Bytes);
-        yield return ("Call Log Calls", CallStore.Calls, CallStore.Size);
-        yield return ("Locator Entries", CallStore.LocatorCount, CallStore.LocatorTableBytes);
-        yield return ("Unique Locators", CallStore.UniqueLocatorCount, CallStore.UniqueLocatorBytes);
-        yield return ("Memory Map Entries", AddressMap.Count, AddressMap.Bytes);
-        yield return ("Memory Allocations", Allocation.AllocationCount, Allocation.Bytes);
-        yield return ("Memory History Writes", MemoryHistory.WriteCount, MemoryHistory.WriteBytes);
-        yield return ("Memory History Reads", MemoryHistory.ReadCount, MemoryHistory.ReadBytes);
-        yield return ("Buffer Pool Pages", BufferPool.Count, BufferPool.Bytes);
-        yield return ("Page Reads", PageReads.Count, PageReads.Bytes);
-        yield return ("Page Accesses", PageAccesses.Count, PageAccesses.Bytes);
-        yield return ("Call Tree Nodes", CallTree.Nodes().LongCount(), null);
-        yield return ("Operator Lifetimes", Lifetimes.Count, null);
-        yield return ("Row Access Ticks", RowAccesses.Count, RowAccesses.Bytes);
-        yield return ("Seek Ticks", Seeks.Count, Seeks.Bytes);
-        yield return ("Row Return Marks", RowReturnMarks.Count, RowReturnMarks.Ticks.Bytes);
-        yield return ("HoBt Accesses", HoBtAccess.Count, null);
-    }
 
     public void SetActivityWindow(TraceTimeline window)
     {
@@ -134,6 +99,6 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
     private TraceTimeline GetQueryTimeline()
         => QueryRoots.Count > 0
-            ? Timeline.CroppedTo(QueryRoots.ToHashSet<CallTreeNode>(ReferenceEqualityComparer.Instance)) ?? Timeline
+            ? Timeline.CropTo(QueryRoots.ToHashSet<CallTreeNode>(ReferenceEqualityComparer.Instance)) ?? Timeline
             : Timeline;
 }

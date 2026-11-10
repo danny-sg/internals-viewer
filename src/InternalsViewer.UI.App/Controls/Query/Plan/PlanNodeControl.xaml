@@ -7,6 +7,19 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
+    <UserControl.Resources>
+        <Style x:Key="WatchLabelStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <Style x:Key="WatchValueStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontFamily" Value="{StaticResource MonospaceFontFamily}" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+        </Style>
+    </UserControl.Resources>
     <Border x:Name="NodeBorder"
             BorderThickness="0"
             Padding="0,4,0,0"
@@ -26,21 +39,27 @@
                     <Border x:Name="NodeImageBorder"
                             BorderThickness="2"
                             CornerRadius="2"
-                            Width="38"
+                            Width="70"
                             Height="38"
                             HorizontalAlignment="Center" >
-                        <Grid x:Name="IconLayers">
-                            <Image Source="{x:Bind IconSource}"
-                                   Name="NodeImage"
+                        <Grid x:Name="IconLayers"
+                              Width="64"
+                              Height="32"
+                              Margin="1"
+                              HorizontalAlignment="Left"
+                              VerticalAlignment="Top">
+                            <Image x:Name="NodeImage"
+                                   Source="{x:Bind IconSource}"
                                    Width="32"
                                    Height="32"
+                                   Stretch="Fill"
                                    HorizontalAlignment="Center" />
                         </Grid>
                     </Border>
                     <Border x:Name="CounterBadge"
                             HorizontalAlignment="Right"
                             VerticalAlignment="Top"
-                            Margin="0,-4,-14,0"
+                            Margin="0,-4,-8,0"
                             MinWidth="16"
                             Padding="4,0,4,1"
                             CornerRadius="8"
@@ -52,25 +71,70 @@
                                    TextAlignment="Center" />
                     </Border>
                 </Grid>
-                <TextBlock Text="{x:Bind OperatorName}"
-                           FontSize="11"
-                           FontWeight="SemiBold"
-                           TextAlignment="Center"
-                           TextWrapping="Wrap"
-                           HorizontalAlignment="Center" />
-                <TextBlock Text="{x:Bind DetailText}"
-                           FontSize="10"
-                           TextAlignment="Center"
-                           TextTrimming="CharacterEllipsis"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                           Visibility="{x:Bind DetailVisibility}"
-                           HorizontalAlignment="Center" />
-                <TextBlock Text="{x:Bind CostText}"
-                           FontSize="10"
-                           TextAlignment="Center"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                           Visibility="{x:Bind CostVisibility}"
-                           HorizontalAlignment="Center" />
+                <StackPanel x:Name="TextPanel" Orientation="Vertical" Spacing="2">
+                    <Border x:Name="NameHighlight"
+                            HorizontalAlignment="Center"
+                            Padding="4,0,4,1"
+                            CornerRadius="2">
+                        <StackPanel Orientation="Vertical" Spacing="2">
+                            <TextBlock x:Name="OperatorNameLabel"
+                                       Text="{x:Bind OperatorName}"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       HorizontalAlignment="Center" />
+                            <TextBlock x:Name="DetailLabel"
+                                       Text="{x:Bind DetailText}"
+                                       FontSize="10"
+                                       TextAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       Visibility="{x:Bind DetailVisibility}"
+                                       HorizontalAlignment="Center" />
+                            <TextBlock x:Name="CostLabel"
+                                       Text="{x:Bind CostText}"
+                                       FontSize="10"
+                                       TextAlignment="Center"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       Visibility="{x:Bind CostVisibility}"
+                                       HorizontalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+                    <Border x:Name="WatchPanel"
+                            Width="180"
+                            Margin="0,2,0,0"
+                            Padding="4,2"
+                            CornerRadius="0"
+                            Background="#404040"
+                            RenderTransformOrigin="0.5,0"
+                            Visibility="Collapsed">
+                        <Border.RenderTransform>
+                            <ScaleTransform x:Name="WatchScale" />
+                        </Border.RenderTransform>
+                        <Grid x:Name="WatchTable" ColumnSpacing="6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock x:Name="PageLabel"
+                                       Text="Current Page"
+                                       Style="{StaticResource WatchLabelStyle}"
+                                       Visibility="Collapsed" />
+                            <TextBlock x:Name="PageLink"
+                                       Grid.Column="1"
+                                       Style="{StaticResource WatchValueStyle}"
+                                       Visibility="Collapsed">
+                                <Hyperlink Click="OnPageLinkClick" Foreground="White" UnderlineStyle="Single">
+                                    <Run x:Name="PageText" />
+                                </Hyperlink>
+                            </TextBlock>
+                        </Grid>
+                    </Border>
+                </StackPanel>
             </StackPanel>
 
             <ItemsControl x:Name="AnnotationBadges"

@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
-using InternalsViewer.Query.FullTrace.Timeline.Ticks;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.UI.App.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -16,7 +16,7 @@ public sealed partial class TraceTickTrackStore : ObservableObject
     private const string FileName = "OperatorTracks.json";
 
     [ObservableProperty]
-    private IReadOnlyList<TraceTickDefinition> _definitions = [];
+    private IReadOnlyList<TraceTrackRule> _definitions = [];
 
     public TraceTickTrackStore(ILogger<TraceTickTrackStore> logger, IOptions<SettingsOptions> options)
     {
@@ -26,30 +26,30 @@ public sealed partial class TraceTickTrackStore : ObservableObject
                                 options.Value.ApplicationDataFolder,
                                 FileName);
 
-        Predefined = TraceTickDefinition.GetPredefined();
+        Predefined = TraceTrackRule.GetPredefined();
 
         Added = Load();
 
         Definitions = [.. Predefined, .. Added];
     }
 
-    public IReadOnlyList<TraceTickDefinition> AddedDefinitions => Added;
+    public IReadOnlyList<TraceTrackRule> AddedDefinitions => Added;
 
     private ILogger<TraceTickTrackStore> Logger { get; }
 
     private string FilePath { get; }
 
-    private IReadOnlyList<TraceTickDefinition> Predefined { get; set; }
+    private IReadOnlyList<TraceTrackRule> Predefined { get; set; }
 
-    private IReadOnlyList<TraceTickDefinition> Added { get; set; }
+    private IReadOnlyList<TraceTrackRule> Added { get; set; }
 
-    public bool IsAdded(TraceTickDefinition definition) => Added.Contains(definition, ReferenceEqualityComparer.Instance);
+    public bool IsAdded(TraceTrackRule definition) => Added.Contains(definition, ReferenceEqualityComparer.Instance);
 
-    public void Add(TraceTickDefinition definition) => SetAdded([.. Added, definition]);
+    public void Add(TraceTrackRule definition) => SetAdded([.. Added, definition]);
 
-    public void AddRange(IEnumerable<TraceTickDefinition> definitions) => SetAdded([.. Added, .. definitions]);
+    public void AddRange(IEnumerable<TraceTrackRule> definitions) => SetAdded([.. Added, .. definitions]);
 
-    public void Replace(TraceTickDefinition existing, TraceTickDefinition definition)
+    public void Replace(TraceTrackRule existing, TraceTrackRule definition)
     {
         if (IsAdded(existing))
         {
@@ -61,7 +61,7 @@ public sealed partial class TraceTickTrackStore : ObservableObject
         }
     }
 
-    public void Remove(TraceTickDefinition definition)
+    public void Remove(TraceTrackRule definition)
     {
         if (IsAdded(definition))
         {
@@ -87,19 +87,19 @@ public sealed partial class TraceTickTrackStore : ObservableObject
 
     public void Clear() => SetAdded([]);
 
-    public void Reset() => SetPredefined(TraceTickDefinition.GetPredefined());
+    public void Reset() => SetPredefined(TraceTrackRule.GetPredefined());
 
-    private static bool IsTrack(TraceTickDefinition definition, string name)
+    private static bool IsTrack(TraceTrackRule definition, string name)
         => string.Equals(definition.Name, name, StringComparison.OrdinalIgnoreCase);
 
-    private void SetPredefined(IReadOnlyList<TraceTickDefinition> definitions)
+    private void SetPredefined(IReadOnlyList<TraceTrackRule> definitions)
     {
         Predefined = definitions;
 
         Definitions = [.. Predefined, .. Added];
     }
 
-    private void SetAdded(IReadOnlyList<TraceTickDefinition> definitions)
+    private void SetAdded(IReadOnlyList<TraceTrackRule> definitions)
     {
         Added = definitions;
 
@@ -108,7 +108,7 @@ public sealed partial class TraceTickTrackStore : ObservableObject
         Definitions = [.. Predefined, .. Added];
     }
 
-    private IReadOnlyList<TraceTickDefinition> Load()
+    private IReadOnlyList<TraceTrackRule> Load()
     {
         if (!File.Exists(FilePath))
         {
@@ -119,7 +119,7 @@ public sealed partial class TraceTickTrackStore : ObservableObject
         {
             using var stream = File.OpenRead(FilePath);
 
-            return TraceTickDefinition.Read(stream);
+            return TraceTrackRule.Read(stream);
         }
         catch (Exception exception) when (exception is IOException or JsonException or UnauthorizedAccessException)
         {
@@ -137,7 +137,7 @@ public sealed partial class TraceTickTrackStore : ObservableObject
 
             using var stream = File.Create(FilePath);
 
-            TraceTickDefinition.Write(stream, Added);
+            TraceTrackRule.Write(stream, Added);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {

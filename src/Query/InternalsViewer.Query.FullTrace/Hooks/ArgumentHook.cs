@@ -18,6 +18,7 @@ namespace InternalsViewer.Query.FullTrace.Hooks;
 /// Arguments are indexed 0-16.
 ///
 /// - 0-3 are registers, captured by the native bridge at entry:
+/// 
 ///     0 = RCX
 ///     1 = RDX
 ///     2 = R8
@@ -99,12 +100,12 @@ internal abstract class ArgumentHook<TRead> : ITraceHook
 
         foreach (var read in functionReads)
         {
-            isStackRead |= read.Register is >= ArgumentLayout.RegisterCount and < ArgumentLayout.CapturedSlots;
+            isStackRead |= read.ArgumentSlot is >= ArgumentLayout.RegisterCount and < ArgumentLayout.CapturedSlotCount;
 
             isReadAtReturn |= read.IsReadAtReturn;
         }
 
-        Span<ulong> arguments = stackalloc ulong[ArgumentLayout.CapturedSlots];
+        Span<ulong> arguments = stackalloc ulong[ArgumentLayout.CapturedSlotCount];
 
         LoadArguments(call, replay, arguments, isStackRead);
 
@@ -112,23 +113,23 @@ internal abstract class ArgumentHook<TRead> : ITraceHook
         {
             if (!read.IsReadAtReturn)
             {
-                Read(replay, call, read, GetArgument(arguments, call, read.Register), arguments);
+                Read(replay, call, read, GetArgument(arguments, call, read.ArgumentSlot), arguments);
             }
         }
 
         if (isReadAtReturn)
         {
-            var saved = FreeArguments.TryPop(out var free) ? free : new ulong[ArgumentLayout.CapturedSlots];
+            var saved = FreeArguments.TryPop(out var free) ? free : new ulong[ArgumentLayout.CapturedSlotCount];
 
             arguments.CopyTo(saved);
 
-            Starts[call.Id] = saved;
+            Starts[call.CallId] = saved;
         }
     }
 
     public void OnReturn(in TraceHookCall call, ITraceReplay replay)
     {
-        if (!Starts.Remove(call.Id, out var arguments))
+        if (!Starts.Remove(call.CallId, out var arguments))
         {
             return;
         }
@@ -139,7 +140,7 @@ internal abstract class ArgumentHook<TRead> : ITraceHook
             {
                 if (read.IsReadAtReturn)
                 {
-                    Read(replay, call, read, GetArgument(arguments, call, read.Register), arguments);
+                    Read(replay, call, read, GetArgument(arguments, call, read.ArgumentSlot), arguments);
                 }
             }
         }
@@ -149,19 +150,19 @@ internal abstract class ArgumentHook<TRead> : ITraceHook
 
     public void OnAbandoned(in TraceHookCall call)
     {
-        if (Starts.Remove(call.Id, out var arguments))
+        if (Starts.Remove(call.CallId, out var arguments))
         {
             FreeArguments.Push(arguments);
         }
     }
 
-    protected static ulong GetArgument(ReadOnlySpan<ulong> arguments, in TraceHookCall call, int register)
-        => register switch
+    protected static ulong GetArgument(ReadOnlySpan<ulong> arguments, in TraceHookCall call, int argumentSlot)
+        => argumentSlot switch
         {
-            ArgumentLayout.ReturnRegister
+            ArgumentLayout.ReturnArgumentSlot
                 => call.ReturnValue,
-            >= 0 and < ArgumentLayout.CapturedSlots
-                => arguments[register],
+            >= 0 and < ArgumentLayout.CapturedSlotCount
+                => arguments[argumentSlot],
             _ => 0
         };
 

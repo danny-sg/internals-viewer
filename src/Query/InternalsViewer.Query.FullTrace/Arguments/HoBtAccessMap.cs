@@ -32,17 +32,17 @@ public sealed class HoBtAccessMap
 
     public static HoBtAccessMap Build(TraceCallStore callStore, IReadOnlyList<CallTreeNode?> nodes)
     {
-        var destroyed = GetCalls(callStore, nodes, DestructorMethod).ToLookup(c => c.Slot(ObjectSlot), c => c.FromPosition);
+        var destroyed = GetCalls(callStore, nodes, DestructorMethod).ToLookup(c => c.GetSlot(ObjectSlot), c => c.FromPosition);
 
         var lifetimes = new Dictionary<ulong, Lifetime[]>();
 
-        foreach (var calls in GetCalls(callStore, nodes, InitMethod).GroupBy(c => c.Slot(ObjectSlot)))
+        foreach (var calls in GetCalls(callStore, nodes, InitMethod).GroupBy(c => c.GetSlot(ObjectSlot)))
         {
             var ends = destroyed[calls.Key].Order().ToArray();
 
-            lifetimes[calls.Key] = [.. calls.Where(c => c.Slot(HoBtIdSlot) != 0)
+            lifetimes[calls.Key] = [.. calls.Where(c => c.GetSlot(HoBtIdSlot) != 0)
                                             .GroupBy(c => c.FromPosition.Sequence)
-                                            .Select(g => (Start: g.Min(c => c.FromPosition), Values: g.Select(c => c.Slot(HoBtIdSlot))))
+                                            .Select(g => (Start: g.Min(c => c.FromPosition), Values: g.Select(c => c.GetSlot(HoBtIdSlot))))
                                             .OrderBy(g => g.Start)
                                             .Select(g => new Lifetime(g.Start,
                                                                       ends.FirstOrDefault(e => e >= g.Start, TracePosition.Unknown),

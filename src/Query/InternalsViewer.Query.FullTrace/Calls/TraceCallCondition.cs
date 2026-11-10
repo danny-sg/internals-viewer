@@ -6,6 +6,7 @@ using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Symbols;
+using InternalsViewer.Query.FullTrace.Symbols.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Calls;
 
@@ -57,7 +58,7 @@ public sealed record TraceCallCondition(TraceConditionTarget Target,
             return false;
         }
 
-        var locator = call.GetLocator(Target == TraceConditionTarget.Return ? ArgumentLayout.ReturnRegister : Argument?.Index ?? -1);
+        var locator = call.GetLocator(Target == TraceConditionTarget.Return ? ArgumentLayout.ReturnArgumentSlot : Argument?.Index ?? -1);
 
         if (IsNullTest(locator, out var isNull))
         {
@@ -80,7 +81,7 @@ public sealed record TraceCallCondition(TraceConditionTarget Target,
         };
     }
 
-    public bool MatchesNode(CallTreeNode node)
+    public bool MatchesNode(CallTreeNode node, bool isWithin = false)
     {
         if (Target is not (TraceConditionTarget.CalledBy or TraceConditionTarget.CalledDirectlyBy))
         {
@@ -89,7 +90,7 @@ public sealed record TraceCallCondition(TraceConditionTarget Target,
 
         var isMatch = Target == TraceConditionTarget.CalledDirectlyBy
             ? node.Parent is { } parent && IsFrameMatch(parent)
-            : GetCallers(node).Any(IsFrameMatch);
+            : (isWithin && IsFrameMatch(node)) || GetCallers(node).Any(IsFrameMatch);
 
         return Operator == TraceConditionOperator.NotEqual ? !isMatch : isMatch;
     }

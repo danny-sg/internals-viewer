@@ -48,7 +48,7 @@ internal sealed class PlanNodeHook(AddressTable<PlanNodeFunctionType> functions,
         switch (type)
         {
             case PlanNodeFunctionType.BatchFactory:
-                Factories[call.Id] = new PendingFactory(iterator, new TracePoint(call.Position, call.Instructions));
+                Factories[call.CallId] = new PendingFactory(iterator, new TracePoint(call.Position, call.Instructions));
                 return;
 
             case PlanNodeFunctionType.Constructor:
@@ -72,8 +72,8 @@ internal sealed class PlanNodeHook(AddressTable<PlanNodeFunctionType> functions,
 
     public void OnReturn(in TraceHookCall call, ITraceReplay replay)
     {
-        if (Factories.Remove(call.Id, out var factory)
-            && call.ReturnValue >= TraceAddress.MinAddress
+        if (Factories.Remove(call.CallId, out var factory)
+            && call.ReturnValue >= TraceAddress.MinimumAddress
             && !PlanNodes.ContainsKey(call.ReturnValue))
         {
             PendingPlanNodes[call.ReturnValue] = factory.PlanObject;
@@ -84,7 +84,7 @@ internal sealed class PlanNodeHook(AddressTable<PlanNodeFunctionType> functions,
         }
     }
 
-    public void OnAbandoned(in TraceHookCall call) => Factories.Remove(call.Id);
+    public void OnAbandoned(in TraceHookCall call) => Factories.Remove(call.CallId);
 
     public IReadOnlyList<IteratorPlanNode> GetPlanNodes() => [.. PlanNodes.Values];
 
@@ -161,7 +161,7 @@ internal sealed class PlanNodeHook(AddressTable<PlanNodeFunctionType> functions,
             || !replay.TryRead(planObject + layout.PlanNodeIdOffset, out int nodeId)
             || !replay.TryRead(planObject + layout.PlanQueryOffset, out ulong query)
             || nodeId < 0
-            || query < TraceAddress.MinAddress)
+            || query < TraceAddress.MinimumAddress)
         {
             return null;
         }
@@ -176,7 +176,7 @@ internal sealed class PlanNodeHook(AddressTable<PlanNodeFunctionType> functions,
     }
 
     private PlanObjectClass? GetPlanObjectClass(ITraceReplay replay, ulong planObject)
-        => planObject >= TraceAddress.MinAddress
+        => planObject >= TraceAddress.MinimumAddress
            && replay.TryRead(planObject, out ulong vtable)
            && planObjects.TryGetValue(vtable, out var planClass)
             ? planClass

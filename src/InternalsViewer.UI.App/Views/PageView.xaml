@@ -20,7 +20,7 @@
     </UserControl.Resources>
 
     <Grid Background="{ThemeResource LayerFillColorDefaultBrush}">
-        <Grid x:Name="ContentGrid">
+        <Grid x:Name="ContentGrid" SizeChanged="OnContentGridSizeChanged">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" x:Name="DataColumn"/>
                 <ColumnDefinition Width="Auto" x:Name="SlotColumn"/>
@@ -29,6 +29,8 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" x:Name="MenuRow"/>
                 <RowDefinition Height="*" x:Name="ContentRow"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="0" x:Name="TabsRow"/>
             </Grid.RowDefinitions>
 
             <!--Command Bar-->
@@ -144,8 +146,25 @@
                                       SelectedSlot="{x:Bind ViewModel.SelectedSlot, Mode=TwoWay}"/>
 
 
+            <toolkit:GridSplitter x:Name="TabsSplitter"
+                                  Grid.Row="2"
+                                  Grid.ColumnSpan="3"
+                                  Height="4"
+                                  HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Stretch"
+                                  ResizeBehavior="PreviousAndNext"
+                                  ResizeDirection="Rows"
+                                  Visibility="Collapsed"
+                                  Background="{ThemeResource ControlStrokeColorDefaultBrush}">
+                <toolkit:GridSplitter.Template>
+                    <ControlTemplate TargetType="toolkit:GridSplitter">
+                        <Grid Background="{TemplateBinding Background}" />
+                    </ControlTemplate>
+                </toolkit:GridSplitter.Template>
+            </toolkit:GridSplitter>
+
             <!--Tab View/Log Record view-->
-            <Grid Grid.Column="2" Grid.Row="1">
+            <Grid x:Name="TabsArea" Grid.Column="2" Grid.Row="1">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>

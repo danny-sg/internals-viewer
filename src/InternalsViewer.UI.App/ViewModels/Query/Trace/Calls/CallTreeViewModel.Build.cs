@@ -213,14 +213,14 @@ public sealed partial class CallTreeViewModel
 
     private void RevealPath(CallTreeNode target)
     {
-        var path = target.Ancestors().ToList();
+        var path = target.GetAncestors().ToList();
 
         RevealTarget = path.Any(IsConcealed) ? target : null;
 
         Revealed = RevealTarget is null ? null : [.. path];
     }
 
-    private bool IsOutsideCrop(CallTreeNode node) => Query.CroppedRoots is { } cropped && !node.Ancestors().Any(cropped.Contains);
+    private bool IsOutsideCrop(CallTreeNode node) => Query.CroppedRoots is { } cropped && !node.GetAncestors().Any(cropped.Contains);
 
     private void ClearReveal()
     {
@@ -231,7 +231,7 @@ public sealed partial class CallTreeViewModel
 
     private bool IsRevealed(CallTreeNode node)
         => RevealTarget is { } target
-           && (node.MergedFrom.Count > 0 ? node.MergedFrom : [node]).Any(n => Revealed!.Contains(n) || n.Ancestors().Contains(target));
+           && (node.MergedFrom.Count > 0 ? node.MergedFrom : [node]).Any(n => Revealed!.Contains(n) || n.GetAncestors().Contains(target));
 
     /// <summary>
     /// Shows what the tree below is a segment of, and the way back up to the operator that drove it
@@ -633,7 +633,7 @@ public sealed partial class CallTreeViewModel
     private static CallTreeRow? FindRow(IEnumerable<CallTreeRow> rows, string path)
         => CallTreeRow.Walk(rows).FirstOrDefault(r => r.Content is CallTreeNode node && GetPath(node) == path);
 
-    private static string GetPath(CallTreeNode node) => string.Join('\n', node.Ancestors().Select(a => a.Key));
+    private static string GetPath(CallTreeNode node) => string.Join('\n', node.GetAncestors().Select(a => a.Key));
 
     private static string GetRowPath(CallTreeRow row)
     {
@@ -684,7 +684,7 @@ public sealed partial class CallTreeViewModel
         return Search.Length == 0
                || Contains(node.Symbol)
                || Contains(node.Category)
-               || Contains(node.Operator)
+               || Contains(node.OperatorName)
                || Contains(node.Frame?.Module.Name);
     }
 

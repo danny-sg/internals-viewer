@@ -1,4 +1,5 @@
 using InternalsViewer.Query.FullTrace.Symbols;
+using InternalsViewer.Query.FullTrace.Symbols.Enums;
 using InternalsViewer.Query.Events.Parsing;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Arguments.Enums;
@@ -47,7 +48,7 @@ internal static class AddressMapFunctionLookup
 
         if (layout.ReturnType is { } returnType && ArgumentValue.GetPointeeClass(returnType, strings) is { } returned)
         {
-            (declared ??= []).Add(new DeclaredClass(ArgumentLayout.ReturnRegister, returned));
+            (declared ??= []).Add(new DeclaredClass(ArgumentLayout.ReturnArgumentSlot, returned));
         }
 
         return declared is null ? [] : [.. declared];
@@ -64,7 +65,7 @@ internal static class AddressMapFunctionLookup
             var slot = slots[index];
 
             if (slot.Location is ArgumentLocation.Register or ArgumentLocation.Stack
-                && slot.Index < ArgumentLayout.CapturedSlots
+                && slot.Index < ArgumentLayout.CapturedSlotCount
                 && slot.Name != ArgumentLayout.ReturnBuffer
                 && ArgumentValue.IsPointer(slot.Type)
                 && !ArgumentValue.IsClassPointer(slot.Type))
@@ -103,7 +104,7 @@ internal static class AddressMapFunctionLookup
         {
             operation = AddressMapOperation.Declared;
 
-            declared = [.. declared.Where(d => d.ArgumentSlot != ArgumentLayout.ReturnRegister)];
+            declared = [.. declared.Where(d => d.ArgumentSlot != ArgumentLayout.ReturnArgumentSlot)];
         }
 
         return operation != AddressMapOperation.Declared || declared.Length > 0 || pointers.Length > 0

@@ -6,11 +6,10 @@ extern "C"
 {
     struct CallNode
     {
-        int32_t  Parent;
-        uint32_t Reserved;
+        int32_t  ParentIndex;
         uint64_t FunctionAddress;
         uint64_t InstanceAddress;
-        uint64_t Calls;
+        uint64_t CallCount;
     };
 
     struct CallSpan
@@ -21,9 +20,9 @@ extern "C"
         uint64_t EndSteps;
         uint64_t StartInstructions;
         uint64_t EndInstructions;
-        int32_t  Node;
+        int32_t  CallNodeIndex;
         uint32_t Thread;
-        uint32_t Call;
+        uint32_t CallIndex;
         uint32_t Flags;
     };
 
@@ -33,7 +32,7 @@ extern "C"
 
     typedef void(__stdcall* CallEndCallback)(uint64_t functionAddress,
                                              uint64_t instanceAddress,
-                                             uint32_t call,
+                                             uint32_t callIndex,
                                              uint64_t endSequence,
                                              uint64_t endSteps,
                                              uint64_t returnValue,
@@ -44,24 +43,23 @@ extern "C"
     struct HookFunction
     {
         uint64_t Address;
-        uint32_t Events;
-        uint32_t Hook;
+        uint32_t EventMask;
+        uint32_t HookMask;
     };
 
     struct HookFrame
     {
-        uint64_t Id;
+        uint64_t CallId;
         uint64_t StackPointer;
         uint64_t InstanceAddress;
-        int32_t  Node;
-        uint32_t Reserved;
+        int32_t  CallNodeIndex;
     };
 
     struct HookEvent
     {
         uint64_t         FunctionAddress;
         uint64_t         InstanceAddress;
-        uint64_t         Id;
+        uint64_t         CallId;
         uint64_t         Arguments[4];
         uint64_t         ReturnValue;
         uint64_t         StackPointer;
@@ -69,12 +67,11 @@ extern "C"
         uint64_t         Sequence;
         uint64_t         Steps;
         uint64_t         Instructions;
-        int32_t          Node;
-        uint32_t         Call;
+        int32_t          CallNodeIndex;
+        uint32_t         CallIndex;
         uint32_t         Thread;
         uint32_t         Type;
-        uint32_t         Hook;
-        uint32_t         Reserved;
+        uint32_t         HookMask;
     };
 
     typedef void(__stdcall* HookCallback)(const HookEvent* hookEvent, const void* view, void* session);
@@ -109,13 +106,11 @@ extern "C"
         uint32_t FirstChange;
         uint32_t ChangeCount;
         int32_t  Depth;
-        uint32_t Reserved;
     };
 
     struct RegisterChange
     {
         uint32_t Register;
-        uint32_t Reserved;
         uint64_t Low;
         uint64_t High;
     };
@@ -156,7 +151,7 @@ extern "C"
                                                int32_t                excludedFunctionCount,
                                                const HookFunction*    hookFunctions,
                                                int32_t                hookFunctionCount,
-                                               CallChunkCallback      logCalls,
+                                               CallChunkCallback      onChunk,
                                                CallEndCallback        logCallEnds,
                                                CallSpanCallback       logSpans,
                                                HookCallback           onHook,
@@ -193,8 +188,6 @@ extern "C"
                                                     uint32_t*               outcome);
 
     __declspec(dllexport) bool WatchFrame(void* session, uint32_t thread, uint64_t frame);
-
-    __declspec(dllexport) void WatchStack(void* session, uint32_t thread, uint64_t stackPointer);
 
     __declspec(dllexport) uint32_t GetHookFrames(void* session, uint32_t thread, HookFrame* frames, uint32_t capacity);
 

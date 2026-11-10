@@ -103,7 +103,7 @@ public class TraceCallConditionTests
 
     private static TraceArgumentCall Call(ulong count, ulong instance = 0, ulong returnValue = 0, ulong flag = 0)
     {
-        var slots = new ulong[ArgumentLayout.CapturedSlots];
+        var slots = new ulong[ArgumentLayout.CapturedSlotCount];
 
         slots[0] = instance;
 

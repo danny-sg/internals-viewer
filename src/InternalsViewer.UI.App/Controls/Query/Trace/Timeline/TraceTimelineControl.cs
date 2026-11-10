@@ -612,6 +612,10 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
                 StepToTick(forward, tickTrack);
                 break;
 
+            case PlayheadStepMode.Tracks:
+                StepToTrackStep(forward);
+                break;
+
             default:
                 StepTo(forward, matches: null, allRows: false);
                 break;
@@ -1109,16 +1113,16 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         {
             _visibleFor = (timeline, _root, PrunedCategories, HiddenCategories);
 
-            _rooted = _root is { } root ? timeline.RootedAt(n => ReferenceEquals(n, root)) : null;
+            _rooted = _root is { } root ? timeline.RootAt(n => ReferenceEquals(n, root)) : null;
 
             var source = _rooted ?? timeline;
 
             var pruned = PrunedNodes(source) is { } hidden
-                ? source.Where(n => n < 0 || n >= hidden.Length || !hidden[n])
+                ? source.Filter(n => n < 0 || n >= hidden.Length || !hidden[n])
                 : source;
 
             _visible = HiddenCategories is { Count: > 0 } categories
-                ? pruned.Folded(n => n.Frame is not null && categories.Contains(n.Category))
+                ? pruned.Fold(n => n.Frame is not null && categories.Contains(n.Category))
                 : pruned;
         }
 
@@ -1135,7 +1139,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         _inUseCurves.Clear();
 
         _inUseMaximum = _visible is { } visible && Allocation.HasAllocations
-            ? Allocation.PeakInUseDuring(visible.Start.Position, visible.End.Position)
+            ? Allocation.GetPeakInUseDuring(visible.Start.Position, visible.End.Position)
             : 0;
 
         var selfAllocations = _visible?.GetSelfAllocations(Allocation) ?? [];
@@ -1226,10 +1230,10 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
         for (var callNodeIndex = 0; callNodeIndex < hidden.Length; callNodeIndex++)
         {
-            var parent = timeline.ParentOf(callNodeIndex);
+            var parent = timeline.GetParent(callNodeIndex);
 
             hidden[callNodeIndex] = (parent >= 0 && hidden[parent])
-                           || (timeline.NodeOf(callNodeIndex) is { Frame: not null } callNode && categories.Contains(callNode.Category));
+                           || (timeline.GetNode(callNodeIndex) is { Frame: not null } callNode && categories.Contains(callNode.Category));
 
             any |= hidden[callNodeIndex];
         }
@@ -1305,7 +1309,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
     }
 
     private CallReference? GetCallReference(FlameHit? hit)
-        => hit is { } at && SpanOf(at) is { } span && _visible?.NodeOf(span.CallNodeIndex) is { } node
+        => hit is { } at && SpanOf(at) is { } span && _visible?.GetNode(span.CallNodeIndex) is { } node
                ? new CallReference(node, span.CallIndex, true)
                : null;
 
@@ -1313,7 +1317,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         => hit is { } at
            && SpanOf(at) is { } span
            && span.CallIndex == reference.CallIndex
-           && ReferenceEquals(_visible?.NodeOf(span.CallNodeIndex), reference.Node);
+           && ReferenceEquals(_visible?.GetNode(span.CallNodeIndex), reference.Node);
 
     private void BringIntoView(FlameHit hit)
     {

@@ -9,6 +9,8 @@ public sealed record DefinedValueInfo
 
     public string? Expression { get; init; }
 
+    public IReadOnlyList<string> References { get; init; } = [];
+
     public AccessExpression? ParsedExpression { get; init; }
 
     public SqlDbType? DataType { get; init; }

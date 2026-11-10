@@ -1,10 +1,11 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.Interfaces;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Locators;
 
-public readonly record struct Locator(int Register, LocatorValueType ValueType, ulong Value, ulong Detail = 0, string? Text = null)
+public readonly record struct Locator(int ArgumentSlot, LocatorValueType ValueType, ulong Value, ulong Detail = 0, string? Text = null)
 {
     private const ulong PageMask = 0xFFFF_FFFF_FFFF;
 
@@ -18,22 +19,22 @@ public readonly record struct Locator(int Register, LocatorValueType ValueType, 
 
     public string SearchText => ValueType == LocatorValueType.ColumnStoreObject ? new ColumnStoreObjectLocator(this).SearchText : ToString();
 
-    public static Locator? Read(LocatorValueType valueType, IMemoryReader memory, int register, ulong address, ulong count = 1)
+    public static Locator? Read(LocatorValueType valueType, IMemoryReader memory, int argumentSlot, ulong address, ulong count = 1)
         => valueType switch
     {
         LocatorValueType.Bindings
-            => BindingLocator.Read(memory, register, address, count),
+            => BindingLocator.Read(memory, argumentSlot, address, count),
         LocatorValueType.ColumnStoreObject
-            => ColumnStoreObjectLocator.Read(memory, register, address),
+            => ColumnStoreObjectLocator.Read(memory, argumentSlot, address),
         LocatorValueType.LogSequenceNumber
-            => LogSequenceNumberLocator.Read(memory, register, address),
+            => LogSequenceNumberLocator.Read(memory, argumentSlot, address),
         LocatorValueType.Text or LocatorValueType.WideText
-            => TextLocator.Read(memory, register, address, valueType),
+            => TextLocator.Read(memory, argumentSlot, address, valueType),
         LocatorValueType.TypeInfo
-            => TypeInfoLocator.Read(memory, register, address),
+            => TypeInfoLocator.Read(memory, argumentSlot, address),
         LocatorValueType.Variant
-            => VariantLocator.Read(memory, register, address),
-        _ => memory.TryRead(address, out ulong value) ? new Locator(register, valueType, value) : null
+            => VariantLocator.Read(memory, argumentSlot, address),
+        _ => memory.TryRead(address, out ulong value) ? new Locator(argumentSlot, valueType, value) : null
     };
 
     public override string ToString() => ValueType switch

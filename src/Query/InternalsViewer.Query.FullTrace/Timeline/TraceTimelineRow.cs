@@ -33,8 +33,6 @@ public sealed partial class TraceTimelineRow
 
     public TraceScale Scale { get; }
 
-    internal long Bytes => Indexes is null ? 0 : Indexes.Length * (long)sizeof(int);
-
     private TraceThreadClock Clock { get; }
 
     private TraceSpanStore Store { get; }
@@ -59,11 +57,11 @@ public sealed partial class TraceTimelineRow
 
     public int GetCallIndex(int index) => Store.GetCallIndex(GetStoreIndex(index));
 
-    public TraceSpanFlags FlagsAt(int index) => (TraceSpanFlags)Store.Flags[GetStoreIndex(index)];
+    public TraceSpanFlags GetFlags(int index) => (TraceSpanFlags)Store.Flags[GetStoreIndex(index)];
 
-    public TraceSpan GetSpan(int index) => new(GetFrom(index), GetTo(index), GetCallNodeIndex(index), GetCallIndex(index), FlagsAt(index));
+    public TraceSpan GetSpan(int index) => new(GetFrom(index), GetTo(index), GetCallNodeIndex(index), GetCallIndex(index), GetFlags(index));
 
-    public TraceTimelineRow Where(Func<int, bool> include)
+    public TraceTimelineRow Filter(Func<int, bool> include)
     {
         var indexes = new int[Count];
 

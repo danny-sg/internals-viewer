@@ -2,6 +2,7 @@ using InternalsViewer.Query.FullTrace.Memory.Address;
 using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Symbols;
+using InternalsViewer.Query.FullTrace.Symbols.Enums;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
 using InternalsViewer.Query.FullTrace.Iterators;
@@ -54,7 +55,7 @@ public sealed class TraceReferenceFinder(TraceCallStore store,
     {
         var frames = new Dictionary<ulong, CallFrame>();
 
-        foreach (var frame in tree?.Nodes().Select(n => n.Frame).OfType<CallFrame>() ?? [])
+        foreach (var frame in tree?.GetNodes().Select(n => n.Frame).OfType<CallFrame>() ?? [])
         {
             if (frame.Address != 0 && (!frames.TryGetValue(frame.Address, out var existing) || existing.Function is null))
             {

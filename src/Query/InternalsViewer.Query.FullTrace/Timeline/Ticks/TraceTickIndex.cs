@@ -83,7 +83,7 @@ public sealed class TraceTickIndex
                                  store.GetCallIndex(entry.SpanIndex),
                                  (TraceSpanFlags)store.Flags[entry.SpanIndex]);
 
-        return new TraceTick(entry.Value, Thread.ThreadId, Timeline.NodeOf(callNodeIndex)!, span, Operator, Callers?[index]);
+        return new TraceTick(entry.Value, Thread.ThreadId, Timeline.GetNode(callNodeIndex)!, span, Operator, Callers?[index]);
     }
 
     public byte GetValue(int index) => Entries[index].Value;
@@ -119,6 +119,28 @@ public sealed class TraceTickIndex
                                   .ToDictionary(g => g.Key, g => g.Select(i => Tos[i].Position).Order().ToArray());
 
         return EndsByValue.TryGetValue(value, out var ends) ? SortedSearch.FirstAfter<TracePosition>(ends, upTo) : 0;
+    }
+
+    public TraceTick? GetLatest(TracePosition position)
+    {
+        var index = SortedSearch.FirstAfter<TracePoint, TracePosition>(Froms, position, static p => p.Position) - 1;
+
+        return index >= 0 ? Get(index) : null;
+    }
+
+    public TraceTick? GetPrevious(TracePosition before, Func<byte, bool> include)
+    {
+        var start = SortedSearch.FirstAtOrAfter<TracePoint, TracePosition>(Froms, before, static p => p.Position);
+
+        for (var index = start - 1; index >= 0; index--)
+        {
+            if (include(Entries[index].Value))
+            {
+                return Get(index);
+            }
+        }
+
+        return null;
     }
 
     public List<TraceTick> GetRunningTicks(TracePosition position) => GetLatestTicks(position, position, isRunning: true);

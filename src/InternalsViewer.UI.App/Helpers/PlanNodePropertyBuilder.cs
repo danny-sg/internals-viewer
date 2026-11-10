@@ -2,8 +2,10 @@
 using System.Globalization;
 using System.Text;
 using System.Linq;
+using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.Plans.Joins;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Operators;
 using InternalsViewer.UI.App.Models.Query;
@@ -12,6 +14,22 @@ namespace InternalsViewer.UI.App.Helpers;
 
 public static class PlanNodePropertyBuilder
 {
+    private const string SeekPredicatesName = "Seek Predicates";
+
+    private const int UnboundColumnOrdinal = -1;
+
+    public static Dictionary<string, PredicateText> GetValues(PlanNode node, ExpressionCatalog? expressions)
+    {
+        var values = new Dictionary<string, PredicateText>(StringComparer.OrdinalIgnoreCase);
+
+        AddValues(Build(node, expressions: expressions), values);
+
+        return values;
+    }
+
+    public static PredicateText? GetSeekRange(Dictionary<string, PredicateText> values, int range)
+        => values.GetValueOrDefault(GetValueName(GetRangeName(range))) ?? values.GetValueOrDefault(GetValueName(SeekPredicatesName));
+
     public static List<PlanNodeProperty> Build(PlanNode node,
                                                EventIoStatistics? eventStatistics = null,
                                                ExpressionCatalog? expressions = null,
@@ -286,13 +304,13 @@ public static class PlanNodePropertyBuilder
 
             if (predicateInfo.HasSeekBounds)
             {
-                var ranges = new PlanNodeProperty("Seek Predicates", string.Empty);
+                var ranges = new PlanNodeProperty(SeekPredicatesName, string.Empty);
 
                 for (var index = 0; index < predicateInfo.SeekBounds.Length; index++)
                 {
                     var text = Expand(PredicateText.From(predicateInfo.SeekBounds[index]), expressions);
 
-                    ranges.Children.Add(new PlanNodeProperty($"Range {index + 1}", text.ToString())
+                    ranges.Children.Add(new PlanNodeProperty(GetRangeName(index), text.ToString())
                     {
                         Predicate = text
                     });
@@ -302,11 +320,11 @@ public static class PlanNodePropertyBuilder
             }
             else if (predicateInfo.IsCorrelatedSeek)
             {
-                var value = string.Join(", ", predicateInfo.CorrelatedSeekColumns.Select(c => $"{c.Column} = {c.OuterReference}"));
+                var text = Expand(GetCorrelatedSeekText(predicateInfo), expressions);
 
-                predicateGroup.Children.Add(new PlanNodeProperty("Seek Predicates", value)
+                predicateGroup.Children.Add(new PlanNodeProperty(SeekPredicatesName, text.ToString())
                 {
-                    IsValueMonospace = true,
+                    Predicate = text,
                     Tooltip = "The seek value is bound from the outer row of the join on each execution"
                 });
             }
@@ -608,6 +626,46 @@ public static class PlanNodePropertyBuilder
 
         return result;
     }
+
+    private static void AddValues(IEnumerable<PlanNodeProperty> properties, Dictionary<string, PredicateText> values)
+    {
+        foreach (var property in properties)
+        {
+            values.TryAdd(GetValueName(property.Name), GetValue(property));
+
+            AddValues(property.Children, values);
+        }
+    }
+
+    private static string GetValueName(string name) => name.Replace(" ", string.Empty);
+
+    private static string GetRangeName(int range) => $"Range {range + 1}";
+
+    private static PredicateText GetValue(PlanNodeProperty property)
+    {
+        if (property.Predicate is { } predicate)
+        {
+            return predicate;
+        }
+
+        var text = property.Value.Length > 0
+            ? property.Value
+            : string.Join(", ", property.Items.Concat(property.Children.Select(c => GetValue(c).ToString())));
+
+        return new PredicateText([new PredicateToken(PredicateTokenType.Column, text)]);
+    }
+
+    private static PredicateText GetCorrelatedSeekText(PredicateInfo predicateInfo)
+    {
+        List<AccessPredicate> comparisons = [.. predicateInfo.CorrelatedSeekColumns.Select(GetCorrelatedComparison)];
+
+        return PredicateText.From(comparisons is [var single] ? single : new AccessPredicate.And([.. comparisons]));
+    }
+
+    private static AccessPredicate GetCorrelatedComparison(CorrelatedSeekColumn column)
+        => new AccessPredicate.Comparison(GetUnboundColumn(column.Column), column.Comparison, GetUnboundColumn(column.OuterReference));
+
+    private static AccessExpression GetUnboundColumn(string name) => new AccessExpression.Column(UnboundColumnOrdinal, name);
 
     private static PredicateText Expand(PredicateText text, ExpressionCatalog? expressions)
     {

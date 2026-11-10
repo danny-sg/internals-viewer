@@ -7,7 +7,7 @@ public static class QueryCrop
 {
     public const string OptionKey = "crop-to-query";
 
-    public static bool IsHidden(CallTreeNode node, HashSet<CallTreeNode> roots) => !node.Ancestors().Any(roots.Contains);
+    public static bool IsHidden(CallTreeNode node, HashSet<CallTreeNode> roots) => !node.GetAncestors().Any(roots.Contains);
 
     public static bool IsHidden(TracePosition position, TracePosition start, TracePosition end) => position < start || position > end;
 

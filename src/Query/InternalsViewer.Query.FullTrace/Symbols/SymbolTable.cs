@@ -3,6 +3,7 @@ using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
 using InternalsViewer.Query.FullTrace.Symbols;
+using InternalsViewer.Query.FullTrace.Symbols.Enums;
 using InternalsViewer.Query.Events.Parsing;
 using InternalsViewer.Query.FullTrace.Symbols.Dia;
 
@@ -160,7 +161,7 @@ internal sealed class SymbolTable
     {
         var found = -1;
 
-        for (var at = LowerBound(rva); at < ByAddress.Length && Rvas[ByAddress[at]] == rva; at++)
+        for (var at = GetLowerBound(rva); at < ByAddress.Length && Rvas[ByAddress[at]] == rva; at++)
         {
             var index = ByAddress[at];
 
@@ -275,7 +276,7 @@ internal sealed class SymbolTable
         target.Index = chunk;
     }
 
-    private int LowerBound(uint rva)
+    private int GetLowerBound(uint rva)
     {
         var low = 0;
 
@@ -369,7 +370,7 @@ internal sealed class SymbolTable
 
             Flags.Add((ushort)(flags | (name.Contains('`') ? GeneratedFlag : 0)));
 
-            var separator = SymbolsHelper.FindClassMethodSeparator(name);
+            var separator = SymbolHelper.FindClassMethodSeparator(name);
 
             Separators.Add((short)separator);
 

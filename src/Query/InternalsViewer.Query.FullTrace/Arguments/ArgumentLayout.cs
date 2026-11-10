@@ -1,4 +1,5 @@
 using InternalsViewer.Query.FullTrace.Symbols;
+using InternalsViewer.Query.FullTrace.Symbols.Enums;
 using InternalsViewer.Query.FullTrace.Arguments.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Arguments;
@@ -47,9 +48,9 @@ public sealed record ArgumentLayout(IReadOnlyList<ArgumentSlot> Slots, string? R
 {
     public const int RegisterCount = 4;
 
-    public const int CapturedSlots = 16;
+    public const int CapturedSlotCount = 16;
 
-    public const int ReturnRegister = CapturedSlots;
+    public const int ReturnArgumentSlot = CapturedSlotCount;
 
     public const int HomeSpaceSize = RegisterCount * sizeof(ulong);
 
@@ -71,7 +72,7 @@ public sealed record ArgumentLayout(IReadOnlyList<ArgumentSlot> Slots, string? R
 
     private static string[] FloatingRegisters { get; } = [.. Enumerable.Range(0, RegisterCount).Select(p => $"XMM{p}")];
 
-    private static string[] StackLocations { get; } = [.. Enumerable.Range(0, CapturedSlots).Select(FormatStackLocation)];
+    private static string[] StackLocations { get; } = [.. Enumerable.Range(0, CapturedSlotCount).Select(FormatStackLocation)];
 
     public static ArgumentLayout GetLayout(FunctionSignature signature)
     {
@@ -104,7 +105,7 @@ public sealed record ArgumentLayout(IReadOnlyList<ArgumentSlot> Slots, string? R
     }
 
     public static string GetStackLocation(int position)
-        => position >= RegisterCount && position < CapturedSlots ? StackLocations[position] : FormatStackLocation(position);
+        => position >= RegisterCount && position < CapturedSlotCount ? StackLocations[position] : FormatStackLocation(position);
 
     public bool IsDeclared(string location)
     {
@@ -148,7 +149,7 @@ public sealed record ArgumentLayout(IReadOnlyList<ArgumentSlot> Slots, string? R
 
     private static ArgumentSlot GetSlot(string name, string type, int position)
     {
-        if (position >= CapturedSlots || type == VariadicType)
+        if (position >= CapturedSlotCount || type == VariadicType)
         {
             var location = position >= RegisterCount ? GetStackLocation(position) : "Stack";
 

@@ -13,8 +13,6 @@ public sealed partial class TracePageReadList
 
     public int Count => Reads.Length;
 
-    public long Bytes => Reads.Length * (long)Unsafe.SizeOf<TracePageRead>();
-
     private TracePageRead[] Reads { get; }
 
     public TracePageRead this[int index] => Reads[index];

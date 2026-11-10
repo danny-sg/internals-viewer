@@ -81,6 +81,8 @@ Pages and indexes opened from the trace - by double-clicking a timeline event, c
 
 **Capture** chooses what a Full Trace records of the query's memory for the Memory History in the [Trace Timeline](/docs/user-guide/query/TraceTimeline#memory). **Heap Memory** has **Reads** and **Writes**, for the memory the query allocates, and **Stack Memory** covers the objects its functions keep on their own stacks and hand to each other. All three are on by default. Turning some off makes a large query's recording quicker to load and smaller. They apply from the next run. The **Memory History** run option turns them all off together.
 
+**Guide Mode** steps through a Full Trace run on the Execution Plan, one tick at a time, and turns on **Record Full Trace** - see [Guide Mode](/docs/user-guide/query/ExecutionPlan#guide-mode).
+
 **Search symbols** is covered in [Searching Symbols](/docs/user-guide/query/CallStack#searching-symbols).
 
 **Operator Tracks** opens the Operator Tracks tab, which lists the rules behind the Trace Timeline's operator tracks, predefined and added - see [Operator tracks](/docs/user-guide/query/TraceTimeline#operator-tracks).

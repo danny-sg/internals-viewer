@@ -572,22 +572,7 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
             return $"{found:N0}";
         }
 
-        var text = $"0x{found:X16}";
-
-        if (found == 0 || Owner is not { } owner)
-        {
-            return text;
-        }
-
-        if (owner.History.GetBlock(found, owner.Position) < 0)
-        {
-            return owner.GetBufferPageCell(text, found, owner.Position) ?? text;
-        }
-
-        return new ActionLinks([new ActionLink(text, () => owner.RequestMemory(found))])
-        {
-            Suffix = owner.History.GetPointerTarget(found, owner.Position)
-        };
+        return Owner?.GetPointerCell(found) ?? $"0x{found:X16}";
     }
 
     private static ulong? ReadField(MemoryHistoryBatch batch, MemoryField field)

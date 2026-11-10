@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Views.Query.Trace.Timeline.Memory.MemoryHashTableView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls"
+    xmlns:hexView="using:InternalsViewer.UI.App.Controls.HexView"
+    xmlns:local="using:InternalsViewer.UI.App.Views.Query.Trace.Timeline.Memory"
+    xmlns:models="using:InternalsViewer.UI.App.Models"
+    xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
+    xmlns:results="using:InternalsViewer.UI.App.Controls.Results"
+    xmlns:timeline="using:InternalsViewer.UI.App.Models.Query.Trace.Timeline">
+
+    <UserControl.Resources>
+        <DataTemplate x:Key="NodeTemplate" x:DataType="muxc:TreeViewNode">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Text="{x:Bind ((timeline:MemoryHashTableNode)Content).Name}"
+                           FontSize="12"
+                           VerticalAlignment="Center"/>
+                <TextBlock Text="{x:Bind ((timeline:MemoryHashTableNode)Content).AddressText}"
+                           FontSize="12"
+                           FontFamily="{StaticResource MonospaceFontFamily}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           VerticalAlignment="Center"/>
+                <TextBlock Text="&#x2192;"
+                           FontSize="12"
+                           Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                           VerticalAlignment="Center"
+                           Visibility="{x:Bind ((timeline:MemoryHashTableNode)Content).HasTarget}"/>
+                <TextBlock Text="{x:Bind ((timeline:MemoryHashTableNode)Content).TargetText}"
+                           FontSize="12"
+                           FontFamily="{StaticResource MonospaceFontFamily}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           VerticalAlignment="Center"
+                           Visibility="{x:Bind ((timeline:MemoryHashTableNode)Content).HasTarget}"/>
+                <TextBlock Text="{x:Bind ((timeline:MemoryHashTableNode)Content).Detail}"
+                           FontSize="12"
+                           Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                           VerticalAlignment="Center"/>
+                <ItemsControl ItemsSource="{x:Bind ((timeline:MemoryHashTableNode)Content).Badges}"
+                              VerticalAlignment="Center">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="4"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="timeline:MemoryHashTableBadge">
+                            <Border Background="{x:Bind Colour, Converter={StaticResource ColorToSolidColorBrushValueConverter}}"
+                                    CornerRadius="2"
+                                    Padding="4,1"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="{x:Bind Text}" Style="{StaticResource TagTextBlockStyle}" Foreground="Black"/>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </DataTemplate>
+
+        <Style x:Key="NodeItemStyle" TargetType="muxc:TreeViewItem">
+            <Setter Property="MinHeight" Value="24"/>
+            <Setter Property="Padding" Value="4,0,0,0"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="320" MinWidth="160"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Grid.Row="0"
+                    Grid.ColumnSpan="3"
+                    Padding="12,8"
+                    Orientation="Horizontal"
+                    Spacing="6"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="0,0,0,1">
+            <ItemsControl ItemsSource="{x:Bind ViewModel.Path, Mode=OneWay}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" Spacing="6"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="models:ActionLink">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <HyperlinkButton Content="{x:Bind Text}"
+                                             FontSize="12"
+                                             Style="{StaticResource DetailLinkStyle}"
+                                             VerticalAlignment="Center"
+                                             Click="OnPathClick"/>
+                            <TextBlock Text="&#x203A;"
+                                       FontSize="12"
+                                       Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="{x:Bind ViewModel.PathTitle, Mode=OneWay}"
+                       FontSize="12"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center"/>
+        </StackPanel>
+
+        <muxc:TreeView x:Name="StructureTree"
+                       Grid.Row="1"
+                       Grid.Column="0"
+                       ItemTemplate="{StaticResource NodeTemplate}"
+                       ItemContainerStyle="{StaticResource NodeItemStyle}"
+                       SelectionMode="Single"
+                       CanDragItems="False"
+                       CanReorderItems="False"
+                       SelectionChanged="OnStructureSelectionChanged"
+                       ItemInvoked="OnStructureItemInvoked"
+                       ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                       ScrollViewer.HorizontalScrollMode="Enabled"
+                       ScrollViewer.VerticalScrollBarVisibility="Auto"
+                       ScrollViewer.VerticalScrollMode="Enabled"/>
+
+        <controls:GridSplitter Grid.Row="1"
+                               Grid.Column="1"
+                               Width="8"
+                               ResizeBehavior="PreviousAndNext"
+                               ResizeDirection="Columns"/>
+
+        <Grid Grid.Row="1" Grid.Column="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="HexColumn" Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <hexView:HexViewControl Grid.Column="0"
+                                    VerticalAlignment="Stretch"
+                                    Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
+                                    Data="{x:Bind ViewModel.Data, Mode=OneWay}"
+                                    Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
+                                    SelectedChangeSpan="{x:Bind ViewModel.SelectedChangeSpan, Mode=OneWay}"
+                                    ScrollToOffset="{x:Bind ViewModel.ScrollToOffset, Mode=OneWay}"/>
+
+            <Grid Grid.Column="1">
+                <results:ResultsGridControl ResultSet="{x:Bind ViewModel.FieldTable, Mode=OneWay}"
+                                            SelectedRow="{x:Bind ViewModel.SelectedFieldRow, Mode=TwoWay}"
+                                            Visibility="{x:Bind ViewModel.IsFieldTableVisible, Mode=OneWay}"/>
+
+                <results:ResultsGridControl ResultSet="{x:Bind ViewModel.EntryTable, Mode=OneWay}"
+                                            SelectedRow="{x:Bind ViewModel.SelectedEntryRow, Mode=TwoWay}"
+                                            Visibility="{x:Bind ViewModel.IsEntryTableVisible, Mode=OneWay}"/>
+
+                <local:MemoryPagePanelView DataContext="{x:Bind ViewModel.WorkfilePage, Mode=OneWay}"
+                                           Visibility="{x:Bind ViewModel.IsPageVisible, Mode=OneWay}"/>
+
+                <TextBlock HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Text="{x:Bind ViewModel.EmptyText, Mode=OneWay}"/>
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>

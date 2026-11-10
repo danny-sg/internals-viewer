@@ -14,5 +14,5 @@ public sealed class ValueUseRow(TraceValueUse use, ulong value = 0, CallFrame? f
 
     public string Location => Use.Location;
 
-    public string Calls => CountText.GetCalls(Use.Calls);
+    public string Calls => CountText.GetCalls(Use.CallCount);
 }

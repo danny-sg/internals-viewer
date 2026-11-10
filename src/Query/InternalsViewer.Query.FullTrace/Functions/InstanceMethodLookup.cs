@@ -1,4 +1,5 @@
 using InternalsViewer.Query.FullTrace.Symbols;
+using InternalsViewer.Query.FullTrace.Symbols.Enums;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Arguments;
 
@@ -21,16 +22,16 @@ namespace InternalsViewer.Query.FullTrace.Functions;
 /// </remarks>
 internal static class InstanceMethodLookup
 {
-    public static int? InstanceRegister(FunctionSignature? signature) => signature switch
+    public static int? GetInstanceRegister(FunctionSignature? signature) => signature switch
     {
         { Type: FunctionType.Member } => 0,
-        { Type: FunctionType.Static, Parameters: var parameters } => KeyedParameter(parameters),
+        { Type: FunctionType.Static, Parameters: var parameters } => GetKeyedParameter(parameters),
         _ => null
     };
 
     public static bool IsInstanceMethod(ReadOnlySpan<char> symbol)
     {
-        SymbolsHelper.Split(symbol, out var className, out var methodName);
+        SymbolHelper.Split(symbol, out var className, out var methodName);
 
         if (className.Length == 0)
         {
@@ -42,7 +43,7 @@ internal static class InstanceMethodLookup
                    && IteratorSymbolLookup.IsIteratorMethod(methodName));
     }
 
-    private static int? KeyedParameter(IReadOnlyList<string> parameters)
+    private static int? GetKeyedParameter(IReadOnlyList<string> parameters)
     {
         for (var index = 0; index < Math.Min(parameters.Count, ArgumentLayout.RegisterCount); index++)
         {

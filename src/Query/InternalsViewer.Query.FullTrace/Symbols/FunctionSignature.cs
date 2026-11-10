@@ -1,4 +1,5 @@
 using InternalsViewer.Query.Events.Parsing;
+using InternalsViewer.Query.FullTrace.Symbols.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Symbols;
 
@@ -250,7 +251,7 @@ public sealed record FunctionSignature(IReadOnlyList<string> Parameters,
             target = word;
         }
 
-        var separator = SymbolsHelper.FindClassMethodSeparator(target);
+        var separator = SymbolHelper.FindClassMethodSeparator(target);
 
         return separator < 0 ? target : target[(separator + 2)..];
     }
@@ -259,7 +260,7 @@ public sealed record FunctionSignature(IReadOnlyList<string> Parameters,
     {
         var open = FindParameterList(signature);
 
-        return SymbolsHelper.FindClassMethodSeparator(open < 0 ? signature : signature[..open]) > 0;
+        return SymbolHelper.FindClassMethodSeparator(open < 0 ? signature : signature[..open]) > 0;
     }
 
     private static bool IsClassReturnedByValue(ReadOnlySpan<char> encoded)

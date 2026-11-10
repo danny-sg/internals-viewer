@@ -6,6 +6,7 @@ using InternalsViewer.Mcp.Documents;
 using InternalsViewer.Mcp.Formatting;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 using InternalsViewer.Query.FullTrace.Symbols.Categories;
 using InternalsViewer.Query.Events.Operators;
 using ModelContextProtocol;
@@ -420,13 +421,13 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
 
     private static void WritePath(StringBuilder builder, DocumentContext context, CallTreeNode target, int width)
     {
-        foreach (var node in target.Ancestors().Reverse())
+        foreach (var node in target.GetAncestors().Reverse())
         {
             var pages = GetPages(node).ToList();
 
             var extra = pages.Count > 0 ? $"  pages: {Format.Truncate(Format.CompactPages(pages), width)}" : string.Empty;
 
-            builder.AppendLine($"{Indent(node.Ancestors().Count() - 1)}{Format.NodeLine(context, node)}{extra}");
+            builder.AppendLine($"{Indent(node.GetAncestors().Count() - 1)}{Format.NodeLine(context, node)}{extra}");
         }
     }
 
@@ -440,7 +441,7 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
     {
         var pattern = Parse.Pattern(find);
 
-        var matches = candidates.Where(n => pattern.IsMatch(context.GetFunctionName(n))).OrderByDescending(n => n.Calls).ToList();
+        var matches = candidates.Where(n => pattern.IsMatch(context.GetFunctionName(n))).OrderByDescending(n => n.CallCount).ToList();
 
         builder.AppendLine($"{matches.Count} matching nodes{(scoped ? " in the selected subtree" : string.Empty)}, most calls first");
 
@@ -466,7 +467,7 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
     {
         Func<CallTreeNode, long> key = by switch
         {
-            "calls" => n => n.Calls,
+            "calls" => n => n.CallCount,
             "alloc" => n => n.AllocatedBytes,
             "inclusive-alloc" => n => totals.Get(n).Allocated,
             _ => throw new McpException($"'{by}' is not a ranking. Use calls, alloc or inclusive-alloc.")
@@ -624,7 +625,7 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
                 {
                     Name = name,
                     Category = GetCategory(node),
-                    Operator = node.Frame?.Function?.Iterator ?? string.Empty
+                    Operator = node.Frame?.Function?.OperatorName ?? string.Empty
                 };
 
                 totals[name] = total;
@@ -632,11 +633,11 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
 
             total.Nodes++;
 
-            total.Calls += node.Calls;
+            total.Calls += node.CallCount;
 
             total.Allocated += node.AllocatedBytes;
 
-            total.Allocations += node.Allocations;
+            total.Allocations += node.AllocationCount;
 
             total.Pages.UnionWith(GetPages(node));
         }
@@ -657,11 +658,11 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
     }
 
     private static string CalledFrom(DocumentContext context, CallTreeNode node, int pathDepth)
-        => string.Join(" < ", node.Ancestors().Skip(1).Take(pathDepth).Select(context.GetFunctionName));
+        => string.Join(" < ", node.GetAncestors().Skip(1).Take(pathDepth).Select(context.GetFunctionName));
 
     private static string SlotList(IEnumerable<int> slots) => $"[{string.Join(", ", slots)}]";
 
-    private static IEnumerable<Locator> GetLocators(CallTreeNode node) => node.Locators?.Ordered() ?? [];
+    private static IEnumerable<Locator> GetLocators(CallTreeNode node) => node.Locators?.GetOrdered() ?? [];
 
     private static IEnumerable<PageAddress> GetPages(CallTreeNode node)
         => GetLocators(node).Where(l => l.ValueType == LocatorValueType.Page).Select(l => l.Page);
@@ -757,11 +758,11 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
                     continue;
                 }
 
-                var calls = node.Calls;
+                var calls = node.CallCount;
 
                 var allocated = node.AllocatedBytes;
 
-                var allocations = node.Allocations;
+                var allocations = node.AllocationCount;
 
                 foreach (var child in node.Children.Values)
                 {

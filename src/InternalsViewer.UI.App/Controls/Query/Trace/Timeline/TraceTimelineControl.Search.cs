@@ -204,7 +204,7 @@ public sealed partial class TraceTimelineControl
             for (var callNodeIndex = 0; callNodeIndex < matches.Length; callNodeIndex++)
             {
                 matches[callNodeIndex] = _searchLocator is { } found
-                    ? timeline.NodeOf(callNodeIndex)?.Locators?.Contains(found) == true
+                    ? timeline.GetNode(callNodeIndex)?.Locators?.Contains(found) == true
                     : MatchesSearch(LabelOf(callNodeIndex));
             }
 
@@ -308,7 +308,7 @@ public sealed partial class TraceTimelineControl
 
             for (var callNodeIndex = 0; callNodeIndex < excluded.Length; callNodeIndex++)
             {
-                excluded[callNodeIndex] |= timeline.NodeOf(callNodeIndex) is { Frame: not null } node && hidden.Contains(node.Category);
+                excluded[callNodeIndex] |= timeline.GetNode(callNodeIndex) is { Frame: not null } node && hidden.Contains(node.Category);
             }
         }
 
@@ -700,7 +700,7 @@ public sealed partial class TraceTimelineControl
 
     private bool[]? GetMemoryScope()
     {
-        var node = _selected is { } selected && SpanOf(selected) is { } span ? _visible?.NodeOf(span.CallNodeIndex) : null;
+        var node = _selected is { } selected && SpanOf(selected) is { } span ? _visible?.GetNode(span.CallNodeIndex) : null;
 
         if (ReferenceEquals(node, _memoryScopeNode) && ReferenceEquals(_timeline, _memoryScopeTimeline))
         {
@@ -726,9 +726,9 @@ public sealed partial class TraceTimelineControl
 
         for (var callNodeIndex = 0; callNodeIndex < under.Length; callNodeIndex++)
         {
-            var parent = timeline.ParentOf(callNodeIndex);
+            var parent = timeline.GetParent(callNodeIndex);
 
-            under[callNodeIndex] = (parent >= 0 && under[parent]) || (timeline.NodeOf(callNodeIndex) is { } callNode && isSelected(callNode));
+            under[callNodeIndex] = (parent >= 0 && under[parent]) || (timeline.GetNode(callNodeIndex) is { } callNode && isSelected(callNode));
 
             any |= under[callNodeIndex];
         }

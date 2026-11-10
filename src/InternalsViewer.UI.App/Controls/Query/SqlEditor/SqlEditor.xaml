@@ -157,9 +157,18 @@
         </Grid>
 
         <Grid Grid.Row="1" Grid.Column="0">
-            <WebView2 x:Name="WebView" />
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <ContentPresenter Content="{x:Bind HeaderContent, Mode=OneWay}"
+                              HorizontalContentAlignment="Stretch" />
+
+            <WebView2 x:Name="WebView" Grid.Row="1" />
 
             <Border x:Name="LoadingOverlay"
+                    Grid.Row="1"
                     Background="{ThemeResource LayerFillColorDefaultBrush}">
                 <StackPanel HorizontalAlignment="Center"
                             VerticalAlignment="Center"

@@ -21,6 +21,21 @@ public sealed class TimeTravelRecorder(IWinDbgSettings settings, ILogger<TimeTra
 
     public bool IsLicenceAccepted => TimeTravelLicence.IsAccepted;
 
+    public bool IsInstalled
+    {
+        get
+        {
+            try
+            {
+                return WinDbgInstallation.Resolve(settings.WinDbgPath, logger).HasTimeTravel;
+            }
+            catch (WinDbgNotFoundException)
+            {
+                return false;
+            }
+        }
+    }
+
     private static string Root =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                      "InternalsViewer",

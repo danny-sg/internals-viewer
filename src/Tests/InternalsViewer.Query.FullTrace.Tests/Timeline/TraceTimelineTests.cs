@@ -17,9 +17,9 @@ public class TraceTimelineTests
 
     private static readonly CallNode[] Nodes =
     [
-        new(-1, 0, 0x1000, 0, 1),
-        new(0, 0, 0x2000, 0, 2),
-        new(1, 0, 0x3000, 0, 1)
+        new(-1, 0x1000, 0, 1),
+        new(0, 0x2000, 0, 2),
+        new(1, 0x3000, 0, 1)
     ];
 
     [Fact]
@@ -32,7 +32,7 @@ public class TraceTimelineTests
         var thread = Assert.Single(timeline.Threads);
 
         Assert.Equal([0, 1, 2], thread.Rows.Select(r => r.GetCallNodeIndex(0)));
-        Assert.Equal(3, thread.Calls);
+        Assert.Equal(3, thread.CallCount);
     }
 
     [Fact]
@@ -130,11 +130,11 @@ public class TraceTimelineTests
                              Span(callNodeIndex: 1, start: 5, end: 30),
                              Span(callNodeIndex: 0, start: 0, end: 40));
 
-        var thread = Assert.Single(timeline.Where(n => n != 2).Threads);
+        var thread = Assert.Single(timeline.Filter(n => n != 2).Threads);
 
         Assert.Equal([1, 1, 0], thread.Rows.Select(r => r.Count));
         Assert.Equal(2, thread.Depth);
-        Assert.Equal(2, thread.Calls);
+        Assert.Equal(2, thread.CallCount);
     }
 
     [Fact]
@@ -157,7 +157,7 @@ public class TraceTimelineTests
         var thread = Assert.Single(timeline.Threads);
 
         Assert.Equal([1, 0, 0], thread.Rows.Select(r => r.Count));
-        Assert.Equal(1, thread.Calls);
+        Assert.Equal(1, thread.CallCount);
     }
 
     [Fact]
@@ -174,7 +174,7 @@ public class TraceTimelineTests
 
         timeline.MapNodes([null, execute, inner]);
 
-        var cropped = timeline.CroppedTo(new HashSet<CallTreeNode>(ReferenceEqualityComparer.Instance) { execute });
+        var cropped = timeline.CropTo(new HashSet<CallTreeNode>(ReferenceEqualityComparer.Instance) { execute });
 
         Assert.NotNull(cropped);
 
@@ -190,10 +190,10 @@ public class TraceTimelineTests
     {
         CallNode[] nodes =
         [
-            new(-1, 0, 0x1000, 0, 1),
-            new(0, 0, 0x2000, 0, 1),
-            new(-1, 0, 0x3000, 0, 1),
-            new(2, 0, 0x4000, 0, 1)
+            new(-1, 0x1000, 0, 1),
+            new(0, 0x2000, 0, 1),
+            new(-1, 0x3000, 0, 1),
+            new(2, 0x4000, 0, 1)
         ];
 
         var builder = new TraceTimeline.Builder();
@@ -213,7 +213,7 @@ public class TraceTimelineTests
 
         timeline.MapNodes([null, execute, scan, read]);
 
-        var cropped = timeline.CroppedTo(new HashSet<CallTreeNode>(ReferenceEqualityComparer.Instance) { execute });
+        var cropped = timeline.CropTo(new HashSet<CallTreeNode>(ReferenceEqualityComparer.Instance) { execute });
 
         Assert.NotNull(cropped);
 
@@ -228,7 +228,7 @@ public class TraceTimelineTests
     {
         var (timeline, execute) = BuildAroundExecute();
 
-        var cropped = timeline.CroppedTo(new HashSet<CallTreeNode>(ReferenceEqualityComparer.Instance) { execute });
+        var cropped = timeline.CropTo(new HashSet<CallTreeNode>(ReferenceEqualityComparer.Instance) { execute });
 
         Assert.NotNull(cropped);
 
@@ -241,7 +241,6 @@ public class TraceTimelineTests
         Assert.Equal([[20d], [25d, 35d]], rows.Select(r => Starts(r)));
         Assert.Equal([2, 3, 3], rows.SelectMany(r => Enumerable.Range(0, r.Count).Select(r.GetCallNodeIndex)));
         Assert.Same(source.Store, thread.Store);
-        Assert.Equal(0, rows.Sum(r => r.Bytes));
     }
 
     [Fact]
@@ -251,7 +250,7 @@ public class TraceTimelineTests
 
         var source = Assert.Single(timeline.Threads);
 
-        var thread = Assert.Single(timeline.Folded(n => n.Frame?.Rva == 0x10).Threads);
+        var thread = Assert.Single(timeline.Fold(n => n.Frame?.Rva == 0x10).Threads);
 
         var row = thread.Rows[0];
 
@@ -259,8 +258,6 @@ public class TraceTimelineTests
         Assert.Equal([8d, 60d, 78d], Ends(row));
         Assert.Equal([1, 2, 1], Enumerable.Range(0, row.Count).Select(row.GetCallNodeIndex));
         Assert.Same(source.Store, thread.Store);
-        Assert.Equal(3 * sizeof(int), row.Bytes);
-        Assert.Equal(0, thread.Rows[1].Bytes);
     }
 
     [Fact]
@@ -270,13 +267,12 @@ public class TraceTimelineTests
 
         var source = Assert.Single(timeline.Threads);
 
-        var thread = Assert.Single(timeline.Where(n => n != 2).Threads);
+        var thread = Assert.Single(timeline.Filter(n => n != 2).Threads);
 
         Assert.Equal([[0d, 70d], [2d, 25d, 35d, 72d]], thread.Rows.Select(r => Starts(r)));
         Assert.Equal([[10d, 80d], [8d, 30d, 40d, 78d]], thread.Rows.Select(r => Ends(r)));
         Assert.Same(source.Store, thread.Store);
         Assert.Same(source.Rows[1], thread.Rows[1]);
-        Assert.Equal(2 * sizeof(int), thread.Rows[0].Bytes);
     }
 
     [Fact]
@@ -291,7 +287,7 @@ public class TraceTimelineTests
         Assert.Equal([[0d, 30d], [2d, 32d]], thread.Rows.Select(r => Starts(r)));
         Assert.Equal([[10d, 40d], [8d, 38d]], thread.Rows.Select(r => Ends(r)));
         Assert.Equal([0, 0, 1, 1], thread.Rows.SelectMany(r => Enumerable.Range(0, r.Count).Select(r.GetCallNodeIndex)));
-        Assert.Equal(4, thread.Calls);
+        Assert.Equal(4, thread.CallCount);
     }
 
     [Fact]
@@ -301,7 +297,7 @@ public class TraceTimelineTests
 
         timeline.RemoveCallsUnder(n => ReferenceEquals(n, execute));
 
-        CallTreeNode[] nodes = [.. Enumerable.Range(0, 4).Select(i => timeline.NodeOf(i)!)];
+        CallTreeNode[] nodes = [.. Enumerable.Range(0, 4).Select(i => timeline.GetNode(i)!)];
 
         using var stream = new MemoryStream();
 
@@ -319,8 +315,7 @@ public class TraceTimelineTests
         Assert.Equal([[0d, 30d], [2d, 32d]], thread.Rows.Select(r => Starts(r)));
         Assert.Equal([[10d, 40d], [8d, 38d]], thread.Rows.Select(r => Ends(r)));
         Assert.Equal([0, 0, 1, 1], thread.Rows.SelectMany(r => Enumerable.Range(0, r.Count).Select(r.GetCallNodeIndex)));
-        Assert.Equal(4, thread.Calls);
-        Assert.Equal(0, thread.Rows.Sum(r => r.Bytes));
+        Assert.Equal(4, thread.CallCount);
     }
 
     [Fact]
@@ -328,7 +323,7 @@ public class TraceTimelineTests
     {
         var (timeline, execute) = BuildAroundExecute();
 
-        var cropped = timeline.CroppedTo(new HashSet<CallTreeNode>(ReferenceEqualityComparer.Instance) { execute });
+        var cropped = timeline.CropTo(new HashSet<CallTreeNode>(ReferenceEqualityComparer.Instance) { execute });
 
         var thread = Assert.Single(cropped!.Threads);
 
@@ -365,7 +360,7 @@ public class TraceTimelineTests
 
         timeline.MapNodes([elsewhere, execute, null]);
 
-        var cropped = timeline.CroppedTo(new HashSet<CallTreeNode>(ReferenceEqualityComparer.Instance) { execute });
+        var cropped = timeline.CropTo(new HashSet<CallTreeNode>(ReferenceEqualityComparer.Instance) { execute });
 
         Assert.NotNull(cropped);
         Assert.Equal([7u], cropped.Threads.Select(t => t.ThreadId));
@@ -386,10 +381,10 @@ public class TraceTimelineTests
 
         timeline.MapNodes([root, folded, inner]);
 
-        var thread = Assert.Single(timeline.Folded(n => ReferenceEquals(n, folded)).Threads);
+        var thread = Assert.Single(timeline.Fold(n => ReferenceEquals(n, folded)).Threads);
 
         Assert.Equal([0, 2], thread.Rows.Select(r => r.GetCallNodeIndex(0)));
-        Assert.Equal(2, thread.Calls);
+        Assert.Equal(2, thread.CallCount);
     }
 
     [Fact]
@@ -403,7 +398,7 @@ public class TraceTimelineTests
                      Span(callNodeIndex: 2, start: 20, end: 30, callIndex: 8),
                      Span(callNodeIndex: 3, start: 50, end: 60, callIndex: 9)]);
 
-        var timeline = builder.Build([new(-1, 0, 0x1000, 0, 1), new(0, 0, 0x2000, 0, 1), new(1, 0, 0x3000, 0, 1), new(0, 0, 0x4000, 0, 2)]);
+        var timeline = builder.Build([new(-1, 0x1000, 0, 1), new(0, 0x2000, 0, 1), new(1, 0x3000, 0, 1), new(0, 0x4000, 0, 2)]);
 
         var tree = new CallTree();
 
@@ -414,7 +409,7 @@ public class TraceTimelineTests
 
         timeline.MapNodes([root, folded, inner, sibling]);
 
-        var row = Assert.Single(timeline.Folded(n => ReferenceEquals(n, folded)).Threads).Rows[1];
+        var row = Assert.Single(timeline.Fold(n => ReferenceEquals(n, folded)).Threads).Rows[1];
 
         Assert.Equal([3, 2, 3], Enumerable.Range(0, row.Count).Select(row.GetCallNodeIndex));
         Assert.Equal([7, 8, 9], Enumerable.Range(0, row.Count).Select(row.GetCallIndex));
@@ -450,11 +445,11 @@ public class TraceTimelineTests
 
         timeline.MapNodes([outer, execute, inner]);
 
-        var rooted = timeline.RootedAt(n => ReferenceEquals(n, execute));
+        var rooted = timeline.RootAt(n => ReferenceEquals(n, execute));
 
         Assert.NotNull(rooted);
 
-        var thread = Assert.Single(rooted.Folded(n => ReferenceEquals(n, outer) || ReferenceEquals(n, execute)).Threads);
+        var thread = Assert.Single(rooted.Fold(n => ReferenceEquals(n, outer) || ReferenceEquals(n, execute)).Threads);
 
         Assert.Equal([2], thread.Rows.Select(r => r.GetCallNodeIndex(0)));
     }
@@ -465,7 +460,7 @@ public class TraceTimelineTests
         var timeline = Build(Span(callNodeIndex: 0, start: 0, end: 10));
 
         Assert.Equal(3, timeline.NodeCount);
-        Assert.Equal([-1, 0, 1], Enumerable.Range(0, 3).Select(timeline.ParentOf));
+        Assert.Equal([-1, 0, 1], Enumerable.Range(0, 3).Select(timeline.GetParent));
     }
 
     [Fact]
@@ -483,14 +478,14 @@ public class TraceTimelineTests
 
         timeline.MapNodes([outer, execute, inner]);
 
-        var rooted = timeline.RootedAt(n => ReferenceEquals(n, execute));
+        var rooted = timeline.RootAt(n => ReferenceEquals(n, execute));
 
         Assert.NotNull(rooted);
 
         var thread = Assert.Single(rooted.Threads);
 
         Assert.Equal([1, 2], thread.Rows.Select(r => r.GetCallNodeIndex(0)));
-        Assert.Equal(2, thread.Calls);
+        Assert.Equal(2, thread.CallCount);
     }
 
     [Fact]
@@ -498,10 +493,10 @@ public class TraceTimelineTests
     {
         CallNode[] nodes =
         [
-            new(-1, 0, 0x1000, 0, 1),
-            new(0, 0, 0x2000, 0, 1),
-            new(-1, 0, 0x3000, 0, 2),
-            new(2, 0, 0x4000, 0, 1)
+            new(-1, 0x1000, 0, 1),
+            new(0, 0x2000, 0, 1),
+            new(-1, 0x3000, 0, 2),
+            new(2, 0x4000, 0, 1)
         ];
 
         var builder = new TraceTimeline.Builder();
@@ -524,7 +519,7 @@ public class TraceTimelineTests
 
         timeline.MapNodes([session, statement, task, producer]);
 
-        var rooted = timeline.RootedAt(n => ReferenceEquals(n, statement));
+        var rooted = timeline.RootAt(n => ReferenceEquals(n, statement));
 
         Assert.NotNull(rooted);
 
@@ -532,7 +527,7 @@ public class TraceTimelineTests
 
         var worker = rooted.Threads[1];
 
-        Assert.Equal(2, worker.Calls);
+        Assert.Equal(2, worker.CallCount);
         Assert.Equal([2, 3], worker.Rows.Select(r => r.GetCallNodeIndex(0)));
     }
 
@@ -541,7 +536,7 @@ public class TraceTimelineTests
     {
         var timeline = Build(Span(callNodeIndex: 0, start: 0, end: 10));
 
-        Assert.Null(timeline.RootedAt(_ => false));
+        Assert.Null(timeline.RootAt(_ => false));
     }
 
     [Fact]
@@ -691,7 +686,7 @@ public class TraceTimelineTests
 
         var thread = Assert.Single(timeline.Threads);
 
-        Assert.Equal((1L, 600d), (thread.Calls, timeline.End.Instructions));
+        Assert.Equal((1L, 600d), (Calls: thread.CallCount, timeline.End.Instructions));
         Assert.Equal([(new TracePosition(1, 100), new TracePosition(1, 500))], thread.Clock.GetDeadSpans());
         Assert.Equal([1 + 100d / 1001], timeline.GetCuts(TraceTimelineAxis.Position));
     }
@@ -769,10 +764,10 @@ public class TraceTimelineTests
     {
         CallNode[] nodes =
         [
-            new(-1, 0, 0x1000, 0, 1),
-            new(0, 0, 0x2000, 0, 1),
-            new(-1, 0, 0x3000, 0, 1),
-            new(2, 0, 0x4000, 0, 1)
+            new(-1, 0x1000, 0, 1),
+            new(0, 0x2000, 0, 1),
+            new(-1, 0x3000, 0, 1),
+            new(2, 0x4000, 0, 1)
         ];
 
         var builder = new TraceTimeline.Builder();

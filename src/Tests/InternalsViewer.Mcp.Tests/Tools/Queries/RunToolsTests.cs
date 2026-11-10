@@ -21,7 +21,6 @@ public class RunToolsTests
         Assert.Contains("Query options: ClearBufferPool=False, DisableReadAhead=True", text);
         Assert.Contains("Lock categories captured:", text);
         Assert.Contains("Full Trace:    yes", text);
-        Assert.Contains("Call Log Calls", text);
         Assert.Contains("  plan 0 handle 1 internal=False 1 nodes", text);
         Assert.Contains("  3 nodes, 7 events, 0 log records", text);
         Assert.Contains("  ExecutionOperatorEvent            2 / 2", text);
@@ -34,7 +33,6 @@ public class RunToolsTests
         var text = await Tools(withTrace: false).Summary();
 
         Assert.Contains("Full Trace:    no", text);
-        Assert.DoesNotContain("Call Log Calls", text);
     }
 
     [Fact]

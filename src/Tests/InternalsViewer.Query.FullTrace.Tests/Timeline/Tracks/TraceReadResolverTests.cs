@@ -16,7 +16,9 @@ using InternalsViewer.Query.Plans.Model;
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRowHelper;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 using InternalsViewer.Query.FullTrace.Symbols.Categories;
+using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Timeline.Tracks;
 
@@ -58,12 +60,12 @@ public class TraceReadResolverTests
 
     private static readonly CallNode[] Nodes =
     [
-        new(-1, 0, Helper, JoinIterator, 1),
-        new(0, 0, Helper, ScanIterator, 1),
-        new(1, 0, GetFunction, BufferPool, 1),
-        new(0, 0, ReadAheadFunction, BufferPool, 1),
-        new(-1, 0, GetFunction, BufferPool, 1),
-        new(2, 0, GetFromDiskFunction, BufferPool, 1)
+        new(-1, Helper, JoinIterator, 1),
+        new(0, Helper, ScanIterator, 1),
+        new(1, GetFunction, BufferPool, 1),
+        new(0, ReadAheadFunction, BufferPool, 1),
+        new(-1, GetFunction, BufferPool, 1),
+        new(2, GetFromDiskFunction, BufferPool, 1)
     ];
 
     [Fact]
@@ -196,9 +198,9 @@ public class TraceReadResolverTests
 
         var trace = new TraceResult(new CallTree(), calls, timeline) { Lifetimes = new TraceOperatorLifetimeList(lifetimes) };
 
-        TraceTickDefinition[] rules = [.. TraceTickDefinition.GetPredefined().Where(d => d.Name == ReadsTrack)];
+        TraceTrackRule[] rules = [.. TraceTrackRule.GetPredefined().Where(d => d.Name == ReadsTrack)];
 
-        return (TraceTickSeries.FromRules(trace, rules, r => TraceTickSeries.FromDefinition(trace, r)).Series, calls);
+        return (TraceTrackBuilder.BuildTrack(trace, rules, r => TraceTrackBuilder.Build(trace, r)).Series, calls);
     }
 
     private static (PageAddress Page, int PageCount, bool IsReadAhead)? GetRead(TraceCallStore calls, TraceTick read)
@@ -206,9 +208,9 @@ public class TraceReadResolverTests
 
     private static ulong[] Call(ulong start, ulong end, int callNodeIndex, ulong pageCount = 0)
     {
-        var row = Row(start, flags: Thread | TraceCallChunk.ReturnedFlag, rcx: BufferPool, callNodeIndex: callNodeIndex, endSequence: end);
+        var row = Row(start, flags: Thread | TraceCallColumnSet.ReturnedFlag, rcx: BufferPool, callNodeIndex: callNodeIndex, endSequence: end);
 
-        row[TraceCallChunk.IntegerOffset + 3] = pageCount;
+        row[TraceCallColumnSet.IntegerOffset + 3] = pageCount;
 
         return row;
     }

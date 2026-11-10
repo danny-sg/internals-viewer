@@ -2,7 +2,7 @@ namespace InternalsViewer.Query.FullTrace.Hooks;
 
 internal interface IArgumentRead
 {
-    int Register { get; }
+    int ArgumentSlot { get; }
 
     bool IsReadAtReturn { get; }
 }

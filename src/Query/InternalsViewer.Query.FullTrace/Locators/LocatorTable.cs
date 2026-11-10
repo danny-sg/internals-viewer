@@ -14,8 +14,6 @@ internal sealed partial class LocatorTable
 
     public int Count => CallIndexes.Count;
 
-    public long Bytes => CallIndexes.Bytes + Palette.Length * sizeof(int) + PaletteIndexes.Bytes;
-
     private BitPackedArray CallIndexes { get; }
 
     private int[] Palette { get; }
@@ -48,7 +46,7 @@ internal sealed partial class LocatorTable
 
         values.Sort();
 
-        var palette = values[..Unique(values)].ToArray();
+        var palette = values[..RemoveDuplicates(values)].ToArray();
 
         for (var index = 0; index < selected.Length; index++)
         {
@@ -90,9 +88,9 @@ internal sealed partial class LocatorTable
 
         ref readonly var rightLocator = ref pool[right.PoolIndex];
 
-        if (leftLocator.Register != rightLocator.Register)
+        if (leftLocator.ArgumentSlot != rightLocator.ArgumentSlot)
         {
-            return leftLocator.Register.CompareTo(rightLocator.Register);
+            return leftLocator.ArgumentSlot.CompareTo(rightLocator.ArgumentSlot);
         }
 
         if (leftLocator.ValueType != rightLocator.ValueType)
@@ -133,10 +131,10 @@ internal sealed partial class LocatorTable
 
     private static bool IsSameGroup(FoundLocator left, FoundLocator right, LocatorPool pool)
         => left.CallIndex == right.CallIndex
-           && pool[left.PoolIndex].Register == pool[right.PoolIndex].Register
+           && pool[left.PoolIndex].ArgumentSlot == pool[right.PoolIndex].ArgumentSlot
            && pool[left.PoolIndex].ValueType == pool[right.PoolIndex].ValueType;
 
-    private static int Unique(Span<int> sorted)
+    private static int RemoveDuplicates(Span<int> sorted)
     {
         var count = 0;
 
@@ -153,7 +151,7 @@ internal sealed partial class LocatorTable
         return count;
     }
 
-    public IEnumerable<(int CallIndex, Locator Locator)> Entries()
+    public IEnumerable<(int CallIndex, Locator Locator)> GetEntries()
     {
         for (var index = 0; index < CallIndexes.Count; index++)
         {

@@ -232,7 +232,7 @@ public class PlanNodeHookTests
         {
             FunctionAddress = function,
             InstanceAddress = iterator,
-            Id = id,
+            CallId = id,
             CallIndex = (uint)id,
             Position = At(at ?? id),
             Instructions = at ?? id,

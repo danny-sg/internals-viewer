@@ -16,7 +16,7 @@ internal static class IteratorLifetimeBuilder
     {
         var owners = new Dictionary<ulong, ExecutionOperatorEvent>(operators);
 
-        foreach (var (instance, adapter) in BatchToRowOperatorBuilder.Create(timeline, planNodes, operators))
+        foreach (var (instance, adapter) in BatchToRowOperatorBuilder.Build(timeline, planNodes, operators))
         {
             owners.TryAdd(instance, adapter);
         }
@@ -67,7 +67,7 @@ internal static class IteratorLifetimeBuilder
 
             var merged = calls.Select(c => (Operator: c.Key, c.Value.Instances, Calls: GetOutermost(c.Value.Calls))).ToList();
 
-            var curves = allocation.InUseOwnedBy(thread.ThreadId, [.. merged.Select(m => m.Calls)]);
+            var curves = allocation.GetInUseOwnedBy(thread.ThreadId, [.. merged.Select(m => m.Calls)]);
 
             TracePoint[] threadTeardowns = [.. teardowns.Where(t => t.Thread == thread.ThreadId)
                                                         .Select(t => t.End)

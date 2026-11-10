@@ -6,6 +6,6 @@ namespace InternalsViewer.Query.FullTrace.Memory.History.Capture.Watches;
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
 internal readonly record struct ChunkHit(TracePosition Position, ulong Address, int DataOffset, uint Thread, ushort Size)
 {
-    public static ChunkHit From(in WatchHit hit, int dataOffset)
+    public static ChunkHit Create(in WatchHit hit, int dataOffset)
         => new(hit.Position, hit.Address, dataOffset, hit.Thread, (ushort)hit.Size);
 }

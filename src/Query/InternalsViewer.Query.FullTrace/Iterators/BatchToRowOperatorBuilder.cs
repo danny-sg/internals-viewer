@@ -10,9 +10,9 @@ internal static class BatchToRowOperatorBuilder
 {
     private const string OperatorName = "Batch To Row Adapter";
 
-    public static Dictionary<ulong, ExecutionOperatorEvent> Create(TraceTimeline timeline,
-                                                                   IReadOnlyList<IteratorPlanNode> planNodes,
-                                                                   IReadOnlyDictionary<ulong, ExecutionOperatorEvent> owners)
+    public static Dictionary<ulong, ExecutionOperatorEvent> Build(TraceTimeline timeline,
+                                                                  IReadOnlyList<IteratorPlanNode> planNodes,
+                                                                  IReadOnlyDictionary<ulong, ExecutionOperatorEvent> owners)
     {
         var adapters = new Dictionary<ulong, ExecutionOperatorEvent>();
 
@@ -40,7 +40,8 @@ internal static class BatchToRowOperatorBuilder
                     LogicalOperator = OperatorName,
                     Category = OperatorCategory.Adapter,
                     NodeLevel = source.NodeLevel,
-                    IsBlockingInput = source.IsBlockingInput
+                    IsBlockingInput = source.IsBlockingInput,
+                    AdaptedNode = source.PlanNodeIdentifier
                 };
 
                 foreach (var instance in instances)
@@ -70,7 +71,7 @@ internal static class BatchToRowOperatorBuilder
 
         for (var callNodeIndex = 0; callNodeIndex < timeline.NodeCount; callNodeIndex++)
         {
-            if (timeline.NodeOf(callNodeIndex) is { Frame.InstanceAddress: var instance } callNode
+            if (timeline.GetNode(callNodeIndex) is { Frame.InstanceAddress: var instance } callNode
                 && helpers.Contains(instance)
                 && seen.Add(callNode))
             {

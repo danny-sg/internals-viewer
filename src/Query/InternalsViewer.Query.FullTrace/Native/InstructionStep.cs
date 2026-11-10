@@ -8,5 +8,4 @@ internal readonly record struct InstructionStep(ulong Sequence,
                                                 ulong ProgramCounter,
                                                 uint FirstChange,
                                                 uint ChangeCount,
-                                                int Depth,
-                                                uint Reserved);
+                                                int Depth);

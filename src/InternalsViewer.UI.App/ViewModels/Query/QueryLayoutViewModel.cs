@@ -15,6 +15,8 @@ using InternalsViewer.UI.App.Views.Query.Trace.Timeline;
 using Microsoft.UI.Xaml.Controls;
 using QueryPlanTabCommands = InternalsViewer.UI.App.Views.Query.Plan.QueryPlanTabCommands;
 
+using InternalsViewer.UI.App.Models.Query.Plan;
+
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
 /// <summary>
@@ -38,6 +40,10 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     private readonly HashSet<DocumentViewModel> _hiddenForTrace = [];
 
     private DockNode? _rootBeforeTrace;
+
+    private DockNode? _rootBeforeGuide;
+
+    private bool _isTraceBeforeGuide;
 
     /// <remarks>
     /// Set while SyncTabVisibility writes the flags back from the dock, so their setters don't loop back into the dock.
@@ -80,6 +86,9 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanShowEventViews))]
     private bool _isTrace;
+
+    [ObservableProperty]
+    private bool _isGuideMode;
 
     /// <param name="content">
     /// The data context the tab document views bind to (the owning query view model)
@@ -150,6 +159,12 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
     public DockLayoutViewModel Dock { get; }
 
+    public PaneSplit? PlanStepsSplit { get; set; }
+
+    public PaneSplit? PlanColumnSplit { get; set; }
+
+    public PaneSplit? PlanRowSplit { get; set; }
+
     public bool CanShowEventViews => !IsTrace;
 
     public bool IsTimelineVisibleOutsideTrace
@@ -158,7 +173,16 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     private DocumentViewModel[] EventViews => [_documentsByKey[EventsKey], _documentsByKey[TimelineKey]];
 
     public DockNode SerializeRoot()
-        => IsTrace && _rootBeforeTrace is { } root ? root : DockLayoutSerializer.Serialize(Dock.Root);
+    {
+        var isTrace = IsGuideMode ? _isTraceBeforeGuide : IsTrace;
+
+        if (isTrace && _rootBeforeTrace is { } traceRoot)
+        {
+            return traceRoot;
+        }
+
+        return IsGuideMode && _rootBeforeGuide is { } guideRoot ? guideRoot : DockLayoutSerializer.Serialize(Dock.Root);
+    }
 
     public bool RestoreRoot(DockNode? dto)
     {
@@ -187,6 +211,8 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     /// </summary>
     public void Reset()
     {
+        IsGuideMode = false;
+
         if (!IsTrace)
         {
             Dock.SetRoot(DefaultRoot());
@@ -226,6 +252,8 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         Show(_documentsByKey[PlanKey]);
     }
 
+    public void ShowBelowPlan(DocumentViewModel document) => Dock.DockBelow(document, _documentsByKey[PlanKey]);
+
     public void ShowCallTree()
     {
         IsCallTreeVisible = true;
@@ -238,6 +266,14 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         IsTraceTimelineVisible = true;
 
         Show(_documentsByKey[TraceTimelineKey]);
+    }
+
+    public void ShowGuidePlan()
+    {
+        if (IsGuideMode)
+        {
+            Dock.Activate(_documentsByKey[PlanKey]);
+        }
     }
 
     public void ShowOperatorTracks()
@@ -304,15 +340,39 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     partial void OnIsOperatorTracksVisibleChanged(bool value)
         => SetDocumentVisible(_documentsByKey[OperatorTracksKey], value);
 
-    partial void OnIsTraceChanged(bool value)
+    partial void OnIsGuideModeChanged(bool value)
     {
         if (value)
         {
-            EnterTrace();
+            EnterGuide();
+        }
+        else
+        {
+            ExitGuide();
+        }
+    }
+
+    partial void OnIsTraceChanged(bool value)
+    {
+        if (IsGuideMode)
+        {
+            SetGuideTimeline(value);
 
             return;
         }
 
+        if (value)
+        {
+            EnterTrace();
+        }
+        else
+        {
+            ExitTrace();
+        }
+    }
+
+    private void ExitTrace()
+    {
         RestoreEventViews();
 
         Dock.Close(_documentsByKey[TraceTimelineKey]);
@@ -329,6 +389,63 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         ShowTraceTimelineTab(select: false);
 
         HideEventViews();
+    }
+
+    private void EnterGuide()
+    {
+        _rootBeforeGuide = DockLayoutSerializer.Serialize(Dock.Root);
+
+        _isTraceBeforeGuide = IsTrace;
+
+        DocumentViewModel[] documents = IsTrace
+            ? [_documentsByKey[SqlKey], _documentsByKey[TraceTimelineKey], _documentsByKey[PlanKey]]
+            : [_documentsByKey[SqlKey], _documentsByKey[PlanKey]];
+
+        var selected = Dock.Groups().Select(g => g.SelectedDocument).FirstOrDefault(d => d is not null && documents.Contains(d));
+
+        Dock.SetRoot(new TabGroupNode(documents));
+
+        Dock.Activate(selected ?? _documentsByKey[SqlKey]);
+    }
+
+    private void SetGuideTimeline(bool isTrace)
+    {
+        var timeline = _documentsByKey[TraceTimelineKey];
+
+        if (!isTrace)
+        {
+            Dock.Close(timeline);
+        }
+        else if (!Dock.Contains(timeline))
+        {
+            Dock.ShowBeside(timeline, _documentsByKey[SqlKey], select: false);
+        }
+    }
+
+    private void ExitGuide()
+    {
+        var root = DockLayoutSerializer.Deserialize(_rootBeforeGuide, key => _documentsByKey.GetValueOrDefault(key));
+
+        _rootBeforeGuide = null;
+
+        if (root is not null)
+        {
+            Dock.SetRoot(root);
+        }
+
+        if (IsTrace == _isTraceBeforeGuide)
+        {
+            return;
+        }
+
+        if (IsTrace)
+        {
+            EnterTrace();
+        }
+        else
+        {
+            ExitTrace();
+        }
     }
 
     private void ShowTraceTimelineTab(bool select)

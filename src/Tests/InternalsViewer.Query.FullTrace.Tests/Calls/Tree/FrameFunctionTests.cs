@@ -1,5 +1,6 @@
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Symbols.Categories;
+using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Calls.Tree;
 
@@ -25,7 +26,7 @@ public class FrameFunctionTests
         var function = FrameFunction.Parse("sqlmin", "CQScanTopNew::GetRow");
 
         Assert.Equal(SymbolCategory.QueryOperator, function.SymbolCategory);
-        Assert.Equal("Top", function.Iterator);
+        Assert.Equal("Top", function.OperatorName);
     }
 
     [Fact]
@@ -90,7 +91,7 @@ public class FrameFunctionTests
     [Fact]
     public void Frames_Of_One_Function_Share_It()
     {
-        var functions = new FrameFunctionLookup();
+        var functions = new FrameFunctionCache();
 
         var first = new CallFrame { Module = new("sqlmin") };
 
@@ -123,7 +124,7 @@ public class FrameFunctionTests
     {
         var frame = new CallFrame { Module = new(module) };
 
-        new FrameFunctionLookup().Resolve(frame, symbol);
+        new FrameFunctionCache().Resolve(frame, symbol);
 
         return frame;
     }

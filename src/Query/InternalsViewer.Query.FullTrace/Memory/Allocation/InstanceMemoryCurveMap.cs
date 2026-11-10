@@ -47,7 +47,7 @@ public sealed class InstanceMemoryCurveMap
         {
             var owners = instances.Keys.ToList();
 
-            var owned = allocation.InUseOwnedBy(thread, [.. owners.Select(IReadOnlyList<TraceSpan> (o) => instances[o])]);
+            var owned = allocation.GetInUseOwnedBy(thread, [.. owners.Select(IReadOnlyList<TraceSpan> (o) => instances[o])]);
 
             for (var index = 0; index < owners.Count; index++)
             {

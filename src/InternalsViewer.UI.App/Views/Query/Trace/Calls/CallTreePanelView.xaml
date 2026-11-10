@@ -215,7 +215,7 @@
                         ContextFlyout="{StaticResource CallFrameMenu}">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Border Background="#61B0E3"
-                            CornerRadius="{x:Bind ((model:CallTreeNode)Content).HasOperator, Converter={StaticResource CategoryBadgeCornerConverter}}"
+                            CornerRadius="{x:Bind ((model:CallTreeNode)Content).HasOperatorName, Converter={StaticResource CategoryBadgeCornerConverter}}"
                             Padding="5,2,5,3"
                             ToolTipService.ToolTip="{x:Bind ((model:CallTreeNode)Content).TargetDetail}"
                             Visibility="{x:Bind ((model:CallTreeNode)Content).HasTarget, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -227,7 +227,7 @@
                                    FontWeight="SemiBold"/>
                     </Border>
                     <Border Background="{x:Bind ((model:CallTreeNode)Content).CategoryColour, Converter={StaticResource HexColorToBrushConverter}}"
-                            CornerRadius="{x:Bind ((model:CallTreeNode)Content).HasOperator, Converter={StaticResource CategoryBadgeCornerConverter}}"
+                            CornerRadius="{x:Bind ((model:CallTreeNode)Content).HasOperatorName, Converter={StaticResource CategoryBadgeCornerConverter}}"
                             Padding="5,2,5,3"
                             Visibility="{x:Bind ((model:CallTreeNode)Content).HasTarget, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                         <TextBlock Text="{x:Bind ((model:CallTreeNode)Content).Category}"
@@ -238,8 +238,8 @@
                     <Border CornerRadius="0,3,3,0"
                             Padding="5,2,5,3"
                             Background="#4A4A55"
-                            Visibility="{x:Bind ((model:CallTreeNode)Content).HasOperator, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <TextBlock Text="{x:Bind ((model:CallTreeNode)Content).Operator}"
+                            Visibility="{x:Bind ((model:CallTreeNode)Content).HasOperatorName, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock Text="{x:Bind ((model:CallTreeNode)Content).OperatorName}"
                                    signatures:SearchHighlight.Search="{Binding Text, Source={StaticResource TreeHighlight}, Mode=OneWay}"
                                    Foreground="White"
                                    FontSize="9"
@@ -288,7 +288,7 @@
                         ContextFlyout="{StaticResource CallFrameMenu}">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Border Background="#61B0E3"
-                            CornerRadius="{x:Bind ((model:CallTreeNode)Content).HasOperator, Converter={StaticResource CategoryBadgeCornerConverter}}"
+                            CornerRadius="{x:Bind ((model:CallTreeNode)Content).HasOperatorName, Converter={StaticResource CategoryBadgeCornerConverter}}"
                             Padding="5,2,5,3"
                             ToolTipService.ToolTip="{x:Bind ((model:CallTreeNode)Content).TargetDetail}"
                             Visibility="{x:Bind ((model:CallTreeNode)Content).HasTarget, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -300,7 +300,7 @@
                                    FontWeight="SemiBold"/>
                     </Border>
                     <Border Background="{x:Bind ((model:CallTreeNode)Content).CategoryColour, Converter={StaticResource HexColorToBrushConverter}}"
-                            CornerRadius="{x:Bind ((model:CallTreeNode)Content).HasOperator, Converter={StaticResource CategoryBadgeCornerConverter}}"
+                            CornerRadius="{x:Bind ((model:CallTreeNode)Content).HasOperatorName, Converter={StaticResource CategoryBadgeCornerConverter}}"
                             Padding="5,2,5,3"
                             Visibility="{x:Bind ((model:CallTreeNode)Content).HasTarget, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                         <TextBlock Text="{x:Bind ((model:CallTreeNode)Content).Category}"
@@ -311,8 +311,8 @@
                     <Border CornerRadius="0,3,3,0"
                             Padding="5,2,5,3"
                             Background="#4A4A55"
-                            Visibility="{x:Bind ((model:CallTreeNode)Content).HasOperator, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <TextBlock Text="{x:Bind ((model:CallTreeNode)Content).Operator}"
+                            Visibility="{x:Bind ((model:CallTreeNode)Content).HasOperatorName, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock Text="{x:Bind ((model:CallTreeNode)Content).OperatorName}"
                                    signatures:SearchHighlight.Search="{Binding Text, Source={StaticResource TreeHighlight}, Mode=OneWay}"
                                    Foreground="White"
                                    FontSize="9"

@@ -4,6 +4,7 @@ using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Symbols.Categories;
+using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRowHelper;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 
@@ -93,7 +94,7 @@ public class AllocationOwnerResolverTests
     }
 
     private static ulong[] Call(ulong start, ulong end, int callNodeIndex, ulong instance = 0)
-        => Row(start, flags: Thread | TraceCallChunk.ReturnedFlag, rcx: instance, callNodeIndex: callNodeIndex, endSequence: end);
+        => Row(start, flags: Thread | TraceCallColumnSet.ReturnedFlag, rcx: instance, callNodeIndex: callNodeIndex, endSequence: end);
 
     private static CallFrame Frame(string className, string method, uint rva) => new()
     {

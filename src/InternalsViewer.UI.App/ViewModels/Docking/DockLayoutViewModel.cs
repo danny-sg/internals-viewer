@@ -113,6 +113,40 @@ public sealed partial class DockLayoutViewModel : ObservableObject
         SetRoot(new SplitNode(Orientation.Vertical, Root, new TabGroupNode(document)));
     }
 
+    public void DockBelow(DocumentViewModel document, DocumentViewModel neighbour)
+    {
+        if (Contains(document))
+        {
+            Activate(document);
+
+            return;
+        }
+
+        if (FindGroup(neighbour) is not { } target)
+        {
+            DockBottom(document);
+
+            return;
+        }
+
+        var parent = target.Parent;
+
+        var split = new SplitNode(Orientation.Vertical, target, new TabGroupNode(document));
+
+        if (parent is null)
+        {
+            Root = split;
+        }
+        else
+        {
+            parent.Replace(target, split);
+
+            split.Parent = parent;
+        }
+
+        OnLayoutChanged();
+    }
+
     /// <summary>Selects <paramref name="document"/> in whichever group currently hosts it</summary>
     public void Activate(DocumentViewModel document)
     {
@@ -214,12 +248,7 @@ public sealed partial class DockLayoutViewModel : ObservableObject
 
     private void Remove(TabGroupNode group, DocumentViewModel document)
     {
-        group.Documents.Remove(document);
-
-        if (ReferenceEquals(group.SelectedDocument, document))
-        {
-            group.SelectedDocument = group.Documents.FirstOrDefault();
-        }
+        group.RemoveDocument(document);
 
         if (document.Content is IAsyncDisposable disposable)
         {
@@ -253,12 +282,7 @@ public sealed partial class DockLayoutViewModel : ObservableObject
 
     private void SplitInto(DocumentViewModel document, TabGroupNode source, LayoutNode target, DropZone zone)
     {
-        source.Documents.Remove(document);
-
-        if (ReferenceEquals(source.SelectedDocument, document))
-        {
-            source.SelectedDocument = source.Documents.FirstOrDefault();
-        }
+        source.RemoveDocument(document);
 
         var newGroup = new TabGroupNode(document);
 
@@ -295,12 +319,7 @@ public sealed partial class DockLayoutViewModel : ObservableObject
 
     private static void MoveToGroup(DocumentViewModel document, TabGroupNode source, TabGroupNode target)
     {
-        source.Documents.Remove(document);
-
-        if (ReferenceEquals(source.SelectedDocument, document))
-        {
-            source.SelectedDocument = source.Documents.FirstOrDefault();
-        }
+        source.RemoveDocument(document);
 
         target.Documents.Add(document);
         target.SelectedDocument = document;

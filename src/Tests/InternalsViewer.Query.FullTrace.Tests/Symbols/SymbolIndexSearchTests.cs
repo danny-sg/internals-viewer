@@ -1,4 +1,5 @@
 ﻿using InternalsViewer.Query.FullTrace.Symbols;
+using InternalsViewer.Query.FullTrace.Symbols.Enums;
 
 
 namespace InternalsViewer.Query.FullTrace.Tests.Symbols;
@@ -54,7 +55,7 @@ public class SymbolIndexSearchTests
 
         Assert.Equal(2, index.Count);
         Assert.Empty(index.Search("   ", SymbolSearchFields.All, 10));
-        Assert.Equal([0x200u], index.First(1).Select(h => h.Rva));
+        Assert.Equal([0x200u], index.GetFirst(1).Select(h => h.Rva));
         Assert.True(index.Search("function", SymbolSearchFields.All, 10)[0].IsFunction);
     }
 

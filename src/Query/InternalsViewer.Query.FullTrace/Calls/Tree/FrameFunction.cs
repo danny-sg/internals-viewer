@@ -1,5 +1,6 @@
 using InternalsViewer.Query.FullTrace.Symbols;
 using InternalsViewer.Query.FullTrace.Symbols.Categories;
+using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Calls.Tree;
 
@@ -13,7 +14,7 @@ public sealed class FrameFunction
 
     public SymbolCategory SymbolCategory { get; init; }
 
-    public string? Iterator { get; init; }
+    public string? OperatorName { get; init; }
 
     public IReadOnlyList<GlobPattern> PlanOperator { get; init; } = [];
 
@@ -23,7 +24,7 @@ public sealed class FrameFunction
 
     public static FrameFunction Parse(string module, string name)
     {
-        var separator = SymbolsHelper.FindClassMethodSeparator(name);
+        var separator = SymbolHelper.FindClassMethodSeparator(name);
 
         var className = separator >= 0
                         ? name[..separator].Replace("`", string.Empty).Replace("'", string.Empty)
@@ -31,9 +32,9 @@ public sealed class FrameFunction
 
         var methodName = separator >= 0 ? name[(separator + 2)..] : name;
 
-        var mappings = CategoryMappings.Default;
+        var mappings = CategoryRuleTable.Default;
 
-        var (iterator, planOperator) = mappings.ClassifyOperator(module, className, methodName);
+        var (operatorName, planOperator) = mappings.ClassifyOperator(module, className, methodName);
 
         return new FrameFunction
         {
@@ -41,7 +42,7 @@ public sealed class FrameFunction
             ClassName = className,
             MethodName = methodName,
             SymbolCategory = mappings.Classify(module, className, methodName),
-            Iterator = iterator,
+            OperatorName = operatorName,
             PlanOperator = planOperator
         };
     }

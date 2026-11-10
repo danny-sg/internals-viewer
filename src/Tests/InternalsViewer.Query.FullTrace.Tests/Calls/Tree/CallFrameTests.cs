@@ -27,7 +27,7 @@ public class CallFrameTests
 
     private static CallFrame Resolved(string symbol, uint rva = 0x1000)
     {
-        SymbolsHelper.SplitOffset(symbol, out var name, out var offset);
+        SymbolHelper.SplitOffset(symbol, out var name, out var offset);
 
         return new CallFrame { Module = new("sqlmin"), Rva = rva, Function = FrameFunction.Parse("sqlmin", name), Offset = offset };
     }

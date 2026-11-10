@@ -8,13 +8,13 @@ public sealed class TraceTimelineThread
                                  TraceThreadClock clock,
                                  TraceSpanStore store,
                                  IReadOnlyList<TraceTimelineRow> rows,
-                                 long calls)
+                                 long callCount)
     {
         ThreadId = threadId;
         Clock = clock;
         Store = store;
         Rows = rows;
-        Calls = calls;
+        CallCount = callCount;
     }
 
     public uint ThreadId { get; }
@@ -23,11 +23,9 @@ public sealed class TraceTimelineThread
 
     public IReadOnlyList<TraceTimelineRow> Rows { get; }
 
-    public long Calls { get; private set; }
+    public long CallCount { get; private set; }
 
     internal TraceSpanStore Store { get; }
-
-    internal long Bytes => Clock.Bytes + Store.Bytes + Rows.Sum(r => r.Bytes);
 
     public int Depth
     {
@@ -53,9 +51,9 @@ public sealed class TraceTimelineThread
 
     private TracePosition[]? Boundaries { get; set; }
 
-    public TraceTimelineThread Where(Func<int, bool> include)
+    public TraceTimelineThread Filter(Func<int, bool> include)
     {
-        TraceTimelineRow[] kept = [.. Rows.Select(r => r.Where(include))];
+        TraceTimelineRow[] kept = [.. Rows.Select(r => r.Filter(include))];
 
         return new TraceTimelineThread(ThreadId, Clock, Store, kept, kept.Sum(r => (long)r.Count));
     }
@@ -64,16 +62,16 @@ public sealed class TraceTimelineThread
     {
         foreach (var row in Rows)
         {
-            Calls -= row.RemoveAll(isRemoved);
+            CallCount -= row.RemoveAll(isRemoved);
         }
 
         Boundaries = null;
     }
 
-    internal IReadOnlyList<(TracePosition From, TracePosition To)> GetMaterialDeadSpans(
-        IEnumerable<(TracePosition From, TracePosition To)> excluded,
-        Func<int, bool> isRemoved,
-        TraceScale scale)
+    internal IReadOnlyList<(TracePosition From, TracePosition To)> 
+        GetMaterialDeadSpans(IEnumerable<(TracePosition From, TracePosition To)> excluded,
+                             Func<int, bool> isRemoved,
+                             TraceScale scale)
     {
         List<(TracePosition From, TracePosition To)> removed = [.. excluded];
 

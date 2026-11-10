@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using InternalsViewer.Query.Interfaces;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Locators;
 
@@ -7,11 +8,11 @@ public readonly record struct TypeInfoLocator(Locator Locator)
 {
     private const int DetailOffset = 16;
 
-    public SqlTypeInfo TypeInfo => SqlTypeInfo.From(Locator.Value, Locator.Detail);
+    public SqlTypeInfo TypeInfo => SqlTypeInfo.Create(Locator.Value, Locator.Detail);
 
-    public static Locator? Read(IMemoryReader memory, int register, ulong address)
+    public static Locator? Read(IMemoryReader memory, int argumentSlot, ulong address)
         => ReadBytes(memory, address) is { } header
-            ? new Locator(register, LocatorValueType.TypeInfo, header, ReadBytes(memory, address + DetailOffset) ?? 0)
+            ? new Locator(argumentSlot, LocatorValueType.TypeInfo, header, ReadBytes(memory, address + DetailOffset) ?? 0)
             : null;
 
     public override string ToString() => TypeInfo.ToString();

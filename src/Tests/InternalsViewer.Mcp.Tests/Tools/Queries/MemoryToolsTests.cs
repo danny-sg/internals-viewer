@@ -210,7 +210,7 @@ public class MemoryToolsTests
                 new AddressEntry(0xA, 0, 1, 0, At(0x16), At(0x1F), 1, 7, AddressMapOperation.Allocated, "CQScanRowsetNew", 100, "sqlmin!CQScanRowsetNew::GetRow",
                                  "MEMOBJ_EXECUTE"),
                 new AddressEntry(0xA, 0, 1, 0, At(0x17), At(0x1F), 1, 7, AddressMapOperation.Constructed, "CQScanRowsetNew")
-            ], t.Timeline.NodeOf)
+            ], t.Timeline.GetNode)
         });
 
     private static QueryExportContent WithMemoryHistory(QueryExportContent run)

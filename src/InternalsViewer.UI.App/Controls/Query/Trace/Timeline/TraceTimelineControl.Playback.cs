@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using InternalsViewer.UI.App.Controls.Query.Trace.Timeline.Enums;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
+using InternalsViewer.UI.App.Services.Query.Trace;
+using InternalsViewer.UI.App.ViewModels.Query;
 
 namespace InternalsViewer.UI.App.Controls.Query.Trace.Timeline;
 
@@ -13,6 +15,10 @@ public sealed partial class TraceTimelineControl
     private const double SweepDurationMs = 30_000;
 
     private DispatcherTimer? _playTimer;
+
+    private long? _nextPlayStep;
+
+    private List<TraceTrackStep>? _trackSteps;
 
     public event Action<bool>? PlayStateChanged;
 
@@ -25,6 +31,9 @@ public sealed partial class TraceTimelineControl
     public PlayheadStepMode StepMode { get; private set; } = PlayheadStepMode.Call;
 
     public string? StepTrack { get; private set; }
+
+    private bool IsTrackPlay
+        => StepMode == PlayheadStepMode.Tracks || (StepMode == PlayheadStepMode.Track && GetStepTrack(StepTrack) is not null);
 
     public void Step(bool forward)
     {
@@ -89,6 +98,8 @@ public sealed partial class TraceTimelineControl
             _playTimer.Tick += OnPlayTick;
         }
 
+        _nextPlayStep = null;
+
         _playTimer.Start();
 
         PlayStateChanged?.Invoke(true);
@@ -113,6 +124,13 @@ public sealed partial class TraceTimelineControl
         if (_playhead is not { } playhead || _visible is null)
         {
             StopPlay();
+
+            return;
+        }
+
+        if (IsTrackPlay)
+        {
+            PlayStep(playhead);
 
             return;
         }
@@ -143,4 +161,60 @@ public sealed partial class TraceTimelineControl
             StopPlay();
         }
     }
+
+    private void PlayStep(double playhead)
+    {
+        var now = Environment.TickCount64;
+
+        if (_nextPlayStep is { } due && now < due)
+        {
+            return;
+        }
+
+        StepAlongTracks(forward: true);
+
+        if (_playhead is not { } stepped || stepped <= playhead)
+        {
+            StopPlay();
+
+            return;
+        }
+
+        if (IsTrimmed && stepped > TrimTo)
+        {
+            ShowPlayhead(TrimFrom);
+        }
+
+        _nextPlayStep = now + (long)(ITimelineTransport.StepHoldMs / Math.Max(PlaySpeed, ITimelineTransport.MinimumPlaySpeed));
+
+        ReportPlayhead();
+
+        RulerChanged?.Invoke();
+    }
+
+    private void StepAlongTracks(bool forward)
+    {
+        if (StepMode == PlayheadStepMode.Tracks)
+        {
+            StepToTrackStep(forward);
+        }
+        else if (GetStepTrack(StepTrack) is { } track)
+        {
+            StepToTick(forward, track);
+        }
+    }
+
+    private void StepToTrackStep(bool forward)
+    {
+        var steps = GetTrackSteps();
+
+        var index = TraceTickTracks.GetStepIndex(steps, GetPlayheadPosition(), forward);
+
+        if (index >= 0)
+        {
+            PlacePlayhead(TraceScale.GetValue(steps[index].Point, _axis));
+        }
+    }
+
+    private List<TraceTrackStep> GetTrackSteps() => _trackSteps ??= TraceTickTracks.GetSteps(TickTracks ?? [], HiddenTickTracks);
 }

@@ -748,7 +748,7 @@ public sealed partial class TraceTimelineControl
 
         if (span is { } found)
         {
-            node = _visible?.NodeOf(found.CallNodeIndex);
+            node = _visible?.GetNode(found.CallNodeIndex);
             callIndex = found.CallIndex;
         }
 
@@ -877,7 +877,7 @@ public sealed partial class TraceTimelineControl
 
         _canvas.Invalidate();
 
-        if (hit is not { } selected || SpanOf(selected) is not { } span || _visible?.NodeOf(span.CallNodeIndex) is not { } node)
+        if (hit is not { } selected || SpanOf(selected) is not { } span || _visible?.GetNode(span.CallNodeIndex) is not { } node)
         {
             return;
         }
@@ -1043,7 +1043,7 @@ public sealed partial class TraceTimelineControl
     }
 
     private void RootAt(FlameHit? hit)
-        => SetRoot(hit is { } at && SpanOf(at) is { } span ? _visible?.NodeOf(span.CallNodeIndex) : null);
+        => SetRoot(hit is { } at && SpanOf(at) is { } span ? _visible?.GetNode(span.CallNodeIndex) : null);
 
     private void Click(FlameHit? hit)
     {
@@ -1228,7 +1228,7 @@ public sealed partial class TraceTimelineControl
 
         var span = row.GetSpan(hit.Index);
 
-        var node = timeline.NodeOf(span.CallNodeIndex);
+        var node = timeline.GetNode(span.CallNodeIndex);
 
         var lines = new List<string>
         {

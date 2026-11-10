@@ -1,5 +1,6 @@
 using System.Globalization;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Locators;
 
@@ -17,9 +18,9 @@ public readonly record struct LocatorSearch(PageAddress Page, ushort? Slot, int?
 
     public ulong Key => ((ulong)(ushort)Page.FileId << 32) | (uint)Page.PageId | ((ulong)(Slot ?? 0) << 48);
 
-    public static LocatorSearch ForPage(PageAddress page, ushort? slot) => new(page, slot, null, null);
+    public static LocatorSearch CreatePageSearch(PageAddress page, ushort? slot) => new(page, slot, null, null);
 
-    public static LocatorSearch ForColumnStore(int? rowGroupId, int? columnId) => new(default, null, rowGroupId, columnId);
+    public static LocatorSearch CreateColumnStoreSearch(int? rowGroupId, int? columnId) => new(default, null, rowGroupId, columnId);
 
     public static bool TryParse(string? text, out LocatorSearch search)
         => TryParsePage(text, out search) || TryParseColumnStore(text, out search);
@@ -68,7 +69,7 @@ public readonly record struct LocatorSearch(PageAddress Page, ushort? Slot, int?
             slot = parsed;
         }
 
-        search = ForPage(new PageAddress(file, page), slot);
+        search = CreatePageSearch(new PageAddress(file, page), slot);
 
         return true;
     }
@@ -85,7 +86,7 @@ public readonly record struct LocatorSearch(PageAddress Page, ushort? Slot, int?
 
         var row = new RowIdentifier(Convert.FromHexString(hex));
 
-        search = ForPage(row.PageAddress, hex.Length == RowIdentifier.Size * 2 ? row.SlotId : null);
+        search = CreatePageSearch(row.PageAddress, hex.Length == RowIdentifier.Size * 2 ? row.SlotId : null);
 
         return true;
     }
@@ -129,7 +130,7 @@ public readonly record struct LocatorSearch(PageAddress Page, ushort? Slot, int?
             return false;
         }
 
-        search = ForColumnStore(rowGroup, column);
+        search = CreateColumnStoreSearch(rowGroup, column);
 
         return true;
     }

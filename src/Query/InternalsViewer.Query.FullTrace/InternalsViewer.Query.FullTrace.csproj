@@ -26,7 +26,7 @@
         <!-- Callstack category mappings: the core file ships embedded with the app (a downloadable update file may
              override it from the user's app-data folder later). Matched by file name at load, not by resource path. -->
         <EmbeddedResource Include="Symbols\Categories\Mappings\*.txt" />
-        <EmbeddedResource Include="Timeline\Ticks\PredefinedTracks.json" />
+        <EmbeddedResource Include="Timeline\Tracks\PredefinedTracks.json" />
     </ItemGroup>
 
     <ItemGroup>

@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Symbols;
+using InternalsViewer.Query.FullTrace.Symbols.Enums;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
@@ -230,7 +231,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
     }
 
     private static TracePosition GetPosition(ArgumentSlot slot, TraceArgumentCall call)
-        => slot.Index == ArgumentLayout.ReturnRegister ? call.ToPosition : call.FromPosition;
+        => slot.Index == ArgumentLayout.ReturnArgumentSlot ? call.ToPosition : call.FromPosition;
 
     private ValueDescription? DescribeStackObject(ulong value, TracePosition position)
     {

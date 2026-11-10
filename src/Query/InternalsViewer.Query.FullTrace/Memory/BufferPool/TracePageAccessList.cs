@@ -2,12 +2,14 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Memory.BufferPool;
 
@@ -15,16 +17,18 @@ public sealed class TracePageAccessList
 {
     private const int ThisRegister = 0;
 
-    private TracePageAccessList(TracePageAccess[] accesses)
+    private TracePageAccessList(TracePageAccess[] accesses, TracePageHeaderAccess[] headerAccesses)
     {
         Accesses = accesses;
+
+        HeaderAccesses = headerAccesses;
     }
 
-    public static TracePageAccessList Empty { get; } = new([]);
+    public static TracePageAccessList Empty { get; } = new([], []);
 
     public int Count => Accesses.Length;
 
-    public long Bytes => Accesses.Length * (long)Unsafe.SizeOf<TracePageAccess>();
+    public TracePageHeaderAccess[] HeaderAccesses { get; }
 
     private TracePageAccess[] Accesses { get; }
 
@@ -33,6 +37,27 @@ public sealed class TracePageAccessList
     public TracePageAccess? GetFetch(TracePosition position) => Find(position, isRow: false);
 
     public TracePageAccess? GetRowAccess(TracePosition position) => Find(position, isRow: true);
+
+    public TracePageHeaderAccess? GetHeaderAccess(TracePosition position)
+    {
+        var index = SortedSearch.FirstAtOrAfter(HeaderAccesses.AsSpan(), position, a => a.Access.Position);
+
+        return index < HeaderAccesses.Length && HeaderAccesses[index].Access.Position == position ? HeaderAccesses[index] : null;
+    }
+
+    public double? GetSlotFraction(TracePosition position, TraceBufferPool pool)
+    {
+        if (GetRowAccess(position) is not { Offset: { } offset } access
+            || pool.GetLayout(access.Page, access.DatabaseId) is not { } layout
+            || layout.GetSlot(offset) is not { } slot)
+        {
+            return null;
+        }
+
+        var count = layout.OffsetTable.Length;
+
+        return count > 1 ? (double)slot / (count - 1) : 0;
+    }
 
     public static TracePageAccessList Build(TraceCallStore calls,
                                             MemoryHistoryStore history,
@@ -46,9 +71,13 @@ public sealed class TracePageAccessList
 
         var ordered = new List<TracePageAccess>();
 
+        var headers = new List<TracePageHeaderAccess>();
+
         var filter = new SnapshotFilter();
 
         var previous = new Dictionary<uint, TracePageAccess>();
+
+        var openHeaders = new Dictionary<uint, int>();
 
         var nextFetch = 0;
 
@@ -61,15 +90,24 @@ public sealed class TracePageAccessList
                 ? fetches[nextFetch++]
                 : rows[nextRow++];
 
+            if (candidate.Access.Offset < PageHeader.Size)
+            {
+                AddHeaderAccess(headers, openHeaders, candidate);
+
+                continue;
+            }
+
             if (GetRow(pool, candidate) is not { } row || !filter.IsAccess(row) || IsRepeat(previous, row))
             {
                 continue;
             }
 
+            openHeaders.Remove(row.Thread);
+
             ordered.Add(row.Access);
         }
 
-        return new TracePageAccessList([.. ordered]);
+        return new TracePageAccessList([.. ordered], [.. headers]);
     }
 
     private TracePageAccess? Find(TracePosition position, bool isRow)
@@ -199,21 +237,29 @@ public sealed class TracePageAccessList
                                  Dictionary<uint, List<(TracePosition From, TracePosition To)>> postReads,
                                  List<Candidate> candidates)
     {
-        var calls = new TraceInnermostCallLookup(timeline);
+        var calls = new TraceInnermostCallIndex(timeline);
 
         for (var index = 0; index < reads.Count; index++)
         {
             var read = reads[index];
 
-            if (pool.GetFrameReference(read.Address, read.Position) is not { } reference || reference.Offset < PageHeader.Size)
+            if (pool.GetFrameReference(read.Address, read.Position) is not { } reference)
+            {
+                continue;
+            }
+
+            var isPostRead = IsPostRead(postReads, read.Thread, read.Position);
+
+            var isWholePage = isPostRead || (reference.Offset == PageHeader.Size && reference.Offset + read.Length == PageData.Size);
+
+            var hasLayout = pool.GetLayout(reference.Page, reference.DatabaseId) is not null;
+
+            if (reference.Offset < PageHeader.Size ? isPostRead : !isWholePage && !hasLayout)
             {
                 continue;
             }
 
             var (callNodeIndex, callIndex) = calls.GetCall(read.Thread, read.Position);
-
-            var isWholePage = (reference.Offset == PageHeader.Size && reference.Offset + read.Length == PageData.Size)
-                              || IsPostRead(postReads, read.Thread, read.Position);
 
             var access = new TracePageAccess(read.Position,
                                              reference.Page,
@@ -222,8 +268,30 @@ public sealed class TracePageAccessList
                                              callNodeIndex,
                                              callIndex);
 
-            candidates.Add(new Candidate(access, read.Thread, false));
+            candidates.Add(new Candidate(access, read.Thread, false, read.Length));
         }
+    }
+
+    private static void AddHeaderAccess(List<TracePageHeaderAccess> headers, Dictionary<uint, int> openHeaders, Candidate candidate)
+    {
+        var access = candidate.Access;
+
+        var bytes = TracePageHeaderAccess.GetBytes(access.Offset ?? 0, candidate.Length);
+
+        if (openHeaders.TryGetValue(candidate.Thread, out var index)
+            && headers[index].Access.Page == access.Page
+            && headers[index].Access.DatabaseId == access.DatabaseId
+            && headers[index].Access.CallNodeIndex == access.CallNodeIndex
+            && headers[index].Access.CallIndex == access.CallIndex)
+        {
+            headers[index] = headers[index] with { Bytes = headers[index].Bytes | bytes };
+
+            return;
+        }
+
+        openHeaders[candidate.Thread] = headers.Count;
+
+        headers.Add(new TracePageHeaderAccess(access, bytes));
     }
 
     private static void AddRecordCalls(TraceCallStore calls, TraceBufferPool pool, List<Candidate> candidates)
@@ -240,7 +308,7 @@ public sealed class TracePageAccessList
 
             foreach (var (columns, first) in list.ReadChunks(buffer))
             {
-                for (var callIndex = 0; callIndex < columns.Calls; callIndex++)
+                for (var callIndex = 0; callIndex < columns.CallCount; callIndex++)
                 {
                     var position = columns.GetFromPosition(callIndex);
 
@@ -304,10 +372,19 @@ public sealed class TracePageAccessList
             return candidate;
         }
 
+        if (!HasRows(layout) || IsOffsetTable(layout, offset))
+        {
+            return null;
+        }
+
         return layout.GetSlot(offset) is { } slot && layout.OffsetTable[slot] >= PageHeader.Size
             ? candidate with { Access = access with { Offset = layout.OffsetTable[slot] } }
             : null;
     }
+
+    private static bool HasRows(PageData layout) => layout.PageHeader.PageType is PageType.None or PageType.Data or PageType.Index;
+
+    private static bool IsOffsetTable(PageData layout, int offset) => offset >= PageData.Size - layout.OffsetTable.Length * sizeof(ushort);
 
     private static bool IsRepeat(Dictionary<uint, TracePageAccess> previous, Candidate candidate)
     {
@@ -323,7 +400,7 @@ public sealed class TracePageAccessList
         return isRepeat;
     }
 
-    private readonly record struct Candidate(TracePageAccess Access, uint Thread, bool IsSnapshot);
+    private readonly record struct Candidate(TracePageAccess Access, uint Thread, bool IsSnapshot, int Length = 0);
 
     private sealed class SnapshotFilter
     {

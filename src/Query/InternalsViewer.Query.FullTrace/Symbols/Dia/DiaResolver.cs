@@ -9,8 +9,6 @@ public sealed class DiaResolver : IDisposable
 {
     internal const int MaximumNameLength = 4096;
 
-    private readonly IntPtr _session;
-
     /// <summary>
     /// Creates a cached resolver for the PDB at <paramref name="pdbPath"/>
     /// </summary>
@@ -22,13 +20,15 @@ public sealed class DiaResolver : IDisposable
                                         "native",
                                         "InternalsViewer.Query.DiaBridge.dll"));
 
-        _session = DiaBridge.OpenPdb(pdbPath);
+        Session = DiaBridge.OpenPdb(pdbPath);
 
-        if (_session == IntPtr.Zero)
+        if (Session == IntPtr.Zero)
         {
             throw new InvalidOperationException($"Unable to open PDB '{pdbPath}'.");
         }
     }
+
+    private IntPtr Session { get; }
 
     /// <summary>
     /// Resolve an RVA (Relative Virtual Address) to a demangled function name
@@ -39,7 +39,7 @@ public sealed class DiaResolver : IDisposable
 
         fixed (char* destination = buffer)
         {
-            if (!DiaBridge.ResolveRva(_session, rva, destination, buffer.Length))
+            if (!DiaBridge.ResolveRva(Session, rva, destination, buffer.Length))
             {
                 return $"0x{rva:X}";
             }
@@ -51,13 +51,13 @@ public sealed class DiaResolver : IDisposable
     }
 
     internal SymbolReader ReadSymbols(bool includeSignature = true, bool includeDecoratedName = false)
-        => new(DiaBridge.BeginEnumSymbols(_session, string.Empty), includeSignature, includeDecoratedName);
+        => new(DiaBridge.BeginEnumSymbols(Session, string.Empty), includeSignature, includeDecoratedName);
 
     public void Dispose()
     {
-        if (_session != IntPtr.Zero)
+        if (Session != IntPtr.Zero)
         {
-            DiaBridge.ClosePdb(_session);
+            DiaBridge.ClosePdb(Session);
         }
     }
 }

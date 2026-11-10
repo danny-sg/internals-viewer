@@ -3,6 +3,7 @@ using InternalsViewer.Query.FullTrace;
 using System.Collections;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.FullTrace.Symbols;
+using InternalsViewer.Query.FullTrace.Symbols.Enums;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.Address.Enums;
 using InternalsViewer.UI.App.Models.Query.Trace.Calls.Arguments;
@@ -14,6 +15,7 @@ using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.Results;
 using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 
 namespace InternalsViewer.UI.App.Tests.Models.Query.Trace.Calls.Arguments;
 
@@ -171,7 +173,7 @@ public class ArgumentRowBuilderTests
 
         var call = Call(0x100, 0, returnValue: 0x300) with
         {
-            Locators = [new Locator(ArgumentLayout.ReturnRegister, LocatorValueType.Row, 0x0005_0001_0000_0150)]
+            Locators = [new Locator(ArgumentLayout.ReturnArgumentSlot, LocatorValueType.Row, 0x0005_0001_0000_0150)]
         };
 
         var table = ArgumentRowBuilder.BuildTable(layout, [call]);

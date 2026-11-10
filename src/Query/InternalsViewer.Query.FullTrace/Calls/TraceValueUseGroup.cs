@@ -1,11 +1,12 @@
 using InternalsViewer.Query.FullTrace.Symbols;
+using InternalsViewer.Query.FullTrace.Symbols.Enums;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Calls;
 
 public sealed record TraceValueUseGroup(TraceValueRole Role, List<TraceValueUse> Uses)
 {
-    public int Calls => Uses.Sum(u => u.Calls);
+    public int CallCount => Uses.Sum(u => u.CallCount);
 
     public static List<TraceValueUseGroup> Build(IEnumerable<TraceValueUse> uses, Func<TraceValueUse, FunctionType?> getFunctionType)
         => [.. uses.GroupBy(u => u.GetRole(getFunctionType(u)))

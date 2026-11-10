@@ -4,5 +4,6 @@ public enum PlayheadStepMode
 {
     Call,
     SameCall,
-    Track
+    Track,
+    Tracks
 }

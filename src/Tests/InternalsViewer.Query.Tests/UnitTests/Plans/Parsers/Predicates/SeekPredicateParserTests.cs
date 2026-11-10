@@ -1,4 +1,5 @@
 ﻿using System.Xml.Linq;
+using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Parsers.Predicates;
 
@@ -258,5 +259,65 @@ public class SeekPredicateParserTests
 
         Assert.Equal("Id", correlated.Column);
         Assert.Equal("ClusteredTable.Id", correlated.OuterReference);
+    }
+
+    [Fact]
+    public void Every_Column_Of_A_Compound_Key_Bound_From_The_Outer_Row_Is_Recorded_In_Key_Order()
+    {
+        var parser = new SeekPredicateParser();
+
+        var bounds = parser.ParseSeekPredicates(XElement.Parse("""
+            <SeekPredicates>
+              <SeekPredicateNew>
+                <SeekKeys>
+                  <Prefix ScanType="EQ">
+                    <RangeColumns>
+                      <ColumnReference Table="[CompoundKeyTable]" Alias="[i]" Column="OrderId" />
+                      <ColumnReference Table="[CompoundKeyTable]" Alias="[i]" Column="LineId" />
+                    </RangeColumns>
+                    <RangeExpressions>
+                      <ScalarOperator ScalarString="OrderId">
+                        <Identifier><ColumnReference Table="[CompoundKeyTable]" Alias="[o]" Column="OrderId" /></Identifier>
+                      </ScalarOperator>
+                      <ScalarOperator ScalarString="LineId">
+                        <Identifier><ColumnReference Table="[CompoundKeyTable]" Alias="[o]" Column="LineId" /></Identifier>
+                      </ScalarOperator>
+                    </RangeExpressions>
+                  </Prefix>
+                </SeekKeys>
+              </SeekPredicateNew>
+            </SeekPredicates>
+            """));
+
+        Assert.Empty(bounds);
+
+        Assert.Equal([("OrderId", true), ("LineId", true)], parser.CorrelatedColumns.Select(c => (c.Column, c.IsEquality)));
+    }
+
+    [Fact]
+    public void A_Range_Bound_From_The_Outer_Row_Keeps_Its_Comparison()
+    {
+        var parser = new SeekPredicateParser();
+
+        parser.ParseSeekPredicates(XElement.Parse("""
+            <SeekPredicates>
+              <SeekPredicateNew>
+                <SeekKeys>
+                  <StartRange ScanType="GT">
+                    <RangeColumns>
+                      <ColumnReference Table="[ClusteredTable]" Alias="[i]" Column="Id" />
+                    </RangeColumns>
+                    <RangeExpressions>
+                      <ScalarOperator ScalarString="Id">
+                        <Identifier><ColumnReference Table="[ClusteredTable]" Alias="[o]" Column="Id" /></Identifier>
+                      </ScalarOperator>
+                    </RangeExpressions>
+                  </StartRange>
+                </SeekKeys>
+              </SeekPredicateNew>
+            </SeekPredicates>
+            """));
+
+        Assert.Equal(ComparisonOperator.GreaterThan, Assert.Single(parser.CorrelatedColumns).Comparison);
     }
 }

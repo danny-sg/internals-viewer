@@ -2,7 +2,6 @@ using InternalsViewer.Query.FullTrace.Memory.Address;
 using InternalsViewer.Query.FullTrace.Memory.Address.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
-using InternalsViewer.Query.FullTrace.Memory.BufferPool.Capture;
 using InternalsViewer.Query.FullTrace.Memory.History.Capture;
 using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
 using InternalsViewer.Query.FullTrace.Native;
@@ -13,7 +12,6 @@ using InternalsViewer.Internals.Engine.Loading;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Symbols;
-using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Iterators;
@@ -86,34 +84,34 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         steps.Begin(CallTreeStep);
 
-        var (callTree, mapped) = await BuildCallTreeAsync(replay, request.SymbolsPath, messages, cancellationToken);
-
-        var timeline = BuildTimeline(replay, callTree, mapped);
+        var callTree = await BuildCallTreeAsync(replay, request.SymbolsPath, messages, cancellationToken);
 
         steps.Complete();
 
         steps.Begin(OperatorsStep);
 
-        var result = BuildResult(replay, functions, request, callTree, timeline);
+        var builder = GetResultBuilder(replay, functions, request, callTree);
+
+        builder.Link();
+
+        LogLink(request, replay, builder);
 
         steps.Complete();
 
-        if ((request.IsHeapCaptured || request.IsStackCaptured || request.IsPageReadCaptured)
-            && await RecordMemoryAsync(session,
+        var memory = request.IsHeapCaptured || request.IsStackCaptured || request.IsPageReadCaptured
+            ? await CaptureMemoryAsync(session,
                                        request,
                                        replay,
                                        functions,
-                                       result.Lifetimes,
-                                       result.MemoryObjects,
-                                       timeline,
+                                       builder.Lifetimes,
+                                       builder.MemoryObjects,
+                                       replay.Timeline,
                                        steps,
                                        progress,
-                                       cancellationToken) is { } memory)
-        {
-            result = result with { MemoryHistory = memory.History, PageReads = memory.PageReads };
-        }
+                                       cancellationToken)
+            : null;
 
-        result = result.WithPageAccesses();
+        var result = builder.Build(memory?.History ?? MemoryHistoryStore.Empty, memory?.PageReads ?? TracePageReadList.Empty);
 
         Logger.LogInformation("{Objects} HoBt access object(s) linked to their HoBt", result.HoBtAccess.Count);
 
@@ -123,10 +121,6 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         Logger.LogInformation("{Sites} allocation(s) labelled with their source line, {Vtables} named by their vtable",
                               result.AddressMap.GetSiteCount(),
                               replay.AddressMap.Count(e => e is { Operation: AddressMapOperation.Allocated, ClassName: not null }));
-
-        result.CallStore.ReleaseColumns();
-
-        LogComponentSizes(result);
 
         return result;
     }
@@ -219,24 +213,24 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         return steps;
     }
 
-    private async Task<(CallTree CallTree, CallTreeNode?[] Mapped)> BuildCallTreeAsync(ReplayResult replay,
-                                                                                               string symbolsPath,
-                                                                                               StepLoggerProgress messages,
-                                                                                               CancellationToken cancellationToken)
+    private async Task<CallTree> BuildCallTreeAsync(ReplayResult replay,
+                                                    string symbolsPath,
+                                                    StepLoggerProgress messages,
+                                                    CancellationToken cancellationToken)
     {
         var (callTree, replayed) = CallTreeBuilder.Build(replay.Nodes, replay.Modules);
 
         Logger.LogInformation("{Calls} call(s) on {Paths} call path(s) replayed, {Logged} call(s) of {Functions} function(s) logged in "
                               + "{Size} MB, {Locators} page and row id(s) read, {UniqueLocators} unique",
-                              replay.Nodes.Sum(n => (long)n.Calls),
+                              replay.Nodes.Sum(n => (long)n.CallCount),
                               replay.Nodes.Length,
-                              replay.CallStore.Calls,
+                              replay.CallStore.CallCount,
                               replay.CallStore.FunctionCount,
                               replay.CallStore.Size / (1024 * 1024),
                               replay.CallStore.LocatorCount,
                               replay.CallStore.UniqueLocatorCount);
 
-        var frames = callTree.Nodes().Select(node => node.Frame!).ToList();
+        var frames = callTree.GetNodes().Select(node => node.Frame!).ToList();
 
         await SymbolDownloader.DownloadSymbols(frames.Select(f => f.Module), symbolsPath, messages, cancellationToken);
 
@@ -254,32 +248,6 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         CallTreeNode?[] mapped = [.. replayed.Select(node => collapsed.GetValueOrDefault(node))];
 
-        return (callTree, mapped);
-    }
-
-    private void LogComponentSizes(TraceResult result)
-    {
-        long measured = 0;
-
-        foreach (var (component, items, bytes) in result.GetComponentSizes())
-        {
-            if (bytes is { } size)
-            {
-                measured += size;
-
-                Logger.LogInformation("{Component}: {Items:N0} in {Size:N1} MB", component, items, size / (1024d * 1024));
-            }
-            else
-            {
-                Logger.LogInformation("{Component}: {Items:N0}", component, items);
-            }
-        }
-
-        Logger.LogInformation("Measured components: {Size:N1} MB", measured / (1024d * 1024));
-    }
-
-    private TraceTimeline BuildTimeline(ReplayResult replay, CallTree callTree, CallTreeNode?[] mapped)
-    {
         replay.CallStore.MapNodes(mapped);
 
         replay.CallStore.AnnotateNodes();
@@ -290,42 +258,44 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         replay.Timeline.RemoveCallsUnder(n => n.IsInstrumentation);
 
-        var timeline = replay.Timeline;
-
         Logger.LogInformation("{Calls} call(s) after removing Extended Events and tracing, {Spans} call span(s) on {Threads} "
                               + "thread(s) in the trace timeline",
-                              callTree.Nodes().Sum(n => n.Calls),
-                              timeline.SpanCount,
-                              timeline.Threads.Count);
+                              callTree.GetNodes().Sum(n => n.CallCount),
+                              replay.Timeline.SpanCount,
+                              replay.Timeline.Threads.Count);
 
-        return timeline;
+        return callTree;
     }
 
-    private TraceResult BuildResult(ReplayResult replay,
-                                    ReplayFunctionTable functions,
-                                    TraceRequest request,
-                                    CallTree callTree,
-                                    TraceTimeline timeline)
+    private TraceResultBuilder GetResultBuilder(ReplayResult replay,
+                                                ReplayFunctionTable functions,
+                                                TraceRequest request,
+                                                CallTree callTree)
     {
-        var events = request.Events;
+        var (allocation, allocationCount, allocatedBytes, memoryObjects) = AllocationMapper.Map(replay.CallStore,
+                                                                                                functions.AllocationFunctions,
+                                                                                                replay.Timeline,
+                                                                                                request.MemoryClerks);
 
-        var operators = events.OfType<ExecutionOperatorEvent>().ToList();
+        Logger.LogInformation("{Allocations} allocation(s) of {Bytes}", allocationCount, StringHelpers.FormatSize(allocatedBytes));
 
-        var (memory, allocationCount, allocatedBytes, memoryObjects) = AllocationMapper.Map(replay.CallStore,
-                                                                                            functions.AllocationFunctions,
-                                                                                            timeline,
-                                                                                            request.MemoryClerks);
-
-        var getAllocation = GetAllocation(replay.CallStore, functions.AllocationFunctions, memoryObjects);
-
-        var builder = new TraceResultBuilder(callTree, replay.CallStore, timeline, events, replay.PlanNodes)
+        return new TraceResultBuilder(callTree, replay.CallStore, replay.Timeline, request.Events, replay.PlanNodes)
         {
-            Allocation = memory,
-            AddressMap = AddressMap.Build(replay.AddressMap, timeline.NodeOf, getAllocation),
+            Allocation = allocation,
+            AddressMap = AddressMap.Build(replay.AddressMap,
+                                          replay.Timeline.GetNode,
+                                          replay.CallStore,
+                                          functions.AllocationFunctions,
+                                          memoryObjects),
             MemoryObjectSnapshot = request.MemoryClerks.MemoryObjects,
             ObjectPool = request.ObjectPool,
             BufferPool = replay.BufferPool
         };
+    }
+
+    private void LogLink(TraceRequest request, ReplayResult replay, TraceResultBuilder builder)
+    {
+        var operators = request.Events.OfType<ExecutionOperatorEvent>().ToList();
 
         Logger.LogInformation("{PlanObjects} plan object(s) linked to {PlanNodes} of {Operators} plan node(s), {Instances} iterator "
                               + "instance(s) linked to their plan node",
@@ -334,42 +304,36 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                               operators.Count(o => o.PlanNodeIdentifier is { NodeId: >= 0 }),
                               builder.PlanLink.Instances.Count);
 
-        var lifetimes = builder.BuildLifetimes();
+        LogOperators(operators, replay.PlanNodes, builder.OperatorFrames, builder.Lifetimes);
 
-        LogOperators(operators, replay.PlanNodes, builder.OperatorFrames, lifetimes);
-
-        Logger.LogInformation("{Matched} of {Operators} operator(s) matched to recorded iterators, {Allocations} allocation(s) of "
-                              + "{Bytes}, {Lifetimes} operator lifetime(s) on {Threads} thread(s)",
+        Logger.LogInformation("{Matched} of {Operators} operator(s) matched to recorded iterators, {Lifetimes} operator lifetime(s) "
+                              + "on {Threads} thread(s)",
                               operators.Count(o => builder.OperatorFrames.GetInstances(o).Count > 0),
                               operators.Count(o => o.PlanNodeIdentifier is { NodeId: >= 0 }),
-                              allocationCount,
-                              StringHelpers.FormatSize(allocatedBytes),
-                              lifetimes.Count,
-                              lifetimes.Select(l => l.Thread).Distinct().Count());
-
-        return builder.Build();
+                              builder.Lifetimes.Count,
+                              builder.Lifetimes.Select(l => l.Thread).Distinct().Count());
     }
 
-    private async Task<(MemoryHistoryStore History, TracePageReadList PageReads)?> RecordMemoryAsync(ReplaySession session,
-                                                                                                     TraceRequest request,
-                                                                                                     ReplayResult replay,
-                                                                                                     ReplayFunctionTable functions,
-                                                                                                     TraceOperatorLifetimeList lifetimes,
-                                                                                                     MemoryObjectMap memoryObjects,
-                                                                                                     TraceTimeline timeline,
-                                                                                                     StepProgress steps,
-                                                                                                     IProgress<ProgressDetail>? progress,
-                                                                                                     CancellationToken cancellationToken)
+    private async Task<(MemoryHistoryStore History, TracePageReadList PageReads)?> CaptureMemoryAsync(ReplaySession session,
+                                                                                                      TraceRequest request,
+                                                                                                      ReplayResult replay,
+                                                                                                      ReplayFunctionTable functions,
+                                                                                                      TraceOperatorLifetimeList lifetimes,
+                                                                                                      MemoryObjectMap memoryObjects,
+                                                                                                      TraceTimeline timeline,
+                                                                                                      StepProgress steps,
+                                                                                                      IProgress<ProgressDetail>? progress,
+                                                                                                      CancellationToken cancellationToken)
     {
         var allocations = request.IsHeapCaptured
-            ? MemoryHistoryBuilder.GetAllocations(replay.CallStore,
+            ? MemoryWatchPlanner.GetAllocations(replay.CallStore,
                                                   functions.AllocationFunctions,
                                                   replay.Buffers,
                                                   [.. memoryObjects.GetPageBlocks()])
             : [];
 
         var pageReads = request.IsPageReadCaptured && replay.BufferPool.Count > 0
-            ? new TracePageReadRecorder(replay.BufferPool)
+            ? new TracePageReadList.Builder(replay.BufferPool)
             : null;
 
         if (allocations.Length == 0 && replay.StackSnapshotResult.Objects.Length == 0 && pageReads is null)
@@ -381,9 +345,9 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         var owners = AllocationOwnerResolver.GetOwners([.. allocations.Select(a => a.Block)], replay.CallStore, iterators, replay.PlanNodes);
 
-        var recording = new MemoryHistoryBuilder.Recording(allocations,
+        var historyBuilder = new MemoryHistoryBuilder(allocations,
                                                            owners,
-                                                           MemoryHistoryBuilder.GetFirstPositions(replay.CallStore, iterators),
+                                                           MemoryWatchPlanner.GetFirstPositions(replay.CallStore, iterators),
                                                            timeline,
                                                            replay.StackSnapshotResult);
 
@@ -393,7 +357,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                               replay.StackSnapshotResult.RunCount);
 
         var writes = allocations.Length > 0 || pageReads is not null
-            ? await WatchMemoryAsync(session, request, replay, allocations, recording, pageReads, steps, progress, cancellationToken)
+            ? await WatchMemoryAsync(session, request, replay, allocations, historyBuilder, pageReads, steps, progress, cancellationToken)
             : WatchResult.Empty;
 
         if (writes is null)
@@ -403,7 +367,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         steps.Begin(MemoryHistoryStep);
 
-        var history = BuildMemoryHistory(recording, writes, allocations.Length);
+        var history = BuildMemoryHistory(historyBuilder, writes, allocations.Length);
 
         var reads = pageReads?.Build() ?? TracePageReadList.Empty;
 
@@ -416,8 +380,8 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                                                       TraceRequest request,
                                                       ReplayResult replay,
                                                       MemoryHistoryAllocation[] allocations,
-                                                      MemoryHistoryBuilder.Recording recording,
-                                                      TracePageReadRecorder? pageReads,
+                                                      MemoryHistoryBuilder historyBuilder,
+                                                      TracePageReadList.Builder? pageReads,
                                                       StepProgress steps,
                                                       IProgress<ProgressDetail>? progress,
                                                       CancellationToken cancellationToken)
@@ -428,12 +392,12 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         try
         {
-            writes = await session.WatchAsync(MemoryHistoryBuilder.GetRanges(allocations.Select(a => a.Block), pageReads?.GetRanges() ?? []),
+            writes = await session.WatchAsync(MemoryWatchPlanner.GetRanges(allocations.Select(a => a.Block), pageReads?.GetRanges() ?? []),
                                               GetWatchStart(allocations, pageReads),
                                               replay.Timeline.End.Position,
-                                              MemoryHistoryBuilder.GetWatchFilter(allocations),
+                                              MemoryWatchPlanner.GetWatchFilter(allocations),
                                               allocations.Length > 0 && request.CaptureHeapWrites,
-                                              GetReadHandler(recording, pageReads, request.IsHeapCaptured && request.CaptureHeapReads),
+                                              GetReadHandler(historyBuilder, pageReads, request.IsHeapCaptured && request.CaptureHeapReads),
                                               steps,
                                               cancellationToken);
         }
@@ -448,27 +412,27 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
             return null;
         }
 
-        var reads = recording.ReadCounts;
+        var reads = historyBuilder.ReadCounts;
 
         Logger.LogInformation("{Writes} of {Received} watched write(s) were to {Allocations} allocation(s) while live, "
                               + "watched in {Ranges} range(s)",
                               writes.HitCount,
                               writes.ReceivedHitCount,
                               allocations.Length,
-                              writes.WatchedRanges);
+                              writes.WatchedRangeCount);
 
         Logger.LogInformation("{Recorded} of {Received} watched read(s) were from live blocks, {BufferPool} from buffer pool memory, "
                               + "{Outside} outside a live block",
-                              reads.Recorded,
-                              reads.Received,
-                              reads.BufferPool,
-                              reads.Outside);
+                              reads.CapturedCount,
+                              reads.ReceivedCount,
+                              reads.BufferPoolCount,
+                              reads.OutsideCount);
 
         if (pageReads is not null)
         {
             Logger.LogInformation("{Received} read(s) of buffer pool pages kept as {Recorded} page read(s)",
-                                  pageReads.Received,
-                                  pageReads.Recorded);
+                                  pageReads.ReceivedCount,
+                                  pageReads.CapturedCount);
         }
 
         steps.Complete();
@@ -476,45 +440,45 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         return writes;
     }
 
-    private static TracePosition GetWatchStart(MemoryHistoryAllocation[] allocations, TracePageReadRecorder? pageReads)
+    private static TracePosition GetWatchStart(MemoryHistoryAllocation[] allocations, TracePageReadList.Builder? pageReads)
     {
-        var start = allocations.Length > 0 ? allocations.Min(a => a.Block.Start) : TracePosition.Unknown;
+        var start = allocations.Length > 0 ? allocations.Min(a => a.Block.FromPosition) : TracePosition.Unknown;
 
         return pageReads?.FirstPosition is { } first && first < start ? first : start;
     }
 
-    private static Action<WatchHit>? GetReadHandler(MemoryHistoryBuilder.Recording recording,
-                                                    TracePageReadRecorder? pageReads,
+    private static Action<WatchHit>? GetReadHandler(MemoryHistoryBuilder historyBuilder,
+                                                    TracePageReadList.Builder? pageReads,
                                                     bool isHeapRead)
     {
         if (pageReads is null)
         {
-            return isHeapRead ? recording.AddRead : null;
+            return isHeapRead ? historyBuilder.AddRead : null;
         }
 
         return hit =>
         {
-            if (pageReads.IsFrame(hit.Address) && !recording.IsObjectMemory(hit))
+            if (pageReads.IsFrame(hit.Address) && !historyBuilder.IsObjectMemory(hit))
             {
                 pageReads.Add(hit);
             }
             else if (isHeapRead)
             {
-                recording.AddRead(hit);
+                historyBuilder.AddRead(hit);
             }
         };
     }
 
-    private MemoryHistoryStore BuildMemoryHistory(MemoryHistoryBuilder.Recording recording, WatchResult writes, int allocationCount)
+    private MemoryHistoryStore BuildMemoryHistory(MemoryHistoryBuilder historyBuilder, WatchResult writes, int allocationCount)
     {
-        var (history, counts) = recording.Build(writes);
+        var (history, counts) = historyBuilder.Build(writes);
 
         Logger.LogInformation("{Recorded} kept write(s) recorded a change, {Unchanged} left values unchanged, {BufferPool} were to "
                               + "buffer pool memory, {Outside} were outside a live block",
-                              counts.Recorded,
-                              counts.Unchanged,
-                              counts.BufferPool,
-                              counts.Outside);
+                              counts.CapturedCount,
+                              counts.UnchangedCount,
+                              counts.BufferPoolCount,
+                              counts.OutsideCount);
 
         Logger.LogInformation("{Writes} change(s) to {Blocks} of {Allocations} watched allocation(s), {Owned} owned by an iterator",
                               history.Blocks.Where(b => !b.IsStack).Sum(b => (long)b.WriteCount),
@@ -529,7 +493,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         Logger.LogInformation("{Reads} read(s) by call recorded, {Unwritten} read(s) were from blocks with no writes",
                               history.ReadCount,
-                              recording.ReadCounts.Unwritten);
+                              historyBuilder.ReadCounts.UnwrittenCount);
 
         return history;
     }
@@ -587,7 +551,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         var unknown = new SortedDictionary<string, string>(StringComparer.Ordinal);
 
-        foreach (var node in callTree.Nodes())
+        foreach (var node in callTree.GetNodes())
         {
             if (node.Frame is not { } frame)
             {
@@ -617,35 +581,5 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         {
             Logger.LogDebug($"Unknown enum: {name} ({function})");
         }
-    }
-
-    private static Func<AddressEntry, CallTreeNode?, AddressMapAllocation> GetAllocation(TraceCallStore store,
-                                                                                          IReadOnlyList<AllocationFunction> functions,
-                                                                                          AllocationMemoryObjectLookup memoryObjects)
-    {
-        var allocators = new Dictionary<ulong, AllocationFunction>();
-
-        foreach (var function in functions)
-        {
-            allocators.TryAdd(function.Address, function);
-        }
-
-        return (entry, node) =>
-        {
-            if (node?.Frame is not { } frame
-                || !allocators.TryGetValue(frame.Address, out var allocator)
-                || store.GetCallList(frame.Address, frame.InstanceAddress) is not { } calls
-                || entry.CallIndex < 0
-                || entry.CallIndex >= calls.Count)
-            {
-                return default;
-            }
-
-            var call = calls[entry.CallIndex];
-
-            return new AddressMapAllocation(allocator.GetByteCount(call),
-                                           allocator.GetSite(call),
-                                           memoryObjects.GetMemoryObject(frame.Address, entry.CallIndex));
-        };
     }
 }

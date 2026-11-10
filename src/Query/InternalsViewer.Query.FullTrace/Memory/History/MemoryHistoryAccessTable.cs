@@ -31,8 +31,6 @@ internal sealed partial class MemoryHistoryAccessTable
 
     public int Count { get; }
 
-    public long Bytes => Chunks.Sum(c => (long)c.Length) + Chunks.Length * ((long)IntPtr.Size + sizeof(int));
-
     private byte[][] Chunks { get; }
 
     private int[] DataLengths { get; }

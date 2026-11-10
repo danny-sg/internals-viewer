@@ -386,10 +386,10 @@ public sealed partial class TraceTimelineControl
     {
         if (!_inUseCurves.TryGetValue(source, out var curve))
         {
-            var node = timeline.NodeOf(row.GetCallNodeIndex(source.Index));
+            var node = timeline.GetNode(row.GetCallNodeIndex(source.Index));
 
             curve = (node is null ? null : GetInstanceCurves(timeline).GetCurve(threadId, node))
-                    ?? Allocation.InUseWithin(threadId, row.GetFrom(source.Index).Position, row.GetTo(source.Index).Position);
+                    ?? Allocation.GetInUseWithin(threadId, row.GetFrom(source.Index).Position, row.GetTo(source.Index).Position);
 
             _inUseCurves[source] = curve;
         }
@@ -407,8 +407,8 @@ public sealed partial class TraceTimelineControl
         {
             var end = Math.Min(x + SurfaceBucketWidth, right);
 
-            var bytes = curve.PeakDuring(GetPosition(row, source.Index, _viewStart + x / scale),
-                                         GetPosition(row, source.Index, _viewStart + end / scale));
+            var bytes = curve.GetPeakDuring(GetPosition(row, source.Index, _viewStart + x / scale),
+                                            GetPosition(row, source.Index, _viewStart + end / scale));
 
             var last = _spikes.Count - 1;
 

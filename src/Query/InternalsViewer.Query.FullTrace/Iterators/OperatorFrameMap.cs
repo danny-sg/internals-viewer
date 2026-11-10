@@ -141,7 +141,7 @@ public sealed class OperatorFrameMap
         return entries;
     }
 
-    private static bool IsWrapper(List<CallTreeNode> entries) => !entries.Any(e => e.IsOperatorBoundary) && entries.Any(e => e.HasOperator);
+    private static bool IsWrapper(List<CallTreeNode> entries) => !entries.Any(e => e.IsOperatorBoundary) && entries.Any(e => e.HasOperatorName);
 
     private void SetStatementFrames(OperatorHierarchy hierarchy)
     {
@@ -149,7 +149,7 @@ public sealed class OperatorFrameMap
         {
             var entries = GetNearestWithInstances(hierarchy, statement)
                               .SelectMany(GetEntryFrames)
-                              .Select(e => e.Ancestors().Skip(1).FirstOrDefault(a => a.IsEntryFrameFor(statement.Name)))
+                              .Select(e => e.GetAncestors().Skip(1).FirstOrDefault(a => a.IsEntryFrameFor(statement.Name)))
                               .OfType<CallTreeNode>()
                               .Distinct()
                               .OrderBy(e => e.Order)

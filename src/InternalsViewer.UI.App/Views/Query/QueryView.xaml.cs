@@ -1,14 +1,8 @@
 ﻿using System;
-using System.Threading;
-using System.Threading.Tasks;
+using InternalsViewer.UI.App.Controls.Query.Trace.Dialogs;
 using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml.Controls;
-using TimeTravelLicenceDialog = InternalsViewer.UI.App.Controls.Query.Trace.Dialogs.TimeTravelLicenceDialog;
-using TimeTravelWarningDialog = InternalsViewer.UI.App.Controls.Query.Trace.Dialogs.TimeTravelWarningDialog;
-using WinDbgInstallDialog = InternalsViewer.UI.App.Controls.Dialogs.WinDbgInstallDialog;
-using InternalsViewer.Query.Recording;
-using InternalsViewer.Query.FullTrace.Recording;
 
 namespace InternalsViewer.UI.App.Views.Query;
 
@@ -27,10 +21,14 @@ public sealed partial class QueryView : Microsoft.UI.Xaml.Controls.Page, IDispos
 
     private SettingsViewModel Settings { get; } = App.GetService<SettingsViewModel>();
 
-    private static ITimeTravelRecorder TimeTravel => App.GetService<ITimeTravelRecorder>();
+    public Visibility GetRulerVisibility(bool isPinned, bool isAvailable, bool isTrace, bool isTraceTimelineVisible)
+        => IsRulerShown(isPinned, isAvailable, isTrace, isTraceTimelineVisible) ? Visibility.Visible : Visibility.Collapsed;
 
-    public Visibility GetRulerVisibility(bool isPinned, bool isAvailable)
-        => isPinned && isAvailable ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility GetTransportVisibility(bool isPinned, bool isAvailable, bool isTrace, bool isTraceTimelineVisible, bool isGuideMode)
+        => IsRulerShown(isPinned, isAvailable, isTrace, isTraceTimelineVisible) || isGuideMode ? Visibility.Visible : Visibility.Collapsed;
+
+    private static bool IsRulerShown(bool isPinned, bool isAvailable, bool isTrace, bool isTraceTimelineVisible)
+        => isPinned && isAvailable && (!isTrace || isTraceTimelineVisible);
 
     public void Dispose()
     {
@@ -66,78 +64,29 @@ public sealed partial class QueryView : Microsoft.UI.Xaml.Controls.Page, IDispos
     {
         var item = (ToggleMenuFlyoutItem)sender;
 
-        var record = item.IsChecked;
-
-        if (record && Settings.ShowTimeTravelWarning)
-        {
-            var dialog = new TimeTravelWarningDialog
-            {
-                XamlRoot = XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-            };
-
-            record = await dialog.ShowAsync() == ContentDialogResult.Primary;
-
-            if (record && dialog.DoNotShowAgain)
-            {
-                Settings.ShowTimeTravelWarning = false;
-            }
-        }
-
-        if (record)
-        {
-            record = await PrepareTimeTravelAsync();
-        }
+        var record = item.IsChecked && await TimeTravelConsent.ConfirmAsync(XamlRoot);
 
         ViewModel.QueryOptions.RecordTimeTravel = record;
 
         item.IsChecked = record;
     }
-#pragma warning restore VSTHRD100
 
-    private async Task<bool> PrepareTimeTravelAsync()
+    private async void OnGuideModeClick(object sender, RoutedEventArgs e)
     {
-        try
+        var item = (ToggleMenuFlyoutItem)sender;
+
+        var isGuideMode = item.IsChecked;
+
+        if (isGuideMode && !ViewModel.QueryOptions.RecordTimeTravel)
         {
-            TimeTravel.PrepareRecorder();
+            isGuideMode = await TimeTravelConsent.ConfirmAsync(XamlRoot);
 
-            if (TimeTravel.IsLicenceAccepted)
-            {
-                return true;
-            }
-
-            var dialog = new TimeTravelLicenceDialog(TimeTravel.ReadLicence())
-            {
-                XamlRoot = XamlRoot,
-                Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-            };
-
-            if (await dialog.ShowAsync() != ContentDialogResult.Primary)
-            {
-                return false;
-            }
-
-            await TimeTravel.AcceptLicenceAsync(CancellationToken.None);
-
-            return true;
+            ViewModel.QueryOptions.RecordTimeTravel = isGuideMode;
         }
-        catch (DebuggerException exception)
-        {
-            var dialog = exception is WinDbgNotFoundException
-                ? new WinDbgInstallDialog(exception.Message)
-                : new ContentDialog
-                {
-                    Title = "Time Travel Debugging Licence",
-                    Content = exception.Message,
-                    CloseButtonText = "OK"
-                };
 
-            dialog.XamlRoot = XamlRoot;
-            dialog.Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style;
+        ViewModel.Layout.IsGuideMode = isGuideMode;
 
-            await dialog.ShowAsync();
-
-            return false;
-        }
+        item.IsChecked = isGuideMode;
     }
+#pragma warning restore VSTHRD100
 }

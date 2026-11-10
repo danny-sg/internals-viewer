@@ -1,3 +1,5 @@
+using InternalsViewer.Query.FullTrace.Locators.Enums;
+
 namespace InternalsViewer.Query.FullTrace.Locators;
 
 public sealed class LocatorSet
@@ -13,16 +15,16 @@ public sealed class LocatorSet
     public int Count => PageCount + RowCount + ObjectCount;
 
     public string Label => Count == 1
-        ? Ordered().First().ToString()
+        ? GetOrdered().First().ToString()
         : string.Join(", ",
-                      new[] { Counted(PageCount, "Page"), Counted(RowCount, "Row"), Counted(ObjectCount, "Columnstore Object") }
+                      new[] { GetCountText(PageCount, "Page"), GetCountText(RowCount, "Row"), GetCountText(ObjectCount, "Columnstore Object") }
                           .Where(c => c.Length > 0));
 
     public string Detail
     {
         get
         {
-            var listed = Ordered().Select(l => l.ToString()).ToList();
+            var listed = GetOrdered().Select(l => l.ToString()).ToList();
 
             var shown = string.Join(", ", listed.Take(ListedLocators));
 
@@ -78,7 +80,7 @@ public sealed class LocatorSet
         Objects.UnionWith(other.Objects);
     }
 
-    public IEnumerable<Locator> Ordered()
+    public IEnumerable<Locator> GetOrdered()
         => Pages.Order()
                 .Select(p => new Locator(0, LocatorValueType.Page, p))
                 .Concat(Rows.Order().Select(r => new Locator(0, LocatorValueType.Row, r)))
@@ -92,7 +94,7 @@ public sealed class LocatorSet
         _ => Pages.Contains(search.Key) || RowPages.Contains(search.Key)
     };
 
-    private static string Counted(int count, string noun) => count switch
+    private static string GetCountText(int count, string noun) => count switch
     {
         0 => string.Empty,
         1 => $"1 {noun}",

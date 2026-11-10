@@ -58,7 +58,7 @@ public class AddressMapHookTests
 
         hook.OnEntry(Call(Constructor, 10, arguments: [StackObject, 0, 0, 0]), replay);
 
-        hook.OnFrameEnded(new TraceHookCall { Id = 5, Position = At(99), Thread = Thread });
+        hook.OnFrameEnded(new TraceHookCall { CallId = 5, Position = At(99), Thread = Thread });
 
         Assert.Equal(At(99), Assert.Single(hook.Build()).ToPosition);
     }
@@ -228,7 +228,7 @@ public class AddressMapHookTests
                                                             new AddressMapFunction(Method, AddressMapOperation.Visited),
                                                             new AddressMapFunction(Factory, AddressMapOperation.Declared)
                                                             {
-                                                                DeclaredClasses = [new DeclaredClass(ArgumentLayout.ReturnRegister, "AccBindings")]
+                                                                DeclaredClasses = [new DeclaredClass(ArgumentLayout.ReturnArgumentSlot, "AccBindings")]
                                                             },
                                                             new AddressMapFunction(Consumer, AddressMapOperation.Declared)
                                                             {
@@ -236,7 +236,7 @@ public class AddressMapHookTests
                                                             },
                                                             new AddressMapFunction(Getter, AddressMapOperation.Visited)
                                                             {
-                                                                DeclaredClasses = [new DeclaredClass(ArgumentLayout.ReturnRegister, "CTypeInfo")]
+                                                                DeclaredClasses = [new DeclaredClass(ArgumentLayout.ReturnArgumentSlot, "CTypeInfo")]
                                                             }]),
                               [new AddressMapFunction(OperatorNew, AddressMapOperation.Allocated)],
                               new Dictionary<ulong, string> { [Vtable] = "CQScanTableScanNew" }),
@@ -246,7 +246,7 @@ public class AddressMapHookTests
         => new()
         {
             FunctionAddress = function,
-            Id = id,
+            CallId = id,
             Position = At(id),
             Thread = Thread,
             CallNodeIndex = 7,

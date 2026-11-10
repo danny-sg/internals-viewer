@@ -2,6 +2,7 @@ using InternalsViewer.Query.FullTrace.Memory.Address;
 using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Symbols;
+using InternalsViewer.Query.FullTrace.Symbols.Enums;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
@@ -26,7 +27,7 @@ public class TraceReferenceFinderTests
 
         var group = Assert.Single(references.Groups);
 
-        Assert.Equal((TraceValueRole.CalledOn, 2), (group.Role, group.Calls));
+        Assert.Equal((TraceValueRole.CalledOn, 2), (group.Role, group.CallCount));
         Assert.Equal("CQScanTableScanNew", references.Type);
         Assert.Null(references.Iterator);
     }

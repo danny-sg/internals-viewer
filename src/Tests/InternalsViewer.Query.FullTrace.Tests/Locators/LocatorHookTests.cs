@@ -27,7 +27,7 @@ public class LocatorHookTests
 
     private const ulong ReturnAddress = 0x7FF8_0061_0010;
 
-    private const ulong ReturnedFlag = TraceCallChunk.ReturnedFlag;
+    private const ulong ReturnedFlag = TraceCallColumnSet.ReturnedFlag;
 
     [Fact]
     public void A_Pointer_Argument_Is_Read_When_The_Call_Is_Made()
@@ -52,7 +52,7 @@ public class LocatorHookTests
     [Fact]
     public void A_Return_Value_Is_Read_When_The_Call_Returns()
     {
-        var register = ArgumentLayout.ReturnRegister;
+        var register = ArgumentLayout.ReturnArgumentSlot;
 
         var replay = new FakeTraceReplay().Write(Pointer, Page336);
 
@@ -72,7 +72,7 @@ public class LocatorHookTests
     [Fact]
     public void A_Call_Left_Without_Returning_Reads_Nothing_At_Return()
     {
-        var register = ArgumentLayout.ReturnRegister;
+        var register = ArgumentLayout.ReturnArgumentSlot;
 
         var store = new TraceCallStore.Builder();
 
@@ -225,7 +225,7 @@ public class LocatorHookTests
         var replay = new FakeTraceReplay().Write(Pointer, Binding(1, 3, 0x1, 0x0))
                                           .Write(Pointer + BindingLocator.Size, Binding(2, 130, 0x7, 0x8, 0x108, 0x110));
 
-        var read = new LocatorRead(Function, 2, false, LocatorValueType.Bindings, CountRegister: 1);
+        var read = new LocatorRead(Function, 2, false, LocatorValueType.Bindings, CountArgumentSlot: 1);
 
         var locator = Replay(read, replay, [0, 2, Pointer, 0]).GetLocator(2);
 
@@ -237,7 +237,7 @@ public class LocatorHookTests
     {
         var replay = new FakeTraceReplay().Write(Pointer, Binding(1, 3, 0x1, 0x0));
 
-        var read = new LocatorRead(Function, 2, false, LocatorValueType.Bindings, CountRegister: 1);
+        var read = new LocatorRead(Function, 2, false, LocatorValueType.Bindings, CountArgumentSlot: 1);
 
         Assert.Equal("1: I4 Value +0x0 | 2 More", Replay(read, replay, [0, 3, Pointer, 0]).GetLocator(2)?.ToString());
     }
@@ -290,7 +290,7 @@ public class LocatorHookTests
         => new()
         {
             FunctionAddress = Function,
-            Id = 40,
+            CallId = 40,
             CallIndex = 0,
             Arguments = arguments,
             ReturnValue = returnValue,

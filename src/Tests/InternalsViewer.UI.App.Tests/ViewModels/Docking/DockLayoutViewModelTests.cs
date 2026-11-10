@@ -205,6 +205,82 @@ public class DockLayoutViewModelTests
         Assert.False(dock.Contains(document));
     }
 
+    [Fact]
+    public void Moving_A_Tab_To_An_Edge_Leaves_The_Last_Visible_Tab_Selected()
+    {
+        var first = Document("first");
+        var plan = Document("plan");
+        var page = Document("page");
+
+        var group = new TabGroupNode(first, plan) { SelectedDocument = plan };
+
+        var dock = new DockLayoutViewModel(group);
+
+        dock.Show(page);
+
+        dock.Move(page, group, DropZone.Right);
+
+        Assert.Same(plan, group.SelectedDocument);
+    }
+
+    [Fact]
+    public void Moving_A_Tab_To_Another_Group_Leaves_The_Last_Visible_Tab_Selected()
+    {
+        var first = Document("first");
+        var plan = Document("plan");
+        var page = Document("page");
+
+        var left = new TabGroupNode(first, plan, page) { SelectedDocument = plan };
+
+        left.SelectedDocument = page;
+
+        var right = new TabGroupNode(Document("other"));
+
+        var dock = new DockLayoutViewModel(new SplitNode(Orientation.Horizontal, left, right));
+
+        dock.Move(page, right, DropZone.Center);
+
+        Assert.Same(plan, left.SelectedDocument);
+    }
+
+    [Fact]
+    public void Closing_The_Selected_Tab_Selects_The_Last_Visible_Tab()
+    {
+        var first = Document("first");
+        var plan = Document("plan");
+        var page = Document("page");
+
+        var group = new TabGroupNode(first, plan, page) { SelectedDocument = plan };
+
+        group.SelectedDocument = page;
+
+        var dock = new DockLayoutViewModel(group);
+
+        dock.Close(page);
+
+        Assert.Same(plan, group.SelectedDocument);
+    }
+
+    [Fact]
+    public void A_Closed_Tab_Is_Not_Selected_Again()
+    {
+        var first = Document("first");
+        var second = Document("second");
+        var third = Document("third");
+
+        var group = new TabGroupNode(first, second, third) { SelectedDocument = second };
+
+        group.SelectedDocument = third;
+
+        var dock = new DockLayoutViewModel(group);
+
+        dock.Close(second);
+
+        dock.Close(third);
+
+        Assert.Same(first, group.SelectedDocument);
+    }
+
     private static DocumentViewModel Document(string key, bool canClose = true)
         => new(key, content: key, viewFactory: () => null!, canClose: canClose, key: key);
 }

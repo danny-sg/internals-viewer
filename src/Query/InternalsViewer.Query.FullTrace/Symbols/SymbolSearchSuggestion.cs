@@ -1,4 +1,5 @@
 ﻿using InternalsViewer.Query.FullTrace.Symbols.Categories;
+using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 
 
 namespace InternalsViewer.Query.FullTrace.Symbols;
@@ -33,19 +34,19 @@ public sealed record SymbolSearchSuggestion(string Label, string Term)
     /// <summary>
     /// The symbol categories followed by the operators
     /// </summary>
-    public static IReadOnlyList<SymbolSearchSuggestion> FromMappings(CategoryMappings mappings) =>
-        [.. FromCategories(mappings), .. FromOperators(mappings)];
+    public static IReadOnlyList<SymbolSearchSuggestion> CreateSuggestions(CategoryRuleTable mappings) =>
+        [.. CreateCategorySuggestions(mappings), .. CreateOperatorSuggestions(mappings)];
 
-    public static IReadOnlyList<SymbolSearchSuggestion> FromCategories(CategoryMappings mappings) =>
+    public static IReadOnlyList<SymbolSearchSuggestion> CreateCategorySuggestions(CategoryRuleTable mappings) =>
         Group(mappings.Rules
                       .Where(r => r.Category != SymbolCategory.Unknown)
-                      .Select(r => (Label: (string?)(CategoryPrefix + CategoryName(r.Category)),
-                                    Term: TermFor(r.Module, r.Class, r.Function))));
+                      .Select(r => (Label: (string?)(CategoryPrefix + GetCategoryName(r.Category)),
+                                    Term: GetTerm(r.Module, r.Class, r.Function))));
 
-    public static IReadOnlyList<SymbolSearchSuggestion> FromOperators(CategoryMappings mappings) =>
+    public static IReadOnlyList<SymbolSearchSuggestion> CreateOperatorSuggestions(CategoryRuleTable mappings) =>
         Group(mappings.Operators
-                      .Select(r => (Label: r.Iterator ?? (r.PlanOperator.Count > 0 ? r.PlanOperator[0].Text : null),
-                                    Term: TermFor(r.Module, r.Class, r.Function))));
+                      .Select(r => (Label: r.OperatorName ?? (r.PlanOperator.Count > 0 ? r.PlanOperator[0].Text : null),
+                                    Term: GetTerm(r.Module, r.Class, r.Function))));
 
     private static IReadOnlyList<SymbolSearchSuggestion> Group(IEnumerable<(string? Label, string Term)> suggestions) =>
         suggestions.Where(s => !string.IsNullOrWhiteSpace(s.Label) && s.Term.Length > 0)
@@ -58,9 +59,9 @@ public sealed record SymbolSearchSuggestion(string Label, string Term)
                    .OrderBy(s => s.Label, StringComparer.OrdinalIgnoreCase)
                    .ToList();
 
-    private static string CategoryName(SymbolCategory category) => category.GetCategoryMetadata()?.Name ?? category.ToString();
+    private static string GetCategoryName(SymbolCategory category) => category.GetCategoryMetadata()?.Name ?? category.ToString();
 
-    private static string TermFor(GlobPattern module, GlobPattern className, GlobPattern function)
+    private static string GetTerm(GlobPattern module, GlobPattern className, GlobPattern function)
     {
         if (className.IsAny && function.IsAny)
         {

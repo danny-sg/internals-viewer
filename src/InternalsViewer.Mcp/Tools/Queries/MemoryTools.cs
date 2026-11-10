@@ -49,7 +49,7 @@ public sealed class MemoryTools(McpDocumentResolver documents)
         {
             var allocations = memory.GetAllocations(thread.ThreadId).ToList();
 
-            var freed = memory.FreedDuring(thread.ThreadId, timeline.Start.Position, EndOfTrace);
+            var freed = memory.GetFreedDuring(thread.ThreadId, timeline.Start.Position, EndOfTrace);
 
             if (allocations.Count == 0 && freed == 0)
             {
@@ -75,12 +75,12 @@ public sealed class MemoryTools(McpDocumentResolver documents)
         {
             builder.AppendLine();
 
-            builder.AppendLine($"in use: peak {Format.Bytes(memory.PeakInUseDuring(timeline.Start.Position, EndOfTrace))}");
+            builder.AppendLine($"in use: peak {Format.Bytes(memory.GetPeakInUseDuring(timeline.Start.Position, EndOfTrace))}");
         }
 
         if (memory.HasWorkspace)
         {
-            var workspacePeak = memory.PeakWorkspaceDuring(timeline.Start.Position, EndOfTrace);
+            var workspacePeak = memory.GetPeakWorkspaceDuring(timeline.Start.Position, EndOfTrace);
 
             builder.AppendLine($"workspace (grant) memory: peak {Format.Bytes(workspacePeak)}");
         }
@@ -524,7 +524,7 @@ public sealed class MemoryTools(McpDocumentResolver documents)
     };
 
     private static string GetFunctionName(McpDocumentScope scope, TraceTimeline timeline, int callNodeIndex)
-        => timeline.NodeOf(callNodeIndex) is { } node ? scope.Context.GetFunctionName(node) : $"raw node {callNodeIndex}";
+        => timeline.GetNode(callNodeIndex) is { } node ? scope.Context.GetFunctionName(node) : $"raw node {callNodeIndex}";
 
     private static string GetKind(MemoryHistoryBlock block)
         => block.IsIterator ? "iterator" : block.IsInline ? "inline" : block.IsStack ? "stack" : string.Empty;

@@ -110,7 +110,7 @@ public class AddressMapTests
 
         using var reader = new BinaryReader(stream);
 
-        var read = AddressMap.Read(reader, NodeOf);
+        var read = AddressMap.Read(reader, GetNode);
 
         Assert.Equal((2, "OperatorNew"), (read.Count, read.GetEntry(Address, At(15))?.Allocator));
     }
@@ -167,7 +167,7 @@ public class AddressMapTests
     {
         var map = AddressMap.Build([Entry(AddressMapOperation.Allocated, call: 10, OperatorNew),
                                    Entry(AddressMapOperation.Constructed, call: 20, ScanConstructor)],
-                                  NodeOf,
+                                  GetNode,
                                   (_, node) => node?.Symbol == "OperatorNew" ? new AddressMapAllocation(0x80, null, null) : default);
 
         Assert.Equal((0x80ul, 0x80ul), (map.GetEntry(Address, At(15))?.Bytes, map.GetEntry(Address, At(25))?.Bytes));
@@ -178,7 +178,7 @@ public class AddressMapTests
     {
         var map = AddressMap.Build([Entry(AddressMapOperation.Allocated, call: 10, OperatorNew),
                                    Entry(AddressMapOperation.Declared, call: 20, Factory, className: "AccBindings")],
-                                  NodeOf,
+                                  GetNode,
                                   (_, _) => new AddressMapAllocation(0x268, "openrst.cpp:1135", null));
 
         Assert.Equal(("openrst.cpp:1135", "openrst.cpp:1135"), (map.GetEntry(Address, At(15))?.Site, map.GetEntry(Address, At(25))?.Site));
@@ -189,7 +189,7 @@ public class AddressMapTests
     {
         var map = AddressMap.Build([Entry(AddressMapOperation.Allocated, call: 10, OperatorNew),
                                    Entry(AddressMapOperation.Constructed, call: 11, ScanConstructor)],
-                                  NodeOf,
+                                  GetNode,
                                   (_, _) => new AddressMapAllocation(0x378, null, "MEMOBJ_EXECUTE"));
 
         Assert.Equal(("MEMOBJ_EXECUTE", "MEMOBJ_EXECUTE"),
@@ -245,7 +245,7 @@ public class AddressMapTests
 
         using var reader = new BinaryReader(stream);
 
-        var entry = AddressMap.Read(reader, NodeOf).GetEntry(Address, At(25));
+        var entry = AddressMap.Read(reader, GetNode).GetEntry(Address, At(25));
 
         Assert.Equal(("OperatorNew", "AccBindings", 0x40ul, "openrst.cpp:1135", "MEMOBJ_EXECUTE"),
                      (entry?.Allocator, entry?.ClassName, entry?.Bytes, entry?.Site, entry?.MemoryObject));
@@ -268,7 +268,7 @@ public class AddressMapTests
         Assert.False(AddressMap.IsSupported(reader));
     }
 
-    private static AddressMap Build(params AddressEntry[] entries) => AddressMap.Build(entries, NodeOf);
+    private static AddressMap Build(params AddressEntry[] entries) => AddressMap.Build(entries, GetNode);
 
     private static AddressEntry Entry(AddressMapOperation operation,
                                       ulong call,
@@ -294,7 +294,7 @@ public class AddressMapTests
                site,
                memoryObject);
 
-    private static CallTreeNode? NodeOf(int callNodeIndex) => callNodeIndex >= 0 && callNodeIndex < Nodes.Length ? Nodes[callNodeIndex] : null;
+    private static CallTreeNode? GetNode(int callNodeIndex) => callNodeIndex >= 0 && callNodeIndex < Nodes.Length ? Nodes[callNodeIndex] : null;
 
     private static CallTreeNode[] GetNodes()
     {

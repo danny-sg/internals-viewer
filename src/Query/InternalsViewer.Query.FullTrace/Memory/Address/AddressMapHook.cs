@@ -79,7 +79,7 @@ internal sealed class AddressMapHook(Dictionary<ulong, AddressMapFunction> opera
 
         foreach (var declared in function.DeclaredClasses)
         {
-            if (declared.ArgumentSlot == ArgumentLayout.ReturnRegister)
+            if (declared.ArgumentSlot == ArgumentLayout.ReturnArgumentSlot)
             {
                 Record(AddressMapOperation.Declared, call.ReturnValue, call, replay, declared.Name);
             }
@@ -88,7 +88,7 @@ internal sealed class AddressMapHook(Dictionary<ulong, AddressMapFunction> opera
 
     public void OnFrameEnded(in TraceHookCall call)
     {
-        if (!OwnedEntries.Remove(call.Id, out var owned))
+        if (!OwnedEntries.Remove(call.CallId, out var owned))
         {
             return;
         }
@@ -134,7 +134,7 @@ internal sealed class AddressMapHook(Dictionary<ulong, AddressMapFunction> opera
 
         foreach (var declared in function.DeclaredClasses)
         {
-            events |= declared.ArgumentSlot == ArgumentLayout.ReturnRegister ? TraceHookEvents.Return : TraceHookEvents.Entry;
+            events |= declared.ArgumentSlot == ArgumentLayout.ReturnArgumentSlot ? TraceHookEvents.Return : TraceHookEvents.Entry;
         }
 
         return events;
@@ -163,13 +163,13 @@ internal sealed class AddressMapHook(Dictionary<ulong, AddressMapFunction> opera
         => function.Operation != AddressMapOperation.Declared || function.DeclaredClasses.Length > 0;
 
     private static ulong GetOwner(ReadOnlySpan<TraceHookFrame> frames, ulong address)
-        => TraceHookFrameLookup.GetOwnerIndex(frames, address) is >= 0 and var index ? frames[index].Id : 0;
+        => TraceHookFrame.GetOwnerIndex(frames, address) is >= 0 and var index ? frames[index].CallId : 0;
 
     private static bool IsActive(ReadOnlySpan<TraceHookFrame> frames, ulong call)
     {
         foreach (var frame in frames)
         {
-            if (frame.Id == call)
+            if (frame.CallId == call)
             {
                 return true;
             }
@@ -184,7 +184,7 @@ internal sealed class AddressMapHook(Dictionary<ulong, AddressMapFunction> opera
     private void ReadVtable(ulong address, ITraceReplay replay)
     {
         if (Vtables.Count == 0
-            || address < TraceAddress.MinAddress
+            || address < TraceAddress.MinimumAddress
             || !LatestEntries.TryGetValue(address, out var latest)
             || Entries[latest] is not { Operation: AddressMapOperation.Allocated, ClassName: null, IsAlive: true } entry
             || !ReadEntries.Add(latest))
@@ -204,7 +204,7 @@ internal sealed class AddressMapHook(Dictionary<ulong, AddressMapFunction> opera
                         ITraceReplay replay,
                         string? className = null)
     {
-        if (address < TraceAddress.MinAddress)
+        if (address < TraceAddress.MinimumAddress)
         {
             return;
         }
@@ -235,11 +235,11 @@ internal sealed class AddressMapHook(Dictionary<ulong, AddressMapFunction> opera
                 return;
             }
 
-            if (operation == AddressMapOperation.Allocated && existing == AddressMapOperation.Allocated && entry.Frame > call.Id)
+            if (operation == AddressMapOperation.Allocated && existing == AddressMapOperation.Allocated && entry.Frame > call.CallId)
             {
                 Entries[latest] = entry with
                 {
-                    Frame = call.Id,
+                    Frame = call.CallId,
                     CallIndex = (int)call.CallIndex,
                     FromPosition = call.Position,
                     CallNodeIndex = call.CallNodeIndex
@@ -268,7 +268,7 @@ internal sealed class AddressMapHook(Dictionary<ulong, AddressMapFunction> opera
         }
 
         Entries.Add(new AddressEntry(address,
-                                     call.Id,
+                                     call.CallId,
                                      (int)call.CallIndex,
                                      owner,
                                      call.Position,

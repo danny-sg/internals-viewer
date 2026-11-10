@@ -273,7 +273,7 @@ public static class ArgumentValue
 
             if (KnownFlags.TryGetValue(enumName, out var flags))
             {
-                return FlagsOf(flags.Value, (int)raw);
+                return GetFlags(flags.Value, (int)raw);
             }
 
             if (UnnamedFlags.Contains(enumName))
@@ -312,7 +312,7 @@ public static class ArgumentValue
     private static Dictionary<int, string> GetMemoryObjectTypeNames()
         => Enum.GetValues<MemoryObjectType>().ToDictionary(v => (int)v, MemoryObjectNameLookup.GetName);
 
-    private static string FlagsOf(Dictionary<int, string> names, int value)
+    private static string GetFlags(Dictionary<int, string> names, int value)
     {
         if (names.TryGetValue(value, out var name))
         {

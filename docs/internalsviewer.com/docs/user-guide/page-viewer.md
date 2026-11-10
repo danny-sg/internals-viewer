@@ -16,6 +16,8 @@ When a page opens the Page Header is selected - or, when it was opened from a li
 
 The header bar shows the page type, such as **Data Page** or **IAM (Index Allocation Map) Page**, with an icon in the colour of the object it belongs to on the [Allocation Map](/docs/user-guide/allocations), and the object's name as `schema.table.index`. The command bar's overflow menu has the object's Object Id, Index Id, Allocation Unit Id and Partition Id, each with a button to copy it.
 
+When the view is too narrow for all three side by side, the decoded information moves underneath the raw data and the slots. Drag the line between them to resize them.
+
 ## Opening pages
 
 Pages can be opened by:

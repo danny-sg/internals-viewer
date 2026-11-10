@@ -10,6 +10,7 @@ using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Export;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Allocation;
@@ -66,7 +67,7 @@ public class TraceExportSectionTests
         Assert.Equal(new PageAddress(1, 336), calls[1].GetLocator(2)?.Page);
         Assert.Equal("(1:336), (1:336:4)", getRow.LocatorsDetail);
         Assert.Equal(3, fullTrace.Timeline.SpanCount);
-        Assert.Equal(100ul, fullTrace.Allocation.PeakInUseDuring(At(0), At(100)));
+        Assert.Equal(100ul, fullTrace.Allocation.GetPeakInUseDuring(At(0), At(100)));
         Assert.Single(fullTrace.Lifetimes);
     }
 
@@ -75,11 +76,11 @@ public class TraceExportSectionTests
     {
         var fullTrace = (await Import(await Export(Content()))).ExtraOf<TraceResult>()!;
 
-        var publish = fullTrace.Timeline.NodeOf(2)!;
+        var publish = fullTrace.Timeline.GetNode(2)!;
 
         Assert.Equal("XeSqlPkg::lock_acquired::Publish", publish.Symbol);
-        Assert.Same(fullTrace.Timeline.NodeOf(0), publish.Parent);
-        Assert.DoesNotContain(publish, fullTrace.CallTree.Nodes());
+        Assert.Same(fullTrace.Timeline.GetNode(0), publish.Parent);
+        Assert.DoesNotContain(publish, fullTrace.CallTree.GetNodes());
     }
 
     [Fact]
@@ -196,7 +197,7 @@ public class TraceExportSectionTests
 
         getRow.AllocatedBytes = 100;
 
-        getRow.Allocations = 1;
+        getRow.AllocationCount = 1;
 
         getRow.CallActivity = [0, 1, 2];
 
@@ -206,7 +207,7 @@ public class TraceExportSectionTests
 
         builder.Add([Span(0, 0, 100), Span(1, 20, 25), Span(1, 30, 35), Span(2, 40, 41)]);
 
-        var timeline = builder.Build([new(-1, 0, 0x10, 0, 1), new(0, 0, 0x30, Scan, 2), new(0, 0, 0x50, 0, 1)]);
+        var timeline = builder.Build([new(-1, 0x10, 0, 1), new(0, 0x30, Scan, 2), new(0, 0x50, 0, 1)]);
 
         timeline.MapNodes([caller, getRow, publish]);
 
@@ -237,7 +238,7 @@ public class TraceExportSectionTests
 
     private static CallFrame Frame(ulong rva, string symbol, ulong instance = 0)
     {
-        SymbolsHelper.SplitOffset(symbol, out var name, out var offset);
+        SymbolHelper.SplitOffset(symbol, out var name, out var offset);
 
         return new CallFrame
         {

@@ -41,14 +41,14 @@ public sealed class CallTreeNode
     /// </summary>
     public bool IsInfrastructure => Frame?.Function?.SymbolMetadata?.IsInfrastructure ?? false;
 
-    public bool IsInstrumentation => Frame?.Function?.SymbolCategory is { } category && category.IsInstrumentation(HasOperator);
+    public bool IsInstrumentation => Frame?.Function?.SymbolCategory is { } category && category.IsInstrumentation(HasOperatorName);
 
     /// <summary>
     /// The plan operator this frame implements if it is a query iterator, otherwise null
     /// </summary>
-    public string? Operator => Frame?.Function?.Iterator;
+    public string? OperatorName => Frame?.Function?.OperatorName;
 
-    public bool HasOperator => Operator is not null;
+    public bool HasOperatorName => OperatorName is not null;
 
     /// <summary>
     /// Whether an operator's execution begins here, so the tree can be cut into a segment per operator
@@ -94,17 +94,17 @@ public sealed class CallTreeNode
     /// </summary>
     public Dictionary<string, CallTreeNode> Children { get; } = [];
 
-    public long Calls { get; set; }
+    public long CallCount { get; set; }
 
-    public bool HasCalls => Calls > 0;
+    public bool HasCalls => CallCount > 0;
 
-    public string CallsLabel => CountText.GetCalls(Calls);
+    public string CallsLabel => CountText.GetCalls(CallCount);
 
     public int[] CallActivity { get; set; } = [];
 
     public long AllocatedBytes { get; set; }
 
-    public long Allocations { get; set; }
+    public long AllocationCount { get; set; }
 
     public long AllocatedBytesIncludingChildren => Allocated.Bytes;
 
@@ -151,7 +151,7 @@ public sealed class CallTreeNode
 
     private (long Bytes, long Count) Allocated => AllocatedIncludingChildren ??= (
         AllocatedBytes + Children.Values.Sum(c => c.AllocatedBytesIncludingChildren),
-        Allocations + Children.Values.Sum(c => c.AllocationsIncludingChildren));
+        AllocationCount + Children.Values.Sum(c => c.AllocationsIncludingChildren));
 
     public IEnumerable<CallTreeNode> ChildNodes => Children.Values;
 
@@ -175,7 +175,7 @@ public sealed class CallTreeNode
     /// <summary>
     /// The frames from this node up to (excluding) the root, innermost first — the call path of an event linked here
     /// </summary>
-    public IEnumerable<CallFrame> Path() => Ancestors().Select(node => node.Frame!);
+    public IEnumerable<CallFrame> Path() => GetAncestors().Select(node => node.Frame!);
 
     /// <summary>
     /// This node and its ancestors up to (excluding) the root, innermost first
@@ -195,9 +195,9 @@ public sealed class CallTreeNode
             Order = nodes.Min(n => n.Order),
             Parent = first.Parent,
             MergedFrom = nodes,
-            Calls = nodes.Sum(n => n.Calls),
+            CallCount = nodes.Sum(n => n.CallCount),
             AllocatedBytes = nodes.Sum(n => n.AllocatedBytes),
-            Allocations = nodes.Sum(n => n.Allocations),
+            AllocationCount = nodes.Sum(n => n.AllocationCount),
             AllocatedIncludingChildren = (nodes.Sum(n => n.AllocatedBytesIncludingChildren),
                                           nodes.Sum(n => n.AllocationsIncludingChildren)),
             PlanOperators = [.. nodes.SelectMany(n => n.PlanOperators).Distinct<ExecutionOperatorEvent>(ReferenceEqualityComparer.Instance)]
@@ -218,7 +218,7 @@ public sealed class CallTreeNode
         return merged;
     }
 
-    public IEnumerable<CallTreeNode> Ancestors()
+    public IEnumerable<CallTreeNode> GetAncestors()
     {
         for (var node = this; node is { Frame: not null }; node = node.Parent)
         {
@@ -226,7 +226,7 @@ public sealed class CallTreeNode
         }
     }
 
-    public override string ToString() => Ancestors().FirstOrDefault(node => !node.IsInfrastructure)?.Symbol ?? Symbol;
+    public override string ToString() => GetAncestors().FirstOrDefault(node => !node.IsInfrastructure)?.Symbol ?? Symbol;
 
     internal void AddPlanOperators(IReadOnlyList<ExecutionOperatorEvent> operators)
     {

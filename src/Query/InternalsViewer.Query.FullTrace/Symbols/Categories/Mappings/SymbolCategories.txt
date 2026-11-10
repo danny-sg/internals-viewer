@@ -189,6 +189,8 @@ sqllang|*|PsqlGetSqlSourceFromPcp|QueryExecution
 *|SqlAutoSimpleXact*|*|TransactionManagement
 
 sqlmin|AllocationOrderPageScanner|*|PageAccess
+*|CacheOnlyPageScanner*|*|PageAccess
+*|UnOrderPage*|*|PageAccess
 sqlmin|AllocScan|*|PageAccess
 
 *|CMED*|*|Metadata
@@ -345,6 +347,7 @@ qds|*|Clone|QueryStore
 *|CXmlConvert*|*|Xml
 *|CSsXmlWriter*|*|Xml
 *|XmlContextInfo*|*|Xml
+*|xmllitedom*|*|Xml
 *|CRangeXMLSchema*|*|Xml
 
 # --- Large objects and the stream that carries them to the client -------------------------------------------------------
@@ -908,11 +911,13 @@ sqlmin|*|GetCSIScanColumnBindingTypeInfo|ColumnStore
 *|Win32FileSystemHandler*|*|IoInfrastructure
 *|XStoreFileSystemHandler*|*|IoInfrastructure
 *|DirectoryContentListFileCollection*|*|IoInfrastructure
+*|DirectoryContentListElement*|*|IoInfrastructure
 *|ExternalFileSystemXdbConfig*|*|IoInfrastructure
 *|FileMgr*|*|IoInfrastructure
 *|IoRequestDispenser*|*|IoInfrastructure
 *|IoStats*|*|IoInfrastructure
 *|ProfileIO*|*|IoInfrastructure
+*|SocratesQpRbio*|*|IoInfrastructure
 *|*|StoragePerfCountersRecord|IoInfrastructure
 
 # --- SQLOS memory -------------------------------------------------------------------------------------------------------
@@ -961,6 +966,7 @@ sqlmin|*|GetCSIScanColumnBindingTypeInfo|ColumnStore
 *|HkCsPFIAllocator*|*|Memory
 *|CInMemCacheAllocationStack*|*|Memory
 *|CCacheStoreWrappingPageAllocator*|*|Memory
+*|CCappedPageAllocator*|*|Memory
 *|TPartitionedDescriptorList*|*|SqlOs
 *|TDelayedPartitionedStack*|*|SqlOs
 *|TCacheStore*|*|SqlOs
@@ -1221,6 +1227,7 @@ sqlmin|*|GetCSIScanColumnBindingTypeInfo|ColumnStore
 *|CParamExchange*|*|QueryExecution
 *|CParamCollection*|*|QueryExecution
 *|CParamList*|*|QueryExecution
+*|CParamBase*|*|QueryExecution
 *|CFormalParamTbl*|*|QueryExecution
 *|CVariableInfo*|*|SqlOs
 *|CRowcountTrackerList*|*|QueryExecution
@@ -1241,6 +1248,7 @@ sqlmin|*|GetCSIScanColumnBindingTypeInfo|ColumnStore
 *|ExcHandler*|*|QueryExecution
 *|ExceptionBackout*|*|QueryExecution
 *|CDbAndSetOpts*|*|QueryExecution
+*|CTsDbAndSetOpts*|*|QueryExecution
 *|CDefaultTSProvider_IDbAndSetOptsProvider*|*|QueryExecution
 *|CFeatureSwitches*|*|QueryExecution
 *|CFeatureSwitchesQds*|*|QueryStore
@@ -1297,6 +1305,7 @@ sqldk|CFeatureSwitchesDk*|*|SqlOs
 *|*|IsMiaaBackupAgent|QueryExecution
 *|*|IsMiaaInstance|QueryExecution
 *|*|IsPageRingBufferEnabled|QueryExecution
+*|*|IsParquetAsStorageEnabled|QueryExecution
 *|*|IsPestoConsolidateRowGroupsEnabled|QueryExecution
 *|*|IsPestoLruCacheEnabled|QueryExecution
 *|*|IsPestoStorageBlockBlobsDisabled|QueryExecution
@@ -1358,6 +1367,7 @@ sqldk|CFeatureSwitchesDk*|*|SqlOs
 *|CTVFLogIndexStatsInfo*|*|QueryBinding
 *|TStreamingInternalTVFInfo*|*|QueryBinding
 *|CSbEndpointTVFInfo*|*|QueryBinding
+*|CDBMWitnessTVFInstantiate*|*|QueryBinding
 *|CViewUtil*|*|QueryBinding
 *|CUDTXMLParamsList*|*|QueryBinding
 *|ColumnBinding*|*|QueryBinding
@@ -1575,6 +1585,7 @@ sqldk|CFeatureSwitchesDk*|*|SqlOs
 *|CBpResourceCalc*|*|Optimization
 *|CFeedbackUtil*|*|Optimization
 *|ResourceActualsFeedbackUtils*|*|Optimization
+*|ResourceActualsFeedbackInternalTable*|*|Optimization
 *|CExprProperties*|*|Optimization
 *|CScalarGroupProperties*|*|Optimization
 *|CDrvdTablePlanProperties*|*|Optimization
@@ -1646,6 +1657,8 @@ sqldk|CFeatureSwitchesDk*|*|SqlOs
 *|CommonMD*|*|Metadata
 *|IMED*|*|Metadata
 *|CAPMEDIndex*|*|Metadata
+*|CGWT*|*|Metadata
+*|CRemoteFileRowsetMetadata*|*|Metadata
 *|MD*|*|Metadata
 *|MEDScanTableInfo*|*|Metadata
 *|MetaDataRowset*|*|Metadata
@@ -1741,6 +1754,7 @@ sqldk|CFeatureSwitchesDk*|*|SqlOs
 *|CXVariant*|*|ExpressionEvaluation
 sqllang|*|InitXVarWithBH|ExpressionEvaluation
 *|CXVarFunc*|*|ExpressionEvaluation
+*|VarUtils*|*|ExpressionEvaluation
 *|CTEsConvert*|*|ExpressionEvaluation
 *|CEs*|*|ExpressionEvaluation
 *|CEsArith*|*|ExpressionEvaluation
@@ -1866,6 +1880,8 @@ sqllang|*|InitXVarWithBH|ExpressionEvaluation
 *|FGMgr*|*|Storage
 *|LSN*|*|Logging
 *|SQLServerCOWLogMgr*|*|Logging
+*|LogMgr*|*|Logging
+*|LOGREADERSCAN*|*|Logging
 *|SQLServerLogIter*|*|Logging
 *|GroupCommitMgr*|*|Logging
 *|RollBackProgress*|*|Logging
@@ -1912,6 +1928,7 @@ sqllang|*|InitXVarWithBH|ExpressionEvaluation
 *|XMI*|*|ColumnStore
 *|XMLightRLE*|*|ColumnStore
 *|XMObjectContext*|*|ColumnStore
+*|XMRawColumn*|*|ColumnStore
 *|XMRENoSplit*|*|ColumnStore
 *|XMRLE*|*|ColumnStore
 *|XMStr*|*|ColumnStore
@@ -1963,6 +1980,7 @@ sqllang|*|InitXVarWithBH|ExpressionEvaluation
 # --- Service Broker, full text and other background work ----------------------------------------------------------------
 *|CSb*|*|Scheduling
 *|CFTW*|*|Scheduling
+*|CFTXMergeUnion*|*|QueryExecution
 *|*|SbSelectProcedure|Scheduling
 *|HkCsHostSerialization*|*|Storage
 *|RpsTicket*|*|Storage
@@ -1973,6 +1991,7 @@ sqllang|*|InitXVarWithBH|ExpressionEvaluation
 *|DbCopyDmvRow*|*|Metadata
 *|ActivityDirector*|*|Tracing
 *|CAppDomainManager*|*|QueryExecution
+*|IAppDomainManager*|*|QueryExecution
 *|CClrContext*|*|QueryExecution
 *|CActionOnCLRListener*|*|QueryExecution
 *|CBulkImp*|*|QueryExecution
@@ -1981,6 +2000,7 @@ sqllang|*|InitXVarWithBH|ExpressionEvaluation
 *|CMxcContainer*|*|QueryExecution
 *|CGlobalBabylonPolicyProvider*|*|QueryExecution
 *|SQLFPGADriver*|*|QueryExecution
+*|SubExprListNode*|*|QueryExecution
 *|ImbiApiSqlXpressWrapper*|*|ColumnStore
 *|E_CNSTCHECK*|*|QueryExecution
 *|CMAlhs*|*|Metadata
@@ -1994,6 +2014,7 @@ sqllang|*|InitXVarWithBH|ExpressionEvaluation
 *|root*|*|Compilation
 *|trConstant*|*|Compilation
 *|trRoot*|*|Compilation
+*|CStateNode*|*|Compilation
 *|CStaticStateNode*|*|Compilation
 *|CRunningAvg*|*|Optimization
 *|CProfileList*|*|Tracing

@@ -12,7 +12,7 @@ internal unsafe struct HookEvent
 
     public ulong InstanceAddress;
 
-    public ulong Id;
+    public ulong CallId;
 
     public fixed ulong Arguments[ArgumentCount];
 
@@ -36,7 +36,5 @@ internal unsafe struct HookEvent
 
     public HookEventType Type;
 
-    public uint Hook;
-
-    public uint Reserved;
+    public uint HookMask;
 }

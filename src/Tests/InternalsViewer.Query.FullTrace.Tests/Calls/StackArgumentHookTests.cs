@@ -76,7 +76,7 @@ public class StackArgumentHookTests
 
         var use = Assert.Single(await search.GetValueUsesAsync(0x20, CancellationToken.None));
 
-        Assert.Equal(("[RSP+0x30]", 2, 0, 2), (use.Location, use.Calls, use.First.CallIndex, use.Last.CallIndex));
+        Assert.Equal(("[RSP+0x30]", 2, 0, 2), (use.Location, use.CallCount, use.First.CallIndex, use.Last.CallIndex));
     }
 
     [Fact]
@@ -116,7 +116,7 @@ public class StackArgumentHookTests
         => new()
         {
             FunctionAddress = Function,
-            Id = 40,
+            CallId = 40,
             CallIndex = 0,
             Arguments = new ulong[] { 0, 0, 0, 0 },
             StackPointer = StackPointer,

@@ -1,5 +1,6 @@
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Symbols;
+using InternalsViewer.Query.FullTrace.Symbols.Enums;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.UI.App.Models.Query.Trace.Calls.Values;
 

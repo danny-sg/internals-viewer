@@ -9,8 +9,8 @@ using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
-using InternalsViewer.Query.FullTrace.Timeline.Ticks;
-using InternalsViewer.Query.FullTrace.Timeline.Ticks.Enums;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.Services.Query.Trace;
 using InternalsViewer.UI.App.Controls.Query.Trace.Timeline;
@@ -301,7 +301,7 @@ public sealed partial class QueryTraceTimelineTabView : ITraceTimelineController
                string.Join(", ", track.Rules.Select(GetFunctionText).Distinct()),
                [.. track.Rules.SelectMany(r => r.Conditions).Select(DescribeCondition)]);
 
-    private static string GetFunctionText(TraceTickDefinition rule)
+    private static string GetFunctionText(TraceTrackRule rule)
         => rule.Source == TraceTickSourceType.Call ? rule.Function : TraceTickTracks.GetSourceText(rule.Source);
 
     private static string DescribeCondition(TraceCallCondition condition)

@@ -741,7 +741,7 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
         {
             var label = Host.GetLabel(call.CallNodeIndex);
 
-            var separator = SymbolsHelper.FindClassMethodSeparator(label);
+            var separator = SymbolHelper.FindClassMethodSeparator(label);
 
             var method = separator < 0 ? label : label[(separator + 2)..];
 
@@ -774,7 +774,7 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
         if (!lifetime.InUse.IsEmpty)
         {
-            var peak = lifetime.InUse.PeakDuring(lifetime.Start.Position, lifetime.End.Position);
+            var peak = lifetime.InUse.GetPeakDuring(lifetime.Start.Position, lifetime.End.Position);
 
             lines.Add($"Peak In Use {StringHelpers.FormatSize((long)peak)}");
         }

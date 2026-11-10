@@ -25,6 +25,8 @@ internal sealed record WinDbgInstallation(string Executable, string EngineDirect
 
     private const string PackageSuffix = "_8wekyb3d8bbwe";
 
+    public bool HasTimeTravel => File.Exists(Path.Combine(EngineDirectory, "ttd", "TTD.exe"));
+
     /// <summary>
     /// Finds the Store WinDbg, or failing that the Debugging Tools for Windows
     /// </summary>
@@ -33,7 +35,7 @@ internal sealed record WinDbgInstallation(string Executable, string EngineDirect
     /// <summary>
     /// Describes an installation from the executable the user pointed at
     /// </summary>
-    public static WinDbgInstallation FromExecutable(string executable)
+    public static WinDbgInstallation Create(string executable)
     {
         var directory = Path.GetDirectoryName(executable) ?? string.Empty;
 
@@ -57,7 +59,7 @@ internal sealed record WinDbgInstallation(string Executable, string EngineDirect
                 throw new WinDbgNotFoundException($"WinDbg was not found at {path}. Check the WinDbg Path in Settings");
             }
 
-            var installation = FromExecutable(path);
+            var installation = Create(path);
 
             logger.LogInformation("Using WinDbg at {Executable} with the engine in {EngineDirectory}",
                                   installation.Executable,
@@ -84,7 +86,7 @@ internal sealed record WinDbgInstallation(string Executable, string EngineDirect
     {
         var source = new DirectoryInfo(Path.Combine(EngineDirectory, "ttd"));
 
-        if (!File.Exists(Path.Combine(source.FullName, "TTD.exe")))
+        if (!HasTimeTravel)
         {
             return null;
         }
@@ -129,7 +131,7 @@ internal sealed record WinDbgInstallation(string Executable, string EngineDirect
         var candidates = packages.GetSubKeyNames()
                                  .Where(n => n.StartsWith(PackagePrefix, StringComparison.OrdinalIgnoreCase)
                                              && n.EndsWith(PackageSuffix, StringComparison.OrdinalIgnoreCase))
-                                 .Select(n => (Name: n, Version: PackageVersion(n)))
+                                 .Select(n => (Name: n, Version: GetPackageVersion(n)))
                                  .OrderByDescending(p => p.Version)
                                  .ToList();
 
@@ -199,7 +201,7 @@ internal sealed record WinDbgInstallation(string Executable, string EngineDirect
         return null;
     }
 
-    private static Version PackageVersion(string packageName)
+    private static Version GetPackageVersion(string packageName)
     {
         var parts = packageName.Split('_');
 

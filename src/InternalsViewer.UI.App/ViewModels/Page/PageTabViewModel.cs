@@ -175,6 +175,12 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
 
     private History<PageAddress> History { get; } = new();
 
+    private (PageAddress Page, ushort? Slot)? MoveTarget { get; set; }
+
+    private (PageAddress Page, ushort? Slot)? LastMove { get; set; }
+
+    private bool IsMoving { get; set; }
+
     public string PageTitle
         => $"{Page.PageHeader.PageTypeName}{(Page.PageHeader.PageType == PageType.None ? string.Empty : " Page")}";
 
@@ -263,6 +269,46 @@ public sealed partial class PageTabViewModel(ILogger<PageTabViewModel> logger,
         await completion.Task;
 
         History.Add(PageAddress);
+    }
+
+    public async Task MoveTo(PageAddress pageAddress, ushort? slot)
+    {
+        if (LastMove == (pageAddress, slot))
+        {
+            return;
+        }
+
+        LastMove = (pageAddress, slot);
+
+        MoveTarget = (pageAddress, slot);
+
+        if (IsMoving)
+        {
+            return;
+        }
+
+        IsMoving = true;
+
+        try
+        {
+            while (MoveTarget is { } target)
+            {
+                MoveTarget = null;
+
+                if (target.Page != PageAddress)
+                {
+                    await LoadPage(target.Page, target.Slot);
+                }
+                else if (PageSlots.FirstOrDefault(s => s.Index == target.Slot) is { } found && !ReferenceEquals(found, SelectedSlot))
+                {
+                    SelectedSlot = found;
+                }
+            }
+        }
+        finally
+        {
+            IsMoving = false;
+        }
     }
 
     /// <summary>

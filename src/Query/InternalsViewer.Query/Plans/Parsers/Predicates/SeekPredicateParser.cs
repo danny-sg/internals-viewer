@@ -18,6 +18,8 @@ namespace InternalsViewer.Query.Plans.Parsers.Predicates;
 internal sealed class SeekPredicateParser(ColumnOrdinalResolver? resolveOrdinal = null,
                                         ParameterValueResolver? resolveParameter = null)
 {
+    private const string BookmarkPrefix = "Bmk";
+
     private ScalarOperatorParser Expressions { get; } = new(resolveOrdinal, resolveParameter);
 
     private readonly List<CorrelatedSeekColumn> _correlatedColumns = [];
@@ -118,23 +120,30 @@ internal sealed class SeekPredicateParser(ColumnOrdinalResolver? resolveOrdinal 
 
         var values = ImmutableArray.CreateBuilder<AccessValue>();
 
+        var isConstant = true;
+
+        var comparison = ShowplanOperators.ParseComparison(GetScanType(boundary)) ?? ComparisonOperator.Equal;
+
         for (var index = 0; index < expressions.Count; index++)
         {
             var parsed = Expressions.Parse(expressions[index]);
 
             if (parsed is not AccessExpression.Constant constant)
             {
-                if (parsed is AccessExpression.Column
-                    && Expressions.ParseColumnReference(expressions[index]) is { } outerColumn)
+                isConstant = false;
+
+                if (Expressions.ParseColumnReference(expressions[index]) is { } outerColumn
+                    && (parsed is AccessExpression.Column || IsBookmark(outerColumn.Table, outerColumn.Column)))
                 {
                     var seekColumn = columnNames is not null && index < columnNames.Count ? columnNames[index] : null;
 
                     _correlatedColumns.Add(new CorrelatedSeekColumn(TrimName(seekColumn),
                                                                     TrimName(outerColumn.Table),
-                                                                    TrimName(outerColumn.Column)));
+                                                                    TrimName(outerColumn.Column),
+                                                                    comparison));
                 }
 
-                return [];
+                continue;
             }
 
             var columnName = columnNames is not null && index < columnNames.Count ? columnNames[index] : null;
@@ -142,12 +151,22 @@ internal sealed class SeekPredicateParser(ColumnOrdinalResolver? resolveOrdinal 
             values.Add(constant.Value.WithColumnName(columnName));
         }
 
-        return values.ToImmutable();
+        return isConstant ? values.ToImmutable() : [];
     }
 
     private static string TrimName(string? name)
     {
         return name?.Trim('[', ']') ?? string.Empty;
+    }
+
+    private static bool IsBookmark(string table, string column)
+    {
+        var name = TrimName(column);
+
+        return table.Length == 0
+               && name.Length > BookmarkPrefix.Length
+               && name.StartsWith(BookmarkPrefix, StringComparison.Ordinal)
+               && !name.AsSpan(BookmarkPrefix.Length).ContainsAnyExceptInRange('0', '9');
     }
 
     private static string? GetScanType(XElement? boundary)

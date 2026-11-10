@@ -14,6 +14,7 @@ using InternalsViewer.Query.Plans.Model;
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRowHelper;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 using InternalsViewer.Query.FullTrace.Symbols.Categories;
+using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Timeline.Tracks;
 
@@ -64,8 +65,8 @@ public class TraceRowReturnMarkMapTests
 
     private static readonly CallNode[] Nodes =
     [
-        new(-1, 0, Helper, JoinIterator, 2),
-        new(0, 0, Helper, ScanIterator, 3)
+        new(-1, Helper, JoinIterator, 2),
+        new(0, Helper, ScanIterator, 3)
     ];
 
     [Fact]
@@ -222,6 +223,16 @@ public class TraceRowReturnMarkMapTests
     }
 
     [Fact]
+    public void Every_Included_Tick_Is_Listed_Across_Operators()
+    {
+        var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)], [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)]);
+
+        var ends = marks.Ticks.GetTicks(v => v == (byte)RowReturnType.End).Select(t => t.Span.From.Instructions).Order();
+
+        Assert.Equal([50ul, 55ul], ends);
+    }
+
+    [Fact]
     public void Operators_Are_Requested_While_A_GetRow_Call_To_Them_Is_Running()
     {
         var marks = Build([(10, 40, RowStatus), (50, 70, EndStatus)], [(12, 15, RowStatus), (20, 25, RowStatus), (55, 60, EndStatus)]);
@@ -271,6 +282,21 @@ public class TraceRowReturnMarkMapTests
         var counts = new ulong[] { 20, 30, 80 }.Select(p => marks.Ticks.CountEnded(rows, At(p)).Single(c => c.Operator == Scan).Count);
 
         Assert.Equal([1, 2, 2], counts);
+    }
+
+    [Fact]
+    public void A_Call_Made_Through_A_Compute_Scalar_Does_Not_Name_It_As_The_Caller()
+    {
+        var computeScalar = new ExecutionOperatorEvent
+        {
+            Name = "Compute Scalar",
+            OperatorDescription = "Compute Scalar",
+            PlanNodeIdentifier = new PlanNodeIdentifier(1, 0)
+        };
+
+        var marks = Build([(10, 40, RowStatus)], [(15, 20, RowStatus)], top: computeScalar);
+
+        Assert.Null(marks.Ticks.GetTicks(Scan, Thread)!.All.Single().Caller);
     }
 
     private static TraceRowReturnMarkMap Build((ulong Start, ulong End, ulong Status)[] joinCalls,
@@ -330,7 +356,7 @@ public class TraceRowReturnMarkMapTests
     }
 
     private static ulong[] Call((ulong Start, ulong End, ulong Status) call, int callNodeIndex)
-        => Row(call.Start, flags: Thread | TraceCallChunk.ReturnedFlag, returnValue: call.Status, callNodeIndex: callNodeIndex, endSequence: call.End);
+        => Row(call.Start, flags: Thread | TraceCallColumnSet.ReturnedFlag, returnValue: call.Status, callNodeIndex: callNodeIndex, endSequence: call.End);
 
     private static CallFrame Frame(ulong instance, string method = "GetRowOrReQualifyHelper") => new()
     {

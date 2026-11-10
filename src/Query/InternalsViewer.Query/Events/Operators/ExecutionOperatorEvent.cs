@@ -1,4 +1,5 @@
 using InternalsViewer.Query.Events.Properties;
+using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Operators;
 
 namespace InternalsViewer.Query.Events.Operators;
@@ -20,6 +21,8 @@ public sealed partial record ExecutionOperatorEvent : EngineEvent
     public int? ParentNodeId { get; set; }
 
     public bool IsBlockingInput { get; set; }
+
+    public PlanNodeIdentifier? AdaptedNode { get; init; }
 
     /// <remarks>
     /// When rows first flow out of this operator (capture-relative microseconds). Equals the start for a streaming operator, but is later
@@ -83,16 +86,8 @@ public sealed partial record ExecutionOperatorEvent : EngineEvent
     /// <summary>
     /// Sum of rows processed across all threads
     /// </summary>
-    /// <remarks>
-    /// Used to size data-access (scan/seek) bars by data volume. Zero when unknown.
-    /// </remarks>
     [EventProperty("Rows", Type = EventPropertyType.Number)]
     public long RowsProcessed { get; set; }
 
-    /// <remarks>
-    /// One entry per <c>query_thread_profile</c> thread for this operator (empty for serial operators
-    /// with no profile). For a parallel operator <c>thread_id 0</c> is the coordinator and <c>1..N</c>
-    /// the workers, so the worker count (degree of parallelism) is the number of non-zero ids.
-    /// </remarks>
     public IReadOnlyList<OperatorThread> Threads { get; set; } = [];
 }

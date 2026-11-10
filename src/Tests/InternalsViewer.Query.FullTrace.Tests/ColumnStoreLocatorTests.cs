@@ -17,7 +17,7 @@ public class ColumnStoreLocatorTests
         var locator = Key(ColumnStoreObjectType.ColumnSegment, column: 2, objectId: 3);
 
         Assert.Equal((HobtId, ColumnStoreObjectType.ColumnSegment, 2, 3, 3),
-                     (locator.HobtId, locator.ObjectType, locator.ColumnId, locator.ObjectId, locator.RowGroupId));
+                     (locator.HoBtId, locator.ObjectType, locator.ColumnId, locator.ObjectId, locator.RowGroupId));
 
         Assert.Equal("Segment (Rowgroup 3, Column 2)", locator.ToString());
         Assert.Equal("rowgroup:3 column:2", locator.SearchText);
@@ -49,7 +49,7 @@ public class ColumnStoreLocatorTests
     {
         Assert.True(LocatorSearch.TryParse(text, out var search));
 
-        Assert.Equal(LocatorSearch.ForColumnStore(rowGroup, column), search);
+        Assert.Equal(LocatorSearch.CreateColumnStoreSearch(rowGroup, column), search);
     }
 
     [Theory]
@@ -66,10 +66,10 @@ public class ColumnStoreLocatorTests
     {
         var segment = Key(ColumnStoreObjectType.ColumnSegment, 2, 3);
 
-        Assert.True(LocatorSearch.ForColumnStore(3, null).Matches(segment.Locator));
-        Assert.True(LocatorSearch.ForColumnStore(3, 2).Matches(segment.Locator));
-        Assert.False(LocatorSearch.ForColumnStore(3, 1).Matches(segment.Locator));
-        Assert.False(LocatorSearch.ForColumnStore(3, null).Matches(Key(ColumnStoreObjectType.SecondaryDictionary, 2, 3).Locator));
+        Assert.True(LocatorSearch.CreateColumnStoreSearch(3, null).Matches(segment.Locator));
+        Assert.True(LocatorSearch.CreateColumnStoreSearch(3, 2).Matches(segment.Locator));
+        Assert.False(LocatorSearch.CreateColumnStoreSearch(3, 1).Matches(segment.Locator));
+        Assert.False(LocatorSearch.CreateColumnStoreSearch(3, null).Matches(Key(ColumnStoreObjectType.SecondaryDictionary, 2, 3).Locator));
     }
 
     [Fact]
@@ -85,8 +85,8 @@ public class ColumnStoreLocatorTests
         set.Add(Key(ColumnStoreObjectType.PrimaryDictionary, 2, 0).Locator);
 
         Assert.Equal("2 Columnstore Objects", set.Label);
-        Assert.True(set.Contains(LocatorSearch.ForColumnStore(3, 2)));
-        Assert.False(set.Contains(LocatorSearch.ForColumnStore(4, null)));
+        Assert.True(set.Contains(LocatorSearch.CreateColumnStoreSearch(3, 2)));
+        Assert.False(set.Contains(LocatorSearch.CreateColumnStoreSearch(4, null)));
     }
 
     [Fact]
@@ -148,5 +148,5 @@ public class ColumnStoreLocatorTests
                 (uint)objectId | ((ulong)(uint)type << 32));
     }
 
-    private static ulong[] Columns(int calls) => new ulong[calls * TraceCallChunk.ValueCount];
+    private static ulong[] Columns(int calls) => new ulong[calls * TraceCallColumnSet.ValueCount];
 }

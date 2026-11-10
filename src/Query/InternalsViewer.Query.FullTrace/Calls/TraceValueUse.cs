@@ -1,4 +1,5 @@
 using InternalsViewer.Query.FullTrace.Symbols;
+using InternalsViewer.Query.FullTrace.Symbols.Enums;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
 using InternalsViewer.Query.FullTrace.Arguments;
 
@@ -7,7 +8,7 @@ namespace InternalsViewer.Query.FullTrace.Calls;
 public sealed record TraceValueUse(ulong FunctionAddress,
                                    ulong InstanceAddress,
                                    string Location,
-                                   int Calls,
+                                   int CallCount,
                                    TraceValueCall First,
                                    TraceValueCall Last)
 {

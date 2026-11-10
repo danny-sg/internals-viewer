@@ -10,8 +10,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
-using InternalsViewer.Query.FullTrace.Timeline.Ticks;
-using InternalsViewer.Query.FullTrace.Timeline.Ticks.Enums;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks;
+using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Services.Query.Trace;
@@ -28,6 +28,8 @@ public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposa
     private const int FunctionWidth = 320;
 
     private const int ConditionsWidth = 360;
+
+    private const int DescriptionWidth = 360;
 
     private const int ColourWidth = 90;
 
@@ -57,7 +59,7 @@ public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposa
         Refresh();
     }
 
-    public event Action<TraceTickDefinition>? EditRequested;
+    public event Action<TraceTrackRule>? EditRequested;
 
     public bool HasAddedTracks => Store.AddedDefinitions.Count > 0;
 
@@ -125,9 +127,9 @@ public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposa
         {
             await using var stream = File.Create(file.Path);
 
-            await TraceTickDefinition.WriteAsync(stream, Store.AddedDefinitions, CancellationToken.None);
+            await TraceTrackRule.WriteAsync(stream, Store.Definitions, CancellationToken.None);
 
-            AddMessage($"{Store.AddedDefinitions.Count:N0} operator track rule(s) exported to {file.Path}");
+            AddMessage($"{Store.Definitions.Count:N0} operator track rule(s) exported to {file.Path}");
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
@@ -155,7 +157,7 @@ public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposa
         {
             await using var stream = File.OpenRead(file.Path);
 
-            var definitions = await TraceTickDefinition.ReadAsync(stream, CancellationToken.None);
+            var definitions = await TraceTrackRule.ReadAsync(stream, CancellationToken.None);
 
             Store.AddRange(definitions);
 
@@ -181,19 +183,27 @@ public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposa
         {
             new(0, "Track", typeof(string), false) { Width = NameWidth },
             new(1, "Label", typeof(string), false) { Width = LabelWidth },
-            new(2, "Function", typeof(string), false) { Width = FunctionWidth },
-            new(3, "Conditions", typeof(string), false) { Width = ConditionsWidth },
-            new(4, "Colour", typeof(string), false) { Width = ColourWidth },
-            new(5, "Background", typeof(string), false) { Width = ColourWidth },
-            new(6, "Height", typeof(double), false) { Width = FactorWidth, Alignment = ResultAlignment.Right },
-            new(7, "Width", typeof(double), false) { Width = FactorWidth, Alignment = ResultAlignment.Right },
-            new(8, string.Empty, typeof(string), false) { Width = ActionsWidth }
+            new(2, "Title", typeof(string), false) { Width = LabelWidth },
+            new(3, "Function", typeof(string), false) { Width = FunctionWidth },
+            new(4, "Conditions", typeof(string), false) { Width = ConditionsWidth },
+            new(5, "Description", typeof(string), false) { Width = DescriptionWidth },
+            new(6, "Details", typeof(string), false) { Width = DescriptionWidth },
+            new(7, "Return Description", typeof(string), false) { Width = DescriptionWidth },
+            new(8, "Colour", typeof(string), false) { Width = ColourWidth },
+            new(9, "Background", typeof(string), false) { Width = ColourWidth },
+            new(10, "Height", typeof(double), false) { Width = FactorWidth, Alignment = ResultAlignment.Right },
+            new(11, "Width", typeof(double), false) { Width = FactorWidth, Alignment = ResultAlignment.Right },
+            new(12, string.Empty, typeof(string), false) { Width = ActionsWidth }
         };
 
         var rows = Store.Definitions.Select((d, index) => new ResultRow<long>([d.Name,
                                                                               d.GetLabel(),
+                                                                              d.Title ?? string.Empty,
                                                                               GetFunctionText(d),
                                                                               Describe(d.Conditions),
+                                                                              d.Description ?? string.Empty,
+                                                                              d.Details ?? string.Empty,
+                                                                              d.ReturnDescription ?? string.Empty,
                                                                               d.Colour,
                                                                               d.Background ?? string.Empty,
                                                                               d.HeightFactor,
@@ -207,12 +217,14 @@ public sealed partial class OperatorTracksViewModel : ObservableObject, IDisposa
         return new QueryResultSet { Columns = columns, Rows = rows };
     }
 
-    private static string GetFunctionText(TraceTickDefinition definition)
-        => definition.Source == TraceTickSourceType.Call
-            ? $"{definition.Module}!{definition.Function}"
-            : TraceTickTracks.GetSourceText(definition.Source);
+    private static string GetFunctionText(TraceTrackRule definition) => definition.Source switch
+    {
+        TraceTickSourceType.Call => $"{definition.Module}!{definition.Function}",
+        TraceTickSourceType.Watch => TraceTickTracks.GetWatchTarget(definition),
+        _ => TraceTickTracks.GetSourceText(definition.Source)
+    };
 
-    private ActionLinks GetActions(TraceTickDefinition definition)
+    private ActionLinks GetActions(TraceTrackRule definition)
     {
         var edit = new ActionLink("Edit", () => EditRequested?.Invoke(definition));
 

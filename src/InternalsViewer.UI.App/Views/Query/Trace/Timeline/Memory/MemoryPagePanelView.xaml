@@ -15,8 +15,8 @@
 
         <page:PageSlotListControl Grid.Column="0"
                                   Margin="8,8,0,8"
-                                  Slots="{x:Bind ViewModel.WorkfilePage.Slots, Mode=OneWay}"
-                                  SelectedSlot="{x:Bind ViewModel.WorkfilePage.SelectedSlot, Mode=TwoWay}"/>
+                                  Slots="{x:Bind ViewModel.Slots, Mode=OneWay}"
+                                  SelectedSlot="{x:Bind ViewModel.SelectedSlot, Mode=TwoWay}"/>
 
         <Grid Grid.Column="1">
             <Grid.RowDefinitions>
@@ -29,21 +29,21 @@
                      HorizontalAlignment="Stretch"
                      IsAddTabButtonVisible="False"
                      TabWidthMode="SizeToContent"
-                     SelectedIndex="{x:Bind ViewModel.WorkfilePage.SelectedTab, Mode=TwoWay}">
-                <TabViewItem IsClosable="False" Header="{x:Bind ViewModel.WorkfilePage.MarkerTabName, Mode=OneWay}"/>
+                     SelectedIndex="{x:Bind ViewModel.SelectedTab, Mode=TwoWay}">
+                <TabViewItem IsClosable="False" Header="{x:Bind ViewModel.MarkerTabName, Mode=OneWay}"/>
                 <TabViewItem IsClosable="False"
                              Header="Data"
-                             Visibility="{x:Bind ViewModel.WorkfilePage.IsDataTabVisible, Mode=OneWay}"/>
+                             Visibility="{x:Bind ViewModel.IsDataTabVisible, Mode=OneWay}"/>
             </TabView>
 
             <Grid Grid.Row="1" Margin="8,0,8,8">
-                <controls:MarkerTreeView Visibility="{x:Bind GetTabVisibility(ViewModel.WorkfilePage.SelectedTab, 0), Mode=OneWay}"
-                                         Markers="{x:Bind ViewModel.WorkfilePage.Markers, Mode=OneWay}"
-                                         SelectedMarker="{x:Bind ViewModel.WorkfilePage.SelectedMarker, Mode=TwoWay}"/>
+                <controls:MarkerTreeView Visibility="{x:Bind GetTabVisibility(ViewModel.SelectedTab, 0), Mode=OneWay}"
+                                         Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
+                                         SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"/>
 
-                <results:ResultsGridControl Visibility="{x:Bind GetTabVisibility(ViewModel.WorkfilePage.SelectedTab, 1), Mode=OneWay}"
-                                            ResultSet="{x:Bind ViewModel.WorkfilePage.Records, Mode=OneWay}"
-                                            SelectedRow="{x:Bind ViewModel.WorkfilePage.SelectedRecordRow, Mode=TwoWay}"
+                <results:ResultsGridControl Visibility="{x:Bind GetTabVisibility(ViewModel.SelectedTab, 1), Mode=OneWay}"
+                                            ResultSet="{x:Bind ViewModel.Records, Mode=OneWay}"
+                                            SelectedRow="{x:Bind ViewModel.SelectedRecordRow, Mode=TwoWay}"
                                             RowName="record"/>
             </Grid>
         </Grid>
@@ -52,13 +52,13 @@
                    HorizontalAlignment="Center"
                    VerticalAlignment="Center"
                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                   Text="{x:Bind ViewModel.WorkfilePage.EmptyText, Mode=OneWay}"/>
+                   Text="{x:Bind ViewModel.EmptyText, Mode=OneWay}"/>
 
         <ProgressRing Grid.ColumnSpan="2"
                       Canvas.ZIndex="10"
                       HorizontalAlignment="Center"
                       VerticalAlignment="Center"
-                      IsActive="{x:Bind ViewModel.WorkfilePage.IsLoading, Mode=OneWay}"
-                      Visibility="{x:Bind ViewModel.WorkfilePage.IsLoading, Mode=OneWay}"/>
+                      IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}"
+                      Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay}"/>
     </Grid>
 </UserControl>

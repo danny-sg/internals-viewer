@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <g id="sql-execution-plan-batch-to-row-adapter-icon">
+
+    <g id="adapter-batch"
+       stroke="#424242"
+       stroke-width="2"
+       fill="none"
+       stroke-linejoin="round"
+       stroke-linecap="square" data-part="Batch">
+
+      <rect id="adapter-batch-frame" x="22" y="5" width="7" height="22" />
+      <path id="adapter-batch-row-1" d="M 22 12 L 29 12" />
+      <path id="adapter-batch-row-2" d="M 22 20 L 29 20" />
+    </g>
+
+    <g id="adapter-row"
+       stroke="#424242"
+       stroke-width="2"
+       fill="none"
+       stroke-linejoin="round"
+       stroke-linecap="square" data-part="Row">
+
+      <rect id="adapter-row-frame" x="3" y="13" width="6" height="6" />
+    </g>
+
+    <g id="adapter-arrow" data-part="Arrow">
+      <path id="adapter-arrow-stem" d="M 15 16 L 20 16" fill="none" stroke="#0078D4" stroke-width="2" />
+      <polygon id="adapter-arrow-head" points="15,12 11,16 15,20" fill="#0078D4" />
+    </g>
+
+  </g>
+</svg>

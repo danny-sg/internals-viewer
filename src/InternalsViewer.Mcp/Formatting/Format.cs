@@ -4,6 +4,7 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Mcp.Documents;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Arguments;
@@ -121,14 +122,14 @@ public static class Format
     {
         var parts = new List<string> { $"[{context.Nodes.GetId(node)}] {context.GetFunctionName(node)}" };
 
-        if (node.Calls > 0)
+        if (node.CallCount > 0)
         {
-            parts.Add($"calls={Number(node.Calls)}");
+            parts.Add($"calls={Number(node.CallCount)}");
         }
 
         if (node.AllocatedBytes > 0)
         {
-            parts.Add($"alloc={Bytes(node.AllocatedBytes)}/{Number(node.Allocations)}");
+            parts.Add($"alloc={Bytes(node.AllocatedBytes)}/{Number(node.AllocationCount)}");
         }
 
         if (node.Locators is { } locators)
@@ -154,7 +155,7 @@ public static class Format
 
     public static string CallPath(DocumentContext context, CallTreeNode node, int depth, bool includeSelf = false)
     {
-        var ancestors = node.Ancestors().Skip(includeSelf ? 0 : 1).ToList();
+        var ancestors = node.GetAncestors().Skip(includeSelf ? 0 : 1).ToList();
 
         var shown = ancestors.Take(depth).Select(context.GetFunctionName);
 
@@ -174,7 +175,7 @@ public static class Format
         _ => $"slot {register}"
     };
 
-    public static string Locator(Locator locator) => $"{Register(locator.Register)} {LocatorValue(locator)}";
+    public static string Locator(Locator locator) => $"{Register(locator.ArgumentSlot)} {LocatorValue(locator)}";
 
     public static string LocatorValue(Locator locator)
         => locator.ValueType switch
@@ -205,7 +206,7 @@ public static class Format
                                       returnType,
                                       string.Empty,
                                       call.Returned ? call.ReturnValue : null,
-                                      call.GetLocator(ArgumentLayout.ReturnRegister));
+                                      call.GetLocator(ArgumentLayout.ReturnArgumentSlot));
         }
     }
 

@@ -26,7 +26,7 @@ internal static class MemoryHistoryStoreHelper
 
         builder.Add([.. calls.Select((c, i) => new CallSpan(c.From, 0, c.To, 0, c.From, c.To, 0, Thread, (uint)i, 1))]);
 
-        return builder.Build([new CallNode(-1, 0, 0x10, 0, (ulong)calls.Length)]);
+        return builder.Build([new CallNode(-1, 0x10, 0, (ulong)calls.Length)]);
     }
 
     public static MemoryHistoryStore Build(MemoryBlock[] blocks,
@@ -40,12 +40,12 @@ internal static class MemoryHistoryStoreHelper
 
         foreach (var (sequence, address, bytes) in writes)
         {
-            hits.Add(ChunkHit.From(new WatchHit(sequence, 0, address, Writer, Thread, (uint)bytes.Length, 0, 1), data.Count));
+            hits.Add(ChunkHit.Create(new WatchHit(sequence, 0, address, Writer, Thread, (uint)bytes.Length, 0, 1), data.Count));
 
             data.AddRange(bytes);
         }
 
-        return new MemoryHistoryBuilder.Recording([.. blocks.Select(b => new MemoryHistoryAllocation(b, false, IsArray: isArray))],
+        return new MemoryHistoryBuilder([.. blocks.Select(b => new MemoryHistoryAllocation(b, false, IsArray: isArray))],
                                                   new ulong[blocks.Length],
                                                   new Dictionary<ulong, TracePosition>(),
                                                   timeline).Build(new WatchResult([new([.. hits], [.. data])], 1)).Store;
@@ -62,12 +62,12 @@ internal static class MemoryHistoryStoreHelper
 
         foreach (var (sequence, address, bytes) in writes)
         {
-            hits.Add(ChunkHit.From(new WatchHit(sequence, 0, address, Writer, Thread, (uint)bytes.Length, 0, 1), data.Count));
+            hits.Add(ChunkHit.Create(new WatchHit(sequence, 0, address, Writer, Thread, (uint)bytes.Length, 0, 1), data.Count));
 
             data.AddRange(bytes);
         }
 
-        var recording = new MemoryHistoryBuilder.Recording([.. blocks.Select(b => new MemoryHistoryAllocation(b, false))],
+        var recording = new MemoryHistoryBuilder([.. blocks.Select(b => new MemoryHistoryAllocation(b, false))],
                                                            new ulong[blocks.Length],
                                                            new Dictionary<ulong, TracePosition>(),
                                                            timeline);
