@@ -8,6 +8,7 @@ using InternalsViewer.UI.App.Models.Query.Plan;
 using InternalsViewer.UI.App.Services.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
@@ -264,14 +265,14 @@ public sealed partial class QueryPlanTabView : UserControl
                 RefreshDetailPane();
                 break;
             case nameof(QueryViewModel.CurrentGuideStep):
-                ScrollToCurrentStep();
+                ScrollToCurrentStep(isAnimated: true);
                 break;
             case nameof(QueryViewModel.GuideStepGroups):
                 DispatcherQueue.TryEnqueue(UpdateStickyStep);
                 break;
             case nameof(QueryViewModel.IsGuideStepsVisible):
                 PlaceGuideCommandBar();
-                DispatcherQueue.TryEnqueue(ScrollToCurrentStep);
+                ScrollToCurrentStepOnLayout();
                 break;
             case nameof(QueryViewModel.IsAnnotationsVisible):
                 ApplyToPlans(p => p.AreAnnotationsVisible = _subscribed.IsAnnotationsVisible);
@@ -318,6 +319,9 @@ public sealed partial class QueryPlanTabView : UserControl
             planControl.StepLabelClicked -= OnPlanStepLabelClicked;
             planControl.StepLabelClicked += OnPlanStepLabelClicked;
 
+            planControl.StepLabelLinkClicked -= OnGuideLinkClicked;
+            planControl.StepLabelLinkClicked += OnGuideLinkClicked;
+
             planControl.IndexOpenRequested -= OnPlanIndexOpenRequested;
             planControl.IndexOpenRequested += OnPlanIndexOpenRequested;
 
@@ -344,7 +348,29 @@ public sealed partial class QueryPlanTabView : UserControl
         }
     }
 
-    private void ScrollToCurrentStep()
+    private void ScrollToCurrentStepOnLayout()
+    {
+        GuideStepList.LayoutUpdated -= OnGuideStepListLayoutUpdated;
+
+        if (ViewModel?.IsGuideStepsVisible == true)
+        {
+            GuideStepList.LayoutUpdated += OnGuideStepListLayoutUpdated;
+        }
+    }
+
+    private void OnGuideStepListLayoutUpdated(object? sender, object e)
+    {
+        if (GuideStepList.ActualHeight <= 0)
+        {
+            return;
+        }
+
+        GuideStepList.LayoutUpdated -= OnGuideStepListLayoutUpdated;
+
+        ScrollToCurrentStep(isAnimated: false);
+    }
+
+    private void ScrollToCurrentStep(bool isAnimated, bool isRetry = false)
     {
         if (ViewModel is not { IsGuideStepsVisible: true, CurrentGuideStep: { IsShown: true } step })
         {
@@ -356,6 +382,11 @@ public sealed partial class QueryPlanTabView : UserControl
         {
             GuideStepList.ScrollIntoView(step, ScrollIntoViewAlignment.Leading);
 
+            if (!isRetry)
+            {
+                DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => ScrollToCurrentStep(isAnimated, isRetry: true));
+            }
+
             return;
         }
 
@@ -363,7 +394,7 @@ public sealed partial class QueryPlanTabView : UserControl
 
         var offset = top - GetHeadingHeight(container) - GetStickyHeight(step);
 
-        scroller.ChangeView(null, Math.Max(0, offset), null, disableAnimation: false);
+        scroller.ChangeView(null, Math.Max(0, offset), null, disableAnimation: !isAnimated);
     }
 
     private double GetHeadingHeight(ListViewItem container)
@@ -492,13 +523,20 @@ public sealed partial class QueryPlanTabView : UserControl
 
     private void OnGuideLinkClicked(object? sender, LinkClickedEventArgs e)
     {
+        if (sender is FrameworkElement { DataContext: GuideStepItem step }
+            && ViewModel is { } viewModel
+            && !ReferenceEquals(viewModel.CurrentGuideStep, step))
+        {
+            viewModel.SelectGuideStep(step);
+        }
+
         if (TraceTickTracks.TryGetPageLink(e.Uri, out var page, out var slot))
         {
             ViewModel?.OpenPage(page, slot);
         }
-        else if (TraceTickTracks.TryGetHashLink(e.Uri, out var group, out var partition))
+        else if (TraceTickTracks.TryGetHashLink(e.Uri, out var group, out var partition, out var bucket))
         {
-            ViewModel?.OpenHashTable(group, partition);
+            ViewModel?.OpenHashTable(group, partition, bucket);
         }
         else
         {

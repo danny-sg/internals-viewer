@@ -161,7 +161,7 @@ You can add your own rules for any function. **Add to Operators**, in the right-
   - `{Slot}` - the slot of the row a **Row Access** tick read
   - `{HeaderField}` - the page header fields a **Page Header Access** tick read, separated by commas. In backticks each field is shown as code
   - `{Result}` - the rule's label, such as `True` or `False`. In a Guide Mode step, code in a description that uses it takes the rule's colour, so `` `{Result}` `` matches the colour of its tick
-  - `{Partition}` and `{Bucket}` - where a **Hash Table** **Insert**, **Hit** or **Miss** went in the hash table, worked out from the row's hash. They need Memory History. In Guide Mode the bucket is a link that opens the **Hash Table** view
+  - `{Partition}` and `{Bucket}` - where a **Hash Table** **Insert**, **Hit** or **Miss** went in the hash table, worked out from the row's hash. They need Memory History. In Guide Mode the bucket is a link that opens the hash join's [Hash Table](#hash-table) at that bucket
 
   A placeholder the tick has no value for shows as `?`. Every predefined rule has a description, such as **Row Access**'s `Read row data at Slot {Slot} on Page {Page}`
 - **Details** - a longer explanation of why it happens, added to the tick's tooltip below its description and to its Guide Mode step. It can hold the same placeholders as the description
@@ -235,6 +235,20 @@ The choice is remembered between sessions, and shared by every Trace Timeline.
 ### Buffer latches
 
 **Latching** in the Memory History lane's right-click menu, or under **View > Memory History**, adds a thin row along the bottom of the lane, under a divider, marking every change to the latch of a buffer pool page the query fetched. Each mark is coloured by the latch after the change: blue while it is held shared, red while it is held exclusively, orange while threads are waiting for it, and grey once it is released. Hovering over a mark names the page, such as **BUF (1:43)**, and the latch. Clicking it moves the playhead there and opens the page's BUF, the buffer pool's descriptor for the page, as a memory tab. Latches taken by other threads show on the Position axis only, because the Instructions axis counts the query's own threads. The BUFs themselves are left out of the lane's blocks, and **BUF** on the same menus adds them back. Both settings are remembered between sessions.
+
+### Hash Table
+
+A row mode hash join's hash table opens as a tab of its own on the Trace Timeline, from the bucket link on a **Hash Insert** or **Hash Probe** step in [Guide Mode](/docs/user-guide/query/ExecutionPlan#guide-mode). It opens at that bucket and follows the playhead. The tab has three parts side by side: a tree of the table's structure, the bytes of the part selected in the tree, and the detail for that part.
+
+The tree starts at the **Partition Group**, the `CHashWorkfilePartitionGroup` that holds the table. Under it, **Partition Instances** lists each partition in order, marked **Active** for the one being filled or probed and **First** and **Last** for the two ends of the list. Under each partition, **Directory** names the partition's directory and the page of pointers it leads to, with the bucket pages under it, each with the range of buckets it holds. **Workfile Pages** lists the workfile pages the partition's rows are stored on, with how many rows each holds. Drag the splitter between the tree and the bytes to resize the tree.
+
+Selecting a part shows its bytes as they are at the playhead, with only that part's fields marked, each in its own colour. **Partition Instances**, **Directory** and **Workfile Pages** only group the parts under them, so clicking one expands or collapses it rather than selecting it. Along the top, links lead back through the parts above it to the partition group.
+
+- **Partition Group** and **Partition** - the fields with their offsets and values, in the same layout as a batch's fields. A pointer is a link: one to another part of the table selects it in the tree, and any other, such as the directory, opens a memory tab. Selecting a field outlines it in the bytes.
+- **Bucket Page** - a row for each bucket in use, with its row count, key, the address of its row on the workfile page and that row's values. The colour key in the **Row Count**, **Key** and **Row** headings matches the marks in the bytes. Selecting a bucket outlines it. The bucket of the last insert or lookup at the playhead is marked **Insert**, **Match** or **No Match**. Clicking a row's address selects its workfile page and the slot the row is in.
+- **Workfile Page** - the page's slots, as on a memory tab's **Workfile Page** tab. Selecting a slot marks the row's columns in the bytes and lists what each one holds.
+
+Only the first row of a bucket is read. Where a bucket holds more than one row, the others are not shown.
 
 ## Playhead
 

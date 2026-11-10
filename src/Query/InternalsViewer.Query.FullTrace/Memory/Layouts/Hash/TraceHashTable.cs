@@ -2,6 +2,7 @@ namespace InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
 
 public sealed record TraceHashTable(ulong Group,
                                     ulong Iterator,
+                                    ulong ActivePartition,
                                     uint PartitionMask,
                                     int PartitionShift,
                                     IReadOnlyList<TraceHashPartition> Partitions)

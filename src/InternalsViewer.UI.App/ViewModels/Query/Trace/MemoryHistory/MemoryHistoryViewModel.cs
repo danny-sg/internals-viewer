@@ -10,6 +10,7 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Pages.Enums;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.FullTrace;
@@ -78,6 +79,8 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
     }
 
     public MemoryHistoryStore Store => Trace?.MemoryHistory ?? MemoryHistoryStore.Empty;
+
+    public TraceCallStore? CallStore => Trace?.CallStore;
 
     public MemoryHistoryBatchResolver? Batches { get; private set; }
 

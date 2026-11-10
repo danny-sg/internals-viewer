@@ -18,6 +18,8 @@ namespace InternalsViewer.Query.Plans.Parsers.Predicates;
 internal sealed class SeekPredicateParser(ColumnOrdinalResolver? resolveOrdinal = null,
                                         ParameterValueResolver? resolveParameter = null)
 {
+    private const string BookmarkPrefix = "Bmk";
+
     private ScalarOperatorParser Expressions { get; } = new(resolveOrdinal, resolveParameter);
 
     private readonly List<CorrelatedSeekColumn> _correlatedColumns = [];
@@ -130,8 +132,8 @@ internal sealed class SeekPredicateParser(ColumnOrdinalResolver? resolveOrdinal 
             {
                 isConstant = false;
 
-                if (parsed is AccessExpression.Column
-                    && Expressions.ParseColumnReference(expressions[index]) is { } outerColumn)
+                if (Expressions.ParseColumnReference(expressions[index]) is { } outerColumn
+                    && (parsed is AccessExpression.Column || IsBookmark(outerColumn.Table, outerColumn.Column)))
                 {
                     var seekColumn = columnNames is not null && index < columnNames.Count ? columnNames[index] : null;
 
@@ -155,6 +157,16 @@ internal sealed class SeekPredicateParser(ColumnOrdinalResolver? resolveOrdinal 
     private static string TrimName(string? name)
     {
         return name?.Trim('[', ']') ?? string.Empty;
+    }
+
+    private static bool IsBookmark(string table, string column)
+    {
+        var name = TrimName(column);
+
+        return table.Length == 0
+               && name.Length > BookmarkPrefix.Length
+               && name.StartsWith(BookmarkPrefix, StringComparison.Ordinal)
+               && !name.AsSpan(BookmarkPrefix.Length).ContainsAnyExceptInRange('0', '9');
     }
 
     private static string? GetScanType(XElement? boundary)

@@ -83,6 +83,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         References = new MemoryReferencesViewModel(this);
 
+        WorkfilePage = new MemoryPageViewModel(ShowMarkers);
+
         HexLoader = new PlayheadLoader<HexImage?>(TimeSpan.FromMilliseconds(LoadInterval), ApplyHex);
     }
 
@@ -106,7 +108,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     public MemoryBatchViewModel Batch { get; } = new();
 
-    public MemoryPageViewModel WorkfilePage { get; } = new();
+    public MemoryPageViewModel WorkfilePage { get; }
 
     public MemoryBindingsViewModel Bindings { get; } = new();
 
@@ -175,7 +177,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         Batch.Load(this);
 
-        WorkfilePage.Load(this);
+        WorkfilePage.Load(History, block);
 
         Bindings.Load(this);
 
@@ -290,6 +292,26 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         return History.IsQueryDatabase(page)
             ? new ActionLinks([new ActionLink(text, () => Navigator?.OpenBufferPage(page))]) { Suffix = label }
             : $"{text}  {label}";
+    }
+
+    public object GetPointerCell(ulong pointer)
+    {
+        var text = $"0x{pointer:X16}";
+
+        if (pointer == 0)
+        {
+            return text;
+        }
+
+        if (History.GetBlock(pointer, Position) < 0)
+        {
+            return GetBufferPageCell(text, pointer, Position) ?? text;
+        }
+
+        return new ActionLinks([new ActionLink(text, () => RequestMemory(pointer))])
+        {
+            Suffix = History.GetPointerTarget(pointer, Position)
+        };
     }
 
     public void GoToWrite(int index)

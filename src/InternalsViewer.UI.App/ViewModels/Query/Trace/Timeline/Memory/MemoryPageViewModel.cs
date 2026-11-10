@@ -9,6 +9,7 @@ using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Page;
 using InternalsViewer.UI.App.ViewModels.Page;
+using InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryHistory;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline.Memory;
 
@@ -71,12 +72,14 @@ public sealed partial class MemoryPageViewModel : ObservableObject
     [ObservableProperty]
     private string _emptyText = string.Empty;
 
-    public MemoryPageViewModel()
+    public MemoryPageViewModel(Action<int?> showMarkers)
     {
+        ShowMarkers = showMarkers;
+
         Loader = new PlayheadLoader<LoadedPage>(TimeSpan.FromMilliseconds(LoadInterval), ApplyPage, b => IsLoading = b);
     }
 
-    private PlayheadMemoryViewModel? Owner { get; set; }
+    private Action<int?> ShowMarkers { get; }
 
     private PlayheadLoader<LoadedPage> Loader { get; }
 
@@ -90,17 +93,31 @@ public sealed partial class MemoryPageViewModel : ObservableObject
 
     private byte[]? LoadedData { get; set; }
 
-    public void Load(PlayheadMemoryViewModel owner)
+    private int? PendingOffset { get; set; }
+
+    public void Load(MemoryHistoryViewModel history, int block)
     {
         Clear();
 
-        Owner = owner;
+        IsAvailable = history.IsPage(block);
 
-        IsAvailable = owner.History.IsPage(owner.Block);
+        Layout = IsAvailable ? history.GetWorkfileLayout(block) : null;
 
-        Layout = IsAvailable ? owner.History.GetWorkfileLayout(owner.Block) : null;
+        SortLayout = IsAvailable ? history.GetSortLayout(block) : null;
+    }
 
-        SortLayout = IsAvailable ? owner.History.GetSortLayout(owner.Block) : null;
+    public void SelectOffset(int offset)
+    {
+        if (Slots.FirstOrDefault(s => s.Offset == offset) is { } slot)
+        {
+            PendingOffset = null;
+
+            SelectedSlot = slot;
+
+            return;
+        }
+
+        PendingOffset = offset;
     }
 
     public void SetData(byte[]? data)
@@ -144,8 +161,6 @@ public sealed partial class MemoryPageViewModel : ObservableObject
     {
         Loader.Cancel();
 
-        Owner = null;
-
         IsAvailable = false;
 
         Layout = null;
@@ -157,6 +172,8 @@ public sealed partial class MemoryPageViewModel : ObservableObject
         Data = null;
 
         LoadedData = null;
+
+        PendingOffset = null;
 
         Slots = [];
 
@@ -208,7 +225,11 @@ public sealed partial class MemoryPageViewModel : ObservableObject
 
         Slots = new ObservableCollection<PageSlot>(loaded.Page is null ? [] : PageDisplayBuilder.GetSlots(loaded.Page.Page));
 
-        SelectedSlot = Slots.FirstOrDefault(s => s.Index == selected);
+        SelectedSlot = PendingOffset is { } offset
+            ? Slots.FirstOrDefault(s => s.Offset == offset)
+            : Slots.FirstOrDefault(s => s.Index == selected);
+
+        PendingOffset = null;
 
         ShowSlot(SelectedSlot);
     }
@@ -221,7 +242,7 @@ public sealed partial class MemoryPageViewModel : ObservableObject
 
             Markers = [];
 
-            Owner?.ShowMarkers(null);
+            ShowMarkers(null);
 
             return;
         }
@@ -264,7 +285,7 @@ public sealed partial class MemoryPageViewModel : ObservableObject
             SelectedRecordRow = row;
         }
 
-        Owner?.ShowMarkers(offset);
+        ShowMarkers(offset);
     }
 
     private sealed record LoadedPage(byte[]? Data, WorkfilePage? Page);

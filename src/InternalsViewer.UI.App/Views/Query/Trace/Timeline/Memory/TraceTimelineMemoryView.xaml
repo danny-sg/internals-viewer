@@ -66,7 +66,7 @@
             <TabViewItem Header="{x:Bind ViewModel.WorkfilePage.Title, Mode=OneWay}"
                          IsClosable="False"
                          Visibility="{x:Bind ViewModel.WorkfilePage.IsAvailable, Mode=OneWay}">
-                <local:MemoryPagePanelView/>
+                <local:MemoryPagePanelView DataContext="{x:Bind ViewModel.WorkfilePage, Mode=OneWay}"/>
             </TabViewItem>
             <TabViewItem Header="Bindings"
                          IsClosable="False"

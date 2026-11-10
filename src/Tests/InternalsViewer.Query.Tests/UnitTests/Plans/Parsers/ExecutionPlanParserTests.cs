@@ -252,6 +252,65 @@ public class ExecutionPlanParserTests
         Assert.False(node.ScanInfo!.IsLookup);
     }
 
+    private const string RidLookupXml =
+        """
+        <?xml version="1.0"?>
+        <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan"
+                     Version="1.7" Build="16.0.0">
+          <BatchSequence>
+            <Batch>
+              <Statements>
+                <StmtSimple StatementType="SELECT" StatementSubTreeCost="0.0032831">
+                  <QueryPlan>
+                    <RelOp NodeId="0"
+                           PhysicalOp="RID Lookup"
+                           LogicalOp="RID Lookup"
+                           EstimatedTotalSubtreeCost="0.0032831"
+                           EstimateRows="1"
+                           Parallel="0">
+                      <OutputList>
+                        <ColumnReference Database="[db]" Schema="[dbo]" Table="[HeapTable]" Column="FixedTextField"/>
+                      </OutputList>
+                      <IndexScan Lookup="1" Ordered="1" ScanDirection="FORWARD" Storage="RowStore">
+                        <Object Database="[db]" Schema="[dbo]" Table="[HeapTable]" TableReferenceId="-1" IndexKind="Heap"/>
+                        <SeekPredicates>
+                          <SeekPredicateNew>
+                            <SeekKeys>
+                              <Prefix ScanType="EQ">
+                                <RangeColumns>
+                                  <ColumnReference Column="Bmk1000"/>
+                                </RangeColumns>
+                                <RangeExpressions>
+                                  <ScalarOperator ScalarString="[Bmk1000]">
+                                    <Identifier>
+                                      <ColumnReference Column="Bmk1000"/>
+                                    </Identifier>
+                                  </ScalarOperator>
+                                </RangeExpressions>
+                              </Prefix>
+                            </SeekKeys>
+                          </SeekPredicateNew>
+                        </SeekPredicates>
+                      </IndexScan>
+                    </RelOp>
+                  </QueryPlan>
+                </StmtSimple>
+              </Statements>
+            </Batch>
+          </BatchSequence>
+        </ShowPlanXML>
+        """;
+
+    [Fact]
+    public void A_RID_Lookup_Seeks_On_The_Bookmark_From_The_Outer_Row()
+    {
+        var predicateInfo = Parse(RidLookupXml).NodesById[0].PredicateInfo!;
+
+        var column = Assert.Single(predicateInfo.CorrelatedSeekColumns);
+
+        Assert.Equal((false, "Bmk1000", "Bmk1000"), (predicateInfo.HasUntranslatedPredicate, column.Column, column.OuterReference));
+    }
+
     // ------------------------------------------------------------------
     // Table Scan (no run-time information, no IndexScan child)
     // ------------------------------------------------------------------

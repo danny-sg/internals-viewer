@@ -12,7 +12,7 @@ public sealed partial class MemoryPagePanelView : UserControl
         DataContextChanged += (_, _) => Bindings.Update();
     }
 
-    public PlayheadMemoryViewModel? ViewModel => DataContext as PlayheadMemoryViewModel;
+    public MemoryPageViewModel? ViewModel => DataContext as MemoryPageViewModel;
 
     public Visibility GetTabVisibility(int selectedTab, int tab) => selectedTab == tab ? Visibility.Visible : Visibility.Collapsed;
 }

@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System;
+using CommunityToolkit.WinUI.Controls;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Interfaces.Events;
@@ -228,6 +229,8 @@ public sealed class ExecutionPlanControl : Canvas
 
         StepLabel.Clicked += OnStepLabelClicked;
 
+        StepLabel.LinkClicked += OnStepLabelLinkClicked;
+
         StepLabel.SizeChanged += OnStepLabelSizeChanged;
 
         PointerPressed += OnPointerPressed;
@@ -244,6 +247,8 @@ public sealed class ExecutionPlanControl : Canvas
     public event EventHandler<PlanNode?>? NodeSelected;
 
     public event EventHandler<bool>? StepLabelClicked;
+
+    public event EventHandler<LinkClickedEventArgs>? StepLabelLinkClicked;
 
     public event EventHandler<PlanNode>? IndexOpenRequested;
 
@@ -515,9 +520,9 @@ public sealed class ExecutionPlanControl : Canvas
 
         AddCalculators();
 
-        Children.Add(CurrentArrow);
-
         Children.Add(StepLabel);
+
+        Children.Add(CurrentArrow);
 
         var maxX = positions.Max(p => p.Value.X + WidthOf(p.Key));
         var maxY = positions.Values.Max(p => p.Y);
@@ -1373,6 +1378,8 @@ public sealed class ExecutionPlanControl : Canvas
     }
 
     private void OnStepLabelClicked(object? sender, bool isBackward) => StepLabelClicked?.Invoke(this, isBackward);
+
+    private void OnStepLabelLinkClicked(object? sender, LinkClickedEventArgs e) => StepLabelLinkClicked?.Invoke(sender, e);
 
     private void OnStepLabelSizeChanged(object sender, SizeChangedEventArgs e) => PositionStepLabel();
 

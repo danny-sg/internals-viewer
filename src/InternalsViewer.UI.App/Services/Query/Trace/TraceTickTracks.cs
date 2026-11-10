@@ -378,13 +378,15 @@ public static partial class TraceTickTracks
     }
 
     public static string GetHashLink(ulong group, int partition, int bucket)
-        => string.Create(CultureInfo.InvariantCulture, $"[{bucket}]({HashLinkScheme}:{group:X}:{partition})");
+        => string.Create(CultureInfo.InvariantCulture, $"[{bucket}]({HashLinkScheme}:{group:X}:{partition}:{bucket})");
 
-    public static bool TryGetHashLink(Uri? uri, out ulong group, out int partition)
+    public static bool TryGetHashLink(Uri? uri, out ulong group, out int partition, out int bucket)
     {
         group = 0;
 
         partition = 0;
+
+        bucket = 0;
 
         if (uri is null || !uri.Scheme.Equals(HashLinkScheme, StringComparison.OrdinalIgnoreCase))
         {
@@ -393,9 +395,10 @@ public static partial class TraceTickTracks
 
         var parts = uri.OriginalString[(HashLinkScheme.Length + 1)..].Split(':');
 
-        return parts.Length == 2
+        return parts.Length == 3
                && ulong.TryParse(parts[0], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out group)
-               && int.TryParse(parts[1], CultureInfo.InvariantCulture, out partition);
+               && int.TryParse(parts[1], CultureInfo.InvariantCulture, out partition)
+               && int.TryParse(parts[2], CultureInfo.InvariantCulture, out bucket);
     }
 
     public static SKColor ParseColour(string colour) => SKColor.TryParse(colour, out var parsed) ? parsed : DefaultColour;

@@ -320,15 +320,15 @@ public class TraceTickTracksTests
     }
 
     [Fact]
-    public void A_Hash_Link_Shows_The_Bucket_And_Gives_Back_The_Group_And_Partition()
+    public void A_Hash_Link_Shows_The_Bucket_And_Gives_Back_The_Group_Partition_And_Bucket()
     {
         var link = TraceTickTracks.GetHashLink(0x16F6788B820, 3, 42);
 
         var start = link.IndexOf('(');
 
-        Assert.True(TraceTickTracks.TryGetHashLink(new Uri(link[(start + 1)..^1]), out var group, out var partition));
+        Assert.True(TraceTickTracks.TryGetHashLink(new Uri(link[(start + 1)..^1]), out var group, out var partition, out var bucket));
 
-        Assert.Equal(("[42]", 0x16F6788B820UL, 3), (link[..start], group, partition));
+        Assert.Equal(("[42]", 0x16F6788B820UL, 3, 42), (link[..start], group, partition, bucket));
     }
 
     [Fact]

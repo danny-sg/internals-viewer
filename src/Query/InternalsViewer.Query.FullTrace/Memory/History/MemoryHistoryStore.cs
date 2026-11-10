@@ -64,7 +64,6 @@ public sealed partial class MemoryHistoryStore
 
     private AddressOrder StackAddresses => field ??= GetAddressOrder(isStack: true);
 
-
     public (ulong FirstElement, uint Count)? GetArray(int block)
         => BlockArray[block].IsArray && ArrayCounts.Get(block) is > 0 and var count
             ? (BlockArray[block].Address + ArrayCountSize, count)
