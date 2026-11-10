@@ -30,6 +30,8 @@ public sealed partial record TraceTickDefinition(string Name,
 
     public const string HeaderFieldPlaceholder = "HeaderField";
 
+    public const string ResultPlaceholder = "Result";
+
     public const string PartitionPlaceholder = "Partition";
 
     public const string BucketPlaceholder = "Bucket";

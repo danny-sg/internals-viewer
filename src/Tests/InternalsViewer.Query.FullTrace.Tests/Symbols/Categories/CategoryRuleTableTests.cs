@@ -183,8 +183,8 @@ public class CategoryRuleTableTests
             "sqlmin|CQScanHash|ConsumeProbe|Hash Match Probe|");
 
         var mappings = CategoryRuleTable.Load(new StringReader(""),
-                                             new StringReader(""),
-                                             new StringReader(operators));
+                                              new StringReader(""),
+                                              new StringReader(operators));
 
         var (iterator, planOperator) = mappings.ClassifyOperator("sqlmin", "CQScanHash", "ConsumeProbe");
 
@@ -200,8 +200,8 @@ public class CategoryRuleTableTests
         var update = "*|CQScanTop*|*|Compilation";
 
         var mappings = CategoryRuleTable.Load(new StringReader(""),
-                                             new StringReader(core),
-                                             overrideSymbols: new StringReader(update));
+                                              new StringReader(core),
+                                              overrideSymbols: new StringReader(update));
 
         Assert.Equal(SymbolCategory.Compilation, mappings.Classify(null, "CQScanTopNew", "Foo"));
     }
@@ -210,8 +210,8 @@ public class CategoryRuleTableTests
     public void A_Fallback_Only_Applies_When_No_Rule_Matches()
     {
         var mappings = CategoryRuleTable.Load(new StringReader(""),
-                                             new StringReader("SqlTsEs|CEsExec|*|ExpressionEvaluation"),
-                                             fallbacks: new StringReader("SqlTsEs|*|*|Security"));
+                                              new StringReader("SqlTsEs|CEsExec|*|ExpressionEvaluation"),
+                                              fallbacks: new StringReader("SqlTsEs|*|*|Security"));
 
         Assert.Equal((SymbolCategory.ExpressionEvaluation, SymbolCategory.Security, SymbolCategory.Unknown),
                      (mappings.Classify("SqlTsEs", "CEsExec", "GeneralEval"),

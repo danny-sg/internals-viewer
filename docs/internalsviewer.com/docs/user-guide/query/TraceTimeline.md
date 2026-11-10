@@ -160,6 +160,7 @@ You can add your own rules for any function. **Add to Operators**, in the right-
   - `{Page}` - the page the tick read or got from the buffer pool, such as `(1:2672)`. In Guide Mode it is a link that opens the page, at the row when the tick read one
   - `{Slot}` - the slot of the row a **Row Access** tick read
   - `{HeaderField}` - the page header fields a **Page Header Access** tick read, separated by commas. In backticks each field is shown as code
+  - `{Result}` - the rule's label, such as `True` or `False`. In a Guide Mode step, code in a description that uses it takes the rule's colour, so `` `{Result}` `` matches the colour of its tick
   - `{Partition}` and `{Bucket}` - where a **Hash Table** **Insert**, **Hit** or **Miss** went in the hash table, worked out from the row's hash. They need Memory History
 
   A placeholder the tick has no value for shows as `?`. Every predefined rule has a description, such as **Row Access**'s `Read row data at Slot {Slot} on Page {Page}`

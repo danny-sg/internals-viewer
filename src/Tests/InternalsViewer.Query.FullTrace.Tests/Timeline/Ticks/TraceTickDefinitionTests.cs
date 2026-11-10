@@ -133,11 +133,11 @@ public class TraceTickDefinitionTests
     }
 
     [Fact]
-    public void Initialising_The_Statement_Is_A_Phase_With_A_Return()
+    public void Initialising_The_Statement_Is_A_Phase_Without_A_Return()
     {
         var rule = TraceTickDefinition.GetPredefined().Single(d => d.Name == "Statement");
 
-        Assert.Equal((TraceTickSourceType.Statement, true, false),
+        Assert.Equal((TraceTickSourceType.Statement, true, true),
                      (rule.Source, rule.IsPhase, string.IsNullOrEmpty(rule.ReturnDescription)));
     }
 

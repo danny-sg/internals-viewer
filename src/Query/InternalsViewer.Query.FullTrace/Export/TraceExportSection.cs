@@ -106,20 +106,16 @@ internal sealed class TraceExportSection : IQueryExportSection
                 : TraceBufferPool.Empty
         };
 
-        var result = builder.Build() with
-        {
-            MemoryHistory = reader.HasEntry(MemoryHistoryEntry) && reader.ReadBinary(MemoryHistoryEntry, MemoryHistoryStore.IsSupported)
-                ? reader.ReadBinary(MemoryHistoryEntry, r => MemoryHistoryStore.Read(r, timeline))
-                : MemoryHistoryStore.Empty,
-            PageReads = reader.HasEntry(PageReadsEntry) && reader.ReadBinary(PageReadsEntry, TracePageReadList.IsSupported)
-                ? reader.ReadBinary(PageReadsEntry, TracePageReadList.Read)
-                : TracePageReadList.Empty
-        };
+        builder.Link();
 
-        result = result.WithPageAccesses();
+        var memoryHistory = reader.HasEntry(MemoryHistoryEntry) && reader.ReadBinary(MemoryHistoryEntry, MemoryHistoryStore.IsSupported)
+            ? reader.ReadBinary(MemoryHistoryEntry, r => MemoryHistoryStore.Read(r, timeline))
+            : MemoryHistoryStore.Empty;
 
-        callStore.ReleaseColumns();
+        var pageReads = reader.HasEntry(PageReadsEntry) && reader.ReadBinary(PageReadsEntry, TracePageReadList.IsSupported)
+            ? reader.ReadBinary(PageReadsEntry, TracePageReadList.Read)
+            : TracePageReadList.Empty;
 
-        return result;
+        return builder.Build(memoryHistory, pageReads);
     }
 }

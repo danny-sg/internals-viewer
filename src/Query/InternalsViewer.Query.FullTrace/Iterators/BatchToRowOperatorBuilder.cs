@@ -11,8 +11,8 @@ internal static class BatchToRowOperatorBuilder
     private const string OperatorName = "Batch To Row Adapter";
 
     public static Dictionary<ulong, ExecutionOperatorEvent> Build(TraceTimeline timeline,
-                                                                   IReadOnlyList<IteratorPlanNode> planNodes,
-                                                                   IReadOnlyDictionary<ulong, ExecutionOperatorEvent> owners)
+                                                                  IReadOnlyList<IteratorPlanNode> planNodes,
+                                                                  IReadOnlyDictionary<ulong, ExecutionOperatorEvent> owners)
     {
         var adapters = new Dictionary<ulong, ExecutionOperatorEvent>();
 

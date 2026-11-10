@@ -212,9 +212,9 @@ public sealed partial class QueryViewModel
             {
                 TraceTickSourceType.Evaluate
                     => TraceTickSeries.BuildAssigned(trace,
-                                                         rule,
-                                                         statement,
-                                                         p => GetPulledComputeScalars(p, (ExpressionPullSite)rule.Value)),
+                                                     rule,
+                                                     statement,
+                                                     p => GetPulledComputeScalars(p, (ExpressionPullSite)rule.Value)),
                 TraceTickSourceType.Statement
                     => TraceTickSeries.BuildAssigned(trace, rule, statement, _ => statement is null ? [] : [statement]),
                 _ => TraceTickSeries.Build(trace, rule)

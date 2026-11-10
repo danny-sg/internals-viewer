@@ -99,25 +99,6 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
     public List<VariantLocator> GetSeekKeys(TraceTick tick)
         => TraceSeekRangeTrackBuilder.GetKeys(SeekKeys, CallStore, tick.Operator, tick.Thread, tick.Span.From.Position);
 
-    internal TraceResult WithPageAccesses()
-    {
-        var accesses = TracePageAccessList.Build(CallStore, MemoryHistory, BufferPool, PageReads, Timeline);
-
-        var rowAccesses = TraceRowAccessTrackBuilder.Build(Timeline, accesses, Lifetimes, EnclosingCalls);
-
-        var headerAccesses = TraceRowAccessTrackBuilder.BuildHeaders(Timeline, accesses, Lifetimes, EnclosingCalls);
-
-        var pageFetches = TracePageFetchTrackBuilder.Build(Timeline, accesses, BufferPool, Lifetimes, EnclosingCalls);
-
-        return this with
-        {
-            PageAccesses = accesses,
-            RowAccesses = rowAccesses,
-            PageHeaderAccesses = headerAccesses,
-            PageFetches = pageFetches
-        };
-    }
-
     internal IEnumerable<(string Component, long Items, long? Bytes)> GetComponentSizes()
     {
         yield return ("Timeline Spans", Timeline.SpanCount, Timeline.Bytes);

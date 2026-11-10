@@ -408,7 +408,7 @@ public sealed partial class TraceTimelineControl
             var end = Math.Min(x + SurfaceBucketWidth, right);
 
             var bytes = curve.GetPeakDuring(GetPosition(row, source.Index, _viewStart + x / scale),
-                                         GetPosition(row, source.Index, _viewStart + end / scale));
+                                            GetPosition(row, source.Index, _viewStart + end / scale));
 
             var last = _spikes.Count - 1;
 

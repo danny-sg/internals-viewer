@@ -55,8 +55,9 @@
                           StrokeLineJoin="Round"
                           StrokeStartLineCap="Round"
                           StrokeEndLineCap="Round"
+                          HorizontalAlignment="Left"
                           VerticalAlignment="Top"
-                          Margin="0,-2,0,-6"
+                          Margin="6,-2,0,-6"
                           IsHitTestVisible="False"
                           Visibility="{x:Bind local:QueryPlanTabView.GetCurrentVisibility(IsCurrent), Mode=OneWay}" />
                 <StackPanel Grid.Column="3"

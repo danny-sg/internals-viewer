@@ -217,7 +217,7 @@
     ],
     "Label": "No Change",
     "Title": "Check Group",
-    "Description": "Check group changed with `{Function}` → No Change: add row to group",
+    "Description": "Check group changed → `{Result}`: add row to group",
     "PlanPart": "Stream Aggregate.Sum"
   },
   {
@@ -264,7 +264,7 @@
     ],
     "Label": "Change",
     "Title": "Check Group",
-    "Description": "Check group changed with `{Function}` → Change: Return group"
+    "Description": "Check group changed → `{Result}`: Return group"
   },
   {
     "Name": "Evaluations",
@@ -303,7 +303,7 @@
     ],
     "Label": "False",
     "Title": "Evaluate Expression",
-    "Description": "Evaluate predicate with `{Function}` → false <Predicate>{ExecutionPlan.Predicate}</Predicate>"
+    "Description": "Evaluate predicate → `{Result}` <Predicate>{ExecutionPlan.Predicate}</Predicate>"
   },
   {
     "Name": "Evaluations",
@@ -342,7 +342,7 @@
     ],
     "Label": "NULL",
     "Title": "Evaluate Expression",
-    "Description": "Evaluate predicate with `{Function}` → NULL <Predicate>{ExecutionPlan.Predicate}</Predicate>"
+    "Description": "Evaluate predicate → `{Result}` <Predicate>{ExecutionPlan.Predicate}</Predicate>"
   },
   {
     "Name": "Evaluations",
@@ -381,7 +381,7 @@
     ],
     "Label": "True",
     "Title": "Evaluate Expression",
-    "Description": "Evaluate predicate with `{Function}` → true <Predicate>{ExecutionPlan.Predicate}</Predicate>"
+    "Description": "Evaluate predicate → `{Result}` <Predicate>{ExecutionPlan.Predicate}</Predicate>"
   },
   {
     "Name": "Page",
@@ -432,6 +432,8 @@
     "Label": "Page Header Access",
     "Description": "Read `{HeaderField}` from Header of Page {Page}",
     "IsPlanDefault": false,
+    "PlanPart": "Page Header",
+    "PlanPartColour": "#00B050",
     "Background": "#69FFFFFF",
     "Source": "PageHeaderAccess",
     "Value": 0

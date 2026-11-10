@@ -50,10 +50,10 @@ public class EvaluationTrackTests
                                                   TraceOperatorLifetimeList lifetimes,
                                                   TraceTickDefinition definition)
         => TraceTickSeries.Build(timeline,
-                                          calls,
-                                          lifetimes,
-                                          definition,
-                                          EnclosingOperatorCallIndex.Build(calls, lifetimes.OperatorsByInstance));
+                                 calls,
+                                 lifetimes,
+                                 definition,
+                                 EnclosingOperatorCallIndex.Build(calls, lifetimes.OperatorsByInstance));
 
     private static readonly ExecutionOperatorEvent Filter = new()
     {

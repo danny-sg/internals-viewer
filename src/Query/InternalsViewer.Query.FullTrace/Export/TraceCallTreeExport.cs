@@ -154,8 +154,8 @@ internal static class TraceCallTreeExport
     }
 
     private static ExportedNode GetNode(CallTreeNode node,
-                                       Dictionary<CallTreeNode, int> ids,
-                                       Dictionary<CallFrame, int> frames) => new()
+                                        Dictionary<CallTreeNode, int> ids,
+                                        Dictionary<CallFrame, int> frames) => new()
     {
         Id = ids[node],
         Parent = node.Parent is { } parent ? ids[parent] : null,

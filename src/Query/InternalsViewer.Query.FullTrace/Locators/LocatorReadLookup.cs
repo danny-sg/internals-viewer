@@ -57,11 +57,11 @@ public static class LocatorReadLookup
     }
 
     private static void AddArgumentSlotReads(List<LocatorRead> reads,
-                                         ulong function,
-                                         int argumentSlot,
-                                         LocatorType type,
-                                         bool returned,
-                                         int countArgumentSlot = -1)
+                                             ulong function,
+                                             int argumentSlot,
+                                             LocatorType type,
+                                             bool returned,
+                                             int countArgumentSlot = -1)
     {
         if (returned || type.ValueType == LocatorValueType.Variant)
         {

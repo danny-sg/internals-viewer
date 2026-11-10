@@ -60,6 +60,8 @@ public static partial class TraceTickTracks
 
     private const string PredicateCloseTag = "</Predicate>";
 
+    private const string ResultToken = "{" + TraceTickDefinition.ResultPlaceholder + "}";
+
     private static readonly SKColor PassedUpColour = SKColor.Parse(SymbolCategory.QueryOperator.GetCategoryMetadata()!.ForegroundColor);
 
     private static readonly SKColor BatchColour = SKColor.Parse(SymbolCategory.ColumnStore.GetCategoryMetadata()!.ForegroundColor);
@@ -88,7 +90,12 @@ public static partial class TraceTickTracks
             Values = [.. rules.Select((r, index) => new TraceTickValue(series.Values[index], r.GetLabel()))],
             GetColour = t => ruleByValue[t.Value] is >= 0 and var rule ? GetColour(rules[rule], colours[rule], t, categoryColours) : null,
             GetRule = t => ruleByValue[t.Value] is >= 0 and var rule ? rules[rule] : null,
-            GetPlaceholder = (t, name) => GetPlaceholder(trace, t, name, getParentName, getPredicate),
+            GetPlaceholder = (t, name) => GetPlaceholder(trace,
+                                                         t,
+                                                         name,
+                                                         getParentName,
+                                                         getPredicate,
+                                                         ruleByValue[t.Value] is >= 0 and var rule ? rules[rule].GetLabel() : null),
             GetPredicate = getPredicate,
             Colour = colours[0],
             Background = SKColor.TryParse(first.Background, out var background) ? background : isAdded(first) ? LightBackground : null,
@@ -307,6 +314,12 @@ public static partial class TraceTickTracks
     public static string GetStepDetails(TraceTrackStep step)
         => step.IsReturn ? string.Empty : GetText(step.Track, step.Tick, step.Rule.Details) ?? string.Empty;
 
+    public static string? GetStepCodeColour(TraceTrackStep step)
+        => step.Rule.Colour != TraceTickDefinition.CategoryColour
+           && GetDescriptionTemplate(step).Contains(ResultToken, StringComparison.OrdinalIgnoreCase)
+            ? step.Rule.Colour
+            : step.Tick.Node.CategoryColour;
+
     public static string ToPlainText(string markdown)
         => MarkdownLinkRegex().Replace(markdown, "$1").Replace(BoldMarker, string.Empty).Replace(CodeMarker, string.Empty);
 
@@ -400,7 +413,8 @@ public static partial class TraceTickTracks
                                           TraceTick tick,
                                           string name,
                                           Func<TraceTick, string> getParentName,
-                                          Func<TraceTick, string, PredicateText?> getPredicate)
+                                          Func<TraceTick, string, PredicateText?> getPredicate,
+                                          string? result)
         => name switch
         {
             _ when IsPlaceholder(name, TraceTickDefinition.OperatorNamePlaceholder) => tick.Operator.OperatorDescription,
@@ -419,6 +433,7 @@ public static partial class TraceTickTracks
                 => trace.PageAccesses.GetHeaderAccess(tick.Span.From.Position) is { } header
                     ? string.Join(TraceTickDefinition.ListSeparator, header.GetFields())
                     : UnknownValue,
+            _ when IsPlaceholder(name, TraceTickDefinition.ResultPlaceholder) => result,
             _ when IsPlaceholder(name, TraceTickDefinition.PartitionPlaceholder)
                 => trace.HashTables.GetLocation(tick)?.Partition.ToString(CultureInfo.CurrentCulture) ?? UnknownValue,
             _ when IsPlaceholder(name, TraceTickDefinition.BucketPlaceholder)

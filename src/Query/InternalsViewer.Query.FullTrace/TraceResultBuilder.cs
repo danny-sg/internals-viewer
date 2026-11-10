@@ -3,12 +3,12 @@ using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events;
-using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
+using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
@@ -16,32 +16,12 @@ using InternalsViewer.Query.Memory;
 
 namespace InternalsViewer.Query.FullTrace;
 
-internal sealed class TraceResultBuilder
+internal sealed class TraceResultBuilder(CallTree callTree,
+                                         TraceCallStore callStore,
+                                         TraceTimeline timeline,
+                                         IReadOnlyList<EngineEvent> events,
+                                         IReadOnlyList<IteratorPlanNode> planNodes)
 {
-    public TraceResultBuilder(CallTree callTree,
-                              TraceCallStore callStore,
-                              TraceTimeline timeline,
-                              IReadOnlyList<EngineEvent> events,
-                              IReadOnlyList<IteratorPlanNode> planNodes)
-    {
-        CallTree = callTree;
-        CallStore = callStore;
-        Timeline = timeline;
-        Events = events;
-        PlanNodes = planNodes;
-        Teardowns = QueryTeardown.GetTeardowns(timeline);
-
-        timeline.SetCalls(callStore);
-
-        PlanLink = IteratorPlanLinker.Link(planNodes, events);
-
-        OperatorFrames = OperatorFrameMap.Build(callTree, events, PlanLink);
-    }
-
-    public IteratorPlanLink PlanLink { get; }
-
-    public OperatorFrameMap OperatorFrames { get; }
-
     public AllocationIndex Allocation { get; init; } = AllocationIndex.Empty;
 
     public AddressMap AddressMap { get; init; } = AddressMap.Empty;
@@ -52,34 +32,59 @@ internal sealed class TraceResultBuilder
 
     public TraceBufferPool BufferPool { get; init; } = TraceBufferPool.Empty;
 
-    private CallTree CallTree { get; }
+    public IteratorPlanLink PlanLink { get; private set; } = IteratorPlanLink.Empty;
 
-    private TraceCallStore CallStore { get; }
+    public OperatorFrameMap OperatorFrames { get; private set; } = OperatorFrameMap.Empty;
 
-    private TraceTimeline Timeline { get; }
+    public TraceOperatorLifetimeList Lifetimes { get; private set; } = TraceOperatorLifetimeList.Empty;
 
-    private IReadOnlyList<EngineEvent> Events { get; }
+    public MemoryObjectMap MemoryObjects { get; private set; } = MemoryObjectMap.Empty;
 
-    private IReadOnlyList<IteratorPlanNode> PlanNodes { get; }
+    private CallTree CallTree { get; } = callTree;
 
-    private IReadOnlyList<QueryTeardown> Teardowns { get; }
+    private TraceCallStore CallStore { get; } = callStore;
 
-    private TraceOperatorLifetimeList? Lifetimes { get; set; }
+    private TraceTimeline Timeline { get; } = timeline;
 
-    public TraceOperatorLifetimeList BuildLifetimes()
+    private IReadOnlyList<EngineEvent> Events { get; } = events;
+
+    private IReadOnlyList<IteratorPlanNode> PlanNodes { get; } = planNodes;
+
+    private IReadOnlyList<QueryTeardown> Teardowns { get; set; } = [];
+
+    private bool IsLinked { get; set; }
+
+    public void Link()
     {
+        if (IsLinked)
+        {
+            return;
+        }
+
+        Teardowns = QueryTeardown.GetTeardowns(Timeline);
+
+        Timeline.SetCalls(CallStore);
+
+        PlanLink = IteratorPlanLinker.Link(PlanNodes, Events);
+
+        OperatorFrames = OperatorFrameMap.Build(CallTree, Events, PlanLink);
+
         Lifetimes = IteratorLifetimeBuilder.Build(Timeline, Allocation, OperatorFrames.OperatorsByInstance, PlanNodes, Teardowns);
 
-        return Lifetimes;
+        MemoryObjects = MemoryObjectMap.Build(CallStore, Timeline.MappedNodes, MemoryObjectSnapshot);
+
+        IsLinked = true;
     }
 
-    public TraceResult Build()
+    public TraceResult Build(MemoryHistoryStore memoryHistory, TracePageReadList pageReads)
     {
-        var lifetimes = Lifetimes ?? BuildLifetimes();
+        Link();
 
-        var enclosing = EnclosingOperatorCallIndex.Build(CallStore, lifetimes.OperatorsByInstance);
+        var enclosing = EnclosingOperatorCallIndex.Build(CallStore, Lifetimes.OperatorsByInstance);
 
-        return new TraceResult(CallTree, CallStore, Timeline)
+        var pageAccesses = TracePageAccessList.Build(CallStore, memoryHistory, BufferPool, pageReads, Timeline);
+
+        var result = new TraceResult(CallTree, CallStore, Timeline)
         {
             PlanLink = PlanLink,
             OperatorFrames = OperatorFrames,
@@ -87,14 +92,24 @@ internal sealed class TraceResultBuilder
             Teardowns = Teardowns,
             HoBtAccess = HoBtAccessMap.Build(CallStore, Timeline.MappedNodes),
             Allocation = Allocation,
-            Lifetimes = lifetimes,
+            Lifetimes = Lifetimes,
             EnclosingCalls = enclosing,
             AddressMap = AddressMap,
-            MemoryObjects = MemoryObjectMap.Build(CallStore, Timeline.MappedNodes, MemoryObjectSnapshot),
+            MemoryObjects = MemoryObjects,
             ObjectPool = ObjectPool,
             BufferPool = BufferPool,
-            RowReturnMarks = TraceRowReturnMarkMap.Build(Timeline, CallStore, lifetimes, enclosing),
-            Seeks = TraceSeekTrackBuilder.Build(Timeline, CallStore, lifetimes, enclosing)
+            PageReads = pageReads,
+            PageAccesses = pageAccesses,
+            MemoryHistory = memoryHistory,
+            RowReturnMarks = TraceRowReturnMarkMap.Build(Timeline, CallStore, Lifetimes, enclosing),
+            RowAccesses = TraceRowAccessTrackBuilder.Build(Timeline, pageAccesses, Lifetimes, enclosing),
+            PageHeaderAccesses = TraceRowAccessTrackBuilder.BuildHeaders(Timeline, pageAccesses, Lifetimes, enclosing),
+            PageFetches = TracePageFetchTrackBuilder.Build(Timeline, pageAccesses, BufferPool, Lifetimes, enclosing),
+            Seeks = TraceSeekTrackBuilder.Build(Timeline, CallStore, Lifetimes, enclosing)
         };
+
+        CallStore.ReleaseColumns();
+
+        return result;
     }
 }

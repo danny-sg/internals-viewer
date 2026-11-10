@@ -149,9 +149,9 @@ public sealed class TraceTickSeries
     };
 
     public static TraceTickSeries BuildAssigned(TraceResult trace,
-                                                    TraceTickDefinition definition,
-                                                    ExecutionOperatorEvent? statement,
-                                                    Func<ExecutionOperatorEvent, IReadOnlyList<ExecutionOperatorEvent>> getOperators)
+                                                TraceTickDefinition definition,
+                                                ExecutionOperatorEvent? statement,
+                                                Func<ExecutionOperatorEvent, IReadOnlyList<ExecutionOperatorEvent>> getOperators)
     {
         var owners = trace.Lifetimes.OperatorsByInstance;
 
@@ -226,8 +226,8 @@ public sealed class TraceTickSeries
     }
 
     public static TraceTickTrackSeries BuildTrack(TraceResult trace,
-                                                 IReadOnlyList<TraceTickDefinition> rules,
-                                                 Func<TraceTickDefinition, TraceTickSeries> getSeries)
+                                                  IReadOnlyList<TraceTickDefinition> rules,
+                                                  Func<TraceTickDefinition, TraceTickSeries> getSeries)
     {
         if (IsWholeSource(rules))
         {
@@ -248,10 +248,10 @@ public sealed class TraceTickSeries
     }
 
     internal static TraceTickSeries Build(TraceTimeline timeline,
-                                                   TraceCallStore calls,
-                                                   TraceOperatorLifetimeList lifetimes,
-                                                   TraceTickDefinition definition,
-                                                   EnclosingOperatorCallIndex enclosing)
+                                          TraceCallStore calls,
+                                          TraceOperatorLifetimeList lifetimes,
+                                          TraceTickDefinition definition,
+                                          EnclosingOperatorCallIndex enclosing)
     {
         var nodes = new Dictionary<CallTreeNode, bool>(ReferenceEqualityComparer.Instance);
 
@@ -266,10 +266,10 @@ public sealed class TraceTickSeries
     }
 
     internal static TraceTickSeries Build(TraceTimeline timeline,
-                                                List<TraceTickSource> sources,
-                                                TraceOperatorLifetimeList lifetimes,
-                                                EnclosingOperatorCallIndex enclosing,
-                                                Func<ExecutionOperatorEvent?, bool>? isOperator = null)
+                                          List<TraceTickSource> sources,
+                                          TraceOperatorLifetimeList lifetimes,
+                                          EnclosingOperatorCallIndex enclosing,
+                                          Func<ExecutionOperatorEvent?, bool>? isOperator = null)
     {
         var points = new List<SweepSpan<TracePosition>>(sources.Count);
 

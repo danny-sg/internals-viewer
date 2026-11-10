@@ -341,7 +341,7 @@ public sealed partial class QueryViewModel
                                          TraceTickTracks.GetStepName(step),
                                          TraceTickTracks.GetStepDescription(step),
                                          TraceTickTracks.GetStepDetails(step),
-                                         step.Tick.Node.CategoryColour,
+                                         TraceTickTracks.GetStepCodeColour(step),
                                          group,
                                          parent,
                                          depth,

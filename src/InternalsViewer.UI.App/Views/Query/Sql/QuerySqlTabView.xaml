@@ -34,7 +34,7 @@
                      CloseButtonClick="OnTracePromptCloseClick">
                 <StackPanel Orientation="Horizontal"
                             Spacing="8">
-                    <TextBlock Text="Trace"
+                    <TextBlock Text="Full trace options"
                                FontWeight="SemiBold"
                                Margin="0,0,8,0"
                                VerticalAlignment="Center"/>

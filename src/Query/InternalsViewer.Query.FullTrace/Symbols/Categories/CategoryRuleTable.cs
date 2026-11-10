@@ -46,21 +46,9 @@ public sealed class CategoryRuleTable
            ?? Classify(Fallbacks, FallbackIndex, module, className, methodName)
            ?? SymbolCategory.Unknown;
 
-    /// <summary>
-    /// The plan operator a frame belongs to: its badge, and the operators it is the entry point of
-    /// </summary>
-    /// <remarks>
-    /// Each is taken from the most specific rule that actually STATES it, independently of the other. A blank cell means
-    /// "not stated here", so a specific rule can rename the badge and still inherit the boundary from a general one:
-    /// CQScanHash::ConsumeProbe is badged "Hash Match Probe" by its own rule while CQScanHash* supplies the Hash Match
-    /// boundary, rather than every rule having to repeat it.
-    ///
-    /// One contest per field is the point of this being its own file. Sharing SymbolCategories.txt' contest meant the
-    /// rule that won on CATEGORY specificity carried the boundary, so adding a rule to colour a frame could delete one.
-    /// </remarks>
     public (string? OperatorName, IReadOnlyList<GlobPattern> PlanOperator) ClassifyOperator(string? module,
-                                                                                             ReadOnlySpan<char> className,
-                                                                                             ReadOnlySpan<char> methodName)
+                                                                                            ReadOnlySpan<char> className,
+                                                                                            ReadOnlySpan<char> methodName)
     {
         var badge = -1;
         var boundary = -1;
@@ -96,11 +84,11 @@ public sealed class CategoryRuleTable
     }
 
     public static CategoryRuleTable Load(TextReader modules,
-                                        TextReader symbols,
-                                        TextReader? operators = null,
-                                        TextReader? overrideModules = null,
-                                        TextReader? overrideSymbols = null,
-                                        TextReader? fallbacks = null)
+                                         TextReader symbols,
+                                         TextReader? operators = null,
+                                         TextReader? overrideModules = null,
+                                         TextReader? overrideSymbols = null,
+                                         TextReader? fallbacks = null)
     {
         var moduleMap = new Dictionary<string, ModuleCategory>(StringComparer.OrdinalIgnoreCase);
 
@@ -127,9 +115,9 @@ public sealed class CategoryRuleTable
         }
 
         return new CategoryRuleTable(moduleMap,
-                                    rules,
-                                    fallbacks is null ? [] : [.. MappingParser.ParseSymbols(fallbacks)],
-                                    operators is null ? [] : [.. MappingParser.ParseOperators(operators)]);
+                                     rules,
+                                     fallbacks is null ? [] : [.. MappingParser.ParseSymbols(fallbacks)],
+                                     operators is null ? [] : [.. MappingParser.ParseOperators(operators)]);
     }
 
     private static readonly Lazy<CategoryRuleTable> DefaultLazy = new(LoadDefault);

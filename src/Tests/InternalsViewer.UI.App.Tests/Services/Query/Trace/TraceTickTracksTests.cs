@@ -285,6 +285,39 @@ public class TraceTickTracksTests
         Assert.Equal("Evaluate", TraceTickTracks.GetText(track, tick, "Evaluate <Predicate>{ExecutionPlan.Predicate}</Predicate>"));
     }
 
+    [Fact]
+    public void The_Result_Placeholder_Is_The_Rule_Label()
+    {
+        var track = TraceTickTracks.Create(null!,
+                                           [Rule with { Label = "True" }],
+                                           new TraceTickTrackSeries(TraceTickSeries.Empty, [0]),
+                                           0,
+                                           _ => false,
+                                           _ => string.Empty,
+                                           (_, _) => null,
+                                           _ => null!);
+
+        var tick = PredicateStep("Evaluate").Tick;
+
+        Assert.Equal("Evaluate `True`", TraceTickTracks.GetText(track, tick, "Evaluate `{Result}`"));
+    }
+
+    [Fact]
+    public void Code_In_A_Description_With_A_Result_Takes_The_Rule_Colour()
+    {
+        var step = Step(1, 1, Rule with { Colour = "#5CD66B", Description = "Evaluate `{Result}`" });
+
+        Assert.Equal("#5CD66B", TraceTickTracks.GetStepCodeColour(step));
+    }
+
+    [Fact]
+    public void Code_In_A_Description_Without_A_Result_Takes_The_Category_Colour()
+    {
+        var step = Step(1, 1, Rule with { Colour = "#5CD66B", Description = "Evaluate `{Function}`" });
+
+        Assert.Equal(step.Tick.Node.CategoryColour, TraceTickTracks.GetStepCodeColour(step));
+    }
+
     private static VariantLocator Key(VariantStatus status, ulong value) => new(VariantLocator.Create(1, status, value, 4));
 
     private static string? KeyText(List<(string Column, SqlDbType? Type)> columns, List<VariantLocator> keys)

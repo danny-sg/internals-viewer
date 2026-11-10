@@ -1,8 +1,10 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Memory.Address.Enums;
+using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Memory.Address;
@@ -91,6 +93,44 @@ public sealed partial class AddressMap
         => new(entries.Select(e => GetEntry(e, getNode, getAllocation))
                       .GroupBy(e => e.Address)
                       .ToDictionary(g => g.Key, g => Link([.. g.OrderBy(e => e.FromPosition)])));
+
+    internal static AddressMap Build(IEnumerable<AddressEntry> entries,
+                                     Func<int, CallTreeNode?> getNode,
+                                     TraceCallStore store,
+                                     IReadOnlyList<AllocationFunction> functions,
+                                     AllocationMemoryObjectMap memoryObjects)
+    {
+        var allocators = new Dictionary<ulong, AllocationFunction>();
+
+        foreach (var function in functions)
+        {
+            allocators.TryAdd(function.Address, function);
+        }
+
+        return Build(entries, getNode, (entry, node) => GetAllocation(entry, node, allocators, store, memoryObjects));
+    }
+
+    private static AddressMapAllocation GetAllocation(AddressEntry entry,
+                                                      CallTreeNode? node,
+                                                      Dictionary<ulong, AllocationFunction> allocators,
+                                                      TraceCallStore store,
+                                                      AllocationMemoryObjectMap memoryObjects)
+    {
+        if (node?.Frame is not { } frame
+            || !allocators.TryGetValue(frame.Address, out var allocator)
+            || store.GetCallList(frame.Address, frame.InstanceAddress) is not { } calls
+            || entry.CallIndex < 0
+            || entry.CallIndex >= calls.Count)
+        {
+            return default;
+        }
+
+        var call = calls[entry.CallIndex];
+
+        return new AddressMapAllocation(allocator.GetByteCount(call),
+                                        allocator.GetSite(call),
+                                        memoryObjects.GetMemoryObject(frame.Address, entry.CallIndex));
+    }
 
     private static AddressMapEntry GetEntry(AddressEntry entry,
                                            Func<int, CallTreeNode?> getNode,
