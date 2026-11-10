@@ -44,8 +44,6 @@ public sealed partial class QueryPlanTabView : UserControl
 
     private const double ScaleTolerance = 0.000001;
 
-    private const double OtherStepOpacity = 0.45;
-
     private const double StickyTolerance = 0.5;
 
     private QueryViewModel? _subscribed;
@@ -142,11 +140,7 @@ public sealed partial class QueryPlanTabView : UserControl
 
     public static ImageSource? GetStepIcon(Uri? icon) => icon is null ? null : new SvgImageSource(icon);
 
-    public static double GetStepOpacity(bool isCurrent) => isCurrent ? 1 : OtherStepOpacity;
-
     public static Brush? GetStepBackground(bool isCurrent) => isCurrent ? CurrentStepBrush : null;
-
-    public static double GetStepRowOpacity(bool isCurrent, bool isSticking) => GetStepOpacity(isCurrent || isSticking);
 
     public static Brush? GetStepRowBackground(bool isCurrent, bool isHovered, bool isSticking)
         => (isCurrent || isSticking) != isHovered ? CurrentStepBrush : null;

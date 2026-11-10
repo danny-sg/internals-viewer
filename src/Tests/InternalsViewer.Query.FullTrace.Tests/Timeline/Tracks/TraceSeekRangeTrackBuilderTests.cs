@@ -18,7 +18,7 @@ using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 namespace InternalsViewer.Query.FullTrace.Tests.Timeline.Tracks;
 
 [Trait("Category", "Unit")]
-public class TraceSeekRangeReaderTests
+public class TraceSeekRangeTrackBuilderTests
 {
     private const uint Thread = 7;
 
@@ -77,7 +77,7 @@ public class TraceSeekRangeReaderTests
     {
         var run = Create();
 
-        Assert.Equal(range, TraceSeekRangeReader.GetRange(run.Ranges, run.Calls, Seek, Thread, At((ulong)position)));
+        Assert.Equal(range, TraceSeekRangeTrackBuilder.GetRange(run.Ranges, run.Calls, Seek, Thread, At((ulong)position)));
     }
 
     [Fact]
@@ -85,7 +85,7 @@ public class TraceSeekRangeReaderTests
     {
         var run = Create();
 
-        Assert.Equal(0, TraceSeekRangeReader.GetRange(run.Ranges, run.Calls, SingleRangeSeek, Thread, At(50)));
+        Assert.Equal(0, TraceSeekRangeTrackBuilder.GetRange(run.Ranges, run.Calls, SingleRangeSeek, Thread, At(50)));
     }
 
     [Fact]
@@ -116,7 +116,7 @@ public class TraceSeekRangeReaderTests
     {
         var run = Create();
 
-        return [.. TraceSeekRangeReader.GetKeys(run.Keys, run.Calls, Seek, Thread, At((ulong)position)).Select(k => k.Value)];
+        return [.. TraceSeekRangeTrackBuilder.GetKeys(run.Keys, run.Calls, Seek, Thread, At((ulong)position)).Select(k => k.Value)];
     }
 
     private static SeekRun Create()
@@ -210,13 +210,13 @@ public class TraceSeekRangeReaderTests
 
         var enclosing = EnclosingOperatorCallIndex.Build(calls, lifetimes.OperatorsByInstance);
 
-        return new SeekRun(TraceSeekRangeReader.Build(timeline, calls, lifetimes, enclosing),
-                           TraceSeekRangeReader.BuildKeys(timeline, calls, lifetimes, enclosing),
+        return new SeekRun(TraceSeekRangeTrackBuilder.Build(timeline, calls, lifetimes, enclosing),
+                           TraceSeekRangeTrackBuilder.BuildKeys(timeline, calls, lifetimes, enclosing),
                            calls);
     }
 
     private static ulong[] Call(ulong start, ulong end, int callNodeIndex, ulong range = 0)
-        => Row(start, flags: Thread | TraceCallChunk.ReturnedFlag, r8: range, callNodeIndex: callNodeIndex, endSequence: end);
+        => Row(start, flags: Thread | TraceCallColumnSet.ReturnedFlag, r8: range, callNodeIndex: callNodeIndex, endSequence: end);
 
     private static CallFrame Frame(ulong address, ulong instance, string className, string method, string module = "sqlmin") => new()
     {

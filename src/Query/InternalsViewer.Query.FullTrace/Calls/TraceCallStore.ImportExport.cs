@@ -7,13 +7,13 @@ public sealed partial class TraceCallStore
 {
     private const int FormatVersion = 6;
 
-    internal static bool IsCurrent(BinaryReader reader) => reader.ReadInt32() == -FormatVersion;
+    internal static bool IsSupported(BinaryReader reader) => reader.ReadInt32() == -FormatVersion;
 
     internal static TraceCallStore Read(BinaryReader reader)
     {
         var functions = new Dictionary<(ulong FunctionAddress, ulong InstanceAddress), Chunk[]>();
 
-        if (!IsCurrent(reader))
+        if (!IsSupported(reader))
         {
             throw new InvalidDataException("The call log was exported by an earlier version and must be re-recorded");
         }
@@ -70,9 +70,9 @@ public sealed partial class TraceCallStore
 
             foreach (var chunk in chunks)
             {
-                writer.Write(chunk.Calls);
+                writer.Write(chunk.CallCount);
 
-                writer.Write(chunk.StackSlots);
+                writer.Write(chunk.StackSlotCount);
 
                 ExportBinary.WriteArray(writer, chunk.Columns);
             }

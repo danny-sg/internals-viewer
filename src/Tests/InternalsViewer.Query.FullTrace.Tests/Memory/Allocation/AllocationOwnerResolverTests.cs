@@ -94,7 +94,7 @@ public class AllocationOwnerResolverTests
     }
 
     private static ulong[] Call(ulong start, ulong end, int callNodeIndex, ulong instance = 0)
-        => Row(start, flags: Thread | TraceCallChunk.ReturnedFlag, rcx: instance, callNodeIndex: callNodeIndex, endSequence: end);
+        => Row(start, flags: Thread | TraceCallColumnSet.ReturnedFlag, rcx: instance, callNodeIndex: callNodeIndex, endSequence: end);
 
     private static CallFrame Frame(string className, string method, uint rva) => new()
     {

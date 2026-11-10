@@ -46,16 +46,21 @@
                     <FontIcon FontSize="10"
                               Glyph="{x:Bind local:QueryPlanTabView.GetChevronGlyph(IsExpanded), Mode=OneWay}" />
                 </Button>
-                <FontIcon Grid.Column="0"
-                          Glyph="&#xE72A;"
-                          FontSize="12"
-                          Foreground="#F7630C"
+                <Polyline Grid.Column="0"
+                          Width="20"
+                          Height="20"
+                          Points="2,10 17,10 10,3 17,10 10,17"
+                          Stroke="#F7630C"
+                          StrokeThickness="3.5"
+                          StrokeLineJoin="Round"
+                          StrokeStartLineCap="Round"
+                          StrokeEndLineCap="Round"
                           VerticalAlignment="Top"
-                          Margin="0,2,0,0"
+                          Margin="0,-2,0,-6"
+                          IsHitTestVisible="False"
                           Visibility="{x:Bind local:QueryPlanTabView.GetCurrentVisibility(IsCurrent), Mode=OneWay}" />
                 <StackPanel Grid.Column="3"
-                            Spacing="4"
-                            Opacity="{x:Bind local:QueryPlanTabView.GetStepRowOpacity(IsCurrent, IsSticking), Mode=OneWay}">
+                            Spacing="4">
                     <controls:MarkdownTextBlock Config="{x:Bind Config}"
                                                 Text="{x:Bind Name}"
                                                 FontSize="12"
@@ -317,7 +322,7 @@
                 </Grid>
                 <ListView x:Name="GuideStepList"
                           Grid.Row="1"
-                          Background="#F7F7F7"
+                          Background="{ThemeResource SolidBackgroundFillColorTertiaryBrush}"
                           ItemsSource="{x:Bind GuideStepSource.View, Mode=OneWay}"
                           SelectionMode="None"
                           IsItemClickEnabled="True"
@@ -345,7 +350,7 @@
                                     <Setter Property="Padding" Value="0" />
                                     <Setter Property="Margin" Value="0" />
                                     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                                    <Setter Property="Background" Value="#F7F7F7" />
+                                    <Setter Property="Background" Value="{ThemeResource SolidBackgroundFillColorTertiaryBrush}" />
                                     <Setter Property="Template">
                                         <Setter.Value>
                                             <ControlTemplate TargetType="ListViewHeaderItem">
@@ -372,8 +377,7 @@
                                         <StackPanel Grid.Column="1"
                                                     Orientation="Horizontal"
                                                     Spacing="6"
-                                                    Margin="{x:Bind local:QueryPlanTabView.GetStepIndent(Depth)}"
-                                                    Opacity="{x:Bind local:QueryPlanTabView.GetStepOpacity(IsCurrent), Mode=OneWay}">
+                                                    Margin="{x:Bind local:QueryPlanTabView.GetStepIndent(Depth)}">
                                             <Image Width="24"
                                                    Height="24"
                                                    VerticalAlignment="Center"
@@ -392,7 +396,7 @@
                 <Border x:Name="StickyStepHost"
                         Grid.Row="1"
                         VerticalAlignment="Top"
-                        Background="#F7F7F7"
+                        Background="{ThemeResource SolidBackgroundFillColorTertiaryBrush}"
                         Visibility="Collapsed"
                         Tapped="OnStickyStepTapped">
                     <ContentPresenter x:Name="StickyStep"

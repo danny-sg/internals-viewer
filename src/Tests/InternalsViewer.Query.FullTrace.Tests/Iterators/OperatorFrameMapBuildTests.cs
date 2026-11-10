@@ -230,7 +230,7 @@ public class OperatorFrameMapBuildTests
             ClassName = className,
             MethodName = method,
             SymbolCategory = iterator is null ? SymbolCategory.Unknown : SymbolCategory.QueryOperator,
-            Iterator = iterator,
+            OperatorName = iterator,
             PlanOperator = planOperator is null ? [] : [GlobPattern.Parse(planOperator)],
         },
     };

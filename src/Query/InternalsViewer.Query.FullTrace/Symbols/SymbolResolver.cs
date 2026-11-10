@@ -71,7 +71,7 @@ public sealed class SymbolResolver(string symbolsPath) : IDisposable
 
     public void ResolveFunctions(IEnumerable<CallFrame> frames)
     {
-        var functions = new FrameFunctionLookup();
+        var functions = new FrameFunctionCache();
 
         foreach (var frame in frames)
         {

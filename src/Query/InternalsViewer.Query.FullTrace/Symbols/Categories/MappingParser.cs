@@ -72,7 +72,7 @@ internal static class MappingParser
                 Module = GlobPattern.Parse(cells[0]),
                 Class = GlobPattern.Parse(cells[1]),
                 Function = GlobPattern.Parse(cells[2]),
-                Iterator = GetOptional(cells, 3),
+                OperatorName = GetOptional(cells, 3),
                 PlanOperator = ParsePlanOperators(GetOptional(cells, 4)),
                 DefinitionOrder = order++,
             };

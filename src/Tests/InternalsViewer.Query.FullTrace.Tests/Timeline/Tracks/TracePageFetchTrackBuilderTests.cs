@@ -6,7 +6,7 @@ using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 namespace InternalsViewer.Query.FullTrace.Tests.Timeline.Tracks;
 
 [Trait("Category", "Unit")]
-public class TracePageFetchReaderTests
+public class TracePageFetchTrackBuilderTests
 {
     [Theory]
     [InlineData(1, PageType.Pfs)]
@@ -19,7 +19,7 @@ public class TracePageFetchReaderTests
     {
         var access = new TracePageAccess(default, new PageAddress(1, pageId), 5, null, 0, 0);
 
-        Assert.Equal(expected, TracePageFetchReader.GetPageType(access, TraceBufferPool.Empty));
+        Assert.Equal(expected, TracePageFetchTrackBuilder.GetPageType(access, TraceBufferPool.Empty));
     }
 
     [Fact]
@@ -33,6 +33,6 @@ public class TracePageFetchReaderTests
 
         var access = new TracePageAccess(default, page, 5, null, 0, 0);
 
-        Assert.Equal(PageType.Iam, TracePageFetchReader.GetPageType(access, builder.Build()));
+        Assert.Equal(PageType.Iam, TracePageFetchTrackBuilder.GetPageType(access, builder.Build()));
     }
 }

@@ -183,7 +183,7 @@ public class MemoryHistoryBuilderTests
                                                               [Block(Page, 0x2000, from: 1)],
                                                               [Block(Page, 0x2000, from: 2), Block(Owned, 0x2000, from: 3)]);
 
-        Assert.Equal([(Page, true), (Owned, false)], allocations.Select(a => (a.Block.Pointer, a.IsBuffer)));
+        Assert.Equal([(Page, true), (Owned, false)], allocations.Select(a => (a.Block.Address, a.IsBuffer)));
     }
 
     [Fact]
@@ -376,8 +376,8 @@ public class MemoryHistoryBuilderTests
     [Fact]
     public void Writes_From_Later_Chunks_Are_Applied_In_Position_Order()
     {
-        var watched = new WatchResult([new([ChunkHit.From(Hit(5, Owned, 1), 0)], [2]),
-                                       new([ChunkHit.From(Hit(3, Owned, 1), 0)], [1])],
+        var watched = new WatchResult([new([ChunkHit.Create(Hit(5, Owned, 1), 0)], [2]),
+                                       new([ChunkHit.Create(Hit(3, Owned, 1), 0)], [1])],
                                       1);
 
         var (store, _) = new MemoryHistoryBuilder.Recording([new MemoryHistoryAllocation(Block(Owned, 0x10, from: 1), false)],
@@ -394,8 +394,8 @@ public class MemoryHistoryBuilderTests
     {
         var other = new WatchHit(4, 0, Owned + 1, Writer, Thread + 1, 1, 0, 1);
 
-        var watched = new WatchResult([new([ChunkHit.From(Hit(2, Owned, 1), 0), ChunkHit.From(Hit(6, Owned, 1), 1)], [1, 3]),
-                                       new([ChunkHit.From(other, 0)], [2])],
+        var watched = new WatchResult([new([ChunkHit.Create(Hit(2, Owned, 1), 0), ChunkHit.Create(Hit(6, Owned, 1), 1)], [1, 3]),
+                                       new([ChunkHit.Create(other, 0)], [2])],
                                       1);
 
         var (store, _) = new MemoryHistoryBuilder.Recording([new MemoryHistoryAllocation(Block(Owned, 0x10, from: 1), false)],
@@ -410,10 +410,10 @@ public class MemoryHistoryBuilderTests
     [Fact]
     public void Each_Watched_Write_Is_Counted_By_What_Became_Of_It()
     {
-        var watched = new WatchResult([new([ChunkHit.From(Hit(2, Owned, 1), 0),
-                                                       ChunkHit.From(Hit(3, Owned, 1), 1),
-                                                       ChunkHit.From(Hit(4, Page, 1), 2),
-                                                       ChunkHit.From(Hit(5, Owned + 0x500, 1), 3)],
+        var watched = new WatchResult([new([ChunkHit.Create(Hit(2, Owned, 1), 0),
+                                                       ChunkHit.Create(Hit(3, Owned, 1), 1),
+                                                       ChunkHit.Create(Hit(4, Page, 1), 2),
+                                                       ChunkHit.Create(Hit(5, Owned + 0x500, 1), 3)],
                                                       [1, 1, 1, 1])],
                                       2);
 
@@ -423,13 +423,13 @@ public class MemoryHistoryBuilderTests
                                                              new Dictionary<ulong, TracePosition>(),
                                                              null).Build(watched);
 
-        Assert.Equal((1, 1, 1, 1), (counts.Recorded, counts.Unchanged, counts.BufferPool, counts.Outside));
+        Assert.Equal((1, 1, 1, 1), (counts.CapturedCount, counts.UnchangedCount, counts.BufferPoolCount, counts.OutsideCount));
     }
 
     [Fact]
     public void A_Buffer_Descriptor_Keeps_Its_Writes_Although_It_Belongs_To_The_Buffer_Pool()
     {
-        var watched = new WatchResult([new([ChunkHit.From(Hit(2, Owned, 1), 0)], [1])], 1);
+        var watched = new WatchResult([new([ChunkHit.Create(Hit(2, Owned, 1), 0)], [1])], 1);
 
         var (store, counts) = new MemoryHistoryBuilder.Recording([new MemoryHistoryAllocation(Block(Owned, 0xC0, from: 1),
                                                                                               IsClerkPage: true,
@@ -438,7 +438,7 @@ public class MemoryHistoryBuilderTests
                                                                  new Dictionary<ulong, TracePosition>(),
                                                                  null).Build(watched);
 
-        Assert.Equal((1, 0, 1), (counts.Recorded, counts.BufferPool, store.Blocks[0].WriteCount));
+        Assert.Equal((1, 0, 1), (counts.CapturedCount, counts.BufferPoolCount, store.Blocks[0].WriteCount));
     }
 
     [Fact]
@@ -508,7 +508,7 @@ public class MemoryHistoryBuilderTests
                                                            null,
                                                            stack);
 
-        var store = recording.Build(new WatchResult([new([ChunkHit.From(Hit(2, Owned, 1), 0)], [1])], 1)).Store;
+        var store = recording.Build(new WatchResult([new([ChunkHit.Create(Hit(2, Owned, 1), 0)], [1])], 1)).Store;
 
         Assert.Equal((1, -1, 0),
                      (store.GetBlock(StackAddress + 2, At(70)),
@@ -559,7 +559,7 @@ public class MemoryHistoryBuilderTests
 
         foreach (var (sequence, address, bytes) in writes)
         {
-            hits.Add(ChunkHit.From(Hit(sequence, address, (uint)bytes.Length), data.Count));
+            hits.Add(ChunkHit.Create(Hit(sequence, address, (uint)bytes.Length), data.Count));
 
             data.AddRange(bytes);
         }
@@ -641,12 +641,12 @@ public class MemoryHistoryBuilderTests
 
         foreach (var (sequence, address, bytes) in writes)
         {
-            hits.Add(ChunkHit.From(new WatchHit(sequence, 0, address, Writer, Thread, (uint)bytes.Length, 0, 1), data.Count));
+            hits.Add(ChunkHit.Create(new WatchHit(sequence, 0, address, Writer, Thread, (uint)bytes.Length, 0, 1), data.Count));
 
             data.AddRange(bytes);
         }
 
-        var allocations = blocks.Select(b => new MemoryHistoryAllocation(b, clerkPages?.Contains(b.Pointer) ?? false)).ToList();
+        var allocations = blocks.Select(b => new MemoryHistoryAllocation(b, clerkPages?.Contains(b.Address) ?? false)).ToList();
 
         var recording = new MemoryHistoryBuilder.Recording(allocations,
                                                            owners ?? new ulong[blocks.Length],

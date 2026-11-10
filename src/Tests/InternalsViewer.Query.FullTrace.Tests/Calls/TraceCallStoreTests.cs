@@ -16,7 +16,7 @@ namespace InternalsViewer.Query.FullTrace.Tests.Calls;
 [Trait("Category", "Unit")]
 public class TraceCallStoreTests
 {
-    private const ulong ReturnedFlag = TraceCallChunk.ReturnedFlag;
+    private const ulong ReturnedFlag = TraceCallColumnSet.ReturnedFlag;
 
     private const ulong Page336 = 0x0000_0001_0000_0150;
 
@@ -73,7 +73,7 @@ public class TraceCallStoreTests
         var store = builder.Build();
 
         Assert.Equal(calls, store.CallCount);
-        Assert.True(store.Size < calls * TraceCallChunk.ValueCount * sizeof(ulong) / 10);
+        Assert.True(store.Size < calls * TraceCallColumnSet.ValueCount * sizeof(ulong) / 10);
     }
 
     [Fact]
@@ -326,7 +326,7 @@ public class TraceCallStoreTests
 
         var third = store.Functions[(0x3000, 0)][0];
 
-        var cache = new TraceCallStore.ChunkCache(2 * 2 * TraceCallChunk.ValueCount + 6);
+        var cache = new TraceCallStore.ChunkCache(2 * 2 * TraceCallColumnSet.ValueCount + 6);
 
         Assert.Equal(At(1), cache.Read(first, 0, static (columns, index) => columns.GetFromPosition(index)));
         Assert.Equal(At(4), cache.Read(second, 1, static (columns, index) => columns.GetFromPosition(index)));
@@ -410,7 +410,7 @@ public class TraceCallStoreTests
 
         var bytes = written[sizeof(int)..];
 
-        byte[] returned = [(byte)ArgumentLayout.ReturnRegister, 0, 0, 0, (byte)LocatorValueType.Page];
+        byte[] returned = [(byte)ArgumentLayout.ReturnArgumentSlot, 0, 0, 0, (byte)LocatorValueType.Page];
 
         var register = bytes.AsSpan().LastIndexOf(returned);
 

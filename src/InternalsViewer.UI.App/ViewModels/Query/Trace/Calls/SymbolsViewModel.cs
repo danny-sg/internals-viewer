@@ -26,7 +26,7 @@ public sealed partial class SymbolsViewModel(ILogger logger, SettingsViewModel s
     private static readonly TimeSpan SymbolSearchDelay = TimeSpan.FromMilliseconds(300);
 
     private static readonly Lazy<IReadOnlyList<SymbolSearchSuggestion>> Suggestions =
-        new(() => SymbolSearchSuggestion.FromMappings(CategoryMappings.Default));
+        new(() => SymbolSearchSuggestion.CreateSuggestions(CategoryRuleTable.Default));
 
     private readonly List<(CallFrame Frame, string ClassName)> _membersHistory = [];
 

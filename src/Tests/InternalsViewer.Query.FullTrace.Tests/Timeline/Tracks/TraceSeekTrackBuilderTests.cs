@@ -17,7 +17,7 @@ using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 namespace InternalsViewer.Query.FullTrace.Tests.Timeline.Tracks;
 
 [Trait("Category", "Unit")]
-public class TraceSeekReaderTests
+public class TraceSeekTrackBuilderTests
 {
     private const uint Thread = 7;
 
@@ -165,7 +165,7 @@ public class TraceSeekReaderTests
 
         var lifetimes = new TraceOperatorLifetimeList([lifetime]);
 
-        return TraceSeekReader.Build(timeline, calls, lifetimes, EnclosingOperatorCallIndex.Build(calls, lifetimes.OperatorsByInstance));
+        return TraceSeekTrackBuilder.Build(timeline, calls, lifetimes, EnclosingOperatorCallIndex.Build(calls, lifetimes.OperatorsByInstance));
     }
 
     private static TraceTickSeries Build()
@@ -211,11 +211,11 @@ public class TraceSeekReaderTests
 
         var lifetimes = new TraceOperatorLifetimeList([lifetime]);
 
-        return TraceSeekReader.Build(timeline, calls, lifetimes, EnclosingOperatorCallIndex.Build(calls, lifetimes.OperatorsByInstance));
+        return TraceSeekTrackBuilder.Build(timeline, calls, lifetimes, EnclosingOperatorCallIndex.Build(calls, lifetimes.OperatorsByInstance));
     }
 
     private static ulong[] Call(ulong start, ulong end, int callNodeIndex)
-        => Row(start, flags: Thread | TraceCallChunk.ReturnedFlag, callNodeIndex: callNodeIndex, endSequence: end);
+        => Row(start, flags: Thread | TraceCallColumnSet.ReturnedFlag, callNodeIndex: callNodeIndex, endSequence: end);
 
     private static CallFrame Frame(ulong address, ulong instance, string className, string method) => new()
     {

@@ -303,9 +303,9 @@ public sealed partial class TraceTimeline
         }
     }
 
-    public TraceTimeline Where(Func<int, bool> include) => new([.. Threads.Select(t => t.Where(include))], this);
+    public TraceTimeline Filter(Func<int, bool> include) => new([.. Threads.Select(t => t.Filter(include))], this);
 
-    public TraceTimeline? RootedAt(Func<CallTreeNode, bool> isRoot)
+    public TraceTimeline? RootAt(Func<CallTreeNode, bool> isRoot)
     {
         var depths = new int[NodeCount];
 
@@ -345,7 +345,7 @@ public sealed partial class TraceTimeline
 
         for (var lane = 0; lane < Threads.Count; lane++)
         {
-            var thread = rooted[lane].CallCount > 0 ? rooted[lane] : During(Threads[lane], windows, depths);
+            var thread = rooted[lane].CallCount > 0 ? rooted[lane] : CropToWindows(Threads[lane], windows, depths);
 
             if (thread.CallCount > 0)
             {
@@ -356,7 +356,7 @@ public sealed partial class TraceTimeline
         return new TraceTimeline(threads, this);
     }
 
-    public TraceTimeline? CroppedTo(IReadOnlySet<CallTreeNode> roots)
+    public TraceTimeline? CropTo(IReadOnlySet<CallTreeNode> roots)
     {
         var known = new Dictionary<CallTreeNode, int>(ReferenceEqualityComparer.Instance);
 
@@ -437,7 +437,7 @@ public sealed partial class TraceTimeline
         Scale.SetCuts(cuts);
     }
 
-    public TraceTimeline Folded(Func<CallTreeNode, bool> isFolded)
+    public TraceTimeline Fold(Func<CallTreeNode, bool> isFolded)
     {
         var folded = new bool[NodeCount];
 
@@ -656,7 +656,7 @@ public sealed partial class TraceTimeline
         return depth;
     }
 
-    private TraceTimelineThread During(TraceTimelineThread thread, List<(TracePosition Start, TracePosition End)> windows, int[] depths)
+    private TraceTimelineThread CropToWindows(TraceTimelineThread thread, List<(TracePosition Start, TracePosition End)> windows, int[] depths)
     {
         TracePosition[] windowEnds = [.. windows.Select(w => w.End)];
 

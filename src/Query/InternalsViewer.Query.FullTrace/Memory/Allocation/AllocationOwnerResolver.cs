@@ -15,13 +15,13 @@ internal static class AllocationOwnerResolver
                                     IReadOnlyList<IteratorPlanNode> planNodes)
     {
         var owners = EnclosingSweep.GetEnclosing(GetCalls(calls, iterators, GetBuilders(planNodes)),
-                                                 [.. blocks.Select(b => new SweepSpan<TracePosition>(b.Thread, b.Start, b.Start, 0))]);
+                                                 [.. blocks.Select(b => new SweepSpan<TracePosition>(b.Thread, b.FromPosition, b.FromPosition, 0))]);
 
         for (var index = 0; index < blocks.Count; index++)
         {
-            if (iterators.Contains(blocks[index].Pointer))
+            if (iterators.Contains(blocks[index].Address))
             {
-                owners[index] = blocks[index].Pointer;
+                owners[index] = blocks[index].Address;
             }
         }
 
@@ -77,7 +77,7 @@ internal static class AllocationOwnerResolver
         {
             foreach (var (columns, _) in list.ReadChunks(buffer))
             {
-                for (var callIndex = 0; callIndex < columns.Calls; callIndex++)
+                for (var callIndex = 0; callIndex < columns.CallCount; callIndex++)
                 {
                     var iterator = owner != 0 ? owner : columns.GetRegister(callIndex, InstanceSlot);
 

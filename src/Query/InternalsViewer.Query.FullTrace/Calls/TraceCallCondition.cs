@@ -58,7 +58,7 @@ public sealed record TraceCallCondition(TraceConditionTarget Target,
             return false;
         }
 
-        var locator = call.GetLocator(Target == TraceConditionTarget.Return ? ArgumentLayout.ReturnRegister : Argument?.Index ?? -1);
+        var locator = call.GetLocator(Target == TraceConditionTarget.Return ? ArgumentLayout.ReturnArgumentSlot : Argument?.Index ?? -1);
 
         if (IsNullTest(locator, out var isNull))
         {

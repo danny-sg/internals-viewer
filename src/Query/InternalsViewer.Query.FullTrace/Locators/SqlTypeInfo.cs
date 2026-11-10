@@ -45,7 +45,7 @@ public readonly record struct SqlTypeInfo(byte TypeId, byte Flags, ushort MaxLen
 
     public bool IsNotNull => (Flags & NotNullFlag) != 0;
 
-    public static SqlTypeInfo From(ulong header, ulong details)
+    public static SqlTypeInfo Create(ulong header, ulong details)
         => new((byte)header, (byte)(header >> 8), (ushort)details, (byte)(details >> 16), (byte)(details >> 24), (uint)(details >> 32));
 
     public override string ToString()

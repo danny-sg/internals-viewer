@@ -178,7 +178,7 @@ public sealed class CallTreeTabViewModel : IDisposable
 
             var target = new ColumnstoreObjectTarget(columnStore.ObjectType, columnStore.ColumnId, columnStore.ObjectId);
 
-            Query.OpenColumnstoreObject(columnStore.HobtId, target);
+            Query.OpenColumnstoreObject(columnStore.HoBtId, target);
 
             return;
         }

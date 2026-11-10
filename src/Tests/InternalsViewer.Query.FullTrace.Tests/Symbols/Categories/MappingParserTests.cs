@@ -50,7 +50,7 @@ public class MappingParserTests
 
         var rule = Assert.Single(rules);
 
-        Assert.Equal("Profiling", rule.Iterator);
+        Assert.Equal("Profiling", rule.OperatorName);
         Assert.Empty(rule.PlanOperator);
     }
 
@@ -69,7 +69,7 @@ public class MappingParserTests
         // No cell here fails to parse, unlike the category files, so the header has to be dropped by name.
         var content = string.Join('\n', "Module|Class|Function|Iterator|PlanOperator", "sqlmin|CQScanTop*|*|Top|Top");
 
-        Assert.Equal("Top", Assert.Single(MappingParser.ParseOperators(new StringReader(content))).Iterator);
+        Assert.Equal("Top", Assert.Single(MappingParser.ParseOperators(new StringReader(content))).OperatorName);
     }
 
     [Fact]

@@ -12,7 +12,7 @@ internal sealed class LocatorHook(IEnumerable<LocatorRead> reads, TraceCallStore
 
     protected override void Read(ITraceReplay replay, in TraceHookCall call, LocatorRead read, ulong pointer, ReadOnlySpan<ulong> arguments)
     {
-        var count = read.CountRegister < 0 ? 1 : GetArgument(arguments, call, read.CountRegister);
+        var count = read.CountArgumentSlot < 0 ? 1 : GetArgument(arguments, call, read.CountArgumentSlot);
 
         if (ReadValue(replay, read, pointer, count) is { } found)
         {
@@ -42,7 +42,7 @@ internal sealed class LocatorHook(IEnumerable<LocatorRead> reads, TraceCallStore
             return null;
         }
 
-        return Locator.Read(read.ValueType, GetMemory(replay), read.Register, pointer + (uint)read.Offset, count);
+        return Locator.Read(read.ValueType, GetMemory(replay), read.ArgumentSlot, pointer + (uint)read.Offset, count);
     }
 
     private IMemoryReader GetMemory(ITraceReplay replay)

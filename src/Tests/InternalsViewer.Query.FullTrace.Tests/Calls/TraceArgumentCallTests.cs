@@ -13,7 +13,7 @@ public class TraceArgumentCallTests
     [Fact]
     public void A_Captured_Call_Is_Decoded_From_Its_Values()
     {
-        var call = Decode(Row(99, flags: 1234u | TraceCallChunk.ReturnedFlag, rcx: 0xA0, r8: 0xC0, returnValue: 42));
+        var call = Decode(Row(99, flags: 1234u | TraceCallColumnSet.ReturnedFlag, rcx: 0xA0, r8: 0xC0, returnValue: 42));
 
         var layout = ArgumentLayout.GetLayout(new FunctionSignature(["unsigned __int64 *", "int", "int"], FunctionType.Static, "int"));
 
@@ -43,5 +43,5 @@ public class TraceArgumentCallTests
         Assert.Null(call.GetValue(layout.Slots[4]));
     }
 
-    private static TraceArgumentCall Decode(ulong[] row) => new TraceCallChunk(row, 1).GetCall(0);
+    private static TraceArgumentCall Decode(ulong[] row) => new TraceCallColumnSet(row, 1).GetCall(0);
 }

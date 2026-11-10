@@ -35,7 +35,7 @@ internal sealed class EnclosingOperatorCallIndex
 
             foreach (var (columns, _) in list.ReadChunks(buffer))
             {
-                for (var callIndex = 0; callIndex < columns.Calls; callIndex++)
+                for (var callIndex = 0; callIndex < columns.CallCount; callIndex++)
                 {
                     spans.Add((new SweepSpan<TracePosition>(columns.GetThread(callIndex),
                                                             columns.GetFromPosition(callIndex),

@@ -412,7 +412,7 @@ public class TracePageAccessListTests
                 Functions[name] = function;
             }
 
-            var flags = endSequence == ulong.MaxValue ? Thread : Thread | TraceCallChunk.ReturnedFlag;
+            var flags = endSequence == ulong.MaxValue ? Thread : Thread | TraceCallColumnSet.ReturnedFlag;
 
             function.Rows.Add(TraceCallRowHelper.Row(sequence,
                                                      flags: flags,

@@ -49,7 +49,7 @@ public class EvaluationTrackTests
                                                   TraceCallStore calls,
                                                   TraceOperatorLifetimeList lifetimes,
                                                   TraceTickDefinition definition)
-        => TraceTickSeries.FromDefinition(timeline,
+        => TraceTickSeries.Build(timeline,
                                           calls,
                                           lifetimes,
                                           definition,
@@ -170,8 +170,8 @@ public class EvaluationTrackTests
         var trace = BuildResult();
 
         Assert.Equal((5, 6),
-                     (TraceTickSeries.FromDefinition(trace, Rule("CEsExec::Missing|CEsExec::FastCompare1")).Count,
-                      TraceTickSeries.FromDefinition(trace, Rule("CEsExec::Fast*")).Count));
+                     (TraceTickSeries.Build(trace, Rule("CEsExec::Missing|CEsExec::FastCompare1")).Count,
+                      TraceTickSeries.Build(trace, Rule("CEsExec::Fast*")).Count));
     }
 
     [Fact]
@@ -186,8 +186,8 @@ public class EvaluationTrackTests
         var otherRegister = Rule("CEsExec::FastCompare1", HasLocator(slot, "Variant"));
 
         Assert.Equal((4, 0),
-                     (TraceTickSeries.FromDefinition(trace, anyRegister).Count,
-                      TraceTickSeries.FromDefinition(trace, otherRegister).Count));
+                     (TraceTickSeries.Build(trace, anyRegister).Count,
+                      TraceTickSeries.Build(trace, otherRegister).Count));
     }
 
     [Fact]
@@ -202,7 +202,7 @@ public class EvaluationTrackTests
 
         var rule = Rule("CEsExec::FastCompare1") with { Source = TraceTickSourceType.Evaluate };
 
-        var series = TraceTickSeries.FromAssignedCalls(BuildResult(), rule, null, o => ReferenceEquals(o, Filter) ? [computeScalar] : []);
+        var series = TraceTickSeries.BuildAssigned(BuildResult(), rule, null, o => ReferenceEquals(o, Filter) ? [computeScalar] : []);
 
         Assert.Equal([(computeScalar, Filter), (computeScalar, Filter)], series.GetAllTicks().Select(t => (t.Operator, t.Caller)));
     }
@@ -231,12 +231,12 @@ public class EvaluationTrackTests
         trace = trace with { Seeks = Evaluations(trace) };
 
         Assert.Equal((1, 0),
-                     (TraceTickSeries.FromDefinition(trace, SourceRule(2, InOperator("Filter"))).Count,
-                      TraceTickSeries.FromDefinition(trace, SourceRule(0, InOperator("Filter"))).Count));
+                     (TraceTickSeries.Build(trace, SourceRule(2, InOperator("Filter"))).Count,
+                      TraceTickSeries.Build(trace, SourceRule(0, InOperator("Filter"))).Count));
     }
 
     private static TraceTickTrackSeries FromRules(TraceResult trace, params TraceTickDefinition[] rules)
-        => TraceTickSeries.FromRules(trace, rules, r => TraceTickSeries.FromDefinition(trace, r));
+        => TraceTickSeries.BuildTrack(trace, rules, r => TraceTickSeries.Build(trace, r));
 
     private static TraceTickDefinition Rule(string function, params TraceCallCondition[] conditions)
         => new("Compares", "SqlTsEs", function, "#FFFFFF", 1, 1, conditions);
@@ -343,7 +343,7 @@ public class EvaluationTrackTests
     }
 
     private static ulong[] Call(ulong start, ulong end, int callNodeIndex)
-        => Row(start, flags: Thread | TraceCallChunk.ReturnedFlag, callNodeIndex: callNodeIndex, endSequence: end);
+        => Row(start, flags: Thread | TraceCallColumnSet.ReturnedFlag, callNodeIndex: callNodeIndex, endSequence: end);
 
     private static CallFrame Frame(ulong instance, string className, string method, uint rva) => new()
     {

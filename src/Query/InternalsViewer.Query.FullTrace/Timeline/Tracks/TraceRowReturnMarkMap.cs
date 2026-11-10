@@ -91,7 +91,7 @@ public sealed class TraceRowReturnMarkMap
 
                 var shownCaller = GetShownCaller(group, index, groupsByInstance, owners);
 
-                ticks.Add(TraceTickSource.FromCall(location, (byte)type) with
+                ticks.Add(TraceTickSource.Create(location, (byte)type) with
                 {
                     Operator = operatorEvent,
                     Caller = ReferenceEquals(shownCaller, operatorEvent) ? null : shownCaller
@@ -121,7 +121,7 @@ public sealed class TraceRowReturnMarkMap
 
             foreach (var (columns, first) in list.ReadChunks(buffer))
             {
-                for (var callIndex = 0; callIndex < columns.Calls; callIndex++)
+                for (var callIndex = 0; callIndex < columns.CallCount; callIndex++)
                 {
                     var key = (list.InstanceAddress, columns.GetThread(callIndex));
 

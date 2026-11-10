@@ -35,7 +35,7 @@ public readonly record struct BindingLocator(Locator Locator)
 
     public IReadOnlyList<ColumnBinding> Bindings => Parse(Locator.Text);
 
-    public static Locator? Read(IMemoryReader memory, int register, ulong address, ulong count)
+    public static Locator? Read(IMemoryReader memory, int argumentSlot, ulong address, ulong count)
     {
         if (count == 0)
         {
@@ -58,7 +58,7 @@ public readonly record struct BindingLocator(Locator Locator)
             bindings[index] = ReadBinding(bytes.AsSpan(index * Size, Size));
         }
 
-        return new Locator(register, LocatorValueType.Bindings, (ulong)read, count, Format(bindings));
+        return new Locator(argumentSlot, LocatorValueType.Bindings, (ulong)read, count, Format(bindings));
     }
 
     public override string ToString()

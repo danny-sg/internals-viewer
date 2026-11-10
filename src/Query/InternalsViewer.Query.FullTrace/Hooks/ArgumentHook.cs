@@ -100,12 +100,12 @@ internal abstract class ArgumentHook<TRead> : ITraceHook
 
         foreach (var read in functionReads)
         {
-            isStackRead |= read.Register is >= ArgumentLayout.RegisterCount and < ArgumentLayout.CapturedSlots;
+            isStackRead |= read.ArgumentSlot is >= ArgumentLayout.RegisterCount and < ArgumentLayout.CapturedSlotCount;
 
             isReadAtReturn |= read.IsReadAtReturn;
         }
 
-        Span<ulong> arguments = stackalloc ulong[ArgumentLayout.CapturedSlots];
+        Span<ulong> arguments = stackalloc ulong[ArgumentLayout.CapturedSlotCount];
 
         LoadArguments(call, replay, arguments, isStackRead);
 
@@ -113,13 +113,13 @@ internal abstract class ArgumentHook<TRead> : ITraceHook
         {
             if (!read.IsReadAtReturn)
             {
-                Read(replay, call, read, GetArgument(arguments, call, read.Register), arguments);
+                Read(replay, call, read, GetArgument(arguments, call, read.ArgumentSlot), arguments);
             }
         }
 
         if (isReadAtReturn)
         {
-            var saved = FreeArguments.TryPop(out var free) ? free : new ulong[ArgumentLayout.CapturedSlots];
+            var saved = FreeArguments.TryPop(out var free) ? free : new ulong[ArgumentLayout.CapturedSlotCount];
 
             arguments.CopyTo(saved);
 
@@ -140,7 +140,7 @@ internal abstract class ArgumentHook<TRead> : ITraceHook
             {
                 if (read.IsReadAtReturn)
                 {
-                    Read(replay, call, read, GetArgument(arguments, call, read.Register), arguments);
+                    Read(replay, call, read, GetArgument(arguments, call, read.ArgumentSlot), arguments);
                 }
             }
         }
@@ -156,13 +156,13 @@ internal abstract class ArgumentHook<TRead> : ITraceHook
         }
     }
 
-    protected static ulong GetArgument(ReadOnlySpan<ulong> arguments, in TraceHookCall call, int register)
-        => register switch
+    protected static ulong GetArgument(ReadOnlySpan<ulong> arguments, in TraceHookCall call, int argumentSlot)
+        => argumentSlot switch
         {
-            ArgumentLayout.ReturnRegister
+            ArgumentLayout.ReturnArgumentSlot
                 => call.ReturnValue,
-            >= 0 and < ArgumentLayout.CapturedSlots
-                => arguments[register],
+            >= 0 and < ArgumentLayout.CapturedSlotCount
+                => arguments[argumentSlot],
             _ => 0
         };
 

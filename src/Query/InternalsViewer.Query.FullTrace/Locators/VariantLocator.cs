@@ -22,7 +22,7 @@ public readonly record struct VariantLocator(Locator Locator)
 
     public ulong Value => Locator.Value;
 
-    public static Locator? Read(IMemoryReader memory, int register, ulong address)
+    public static Locator? Read(IMemoryReader memory, int argumentSlot, ulong address)
     {
         if (!memory.TryRead(address + StatusOffset, out byte status) || !memory.TryRead(address + ValueOffset, out ulong value))
         {
@@ -31,11 +31,11 @@ public readonly record struct VariantLocator(Locator Locator)
 
         var length = memory.TryRead(address + LengthOffset, out uint found) ? found : 0;
 
-        return Create(register, (VariantStatus)status, value, length);
+        return Create(argumentSlot, (VariantStatus)status, value, length);
     }
 
-    public static Locator Create(int register, VariantStatus status, ulong value, uint length)
-        => new(register, LocatorValueType.Variant, value, ((ulong)length << 32) | (byte)status);
+    public static Locator Create(int argumentSlot, VariantStatus status, ulong value, uint length)
+        => new(argumentSlot, LocatorValueType.Variant, value, ((ulong)length << 32) | (byte)status);
 
     public bool TryGetBoolean(out bool value)
     {

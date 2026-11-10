@@ -24,7 +24,7 @@ public sealed class TraceCallList : IReadOnlyList<TraceArgumentCall>
         {
             Starts[index] = start;
 
-            start += chunks[index].Calls;
+            start += chunks[index].CallCount;
         }
 
         Count = start;
@@ -108,7 +108,7 @@ public sealed class TraceCallList : IReadOnlyList<TraceArgumentCall>
         return Columns.Read(chunk, callIndex, static (columns, offset) => columns.GetCallNodeIndex(offset));
     }
 
-    internal IEnumerable<(TraceCallChunk Columns, int First)> ReadChunks(TraceCallStore.ColumnBuffer buffer)
+    internal IEnumerable<(TraceCallColumnSet Columns, int First)> ReadChunks(TraceCallStore.ColumnBuffer buffer)
     {
         for (var chunk = 0; chunk < Chunks.Length; chunk++)
         {

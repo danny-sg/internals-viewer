@@ -1,6 +1,6 @@
 namespace InternalsViewer.Query.FullTrace.Timeline;
 
-internal sealed class TraceInnermostCallLookup(TraceTimeline? timeline)
+internal sealed class TraceInnermostCallIndex(TraceTimeline? timeline)
 {
     private Dictionary<uint, int> Lanes { get; } = timeline is null
         ? []

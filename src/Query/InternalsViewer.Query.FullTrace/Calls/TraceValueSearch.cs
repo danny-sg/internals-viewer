@@ -30,9 +30,9 @@ public sealed class TraceValueSearch(TraceCallStore store)
 
             var columns = TraceCallStore.Decompress(chunk, ref buffer);
 
-            var found = new Dictionary<string, (int Calls, int First, int Last)>();
+            var found = new Dictionary<string, (int CallCount, int First, int Last)>();
 
-            for (var callIndex = 0; callIndex < chunk.Calls; callIndex++)
+            for (var callIndex = 0; callIndex < chunk.CallCount; callIndex++)
             {
                 if (!IsIncluded(columns, callIndex, include))
                 {
@@ -42,7 +42,7 @@ public sealed class TraceValueSearch(TraceCallStore store)
                 foreach (var location in GetLocations(columns, callIndex, value))
                 {
                     found[location] = found.TryGetValue(location, out var counted)
-                        ? (counted.Calls + 1, counted.First, callIndex)
+                        ? (counted.CallCount + 1, counted.First, callIndex)
                         : (1, callIndex, callIndex);
                 }
             }
@@ -98,7 +98,7 @@ public sealed class TraceValueSearch(TraceCallStore store)
 
             var columns = TraceCallStore.Decompress(chunk, ref buffer);
 
-            for (var callIndex = 0; callIndex < chunk.Calls; callIndex++)
+            for (var callIndex = 0; callIndex < chunk.CallCount; callIndex++)
             {
                 if (IsIncluded(columns, callIndex, include) && GetLocations(columns, callIndex, value).Contains(use.Location))
                 {
@@ -106,21 +106,21 @@ public sealed class TraceValueSearch(TraceCallStore store)
                 }
             }
 
-            start += chunk.Calls;
+            start += chunk.CallCount;
         }
 
         return valueCalls;
     }
 
-    private bool IsIncluded(TraceCallChunk columns, int callIndex, Func<CallTreeNode?, bool>? include)
+    private bool IsIncluded(TraceCallColumnSet columns, int callIndex, Func<CallTreeNode?, bool>? include)
         => include is null || include(store.GetNode(columns.GetCallNodeIndex(callIndex)));
 
-    private TraceValueCall GetValueCall(TraceCallChunk columns, int callIndex, int start)
+    private TraceValueCall GetValueCall(TraceCallColumnSet columns, int callIndex, int start)
         => new(start + callIndex, columns.GetFromPosition(callIndex), store.GetNode(columns.GetCallNodeIndex(callIndex)), columns.GetThread(callIndex));
 
     private static TraceValueUse MergeValueUse(TraceValueUse existing, TraceValueUse use) => existing with
     {
-        Calls = existing.Calls + use.Calls,
+        CallCount = existing.CallCount + use.CallCount,
         First = use.First.Position < existing.First.Position ? use.First : existing.First,
         Last = use.Last.Position > existing.Last.Position ? use.Last : existing.Last
     };
@@ -135,12 +135,12 @@ public sealed class TraceValueSearch(TraceCallStore store)
             {
                 yield return (functionAddress, instanceAddress, start, chunk);
 
-                start += chunk.Calls;
+                start += chunk.CallCount;
             }
         }
     }
 
-    private static IEnumerable<string> GetLocations(TraceCallChunk columns, int callIndex, ulong value)
+    private static IEnumerable<string> GetLocations(TraceCallColumnSet columns, int callIndex, ulong value)
     {
         for (var slot = 0; slot < ArgumentLayout.RegisterCount; slot++)
         {
@@ -150,7 +150,7 @@ public sealed class TraceValueSearch(TraceCallStore store)
             }
         }
 
-        for (var slot = 0; slot < columns.StackSlots; slot++)
+        for (var slot = 0; slot < columns.StackSlotCount; slot++)
         {
             if (columns.GetStackValue(callIndex, ArgumentLayout.RegisterCount + slot) == value)
             {

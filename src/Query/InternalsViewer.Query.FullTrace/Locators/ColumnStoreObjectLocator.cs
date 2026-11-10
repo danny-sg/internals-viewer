@@ -10,7 +10,7 @@ public readonly record struct ColumnStoreObjectLocator(Locator Locator)
 {
     private const ulong ObjectTypeMask = 0xFFFF;
 
-    public ulong HobtId => Locator.Value & ~ObjectTypeMask;
+    public ulong HoBtId => Locator.Value & ~ObjectTypeMask;
 
     public ColumnStoreObjectType ObjectType => (ColumnStoreObjectType)(Locator.Value & ObjectTypeMask);
 
@@ -29,14 +29,14 @@ public readonly record struct ColumnStoreObjectLocator(Locator Locator)
         _ => $"column:{ColumnId}"
     };
 
-    public static Locator? Read(IMemoryReader memory, int register, ulong address)
+    public static Locator? Read(IMemoryReader memory, int argumentSlot, ulong address)
         => memory.TryRead(address, out ulong first)
            && memory.TryRead(address + sizeof(ulong), out ulong second)
            && memory.TryRead(address + 2 * sizeof(ulong), out ulong third)
-            ? Create(register, first, second, third)
+            ? Create(argumentSlot, first, second, third)
             : null;
 
-    public static Locator Create(int register, ulong first, ulong second, ulong third)
+    public static Locator Create(int argumentSlot, ulong first, ulong second, ulong third)
     {
         var hobtId = (((ulong)(ushort)second << 32) | (uint)(first >> 32)) << 16;
 
@@ -44,7 +44,7 @@ public readonly record struct ColumnStoreObjectLocator(Locator Locator)
 
         var detail = ((ulong)(uint)third << 32) | (uint)(second >> 32);
 
-        return new Locator(register, LocatorValueType.ColumnStoreObject, hobtId | objectType, detail);
+        return new Locator(argumentSlot, LocatorValueType.ColumnStoreObject, hobtId | objectType, detail);
     }
 
     public override string ToString() => ColumnStoreObjectLabel.Get(ObjectType, ColumnId, ObjectId);

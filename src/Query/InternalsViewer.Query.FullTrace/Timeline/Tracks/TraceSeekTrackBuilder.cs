@@ -8,7 +8,7 @@ using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Timeline.Tracks;
 
-internal static class TraceSeekReader
+internal static class TraceSeekTrackBuilder
 {
     private const string Module = "sqlmin";
 
@@ -76,17 +76,17 @@ internal static class TraceSeekReader
 
         foreach (var seek in seeks.Values.SelectMany(s => s))
         {
-            sources.Add(TraceTickSource.FromCall(seek.TickLocation, (byte)TraceSeekMarkType.Seek));
+            sources.Add(TraceTickSource.Create(seek.TickLocation, (byte)TraceSeekMarkType.Seek));
 
             for (var index = 0; index < seek.Fetches.Count; index++)
             {
                 var fetch = seek.Fetches[index];
 
-                sources.Add(TraceTickSource.FromPoint(fetch, (byte)GetLevel(index, seek.Fetches.Count), fetch.From));
+                sources.Add(TraceTickSource.Create(fetch, (byte)GetLevel(index, seek.Fetches.Count), fetch.From));
             }
         }
 
-        return TraceTickSeries.FromSources(timeline, sources, lifetimes, enclosing);
+        return TraceTickSeries.Build(timeline, sources, lifetimes, enclosing);
     }
 
     private static TraceSpanLocation GetTickLocation(TraceTimeline timeline, TraceCallStore calls, TraceSpanLocation descent)

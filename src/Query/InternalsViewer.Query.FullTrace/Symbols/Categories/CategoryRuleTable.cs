@@ -3,9 +3,9 @@ using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Symbols.Categories;
 
-public sealed class CategoryMappings
+public sealed class CategoryRuleTable
 {
-    private CategoryMappings(IReadOnlyDictionary<string, ModuleCategory> modules,
+    private CategoryRuleTable(IReadOnlyDictionary<string, ModuleCategory> modules,
                              IReadOnlyList<SymbolCategoryRule> rules,
                              IReadOnlyList<SymbolCategoryRule> fallbacks,
                              IReadOnlyList<OperatorRule> operators)
@@ -58,9 +58,9 @@ public sealed class CategoryMappings
     /// One contest per field is the point of this being its own file. Sharing SymbolCategories.txt' contest meant the
     /// rule that won on CATEGORY specificity carried the boundary, so adding a rule to colour a frame could delete one.
     /// </remarks>
-    public (string? Iterator, IReadOnlyList<GlobPattern> PlanOperator) ClassifyOperator(string? module,
-                                                                                        ReadOnlySpan<char> className,
-                                                                                        ReadOnlySpan<char> methodName)
+    public (string? OperatorName, IReadOnlyList<GlobPattern> PlanOperator) ClassifyOperator(string? module,
+                                                                                             ReadOnlySpan<char> className,
+                                                                                             ReadOnlySpan<char> methodName)
     {
         var badge = -1;
         var boundary = -1;
@@ -77,7 +77,7 @@ public sealed class CategoryMappings
                 continue;
             }
 
-            if (rule.Iterator is not null && Improves(index, score, badge, badgeScore))
+            if (rule.OperatorName is not null && Improves(index, score, badge, badgeScore))
             {
                 badge = index;
 
@@ -92,10 +92,10 @@ public sealed class CategoryMappings
             }
         }
 
-        return (badge >= 0 ? Operators[badge].Iterator : null, boundary >= 0 ? Operators[boundary].PlanOperator : []);
+        return (badge >= 0 ? Operators[badge].OperatorName : null, boundary >= 0 ? Operators[boundary].PlanOperator : []);
     }
 
-    public static CategoryMappings Load(TextReader modules,
+    public static CategoryRuleTable Load(TextReader modules,
                                         TextReader symbols,
                                         TextReader? operators = null,
                                         TextReader? overrideModules = null,
@@ -126,18 +126,18 @@ public sealed class CategoryMappings
             rules.AddRange(MappingParser.ParseSymbols(overrideSymbols, startOrder: rules.Count));
         }
 
-        return new CategoryMappings(moduleMap,
+        return new CategoryRuleTable(moduleMap,
                                     rules,
                                     fallbacks is null ? [] : [.. MappingParser.ParseSymbols(fallbacks)],
                                     operators is null ? [] : [.. MappingParser.ParseOperators(operators)]);
     }
 
-    private static readonly Lazy<CategoryMappings> DefaultLazy = new(LoadDefault);
+    private static readonly Lazy<CategoryRuleTable> DefaultLazy = new(LoadDefault);
 
     /// <summary>
     /// The mappings loaded from the embedded core files
     /// </summary>
-    public static CategoryMappings Default => DefaultLazy.Value;
+    public static CategoryRuleTable Default => DefaultLazy.Value;
 
     private const string ModulesFile = "ModuleCategories.txt";
 
@@ -147,9 +147,9 @@ public sealed class CategoryMappings
 
     private const string FallbacksFile = "FallbackCategories.txt";
 
-    private static CategoryMappings LoadDefault()
+    private static CategoryRuleTable LoadDefault()
     {
-        var assembly = typeof(CategoryMappings).Assembly;
+        var assembly = typeof(CategoryRuleTable).Assembly;
 
         using var modules = OpenResource(assembly, ModulesFile);
 

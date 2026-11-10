@@ -25,7 +25,7 @@ public sealed class ValueUseGroup(TraceValueRole role, IReadOnlyList<ValueUseRow
     {
         get
         {
-            var calls = Rows.Sum(r => r.Use.Calls);
+            var calls = Rows.Sum(r => r.Use.CallCount);
 
             return $"{CountText.GetText(Rows.Count, "Function", "Functions")}, {CountText.GetCalls(calls)}";
         }

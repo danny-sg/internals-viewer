@@ -63,7 +63,7 @@ public sealed partial class TraceTimelineRow
 
     public TraceSpan GetSpan(int index) => new(GetFrom(index), GetTo(index), GetCallNodeIndex(index), GetCallIndex(index), GetFlags(index));
 
-    public TraceTimelineRow Where(Func<int, bool> include)
+    public TraceTimelineRow Filter(Func<int, bool> include)
     {
         var indexes = new int[Count];
 

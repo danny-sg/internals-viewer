@@ -47,7 +47,7 @@ public static class ArgumentRowBuilder
                                             IReadOnlyList<int>? included = null,
                                             Func<bool>? isDecoded = null)
     {
-        var slots = CapturedSlots(layout);
+        var slots = CapturedSlotCount(layout);
 
         var returnType = layout.ReturnType ?? UnknownType;
 
@@ -94,7 +94,7 @@ public static class ArgumentRowBuilder
 
     public static ArgumentSlot? FindSlotAt(ArgumentLayout layout, int ordinal)
     {
-        var slots = CapturedSlots(layout);
+        var slots = CapturedSlotCount(layout);
 
         var position = ordinal - FixedColumns;
 
@@ -103,7 +103,7 @@ public static class ArgumentRowBuilder
 
     public static ArgumentCell GetCellAt(ArgumentLayout layout, TraceArgumentCall call, int ordinal)
     {
-        var slots = CapturedSlots(layout);
+        var slots = CapturedSlotCount(layout);
 
         var position = ordinal - FixedColumns;
 
@@ -114,7 +114,7 @@ public static class ArgumentRowBuilder
 
         if (position == slots.Count && layout.ReturnType is { } returnType && HasReturn(returnType) && call.Returned)
         {
-            return new ArgumentCell(call.ReturnValue, AddressAt(call, ArgumentLayout.ReturnRegister), returnType);
+            return new ArgumentCell(call.ReturnValue, AddressAt(call, ArgumentLayout.ReturnArgumentSlot), returnType);
         }
 
         return default;
@@ -331,7 +331,7 @@ public static class ArgumentRowBuilder
             ? locator
             : null;
 
-    private static List<ArgumentSlot> CapturedSlots(ArgumentLayout layout) => [.. layout.Slots.Where(TraceArgumentCall.IsCaptured)];
+    private static List<ArgumentSlot> CapturedSlotCount(ArgumentLayout layout) => [.. layout.Slots.Where(TraceArgumentCall.IsCaptured)];
 
     private static bool HasReturn(string returnType) => returnType != "void" && TraceArgumentCall.IsReturnCaptured(returnType);
 
@@ -384,7 +384,7 @@ public static class ArgumentRowBuilder
     }
 
     private static ArgumentSlot BuildReturnSlot(string returnType)
-        => new(ReturnName, returnType, ArgumentLocation.Register, ArgumentLayout.ReturnRegister, GetReturnSource(returnType));
+        => new(ReturnName, returnType, ArgumentLocation.Register, ArgumentLayout.ReturnArgumentSlot, GetReturnSource(returnType));
 
     private static object GetDisplayValue(string type, Locator locator) => locator.ValueType switch
     {

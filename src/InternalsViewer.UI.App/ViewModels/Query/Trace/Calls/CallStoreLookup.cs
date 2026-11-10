@@ -231,7 +231,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
     }
 
     private static TracePosition GetPosition(ArgumentSlot slot, TraceArgumentCall call)
-        => slot.Index == ArgumentLayout.ReturnRegister ? call.ToPosition : call.FromPosition;
+        => slot.Index == ArgumentLayout.ReturnArgumentSlot ? call.ToPosition : call.FromPosition;
 
     private ValueDescription? DescribeStackObject(ulong value, TracePosition position)
     {

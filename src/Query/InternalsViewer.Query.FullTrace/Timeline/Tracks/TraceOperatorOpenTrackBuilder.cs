@@ -2,7 +2,7 @@ using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 
 namespace InternalsViewer.Query.FullTrace.Timeline.Tracks;
 
-internal static class TraceOperatorOpenReader
+internal static class TraceOperatorOpenTrackBuilder
 {
     public static TraceTickSeries Build(TraceTimeline timeline, TraceOperatorLifetimeList lifetimes)
     {

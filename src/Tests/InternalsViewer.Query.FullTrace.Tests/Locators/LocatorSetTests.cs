@@ -46,7 +46,7 @@ public class LocatorSetTests
     [Fact]
     public void A_Page_Search_Finds_Pages_And_The_Rows_On_Them()
     {
-        var search = LocatorSearch.ForPage(new PageAddress(1, 336), null);
+        var search = LocatorSearch.CreatePageSearch(new PageAddress(1, 336), null);
 
         Assert.True(Set(Page(Page336)).Contains(search));
         Assert.True(Set(Row(Slot5 | Page336)).Contains(search));
@@ -56,7 +56,7 @@ public class LocatorSetTests
     [Fact]
     public void A_Row_Search_Finds_Only_That_Row()
     {
-        var search = LocatorSearch.ForPage(new PageAddress(1, 336), 5);
+        var search = LocatorSearch.CreatePageSearch(new PageAddress(1, 336), 5);
 
         Assert.True(Set(Row(Slot5 | Page336)).Contains(search));
         Assert.False(Set(Row(0x0006_0000_0000_0000 | Page336)).Contains(search));
@@ -68,7 +68,7 @@ public class LocatorSetTests
     {
         var set = Set(Page(0xABCD_0000_0000_0000 | Page336));
 
-        Assert.True(set.Contains(LocatorSearch.ForPage(new PageAddress(1, 336), null)));
+        Assert.True(set.Contains(LocatorSearch.CreatePageSearch(new PageAddress(1, 336), null)));
         Assert.Equal("(1:336)", set.Label);
     }
 

@@ -8,9 +8,9 @@ internal readonly record struct TraceTickSource(TraceTimelineThread Thread, int 
 
     public ExecutionOperatorEvent? Caller { get; init; }
 
-    public static TraceTickSource FromCall(TraceSpanLocation location, byte value)
+    public static TraceTickSource Create(TraceSpanLocation location, byte value)
         => new(location.Thread, location.Row.GetStoreIndex(location.Index), value, location.From, location.To);
 
-    public static TraceTickSource FromPoint(TraceSpanLocation location, byte value, TracePoint point)
+    public static TraceTickSource Create(TraceSpanLocation location, byte value, TracePoint point)
         => new(location.Thread, location.Row.GetStoreIndex(location.Index), value, point, point);
 }

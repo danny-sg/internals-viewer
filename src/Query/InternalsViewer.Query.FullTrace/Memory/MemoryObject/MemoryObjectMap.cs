@@ -84,7 +84,7 @@ public sealed partial class MemoryObjectMap
                 {
                     var pointer = slot == ReturnSlot ? call.ReturnedValue : call.GetSlot(slot);
 
-                    if (pointer < TraceAddress.MinAddress)
+                    if (pointer < TraceAddress.MinimumAddress)
                     {
                         continue;
                     }
@@ -111,7 +111,7 @@ public sealed partial class MemoryObjectMap
 
     public MemoryObjectReference? GetOwner(ulong address, TracePosition position)
     {
-        if (address < TraceAddress.MinAddress)
+        if (address < TraceAddress.MinimumAddress)
         {
             return null;
         }

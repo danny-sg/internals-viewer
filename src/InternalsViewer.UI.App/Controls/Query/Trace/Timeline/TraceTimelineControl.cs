@@ -1113,16 +1113,16 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         {
             _visibleFor = (timeline, _root, PrunedCategories, HiddenCategories);
 
-            _rooted = _root is { } root ? timeline.RootedAt(n => ReferenceEquals(n, root)) : null;
+            _rooted = _root is { } root ? timeline.RootAt(n => ReferenceEquals(n, root)) : null;
 
             var source = _rooted ?? timeline;
 
             var pruned = PrunedNodes(source) is { } hidden
-                ? source.Where(n => n < 0 || n >= hidden.Length || !hidden[n])
+                ? source.Filter(n => n < 0 || n >= hidden.Length || !hidden[n])
                 : source;
 
             _visible = HiddenCategories is { Count: > 0 } categories
-                ? pruned.Folded(n => n.Frame is not null && categories.Contains(n.Category))
+                ? pruned.Fold(n => n.Frame is not null && categories.Contains(n.Category))
                 : pruned;
         }
 

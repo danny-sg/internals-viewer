@@ -53,9 +53,9 @@ public sealed class TraceTimelineThread
 
     private TracePosition[]? Boundaries { get; set; }
 
-    public TraceTimelineThread Where(Func<int, bool> include)
+    public TraceTimelineThread Filter(Func<int, bool> include)
     {
-        TraceTimelineRow[] kept = [.. Rows.Select(r => r.Where(include))];
+        TraceTimelineRow[] kept = [.. Rows.Select(r => r.Filter(include))];
 
         return new TraceTimelineThread(ThreadId, Clock, Store, kept, kept.Sum(r => (long)r.Count));
     }

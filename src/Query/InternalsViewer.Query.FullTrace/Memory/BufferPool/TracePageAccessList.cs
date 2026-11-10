@@ -240,7 +240,7 @@ public sealed class TracePageAccessList
                                  Dictionary<uint, List<(TracePosition From, TracePosition To)>> postReads,
                                  List<Candidate> candidates)
     {
-        var calls = new TraceInnermostCallLookup(timeline);
+        var calls = new TraceInnermostCallIndex(timeline);
 
         for (var index = 0; index < reads.Count; index++)
         {
@@ -311,7 +311,7 @@ public sealed class TracePageAccessList
 
             foreach (var (columns, first) in list.ReadChunks(buffer))
             {
-                for (var callIndex = 0; callIndex < columns.Calls; callIndex++)
+                for (var callIndex = 0; callIndex < columns.CallCount; callIndex++)
                 {
                     var position = columns.GetFromPosition(callIndex);
 

@@ -9,7 +9,7 @@ public class SymbolSearchSuggestionTests
     [Fact]
     public void Operators_Become_Labelled_Search_Terms_In_The_Search_Syntax()
     {
-        var suggestions = SymbolSearchSuggestion.FromOperators(CategoryMappings.Default);
+        var suggestions = SymbolSearchSuggestion.CreateOperatorSuggestions(CategoryRuleTable.Default);
 
         Assert.Contains(new SymbolSearchSuggestion("Hash Match Build", "sqlmin!CQScanHash::ConsumeBuild"), suggestions);
         Assert.Contains(new SymbolSearchSuggestion("Sort", "sqlmin!CBpQScanSort*|sqlmin!CQScanSort*|sqlmin!CQScanTopSort*"), suggestions);
@@ -22,7 +22,7 @@ public class SymbolSearchSuggestionTests
     [Fact]
     public void Categories_Become_Prefixed_Search_Terms_That_Or_Every_Rule_Of_The_Category()
     {
-        var suggestions = SymbolSearchSuggestion.FromCategories(CategoryMappings.Default);
+        var suggestions = SymbolSearchSuggestion.CreateCategorySuggestions(CategoryRuleTable.Default);
 
         var statements = Assert.Single(suggestions, s => s.Label == "Category: Statement Execution");
 
@@ -37,7 +37,7 @@ public class SymbolSearchSuggestionTests
     [Fact]
     public void Categories_Are_Offered_Before_Operators()
     {
-        var suggestions = SymbolSearchSuggestion.FromMappings(CategoryMappings.Default).ToList();
+        var suggestions = SymbolSearchSuggestion.CreateSuggestions(CategoryRuleTable.Default).ToList();
 
         var lastCategory = suggestions.FindLastIndex(s => s.Label.StartsWith(SymbolSearchSuggestion.CategoryPrefix));
 

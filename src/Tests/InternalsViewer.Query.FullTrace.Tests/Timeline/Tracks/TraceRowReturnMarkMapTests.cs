@@ -383,7 +383,7 @@ public class TraceRowReturnMarkMapTests
     }
 
     private static ulong[] Call((ulong Start, ulong End, ulong Status) call, int callNodeIndex)
-        => Row(call.Start, flags: Thread | TraceCallChunk.ReturnedFlag, returnValue: call.Status, callNodeIndex: callNodeIndex, endSequence: call.End);
+        => Row(call.Start, flags: Thread | TraceCallColumnSet.ReturnedFlag, returnValue: call.Status, callNodeIndex: callNodeIndex, endSequence: call.End);
 
     private static CallFrame Frame(ulong instance, string method = "GetRowOrReQualifyHelper") => new()
     {

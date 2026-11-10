@@ -94,7 +94,7 @@ internal sealed class TraceResultBuilder
             ObjectPool = ObjectPool,
             BufferPool = BufferPool,
             RowReturnMarks = TraceRowReturnMarkMap.Build(Timeline, CallStore, lifetimes, enclosing),
-            Seeks = TraceSeekReader.Build(Timeline, CallStore, lifetimes, enclosing)
+            Seeks = TraceSeekTrackBuilder.Build(Timeline, CallStore, lifetimes, enclosing)
         };
     }
 }

@@ -41,14 +41,14 @@ public sealed class CallTreeNode
     /// </summary>
     public bool IsInfrastructure => Frame?.Function?.SymbolMetadata?.IsInfrastructure ?? false;
 
-    public bool IsInstrumentation => Frame?.Function?.SymbolCategory is { } category && category.IsInstrumentation(HasOperator);
+    public bool IsInstrumentation => Frame?.Function?.SymbolCategory is { } category && category.IsInstrumentation(HasOperatorName);
 
     /// <summary>
     /// The plan operator this frame implements if it is a query iterator, otherwise null
     /// </summary>
-    public string? Operator => Frame?.Function?.Iterator;
+    public string? OperatorName => Frame?.Function?.OperatorName;
 
-    public bool HasOperator => Operator is not null;
+    public bool HasOperatorName => OperatorName is not null;
 
     /// <summary>
     /// Whether an operator's execution begins here, so the tree can be cut into a segment per operator

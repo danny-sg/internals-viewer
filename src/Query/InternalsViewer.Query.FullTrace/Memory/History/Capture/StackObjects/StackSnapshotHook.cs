@@ -156,7 +156,7 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
 
         foreach (var declared in function.DeclaredClasses)
         {
-            if (declared.ArgumentSlot == ArgumentLayout.ReturnRegister)
+            if (declared.ArgumentSlot == ArgumentLayout.ReturnArgumentSlot)
             {
                 Track(call.ReturnValue, call, replay, isReturned: true);
             }
@@ -263,14 +263,14 @@ internal sealed class StackSnapshotHook(Dictionary<ulong, AddressMapFunction> op
 
     private void Track(ulong address, in TraceHookCall call, ITraceReplay replay, bool isReturned)
     {
-        if (address < TraceAddress.MinAddress || address < call.StackPointer)
+        if (address < TraceAddress.MinimumAddress || address < call.StackPointer)
         {
             return;
         }
 
         var frames = replay.GetFrames(call.Thread);
 
-        var owner = TraceHookFrameLookup.GetOwnerIndex(frames, address);
+        var owner = TraceHookFrame.GetOwnerIndex(frames, address);
 
         if (owner < 0)
         {

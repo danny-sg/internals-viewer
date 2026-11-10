@@ -6,9 +6,9 @@ namespace InternalsViewer.Query.FullTrace.Memory.BufferPool.Capture;
 
 internal sealed class TracePageReadRecorder(TraceBufferPool pool)
 {
-    public long Received { get; private set; }
+    public long ReceivedCount { get; private set; }
 
-    public long Recorded { get; private set; }
+    public long CapturedCount { get; private set; }
 
     public TracePosition? FirstPosition => pool.FirstPosition;
 
@@ -26,7 +26,7 @@ internal sealed class TracePageReadRecorder(TraceBufferPool pool)
 
     public void Add(WatchHit hit)
     {
-        Received++;
+        ReceivedCount++;
 
         var frame = GetFrame(hit.Address);
 
@@ -87,7 +87,7 @@ internal sealed class TracePageReadRecorder(TraceBufferPool pool)
 
         runs[hit.Thread] = new Run(hit.Thread, frame, position, position, address, end);
 
-        Recorded++;
+        CapturedCount++;
 
         return true;
     }

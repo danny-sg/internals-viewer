@@ -23,11 +23,11 @@ public sealed partial class TraceTimeline
         End = end;
     }
 
-    internal static bool IsCurrent(BinaryReader reader) => reader.ReadInt32() == -FormatVersion;
+    internal static bool IsSupported(BinaryReader reader) => reader.ReadInt32() == -FormatVersion;
 
     internal static TraceTimeline Read(BinaryReader reader, IReadOnlyList<CallTreeNode> nodesById)
     {
-        if (!IsCurrent(reader))
+        if (!IsSupported(reader))
         {
             throw new InvalidDataException("The trace timeline was exported in an earlier format and must be re-recorded");
         }

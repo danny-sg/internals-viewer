@@ -90,9 +90,9 @@ internal sealed partial class LocatorTable
 
         ref readonly var rightLocator = ref pool[right.PoolIndex];
 
-        if (leftLocator.Register != rightLocator.Register)
+        if (leftLocator.ArgumentSlot != rightLocator.ArgumentSlot)
         {
-            return leftLocator.Register.CompareTo(rightLocator.Register);
+            return leftLocator.ArgumentSlot.CompareTo(rightLocator.ArgumentSlot);
         }
 
         if (leftLocator.ValueType != rightLocator.ValueType)
@@ -133,7 +133,7 @@ internal sealed partial class LocatorTable
 
     private static bool IsSameGroup(FoundLocator left, FoundLocator right, LocatorPool pool)
         => left.CallIndex == right.CallIndex
-           && pool[left.PoolIndex].Register == pool[right.PoolIndex].Register
+           && pool[left.PoolIndex].ArgumentSlot == pool[right.PoolIndex].ArgumentSlot
            && pool[left.PoolIndex].ValueType == pool[right.PoolIndex].ValueType;
 
     private static int RemoveDuplicates(Span<int> sorted)

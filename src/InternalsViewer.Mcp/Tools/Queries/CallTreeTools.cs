@@ -625,7 +625,7 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
                 {
                     Name = name,
                     Category = GetCategory(node),
-                    Operator = node.Frame?.Function?.Iterator ?? string.Empty
+                    Operator = node.Frame?.Function?.OperatorName ?? string.Empty
                 };
 
                 totals[name] = total;

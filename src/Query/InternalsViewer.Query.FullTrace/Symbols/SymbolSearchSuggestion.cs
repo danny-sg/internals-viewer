@@ -34,18 +34,18 @@ public sealed record SymbolSearchSuggestion(string Label, string Term)
     /// <summary>
     /// The symbol categories followed by the operators
     /// </summary>
-    public static IReadOnlyList<SymbolSearchSuggestion> FromMappings(CategoryMappings mappings) =>
-        [.. FromCategories(mappings), .. FromOperators(mappings)];
+    public static IReadOnlyList<SymbolSearchSuggestion> CreateSuggestions(CategoryRuleTable mappings) =>
+        [.. CreateCategorySuggestions(mappings), .. CreateOperatorSuggestions(mappings)];
 
-    public static IReadOnlyList<SymbolSearchSuggestion> FromCategories(CategoryMappings mappings) =>
+    public static IReadOnlyList<SymbolSearchSuggestion> CreateCategorySuggestions(CategoryRuleTable mappings) =>
         Group(mappings.Rules
                       .Where(r => r.Category != SymbolCategory.Unknown)
                       .Select(r => (Label: (string?)(CategoryPrefix + GetCategoryName(r.Category)),
                                     Term: GetTerm(r.Module, r.Class, r.Function))));
 
-    public static IReadOnlyList<SymbolSearchSuggestion> FromOperators(CategoryMappings mappings) =>
+    public static IReadOnlyList<SymbolSearchSuggestion> CreateOperatorSuggestions(CategoryRuleTable mappings) =>
         Group(mappings.Operators
-                      .Select(r => (Label: r.Iterator ?? (r.PlanOperator.Count > 0 ? r.PlanOperator[0].Text : null),
+                      .Select(r => (Label: r.OperatorName ?? (r.PlanOperator.Count > 0 ? r.PlanOperator[0].Text : null),
                                     Term: GetTerm(r.Module, r.Class, r.Function))));
 
     private static IReadOnlyList<SymbolSearchSuggestion> Group(IEnumerable<(string? Label, string Term)> suggestions) =>

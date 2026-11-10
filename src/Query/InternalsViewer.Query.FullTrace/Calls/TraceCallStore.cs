@@ -27,7 +27,7 @@ public sealed partial class TraceCallStore
                                                               Columns,
                                                               locators.GetValueOrDefault(f.Key)));
 
-        CallCount = functions.Values.Sum(f => f.Sum(c => (long)c.Calls));
+        CallCount = functions.Values.Sum(f => f.Sum(c => (long)c.CallCount));
         Size = functions.Values.Sum(f => f.Sum(c => (long)c.Columns.Length));
         LocatorCount = locators.Values.Sum(l => (long)l.Count);
     }
@@ -130,7 +130,7 @@ public sealed partial class TraceCallStore
         }
     }
 
-    internal static TraceCallChunk Decompress(Chunk chunk, ref ulong[] buffer)
+    internal static TraceCallColumnSet Decompress(Chunk chunk, ref ulong[] buffer)
     {
         var length = chunk.Length;
 
@@ -147,21 +147,21 @@ public sealed partial class TraceCallStore
 
         bytes[read..].Clear();
 
-        TraceCallChunk.Decode(buffer.AsSpan(0, length), chunk.Calls);
+        TraceCallColumnSet.Decode(buffer.AsSpan(0, length), chunk.CallCount);
 
-        return new TraceCallChunk(buffer, chunk.Calls, chunk.StackSlots);
+        return new TraceCallColumnSet(buffer, chunk.CallCount, chunk.StackSlotCount);
     }
 
-    internal sealed record Chunk(int Calls, int StackSlots, byte[] Columns)
+    internal sealed record Chunk(int CallCount, int StackSlotCount, byte[] Columns)
     {
-        public int Length => Calls * (TraceCallChunk.ValueCount + StackSlots);
+        public int Length => CallCount * (TraceCallColumnSet.ValueCount + StackSlotCount);
     }
 
     internal sealed class ColumnBuffer
     {
         private ulong[] Values { get; set; } = [];
 
-        public TraceCallChunk DecompressBuffer(Chunk chunk)
+        public TraceCallColumnSet DecompressBuffer(Chunk chunk)
         {
             var values = Values;
 
@@ -175,9 +175,9 @@ public sealed partial class TraceCallStore
 
     internal sealed class ChunkCache(long capacity)
     {
-        private LinkedList<(Chunk Chunk, TraceCallChunk Columns)> Order { get; } = [];
+        private LinkedList<(Chunk Chunk, TraceCallColumnSet Columns)> Order { get; } = [];
 
-        private Dictionary<Chunk, LinkedListNode<(Chunk Chunk, TraceCallChunk Columns)>> Entries { get; }
+        private Dictionary<Chunk, LinkedListNode<(Chunk Chunk, TraceCallColumnSet Columns)>> Entries { get; }
             = new(ReferenceEqualityComparer.Instance);
 
         private List<ulong[]> Pool { get; } = [];
@@ -188,10 +188,10 @@ public sealed partial class TraceCallStore
 
         private long Pooled { get; set; }
 
-        public T Read<T>(Chunk chunk, int callIndex, Func<TraceCallChunk, int, T> read)
+        public T Read<T>(Chunk chunk, int callIndex, Func<TraceCallColumnSet, int, T> read)
             => Read(chunk, callIndex, read, static (columns, index, state) => state(columns, index));
 
-        public T Read<TState, T>(Chunk chunk, int callIndex, TState state, Func<TraceCallChunk, int, TState, T> read)
+        public T Read<TState, T>(Chunk chunk, int callIndex, TState state, Func<TraceCallColumnSet, int, TState, T> read)
         {
             lock (Sync)
             {

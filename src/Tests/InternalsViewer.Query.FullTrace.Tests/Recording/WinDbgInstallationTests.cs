@@ -14,7 +14,7 @@ public class WinDbgInstallationTests
         {
             File.WriteAllBytes(Path.Combine(directory.FullName, "dbgeng.dll"), []);
 
-            var installation = WinDbgInstallation.FromExecutable(Path.Combine(directory.FullName, "windbg.exe"));
+            var installation = WinDbgInstallation.Create(Path.Combine(directory.FullName, "windbg.exe"));
 
             Assert.Equal(directory.FullName, installation.EngineDirectory);
             Assert.False(installation.IsPackaged);
@@ -38,7 +38,7 @@ public class WinDbgInstallationTests
 
             File.WriteAllBytes(Path.Combine(directory.FullName, "ttd", "TTD.exe"), []);
 
-            var installation = WinDbgInstallation.FromExecutable(Path.Combine(directory.FullName, "windbg.exe"));
+            var installation = WinDbgInstallation.Create(Path.Combine(directory.FullName, "windbg.exe"));
 
             Assert.True(installation.HasTimeTravel);
         }
@@ -57,7 +57,7 @@ public class WinDbgInstallationTests
         {
             File.WriteAllBytes(Path.Combine(directory.FullName, "dbgeng.dll"), []);
 
-            var installation = WinDbgInstallation.FromExecutable(Path.Combine(directory.FullName, "windbg.exe"));
+            var installation = WinDbgInstallation.Create(Path.Combine(directory.FullName, "windbg.exe"));
 
             Assert.False(installation.HasTimeTravel);
         }
@@ -72,7 +72,7 @@ public class WinDbgInstallationTests
     {
         const string root = @"C:\Program Files\WindowsApps\Microsoft.WinDbg_1.0_x64__8wekyb3d8bbwe";
 
-        var installation = WinDbgInstallation.FromExecutable(Path.Combine(root, "DbgX.Shell.exe"));
+        var installation = WinDbgInstallation.Create(Path.Combine(root, "DbgX.Shell.exe"));
 
         Assert.True(installation.IsPackaged);
         Assert.Equal(@"C:\Program Files\WindowsApps\Microsoft.WinDbg_1.0_x64__8wekyb3d8bbwe\amd64", installation.EngineDirectory);

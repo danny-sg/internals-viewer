@@ -15,7 +15,7 @@ internal sealed partial class LocatorTable
 
         for (var index = 0; index < locators.Length; index++)
         {
-            var register = reader.ReadInt32();
+            var argumentSlot = reader.ReadInt32();
 
             var valueType = (LocatorValueType)reader.ReadByte();
 
@@ -25,7 +25,7 @@ internal sealed partial class LocatorTable
 
             var text = HasText(valueType) ? reader.ReadString() : null;
 
-            locators[index] = new Locator(register, valueType, value, detail, text);
+            locators[index] = new Locator(argumentSlot, valueType, value, detail, text);
         }
 
         return locators;
@@ -37,7 +37,7 @@ internal sealed partial class LocatorTable
 
         foreach (var locator in locators)
         {
-            writer.Write(locator.Register);
+            writer.Write(locator.ArgumentSlot);
 
             writer.Write((byte)locator.ValueType);
 

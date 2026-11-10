@@ -8,7 +8,7 @@ namespace InternalsViewer.Query.FullTrace.Calls;
 
 internal sealed class StackArgumentHook(AddressTable<int> functions, TraceCallStore.Builder store) : ITraceHook
 {
-    private const int StackSlots = ArgumentLayout.CapturedSlots - ArgumentLayout.RegisterCount;
+    private const int StackSlots = ArgumentLayout.CapturedSlotCount - ArgumentLayout.RegisterCount;
 
     public IEnumerable<TraceHookFunction> Functions => functions.Keys.Select(f => new TraceHookFunction(f, TraceHookEvents.Entry));
 

@@ -3,7 +3,7 @@ using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 
 namespace InternalsViewer.Query.FullTrace.Timeline.Tracks;
 
-internal static class TraceRowAccessReader
+internal static class TraceRowAccessTrackBuilder
 {
     public static TraceTickSeries Build(TraceTimeline timeline,
                                         TracePageAccessList accesses,
@@ -26,7 +26,7 @@ internal static class TraceRowAccessReader
             }
         }
 
-        return TraceTickSeries.FromSources(timeline, sources, lifetimes, enclosing);
+        return TraceTickSeries.Build(timeline, sources, lifetimes, enclosing);
     }
 
     public static TraceTickSeries BuildHeaders(TraceTimeline timeline,
@@ -44,7 +44,7 @@ internal static class TraceRowAccessReader
             }
         }
 
-        return TraceTickSeries.FromSources(timeline, sources, lifetimes, enclosing);
+        return TraceTickSeries.Build(timeline, sources, lifetimes, enclosing);
     }
 
     private static TraceSpanLocation? GetLocation(TraceTimeline timeline, TracePageAccess access)
@@ -54,6 +54,6 @@ internal static class TraceRowAccessReader
     {
         var point = new TracePoint(access.Position, location.Thread.Clock.GetInstructions(access.Position));
 
-        return TraceTickSource.FromPoint(location, 0, point);
+        return TraceTickSource.Create(location, 0, point);
     }
 }

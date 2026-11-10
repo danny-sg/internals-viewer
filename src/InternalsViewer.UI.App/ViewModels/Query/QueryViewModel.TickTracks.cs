@@ -177,7 +177,7 @@ public sealed partial class QueryViewModel
             if (!TrackSeries.TryGetValue(groups[index].Key, out var cache)
                 || !cache.Rules.SequenceEqual(rules, ReferenceEqualityComparer.Instance))
             {
-                var series = TraceTickSeries.FromRules(trace, rules, r => GetRuleSeries(trace, r));
+                var series = TraceTickSeries.BuildTrack(trace, rules, r => GetRuleSeries(trace, r));
 
                 cache = new TickTrackCache(rules, series);
 
@@ -211,13 +211,13 @@ public sealed partial class QueryViewModel
             series = rule.Source switch
             {
                 TraceTickSourceType.Evaluate
-                    => TraceTickSeries.FromAssignedCalls(trace,
+                    => TraceTickSeries.BuildAssigned(trace,
                                                          rule,
                                                          statement,
                                                          p => GetPulledComputeScalars(p, (ExpressionPullSite)rule.Value)),
                 TraceTickSourceType.Statement
-                    => TraceTickSeries.FromAssignedCalls(trace, rule, statement, _ => statement is null ? [] : [statement]),
-                _ => TraceTickSeries.FromDefinition(trace, rule)
+                    => TraceTickSeries.BuildAssigned(trace, rule, statement, _ => statement is null ? [] : [statement]),
+                _ => TraceTickSeries.Build(trace, rule)
             };
 
             RuleSeries[rule] = series;

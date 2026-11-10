@@ -35,7 +35,7 @@ internal sealed record WinDbgInstallation(string Executable, string EngineDirect
     /// <summary>
     /// Describes an installation from the executable the user pointed at
     /// </summary>
-    public static WinDbgInstallation FromExecutable(string executable)
+    public static WinDbgInstallation Create(string executable)
     {
         var directory = Path.GetDirectoryName(executable) ?? string.Empty;
 
@@ -59,7 +59,7 @@ internal sealed record WinDbgInstallation(string Executable, string EngineDirect
                 throw new WinDbgNotFoundException($"WinDbg was not found at {path}. Check the WinDbg Path in Settings");
             }
 
-            var installation = FromExecutable(path);
+            var installation = Create(path);
 
             logger.LogInformation("Using WinDbg at {Executable} with the engine in {EngineDirectory}",
                                   installation.Executable,

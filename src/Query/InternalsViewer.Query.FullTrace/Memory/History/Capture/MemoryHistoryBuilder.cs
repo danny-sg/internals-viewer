@@ -57,7 +57,7 @@ internal static class MemoryHistoryBuilder
                 }
 
                 if (function.IsAllocation
-                    && call.ReturnedValue >= TraceAddress.MinAddress
+                    && call.ReturnedValue >= TraceAddress.MinimumAddress
                     && function.GetByteCount(call) is > 0 and <= MaximumBlockSize and var bytes)
                 {
                     events.Add((list.GetToPosition(index),
@@ -111,15 +111,15 @@ internal static class MemoryHistoryBuilder
 
         var allocated = allocations.Select(a => a.Block).ToArray();
 
-        allocations.AddRange((pages ?? []).Where(p => !allocated.Any(a => a.Pointer <= p.Pointer && p.Pointer + p.Bytes <= a.Pointer + a.Bytes))
+        allocations.AddRange((pages ?? []).Where(p => !allocated.Any(a => a.Address <= p.Address && p.Address + p.Size <= a.Address + a.Size))
                                           .Select(p => new MemoryHistoryAllocation(p, IsClerkPage: false)));
 
-        return [.. allocations.OrderBy(a => a.Block.Start).ThenBy(a => a.Block.Pointer)];
+        return [.. allocations.OrderBy(a => a.Block.FromPosition).ThenBy(a => a.Block.Address)];
     }
 
     public static WatchRange[] GetRanges(IEnumerable<MemoryBlock> blocks, IEnumerable<WatchRange> others)
     {
-        var ranges = blocks.Select(b => new WatchRange(b.Pointer, b.Bytes)).Concat(others);
+        var ranges = blocks.Select(b => new WatchRange(b.Address, b.Size)).Concat(others);
 
         return [.. IntervalHelper.Coalesce(ranges, r => r.Address, r => r.Address + r.Size).Select(r => new WatchRange(r.Start, r.End - r.Start))];
     }
@@ -127,14 +127,14 @@ internal static class MemoryHistoryBuilder
     public static Func<WatchHit, bool> GetWatchFilter(IReadOnlyList<MemoryHistoryAllocation> allocations)
     {
         var index = new BlockIndex([.. allocations.Select(a => new WatchedBlock(0,
-                                                                              a.Block.Pointer,
-                                                                              a.Block.Bytes,
+                                                                              a.Block.Address,
+                                                                              a.Block.Size,
                                                                               isIterator: false,
                                                                               isInline: false,
                                                                               a.IsClerkPage,
                                                                               a.Block.Thread,
-                                                                              a.Block.Start,
-                                                                              a.Block.End))]);
+                                                                              a.Block.FromPosition,
+                                                                              a.Block.ToPosition))]);
 
         return hit => index.IsLive(hit.Address, hit.Size, hit.Position);
     }
@@ -254,14 +254,14 @@ internal static class MemoryHistoryBuilder
                 var allocation = allocations[index].Block;
 
                 Blocks.Add(new WatchedBlock(owners[index],
-                                            allocation.Pointer,
-                                            allocation.Bytes,
-                                            owners[index] == allocation.Pointer,
+                                            allocation.Address,
+                                            allocation.Size,
+                                            owners[index] == allocation.Address,
                                             isInline: false,
                                             allocations[index].IsClerkPage,
                                             allocation.Thread,
-                                            allocation.Start,
-                                            allocation.End,
+                                            allocation.FromPosition,
+                                            allocation.ToPosition,
                                             allocations[index].IsBuffer,
                                             isArray: allocations[index].IsArray));
             }
@@ -413,19 +413,19 @@ internal static class MemoryHistoryBuilder
 
         private ChunkedList<ClosedMark> Closed { get; set; } = [];
 
-        private TraceInnermostCallLookup Calls { get; } = new(timeline);
+        private TraceInnermostCallIndex Calls { get; } = new(timeline);
 
         private bool IsOrdered { get; set; } = true;
 
         public void Add(WatchHit hit)
         {
-            Counts.Received++;
+            Counts.ReceivedCount++;
 
             var position = hit.Position;
 
             if (lookup.GetInnermost(hit.Address, position) is not { } found)
             {
-                Counts.Outside++;
+                Counts.OutsideCount++;
 
                 return;
             }
@@ -434,7 +434,7 @@ internal static class MemoryHistoryBuilder
 
             if (block.IsBufferPool)
             {
-                Counts.BufferPool++;
+                Counts.BufferPoolCount++;
 
                 return;
             }
@@ -462,7 +462,7 @@ internal static class MemoryHistoryBuilder
                 ? mark with { Mark = mark.Mark.Add(position, offset, end) }
                 : new OpenMark(new ReadMark(position, offset, end, 1), spanEnd);
 
-            Counts.Recorded++;
+            Counts.CapturedCount++;
 
             if (table.Open.Count >= table.SweepAt)
             {
@@ -544,7 +544,7 @@ internal static class MemoryHistoryBuilder
 
                 if (kept[block] < 0)
                 {
-                    Counts.Unwritten += mark.Count;
+                    Counts.UnwrittenCount += mark.Count;
 
                     continue;
                 }
@@ -645,7 +645,7 @@ internal static class MemoryHistoryBuilder
 
         private Dictionary<int, (bool IsBufferPool, bool IsGrant)> PageSources { get; } = [];
 
-        private TraceInnermostCallLookup Calls { get; } = new(timeline);
+        private TraceInnermostCallIndex Calls { get; } = new(timeline);
 
         public int GetWriter(uint thread, TracePosition position) => Calls.GetSpanId(thread, position);
 

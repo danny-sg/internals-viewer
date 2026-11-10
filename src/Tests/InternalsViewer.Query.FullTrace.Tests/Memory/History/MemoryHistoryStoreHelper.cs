@@ -40,7 +40,7 @@ internal static class MemoryHistoryStoreHelper
 
         foreach (var (sequence, address, bytes) in writes)
         {
-            hits.Add(ChunkHit.From(new WatchHit(sequence, 0, address, Writer, Thread, (uint)bytes.Length, 0, 1), data.Count));
+            hits.Add(ChunkHit.Create(new WatchHit(sequence, 0, address, Writer, Thread, (uint)bytes.Length, 0, 1), data.Count));
 
             data.AddRange(bytes);
         }
@@ -62,7 +62,7 @@ internal static class MemoryHistoryStoreHelper
 
         foreach (var (sequence, address, bytes) in writes)
         {
-            hits.Add(ChunkHit.From(new WatchHit(sequence, 0, address, Writer, Thread, (uint)bytes.Length, 0, 1), data.Count));
+            hits.Add(ChunkHit.Create(new WatchHit(sequence, 0, address, Writer, Thread, (uint)bytes.Length, 0, 1), data.Count));
 
             data.AddRange(bytes);
         }

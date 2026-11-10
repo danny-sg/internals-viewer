@@ -10,7 +10,7 @@ internal static class BatchToRowOperatorBuilder
 {
     private const string OperatorName = "Batch To Row Adapter";
 
-    public static Dictionary<ulong, ExecutionOperatorEvent> Create(TraceTimeline timeline,
+    public static Dictionary<ulong, ExecutionOperatorEvent> Build(TraceTimeline timeline,
                                                                    IReadOnlyList<IteratorPlanNode> planNodes,
                                                                    IReadOnlyDictionary<ulong, ExecutionOperatorEvent> owners)
     {

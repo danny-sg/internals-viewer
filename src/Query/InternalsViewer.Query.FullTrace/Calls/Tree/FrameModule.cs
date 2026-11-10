@@ -11,7 +11,7 @@ public sealed record FrameModule(string Name, string Pdb = "", string Guid = "",
 
     public static FrameModule Empty { get; } = new(string.Empty);
 
-    public ModuleCategory Category => CategoryMappings.Default.GetModuleCategory(Name);
+    public ModuleCategory Category => CategoryRuleTable.Default.GetModuleCategory(Name);
 
     public bool HasSymbols => !string.IsNullOrWhiteSpace(Pdb)
                               && !string.IsNullOrWhiteSpace(Guid)

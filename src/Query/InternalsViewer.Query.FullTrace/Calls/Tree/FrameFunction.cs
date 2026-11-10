@@ -14,7 +14,7 @@ public sealed class FrameFunction
 
     public SymbolCategory SymbolCategory { get; init; }
 
-    public string? Iterator { get; init; }
+    public string? OperatorName { get; init; }
 
     public IReadOnlyList<GlobPattern> PlanOperator { get; init; } = [];
 
@@ -32,9 +32,9 @@ public sealed class FrameFunction
 
         var methodName = separator >= 0 ? name[(separator + 2)..] : name;
 
-        var mappings = CategoryMappings.Default;
+        var mappings = CategoryRuleTable.Default;
 
-        var (iterator, planOperator) = mappings.ClassifyOperator(module, className, methodName);
+        var (operatorName, planOperator) = mappings.ClassifyOperator(module, className, methodName);
 
         return new FrameFunction
         {
@@ -42,7 +42,7 @@ public sealed class FrameFunction
             ClassName = className,
             MethodName = methodName,
             SymbolCategory = mappings.Classify(module, className, methodName),
-            Iterator = iterator,
+            OperatorName = operatorName,
             PlanOperator = planOperator
         };
     }

@@ -200,7 +200,7 @@ public class TraceReadResolverTests
 
         TraceTickDefinition[] rules = [.. TraceTickDefinition.GetPredefined().Where(d => d.Name == ReadsTrack)];
 
-        return (TraceTickSeries.FromRules(trace, rules, r => TraceTickSeries.FromDefinition(trace, r)).Series, calls);
+        return (TraceTickSeries.BuildTrack(trace, rules, r => TraceTickSeries.Build(trace, r)).Series, calls);
     }
 
     private static (PageAddress Page, int PageCount, bool IsReadAhead)? GetRead(TraceCallStore calls, TraceTick read)
@@ -208,9 +208,9 @@ public class TraceReadResolverTests
 
     private static ulong[] Call(ulong start, ulong end, int callNodeIndex, ulong pageCount = 0)
     {
-        var row = Row(start, flags: Thread | TraceCallChunk.ReturnedFlag, rcx: BufferPool, callNodeIndex: callNodeIndex, endSequence: end);
+        var row = Row(start, flags: Thread | TraceCallColumnSet.ReturnedFlag, rcx: BufferPool, callNodeIndex: callNodeIndex, endSequence: end);
 
-        row[TraceCallChunk.IntegerOffset + 3] = pageCount;
+        row[TraceCallColumnSet.IntegerOffset + 3] = pageCount;
 
         return row;
     }

@@ -141,14 +141,14 @@ public sealed class TraceTickSeries
         return counts;
     }
 
-    public static TraceTickSeries FromDefinition(TraceResult trace, TraceTickDefinition definition) => definition.Source switch
+    public static TraceTickSeries Build(TraceResult trace, TraceTickDefinition definition) => definition.Source switch
     {
-        TraceTickSourceType.Call => FromDefinition(trace.Timeline, trace.CallStore, trace.Lifetimes, definition, trace.EnclosingCalls),
+        TraceTickSourceType.Call => Build(trace.Timeline, trace.CallStore, trace.Lifetimes, definition, trace.EnclosingCalls),
         TraceTickSourceType.Watch => TraceWatch.Build(trace, definition).Series,
-        _ => FromSource(trace.Timeline, GetSource(trace, definition.Source), definition)
+        _ => Filter(trace.Timeline, GetSource(trace, definition.Source), definition)
     };
 
-    public static TraceTickSeries FromAssignedCalls(TraceResult trace,
+    public static TraceTickSeries BuildAssigned(TraceResult trace,
                                                     TraceTickDefinition definition,
                                                     ExecutionOperatorEvent? statement,
                                                     Func<ExecutionOperatorEvent, IReadOnlyList<ExecutionOperatorEvent>> getOperators)
@@ -184,7 +184,7 @@ public sealed class TraceTickSeries
 
                 if (isMatch)
                 {
-                    evaluations.Add((TraceTickSource.FromCall(location, 0), owner));
+                    evaluations.Add((TraceTickSource.Create(location, 0), owner));
                 }
             }
         }
@@ -225,7 +225,7 @@ public sealed class TraceTickSeries
         return Create(trace.Timeline, sources);
     }
 
-    public static TraceTickTrackSeries FromRules(TraceResult trace,
+    public static TraceTickTrackSeries BuildTrack(TraceResult trace,
                                                  IReadOnlyList<TraceTickDefinition> rules,
                                                  Func<TraceTickDefinition, TraceTickSeries> getSeries)
     {
@@ -247,7 +247,7 @@ public sealed class TraceTickSeries
                                         [.. Enumerable.Range(0, count).Select(i => (byte)i)]);
     }
 
-    internal static TraceTickSeries FromDefinition(TraceTimeline timeline,
+    internal static TraceTickSeries Build(TraceTimeline timeline,
                                                    TraceCallStore calls,
                                                    TraceOperatorLifetimeList lifetimes,
                                                    TraceTickDefinition definition,
@@ -265,7 +265,7 @@ public sealed class TraceTickSeries
                      definition.MatchesOperator);
     }
 
-    internal static TraceTickSeries FromSources(TraceTimeline timeline,
+    internal static TraceTickSeries Build(TraceTimeline timeline,
                                                 List<TraceTickSource> sources,
                                                 TraceOperatorLifetimeList lifetimes,
                                                 EnclosingOperatorCallIndex enclosing,
@@ -347,7 +347,7 @@ public sealed class TraceTickSeries
         _ => Empty
     };
 
-    private static TraceTickSeries FromSource(TraceTimeline timeline, TraceTickSeries source, TraceTickDefinition definition)
+    private static TraceTickSeries Filter(TraceTimeline timeline, TraceTickSeries source, TraceTickDefinition definition)
     {
         var sources = new List<TraceTickSource>();
 
@@ -427,10 +427,10 @@ public sealed class TraceTickSeries
                     continue;
                 }
 
-                sources.Add(TraceTickSource.FromCall(location, value));
+                sources.Add(TraceTickSource.Create(location, value));
             }
         }
 
-        return FromSources(timeline, sources, lifetimes, enclosing, isOperator);
+        return Build(timeline, sources, lifetimes, enclosing, isOperator);
     }
 }

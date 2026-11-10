@@ -145,10 +145,10 @@ public sealed class CallLogTools(McpDocumentResolver documents)
 
             var functions = group.Uses.Count == 1 ? "function" : "functions";
 
-            var calls = group.Calls == 1 ? "call" : "calls";
+            var calls = group.CallCount == 1 ? "call" : "calls";
 
             builder.AppendLine($"{GetGroupTitle(group.Role)}: {Format.Number(group.Uses.Count)} {functions}, " +
-                               $"{Format.Number(group.Calls)} {calls}");
+                               $"{Format.Number(group.CallCount)} {calls}");
 
             var table = new TextTable("Function", "Location", "Calls", "First", "Last");
 
@@ -156,7 +156,7 @@ public sealed class CallLogTools(McpDocumentResolver documents)
             {
                 table.Add(scope.Context.GetFunctionName(use.FunctionAddress, use.InstanceAddress),
                           use.Location,
-                          Format.Number(use.Calls),
+                          Format.Number(use.CallCount),
                           $"#{use.First.CallIndex} {Format.Position(use.First.Position)}",
                           $"#{use.Last.CallIndex} {Format.Position(use.Last.Position)}");
             }

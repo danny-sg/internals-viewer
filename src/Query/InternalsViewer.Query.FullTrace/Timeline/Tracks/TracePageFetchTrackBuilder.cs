@@ -4,7 +4,7 @@ using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 
 namespace InternalsViewer.Query.FullTrace.Timeline.Tracks;
 
-internal static class TracePageFetchReader
+internal static class TracePageFetchTrackBuilder
 {
     private const int PfsInterval = 8088;
 
@@ -27,10 +27,10 @@ internal static class TracePageFetchReader
                 continue;
             }
 
-            sources.Add(TraceTickSource.FromCall(location, (byte)GetPageType(access, pool)));
+            sources.Add(TraceTickSource.Create(location, (byte)GetPageType(access, pool)));
         }
 
-        return TraceTickSeries.FromSources(timeline, sources, lifetimes, enclosing);
+        return TraceTickSeries.Build(timeline, sources, lifetimes, enclosing);
     }
 
     internal static PageType GetPageType(TracePageAccess access, TraceBufferPool pool)

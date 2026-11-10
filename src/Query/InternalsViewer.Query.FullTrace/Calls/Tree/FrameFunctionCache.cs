@@ -2,7 +2,7 @@ using InternalsViewer.Query.FullTrace.Symbols;
 
 namespace InternalsViewer.Query.FullTrace.Calls.Tree;
 
-internal sealed class FrameFunctionLookup
+internal sealed class FrameFunctionCache
 {
     private Dictionary<(string Module, string Name), FrameFunction> Functions { get; } = [];
 

@@ -5,7 +5,7 @@ using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 namespace InternalsViewer.Query.FullTrace.Tests.Symbols.Categories;
 
 [Trait("Category", "Unit")]
-public class CategoryMappingsTests
+public class CategoryRuleTableTests
 {
     // Migrated from the old SymbolCategoryDictionaryTests, now resolved through the embedded default mappings.
     [Theory]
@@ -50,21 +50,21 @@ public class CategoryMappingsTests
     [InlineData("SomeUnknownClass", "SomeUnknownMethod", SymbolCategory.Unknown)]
     [InlineData(null, null, SymbolCategory.Unknown)]
     public void Default_Classifies(string? className, string? methodName, SymbolCategory expected) =>
-        Assert.Equal(expected, CategoryMappings.Default.Classify(module: null, className, methodName));
+        Assert.Equal(expected, CategoryRuleTable.Default.Classify(module: null, className, methodName));
 
     [Fact]
     public void Default_Modules_Resolve()
     {
-        Assert.Equal(ModuleCategory.StorageEngine, CategoryMappings.Default.GetModuleCategory("sqlmin"));
-        Assert.Equal(ModuleCategory.QueryProcessor, CategoryMappings.Default.GetModuleCategory("sqllang"));
-        Assert.Equal(ModuleCategory.Unknown, CategoryMappings.Default.GetModuleCategory("nosuchmodule"));
+        Assert.Equal(ModuleCategory.StorageEngine, CategoryRuleTable.Default.GetModuleCategory("sqlmin"));
+        Assert.Equal(ModuleCategory.QueryProcessor, CategoryRuleTable.Default.GetModuleCategory("sqllang"));
+        Assert.Equal(ModuleCategory.Unknown, CategoryRuleTable.Default.GetModuleCategory("nosuchmodule"));
     }
 
     [Fact]
     public void Operator_Iterator_Is_Resolved()
     {
-        Assert.Equal(SymbolCategory.QueryOperator, CategoryMappings.Default.Classify("sqlmin", "CQScanTopNew", "GetRow"));
-        Assert.Equal("Top", CategoryMappings.Default.ClassifyOperator("sqlmin", "CQScanTopNew", "GetRow").Iterator);
+        Assert.Equal(SymbolCategory.QueryOperator, CategoryRuleTable.Default.Classify("sqlmin", "CQScanTopNew", "GetRow"));
+        Assert.Equal("Top", CategoryRuleTable.Default.ClassifyOperator("sqlmin", "CQScanTopNew", "GetRow").OperatorName);
     }
 
     [Theory]
@@ -79,7 +79,7 @@ public class CategoryMappingsTests
     [InlineData("RbpCompile", "CompileFilter", "Compile")]
     public void Default_Badges_A_Columnstore_Scan_Stage(string className, string methodName, string expected)
     {
-        var (iterator, planOperator) = CategoryMappings.Default.ClassifyOperator("sqlmin", className, methodName);
+        var (iterator, planOperator) = CategoryRuleTable.Default.ClassifyOperator("sqlmin", className, methodName);
 
         Assert.Equal(expected, iterator);
         Assert.Empty(planOperator);
@@ -108,7 +108,7 @@ public class CategoryMappingsTests
     [InlineData("CQScanTableScanNew", "GetRow", "Clustered Index Scan")]
     [InlineData("CQScanTableScanNew", "GetRow", "Table Scan")]
     public void Default_Recognises_An_Operator_Entry_Frame(string className, string methodName, string physicalOperator)
-        => Assert.True(CategoryMappings.Default.ClassifyOperator("sqlmin", className, methodName)
+        => Assert.True(CategoryRuleTable.Default.ClassifyOperator("sqlmin", className, methodName)
                                        .PlanOperator.Any(p => p.Matches(physicalOperator)));
 
     [Theory]
@@ -117,7 +117,7 @@ public class CategoryMappingsTests
     [InlineData("RowsetNewSS", "FetchNextRow")]
     [InlineData("SomeUnknownClass", "SomeUnknownMethod")]
     public void Default_Marks_No_Entry_Frame_For_A_Non_Operator(string className, string methodName)
-        => Assert.Empty(CategoryMappings.Default.ClassifyOperator(module: null, className, methodName).PlanOperator);
+        => Assert.Empty(CategoryRuleTable.Default.ClassifyOperator(module: null, className, methodName).PlanOperator);
 
     [Theory]
     // A statement IS a plan node — ExecutionPlanParser.BuildStatementNode synthesises one (NodeId -1) whose
@@ -129,13 +129,13 @@ public class CategoryMappingsTests
     [InlineData("CXStmtInsert", "INSERT")]
     [InlineData("CXStmtMerge", "MERGE")]
     public void Default_Scopes_A_Statement_To_Its_Plan_Node(string className, string statementType)
-        => Assert.True(CategoryMappings.Default.ClassifyOperator("sqllang", className, "XretExecute")
+        => Assert.True(CategoryRuleTable.Default.ClassifyOperator("sqllang", className, "XretExecute")
                                        .PlanOperator.Any(p => p.Matches(statementType)));
 
     [Fact]
     public void An_Entry_Frame_Only_Matches_Its_Own_Operator()
     {
-        var planOperator = CategoryMappings.Default.ClassifyOperator("sqlmin", "CQScanNLJoinNew", "GetRow").PlanOperator;
+        var planOperator = CategoryRuleTable.Default.ClassifyOperator("sqlmin", "CQScanNLJoinNew", "GetRow").PlanOperator;
 
         Assert.True(planOperator.Any(p => p.Matches("Nested Loops")));
         Assert.False(planOperator.Any(p => p.Matches("Merge Join")));
@@ -146,16 +146,16 @@ public class CategoryMappingsTests
     {
         // sqlmin|CQScanHash*|* outranks the generic *|*|GetRow* rule, which would otherwise make this RowAccess.
         Assert.Equal(SymbolCategory.QueryOperator,
-                     CategoryMappings.Default.Classify("sqlmin", "CQScanHashNew", "GetRow"));
+                     CategoryRuleTable.Default.Classify("sqlmin", "CQScanHashNew", "GetRow"));
     }
 
     [Fact]
     public void Batch_Mode_Operators_Are_Batch_Operators()
-        => Assert.Equal(SymbolCategory.BatchOperator, CategoryMappings.Default.Classify("sqlmin", "CBpQScanHashJoin", "GetBatch"));
+        => Assert.Equal(SymbolCategory.BatchOperator, CategoryRuleTable.Default.Classify("sqlmin", "CBpQScanHashJoin", "GetBatch"));
 
     [Fact]
     public void Batches_Are_Part_Of_Batch_Operators()
-        => Assert.Equal(SymbolCategory.BatchOperator, CategoryMappings.Default.Classify("sqlmin", "CBpBatch", "Reset"));
+        => Assert.Equal(SymbolCategory.BatchOperator, CategoryRuleTable.Default.Classify("sqlmin", "CBpBatch", "Reset"));
 
     [Fact]
     public void Most_Specific_Rule_Wins()
@@ -165,7 +165,7 @@ public class CategoryMappingsTests
             "sqlmin|CQScan*|*|QueryOperator",           // module + class glob
             "sqlmin|CQScanTopNew|GetRow|Compilation");  // fully exact
 
-        var mappings = CategoryMappings.Load(new StringReader(""), new StringReader(symbols));
+        var mappings = CategoryRuleTable.Load(new StringReader(""), new StringReader(symbols));
 
         Assert.Equal(SymbolCategory.Compilation, mappings.Classify("sqlmin", "CQScanTopNew", "GetRow"));
         Assert.Equal(SymbolCategory.QueryOperator, mappings.Classify("sqlmin", "CQScanHashNew", "GetRow"));
@@ -182,7 +182,7 @@ public class CategoryMappingsTests
             "sqlmin|CQScanHash*|*|Hash Match|Hash Match",
             "sqlmin|CQScanHash|ConsumeProbe|Hash Match Probe|");
 
-        var mappings = CategoryMappings.Load(new StringReader(""),
+        var mappings = CategoryRuleTable.Load(new StringReader(""),
                                              new StringReader(""),
                                              new StringReader(operators));
 
@@ -199,7 +199,7 @@ public class CategoryMappingsTests
         var core = "*|CQScanTop*|*|QueryOperator";
         var update = "*|CQScanTop*|*|Compilation";
 
-        var mappings = CategoryMappings.Load(new StringReader(""),
+        var mappings = CategoryRuleTable.Load(new StringReader(""),
                                              new StringReader(core),
                                              overrideSymbols: new StringReader(update));
 
@@ -209,7 +209,7 @@ public class CategoryMappingsTests
     [Fact]
     public void A_Fallback_Only_Applies_When_No_Rule_Matches()
     {
-        var mappings = CategoryMappings.Load(new StringReader(""),
+        var mappings = CategoryRuleTable.Load(new StringReader(""),
                                              new StringReader("SqlTsEs|CEsExec|*|ExpressionEvaluation"),
                                              fallbacks: new StringReader("SqlTsEs|*|*|Security"));
 
@@ -224,7 +224,7 @@ public class CategoryMappingsTests
     {
         var fallbacks = string.Join('\n', "SqlTsEs|*|*|ExpressionEvaluation", "SqlTsEs|*Enclave*|*|Security");
 
-        var mappings = CategoryMappings.Load(new StringReader(""), new StringReader(""), fallbacks: new StringReader(fallbacks));
+        var mappings = CategoryRuleTable.Load(new StringReader(""), new StringReader(""), fallbacks: new StringReader(fallbacks));
 
         Assert.Equal((SymbolCategory.Security, SymbolCategory.ExpressionEvaluation),
                      (mappings.Classify("SqlTsEs", "CSGXEnclave", "Call"), mappings.Classify("SqlTsEs", "CKLLSketch<long>", "Compress")));
@@ -233,15 +233,15 @@ public class CategoryMappingsTests
     [Fact]
     public void Default_Treats_Unmapped_Expression_Services_Symbols_As_Expression_Evaluation()
         => Assert.Equal((SymbolCategory.ExpressionEvaluation, SymbolCategory.Security),
-                        (CategoryMappings.Default.Classify("SqlTsEs", null, "BlLikeStrStr"),
-                         CategoryMappings.Default.Classify("SqlTsEs", "CEnclave", "CallEnclaveAsync")));
+                        (CategoryRuleTable.Default.Classify("SqlTsEs", null, "BlLikeStrStr"),
+                         CategoryRuleTable.Default.Classify("SqlTsEs", "CEnclave", "CallEnclaveAsync")));
 
     [Fact]
     public void Default_Mappings_Load_Without_Malformed_Rows()
     {
         // Every rule parsed to a real category and the anchor rows resolve — a smoke test the embedded file is intact.
-        Assert.NotEmpty(CategoryMappings.Default.Rules);
+        Assert.NotEmpty(CategoryRuleTable.Default.Rules);
         Assert.Equal(SymbolCategory.XEventInfrastructure,
-                     CategoryMappings.Default.Classify(null, "GenericEventFoo", "Publish"));
+                     CategoryRuleTable.Default.Classify(null, "GenericEventFoo", "Publish"));
     }
 }

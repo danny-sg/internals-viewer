@@ -3,7 +3,7 @@ using InternalsViewer.Query.FullTrace.Locators;
 
 namespace InternalsViewer.Query.FullTrace.Calls;
 
-internal readonly struct TraceCallChunk(ulong[] values, int calls, int stackSlots = 0)
+internal readonly struct TraceCallColumnSet(ulong[] values, int callCount, int stackSlotCount = 0)
 {
     public const int ValueCount = 11;
 
@@ -29,9 +29,9 @@ internal readonly struct TraceCallChunk(ulong[] values, int calls, int stackSlot
 
     public ulong[] Values => values;
 
-    public int Calls => calls;
+    public int CallCount => callCount;
 
-    public int StackSlots => stackSlots;
+    public int StackSlotCount => stackSlotCount;
 
     public TracePosition GetFromPosition(int callIndex) => new(Get(FromSequenceIndex, callIndex), Get(FromStepsIndex, callIndex));
 
@@ -44,7 +44,7 @@ internal readonly struct TraceCallChunk(ulong[] values, int calls, int stackSlot
     public ulong GetRegister(int callIndex, int slot) => Get(IntegerOffset + slot, callIndex);
 
     public ulong? GetStackValue(int callIndex, int position)
-        => position - ArgumentLayout.RegisterCount is >= 0 and var slot && slot < stackSlots ? Get(ValueCount + slot, callIndex) : null;
+        => position - ArgumentLayout.RegisterCount is >= 0 and var slot && slot < stackSlotCount ? Get(ValueCount + slot, callIndex) : null;
 
     public ulong GetReturnValue(int callIndex) => Get(ReturnValueIndex, callIndex);
 
@@ -52,14 +52,14 @@ internal readonly struct TraceCallChunk(ulong[] values, int calls, int stackSlot
 
     public TraceArgumentCall GetCall(int callIndex, IReadOnlyList<Locator>? locators = null)
     {
-        var slots = new ulong[ArgumentLayout.RegisterCount + stackSlots];
+        var slots = new ulong[ArgumentLayout.RegisterCount + stackSlotCount];
 
         for (var slot = 0; slot < ArgumentLayout.RegisterCount; slot++)
         {
             slots[slot] = GetRegister(callIndex, slot);
         }
 
-        for (var slot = 0; slot < stackSlots; slot++)
+        for (var slot = 0; slot < stackSlotCount; slot++)
         {
             slots[ArgumentLayout.RegisterCount + slot] = Get(ValueCount + slot, callIndex);
         }
@@ -90,13 +90,13 @@ internal readonly struct TraceCallChunk(ulong[] values, int calls, int stackSlot
         }
     }
 
-    public static void Encode(Span<ulong> values, int calls)
+    public static void Encode(Span<ulong> values, int callCount)
     {
-        var fromSequences = values.Slice(FromSequenceIndex * calls, calls);
+        var fromSequences = values.Slice(FromSequenceIndex * callCount, callCount);
 
-        var toSequences = values.Slice(ToSequenceIndex * calls, calls);
+        var toSequences = values.Slice(ToSequenceIndex * callCount, callCount);
 
-        for (var callIndex = calls - 1; callIndex >= 0; callIndex--)
+        for (var callIndex = callCount - 1; callIndex >= 0; callIndex--)
         {
             if (toSequences[callIndex] != UnknownSequence)
             {
@@ -110,13 +110,13 @@ internal readonly struct TraceCallChunk(ulong[] values, int calls, int stackSlot
         }
     }
 
-    public static void Decode(Span<ulong> values, int calls)
+    public static void Decode(Span<ulong> values, int callCount)
     {
-        var fromSequences = values.Slice(FromSequenceIndex * calls, calls);
+        var fromSequences = values.Slice(FromSequenceIndex * callCount, callCount);
 
-        var toSequences = values.Slice(ToSequenceIndex * calls, calls);
+        var toSequences = values.Slice(ToSequenceIndex * callCount, callCount);
 
-        for (var callIndex = 0; callIndex < calls; callIndex++)
+        for (var callIndex = 0; callIndex < callCount; callIndex++)
         {
             if (callIndex > 0)
             {
@@ -130,7 +130,7 @@ internal readonly struct TraceCallChunk(ulong[] values, int calls, int stackSlot
         }
     }
 
-    private ulong Get(int column, int callIndex) => values[column * calls + callIndex];
+    private ulong Get(int column, int callIndex) => values[column * callCount + callIndex];
 
-    private void Set(int column, int callIndex, ulong value) => values[column * calls + callIndex] = value;
+    private void Set(int column, int callIndex, ulong value) => values[column * callCount + callIndex] = value;
 }

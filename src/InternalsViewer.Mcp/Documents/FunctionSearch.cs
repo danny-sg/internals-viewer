@@ -110,7 +110,7 @@ public static class FunctionSearch
                                           score,
                                           members.Count,
                                           members.Sum(m => m.CallCount),
-                                          members.Select(m => m.Operator).FirstOrDefault(o => o is not null),
+                                          members.Select(m => m.OperatorName).FirstOrDefault(o => o is not null),
                                           callers,
                                           members));
         }

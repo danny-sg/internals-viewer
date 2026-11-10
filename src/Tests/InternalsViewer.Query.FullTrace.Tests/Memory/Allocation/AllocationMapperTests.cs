@@ -19,7 +19,7 @@ public class AllocationMapperTests
 
     private const ulong Inner = 0x6000;
 
-    private const ulong ReturnedFlag = TraceCallChunk.ReturnedFlag;
+    private const ulong ReturnedFlag = TraceCallColumnSet.ReturnedFlag;
 
     private const string WorkspaceClerk = "MEMORYCLERK_SQLQERESERVATIONS";
 
@@ -339,7 +339,7 @@ public class AllocationMapperTests
                 ClassName = className,
                 MethodName = methodName,
                 SymbolCategory = category,
-                Iterator = iterator
+                OperatorName = iterator
             }
         };
 

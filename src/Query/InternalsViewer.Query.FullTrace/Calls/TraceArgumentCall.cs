@@ -35,11 +35,11 @@ public sealed record TraceArgumentCall(TracePosition FromPosition,
 
     public ulong GetSlot(int index) => index >= 0 && index < IntegerSlots.Length ? IntegerSlots[index] : 0;
 
-    public Locator? GetLocator(int register)
+    public Locator? GetLocator(int argumentSlot)
     {
         foreach (var locator in Locators)
         {
-            if (locator.Register == register)
+            if (locator.ArgumentSlot == argumentSlot)
             {
                 return locator;
             }

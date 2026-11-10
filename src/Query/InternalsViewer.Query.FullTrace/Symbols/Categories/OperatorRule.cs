@@ -20,7 +20,7 @@ public sealed record OperatorRule
     /// <summary>
     /// The operator badge text — free display, and names things the plan has no node for; null when not stated
     /// </summary>
-    public string? Iterator { get; init; }
+    public string? OperatorName { get; init; }
 
     /// <summary>
     /// Matches the showplan <c>PhysicalOperator</c>s this frame is the entry point of; empty when not stated

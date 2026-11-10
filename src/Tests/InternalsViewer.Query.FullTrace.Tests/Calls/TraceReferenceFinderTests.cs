@@ -27,7 +27,7 @@ public class TraceReferenceFinderTests
 
         var group = Assert.Single(references.Groups);
 
-        Assert.Equal((TraceValueRole.CalledOn, 2), (group.Role, group.Calls));
+        Assert.Equal((TraceValueRole.CalledOn, 2), (group.Role, group.CallCount));
         Assert.Equal("CQScanTableScanNew", references.Type);
         Assert.Null(references.Iterator);
     }

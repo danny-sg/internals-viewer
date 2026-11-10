@@ -684,7 +684,7 @@ public sealed partial class CallTreeViewModel
         return Search.Length == 0
                || Contains(node.Symbol)
                || Contains(node.Category)
-               || Contains(node.Operator)
+               || Contains(node.OperatorName)
                || Contains(node.Frame?.Module.Name);
     }
 

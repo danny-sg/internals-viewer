@@ -19,7 +19,7 @@ using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 namespace InternalsViewer.Query.FullTrace.Tests.Timeline.Tracks;
 
 [Trait("Category", "Unit")]
-public class TraceRowAccessReaderTests
+public class TraceRowAccessTrackBuilderTests
 {
     private const uint Thread = 7;
 
@@ -143,13 +143,13 @@ public class TraceRowAccessReaderTests
         var enclosing = EnclosingOperatorCallIndex.Build(calls, lifetimes.OperatorsByInstance);
 
         return headerReads is null
-            ? TraceRowAccessReader.Build(timeline, accesses, lifetimes, enclosing)
-            : TraceRowAccessReader.BuildHeaders(timeline, accesses, lifetimes, enclosing);
+            ? TraceRowAccessTrackBuilder.Build(timeline, accesses, lifetimes, enclosing)
+            : TraceRowAccessTrackBuilder.BuildHeaders(timeline, accesses, lifetimes, enclosing);
     }
 
     private static ulong[] Call(ulong start, ulong end, int callNodeIndex, ulong rcx = 0, ulong returnValue = 0)
         => Row(start,
-               flags: Thread | TraceCallChunk.ReturnedFlag,
+               flags: Thread | TraceCallColumnSet.ReturnedFlag,
                rcx: rcx,
                returnValue: returnValue,
                callNodeIndex: callNodeIndex,

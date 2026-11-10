@@ -2,35 +2,35 @@ namespace InternalsViewer.Query.FullTrace.Memory.History.Capture;
 
 internal sealed class MemoryHistoryCaptureCounter
 {
-    public long Received { get; set; }
+    public long ReceivedCount { get; set; }
 
-    public long Recorded { get; set; }
+    public long CapturedCount { get; set; }
 
-    public long Unchanged { get; set; }
+    public long UnchangedCount { get; set; }
 
-    public long BufferPool { get; set; }
+    public long BufferPoolCount { get; set; }
 
-    public long Outside { get; set; }
+    public long OutsideCount { get; set; }
 
-    public long Unwritten { get; set; }
+    public long UnwrittenCount { get; set; }
 
-    public void Add(bool isRecorded, bool isBufferPool, bool isInBlock)
+    public void Add(bool isCaptured, bool isBufferPool, bool isInBlock)
     {
-        if (isRecorded)
+        if (isCaptured)
         {
-            Recorded++;
+            CapturedCount++;
         }
         else if (isBufferPool)
         {
-            BufferPool++;
+            BufferPoolCount++;
         }
         else if (isInBlock)
         {
-            Unchanged++;
+            UnchangedCount++;
         }
         else
         {
-            Outside++;
+            OutsideCount++;
         }
     }
 }

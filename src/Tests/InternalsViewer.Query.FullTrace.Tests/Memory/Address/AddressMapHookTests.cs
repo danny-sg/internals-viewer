@@ -228,7 +228,7 @@ public class AddressMapHookTests
                                                             new AddressMapFunction(Method, AddressMapOperation.Visited),
                                                             new AddressMapFunction(Factory, AddressMapOperation.Declared)
                                                             {
-                                                                DeclaredClasses = [new DeclaredClass(ArgumentLayout.ReturnRegister, "AccBindings")]
+                                                                DeclaredClasses = [new DeclaredClass(ArgumentLayout.ReturnArgumentSlot, "AccBindings")]
                                                             },
                                                             new AddressMapFunction(Consumer, AddressMapOperation.Declared)
                                                             {
@@ -236,7 +236,7 @@ public class AddressMapHookTests
                                                             },
                                                             new AddressMapFunction(Getter, AddressMapOperation.Visited)
                                                             {
-                                                                DeclaredClasses = [new DeclaredClass(ArgumentLayout.ReturnRegister, "CTypeInfo")]
+                                                                DeclaredClasses = [new DeclaredClass(ArgumentLayout.ReturnArgumentSlot, "CTypeInfo")]
                                                             }]),
                               [new AddressMapFunction(OperatorNew, AddressMapOperation.Allocated)],
                               new Dictionary<ulong, string> { [Vtable] = "CQScanTableScanNew" }),

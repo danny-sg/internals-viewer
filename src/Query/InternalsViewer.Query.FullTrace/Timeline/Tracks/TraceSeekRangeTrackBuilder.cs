@@ -7,7 +7,7 @@ using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 
 namespace InternalsViewer.Query.FullTrace.Timeline.Tracks;
 
-internal static class TraceSeekRangeReader
+internal static class TraceSeekRangeTrackBuilder
 {
     private const string Module = "sqlmin";
 
@@ -102,12 +102,12 @@ internal static class TraceSeekRangeReader
             {
                 if (timeline.FindCall(list.FunctionAddress, list.InstanceAddress, index) is { } location && isNode(location.Node))
                 {
-                    sources.Add(TraceTickSource.FromCall(location, 0));
+                    sources.Add(TraceTickSource.Create(location, 0));
                 }
             }
         }
 
-        return TraceTickSeries.FromSources(timeline, sources, lifetimes, enclosing);
+        return TraceTickSeries.Build(timeline, sources, lifetimes, enclosing);
     }
 
     private static TraceArgumentCall? GetCall(TraceCallStore calls, TraceTick tick)

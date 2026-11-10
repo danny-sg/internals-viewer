@@ -36,7 +36,7 @@ public sealed partial class TraceCallStore
 
         public void Add(ulong functionAddress, ulong instanceAddress, IntPtr columns, int calls)
         {
-            var count = calls * TraceCallChunk.ValueCount;
+            var count = calls * TraceCallColumnSet.ValueCount;
 
             var buffer = ColumnBuffers.Rent(count);
 
@@ -168,7 +168,7 @@ public sealed partial class TraceCallStore
 
             for (var index = 0; index < chunks.Length; index++)
             {
-                var calls = chunks[index].Calls;
+                var calls = chunks[index].CallCount;
 
                 var inChunk = positions?.Where(p => p.CallIndex >= first && p.CallIndex < first + calls).ToArray() ?? [];
 
@@ -179,7 +179,7 @@ public sealed partial class TraceCallStore
                     continue;
                 }
 
-                var length = calls * (TraceCallChunk.ValueCount + slots);
+                var length = calls * (TraceCallColumnSet.ValueCount + slots);
 
                 if (buffer.Length < length)
                 {
@@ -188,7 +188,7 @@ public sealed partial class TraceCallStore
 
                 var columns = Decompress(chunks[index], ref buffer);
 
-                buffer.AsSpan(calls * TraceCallChunk.ValueCount, calls * slots).Clear();
+                buffer.AsSpan(calls * TraceCallColumnSet.ValueCount, calls * slots).Clear();
 
                 if (stackArguments is not null)
                 {
@@ -198,7 +198,7 @@ public sealed partial class TraceCallStore
 
                         for (var slot = 0; callIndex >= 0 && slot < slots; slot++)
                         {
-                            buffer[(TraceCallChunk.ValueCount + slot) * calls + callIndex] = stackArguments.Values[next * slots + slot];
+                            buffer[(TraceCallColumnSet.ValueCount + slot) * calls + callIndex] = stackArguments.Values[next * slots + slot];
                         }
 
                         next++;
@@ -218,7 +218,7 @@ public sealed partial class TraceCallStore
 
         private Chunk Compress(Span<ulong> columns, int calls, int stackSlots = 0)
         {
-            TraceCallChunk.Encode(columns, calls);
+            TraceCallColumnSet.Encode(columns, calls);
 
             var compressed = CompressionBuffers.TryTake(out var buffer) ? buffer : new MemoryStream();
 

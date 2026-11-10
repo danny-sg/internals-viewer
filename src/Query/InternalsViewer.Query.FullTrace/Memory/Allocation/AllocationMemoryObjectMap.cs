@@ -1,6 +1,6 @@
 namespace InternalsViewer.Query.FullTrace.Memory.Allocation;
 
-internal sealed class AllocationMemoryObjectLookup(Dictionary<ulong, string?[]> types)
+internal sealed class AllocationMemoryObjectMap(Dictionary<ulong, string?[]> types)
 {
     private Dictionary<ulong, string?[]> Types { get; } = types;
 

@@ -175,7 +175,7 @@ public static class Format
         _ => $"slot {register}"
     };
 
-    public static string Locator(Locator locator) => $"{Register(locator.Register)} {LocatorValue(locator)}";
+    public static string Locator(Locator locator) => $"{Register(locator.ArgumentSlot)} {LocatorValue(locator)}";
 
     public static string LocatorValue(Locator locator)
         => locator.ValueType switch
@@ -206,7 +206,7 @@ public static class Format
                                       returnType,
                                       string.Empty,
                                       call.Returned ? call.ReturnValue : null,
-                                      call.GetLocator(ArgumentLayout.ReturnRegister));
+                                      call.GetLocator(ArgumentLayout.ReturnArgumentSlot));
         }
     }
 

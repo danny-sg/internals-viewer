@@ -17,18 +17,18 @@ internal static class TraceCallRowHelper
                               ulong endSequence = ulong.MaxValue,
                               ulong endSteps = 0)
     {
-        var row = new ulong[TraceCallChunk.ValueCount];
+        var row = new ulong[TraceCallColumnSet.ValueCount];
 
-        row[TraceCallChunk.FromSequenceIndex] = sequence;
-        row[TraceCallChunk.FromStepsIndex] = steps;
-        row[TraceCallChunk.FlagsIndex] = flags;
-        row[TraceCallChunk.IntegerOffset] = rcx;
-        row[TraceCallChunk.IntegerOffset + 1] = rdx;
-        row[TraceCallChunk.IntegerOffset + 2] = r8;
-        row[TraceCallChunk.ReturnValueIndex] = returnValue;
-        row[TraceCallChunk.NodeIndex] = (ulong)callNodeIndex;
-        row[TraceCallChunk.ToSequenceIndex] = endSequence;
-        row[TraceCallChunk.ToStepsIndex] = endSteps;
+        row[TraceCallColumnSet.FromSequenceIndex] = sequence;
+        row[TraceCallColumnSet.FromStepsIndex] = steps;
+        row[TraceCallColumnSet.FlagsIndex] = flags;
+        row[TraceCallColumnSet.IntegerOffset] = rcx;
+        row[TraceCallColumnSet.IntegerOffset + 1] = rdx;
+        row[TraceCallColumnSet.IntegerOffset + 2] = r8;
+        row[TraceCallColumnSet.ReturnValueIndex] = returnValue;
+        row[TraceCallColumnSet.NodeIndex] = (ulong)callNodeIndex;
+        row[TraceCallColumnSet.ToSequenceIndex] = endSequence;
+        row[TraceCallColumnSet.ToStepsIndex] = endSteps;
 
         return row;
     }
@@ -55,11 +55,11 @@ internal static class TraceCallRowHelper
 
     public static ulong[] Chunk(params ulong[][] rows)
     {
-        var columns = new ulong[rows.Length * TraceCallChunk.ValueCount];
+        var columns = new ulong[rows.Length * TraceCallColumnSet.ValueCount];
 
         for (var callIndex = 0; callIndex < rows.Length; callIndex++)
         {
-            for (var value = 0; value < TraceCallChunk.ValueCount; value++)
+            for (var value = 0; value < TraceCallColumnSet.ValueCount; value++)
             {
                 columns[value * rows.Length + callIndex] = rows[callIndex][value];
             }
@@ -74,7 +74,7 @@ internal static class TraceCallRowHelper
                            ReadOnlySpan<ulong> columns,
                            int calls)
     {
-        var values = new ulong[Math.Max(columns.Length, calls * TraceCallChunk.ValueCount)];
+        var values = new ulong[Math.Max(columns.Length, calls * TraceCallColumnSet.ValueCount)];
 
         columns.CopyTo(values);
 

@@ -45,7 +45,7 @@ internal static class TraceCallTreeExport
             return null;
         }
 
-        var functions = new FrameFunctionLookup();
+        var functions = new FrameFunctionCache();
 
         var frames = new List<CallFrame>();
 
@@ -184,7 +184,7 @@ internal static class TraceCallTreeExport
         Symbol = frame.Function is { } function && frame.Offset is { } offset ? $"{function.Name}+0x{offset:X}" : frame.Function?.Name
     };
 
-    private static CallFrame GetFrame(ExportedFrame exported, FrameFunctionLookup functions)
+    private static CallFrame GetFrame(ExportedFrame exported, FrameFunctionCache functions)
     {
         var frame = new CallFrame
         {

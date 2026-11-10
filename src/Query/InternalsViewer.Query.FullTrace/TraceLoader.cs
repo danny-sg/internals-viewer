@@ -99,7 +99,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         steps.Complete();
 
         if ((request.IsHeapCaptured || request.IsStackCaptured || request.IsPageReadCaptured)
-            && await RecordMemoryAsync(session,
+            && await CaptureMemoryAsync(session,
                                        request,
                                        replay,
                                        functions,
@@ -350,7 +350,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         return builder.Build();
     }
 
-    private async Task<(MemoryHistoryStore History, TracePageReadList PageReads)?> RecordMemoryAsync(ReplaySession session,
+    private async Task<(MemoryHistoryStore History, TracePageReadList PageReads)?> CaptureMemoryAsync(ReplaySession session,
                                                                                                      TraceRequest request,
                                                                                                      ReplayResult replay,
                                                                                                      ReplayFunctionTable functions,
@@ -455,20 +455,20 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                               writes.HitCount,
                               writes.ReceivedHitCount,
                               allocations.Length,
-                              writes.WatchedRanges);
+                              writes.WatchedRangeCount);
 
         Logger.LogInformation("{Recorded} of {Received} watched read(s) were from live blocks, {BufferPool} from buffer pool memory, "
                               + "{Outside} outside a live block",
-                              reads.Recorded,
-                              reads.Received,
-                              reads.BufferPool,
-                              reads.Outside);
+                              reads.CapturedCount,
+                              reads.ReceivedCount,
+                              reads.BufferPoolCount,
+                              reads.OutsideCount);
 
         if (pageReads is not null)
         {
             Logger.LogInformation("{Received} read(s) of buffer pool pages kept as {Recorded} page read(s)",
-                                  pageReads.Received,
-                                  pageReads.Recorded);
+                                  pageReads.ReceivedCount,
+                                  pageReads.CapturedCount);
         }
 
         steps.Complete();
@@ -478,7 +478,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
     private static TracePosition GetWatchStart(MemoryHistoryAllocation[] allocations, TracePageReadRecorder? pageReads)
     {
-        var start = allocations.Length > 0 ? allocations.Min(a => a.Block.Start) : TracePosition.Unknown;
+        var start = allocations.Length > 0 ? allocations.Min(a => a.Block.FromPosition) : TracePosition.Unknown;
 
         return pageReads?.FirstPosition is { } first && first < start ? first : start;
     }
@@ -511,10 +511,10 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         Logger.LogInformation("{Recorded} kept write(s) recorded a change, {Unchanged} left values unchanged, {BufferPool} were to "
                               + "buffer pool memory, {Outside} were outside a live block",
-                              counts.Recorded,
-                              counts.Unchanged,
-                              counts.BufferPool,
-                              counts.Outside);
+                              counts.CapturedCount,
+                              counts.UnchangedCount,
+                              counts.BufferPoolCount,
+                              counts.OutsideCount);
 
         Logger.LogInformation("{Writes} change(s) to {Blocks} of {Allocations} watched allocation(s), {Owned} owned by an iterator",
                               history.Blocks.Where(b => !b.IsStack).Sum(b => (long)b.WriteCount),
@@ -529,7 +529,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         Logger.LogInformation("{Reads} read(s) by call recorded, {Unwritten} read(s) were from blocks with no writes",
                               history.ReadCount,
-                              recording.ReadCounts.Unwritten);
+                              recording.ReadCounts.UnwrittenCount);
 
         return history;
     }
@@ -621,7 +621,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
     private static Func<AddressEntry, CallTreeNode?, AddressMapAllocation> GetAllocation(TraceCallStore store,
                                                                                           IReadOnlyList<AllocationFunction> functions,
-                                                                                          AllocationMemoryObjectLookup memoryObjects)
+                                                                                          AllocationMemoryObjectMap memoryObjects)
     {
         var allocators = new Dictionary<ulong, AllocationFunction>();
 

@@ -60,7 +60,7 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
     public TraceTickSeries Seeks { get; init; } = TraceTickSeries.Empty;
 
-    public TraceTickSeries Opens => field ??= TraceOperatorOpenReader.Build(Timeline, Lifetimes);
+    public TraceTickSeries Opens => field ??= TraceOperatorOpenTrackBuilder.Build(Timeline, Lifetimes);
 
     public TraceHashTableMap HashTables => field ??= new TraceHashTableMap(this);
 
@@ -68,9 +68,9 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
     public TraceTimeline QueryTimeline => CroppedTimeline ??= GetQueryTimeline();
 
-    internal TraceTickSeries SeekRanges => field ??= TraceSeekRangeReader.Build(Timeline, CallStore, Lifetimes, EnclosingCalls);
+    internal TraceTickSeries SeekRanges => field ??= TraceSeekRangeTrackBuilder.Build(Timeline, CallStore, Lifetimes, EnclosingCalls);
 
-    internal TraceTickSeries SeekKeys => field ??= TraceSeekRangeReader.BuildKeys(Timeline, CallStore, Lifetimes, EnclosingCalls);
+    internal TraceTickSeries SeekKeys => field ??= TraceSeekRangeTrackBuilder.BuildKeys(Timeline, CallStore, Lifetimes, EnclosingCalls);
 
     internal EnclosingOperatorCallIndex PullerCalls
         => field ??= EnclosingOperatorCallIndex.Build(CallStore,
@@ -94,20 +94,20 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
         new(ReferenceEqualityComparer.Instance);
 
     public int GetSeekRange(TraceTick tick)
-        => TraceSeekRangeReader.GetRange(SeekRanges, CallStore, tick.Operator, tick.Thread, tick.Span.From.Position);
+        => TraceSeekRangeTrackBuilder.GetRange(SeekRanges, CallStore, tick.Operator, tick.Thread, tick.Span.From.Position);
 
     public List<VariantLocator> GetSeekKeys(TraceTick tick)
-        => TraceSeekRangeReader.GetKeys(SeekKeys, CallStore, tick.Operator, tick.Thread, tick.Span.From.Position);
+        => TraceSeekRangeTrackBuilder.GetKeys(SeekKeys, CallStore, tick.Operator, tick.Thread, tick.Span.From.Position);
 
     internal TraceResult WithPageAccesses()
     {
         var accesses = TracePageAccessList.Build(CallStore, MemoryHistory, BufferPool, PageReads, Timeline);
 
-        var rowAccesses = TraceRowAccessReader.Build(Timeline, accesses, Lifetimes, EnclosingCalls);
+        var rowAccesses = TraceRowAccessTrackBuilder.Build(Timeline, accesses, Lifetimes, EnclosingCalls);
 
-        var headerAccesses = TraceRowAccessReader.BuildHeaders(Timeline, accesses, Lifetimes, EnclosingCalls);
+        var headerAccesses = TraceRowAccessTrackBuilder.BuildHeaders(Timeline, accesses, Lifetimes, EnclosingCalls);
 
-        var pageFetches = TracePageFetchReader.Build(Timeline, accesses, BufferPool, Lifetimes, EnclosingCalls);
+        var pageFetches = TracePageFetchTrackBuilder.Build(Timeline, accesses, BufferPool, Lifetimes, EnclosingCalls);
 
         return this with
         {
@@ -173,6 +173,6 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
     private TraceTimeline GetQueryTimeline()
         => QueryRoots.Count > 0
-            ? Timeline.CroppedTo(QueryRoots.ToHashSet<CallTreeNode>(ReferenceEqualityComparer.Instance)) ?? Timeline
+            ? Timeline.CropTo(QueryRoots.ToHashSet<CallTreeNode>(ReferenceEqualityComparer.Instance)) ?? Timeline
             : Timeline;
 }
