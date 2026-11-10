@@ -64,6 +64,19 @@ public class TraceTickTracksTests
     }
 
     [Fact]
+    public void A_Plan_Default_Rule_Is_Always_A_Plan_Step() => Assert.True(TraceTickTracks.IsPlanStep(Rule, new HashSet<string>()));
+
+    [Fact]
+    public void A_Rule_That_Is_Not_A_Plan_Default_Is_Not_A_Plan_Step_Until_Selected()
+    {
+        var rule = Rule with { IsPlanDefault = false };
+
+        Assert.Equal((false, true),
+                     (TraceTickTracks.IsPlanStep(rule, new HashSet<string>()),
+                      TraceTickTracks.IsPlanStep(rule, new HashSet<string> { rule.GetPlanStepKey() })));
+    }
+
+    [Fact]
     public void A_Page_Link_Shows_The_Page_Address()
     {
         Assert.Equal("[(1:200)](page:1:200)", TraceTickTracks.GetPageLink(new PageAddress(1, 200), null));

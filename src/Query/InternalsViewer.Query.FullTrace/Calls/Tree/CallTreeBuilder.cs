@@ -47,7 +47,7 @@ internal static class CallTreeBuilder
             };
         }
 
-        return module.Frame(call.FunctionAddress, call.InstanceAddress);
+        return module.GetFrame(call.FunctionAddress, call.InstanceAddress);
     }
 
     /// <summary>

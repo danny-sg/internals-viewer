@@ -143,9 +143,9 @@ internal sealed class TimeTravelRecording(string ttdDirectory, string traceDirec
     }
 
     private EventWaitHandle CreateEvent(string purpose)
-        => new(false, EventResetMode.ManualReset, EventName(purpose));
+        => new(false, EventResetMode.ManualReset, GetEventName(purpose));
 
-    private string EventName(string purpose) => $@"Local\InternalsViewer.TimeTravel.{purpose}.{Id}";
+    private string GetEventName(string purpose) => $@"Local\InternalsViewer.TimeTravel.{purpose}.{Id}";
 
     private async Task WaitAsync(Func<bool> condition, TimeSpan timeout, string failure, CancellationToken cancellationToken)
     {

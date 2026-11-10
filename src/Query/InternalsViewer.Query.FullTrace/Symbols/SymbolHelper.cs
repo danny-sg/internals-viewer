@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace InternalsViewer.Query.FullTrace.Symbols;
 
-public static class SymbolsHelper
+public static class SymbolHelper
 {
     /// <summary>
     /// Finds the last "::" that separates the class from the method, ignoring any "::" nested inside template/lambda angle brackets

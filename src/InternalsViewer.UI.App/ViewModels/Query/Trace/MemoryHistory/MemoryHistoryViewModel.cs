@@ -273,7 +273,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
         return GetObjectName(block);
     }
 
-    public CallTreeNode? GetWriter(int callNodeIndex) => callNodeIndex >= 0 ? Trace?.Timeline.NodeOf(callNodeIndex) : null;
+    public CallTreeNode? GetWriter(int callNodeIndex) => callNodeIndex >= 0 ? Trace?.Timeline.GetNode(callNodeIndex) : null;
 
     public Windows.UI.Color GetCategoryColour(int callNodeIndex)
         => ColourHelpers.FromHex(GetWriter(callNodeIndex)?.CategoryColour) ?? Colors.Gray;
@@ -294,14 +294,14 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
         foreach (var call in stack.Calls)
         {
-            if (node is null || ReferenceEquals(timeline.NodeOf(call.CallNodeIndex), node))
+            if (node is null || ReferenceEquals(timeline.GetNode(call.CallNodeIndex), node))
             {
                 found = call;
             }
         }
 
         return found is { } span
-            ? new TraceCallLink(point, timeline.NodeOf(span.CallNodeIndex), span.CallIndex)
+            ? new TraceCallLink(point, timeline.GetNode(span.CallNodeIndex), span.CallIndex)
             : new TraceCallLink(point, node, -1);
     }
 
@@ -319,7 +319,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
         var writes = Store.GetWrites(block);
 
-        return writes.Count > 0 ? trace.Timeline.NodeOf(writes[0].CallNodeIndex) : null;
+        return writes.Count > 0 ? trace.Timeline.GetNode(writes[0].CallNodeIndex) : null;
     }
 
     public ObservableCollection<HexWatch> GetWatches(int block) => WatchStore.GetWatches(GetWatchName(block));

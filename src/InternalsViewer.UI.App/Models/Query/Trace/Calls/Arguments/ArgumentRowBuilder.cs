@@ -13,6 +13,7 @@ using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Arguments.Enums;
 using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 
 namespace InternalsViewer.UI.App.Models.Query.Trace.Calls.Arguments;
 
@@ -145,7 +146,7 @@ public static class ArgumentRowBuilder
             {
                 AddSeparator(parts, index);
 
-                parts.Add(RawPart(call.Slot(index), ArgumentLayout.Registers[index]));
+                parts.Add(RawPart(call.GetSlot(index), ArgumentLayout.Registers[index]));
             }
 
             parts.Add(new CallSignaturePart(")", CallSignaturePartKind.Punctuation));

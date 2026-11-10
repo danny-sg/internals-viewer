@@ -1,5 +1,6 @@
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Symbols.Categories;
+using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 
 namespace InternalsViewer.Query.FullTrace;
 
@@ -16,20 +17,20 @@ internal static class QueryExecutionCropper
 
     public static IReadOnlyList<CallTreeNode> GetRoots(CallTree tree)
     {
-        var executing = RootsOf(tree, IsQueryExecution);
+        var executing = GetRoots(tree, IsQueryExecution);
 
         if (executing.Count == 0)
         {
             return [];
         }
 
-        var working = RootsOf(tree, IsIterator);
+        var working = GetRoots(tree, IsIterator);
 
-        return [.. tree.Nodes().Where(n => IsOutermostExecution(n) || IsWorker(n, executing, working)).OrderBy(n => n.Order)];
+        return [.. tree.GetNodes().Where(n => IsOutermostExecution(n) || IsWorker(n, executing, working)).OrderBy(n => n.Order)];
     }
 
-    private static HashSet<CallTreeNode> RootsOf(CallTree tree, Func<CallTreeNode, bool> predicate)
-        => tree.Nodes().Where(predicate).Select(n => n.Ancestors().Last()).ToHashSet<CallTreeNode>(ReferenceEqualityComparer.Instance);
+    private static HashSet<CallTreeNode> GetRoots(CallTree tree, Func<CallTreeNode, bool> predicate)
+        => tree.GetNodes().Where(predicate).Select(n => n.GetAncestors().Last()).ToHashSet<CallTreeNode>(ReferenceEqualityComparer.Instance);
 
     private static bool IsWorker(CallTreeNode node, HashSet<CallTreeNode> executing, HashSet<CallTreeNode> working)
         => node.Parent is { IsRoot: true } && !executing.Contains(node) && working.Contains(node);
@@ -38,5 +39,5 @@ internal static class QueryExecutionCropper
         => node.Frame?.Function?.SymbolCategory is SymbolCategory.QueryOperator or SymbolCategory.BatchOperator;
 
     private static bool IsOutermostExecution(CallTreeNode node)
-        => IsQueryExecution(node) && node.Parent?.Ancestors().Any(IsQueryExecution) != true;
+        => IsQueryExecution(node) && node.Parent?.GetAncestors().Any(IsQueryExecution) != true;
 }

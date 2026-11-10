@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Symbols;
+using InternalsViewer.Query.FullTrace.Symbols.Enums;
 using InternalsViewer.UI.App.Models.Query.Trace.Calls.Signatures;
 using InternalsViewer.UI.App.Models.Query.Trace.Calls.Symbols;
 using Microsoft.Extensions.Logging;
@@ -498,7 +499,7 @@ public sealed partial class SymbolsViewModel(ILogger logger, SettingsViewModel s
 
     private void AddModuleFrames(List<CallFrame> frames)
     {
-        foreach (var node in CallTree?.Nodes() ?? [])
+        foreach (var node in CallTree?.GetNodes() ?? [])
         {
             if (node.Frame is { Module: { Pdb.Length: > 0 } module } candidate
                 && !ExcludedModules.Contains(module.Name, StringComparer.OrdinalIgnoreCase)

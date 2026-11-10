@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using InternalsViewer.Query.Interfaces;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Locators;
 

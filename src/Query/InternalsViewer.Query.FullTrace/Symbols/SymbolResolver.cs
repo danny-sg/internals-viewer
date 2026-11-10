@@ -1,7 +1,9 @@
 ﻿using System.Collections.Concurrent;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Symbols.Categories;
+using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 using InternalsViewer.Query.FullTrace.Symbols.Dia;
+using InternalsViewer.Query.FullTrace.Symbols.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Symbols;
 
@@ -43,13 +45,13 @@ public sealed class SymbolResolver(string symbolsPath) : IDisposable
 
     private static readonly ConcurrentDictionary<SymbolKey, string> DiaNames = new();
 
-    private readonly ConcurrentDictionary<string, DiaResolver> _resolverCache = new();
+    public IReadOnlyCollection<string> UnknownSymbols => UnknownSymbolSet;
 
-    private readonly HashSet<string> _unknownSymbols = new(StringComparer.Ordinal);
+    private ConcurrentDictionary<string, DiaResolver> ResolverCache { get; } = new();
 
-    private bool _disposed;
+    private HashSet<string> UnknownSymbolSet { get; } = new(StringComparer.Ordinal);
 
-    public IReadOnlyCollection<string> UnknownSymbols => _unknownSymbols;
+    private bool IsDisposed { get; set; }
 
     public bool TryResolve(CallFrame frame, out string? symbol)
     {
@@ -82,7 +84,7 @@ public sealed class SymbolResolver(string symbolsPath) : IDisposable
 
             if (frame.Module.Category == ModuleCategory.Unknown || frame.Function is { SymbolCategory: SymbolCategory.Unknown })
             {
-                _unknownSymbols.Add(frame.QualifiedName);
+                UnknownSymbolSet.Add(frame.QualifiedName);
             }
         }
     }
@@ -160,7 +162,7 @@ public sealed class SymbolResolver(string symbolsPath) : IDisposable
                                 && (fields == SymbolSearchFields.None || fields.HasFlag(SymbolSearchFields.Module))
                                 && frame.Module.Name.Contains(symbolPart, StringComparison.OrdinalIgnoreCase));
 
-        var hits = moduleMatches ? index.First(limit) : index.Search(symbolPart, fields, limit);
+        var hits = moduleMatches ? index.GetFirst(limit) : index.Search(symbolPart, fields, limit);
 
         var matches = new List<SymbolMatch>();
 
@@ -210,12 +212,12 @@ public sealed class SymbolResolver(string symbolsPath) : IDisposable
     }
 
     public Symbol? ResolveSymbol(CallFrame frame)
-        => SymbolTableCache.Get(symbolsPath, frame.Module)?.FindFunction(FunctionRva(frame), frame.Function?.Name);
+        => SymbolTableCache.Get(symbolsPath, frame.Module)?.FindFunction(GetFunctionRva(frame), frame.Function?.Name);
 
     public void ResolveSignatures(IEnumerable<CallFrame> frames)
     {
         var functions = frames.Where(f => f.Function is { Signature: null } && f.Module.HasSymbols)
-                              .GroupBy(f => (f.Module.Pdb, f.Module.Guid, f.Module.Age, Rva: FunctionRva(f)));
+                              .GroupBy(f => (f.Module.Pdb, f.Module.Guid, f.Module.Age, Rva: GetFunctionRva(f)));
 
         foreach (var function in functions)
         {
@@ -238,7 +240,7 @@ public sealed class SymbolResolver(string symbolsPath) : IDisposable
         }
     }
 
-    private static uint FunctionRva(CallFrame frame)
+    private static uint GetFunctionRva(CallFrame frame)
         => frame.Offset is { } offset && offset <= frame.Rva ? frame.Rva - offset : frame.Rva;
 
     private static string RemoveScope(string signature, string prefix)
@@ -269,26 +271,26 @@ public sealed class SymbolResolver(string symbolsPath) : IDisposable
             return $"0x{frame.Rva:X}";
         }
 
-        var resolver = _resolverCache.GetOrAdd(pdbPath, path => new DiaResolver(path));
+        var resolver = ResolverCache.GetOrAdd(pdbPath, path => new DiaResolver(path));
 
         return DiaNames.GetOrAdd(key, resolver.Resolve(frame.Rva));
     }
 
     public void Dispose()
     {
-        if(_disposed)
+        if(IsDisposed)
         {
             return;
         }
 
-        foreach (var resolver in _resolverCache.Values)
+        foreach (var resolver in ResolverCache.Values)
         {
             resolver.Dispose();
         }
 
-        _resolverCache.Clear();
+        ResolverCache.Clear();
 
-        _disposed = true;
+        IsDisposed = true;
     }
 }
 

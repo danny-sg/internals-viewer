@@ -21,6 +21,7 @@ using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 
 namespace InternalsViewer.Mcp.Tests;
 
@@ -266,7 +267,7 @@ internal static class TestRuns
 
     private static CallFrame Frame(ulong rva, string symbol, ulong instance = 0)
     {
-        SymbolsHelper.SplitOffset(symbol, out var name, out var offset);
+        SymbolHelper.SplitOffset(symbol, out var name, out var offset);
 
         return new CallFrame
         {

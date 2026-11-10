@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.FullTrace.Symbols;
+namespace InternalsViewer.Query.FullTrace.Symbols.Enums;
 
 public enum FunctionType
 {

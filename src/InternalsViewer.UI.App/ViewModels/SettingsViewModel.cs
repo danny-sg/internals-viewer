@@ -57,6 +57,7 @@ public partial class SettingsViewModel(SettingsService settingsService,
     private const string PinTimelineKey = "PinTimeline";
 
     private const string TraceTimelineHiddenTickTracksKey = "TraceTimelineHiddenTickTracks";
+    private const string PlanAdditionalStepsKey = "PlanAdditionalSteps";
     private const string DecodeValuesKey = "DecodeValues";
     private const string McpServerEnabledKey = "McpServerEnabled";
     private const string McpServerPortKey = "McpServerPort";
@@ -158,6 +159,10 @@ public partial class SettingsViewModel(SettingsService settingsService,
     private string _traceTimelineHiddenTickTracks = DefaultTraceTimelineHiddenTickTracks;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PlanAdditionalStepSet))]
+    private string _planAdditionalSteps = string.Empty;
+
+    [ObservableProperty]
     private bool _decodeValues = true;
 
     [ObservableProperty]
@@ -200,6 +205,8 @@ public partial class SettingsViewModel(SettingsService settingsService,
 
     public IReadOnlySet<string> TraceTimelineHiddenTickTrackSet { get; private set; }
         = SplitCategories(DefaultTraceTimelineHiddenTickTracks);
+
+    public IReadOnlySet<string> PlanAdditionalStepSet { get; private set; } = SplitCategories(string.Empty);
 
     private SettingsService SettingsService { get; } = settingsService;
 
@@ -299,6 +306,8 @@ public partial class SettingsViewModel(SettingsService settingsService,
 
         TraceTimelineHiddenTickTracks = await SettingsService.ReadSettingAsync<string>(TraceTimelineHiddenTickTracksKey)
                                         ?? DefaultTraceTimelineHiddenTickTracks;
+
+        PlanAdditionalSteps = await SettingsService.ReadSettingAsync<string>(PlanAdditionalStepsKey) ?? string.Empty;
 
         DecodeValues = await SettingsService.ReadSettingAsync<bool?>(DecodeValuesKey) ?? true;
 
@@ -463,6 +472,13 @@ public partial class SettingsViewModel(SettingsService settingsService,
         CallTreePrunedCategorySet = SplitCategories(value);
 
         _ = SettingsService.SaveSettingAsync(CallTreePrunedCategoriesKey, value);
+    }
+
+    partial void OnPlanAdditionalStepsChanged(string value)
+    {
+        PlanAdditionalStepSet = SplitCategories(value);
+
+        _ = SettingsService.SaveSettingAsync(PlanAdditionalStepsKey, value);
     }
 
     partial void OnTraceTimelineHiddenTickTracksChanged(string value)

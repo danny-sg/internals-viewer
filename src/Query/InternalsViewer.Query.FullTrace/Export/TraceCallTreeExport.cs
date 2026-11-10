@@ -2,6 +2,7 @@ using System.Globalization;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Export;
 using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Export;
 
@@ -30,9 +31,9 @@ internal static class TraceCallTreeExport
             }
         }
 
-        writer.WriteLines(TraceExportSection.FramesEntry, frames.Select(f => FrameOf(f.Key, f.Value)));
+        writer.WriteLines(TraceExportSection.FramesEntry, frames.Select(f => GetFrame(f.Key, f.Value)));
 
-        writer.WriteLines(TraceExportSection.CallTreeEntry, nodes.Select(n => NodeOf(n, ids, frames)));
+        writer.WriteLines(TraceExportSection.CallTreeEntry, nodes.Select(n => GetNode(n, ids, frames)));
 
         return ids;
     }
@@ -52,7 +53,7 @@ internal static class TraceCallTreeExport
         {
             CheckOrder(TraceExportSection.FramesEntry, exported.Id, frames.Count);
 
-            frames.Add(FrameOf(exported, functions));
+            frames.Add(GetFrame(exported, functions));
         }
 
         var tree = new CallTree();
@@ -90,7 +91,7 @@ internal static class TraceCallTreeExport
 
             node.AllocationCount = line.Allocations;
 
-            node.Locators = LocatorsOf(line.Locators);
+            node.Locators = GetLocators(line.Locators);
 
             nodes.Add(node);
         }
@@ -152,7 +153,7 @@ internal static class TraceCallTreeExport
         }
     }
 
-    private static ExportedNode NodeOf(CallTreeNode node,
+    private static ExportedNode GetNode(CallTreeNode node,
                                        Dictionary<CallTreeNode, int> ids,
                                        Dictionary<CallFrame, int> frames) => new()
     {
@@ -166,10 +167,10 @@ internal static class TraceCallTreeExport
         Calls = node.CallCount,
         AllocatedBytes = node.AllocatedBytes,
         Allocations = node.AllocationCount,
-        Locators = LocatorsOf(node.Locators)
+        Locators = GetLocators(node.Locators)
     };
 
-    private static ExportedFrame FrameOf(CallFrame frame, int id) => new()
+    private static ExportedFrame GetFrame(CallFrame frame, int id) => new()
     {
         Id = id,
         Module = frame.Module.Name,
@@ -183,7 +184,7 @@ internal static class TraceCallTreeExport
         Symbol = frame.Function is { } function && frame.Offset is { } offset ? $"{function.Name}+0x{offset:X}" : frame.Function?.Name
     };
 
-    private static CallFrame FrameOf(ExportedFrame exported, FrameFunctionLookup functions)
+    private static CallFrame GetFrame(ExportedFrame exported, FrameFunctionLookup functions)
     {
         var frame = new CallFrame
         {
@@ -203,14 +204,14 @@ internal static class TraceCallTreeExport
         return frame;
     }
 
-    private static ExportedLocators? LocatorsOf(LocatorSet? locators)
+    private static ExportedLocatorSet? GetLocators(LocatorSet? locators)
     {
         if (locators is null)
         {
             return null;
         }
 
-        var ordered = locators.Ordered().ToList();
+        var ordered = locators.GetOrdered().ToList();
 
         List<string> pages = [.. ordered.Where(l => l.ValueType == LocatorValueType.Page)
                                         .Select(l => $"{l.Page.FileId}:{l.Page.PageId}")];
@@ -221,7 +222,7 @@ internal static class TraceCallTreeExport
         List<ulong[]> objects = [.. ordered.Where(l => l.ValueType == LocatorValueType.ColumnStoreObject)
                                            .Select(l => new[] { l.Value, l.Detail })];
 
-        return new ExportedLocators
+        return new ExportedLocatorSet
         {
             Pages = pages.Count > 0 ? pages : null,
             Rows = rows.Count > 0 ? rows : null,
@@ -229,7 +230,7 @@ internal static class TraceCallTreeExport
         };
     }
 
-    private static LocatorSet? LocatorsOf(ExportedLocators? exported)
+    private static LocatorSet? GetLocators(ExportedLocatorSet? exported)
     {
         if (exported is null)
         {
@@ -240,12 +241,12 @@ internal static class TraceCallTreeExport
 
         foreach (var page in exported.Pages ?? [])
         {
-            locators.Add(new Locator(0, LocatorValueType.Page, LocatorValue(page, 2)));
+            locators.Add(new Locator(0, LocatorValueType.Page, GetLocatorValue(page, 2)));
         }
 
         foreach (var row in exported.Rows ?? [])
         {
-            locators.Add(new Locator(0, LocatorValueType.Row, LocatorValue(row, 3)));
+            locators.Add(new Locator(0, LocatorValueType.Row, GetLocatorValue(row, 3)));
         }
 
         foreach (var columnStoreObject in exported.Objects ?? [])
@@ -256,7 +257,7 @@ internal static class TraceCallTreeExport
         return locators;
     }
 
-    private static ulong LocatorValue(string text, int parts)
+    private static ulong GetLocatorValue(string text, int parts)
     {
         var values = text.Split(':');
 

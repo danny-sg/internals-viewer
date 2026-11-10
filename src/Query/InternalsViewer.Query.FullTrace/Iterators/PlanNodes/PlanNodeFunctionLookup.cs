@@ -12,7 +12,7 @@ internal static class PlanNodeFunctionLookup
 
     public static PlanNodeFunctionType? GetFunctionType(ReadOnlySpan<char> name)
     {
-        SymbolsHelper.Split(name, out var className, out var methodName);
+        SymbolHelper.Split(name, out var className, out var methodName);
 
         if (IteratorSymbolLookup.IsBatchIterator(className) && methodName is IteratorSymbolLookup.GetBatchDataMethod)
         {

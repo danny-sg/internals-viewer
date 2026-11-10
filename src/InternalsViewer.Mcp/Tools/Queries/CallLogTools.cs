@@ -284,8 +284,8 @@ public sealed class CallLogTools(McpDocumentResolver documents)
             {
                 var returned = call.Returned ? $" RAX={Format.Hex(call.ReturnValue)}" : " (no return)";
 
-                var registers = $"RCX={Format.Hex(call.Slot(0))} RDX={Format.Hex(call.Slot(1))} " +
-                                $"R8={Format.Hex(call.Slot(2))} R9={Format.Hex(call.Slot(3))}";
+                var registers = $"RCX={Format.Hex(call.GetSlot(0))} RDX={Format.Hex(call.GetSlot(1))} " +
+                                $"R8={Format.Hex(call.GetSlot(2))} R9={Format.Hex(call.GetSlot(3))}";
 
                 builder.AppendLine($"  #{index} thread {call.ThreadId} {positions} {registers}{returned}  in {where}");
 
@@ -321,7 +321,7 @@ public sealed class CallLogTools(McpDocumentResolver documents)
     {
         for (var slot = 0; slot < 4; slot++)
         {
-            if (call.Slot(slot) == wanted)
+            if (call.GetSlot(slot) == wanted)
             {
                 return true;
             }

@@ -2,6 +2,7 @@ using InternalsViewer.Query.Events.BatchMode;
 using InternalsViewer.Query.Events.BatchMode.Enums;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.Interfaces;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Locators;
 

@@ -149,7 +149,7 @@ public sealed class OperatorFrameMap
         {
             var entries = GetNearestWithInstances(hierarchy, statement)
                               .SelectMany(GetEntryFrames)
-                              .Select(e => e.Ancestors().Skip(1).FirstOrDefault(a => a.IsEntryFrameFor(statement.Name)))
+                              .Select(e => e.GetAncestors().Skip(1).FirstOrDefault(a => a.IsEntryFrameFor(statement.Name)))
                               .OfType<CallTreeNode>()
                               .Distinct()
                               .OrderBy(e => e.Order)

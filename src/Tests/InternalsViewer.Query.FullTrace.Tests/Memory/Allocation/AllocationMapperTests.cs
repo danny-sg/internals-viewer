@@ -8,6 +8,7 @@ using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Memory;
 using InternalsViewer.Query.FullTrace.Symbols.Categories;
+using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Memory.Allocation;
 
@@ -130,7 +131,7 @@ public class AllocationMapperTests
 
         var end = timeline.End.Position.Next;
 
-        Assert.Equal((64ul, expected), (memory.PeakInUseDuring(start, end), memory.PeakWorkspaceDuring(start, end)));
+        Assert.Equal((64ul, expected), (memory.GetPeakInUseDuring(start, end), memory.GetPeakWorkspaceDuring(start, end)));
     }
 
     [Fact]
@@ -320,7 +321,7 @@ public class AllocationMapperTests
         => new(1, start, 1, end, start, end, callNodeIndex, 7, callIndex, 1);
 
     private static ulong PeakWorkspace(TraceTimeline timeline, AllocationIndex allocation)
-        => allocation.PeakWorkspaceDuring(timeline.Start.Position, timeline.End.Position.Next);
+        => allocation.GetPeakWorkspaceDuring(timeline.Start.Position, timeline.End.Position.Next);
 
     private static CallFrame Resolved(ulong address,
                                            string module,

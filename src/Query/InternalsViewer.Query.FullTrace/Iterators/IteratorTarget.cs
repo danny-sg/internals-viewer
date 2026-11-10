@@ -24,11 +24,11 @@ public sealed class IteratorTarget(CallTreeNode node, ExecutionOperatorEvent? op
     {
         var hierarchy = OperatorHierarchy.Build(events);
 
-        var outermost = OutermostFrames(tree);
+        var outermost = GetOutermostFrames(tree);
 
         var targets = new Dictionary<ulong, IteratorTarget>();
 
-        foreach (var (address, planNode, isPlanObject) in Linked(planLink))
+        foreach (var (address, planNode, isPlanObject) in GetLinked(planLink))
         {
             var operatorEvent = hierarchy.At(planNode);
 
@@ -48,21 +48,21 @@ public sealed class IteratorTarget(CallTreeNode node, ExecutionOperatorEvent? op
         return targets;
     }
 
-    private static IEnumerable<(ulong Address, PlanNodeIdentifier Node, bool IsPlanObject)> Linked(IteratorPlanLink planLink)
+    private static IEnumerable<(ulong Address, PlanNodeIdentifier Node, bool IsPlanObject)> GetLinked(IteratorPlanLink planLink)
         => planLink.Instances.Select(i => (i.Key, i.Value, false)).Concat(planLink.PlanObjects.Select(p => (p.Key, p.Value, true)));
 
-    private static Dictionary<ulong, CallTreeNode> OutermostFrames(CallTree? tree)
+    private static Dictionary<ulong, CallTreeNode> GetOutermostFrames(CallTree? tree)
     {
         var shallowest = new Dictionary<ulong, (CallTreeNode Node, int Depth)>();
 
-        foreach (var node in tree?.Nodes() ?? [])
+        foreach (var node in tree?.GetNodes() ?? [])
         {
             if (node.Frame is not { InstanceAddress: not 0 and var instance })
             {
                 continue;
             }
 
-            var depth = node.Ancestors().Count();
+            var depth = node.GetAncestors().Count();
 
             if (!shallowest.TryGetValue(instance, out var current)
                 || depth < current.Depth

@@ -1,26 +1,19 @@
 using System.Reflection;
+using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Symbols.Categories;
 
 public sealed class CategoryMappings
 {
-    private readonly IReadOnlyDictionary<string, ModuleCategory> _modules;
-
-    private readonly IReadOnlyList<SymbolCategoryRule> _rules;
-
-    private readonly IReadOnlyList<SymbolCategoryRule> _fallbacks;
-
-    private readonly IReadOnlyList<OperatorRule> _operators;
-
     private CategoryMappings(IReadOnlyDictionary<string, ModuleCategory> modules,
                              IReadOnlyList<SymbolCategoryRule> rules,
                              IReadOnlyList<SymbolCategoryRule> fallbacks,
                              IReadOnlyList<OperatorRule> operators)
     {
-        _modules = modules;
-        _rules = rules;
-        _fallbacks = fallbacks;
-        _operators = operators;
+        Modules = modules;
+        Rules = rules;
+        Fallbacks = fallbacks;
+        Operators = operators;
 
         RuleIndex = new RuleIndex([.. rules.Select(r => (r.Class, r.Function))]);
 
@@ -29,9 +22,13 @@ public sealed class CategoryMappings
         OperatorIndex = new RuleIndex([.. operators.Select(o => (o.Class, o.Function))]);
     }
 
-    public IReadOnlyList<SymbolCategoryRule> Rules => _rules;
+    public IReadOnlyList<SymbolCategoryRule> Rules { get; }
 
-    public IReadOnlyList<OperatorRule> Operators => _operators;
+    public IReadOnlyList<OperatorRule> Operators { get; }
+
+    private IReadOnlyDictionary<string, ModuleCategory> Modules { get; }
+
+    private IReadOnlyList<SymbolCategoryRule> Fallbacks { get; }
 
     private RuleIndex RuleIndex { get; }
 
@@ -40,13 +37,13 @@ public sealed class CategoryMappings
     private RuleIndex OperatorIndex { get; }
 
     public ModuleCategory GetModuleCategory(string? module) =>
-        !string.IsNullOrWhiteSpace(module) && _modules.TryGetValue(module, out var category)
+        !string.IsNullOrWhiteSpace(module) && Modules.TryGetValue(module, out var category)
             ? category
             : ModuleCategory.Unknown;
 
     public SymbolCategory Classify(string? module, ReadOnlySpan<char> className, ReadOnlySpan<char> methodName)
-        => Classify(_rules, RuleIndex, module, className, methodName)
-           ?? Classify(_fallbacks, FallbackIndex, module, className, methodName)
+        => Classify(Rules, RuleIndex, module, className, methodName)
+           ?? Classify(Fallbacks, FallbackIndex, module, className, methodName)
            ?? SymbolCategory.Unknown;
 
     /// <summary>
@@ -71,9 +68,9 @@ public sealed class CategoryMappings
         var badgeScore = default(RuleScore);
         var boundaryScore = default(RuleScore);
 
-        foreach (var index in OperatorIndex.Candidates(className, methodName))
+        foreach (var index in OperatorIndex.GetCandidates(className, methodName))
         {
-            var rule = _operators[index];
+            var rule = Operators[index];
 
             if (!rule.TryScore(module, className, methodName, out var score))
             {
@@ -95,7 +92,7 @@ public sealed class CategoryMappings
             }
         }
 
-        return (badge >= 0 ? _operators[badge].Iterator : null, boundary >= 0 ? _operators[boundary].PlanOperator : []);
+        return (badge >= 0 ? Operators[badge].Iterator : null, boundary >= 0 ? Operators[boundary].PlanOperator : []);
     }
 
     public static CategoryMappings Load(TextReader modules,
@@ -175,7 +172,7 @@ public sealed class CategoryMappings
 
         var bestScore = default(RuleScore);
 
-        foreach (var candidate in index.Candidates(className, methodName))
+        foreach (var candidate in index.GetCandidates(className, methodName))
         {
             if (rules[candidate].TryScore(module, className, methodName, out var score) && Improves(candidate, score, best, bestScore))
             {

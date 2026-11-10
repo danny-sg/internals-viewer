@@ -193,6 +193,42 @@ public class TraceTickDefinitionTests
                         TraceTickDefinition.GetPredefined().Single(d => d.Label == "Page Header Access").Source);
 
     [Fact]
+    public void A_Rule_Is_A_Plan_Default_Unless_The_File_Says_Otherwise()
+    {
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(
+            """[{"Name":"T","Module":"","Function":"","Colour":"","HeightFactor":1,"WidthFactor":1,"Conditions":[]}]"""));
+
+        Assert.True(Assert.Single(TraceTickDefinition.Read(stream)).IsPlanDefault);
+    }
+
+    [Fact]
+    public void A_Rule_That_Is_Not_A_Plan_Default_Stays_That_Way_Through_The_File_Format()
+    {
+        var rule = new TraceTickDefinition("Page", string.Empty, string.Empty, "#FFFFFF", 1, 1, []) { IsPlanDefault = false };
+
+        using var stream = new MemoryStream();
+
+        TraceTickDefinition.Write(stream, [rule]);
+
+        stream.Position = 0;
+
+        Assert.False(Assert.Single(TraceTickDefinition.Read(stream)).IsPlanDefault);
+    }
+
+    [Fact]
+    public void Only_Page_Header_Access_And_Open_Are_Not_Plan_Defaults()
+        => Assert.Equal(["Page Header Access", "Open"],
+                        TraceTickDefinition.GetPredefined().Where(d => !d.IsPlanDefault).Select(d => d.GetLabel()));
+
+    [Fact]
+    public void A_Plan_Step_Key_Tells_Rules_On_Different_Tracks_Apart()
+    {
+        var hash = new TraceTickDefinition("Hash Table", string.Empty, string.Empty, string.Empty, 1, 1, []) { Label = "Build" };
+
+        Assert.NotEqual(hash.GetPlanStepKey(), (hash with { Name = "Sort" }).GetPlanStepKey());
+    }
+
+    [Fact]
     public void Header_Fields_In_Backticks_Are_Each_Quoted()
         => Assert.Equal("Read `Page Type`, `Internal Object Id` from Header",
                         TraceTickDefinition.Format("Read `{HeaderField}` from Header", _ => "Page Type, Internal Object Id"));

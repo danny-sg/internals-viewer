@@ -261,7 +261,7 @@ public sealed partial class MemoryHistoryStore
         => GetCreatedPosition(block) is var created && from <= created && created <= to;
 
     public CallTreeNode? GetAllocatingCall(int block, TraceTimeline timeline)
-        => timeline.NodeOf(BlockArray[block].CallNodeIndex)?.Ancestors().FirstOrDefault(n => !AllocationFunction.IsAllocatorFrame(n.Frame));
+        => timeline.GetNode(BlockArray[block].CallNodeIndex)?.GetAncestors().FirstOrDefault(n => !AllocationFunction.IsAllocatorFrame(n.Frame));
 
     private WriteRange GetBlockWrites(int block) => new(Writes, BlockArray[block].FirstWrite, BlockArray[block].WriteCount);
 

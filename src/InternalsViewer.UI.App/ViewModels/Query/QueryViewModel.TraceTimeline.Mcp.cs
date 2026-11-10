@@ -23,7 +23,7 @@ public partial class QueryViewModel : ITraceTimelineCommands
 
     public Task AddTrackAsync(McpTrackRequest request)
     {
-        var node = (CallTree?.Nodes() ?? []).FirstOrDefault(n => IsFunction(n, request.Module, request.Function));
+        var node = (CallTree?.GetNodes() ?? []).FirstOrDefault(n => IsFunction(n, request.Module, request.Function));
 
         var definition = new TraceTickDefinition(request.Name,
                                                  request.Module,

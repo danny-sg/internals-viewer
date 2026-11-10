@@ -74,7 +74,7 @@ public sealed partial class AddressMap
         }
     }
 
-    internal static AddressMap Read(BinaryReader reader, Func<int, CallTreeNode?> nodeOf)
+    internal static AddressMap Read(BinaryReader reader, Func<int, CallTreeNode?> getNode)
     {
         var version = ReadVersion(reader);
 
@@ -110,7 +110,7 @@ public sealed partial class AddressMap
                                               MemoryObject: version >= MemoryObjectVersion ? ReadName(reader, names) : null);
         }
 
-        return Build(entries, nodeOf);
+        return Build(entries, getNode);
     }
 
     private static int ReadVersion(BinaryReader reader) => -reader.ReadInt32();

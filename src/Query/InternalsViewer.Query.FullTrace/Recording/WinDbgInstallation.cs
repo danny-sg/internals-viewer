@@ -131,7 +131,7 @@ internal sealed record WinDbgInstallation(string Executable, string EngineDirect
         var candidates = packages.GetSubKeyNames()
                                  .Where(n => n.StartsWith(PackagePrefix, StringComparison.OrdinalIgnoreCase)
                                              && n.EndsWith(PackageSuffix, StringComparison.OrdinalIgnoreCase))
-                                 .Select(n => (Name: n, Version: PackageVersion(n)))
+                                 .Select(n => (Name: n, Version: GetPackageVersion(n)))
                                  .OrderByDescending(p => p.Version)
                                  .ToList();
 
@@ -201,7 +201,7 @@ internal sealed record WinDbgInstallation(string Executable, string EngineDirect
         return null;
     }
 
-    private static Version PackageVersion(string packageName)
+    private static Version GetPackageVersion(string packageName)
     {
         var parts = packageName.Split('_');
 

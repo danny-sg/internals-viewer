@@ -32,7 +32,7 @@ public static class SymbolDownloader
                                     async (pdb, ct) => await DownloadPdbAsync(pdb, symbolsDirectory, progress, ct));
     }
 
-    public static string SymbolId(string guid, int age) => $"{guid.Replace("-", string.Empty)}{age:X}".ToUpperInvariant();
+    public static string GetSymbolId(string guid, int age) => $"{guid.Replace("-", string.Empty)}{age:X}".ToUpperInvariant();
 
     private static async Task DownloadPdbAsync(FrameModule pdb,
                                                string symbolsDirectory,

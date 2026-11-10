@@ -41,7 +41,7 @@ public sealed partial class SourceStep(CallTreeNode node,
     public string CreationText => Creation == AddressMapOperation.Allocated ? "Allocated Here" : "Constructed Here";
 
     public IReadOnlyList<SourceFrame> Stack
-        => field ??= [.. Node.Ancestors().Skip(1).Where(n => n.Symbol.Length > 0).Select(n => new SourceFrame(n, Position, Thread))];
+        => field ??= [.. Node.GetAncestors().Skip(1).Where(n => n.Symbol.Length > 0).Select(n => new SourceFrame(n, Position, Thread))];
 
     public IReadOnlyList<SourceFrame> VisibleStack => IsExpanded ? Stack : [];
 

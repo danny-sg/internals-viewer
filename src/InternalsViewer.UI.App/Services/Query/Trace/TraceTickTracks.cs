@@ -18,6 +18,7 @@ using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Locators.Enums;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Symbols.Categories;
+using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
@@ -136,36 +137,13 @@ public static partial class TraceTickTracks
                                  .TrimEnd();
 
     public static List<TraceTrackStep> GetSteps(IEnumerable<TraceTickTrack> tracks, IReadOnlySet<string>? hidden)
-    {
-        var steps = new List<TraceTrackStep>();
+        => GetRuleSteps(tracks.Where(t => hidden?.Contains(t.Name) != true), static _ => true);
 
-        foreach (var track in tracks)
-        {
-            if (hidden?.Contains(track.Name) == true || track.GetText is not null)
-            {
-                continue;
-            }
+    public static List<TraceTrackStep> GetPlanSteps(IEnumerable<TraceTickTrack> tracks, IReadOnlySet<string> additional)
+        => GetRuleSteps(tracks, r => IsPlanStep(r, additional));
 
-            foreach (var tick in track.Series.GetTicks(static _ => true))
-            {
-                if (track.GetRule(tick) is not { } rule || IsForwardingCall(tick, rule))
-                {
-                    continue;
-                }
-
-                steps.Add(new TraceTrackStep(track, tick, rule, IsReturn: false));
-
-                if (!string.IsNullOrEmpty(rule.ReturnDescription))
-                {
-                    steps.Add(new TraceTrackStep(track, tick, rule, IsReturn: true));
-                }
-            }
-        }
-
-        steps.Sort(static (left, right) => left.Point.Position.CompareTo(right.Point.Position));
-
-        return steps;
-    }
+    public static bool IsPlanStep(TraceTickDefinition rule, IReadOnlySet<string> additional)
+        => rule.IsPlanDefault || additional.Contains(rule.GetPlanStepKey());
 
     public static TraceStepNesting[] GetStepNesting(List<TraceTrackStep> steps)
     {
@@ -586,6 +564,38 @@ public static partial class TraceTickTracks
         yield return $"Page {access.Page}";
 
         yield return pool.GetLayout(access.Page, access.DatabaseId)?.GetSlot(offset) is { } slot ? $"Slot {slot}" : $"Offset 0x{offset:X}";
+    }
+
+    private static List<TraceTrackStep> GetRuleSteps(IEnumerable<TraceTickTrack> tracks, Func<TraceTickDefinition, bool> isIncluded)
+    {
+        var steps = new List<TraceTrackStep>();
+
+        foreach (var track in tracks)
+        {
+            if (track.GetText is not null)
+            {
+                continue;
+            }
+
+            foreach (var tick in track.Series.GetTicks(static _ => true))
+            {
+                if (track.GetRule(tick) is not { } rule || !isIncluded(rule) || IsForwardingCall(tick, rule))
+                {
+                    continue;
+                }
+
+                steps.Add(new TraceTrackStep(track, tick, rule, IsReturn: false));
+
+                if (!string.IsNullOrEmpty(rule.ReturnDescription))
+                {
+                    steps.Add(new TraceTrackStep(track, tick, rule, IsReturn: true));
+                }
+            }
+        }
+
+        steps.Sort(static (left, right) => left.Point.Position.CompareTo(right.Point.Position));
+
+        return steps;
     }
 
     private static IEnumerable<string> GetHeaderAccessDetails(TraceTick tick, TracePageAccessList accesses)

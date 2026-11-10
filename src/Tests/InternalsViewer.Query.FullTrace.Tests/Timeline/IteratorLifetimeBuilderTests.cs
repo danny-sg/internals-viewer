@@ -111,9 +111,9 @@ public class IteratorLifetimeBuilderTests
         var scanLifetime = lifetimes.Single(l => ReferenceEquals(l.Operator, scan));
 
         Assert.Equal((100ul, 0ul, 50ul),
-                     (hashLifetime.InUse.PeakDuring(At(0), At(40)),
-                      hashLifetime.InUse.PeakDuring(At(42), At(45)),
-                      scanLifetime.InUse.PeakDuring(At(21), At(24))));
+                     (hashLifetime.InUse.GetPeakDuring(At(0), At(40)),
+                      hashLifetime.InUse.GetPeakDuring(At(42), At(45)),
+                      scanLifetime.InUse.GetPeakDuring(At(21), At(24))));
     }
 
     [Fact]

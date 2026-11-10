@@ -50,7 +50,7 @@ public sealed partial class TraceTimelineControl
         {
             var (start, end) = BucketRange(bucket, scale);
 
-            allocated[bucket] = AllocatedDuring(timeline, start, end);
+            allocated[bucket] = GetAllocatedDuring(timeline, start, end);
 
             inUse[bucket] = BandInUse(start, end);
 
@@ -136,7 +136,7 @@ public sealed partial class TraceTimelineControl
 
         if (_bandPeak > 0)
         {
-            var allocated = AllocatedDuring(timeline, start, end);
+            var allocated = GetAllocatedDuring(timeline, start, end);
 
             DrawMarker(canvas,
                        x,
@@ -193,10 +193,10 @@ public sealed partial class TraceTimelineControl
     private string InUseLabel => ShowsGrantUse ? "Grant In Use" : "In Use";
 
     private ulong BandInUse(TracePosition start, TracePosition end)
-        => ShowsGrantUse ? Allocation.PeakWorkspaceDuring(start, end) : Allocation.PeakInUseDuring(start, end);
+        => ShowsGrantUse ? Allocation.GetPeakWorkspaceDuring(start, end) : Allocation.GetPeakInUseDuring(start, end);
 
-    private ulong AllocatedDuring(TraceTimeline timeline, TracePosition start, TracePosition end)
-        => timeline.Threads.Aggregate(0ul, (total, t) => total + Allocation.AllocatedDuring(t.ThreadId, start, end).Bytes);
+    private ulong GetAllocatedDuring(TraceTimeline timeline, TracePosition start, TracePosition end)
+        => timeline.Threads.Aggregate(0ul, (total, t) => total + Allocation.GetAllocatedDuring(t.ThreadId, start, end).Bytes);
 
     private (TracePosition Start, TracePosition End) BucketRange(int bucket, double scale)
     {

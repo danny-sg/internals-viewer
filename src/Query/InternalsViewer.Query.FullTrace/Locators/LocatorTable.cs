@@ -48,7 +48,7 @@ internal sealed partial class LocatorTable
 
         values.Sort();
 
-        var palette = values[..Unique(values)].ToArray();
+        var palette = values[..RemoveDuplicates(values)].ToArray();
 
         for (var index = 0; index < selected.Length; index++)
         {
@@ -136,7 +136,7 @@ internal sealed partial class LocatorTable
            && pool[left.PoolIndex].Register == pool[right.PoolIndex].Register
            && pool[left.PoolIndex].ValueType == pool[right.PoolIndex].ValueType;
 
-    private static int Unique(Span<int> sorted)
+    private static int RemoveDuplicates(Span<int> sorted)
     {
         var count = 0;
 
@@ -153,7 +153,7 @@ internal sealed partial class LocatorTable
         return count;
     }
 
-    public IEnumerable<(int CallIndex, Locator Locator)> Entries()
+    public IEnumerable<(int CallIndex, Locator Locator)> GetEntries()
     {
         for (var index = 0; index < CallIndexes.Count; index++)
         {

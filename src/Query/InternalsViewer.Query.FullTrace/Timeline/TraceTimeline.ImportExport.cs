@@ -75,7 +75,7 @@ public sealed partial class TraceTimeline
         return timeline;
     }
 
-    internal void Write(BinaryWriter writer, Func<CallTreeNode, int> idOf)
+    internal void Write(BinaryWriter writer, Func<CallTreeNode, int> getId)
     {
         writer.Write(-FormatVersion);
 
@@ -87,7 +87,7 @@ public sealed partial class TraceTimeline
 
         ExportBinary.WriteArray(writer, Parents);
 
-        ExportBinary.WriteArray(writer, [.. Nodes.Select(node => node is null ? -1 : idOf(node))]);
+        ExportBinary.WriteArray(writer, [.. Nodes.Select(node => node is null ? -1 : getId(node))]);
 
         writer.Write(Threads.Count);
 

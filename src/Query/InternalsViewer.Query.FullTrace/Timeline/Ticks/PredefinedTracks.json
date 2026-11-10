@@ -431,6 +431,7 @@
     "Conditions": [],
     "Label": "Page Header Access",
     "Description": "Read `{HeaderField}` from Header of Page {Page}",
+    "IsPlanDefault": false,
     "Background": "#69FFFFFF",
     "Source": "PageHeaderAccess",
     "Value": 0
@@ -1035,6 +1036,7 @@
     "Label": "Open",
     "Description": "{ParentOperatorName} → `Open` {OperatorName}",
     "ReturnDescription": "{OperatorName} closed",
+    "IsPlanDefault": false,
     "PlanPart": "Active",
     "Source": "Open",
     "Value": 0

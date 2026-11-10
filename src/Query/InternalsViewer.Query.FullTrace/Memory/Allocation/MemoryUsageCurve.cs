@@ -24,7 +24,7 @@ public sealed partial class MemoryUsageCurve(TracePosition[] positions, ulong[] 
         return index >= 0 ? Values[index] : 0;
     }
 
-    public ulong PeakDuring(TracePosition start, TracePosition end)
+    public ulong GetPeakDuring(TracePosition start, TracePosition end)
     {
         var peak = GetValue(start);
 

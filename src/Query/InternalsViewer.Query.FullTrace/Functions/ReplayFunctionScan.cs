@@ -45,7 +45,7 @@ internal static class ReplayFunctionScan
 
             var signature = symbol.Parsed;
 
-            if (iterates && classification.IsInstanceMethod && InstanceMethodLookup.InstanceRegister(signature) is { } register)
+            if (iterates && classification.IsInstanceMethod && InstanceMethodLookup.GetInstanceRegister(signature) is { } register)
             {
                 instanceMethods.Add(new InstanceMethod(symbol.Rva, register));
             }
@@ -156,7 +156,7 @@ internal static class ReplayFunctionScan
 
     private static bool IsExcluded(CategoryMappings mappings, string module, ReadOnlySpan<char> symbol)
     {
-        SymbolsHelper.Split(symbol, out var className, out var methodName);
+        SymbolHelper.Split(symbol, out var className, out var methodName);
 
         return mappings.Classify(module, className, methodName)
                        .IsInstrumentation(mappings.ClassifyOperator(module, className, methodName).Iterator is not null);

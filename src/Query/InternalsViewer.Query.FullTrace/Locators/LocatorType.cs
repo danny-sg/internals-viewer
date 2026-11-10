@@ -1,4 +1,5 @@
 using InternalsViewer.Query.FullTrace.Arguments;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Locators;
 
@@ -59,7 +60,7 @@ internal readonly record struct LocatorType(LocatorValueType ValueType, bool IsI
             return new LocatorType(textValueType, true, true);
         }
 
-        var found = (names == 1 ? KnownLocator(name) : null)
+        var found = (names == 1 ? GetKnownLocator(name) : null)
                     ?? (indirection >= 0 && ArgumentValue.IsReadable(target) ? (LocatorValueType.Referenced, 0, null) : null);
 
         return found is { } match
@@ -67,7 +68,7 @@ internal readonly record struct LocatorType(LocatorValueType ValueType, bool IsI
             : null;
     }
 
-    private static (LocatorValueType ValueType, int Offset, int[]? Path)? KnownLocator(ReadOnlySpan<char> name) => name switch
+    private static (LocatorValueType ValueType, int Offset, int[]? Path)? GetKnownLocator(ReadOnlySpan<char> name) => name switch
     {
         "PageId"
             => (LocatorValueType.Page, 0, null),

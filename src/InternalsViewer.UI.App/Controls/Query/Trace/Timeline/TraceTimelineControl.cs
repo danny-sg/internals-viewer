@@ -1139,7 +1139,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         _inUseCurves.Clear();
 
         _inUseMaximum = _visible is { } visible && Allocation.HasAllocations
-            ? Allocation.PeakInUseDuring(visible.Start.Position, visible.End.Position)
+            ? Allocation.GetPeakInUseDuring(visible.Start.Position, visible.End.Position)
             : 0;
 
         var selfAllocations = _visible?.GetSelfAllocations(Allocation) ?? [];
@@ -1230,10 +1230,10 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
         for (var callNodeIndex = 0; callNodeIndex < hidden.Length; callNodeIndex++)
         {
-            var parent = timeline.ParentOf(callNodeIndex);
+            var parent = timeline.GetParent(callNodeIndex);
 
             hidden[callNodeIndex] = (parent >= 0 && hidden[parent])
-                           || (timeline.NodeOf(callNodeIndex) is { Frame: not null } callNode && categories.Contains(callNode.Category));
+                           || (timeline.GetNode(callNodeIndex) is { Frame: not null } callNode && categories.Contains(callNode.Category));
 
             any |= hidden[callNodeIndex];
         }
@@ -1309,7 +1309,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
     }
 
     private CallReference? GetCallReference(FlameHit? hit)
-        => hit is { } at && SpanOf(at) is { } span && _visible?.NodeOf(span.CallNodeIndex) is { } node
+        => hit is { } at && SpanOf(at) is { } span && _visible?.GetNode(span.CallNodeIndex) is { } node
                ? new CallReference(node, span.CallIndex, true)
                : null;
 
@@ -1317,7 +1317,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         => hit is { } at
            && SpanOf(at) is { } span
            && span.CallIndex == reference.CallIndex
-           && ReferenceEquals(_visible?.NodeOf(span.CallNodeIndex), reference.Node);
+           && ReferenceEquals(_visible?.GetNode(span.CallNodeIndex), reference.Node);
 
     private void BringIntoView(FlameHit hit)
     {

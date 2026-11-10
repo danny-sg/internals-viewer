@@ -86,19 +86,19 @@ public sealed partial class AddressMap
         => Entries.Values.Sum(e => e.Count(entry => Labels[entry.LabelIndex] is { Operation: AddressMapOperation.Allocated, Site: not null }));
 
     internal static AddressMap Build(IEnumerable<AddressEntry> entries,
-                                    Func<int, CallTreeNode?> nodeOf,
+                                    Func<int, CallTreeNode?> getNode,
                                     Func<AddressEntry, CallTreeNode?, AddressMapAllocation>? getAllocation = null)
-        => new(entries.Select(e => GetEntry(e, nodeOf, getAllocation))
+        => new(entries.Select(e => GetEntry(e, getNode, getAllocation))
                       .GroupBy(e => e.Address)
                       .ToDictionary(g => g.Key, g => Link([.. g.OrderBy(e => e.FromPosition)])));
 
     private static AddressMapEntry GetEntry(AddressEntry entry,
-                                           Func<int, CallTreeNode?> nodeOf,
+                                           Func<int, CallTreeNode?> getNode,
                                            Func<AddressEntry, CallTreeNode?, AddressMapAllocation>? getAllocation)
     {
         var operation = entry.Operation;
 
-        var node = nodeOf(entry.CallNodeIndex);
+        var node = getNode(entry.CallNodeIndex);
 
         var allocates = operation == AddressMapOperation.Allocated;
 

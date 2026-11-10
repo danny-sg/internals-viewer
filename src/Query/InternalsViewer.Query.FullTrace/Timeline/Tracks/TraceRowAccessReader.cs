@@ -48,7 +48,7 @@ internal static class TraceRowAccessReader
     }
 
     private static TraceSpanLocation? GetLocation(TraceTimeline timeline, TracePageAccess access)
-        => timeline.NodeOf(access.CallNodeIndex) is { } node ? timeline.FindCall(node, access.CallIndex) : null;
+        => timeline.GetNode(access.CallNodeIndex) is { } node ? timeline.FindCall(node, access.CallIndex) : null;
 
     private static TraceTickSource GetSource(TraceSpanLocation location, TracePageAccess access)
     {

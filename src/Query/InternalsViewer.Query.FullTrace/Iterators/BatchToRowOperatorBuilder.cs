@@ -71,7 +71,7 @@ internal static class BatchToRowOperatorBuilder
 
         for (var callNodeIndex = 0; callNodeIndex < timeline.NodeCount; callNodeIndex++)
         {
-            if (timeline.NodeOf(callNodeIndex) is { Frame.InstanceAddress: var instance } callNode
+            if (timeline.GetNode(callNodeIndex) is { Frame.InstanceAddress: var instance } callNode
                 && helpers.Contains(instance)
                 && seen.Add(callNode))
             {

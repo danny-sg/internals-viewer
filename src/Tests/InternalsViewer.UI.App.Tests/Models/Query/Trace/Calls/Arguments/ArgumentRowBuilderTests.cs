@@ -3,6 +3,7 @@ using InternalsViewer.Query.FullTrace;
 using System.Collections;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.FullTrace.Symbols;
+using InternalsViewer.Query.FullTrace.Symbols.Enums;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.Address.Enums;
 using InternalsViewer.UI.App.Models.Query.Trace.Calls.Arguments;
@@ -14,6 +15,7 @@ using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.Results;
 using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 
 namespace InternalsViewer.UI.App.Tests.Models.Query.Trace.Calls.Arguments;
 

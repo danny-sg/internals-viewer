@@ -1,5 +1,6 @@
 using InternalsViewer.Query.FullTrace.Export;
 using InternalsViewer.Query.FullTrace.Helpers;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Locators;
 

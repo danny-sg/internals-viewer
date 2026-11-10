@@ -14,12 +14,12 @@ public class AllocationIndexTests
         var index = AllocationIndex.Build([new(7, At(10), At(11), 100, 0xA), new(7, At(20), At(21), 50, 0xB)], [new(7, At(30), At(31), 0xA)]);
 
         Assert.Equal([0ul, 100ul, 150ul, 50ul],
-                     [index.PeakInUseDuring(At(5), At(5)),
-                      index.PeakInUseDuring(At(10), At(10)),
-                      index.PeakInUseDuring(At(25), At(25)),
-                      index.PeakInUseDuring(At(40), At(40))]);
-        Assert.Equal(150ul, index.PeakInUseDuring(At(0), At(40)));
-        Assert.Equal(100ul, index.PeakInUseDuring(At(12), At(18)));
+                     [index.GetPeakInUseDuring(At(5), At(5)),
+                      index.GetPeakInUseDuring(At(10), At(10)),
+                      index.GetPeakInUseDuring(At(25), At(25)),
+                      index.GetPeakInUseDuring(At(40), At(40))]);
+        Assert.Equal(150ul, index.GetPeakInUseDuring(At(0), At(40)));
+        Assert.Equal(100ul, index.GetPeakInUseDuring(At(12), At(18)));
     }
 
     [Fact]
@@ -29,9 +29,9 @@ public class AllocationIndexTests
                                       [new(7, At(30), At(31), 0xA)]);
 
         Assert.Equal((150ul, 100ul, 0ul),
-                     (index.PeakInUseDuring(At(0), At(40)),
-                      index.PeakWorkspaceDuring(At(0), At(40)),
-                      index.PeakWorkspaceDuring(At(31), At(40))));
+                     (index.GetPeakInUseDuring(At(0), At(40)),
+                      index.GetPeakWorkspaceDuring(At(0), At(40)),
+                      index.GetPeakWorkspaceDuring(At(31), At(40))));
     }
 
     [Fact]
@@ -39,18 +39,18 @@ public class AllocationIndexTests
     {
         var index = AllocationIndex.Build([new(7, At(10), At(11), 100, 0xA), new(7, At(20), At(21), 50, 0xB)], [new(7, At(30), At(31), 0xA)]);
 
-        var call = index.InUseWithin(7, At(0), At(40));
+        var call = index.GetInUseWithin(7, At(0), At(40));
 
         Assert.Equal([0ul, 100ul, 150ul, 50ul],
-                     [call.PeakDuring(At(0), At(5)),
-                      call.PeakDuring(At(10), At(15)),
-                      call.PeakDuring(At(15), At(25)),
-                      call.PeakDuring(At(31), At(40))]);
+                     [call.GetPeakDuring(At(0), At(5)),
+                      call.GetPeakDuring(At(10), At(15)),
+                      call.GetPeakDuring(At(15), At(25)),
+                      call.GetPeakDuring(At(31), At(40))]);
 
-        var later = index.InUseWithin(7, At(15), At(40));
+        var later = index.GetInUseWithin(7, At(15), At(40));
 
         Assert.Equal([0ul, 50ul, 50ul],
-                     [later.PeakDuring(At(15), At(18)), later.PeakDuring(At(20), At(25)), later.PeakDuring(At(30), At(40))]);
+                     [later.GetPeakDuring(At(15), At(18)), later.GetPeakDuring(At(20), At(25)), later.GetPeakDuring(At(30), At(40))]);
     }
 
     [Fact]
@@ -58,9 +58,9 @@ public class AllocationIndexTests
     {
         var index = AllocationIndex.Build([new(7, At(10), At(11), 100, 0), new(7, At(20), At(21), 50, 0xB)], []);
 
-        var call = index.InUseWithin(7, At(0), At(40));
+        var call = index.GetInUseWithin(7, At(0), At(40));
 
-        Assert.Equal((0ul, 50ul), (call.PeakDuring(At(10), At(15)), call.PeakDuring(At(25), At(40))));
+        Assert.Equal((0ul, 50ul), (call.GetPeakDuring(At(10), At(15)), call.GetPeakDuring(At(25), At(40))));
     }
 
     [Fact]
@@ -68,9 +68,9 @@ public class AllocationIndexTests
     {
         var index = AllocationIndex.Build([new(7, At(10), At(11), 100, 0xA)], [new(9, At(30), At(31), 0xA)]);
 
-        Assert.Equal(100ul, index.FreedDuring(9, At(0), At(40)));
-        Assert.Equal(0ul, index.FreedDuring(7, At(0), At(40)));
-        Assert.Equal(0ul, index.PeakInUseDuring(At(35), At(35)));
+        Assert.Equal(100ul, index.GetFreedDuring(9, At(0), At(40)));
+        Assert.Equal(0ul, index.GetFreedDuring(7, At(0), At(40)));
+        Assert.Equal(0ul, index.GetPeakInUseDuring(At(35), At(35)));
     }
 
     [Fact]
@@ -78,8 +78,8 @@ public class AllocationIndexTests
     {
         var index = AllocationIndex.Build([new(7, At(10), At(11), 100, 0xA)], [new(7, At(30), At(31), 0xF)]);
 
-        Assert.Equal(100ul, index.PeakInUseDuring(At(40), At(40)));
-        Assert.Equal(0ul, index.FreedDuring(7, At(0), At(40)));
+        Assert.Equal(100ul, index.GetPeakInUseDuring(At(40), At(40)));
+        Assert.Equal(0ul, index.GetFreedDuring(7, At(0), At(40)));
     }
 
     [Fact]
@@ -88,8 +88,8 @@ public class AllocationIndexTests
         var index = AllocationIndex.Build([new(7, At(10), At(20), 8192, 0xA), new(7, At(12), At(13), 8192, 0xA)],
                                       [new(7, At(30), At(40), 0xA), new(7, At(32), At(33), 0xA)]);
 
-        Assert.Equal((8192ul, 1), index.AllocatedDuring(7, At(0), At(50)));
-        Assert.Equal(0ul, index.PeakInUseDuring(At(45), At(45)));
+        Assert.Equal((8192ul, 1), index.GetAllocatedDuring(7, At(0), At(50)));
+        Assert.Equal(0ul, index.GetPeakInUseDuring(At(45), At(45)));
     }
 
     [Fact]
@@ -101,10 +101,10 @@ public class AllocationIndexTests
                                        new(9, At(10), At(11), 5, 0xD)],
                                       []);
 
-        Assert.Equal((150ul, 2), index.AllocatedDuring(7, At(0), At(30)));
-        Assert.Equal((50ul, 1), index.AllocatedDuring(7, At(15), At(30)));
-        Assert.Equal((100ul, 1), index.AllocatedDuring(7, At(10), At(15)));
-        Assert.Equal((0ul, 0), index.AllocatedDuring(8, At(0), At(30)));
+        Assert.Equal((150ul, 2), index.GetAllocatedDuring(7, At(0), At(30)));
+        Assert.Equal((50ul, 1), index.GetAllocatedDuring(7, At(15), At(30)));
+        Assert.Equal((100ul, 1), index.GetAllocatedDuring(7, At(10), At(15)));
+        Assert.Equal((0ul, 0), index.GetAllocatedDuring(8, At(0), At(30)));
     }
 
     [Fact]
@@ -112,6 +112,6 @@ public class AllocationIndexTests
     {
         var index = AllocationIndex.Build([new(7, At(10), At(11), 100, 0xA), new(7, At(20), At(21), 200, 0xA)], [new(7, At(20), At(21), 0xA)]);
 
-        Assert.Equal(200ul, index.PeakInUseDuring(At(25), At(25)));
+        Assert.Equal(200ul, index.GetPeakInUseDuring(At(25), At(25)));
     }
 }

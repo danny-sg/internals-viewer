@@ -377,7 +377,7 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
         {
             SignaturesFor = tree;
 
-            await Query.Symbols.ResolveFrameSignaturesAsync([.. tree.Nodes().Select(n => n.Frame).OfType<CallFrame>()]);
+            await Query.Symbols.ResolveFrameSignaturesAsync([.. tree.GetNodes().Select(n => n.Frame).OfType<CallFrame>()]);
         }
 
         Refresh();
@@ -578,7 +578,7 @@ public sealed partial class CallTreeViewModel : ObservableObject, IDisposable
 
         IsFocused = false;
 
-        if (FilterPath is not null && target.Ancestors().All(a => GetPath(a) != FilterPath))
+        if (FilterPath is not null && target.GetAncestors().All(a => GetPath(a) != FilterPath))
         {
             FilterPath = null;
         }

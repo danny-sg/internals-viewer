@@ -67,7 +67,7 @@ internal static class IteratorLifetimeBuilder
 
             var merged = calls.Select(c => (Operator: c.Key, c.Value.Instances, Calls: GetOutermost(c.Value.Calls))).ToList();
 
-            var curves = allocation.InUseOwnedBy(thread.ThreadId, [.. merged.Select(m => m.Calls)]);
+            var curves = allocation.GetInUseOwnedBy(thread.ThreadId, [.. merged.Select(m => m.Calls)]);
 
             TracePoint[] threadTeardowns = [.. teardowns.Where(t => t.Thread == thread.ThreadId)
                                                         .Select(t => t.End)

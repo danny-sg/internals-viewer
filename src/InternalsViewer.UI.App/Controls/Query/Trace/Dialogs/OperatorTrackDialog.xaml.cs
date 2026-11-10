@@ -114,6 +114,8 @@ public sealed partial class OperatorTrackDialog
 
         PhaseBox.IsChecked = existing?.IsPhase == true;
 
+        PlanDefaultBox.IsChecked = existing?.IsPlanDefault != false;
+
         var background = ColourHelpers.FromHex(existing?.Background);
 
         BackgroundPicker.Color = background ?? Colors.White;
@@ -448,7 +450,7 @@ public sealed partial class OperatorTrackDialog
 
         SetDataTypes(existing?.DataType);
 
-        UIElement[] hidden = [TitleBox, DescriptionBox, DetailsBox, ReturnDescriptionBox, PlanPartBox, CounterBox, PhaseBox];
+        UIElement[] hidden = [TitleBox, DescriptionBox, DetailsBox, ReturnDescriptionBox, PlanPartBox, CounterBox, PhaseBox, PlanDefaultBox];
 
         foreach (var element in hidden)
         {
@@ -586,6 +588,7 @@ public sealed partial class OperatorTrackDialog
             PlanPartColour = Existing?.PlanPartColour,
             IsCounter = CounterBox.IsChecked == true,
             IsPhase = PhaseBox.IsChecked == true,
+            IsPlanDefault = PlanDefaultBox.IsChecked == true,
             Background = GetBackgroundText(),
             Source = Existing?.Source ?? TraceTickSourceType.Call,
             Value = Existing?.Value ?? 0

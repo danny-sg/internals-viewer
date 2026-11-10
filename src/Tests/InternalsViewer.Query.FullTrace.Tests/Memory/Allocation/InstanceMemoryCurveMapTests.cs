@@ -6,6 +6,7 @@ using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Timeline;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 using InternalsViewer.Query.FullTrace.Symbols.Categories;
+using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Memory.Allocation;
 
@@ -27,7 +28,7 @@ public class InstanceMemoryCurveMapTests
 
         var curve = curves.GetCurve(Thread, nodes.Hash);
 
-        Assert.Equal((100ul, 100ul), (curve!.PeakDuring(At(12), At(20)), curve.PeakDuring(At(30), At(40))));
+        Assert.Equal((100ul, 100ul), (curve!.GetPeakDuring(At(12), At(20)), curve.GetPeakDuring(At(30), At(40))));
     }
 
     [Fact]
@@ -35,7 +36,7 @@ public class InstanceMemoryCurveMapTests
     {
         var (curves, nodes) = Build();
 
-        Assert.Equal(0ul, curves.GetCurve(Thread, nodes.Query)!.PeakDuring(At(0), At(50)));
+        Assert.Equal(0ul, curves.GetCurve(Thread, nodes.Query)!.GetPeakDuring(At(0), At(50)));
     }
 
     [Fact]
@@ -43,7 +44,7 @@ public class InstanceMemoryCurveMapTests
     {
         var (curves, nodes) = Build();
 
-        Assert.Equal(50ul, curves.GetCurve(Thread, nodes.Query)!.PeakDuring(At(52), At(100)));
+        Assert.Equal(50ul, curves.GetCurve(Thread, nodes.Query)!.GetPeakDuring(At(52), At(100)));
     }
 
     [Fact]

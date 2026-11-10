@@ -1,5 +1,6 @@
 using InternalsViewer.Query.FullTrace.Functions;
 using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 using InternalsViewer.Query.FullTrace.Symbols;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Functions;

@@ -69,7 +69,7 @@ public sealed class TraceCallList : IReadOnlyList<TraceArgumentCall>
 
     public int IndexOfEnclosing(TracePosition position, uint thread)
     {
-        for (var index = FirstStartingAfter(position) - 1; index >= 0; index--)
+        for (var index = GetFirstStartingAfter(position) - 1; index >= 0; index--)
         {
             if (GetThread(index) == thread && GetToPosition(index) >= position)
             {
@@ -128,7 +128,7 @@ public sealed class TraceCallList : IReadOnlyList<TraceArgumentCall>
         return (Chunks[chunk], index - Starts[chunk]);
     }
 
-    private int FirstStartingAfter(TracePosition position)
+    private int GetFirstStartingAfter(TracePosition position)
     {
         var low = 0;
 

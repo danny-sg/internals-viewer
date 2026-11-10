@@ -42,7 +42,7 @@ public sealed class TraceHashTableMap(TraceResult trace)
         var call = list[tick.CallIndex];
 
         return GetLayout(tick, call) is { } layout
-            ? GetLocation((uint)call.Slot(HashArgument), layout.PartitionMask, layout.PartitionShift, layout.BucketMask)
+            ? GetLocation((uint)call.GetSlot(HashArgument), layout.PartitionMask, layout.PartitionShift, layout.BucketMask)
             : null;
     }
 
@@ -65,7 +65,7 @@ public sealed class TraceHashTableMap(TraceResult trace)
     {
         var position = tick.Span.From.Position;
 
-        if (ReadValue(call.Slot(PartitionGroupArgument) + ActivePartitionOffset, sizeof(ulong), position) is not { } partition
+        if (ReadValue(call.GetSlot(PartitionGroupArgument) + ActivePartitionOffset, sizeof(ulong), position) is not { } partition
             || ReadValue(partition + BucketMaskOffset, sizeof(uint), position) is not { } bucketMask
             || GetHashIterator(tick) is not { } iterator
             || ReadValue(iterator + PartitionMaskOffset, sizeof(uint), position) is not { } partitionMask

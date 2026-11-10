@@ -236,7 +236,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                               replay.CallStore.LocatorCount,
                               replay.CallStore.UniqueLocatorCount);
 
-        var frames = callTree.Nodes().Select(node => node.Frame!).ToList();
+        var frames = callTree.GetNodes().Select(node => node.Frame!).ToList();
 
         await SymbolDownloader.DownloadSymbols(frames.Select(f => f.Module), symbolsPath, messages, cancellationToken);
 
@@ -294,7 +294,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         Logger.LogInformation("{Calls} call(s) after removing Extended Events and tracing, {Spans} call span(s) on {Threads} "
                               + "thread(s) in the trace timeline",
-                              callTree.Nodes().Sum(n => n.CallCount),
+                              callTree.GetNodes().Sum(n => n.CallCount),
                               timeline.SpanCount,
                               timeline.Threads.Count);
 
@@ -321,7 +321,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
         var builder = new TraceResultBuilder(callTree, replay.CallStore, timeline, events, replay.PlanNodes)
         {
             Allocation = memory,
-            AddressMap = AddressMap.Build(replay.AddressMap, timeline.NodeOf, getAllocation),
+            AddressMap = AddressMap.Build(replay.AddressMap, timeline.GetNode, getAllocation),
             MemoryObjectSnapshot = request.MemoryClerks.MemoryObjects,
             ObjectPool = request.ObjectPool,
             BufferPool = replay.BufferPool
@@ -587,7 +587,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         var unknown = new SortedDictionary<string, string>(StringComparer.Ordinal);
 
-        foreach (var node in callTree.Nodes())
+        foreach (var node in callTree.GetNodes())
         {
             if (node.Frame is not { } frame)
             {

@@ -1,6 +1,6 @@
 namespace InternalsViewer.Query.FullTrace.Export;
 
-internal sealed record ExportedLocators
+internal sealed record ExportedLocatorSet
 {
     public IReadOnlyList<string>? Pages { get; init; }
 

@@ -6,6 +6,7 @@ using InternalsViewer.Mcp.Documents;
 using InternalsViewer.Mcp.Formatting;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 using InternalsViewer.Query.FullTrace.Symbols.Categories;
 using InternalsViewer.Query.Events.Operators;
 using ModelContextProtocol;
@@ -420,13 +421,13 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
 
     private static void WritePath(StringBuilder builder, DocumentContext context, CallTreeNode target, int width)
     {
-        foreach (var node in target.Ancestors().Reverse())
+        foreach (var node in target.GetAncestors().Reverse())
         {
             var pages = GetPages(node).ToList();
 
             var extra = pages.Count > 0 ? $"  pages: {Format.Truncate(Format.CompactPages(pages), width)}" : string.Empty;
 
-            builder.AppendLine($"{Indent(node.Ancestors().Count() - 1)}{Format.NodeLine(context, node)}{extra}");
+            builder.AppendLine($"{Indent(node.GetAncestors().Count() - 1)}{Format.NodeLine(context, node)}{extra}");
         }
     }
 
@@ -657,11 +658,11 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
     }
 
     private static string CalledFrom(DocumentContext context, CallTreeNode node, int pathDepth)
-        => string.Join(" < ", node.Ancestors().Skip(1).Take(pathDepth).Select(context.GetFunctionName));
+        => string.Join(" < ", node.GetAncestors().Skip(1).Take(pathDepth).Select(context.GetFunctionName));
 
     private static string SlotList(IEnumerable<int> slots) => $"[{string.Join(", ", slots)}]";
 
-    private static IEnumerable<Locator> GetLocators(CallTreeNode node) => node.Locators?.Ordered() ?? [];
+    private static IEnumerable<Locator> GetLocators(CallTreeNode node) => node.Locators?.GetOrdered() ?? [];
 
     private static IEnumerable<PageAddress> GetPages(CallTreeNode node)
         => GetLocators(node).Where(l => l.ValueType == LocatorValueType.Page).Select(l => l.Page);

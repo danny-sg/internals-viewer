@@ -85,7 +85,7 @@ public sealed class TraceWatch
         {
             var (write, value) = found[index];
 
-            var location = (timeline.NodeOf(write.CallNodeIndex) is { } node ? timeline.FindCall(node, write.CallIndex) : null)
+            var location = (timeline.GetNode(write.CallNodeIndex) is { } node ? timeline.FindCall(node, write.CallIndex) : null)
                            ?? timeline.FindSpan(lifetime.Thread, lifetime.Calls[0]);
 
             if (location is not { } at)

@@ -1,5 +1,6 @@
 using System.Globalization;
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Locators;
 

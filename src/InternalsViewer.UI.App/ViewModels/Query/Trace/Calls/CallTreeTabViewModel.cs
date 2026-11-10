@@ -15,6 +15,7 @@ using InternalsViewer.UI.App.Views.Query.Trace.Calls;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml.Controls;
 using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.Calls;
 

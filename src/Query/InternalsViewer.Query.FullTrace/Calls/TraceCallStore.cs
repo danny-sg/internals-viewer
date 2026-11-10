@@ -3,6 +3,7 @@ using System.IO.Compression;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Calls;
 
@@ -114,7 +115,7 @@ public sealed partial class TraceCallStore
                 continue;
             }
 
-            foreach (var (callIndex, locator) in table.Entries())
+            foreach (var (callIndex, locator) in table.GetEntries())
             {
                 if (locator.ValueType is not (LocatorValueType.Page or LocatorValueType.Row or LocatorValueType.ColumnStoreObject))
                 {

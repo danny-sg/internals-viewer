@@ -5,6 +5,7 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks.Enums;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Operators;
@@ -59,7 +60,7 @@ public sealed partial class QueryViewModel
 
     private GuideStepTree GuideTree { get; set; } = new([], []);
 
-    private IReadOnlySet<string>? GuideStepsHidden { get; set; }
+    private IReadOnlySet<string>? GuideStepsAdditional { get; set; }
 
     private bool IsSelectingGuideStep { get; set; }
 
@@ -73,6 +74,37 @@ public sealed partial class QueryViewModel
     }
 
     public void ToggleGuideStep(GuideStepItem item) => GuideTree.Toggle(item);
+
+    public List<TraceTickDefinition> GetAdditionalStepRules()
+        => [.. TickTrackStore.Definitions.Where(d => !d.IsPlanDefault).DistinctBy(d => d.GetPlanStepKey())];
+
+    public bool IsAdditionalStepSelected(TraceTickDefinition rule)
+        => _settingsViewModel.PlanAdditionalStepSet.Contains(rule.GetPlanStepKey());
+
+    public void SetAdditionalStepSelected(TraceTickDefinition rule, bool isSelected)
+    {
+        var selected = new HashSet<string>(_settingsViewModel.PlanAdditionalStepSet, StringComparer.Ordinal);
+
+        if (isSelected)
+        {
+            selected.Add(rule.GetPlanStepKey());
+        }
+        else
+        {
+            selected.Remove(rule.GetPlanStepKey());
+        }
+
+        _settingsViewModel.PlanAdditionalSteps = string.Join(SettingsViewModel.CategorySeparator, selected.Order(StringComparer.Ordinal));
+
+        GuidePlayback.Stop();
+
+        var steps = RefreshGuideSteps();
+
+        if (TraceTimelineTab.Playhead is { } position && TraceTickTracks.GetLatestStepIndex(steps, position) is >= 0 and var index)
+        {
+            GoToGuideStep(index);
+        }
+    }
 
     [RelayCommand]
     private void GuidePlay() => GuidePlayback.TogglePlay();
@@ -253,7 +285,7 @@ public sealed partial class QueryViewModel
 
     private List<TraceTrackStep> GetGuideSteps()
     {
-        if (GuideSteps is not { } steps || !ReferenceEquals(GuideStepsHidden, _settingsViewModel.TraceTimelineHiddenTickTrackSet))
+        if (GuideSteps is not { } steps || !ReferenceEquals(GuideStepsAdditional, _settingsViewModel.PlanAdditionalStepSet))
         {
             return RefreshGuideSteps();
         }
@@ -263,9 +295,9 @@ public sealed partial class QueryViewModel
 
     private List<TraceTrackStep> RefreshGuideSteps()
     {
-        GuideStepsHidden = _settingsViewModel.TraceTimelineHiddenTickTrackSet;
+        GuideStepsAdditional = _settingsViewModel.PlanAdditionalStepSet;
 
-        var steps = TraceTickTracks.GetSteps(TickTracks, GuideStepsHidden);
+        var steps = TraceTickTracks.GetPlanSteps(TickTracks, GuideStepsAdditional);
 
         GuideSteps = steps;
 

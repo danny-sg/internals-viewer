@@ -4,6 +4,7 @@ using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.Allocation.Enums;
 using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Memory.Allocation;
 
@@ -176,11 +177,11 @@ internal sealed record AllocationFunction(ulong Address,
     public static bool IsGrantFrame(CallFrame? frame)
         => frame?.Function is { ClassName: null or "", MethodName: var methodName } && GrantFunctions.Contains(methodName);
 
-    public bool IsCounted(TraceArgumentCall call) => FlagSlot < 0 || (call.Slot(FlagSlot) & FlagMask) != 0;
+    public bool IsCounted(TraceArgumentCall call) => FlagSlot < 0 || (call.GetSlot(FlagSlot) & FlagMask) != 0;
 
-    public ulong GetObject(TraceArgumentCall call) => Operation == AllocationOperation.Create ? call.ReturnedValue : call.Slot(0);
+    public ulong GetObject(TraceArgumentCall call) => Operation == AllocationOperation.Create ? call.ReturnedValue : call.GetSlot(0);
 
-    public ulong GetPointer(TraceArgumentCall call) => call.Slot(PointerArgumentSlot);
+    public ulong GetPointer(TraceArgumentCall call) => call.GetSlot(PointerArgumentSlot);
 
     public string? GetSite(TraceArgumentCall call)
     {
@@ -191,7 +192,7 @@ internal sealed record AllocationFunction(ulong Address,
 
         var file = new TextLocator(locator);
 
-        var line = LineSlot < ArgumentLayout.RegisterCount ? call.Slot(LineSlot) : call.GetStackValue(LineSlot);
+        var line = LineSlot < ArgumentLayout.RegisterCount ? call.GetSlot(LineSlot) : call.GetStackValue(LineSlot);
 
         if (file.IsTruncated || file.Text.Length == 0 || line is not { } number)
         {
@@ -208,9 +209,9 @@ internal sealed record AllocationFunction(ulong Address,
             return IsAllocation ? Unit : 0;
         }
 
-        var size = call.Slot(SizeArgumentSlot);
+        var size = call.GetSlot(SizeArgumentSlot);
 
-        var count = CountArgumentSlot < 0 ? 1 : call.Slot(CountArgumentSlot);
+        var count = CountArgumentSlot < 0 ? 1 : call.GetSlot(CountArgumentSlot);
 
         if (size > LargestAllocation || count > LargestAllocation || Math.BigMul(size, count, out var bytes) != 0)
         {
@@ -225,7 +226,7 @@ internal sealed record AllocationFunction(ulong Address,
     /// </summary>
     internal static AllocationFunction? Classify(ulong address, ReadOnlySpan<char> symbol)
     {
-        var separator = SymbolsHelper.FindClassMethodSeparator(symbol);
+        var separator = SymbolHelper.FindClassMethodSeparator(symbol);
 
         if (separator < 0)
         {

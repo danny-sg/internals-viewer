@@ -301,7 +301,7 @@ public class TraceTimelineTests
 
         timeline.RemoveCallsUnder(n => ReferenceEquals(n, execute));
 
-        CallTreeNode[] nodes = [.. Enumerable.Range(0, 4).Select(i => timeline.NodeOf(i)!)];
+        CallTreeNode[] nodes = [.. Enumerable.Range(0, 4).Select(i => timeline.GetNode(i)!)];
 
         using var stream = new MemoryStream();
 
@@ -465,7 +465,7 @@ public class TraceTimelineTests
         var timeline = Build(Span(callNodeIndex: 0, start: 0, end: 10));
 
         Assert.Equal(3, timeline.NodeCount);
-        Assert.Equal([-1, 0, 1], Enumerable.Range(0, 3).Select(timeline.ParentOf));
+        Assert.Equal([-1, 0, 1], Enumerable.Range(0, 3).Select(timeline.GetParent));
     }
 
     [Fact]

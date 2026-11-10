@@ -105,6 +105,10 @@
                   Content="Phase"
                   ToolTipService.ToolTip="Guide Mode steps over the steps inside each tick, from its start to its end"/>
 
+        <CheckBox x:Name="PlanDefaultBox"
+                  Content="Plan Default"
+                  ToolTipService.ToolTip="Every tick is a Guide Mode step. When off, the rule is offered under Additional Steps on the plan's View menu"/>
+
         <Grid ColumnSpacing="12">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>

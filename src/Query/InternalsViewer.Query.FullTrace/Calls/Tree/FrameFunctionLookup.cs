@@ -8,7 +8,7 @@ internal sealed class FrameFunctionLookup
 
     public void Resolve(CallFrame frame, string symbol)
     {
-        SymbolsHelper.SplitOffset(symbol, out var name, out var offset);
+        SymbolHelper.SplitOffset(symbol, out var name, out var offset);
 
         var key = (frame.Module.Name, name);
 

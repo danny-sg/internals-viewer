@@ -44,7 +44,7 @@ public static class SignatureRuns
 
     public static void AddFunction(InlineCollection inlines, string function)
     {
-        var separator = SymbolsHelper.FindClassMethodSeparator(function);
+        var separator = SymbolHelper.FindClassMethodSeparator(function);
 
         if (separator > 0)
         {

@@ -71,7 +71,7 @@ public sealed partial class MemoryObjectMap
 
             foreach (var call in calls)
             {
-                var memoryObject = call.Slot(ObjectSlot);
+                var memoryObject = call.GetSlot(ObjectSlot);
 
                 if (memoryObject == 0)
                 {
@@ -82,7 +82,7 @@ public sealed partial class MemoryObjectMap
 
                 foreach (var slot in slots)
                 {
-                    var pointer = slot == ReturnSlot ? call.ReturnedValue : call.Slot(slot);
+                    var pointer = slot == ReturnSlot ? call.ReturnedValue : call.GetSlot(slot);
 
                     if (pointer < TraceAddress.MinAddress)
                     {

@@ -682,7 +682,7 @@ internal static class MemoryHistoryBuilder
         {
             if (!PageSources.TryGetValue(callNodeIndex, out var source))
             {
-                CallTreeNode[] ancestors = [.. timeline?.NodeOf(callNodeIndex)?.Ancestors() ?? []];
+                CallTreeNode[] ancestors = [.. timeline?.GetNode(callNodeIndex)?.GetAncestors() ?? []];
 
                 source = (ancestors.Any(n => BufferPoolFunctionLookup.IsBufferPool(n.Frame)),
                           ancestors.Any(n => AllocationFunction.IsGrantFrame(n.Frame)));
@@ -697,7 +697,7 @@ internal static class MemoryHistoryBuilder
         {
             if (!Iterators.TryGetValue(callNodeIndex, out var iterator))
             {
-                iterator = timeline?.NodeOf(callNodeIndex)?.Ancestors().FirstOrDefault(IsIteratorCall)?.Frame!.InstanceAddress ?? 0;
+                iterator = timeline?.GetNode(callNodeIndex)?.GetAncestors().FirstOrDefault(IsIteratorCall)?.Frame!.InstanceAddress ?? 0;
 
                 Iterators[callNodeIndex] = iterator;
             }

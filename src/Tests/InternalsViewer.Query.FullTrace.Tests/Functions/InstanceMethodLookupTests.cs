@@ -46,5 +46,5 @@ public class InstanceMethodLookupTests
     }
 
     private static int? Register(string signature, string decoratedName)
-        => InstanceMethodLookup.InstanceRegister(FunctionSignatureHelper.Parse(signature, decoratedName));
+        => InstanceMethodLookup.GetInstanceRegister(FunctionSignatureHelper.Parse(signature, decoratedName));
 }

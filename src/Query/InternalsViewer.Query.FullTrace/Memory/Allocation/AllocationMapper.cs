@@ -98,7 +98,7 @@ internal static class AllocationMapper
             values[function.Address] = callValues;
         }
 
-        var (allocations, frees) = scanned.MemoryOf(values);
+        var (allocations, frees) = scanned.GetMemory(values);
 
         return (AllocationIndex.Build(allocations, frees), count, bytes, new AllocationMemoryObjectLookup(scanned.ObjectTypes));
 
@@ -150,7 +150,7 @@ internal static class AllocationMapper
 
             if (function.CarriesClerk)
             {
-                thread.Pages.Add((start, arguments.Slot(0)));
+                thread.Pages.Add((start, arguments.GetSlot(0)));
             }
 
             if (function.IsObjectCall && function.GetObject(arguments) is not 0 and var memoryObject)
@@ -169,12 +169,12 @@ internal static class AllocationMapper
 
             foreach (var (start, end, memoryObject) in thread.Objects)
             {
-                if (FirstWithin(thread.PageStarts, start, end) is >= 0 and var page)
+                if (GetFirstWithin(thread.PageStarts, start, end) is >= 0 and var page)
                 {
                     objectClerks.TryAdd(memoryObject, thread.Pages[page].Clerk);
                 }
 
-                if (FirstWithin(thread.ObjectStarts, start.Next, end) is >= 0 and var nested
+                if (GetFirstWithin(thread.ObjectStarts, start.Next, end) is >= 0 and var nested
                     && thread.Objects[nested].Object != memoryObject)
                 {
                     objectParents.TryAdd(memoryObject, thread.Objects[nested].Object);
@@ -191,7 +191,7 @@ internal static class AllocationMapper
                     continue;
                 }
 
-                var inner = FirstWithin(thread.ObjectStarts, start, end);
+                var inner = GetFirstWithin(thread.ObjectStarts, start, end);
 
                 var memoryObject = inner >= 0 ? thread.Objects[inner].Object : 0;
 
@@ -200,7 +200,7 @@ internal static class AllocationMapper
                     SetValue(scanned.ObjectTypes, address, callIndex, objectType, getCalls);
                 }
 
-                var kind = FirstWithin(thread.PageStarts, start, end) is >= 0 and var page
+                var kind = GetFirstWithin(thread.PageStarts, start, end) is >= 0 and var page
                     ? GetClerkType(snapshot, thread.Pages[page].Clerk)
                     : GetObjectClerk(memoryObject, objectClerks, objectParents, snapshot);
 
@@ -271,7 +271,7 @@ internal static class AllocationMapper
         return null;
     }
 
-    private static int FirstWithin(TracePosition[] starts, TracePosition start, TracePosition end)
+    private static int GetFirstWithin(TracePosition[] starts, TracePosition start, TracePosition end)
     {
         var index = SortedSearch.FirstAtOrAfter(starts, start);
 
@@ -287,7 +287,7 @@ internal static class AllocationMapper
 
         if (!plumbing.TryGetValue(node, out var inside))
         {
-            inside = node.Ancestors().Skip(1).Any(a => AllocationFunction.IsMemoryObjectClass(a.Frame?.Function?.ClassName));
+            inside = node.GetAncestors().Skip(1).Any(a => AllocationFunction.IsMemoryObjectClass(a.Frame?.Function?.ClassName));
 
             plumbing[node] = inside;
         }
@@ -299,7 +299,7 @@ internal static class AllocationMapper
     {
         if (!nested.TryGetValue(node, out var inside))
         {
-            inside = node.Ancestors()
+            inside = node.GetAncestors()
                          .Skip(1)
                          .Any(a => a.Frame is { } frame && functions.TryGetValue(frame.Address, out var function) && function.IsAllocation);
 
@@ -328,7 +328,7 @@ internal static class AllocationMapper
 
         public List<ThreadCallList> Threads { get; } = [];
 
-        public (List<MemoryAllocation> Allocations, List<MemoryFree> Frees) MemoryOf(Dictionary<ulong, CallValueBuffer> values)
+        public (List<MemoryAllocation> Allocations, List<MemoryFree> Frees) GetMemory(Dictionary<ulong, CallValueBuffer> values)
         {
             var allocations = new List<MemoryAllocation>();
 

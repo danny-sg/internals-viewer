@@ -1,4 +1,4 @@
-﻿namespace InternalsViewer.Query.FullTrace.Symbols.Categories;
+﻿namespace InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 
 public enum ModuleCategory : byte
 {

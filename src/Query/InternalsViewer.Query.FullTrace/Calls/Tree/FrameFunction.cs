@@ -1,5 +1,6 @@
 using InternalsViewer.Query.FullTrace.Symbols;
 using InternalsViewer.Query.FullTrace.Symbols.Categories;
+using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Calls.Tree;
 
@@ -23,7 +24,7 @@ public sealed class FrameFunction
 
     public static FrameFunction Parse(string module, string name)
     {
-        var separator = SymbolsHelper.FindClassMethodSeparator(name);
+        var separator = SymbolHelper.FindClassMethodSeparator(name);
 
         var className = separator >= 0
                         ? name[..separator].Replace("`", string.Empty).Replace("'", string.Empty)

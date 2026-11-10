@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.FullTrace.Locators;
+namespace InternalsViewer.Query.FullTrace.Locators.Enums;
 
 public enum LocatorValueType : byte
 {

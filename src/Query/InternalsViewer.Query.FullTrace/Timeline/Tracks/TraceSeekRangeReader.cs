@@ -2,6 +2,7 @@ using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 
 namespace InternalsViewer.Query.FullTrace.Timeline.Tracks;
@@ -46,7 +47,7 @@ internal static class TraceSeekRangeReader
                                uint thread,
                                TracePosition position)
         => ranges.GetTicks(operatorEvent, thread)?.GetLatest(position) is { } latest && GetCall(calls, latest) is { } call
-            ? (int)call.Slot(RangeArgument)
+            ? (int)call.GetSlot(RangeArgument)
             : 0;
 
     public static List<VariantLocator> GetKeys(TraceTickSeries keys,

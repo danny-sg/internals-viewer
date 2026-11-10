@@ -237,7 +237,7 @@ public sealed class TimelineTools(McpDocumentResolver documents)
                                                   to,
                                                   callNodeIndex,
                                                   row.GetCallIndex(index),
-                                                  row.FlagsAt(index));
+                                                  row.GetFlags(index));
 
                     longest.Enqueue(candidate,
                                     length);
@@ -367,10 +367,10 @@ public sealed class TimelineTools(McpDocumentResolver documents)
     }
 
     private static int? GetNodeId(McpDocumentScope scope, TraceTimeline timeline, int callNodeIndex)
-        => timeline.NodeOf(callNodeIndex) is { } node ? scope.Context.Nodes.GetId(node) : null;
+        => timeline.GetNode(callNodeIndex) is { } node ? scope.Context.Nodes.GetId(node) : null;
 
     private static string GetFunctionName(McpDocumentScope scope, TraceTimeline timeline, int callNodeIndex)
-        => timeline.NodeOf(callNodeIndex) is { } node ? scope.Context.GetFunctionName(node) : $"raw node {callNodeIndex}";
+        => timeline.GetNode(callNodeIndex) is { } node ? scope.Context.GetFunctionName(node) : $"raw node {callNodeIndex}";
 
     private sealed record SpanRange(ulong? FromInstructions, ulong? ToInstructions, TracePosition? FromPosition, TracePosition? ToPosition)
     {

@@ -72,6 +72,8 @@ public sealed partial record TraceTickDefinition(string Name,
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool IsPhase { get; init; }
 
+    public bool IsPlanDefault { get; init; } = true;
+
     public TraceTickSourceType Source { get; init; }
 
     public byte Value { get; init; }
@@ -91,6 +93,8 @@ public sealed partial record TraceTickDefinition(string Name,
     public string GetLabel() => Label ?? Function;
 
     public string GetTitle() => Title ?? GetLabel();
+
+    public string GetPlanStepKey() => $"{Name}/{GetLabel()}";
 
     public static string Format(string text, Func<string, string?> getValue)
         => PlaceholderPattern().Replace(text, m => GetPlaceholderText(m, getValue));

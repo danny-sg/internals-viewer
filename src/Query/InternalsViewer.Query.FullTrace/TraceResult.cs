@@ -131,7 +131,7 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
         yield return ("Buffer Pool Pages", BufferPool.Count, BufferPool.Bytes);
         yield return ("Page Reads", PageReads.Count, PageReads.Bytes);
         yield return ("Page Accesses", PageAccesses.Count, PageAccesses.Bytes);
-        yield return ("Call Tree Nodes", CallTree.Nodes().LongCount(), null);
+        yield return ("Call Tree Nodes", CallTree.GetNodes().LongCount(), null);
         yield return ("Operator Lifetimes", Lifetimes.Count, null);
         yield return ("Row Access Ticks", RowAccesses.Count, RowAccesses.Bytes);
         yield return ("Page Header Access Ticks", PageHeaderAccesses.Count, PageHeaderAccesses.Bytes);

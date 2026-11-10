@@ -175,7 +175,7 @@ public sealed class CallTreeNode
     /// <summary>
     /// The frames from this node up to (excluding) the root, innermost first — the call path of an event linked here
     /// </summary>
-    public IEnumerable<CallFrame> Path() => Ancestors().Select(node => node.Frame!);
+    public IEnumerable<CallFrame> Path() => GetAncestors().Select(node => node.Frame!);
 
     /// <summary>
     /// This node and its ancestors up to (excluding) the root, innermost first
@@ -218,7 +218,7 @@ public sealed class CallTreeNode
         return merged;
     }
 
-    public IEnumerable<CallTreeNode> Ancestors()
+    public IEnumerable<CallTreeNode> GetAncestors()
     {
         for (var node = this; node is { Frame: not null }; node = node.Parent)
         {
@@ -226,7 +226,7 @@ public sealed class CallTreeNode
         }
     }
 
-    public override string ToString() => Ancestors().FirstOrDefault(node => !node.IsInfrastructure)?.Symbol ?? Symbol;
+    public override string ToString() => GetAncestors().FirstOrDefault(node => !node.IsInfrastructure)?.Symbol ?? Symbol;
 
     internal void AddPlanOperators(IReadOnlyList<ExecutionOperatorEvent> operators)
     {

@@ -51,7 +51,7 @@ public sealed partial class QueryViewModel
         => TickTrackStore.Replace(existing, definition);
 
     public IReadOnlyList<TraceFunctionChoice> GetFunctionChoices()
-        => [.. (CallTree?.Nodes() ?? [])
+        => [.. (CallTree?.GetNodes() ?? [])
                .Where(n => n.Frame is { Function: not null } && n.Symbol.Length > 0)
                .Select(n => new TraceFunctionChoice(n.Frame!.Module.Name, n.Symbol, n.Frame))
                .DistinctBy(c => (c.Module.ToLowerInvariant(), c.Symbol))

@@ -93,7 +93,7 @@ internal sealed class TraceExportSection : IQueryExportSection
         {
             Allocation = memory,
             AddressMap = reader.HasEntry(AddressMapEntry) && reader.ReadBinary(AddressMapEntry, AddressMap.IsSupported)
-                ? reader.ReadBinary(AddressMapEntry, r => AddressMap.Read(r, timeline.NodeOf))
+                ? reader.ReadBinary(AddressMapEntry, r => AddressMap.Read(r, timeline.GetNode))
                 : AddressMap.Empty,
             MemoryObjectSnapshot = reader.HasEntry(MemoryObjectsEntry) && reader.ReadBinary(MemoryObjectsEntry, MemoryObjectMap.IsSupported)
                 ? reader.ReadBinary(MemoryObjectsEntry, MemoryObjectMap.ReadObjects)

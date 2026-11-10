@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.FullTrace.Symbols;
+namespace InternalsViewer.Query.FullTrace.Symbols.Enums;
 
 /// <summary>
 /// The parts of a symbol a search text is matched against

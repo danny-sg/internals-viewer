@@ -310,7 +310,7 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
 
             foreach (var call in stack.Calls)
             {
-                if (timeline?.NodeOf(call.CallNodeIndex) is { } node)
+                if (timeline?.GetNode(call.CallNodeIndex) is { } node)
                 {
                     found.Add((call, node));
                 }
