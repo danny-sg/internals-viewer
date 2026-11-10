@@ -14,7 +14,9 @@ internal sealed class TracePageReadRecorder(TraceBufferPool pool)
 
     private HashSet<ulong> Frames { get; } = [.. pool.GetFrames()];
 
-    private Dictionary<uint, Run> Open { get; } = [];
+    private Dictionary<uint, Run> OpenBodies { get; } = [];
+
+    private Dictionary<uint, Run> OpenHeaders { get; } = [];
 
     private ChunkedList<TracePageRead> Reads { get; } = [];
 
@@ -28,10 +30,37 @@ internal sealed class TracePageReadRecorder(TraceBufferPool pool)
 
         var frame = GetFrame(hit.Address);
 
-        var address = Math.Max(hit.Address, frame + (ulong)PageHeader.Size);
+        var body = frame + (ulong)PageHeader.Size;
 
         var end = Math.Min(hit.Address + hit.Size, frame + (ulong)PageData.Size);
 
+        AddRun(OpenHeaders, hit, frame, hit.Address, Math.Min(end, body));
+
+        AddRun(OpenBodies, hit, frame, Math.Max(hit.Address, body), end);
+    }
+
+    public TracePageReadList Build()
+    {
+        foreach (var run in OpenBodies.Values.Concat(OpenHeaders.Values))
+        {
+            Reads.Add(run.ToRead());
+        }
+
+        OpenBodies.Clear();
+
+        OpenHeaders.Clear();
+
+        var reads = Reads.ToArray();
+
+        reads.AsSpan().Sort(static (left, right) => left.Position != right.Position ? left.Position.CompareTo(right.Position)
+                                                    : left.Thread != right.Thread ? left.Thread.CompareTo(right.Thread)
+                                                    : left.Address.CompareTo(right.Address));
+
+        return new TracePageReadList(reads);
+    }
+
+    private void AddRun(Dictionary<uint, Run> runs, WatchHit hit, ulong frame, ulong address, ulong end)
+    {
         if (address >= end)
         {
             return;
@@ -39,11 +68,11 @@ internal sealed class TracePageReadRecorder(TraceBufferPool pool)
 
         var position = hit.Position;
 
-        var isOpen = Open.TryGetValue(hit.Thread, out var run);
+        var isOpen = runs.TryGetValue(hit.Thread, out var run);
 
         if (isOpen && run.IsContinuedBy(frame, address, end, position))
         {
-            Open[hit.Thread] = run.Extend(address, end, position);
+            runs[hit.Thread] = run.Extend(address, end, position);
 
             return;
         }
@@ -53,27 +82,9 @@ internal sealed class TracePageReadRecorder(TraceBufferPool pool)
             Reads.Add(run.ToRead());
         }
 
-        Open[hit.Thread] = new Run(hit.Thread, frame, position, position, address, end);
+        runs[hit.Thread] = new Run(hit.Thread, frame, position, position, address, end);
 
         Recorded++;
-    }
-
-    public TracePageReadList Build()
-    {
-        foreach (var run in Open.Values)
-        {
-            Reads.Add(run.ToRead());
-        }
-
-        Open.Clear();
-
-        var reads = Reads.ToArray();
-
-        reads.AsSpan().Sort(static (left, right) => left.Position != right.Position ? left.Position.CompareTo(right.Position)
-                                                    : left.Thread != right.Thread ? left.Thread.CompareTo(right.Thread)
-                                                    : left.Address.CompareTo(right.Address));
-
-        return new TracePageReadList(reads);
     }
 
     private static ulong GetFrame(ulong address) => address - address % PageData.Size;

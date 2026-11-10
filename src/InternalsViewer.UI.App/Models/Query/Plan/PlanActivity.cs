@@ -13,4 +13,6 @@ public sealed record PlanActivity(IReadOnlyList<PlanNode> Requested,
     public static PlanActivity Empty { get; } = new([], [], [], [], [], []);
 
     public bool HasActivePart { get; init; }
+
+    public bool IsPlaying { get; init; }
 }

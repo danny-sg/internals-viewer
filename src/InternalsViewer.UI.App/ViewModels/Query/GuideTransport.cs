@@ -3,7 +3,7 @@ using Microsoft.UI.Dispatching;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
-public sealed class GuideTransport(Func<bool, bool> step) : ITimelineTransport, IDisposable
+public sealed class GuideTransport(Func<bool, bool> step, Func<bool> restart) : ITimelineTransport, IDisposable
 {
     public event Action<bool>? PlayStateChanged;
 
@@ -61,7 +61,7 @@ public sealed class GuideTransport(Func<bool, bool> step) : ITimelineTransport, 
 
     private void Start()
     {
-        if (!step(true))
+        if (!step(true) && !restart())
         {
             return;
         }

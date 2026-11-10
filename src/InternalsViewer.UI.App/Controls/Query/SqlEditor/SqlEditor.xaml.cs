@@ -196,6 +196,16 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
         set => SetValue(HistoryProperty, value);
     }
 
+    public static readonly DependencyProperty HeaderContentProperty =
+        DependencyProperty.Register(nameof(HeaderContent), typeof(object), typeof(SqlEditorControl),
+            new PropertyMetadata(null));
+
+    public object? HeaderContent
+    {
+        get => GetValue(HeaderContentProperty);
+        set => SetValue(HeaderContentProperty, value);
+    }
+
     public static readonly DependencyProperty AdditionalContentProperty =
         DependencyProperty.Register(nameof(AdditionalContent), typeof(object), typeof(SqlEditorControl),
             new PropertyMetadata(null));

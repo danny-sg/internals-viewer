@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
+using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Query.Helpers;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.History;
@@ -15,16 +16,20 @@ public sealed class TracePageAccessList
 {
     private const int ThisRegister = 0;
 
-    private TracePageAccessList(TracePageAccess[] accesses)
+    private TracePageAccessList(TracePageAccess[] accesses, TracePageAccess[] headerAccesses)
     {
         Accesses = accesses;
+
+        HeaderAccesses = headerAccesses;
     }
 
-    public static TracePageAccessList Empty { get; } = new([]);
+    public static TracePageAccessList Empty { get; } = new([], []);
 
     public int Count => Accesses.Length;
 
-    public long Bytes => Accesses.Length * (long)Unsafe.SizeOf<TracePageAccess>();
+    public long Bytes => (Accesses.Length + HeaderAccesses.Length) * (long)Unsafe.SizeOf<TracePageAccess>();
+
+    public TracePageAccess[] HeaderAccesses { get; }
 
     private TracePageAccess[] Accesses { get; }
 
@@ -33,6 +38,13 @@ public sealed class TracePageAccessList
     public TracePageAccess? GetFetch(TracePosition position) => Find(position, isRow: false);
 
     public TracePageAccess? GetRowAccess(TracePosition position) => Find(position, isRow: true);
+
+    public TracePageAccess? GetHeaderAccess(TracePosition position)
+    {
+        var index = SortedSearch.FirstAtOrAfter(HeaderAccesses.AsSpan(), position, a => a.Position);
+
+        return index < HeaderAccesses.Length && HeaderAccesses[index].Position == position ? HeaderAccesses[index] : null;
+    }
 
     public double? GetSlotFraction(TracePosition position, TraceBufferPool pool)
     {
@@ -60,9 +72,13 @@ public sealed class TracePageAccessList
 
         var ordered = new List<TracePageAccess>();
 
+        var headers = new List<TracePageAccess>();
+
         var filter = new SnapshotFilter();
 
         var previous = new Dictionary<uint, TracePageAccess>();
+
+        var previousHeaders = new Dictionary<uint, TracePageAccess>();
 
         var nextFetch = 0;
 
@@ -75,15 +91,29 @@ public sealed class TracePageAccessList
                 ? fetches[nextFetch++]
                 : rows[nextRow++];
 
+            if (candidate.Access.Offset < PageHeader.Size)
+            {
+                var header = candidate with { Access = candidate.Access with { Offset = 0 } };
+
+                if (!IsRepeat(previousHeaders, header))
+                {
+                    headers.Add(header.Access);
+                }
+
+                continue;
+            }
+
             if (GetRow(pool, candidate) is not { } row || !filter.IsAccess(row) || IsRepeat(previous, row))
             {
                 continue;
             }
 
+            previousHeaders.Remove(row.Thread);
+
             ordered.Add(row.Access);
         }
 
-        return new TracePageAccessList([.. ordered]);
+        return new TracePageAccessList([.. ordered], [.. headers]);
     }
 
     private TracePageAccess? Find(TracePosition position, bool isRow)
@@ -219,15 +249,23 @@ public sealed class TracePageAccessList
         {
             var read = reads[index];
 
-            if (pool.GetFrameReference(read.Address, read.Position) is not { } reference || reference.Offset < PageHeader.Size)
+            if (pool.GetFrameReference(read.Address, read.Position) is not { } reference)
+            {
+                continue;
+            }
+
+            var isPostRead = IsPostRead(postReads, read.Thread, read.Position);
+
+            var isWholePage = isPostRead || (reference.Offset == PageHeader.Size && reference.Offset + read.Length == PageData.Size);
+
+            var hasLayout = pool.GetLayout(reference.Page, reference.DatabaseId) is not null;
+
+            if (reference.Offset < PageHeader.Size ? isPostRead : !isWholePage && !hasLayout)
             {
                 continue;
             }
 
             var (callNodeIndex, callIndex) = calls.GetCall(read.Thread, read.Position);
-
-            var isWholePage = (reference.Offset == PageHeader.Size && reference.Offset + read.Length == PageData.Size)
-                              || IsPostRead(postReads, read.Thread, read.Position);
 
             var access = new TracePageAccess(read.Position,
                                              reference.Page,
@@ -318,7 +356,7 @@ public sealed class TracePageAccessList
             return candidate;
         }
 
-        if (IsOffsetTable(layout, offset))
+        if (!HasRows(layout) || IsOffsetTable(layout, offset))
         {
             return null;
         }
@@ -327,6 +365,8 @@ public sealed class TracePageAccessList
             ? candidate with { Access = access with { Offset = layout.OffsetTable[slot] } }
             : null;
     }
+
+    private static bool HasRows(PageData layout) => layout.PageHeader.PageType is PageType.None or PageType.Data or PageType.Index;
 
     private static bool IsOffsetTable(PageData layout, int offset) => offset >= PageData.Size - layout.OffsetTable.Length * sizeof(ushort);
 

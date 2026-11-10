@@ -112,6 +112,7 @@ public static partial class TraceTickTracks
     {
         TraceTickSourceType.RowReturn => "GetRow Returns",
         TraceTickSourceType.RowAccess => "Row Access",
+        TraceTickSourceType.PageHeaderAccess => "Page Header Access",
         TraceTickSourceType.Seek => "Seek",
         TraceTickSourceType.PageFetch => "Page Fetch",
         TraceTickSourceType.Open => "Operator Open",
@@ -242,6 +243,9 @@ public static partial class TraceTickTracks
 
     public static int GetLatestStepIndex(List<TraceTrackStep> steps, TracePosition position)
         => SortedSearch.FirstAfter<TraceTrackStep, TracePosition>(CollectionsMarshal.AsSpan(steps), position, GetStepPosition) - 1;
+
+    public static SKColor GetPlanPartColour(TraceTickTrack track, TraceTick tick, TraceTickDefinition rule)
+        => rule.PlanPartColour is { } colour ? ParseColour(colour) : track.GetColour(tick) ?? DefaultColour;
 
     public static int GetPhaseStepIndex(List<TraceTrackStep> steps, int current, bool forward)
     {
@@ -433,6 +437,10 @@ public static partial class TraceTickTracks
                 => GetPage(trace, tick) is { } page ? GetPageLink(page, GetSlot(trace, tick)) : UnknownValue,
             _ when IsPlaceholder(name, TraceTickDefinition.SlotPlaceholder)
                 => GetSlot(trace, tick)?.ToString(CultureInfo.CurrentCulture) ?? UnknownValue,
+            _ when IsPlaceholder(name, TraceTickDefinition.PartitionPlaceholder)
+                => trace.HashTables.GetLocation(tick)?.Partition.ToString(CultureInfo.CurrentCulture) ?? UnknownValue,
+            _ when IsPlaceholder(name, TraceTickDefinition.BucketPlaceholder)
+                => trace.HashTables.GetLocation(tick)?.Bucket.ToString(CultureInfo.CurrentCulture) ?? UnknownValue,
             _ => null
         };
 
@@ -456,6 +464,7 @@ public static partial class TraceTickTracks
 
     private static PageAddress? GetPage(TraceResult trace, TraceTick tick)
         => trace.PageAccesses.GetRowAccess(tick.Span.From.Position)?.Page
+           ?? trace.PageAccesses.GetHeaderAccess(tick.Span.From.Position)?.Page
            ?? trace.PageAccesses.GetFetch(tick.Span.From.Position)?.Page
            ?? GetRead(tick, trace.CallStore)?.Page;
 
@@ -549,6 +558,7 @@ public static partial class TraceTickTracks
     private static IEnumerable<string> GetDetails(TraceResult trace, TraceTickDefinition rule, TraceTick tick) => rule.Source switch
     {
         TraceTickSourceType.RowAccess => GetRowAccessDetails(tick, trace.PageAccesses, trace.BufferPool),
+        TraceTickSourceType.PageHeaderAccess => GetHeaderAccessDetails(tick, trace.PageAccesses),
         TraceTickSourceType.Seek or TraceTickSourceType.PageFetch => GetSeekDetails(tick, trace.PageAccesses),
         TraceTickSourceType.Call => GetReadDetails(tick, trace.CallStore),
         _ => []
@@ -572,6 +582,14 @@ public static partial class TraceTickTracks
         yield return $"Page {access.Page}";
 
         yield return pool.GetLayout(access.Page, access.DatabaseId)?.GetSlot(offset) is { } slot ? $"Slot {slot}" : $"Offset 0x{offset:X}";
+    }
+
+    private static IEnumerable<string> GetHeaderAccessDetails(TraceTick tick, TracePageAccessList accesses)
+    {
+        if (accesses.GetHeaderAccess(tick.Span.From.Position) is { } access)
+        {
+            yield return $"Page {access.Page}";
+        }
     }
 
     private static IEnumerable<string> GetReadDetails(TraceTick tick, TraceCallStore calls)

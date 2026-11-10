@@ -7,6 +7,19 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
+    <UserControl.Resources>
+        <Style x:Key="WatchLabelStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <Style x:Key="WatchValueStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontFamily" Value="{StaticResource MonospaceFontFamily}" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+        </Style>
+    </UserControl.Resources>
     <Border x:Name="NodeBorder"
             BorderThickness="0"
             Padding="0,4,0,0"
@@ -58,43 +71,70 @@
                                    TextAlignment="Center" />
                     </Border>
                 </Grid>
-                <TextBlock x:Name="OperatorNameText"
-                           Text="{x:Bind OperatorName}"
-                           FontSize="11"
-                           FontWeight="SemiBold"
-                           TextAlignment="Center"
-                           TextWrapping="Wrap"
-                           HorizontalAlignment="Center" />
-                <TextBlock Text="{x:Bind DetailText}"
-                           FontSize="10"
-                           TextAlignment="Center"
-                           TextTrimming="CharacterEllipsis"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                           Visibility="{x:Bind DetailVisibility}"
-                           HorizontalAlignment="Center" />
-                <TextBlock x:Name="PageLink"
-                           FontSize="12"
-                           HorizontalAlignment="Center"
-                           Visibility="Collapsed">
-                    <Hyperlink Click="OnPageLinkClick" Foreground="Navy" UnderlineStyle="None">
-                        <Run x:Name="PageText" />
-                    </Hyperlink>
-                </TextBlock>
-                <Grid x:Name="WatchTable"
-                      HorizontalAlignment="Center"
-                      ColumnSpacing="4"
-                      Visibility="Collapsed">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                </Grid>
-                <TextBlock Text="{x:Bind CostText}"
-                           FontSize="10"
-                           TextAlignment="Center"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                           Visibility="{x:Bind CostVisibility}"
-                           HorizontalAlignment="Center" />
+                <StackPanel x:Name="TextPanel" Orientation="Vertical" Spacing="2">
+                    <Border x:Name="NameHighlight"
+                            HorizontalAlignment="Center"
+                            Padding="4,0,4,1"
+                            CornerRadius="2">
+                        <StackPanel Orientation="Vertical" Spacing="2">
+                            <TextBlock x:Name="OperatorNameLabel"
+                                       Text="{x:Bind OperatorName}"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       HorizontalAlignment="Center" />
+                            <TextBlock x:Name="DetailLabel"
+                                       Text="{x:Bind DetailText}"
+                                       FontSize="10"
+                                       TextAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       Visibility="{x:Bind DetailVisibility}"
+                                       HorizontalAlignment="Center" />
+                            <TextBlock x:Name="CostLabel"
+                                       Text="{x:Bind CostText}"
+                                       FontSize="10"
+                                       TextAlignment="Center"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       Visibility="{x:Bind CostVisibility}"
+                                       HorizontalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+                    <Border x:Name="WatchPanel"
+                            Width="150"
+                            Margin="0,2,0,0"
+                            Padding="4,2"
+                            CornerRadius="2"
+                            Background="#404040"
+                            RenderTransformOrigin="0.5,0"
+                            Visibility="Collapsed">
+                        <Border.RenderTransform>
+                            <ScaleTransform x:Name="WatchScale" />
+                        </Border.RenderTransform>
+                        <Grid x:Name="WatchTable" ColumnSpacing="6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock x:Name="PageLabel"
+                                       Text="Current Page"
+                                       Style="{StaticResource WatchLabelStyle}"
+                                       Visibility="Collapsed" />
+                            <TextBlock x:Name="PageLink"
+                                       Grid.Column="1"
+                                       Style="{StaticResource WatchValueStyle}"
+                                       Visibility="Collapsed">
+                                <Hyperlink Click="OnPageLinkClick" Foreground="White" UnderlineStyle="Single">
+                                    <Run x:Name="PageText" />
+                                </Hyperlink>
+                            </TextBlock>
+                        </Grid>
+                    </Border>
+                </StackPanel>
             </StackPanel>
 
             <ItemsControl x:Name="AnnotationBadges"

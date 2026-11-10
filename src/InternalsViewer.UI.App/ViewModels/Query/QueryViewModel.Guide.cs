@@ -35,13 +35,17 @@ public sealed partial class QueryViewModel
     private bool _isGuidePlaying;
 
     [ObservableProperty]
-    private bool _isGuideStepsVisible = true;
+    [NotifyPropertyChangedFor(nameof(CurrentGuideMarker))]
+    private bool _isGuideStepsVisible;
 
     [ObservableProperty]
-    private bool _isGuideDetailsVisible;
+    [NotifyPropertyChangedFor(nameof(CurrentGuideMarker))]
+    private bool _isGuideIndicatorVisible = true;
 
     public PlanStepMarker? CurrentGuideMarker
-        => CurrentGuideStep is { Group.Node: { } node } step ? new PlanStepMarker(node, step.Placement) : null;
+        => IsGuideIndicatorVisible && CurrentGuideStep is { Group.Node: { } node } step
+            ? new PlanStepMarker(node, step.Placement, IsGuideStepsVisible ? null : step)
+            : null;
 
     public GuideTransport GuidePlayback => CreatedGuidePlayback ??= CreateGuidePlayback();
 
@@ -59,11 +63,13 @@ public sealed partial class QueryViewModel
 
     private bool IsSelectingGuideStep { get; set; }
 
-    public void SelectGuideStep(GuideStepItem item)
+    public void SelectGuideStep(GuideStepItem item) => SelectGuideStep(item.Index);
+
+    public void SelectGuideStep(int index)
     {
         GuidePlayback.Stop();
 
-        GoToGuideStep(item.Index);
+        GoToGuideStep(index);
     }
 
     public void ToggleGuideStep(GuideStepItem item) => GuideTree.Toggle(item);
@@ -76,6 +82,14 @@ public sealed partial class QueryViewModel
 
     [RelayCommand]
     private void GuidePrevious() => GuidePlayback.Step(forward: false);
+
+    [RelayCommand]
+    private void GuideStart()
+    {
+        GuidePlayback.Stop();
+
+        GoToFirstGuideStep();
+    }
 
     [RelayCommand]
     private void GuideNextPhase() => StepGuideManually(forward: true, GetPhaseGuideIndex);
@@ -91,7 +105,7 @@ public sealed partial class QueryViewModel
 
     private GuideTransport CreateGuidePlayback()
     {
-        var playback = new GuideTransport(StepGuide);
+        var playback = new GuideTransport(StepGuide, GoToFirstGuideStep);
 
         playback.PlayStateChanged += OnGuidePlayStateChanged;
 
@@ -189,6 +203,26 @@ public sealed partial class QueryViewModel
         return first < current ? first : items[current - 1].Group.FirstIndex;
     }
 
+    private void SelectFirstGuideStep()
+    {
+        if (Layout.IsGuideMode)
+        {
+            GoToFirstGuideStep();
+        }
+    }
+
+    private bool GoToFirstGuideStep()
+    {
+        if (Trace is null || GetGuideSteps().Count == 0)
+        {
+            return false;
+        }
+
+        GoToGuideStep(0);
+
+        return true;
+    }
+
     private void GoToGuideStep(int index)
     {
         var step = GetGuideSteps()[index];
@@ -282,10 +316,7 @@ public sealed partial class QueryViewModel
                                          nesting[index].End,
                                          TraceTickTracks.GetStepPredicate(step),
                                          GetStepPlacement(step),
-                                         TraceTickTracks.IsStickyStep(step, index, nesting))
-            {
-                IsDetailsVisible = IsGuideDetailsVisible
-            };
+                                         TraceTickTracks.IsStickyStep(step, index, nesting));
 
             group.Add(item);
 
@@ -366,6 +397,14 @@ public sealed partial class QueryViewModel
         IsSelectingGuideStep = false;
     }
 
+    partial void OnIsGuidePlayingChanged(bool value)
+    {
+        if (RowFlowPosition is { } position)
+        {
+            UpdatePlanActivity(position);
+        }
+    }
+
     partial void OnTickTracksChanged(IReadOnlyList<TraceTickTrack> value)
     {
         if (RowFlowPosition is { } position)
@@ -384,14 +423,6 @@ public sealed partial class QueryViewModel
         else
         {
             BuildGuideStepGroups([]);
-        }
-    }
-
-    partial void OnIsGuideDetailsVisibleChanged(bool value)
-    {
-        foreach (var item in GuideStepItems.Where(i => i.Details.Length > 0))
-        {
-            item.IsDetailsVisible = value;
         }
     }
 

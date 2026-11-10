@@ -54,11 +54,15 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
     public TraceTickSeries RowAccesses { get; init; } = TraceTickSeries.Empty;
 
+    public TraceTickSeries PageHeaderAccesses { get; init; } = TraceTickSeries.Empty;
+
     public TraceTickSeries PageFetches { get; init; } = TraceTickSeries.Empty;
 
     public TraceTickSeries Seeks { get; init; } = TraceTickSeries.Empty;
 
     public TraceTickSeries Opens => field ??= TraceOperatorOpenReader.Build(Timeline, Lifetimes);
+
+    public TraceHashTableMap HashTables => field ??= new TraceHashTableMap(this);
 
     public IReadOnlyList<CallTreeNode> QueryRoots => Roots ??= QueryExecutionCropper.GetRoots(CallTree);
 
@@ -101,9 +105,17 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
         var rowAccesses = TraceRowAccessReader.Build(Timeline, accesses, Lifetimes, EnclosingCalls);
 
+        var headerAccesses = TraceRowAccessReader.BuildHeaders(Timeline, accesses, Lifetimes, EnclosingCalls);
+
         var pageFetches = TracePageFetchReader.Build(Timeline, accesses, BufferPool, Lifetimes, EnclosingCalls);
 
-        return this with { PageAccesses = accesses, RowAccesses = rowAccesses, PageFetches = pageFetches };
+        return this with
+        {
+            PageAccesses = accesses,
+            RowAccesses = rowAccesses,
+            PageHeaderAccesses = headerAccesses,
+            PageFetches = pageFetches
+        };
     }
 
     internal IEnumerable<(string Component, long Items, long? Bytes)> GetComponentSizes()
@@ -122,6 +134,7 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
         yield return ("Call Tree Nodes", CallTree.Nodes().LongCount(), null);
         yield return ("Operator Lifetimes", Lifetimes.Count, null);
         yield return ("Row Access Ticks", RowAccesses.Count, RowAccesses.Bytes);
+        yield return ("Page Header Access Ticks", PageHeaderAccesses.Count, PageHeaderAccesses.Bytes);
         yield return ("Page Fetch Ticks", PageFetches.Count, PageFetches.Bytes);
         yield return ("Seek Ticks", Seeks.Count, Seeks.Bytes);
         yield return ("Open Ticks", Opens.Count, Opens.Bytes);

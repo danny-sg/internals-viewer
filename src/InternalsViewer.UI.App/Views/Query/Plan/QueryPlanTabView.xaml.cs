@@ -9,6 +9,7 @@ using InternalsViewer.UI.App.Services.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Foundation;
@@ -31,7 +32,7 @@ public sealed partial class QueryPlanTabView : UserControl
 
     private const double DefaultDetailShare = 4;
 
-    private const double DefaultPlanShare = 3;
+    private const double DefaultPlanShare = 1;
 
     private const double DefaultStepsShare = 1;
 
@@ -164,8 +165,7 @@ public sealed partial class QueryPlanTabView : UserControl
 
     public static string GetChevronGlyph(bool isExpanded) => isExpanded ? ExpandedGlyph : CollapsedGlyph;
 
-    public static Visibility GetDetailsVisibility(string details, bool isVisible)
-        => isVisible && details.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+    public static Visibility GetDetailsVisibility(string details) => details.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
 
     public static string GetPlayLabel(bool isPlaying) => isPlaying ? "Pause" : "Play";
 
@@ -200,6 +200,7 @@ public sealed partial class QueryPlanTabView : UserControl
             p.ShowActivity(ViewModel?.PlanActivity ?? PlanActivity.Empty);
             p.Events = ViewModel?.Events;
             p.AreAnnotationsVisible = ViewModel?.IsAnnotationsVisible == true;
+            p.AreWatchesVisible = ViewModel?.IsPlanWatchesVisible == true;
         });
     }
 
@@ -267,11 +268,14 @@ public sealed partial class QueryPlanTabView : UserControl
             case nameof(QueryViewModel.GuideStepGroups):
                 DispatcherQueue.TryEnqueue(UpdateStickyStep);
                 break;
-            case nameof(QueryViewModel.IsGuideDetailsVisible):
+            case nameof(QueryViewModel.IsGuideStepsVisible):
                 DispatcherQueue.TryEnqueue(ScrollToCurrentStep);
                 break;
             case nameof(QueryViewModel.IsAnnotationsVisible):
                 ApplyToPlans(p => p.AreAnnotationsVisible = _subscribed.IsAnnotationsVisible);
+                break;
+            case nameof(QueryViewModel.IsPlanWatchesVisible):
+                ApplyToPlans(p => p.AreWatchesVisible = _subscribed.IsPlanWatchesVisible);
                 break;
             case nameof(QueryViewModel.SelectedPlanNode):
                 ApplyToPlans(p => p.SelectedNode = _subscribed.SelectedPlanNode);
@@ -306,8 +310,12 @@ public sealed partial class QueryPlanTabView : UserControl
             planControl.ShowActivity(viewModel.PlanActivity);
             planControl.Events = viewModel.Events;
             planControl.AreAnnotationsVisible = viewModel.IsAnnotationsVisible;
+            planControl.AreWatchesVisible = viewModel.IsPlanWatchesVisible;
 
             // ItemsRepeater recycles elements, so guard against subscribing the same control twice.
+            planControl.StepLabelClicked -= OnPlanStepLabelClicked;
+            planControl.StepLabelClicked += OnPlanStepLabelClicked;
+
             planControl.IndexOpenRequested -= OnPlanIndexOpenRequested;
             planControl.IndexOpenRequested += OnPlanIndexOpenRequested;
 
@@ -336,7 +344,7 @@ public sealed partial class QueryPlanTabView : UserControl
 
     private void ScrollToCurrentStep()
     {
-        if (ViewModel?.CurrentGuideStep is not { IsShown: true } step)
+        if (ViewModel is not { IsGuideStepsVisible: true, CurrentGuideStep: { IsShown: true } step })
         {
             return;
         }
@@ -597,6 +605,33 @@ public sealed partial class QueryPlanTabView : UserControl
         Bindings.Update();
     }
 
+    private void OnPlanStepLabelClicked(object? sender, bool isBackward) => ViewModel?.GuidePlayback.Step(forward: !isBackward);
+
+    private void OnPlanBackgroundTapped(object sender, TappedRoutedEventArgs e) => ClearPlanSelection();
+
+    private void ClearPlanSelection() => ViewModel?.SelectedPlanNode = null;
+
+    private void OnPlanContextRequested(UIElement sender, ContextRequestedEventArgs e)
+    {
+        if (ViewModel is not { } viewModel)
+        {
+            return;
+        }
+
+        var menu = PlanViewMenu.Create(viewModel);
+
+        if (e.TryGetPosition(sender, out var position))
+        {
+            menu.ShowAt(sender, new FlyoutShowOptions { Position = position });
+        }
+        else
+        {
+            menu.ShowAt((FrameworkElement)sender);
+        }
+
+        e.Handled = true;
+    }
+
     private void OnPlanIndexOpenRequested(object? sender, PlanNode node) => ViewModel?.OpenIndex(node);
 
     private void OnPlanSimulationOpenRequested(object? sender, PlanNode node) => ViewModel?.OpenSimulation(node);
@@ -626,7 +661,14 @@ public sealed partial class QueryPlanTabView : UserControl
     /// </remarks>
     private void OnPlanNodeSelected(object? sender, PlanNode? node)
     {
-        if (node is null || sender is not ExecutionPlanControl { Plan: { } plan })
+        if (node is null)
+        {
+            ClearPlanSelection();
+
+            return;
+        }
+
+        if (sender is not ExecutionPlanControl { Plan: { } plan })
         {
             return;
         }

@@ -31,6 +31,8 @@ public sealed class ExecutionPlanControl : Canvas
 {
     private const double BaseNodeWidth = 150;
     private const double BaseNodeHeight = 90;
+    private const double ObjectNameHeight = 14;
+    private const double WatchTableHeight = 40;
     private const double HorizontalGap = 46;
     private const double VerticalGap = 22;
     private const double CanvasMargin = 24;
@@ -44,6 +46,9 @@ public sealed class ExecutionPlanControl : Canvas
     private const double CurrentArrowGap = 1;
     private const double CurrentArrowMoveSeconds = 0.3;
     private const double CurrentArrowOvershoot = 0.3;
+    private const double ClickTolerance = 4;
+    private const double StepLabelGap = 2;
+    private const double StepLabelRoom = 56;
     private const double CallArrowRotation = -90;
     private const double ReturnArrowRotation = 90;
     private const double CalculatorWidth = 14;
@@ -113,6 +118,16 @@ public sealed class ExecutionPlanControl : Canvas
     {
         get => (bool)GetValue(AreAnnotationsVisibleProperty);
         set => SetValue(AreAnnotationsVisibleProperty, value);
+    }
+
+    public static readonly DependencyProperty AreWatchesVisibleProperty =
+        DependencyProperty.Register(nameof(AreWatchesVisible), typeof(bool), typeof(ExecutionPlanControl),
+            new PropertyMetadata(false, OnPlanChanged));
+
+    public bool AreWatchesVisible
+    {
+        get => (bool)GetValue(AreWatchesVisibleProperty);
+        set => SetValue(AreWatchesVisibleProperty, value);
     }
 
     public static readonly DependencyProperty SelectedNodeProperty =
@@ -209,17 +224,26 @@ public sealed class ExecutionPlanControl : Canvas
 
         CurrentArrow.RenderTransform = CurrentArrowTransform;
 
+        StepLabel.RenderTransform = StepLabelScale;
+
+        StepLabel.Clicked += OnStepLabelClicked;
+
+        StepLabel.SizeChanged += OnStepLabelSizeChanged;
+
         PointerPressed += OnPointerPressed;
         PointerMoved += OnPointerMoved;
         PointerReleased += OnPointerReleased;
         PointerCaptureLost += OnPointerCaptureLost;
         ContextRequested += OnContextRequested;
         DoubleTapped += OnDoubleTapped;
+        Tapped += OnTapped;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
     }
 
     public event EventHandler<PlanNode?>? NodeSelected;
+
+    public event EventHandler<bool>? StepLabelClicked;
 
     public event EventHandler<PlanNode>? IndexOpenRequested;
 
@@ -235,7 +259,9 @@ public sealed class ExecutionPlanControl : Canvas
 
     public Func<PlanNode, bool> IsCounterShown { get; set; } = static n => n.IsStatement;
 
-    private double RowPitch => BaseNodeHeight + VerticalGap;
+    private double NodeHeight => BaseNodeHeight + ObjectNameHeight + (AreWatchesVisible ? WatchTableHeight : 0);
+
+    private double RowPitch => NodeHeight + VerticalGap;
 
     private Dictionary<PlanNode, IteratorConnector> IteratorConnectors { get; } = [];
 
@@ -256,6 +282,16 @@ public sealed class ExecutionPlanControl : Canvas
     private CompositeTransform CurrentArrowTransform { get; } = new() { CenterX = CurrentArrowSize / 2, CenterY = CurrentArrowSize / 2 };
 
     private Storyboard? CurrentArrowMove { get; set; }
+
+    private GuideStepLabel StepLabel { get; } = new() { Visibility = Visibility.Collapsed };
+
+    private ScaleTransform StepLabelScale { get; } = new();
+
+    private double StepLabelCentreX { get; set; }
+
+    private double StepLabelBottom { get; set; }
+
+    private double TopMargin => IsFullTrace ? CanvasMargin + StepLabelRoom : CanvasMargin;
 
     private DispatcherQueueTimer RenderSettleTimer => field ??= CreateRenderSettleTimer();
 
@@ -288,15 +324,15 @@ public sealed class ExecutionPlanControl : Canvas
 
         foreach (var (node, control) in NodeControls)
         {
+            control.SetGreyed(IsGreyed(node, activity));
+
+            control.SetTextDimmed(IsTextDimmed(node, activity));
+
             control.ShowParts(activity.Parts.Where(p => ReferenceEquals(p.Node, node) && p.CalculatorNode is null));
 
             control.ShowCounters(activity.Counters.Where(c => ReferenceEquals(c.Node, node)));
 
-            control.SetGreyed(IsGreyed(node, activity));
-
-            control.ShowPage(activity.Pages.FirstOrDefault(p => ReferenceEquals(p.Node, node)));
-
-            control.ShowWatches(activity.Watches.Where(w => ReferenceEquals(w.Node, node)));
+            ShowWatches(node, control, activity);
         }
 
         ShowEvaluations(activity);
@@ -481,13 +517,15 @@ public sealed class ExecutionPlanControl : Canvas
 
         Children.Add(CurrentArrow);
 
-        UpdateCurrentArrow();
+        Children.Add(StepLabel);
 
         var maxX = positions.Max(p => p.Value.X + WidthOf(p.Key));
         var maxY = positions.Values.Max(p => p.Y);
 
         Width = maxX + CanvasMargin;
-        Height = maxY + BaseNodeHeight + CanvasMargin;
+        Height = maxY + NodeHeight + CanvasMargin;
+
+        UpdateCurrentArrow();
 
         SelectByNode(SelectedNode);
 
@@ -503,15 +541,15 @@ public sealed class ExecutionPlanControl : Canvas
 
         foreach (var (node, control) in NodeControls)
         {
+            control.SetGreyed(IsGreyed(node, Activity));
+
+            control.SetTextDimmed(IsTextDimmed(node, Activity));
+
             control.ShowParts(Activity.Parts.Where(p => p.IsRunning && ReferenceEquals(p.Node, node) && p.CalculatorNode is null));
 
             control.ShowCounters(Activity.Counters.Where(c => ReferenceEquals(c.Node, node)));
 
-            control.SetGreyed(IsGreyed(node, Activity));
-
-            control.ShowPage(Activity.Pages.FirstOrDefault(p => ReferenceEquals(p.Node, node)));
-
-            control.ShowWatches(Activity.Watches.Where(w => ReferenceEquals(w.Node, node)));
+            ShowWatches(node, control, Activity);
         }
 
         UpdateFlows();
@@ -534,7 +572,7 @@ public sealed class ExecutionPlanControl : Canvas
 
         if (children.Count == 0)
         {
-            y = CanvasMargin + leaf.Next * RowPitch;
+            y = TopMargin + leaf.Next * RowPitch;
             leaf.Next++;
         }
         else
@@ -566,8 +604,7 @@ public sealed class ExecutionPlanControl : Canvas
             Node = node,
             CostPercent = IsFullTrace ? -1 : costFraction,
             AreAnnotationsVisible = AreAnnotationsVisible,
-            Width = WidthOf(node),
-            Height = BaseNodeHeight
+            Width = WidthOf(node)
         };
 
         SetLeft(control, point.X);
@@ -764,7 +801,7 @@ public sealed class ExecutionPlanControl : Canvas
 
         var startX = creator.X + BaseNodeWidth / 2;
 
-        var startY = probe.Y > creator.Y ? creator.Y + BaseNodeHeight : creator.Y;
+        var startY = probe.Y > creator.Y ? creator.Y + NodeHeight : creator.Y;
 
         var laneY = probe.Y - VerticalGap / 2;
 
@@ -858,8 +895,13 @@ public sealed class ExecutionPlanControl : Canvas
             return;
         }
 
-        BeginPan(e);
+        if (!e.GetCurrentPoint(this).Properties.IsRightButtonPressed)
+        {
+            BeginPan(e);
+        }
     }
+
+    private void OnTapped(object sender, TappedRoutedEventArgs e) => e.Handled = true;
 
     private void OnDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
@@ -960,7 +1002,24 @@ public sealed class ExecutionPlanControl : Canvas
         e.Handled = true;
     }
 
-    private void OnPointerReleased(object sender, PointerRoutedEventArgs e) => EndPan(e);
+    private void OnPointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        var isClick = _isPanning && IsAtPanOrigin(e);
+
+        EndPan(e);
+
+        if (isClick)
+        {
+            NodeSelected?.Invoke(this, null);
+        }
+    }
+
+    private bool IsAtPanOrigin(PointerRoutedEventArgs e)
+    {
+        var position = e.GetCurrentPoint(_scrollViewer).Position;
+
+        return Math.Abs(position.X - _panOrigin.X) < ClickTolerance && Math.Abs(position.Y - _panOrigin.Y) < ClickTolerance;
+    }
 
     private void OnPointerCaptureLost(object sender, PointerRoutedEventArgs e) => EndPan(e);
 
@@ -1037,7 +1096,7 @@ public sealed class ExecutionPlanControl : Canvas
 
         if (nodeControl is not null)
         {
-            nodeControl.IsSelected = !IsFullTrace;
+            nodeControl.IsSelected = true;
 
             if (bringIntoView)
             {
@@ -1053,7 +1112,21 @@ public sealed class ExecutionPlanControl : Canvas
     }
 
     private bool IsGreyed(PlanNode node, PlanActivity activity)
-        => IsFullTrace && !node.IsStatement && activity.HasActivePart;
+        => IsFullTrace && (activity.IsPlaying || (activity.HasActivePart && !node.IsStatement));
+
+    private bool IsTextDimmed(PlanNode node, PlanActivity activity)
+        => IsFullTrace
+           && activity.IsPlaying
+           && !activity.Parts.Any(p => ReferenceEquals(p.Node, node) && p.Part == PlanIconParts.ActivePart);
+
+    private void ShowWatches(PlanNode node, PlanNodeControl control, PlanActivity activity)
+    {
+        if (AreWatchesVisible)
+        {
+            control.ShowWatches(activity.Pages.FirstOrDefault(p => ReferenceEquals(p.Node, node)),
+                                activity.Watches.Where(w => ReferenceEquals(w.Node, node)));
+        }
+    }
 
     private void ShowEvaluations(PlanActivity activity)
     {
@@ -1213,6 +1286,8 @@ public sealed class ExecutionPlanControl : Canvas
 
             CurrentArrow.Visibility = Visibility.Collapsed;
 
+            StepLabel.Visibility = Visibility.Collapsed;
+
             return;
         }
 
@@ -1252,11 +1327,54 @@ public sealed class ExecutionPlanControl : Canvas
 
         CurrentArrow.Visibility = Visibility.Visible;
 
+        var isFlying = isMoving && (shownLeft != left || shownTop != top || shownRotation != rotation);
+
+        ShowStepLabel(step.Step, isFlying, centreX, aboveIcon - CurrentArrowSize * scale / 2 - StepLabelGap);
+
         if (isMoving)
         {
             AnimateCurrentArrow(shownLeft - left, shownTop - top, shownRotation, rotation);
         }
     }
+
+    private void ShowStepLabel(GuideStepItem? step, bool isFlying, double centreX, double bottom)
+    {
+        if (step is null)
+        {
+            StepLabel.Visibility = Visibility.Collapsed;
+
+            return;
+        }
+
+        StepLabel.Show(step);
+
+        StepLabelCentreX = centreX;
+
+        StepLabelBottom = bottom;
+
+        StepLabel.Visibility = isFlying ? Visibility.Collapsed : Visibility.Visible;
+
+        PositionStepLabel();
+    }
+
+    private void PositionStepLabel()
+    {
+        var scale = Math.Min(1 / Zoom, StepLabelBottom / Math.Max(1, StepLabel.ActualHeight));
+
+        StepLabelScale.ScaleX = scale;
+
+        StepLabelScale.ScaleY = scale;
+
+        var width = StepLabel.ActualWidth * scale;
+
+        SetLeft(StepLabel, Math.Max(0, Math.Min(StepLabelCentreX - width / 2, Width - width)));
+
+        SetTop(StepLabel, StepLabelBottom - StepLabel.ActualHeight * scale);
+    }
+
+    private void OnStepLabelClicked(object? sender, bool isBackward) => StepLabelClicked?.Invoke(this, isBackward);
+
+    private void OnStepLabelSizeChanged(object sender, SizeChangedEventArgs e) => PositionStepLabel();
 
     private void AnimateCurrentArrow(double offsetX, double offsetY, double fromRotation, double rotation)
     {
@@ -1270,9 +1388,19 @@ public sealed class ExecutionPlanControl : Canvas
 
         move.Children.Add(CreateCurrentArrowAnimation(nameof(CompositeTransform.Rotation), fromRotation, rotation));
 
+        move.Completed += OnCurrentArrowMoveCompleted;
+
         CurrentArrowMove = move;
 
         move.Begin();
+    }
+
+    private void OnCurrentArrowMoveCompleted(object? sender, object e)
+    {
+        if (CurrentStep?.Step is not null)
+        {
+            StepLabel.Visibility = Visibility.Visible;
+        }
     }
 
     private DoubleAnimation CreateCurrentArrowAnimation(string property, double from, double to)

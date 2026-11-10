@@ -340,6 +340,7 @@ public sealed class TraceTickSeries
     {
         TraceTickSourceType.RowReturn => trace.RowReturnMarks.Ticks,
         TraceTickSourceType.RowAccess => trace.RowAccesses,
+        TraceTickSourceType.PageHeaderAccess => trace.PageHeaderAccesses,
         TraceTickSourceType.Seek => trace.Seeks,
         TraceTickSourceType.PageFetch => trace.PageFetches,
         TraceTickSourceType.Open => trace.Opens,

@@ -10,5 +10,6 @@ public enum TraceTickSourceType
     Open,
     Watch,
     Evaluate,
-    Statement
+    Statement,
+    PageHeaderAccess
 }

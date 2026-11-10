@@ -18,19 +18,42 @@ internal static class TraceRowAccessReader
         {
             var access = accesses[index];
 
-            if (access.Offset is null
-                || timeline.NodeOf(access.CallNodeIndex) is not { } node
-                || timeline.FindCall(node, access.CallIndex) is not { } location
-                || recent.IsRecent(location.Thread.ThreadId, access))
+            if (access.Offset is not null
+                && GetLocation(timeline, access) is { } location
+                && !recent.IsRecent(location.Thread.ThreadId, access))
             {
-                continue;
+                sources.Add(GetSource(location, access));
             }
-
-            var at = new TracePoint(access.Position, location.Thread.Clock.GetInstructions(access.Position));
-
-            sources.Add(TraceTickSource.FromPoint(location, 0, at));
         }
 
         return TraceTickSeries.FromSources(timeline, sources, lifetimes, enclosing);
+    }
+
+    public static TraceTickSeries BuildHeaders(TraceTimeline timeline,
+                                               TracePageAccessList accesses,
+                                               TraceOperatorLifetimeList lifetimes,
+                                               EnclosingOperatorCallIndex enclosing)
+    {
+        var sources = new List<TraceTickSource>();
+
+        foreach (var access in accesses.HeaderAccesses)
+        {
+            if (GetLocation(timeline, access) is { } location)
+            {
+                sources.Add(GetSource(location, access));
+            }
+        }
+
+        return TraceTickSeries.FromSources(timeline, sources, lifetimes, enclosing);
+    }
+
+    private static TraceSpanLocation? GetLocation(TraceTimeline timeline, TracePageAccess access)
+        => timeline.NodeOf(access.CallNodeIndex) is { } node ? timeline.FindCall(node, access.CallIndex) : null;
+
+    private static TraceTickSource GetSource(TraceSpanLocation location, TracePageAccess access)
+    {
+        var point = new TracePoint(access.Position, location.Thread.Clock.GetInstructions(access.Position));
+
+        return TraceTickSource.FromPoint(location, 0, point);
     }
 }

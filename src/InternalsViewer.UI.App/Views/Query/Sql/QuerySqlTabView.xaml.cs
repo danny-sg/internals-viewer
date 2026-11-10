@@ -1,4 +1,6 @@
 using System;
+using CommunityToolkit.WinUI;
+using InternalsViewer.UI.App.Controls.Query.Trace.Dialogs;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI.Xaml.Controls;
 
@@ -51,6 +53,46 @@ public sealed partial class QuerySqlTabView : UserControl, IDisposable
     }
 
     private void OnSqlTextImported(string sql) => SqlEditor.LoadQuery(sql);
+
+    private void OnTracePromptLoaded(object sender, RoutedEventArgs e)
+    {
+        if (((InfoBar)sender).FindDescendant("CloseButton") is { } closeButton)
+        {
+            ToolTipService.SetToolTip(closeButton, "Do not show again");
+        }
+    }
+
+    private void OnTracePromptCloseClick(InfoBar sender, object args) => ViewModel?.DisableTracePrompt();
+
+#pragma warning disable VSTHRD100
+    private async void OnFullTraceClick(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel is not { } viewModel)
+        {
+            return;
+        }
+
+        viewModel.IsTracePromptVisible = false;
+
+        viewModel.QueryOptions.RecordTimeTravel = await TimeTravelConsent.ConfirmAsync(XamlRoot);
+    }
+
+    private async void OnGuideModeClick(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel is not { } viewModel)
+        {
+            return;
+        }
+
+        viewModel.IsTracePromptVisible = false;
+
+        var isConfirmed = await TimeTravelConsent.ConfirmAsync(XamlRoot);
+
+        viewModel.QueryOptions.RecordTimeTravel = isConfirmed;
+
+        viewModel.Layout.IsGuideMode = isConfirmed;
+    }
+#pragma warning restore VSTHRD100
 
     private void OnOpenAllocations(object sender, RoutedEventArgs e)
     {

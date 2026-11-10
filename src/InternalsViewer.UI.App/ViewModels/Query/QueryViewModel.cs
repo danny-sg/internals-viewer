@@ -282,6 +282,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private bool _isAnnotationsVisible;
 
     [ObservableProperty]
+    private bool _isPlanWatchesVisible;
+
+    [ObservableProperty]
     private bool _isSqlResultsVisible;
 
     [ObservableProperty]
@@ -370,6 +373,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     [ObservableProperty]
     private bool _isPlanPropertiesDockedBottom;
+
+    [ObservableProperty]
+    private bool _isTracePromptVisible;
 
     public QueryViewModel(ILogger<QueryViewModel> logger,
                           QueryRunner queryRunner,
@@ -462,6 +468,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         QueryOptions.Changed += ScheduleSaveLayout;
 
         PrepareTrace();
+
+        IsTracePromptVisible = settingsViewModel.IsTracePromptEnabled && App.GetService<ITimeTravelRecorder>().IsInstalled;
 
         Schema = SchemaHelper.ToSqlSchema(database);
 
@@ -1136,6 +1144,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             RefreshGuideSteps();
 
+            SelectFirstGuideStep();
+
             OnPropertyChanged(nameof(TransportSource));
 
             return;
@@ -1171,6 +1181,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 #pragma warning restore VSTHRD100
+
+    public void DisableTracePrompt()
+    {
+        _settingsViewModel.IsTracePromptEnabled = false;
+
+        IsTracePromptVisible = false;
+    }
 
     /// <summary>
     /// Releases the query event data and disposes the dock layout's views when the tab closes
@@ -1552,7 +1569,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                                         GetPages(position),
                                         GetWatches(position))
         {
-            HasActivePart = HasActivePartRule()
+            HasActivePart = HasActivePartRule(),
+            IsPlaying = IsGuidePlaying
         };
 
         RowFlowPosition = position;
@@ -1589,6 +1607,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             {
                 AddPartActivity(parts, track, tick, position, isRunning: false);
             }
+        }
+
+        if (IsGuidePlaying && CurrentGuideStep is { Group.Node: { } node })
+        {
+            parts.Add(new PlanPartActivity(node, PlanIconParts.ActivePart, default, IsRunning: true, Fraction: null, Rank: 0));
         }
 
         return parts;
@@ -1744,9 +1767,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             return;
         }
 
-        var colour = rule.PlanPartColour is { } planColour
-            ? TraceTickTracks.ParseColour(planColour)
-            : track.GetColour(tick) ?? TraceTickTracks.DefaultColour;
+        var colour = TraceTickTracks.GetPlanPartColour(track, tick, rule);
 
         var fraction = rule.Source == TraceTickSourceType.RowAccess && Trace is { } trace
             ? trace.PageAccesses.GetSlotFraction(tick.Span.From.Position, trace.BufferPool)
@@ -2301,6 +2322,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [RelayCommand(IncludeCancelCommand = true)]
     private async Task ExecuteQuery(ExecuteSqlPayload payload, CancellationToken cancellationToken)
     {
+        IsTracePromptVisible = false;
+
         _isClearBuferPool = payload.QueryOptions.ClearBufferPool;
 
         ScheduleSaveLayout();
@@ -2693,6 +2716,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         LastRun = run;
 
+        IsTracePromptVisible = false;
+
         SqlTextImported?.Invoke(run.SqlText);
     }
 
@@ -2757,6 +2782,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         PagePlayhead = 0;
 
         RefreshLayers(FilteredEvents);
+
+        SelectFirstGuideStep();
     }
 
     private ExecutionOperatorEvent? GetStatementOperator(TraceOperatorLifetimeList lifetimes)

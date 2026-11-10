@@ -12,8 +12,8 @@ public class TraceTickDefinitionTests
     [Fact]
     public void The_Predefined_Rules_Make_The_Built_In_Tracks_In_Order()
     {
-        Assert.Equal(["GetRow", "Read", "Evaluations", "Row Access", "Seek", "Hash Table", "Hash Aggregate", "Sort", "Compute Scalar",
-                      "Watches", "Statement", "Open"],
+        Assert.Equal(["GetRow", "Read", "Evaluations", "Row Access", "Page Header Access", "Seek", "Hash Table", "Hash Aggregate", "Sort",
+                      "Compute Scalar", "Watches", "Statement", "Open"],
                      TraceTickDefinition.GetPredefined().Select(d => d.Name).Distinct());
     }
 
@@ -181,6 +181,11 @@ public class TraceTickDefinitionTests
     {
         Assert.EndsWith("FFFFFF", TraceTickDefinition.GetPredefined().First(d => d.Name == "Row Access").Background);
     }
+
+    [Fact]
+    public void The_Page_Header_Access_Track_Has_Its_Own_Source()
+        => Assert.Equal(TraceTickSourceType.PageHeaderAccess,
+                        TraceTickDefinition.GetPredefined().Single(d => d.Name == "Page Header Access").Source);
 
     [Fact]
     public void Row_Reads_Made_Searching_A_Page_Come_Before_The_Other_Row_Reads()

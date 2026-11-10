@@ -34,9 +34,11 @@ public sealed partial class PlanNodeControl : UserControl
 
     private const double FractionSteps = 8;
 
-    private const double PageFontSize = 12;
+    private const double DimmedTextOpacity = 0.45;
 
-    private const double MinimumOperatorFontSize = 10;
+    private const int PageRowElementCount = 2;
+
+    private const double MinimumWatchZoom = 0.995;
 
     private const string BatchToRowDescription = "Converts batches from its input to rows. The plan XML does not list it";
 
@@ -125,7 +127,7 @@ public sealed partial class PlanNodeControl : UserControl
 
     public string OperatorName => Node?.PhysicalOperator ?? string.Empty;
 
-    public string DetailText => Node is null ? string.Empty : FormatObject(Node);
+    public string DetailText => Node is null ? string.Empty : FormatDetail(Node);
 
     public Visibility DetailVisibility
         => string.IsNullOrEmpty(DetailText) ? Visibility.Collapsed : Visibility.Visible;
@@ -140,6 +142,8 @@ public sealed partial class PlanNodeControl : UserControl
     private Dictionary<(string Icon, string Part, Color Colour, double? Fraction), PartLayer> PartLayers { get; } = [];
 
     private string CounterToolTip { get; set; } = string.Empty;
+
+    private static SolidColorBrush SelectedTextBrush { get; } = new(Colors.White);
 
     private double RenderScale { get; set; } = 1;
 
@@ -161,9 +165,7 @@ public sealed partial class PlanNodeControl : UserControl
 
         Zoom = zoom;
 
-        UpdatePageLink();
-
-        UpdateWatchTable();
+        UpdateWatchPanel();
 
         if (GetPixels(IconSize, scale) != GetPixels(IconSize, RasterScale)
             || GetPixels(IndicatorWidth, scale) != GetPixels(IndicatorWidth, RasterScale))
@@ -213,6 +215,8 @@ public sealed partial class PlanNodeControl : UserControl
         }
     }
 
+    public void SetTextDimmed(bool isDimmed) => TextPanel.Opacity = isDimmed ? DimmedTextOpacity : 1;
+
     private SvgImageSource CreateIconSource(PlanNode node)
     {
         if (IsGreyed && PlanIconParts.GetInactiveIcon(PlanIconResolver.GetAssetName(node)) is { } inactive)
@@ -227,45 +231,43 @@ public sealed partial class PlanNodeControl : UserControl
         return source;
     }
 
-    public void ShowPage(PlanPage? page)
+    public void ShowWatches(PlanPage? page, IEnumerable<PlanWatch> watches)
     {
-        if (page == CurrentPage)
+        List<PlanWatch> shown = [.. watches];
+
+        if (page == CurrentPage && shown.SequenceEqual(CurrentWatches))
         {
             return;
         }
 
         CurrentPage = page;
 
-        PageText.Text = page?.Address ?? string.Empty;
-
-        UpdatePageLink();
-    }
-
-    public void ShowWatches(IEnumerable<PlanWatch> watches)
-    {
-        List<PlanWatch> shown = [.. watches];
-
-        if (shown.SequenceEqual(CurrentWatches))
-        {
-            return;
-        }
-
         CurrentWatches = shown;
 
-        WatchTable.Children.Clear();
+        PageText.Text = page?.Address ?? string.Empty;
 
-        WatchTable.RowDefinitions.Clear();
+        PageLabel.Visibility = page is null ? Visibility.Collapsed : Visibility.Visible;
+
+        PageLink.Visibility = PageLabel.Visibility;
+
+        while (WatchTable.Children.Count > PageRowElementCount)
+        {
+            WatchTable.Children.RemoveAt(WatchTable.Children.Count - 1);
+        }
+
+        while (WatchTable.RowDefinitions.Count <= shown.Count)
+        {
+            WatchTable.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        }
 
         for (var index = 0; index < shown.Count; index++)
         {
-            WatchTable.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            AddWatchText(shown[index].Label, index + 1, isLabel: true);
 
-            AddWatchText(shown[index].Label, index, isLabel: true);
-
-            AddWatchText(shown[index].Value, index, isLabel: false);
+            AddWatchText(shown[index].Value, index + 1, isLabel: false);
         }
 
-        UpdateWatchTable();
+        UpdateWatchPanel();
     }
 
     public void ShowCounters(IEnumerable<PlanCounter> counters)
@@ -315,7 +317,7 @@ public sealed partial class PlanNodeControl : UserControl
             var fraction = activity.Fraction is { } value ? Math.Round(value * FractionSteps) / FractionSteps : (double?)null;
 
             var iconParts = PlanIconParts.GetParts(icon, activity.Part)
-                                         .Where(p => !node.IsStatement || p != PlanIconParts.ActivePart)
+                                         .Where(p => IsGreyed || p != PlanIconParts.ActivePart)
                                          .Select(p => (Icon: icon, Part: p));
 
             var pageParts = hasPage
@@ -455,13 +457,8 @@ public sealed partial class PlanNodeControl : UserControl
         var block = new TextBlock
         {
             Text = text,
-            HorizontalAlignment = isLabel ? HorizontalAlignment.Right : HorizontalAlignment.Left
+            Style = (Style)Resources[isLabel ? "WatchLabelStyle" : "WatchValueStyle"]
         };
-
-        if (isLabel)
-        {
-            block.Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
-        }
 
         Grid.SetRow(block, row);
 
@@ -470,23 +467,13 @@ public sealed partial class PlanNodeControl : UserControl
         WatchTable.Children.Add(block);
     }
 
-    private void UpdateWatchTable()
+    private void UpdateWatchPanel()
     {
-        foreach (var block in WatchTable.Children.OfType<TextBlock>())
-        {
-            block.FontSize = PageFontSize / Zoom;
-        }
+        WatchScale.ScaleX = 1 / Zoom;
 
-        WatchTable.Visibility = CurrentWatches.Count > 0 && OperatorNameText.FontSize * Zoom >= MinimumOperatorFontSize
-            ? Visibility.Visible
-            : Visibility.Collapsed;
-    }
+        WatchScale.ScaleY = 1 / Zoom;
 
-    private void UpdatePageLink()
-    {
-        PageLink.FontSize = PageFontSize / Zoom;
-
-        PageLink.Visibility = CurrentPage is not null && OperatorNameText.FontSize * Zoom >= MinimumOperatorFontSize
+        WatchPanel.Visibility = (CurrentPage is not null || CurrentWatches.Count > 0) && Zoom >= MinimumWatchZoom
             ? Visibility.Visible
             : Visibility.Collapsed;
     }
@@ -523,42 +510,25 @@ public sealed partial class PlanNodeControl : UserControl
             NodeImageBorder.Background = null;
         }
 
-        if (IsSelected && Node is { } selectedNode)
-        {
-            var type = EventColourProvider.GetOperatorColour(selectedNode).ToWindowsColor();
+        NameHighlight.Background = IsSelected ? AppResources.Get<Brush>("AccentFillColorDefaultBrush") : null;
 
-            NodeImageBorder.BorderBrush = new SolidColorBrush(Color.FromArgb(255, type.R, type.G, type.B));
-        }
-        else
-        {
-            NodeImageBorder.BorderBrush = null;
-        }
+        OperatorNameLabel.Foreground = GetLabelBrush("TextFillColorPrimaryBrush");
+
+        DetailLabel.Foreground = GetLabelBrush("TextFillColorSecondaryBrush");
+
+        CostLabel.Foreground = GetLabelBrush("TextFillColorSecondaryBrush");
     }
 
-    private static string FormatObject(PlanNode node)
+    private Brush GetLabelBrush(string unselectedKey) => IsSelected ? SelectedTextBrush : AppResources.Get<Brush>(unselectedKey);
+
+    private static string FormatDetail(PlanNode node)
     {
-        var isIo = OperatorClassifier.IsDataAccess(node);
-
-        if(isIo)
+        if (OperatorClassifier.IsDataAccess(node))
         {
-            var table = Trim(node.Table);
-
-            if (string.IsNullOrEmpty(table))
-            {
-                return string.Empty;
-            }
-
-            var index = Trim(node.Index);
-
-            return string.IsNullOrEmpty(index) ? table : $"{table}.{index}";
+            return PlanObjectNameFormatter.Format(node);
         }
 
-        if (node.PhysicalOperator == node.LogicalOperator)
-        {
-            return string.Empty;
-        }
-
-        return node.LogicalOperator;
+        return node.PhysicalOperator == node.LogicalOperator ? string.Empty : node.LogicalOperator;
     }
 
     private string BuildToolTip(PlanNode node)

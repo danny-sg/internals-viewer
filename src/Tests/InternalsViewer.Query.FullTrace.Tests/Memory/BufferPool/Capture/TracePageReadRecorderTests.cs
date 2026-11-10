@@ -37,12 +37,18 @@ public class TracePageReadRecorderTests
                         Record(Read(3, Frame + 0x1FF6, 2), Read(4, Frame + 0x5B3, 4)).Select(r => r.Address));
 
     [Fact]
-    public void Reads_Of_The_Page_Header_Are_Not_Page_Reads() => Assert.Empty(Record(Read(3, Frame + 0x20, 2)));
+    public void A_Read_Of_The_Page_Header_Is_A_Page_Read()
+        => Assert.Equal([new TracePageRead(At(3), Thread, Frame + 0x20, 2)], Record(Read(3, Frame + 0x20, 2)));
 
     [Fact]
-    public void A_Read_Crossing_From_The_Header_Into_The_Body_Keeps_Its_Body_Bytes()
-        => Assert.Equal([new TracePageRead(At(3), Thread, Frame + 0x60, 0x1FA0)],
+    public void A_Read_Crossing_From_The_Header_Into_The_Body_Is_A_Page_Read_Of_Each()
+        => Assert.Equal([new TracePageRead(At(3), Thread, Frame + 0x40, 0x20), new TracePageRead(At(3), Thread, Frame + 0x60, 0x1FA0)],
                         Record(Read(3, Frame + 0x40, 0x40), Read(4, Frame + 0x80, 0x1F80)));
+
+    [Fact]
+    public void A_Header_Read_Does_Not_Split_Touching_Reads_Of_A_Row()
+        => Assert.Equal([new TracePageRead(At(3), Thread, Frame + 0x5B3, 8), new TracePageRead(At(4), Thread, Frame + 0x16, 2)],
+                        Record(Read(3, Frame + 0x5B3, 4), Read(4, Frame + 0x16, 2), Read(5, Frame + 0x5B7, 4)));
 
     [Fact]
     public void Touching_Reads_Across_Two_Frames_Are_Separate_Page_Reads()

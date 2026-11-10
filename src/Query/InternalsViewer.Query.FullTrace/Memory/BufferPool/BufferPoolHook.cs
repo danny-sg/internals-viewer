@@ -303,13 +303,16 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
                 IsCountKnown = true;
             }
 
-            for (var slot = 0; slot < Offsets.Length && Unknown > 0; slot++)
+            if (Offsets != null)
             {
-                if (Offsets[slot] == 0 && replay.TryRead(GetSlotAddress(slot), out ushort offset) && offset != 0)
+                for (var slot = 0; slot < Offsets.Length && Unknown > 0; slot++)
                 {
-                    Offsets[slot] = offset;
+                    if (Offsets[slot] == 0 && replay.TryRead(GetSlotAddress(slot), out ushort offset) && offset != 0)
+                    {
+                        Offsets[slot] = offset;
 
-                    Unknown--;
+                        Unknown--;
+                    }
                 }
             }
         }

@@ -28,6 +28,10 @@ public sealed partial record TraceTickDefinition(string Name,
 
     public const string SlotPlaceholder = "Slot";
 
+    public const string PartitionPlaceholder = "Partition";
+
+    public const string BucketPlaceholder = "Bucket";
+
     public const string RowCallPlaceholder = "RowCall";
 
     public const string RowUnitPlaceholder = "RowUnit";

@@ -1,4 +1,5 @@
 using InternalsViewer.Internals.Engine.Address;
+using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
@@ -125,11 +126,11 @@ public class TracePageAccessListTests
 
         var history = MemoryHistoryStoreHelper.Build([MemoryHistoryStoreHelper.Block(Holder, 0x10)], [(4, Holder, Pointer(Frame + 0x5E2))]);
 
-        var reads = new TracePageReadList([new TracePageRead(At(6), 9, Frame + 0x1FF6, 2)]);
+        var reads = new TracePageReadList([new TracePageRead(At(6), 9, Frame + 0x611, 2)]);
 
-        var accesses = Read(TracePageAccessList.Build(calls, history, Pool(), reads));
+        var accesses = Read(TracePageAccessList.Build(calls, history, LaidOutPool(), reads));
 
-        Assert.Equal([(At(2), (int?)null), (At(6), (int?)0x1FF6)], accesses.Select(a => (a.Position, a.Offset)));
+        Assert.Equal([(At(2), (int?)null), (At(6), (int?)0x611)], accesses.Select(a => (a.Position, a.Offset)));
     }
 
     [Fact]
@@ -149,9 +150,76 @@ public class TracePageAccessListTests
 
         var reads = Reads((6, 9, 0x158, 8), (7, 9, 0x198, 8), (9, 9, 0x5B3, 4));
 
-        var accesses = Read(TracePageAccessList.Build(calls, MemoryHistoryStore.Empty, Pool(), reads));
+        var accesses = Read(TracePageAccessList.Build(calls, MemoryHistoryStore.Empty, LaidOutPool(), reads));
 
         Assert.Equal([(At(6), (int?)null), (At(9), (int?)0x5B3)], accesses.Select(a => (a.Position, a.Offset)));
+    }
+
+    [Fact]
+    public void A_Read_Of_A_Page_Whose_Slots_Were_Never_Read_Is_Not_A_Row_Access()
+        => Assert.Empty(Read(TracePageAccessList.Build(Empty(), MemoryHistoryStore.Empty, Pool(), Reads((6, 9, 0xC2, 4)))));
+
+    [Theory]
+    [InlineData(PageType.Iam)]
+    [InlineData(PageType.Pfs)]
+    [InlineData(PageType.Gam)]
+    public void A_Read_Of_An_Allocation_Page_Is_Not_A_Row_Access(PageType type) => Assert.Empty(RowAccesses(Reads((6, 9, 0x5B3, 4)), type));
+
+    [Theory]
+    [InlineData(PageType.Data)]
+    [InlineData(PageType.Index)]
+    [InlineData(PageType.None)]
+    public void A_Read_Of_A_Row_On_A_Data_Or_Index_Page_Is_A_Row_Access(PageType type)
+        => Assert.Equal([0x5B3], RowAccesses(Reads((6, 9, 0x5B3, 4)), type).Select(a => a.Offset));
+
+    [Fact]
+    public void A_Read_Of_The_Page_Header_Is_A_Header_Access_And_Not_A_Row_Access()
+    {
+        var accesses = Headers(Reads((6, 9, 0x20, 4)));
+
+        var header = Assert.Single(accesses.HeaderAccesses);
+
+        Assert.Equal((0, At(6), Page), (accesses.Count, header.Position, header.Page));
+    }
+
+    [Theory]
+    [InlineData(0x5F, 1)]
+    [InlineData(0x60, 0)]
+    public void The_Page_Header_Ends_Before_Byte_96(ulong offset, int expected)
+        => Assert.Equal(expected, Headers(Reads((6, 9, offset, 1))).HeaderAccesses.Length);
+
+    [Fact]
+    public void Header_Reads_Of_One_Page_In_A_Row_Are_One_Header_Access()
+        => Assert.Equal([At(6)], Headers(Reads((6, 9, 0x01, 1), (7, 9, 0x16, 2))).HeaderAccesses.Select(a => a.Position));
+
+    [Fact]
+    public void A_Row_Read_Between_Header_Reads_Starts_A_New_Header_Access()
+        => Assert.Equal([At(6), At(8)],
+                        Headers(Reads((6, 9, 0x16, 2), (7, 9, 0x5B3, 4), (8, 9, 0x16, 2))).HeaderAccesses.Select(a => a.Position));
+
+    [Fact]
+    public void A_Header_Read_Between_Reads_Of_One_Row_Leaves_One_Row_Access()
+        => Assert.Equal([At(6)], RowAccesses(Reads((6, 9, 0x5B3, 4), (7, 9, 0x16, 2), (8, 9, 0x5C0, 2))).Select(a => a.Position));
+
+    [Fact]
+    public void A_Header_Read_While_The_Page_Is_Completed_From_Disk_Is_Not_A_Header_Access()
+    {
+        var calls = new Recording().Call("FCB", "PostRead", sequence: 5, rcx: 0, endSequence: 8).Build();
+
+        Assert.Empty(TracePageAccessList.Build(calls, MemoryHistoryStore.Empty, LaidOutPool(), Reads((6, 9, 0x10, 8))).HeaderAccesses);
+    }
+
+    [Fact]
+    public void A_Header_Read_Of_A_Page_Whose_Slots_Were_Never_Read_Is_A_Header_Access()
+        => Assert.Single(TracePageAccessList.Build(Empty(), MemoryHistoryStore.Empty, Pool(), Reads((6, 9, 0x16, 2))).HeaderAccesses);
+
+    [Fact]
+    public void The_Header_Access_At_A_Position_Is_Found_By_That_Position()
+    {
+        var accesses = Headers(Reads((6, 9, 0x16, 2)));
+
+        Assert.Equal((Page, (PageAddress?)null, (TracePageAccess?)null),
+                     (accesses.GetHeaderAccess(At(6))?.Page, accesses.GetHeaderAccess(At(7))?.Page, accesses.GetRowAccess(At(6))));
     }
 
     [Fact]
@@ -180,9 +248,10 @@ public class TracePageAccessListTests
     [Fact]
     public void A_Page_Read_Before_Its_Page_Was_Seen_In_The_Frame_Is_Not_An_Access()
     {
-        var reads = new TracePageReadList([new TracePageRead(At(0), 9, OtherFrame + 0x60, 4), new TracePageRead(At(6), 9, Frame + 0x60, 4)]);
+        var reads = new TracePageReadList([new TracePageRead(At(0), 9, OtherFrame + 0x100, 4),
+                                           new TracePageRead(At(6), 9, Frame + 0x100, 4)]);
 
-        Assert.Equal([At(6)], Read(TracePageAccessList.Build(Empty(), MemoryHistoryStore.Empty, Pool(), reads)).Select(a => a.Position));
+        Assert.Equal([At(6)], RowAccesses(reads).Select(a => a.Position));
     }
 
     [Fact]
@@ -247,16 +316,26 @@ public class TracePageAccessListTests
     private static TracePageReadList Reads(params (ulong Sequence, uint Thread, ulong Offset, ushort Length)[] reads)
         => new([.. reads.Select(r => new TracePageRead(At(r.Sequence), r.Thread, Frame + r.Offset, r.Length))]);
 
-    private static List<TracePageAccess> RowAccesses(TracePageReadList reads)
+    private static TraceBufferPool LaidOutPool(PageType type = PageType.None)
     {
         var builder = new TraceBufferPool.Builder();
 
         builder.Add(new TraceBufferPage(Frame, Page, Database, At(1), Buffer));
 
-        builder.AddLayout(Page, Database, [0x100, 0x5B3, 0x611]);
+        builder.Add(new TraceBufferPage(OtherFrame, OtherPage, Database, At(1), OtherBuffer));
 
-        return Read(TracePageAccessList.Build(Empty(), MemoryHistoryStore.Empty, builder.Build(), reads));
+        builder.AddLayout(Page, Database, [0x100, 0x5B3, 0x611], type);
+
+        builder.AddLayout(OtherPage, Database, [0x100], type);
+
+        return builder.Build();
     }
+
+    private static List<TracePageAccess> RowAccesses(TracePageReadList reads, PageType type = PageType.None)
+        => Read(TracePageAccessList.Build(Empty(), MemoryHistoryStore.Empty, LaidOutPool(type), reads));
+
+    private static TracePageAccessList Headers(TracePageReadList reads)
+        => TracePageAccessList.Build(Empty(), MemoryHistoryStore.Empty, LaidOutPool(), reads);
 
     private static MemoryHistoryStore Snapshot(ulong pointer)
     {

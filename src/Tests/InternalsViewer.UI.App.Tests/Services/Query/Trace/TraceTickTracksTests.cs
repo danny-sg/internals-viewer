@@ -13,6 +13,7 @@ using InternalsViewer.Query.FullTrace.Timeline.Ticks.Enums;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline.Enums;
 using InternalsViewer.UI.App.Services.Query.Trace;
+using SkiaSharp;
 
 namespace InternalsViewer.UI.App.Tests.Services.Query.Trace;
 

@@ -6,6 +6,8 @@ public interface ITimeTravelRecorder
 
     bool IsLicenceAccepted { get; }
 
+    bool IsInstalled { get; }
+
     Task<ITimeTravelRecording> PrepareAsync(string connectionString, string sessionId, CancellationToken cancellationToken);
 
     void PrepareRecorder();

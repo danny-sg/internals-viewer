@@ -65,7 +65,16 @@ public class TraceRowAccessReaderTests
     [Fact]
     public void A_Row_Access_Belongs_To_The_Operator_Call_Around_It() => Assert.Same(Range, Assert.Single(Build().GetAllTicks()).Operator);
 
-    private static TraceTickSeries Build()
+    [Fact]
+    public void A_Header_Access_Is_A_Point_Where_The_Header_Was_Read()
+    {
+        var access = Assert.Single(Build(new TracePageReadList([new TracePageRead(At(21), Thread, BufferFrame + 0x16, 2)])).GetAllTicks());
+
+        Assert.Equal((At(21), At(21), "Record::HasNullbitMap", Range),
+                     (access.Span.From.Position, access.Span.To.Position, access.Node.Symbol, access.Operator));
+    }
+
+    private static TraceTickSeries Build(TracePageReadList? headerReads = null)
     {
         var builder = new TraceTimeline.Builder();
 
@@ -103,7 +112,7 @@ public class TraceRowAccessReaderTests
 
         pool.Add(new TraceBufferPage(BufferFrame, Page, Database, At(1), Buffer));
 
-        var accesses = TracePageAccessList.Build(calls, MemoryHistoryStore.Empty, pool.Build());
+        var accesses = TracePageAccessList.Build(calls, MemoryHistoryStore.Empty, pool.Build(), headerReads, timeline);
 
         var lifetime = new TraceOperatorLifetime(Thread, Range, 0, [Whole()], MemoryUsageCurve.Empty, timeline.Scale)
         {
@@ -114,7 +123,9 @@ public class TraceRowAccessReaderTests
 
         var enclosing = EnclosingOperatorCallIndex.Build(calls, lifetimes.OperatorsByInstance);
 
-        return TraceRowAccessReader.Build(timeline, accesses, lifetimes, enclosing);
+        return headerReads is null
+            ? TraceRowAccessReader.Build(timeline, accesses, lifetimes, enclosing)
+            : TraceRowAccessReader.BuildHeaders(timeline, accesses, lifetimes, enclosing);
     }
 
     private static ulong[] Call(ulong start, ulong end, int callNodeIndex, ulong rcx = 0, ulong returnValue = 0)

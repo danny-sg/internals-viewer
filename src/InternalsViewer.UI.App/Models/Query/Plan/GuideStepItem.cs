@@ -29,9 +29,6 @@ public sealed partial class GuideStepItem(int index,
     private bool _isCurrent;
 
     [ObservableProperty]
-    private bool _isDetailsVisible;
-
-    [ObservableProperty]
     private bool _isExpanded = true;
 
     [ObservableProperty]

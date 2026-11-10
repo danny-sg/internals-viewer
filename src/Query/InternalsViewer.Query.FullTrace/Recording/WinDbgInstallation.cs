@@ -25,6 +25,8 @@ internal sealed record WinDbgInstallation(string Executable, string EngineDirect
 
     private const string PackageSuffix = "_8wekyb3d8bbwe";
 
+    public bool HasTimeTravel => File.Exists(Path.Combine(EngineDirectory, "ttd", "TTD.exe"));
+
     /// <summary>
     /// Finds the Store WinDbg, or failing that the Debugging Tools for Windows
     /// </summary>
@@ -84,7 +86,7 @@ internal sealed record WinDbgInstallation(string Executable, string EngineDirect
     {
         var source = new DirectoryInfo(Path.Combine(EngineDirectory, "ttd"));
 
-        if (!File.Exists(Path.Combine(source.FullName, "TTD.exe")))
+        if (!HasTimeTravel)
         {
             return null;
         }

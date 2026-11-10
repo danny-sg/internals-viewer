@@ -25,6 +25,25 @@
                                 IsMessagesVisible="{x:Bind ViewModel.IsSqlMessagesVisible, Mode=TwoWay}"
                                 Theme="vs-light">
 
+        <sqlEditor:SqlEditorControl.HeaderContent>
+            <InfoBar IsOpen="{x:Bind ViewModel.IsTracePromptVisible, Mode=OneWay}"
+                     Severity="Informational"
+                     BorderThickness="0,0,0,1"
+                     CornerRadius="0"
+                     Loaded="OnTracePromptLoaded"
+                     CloseButtonClick="OnTracePromptCloseClick">
+                <StackPanel Orientation="Horizontal"
+                            Spacing="8">
+                    <TextBlock Text="Trace"
+                               FontWeight="SemiBold"
+                               Margin="0,0,8,0"
+                               VerticalAlignment="Center"/>
+                    <Button Content="Full Trace" Click="OnFullTraceClick"/>
+                    <Button Content="Guide Mode" Click="OnGuideModeClick"/>
+                </StackPanel>
+            </InfoBar>
+        </sqlEditor:SqlEditorControl.HeaderContent>
+
         <sqlEditor:SqlEditorControl.AdditionalContent>
             <StackPanel Orientation="Horizontal"
                         Spacing="8"

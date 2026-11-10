@@ -41,6 +41,7 @@ public partial class SettingsViewModel(SettingsService settingsService,
     private const string WinDbgPathKey = "WinDbgPath";
     private const string SymbolSearchExcludedModulesKey = "SymbolSearchExcludedModules";
     private const string ShowTimeTravelWarningKey = "ShowTimeTravelWarning";
+    private const string IsTracePromptEnabledKey = "IsTracePromptEnabled";
     private const string CallTreeHiddenCategoriesKey = "CallTreeHiddenCategories";
     private const string CallTreePrunedCategoriesKey = "CallTreePrunedCategories";
     private const string TraceTimelineShowMemoryKey = "FlameChartShowMemory";
@@ -107,6 +108,9 @@ public partial class SettingsViewModel(SettingsService settingsService,
 
     [ObservableProperty]
     private bool _showTimeTravelWarning = true;
+
+    [ObservableProperty]
+    private bool _isTracePromptEnabled = true;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CallTreeHiddenCategorySet))]
@@ -262,6 +266,8 @@ public partial class SettingsViewModel(SettingsService settingsService,
         SymbolSearchExcludedModules = await SettingsService.ReadSettingAsync<string>(SymbolSearchExcludedModulesKey) ?? string.Empty;
 
         ShowTimeTravelWarning = await SettingsService.ReadSettingAsync<bool?>(ShowTimeTravelWarningKey) ?? true;
+
+        IsTracePromptEnabled = await SettingsService.ReadSettingAsync<bool?>(IsTracePromptEnabledKey) ?? true;
 
         CallTreeHiddenCategories = await SettingsService.ReadSettingAsync<string>(CallTreeHiddenCategoriesKey)
                                    ?? DefaultCallTreeHiddenCategories;
@@ -429,6 +435,11 @@ public partial class SettingsViewModel(SettingsService settingsService,
     partial void OnSymbolSearchExcludedModulesChanged(string value)
     {
         _ = SettingsService.SaveSettingAsync(SymbolSearchExcludedModulesKey, value);
+    }
+
+    partial void OnIsTracePromptEnabledChanged(bool value)
+    {
+        _ = SettingsService.SaveSettingAsync(IsTracePromptEnabledKey, value);
     }
 
     partial void OnShowTimeTravelWarningChanged(bool value)
