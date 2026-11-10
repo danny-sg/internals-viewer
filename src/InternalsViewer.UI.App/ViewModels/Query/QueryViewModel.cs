@@ -1068,7 +1068,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public void OpenPageAtOffset(PageAddress pageAddress, int offset) => _ = OpenPageAsync(pageAddress, offset: offset);
 
-    public void OpenHashTable(ulong group, int partition, int bucket) => TraceTimelineTab.OpenHashTable(group, partition, bucket);
+    public void OpenHashTable(ulong group, int partition, int bucket)
+        => TraceTimelineTab.OpenHashTable(group, partition, bucket, isBelowPlan: true);
 
     public Task OpenPageAsync(PageAddress pageAddress, ushort? slot = null, int? offset = null)
     {

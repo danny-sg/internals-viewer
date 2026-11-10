@@ -113,6 +113,40 @@ public sealed partial class DockLayoutViewModel : ObservableObject
         SetRoot(new SplitNode(Orientation.Vertical, Root, new TabGroupNode(document)));
     }
 
+    public void DockBelow(DocumentViewModel document, DocumentViewModel neighbour)
+    {
+        if (Contains(document))
+        {
+            Activate(document);
+
+            return;
+        }
+
+        if (FindGroup(neighbour) is not { } target)
+        {
+            DockBottom(document);
+
+            return;
+        }
+
+        var parent = target.Parent;
+
+        var split = new SplitNode(Orientation.Vertical, target, new TabGroupNode(document));
+
+        if (parent is null)
+        {
+            Root = split;
+        }
+        else
+        {
+            parent.Replace(target, split);
+
+            split.Parent = parent;
+        }
+
+        OnLayoutChanged();
+    }
+
     /// <summary>Selects <paramref name="document"/> in whichever group currently hosts it</summary>
     public void Activate(DocumentViewModel document)
     {

@@ -25,7 +25,7 @@ public sealed class MemoryHashTableNode(MemoryHashTableNodeType type,
 
     public string Detail { get; init; } = string.Empty;
 
-    public List<string> Badges { get; init; } = [];
+    public List<MemoryHashTableBadge> Badges { get; init; } = [];
 
     public List<MemoryHashTableNode> Children { get; } = [];
 

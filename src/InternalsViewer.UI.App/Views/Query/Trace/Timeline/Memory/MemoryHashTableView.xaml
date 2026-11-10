@@ -14,24 +14,6 @@
     <UserControl.Resources>
         <DataTemplate x:Key="NodeTemplate" x:DataType="muxc:TreeViewNode">
             <StackPanel Orientation="Horizontal" Spacing="6">
-                <ItemsControl ItemsSource="{x:Bind ((timeline:MemoryHashTableNode)Content).Badges}"
-                              VerticalAlignment="Center">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal" Spacing="4"/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="x:String">
-                            <Border Background="{ThemeResource AccentFillColorDefaultBrush}"
-                                    CornerRadius="2"
-                                    Padding="4,1"
-                                    VerticalAlignment="Center">
-                                <TextBlock Text="{x:Bind}" Style="{StaticResource TagTextBlockStyle}"/>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
                 <TextBlock Text="{x:Bind ((timeline:MemoryHashTableNode)Content).Name}"
                            FontSize="12"
                            VerticalAlignment="Center"/>
@@ -55,6 +37,24 @@
                            FontSize="12"
                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                            VerticalAlignment="Center"/>
+                <ItemsControl ItemsSource="{x:Bind ((timeline:MemoryHashTableNode)Content).Badges}"
+                              VerticalAlignment="Center">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="4"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="timeline:MemoryHashTableBadge">
+                            <Border Background="{x:Bind Colour, Converter={StaticResource ColorToSolidColorBrushValueConverter}}"
+                                    CornerRadius="2"
+                                    Padding="4,1"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="{x:Bind Text}" Style="{StaticResource TagTextBlockStyle}" Foreground="Black"/>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </StackPanel>
         </DataTemplate>
 

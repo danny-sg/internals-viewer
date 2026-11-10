@@ -272,17 +272,15 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         AddGraph(key, new MemoryReferenceGraphViewModel(Query.MemoryHistory, start, this));
     }
 
-    public void OpenHashTable(ulong group, int partition, int bucket)
+    public void OpenHashTable(ulong group) => OpenHashTable(group, -1, -1, isBelowPlan: false);
+
+    public void OpenHashTable(ulong group, int partition, int bucket, bool isBelowPlan)
     {
-        var position = Playhead ?? TracePosition.Unknown;
-
-        Query.Layout.ShowTraceTimeline();
-
         var key = $"HashTable:{group:X}";
 
         if (HashTableDocuments.FirstOrDefault(d => d.Key == key) is not { } document)
         {
-            var table = new MemoryHashTableViewModel(Query.MemoryHistory, group, position, this);
+            var table = new MemoryHashTableViewModel(Query.MemoryHistory, group, Playhead ?? TracePosition.Unknown, this);
 
             table.SetPlayhead(Playhead);
 
@@ -299,9 +297,27 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
             HashTableDocuments.Add(document);
         }
 
-        ShowPanel(document, MemoryDocuments.LastOrDefault(Dock.Contains) ?? CallStackDocument);
+        if (Query.Layout.Dock.Contains(document))
+        {
+            Query.Layout.Dock.Activate(document);
+        }
+        else if (isBelowPlan && !Dock.Contains(document))
+        {
+            Query.Layout.RegisterDocument(key, document);
 
-        ((MemoryHashTableViewModel)document.Content).ShowBucket(partition, bucket);
+            Query.Layout.ShowBelowPlan(document);
+        }
+        else
+        {
+            Query.Layout.ShowTraceTimeline();
+
+            ShowPanel(document, MemoryDocuments.LastOrDefault(Dock.Contains) ?? CallStackDocument);
+        }
+
+        if (bucket >= 0)
+        {
+            ((MemoryHashTableViewModel)document.Content).ShowBucket(partition, bucket);
+        }
     }
 
     public List<TraceMenuItem> GetMenuItems(TraceMenuTarget target)
@@ -356,7 +372,14 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
 
         foreach (var document in HashTableDocuments.ToList())
         {
-            Dock.Close(document);
+            if (Dock.Contains(document))
+            {
+                Dock.Close(document);
+            }
+            else
+            {
+                Query.Layout.Close(document);
+            }
         }
     }
 
@@ -415,6 +438,10 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
 
         foreach (var document in HashTableDocuments)
         {
+            Query.Layout.Close(document);
+
+            Query.Layout.RemoveDocument(document.Key, out _);
+
             DisposeHashTable(document);
         }
 
@@ -648,6 +675,12 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
             Query.Layout.RemoveDocument(document.Key, out _);
 
             DisposePluginDocument(document);
+        }
+        else if (HashTableDocuments.Remove(document))
+        {
+            Query.Layout.RemoveDocument(document.Key, out _);
+
+            DisposeHashTable(document);
         }
     }
 

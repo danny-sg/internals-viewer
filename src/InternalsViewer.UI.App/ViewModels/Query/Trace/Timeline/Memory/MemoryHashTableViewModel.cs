@@ -81,6 +81,12 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
     private const int DirectoryShift = 16;
 
+    private const int ActiveField = 1;
+
+    private const int LastField = 2;
+
+    private const int FirstField = 3;
+
     private static readonly TimeSpan LoadInterval = TimeSpan.FromMilliseconds(50);
 
     private static readonly int ColourCount = new[]
@@ -396,23 +402,23 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
         };
     }
 
-    private static List<string> GetBadges(TraceHashTable table, TraceHashPartition partition)
+    private static List<MemoryHashTableBadge> GetBadges(TraceHashTable table, TraceHashPartition partition)
     {
-        var badges = new List<string>();
+        var badges = new List<MemoryHashTableBadge>();
 
         if (partition.Address == table.ActivePartition)
         {
-            badges.Add(ActiveBadge);
+            badges.Add(new MemoryHashTableBadge(ActiveBadge, FieldColours[ActiveField].ToWindowsColor()));
         }
 
         if (partition.Index == 0)
         {
-            badges.Add(FirstBadge);
+            badges.Add(new MemoryHashTableBadge(FirstBadge, FieldColours[FirstField].ToWindowsColor()));
         }
 
         if (partition.Index == table.Partitions.Count - 1)
         {
-            badges.Add(LastBadge);
+            badges.Add(new MemoryHashTableBadge(LastBadge, FieldColours[LastField].ToWindowsColor()));
         }
 
         return badges;

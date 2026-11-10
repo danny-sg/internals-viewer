@@ -53,6 +53,21 @@ public static class TraceHashTableReader
         return new TraceHashTable(group, iterator, active, partitionMask, (int)partitionShift, partitions);
     }
 
+    public static List<ulong> GetGroups(TraceCallStore calls)
+    {
+        var groups = new HashSet<ulong>();
+
+        foreach (var (list, _) in GetGroupCalls(calls))
+        {
+            for (var index = 0; index < list.Count; index++)
+            {
+                groups.Add(list[index].GetSlot(GroupArgument));
+            }
+        }
+
+        return [.. groups];
+    }
+
     public static List<TraceHashAccess> GetAccesses(TraceCallStore calls, ulong group)
     {
         var accesses = new List<TraceHashAccess>();

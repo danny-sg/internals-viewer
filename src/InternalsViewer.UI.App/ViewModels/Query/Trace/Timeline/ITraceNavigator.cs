@@ -24,5 +24,7 @@ public interface ITraceNavigator
 
     void OpenReferenceGraph(int block, TracePosition position);
 
+    void OpenHashTable(ulong group);
+
     void HighlightMemory(int? block);
 }
