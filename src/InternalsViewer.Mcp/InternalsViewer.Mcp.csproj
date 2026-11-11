@@ -11,7 +11,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.3.0" />
+        <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.4.0" />
     </ItemGroup>
 
     <ItemGroup>
@@ -21,9 +21,7 @@
     <ItemGroup>
         <EmbeddedResource Include="Guides\**\*.md" LogicalName="InternalsViewer.Mcp.Guides.%(Filename).md" />
         <EmbeddedResource Include="Prompts\**\*.md" LogicalName="InternalsViewer.Mcp.Prompts.%(Filename).md" />
-        <EmbeddedResource Include="..\..\docs\internalsviewer.com\docs\deep-dives\*.md"
-                          LogicalName="InternalsViewer.Mcp.Guides.deep-dive-%(Filename).md"
-                          Link="Guides\DeepDives\%(Filename).md" />
+        <EmbeddedResource Include="..\..\docs\internalsviewer.com\docs\deep-dives\*.md" LogicalName="InternalsViewer.Mcp.Guides.deep-dive-%(Filename).md" Link="Guides\DeepDives\%(Filename).md" />
     </ItemGroup>
 
     <ItemGroup>
