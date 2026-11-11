@@ -18,15 +18,15 @@ public static class AccessorBindingLayout
 
     public const int LengthSize = sizeof(ulong);
 
+    public const ulong ScanRowBufferOffset = 0x80;
+
+    public const ulong ScanBindingsOffset = 0x88;
+
     private const ulong ColumnCountOffset = 0x62;
 
     private const ulong MemoryObjectOffset = 0x68;
 
     private const ulong ColumnsOffset = 0x70;
-
-    private const ulong ScanRowBufferOffset = 0x80;
-
-    private const ulong ScanBindingsOffset = 0x88;
 
     private const ulong RecordOffsetOffset = 0x00;
 

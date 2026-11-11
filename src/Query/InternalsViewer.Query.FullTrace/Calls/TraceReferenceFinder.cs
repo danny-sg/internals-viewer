@@ -25,7 +25,7 @@ public sealed class TraceReferenceFinder(TraceCallStore store,
     private Lazy<Dictionary<ulong, CallFrame>> Frames { get; } = new(() => GetFrames(tree));
 
     public static string GetIteratorName(IteratorTarget iterator)
-        => $"{iterator.Label} {(iterator.IsPlanObject ? "Plan Object" : "Iterator")}";
+        => $"{iterator.Label} {iterator.TypeName}";
 
     public static string? GetAllocationName(AddressMapEntry entry)
         => (entry.Site ?? entry.Allocator) is { } allocation ? $"{allocation} Allocation" : null;

@@ -20,13 +20,13 @@ public class ReplayFunctionResolverTests
     [InlineData("CQScanProfileNew", "GetRow")]
     [InlineData("CQScanProfileNew", "Open")]
     [InlineData("CQScanLightProfileNew", "GetRow")]
-    public void A_Profile_Wrapper_Is_Tracing_But_Its_Calls_Stay_In_The_Replay(string className, string methodName)
+    public void A_Profile_Wrapper_Is_A_Query_Operator_And_Its_Calls_Stay_In_The_Replay(string className, string methodName)
     {
         var category = CategoryRuleTable.Default.Classify("sqlmin", className, methodName);
 
         var iterator = CategoryRuleTable.Default.ClassifyOperator("sqlmin", className, methodName).OperatorName;
 
-        Assert.Equal(SymbolCategory.Tracing, category);
+        Assert.Equal(SymbolCategory.QueryOperator, category);
         Assert.False(category.IsInstrumentation(iterator is not null));
     }
 }

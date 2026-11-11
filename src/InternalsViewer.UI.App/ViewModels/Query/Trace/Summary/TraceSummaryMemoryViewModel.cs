@@ -6,21 +6,23 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.History.Graph;
-using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
-using InternalsViewer.UI.App.Models.Query.Trace.MemoryTree;
+using InternalsViewer.Query.FullTrace.Timeline;
+using InternalsViewer.UI.App.Models.Query.Trace.Summary;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryHistory;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline.Memory;
 
-namespace InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryTree;
+namespace InternalsViewer.UI.App.ViewModels.Query.Trace.Summary;
 
-public sealed partial class MemoryTreeViewModel : ObservableObject
+public sealed partial class TraceSummaryMemoryViewModel : TraceSummaryPaneViewModel
 {
+    private const string MemoryTitle = "Memory";
+
     private const int NodeLimit = 50000;
 
-    private const string IteratorPrefix = "Iterator › ";
+    private const int ExpandAllLimit = 500;
 
     private const string NotAvailable = "No Memory History In This Run";
 
@@ -36,39 +38,22 @@ public sealed partial class MemoryTreeViewModel : ObservableObject
     };
 
     [ObservableProperty]
-    private List<MemoryTreeNode> _roots = [];
-
-    [ObservableProperty]
     private bool _isStackVisible;
 
     [ObservableProperty]
     private string _filter = string.Empty;
 
-    [ObservableProperty]
-    private bool _isLoading;
-
-    [ObservableProperty]
-    private string _emptyText = string.Empty;
-
-    [ObservableProperty]
-    private string _status = string.Empty;
-
-    public MemoryTreeViewModel(MemoryHistoryViewModel history, Func<ITraceNavigator> getNavigator)
+    public TraceSummaryMemoryViewModel(MemoryHistoryViewModel history, Func<ITraceNavigator> getNavigator)
+        : base(MemoryTitle, history, getNavigator)
     {
-        History = history;
-
-        GetNavigator = getNavigator;
-
         Loader = new PlayheadLoader<LoadedTree?>(TimeSpan.Zero, Apply, b => IsLoading = b);
     }
 
-    public bool IsFiltered => Kept is not null;
+    public override bool IsFiltered => Kept is not null;
 
-    public int KeptCount { get; private set; }
+    public override bool IsExpandingAll => IsFiltered && KeptCount <= ExpandAllLimit;
 
-    private MemoryHistoryViewModel History { get; }
-
-    private Func<ITraceNavigator> GetNavigator { get; }
+    private int KeptCount { get; set; }
 
     private PlayheadLoader<LoadedTree?> Loader { get; }
 
@@ -76,44 +61,13 @@ public sealed partial class MemoryTreeViewModel : ObservableObject
 
     private bool[]? Kept { get; set; }
 
-    private bool IsShown { get; set; }
-
-    private bool IsBuilt { get; set; }
-
-    public void Show()
+    public override List<TraceSummaryNode> GetChildren(TraceSummaryNode node)
     {
-        IsShown = true;
-
-        if (!IsBuilt)
+        if (node.Children is { } children)
         {
-            Build();
+            return children;
         }
-    }
 
-    public void Reset()
-    {
-        Loader.Cancel();
-
-        Loaded = null;
-
-        Kept = null;
-
-        IsBuilt = false;
-
-        Roots = [];
-
-        Status = string.Empty;
-
-        EmptyText = string.Empty;
-
-        if (IsShown)
-        {
-            Build();
-        }
-    }
-
-    public List<MemoryTreeNode> GetChildren(MemoryTreeNode node)
-    {
         if (Loaded is not { } loaded)
         {
             return [];
@@ -127,28 +81,33 @@ public sealed partial class MemoryTreeViewModel : ObservableObject
         return node.Entry >= 0 ? CreateNodes(loaded, loaded.Children[node.Entry], node.Key) : [];
     }
 
-    public void Open(MemoryTreeNode node)
+    protected override void Build()
     {
-        if (node.IsObject && node.Block < History.Store.Blocks.Count)
+        if (!History.IsAvailable || History.Timeline is not { } timeline || History.CallStore is not { } calls)
         {
-            GetNavigator().OpenMemory(node.Block, node.Address, History.Store.Blocks[node.Block].FromPosition);
+            EmptyText = NotAvailable;
+
+            return;
         }
+
+        EmptyText = string.Empty;
+
+        var history = History;
+
+        var from = History.WindowStart;
+
+        var to = History.WindowEnd;
+
+        Loader.Request(() => Read(history, timeline, calls, from, to));
     }
 
-    public void OpenHashTable(MemoryTreeNode node)
+    protected override void Clear()
     {
-        if (node.HashTableGroup != 0)
-        {
-            GetNavigator().OpenHashTable(node.HashTableGroup, node.HashTablePart);
-        }
-    }
+        Loader.Cancel();
 
-    public void OpenGraph(MemoryTreeNode node)
-    {
-        if (node.IsObject && node.Block < History.Store.Blocks.Count)
-        {
-            GetNavigator().OpenReferenceGraph(node.Block, History.Store.Blocks[node.Block].FromPosition);
-        }
+        Loaded = null;
+
+        Kept = null;
     }
 
     partial void OnIsStackVisibleChanged(bool value) => ShowTree();
@@ -163,11 +122,13 @@ public sealed partial class MemoryTreeViewModel : ObservableObject
     {
         var store = history.Store;
 
-        var creators = new MemoryHistoryCreatorResolver(store, timeline, calls);
+        var paths = new MemoryHistoryCallPathResolver(store, timeline, calls);
 
-        var tree = MemoryHistoryObjectTree.Build(store, from, to, NodeLimit, creators.GetCreator);
+        var tree = MemoryHistoryObjectTree.Build(store, from, to, NodeLimit, paths.GetPath);
 
         var hashTables = GetHashTableBlocks(history, calls);
+
+        var positions = GetFirstPositions(history, tree);
 
         var entries = new List<TreeEntry>(tree.Nodes.Count);
 
@@ -179,20 +140,11 @@ public sealed partial class MemoryTreeViewModel : ObservableObject
         {
             var node = tree.Nodes[index];
 
-            var block = store.Blocks[node.Block];
+            var parentKey = node.Parent >= 0 ? entries[node.Parent].Key : string.Empty;
 
-            var type = history.GetTypeName(node.Block);
-
-            TraceHashPart? part = hashTables.TryGetValue(node.Block, out var hash) ? hash.Part : null;
-
-            entries.Add(new TreeEntry(node.Block,
-                                      block.Address,
-                                      block.IsStack,
-                                      GetName(history, node.Block, type, part),
-                                      history.GetObjectName(node.Block),
-                                      type,
-                                      hash.Group,
-                                      part));
+            entries.Add(node.IsBlock
+                            ? CreateBlockEntry(history, hashTables, node.Block)
+                            : CreateCallEntry(history, node, positions[index] ?? from, parentKey));
 
             children.Add([]);
 
@@ -206,7 +158,7 @@ public sealed partial class MemoryTreeViewModel : ObservableObject
             }
         }
 
-        return new LoadedTree(entries, children, roots, tree.IsTruncated);
+        return new LoadedTree(entries, children, roots);
     }
 
     private static Dictionary<int, (ulong Group, TraceHashPart Part)> GetHashTableBlocks(MemoryHistoryViewModel history,
@@ -244,65 +196,90 @@ public sealed partial class MemoryTreeViewModel : ObservableObject
             return HashTablePrefix + HashTablePartLabel.GetName(found.Type);
         }
 
-        return history.GetOperatorLabel(block) is { } label ? IteratorPrefix + label : KnownNames.GetValueOrDefault(type) ?? type;
+        return history.GetOperatorName(block) ?? KnownNames.GetValueOrDefault(type) ?? type;
     }
 
-    private static string GetAddressText(ulong address) => $"0x{address:X16}";
-
-    private void Build()
+    private static TreeEntry CreateBlockEntry(MemoryHistoryViewModel history,
+                                              Dictionary<int, (ulong Group, TraceHashPart Part)> hashTables,
+                                              int block)
     {
-        IsBuilt = true;
+        var info = history.Store.Blocks[block];
 
-        if (!History.IsAvailable || History.Timeline is not { } timeline || History.CallStore is not { } calls)
-        {
-            EmptyText = NotAvailable;
+        var type = history.GetTypeName(block);
 
-            return;
-        }
+        TraceHashPart? part = hashTables.TryGetValue(block, out var hash) ? hash.Part : null;
 
-        EmptyText = string.Empty;
-
-        var history = History;
-
-        var from = History.WindowStart;
-
-        var to = History.WindowEnd;
-
-        Loader.Request(() => Read(history, timeline, calls, from, to));
+        return new TreeEntry(block,
+                             info.Address,
+                             info.IsStack,
+                             GetName(history, block, type, part),
+                             history.GetObjectName(block),
+                             type,
+                             hash.Group,
+                             part,
+                             $"#{block}",
+                             null);
     }
 
-    private void Apply(LoadedTree? loaded)
+    private static TreeEntry CreateCallEntry(MemoryHistoryViewModel history,
+                                             MemoryHistoryObjectTreeNode node,
+                                             TracePosition position,
+                                             string parentKey)
     {
-        Loaded = loaded;
+        var block = node.Instance != 0 ? history.Store.GetBlock(node.Instance, position) : -1;
 
-        if (loaded is null)
+        var key = node.Instance != 0 ? $"{parentKey}/@{node.Instance:X}" : $"{parentKey}/{node.ClassName}";
+
+        if (block >= 0 && history.Store.Blocks[block].Address == node.Instance)
         {
-            EmptyText = NotAvailable;
+            var type = history.GetTypeName(block);
 
-            return;
+            return new TreeEntry(block,
+                                 node.Instance,
+                                 false,
+                                 GetName(history, block, type, null),
+                                 history.GetObjectName(block),
+                                 type,
+                                 0,
+                                 null,
+                                 key,
+                                 position);
         }
 
-        var count = loaded.Entries.Count.ToString("N0", CultureInfo.CurrentCulture);
-
-        Status = loaded.IsTruncated ? $"First {count} Objects" : $"{count} Objects";
-
-        ShowTree();
+        return new TreeEntry(block,
+                             node.Instance,
+                             false,
+                             KnownNames.GetValueOrDefault(node.ClassName) ?? node.ClassName,
+                             node.ClassName,
+                             node.ClassName,
+                             0,
+                             null,
+                             key,
+                             position);
     }
 
-    private void ShowTree()
+    private static TracePosition?[] GetFirstPositions(MemoryHistoryViewModel history, MemoryHistoryObjectTree tree)
     {
-        if (Loaded is not { } loaded)
+        var positions = new TracePosition?[tree.Nodes.Count];
+
+        for (var index = 0; index < tree.Nodes.Count; index++)
         {
-            return;
+            var node = tree.Nodes[index];
+
+            if (!node.IsBlock)
+            {
+                continue;
+            }
+
+            var position = history.Store.Blocks[node.Block].FromPosition;
+
+            for (var parent = node.Parent; parent >= 0 && positions[parent] is null; parent = tree.Nodes[parent].Parent)
+            {
+                positions[parent] = position;
+            }
         }
 
-        Kept = GetKept(loaded, Filter.Trim());
-
-        KeptCount = Kept?.Count(k => k) ?? loaded.Entries.Count;
-
-        Roots = CreateNodes(loaded, loaded.Roots, string.Empty);
-
-        EmptyText = Roots.Count == 0 ? IsFiltered ? NoMatch : NotAvailable : string.Empty;
+        return positions;
     }
 
     private static bool[]? GetKept(LoadedTree loaded, string filter)
@@ -349,6 +326,36 @@ public sealed partial class MemoryTreeViewModel : ObservableObject
         return kept;
     }
 
+    private void Apply(LoadedTree? loaded)
+    {
+        Loaded = loaded;
+
+        if (loaded is null)
+        {
+            EmptyText = NotAvailable;
+
+            return;
+        }
+
+        ShowTree();
+    }
+
+    private void ShowTree()
+    {
+        if (Loaded is not { } loaded)
+        {
+            return;
+        }
+
+        Kept = GetKept(loaded, Filter.Trim());
+
+        KeptCount = Kept?.Count(k => k) ?? loaded.Entries.Count;
+
+        Roots = CreateNodes(loaded, loaded.Roots, string.Empty);
+
+        EmptyText = Roots.Count == 0 ? IsFiltered ? NoMatch : NotAvailable : string.Empty;
+    }
+
     private List<int> GetVisible(LoadedTree loaded, List<int> indexes)
     {
         var visible = new List<int>();
@@ -380,9 +387,9 @@ public sealed partial class MemoryTreeViewModel : ObservableObject
         return visible;
     }
 
-    private List<MemoryTreeNode> CreateNodes(LoadedTree loaded, List<int> indexes, string parentKey)
+    private List<TraceSummaryNode> CreateNodes(LoadedTree loaded, List<int> indexes, string parentKey)
     {
-        var nodes = new List<MemoryTreeNode>();
+        var nodes = new List<TraceSummaryNode>();
 
         var groups = GetVisible(loaded, indexes).GroupBy(i => loaded.Entries[i].Name)
                                                 .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase);
@@ -400,7 +407,7 @@ public sealed partial class MemoryTreeViewModel : ObservableObject
 
             var count = members.Count.ToString("N0", CultureInfo.CurrentCulture);
 
-            nodes.Add(new MemoryTreeNode(group.Key, $"{count} Objects", $"{parentKey}/{group.Key}")
+            nodes.Add(new TraceSummaryNode(group.Key, $"{count} Objects", $"{parentKey}/{group.Key}")
             {
                 Members = members,
                 HasChildren = true
@@ -410,26 +417,27 @@ public sealed partial class MemoryTreeViewModel : ObservableObject
         return nodes;
     }
 
-    private MemoryTreeNode CreateInstance(LoadedTree loaded, int index, bool isGrouped)
+    private TraceSummaryNode CreateInstance(LoadedTree loaded, int index, bool isGrouped)
     {
         var entry = loaded.Entries[index];
 
-        var address = GetAddressText(entry.Address);
+        var address = entry.Address != 0 ? GetAddressText(entry.Address) : string.Empty;
 
         var name = entry.Name;
 
-        if (isGrouped)
+        if (isGrouped && (entry.ObjectName != entry.TypeName || address.Length > 0))
         {
             name = entry.ObjectName != entry.TypeName ? entry.ObjectName : address;
         }
 
         var detail = name == address ? string.Empty : address;
 
-        return new MemoryTreeNode(name, detail, $"#{entry.Block}")
+        return new TraceSummaryNode(name, detail, entry.Key)
         {
             Entry = index,
             Block = entry.Block,
             Address = entry.Address,
+            Position = entry.Position,
             HashTableGroup = entry.HashTableGroup,
             HashTablePart = entry.HashTablePart,
             HasChildren = GetVisible(loaded, loaded.Children[index]).Count > 0
@@ -443,7 +451,9 @@ public sealed partial class MemoryTreeViewModel : ObservableObject
                                              string ObjectName,
                                              string TypeName,
                                              ulong HashTableGroup,
-                                             TraceHashPart? HashTablePart);
+                                             TraceHashPart? HashTablePart,
+                                             string Key,
+                                             TracePosition? Position);
 
-    private sealed record LoadedTree(List<TreeEntry> Entries, List<List<int>> Children, List<int> Roots, bool IsTruncated);
+    private sealed record LoadedTree(List<TreeEntry> Entries, List<List<int>> Children, List<int> Roots);
 }

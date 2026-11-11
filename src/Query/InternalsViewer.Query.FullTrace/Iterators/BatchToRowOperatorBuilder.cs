@@ -21,11 +21,11 @@ internal static class BatchToRowOperatorBuilder
             return adapters;
         }
 
-        var query = planNodes[0].Query;
+        var query = IteratorPlanLinker.GetQuery(planNodes);
 
         var operators = owners.Values.Distinct<ExecutionOperatorEvent>(ReferenceEqualityComparer.Instance).ToList();
 
-        var planHandle = operators.FirstOrDefault()?.PlanNodeIdentifier?.PlanHandleId;
+        short? planHandle = operators.Exists(o => o.PlanNodeIdentifier is not null) ? IteratorPlanLinker.GetPlanHandle(operators) : null;
 
         foreach (var helpers in planNodes.Where(n => n.IsBatchHelper && n.Query == query).GroupBy(n => n.NodeId))
         {

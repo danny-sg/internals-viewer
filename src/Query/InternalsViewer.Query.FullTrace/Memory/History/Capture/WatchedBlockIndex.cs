@@ -1,4 +1,5 @@
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
+using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
 using System.Runtime.InteropServices;
 
 namespace InternalsViewer.Query.FullTrace.Memory.History.Capture;
@@ -109,6 +110,40 @@ internal sealed class WatchedBlockIndex
         return next;
     }
 
+    public void EndReusedBlocks(Func<ulong, TracePosition, MemoryObjectReference?>? getPageOwner = null)
+    {
+        foreach (var index in Enumerable.Range(0, Blocks.Count).OrderBy(i => Blocks[i].FromPosition))
+        {
+            var block = Blocks[index];
+
+            if (block.IsStack || block.IsInline)
+            {
+                continue;
+            }
+
+            var end = block.Address + block.Size;
+
+            for (var page = block.Address >> PageShift; page <= (end - 1) >> PageShift; page++)
+            {
+                foreach (var older in Pages.GetValueOrDefault(page) ?? [])
+                {
+                    var previous = Blocks[older];
+
+                    if (older != index
+                        && !previous.IsInline
+                        && previous.FromPosition < block.FromPosition
+                        && block.FromPosition < previous.ToPosition
+                        && previous.Address < end
+                        && block.Address < previous.Address + previous.Size
+                        && (!IsContainer(previous, block) || IsReclaimed(previous, block, getPageOwner)))
+                    {
+                        previous.ToPosition = block.FromPosition;
+                    }
+                }
+            }
+        }
+    }
+
     public void ClipToContainers()
     {
         foreach (var index in Enumerable.Range(0, Blocks.Count).OrderByDescending(i => Blocks[i].Size))
@@ -182,6 +217,19 @@ internal sealed class WatchedBlockIndex
 
         return next;
     }
+
+    private static bool IsContainer(WatchedBlock container, WatchedBlock block)
+        => container.Size > block.Size
+           && container.Address <= block.Address
+           && block.Address + block.Size <= container.Address + container.Size;
+
+    private static bool IsReclaimed(WatchedBlock container,
+                                    WatchedBlock block,
+                                    Func<ulong, TracePosition, MemoryObjectReference?>? getPageOwner)
+        => getPageOwner?.Invoke(block.Address, container.FromPosition) is { } before
+           && container.Size < (ulong)before.PageSize
+           && getPageOwner(block.Address, block.FromPosition) is { } after
+           && before.Address != after.Address;
 
     private int? GetContainer(int index)
     {

@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <UserControl
-    x:Class="InternalsViewer.UI.App.Views.Query.Trace.MemoryTree.QueryMemoryTreeTabView"
+    x:Class="InternalsViewer.UI.App.Views.Query.Trace.Summary.TraceSummaryPaneView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
-    xmlns:memoryTree="using:InternalsViewer.UI.App.Models.Query.Trace.MemoryTree">
+    xmlns:models="using:InternalsViewer.UI.App.Models.Query.Trace.Summary"
+    xmlns:summary="using:InternalsViewer.UI.App.ViewModels.Query.Trace.Summary">
 
     <UserControl.Resources>
         <MenuFlyout x:Key="NodeMenu">
@@ -19,13 +20,18 @@
                         Background="Transparent"
                         RightTapped="OnNodeRightTapped"
                         ContextFlyout="{StaticResource NodeMenu}">
-                <TextBlock Text="{x:Bind ((memoryTree:MemoryTreeNode)Content).Name}"
+                <TextBlock Text="{x:Bind ((models:TraceSummaryNode)Content).Name}"
                            FontSize="12"
                            VerticalAlignment="Center"/>
-                <TextBlock Text="{x:Bind ((memoryTree:MemoryTreeNode)Content).Detail}"
+                <TextBlock Text="{x:Bind ((models:TraceSummaryNode)Content).Detail}"
                            FontSize="12"
                            FontFamily="{StaticResource MonospaceFontFamily}"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           VerticalAlignment="Center"/>
+                <TextBlock Text="{x:Bind ((models:TraceSummaryNode)Content).Value, Mode=OneWay}"
+                           FontSize="12"
+                           FontFamily="{StaticResource MonospaceFontFamily}"
+                           Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
                            VerticalAlignment="Center"/>
             </StackPanel>
         </DataTemplate>
@@ -34,45 +40,45 @@
             <Setter Property="MinHeight" Value="24"/>
             <Setter Property="Padding" Value="4,0,0,0"/>
         </Style>
+
+        <DataTemplate x:Key="MemoryToolbarTemplate" x:DataType="summary:TraceSummaryMemoryViewModel">
+            <Grid Padding="8,0,8,0"
+                  ColumnSpacing="8"
+                  BorderThickness="0,0,0,1"
+                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBox Grid.Column="0"
+                         Margin="0,4,0,4"
+                         VerticalAlignment="Center"
+                         PlaceholderText="Name or Address"
+                         Style="{StaticResource FilterTextBoxStyle}"
+                         Text="{x:Bind Filter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+                <ToggleButton Grid.Column="1"
+                              Content="Stack Objects"
+                              Style="{StaticResource TabCommandToggleStyle}"
+                              VerticalAlignment="Center"
+                              ToolTipService.ToolTip="Show objects on the stack as well as on the heap"
+                              IsChecked="{x:Bind IsStackVisible, Mode=TwoWay}"/>
+            </Grid>
+        </DataTemplate>
     </UserControl.Resources>
 
-    <Grid>
+    <Grid Background="White">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0"
-              Padding="8,0,8,0"
-              ColumnSpacing="8"
-              BorderThickness="0,0,0,1"
-              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-
-            <TextBox Grid.Column="0"
-                     Margin="0,4,0,4"
-                     VerticalAlignment="Center"
-                     PlaceholderText="Name or Address"
-                     Style="{StaticResource FilterTextBoxStyle}"
-                     Text="{x:Bind ViewModel.MemoryTree.Filter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-
-            <ToggleButton Grid.Column="1"
-                          Content="Stack Objects"
-                          Style="{StaticResource TabCommandToggleStyle}"
-                          VerticalAlignment="Center"
-                          ToolTipService.ToolTip="Show objects on the stack as well as on the heap"
-                          IsChecked="{x:Bind ViewModel.MemoryTree.IsStackVisible, Mode=TwoWay}"/>
-
-            <TextBlock Grid.Column="2"
-                       FontSize="12"
-                       VerticalAlignment="Center"
-                       Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                       Text="{x:Bind ViewModel.MemoryTree.Status, Mode=OneWay}"/>
-        </Grid>
+        <ContentControl x:Name="Toolbar"
+                        Grid.Row="0"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Stretch"
+                        IsTabStop="False"/>
 
         <muxc:TreeView x:Name="ObjectTree"
                        Grid.Row="1"
@@ -95,12 +101,12 @@
                    VerticalAlignment="Top"
                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                    IsHitTestVisible="False"
-                   Text="{x:Bind ViewModel.MemoryTree.EmptyText, Mode=OneWay}"/>
+                   Text="{x:Bind Pane.EmptyText, Mode=OneWay}"/>
 
         <ProgressRing Grid.Row="1"
                       HorizontalAlignment="Center"
                       VerticalAlignment="Center"
-                      IsActive="{x:Bind ViewModel.MemoryTree.IsLoading, Mode=OneWay}"
-                      Visibility="{x:Bind ViewModel.MemoryTree.IsLoading, Mode=OneWay}"/>
+                      IsActive="{x:Bind Pane.IsLoading, Mode=OneWay}"
+                      Visibility="{x:Bind Pane.IsLoading, Mode=OneWay}"/>
     </Grid>
 </UserControl>

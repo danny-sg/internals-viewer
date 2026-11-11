@@ -8,6 +8,8 @@ public static class TraceHashTableLayout
 
     public const string WorktableGroupClass = "CHashWorktablePartitionGroup";
 
+    public const string ValueClass = "CValHash";
+
     public const int IteratorGroupsOffset = 0x140;
 
     public const int IteratorGroupCount = 6;
@@ -23,6 +25,14 @@ public static class TraceHashTableLayout
     public const int ScanColumnsOffset = 0x20;
 
     public const int ValueAccessorOffset = 0x38;
+
+    public const int ValueRecordOffset = 0x10;
+
+    public const int ValueSlotOffset = 0x2C;
+
+    public const int SwitchPrimaryOffset = 0x10;
+
+    public const int SwitchInputOffset = 0x18;
 
     public const int ActivePartitionOffset = 0xA0;
 

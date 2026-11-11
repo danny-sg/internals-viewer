@@ -460,7 +460,18 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 
     private static void SetAction(HyperlinkButton button, ActionLink link)
     {
-        button.Content = link.Glyph is { } glyph ? new FontIcon { Glyph = glyph, FontSize = ActionGlyphSize } : link.Text;
+        if (link.Glyph is { } glyph)
+        {
+            button.Content = new FontIcon { Glyph = glyph, FontSize = ActionGlyphSize };
+        }
+        else
+        {
+            var text = button.Content as TextBlock ?? new TextBlock();
+
+            HexText.Apply(text, link.Text);
+
+            button.Content = text;
+        }
 
         ToolTipService.SetToolTip(button, link.Glyph is null ? null : link.Text);
 

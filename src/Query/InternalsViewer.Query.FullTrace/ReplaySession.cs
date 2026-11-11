@@ -80,9 +80,9 @@ internal sealed class ReplaySession : IDisposable
 
     public Version? ServerVersion { get; }
 
-    private TraceHandle Handle { get; }
+    internal OffsetProvider Offsets { get; }
 
-    private OffsetProvider Offsets { get; }
+    private TraceHandle Handle { get; }
 
     /// <summary>
     /// Semaphore to gate access to the replay engine

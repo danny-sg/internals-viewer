@@ -20,13 +20,7 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
     private IReadOnlyList<PlayheadThreadRow> _threads = [];
 
     [ObservableProperty]
-    private CallSignaturePart? _selectedValue;
-
-    [ObservableProperty]
     private PlayheadCallRow? _selectedCall;
-
-    [ObservableProperty]
-    private IReadOnlyList<SourceStep> _source = [];
 
     public virtual string EmptyText => "No Calls At This Position";
 
@@ -94,11 +88,6 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
 
     public void Select(PlayheadCallRow row)
     {
-        if (!ReferenceEquals(SelectedCall, row))
-        {
-            SelectedValue = null;
-        }
-
         SelectedCall = row;
 
         if (row.CallIndex >= 0)
@@ -107,12 +96,7 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
         }
     }
 
-    public void ClearSelection()
-    {
-        SelectedValue = null;
-
-        SelectedCall = null;
-    }
+    public void ClearSelection() => SelectedCall = null;
 
     public void Clear()
     {
@@ -123,20 +107,12 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
 
     public void OpenInCallTree(PlayheadCallRow row) => Query.OpenCallTree(row.Node, row.CallIndex);
 
-    public virtual void Zoom(PlayheadCallRow row) => UseChart(c => c.ZoomToCall(row.Node, row.CallIndex));
+    public virtual void Zoom(PlayheadCallRow row)
+        => Query.TraceTimelineTab.PlayheadStack.RequestChart(c => c.ZoomToCall(row.Node, row.CallIndex));
 
     public void Scope(PlayheadCallRow row) => Scope(row.Node);
 
     public void Scope(CallTreeNode node) => Query.TraceTimelineTab.PlayheadStack.RequestChart(c => c.ScopeTo(node));
-
-    public void Mark(SourceStep? step) => Query.TraceTimelineTab.PlayheadStack.Chart?.MarkCall(step?.Node, step?.CallIndex ?? -1);
-
-    public void MarkFrame(SourceFrame frame)
-        => Query.TraceTimelineTab.PlayheadStack.Chart?.MarkCall(frame.Node, GetEnclosingCall(frame));
-
-    public void GoTo(SourceStep step) => UseChart(c => c.MovePlayheadTo(step.Node, step.CallIndex));
-
-    public void GoTo(SourceFrame frame) => UseChart(c => c.MovePlayheadTo(frame.Node, GetEnclosingCall(frame)));
 
     public void FindReferences(ulong value)
     {
@@ -167,20 +143,9 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
         }
     }
 
-    protected virtual void UseChart(Action<IPlayheadChart> action) => Query.TraceTimelineTab.PlayheadStack.RequestChart(action);
-
     protected virtual void ShowCall(PlayheadCallRow row) => _ = Query.Arguments.ShowAsync(row.Node, row.CallIndex);
 
-    partial void OnSelectedValueChanged(CallSignaturePart? value)
-    {
-        Source = GetSource(value);
-
-        Highlight();
-    }
-
     partial void OnSelectedCallChanged(PlayheadCallRow? value) => Highlight();
-
-    partial void OnSourceChanged(IReadOnlyList<SourceStep> value) => Mark(null);
 
     private static IReadOnlyList<TraceThreadStack> GetStackAt(IEnumerable<TraceTimeline?> timelines, CallTreeNode node, int callIndex)
     {
@@ -204,16 +169,10 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
 
         HighlightedRow = SelectedCall is { } selected ? FindRow(selected) : null;
 
-        if (HighlightedRow is not { } row || SelectedCall is not { } call)
+        if (HighlightedRow is { } row)
         {
-            return;
+            row.Highlighted = row.Signature.FirstOrDefault(p => p.Kind == CallSignaturePartKind.Function);
         }
-
-        var index = SelectedValue is { } value ? IndexOf(call.Signature, value) : -1;
-
-        row.Highlighted = index >= 0 && index < row.Signature.Count
-            ? row.Signature[index]
-            : row.Signature.FirstOrDefault(p => p.Kind == CallSignaturePartKind.Function);
     }
 
     private void SelectFrame()
@@ -230,13 +189,8 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
             return;
         }
 
-        SelectedValue = null;
-
         SelectedCall = row;
     }
-
-    private int GetEnclosingCall(SourceFrame frame)
-        => Query.Arguments.Lookup?.GetEnclosingCall(frame.Node, frame.Position, frame.Thread) ?? -1;
 
     private PlayheadCallRow? FindRow(PlayheadCallRow selected)
         => Threads.SelectMany(t => t.Calls)
@@ -245,33 +199,6 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
     private static bool IsSame(IReadOnlyList<TraceThreadStack> current, IReadOnlyList<TraceThreadStack> next)
         => current.Count == next.Count
            && current.Zip(next).All(p => p.First.ThreadId == p.Second.ThreadId && p.First.Calls.SequenceEqual(p.Second.Calls));
-
-    private static int IndexOf(IReadOnlyList<CallSignaturePart> parts, CallSignaturePart part)
-    {
-        for (var index = 0; index < parts.Count; index++)
-        {
-            if (ReferenceEquals(parts[index], part))
-            {
-                return index;
-            }
-        }
-
-        return -1;
-    }
-
-    private IReadOnlyList<SourceStep> GetSource(CallSignaturePart? value)
-    {
-        if (value is not { CanFind: true } || SelectedCall is not { } call)
-        {
-            return [];
-        }
-
-        var calls = Threads.FirstOrDefault(t => t.Calls.Contains(call))?.Calls ?? [];
-
-        var origin = value.Origin is { } entry ? Query.Arguments.Lookup?.GetOrigin(entry) : null;
-
-        return SourcePath.Build(value, call, [.. calls.SkipWhile(c => c != call).Skip(1)], origin?.Node, origin?.CallIndex ?? -1);
-    }
 
     private async Task UpdateAsync()
     {
@@ -320,7 +247,7 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
 
             for (var index = found.Count - 1; index >= 0; index--)
             {
-                rows.Add(await BuildRowAsync(found[index].Node, found[index].Call, stack.ThreadId, index == found.Count - 1, origin));
+                rows.Add(await BuildRowAsync(found[index].Node, found[index].Call, index == found.Count - 1, origin));
             }
 
             if (rows.Count > 0)
@@ -371,7 +298,7 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
         };
     }
 
-    private async Task<PlayheadCallRow> BuildRowAsync(CallTreeNode node, TraceSpan call, uint thread, bool isCurrent, ulong origin)
+    private async Task<PlayheadCallRow> BuildRowAsync(CallTreeNode node, TraceSpan call, bool isCurrent, ulong origin)
     {
         var index = call.CallIndex;
 
@@ -388,7 +315,7 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
             SetMemoryBlocks(signature, from, to);
         }
 
-        return new PlayheadCallRow(node, call, signature, from, to, thread, isCurrent, origin)
+        return new PlayheadCallRow(node, call, signature, from, to, isCurrent, origin)
         {
             CurrentText = CurrentText
         };

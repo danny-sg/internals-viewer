@@ -158,22 +158,6 @@ public sealed class TraceTimelineMinimap : UserControl, IDisposable
         _marker.Dispose();
     }
 
-    private static float GetMarkerTop(TraceTimeline timeline, MinimapMarker marker, float height)
-    {
-        var threads = timeline.Threads;
-
-        if (marker.Lane < 0 || marker.Lane >= threads.Count || marker.Depth < 0)
-        {
-            return 0;
-        }
-
-        var laneHeight = height / threads.Count;
-
-        var rowHeight = laneHeight / Math.Max(1, threads[marker.Lane].Rows.Count);
-
-        return Math.Min(height, marker.Lane * laneHeight + marker.Depth * rowHeight);
-    }
-
     private void OnLoaded(object sender, RoutedEventArgs e) => ApplyTheme();
 
     private void OnActualThemeChanged(FrameworkElement sender, object args) => ApplyTheme();
@@ -277,7 +261,7 @@ public sealed class TraceTimelineMinimap : UserControl, IDisposable
 
             var x = (float)((marker.Position - start) * unit);
 
-            canvas.DrawLine(x, GetMarkerTop(timeline, marker, height), x, height, _marker);
+            canvas.DrawLine(x, 0, x, height, _marker);
         }
     }
 

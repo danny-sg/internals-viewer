@@ -2,13 +2,11 @@ using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Data;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.InteropServices;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Memory.History;
@@ -34,14 +32,6 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
     private const string GroupName = "Partition Group";
 
     private const string HashTableName = "Hash Table";
-
-    private const string WorktableGroupName = "Worktable Group";
-
-    private const string RebuildGroupName = "Rebuild Group";
-
-    private const string BuildSideName = "Build Side";
-
-    private const string ProbeSideName = "Probe Side";
 
     private const string AccessorsName = "Accessors";
 
@@ -705,15 +695,7 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
     private static string GetText(long value) => value.ToString(CultureInfo.CurrentCulture);
 
-    private static string GetGroupName(LoadedGroup group)
-    {
-        if (group.IsWorktable)
-        {
-            return WorktableGroupName;
-        }
-
-        return group.Slot % TraceHashTableLayout.GroupsPerSide == 0 ? GroupName : RebuildGroupName;
-    }
+    private static string GetGroupName(LoadedGroup group) => HashTablePartLabel.GetGroupName(group.Slot, group.IsWorktable);
 
     private static LoadedGroup? GetLoadedGroup(LoadedTable loaded, MemoryHashTableNode node)
         => loaded.Groups.Find(g => g.Address == node.Group);
@@ -817,9 +799,11 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
         foreach (var side in loaded.Groups.GroupBy(g => g.Slot / TraceHashTableLayout.GroupsPerSide).OrderBy(s => s.Key))
         {
+            var name = HashTablePartLabel.GetSideName(side.First().Slot);
+
             var heading = side.Key == 0
-                ? new MemoryHashTableNode(MemoryHashTableNodeType.BuildSide, BuildSideName, 0, -1, root)
-                : new MemoryHashTableNode(MemoryHashTableNodeType.ProbeSide, ProbeSideName, 0, -1, root);
+                ? new MemoryHashTableNode(MemoryHashTableNodeType.BuildSide, name, 0, -1, root)
+                : new MemoryHashTableNode(MemoryHashTableNodeType.ProbeSide, name, 0, -1, root);
 
             foreach (var group in side.OrderBy(g => g.Slot))
             {
@@ -1392,8 +1376,8 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
         var rows = table.Columns.Select((c, i) => new ResultRow<long>(
         [
             new SwatchText(ShownFields[i].Field.Name, FieldColours[ShownFields[i].Colour]),
-            GetTypeText(c.Binding),
-            GetOffsetText(c.Binding),
+            ColumnBindingText.GetType(c.Binding),
+            ColumnBindingText.GetOffset(c.Binding),
             GetPointerCell(c.Value),
             GetPointerCell(c.ScanValue),
             GetPointerCell(c.Bindings)
@@ -1409,26 +1393,6 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
     private static string GetColumnName(List<ColumnStructure>? names, TraceHashColumn column, int index)
         => names is not null && index < names.Count ? names[index].ColumnName : $"Column {column.Binding.Ordinal}";
-
-    private static string GetTypeText(ColumnBinding binding)
-    {
-        if (!SqlTypeHelpers.TryGetSqlType(binding.Type, out var type))
-        {
-            return $"0x{binding.Type:X2}";
-        }
-
-        var name = type.ToString().ToLowerInvariant();
-
-        return type switch
-        {
-            SqlDbType.Char or SqlDbType.VarChar or SqlDbType.Binary or SqlDbType.VarBinary => $"{name}({binding.MaximumLength})",
-            SqlDbType.NChar or SqlDbType.NVarChar => $"{name}({binding.MaximumLength / 2})",
-            _ => name
-        };
-    }
-
-    private static string GetOffsetText(ColumnBinding binding)
-        => binding.IsVariableLength ? $"Variable {binding.VariableIndex}" : $"0x{binding.RecordOffset:X}";
 
     private object? GetValueCell(MemoryField field, ulong? value)
     {

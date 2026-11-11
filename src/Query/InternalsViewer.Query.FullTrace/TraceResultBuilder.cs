@@ -31,6 +31,8 @@ internal sealed class TraceResultBuilder(CallTree callTree,
 
     public TraceBufferPool BufferPool { get; init; } = TraceBufferPool.Empty;
 
+    public PlanNodeLayout PlanNodeLayout { get; init; } = PlanNodeLayout.SqlServer2025;
+
     public IteratorPlanLink PlanLink { get; private set; } = IteratorPlanLink.Empty;
 
     public OperatorFrameMap OperatorFrames { get; private set; } = OperatorFrameMap.Empty;
@@ -87,7 +89,7 @@ internal sealed class TraceResultBuilder(CallTree callTree,
         {
             PlanLink = PlanLink,
             OperatorFrames = OperatorFrames,
-            PlanNodes = PlanNodes,
+            PlanNodes = PlanOutputReader.Read(PlanNodes, memoryHistory, PlanNodeLayout),
             Teardowns = Teardowns,
             HoBtAccess = HoBtAccessMap.Build(CallStore, Timeline.MappedNodes),
             Allocation = Allocation,

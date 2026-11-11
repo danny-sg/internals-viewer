@@ -90,7 +90,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         steps.Begin(OperatorsStep);
 
-        var builder = GetResultBuilder(replay, functions, request, callTree);
+        var builder = GetResultBuilder(replay, functions, request, callTree, session.Offsets.PlanNode);
 
         builder.Link();
 
@@ -270,7 +270,8 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
     private TraceResultBuilder GetResultBuilder(ReplayResult replay,
                                                 ReplayFunctionTable functions,
                                                 TraceRequest request,
-                                                CallTree callTree)
+                                                CallTree callTree,
+                                                PlanNodeLayout planNodeLayout)
     {
         var (allocation, allocationCount, allocatedBytes, memoryObjects) = AllocationMapper.Map(replay.CallStore,
                                                                                                 functions.AllocationFunctions,
@@ -289,7 +290,8 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                                           memoryObjects),
             MemoryObjectSnapshot = request.MemoryClerks.MemoryObjects,
             ObjectPool = request.ObjectPool,
-            BufferPool = replay.BufferPool
+            BufferPool = replay.BufferPool,
+            PlanNodeLayout = planNodeLayout
         };
     }
 
@@ -343,13 +345,20 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         HashSet<ulong> iterators = [.. lifetimes.OperatorsByInstance.Keys, .. replay.PlanNodes.Select(p => p.Iterator)];
 
-        var owners = AllocationOwnerResolver.GetOwners([.. allocations.Select(a => a.Block)], replay.CallStore, iterators, replay.PlanNodes);
+        var firstPositions = MemoryWatchPlanner.GetFirstPositions(replay.CallStore, iterators);
+
+        var owners = AllocationOwnerResolver.GetOwners([.. allocations.Select(a => a.Block)],
+                                                       replay.CallStore,
+                                                       iterators,
+                                                       firstPositions,
+                                                       replay.PlanNodes);
 
         var historyBuilder = new MemoryHistoryBuilder(allocations,
                                                            owners,
-                                                           MemoryWatchPlanner.GetFirstPositions(replay.CallStore, iterators),
+                                                           firstPositions,
                                                            timeline,
-                                                           replay.StackSnapshotResult);
+                                                           replay.StackSnapshotResult,
+                                                           memoryObjects.GetOwner);
 
         Logger.LogInformation("{Objects} stack object(s) handed between functions, read {Snapshots} time(s) into {Changes} change(s)",
                               replay.StackSnapshotResult.Objects.Length,

@@ -8,6 +8,7 @@ using InternalsViewer.Query.FullTrace.Memory.History.Capture;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
 using InternalsViewer.Query.FullTrace.Memory.History.Capture.StackObjects;
 using InternalsViewer.Query.FullTrace.Memory.History.Capture.Watches;
+using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
@@ -111,6 +112,45 @@ public class MemoryHistoryBuilderTests
         var store = Build([Block(Page, 0x2000, from: 1, to: 5), Block(Page + 0x100, 0x20, from: 2)], [Write(6, Page + 0x100, 1)]);
 
         Assert.Empty(store.Blocks);
+    }
+
+    [Fact]
+    public void An_Allocation_Over_Memory_Still_Held_By_An_Older_One_Ends_The_Older_One()
+    {
+        var store = Build([Block(Owned, 0x58, from: 1), Block(Owned + 0x20, 0x70, from: 5)],
+                          [Write(2, Owned + 0x30, 1), Write(6, Owned + 0x30, 2), Write(7, Owned + 0x30, 3)]);
+
+        Assert.Equal([(At(1), At(5), 1), (At(5), TracePosition.Unknown, 2)],
+                     store.Blocks.Select((b, index) => (b.FromPosition, b.ToPosition, store.GetWrites(index).Count)));
+    }
+
+    [Fact]
+    public void An_Allocation_Carved_From_A_Larger_One_Leaves_The_Larger_One_Live()
+    {
+        var store = Build([Block(Page, 0x2000, from: 1), Block(Page + 0x100, 0x20, from: 2)],
+                          [Write(3, Page + 0x10, 1), Write(4, Page + 0x108, 2), Write(5, Page + 0x10, 3)]);
+
+        Assert.Equal([TracePosition.Unknown, TracePosition.Unknown], store.Blocks.Select(b => b.ToPosition));
+    }
+
+    [Fact]
+    public void An_Allocation_Inside_An_Older_One_On_A_Page_Another_Memory_Object_Took_Ends_The_Older_One()
+    {
+        var store = Build([Block(Owned, 0x800, from: 1), Block(Owned + 0x20, 0x80, from: 5)],
+                          [Write(2, Owned + 0x10, 1), Write(6, Owned + 0x30, 2)],
+                          getPageOwner: (_, p) => new MemoryObjectReference(p < At(5) ? 0xA000UL : 0xB000UL, null, 0x2000));
+
+        Assert.Equal([(At(1), At(5)), (At(5), TracePosition.Unknown)], store.Blocks.Select(b => (b.FromPosition, b.ToPosition)));
+    }
+
+    [Fact]
+    public void An_Allocation_Inside_An_Older_One_Of_The_Same_Memory_Object_Leaves_The_Older_One_Live()
+    {
+        var store = Build([Block(Owned, 0x800, from: 1), Block(Owned + 0x20, 0x80, from: 5)],
+                          [Write(2, Owned + 0x10, 1), Write(6, Owned + 0x30, 2)],
+                          getPageOwner: (_, _) => new MemoryObjectReference(0xA000, null, 0x2000));
+
+        Assert.Equal([TracePosition.Unknown, TracePosition.Unknown], store.Blocks.Select(b => b.ToPosition));
     }
 
     [Fact]
@@ -633,7 +673,8 @@ public class MemoryHistoryBuilderTests
                                             ulong[]? owners = null,
                                             Dictionary<ulong, TracePosition>? iterators = null,
                                             TraceTimeline? timeline = null,
-                                            ulong[]? clerkPages = null)
+                                            ulong[]? clerkPages = null,
+                                            Func<ulong, TracePosition, MemoryObjectReference?>? getPageOwner = null)
     {
         var data = new List<byte>();
 
@@ -651,7 +692,8 @@ public class MemoryHistoryBuilderTests
         var recording = new MemoryHistoryBuilder(allocations,
                                                            owners ?? new ulong[blocks.Length],
                                                            iterators ?? new Dictionary<ulong, TracePosition>(),
-                                                           timeline);
+                                                           timeline,
+                                                           getPageOwner: getPageOwner);
 
         return recording.Build(new WatchResult([new([.. hits], [.. data])], 1)).Store;
     }

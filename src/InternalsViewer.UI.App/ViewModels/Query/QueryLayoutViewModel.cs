@@ -10,8 +10,8 @@ using InternalsViewer.UI.App.Views.Query.Plan;
 using InternalsViewer.UI.App.Views.Query.Sql;
 using InternalsViewer.UI.App.Views.Query.Timeline;
 using InternalsViewer.UI.App.Views.Query.Trace.Calls;
-using InternalsViewer.UI.App.Views.Query.Trace.MemoryTree;
 using InternalsViewer.UI.App.Views.Query.Trace.OperatorTracks;
+using InternalsViewer.UI.App.Views.Query.Trace.Summary;
 using InternalsViewer.UI.App.Views.Query.Trace.Timeline;
 using Microsoft.UI.Xaml.Controls;
 using QueryPlanTabCommands = InternalsViewer.UI.App.Views.Query.Plan.QueryPlanTabCommands;
@@ -36,9 +36,9 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
     private const string TraceTimelineKey = "FlameChart";
     private const string OperatorTracksKey = "OperatorTracks";
 
-    private const string MemoryTreeKey = "MemoryTree";
+    private const string TraceSummaryKey = "TraceSummary";
 
-    private const double MemoryTreeStar = 3;
+    private const double TraceSummaryStar = 3;
 
     private readonly Dictionary<string, DocumentViewModel> _documentsByKey;
 
@@ -148,10 +148,10 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
                                                                                        keepAlive: true,
                                                                                        key: OperatorTracksKey),
 
-            [MemoryTreeKey] = DocumentViewModel.Create<QueryMemoryTreeTabView>("Memory Tree",
-                                                                               content,
-                                                                               keepAlive: true,
-                                                                               key: MemoryTreeKey)
+            [TraceSummaryKey] = DocumentViewModel.Create<QueryTraceSummaryTabView>("Trace Summary",
+                                                                                   content,
+                                                                                   keepAlive: true,
+                                                                                   key: TraceSummaryKey)
         };
 
         Dock = new DockLayoutViewModel(DefaultRoot());
@@ -286,7 +286,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         }
     }
 
-    public void ShowMemoryTree() => Dock.DockLeft(_documentsByKey[MemoryTreeKey], MemoryTreeStar);
+    public void ShowTraceSummary() => Dock.DockLeft(_documentsByKey[TraceSummaryKey], TraceSummaryStar);
 
     public void ShowOperatorTracks()
     {

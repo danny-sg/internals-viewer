@@ -177,8 +177,8 @@
                                 <MenuFlyoutItem Text="Object Graph"
                                                 Command="{x:Bind ViewModel.ShowObjectGraphCommand}"
                                                 Visibility="{x:Bind ViewModel.MemoryHistory.IsAvailable, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                <MenuFlyoutItem Text="Memory Tree"
-                                                Command="{x:Bind ViewModel.ShowMemoryTreeCommand}"
+                                <MenuFlyoutItem Text="Trace Summary"
+                                                Command="{x:Bind ViewModel.ShowTraceSummaryCommand}"
                                                 Visibility="{x:Bind ViewModel.MemoryHistory.IsAvailable, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
                             </MenuBarItem>
 

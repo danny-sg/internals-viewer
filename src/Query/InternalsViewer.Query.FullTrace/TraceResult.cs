@@ -25,6 +25,11 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
     internal IReadOnlyList<IteratorPlanNode> PlanNodes { get; init; } = [];
 
+    internal IReadOnlyList<IteratorPlanNode> LinkedPlanNodes
+        => field ??= PlanLink.PlanObjects.Count == 0
+            ? PlanNodes
+            : [.. PlanNodes.Where(p => PlanLink.PlanObjects.ContainsKey(p.PlanObject))];
+
     internal IReadOnlyList<QueryTeardown> Teardowns { get; init; } = [];
 
     public HoBtAccessMap HoBtAccess { get; init; } = HoBtAccessMap.Empty;
@@ -55,6 +60,9 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
     public TraceHashTableMap HashTables => field ??= new TraceHashTableMap(this);
 
+    public IReadOnlyDictionary<int, IReadOnlyList<PlanOutputColumn>> OutputColumns
+        => field ??= IteratorPlanNode.GetOutputColumns(LinkedPlanNodes);
+
     public IReadOnlyList<CallTreeNode> QueryRoots => Roots ??= QueryExecutionCropper.GetRoots(CallTree);
 
     public TraceTimeline QueryTimeline => CroppedTimeline ??= GetQueryTimeline();
@@ -67,6 +75,8 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
     private Dictionary<TraceTimeline, Dictionary<CallTreeNode, int[]>> ActivityByWindow { get; } =
         new(ReferenceEqualityComparer.Instance);
+
+    private PlanOutputLinkReader OutputLinks => field ??= new PlanOutputLinkReader(this);
 
     public void SetActivityWindow(TraceTimeline window)
     {
@@ -81,6 +91,11 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
         CallTree.ComputeActivity(ActivityBuckets);
     }
+
+    public IReadOnlyList<PlanOutputLink> GetOutputLinks(int nodeId, PlanOutputColumn column) => OutputLinks.Read(nodeId, column);
+
+    public IReadOnlyList<PlanOutputLink> GetOutputLinks(int nodeId, PlanOutputColumn column, TracePosition position)
+        => OutputLinks.Read(nodeId, column, position);
 
     private Dictionary<CallTreeNode, int[]> GetCallActivity(TraceTimeline window)
     {

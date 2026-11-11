@@ -47,6 +47,8 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
 
     private const string ReadingEventsStep = "Reading Events";
 
+    private const string ClearPlanCacheSql = "ALTER DATABASE SCOPED CONFIGURATION CLEAR PROCEDURE_CACHE";
+
     private static readonly ProgressStep[] DirectSteps = [new(RunningStep, 100)];
 
     public bool ResolveColumnstorePages { get; set; } = true;
@@ -577,6 +579,11 @@ public sealed class QueryRunner(ILogger<QueryRunner> logger,
         {
             // Removes all pages from the buffer pool so pages will come from I/O rather than the cache
             await connection.ExecuteSql("DBCC DROPCLEANBUFFERS", cancellationToken, Logger);
+        }
+
+        if (recording is not null)
+        {
+            await connection.ExecuteSql(ClearPlanCacheSql, cancellationToken, Logger);
         }
 
         if (queryOptions.DisableReadAhead)

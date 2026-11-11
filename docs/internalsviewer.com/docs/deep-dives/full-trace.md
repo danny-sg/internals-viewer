@@ -94,11 +94,13 @@ So before attaching, the harness lists the modules loaded in SQL Server. If TTD 
 A Full Trace run goes:
 
 1. **Prepare** - the harness starts and restarts SQL Server if it has to, before the query's connection opens
-2. **Warm up** - unless **Clear Buffer Pool** is on, the query runs once untraced inside a transaction that is rolled back, so compiling the plan and reading its pages from disk are not in the recording
+2. **Warm up** - unless **Clear Buffer Pool** is on, the query runs once untraced inside a transaction that is rolled back, so reading its pages from disk is not in the recording
 3. **Snapshot the memory clerks** - `sys.dm_os_memory_clerks` and `sys.dm_os_memory_objects`, for naming memory later
-4. **Attach** - the event session is created, and the harness attaches TTD to the process with `-module sqlmin.dll -module sqllang.dll` just before the session starts
+4. **Attach** - the event session is created, the database's plan cache is cleared with `ALTER DATABASE SCOPED CONFIGURATION CLEAR PROCEDURE_CACHE`, and the harness attaches TTD to the process with `-module sqlmin.dll -module sqllang.dll` just before the session starts
 5. **Run the query** - its results are read, then the harness runs `TTD.exe -stop` and the recording is closed
 6. **Snapshot the memory clerks again** - while it is still the same SQL Server process
+
+Clearing the plan cache puts compiling the plan in the recording, and that is on purpose. SQL Server builds some of what a plan runs with once, keeps it with the cached plan and reuses it on every run. The accessors that scans and seeks read rows through are one example. A plan compiled by the warm-up, or by any earlier run, would leave them out of the recording, and Memory History could not follow them.
 
 ### A minimal event session
 
@@ -216,6 +218,10 @@ The compiler gets in the way in one place. With profile-guided optimisation, `CQ
 Which object belongs to which operator comes from how the plan is built. Before the first row, `CQueryScan::Setup` walks the compiled plan, and each of the plan's own objects - a `CXte*` class in row mode, `CBpXte*` in batch mode - builds the iterator for its operator. In row mode `CXte*::QScanGet` builds it and returns it, and in batch mode `CBpXte::CreateBatchIterators` and each `CBpXte*::PbpqsGet` build them. These calls nest exactly as the plan does, so the plan objects form a tree with the plan's shape, and their calls are kept apart by object just as the iterators' are.
 
 That tree is aligned with the plan. A plan object scores against an operator when the iterator classes it constructed are ones the mappings give that operator, and loses points when they are not. Skipping a plan node or a plan object costs points too. The iterator each plan object built - its return value, or the object its constructor ran on - then takes that plan object's operator, and wrappers such as the profiling iterator are looked through to the iterator inside. This needs no row counts and no guesswork about stack shapes, only the calls that build the plan.
+
+Each plan object also records the columns its operator was compiled to output. Its output list holds one column reference per column, and each reference carries the column's type, length, precision, scale and collation, and the plan object that produces it. An operator that passes rows through, such as a Top, lists the same references as the operator below it, so following a column's producer leads from the top of the plan down to the operator whose row holds it. The output lists are written while the plan compiles, first with the optimizer's column references and then remapped to the ones execution uses. They are read from Memory History, at the moment each plan object's iterator is built, so they need Memory History and a plan compiled inside the recording.
+
+From a column reference to its value, the app follows the pointers execution follows. A compiled plan can be shared by several runs, so it holds nothing of one run's objects. Each run has an execution context instead, which every iterator holds, and the context keeps a table from each plan object to the iterator built from it. A column reference names the plan object that produces it and where in that operator its value sits: for a scan or seek, which entry of the iterator's row buffer, and for a join, which side and which entry of the join's output values. So a column's chain runs from the reference to its producer, through the context's table to the producer's iterator, and on to the row buffer entry or the join's output value. A join's output value reads through a reader on a slot of the statement's row context, which the context also leads to, and points back to the column reference it was built from in the operator below, where the chain carries on. Every step is a pointer read, taken once the operator has started returning rows.
 
 The linked objects give each operator its entry frames - for the Call Tree's operator view and its target badge, see [How operator matching works](/docs/deep-dives/operator-matching) - and its lifetime, from its object's first method call to its last, for the Trace Timeline's Operators pane. The Arguments tab uses the same link to name an iterator or a plan object when its address turns up as a value.
 

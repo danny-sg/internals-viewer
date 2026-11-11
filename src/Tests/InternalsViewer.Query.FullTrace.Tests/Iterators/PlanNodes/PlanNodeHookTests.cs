@@ -2,6 +2,7 @@ using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
+using InternalsViewer.Query.FullTrace.Locators;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Iterators.PlanNodes;
@@ -40,6 +41,7 @@ public class PlanNodeHookTests
     private const ulong Context = 0x1F4_0000_3000;
 
     private const ulong Value = 0x1F4_0000_6000;
+
 
     [Fact]
     public void A_Row_Iterator_Reports_The_Plan_Node_Of_Its_Plan_Object()
@@ -198,6 +200,20 @@ public class PlanNodeHookTests
         hook.OnEntry(Call(GetRow, 1, Parent), replay);
 
         Assert.Empty(hook.GetPlanNodes());
+    }
+
+    [Fact]
+    public void An_Output_Column_Names_The_Plan_Node_That_Produces_It()
+    {
+        var type = new SqlTypeInfo(0x38, 1, 4, 10, 0, 0);
+
+        var top = new IteratorPlanNode(Parent, BatchPlanObject, 0, Query, 0) { Outputs = [new PlanOutputColumn(Value, PlanObject, type)] };
+
+        var scan = new IteratorPlanNode(Child, PlanObject, 0, Query, 1) { Outputs = [new PlanOutputColumn(Value, PlanObject, type)] };
+
+        var columns = IteratorPlanNode.GetOutputColumns([top, scan]);
+
+        Assert.Equal((1, 1), (Assert.Single(columns[0]).ProducerNodeId, Assert.Single(columns[1]).ProducerNodeId));
     }
 
     private static FakeTraceReplay Slots(ulong first, ulong second)

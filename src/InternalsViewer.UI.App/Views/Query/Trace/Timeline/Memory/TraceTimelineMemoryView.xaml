@@ -65,21 +65,6 @@
                      IsAddTabButtonVisible="False"
                      TabWidthMode="SizeToContent"
                      SelectedIndex="{x:Bind ViewModel.SelectedTab, Mode=TwoWay}">
-                <TabViewItem Header="Details" IsClosable="False">
-                    <local:MemoryDetailsPanelView/>
-                </TabViewItem>
-                <TabViewItem Header="Writes" IsClosable="False">
-                    <local:MemoryWritesPanelView/>
-                </TabViewItem>
-                <TabViewItem Header="Reads" IsClosable="False">
-                    <local:MemoryReadsPanelView/>
-                </TabViewItem>
-                <TabViewItem Header="Watches" IsClosable="False">
-                    <local:MemoryWatchesPanelView/>
-                </TabViewItem>
-                <TabViewItem Header="References" IsClosable="False">
-                    <local:MemoryReferencesPanelView/>
-                </TabViewItem>
                 <TabViewItem Header="BUF"
                              IsClosable="False"
                              Visibility="{x:Bind ViewModel.Buffer.IsAvailable, Mode=OneWay}">
@@ -104,6 +89,26 @@
                              IsClosable="False"
                              Visibility="{x:Bind ViewModel.Bindings.IsAvailable, Mode=OneWay}">
                     <local:MemoryBindingsPanelView/>
+                </TabViewItem>
+                <TabViewItem Header="{x:Bind ViewModel.Iterator.Header, Mode=OneWay}"
+                             IsClosable="False"
+                             Visibility="{x:Bind ViewModel.Iterator.IsAvailable, Mode=OneWay}">
+                    <local:MemoryIteratorPanelView/>
+                </TabViewItem>
+                <TabViewItem Header="Details" IsClosable="False">
+                    <local:MemoryDetailsPanelView/>
+                </TabViewItem>
+                <TabViewItem Header="Writes" IsClosable="False">
+                    <local:MemoryWritesPanelView/>
+                </TabViewItem>
+                <TabViewItem Header="Reads" IsClosable="False">
+                    <local:MemoryReadsPanelView/>
+                </TabViewItem>
+                <TabViewItem Header="Watches" IsClosable="False">
+                    <local:MemoryWatchesPanelView/>
+                </TabViewItem>
+                <TabViewItem Header="References" IsClosable="False">
+                    <local:MemoryReferencesPanelView/>
                 </TabViewItem>
             </TabView>
         </Grid>

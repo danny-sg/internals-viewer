@@ -54,6 +54,18 @@ public class AllocationOwnerResolverTests
     }
 
     [Fact]
+    public void An_Earlier_Object_At_An_Iterators_Address_Is_Not_That_Iterator()
+    {
+        Assert.Equal([0UL, Child], GetOwners(Block(Child, 9), Block(Child, 15)));
+    }
+
+    [Fact]
+    public void An_Object_Allocated_At_An_Iterators_Address_After_It_Ran_Is_Not_That_Iterator()
+    {
+        Assert.Equal([0UL], GetOwners(Block(Child, 95)));
+    }
+
+    [Fact]
     public void A_Block_Allocated_Outside_Every_Iterator_Call_Has_No_Owner()
     {
         Assert.Equal([0UL], GetOwners(Block(Buffer, 95)));
@@ -90,6 +102,7 @@ public class AllocationOwnerResolverTests
         return AllocationOwnerResolver.GetOwners(blocks,
                                                  calls,
                                                  new HashSet<ulong> { Parent, Child },
+                                                 new Dictionary<ulong, TracePosition> { [Parent] = At(10), [Child] = At(20) },
                                                  [new IteratorPlanNode(Child, PlanObject, 0, 0, 1)]);
     }
 

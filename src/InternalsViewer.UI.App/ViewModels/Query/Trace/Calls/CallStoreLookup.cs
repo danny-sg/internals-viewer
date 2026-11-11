@@ -155,9 +155,6 @@ public sealed class CallStoreLookup(TraceCallStore store,
             ? (calls.GetFromPosition(callIndex), calls.GetToPosition(callIndex))
             : (TracePosition.Unknown, TracePosition.Unknown);
 
-    public int GetEnclosingCall(CallTreeNode node, TracePosition position, uint thread)
-        => CallsOf(node)?.IndexOfEnclosing(position, thread) ?? -1;
-
     public CallReference? GetOrigin(AddressMapEntry origin)
         => Store.GetNode(origin.CallNodeIndex) is { Frame: not null } node && CallsOf(node) is { } calls
             ? new CallReference(node, origin.CallIndex < calls.Count ? origin.CallIndex : -1)

@@ -141,7 +141,7 @@ internal static class MemoryWatchPlanner
 
         foreach (var list in calls.GetCallLists())
         {
-            if (!iterators.Contains(list.InstanceAddress))
+            if (!iterators.Contains(list.InstanceAddress) || !IteratorSymbolLookup.IsIterator(calls.GetFirstNode(list)?.Frame))
             {
                 continue;
             }

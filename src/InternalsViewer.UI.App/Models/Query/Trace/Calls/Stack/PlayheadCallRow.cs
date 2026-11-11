@@ -14,7 +14,6 @@ public sealed partial class PlayheadCallRow(CallTreeNode node,
                                             CallSignature signature,
                                             TracePosition fromPosition,
                                             TracePosition toPosition,
-                                            uint thread,
                                             bool isCurrent,
                                             ulong originSequence = 0) : ObservableObject
 {
@@ -30,8 +29,6 @@ public sealed partial class PlayheadCallRow(CallTreeNode node,
     public TracePosition ToPosition { get; } = toPosition;
 
     public ulong OriginSequence { get; } = originSequence;
-
-    public uint Thread { get; } = thread;
 
     public int CallIndex => Span.CallIndex;
 

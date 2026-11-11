@@ -176,7 +176,7 @@
                        VerticalAlignment="Center"
                        FontSize="14"
                        FontFamily="{StaticResource MonospaceFontFamily}"
-                       Text="{x:Bind MouseOver.Offset, Mode=OneWay, Converter={StaticResource StringFormatConverter}, ConverterParameter='{}{0:0000}'}"
+                       Text="{x:Bind MouseOver.Offset, Mode=OneWay, Converter={StaticResource StringFormatConverter}, ConverterParameter='{}{00:X}'}"
                       />
             <Border Grid.Column="3" Background="{x:Bind MouseOver.Marker.BackColour,Mode=OneWay,Converter={StaticResource ColorToSolidColorBrushValueConverter}}"
                     Visibility="{x:Bind MouseOver.HasMarker, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"

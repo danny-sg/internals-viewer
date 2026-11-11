@@ -33,6 +33,7 @@ using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Events.Latches;
@@ -57,8 +58,8 @@ using InternalsViewer.UI.App.ViewModels.Query.Events;
 using InternalsViewer.UI.App.ViewModels.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Calls;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryHistory;
-using InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryTree;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.OperatorTracks;
+using InternalsViewer.UI.App.ViewModels.Query.Trace.Summary;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
 using InternalsViewer.UI.App.ViewModels.Tabs;
 using InternalsViewer.UI.App.Views.Query.Index;
@@ -74,6 +75,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
+using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Transactions;
 using InternalsViewer.TransactionLog.LogRecords;
@@ -112,7 +114,8 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                           SimulationTabViewModelFactory simulationTabViewModelFactory,
                                           TraceTickTrackStore tickTrackStore,
                                           IEnumerable<ITraceMenuContributor> menuContributors,
-                                          IPageService pageService)
+                                          IPageService pageService,
+                                          IRecordService recordService)
 {
     public QueryViewModel Create(DatabaseSource database) => new(logger,
                                                                  queryRunner,
@@ -129,6 +132,7 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                                                  tickTrackStore,
                                                                  menuContributors,
                                                                  pageService,
+                                                                 recordService,
                                                                  database);
 }
 
@@ -394,6 +398,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                           TraceTickTrackStore tickTrackStore,
                           IEnumerable<ITraceMenuContributor> menuContributors,
                           IPageService pageService,
+                          IRecordService recordService,
                           DatabaseSource database)
     {
         _simulationTabViewModelFactory = simulationTabViewModelFactory;
@@ -404,9 +409,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         Arguments = new ArgumentsViewModel(logger, Symbols);
 
-        MemoryHistory = new MemoryHistoryViewModel(OpenCallTree);
+        MemoryHistory = new MemoryHistoryViewModel(OpenCallTree)
+        {
+            Records = new PlanOutputRecordReader(pageService, recordService, database, logger)
+        };
 
-        MemoryTree = new MemoryTreeViewModel(MemoryHistory, () => TraceTimelineTab);
+        TraceSummary = new TraceSummaryViewModel(MemoryHistory, () => TraceTimelineTab);
 
         RowResolver = new PageRowResolver(pageService, database, logger);
 
@@ -521,7 +529,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public MemoryHistoryViewModel MemoryHistory { get; }
 
-    public MemoryTreeViewModel MemoryTree { get; }
+    public TraceSummaryViewModel TraceSummary { get; }
 
     public List<ITraceMenuContributor> MenuContributors { get; }
 
@@ -698,7 +706,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             MemoryHistory.SetTrace(value, Events, Database, ResolvePlanNode);
 
-            MemoryTree.Reset();
+            TraceSummary.Reset();
 
             CreatedTraceTimelineTab?.CloseMemory();
         }
@@ -900,6 +908,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             FollowGuidePlayhead(position);
 
             UpdatePlanActivity(position);
+
+            TraceSummary.SetPlayhead(position);
         }
     }
 
@@ -963,7 +973,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     }
 
     [RelayCommand]
-    private void ShowMemoryTree() => Layout.ShowMemoryTree();
+    private void ShowTraceSummary() => Layout.ShowTraceSummary();
 
     private TraceStartCall? GetTraceStartCall()
         => Trace is { } trace && TraceTimeline is { } timeline ? TraceStartCall.Find(trace.CallStore, timeline) : null;
@@ -979,7 +989,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     {
         MemoryHistory.SetWindow(value);
 
-        MemoryTree.Reset();
+        TraceSummary.Reset();
 
         SetGuidePositionText();
     }

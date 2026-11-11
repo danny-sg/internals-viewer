@@ -19,6 +19,18 @@ public static class HashTablePartLabel
         _ => "Bitmap Page"
     };
 
+    public static string GetGroupName(int slot, bool isWorktable)
+    {
+        if (isWorktable)
+        {
+            return "Worktable Group";
+        }
+
+        return slot % TraceHashTableLayout.GroupsPerSide == 0 ? "Partition Group" : "Rebuild Group";
+    }
+
+    public static string GetSideName(int slot) => slot / TraceHashTableLayout.GroupsPerSide == 0 ? "Build Side" : "Probe Side";
+
     public static string GetText(TraceHashPart part) => part.Type switch
     {
         TraceHashPartType.Group => GetName(part.Type),

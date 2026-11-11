@@ -231,6 +231,43 @@ public sealed partial class MemoryBindingsViewModel : ObservableObject
 
     public void OpenRowBuffer() => Open(Scan?.RowBuffer ?? 0);
 
+    internal static QueryResultSet CreateColumnTable(PlayheadMemoryViewModel owner,
+                                                     List<ColumnBinding> bound,
+                                                     TracePosition position,
+                                                     Func<ColumnBindingField, Colour?> getMarker)
+    {
+        ResultColumn GetColumn(ColumnBindingField field, Type type, ResultAlignment alignment = ResultAlignment.Left)
+            => new((int)field, FieldNames[field], type, true) { Alignment = alignment, MarkerColour = getMarker(field) };
+
+        var columns = new List<ResultColumn>
+        {
+            GetColumn(ColumnBindingField.Ordinal, typeof(int), ResultAlignment.Right),
+            GetColumn(ColumnBindingField.Type, typeof(string)),
+            GetColumn(ColumnBindingField.MaximumLength, typeof(int), ResultAlignment.Right),
+            GetColumn(ColumnBindingField.RecordOffset, typeof(string), ResultAlignment.Right),
+            GetColumn(ColumnBindingField.StatusOffset, typeof(string), ResultAlignment.Right),
+            GetColumn(ColumnBindingField.LengthOffset, typeof(string), ResultAlignment.Right),
+            GetColumn(ColumnBindingField.ValueOffset, typeof(string), ResultAlignment.Right),
+            GetColumn(ColumnBindingField.Flags, typeof(string)),
+            GetColumn(ColumnBindingField.ColumnAttributes, typeof(string))
+        };
+
+        var rows = bound.Select((b, i) => new ResultRow<long>([b.Ordinal,
+                                                               GetTypeText(b.Type),
+                                                               b.MaximumLength,
+                                                               GetRecordText(b),
+                                                               GetOffsetText(b.StatusOffset),
+                                                               b.LengthOffset is { } length ? GetOffsetText(length) : null,
+                                                               GetOffsetText(b.ValueOffset),
+                                                               GetFlagsCell(b.Flags),
+                                                               GetPointerCell(owner, b.ColumnAttributes, position)])
+        {
+            Id = i
+        });
+
+        return new QueryResultSet { Columns = columns, Rows = [.. rows] };
+    }
+
     partial void OnSelectedRowChanged(ResultRow<long>? value)
     {
         if (Owner is not { } owner || Kind == MemoryBindingsKind.Bindings)
@@ -394,42 +431,7 @@ public sealed partial class MemoryBindingsViewModel : ObservableObject
     }
 
     private QueryResultSet GetTable(PlayheadMemoryViewModel owner, List<ColumnBinding> bound, TracePosition position)
-    {
-        var columns = new List<ResultColumn>
-        {
-            GetColumn(ColumnBindingField.Ordinal, typeof(int), ResultAlignment.Right),
-            GetColumn(ColumnBindingField.Type, typeof(string)),
-            GetColumn(ColumnBindingField.MaximumLength, typeof(int), ResultAlignment.Right),
-            GetColumn(ColumnBindingField.RecordOffset, typeof(string), ResultAlignment.Right),
-            GetColumn(ColumnBindingField.StatusOffset, typeof(string), ResultAlignment.Right),
-            GetColumn(ColumnBindingField.LengthOffset, typeof(string), ResultAlignment.Right),
-            GetColumn(ColumnBindingField.ValueOffset, typeof(string), ResultAlignment.Right),
-            GetColumn(ColumnBindingField.Flags, typeof(string)),
-            GetColumn(ColumnBindingField.ColumnAttributes, typeof(string))
-        };
-
-        var rows = bound.Select((b, i) => new ResultRow<long>([b.Ordinal,
-                                                               GetTypeText(b.Type),
-                                                               b.MaximumLength,
-                                                               GetRecordText(b),
-                                                               GetOffsetText(b.StatusOffset),
-                                                               b.LengthOffset is { } length ? GetOffsetText(length) : null,
-                                                               GetOffsetText(b.ValueOffset),
-                                                               GetFlagsCell(b.Flags),
-                                                               GetPointerCell(owner, b.ColumnAttributes, position)])
-        {
-            Id = i
-        });
-
-        return new QueryResultSet { Columns = columns, Rows = [.. rows] };
-    }
-
-    private ResultColumn GetColumn(ColumnBindingField field, Type type, ResultAlignment alignment = ResultAlignment.Left)
-        => new((int)field, FieldNames[field], type, true)
-        {
-            Alignment = alignment,
-            MarkerColour = IsMarked(field) ? GetFieldColour(field) : null
-        };
+        => CreateColumnTable(owner, bound, position, f => IsMarked(f) ? GetFieldColour(f) : null);
 
     private bool IsMarked(ColumnBindingField field)
         => Kind == MemoryBindingsKind.Columns
