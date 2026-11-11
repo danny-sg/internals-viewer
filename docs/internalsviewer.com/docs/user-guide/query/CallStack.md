@@ -52,7 +52,7 @@ A frame whose symbol did not resolve is copied as `module+offset`. Right-clickin
 
 ## Filtering by category
 
-The filter button at the right of the Call Tree's command bar opens a row of category badges beneath the search box, one for each category found in the tree. Click a badge to hide or show that category, **All** to show or hide every one at once, and **Defaults** to go back to the categories hidden by default. Those are the infrastructure categories - Compilation, Execution Tree, Expression Evaluation, Metadata, Networking, Query Binding, Query Store, Security, Tracing and Transaction Management - so the frames doing the query's work stand out. The choice is remembered between sessions, and the [Trace Timeline](/docs/user-guide/query/TraceTimeline#search)'s filter button shares it.
+The filter button at the right of the Call Tree's command bar opens a row of category badges beneath the search box, one for each category found in the tree. Click a badge to hide or show that category, **All** to show or hide every one at once, and **Defaults** to go back to the categories hidden by default. Those are the infrastructure categories - Compilation, Networking, Query Store, Security, Tracing and Transaction Management - so the frames doing the query's work stand out. The choice is remembered between sessions, and the [Trace Timeline](/docs/user-guide/query/TraceTimeline#search)'s filter button shares it.
 
 ![The category badges open beneath the search box, with the hidden categories struck through](/docs/user-guide/images/call-stack-category-filter.png)
 

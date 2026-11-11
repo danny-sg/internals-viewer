@@ -6,9 +6,27 @@ public static class TraceHashTableLayout
 
     public const string PartitionClass = "CHashWorkfilePartitionInstance";
 
+    public const string WorktableGroupClass = "CHashWorktablePartitionGroup";
+
+    public const int IteratorGroupsOffset = 0x140;
+
+    public const int IteratorGroupCount = 6;
+
+    public const int GroupsPerSide = 3;
+
+    public const int CurrentGroupOffset = 0x210;
+
     public const int IteratorOffset = 0x10;
 
+    public const int ColumnsOffset = 0x18;
+
+    public const int ScanColumnsOffset = 0x20;
+
+    public const int ValueAccessorOffset = 0x38;
+
     public const int ActivePartitionOffset = 0xA0;
+
+    public const int ScanPartitionOffset = 0xA8;
 
     public const int PartitionListOffset = 0xF0;
 
@@ -50,10 +68,42 @@ public static class TraceHashTableLayout
 
     private const int EntrySize = sizeof(ulong);
 
+    public static IReadOnlyList<MemoryField> IteratorFields { get; } =
+    [
+        new("Build Partition Group", IteratorGroupsOffset, PointerSize),
+        new("Build Worktable Group", IteratorGroupsOffset + PointerSize, PointerSize),
+        new("Build Rebuild Group", IteratorGroupsOffset + 2 * PointerSize, PointerSize),
+        new("Probe Partition Group", IteratorGroupsOffset + 3 * PointerSize, PointerSize),
+        new("Probe Worktable Group", IteratorGroupsOffset + 4 * PointerSize, PointerSize),
+        new("Probe Rebuild Group", IteratorGroupsOffset + 5 * PointerSize, PointerSize),
+        new("Partition Mask", PartitionMaskOffset, sizeof(uint), IsHex: true),
+        new("Partition Shift", PartitionShiftOffset, sizeof(int)),
+        new("Workfile Resource Manager", 0x1B0, PointerSize),
+        new("Workfile Manager", 0x1B8, PointerSize),
+        new("Current Partition Group", CurrentGroupOffset, PointerSize)
+    ];
+
     public static IReadOnlyList<MemoryField> GroupFields { get; } =
     [
+        new("Virtual Table", 0x00, PointerSize),
+        new("Compiled Group", 0x08, PointerSize),
         new("Iterator", IteratorOffset, PointerSize),
+        new("Columns", ColumnsOffset, PointerSize),
+        new("Scan Columns", ScanColumnsOffset, PointerSize),
+        new("Insert Expression", 0x28, PointerSize),
+        new("Expression", 0x30, PointerSize),
+        new("Update Expression", 0x38, PointerSize),
+        new("Expression", 0x40, PointerSize),
+        new("Expression", 0x48, PointerSize),
+        new("Compare Expression", 0x50, PointerSize),
+        new("Active Insert Expression", 0x70, PointerSize),
+        new("Active Update Expression", 0x78, PointerSize),
+        new("Column Info", 0x80, PointerSize),
+        new("Workfile Group", 0x88, PointerSize),
+        new("Workfile Group", 0x90, PointerSize),
+        new("Column Flags", 0x98, PointerSize),
         new("Active Partition", ActivePartitionOffset, PointerSize),
+        new("Scan Partition", ScanPartitionOffset, PointerSize),
         new("Last Partition", PartitionListOffset, PointerSize),
         new("First Partition", PartitionListOffset + PointerSize, PointerSize)
     ];

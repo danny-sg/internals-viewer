@@ -2,10 +2,13 @@ namespace InternalsViewer.UI.App.Models.Query.Trace.Timeline.Enums;
 
 public enum MemoryHashTableNodeType
 {
+    HashTable,
+    BuildSide,
+    ProbeSide,
     Group,
-    Partitions,
+    WorktableGroup,
+    Accessors,
     Partition,
-    Directory,
     BucketPages,
     BucketPage,
     OverflowPage,

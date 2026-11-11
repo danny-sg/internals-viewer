@@ -9,6 +9,7 @@ using InternalsViewer.UI.App.Models.Query.Trace.Timeline.Enums;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline.Memory;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 
 namespace InternalsViewer.UI.App.Views.Query.Trace.Timeline.Memory;
 
@@ -23,6 +24,8 @@ public sealed partial class MemoryHashTableView : UserControl, IDisposable
         DataContextChanged += OnDataContextChanged;
 
         Loaded += (_, _) => LayoutHelpers.EnableHorizontalScrolling(StructureTree);
+
+        AddHandler(PointerPressedEvent, new PointerEventHandler(OnNavigationPointerPressed), handledEventsToo: true);
     }
 
     public MemoryHashTableViewModel? ViewModel => DataContext as MemoryHashTableViewModel;
@@ -36,7 +39,10 @@ public sealed partial class MemoryHashTableView : UserControl, IDisposable
     public void Dispose() => Attach(null);
 
     private static bool IsExpandedByDefault(MemoryHashTableNode node)
-        => node.Type is MemoryHashTableNodeType.Group or MemoryHashTableNodeType.Partitions;
+        => node.Type is MemoryHashTableNodeType.HashTable
+                     or MemoryHashTableNodeType.BuildSide
+                     or MemoryHashTableNodeType.ProbeSide
+                     or MemoryHashTableNodeType.Group;
 
     private static TreeViewNode? Find(IList<TreeViewNode> nodes, string key)
     {
@@ -187,6 +193,29 @@ public sealed partial class MemoryHashTableView : UserControl, IDisposable
         if (args.InvokedItem is TreeViewNode { Content: MemoryHashTableNode { IsSelectable: false } } node)
         {
             node.IsExpanded = !node.IsExpanded;
+        }
+    }
+
+    private void OnNavigationPointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        if (ViewModel is not { } viewModel)
+        {
+            return;
+        }
+
+        var properties = e.GetCurrentPoint(this).Properties;
+
+        if (properties.IsXButton1Pressed)
+        {
+            viewModel.GoBackCommand.Execute(null);
+
+            e.Handled = true;
+        }
+        else if (properties.IsXButton2Pressed)
+        {
+            viewModel.GoForwardCommand.Execute(null);
+
+            e.Handled = true;
         }
     }
 

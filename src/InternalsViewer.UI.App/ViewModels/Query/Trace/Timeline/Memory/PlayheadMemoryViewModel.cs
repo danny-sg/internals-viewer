@@ -8,6 +8,7 @@ using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Pages;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
@@ -151,6 +152,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     private TraceHashPart? HashTablePart { get; set; }
 
+    private RowRecordLayout? HashTableLayout { get; set; }
+
     public void Open(int block, ulong address, TracePosition position)
     {
         if (block < 0 || block >= History.Store.Blocks.Count)
@@ -192,11 +195,11 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         Batch.Load(this);
 
-        WorkfilePage.Load(History, block);
+        FindHashTable();
+
+        WorkfilePage.Load(History, block, HashTableLayout);
 
         Bindings.Load(this);
-
-        FindHashTable();
 
         ApplyMarkers();
 
@@ -588,7 +591,13 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     private void FindHashTable()
     {
-        (HashTableGroup, HashTablePart) = History.CallStore is { } calls ? FindHashTablePart(calls) : (0, null);
+        var (group, found, table, position) = History.CallStore is { } calls ? FindHashTablePart(calls) : (0, null, null, default);
+
+        (HashTableGroup, HashTablePart) = (group, found);
+
+        HashTableLayout = found is { Type: TraceHashPartType.WorkfilePage } && table is not null
+            ? GetHashTableLayout(table, position)
+            : null;
 
         IsHashTableVisible = HashTableGroup != 0;
 
@@ -597,7 +606,23 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         HashTablePartText = HashTablePart is { } part ? HashTablePartLabel.GetText(part) : string.Empty;
     }
 
-    private (ulong Group, TraceHashPart? Part) FindHashTablePart(TraceCallStore calls)
+    private RowRecordLayout? GetHashTableLayout(TraceHashTable table, TracePosition position)
+    {
+        if (table.Columns.Count == 0)
+        {
+            return null;
+        }
+
+        var slot = TraceHashTableReader.GetIteratorGroups(History.Store, History.AddressMap, table.Iterator, position)
+                                       .Find(g => g.Group == table.Group)
+                                       .Slot;
+
+        return History.GetWorkfileLayout(table.Iterator,
+                                         [.. table.Columns.Select(c => c.Binding)],
+                                         slot / TraceHashTableLayout.GroupsPerSide == 1);
+    }
+
+    private (ulong Group, TraceHashPart? Part, TraceHashTable? Table, TracePosition Position) FindHashTablePart(TraceCallStore calls)
     {
         var block = History.Store.Blocks[Block];
 
@@ -609,14 +634,15 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
             foreach (var position in positions)
             {
-                if (TraceHashTableReader.Read(History.Store, group, position)?.FindPart(block.Address, block.Size) is { } part)
+                if (TraceHashTableReader.Read(History.Store, group, position) is { } table
+                    && table.FindPart(block.Address, block.Size) is { } part)
                 {
-                    return (group, part);
+                    return (group, part, table, position);
                 }
             }
         }
 
-        return (0, null);
+        return (0, null, null, default);
     }
 
     private int? GetReadIndex(int index)

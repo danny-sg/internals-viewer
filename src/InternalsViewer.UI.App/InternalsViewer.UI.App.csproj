@@ -234,8 +234,8 @@
         <PackageReference Include="CommunityToolkit.WinUI.Controls.SettingsControls" Version="8.2.251219" />
         <PackageReference Include="CommunityToolkit.WinUI.Controls.Sizers" Version="8.2.251219" />
 
-        <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.13" />
-        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.13" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="11.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="11.0.0" />
         <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2957" />
 
         <PackageReference Include="SkiaSharp" Version="4.155.0" />

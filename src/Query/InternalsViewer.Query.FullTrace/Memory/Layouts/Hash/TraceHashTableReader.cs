@@ -1,7 +1,9 @@
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
+using InternalsViewer.Query.FullTrace.Memory.Address;
 using InternalsViewer.Query.FullTrace.Memory.History;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings;
 
 namespace InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
 
@@ -53,7 +55,13 @@ public static class TraceHashTableReader
 
         memory.TryRead(iterator + TraceHashTableLayout.PartitionShiftOffset, out uint partitionShift);
 
-        return new TraceHashTable(group, iterator, active, partitionMask, (int)partitionShift, partitions);
+        var (columnArray, columns) = ReadColumns(store, memory, position, group);
+
+        return new TraceHashTable(group, iterator, active, partitionMask, (int)partitionShift, partitions)
+        {
+            ColumnArray = columnArray,
+            Columns = columns
+        };
     }
 
     public static List<ulong> GetGroups(TraceCallStore calls)
@@ -127,8 +135,11 @@ public static class TraceHashTableReader
     }
 
     public static List<TraceHashAccess> GetAccesses(TraceCallStore calls, ulong group)
+        => GetAccesses(calls, new HashSet<ulong> { group })[group];
+
+    public static Dictionary<ulong, List<TraceHashAccess>> GetAccesses(TraceCallStore calls, IReadOnlySet<ulong> groups)
     {
-        var accesses = new List<TraceHashAccess>();
+        var accesses = groups.ToDictionary(g => g, _ => new List<TraceHashAccess>());
 
         foreach (var (list, isInsert) in GetGroupCalls(calls))
         {
@@ -136,18 +147,103 @@ public static class TraceHashTableReader
             {
                 var call = list[index];
 
-                if (call.GetSlot(GroupArgument) == group)
+                if (accesses.TryGetValue(call.GetSlot(GroupArgument), out var found))
                 {
                     var hash = (uint)call.GetSlot(HashArgument);
 
-                    accesses.Add(new TraceHashAccess(list.GetFromPosition(index), hash, isInsert, call.ReturnedValue != 0));
+                    found.Add(new TraceHashAccess(list.GetFromPosition(index), hash, isInsert, call.ReturnedValue != 0));
                 }
             }
         }
 
-        accesses.Sort((left, right) => left.Position.CompareTo(right.Position));
+        foreach (var list in accesses.Values)
+        {
+            list.Sort((left, right) => left.Position.CompareTo(right.Position));
+        }
 
         return accesses;
+    }
+
+    public static ulong? GetIterator(MemoryHistoryStore store, ulong group, TracePosition position)
+        => new MemoryHistoryReader(store, position).TryRead(group + TraceHashTableLayout.IteratorOffset, out ulong iterator)
+            ? iterator
+            : null;
+
+    public static ulong GetCurrentGroup(MemoryHistoryStore store, ulong iterator, TracePosition position)
+        => new MemoryHistoryReader(store, position).TryRead(iterator + TraceHashTableLayout.CurrentGroupOffset, out ulong group)
+            ? group
+            : 0;
+
+    public static List<(int Slot, ulong Group, bool IsWorktable)> GetIteratorGroups(MemoryHistoryStore store,
+                                                                                    AddressMap map,
+                                                                                    ulong iterator,
+                                                                                    TracePosition position)
+    {
+        var memory = new MemoryHistoryReader(store, position);
+
+        var groups = new List<(int Slot, ulong Group, bool IsWorktable)>();
+
+        for (var index = 0; index < TraceHashTableLayout.IteratorGroupCount; index++)
+        {
+            var slot = iterator + TraceHashTableLayout.IteratorGroupsOffset + (ulong)(index * sizeof(ulong));
+
+            if (!memory.TryRead(slot, out ulong group)
+                || group == 0
+                || groups.Exists(g => g.Group == group)
+                || store.GetBlock(group, position) is not (>= 0 and var block))
+            {
+                continue;
+            }
+
+            var info = store.Blocks[block];
+
+            var label = map.GetLabel(info.Address, info.FromPosition, info.ToPosition);
+
+            if (label is TraceHashTableLayout.GroupClass or TraceHashTableLayout.WorktableGroupClass)
+            {
+                groups.Add((index, group, label == TraceHashTableLayout.WorktableGroupClass));
+            }
+        }
+
+        return groups;
+    }
+
+    private static (ulong Array, List<TraceHashColumn> Columns) ReadColumns(MemoryHistoryStore store,
+                                                                           MemoryHistoryReader memory,
+                                                                           TracePosition position,
+                                                                           ulong group)
+    {
+        if (!memory.TryRead(group + TraceHashTableLayout.ColumnsOffset, out ulong values)
+            || store.GetBlock(values, position) is not (>= 0 and var block))
+        {
+            return (0, []);
+        }
+
+        memory.TryRead(group + TraceHashTableLayout.ScanColumnsOffset, out ulong scanValues);
+
+        var count = store.Blocks[block].Size / sizeof(ulong);
+
+        var columns = new List<TraceHashColumn>(count);
+
+        for (var index = 0; index < count; index++)
+        {
+            var offset = (ulong)(index * sizeof(ulong));
+
+            if (!memory.TryRead(values + offset, out ulong value)
+                || !memory.TryRead(value + TraceHashTableLayout.ValueAccessorOffset, out ulong accessor)
+                || !memory.TryRead(accessor, out ulong bindings)
+                || AccessorBindingLayout.ReadHeader(memory, bindings) is not { ColumnCount: > 0 } header
+                || AccessorBindingLayout.ReadColumns(memory, header.Columns, 1) is not [var binding, ..])
+            {
+                return (values, []);
+            }
+
+            var scanValue = scanValues != 0 && memory.TryRead(scanValues + offset, out ulong scan) ? scan : 0;
+
+            columns.Add(new TraceHashColumn(binding, value, scanValue, accessor, bindings));
+        }
+
+        return (values, columns);
     }
 
     private static IEnumerable<(TraceCallList List, bool IsInsert)> GetGroupCalls(TraceCallStore calls)

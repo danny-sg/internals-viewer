@@ -17,7 +17,7 @@ internal static class ResultDetailsPanel
 
     public static void Fill(Panel host, ResultDetails details)
     {
-        host.Children.Clear();
+        Clear(host);
 
         if (details.Title.Length > 0)
         {
@@ -48,6 +48,16 @@ internal static class ResultDetailsPanel
             ResultSet = details.ResultSet ?? CreateResultSet(details),
             IsStatusBarVisible = false
         });
+    }
+
+    public static void Clear(Panel host)
+    {
+        foreach (var grid in host.Children.OfType<ResultsGridControl>())
+        {
+            grid.Release();
+        }
+
+        host.Children.Clear();
     }
 
     private static QueryResultSet CreateResultSet(ResultDetails details)

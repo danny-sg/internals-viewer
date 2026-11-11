@@ -284,19 +284,15 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
     {
         OpenHashTable(group, -1, -1, isBelowPlan: false);
 
-        var document = HashTableDocuments.FirstOrDefault(d => d.Key == GetHashTableKey(group));
-
-        if (part is { } found && document?.Content is MemoryHashTableViewModel table)
+        if (part is { } found && FindHashTable(group)?.Content is MemoryHashTableViewModel table)
         {
-            table.ShowPart(found);
+            table.ShowPart(group, found);
         }
     }
 
     public void OpenHashTable(ulong group, int partition, int bucket, bool isBelowPlan)
     {
-        var key = GetHashTableKey(group);
-
-        if (HashTableDocuments.FirstOrDefault(d => d.Key == key) is not { } document)
+        if (FindHashTable(group) is not { } document)
         {
             var table = new MemoryHashTableViewModel(Query.MemoryHistory, group, Playhead ?? TracePosition.Unknown, this);
 
@@ -306,7 +302,7 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
                                              table,
                                              static () => new MemoryHashTableView(),
                                              keepAlive: true,
-                                             key: key,
+                                             key: table.Key,
                                              persist: false)
             {
                 MinWidth = HexViewControl.StandardWidth
@@ -321,7 +317,7 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         }
         else if (isBelowPlan && !Dock.Contains(document))
         {
-            Query.Layout.RegisterDocument(key, document);
+            Query.Layout.RegisterDocument(document.Key, document);
 
             Query.Layout.ShowBelowPlan(document);
         }
@@ -334,7 +330,7 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
 
         if (bucket >= 0)
         {
-            ((MemoryHashTableViewModel)document.Content).ShowBucket(partition, bucket);
+            ((MemoryHashTableViewModel)document.Content).ShowBucket(group, partition, bucket);
         }
     }
 
@@ -737,7 +733,8 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         }
     }
 
-    private static string GetHashTableKey(ulong group) => $"HashTable:{group:X}";
+    private DocumentViewModel? FindHashTable(ulong group)
+        => HashTableDocuments.FirstOrDefault(d => d.Content is MemoryHashTableViewModel table && table.Contains(group));
 
     private static void DisposeHashTable(DocumentViewModel document)
     {

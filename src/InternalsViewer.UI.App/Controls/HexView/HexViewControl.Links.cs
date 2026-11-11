@@ -68,7 +68,7 @@ public sealed partial class HexViewControl
             {
                 var underline = new Rectangle
                 {
-                    Width = bounds.Width - 2,
+                    Width = Math.Max(0, bounds.Width - 2),
                     Height = LinkUnderlineThickness,
                     Fill = brush,
                     IsHitTestVisible = false
@@ -223,6 +223,11 @@ public sealed partial class HexViewControl
             control.HoveredLink = null;
 
             control.LinkTipPopup.IsOpen = false;
+        }
+
+        if (control._isHexRebuildPending)
+        {
+            return;
         }
 
         HighlightMarkers(control, control.Markers);

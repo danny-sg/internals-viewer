@@ -96,13 +96,13 @@ public sealed partial class MemoryPageViewModel : ObservableObject
 
     private int? PendingOffset { get; set; }
 
-    public void Load(MemoryHistoryViewModel history, int block)
+    public void Load(MemoryHistoryViewModel history, int block, RowRecordLayout? layout = null)
     {
         Clear();
 
         IsAvailable = history.IsPage(block);
 
-        Layout = IsAvailable ? history.GetWorkfileLayout(block) : null;
+        Layout = IsAvailable ? layout ?? history.GetWorkfileLayout(block) : null;
 
         SortLayout = IsAvailable ? history.GetSortLayout(block) : null;
     }

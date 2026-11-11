@@ -13,7 +13,9 @@
 
     <UserControl.Resources>
         <DataTemplate x:Key="NodeTemplate" x:DataType="muxc:TreeViewNode">
-            <StackPanel Orientation="Horizontal" Spacing="6">
+            <StackPanel Orientation="Horizontal"
+                        Spacing="6"
+                        Opacity="{x:Bind ((timeline:MemoryHashTableNode)Content).Opacity}">
                 <TextBlock Text="{x:Bind ((timeline:MemoryHashTableNode)Content).Name}"
                            FontSize="12"
                            VerticalAlignment="Center"/>
@@ -22,17 +24,6 @@
                            FontFamily="{StaticResource MonospaceFontFamily}"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            VerticalAlignment="Center"/>
-                <TextBlock Text="&#x2192;"
-                           FontSize="12"
-                           Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                           VerticalAlignment="Center"
-                           Visibility="{x:Bind ((timeline:MemoryHashTableNode)Content).HasTarget}"/>
-                <TextBlock Text="{x:Bind ((timeline:MemoryHashTableNode)Content).TargetText}"
-                           FontSize="12"
-                           FontFamily="{StaticResource MonospaceFontFamily}"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                           VerticalAlignment="Center"
-                           Visibility="{x:Bind ((timeline:MemoryHashTableNode)Content).HasTarget}"/>
                 <TextBlock Text="{x:Bind ((timeline:MemoryHashTableNode)Content).Detail}"
                            FontSize="12"
                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
@@ -82,6 +73,19 @@
                     Spacing="6"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     BorderThickness="0,0,0,1">
+            <Button Style="{StaticResource TabCommandButtonStyle}"
+                    Command="{x:Bind ViewModel.GoBackCommand, Mode=OneWay}"
+                    VerticalAlignment="Center"
+                    ToolTipService.ToolTip="Back">
+                <FontIcon Glyph="&#xE72B;" FontSize="12"/>
+            </Button>
+            <Button Style="{StaticResource TabCommandButtonStyle}"
+                    Command="{x:Bind ViewModel.GoForwardCommand, Mode=OneWay}"
+                    Margin="0,0,6,0"
+                    VerticalAlignment="Center"
+                    ToolTipService.ToolTip="Forward">
+                <FontIcon Glyph="&#xE72A;" FontSize="12"/>
+            </Button>
             <ItemsControl ItemsSource="{x:Bind ViewModel.Path, Mode=OneWay}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
@@ -144,7 +148,7 @@
                                     Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
                                     Links="{x:Bind ViewModel.Links, Mode=OneWay}"
                                     OffsetClicked="OnHexOffsetClicked"
-                                    SelectedChangeSpan="{x:Bind ViewModel.SelectedChangeSpan, Mode=OneWay}"
+                                    SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"
                                     ScrollToOffset="{x:Bind ViewModel.ScrollToOffset, Mode=OneWay}"/>
 
             <Grid Grid.Column="1">

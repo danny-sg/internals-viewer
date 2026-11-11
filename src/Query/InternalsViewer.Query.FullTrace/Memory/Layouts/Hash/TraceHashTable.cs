@@ -9,6 +9,10 @@ public sealed record TraceHashTable(ulong Group,
                                     int PartitionShift,
                                     IReadOnlyList<TraceHashPartition> Partitions)
 {
+    public ulong ColumnArray { get; init; }
+
+    public IReadOnlyList<TraceHashColumn> Columns { get; init; } = [];
+
     public (int Partition, int Bucket)? GetLocation(uint hash)
     {
         var partition = PartitionShift is >= 0 and < 32 ? (int)((hash & PartitionMask) >> PartitionShift) : 0;

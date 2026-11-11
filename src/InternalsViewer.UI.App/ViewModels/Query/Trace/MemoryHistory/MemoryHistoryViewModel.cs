@@ -212,6 +212,8 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
     public TraceBufferPool BufferPool => Trace?.BufferPool ?? TraceBufferPool.Empty;
 
+    public AddressMap AddressMap => Map ?? AddressMap.Empty;
+
     public TraceBufferReference? GetBufferPage(ulong address, TracePosition position) => Trace?.BufferPool.GetReference(address, position);
 
     public string GetBufferPageLabel(TraceBufferReference reference)
@@ -244,6 +246,9 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
             : null;
 
     public RowRecordLayout? GetWorkfileLayout(int block) => GetPageIterator(block) is { } iterator ? Workfiles?.Get(iterator) : null;
+
+    public RowRecordLayout? GetWorkfileLayout(ulong iterator, IReadOnlyList<ColumnBinding> bindings, bool isProbeSide)
+        => Workfiles?.Get(iterator, bindings, isProbeSide);
 
     public SortRecordLayout? GetSortLayout(int block) => GetPageIterator(block) is { } iterator ? Workfiles?.GetSort(iterator) : null;
 

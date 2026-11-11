@@ -44,6 +44,49 @@ public class TraceHashTableReaderTests
         Assert.Equal([Overflow + 0x80, Overflow], bucket.Items.Select(i => i.Address));
     }
 
+    [Fact]
+    public void A_Group_Reads_Each_Column_From_Its_Value_Accessor_Bindings()
+    {
+        const ulong columnArray = 0x80000;
+        const ulong scanArray = 0x81000;
+        const ulong value = 0x82000;
+        const ulong scanValue = 0x83000;
+        const ulong accessor = 0x84000;
+        const ulong bindings = 0x85000;
+        const ulong binding = 0x86000;
+
+        var store = MemoryHistoryStoreHelper.Build([MemoryHistoryStoreHelper.Block(Group, 0x200),
+                                                    MemoryHistoryStoreHelper.Block(columnArray, 0x8),
+                                                    MemoryHistoryStoreHelper.Block(scanArray, 0x8),
+                                                    MemoryHistoryStoreHelper.Block(value, 0x58),
+                                                    MemoryHistoryStoreHelper.Block(scanValue, 0x58),
+                                                    MemoryHistoryStoreHelper.Block(accessor, 0x20),
+                                                    MemoryHistoryStoreHelper.Block(bindings, 0x110),
+                                                    MemoryHistoryStoreHelper.Block(binding, 0x80)],
+                                                   [(1, Group + 0x10, Pointer(0x70000)),
+                                                    (1, Group + TraceHashTableLayout.ColumnsOffset, Pointer(columnArray)),
+                                                    (1, Group + TraceHashTableLayout.ScanColumnsOffset, Pointer(scanArray)),
+                                                    (1, columnArray, Pointer(value)),
+                                                    (1, scanArray, Pointer(scanValue)),
+                                                    (1, value + TraceHashTableLayout.ValueAccessorOffset, Pointer(accessor)),
+                                                    (1, accessor, Pointer(bindings)),
+                                                    (1, bindings + 0x62, BitConverter.GetBytes((ushort)1)),
+                                                    (1, bindings + 0x70, Pointer(binding)),
+                                                    (1, binding, BitConverter.GetBytes(12)),
+                                                    (1, binding + 0x04, BitConverter.GetBytes((ushort)3)),
+                                                    (1, binding + 0x28, BitConverter.GetBytes(8)),
+                                                    (1, binding + 0x30, BitConverter.GetBytes(0)),
+                                                    (1, binding + 0x3C, BitConverter.GetBytes((ushort)8)),
+                                                    (1, binding + 0x3E, [0x7F]),
+                                                    (1, binding + 0x40, BitConverter.GetBytes(0x81601u))]);
+
+        var column = Assert.Single(TraceHashTableReader.Read(store, Group, At(2))!.Columns);
+
+        Assert.Equal((3, 12, (byte)0x7F, 8), (column.Binding.Ordinal, column.Binding.RecordOffset, column.Binding.Type, column.Binding.MaximumLength));
+
+        Assert.Equal((value, scanValue, accessor, bindings), (column.Value, column.ScanValue, column.Accessor, column.Bindings));
+    }
+
     private static TraceHashTable Read(ulong head)
     {
         var store = MemoryHistoryStoreHelper.Build([MemoryHistoryStoreHelper.Block(Group, 0x200),

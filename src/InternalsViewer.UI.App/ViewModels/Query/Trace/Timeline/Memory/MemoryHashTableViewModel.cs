@@ -2,13 +2,18 @@ using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Data;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.InteropServices;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using InternalsViewer.Internals.Helpers;
+using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.Layouts;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Pages;
 using InternalsViewer.Query.Helpers;
@@ -16,7 +21,6 @@ using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Controls.HexView;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
-using InternalsViewer.UI.App.Models.Logging;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline.Enums;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryHistory;
@@ -29,9 +33,17 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 {
     private const string GroupName = "Partition Group";
 
-    private const string PartitionsName = "Partition Instances";
+    private const string HashTableName = "Hash Table";
 
-    private const string DirectoryName = "Directory";
+    private const string WorktableGroupName = "Worktable Group";
+
+    private const string RebuildGroupName = "Rebuild Group";
+
+    private const string BuildSideName = "Build Side";
+
+    private const string ProbeSideName = "Probe Side";
+
+    private const string AccessorsName = "Accessors";
 
     private const string BucketPageName = "Item Page";
 
@@ -42,6 +54,8 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
     private const string WorkfilePagesName = "Workfile Pages";
 
     private const string WorkfilePageName = "Workfile Page";
+
+    private const string InUseBadge = "In Use";
 
     private const string ActiveBadge = "Active";
 
@@ -89,6 +103,10 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
     private const int ValueWidth = 360;
 
+    private const int TypeWidth = 140;
+
+    private const int AccessorWidth = 260;
+
     private const int BucketWidth = 130;
 
     private const int RowCountWidth = 90;
@@ -105,14 +123,6 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
     private const int FixedEntryColumns = 3;
 
-    private const int DirectoryShift = 16;
-
-    private const int ActiveField = 1;
-
-    private const int LastField = 2;
-
-    private const int FirstField = 3;
-
     private const int CountField = 0;
 
     private const int HeadField = 1;
@@ -125,8 +135,18 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
     private static readonly TimeSpan LoadInterval = TimeSpan.FromMilliseconds(50);
 
+    private static readonly int ActiveField = GetField(TraceHashTableLayout.GroupFields, TraceHashTableLayout.ActivePartitionOffset);
+
+    private static readonly int LastField = GetField(TraceHashTableLayout.GroupFields, TraceHashTableLayout.PartitionListOffset);
+
+    private static readonly int FirstField = GetField(TraceHashTableLayout.GroupFields,
+                                                      TraceHashTableLayout.PartitionListOffset + sizeof(ulong));
+
+    private static readonly int CurrentField = GetField(TraceHashTableLayout.IteratorFields, TraceHashTableLayout.CurrentGroupOffset);
+
     private static readonly int ColourCount = new[]
     {
+        TraceHashTableLayout.IteratorFields.Count,
         TraceHashTableLayout.GroupFields.Count,
         TraceHashTableLayout.PartitionFields.Count,
         TraceHashTableLayout.ItemFields.Count
@@ -158,7 +178,7 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
     private ObservableCollection<Marker>? _markers;
 
     [ObservableProperty]
-    private LogRecordAnnotation? _selectedChangeSpan;
+    private Marker? _selectedMarker;
 
     [ObservableProperty]
     private int? _scrollToOffset;
@@ -186,6 +206,14 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
     [ObservableProperty]
     private List<HexLink>? _links;
 
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(GoBackCommand))]
+    private bool _canGoBack;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(GoForwardCommand))]
+    private bool _canGoForward;
+
     public MemoryHashTableViewModel(MemoryHistoryViewModel history, ulong group, TracePosition position, ITraceNavigator navigator)
     {
         History = history;
@@ -202,14 +230,33 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
         Loader = new PlayheadLoader<LoadedTable?>(LoadInterval, Apply);
 
-        Accesses = history.CallStore is { } calls ? TraceHashTableReader.GetAccesses(calls, group) : [];
+        var calls = history.CallStore;
+
+        var opened = calls is null ? [] : TraceHashTableReader.GetAccesses(calls, group);
+
+        var at = opened.Count > 0 ? opened[0].Position : position;
+
+        Iterator = TraceHashTableReader.GetIterator(history.Store, group, at) ?? 0;
+
+        Groups = Iterator == 0 ? [] : TraceHashTableReader.GetIteratorGroups(history.Store, history.AddressMap, Iterator, at);
+
+        if (!Groups.Exists(g => g.Group == group))
+        {
+            Groups.Insert(0, (0, group, false));
+        }
+
+        Accesses = calls is null
+            ? []
+            : TraceHashTableReader.GetAccesses(calls, Groups.Where(g => !g.IsWorktable).Select(g => g.Group).ToHashSet());
 
         EntryDetails = GetEntryDetails;
 
         Load();
     }
 
-    public string Title => $"Hash Table 0x{Group:X16}";
+    public string Title => $"Hash Table 0x{(Iterator == 0 ? Group : Iterator):X16}";
+
+    public string Key => $"HashTable:{(Iterator == 0 ? Group : Iterator):X}";
 
     public MemoryPageViewModel WorkfilePage { get; }
 
@@ -223,6 +270,10 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
     private ulong Group { get; }
 
+    private ulong Iterator { get; }
+
+    private List<(int Slot, ulong Group, bool IsWorktable)> Groups { get; }
+
     private ITraceNavigator Navigator { get; }
 
     private TracePosition OpenedAt { get; }
@@ -233,7 +284,7 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
     private PlayheadLoader<LoadedTable?> Loader { get; }
 
-    private List<TraceHashAccess> Accesses { get; }
+    private Dictionary<ulong, List<TraceHashAccess>> Accesses { get; }
 
     private LoadedTable? Loaded { get; set; }
 
@@ -247,9 +298,9 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
     private ulong? SelectedItem { get; set; }
 
-    private (int Partition, int Bucket)? PendingBucket { get; set; }
+    private (ulong Group, int Partition, int Bucket)? PendingBucket { get; set; }
 
-    private TraceHashPart? PendingPart { get; set; }
+    private (ulong Group, TraceHashPart Part)? PendingPart { get; set; }
 
     private int? PendingSlotOffset { get; set; }
 
@@ -267,6 +318,19 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
     private bool IsSelecting { get; set; }
 
+    private Marker? MaskedMarker { get; set; }
+
+    private List<HistoryEntry> NavigationHistory { get; } = [];
+
+    private int HistoryIndex { get; set; } = -1;
+
+    private bool IsReplaying { get; set; }
+
+    private HistoryEntry CurrentEntry
+        => new(SelectedKey,
+               SelectedItem,
+               Find(SelectedKey) is { Type: MemoryHashTableNodeType.WorkfilePage } ? WorkfilePage.SelectedSlot?.Offset : null);
+
     public void SetPlayhead(TracePosition? position)
     {
         Playhead = position;
@@ -274,9 +338,11 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
         Load();
     }
 
-    public void ShowBucket(int partition, int bucket)
+    public bool Contains(ulong group) => Groups.Exists(g => g.Group == group);
+
+    public void ShowBucket(ulong group, int partition, int bucket)
     {
-        PendingBucket = (partition, bucket);
+        PendingBucket = (group, partition, bucket);
 
         if (Loaded is not null)
         {
@@ -284,9 +350,9 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
         }
     }
 
-    public void ShowPart(TraceHashPart part)
+    public void ShowPart(ulong group, TraceHashPart part)
     {
-        PendingPart = part;
+        PendingPart = (group, part);
 
         if (Loaded is not null)
         {
@@ -301,7 +367,13 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
             return;
         }
 
-        if (node.Type is MemoryHashTableNodeType.Group or MemoryHashTableNodeType.Partition)
+        var previous = MaskedMarker;
+
+        if (node.Type is MemoryHashTableNodeType.HashTable
+                      or MemoryHashTableNodeType.Group
+                      or MemoryHashTableNodeType.WorktableGroup
+                      or MemoryHashTableNodeType.Accessors
+                      or MemoryHashTableNodeType.Partition)
         {
             var field = ShownFields.FindIndex(f => IsWithin((ulong)offset, (ulong)(ShownBase + f.Field.Offset), f.Field.Length));
 
@@ -311,7 +383,7 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
             }
         }
         else if (node.Type is MemoryHashTableNodeType.BucketPage or MemoryHashTableNodeType.OverflowPage
-                 && node.Partition < loaded.Table.Partitions.Count)
+                 && GetPartition(loaded, node) is not null)
         {
             var size = (ulong)TraceHashTableLayout.BucketSize;
 
@@ -327,7 +399,9 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
             WorkfilePage.SelectContaining(offset);
         }
 
-        OutlineMarker(offset);
+        var marker = MarkerLookup.FindAt(Markers, offset);
+
+        Mask(marker is not null && !IsSameMarker(marker, previous) ? marker : null);
     }
 
     public void Close()
@@ -356,9 +430,9 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
             return;
         }
 
-        var (field, colour) = ShownFields[(int)id];
+        var field = ShownFields[(int)id].Field;
 
-        Outline(ShownBase + field.Offset, field.Length, field.Name, FieldColours[colour]);
+        Mask(Markers?.FirstOrDefault(m => m.StartPosition == ShownBase + field.Offset && m.Name == field.Name));
     }
 
     partial void OnSelectedEntryRowChanged(ResultRow<long>? value)
@@ -370,21 +444,72 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
         SelectedItem = (ulong)id;
 
-        OutlineItem();
+        MaskItem();
     }
 
     private static LoadedTable? Read(MemoryHistoryViewModel history,
-                                     ulong group,
-                                     List<TraceHashAccess> accesses,
+                                     ulong iterator,
+                                     List<(int Slot, ulong Group, bool IsWorktable)> groups,
+                                     Dictionary<ulong, List<TraceHashAccess>> accesses,
                                      TracePosition position,
                                      ulong hexAddress)
     {
         var store = history.Store;
 
-        if (TraceHashTableReader.Read(store, group, position) is not { } table)
+        var decoded = new Dictionary<int, WorkfilePage?>();
+
+        var rows = new Dictionary<ulong, List<(string Name, string Value)>>();
+
+        var loaded = new List<LoadedGroup>();
+
+        foreach (var (slot, group, isWorktable) in groups)
+        {
+            var table = isWorktable ? null : TraceHashTableReader.Read(store, group, position);
+
+            loaded.Add(table is null
+                ? new LoadedGroup(slot, group, isWorktable, null, null, null, [], [], null)
+                : ReadGroup(history, slot, table, accesses.GetValueOrDefault(group) ?? [], decoded, rows, position));
+        }
+
+        if (loaded.TrueForAll(g => g.Table is null))
         {
             return null;
         }
+
+        var hexBlock = hexAddress == 0 ? -1 : store.GetBlock(hexAddress, position);
+
+        var count = hexBlock >= 0 ? store.GetWriteCount(hexBlock, position) : 0;
+
+        var image = count > 0 ? store.GetImage(hexBlock, count - 1) : null;
+
+        var data = image?.Data;
+
+        var pointers = image is not null
+            ? MemoryHistoryPointerReader.Find(store, history.BufferPool, hexBlock, image, count, position)
+            : [];
+
+        var hexBase = hexBlock >= 0 ? (int)(hexAddress - store.Blocks[hexBlock].Address) : 0;
+
+        return new LoadedTable(iterator,
+                               iterator == 0 ? 0 : TraceHashTableReader.GetCurrentGroup(store, iterator, position),
+                               loaded,
+                               rows,
+                               hexAddress,
+                               hexBlock,
+                               hexBase,
+                               data,
+                               pointers);
+    }
+
+    private static LoadedGroup ReadGroup(MemoryHistoryViewModel history,
+                                         int slot,
+                                         TraceHashTable table,
+                                         List<TraceHashAccess> accesses,
+                                         Dictionary<int, WorkfilePage?> decoded,
+                                         Dictionary<ulong, List<(string Name, string Value)>> rows,
+                                         TracePosition position)
+    {
+        var store = history.Store;
 
         var span = CollectionsMarshal.AsSpan(accesses);
 
@@ -392,9 +517,7 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
         TraceHashAccess? access = index >= 0 ? accesses[index] : null;
 
-        var decoded = new Dictionary<int, WorkfilePage?>();
-
-        var rows = new Dictionary<ulong, List<(string Name, string Value)>>();
+        var layout = GetLayout(history, table, slot);
 
         var workfiles = new List<List<PageEntry>>();
 
@@ -424,7 +547,7 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
                     entries[found] = entries[found] with { Count = entries[found].Count + 1 };
                 }
 
-                if (ReadRow(history, decoded, block, row, position) is { } values)
+                if (ReadRow(history, decoded, block, row, position, layout) is { } values)
                 {
                     rows[row] = values;
                 }
@@ -437,38 +560,30 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
         var overflow = table.Partitions.Select(p => GetOverflowPages(history, p, position)).ToList();
 
-        var hexBlock = hexAddress == 0 ? -1 : store.GetBlock(hexAddress, position);
-
-        var count = hexBlock >= 0 ? store.GetWriteCount(hexBlock, position) : 0;
-
-        var image = count > 0 ? store.GetImage(hexBlock, count - 1) : null;
-
-        var data = image?.Data;
-
-        var pointers = image is not null
-            ? MemoryHistoryPointerReader.Find(store, history.BufferPool, hexBlock, image, count, position)
-            : [];
-
-        var hexBase = hexBlock >= 0 ? (int)(hexAddress - store.Blocks[hexBlock].Address) : 0;
-
-        return new LoadedTable(table,
+        return new LoadedGroup(slot,
+                               table.Group,
+                               false,
+                               table,
                                access,
                                access is { } value ? table.GetLocation(value.Hash) : null,
                                workfiles,
                                overflow,
-                               rows,
-                               hexAddress,
-                               hexBlock,
-                               hexBase,
-                               data,
-                               pointers);
+                               layout);
     }
+
+    private static RowRecordLayout? GetLayout(MemoryHistoryViewModel history, TraceHashTable table, int slot)
+        => table.Columns.Count > 0
+            ? history.GetWorkfileLayout(table.Iterator,
+                                        [.. table.Columns.Select(c => c.Binding)],
+                                        slot / TraceHashTableLayout.GroupsPerSide == 1)
+            : null;
 
     private static List<(string Name, string Value)>? ReadRow(MemoryHistoryViewModel history,
                                                              Dictionary<int, WorkfilePage?> decoded,
                                                              int block,
                                                              ulong row,
-                                                             TracePosition position)
+                                                             TracePosition position,
+                                                             RowRecordLayout? layout)
     {
         var store = history.Store;
 
@@ -476,7 +591,9 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
         {
             var count = store.GetWriteCount(block, position);
 
-            page = count > 0 ? WorkfilePageReader.Read(store.GetImage(block, count - 1).Data, history.GetWorkfileLayout(block)) : null;
+            var data = count > 0 ? store.GetImage(block, count - 1).Data : null;
+
+            page = data is not null ? WorkfilePageReader.Read(data, layout ?? history.GetWorkfileLayout(block)) : null;
 
             decoded[block] = page;
         }
@@ -505,6 +622,19 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
         };
     }
 
+    private static int GetField(IReadOnlyList<MemoryField> fields, int offset)
+    {
+        for (var index = 0; index < fields.Count; index++)
+        {
+            if (fields[index].Offset == offset)
+            {
+                return index;
+            }
+        }
+
+        return 0;
+    }
+
     private static List<MemoryHashTableBadge> GetBadges(TraceHashTable table, TraceHashPartition partition)
     {
         var badges = new List<MemoryHashTableBadge>();
@@ -526,11 +656,6 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
         return badges;
     }
-
-    private static string GetDirectoryName(TraceHashPartition partition, TraceHashPage page)
-        => partition.DirectoryCount > 1
-            ? $"{DirectoryName} Entry {(page.FirstBucket >> DirectoryShift) & (partition.DirectoryCount - 1)}"
-            : DirectoryName;
 
     private static string GetBucketRange(TraceHashPartition partition, TraceHashPage page)
     {
@@ -580,6 +705,24 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
     private static string GetText(long value) => value.ToString(CultureInfo.CurrentCulture);
 
+    private static string GetGroupName(LoadedGroup group)
+    {
+        if (group.IsWorktable)
+        {
+            return WorktableGroupName;
+        }
+
+        return group.Slot % TraceHashTableLayout.GroupsPerSide == 0 ? GroupName : RebuildGroupName;
+    }
+
+    private static LoadedGroup? GetLoadedGroup(LoadedTable loaded, MemoryHashTableNode node)
+        => loaded.Groups.Find(g => g.Address == node.Group);
+
+    private static TraceHashPartition? GetPartition(LoadedTable loaded, MemoryHashTableNode node)
+        => node.Partition >= 0 && GetLoadedGroup(loaded, node)?.Table is { } table && node.Partition < table.Partitions.Count
+            ? table.Partitions[node.Partition]
+            : null;
+
     private static IEnumerable<MemoryHashTableNode> Flatten(MemoryHashTableNode node)
         => node.Children.SelectMany(Flatten).Prepend(node);
 
@@ -596,11 +739,11 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
             ForeColour = Colors.Black
         };
 
-    private static object GetBucketCell(LoadedTable loaded, int bucket, int current)
+    private static object GetBucketCell(TraceHashAccess? found, int bucket, int current)
     {
         var text = GetText(bucket);
 
-        if (bucket != current || loaded.Access is not { } access)
+        if (bucket != current || found is not { } access)
         {
             return text;
         }
@@ -614,7 +757,9 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
     {
         var history = History;
 
-        var group = Group;
+        var iterator = Iterator;
+
+        var groups = Groups;
 
         var accesses = Accesses;
 
@@ -622,7 +767,7 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
         var hexAddress = HexAddress;
 
-        Loader.Request(() => Read(history, group, accesses, position, hexAddress));
+        Loader.Request(() => Read(history, iterator, groups, accesses, position, hexAddress));
     }
 
     private void Apply(LoadedTable? loaded)
@@ -644,6 +789,11 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
         IsApplying = false;
 
+        if (HistoryIndex < 0 && PendingPart is null && PendingBucket is null)
+        {
+            Remember(CurrentEntry);
+        }
+
         if (PendingPart is not null)
         {
             SelectPendingPart();
@@ -663,17 +813,47 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
     private void BuildTree(LoadedTable loaded)
     {
-        var table = loaded.Table;
+        var root = new MemoryHashTableNode(MemoryHashTableNodeType.HashTable, HashTableName, loaded.Iterator, -1, null);
 
-        var root = new MemoryHashTableNode(MemoryHashTableNodeType.Group, GroupName, table.Group, -1, null);
-
-        var heading = new MemoryHashTableNode(MemoryHashTableNodeType.Partitions, PartitionsName, 0, -1, root);
-
-        root.Children.Add(heading);
-
-        foreach (var partition in table.Partitions)
+        foreach (var side in loaded.Groups.GroupBy(g => g.Slot / TraceHashTableLayout.GroupsPerSide).OrderBy(s => s.Key))
         {
-            heading.Children.Add(CreatePartition(loaded, partition, heading));
+            var heading = side.Key == 0
+                ? new MemoryHashTableNode(MemoryHashTableNodeType.BuildSide, BuildSideName, 0, -1, root)
+                : new MemoryHashTableNode(MemoryHashTableNodeType.ProbeSide, ProbeSideName, 0, -1, root);
+
+            foreach (var group in side.OrderBy(g => g.Slot))
+            {
+                var type = group.IsWorktable ? MemoryHashTableNodeType.WorktableGroup : MemoryHashTableNodeType.Group;
+
+                var node = new MemoryHashTableNode(type,
+                                                   GetGroupName(group),
+                                                   group.Address,
+                                                   -1,
+                                                   heading)
+                {
+                    IsActive = Accesses.TryGetValue(group.Address, out var used) && used.Count > 0,
+                    Badges = group.Address == loaded.CurrentGroup
+                        ? [new MemoryHashTableBadge(InUseBadge, FieldColours[CurrentField].ToWindowsColor())]
+                        : []
+                };
+
+                if (group.Table is { Columns.Count: > 0 } table)
+                {
+                    node.Children.Add(new MemoryHashTableNode(MemoryHashTableNodeType.Accessors, AccessorsName, table.ColumnArray, -1, node)
+                    {
+                        Detail = table.Columns.Count == 1 ? "1 Column" : $"{table.Columns.Count} Columns"
+                    });
+                }
+
+                foreach (var partition in group.Table?.Partitions ?? [])
+                {
+                    node.Children.Add(CreatePartition(group, partition, node));
+                }
+
+                heading.Children.Add(node);
+            }
+
+            root.Children.Add(heading);
         }
 
         var key = string.Join("|", Flatten(root).Select(n => $"{n.Key} {n.Detail} {string.Join(",", n.Badges)}"));
@@ -685,11 +865,16 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
         StructureKey = key;
 
-        var nodes = new Dictionary<ulong, MemoryHashTableNode> { [table.Group + TraceHashTableLayout.PartitionListOffset] = root };
+        var nodes = new Dictionary<ulong, MemoryHashTableNode>();
 
         foreach (var node in Flatten(root).Where(n => n.IsSelectable))
         {
             nodes.TryAdd(node.Address, node);
+
+            if (node.Type == MemoryHashTableNodeType.Group)
+            {
+                nodes.TryAdd(node.Address + TraceHashTableLayout.PartitionListOffset, node);
+            }
 
             if (node.Type == MemoryHashTableNodeType.Partition)
             {
@@ -701,12 +886,12 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
         Roots = [root];
 
-        SelectedNode = Find(SelectedKey) ?? root;
+        SelectedNode = Find(SelectedKey) ?? Flatten(root).FirstOrDefault(n => n.Type == MemoryHashTableNodeType.Group) ?? root;
 
         SelectedKey = SelectedNode.Key;
     }
 
-    private MemoryHashTableNode CreatePartition(LoadedTable loaded, TraceHashPartition partition, MemoryHashTableNode parent)
+    private MemoryHashTableNode CreatePartition(LoadedGroup group, TraceHashPartition partition, MemoryHashTableNode parent)
     {
         var node = new MemoryHashTableNode(MemoryHashTableNodeType.Partition,
                                            $"Partition {partition.Index}",
@@ -714,22 +899,10 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
                                            partition.Index,
                                            parent)
         {
-            Badges = GetBadges(loaded.Table, partition)
+            Badges = GetBadges(group.Table!, partition)
         };
 
-        foreach (var pages in partition.Pages.GroupBy(p => p.PointerPage))
-        {
-            node.Children.Add(new MemoryHashTableNode(MemoryHashTableNodeType.Directory,
-                                                      GetDirectoryName(partition, pages.First()),
-                                                      partition.Directory,
-                                                      partition.Index,
-                                                      node)
-            {
-                Target = pages.Key
-            });
-        }
-
-        List<PageEntry> overflow = partition.Index < loaded.OverflowPages.Count ? loaded.OverflowPages[partition.Index] : [];
+        List<PageEntry> overflow = partition.Index < group.OverflowPages.Count ? group.OverflowPages[partition.Index] : [];
 
         if (partition.Pages.Any(p => p.BucketPage != 0) || overflow.Count > 0)
         {
@@ -763,7 +936,7 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
             node.Children.Add(heading);
         }
 
-        if (partition.Index < loaded.Workfiles.Count && loaded.Workfiles[partition.Index] is { Count: > 0 } workfiles)
+        if (partition.Index < group.Workfiles.Count && group.Workfiles[partition.Index] is { Count: > 0 } workfiles)
         {
             var heading = new MemoryHashTableNode(MemoryHashTableNodeType.WorkfilePages, WorkfilePagesName, 0, partition.Index, node);
 
@@ -791,7 +964,9 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
     {
         var target = Find(node.Key) ?? node;
 
-        if (target.Key != SelectedKey)
+        Remember(new HistoryEntry(target.Key, item ?? (target.Key == SelectedKey ? SelectedItem : null), PendingSlotOffset));
+
+        if (target.Key != SelectedKey || IsReplaying)
         {
             SelectedKey = target.Key;
 
@@ -801,7 +976,7 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
             SelectedEntryRow = null;
 
-            SelectedChangeSpan = null;
+            Mask(null);
         }
 
         if (item is not null)
@@ -820,7 +995,7 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
     private void SelectPendingPart()
     {
-        if (PendingPart is not { } part)
+        if (PendingPart is not var (group, part))
         {
             return;
         }
@@ -835,7 +1010,9 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
         }
 
         var partition = Roots.SelectMany(Flatten)
-                             .FirstOrDefault(n => n.Type == MemoryHashTableNodeType.Partition && n.Partition == part.Partition);
+                             .FirstOrDefault(n => n.Type == MemoryHashTableNodeType.Partition
+                                                  && n.Group == group
+                                                  && n.Partition == part.Partition);
 
         if (partition is null)
         {
@@ -903,24 +1080,6 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
         return links;
     }
 
-    private void OutlineMarker(int offset)
-    {
-        if (MarkerLookup.FindAt(Markers, offset) is not { } marker)
-        {
-            SelectedChangeSpan = null;
-
-            return;
-        }
-
-        SelectedChangeSpan = new LogRecordAnnotation
-        {
-            Offset = marker.StartPosition,
-            Length = marker.EndPosition - marker.StartPosition + 1,
-            Description = marker.Name,
-            OutlineColour = marker.BackColour
-        };
-    }
-
     private void SelectPendingBucket()
     {
         if (PendingBucket is not { } pending)
@@ -930,9 +1089,9 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
         PendingBucket = null;
 
-        var (partition, bucket) = pending;
+        var (group, partition, bucket) = pending;
 
-        var nodes = Roots.SelectMany(Flatten).Where(n => n.Partition == partition).ToList();
+        var nodes = Roots.SelectMany(Flatten).Where(n => n.Group == group && n.Partition == partition).ToList();
 
         var node = nodes.FirstOrDefault(n => n.Type == MemoryHashTableNodeType.BucketPage && IsInRange(bucket, n.FirstBucket))
                    ?? nodes.FirstOrDefault(n => n.Type == MemoryHashTableNodeType.Partition);
@@ -975,6 +1134,79 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
         }
     }
 
+    [RelayCommand(CanExecute = nameof(CanGoBack))]
+    private void GoBack() => Travel(-1);
+
+    [RelayCommand(CanExecute = nameof(CanGoForward))]
+    private void GoForward() => Travel(1);
+
+    private void Remember(HistoryEntry entry)
+    {
+        if (IsReplaying)
+        {
+            return;
+        }
+
+        if (HistoryIndex >= 0)
+        {
+            NavigationHistory[HistoryIndex] = CurrentEntry;
+
+            if (NavigationHistory[HistoryIndex] == entry)
+            {
+                return;
+            }
+
+            NavigationHistory.RemoveRange(HistoryIndex + 1, NavigationHistory.Count - HistoryIndex - 1);
+        }
+
+        NavigationHistory.Add(entry);
+
+        HistoryIndex = NavigationHistory.Count - 1;
+
+        UpdateHistory();
+    }
+
+    private void Travel(int step)
+    {
+        if (HistoryIndex < 0)
+        {
+            return;
+        }
+
+        NavigationHistory[HistoryIndex] = CurrentEntry;
+
+        for (var index = HistoryIndex + step; index >= 0 && index < NavigationHistory.Count; index += step)
+        {
+            var entry = NavigationHistory[index];
+
+            if (Find(entry.Key) is not { } node)
+            {
+                continue;
+            }
+
+            HistoryIndex = index;
+
+            IsReplaying = true;
+
+            PendingSlotOffset = entry.SlotOffset;
+
+            Select(node, entry.Item);
+
+            IsReplaying = false;
+
+            break;
+        }
+
+        UpdateHistory();
+    }
+
+    private void UpdateHistory()
+    {
+        CanGoBack = HistoryIndex > 0;
+
+        CanGoForward = HistoryIndex >= 0 && HistoryIndex < NavigationHistory.Count - 1;
+    }
+
     private void ShowPath(MemoryHashTableNode node)
     {
         var chain = new List<MemoryHashTableNode>();
@@ -1005,8 +1237,20 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
         switch (node.Type)
         {
+            case MemoryHashTableNodeType.HashTable:
+                ShowFields(loaded, node, TraceHashTableLayout.IteratorFields);
+                break;
+
             case MemoryHashTableNodeType.Group:
                 ShowFields(loaded, node, TraceHashTableLayout.GroupFields);
+                break;
+
+            case MemoryHashTableNodeType.WorktableGroup:
+                ShowFields(loaded, node, []);
+                break;
+
+            case MemoryHashTableNodeType.Accessors:
+                ShowAccessors(loaded, node);
                 break;
 
             case MemoryHashTableNodeType.Partition:
@@ -1019,7 +1263,7 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
                 break;
 
             case MemoryHashTableNodeType.WorkfilePage:
-                ShowPage(loaded);
+                ShowPage(loaded, node);
                 break;
 
             default:
@@ -1094,6 +1338,98 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
         SelectedFieldRow = rows.FirstOrDefault(r => r.Id == selected);
     }
 
+    private void ShowAccessors(LoadedTable loaded, MemoryHashTableNode node)
+    {
+        EntryTable = null;
+
+        IsPageVisible = false;
+
+        if (GetLoadedGroup(loaded, node) is not { Table: { } table } group)
+        {
+            FieldTable = null;
+
+            ShownFields = [];
+
+            return;
+        }
+
+        var names = group.Layout?.Structure.Columns;
+
+        ShownBase = loaded.HexBase;
+
+        ShownFields =
+        [
+            .. table.Columns.Select((c, i) => (new MemoryField(GetColumnName(names, c, i), i * sizeof(ulong), sizeof(ulong)),
+                                               i % FieldColours.Count))
+        ];
+
+        SetMarkers(node.Key, () => ShownFields.Select(f => CreateMarker(f.Field.Name,
+                                                                        ShownBase + f.Field.Offset,
+                                                                        f.Field.Length,
+                                                                        f.Colour)));
+
+        var key = $"{node.Key} {StructureKey.GetHashCode()}";
+
+        if (key == TableKey && FieldTable is not null)
+        {
+            return;
+        }
+
+        TableKey = key;
+
+        var selected = SelectedFieldRow?.Id;
+
+        var columns = new List<ResultColumn>
+        {
+            new(0, "Column", typeof(string), false) { Width = FieldWidth },
+            new(1, "Type", typeof(string), false) { Width = TypeWidth },
+            new(2, "Offset", typeof(string), false) { Width = OffsetWidth, Alignment = ResultAlignment.Right },
+            new(3, "Value", typeof(string), false) { Width = AccessorWidth },
+            new(4, "Scan Value", typeof(string), false) { Width = AccessorWidth },
+            new(5, "Bindings", typeof(string), true) { Width = AccessorWidth }
+        };
+
+        var rows = table.Columns.Select((c, i) => new ResultRow<long>(
+        [
+            new SwatchText(ShownFields[i].Field.Name, FieldColours[ShownFields[i].Colour]),
+            GetTypeText(c.Binding),
+            GetOffsetText(c.Binding),
+            GetPointerCell(c.Value),
+            GetPointerCell(c.ScanValue),
+            GetPointerCell(c.Bindings)
+        ])
+        {
+            Id = i
+        }).ToList();
+
+        FieldTable = new QueryResultSet { Columns = columns, Rows = rows };
+
+        SelectedFieldRow = rows.FirstOrDefault(r => r.Id == selected);
+    }
+
+    private static string GetColumnName(List<ColumnStructure>? names, TraceHashColumn column, int index)
+        => names is not null && index < names.Count ? names[index].ColumnName : $"Column {column.Binding.Ordinal}";
+
+    private static string GetTypeText(ColumnBinding binding)
+    {
+        if (!SqlTypeHelpers.TryGetSqlType(binding.Type, out var type))
+        {
+            return $"0x{binding.Type:X2}";
+        }
+
+        var name = type.ToString().ToLowerInvariant();
+
+        return type switch
+        {
+            SqlDbType.Char or SqlDbType.VarChar or SqlDbType.Binary or SqlDbType.VarBinary => $"{name}({binding.MaximumLength})",
+            SqlDbType.NChar or SqlDbType.NVarChar => $"{name}({binding.MaximumLength / 2})",
+            _ => name
+        };
+    }
+
+    private static string GetOffsetText(ColumnBinding binding)
+        => binding.IsVariableLength ? $"Variable {binding.VariableIndex}" : $"0x{binding.RecordOffset:X}";
+
     private object? GetValueCell(MemoryField field, ulong? value)
     {
         if (value is not { } found)
@@ -1146,14 +1482,12 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
         ShownFields = [];
 
-        if (node.Partition < 0 || node.Partition >= loaded.Table.Partitions.Count)
+        if (GetLoadedGroup(loaded, node) is not { } group || GetPartition(loaded, node) is not { } partition)
         {
             EntryTable = null;
 
             return;
         }
-
-        var partition = loaded.Table.Partitions[node.Partition];
 
         var page = node.Address;
 
@@ -1163,7 +1497,7 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
         SetMarkers($"{node.Key} {content}", () => GetPageMarkers(partition, page, hexBase));
 
-        var current = loaded.Location is { } location && location.Partition == node.Partition ? location.Bucket : -1;
+        var current = group.Location is { } location && location.Partition == node.Partition ? location.Bucket : -1;
 
         var key = $"{node.Key} {current} {content}";
 
@@ -1172,8 +1506,8 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
             TableKey = key;
 
             EntryTable = node.Type == MemoryHashTableNodeType.BucketPage
-                ? CreateBucketPageTable(loaded, partition, node, current)
-                : CreateOverflowPageTable(loaded, partition, page, current);
+                ? CreateBucketPageTable(group.Access, partition, node, current)
+                : CreateOverflowPageTable(group.Access, partition, page, current);
         }
 
         if (SelectedItem is { } selected && EntryTable.Rows.FirstOrDefault(r => r.Id == (long)selected) is { } row)
@@ -1182,8 +1516,6 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
             {
                 SelectedEntryRow = row;
             }
-
-            OutlineItem();
         }
     }
 
@@ -1256,7 +1588,10 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
     private static ulong GetNext(TraceHashBucket bucket, int position)
         => position + 1 < bucket.Items.Count ? bucket.Items[position + 1].Address : 0;
 
-    private QueryResultSet CreateBucketPageTable(LoadedTable loaded, TraceHashPartition partition, MemoryHashTableNode node, int current)
+    private QueryResultSet CreateBucketPageTable(TraceHashAccess? access,
+                                                 TraceHashPartition partition,
+                                                 MemoryHashTableNode node,
+                                                 int current)
     {
         var fields = TraceHashTableLayout.ItemFields;
 
@@ -1291,7 +1626,7 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
             object?[] cells =
             [
-                GetBucketCell(loaded, bucket, current),
+                GetBucketCell(access, bucket, current),
                 hasHead ? GetItemCell(head!.Items[0].Address, slot) : null,
                 hasItem ? GetItemCell(GetNext(item.Bucket, item.Position), 0) : null,
                 GetText(hasItem ? item.Bucket.Items[item.Position].Entries.Count : 0)
@@ -1303,7 +1638,7 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
         return new QueryResultSet { Columns = columns, Rows = rows };
     }
 
-    private QueryResultSet CreateOverflowPageTable(LoadedTable loaded, TraceHashPartition partition, ulong page, int current)
+    private QueryResultSet CreateOverflowPageTable(TraceHashAccess? access, TraceHashPartition partition, ulong page, int current)
     {
         var fields = TraceHashTableLayout.ItemFields;
 
@@ -1320,7 +1655,7 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
         {
             object?[] cells =
             [
-                GetBucketCell(loaded, bucket.Index, current),
+                GetBucketCell(access, bucket.Index, current),
                 GetItemCell(GetNext(bucket, position), 0),
                 GetText(bucket.Items[position].Entries.Count)
             ];
@@ -1371,9 +1706,9 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
     private ResultDetails GetEntryDetails(ResultRow<long> row)
     {
         if (Loaded is not { } loaded
-            || SelectedNode is not { Partition: >= 0 } node
-            || node.Partition >= loaded.Table.Partitions.Count
-            || !GetItemOwners(loaded.Table.Partitions[node.Partition]).TryGetValue((ulong)row.Id, out var owner))
+            || SelectedNode is not { } node
+            || GetPartition(loaded, node) is not { } partition
+            || !GetItemOwners(partition).TryGetValue((ulong)row.Id, out var owner))
         {
             return new ResultDetails(string.Empty, [], NoRows);
         }
@@ -1421,28 +1756,35 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
         return new ResultDetails(string.Empty, []) { ResultSet = new QueryResultSet { Columns = columns, Rows = rows } };
     }
 
-    private void OutlineItem()
+    private void MaskItem()
     {
         if (SelectedItem is not { } item || Loaded is not { } loaded || !IsOnPage(item, HexAddress))
         {
             return;
         }
 
-        Outline(loaded.HexBase + (int)(item - HexAddress), TraceHashTableLayout.BucketSize, GetAddressText(item), FieldColours[0]);
-    }
+        var offset = loaded.HexBase + (int)(item - HexAddress);
 
-    private void Outline(int offset, int length, string description, Colour colour)
-    {
-        SelectedChangeSpan = new LogRecordAnnotation
+        Mask(new Marker
         {
-            Offset = offset,
-            Length = length,
-            Description = description,
-            OutlineColour = colour.ToWindowsColor()
-        };
-
-        ScrollToOffset = offset;
+            Name = GetAddressText(item),
+            StartPosition = offset,
+            EndPosition = offset + TraceHashTableLayout.BucketSize - 1
+        });
     }
+
+    private void Mask(Marker? marker)
+    {
+        MaskedMarker = marker;
+
+        SelectedMarker = marker;
+    }
+
+    private static bool IsSameMarker(Marker marker, Marker? other)
+        => other is not null
+           && marker.StartPosition == other.StartPosition
+           && marker.EndPosition == other.EndPosition
+           && marker.Name == other.Name;
 
     private void OpenRow(ulong row)
     {
@@ -1474,7 +1816,7 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
         }
     }
 
-    private void ShowPage(LoadedTable loaded)
+    private void ShowPage(LoadedTable loaded, MemoryHashTableNode node)
     {
         FieldTable = null;
 
@@ -1492,7 +1834,7 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
             if (PageBlock >= 0)
             {
-                WorkfilePage.Load(History, PageBlock);
+                WorkfilePage.Load(History, PageBlock, GetLoadedGroup(loaded, node)?.Layout);
             }
             else
             {
@@ -1545,11 +1887,21 @@ public sealed partial class MemoryHashTableViewModel : ObservableObject
 
     private readonly record struct PageEntry(ulong Address, int Count);
 
-    private sealed record LoadedTable(TraceHashTable Table,
+    private readonly record struct HistoryEntry(string Key, ulong? Item, int? SlotOffset);
+
+    private sealed record LoadedGroup(int Slot,
+                                      ulong Address,
+                                      bool IsWorktable,
+                                      TraceHashTable? Table,
                                       TraceHashAccess? Access,
                                       (int Partition, int Bucket)? Location,
                                       List<List<PageEntry>> Workfiles,
                                       List<List<PageEntry>> OverflowPages,
+                                      RowRecordLayout? Layout);
+
+    private sealed record LoadedTable(ulong Iterator,
+                                      ulong CurrentGroup,
+                                      List<LoadedGroup> Groups,
                                       Dictionary<ulong, List<(string Name, string Value)>> Rows,
                                       ulong HexAddress,
                                       int HexBlock,
