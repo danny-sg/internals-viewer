@@ -171,6 +171,8 @@ public sealed class ExecutionPlanControl : Canvas
         set => SetValue(IsFullTraceProperty, value);
     }
 
+    public Func<PlanNode, bool>? CanOpenHashTable { get; set; }
+
     public static readonly DependencyProperty CurrentStepProperty =
         DependencyProperty.Register(nameof(CurrentStep), typeof(PlanStepMarker), typeof(ExecutionPlanControl),
             new PropertyMetadata(null, OnCurrentStepChanged));
@@ -251,6 +253,8 @@ public sealed class ExecutionPlanControl : Canvas
     public event EventHandler<LinkClickedEventArgs>? StepLabelLinkClicked;
 
     public event EventHandler<PlanNode>? IndexOpenRequested;
+
+    public event EventHandler<PlanNode>? HashTableOpenRequested;
 
     public event EventHandler<PlanNode>? SimulationOpenRequested;
 
@@ -956,6 +960,15 @@ public sealed class ExecutionPlanControl : Canvas
                 openSimulation.Click += (_, _) => SimulationOpenRequested?.Invoke(this, node);
 
                 flyout.Items.Add(openSimulation);
+            }
+
+            if (IsFullTrace && CanOpenHashTable?.Invoke(node) == true)
+            {
+                var openHashTable = new MenuFlyoutItem { Text = "Hash Table" };
+
+                openHashTable.Click += (_, _) => HashTableOpenRequested?.Invoke(this, node);
+
+                flyout.Items.Add(openHashTable);
             }
 
             var openCallTree = new MenuFlyoutItem { Text = "Call Tree" };

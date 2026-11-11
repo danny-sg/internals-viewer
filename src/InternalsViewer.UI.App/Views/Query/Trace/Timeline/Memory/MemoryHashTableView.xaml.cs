@@ -190,6 +190,8 @@ public sealed partial class MemoryHashTableView : UserControl, IDisposable
         }
     }
 
+    private void OnHexOffsetClicked(object? sender, int offset) => ViewModel?.SelectOffset(offset);
+
     private void OnPathClick(object sender, RoutedEventArgs e)
     {
         if (sender is FrameworkElement { DataContext: ActionLink link })

@@ -325,6 +325,11 @@ public sealed partial class QueryPlanTabView : UserControl
             planControl.IndexOpenRequested -= OnPlanIndexOpenRequested;
             planControl.IndexOpenRequested += OnPlanIndexOpenRequested;
 
+            planControl.CanOpenHashTable = n => ViewModel?.GetHashTableGroup(n) is not null;
+
+            planControl.HashTableOpenRequested -= OnPlanHashTableOpenRequested;
+            planControl.HashTableOpenRequested += OnPlanHashTableOpenRequested;
+
 
             planControl.SimulationOpenRequested -= OnPlanSimulationOpenRequested;
             planControl.SimulationOpenRequested += OnPlanSimulationOpenRequested;
@@ -695,6 +700,8 @@ public sealed partial class QueryPlanTabView : UserControl
     }
 
     private void OnPlanIndexOpenRequested(object? sender, PlanNode node) => ViewModel?.OpenIndex(node);
+
+    private void OnPlanHashTableOpenRequested(object? sender, PlanNode node) => ViewModel?.OpenHashTable(node);
 
     private void OnPlanSimulationOpenRequested(object? sender, PlanNode node) => ViewModel?.OpenSimulation(node);
 

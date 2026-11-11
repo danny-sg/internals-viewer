@@ -81,6 +81,9 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
     [ObservableProperty]
     private string _hashTableText = string.Empty;
 
+    [ObservableProperty]
+    private string _hashTablePartText = string.Empty;
+
     public PlayheadMemoryViewModel(MemoryHistoryViewModel history)
     {
         History = history;
@@ -145,6 +148,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
     private ObservableCollection<Marker>? WriterMarkers { get; set; }
 
     private ulong HashTableGroup { get; set; }
+
+    private TraceHashPart? HashTablePart { get; set; }
 
     public void Open(int block, ulong address, TracePosition position)
     {
@@ -245,9 +250,13 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         HashTableGroup = 0;
 
+        HashTablePart = null;
+
         IsHashTableVisible = false;
 
         HashTableText = string.Empty;
+
+        HashTablePartText = string.Empty;
 
         Writes.Clear();
 
@@ -336,7 +345,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
     {
         if (HashTableGroup != 0)
         {
-            Navigator?.OpenHashTable(HashTableGroup);
+            Navigator?.OpenHashTable(HashTableGroup, HashTablePart);
         }
     }
 
@@ -579,14 +588,16 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     private void FindHashTable()
     {
-        HashTableGroup = History.CallStore is { } calls ? GetHashTableGroup(calls) : 0;
+        (HashTableGroup, HashTablePart) = History.CallStore is { } calls ? FindHashTablePart(calls) : (0, null);
 
         IsHashTableVisible = HashTableGroup != 0;
 
         HashTableText = IsHashTableVisible ? $"0x{HashTableGroup:X16}" : string.Empty;
+
+        HashTablePartText = HashTablePart is { } part ? HashTablePartLabel.GetText(part) : string.Empty;
     }
 
-    private ulong GetHashTableGroup(TraceCallStore calls)
+    private (ulong Group, TraceHashPart? Part) FindHashTablePart(TraceCallStore calls)
     {
         var block = History.Store.Blocks[Block];
 
@@ -596,13 +607,16 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
             List<TracePosition> positions = accesses.Count > 0 ? [OpenedAt, accesses[^1].Position] : [OpenedAt];
 
-            if (positions.Any(p => TraceHashTableReader.Read(History.Store, group, p)?.Contains(block.Address, block.Size) == true))
+            foreach (var position in positions)
             {
-                return group;
+                if (TraceHashTableReader.Read(History.Store, group, position)?.FindPart(block.Address, block.Size) is { } part)
+                {
+                    return (group, part);
+                }
             }
         }
 
-        return 0;
+        return (0, null);
     }
 
     private int? GetReadIndex(int index)

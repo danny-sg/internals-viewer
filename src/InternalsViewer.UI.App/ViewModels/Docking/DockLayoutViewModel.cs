@@ -102,6 +102,18 @@ public sealed partial class DockLayoutViewModel : ObservableObject
         OnLayoutChanged();
     }
 
+    public void DockLeft(DocumentViewModel document, double star)
+    {
+        if (Contains(document))
+        {
+            Activate(document);
+
+            return;
+        }
+
+        SetRoot(new SplitNode(Orientation.Horizontal, new TabGroupNode(document), Root) { FirstStar = 1, SecondStar = star });
+    }
+
     public void DockBottom(DocumentViewModel document)
     {
         if (Contains(document))

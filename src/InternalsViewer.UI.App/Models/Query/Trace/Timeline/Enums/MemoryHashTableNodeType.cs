@@ -6,7 +6,9 @@ public enum MemoryHashTableNodeType
     Partitions,
     Partition,
     Directory,
+    BucketPages,
     BucketPage,
+    OverflowPage,
     WorkfilePages,
     WorkfilePage
 }

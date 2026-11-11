@@ -6,6 +6,7 @@ using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
 using InternalsViewer.Query.Recording;
 using InternalsViewer.UI.App.Controls.Query.Trace.Calls;
 using InternalsViewer.UI.App.Controls.Docking;
@@ -214,6 +215,13 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
 
         memory.MemoryRequested += OnMemoryRequested;
 
+        List<DocumentMenuItem> menuItems = [new("Open Reference Graph", () => OpenReferenceGraph(memory.Block, memory.Position))];
+
+        if (memory.IsHashTableVisible)
+        {
+            menuItems.Add(new DocumentMenuItem("Open Hash Table", memory.OpenHashTable));
+        }
+
         var document = new DocumentViewModel(memory.Title,
                                              memory,
                                              static () => new TraceTimelineMemoryView(),
@@ -223,7 +231,7 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
                                              commandsFactory: () => CreateMemoryCommands(memory))
         {
             MinWidth = HexViewControl.StandardWidth,
-            MenuItems = [new DocumentMenuItem("Open Reference Graph", () => OpenReferenceGraph(memory.Block, memory.Position))]
+            MenuItems = menuItems
         };
 
         var neighbour = MemoryDocuments.LastOrDefault(Dock.Contains) ?? CallStackDocument;
@@ -272,11 +280,21 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         AddGraph(key, new MemoryReferenceGraphViewModel(Query.MemoryHistory, start, this));
     }
 
-    public void OpenHashTable(ulong group) => OpenHashTable(group, -1, -1, isBelowPlan: false);
+    public void OpenHashTable(ulong group, TraceHashPart? part)
+    {
+        OpenHashTable(group, -1, -1, isBelowPlan: false);
+
+        var document = HashTableDocuments.FirstOrDefault(d => d.Key == GetHashTableKey(group));
+
+        if (part is { } found && document?.Content is MemoryHashTableViewModel table)
+        {
+            table.ShowPart(found);
+        }
+    }
 
     public void OpenHashTable(ulong group, int partition, int bucket, bool isBelowPlan)
     {
-        var key = $"HashTable:{group:X}";
+        var key = GetHashTableKey(group);
 
         if (HashTableDocuments.FirstOrDefault(d => d.Key == key) is not { } document)
         {
@@ -323,6 +341,16 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
     public List<TraceMenuItem> GetMenuItems(TraceMenuTarget target)
     {
         var items = new List<TraceMenuItem>();
+
+        if (Trace is { } trace
+            && TraceHashTableReader.GetCallTarget(trace.MemoryHistory,
+                                                  trace.CallStore,
+                                                  target.Node,
+                                                  target.CallIndex) is var (group, location))
+        {
+            items.Add(new TraceMenuItem("Open Hash Table",
+                                        () => OpenHashTable(group, location?.Partition ?? -1, location?.Bucket ?? -1, isBelowPlan: false)));
+        }
 
         foreach (var contributor in Query.MenuContributors)
         {
@@ -708,6 +736,8 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
             dock.DockBottom(document);
         }
     }
+
+    private static string GetHashTableKey(ulong group) => $"HashTable:{group:X}";
 
     private static void DisposeHashTable(DocumentViewModel document)
     {

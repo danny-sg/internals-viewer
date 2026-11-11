@@ -1,5 +1,6 @@
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Calls;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Memory.History;
 
 namespace InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
@@ -22,6 +23,8 @@ public static class TraceHashTableReader
 
     private const int MaximumPartitions = 256;
 
+    private const int MaximumItems = 1024;
+
     public static TraceHashTable? Read(MemoryHistoryStore store, ulong group, TracePosition position)
     {
         var memory = new MemoryHistoryReader(store, position);
@@ -41,7 +44,7 @@ public static class TraceHashTableReader
 
         while (isLinked && link != 0 && link != head && partitions.Count < MaximumPartitions)
         {
-            partitions.Add(ReadPartition(memory, partitions.Count, link - TraceHashTableLayout.PartitionLinkOffset));
+            partitions.Add(ReadPartition(store, memory, position, partitions.Count, link - TraceHashTableLayout.PartitionLinkOffset));
 
             isLinked = memory.TryRead(link + sizeof(ulong), out link);
         }
@@ -66,6 +69,61 @@ public static class TraceHashTableReader
         }
 
         return [.. groups];
+    }
+
+    public static ulong? GetGroup(MemoryHistoryStore store, TraceCallStore calls, HashSet<ulong> iterators)
+    {
+        foreach (var group in GetGroups(calls))
+        {
+            var accesses = GetAccesses(calls, group);
+
+            if (accesses.Count == 0)
+            {
+                continue;
+            }
+
+            var memory = new MemoryHistoryReader(store, accesses[0].Position);
+
+            if (memory.TryRead(group + TraceHashTableLayout.IteratorOffset, out ulong iterator) && iterators.Contains(iterator))
+            {
+                return group;
+            }
+        }
+
+        return null;
+    }
+
+    public static (ulong Group, (int Partition, int Bucket)? Location)? GetCallTarget(MemoryHistoryStore store,
+                                                                                     TraceCallStore calls,
+                                                                                     CallTreeNode? node,
+                                                                                     int callIndex)
+    {
+        if (node?.Frame is not { Function: { } function } frame
+            || function.ClassName is not (TraceHashTableLayout.GroupClass or TraceHashTableLayout.PartitionClass)
+            || callIndex < 0
+            || calls.GetCallList(frame.Address, frame.InstanceAddress) is not { } list
+            || callIndex >= list.Count)
+        {
+            return null;
+        }
+
+        var call = list[callIndex];
+
+        var position = list.GetFromPosition(callIndex);
+
+        var group = call.GetSlot(GroupArgument);
+
+        if (function.ClassName == TraceHashTableLayout.PartitionClass
+            && !new MemoryHistoryReader(store, position).TryRead(group + TraceHashTableLayout.GroupOffset, out group))
+        {
+            return null;
+        }
+
+        var location = function.MethodName is InsertMethod or LookupMethod && Read(store, group, position) is { } table
+            ? table.GetLocation((uint)call.GetSlot(HashArgument))
+            : null;
+
+        return (group, location);
     }
 
     public static List<TraceHashAccess> GetAccesses(TraceCallStore calls, ulong group)
@@ -104,7 +162,11 @@ public static class TraceHashTableReader
         }
     }
 
-    private static TraceHashPartition ReadPartition(MemoryHistoryReader memory, int index, ulong instance)
+    private static TraceHashPartition ReadPartition(MemoryHistoryStore store,
+                                                    MemoryHistoryReader memory,
+                                                    TracePosition position,
+                                                    int index,
+                                                    ulong instance)
     {
         memory.TryRead(instance + TraceHashTableLayout.RowCountOffset, out uint rows);
 
@@ -144,19 +206,79 @@ public static class TraceHashTableReader
             {
                 var address = page + (ulong)(offset * TraceHashTableLayout.BucketSize);
 
-                if (!memory.TryRead(address, out byte rowCount) || rowCount == 0)
+                if (!memory.TryRead(address + TraceHashTableLayout.HeadOffset, out ulong head) || head == 0)
                 {
                     continue;
                 }
 
-                memory.TryRead(address + TraceHashTableLayout.KeyOffset, out uint key);
-
-                memory.TryRead(address + TraceHashTableLayout.RowOffset, out ulong row);
-
-                buckets.Add(new TraceHashBucket((int)(first + offset), address, rowCount, key, row));
+                buckets.Add(new TraceHashBucket((int)(first + offset), address, ReadItems(memory, head)));
             }
         }
 
-        return new TraceHashPartition(index, instance, (int)rows, mask, directory, (int)directoryCount, pages, buckets);
+        memory.TryRead(instance + TraceHashTableLayout.WorkfileOffset, out ulong workfile);
+
+        memory.TryRead(instance + TraceHashTableLayout.BitmapOffset, out ulong bitmap);
+
+        return new TraceHashPartition(index, instance, (int)rows, mask, directory, (int)directoryCount, pages, buckets)
+        {
+            Workfile = workfile,
+            Bitmap = bitmap,
+            BitmapPages = ReadBitmapPages(store, memory, position, bitmap)
+        };
+    }
+
+    private static List<ulong> ReadBitmapPages(MemoryHistoryStore store, MemoryHistoryReader memory, TracePosition position, ulong bitmap)
+    {
+        var pages = new List<ulong>();
+
+        if (bitmap == 0 || store.GetBlock(bitmap, position) is not (>= 0 and var block))
+        {
+            return pages;
+        }
+
+        var end = store.Blocks[block].Address + (ulong)store.Blocks[block].Size;
+
+        for (var slot = bitmap; slot + sizeof(ulong) <= end; slot += sizeof(ulong))
+        {
+            if (memory.TryRead(slot, out ulong page) && page != 0 && store.GetBlock(page, position) >= 0)
+            {
+                pages.Add(page);
+            }
+        }
+
+        return pages;
+    }
+
+    private static List<TraceHashItem> ReadItems(MemoryHistoryReader memory, ulong head)
+    {
+        var items = new List<TraceHashItem>();
+
+        for (var item = head; item != 0 && items.Count < MaximumItems;)
+        {
+            if (!memory.TryRead(item, out byte count))
+            {
+                break;
+            }
+
+            var entries = new List<TraceHashEntry>();
+
+            for (var entry = 0; entry < Math.Min((int)count, TraceHashTableLayout.EntriesPerItem); entry++)
+            {
+                memory.TryRead(item + (ulong)TraceHashTableLayout.GetKeyOffset(entry), out uint key);
+
+                memory.TryRead(item + (ulong)TraceHashTableLayout.GetRowOffset(entry), out ulong row);
+
+                entries.Add(new TraceHashEntry(key, row));
+            }
+
+            items.Add(new TraceHashItem(item, entries));
+
+            if (!memory.TryRead(item + TraceHashTableLayout.NextOffset, out item))
+            {
+                break;
+            }
+        }
+
+        return items;
     }
 }

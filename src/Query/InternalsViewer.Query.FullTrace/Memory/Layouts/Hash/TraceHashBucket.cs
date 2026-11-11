@@ -1,3 +1,8 @@
 namespace InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
 
-public readonly record struct TraceHashBucket(int Index, ulong Address, int Count, uint Key, ulong Row);
+public sealed record TraceHashBucket(int Index, ulong Address, List<TraceHashItem> Items)
+{
+    public List<TraceHashEntry> Entries => field ??= [.. Items.SelectMany(i => i.Entries)];
+
+    public int Count => Entries.Count;
+}

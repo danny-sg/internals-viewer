@@ -40,5 +40,6 @@ public sealed class MemoryHashTableNode(MemoryHashTableNodeType type,
     public bool IsSelectable => Type is MemoryHashTableNodeType.Group
                                      or MemoryHashTableNodeType.Partition
                                      or MemoryHashTableNodeType.BucketPage
+                                     or MemoryHashTableNodeType.OverflowPage
                                      or MemoryHashTableNodeType.WorkfilePage;
 }

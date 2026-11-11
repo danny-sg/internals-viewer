@@ -925,9 +925,19 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
     private void OnOperatorMenuRequested(MenuFlyout menu, ExecutionOperatorEvent op)
     {
-        if (ViewModel is { } viewModel && viewModel.GetIndexName(op) is { } index)
+        if (ViewModel is not { } viewModel)
+        {
+            return;
+        }
+
+        if (viewModel.GetIndexName(op) is { } index)
         {
             menu.Items.Add(MenuItems.Create($"Open Index: {index}", () => viewModel.OpenIndex(op)));
+        }
+
+        if (viewModel.GetHashTableGroup(op) is not null)
+        {
+            menu.Items.Add(MenuItems.Create("Open Hash Table", () => viewModel.OpenHashTable(op)));
         }
     }
 }

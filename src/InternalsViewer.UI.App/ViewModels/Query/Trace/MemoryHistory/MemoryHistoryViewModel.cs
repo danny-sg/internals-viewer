@@ -82,6 +82,8 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
     public TraceCallStore? CallStore => Trace?.CallStore;
 
+    public TraceTimeline? Timeline => Trace?.Timeline;
+
     public MemoryHistoryBatchResolver? Batches { get; private set; }
 
     public TracePosition WindowStart
@@ -260,6 +262,13 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
     }
 
     public string GetObjectName(int block) => GetDisplayLabel(block) is { Length: > 0 } name ? name : UnknownObject;
+
+    public string? GetOperatorLabel(int block)
+        => Store.Blocks[block] is { IsIterator: true } iterator
+           && Iterators.TryGetValue(iterator.Address, out var target)
+           && target.Operator is { PlanNodeIdentifier: not null }
+            ? target.Label
+            : null;
 
     public string GetTypeName(int block)
     {

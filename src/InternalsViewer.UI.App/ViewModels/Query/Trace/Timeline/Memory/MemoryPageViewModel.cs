@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
+using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Pages;
 using InternalsViewer.Query.Results;
@@ -104,6 +105,18 @@ public sealed partial class MemoryPageViewModel : ObservableObject
         Layout = IsAvailable ? history.GetWorkfileLayout(block) : null;
 
         SortLayout = IsAvailable ? history.GetSortLayout(block) : null;
+    }
+
+    public void SelectContaining(int offset)
+    {
+        var slot = offset < PageHeader.Size
+            ? Slots.FirstOrDefault(s => s.Index == PageDisplayBuilder.PageHeaderSlot)
+            : Slots.Where(s => s.Index >= 0 && s.Offset <= offset).MaxBy(s => s.Offset);
+
+        if (slot is not null)
+        {
+            SelectedSlot = slot;
+        }
     }
 
     public void SelectOffset(int offset)

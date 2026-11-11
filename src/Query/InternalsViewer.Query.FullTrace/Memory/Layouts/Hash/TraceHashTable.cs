@@ -1,3 +1,5 @@
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash.Enums;
+
 namespace InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
 
 public sealed record TraceHashTable(ulong Group,
@@ -14,41 +16,60 @@ public sealed record TraceHashTable(ulong Group,
         return partition < Partitions.Count ? (partition, (int)(hash & Partitions[partition].BucketMask)) : null;
     }
 
-    public bool Contains(ulong address, int length)
+    public bool Contains(ulong address, int length) => FindPart(address, length) is not null;
+
+    public TraceHashPart? FindPart(ulong address, int length)
     {
         var end = address + (ulong)length;
 
-        if (IsWithin(Group, address, end))
+        foreach (var part in GetParts())
         {
-            return true;
+            if (part.Address != 0 && part.Address >= address && part.Address < end)
+            {
+                return part;
+            }
         }
+
+        return null;
+    }
+
+    public IEnumerable<TraceHashPart> GetParts()
+    {
+        yield return new TraceHashPart(TraceHashPartType.Group, -1, Group);
 
         foreach (var partition in Partitions)
         {
-            if (IsWithin(partition.Address, address, end) || IsWithin(partition.Directory, address, end))
+            var index = partition.Index;
+
+            yield return new TraceHashPart(TraceHashPartType.Partition, index, partition.Address);
+
+            yield return new TraceHashPart(TraceHashPartType.Directory, index, partition.Directory);
+
+            yield return new TraceHashPart(TraceHashPartType.WorkfileRowset, index, partition.Workfile);
+
+            yield return new TraceHashPart(TraceHashPartType.Bitmap, index, partition.Bitmap);
+
+            foreach (var page in partition.BitmapPages)
             {
-                return true;
+                yield return new TraceHashPart(TraceHashPartType.BitmapPage, index, page);
             }
 
             foreach (var page in partition.Pages)
             {
-                if (IsWithin(page.PointerPage, address, end) || IsWithin(page.BucketPage, address, end))
-                {
-                    return true;
-                }
+                yield return new TraceHashPart(TraceHashPartType.PointerPage, index, page.PointerPage);
+
+                yield return new TraceHashPart(TraceHashPartType.BucketPage, index, page.BucketPage);
             }
 
-            foreach (var bucket in partition.Buckets)
+            foreach (var item in partition.Buckets.SelectMany(b => b.Items))
             {
-                if (IsWithin(bucket.Row, address, end))
-                {
-                    return true;
-                }
+                yield return new TraceHashPart(TraceHashPartType.OverflowPage, index, item.Address);
+            }
+
+            foreach (var entry in partition.Buckets.SelectMany(b => b.Entries))
+            {
+                yield return new TraceHashPart(TraceHashPartType.WorkfilePage, index, entry.Row);
             }
         }
-
-        return false;
     }
-
-    private static bool IsWithin(ulong value, ulong start, ulong end) => value != 0 && value >= start && value < end;
 }

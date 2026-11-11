@@ -19,13 +19,16 @@ internal static class ResultDetailsPanel
     {
         host.Children.Clear();
 
-        host.Children.Add(new Border
+        if (details.Title.Length > 0)
         {
-            Padding = HeaderPadding,
-            BorderBrush = AppResources.Get<Brush>("CardStrokeColorDefaultBrush"),
-            BorderThickness = HeaderBorder,
-            Child = new TextBlock { Text = details.Title, FontSize = FontSize, VerticalAlignment = VerticalAlignment.Center }
-        });
+            host.Children.Add(new Border
+            {
+                Padding = HeaderPadding,
+                BorderBrush = AppResources.Get<Brush>("CardStrokeColorDefaultBrush"),
+                BorderThickness = HeaderBorder,
+                Child = new TextBlock { Text = details.Title, FontSize = FontSize, VerticalAlignment = VerticalAlignment.Center }
+            });
+        }
 
         if (details.Message is { } message)
         {
@@ -42,7 +45,7 @@ internal static class ResultDetailsPanel
 
         host.Children.Add(new ResultsGridControl
         {
-            ResultSet = CreateResultSet(details),
+            ResultSet = details.ResultSet ?? CreateResultSet(details),
             IsStatusBarVisible = false
         });
     }

@@ -8,12 +8,42 @@
     SizeChanged="OnSizeChanged">
 
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition x:Name="HexColumn" Width="*"/>
             <ColumnDefinition x:Name="DetailsColumn" Width="0"/>
         </Grid.ColumnDefinitions>
 
-        <hexView:HexViewControl Grid.Column="0"
+        <StackPanel Grid.Row="0"
+                    Grid.ColumnSpan="2"
+                    Padding="12,8"
+                    Orientation="Horizontal"
+                    Spacing="12"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="0,0,0,1"
+                    Visibility="{x:Bind ViewModel.IsHashTableVisible, Mode=OneWay, FallbackValue=Collapsed}">
+            <TextBlock Text="Hash Table"
+                       FontSize="12"
+                       Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                       VerticalAlignment="Center"/>
+            <HyperlinkButton Content="{x:Bind ViewModel.HashTableText, Mode=OneWay}"
+                             FontSize="12"
+                             FontFamily="{StaticResource MonospaceFontFamily}"
+                             Style="{StaticResource DetailLinkStyle}"
+                             VerticalAlignment="Center"
+                             ToolTipService.ToolTip="Open Hash Table"
+                             Click="OnHashTableClick"/>
+            <TextBlock Text="{x:Bind ViewModel.HashTablePartText, Mode=OneWay}"
+                       FontSize="12"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       VerticalAlignment="Center"/>
+        </StackPanel>
+
+        <hexView:HexViewControl Grid.Row="1"
+                                Grid.Column="0"
                                 VerticalAlignment="Stretch"
                                 Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
                                 Data="{x:Bind ViewModel.Data, Mode=OneWay}"
@@ -27,35 +57,11 @@
                                 OffsetClicked="OnOffsetClicked"/>
 
         <Grid x:Name="Details"
+              Grid.Row="1"
               Grid.Column="1"
               Visibility="Collapsed">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
 
-            <StackPanel Grid.Row="0"
-                        Padding="12,8"
-                        Orientation="Horizontal"
-                        Spacing="12"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        BorderThickness="0,0,0,1"
-                        Visibility="{x:Bind ViewModel.IsHashTableVisible, Mode=OneWay, FallbackValue=Collapsed}">
-                <TextBlock Text="Hash Table"
-                           FontSize="12"
-                           Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                           VerticalAlignment="Center"/>
-                <HyperlinkButton Content="{x:Bind ViewModel.HashTableText, Mode=OneWay}"
-                                 FontSize="12"
-                                 FontFamily="{StaticResource MonospaceFontFamily}"
-                                 Style="{StaticResource DetailLinkStyle}"
-                                 VerticalAlignment="Center"
-                                 ToolTipService.ToolTip="Open Hash Table"
-                                 Click="OnHashTableClick"/>
-            </StackPanel>
-
-            <TabView Grid.Row="1"
-                     VerticalAlignment="Stretch"
+            <TabView VerticalAlignment="Stretch"
                      IsAddTabButtonVisible="False"
                      TabWidthMode="SizeToContent"
                      SelectedIndex="{x:Bind ViewModel.SelectedTab, Mode=TwoWay}">

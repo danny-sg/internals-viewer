@@ -142,6 +142,8 @@
                                     Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
                                     Data="{x:Bind ViewModel.Data, Mode=OneWay}"
                                     Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
+                                    Links="{x:Bind ViewModel.Links, Mode=OneWay}"
+                                    OffsetClicked="OnHexOffsetClicked"
                                     SelectedChangeSpan="{x:Bind ViewModel.SelectedChangeSpan, Mode=OneWay}"
                                     ScrollToOffset="{x:Bind ViewModel.ScrollToOffset, Mode=OneWay}"/>
 
@@ -151,6 +153,7 @@
                                             Visibility="{x:Bind ViewModel.IsFieldTableVisible, Mode=OneWay}"/>
 
                 <results:ResultsGridControl ResultSet="{x:Bind ViewModel.EntryTable, Mode=OneWay}"
+                                            RowDetails="{x:Bind ViewModel.EntryDetails, Mode=OneWay}"
                                             SelectedRow="{x:Bind ViewModel.SelectedEntryRow, Mode=TwoWay}"
                                             Visibility="{x:Bind ViewModel.IsEntryTableVisible, Mode=OneWay}"/>
 

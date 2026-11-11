@@ -1,4 +1,5 @@
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Hash;
 
@@ -16,6 +17,12 @@ public class TraceHashTableTests
     private const ulong BucketPage = 0x6000;
 
     private const ulong WorkfilePage = 0x8000;
+
+    private const ulong OverflowPage = 0xA000;
+
+    private const ulong Workfile = 0xB000;
+
+    private const ulong BitmapPage = 0xC000;
 
     private const int BlockSize = 0x100;
 
@@ -44,7 +51,21 @@ public class TraceHashTableTests
     [InlineData(PointerPage)]
     [InlineData(BucketPage)]
     [InlineData(WorkfilePage)]
+    [InlineData(OverflowPage)]
     public void Each_Block_Of_The_Table_Is_Part_Of_It(ulong block) => Assert.True(CreateTable().Contains(block, BlockSize));
+
+    [Theory]
+    [InlineData(Group, TraceHashPartType.Group)]
+    [InlineData(Instance, TraceHashPartType.Partition)]
+    [InlineData(Directory, TraceHashPartType.Directory)]
+    [InlineData(PointerPage, TraceHashPartType.PointerPage)]
+    [InlineData(BucketPage, TraceHashPartType.BucketPage)]
+    [InlineData(OverflowPage, TraceHashPartType.OverflowPage)]
+    [InlineData(WorkfilePage, TraceHashPartType.WorkfilePage)]
+    [InlineData(Workfile, TraceHashPartType.WorkfileRowset)]
+    [InlineData(BitmapPage, TraceHashPartType.BitmapPage)]
+    public void Each_Block_Of_The_Table_Is_Found_As_Its_Part(ulong block, TraceHashPartType type)
+        => Assert.Equal(type, CreateTable().FindPart(block, BlockSize)?.Type);
 
     [Fact]
     public void A_Block_Outside_The_Table_Is_Not_Part_Of_It() => Assert.False(CreateTable().Contains(0x9000, BlockSize));
@@ -53,11 +74,17 @@ public class TraceHashTableTests
 
     private static TraceHashTable CreateTable()
     {
-        var bucket = new TraceHashBucket(0, BucketPage, 1, 7, WorkfilePage + 0x60);
+        List<TraceHashItem> items = [new(BucketPage, [new TraceHashEntry(7, WorkfilePage + 0x60)]), new(OverflowPage, [])];
+
+        var bucket = new TraceHashBucket(0, BucketPage, items);
 
         var page = new TraceHashPage(PointerPage, 0, BucketPage, 0);
 
-        var partition = new TraceHashPartition(0, Instance, 1, 0x3F, Directory, 1, [page], [bucket]);
+        var partition = new TraceHashPartition(0, Instance, 1, 0x3F, Directory, 1, [page], [bucket])
+        {
+            Workfile = Workfile,
+            BitmapPages = [BitmapPage]
+        };
 
         return new TraceHashTable(Group, 0, Instance, 0, 0, [partition]);
     }

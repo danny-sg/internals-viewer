@@ -9,6 +9,7 @@ using InternalsViewer.UI.App.Services.Query.Simulation;
 using InternalsViewer.UI.App.Services.Query.Trace;
 using InternalsViewer.UI.App.Models.Query.Plan;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.UI.Plugins.FullTrace.Menus;
@@ -56,6 +57,7 @@ using InternalsViewer.UI.App.ViewModels.Query.Events;
 using InternalsViewer.UI.App.ViewModels.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Calls;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryHistory;
+using InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryTree;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.OperatorTracks;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
 using InternalsViewer.UI.App.ViewModels.Tabs;
@@ -404,6 +406,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         MemoryHistory = new MemoryHistoryViewModel(OpenCallTree);
 
+        MemoryTree = new MemoryTreeViewModel(MemoryHistory, () => TraceTimelineTab);
+
         RowResolver = new PageRowResolver(pageService, database, logger);
 
         RowResolver.PropertyChanged += OnRowResolverChanged;
@@ -516,6 +520,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public ArgumentsViewModel Arguments { get; }
 
     public MemoryHistoryViewModel MemoryHistory { get; }
+
+    public MemoryTreeViewModel MemoryTree { get; }
 
     public List<ITraceMenuContributor> MenuContributors { get; }
 
@@ -691,6 +697,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             TraceFile = null;
 
             MemoryHistory.SetTrace(value, Events, Database, ResolvePlanNode);
+
+            MemoryTree.Reset();
 
             CreatedTraceTimelineTab?.CloseMemory();
         }
@@ -948,11 +956,17 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [RelayCommand]
     private void ShowObjectGraph()
     {
-        if (Trace is { } trace && TraceTimeline is { } timeline && TraceStartCall.Find(trace.CallStore, timeline) is { } start)
+        if (GetTraceStartCall() is { } start)
         {
             TraceTimelineTab.OpenObjectGraph(start);
         }
     }
+
+    [RelayCommand]
+    private void ShowMemoryTree() => Layout.ShowMemoryTree();
+
+    private TraceStartCall? GetTraceStartCall()
+        => Trace is { } trace && TraceTimeline is { } timeline ? TraceStartCall.Find(trace.CallStore, timeline) : null;
 
     public void ShowMemoryWrite(int block, TracePosition? position)
     {
@@ -964,6 +978,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     partial void OnTraceTimelineChanged(TraceTimeline? value)
     {
         MemoryHistory.SetWindow(value);
+
+        MemoryTree.Reset();
 
         SetGuidePositionText();
     }
@@ -1070,6 +1086,34 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public void OpenHashTable(ulong group, int partition, int bucket)
         => TraceTimelineTab.OpenHashTable(group, partition, bucket, isBelowPlan: true);
+
+    public void OpenHashTable(PlanNode node)
+    {
+        if (GetHashTableGroup(node) is { } group)
+        {
+            TraceTimelineTab.OpenHashTable(group, -1, -1, isBelowPlan: true);
+        }
+    }
+
+    public void OpenHashTable(ExecutionOperatorEvent op)
+    {
+        if (GetHashTableGroup(op) is { } group)
+        {
+            TraceTimelineTab.OpenHashTable(group, -1, -1, isBelowPlan: false);
+        }
+    }
+
+    public ulong? GetHashTableGroup(PlanNode node)
+        => Events.OfType<ExecutionOperatorEvent>().FirstOrDefault(e => e.PlanNodeIdentifier?.NodeId == node.NodeId) is { } op
+            ? GetHashTableGroup(op)
+            : null;
+
+    public ulong? GetHashTableGroup(ExecutionOperatorEvent op)
+        => Trace is { } trace
+            ? TraceHashTableReader.GetGroup(trace.MemoryHistory,
+                                            trace.CallStore,
+                                            [.. trace.Lifetimes.Where(l => ReferenceEquals(l.Operator, op)).SelectMany(l => l.Instances)])
+            : null;
 
     public Task OpenPageAsync(PageAddress pageAddress, ushort? slot = null, int? offset = null)
     {

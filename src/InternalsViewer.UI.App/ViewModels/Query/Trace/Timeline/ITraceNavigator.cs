@@ -1,6 +1,7 @@
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
 
@@ -24,7 +25,7 @@ public interface ITraceNavigator
 
     void OpenReferenceGraph(int block, TracePosition position);
 
-    void OpenHashTable(ulong group);
+    void OpenHashTable(ulong group, TraceHashPart? part);
 
     void HighlightMemory(int? block);
 }
