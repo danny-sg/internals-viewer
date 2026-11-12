@@ -553,6 +553,29 @@ public class PlanOutputLinkReaderTests
     }
 
     [Fact]
+    public void A_Scan_Column_Is_Linked_To_The_Column_Binding_That_Fills_Its_Entry()
+    {
+        var bindings = new byte[0xA0];
+
+        bindings[0x50 + 0x30] = 0x20;
+
+        var memory = Route().Write(Reference + 0x58, 1)
+                            .Write(ProducerIterator + 0x80, RowBuffer)
+                            .Write(ProducerIterator + 0x88, Accessor)
+                            .Write(Accessor + 0x62, (ushort)2)
+                            .Write(Accessor + 0x70, Bindings)
+                            .Write(Bindings, bindings);
+
+        var links = Read(memory, "CValRefOrdinal");
+
+        Assert.Equal([(PlanOutputLinkType.BufferEntry, RowBuffer + 0x20, RowBuffer, 0x20),
+                      (PlanOutputLinkType.RowBindings, Accessor, ProducerIterator, 0x88),
+                      (PlanOutputLinkType.ColumnBindings, Bindings, Accessor, 0x70),
+                      (PlanOutputLinkType.ColumnBinding, Bindings + 0x50, Bindings, 0x50)],
+                     links.TakeLast(4).Select(l => (l.Type, l.Address, l.Source, l.SourceOffset)));
+    }
+
+    [Fact]
     public void A_Probe_Column_Reads_The_Probe_Row_Through_Its_Cached_Storage_Value()
     {
         var memory = JoinRoute().Write(Value + 0x10, Cached)

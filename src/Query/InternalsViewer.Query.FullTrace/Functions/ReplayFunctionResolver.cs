@@ -108,6 +108,8 @@ internal static class ReplayFunctionResolver
                                    cancellationToken);
     }
 
+    public static bool IsReplayedModule(string name) => Modules.Contains(name, StringComparer.OrdinalIgnoreCase);
+
     public static async Task<ReplayFunctionTable> ResolveAsync(IReadOnlyList<TraceModule> modules,
                                                                string symbolsPath,
                                                                ILogger? logger,
@@ -159,8 +161,7 @@ internal static class ReplayFunctionResolver
 
     private static (string Pdb, string Guid, int Age) GetKey(TraceModule module) => (module.Identity.Pdb, module.Identity.Guid, module.Identity.Age);
 
-    private static bool IsReplayed(TraceModule module)
-        => module.Identity.Pdb.Length > 0 && Modules.Contains(module.Name, StringComparer.OrdinalIgnoreCase);
+    private static bool IsReplayed(TraceModule module) => module.Identity.Pdb.Length > 0 && IsReplayedModule(module.Name);
 
     private static bool IsHeap(TraceModule module)
         => HeapModules.Contains(Path.GetFileNameWithoutExtension(module.Path), StringComparer.OrdinalIgnoreCase);

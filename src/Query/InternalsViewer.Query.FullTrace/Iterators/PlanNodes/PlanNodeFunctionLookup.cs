@@ -7,7 +7,7 @@ namespace InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 
 internal static class PlanNodeFunctionLookup
 {
-    public static AddressTable<PlanObjectClass> GetPlanObjects(IReadOnlyDictionary<ulong, string[]> vtables)
+    public static AddressTable<PlanObjectClass> GetPlanObjects(IReadOnlyDictionary<ulong, VtableSymbol[]> vtables)
         => VtableResolver.GetFirstMatches(vtables, GetPlanObjectClass);
 
     public static PlanNodeFunctionType? GetFunctionType(ReadOnlySpan<char> name)

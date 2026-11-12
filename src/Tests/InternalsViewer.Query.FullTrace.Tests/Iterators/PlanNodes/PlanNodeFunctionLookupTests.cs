@@ -1,4 +1,5 @@
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
+using InternalsViewer.Query.FullTrace.Symbols;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Iterators.PlanNodes;
@@ -28,11 +29,11 @@ public class PlanNodeFunctionLookupTests
     [Fact]
     public void Plan_Objects_Are_Known_By_Their_VTables()
     {
-        var vtables = new Dictionary<ulong, string[]>
+        var vtables = new Dictionary<ulong, VtableSymbol[]>
         {
-            [0x7000] = ["CXteHash"],
-            [0x7100] = ["CBpXteFilter"],
-            [0x7200] = ["CQScanHash"]
+            [0x7000] = [new("CXteHash", null)],
+            [0x7100] = [new("CBpXteFilter", null)],
+            [0x7200] = [new("CQScanHash", null)]
         };
 
         var planObjects = PlanNodeFunctionLookup.GetPlanObjects(vtables).OrderBy(p => p.Key).Select(p => (p.Key, p.Value));
@@ -45,7 +46,7 @@ public class PlanNodeFunctionLookupTests
     [Fact]
     public void A_Shared_Vtable_Is_A_Plan_Object_When_Any_Of_Its_Classes_Is()
     {
-        var vtables = new Dictionary<ulong, string[]> { [0x7000] = ["CQScanHash", "CXteHash"] };
+        var vtables = new Dictionary<ulong, VtableSymbol[]> { [0x7000] = [new("CQScanHash", null), new("CXteHash", null)] };
 
         Assert.Equal(PlanObjectClass.Row, PlanNodeFunctionLookup.GetPlanObjects(vtables)[0x7000]);
     }

@@ -273,9 +273,11 @@ public sealed partial class TraceTimeline
         return first;
     }
 
-    public IEnumerable<(uint ThreadId, TraceSpan Span)> GetCalls(string symbol)
+    public IEnumerable<(uint ThreadId, TraceSpan Span)> GetCalls(string symbol) => GetCalls(n => n.Symbol == symbol);
+
+    public IEnumerable<(uint ThreadId, TraceSpan Span)> GetCalls(Func<CallTreeNode, bool> predicate)
     {
-        var isMatch = Array.ConvertAll(Nodes, n => n?.Symbol == symbol);
+        var isMatch = Array.ConvertAll(Nodes, n => n is not null && predicate(n));
 
         if (!isMatch.Contains(true))
         {
@@ -298,6 +300,14 @@ public sealed partial class TraceTimeline
             }
         }
     }
+
+    internal TraceArgumentCall? GetCall(CallTreeNode node, int callIndex)
+        => node.Frame is { } frame
+           && Calls?.GetCallList(frame.Address, frame.InstanceAddress) is { } calls
+           && callIndex >= 0
+           && callIndex < calls.Count
+            ? calls[callIndex]
+            : null;
 
     internal void RemoveCallsUnder(Func<CallTreeNode, bool> boundary)
     {

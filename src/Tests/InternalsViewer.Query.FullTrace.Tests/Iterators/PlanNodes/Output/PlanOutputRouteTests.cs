@@ -51,6 +51,8 @@ public class PlanOutputRouteTests
 
     private const ulong InputArray = 0x1F4_0000_8000;
 
+    private const ulong InputValues = 0x1F4_0000_8100;
+
     [Fact]
     public void Output_Columns_Share_Their_Output_List_And_Branch_At_Their_Entries()
     {
@@ -74,26 +76,49 @@ public class PlanOutputRouteTests
     }
 
     [Fact]
-    public void An_Operators_Inputs_Hang_From_Its_Iterator()
+    public void A_Passed_Through_Column_Is_Left_To_The_Operator_That_Holds_It()
     {
-        PlanOutputLink[] links =
+        var routes = PlanOutputRoute.Create([PassingThrough(), Producing()], false);
+
+        Assert.Empty(routes[0].FromIterator);
+
+        Assert.Equal("RowBuffer(BufferEntry#1)", Describe(routes[1].FromIterator));
+
+        Assert.Equal([PlanOutputRoute.StatementNodeId], routes[1].FromIterator[0].Children[0].Readers.Select(r => r.NodeId));
+    }
+
+    [Fact]
+    public void With_The_Plan_Object_A_Passed_Through_Column_Is_Read_By_Its_Reference()
+    {
+        var routes = PlanOutputRoute.Create([PassingThrough(), Producing()], true);
+
+        Assert.Equal("OutputList(OutputArray(Reference#0(Producer(MapEntry(Iterator)))))", Describe(routes[0].FromPlanObject));
+
+        var readers = routes[1].FromIterator[0].Children[0].Readers;
+
+        Assert.Equal([(0, PlanOutputLinkType.Reference), (PlanOutputRoute.StatementNodeId, PlanOutputLinkType.BufferEntry)],
+                     readers.Select(r => (r.NodeId, r.Node?.Link.Type ?? r.Link.Type)));
+    }
+
+    [Fact]
+    public void A_Join_Input_Value_Reads_The_Entry_Of_The_Operator_Below()
+    {
+        PlanOutputLink[] join =
         [
-            .. Column(Reference, 0x00),
-            Link(PlanOutputLinkType.Producer, Producer, Reference, 0x50),
-            Link(PlanOutputLinkType.MapEntry, Entry, Map, 0x08),
-            Link(PlanOutputLinkType.Iterator, ProducerIterator, Entry, 0x10),
-            Link(PlanOutputLinkType.Inputs, InputArray, Iterator, 0x08, EngineLayout.Iterator.InputsField),
-            Link(PlanOutputLinkType.ProfilingIterator, Profiling, InputArray, 0x00, EngineLayout.Iterator.InputField),
-            Link(PlanOutputLinkType.Iterator, ProducerIterator, Profiling, 0xA0),
-            Link(PlanOutputLinkType.RowBuffer, RowBuffer, ProducerIterator, 0x80),
-            Link(PlanOutputLinkType.BufferEntry, RowBuffer, RowBuffer, 0x00, EngineLayout.RowBuffer.EntryField)
+            Link(PlanOutputLinkType.InputValues, InputValues, Iterator, 0xC8),
+            Link(PlanOutputLinkType.InputValue, Value, InputValues, 0x00),
+            Link(PlanOutputLinkType.BufferEntry, RowBuffer + 0x20, Value, 0x08)
         ];
 
-        var route = Create(links);
+        var routes = PlanOutputRoute.Create([Operator(0, null, PlanObject, Iterator, Path(join)), Producing()], false);
 
-        Assert.Equal("Inputs(ProfilingIterator#0(Iterator(RowBuffer(BufferEntry#0))))", Describe(route.FromIterator));
+        Assert.Equal("InputValues(InputValue#0)", Describe(routes[0].FromIterator));
 
-        Assert.Equal("OutputList(OutputArray(Reference#0(Producer(MapEntry(Iterator)))))", Describe(route.FromPlanObject));
+        var input = routes[0].FromIterator[0].Children[0];
+
+        Assert.Equal([(0, input)], routes[1].FromIterator[0].Children[0].Readers.Select(r => (r.NodeId, r.Node)));
+
+        Assert.Equal([1], input.Targets.Select(t => t.NodeId));
     }
 
     [Fact]
@@ -160,29 +185,6 @@ public class PlanOutputRouteTests
     }
 
     [Fact]
-    public void Without_The_Plan_Object_A_Passed_Through_Column_Is_Reached_Through_The_Inputs()
-    {
-        PlanOutputLink[] links =
-        [
-            .. Column(Reference, 0x00),
-            .. Producing(Producer, Entry, ProducerIterator, RowBuffer, 0x20),
-            Link(PlanOutputLinkType.Inputs, InputArray, Iterator, 0x08, EngineLayout.Iterator.InputsField),
-            Link(PlanOutputLinkType.ProfilingIterator, Profiling, InputArray, 0x00, EngineLayout.Iterator.InputField),
-            Link(PlanOutputLinkType.Iterator, ProducerIterator, Profiling, 0xA0),
-            Link(PlanOutputLinkType.RowBuffer, RowBuffer, ProducerIterator, 0x80),
-            Link(PlanOutputLinkType.BufferEntry, RowBuffer + 0x20, RowBuffer, 0x20, EngineLayout.RowBuffer.EntryField)
-        ];
-
-        var route = CreateFromIterator(links);
-
-        Assert.Equal("Inputs(ProfilingIterator#0(Iterator(RowBuffer(BufferEntry#1))))", Describe(route.FromIterator));
-
-        Assert.Equal(0, route.FromIterator[0].Children[0].Children[0].Children[0].Children[0].Column);
-
-        Assert.Empty(route.FromPlanObject);
-    }
-
-    [Fact]
     public void The_Shared_Execution_Context_Is_Left_Out()
     {
         var route = Create([.. Column(Reference, 0x00),
@@ -198,10 +200,54 @@ public class PlanOutputRouteTests
     }
 
     private static PlanOutputRoute Create(params PlanOutputLink[][] columns)
-        => PlanOutputRoute.Create([.. columns.Select(c => new PlanOutputPath { Links = c })], PlanObject, Iterator, true);
+        => PlanOutputRoute.Create([Operator(0, null, PlanObject, Iterator, [.. columns.Select(c => Path(c))])], true)[0];
 
     private static PlanOutputRoute CreateFromIterator(params PlanOutputLink[][] columns)
-        => PlanOutputRoute.Create([.. columns.Select(c => new PlanOutputPath { Links = c })], PlanObject, Iterator, false);
+        => PlanOutputRoute.Create([Operator(0, null, PlanObject, Iterator, [.. columns.Select(c => Path(c))])], false)[0];
+
+    private static PlanOutputRouteOperator Operator(int nodeId,
+                                                    int? parentNodeId,
+                                                    ulong planObject,
+                                                    ulong iterator,
+                                                    params PlanOutputPath[] paths)
+        => new(nodeId, parentNodeId, planObject, iterator, paths);
+
+    private static PlanOutputPath Path(PlanOutputLink[] links, params PlanOutputStage[] stages) => new() { Links = links, Stages = stages };
+
+    private static PlanOutputRouteOperator PassingThrough()
+    {
+        PlanOutputLink[] links =
+        [
+            .. Column(Reference, 0x00),
+            Link(PlanOutputLinkType.Producer, Producer, Reference, 0x50, isRoute: true),
+            Link(PlanOutputLinkType.MapEntry, Entry, Map, 0x08, isRoute: true),
+            Link(PlanOutputLinkType.Iterator, ProducerIterator, Entry, 0x10, isRoute: true),
+            Link(PlanOutputLinkType.Inputs, InputArray, Iterator, 0x08, EngineLayout.Iterator.InputsField),
+            Link(PlanOutputLinkType.ProfilingIterator, Profiling, InputArray, 0x00, EngineLayout.Iterator.InputField),
+            Link(PlanOutputLinkType.Iterator, ProducerIterator, Profiling, 0xA0),
+            Link(PlanOutputLinkType.RowBuffer, RowBuffer, ProducerIterator, 0x80),
+            Link(PlanOutputLinkType.BufferEntry, RowBuffer + 0x20, RowBuffer, 0x20, EngineLayout.RowBuffer.EntryField)
+        ];
+
+        var stage = new PlanOutputStage(Reference, 0, -1)
+        {
+            PlanObject = Producer,
+            Value = new PlanOutputValueSource(PlanOutputLinkType.BufferEntry, RowBuffer + 0x20, [], null)
+        };
+
+        return Operator(0, null, PlanObject, Iterator, Path(links, stage));
+    }
+
+    private static PlanOutputRouteOperator Producing()
+    {
+        PlanOutputLink[] links =
+        [
+            Link(PlanOutputLinkType.RowBuffer, RowBuffer, ProducerIterator, 0x80),
+            Link(PlanOutputLinkType.BufferEntry, RowBuffer + 0x20, RowBuffer, 0x20, EngineLayout.RowBuffer.EntryField)
+        ];
+
+        return Operator(1, 0, Producer, ProducerIterator, Path(links));
+    }
 
     private static PlanOutputLink[] Column(ulong reference, int offset) =>
     [

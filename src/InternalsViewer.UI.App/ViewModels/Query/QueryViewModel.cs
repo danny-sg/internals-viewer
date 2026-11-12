@@ -2770,6 +2770,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             var run = await QueryExport.ReadAsync(stream, id => Database.AllocationUnits.GetValueOrDefault(id), CancellationToken.None);
 
+            if (run.ExtraOf<TraceResult>() is { } imported)
+            {
+                await ResolveObjectClassesAsync(imported);
+            }
+
             AddMessage(new ProgressDetail(step) { IsStep = true, Elapsed = Stopwatch.GetElapsedTime(started) });
 
             ShowImportedRun(run);
@@ -2849,6 +2854,20 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         ShowResultTabsForFirstRun();
 
         RefreshFilteredEvents();
+    }
+
+    private async Task ResolveObjectClassesAsync(TraceResult trace)
+    {
+        var symbolsPath = _settingsViewModel.SymbolsPath;
+
+        try
+        {
+            await Task.Run(() => trace.ResolveObjectClasses(symbolsPath));
+        }
+        catch (Exception exception) when (exception is IOException or InvalidOperationException or UnauthorizedAccessException)
+        {
+            Logger.LogWarning(exception, "Objects could not be named by their vtables from the symbols in {Path}", symbolsPath);
+        }
     }
 
     private void ShowTrace(TraceResult result, TimeTravelTraceFile? traceFile)

@@ -13,10 +13,6 @@ public static class PlanOutputValueReader
 {
     private const byte NullStatus = 3;
 
-    private const ulong EntryDataOffset = 0x08;
-
-    private const ulong EntryLengthOffset = 0x10;
-
     private const int InlineSize = sizeof(ulong);
 
     private const int MaximumLength = 8000;
@@ -71,10 +67,11 @@ public static class PlanOutputValueReader
 
         if (IsFixed(type) && type.MaxLength <= InlineSize)
         {
-            return Decode(memory, entry + EntryDataOffset, type.MaxLength, type, sqlType);
+            return Decode(memory, entry + (ulong)EngineLayout.RowBuffer.ValueField.Offset, type.MaxLength, type, sqlType);
         }
 
-        if (!memory.TryRead(entry + EntryDataOffset, out ulong data) || !memory.TryRead(entry + EntryLengthOffset, out ulong length))
+        if (!memory.TryRead(entry + (ulong)EngineLayout.RowBuffer.ValueField.Offset, out ulong data)
+            || !memory.TryRead(entry + (ulong)EngineLayout.RowBuffer.LengthField.Offset, out ulong length))
         {
             return null;
         }

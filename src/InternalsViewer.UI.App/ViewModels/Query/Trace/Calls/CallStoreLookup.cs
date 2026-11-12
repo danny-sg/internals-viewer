@@ -86,7 +86,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
             return null;
         }
 
-        var className = entry?.ClassName;
+        var className = entry?.VtableClassName ?? entry?.ClassName;
 
         if (GetIterator(value) is { } iterator)
         {
@@ -100,7 +100,8 @@ public sealed class CallStoreLookup(TraceCallStore store,
             return new ValueDescription(address, className) { Origin = entry };
         }
 
-        if (containing is ({ } inside, var offset) && (inside.ClassName ?? TraceReferenceFinder.GetAllocationName(inside)) is { } container)
+        if (containing is ({ } inside, var offset)
+            && (inside.VtableClassName ?? inside.ClassName ?? TraceReferenceFinder.GetAllocationName(inside)) is { } container)
         {
             return new ValueDescription($"0x{inside.Address:X} + 0x{offset:X}", container) { Origin = inside };
         }

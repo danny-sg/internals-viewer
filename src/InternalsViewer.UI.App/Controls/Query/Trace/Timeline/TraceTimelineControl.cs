@@ -1108,6 +1108,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
             _rooted = null;
             _visible = null;
             _visibleFor = null;
+
+            _operators.Stages = [];
         }
         else if (_visibleFor != (timeline, _root, PrunedCategories, HiddenCategories))
         {
@@ -1116,6 +1118,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
             _rooted = _root is { } root ? timeline.RootAt(n => ReferenceEquals(n, root)) : null;
 
             var source = _rooted ?? timeline;
+
+            _operators.Stages = TraceStage.Build(source);
 
             var pruned = PrunedNodes(source) is { } hidden
                 ? source.Filter(n => n < 0 || n >= hidden.Length || !hidden[n])

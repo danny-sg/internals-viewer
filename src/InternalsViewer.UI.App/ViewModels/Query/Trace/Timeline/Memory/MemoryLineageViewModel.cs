@@ -24,6 +24,10 @@ public sealed class MemoryLineageViewModel : MemoryStructureViewModel
 
     private const string NoOperators = "No Operators";
 
+    private const string RecordOffsetPrefix = "Record Offset ";
+
+    private const string VariableColumnPrefix = "Variable Column ";
+
     public MemoryLineageViewModel(MemoryHistoryViewModel history, TracePosition position, ITraceNavigator navigator)
         : base(history, position, navigator)
     {
@@ -140,17 +144,23 @@ public sealed class MemoryLineageViewModel : MemoryStructureViewModel
 
     private List<MemoryField> GetFields(MemoryStructureNode node)
     {
-        if (History.IteratorTargets.TryGetValue(node.Address, out var target)
-            && Image is { Offset: 0, Block: >= 0, Data: { } data } image)
+        var fields = LinkFields.GetValueOrDefault(node.Key) ?? [];
+
+        if (Image is not { Offset: 0, Block: >= 0, Data: { } data } image)
         {
-            var block = History.Store.Blocks[image.Block];
+            return fields;
+        }
 
-            var className = History.AddressMap.GetClassName(block.Address, block.FromPosition, block.ToPosition);
+        var block = History.Store.Blocks[image.Block];
 
+        var className = History.AddressMap.GetClassName(block.Address, block.FromPosition, block.ToPosition);
+
+        if (History.IteratorTargets.TryGetValue(node.Address, out var target))
+        {
             return IteratorLayout.GetFields(className, target.Type, data, History.IteratorTargets);
         }
 
-        return LinkFields.GetValueOrDefault(node.Key) ?? [];
+        return [.. fields.Concat(PlanOutputValueLayout.GetFields(className)).DistinctBy(f => f.Offset).OrderBy(f => f.Offset)];
     }
 
     private void BuildTree(ulong? address)
@@ -269,7 +279,7 @@ public sealed class MemoryLineageViewModel : MemoryStructureViewModel
                                            parent)
         {
             Index = NodeCount++,
-            Detail = route.Column >= 0 && route.Column < names.Count ? names[route.Column] : string.Empty
+            Detail = route.Column >= 0 && route.Column < names.Count ? names[route.Column] : GetRecordOffsetText(link)
         };
 
         var fields = new List<MemoryField>();
@@ -278,15 +288,12 @@ public sealed class MemoryLineageViewModel : MemoryStructureViewModel
         {
             node.Children.Add(CreateLink(child, node, names));
 
-            if (GetChildField(child, link.Address) is { } field)
-            {
-                fields.Add(field);
-            }
+            fields.AddRange(GetChildFields(child, link.Address));
         }
 
-        if (fields.Count == 0 && GetOwnField(link) is { } own)
+        if (fields.Count == 0)
         {
-            fields.Add(own);
+            fields.AddRange(GetOwnFields(link));
         }
 
         LinkFields[node.Key] = [.. fields.DistinctBy(f => f.Offset).OrderBy(f => f.Offset)];
@@ -294,7 +301,28 @@ public sealed class MemoryLineageViewModel : MemoryStructureViewModel
         return node;
     }
 
-    private MemoryField? GetChildField(PlanOutputRouteNode child, ulong address)
+    private static string GetRecordOffsetText(PlanOutputLink link)
+        => link is { Type: PlanOutputLinkType.Reader or PlanOutputLinkType.Value, Offset: { } offset }
+            ? offset < 0 ? $"{VariableColumnPrefix}{-offset}" : $"{RecordOffsetPrefix}0x{offset:X}"
+            : string.Empty;
+
+    private static bool IsEntryOf(PlanOutputLink link)
+        => link.Type == PlanOutputLinkType.BufferEntry && link.Address == link.Source + (ulong)link.SourceOffset;
+
+    private static IEnumerable<MemoryField> GetEntryFields(string prefix, int offset)
+        => EngineLayout.RowBuffer.EntryFields.Select(f => f with { Name = $"{prefix}{f.Name}", Offset = offset + f.Offset });
+
+    private static IEnumerable<MemoryField> GetOwnFields(PlanOutputLink link)
+    {
+        if (link.Type == PlanOutputLinkType.BufferEntry)
+        {
+            return GetEntryFields(string.Empty, 0);
+        }
+
+        return link.Field is { } field && link.Address == link.Source + (ulong)link.SourceOffset ? [field with { Offset = 0 }] : [];
+    }
+
+    private IEnumerable<MemoryField> GetChildFields(PlanOutputRouteNode child, ulong address)
     {
         var link = child.Link;
 
@@ -302,7 +330,7 @@ public sealed class MemoryLineageViewModel : MemoryStructureViewModel
 
         if (block < 0 || History.GetBlock(link.Source, link.Position) != block || link.Source + (ulong)link.SourceOffset < address)
         {
-            return null;
+            return [];
         }
 
         var offset = (int)(link.Source + (ulong)link.SourceOffset - address);
@@ -314,19 +342,12 @@ public sealed class MemoryLineageViewModel : MemoryStructureViewModel
             name = $"{name} [{child.Index}]";
         }
 
-        return link.Field is { } field
-            ? field with { Name = name, Offset = offset }
-            : new MemoryField(name, offset, sizeof(ulong));
-    }
-
-    private static MemoryField? GetOwnField(PlanOutputLink link)
-    {
-        if (link.Field is { } field && link.Address == link.Source + (ulong)link.SourceOffset)
+        if (IsEntryOf(link))
         {
-            return field with { Offset = 0 };
+            return GetEntryFields($"{name} ", offset);
         }
 
-        return link.Type == PlanOutputLinkType.BufferEntry ? EngineLayout.RowBuffer.EntryField with { Offset = 0 } : null;
+        return [link.Field is { } field ? field with { Name = name, Offset = offset } : new MemoryField(name, offset, sizeof(ulong))];
     }
 
     private string GetName(PlanOutputLink link)

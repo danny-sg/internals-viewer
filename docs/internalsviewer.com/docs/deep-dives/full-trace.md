@@ -242,6 +242,26 @@ SQL Server allocates through SQLOS, which is not recorded. But every allocation 
 
 The known gap is a memory object released as a whole. Its pages go back through the plumbing, so its memory is never seen to be freed, and in use only climbs for it.
 
+### Object classes
+
+The trace names the object at an address from the calls that built and used it: the constructor that ran on it, the first member function called on it, or the declared type of a parameter it was passed as. A constructor names its own class, which is not always the class of the object. A `CValRefPrefetch` runs its base class's constructor, `CValRefOrdinal::CValRefOrdinal`, first, and a call made through a pointer to a base class names the base class too.
+
+Every C++ object with virtual functions starts with a pointer to its class's virtual function table, and the public symbols name each table, such as ``CValRefPrefetch::`vftable'``. A class with several bases has a table for each, named for the base it serves, and the one at the start of the object is for its first base. So the table an object holds gives its class:
+
+- **Tables** - the replay's function scan reads every table symbol with its class and base. A table the linker shares between classes, because they came out identical, is left out, since it cannot say which class it is.
+- **During the replay** - an object no constructor or member function has named, known only by where it was allocated or by a parameter's type, is named by the table it holds the first time it is passed to a call.
+- **From Memory History** - the table at the start of an object changes over its life. Each constructor writes its own class's table, from the base class down to the most derived, and each destructor writes its own back on the way out. Memory History holds every one of those writes, so once the replay is done each object takes the class it held most often while its member functions were called or it was passed to a call. An object never used that way takes the most derived class it was built up to, the last table before one it had already held.
+
+A class from the table does not replace a name that a constructor or member function gave the object when:
+
+- **The table never changed** - one table is no more specific than the constructor that wrote it.
+- **It was left at the free** - the class is only what the last destructor wrote before the memory was freed.
+- **The named class has no table** - its first field is then an object with virtual functions, and the table belongs to that field.
+
+Taking the class an object held longest does not work. Much of a query's memory comes from pools that are released as a whole, so a destroyed object keeps the base class table its last destructor wrote until the pool goes, often for longer than it held its own.
+
+The class from the table only names objects, in the Call Stack, the memory tabs, the Memory History lane and the graphs. Matching objects to operators and reading their fields still use the classes the constructors name, because the mappings and layouts are written against those. An exported run carries the classes with the rest of its memory, and a run exported before they were recorded has them worked out as it is imported.
+
 ### No clock
 
 TTD records instructions, not time. There is no timestamp, and the recording slows everything down, and not evenly, so a millisecond figure would not mean much anyway. This is why the Trace Timeline measures in positions or instructions:
@@ -281,13 +301,13 @@ The recording itself is deleted once it has replayed successfully. Everything ab
   - `TraceLoader.cs` - the load that ties the steps together
   - `ReplaySession.cs` and `Native/` - opening the recording and calling the bridge
   - `Functions/` - the function sets the replay needs, from the PDBs
-  - `Symbols/` - downloading PDBs (`SymbolDownloader.cs`), resolving frames through DIA (`SymbolResolver.cs`, `Dia/`), and the Module / Category classification and its mapping files (`Categories/`)
+  - `Symbols/` - downloading PDBs (`SymbolDownloader.cs`), resolving frames through DIA (`SymbolResolver.cs`, `Dia/`), the Module / Category classification and its mapping files (`Categories/`), and the virtual function tables (`VtableResolver.cs`)
   - `Calls/Tree/` - the call tree, with `CallTreeBuilder.cs` mapping nodes to frames
   - `QueryExecutionCropper.cs` - finding where the query's execution starts
   - `CallLog/` and `Arguments/` - the compressed argument log, and reading its values by the function's signature
   - `Locators/` - the page, row, columnstore object and referenced value reads
   - `Iterators/` - linking plan objects and iterators to the plan, finding each operator's call tree frames (`OperatorFrameMap.cs`), and their lifetimes
-  - `Memory/` - allocations, frees, clerks and memory in use
+  - `Memory/` - allocations, frees, clerks and memory in use, and in `Memory/Address/` the map of what each address holds, with `ObjectClassResolver.cs` naming objects by the table they hold
   - `Timeline/` - the Trace Timeline's spans and axes
   - `Export/` - the Full Trace part of an exported run
 - `src/Query/InternalsViewer.Query/QueryRunner.cs` - the run sequence, and `Export/` - exporting and importing a run

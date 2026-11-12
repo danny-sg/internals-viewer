@@ -127,13 +127,14 @@ public sealed class TraceReferenceFinder(TraceCallStore store,
 
             var moment = firstUse.Location == ArgumentLayout.ReturnRegisterName ? call.ToPosition : call.FromPosition;
 
-            if (addressMap.GetEntry(value, moment) is { } entry && (entry.ClassName ?? GetAllocationName(entry)) is { } typeName)
+            if (addressMap.GetEntry(value, moment) is { } entry
+                && (entry.VtableClassName ?? entry.ClassName ?? GetAllocationName(entry)) is { } typeName)
             {
                 return typeName;
             }
 
             if (addressMap.GetContaining(value, moment) is ({ } inside, var offset)
-                && (inside.ClassName ?? GetAllocationName(inside)) is { } container)
+                && (inside.VtableClassName ?? inside.ClassName ?? GetAllocationName(inside)) is { } container)
             {
                 return $"{container} + 0x{offset:X}";
             }

@@ -113,6 +113,8 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         var result = builder.Build(memory?.History ?? MemoryHistoryStore.Empty, memory?.PageReads ?? TracePageReadList.Empty);
 
+        result.ResolveObjectClasses(request.SymbolsPath);
+
         Logger.LogInformation("{Objects} HoBt access object(s) linked to their HoBt", result.HoBtAccess.Count);
 
         Logger.LogInformation("{Entries} memory map entr(ies) from allocations, constructors, member calls and declared types",

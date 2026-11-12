@@ -58,6 +58,10 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
 
     public static Visibility GetTargetVisibility(string? target) => GetVisibility(target is not null);
 
+    public static Visibility IsClassVisible(PlayheadCallRow? row) => GetVisibility(row?.ObjectClass is not null);
+
+    public static Visibility IsBaseClassVisible(PlayheadCallRow? row) => GetVisibility(row?.BaseClass is not null);
+
     public static string GetTargetToolTip(bool isBufferPage) => isBufferPage ? OpenPageToolTip : OpenMemoryToolTip;
 
     public void FindReferences(ulong value) => ViewModel?.FindReferences(value);

@@ -15,7 +15,10 @@ public static class EngineLayout
         => new(name, offset, sizeof(ulong)) { Writers = writers };
 
     private static MemoryField Number(string name, int offset, int length, params string[] writers)
-        => new(name, offset, length) { Writers = writers };
+        => new(name, offset, length) { Writers = writers, IsNumber = true };
+
+    private static MemoryField Bits(string name, int offset, params string[] writers)
+        => new(name, offset, sizeof(ulong), true) { Writers = writers, IsNumber = true };
 
     public static class Iterator
     {
@@ -135,12 +138,49 @@ public static class EngineLayout
 
     public static class OutputList
     {
+        public static MemoryField MemoryObjectField { get; } = Pointer("Memory Object", 0x00, "CBndOutputs::CBndOutputs");
+
         public static MemoryField CountField { get; } = Number("Count", (int)PlanNode.OutputCountOffset, sizeof(int));
+
+        public static MemoryField CapacityField { get; } = Number("Capacity", 0x0C, sizeof(int), "CBndOutputs::CBndOutputs");
 
         public static MemoryField ColumnsField { get; } = Pointer("Columns", (int)PlanNode.OutputColumnsOffset, "CBndOutputs::CBndOutputs");
 
+        public static MemoryField ColumnBitCountField { get; } = Number("Column Bits Length", 0x20, sizeof(int), "CBitVector::Init");
+
+        public static MemoryField ColumnBitMemoryObjectField { get; } = Pointer("Column Bits Memory Object", 0x28, "CBitVector::Init");
+
+        public static MemoryField ColumnBitsField { get; } = Bits("Column Bits", 0x30, "CBitVector::Set");
+
+        public static MemoryField FlagBitCountField { get; } = Number("Column Flags Length", 0x38, sizeof(int), "CBitVector::Init");
+
+        public static MemoryField FlagBitMemoryObjectField { get; } = Pointer("Column Flags Memory Object", 0x40, "CBitVector::Init");
+
+        public static MemoryField FlagBitsField { get; } = Bits("Column Flags", 0x48, "CBitVector::Set");
+
+        public static IReadOnlyList<MemoryField> Fields { get; } =
+        [
+            MemoryObjectField,
+            CountField,
+            CapacityField,
+            ColumnsField,
+            ColumnBitCountField,
+            ColumnBitMemoryObjectField,
+            ColumnBitsField,
+            FlagBitCountField,
+            FlagBitMemoryObjectField,
+            FlagBitsField
+        ];
+
         public static MemoryField ColumnField { get; } =
             Pointer("Column", 0x00, "CXte::RemapOutputValrefs", "CBpXte::BpCompile", "CBndOutputs::Append");
+    }
+
+    public static class RowBindings
+    {
+        public static MemoryField ColumnBindingsField { get; } = Pointer("Column Bindings", (int)AccessorBindingLayout.ColumnsOffset);
+
+        public static MemoryField ColumnBindingField { get; } = Number("Column Binding", 0x00, AccessorBindingLayout.ColumnSize);
     }
 
     public static class ColumnReference
@@ -276,6 +316,14 @@ public static class EngineLayout
     public static class RowBuffer
     {
         public static MemoryField EntryField { get; } = Number("Entry", 0x00, 0x20);
+
+        public static MemoryField StatusField { get; } = Number("Status", 0x00, sizeof(byte));
+
+        public static MemoryField ValueField { get; } = Pointer("Value", 0x08);
+
+        public static MemoryField LengthField { get; } = Number("Length", 0x10, sizeof(ulong));
+
+        public static IReadOnlyList<MemoryField> EntryFields { get; } = [StatusField, ValueField, LengthField];
     }
 
     public static class SortIterator

@@ -241,10 +241,6 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
         private const string AdapterClass = "CQScanBatchHelper";
 
-        private const string CachedSwitchClass = "CValHashCachedSwitch";
-
-        private const string StorageValueClass = "CValSSTable";
-
         private const string StreamAggregateClass = "CXteStreamAggregate";
 
         private static readonly MemoryField[] OutputValueFields =
@@ -823,9 +819,10 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
                                                                                          int depth,
                                                                                          List<ulong> readers)
         {
-            if (getClassName(address) == CachedSwitchClass)
+            if (getClassName(address) == PlanOutputValueLayout.CachedSwitchClass)
             {
-                if (!TryRead(address, EngineLayout.CachedSwitch.ValueField, out ulong inner) || getClassName(inner) == CachedSwitchClass)
+                if (!TryRead(address, EngineLayout.CachedSwitch.ValueField, out ulong inner)
+                    || getClassName(inner) == PlanOutputValueLayout.CachedSwitchClass)
                 {
                     return null;
                 }
@@ -858,7 +855,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
                             TryRead(address, EngineLayout.HashValue.RecordOffsetField, out int offset) ? offset : (int?)null,
                             0,
                             EngineLayout.HashValue.SlotField);
-                case StorageValueClass:
+                case PlanOutputValueLayout.StorageValueClass:
                     TryRead(address, EngineLayout.StorageValue.AccessorField, out ulong accessor);
 
                     return (ReadSlot(address, EngineLayout.StorageValue.SlotField), null, accessor, EngineLayout.StorageValue.SlotField);
@@ -967,7 +964,9 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
                 EngineLayout.RowBuffer.EntryField,
                 depth,
                 entryOffset,
-                offset: GetRecordOffset(iterator, (int)entryOffset));
+                offset: FindRowBinding(iterator, (int)entryOffset)?.Binding.RecordOffset);
+
+            AddRowBinding(iterator, (int)entryOffset, depth);
 
             SetStage(PlanOutputStageType.RowBuffer, rowBuffer);
 
@@ -1150,7 +1149,29 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
             }
         }
 
-        private int? GetRecordOffset(ulong iterator, int entryOffset)
+        private void AddRowBinding(ulong iterator, int entryOffset, int depth)
+        {
+            if (FindRowBinding(iterator, entryOffset) is not { } found)
+            {
+                return;
+            }
+
+            var bindingOffset = (ulong)(found.Binding.Index * AccessorBindingLayout.ColumnSize);
+
+            Add(PlanOutputLinkType.RowBindings, found.Bindings, iterator, EngineLayout.ScanIterator.RowBindingsField, depth);
+
+            Add(PlanOutputLinkType.ColumnBindings, found.Columns, found.Bindings, EngineLayout.RowBindings.ColumnBindingsField, depth);
+
+            Add(PlanOutputLinkType.ColumnBinding,
+                found.Columns + bindingOffset,
+                found.Columns,
+                EngineLayout.RowBindings.ColumnBindingField,
+                depth,
+                bindingOffset);
+        }
+
+        private (ulong Bindings, ulong Columns, Memory.Layouts.Bindings.ColumnBinding Binding)? FindRowBinding(ulong iterator,
+                                                                                                    int entryOffset)
         {
             if (AccessorBindingLayout.ReadScan(memory, iterator) is not { } scan
                 || AccessorBindingLayout.ReadHeader(memory, scan.Bindings) is not { } header)
@@ -1160,7 +1181,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
             var bindings = AccessorBindingLayout.ReadColumns(memory, header.Columns, header.ColumnCount);
 
-            return bindings.Find(b => b.StatusOffset == entryOffset) is { } binding ? binding.RecordOffset : null;
+            return bindings.Find(b => b.StatusOffset == entryOffset) is { } binding ? (scan.Bindings, header.Columns, binding) : null;
         }
 
         private int? GetColumnOffset(ulong accessor)

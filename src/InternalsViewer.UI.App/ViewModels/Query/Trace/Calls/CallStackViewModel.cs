@@ -298,6 +298,11 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
         };
     }
 
+    private string? GetObjectClass(CallSignaturePart? self, TracePosition position)
+        => self is { Value: { } value and not 0 } && Query.MemoryHistory.AddressMap.GetEntry(value, position) is { } entry
+            ? entry.VtableClassName ?? entry.ClassName
+            : null;
+
     private async Task<PlayheadCallRow> BuildRowAsync(CallTreeNode node, TraceSpan call, bool isCurrent, ulong origin)
     {
         var index = call.CallIndex;
@@ -315,7 +320,7 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
             SetMemoryBlocks(signature, from, to);
         }
 
-        return new PlayheadCallRow(node, call, signature, from, to, isCurrent, origin)
+        return new PlayheadCallRow(node, call, signature, from, to, isCurrent, origin, GetObjectClass(signature.This, from))
         {
             CurrentText = CurrentText
         };

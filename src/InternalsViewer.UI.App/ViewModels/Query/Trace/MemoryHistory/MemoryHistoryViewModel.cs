@@ -536,13 +536,15 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
            ?? MagicBytes?.GetClassName(block)
            ?? GetArrayLabel(block)
            ?? GetMemoryObjectPageLabel(Store.Blocks[block])
+           ?? GetVtableLabel(Store.Blocks[block])
            ?? GetMapLabel(Store.Blocks[block])
            ?? (Store.Blocks[block].IsIterator ? IteratorObject : string.Empty);
 
     private string? GetArrayLabel(int block)
         => Store.GetArray(block) is { } array
            && Store.Blocks[block] is var allocation
-           && Map?.GetClassName(array.FirstElement, allocation.FromPosition, allocation.ToPosition) is { } element
+           && (Map?.GetVtableClassName(array.FirstElement, allocation.FromPosition, allocation.ToPosition)
+               ?? Map?.GetClassName(array.FirstElement, allocation.FromPosition, allocation.ToPosition)) is { } element
             ? $"{element}[{array.Count}]"
             : null;
 
@@ -565,6 +567,9 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
     }
 
     private string? GetMapLabel(MemoryHistoryBlock block) => Trace?.AddressMap.GetLabel(block.Address, block.FromPosition, block.ToPosition);
+
+    private string? GetVtableLabel(MemoryHistoryBlock block)
+        => Trace?.AddressMap.GetVtableClassName(block.Address, block.FromPosition, block.ToPosition);
 
     private string? GetMemoryObjectPageLabel(MemoryHistoryBlock block)
         => Trace is { } trace

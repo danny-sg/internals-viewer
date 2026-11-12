@@ -9,6 +9,9 @@ using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.History;
+using InternalsViewer.Query.FullTrace.Functions;
+using InternalsViewer.Query.FullTrace.Helpers;
+using InternalsViewer.Query.FullTrace.Symbols;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.Query.Memory;
@@ -39,7 +42,7 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
     public TraceOperatorLifetimeList Lifetimes { get; init; } = TraceOperatorLifetimeList.Empty;
 
-    public AddressMap AddressMap { get; init; } = AddressMap.Empty;
+    public AddressMap AddressMap { get; internal set; } = AddressMap.Empty;
 
     public MemoryObjectMap MemoryObjects { get; init; } = MemoryObjectMap.Empty;
 
@@ -93,11 +96,51 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
         CallTree.ComputeActivity(ActivityBuckets);
     }
 
+    public void ResolveObjectClasses(string symbolsPath)
+    {
+        if (MemoryHistory.Blocks.Count == 0)
+        {
+            return;
+        }
+
+        List<(AddressTable<VtableSymbol[]> Table, ulong Address)> vtables = [];
+
+        foreach (var (module, start) in GetModuleStarts())
+        {
+            if (ReplayFunctionResolver.IsReplayedModule(module.Name) && SymbolTableCache.Get(symbolsPath, module) is { } table)
+            {
+                vtables.Add((VtableResolver.Read(table), start));
+            }
+        }
+
+        if (vtables.Count > 0)
+        {
+            var classes = VtableResolver.GetUniqueClasses(AddressTable<VtableSymbol[]>.Merge(vtables));
+
+            AddressMap = ObjectClassResolver.Resolve(AddressMap, MemoryHistory, classes);
+        }
+    }
+
     public PlanOutputPath GetOutputPath(int nodeId, PlanOutputColumn column) => OutputLinks.Read(nodeId, column);
 
     public string? GetUnexpectedWriter(PlanOutputLink link) => OutputLinks.GetUnexpectedWriter(link);
 
     internal void BuildOutputPaths() => OutputLinks.ReadAll();
+
+    private Dictionary<FrameModule, ulong> GetModuleStarts()
+    {
+        var starts = new Dictionary<FrameModule, ulong>();
+
+        foreach (var node in CallTree.GetNodes())
+        {
+            if (node.Frame is { Address: > 0, Rva: > 0 } frame && frame.Address > frame.Rva)
+            {
+                starts.TryAdd(frame.Module, frame.Address - frame.Rva);
+            }
+        }
+
+        return starts;
+    }
 
     private Dictionary<CallTreeNode, int[]> GetCallActivity(TraceTimeline window)
     {

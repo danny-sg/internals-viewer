@@ -192,7 +192,8 @@ public sealed class ObjectGraphTools(McpDocumentResolver documents)
 
         var block = history.Blocks[found.Block];
 
-        var name = trace.AddressMap.GetLabel(block.Address, block.FromPosition, block.ToPosition)
+        var name = trace.AddressMap.GetVtableClassName(block.Address, block.FromPosition, block.ToPosition)
+                   ?? trace.AddressMap.GetLabel(block.Address, block.FromPosition, block.ToPosition)
                    ?? history.GetAllocatingCall(found.Block, trace.Timeline)?.Symbol
                    ?? "Object";
 

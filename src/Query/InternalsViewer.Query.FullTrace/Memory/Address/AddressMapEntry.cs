@@ -15,4 +15,5 @@ public sealed record AddressMapEntry(ulong Address,
                                      string? Allocator,
                                      ulong Bytes = 0,
                                      string? Site = null,
-                                     string? MemoryObject = null);
+                                     string? MemoryObject = null,
+                                     string? VtableClassName = null);

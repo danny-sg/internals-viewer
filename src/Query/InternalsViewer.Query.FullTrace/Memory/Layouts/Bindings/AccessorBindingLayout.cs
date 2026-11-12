@@ -22,11 +22,11 @@ public static class AccessorBindingLayout
 
     public const ulong ScanBindingsOffset = 0x88;
 
+    public const ulong ColumnsOffset = 0x70;
+
     private const ulong ColumnCountOffset = 0x62;
 
     private const ulong MemoryObjectOffset = 0x68;
-
-    private const ulong ColumnsOffset = 0x70;
 
     private const ulong RecordOffsetOffset = 0x00;
 

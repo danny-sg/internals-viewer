@@ -9,4 +9,8 @@ public sealed class PlanOutputRouteNode(PlanOutputLink link, int index, int colu
     public int Column { get; } = column;
 
     public List<PlanOutputRouteNode> Children { get; } = [];
+
+    public List<PlanOutputRouteEdge> Readers { get; } = [];
+
+    public List<PlanOutputRouteEdge> Targets { get; } = [];
 }

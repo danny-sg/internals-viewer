@@ -35,5 +35,8 @@ public enum PlanOutputLinkType
     VariableTable,
     CountColumns,
     Variables,
-    PlanObject
+    PlanObject,
+    RowBindings,
+    ColumnBindings,
+    ColumnBinding
 }

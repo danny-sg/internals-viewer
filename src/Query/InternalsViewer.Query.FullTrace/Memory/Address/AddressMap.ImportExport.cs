@@ -5,13 +5,15 @@ namespace InternalsViewer.Query.FullTrace.Memory.Address;
 
 public sealed partial class AddressMap
 {
-    private const int FormatVersion = 3;
+    private const int FormatVersion = 4;
 
     private const int FirstVersion = 1;
 
     private const int SiteVersion = 2;
 
     private const int MemoryObjectVersion = 3;
+
+    private const int VtableClassVersion = 4;
 
     private const int NoName = -1;
 
@@ -21,7 +23,7 @@ public sealed partial class AddressMap
     {
         writer.Write(-FormatVersion);
 
-        var names = Labels.SelectMany(l => new[] { l.ClassName, l.Site, l.MemoryObject })
+        var names = Labels.SelectMany(l => new[] { l.ClassName, l.Site, l.MemoryObject, l.VtableClassName })
                           .OfType<string>()
                           .Distinct(StringComparer.Ordinal)
                           .ToList();
@@ -70,6 +72,8 @@ public sealed partial class AddressMap
                 writer.Write(label.Site is { } site ? nameIndexes[site] : NoName);
 
                 writer.Write(label.MemoryObject is { } memoryObject ? nameIndexes[memoryObject] : NoName);
+
+                writer.Write(label.VtableClassName is { } vtableClassName ? nameIndexes[vtableClassName] : NoName);
             }
         }
     }
@@ -107,7 +111,8 @@ public sealed partial class AddressMap
                                               ClassName: ReadName(reader, names),
                                               Bytes: reader.ReadUInt64(),
                                               Site: version >= SiteVersion ? ReadName(reader, names) : null,
-                                              MemoryObject: version >= MemoryObjectVersion ? ReadName(reader, names) : null);
+                                              MemoryObject: version >= MemoryObjectVersion ? ReadName(reader, names) : null,
+                                              VtableClassName: version >= VtableClassVersion ? ReadName(reader, names) : null);
         }
 
         return Build(entries, getNode);
