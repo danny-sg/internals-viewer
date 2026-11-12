@@ -15,21 +15,13 @@ public sealed partial class LineageGraphControl : UserControl
 {
     private const double CellPadding = 8;
 
-    private const double HeaderPadding = 4;
-
     private const double TextSize = 12;
 
-    private const double SubtitleSize = 11;
+    private const double TypeSize = 11;
 
-    private const double LabelSize = 11;
+    private const double ArrowLength = 7;
 
-    private const double LinkStub = 14;
-
-    private const double BackGap = 10;
-
-    private const double DashLength = 4;
-
-    private const double DashGap = 3;
+    private const double ArrowWidth = 4;
 
     private const string BoxBorderKey = "CardStrokeColorDefaultBrush";
 
@@ -37,19 +29,11 @@ public sealed partial class LineageGraphControl : UserControl
 
     private const string HeaderBackgroundKey = "SolidBackgroundFillColorSecondaryBrush";
 
-    private const string SubtitleKey = "TextFillColorSecondaryBrush";
-
-    private const string LabelKey = "TextFillColorTertiaryBrush";
-
-    private const string WarningKey = "SystemFillColorCriticalBrush";
+    private const string TypeKey = "TextFillColorSecondaryBrush";
 
     private const string LinkKey = "ControlStrongStrokeColorDefaultBrush";
 
-    private const string MonospaceKey = "MonospaceFontFamily";
-
-    private const string TitleStyleKey = "DetailLinkStyle";
-
-    private const string PointerStyleKey = "ResultPointerStyle";
+    private const string LinkStyleKey = "DetailLinkStyle";
 
     public static readonly DependencyProperty GraphProperty =
         DependencyProperty.Register(nameof(Graph),
@@ -68,12 +52,9 @@ public sealed partial class LineageGraphControl : UserControl
         InitializeComponent();
     }
 
-    private List<(LineageRow Row, TextBlock? Pointer, TextBlock Value)> Cells { get; } = [];
+    private List<(LineageStage Stage, TextBlock Value)> Cells { get; } = [];
 
     private static Point Snap(double x, double y) => new(Math.Floor(x) + 0.5, Math.Floor(y) + 0.5);
-
-    private static double GetValueLine(int index)
-        => LineageGraph.HeaderHeight + (index + 1) * LineageGraph.RowHeight - LineageGraph.LineHeight / 2;
 
     private void Build()
     {
@@ -98,235 +79,161 @@ public sealed partial class LineageGraphControl : UserControl
 
         Surface.Height = graph.Height;
 
-        foreach (var box in graph.Boxes)
+        foreach (var stage in graph.Stages)
         {
-            for (var index = 0; index < box.Rows.Count; index++)
+            if (stage.Consumer is { } consumer)
             {
-                if (box.Rows[index].Target is { } target)
-                {
-                    Surface.Children.Add(CreateLink(graph, box, index, target));
-                }
+                AddArrow(graph, stage, consumer);
             }
         }
 
-        foreach (var box in graph.Boxes)
+        foreach (var stage in graph.Stages)
         {
-            Surface.Children.Add(CreateBox(graph, box));
+            Surface.Children.Add(CreateBox(graph, stage));
         }
 
         UpdateCells();
     }
 
-    private Polyline CreateLink(LineageGraph graph, LineageBox box, int index, LineageBox target)
+    private void AddArrow(LineageGraph graph, LineageStage input, LineageStage consumer)
     {
-        var startX = box.X + LineageGraph.BoxWidth;
+        var brush = AppResources.Get<Brush>(LinkKey);
 
-        var startY = box.Y + GetValueLine(index);
+        var startX = input.X + LineageGraph.BoxWidth;
 
-        var isForward = target.X > box.X;
+        var startY = input.Y + LineageGraph.BoxHeight / 2;
 
-        var points = new PointCollection { Snap(startX, startY) };
+        var endX = consumer.X - ArrowLength;
 
-        if (isForward)
+        var endY = consumer.Y + LineageGraph.BoxHeight / 2;
+
+        var middle = startX + (endX - startX) / 2;
+
+        Surface.Children.Add(new Polyline
         {
-            var middle = startX + LineageGraph.ColumnGap / 2;
-
-            var targetRow = target.Rows.FindIndex(r => r.Offset == box.Rows[index].TargetOffset);
-
-            var endY = box.Rows[index].TargetOffset >= 0 && targetRow >= 0
-                ? target.Y + GetValueLine(targetRow)
-                : target.Y + LineageGraph.HeaderHeight / 2;
-
-            points.Add(Snap(middle, startY));
-
-            points.Add(Snap(middle, endY));
-
-            points.Add(Snap(target.X, endY));
-        }
-        else
-        {
-            var right = startX + LinkStub;
-
-            var top = target.Y - BackGap;
-
-            var centre = target.X + LineageGraph.BoxWidth / 2;
-
-            points.Add(Snap(right, startY));
-
-            points.Add(Snap(right, top));
-
-            points.Add(Snap(centre, top));
-
-            points.Add(Snap(centre, target.Y));
-        }
-
-        var link = new Polyline
-        {
-            Points = points,
-            Stroke = AppResources.Get<Brush>(LinkKey),
+            Points = { Snap(startX, startY), Snap(middle, startY), Snap(middle, endY), Snap(endX, endY) },
+            Stroke = brush,
             StrokeThickness = 1,
             Width = graph.Width,
             Height = graph.Height
-        };
+        });
 
-        if (!isForward || box.Rows[index].IsIndex)
+        Surface.Children.Add(new Polygon
         {
-            link.StrokeDashArray = new DoubleCollection { DashLength, DashGap };
-        }
-
-        return link;
+            Points =
+            {
+                Snap(consumer.X, endY),
+                Snap(endX, endY - ArrowWidth),
+                Snap(endX, endY + ArrowWidth)
+            },
+            Fill = brush,
+            Width = graph.Width,
+            Height = graph.Height
+        });
     }
 
-    private Border CreateBox(LineageGraph graph, LineageBox box)
+    private Border CreateBox(LineageGraph graph, LineageStage stage)
     {
-        var title = new HyperlinkButton
-        {
-            Style = AppResources.Get<Style>(TitleStyleKey),
-            Content = new TextBlock
-            {
-                Text = box.Title,
-                FontSize = TextSize,
-                FontWeight = FontWeights.SemiBold,
-                TextTrimming = TextTrimming.CharacterEllipsis
-            }
-        };
-
-        title.Click += (_, _) => graph.Open(box.Address);
-
-        var subtitle = new TextBlock
-        {
-            FontSize = SubtitleSize,
-            Foreground = AppResources.Get<Brush>(SubtitleKey),
-            TextTrimming = TextTrimming.CharacterEllipsis
-        };
-
-        HexText.Apply(subtitle, box.Subtitle);
-
-        var panel = new StackPanel
-        {
-            Children =
-            {
-                new StackPanel
-                {
-                    Height = LineageGraph.HeaderHeight,
-                    Padding = new Thickness(CellPadding, HeaderPadding, CellPadding, HeaderPadding),
-                    Background = AppResources.Get<Brush>(HeaderBackgroundKey),
-                    Children = { title, subtitle }
-                }
-            }
-        };
-
-        foreach (var row in box.Rows)
-        {
-            panel.Children.Add(CreateRow(graph, row));
-        }
-
-        var border = new Border
-        {
-            Width = LineageGraph.BoxWidth,
-            BorderThickness = new Thickness(1),
-            BorderBrush = AppResources.Get<Brush>(BoxBorderKey),
-            Background = AppResources.Get<Brush>(BoxBackgroundKey),
-            Child = panel
-        };
-
-        Canvas.SetLeft(border, box.X);
-
-        Canvas.SetTop(border, box.Y);
-
-        return border;
-    }
-
-    private StackPanel CreateRow(LineageGraph graph, LineageRow row)
-    {
-        var label = new TextBlock
-        {
-            Text = row.Name,
-            Height = LineageGraph.LineHeight,
-            FontSize = LabelSize,
-            Foreground = AppResources.Get<Brush>(LabelKey),
-            Padding = new Thickness(CellPadding, 0, CellPadding, 0),
-            VerticalAlignment = VerticalAlignment.Center,
-            TextTrimming = TextTrimming.CharacterEllipsis
-        };
-
-        if (row.UnexpectedWriter is { } writer)
-        {
-            label.Foreground = AppResources.Get<Brush>(WarningKey);
-
-            ToolTipService.SetToolTip(label, $"Written By {writer}");
-        }
-
         var grid = new Grid
         {
-            Height = LineageGraph.LineHeight,
-            Padding = new Thickness(CellPadding, 0, CellPadding, 0),
-            ColumnDefinitions =
+            RowDefinitions =
             {
-                new ColumnDefinition { Width = GridLength.Auto },
-                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+                new RowDefinition { Height = new GridLength(LineageGraph.OperatorHeight) },
+                new RowDefinition { Height = new GridLength(LineageGraph.LineHeight) },
+                new RowDefinition { Height = new GridLength(LineageGraph.LineHeight) }
             }
         };
 
-        TextBlock? pointer = null;
+        var iterator = stage.Stage.Iterator != 0 ? stage.Stage.Iterator : stage.Stage.PlanObject;
 
-        if (row.HasPointer)
+        var header = new Border
         {
-            pointer = new TextBlock { FontSize = TextSize, FontFamily = AppResources.Get<FontFamily>(MonospaceKey) };
+            Padding = new Thickness(CellPadding, 0, CellPadding, 0),
+            Background = AppResources.Get<Brush>(HeaderBackgroundKey),
+            Child = CreateText(graph, stage.Operator, iterator, true)
+        };
 
-            var link = new HyperlinkButton
-            {
-                Style = AppResources.Get<Style>(PointerStyleKey),
-                Padding = new Thickness(0, 0, CellPadding, 0),
-                VerticalAlignment = VerticalAlignment.Center,
-                Content = pointer
-            };
+        grid.Children.Add(header);
 
-            link.Click += (_, _) => graph.Open(row.Pointer);
+        var type = CreateText(graph, stage.Type, stage.Stage.Address, false);
 
-            grid.Children.Add(link);
-        }
+        Grid.SetRow(type, 1);
+
+        grid.Children.Add(type);
 
         var value = new TextBlock
         {
             FontSize = TextSize,
+            Padding = new Thickness(CellPadding, 0, CellPadding, 0),
             VerticalAlignment = VerticalAlignment.Center,
             TextTrimming = TextTrimming.CharacterEllipsis
         };
 
-        Grid.SetColumn(value, 1);
+        Grid.SetRow(value, 2);
 
         grid.Children.Add(value);
 
-        Cells.Add((row, pointer, value));
+        Cells.Add((stage, value));
 
-        return new StackPanel { Children = { label, grid } };
+        var border = new Border
+        {
+            Width = LineageGraph.BoxWidth,
+            Height = LineageGraph.BoxHeight,
+            BorderThickness = new Thickness(1),
+            BorderBrush = AppResources.Get<Brush>(BoxBorderKey),
+            Background = AppResources.Get<Brush>(BoxBackgroundKey),
+            Child = grid
+        };
+
+        Canvas.SetLeft(border, stage.X);
+
+        Canvas.SetTop(border, stage.Y);
+
+        return border;
+    }
+
+    private static FrameworkElement CreateText(LineageGraph graph, string text, ulong address, bool isOperator)
+    {
+        var block = new TextBlock
+        {
+            Text = text,
+            FontSize = isOperator ? TextSize : TypeSize,
+            FontWeight = isOperator ? FontWeights.SemiBold : FontWeights.Normal,
+            VerticalAlignment = VerticalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis
+        };
+
+        var indent = new Thickness(isOperator ? 0 : CellPadding, 0, CellPadding, 0);
+
+        if (address == 0)
+        {
+            block.Margin = indent;
+
+            block.Foreground = AppResources.Get<Brush>(TypeKey);
+
+            return block;
+        }
+
+        var link = new HyperlinkButton
+        {
+            Style = AppResources.Get<Style>(LinkStyleKey),
+            Margin = indent,
+            VerticalAlignment = VerticalAlignment.Center,
+            Content = block
+        };
+
+        link.Click += (_, _) => graph.Open(address);
+
+        return link;
     }
 
     private void UpdateCells()
     {
-        foreach (var (row, pointer, value) in Cells)
+        foreach (var (stage, value) in Cells)
         {
-            if (pointer is not null)
-            {
-                pointer.Text = row.PointerText;
-            }
+            value.Text = stage.Value;
 
-            value.Text = row.Value;
-
-            ToolTipService.SetToolTip(value, row.Value.Length > 0 ? row.Value : null);
-        }
-    }
-
-    private void OnStructureChanged(object? sender, EventArgs e)
-    {
-        if (DispatcherQueue.HasThreadAccess)
-        {
-            Build();
-        }
-        else
-        {
-            DispatcherQueue.TryEnqueue(Build);
+            ToolTipService.SetToolTip(value, stage.Value.Length > 0 ? stage.Value : null);
         }
     }
 
@@ -349,15 +256,11 @@ public sealed partial class LineageGraphControl : UserControl
         if (e.OldValue is LineageGraph old)
         {
             old.Changed -= control.OnValuesChanged;
-
-            old.Rebuilt -= control.OnStructureChanged;
         }
 
         if (e.NewValue is LineageGraph graph)
         {
             graph.Changed += control.OnValuesChanged;
-
-            graph.Rebuilt += control.OnStructureChanged;
         }
 
         control.Build();

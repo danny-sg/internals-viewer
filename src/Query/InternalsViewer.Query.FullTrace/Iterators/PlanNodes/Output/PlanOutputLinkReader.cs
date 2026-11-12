@@ -1,12 +1,11 @@
 using System.Collections.Concurrent;
-using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
+using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Layouts;
-using InternalsViewer.Query.FullTrace.Memory.Layouts.Batches;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
 using InternalsViewer.Query.Interfaces;
@@ -26,15 +25,10 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
     private ulong[] PlanIterators => field ??= [.. trace.LinkedPlanNodes.Select(p => p.Iterator)];
 
+    private Dictionary<ulong, SqlTypeInfo> ReferenceTypes => field ??= GetReferenceTypes();
+
     public PlanOutputPath Read(int nodeId, PlanOutputColumn column)
         => Cache.GetOrAdd((nodeId, column.Reference), _ => Find(nodeId, column));
-
-    public IReadOnlyList<PlanOutputLink> Read(int nodeId, PlanOutputColumn column, MemoryHistoryReader memory)
-    {
-        var path = Read(nodeId, column);
-
-        return path.Tails.Count > 0 ? Evaluate(path, CreateRoute(memory, memory.Position)) : path.Links;
-    }
 
     public void ReadAll()
     {
@@ -59,44 +53,13 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
                                            TracePosition position,
                                            Func<ulong, string?> getClassName,
                                            Func<ulong, int> getSize,
-                                           Func<ulong, bool> isRecord,
                                            IReadOnlyList<ulong> planIterators)
     {
-        var route = new Route(memory, position, getClassName, getSize, isRecord, planIterators);
+        var route = new Route(memory, position, getClassName, getSize, planIterators);
 
         route.AddOutput(planObject, iterator, reference);
 
         return route.GetPath();
-    }
-
-    internal static List<PlanOutputLink> GetLinks(PlanOutputPath path,
-                                                  IMemoryReader memory,
-                                                  TracePosition position,
-                                                  Func<ulong, bool> isRecord)
-        => Evaluate(path, new Route(memory, position, _ => null, _ => 0, isRecord, []));
-
-    private static List<PlanOutputLink> Evaluate(PlanOutputPath path, Route route)
-    {
-        var next = 0;
-
-        foreach (var (start, count, add) in path.Tails)
-        {
-            for (var index = next; index < start; index++)
-            {
-                route.Links.Add(path.Links[index]);
-            }
-
-            add(route);
-
-            next = start + count;
-        }
-
-        for (var index = next; index < path.Links.Count; index++)
-        {
-            route.Links.Add(path.Links[index]);
-        }
-
-        return route.Links;
     }
 
     private static string? GetFunctionName(CallTreeNode? node)
@@ -179,16 +142,35 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
         route.AddOutput(planNodes[0].PlanObject, planNodes[0].Iterator, column.Reference);
 
-        return route.GetPath();
+        var path = route.GetPath();
+
+        foreach (var stage in path.Stages)
+        {
+            stage.ColumnType = stage.Consumer < 0
+                ? column.Type
+                : ReferenceTypes.TryGetValue(stage.Reference, out var type) ? type : null;
+        }
+
+        return path;
     }
 
     private Route CreateRoute(IMemoryReader memory, TracePosition position)
-        => new(memory,
-               position,
-               a => GetClassName(a, position),
-               a => GetSize(a, position),
-               a => trace.BufferPool.GetFrameReference(a, position)?.Offset >= PageHeader.Size,
-               PlanIterators);
+        => new(memory, position, a => GetClassName(a, position), a => GetSize(a, position), PlanIterators);
+
+    private Dictionary<ulong, SqlTypeInfo> GetReferenceTypes()
+    {
+        var types = new Dictionary<ulong, SqlTypeInfo>();
+
+        foreach (var columns in trace.OutputColumns.Values)
+        {
+            foreach (var column in columns)
+            {
+                types.TryAdd(column.Reference, column.Type);
+            }
+        }
+
+        return types;
+    }
 
     private int GetSize(ulong address, TracePosition position)
         => trace.MemoryHistory.GetBlock(address, position) is >= 0 and var block && trace.MemoryHistory.Blocks[block].Address == address
@@ -231,7 +213,6 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
                                 TracePosition position,
                                 Func<ulong, string?> getClassName,
                                 Func<ulong, int> getSize,
-                                Func<ulong, bool> isRecord,
                                 IReadOnlyList<ulong> planIterators)
     {
         private const ulong PointerSize = sizeof(ulong);
@@ -264,6 +245,8 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
         private const string StorageValueClass = "CValSSTable";
 
+        private const string StreamAggregateClass = "CXteStreamAggregate";
+
         private static readonly MemoryField[] OutputValueFields =
         [
             EngineLayout.HashIterator.BuildOutputValuesField,
@@ -278,13 +261,13 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
         public List<PlanOutputLink> Links { get; } = [];
 
-        public List<(int Start, int Count, Action<Route> Add)> Tails { get; } = [];
+        public List<PlanOutputStage> Stages { get; } = [];
 
         private static ulong BufferEntrySize { get; } = (ulong)EngineLayout.RowBuffer.EntryField.Length;
 
-        private PlanOutputValueSource? Value { get; set; }
+        private int StageIndex { get; set; } = -1;
 
-        private PlanOutputValueSource? Record { get; set; }
+        private PlanOutputStage Stage => Stages[StageIndex];
 
         public void AddOutput(ulong planObject, ulong iterator, ulong reference)
         {
@@ -309,7 +292,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
                 {
                     Add(PlanOutputLinkType.Reference, reference, array, columnField, 0, columnOffset, isRoute: true);
 
-                    var owner = AddMap(iterator) && GetIterator(planObject, 0) is { } ownIterator ? ownIterator : iterator;
+                    var owner = AddMap(iterator) && GetIterator(planObject, 0, false) is { } ownIterator ? ownIterator : iterator;
 
                     AddReference(reference, owner, 0);
 
@@ -318,12 +301,27 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
             }
         }
 
-        public PlanOutputPath GetPath() => new() { Links = Links, Tails = Tails, Value = Value, Record = Record };
+        public PlanOutputPath GetPath() => new() { Links = Links, Stages = Stages };
 
         private static ulong GetFieldAddress(ulong holder, MemoryField field, ulong elementOffset = 0)
             => holder + (ulong)field.Offset + elementOffset;
 
         private ulong? AddReference(ulong reference, ulong owner, int depth)
+        {
+            var consumer = StageIndex;
+
+            StageIndex = Stages.Count;
+
+            Stages.Add(new PlanOutputStage(reference, depth, consumer));
+
+            var entry = AddStage(reference, owner, depth);
+
+            StageIndex = consumer;
+
+            return entry;
+        }
+
+        private ulong? AddStage(ulong reference, ulong owner, int depth)
         {
             var className = getClassName(reference);
 
@@ -352,7 +350,16 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
             Add(PlanOutputLinkType.Producer, producer, reference, producerField, depth, isRoute: true);
 
-            if (GetIterator(producer, depth) is not { } producerIterator || IsBatch(owner) || IsBatch(producerIterator))
+            Stage.PlanObject = producer;
+
+            if (GetIterator(producer, depth) is not { } producerIterator)
+            {
+                return null;
+            }
+
+            Stage.Iterator = producerIterator;
+
+            if (IsBatch(owner) || IsBatch(producerIterator))
             {
                 return null;
             }
@@ -371,9 +378,14 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
             if (className == StorageReferenceClass)
             {
-                AddTail(r => r.AddStorageRow(producerIterator, depth));
+                SetStorageRecord(reference, producerIterator, depth);
 
                 return null;
+            }
+
+            if (className == OrdinalReferenceClass && getClassName(producer) == StreamAggregateClass)
+            {
+                return AddAggregateValue(reference, producer, producerIterator, depth);
             }
 
             return className == OrdinalReferenceClass ? AddBufferEntry(reference, producerIterator, depth) : null;
@@ -386,6 +398,10 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
             if (TryRead(reference, producerField, out ulong producer) && getClassName(producer) is not null)
             {
                 Add(PlanOutputLinkType.Producer, producer, reference, producerField, depth, isRoute: true);
+
+                Stage.PlanObject = producer;
+
+                Stage.Iterator = GetIterator(producer, depth) ?? 0;
             }
 
             if (!TryRead(reference, EngineLayout.ColumnReference.ExpressionField, out ulong expression)
@@ -396,6 +412,8 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
             }
 
             Add(PlanOutputLinkType.Expression, expression, reference, EngineLayout.ColumnReference.ExpressionField, depth, isRoute: true);
+
+            SetStage(PlanOutputStageType.Expression, expression);
 
             for (var index = 0UL; index < (ulong)Math.Clamp(count, 0, MaximumEntries); index++)
             {
@@ -434,10 +452,16 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
             Add(PlanOutputLinkType.Producer, planObject, reference, producerField, depth, isRoute: true);
 
+            Stage.PlanObject = planObject;
+
             if (FindAdapter(planObject) is not { } adapter)
             {
                 return;
             }
+
+            Add(PlanOutputLinkType.Iterator, adapter, planObject, null, depth, isRoute: true);
+
+            Stage.Iterator = adapter;
 
             if (TryRead(adapter, EngineLayout.BatchAdapter.ChildField, out ulong child) && child >= TraceAddress.MinimumAddress)
             {
@@ -464,68 +488,10 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
                 Add(PlanOutputLinkType.BufferEntry, rowBuffer + entryOffset, rowBuffer, entryField, depth, entryOffset);
 
-                SetValue(new PlanOutputValueSource(PlanOutputLinkType.BufferEntry, rowBuffer + entryOffset, [], null), depth);
+                SetStage(PlanOutputStageType.RowBuffer, rowBuffer);
+
+                SetValue(new PlanOutputValueSource(PlanOutputLinkType.BufferEntry, rowBuffer + entryOffset, [], null));
             }
-
-            AddTail(r => r.AddBatchVector(adapter, column, depth));
-        }
-
-        private void AddBatchVector(ulong adapter, int column, int depth)
-        {
-            var vectorField = EngineLayout.BatchAdapter.ColumnMapVectorField;
-
-            var mapOffset = (ulong)(column * vectorField.Length);
-
-            if (!TryRead(adapter, EngineLayout.BatchAdapter.CursorField, out int cursor)
-                || !TryRead(adapter, EngineLayout.BatchAdapter.ColumnMapField, out ulong map)
-                || !TryRead(map + mapOffset, vectorField, out ushort vectorId)
-                || !TryRead(adapter, EngineLayout.BatchAdapter.BatchField, out ulong batch)
-                || batch < TraceAddress.MinimumAddress)
-            {
-                return;
-            }
-
-            var cursorField = EngineLayout.BatchAdapter.CursorField;
-
-            Add(PlanOutputLinkType.Cursor, GetFieldAddress(adapter, cursorField), adapter, cursorField, depth, slot: cursor);
-
-            Add(PlanOutputLinkType.ColumnMap, map, adapter, EngineLayout.BatchAdapter.ColumnMapField, depth);
-
-            Add(PlanOutputLinkType.VectorId, GetFieldAddress(map, vectorField, mapOffset), map, vectorField, depth, mapOffset, vectorId);
-
-            Add(PlanOutputLinkType.Batch, batch, adapter, EngineLayout.BatchAdapter.BatchField, depth);
-
-            var rowField = EngineLayout.Batch.SelectedRowField;
-
-            var selectionOffset = (ulong)((cursor - 1) * rowField.Length);
-
-            if (cursor < 1
-                || vectorId < 1
-                || !TryRead(batch, EngineLayout.Batch.SelectionField, out ulong selection)
-                || !TryRead(selection + selectionOffset, rowField, out ushort row)
-                || !TryRead(batch, EngineLayout.Batch.VectorsField, out ulong vectors))
-            {
-                return;
-            }
-
-            Add(PlanOutputLinkType.Selection, selection, batch, EngineLayout.Batch.SelectionField, depth);
-
-            Add(PlanOutputLinkType.SelectedRow, selection + selectionOffset, selection, rowField, depth, selectionOffset, row);
-
-            Add(PlanOutputLinkType.Vectors, vectors, batch, EngineLayout.Batch.VectorsField, depth);
-
-            var vectorOffset = (ulong)((vectorId - 1) * BatchReader.VectorEntrySize);
-
-            if (!TryRead(vectors + vectorOffset, EngineLayout.Batch.VectorField, out ulong buffer) || buffer < TraceAddress.MinimumAddress)
-            {
-                return;
-            }
-
-            var slotOffset = (ulong)row * PointerSize;
-
-            Add(PlanOutputLinkType.Vector, buffer, vectors, EngineLayout.Batch.VectorField, depth, vectorOffset, vectorId);
-
-            Add(PlanOutputLinkType.VectorSlot, buffer + slotOffset, buffer, EngineLayout.Batch.VectorSlotField, depth, slotOffset, row);
         }
 
         private ulong? FindAdapter(ulong planObject)
@@ -541,31 +507,47 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
             return null;
         }
 
-        private void AddStorageRow(ulong iterator, int depth)
+        private void SetStorageRecord(ulong reference, ulong iterator, int depth)
         {
-            if (!TryRead(iterator, EngineLayout.ScanIterator.RowsetField, out ulong rowset)
-                || rowset < TraceAddress.MinimumAddress + EngineLayout.Rowset.InterfaceOffset)
+            if (Stage.Record is not null
+                || !TryRead(reference, EngineLayout.ColumnReference.StorageColumnIdField, out int columnId)
+                || columnId <= 0)
             {
                 return;
             }
 
-            Add(PlanOutputLinkType.Rowset, rowset, iterator, EngineLayout.ScanIterator.RowsetField, depth);
+            ulong[] chain =
+            [
+                (ulong)EngineLayout.ScanIterator.RowsetField.Offset,
+                (ulong)EngineLayout.Rowset.RowField.Offset - EngineLayout.Rowset.InterfaceOffset,
+                (ulong)EngineLayout.Row.RecordField.Offset
+            ];
 
-            var rowsetStart = rowset - EngineLayout.Rowset.InterfaceOffset;
+            Stage.Record = new PlanOutputValueSource(PlanOutputLinkType.Record, iterator, chain, null, columnId);
 
-            if (!TryRead(rowsetStart, EngineLayout.Rowset.RowField, out ulong row) || row < TraceAddress.MinimumAddress)
+            Stage.Type = PlanOutputStageType.Record;
+
+            if (TryRead(iterator, EngineLayout.ScanIterator.RowsetField, out ulong rowset)
+                && rowset >= TraceAddress.MinimumAddress + EngineLayout.Rowset.InterfaceOffset)
+            {
+                Add(PlanOutputLinkType.Rowset, rowset, iterator, EngineLayout.ScanIterator.RowsetField, depth);
+
+                AddRecord(rowset - EngineLayout.Rowset.InterfaceOffset, EngineLayout.Rowset.RowField, depth);
+            }
+        }
+
+        private void AddRecord(ulong rowset, MemoryField? rowField, int depth)
+        {
+            if (!memory.TryRead(rowset + (ulong)(rowField?.Offset ?? 0), out ulong row) || row < TraceAddress.MinimumAddress)
             {
                 return;
             }
 
-            Add(PlanOutputLinkType.Row, row, rowsetStart, EngineLayout.Rowset.RowField, depth);
+            Add(PlanOutputLinkType.Row, row, rowset, rowField, depth);
 
             var recordField = EngineLayout.Row.RecordField;
 
-            if (TryRead(row, recordField, out ulong record) && isRecord(record))
-            {
-                Add(PlanOutputLinkType.Record, GetFieldAddress(row, recordField), row, recordField, depth);
-            }
+            Add(PlanOutputLinkType.Record, GetFieldAddress(row, recordField), row, recordField, depth);
         }
 
         private bool IsBatch(ulong iterator) => getClassName(iterator)?.StartsWith(BatchIteratorPrefix, StringComparison.Ordinal) == true;
@@ -592,7 +574,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
             return true;
         }
 
-        private ulong? GetIterator(ulong planObject, int depth)
+        private ulong? GetIterator(ulong planObject, int depth, bool isLinked = true)
         {
             var map = GetAddress(PlanOutputLinkType.IteratorMap) ?? 0;
 
@@ -616,6 +598,11 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
                         && found == planObject
                         && TryRead(entry, EngineLayout.IteratorMap.IteratorField, out ulong iterator))
                     {
+                        if (!isLinked)
+                        {
+                            return iterator;
+                        }
+
                         foreach (var (mapEntry, mapSource, mapField, mapOffset) in entries)
                         {
                             Add(PlanOutputLinkType.MapEntry, mapEntry, mapSource, mapField, depth, mapOffset, isRoute: true);
@@ -643,7 +630,10 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
                 var (iterator, offset) = GetWrapped(planIterator) ?? (planIterator, 0UL);
 
-                Add(PlanOutputLinkType.Iterator, iterator, planIterator, null, depth, offset, isRoute: true);
+                if (isLinked)
+                {
+                    Add(PlanOutputLinkType.Iterator, iterator, planIterator, null, depth, offset, isRoute: true);
+                }
 
                 return iterator;
             }
@@ -816,7 +806,12 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
                 Add(PlanOutputLinkType.BufferEntry, inputEntry, inner, EngineLayout.ExecValue.EntryField, depth);
 
-                SetValue(new PlanOutputValueSource(PlanOutputLinkType.BufferEntry, inputEntry, [], null), depth);
+                if (Stage.Type == PlanOutputStageType.None)
+                {
+                    SetStage(PlanOutputStageType.InputValue, inner);
+                }
+
+                SetValue(new PlanOutputValueSource(PlanOutputLinkType.BufferEntry, inputEntry, [], null));
             }
 
             AddInputValue(iterator, entry, readers, depth + 1);
@@ -891,49 +886,28 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
             Add(PlanOutputLinkType.RowSlot, rowSlot, rowContext, slotField, depth, slotOffset, info.Slot);
 
+            SetStage(PlanOutputStageType.RowContext, rowContext);
+
             if (info.Offset is { } rowOffset)
             {
-                SetValue(new PlanOutputValueSource(PlanOutputLinkType.RowSlot, rowSlot, [0], rowOffset), depth);
+                SetValue(new PlanOutputValueSource(PlanOutputLinkType.RowSlot, rowSlot, [0], rowOffset));
             }
 
-            if (info.Accessor == 0)
+            if (info.Accessor == 0 || Stage.Record is not null || GetColumnOffset(info.Accessor) is not { } recordOffset)
             {
                 return;
             }
 
-            var columnOffset = GetColumnOffset(info.Accessor);
+            ulong[] chain = [0, 0, (ulong)EngineLayout.Row.RecordField.Offset];
 
-            if (depth == 0 && Record is null && columnOffset is { } recordOffset)
+            Stage.Record = new PlanOutputValueSource(PlanOutputLinkType.Record, rowSlot, chain, recordOffset);
+
+            if (memory.TryRead(rowSlot, out ulong rowset) && rowset >= TraceAddress.MinimumAddress)
             {
-                ulong[] chain = [0, 0, (ulong)EngineLayout.Row.RecordField.Offset];
+                Add(PlanOutputLinkType.Rowset, rowset, rowSlot, null, depth);
 
-                Record = new PlanOutputValueSource(PlanOutputLinkType.Record, rowSlot, chain, recordOffset);
+                AddRecord(rowset, null, depth);
             }
-
-            var slot = info.Slot;
-
-            AddTail(r => r.AddRowRecord(rowContext, slotOffset, slot, columnOffset, depth));
-        }
-
-        private void AddRowRecord(ulong rowContext, ulong slotOffset, int slot, int? columnOffset, int depth)
-        {
-            var slotField = EngineLayout.RowContext.SlotField;
-
-            var recordField = EngineLayout.Row.RecordField;
-
-            if (!memory.TryRead(GetFieldAddress(rowContext, slotField, slotOffset), out ulong rowset)
-                || !memory.TryRead(rowset, out ulong row)
-                || !TryRead(row, recordField, out ulong record)
-                || !isRecord(record))
-            {
-                return;
-            }
-
-            Add(PlanOutputLinkType.Rowset, rowset, rowContext, slotField, depth, slotOffset, slot);
-
-            Add(PlanOutputLinkType.Row, row, rowset, null, depth);
-
-            Add(PlanOutputLinkType.Record, GetFieldAddress(row, recordField), row, recordField, depth, slot: slot, offset: columnOffset);
         }
 
         private ulong? GetRowContext(int depth)
@@ -995,9 +969,142 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
                 entryOffset,
                 offset: GetRecordOffset(iterator, (int)entryOffset));
 
-            SetValue(new PlanOutputValueSource(PlanOutputLinkType.BufferEntry, entry, [], null), depth);
+            SetStage(PlanOutputStageType.RowBuffer, rowBuffer);
+
+            SetValue(new PlanOutputValueSource(PlanOutputLinkType.BufferEntry, entry, [], null));
 
             return entry;
+        }
+
+        private ulong? AddAggregateValue(ulong reference, ulong producer, ulong iterator, int depth)
+        {
+            var groupField = EngineLayout.PlanObject.GroupColumnsField;
+
+            var aggregateField = EngineLayout.PlanObject.AggregateColumnsField;
+
+            var groupCountField = EngineLayout.PlanObject.GroupCountField;
+
+            if (FindColumn(producer, groupField, groupCountField, reference) is { } group)
+            {
+                return AddVariable(PlanOutputLinkType.GroupColumns, groupField, reference, producer, iterator, group, group.Index, depth);
+            }
+
+            if (FindColumn(producer, aggregateField, EngineLayout.PlanObject.AggregateCountField, reference) is { } aggregate)
+            {
+                var variable = GetColumnCount(producer, groupField, groupCountField) + aggregate.Index;
+
+                return AddVariable(PlanOutputLinkType.AggregateColumns,
+                                   aggregateField,
+                                   reference,
+                                   producer,
+                                   iterator,
+                                   aggregate,
+                                   variable,
+                                   depth);
+            }
+
+            var countField = EngineLayout.PlanObject.CountColumnsField;
+
+            var valueField = EngineLayout.StreamAggregateIterator.CountField;
+
+            if (FindColumn(producer, countField, EngineLayout.PlanObject.CountColumnCountField, reference) is not { Index: 0 } count
+                || (ulong)(valueField.Offset + valueField.Length) > (ulong)getSize(iterator))
+            {
+                return null;
+            }
+
+            AddColumnArray(PlanOutputLinkType.CountColumns, countField, reference, producer, iterator, count, depth);
+
+            var entry = GetFieldAddress(iterator, valueField);
+
+            Add(PlanOutputLinkType.BufferEntry, entry, iterator, valueField, depth);
+
+            SetStage(PlanOutputStageType.Counter, iterator);
+
+            SetValue(new PlanOutputValueSource(PlanOutputLinkType.BufferEntry, entry, [], null));
+
+            return entry;
+        }
+
+        private ulong? AddVariable(PlanOutputLinkType type,
+                                   MemoryField field,
+                                   ulong reference,
+                                   ulong producer,
+                                   ulong iterator,
+                                   (ulong Array, int Index) column,
+                                   int variable,
+                                   int depth)
+        {
+            var tableField = EngineLayout.StreamAggregateIterator.VariableTableField;
+
+            var rowSlot = (ulong)EngineLayout.StreamAggregateIterator.GroupRowSlot * PointerSize;
+
+            var entryOffset = (ulong)variable * BufferEntrySize;
+
+            if (!TryRead(iterator, tableField, out ulong table)
+                || table < TraceAddress.MinimumAddress
+                || rowSlot + PointerSize > (ulong)getSize(table)
+                || !memory.TryRead(table + rowSlot, out ulong row)
+                || row < TraceAddress.MinimumAddress
+                || entryOffset + BufferEntrySize > (ulong)getSize(row))
+            {
+                return null;
+            }
+
+            AddColumnArray(type, field, reference, producer, iterator, column, depth);
+
+            Add(PlanOutputLinkType.VariableTable, table, iterator, tableField, depth);
+
+            Add(PlanOutputLinkType.Variables, row, table, EngineLayout.StreamAggregateIterator.VariablesField, depth, rowSlot);
+
+            var entry = row + entryOffset;
+
+            Add(PlanOutputLinkType.BufferEntry, entry, row, EngineLayout.RowBuffer.EntryField, depth, entryOffset);
+
+            SetStage(PlanOutputStageType.Variables, row);
+
+            SetValue(new PlanOutputValueSource(PlanOutputLinkType.BufferEntry, entry, [], null));
+
+            return entry;
+        }
+
+        private void AddColumnArray(PlanOutputLinkType type,
+                                    MemoryField field,
+                                    ulong reference,
+                                    ulong producer,
+                                    ulong iterator,
+                                    (ulong Array, int Index) column,
+                                    int depth)
+        {
+            Add(PlanOutputLinkType.PlanObject, producer, iterator, EngineLayout.Iterator.PlanObjectField, depth, isRoute: true);
+
+            Add(type, column.Array, producer, field, depth, isRoute: true);
+
+            Add(PlanOutputLinkType.Reference, reference, column.Array, null, depth, (ulong)column.Index * PointerSize, isRoute: true);
+        }
+
+        private int GetColumnCount(ulong producer, MemoryField field, MemoryField countField)
+            => TryRead(producer, field, out ulong array)
+               && array >= TraceAddress.MinimumAddress
+               && TryRead(producer, countField, out int count)
+                ? Math.Clamp(count, 0, Math.Min(getSize(array) / (int)PointerSize, MaximumOutputs))
+                : 0;
+
+        private (ulong Array, int Index)? FindColumn(ulong producer, MemoryField field, MemoryField countField, ulong reference)
+        {
+            var count = GetColumnCount(producer, field, countField);
+
+            var array = Read(producer, field);
+
+            for (var index = 0; index < count; index++)
+            {
+                if (memory.TryRead(array + (ulong)index * PointerSize, out ulong column) && column == reference)
+                {
+                    return (array, index);
+                }
+            }
+
+            return null;
         }
 
         private void AddInputValue(ulong iterator, ulong? entry, List<ulong> readers, int depth)
@@ -1067,22 +1174,20 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
         private ulong Read(ulong holder, MemoryField field) => TryRead(holder, field, out ulong value) ? value : 0;
 
-        private void AddTail(Action<Route> add)
+        private void SetStage(PlanOutputStageType type, ulong address)
         {
-            var start = Links.Count;
+            Stage.Type = type;
 
-            add(this);
-
-            Tails.Add((start, Links.Count - start, add));
+            Stage.Address = address;
         }
 
-        private void SetValue(PlanOutputValueSource source, int depth)
+        private void SetValue(PlanOutputValueSource source)
         {
             var isEntry = source.Type == PlanOutputLinkType.BufferEntry;
 
-            if (depth == 0 && Value is not { Type: PlanOutputLinkType.BufferEntry } && (Value is null || isEntry))
+            if (Stage.Value is not { Type: PlanOutputLinkType.BufferEntry } && (Stage.Value is null || isEntry))
             {
-                Value = source;
+                Stage.Value = source;
             }
         }
 

@@ -27,6 +27,8 @@ public sealed class MemoryStructureNode(MemoryStructureNodeType type,
 
     public int FirstBucket { get; init; }
 
+    public int Index { get; init; } = -1;
+
     public string Detail { get; init; } = string.Empty;
 
     public List<MemoryStructureBadge> Badges { get; init; } = [];
@@ -35,7 +37,7 @@ public sealed class MemoryStructureNode(MemoryStructureNodeType type,
 
     public ulong Group => Type is MemoryStructureNodeType.Group or MemoryStructureNodeType.WorktableGroup ? Address : Parent?.Group ?? 0;
 
-    public string Key => $"{Type}:{Group:X}:{Partition}:{Address:X}";
+    public string Key => $"{Type}:{Group:X}:{Partition}:{Address:X}:{Index}";
 
     public string AddressText => Address == 0 ? string.Empty : $"0x{Address:X16}";
 
@@ -45,7 +47,8 @@ public sealed class MemoryStructureNode(MemoryStructureNodeType type,
                                              or MemoryStructureNodeType.WorkfilePages
                                              or MemoryStructureNodeType.Runs
                                              or MemoryStructureNodeType.RecordPages
-                                             or MemoryStructureNodeType.ComparePages);
+                                             or MemoryStructureNodeType.ComparePages
+                                             or MemoryStructureNodeType.Statement);
 
     public bool HasData => IsSelectable && Type is not (MemoryStructureNodeType.Run or MemoryStructureNodeType.Memory);
 

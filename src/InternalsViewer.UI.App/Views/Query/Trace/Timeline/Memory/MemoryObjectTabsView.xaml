@@ -10,7 +10,7 @@
 
     <UserControl.Resources>
         <DataTemplate x:Key="ObjectTabTemplate" x:DataType="models:MemoryObjectTab">
-            <TabViewItem Header="{x:Bind Header}" IsClosable="False">
+            <TabViewItem Header="{x:Bind Header}" IsClosable="False" IsSelected="{x:Bind IsSelected, Mode=TwoWay}">
                 <Grid>
                     <results:ResultsGridControl Visibility="{x:Bind HasTable}"
                                                 ResultSet="{x:Bind Table, Mode=OneWay}"

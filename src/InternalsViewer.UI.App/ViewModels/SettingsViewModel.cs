@@ -58,6 +58,8 @@ public partial class SettingsViewModel(SettingsService settingsService,
 
     private const string TraceTimelineHiddenTickTracksKey = "TraceTimelineHiddenTickTracks";
     private const string PlanAdditionalStepsKey = "PlanAdditionalSteps";
+
+    private const string PlanDetailedStepsKey = "PlanDetailedSteps";
     private const string DecodeValuesKey = "DecodeValues";
     private const string McpServerEnabledKey = "McpServerEnabled";
     private const string McpServerPortKey = "McpServerPort";
@@ -161,6 +163,9 @@ public partial class SettingsViewModel(SettingsService settingsService,
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PlanAdditionalStepSet))]
     private string _planAdditionalSteps = string.Empty;
+
+    [ObservableProperty]
+    private bool _planDetailedSteps;
 
     [ObservableProperty]
     private bool _decodeValues = true;
@@ -308,6 +313,8 @@ public partial class SettingsViewModel(SettingsService settingsService,
                                         ?? DefaultTraceTimelineHiddenTickTracks;
 
         PlanAdditionalSteps = await SettingsService.ReadSettingAsync<string>(PlanAdditionalStepsKey) ?? string.Empty;
+
+        PlanDetailedSteps = await SettingsService.ReadSettingAsync<bool?>(PlanDetailedStepsKey) ?? false;
 
         DecodeValues = await SettingsService.ReadSettingAsync<bool?>(DecodeValuesKey) ?? true;
 
@@ -479,6 +486,11 @@ public partial class SettingsViewModel(SettingsService settingsService,
         PlanAdditionalStepSet = SplitCategories(value);
 
         _ = SettingsService.SaveSettingAsync(PlanAdditionalStepsKey, value);
+    }
+
+    partial void OnPlanDetailedStepsChanged(bool value)
+    {
+        _ = SettingsService.SaveSettingAsync(PlanDetailedStepsKey, value);
     }
 
     partial void OnTraceTimelineHiddenTickTracksChanged(string value)

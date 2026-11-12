@@ -31,31 +31,30 @@ public static class PlanOutputValueReader
 
     private const ushort ComplexColumnFlag = 0x8000;
 
-    public static string? Read(IMemoryReader memory, PlanOutputColumn column, PlanOutputPath path)
+    public static string? Read(IMemoryReader memory, PlanOutputStage stage)
     {
-        if (!SqlTypeHelpers.TryGetSqlType(column.Type.TypeId, out var sqlType)
-            || path.Value is not { } source
+        if (stage.ColumnType is not { } type
+            || !SqlTypeHelpers.TryGetSqlType(type.TypeId, out var sqlType)
+            || stage.Value is not { } source
             || source.Follow(memory) is not { } address)
         {
             return null;
         }
 
         return source.Type == PlanOutputLinkType.BufferEntry
-            ? ReadEntry(memory, column.Type, sqlType, address)
-            : ReadRowColumn(memory, address, source.Offset ?? 0, column.Type, sqlType);
+            ? ReadEntry(memory, type, sqlType, address)
+            : ReadRowColumn(memory, address, source.Offset ?? 0, type, sqlType);
     }
-
-    public static string? ReadEntry(IMemoryReader memory, SqlTypeInfo type, ulong entry)
-        => SqlTypeHelpers.TryGetSqlType(type.TypeId, out var sqlType) ? ReadEntry(memory, type, sqlType, entry) : null;
 
     public static PlanOutputRecord? ReadRecord(IMemoryReader memory,
                                                TraceBufferPool bufferPool,
                                                TracePosition position,
-                                               PlanOutputPath path)
-        => path.Record is { Offset: { } columnOffset } source
+                                               PlanOutputStage stage)
+        => stage.Record is { } source
+           && (source.Offset is not null || source.ColumnId > 0)
            && source.Follow(memory) is { } record
            && bufferPool.GetFrameReference(record, position) is { } location
-            ? new PlanOutputRecord(location, columnOffset)
+            ? new PlanOutputRecord(location, source.Offset ?? 0, source.ColumnId)
             : null;
 
     private static string? ReadEntry(IMemoryReader memory, SqlTypeInfo type, SqlDbType sqlType, ulong entry)

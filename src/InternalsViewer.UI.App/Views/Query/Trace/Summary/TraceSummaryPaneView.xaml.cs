@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Data;
 using System.Linq;
+using InternalsViewer.Internals.Helpers;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace.Summary;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Summary;
@@ -46,6 +48,15 @@ public sealed partial class TraceSummaryPaneView : UserControl, IDisposable
     private HashSet<string> Expanded { get; } = [];
 
     private TreeViewNode? ContextNode { get; set; }
+
+    public static SqlDbType? GetDataType(TraceSummaryNode node)
+        => node.ColumnType is { } type && SqlTypeHelpers.TryGetSqlType(type.TypeId, out var dataType) ? dataType : null;
+
+    public static int GetPrecision(TraceSummaryNode node) => node.ColumnType?.Precision ?? 0;
+
+    public static int GetScale(TraceSummaryNode node) => node.ColumnType?.Scale ?? 0;
+
+    public static int GetLength(TraceSummaryNode node) => node.ColumnType?.MaxLength ?? 0;
 
     public void Dispose() => Pane.PropertyChanged -= OnPanePropertyChanged;
 

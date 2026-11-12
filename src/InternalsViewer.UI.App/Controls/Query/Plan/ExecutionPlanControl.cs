@@ -48,8 +48,8 @@ public sealed class ExecutionPlanControl : Canvas
     private const double CurrentArrowMoveSeconds = 0.3;
     private const double CurrentArrowOvershoot = 0.3;
     private const double ClickTolerance = 4;
-    private const double StepLabelGap = 2;
-    private const double StepLabelRoom = 56;
+    private const double StepLabelGap = 8;
+    private const double StepLabelRoom = 62;
     private const double CallArrowRotation = -90;
     private const double ReturnArrowRotation = 90;
     private const double CalculatorWidth = 14;
@@ -175,6 +175,8 @@ public sealed class ExecutionPlanControl : Canvas
 
     public Func<PlanNode, bool>? CanOpenSortTable { get; set; }
 
+    public Func<PlanNode, bool>? CanSkipTo { get; set; }
+
     public static readonly DependencyProperty CurrentStepProperty =
         DependencyProperty.Register(nameof(CurrentStep), typeof(PlanStepMarker), typeof(ExecutionPlanControl),
             new PropertyMetadata(null, OnCurrentStepChanged));
@@ -267,6 +269,8 @@ public sealed class ExecutionPlanControl : Canvas
     public event EventHandler<PlanNode>? PropertiesOpenRequested;
 
     public event EventHandler<PlanNode>? CounterToggleRequested;
+
+    public event EventHandler<PlanNode>? SkipToRequested;
 
     public event EventHandler<PlanPage>? PageOpenRequested;
 
@@ -938,6 +942,17 @@ public sealed class ExecutionPlanControl : Canvas
         {
             var flyout = new MenuFlyout();
 
+            if (CanSkipTo?.Invoke(node) == true)
+            {
+                var skipTo = new MenuFlyoutItem { Text = "Skip To" };
+
+                skipTo.Click += (_, _) => SkipToRequested?.Invoke(this, node);
+
+                flyout.Items.Add(skipTo);
+
+                flyout.Items.Add(new MenuFlyoutSeparator());
+            }
+
             if (!string.IsNullOrEmpty(node.Index) &&
                 OperatorClassifier.GetCategory(node) == OperatorCategory.DataAccess)
             {
@@ -1360,7 +1375,7 @@ public sealed class ExecutionPlanControl : Canvas
 
         var isFlying = isMoving && (shownLeft != left || shownTop != top || shownRotation != rotation);
 
-        ShowStepLabel(step.Step, isFlying, centreX, aboveIcon - CurrentArrowSize * scale / 2 - StepLabelGap);
+        ShowStepLabel(step.Step, isFlying, centreX, aboveIcon - (CurrentArrowSize / 2 + StepLabelGap) * scale);
 
         if (isMoving)
         {

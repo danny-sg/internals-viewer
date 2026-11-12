@@ -95,9 +95,6 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
     public PlanOutputPath GetOutputPath(int nodeId, PlanOutputColumn column) => OutputLinks.Read(nodeId, column);
 
-    public IReadOnlyList<PlanOutputLink> GetOutputLinks(int nodeId, PlanOutputColumn column, MemoryHistoryReader memory)
-        => OutputLinks.Read(nodeId, column, memory);
-
     public string? GetUnexpectedWriter(PlanOutputLink link) => OutputLinks.GetUnexpectedWriter(link);
 
     internal void BuildOutputPaths() => OutputLinks.ReadAll();

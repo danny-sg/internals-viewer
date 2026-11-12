@@ -1,7 +1,10 @@
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Iterators.Enums;
+using InternalsViewer.Query.FullTrace.Memory.History;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
+using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.Plans.Model;
 
 namespace InternalsViewer.Query.FullTrace.Iterators;
@@ -60,6 +63,28 @@ public sealed class IteratorTarget(CallTreeNode node,
         return targets;
     }
 
+    public static IteratorTarget? FindRowBufferOwner(IReadOnlyDictionary<ulong, IteratorTarget> targets,
+                                                     MemoryHistoryStore store,
+                                                     ulong buffer,
+                                                     TracePosition position)
+    {
+        var memory = new MemoryHistoryReader(store, position);
+
+        foreach (var (address, target) in targets)
+        {
+            if (target.Type != IteratorTargetType.PlanObject
+                && memory.TryRead(address + (ulong)target.GetRowBufferField().Offset, out ulong value)
+                && value == buffer)
+            {
+                return target;
+            }
+        }
+
+        var block = store.GetBlock(buffer, position);
+
+        return block >= 0 && targets.TryGetValue(store.Blocks[block].Iterator, out var owner) ? owner : null;
+    }
+
     private static IEnumerable<(ulong Address, PlanNodeIdentifier Node, IteratorTargetType Type)> GetLinked(IteratorPlanLink planLink)
         => planLink.Instances.Select(i => (i.Key, i.Value, IteratorTargetType.Iterator))
                    .Concat(planLink.PlanObjects.Select(p => (p.Key, p.Value, IteratorTargetType.PlanObject)));
@@ -92,4 +117,9 @@ public sealed class IteratorTarget(CallTreeNode node,
 
         return shallowest.ToDictionary(s => s.Key, s => s.Value.Node);
     }
+
+    private MemoryField GetRowBufferField()
+        => Node.Frame?.Function?.ClassName == IteratorSymbolLookup.BatchHelperClass
+            ? EngineLayout.BatchAdapter.RowBufferField
+            : EngineLayout.ScanIterator.RowBufferField;
 }

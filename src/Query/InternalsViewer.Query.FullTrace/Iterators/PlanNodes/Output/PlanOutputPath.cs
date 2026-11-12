@@ -6,9 +6,5 @@ public sealed class PlanOutputPath
 
     public IReadOnlyList<PlanOutputLink> Links { get; init; } = [];
 
-    internal PlanOutputValueSource? Value { get; init; }
-
-    internal PlanOutputValueSource? Record { get; init; }
-
-    internal IReadOnlyList<(int Start, int Count, Action<PlanOutputLinkReader.Route> Add)> Tails { get; init; } = [];
+    public IReadOnlyList<PlanOutputStage> Stages { get; init; } = [];
 }

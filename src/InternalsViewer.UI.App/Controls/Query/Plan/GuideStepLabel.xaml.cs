@@ -13,7 +13,7 @@ public sealed partial class GuideStepLabel : UserControl
 {
     private const float ShadowBlurRadius = 10;
 
-    private const float ShadowOpacity = 0.2f;
+    private const float ShadowOpacity = 0.14f;
 
     private const float ShadowOffset = 4;
 

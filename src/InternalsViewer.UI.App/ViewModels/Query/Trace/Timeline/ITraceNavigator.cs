@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
@@ -23,6 +24,8 @@ public interface ITraceNavigator
     void OpenBufferPage(TraceBufferReference reference);
 
     void OpenMemory(int block, ulong address, TracePosition position, int length = 1);
+
+    void OpenIteratorTab(int block, ulong address, TracePosition position, IReadOnlyList<string> tabs);
 
     void OpenReferenceGraph(int block, TracePosition position);
 

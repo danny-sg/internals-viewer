@@ -51,7 +51,7 @@
                             HorizontalAlignment="Stretch"
                             HorizontalContentAlignment="Left"
                             IsTabStop="False"
-                            ToolTipService.ToolTip="Next Step"
+                            ToolTipService.ToolTip="Next Step (Space)"
                             AutomationProperties.Name="Next Step"
                             Click="OnNextClick">
                         <controls:MarkdownTextBlock x:Name="NameText" FontSize="12" FontWeight="Bold" IsHitTestVisible="False" />
@@ -64,7 +64,7 @@
                 </Grid>
                 <Button Grid.Column="2"
                         Style="{StaticResource StepChevronButtonStyle}"
-                        ToolTipService.ToolTip="Next Step"
+                        ToolTipService.ToolTip="Next Step (Space)"
                         AutomationProperties.Name="Next Step"
                         Click="OnNextClick">
                     <FontIcon Glyph="&#xE76C;" FontSize="10" />

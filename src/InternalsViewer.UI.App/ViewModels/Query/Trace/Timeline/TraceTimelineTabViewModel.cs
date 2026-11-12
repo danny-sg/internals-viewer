@@ -173,6 +173,16 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         }
     }
 
+    public void OpenIteratorTab(int block, ulong address, TracePosition position, IReadOnlyList<string> tabs)
+    {
+        OpenMemory(block, address, position);
+
+        if (MemoryDocuments.FirstOrDefault(d => d.Key == $"Memory{block}")?.Content is PlayheadMemoryViewModel memory)
+        {
+            memory.ShowIteratorTab(tabs);
+        }
+    }
+
     public void OpenMemory(int block, ulong address, TracePosition position, int length = 1)
     {
         Query.Layout.ShowTraceTimeline();
@@ -357,6 +367,30 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         }
 
         ShowStructure(document, isBelowPlan);
+    }
+
+    public void OpenLineage()
+    {
+        if (FindLineage() is not { } document)
+        {
+            var lineage = new MemoryLineageViewModel(Query.MemoryHistory, Playhead ?? TracePosition.Unknown, this);
+
+            lineage.SetPlayhead(Playhead);
+
+            document = new DocumentViewModel(lineage.Title,
+                                             lineage,
+                                             static () => new MemoryStructureView(),
+                                             keepAlive: true,
+                                             key: lineage.Key,
+                                             persist: false)
+            {
+                MinWidth = HexViewControl.StandardWidth
+            };
+
+            StructureDocuments.Add(document);
+        }
+
+        ShowStructure(document, isBelowPlan: false);
     }
 
     public List<TraceMenuItem> GetMenuItems(TraceMenuTarget target)
@@ -763,6 +797,8 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
 
     private DocumentViewModel? FindSortTable(ulong iterator)
         => StructureDocuments.FirstOrDefault(d => d.Content is MemorySortTableViewModel table && table.Contains(iterator));
+
+    private DocumentViewModel? FindLineage() => StructureDocuments.FirstOrDefault(d => d.Content is MemoryLineageViewModel);
 
     private void ShowStructure(DocumentViewModel document, bool isBelowPlan)
     {

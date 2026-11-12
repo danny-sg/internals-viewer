@@ -976,6 +976,9 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [RelayCommand]
     private void ShowTraceSummary() => Layout.ShowTraceSummary();
 
+    [RelayCommand]
+    private void ShowLineage() => TraceTimelineTab.OpenLineage();
+
     private TraceStartCall? GetTraceStartCall()
         => Trace is { } trace && TraceTimeline is { } timeline ? TraceStartCall.Find(trace.CallStore, timeline) : null;
 

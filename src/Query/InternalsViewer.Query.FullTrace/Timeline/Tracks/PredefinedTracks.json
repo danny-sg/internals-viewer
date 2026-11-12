@@ -303,7 +303,7 @@
     ],
     "Label": "False",
     "Title": "Evaluate Expression",
-    "Description": "Evaluate predicate <Predicate>{Expression}</Predicate> → `{Result}`"
+    "Description": "Evaluate predicate <Predicate>{ExecutionPlan.Expression}</Predicate> → `{Result}`"
   },
   {
     "Name": "Evaluations",
@@ -541,9 +541,32 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Build",
-    "Title": "Hash Build",
+    "Title": "Hash Table Build",
     "Description": "{OperatorName} Consume build input into hash table",
     "ReturnDescription": "{OperatorName} hash table build complete",
+    "IsPhase": true
+  },
+  {
+    "Name": "Hash Table",
+    "Module": "sqlmin",
+    "Function": "CQScanHash::ConsumeProbe",
+    "Colour": "#107C10",
+    "PlanPart": "Hash Match.Hash Table",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [
+      {
+        "Target": "CalledDirectlyBy",
+        "Argument": null,
+        "Type": "",
+        "Operator": "Equal",
+        "Value": "CQScanHash::Iterate"
+      }
+    ],
+    "Label": "Probe",
+    "Title": "Hash Table Probe",
+    "Description": "{OperatorName} Probe hash table with rows from probe input",
     "IsPhase": true
   },
   {
@@ -567,6 +590,68 @@
     "Label": "Insert",
     "Title": "Hash Insert",
     "Description": "Insert build row into Bucket {Bucket} of Partition {Partition}"
+  },
+  {
+    "Name": "Hash Table",
+    "Module": "sqlmin",
+    "Function": "CHashWorkfilePartitionInstance::InitMemory",
+    "Colour": "#8E8CD8",
+    "PlanPart": "Hash Match.Hash Table",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Set Up Partition",
+    "Title": "Set Up Partition",
+    "Description": "Set up partition memory with its first Hash Bucket Page",
+    "IsDetailed": true
+  },
+  {
+    "Name": "Hash Table",
+    "Module": "sqlmin",
+    "Function": "CHashWorkfilePartitionInstance::PvAllocateHashBucketPage",
+    "Colour": "#CA5010",
+    "PlanPart": "Hash Match.Page",
+    "PlanPartColour": "#0026E4",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [
+      {
+        "Target": "CalledDirectlyBy",
+        "Argument": null,
+        "Type": "",
+        "Operator": "Equal",
+        "Value": "CHashWorkfilePartitionGroup::Insert"
+      }
+    ],
+    "Label": "Allocate Page",
+    "Title": "Allocate Hash Bucket Page",
+    "Description": "Allocate new Hash Bucket Page for more hash items",
+    "IsDetailed": true
+  },
+  {
+    "Name": "Hash Table",
+    "Module": "sqlmin",
+    "Function": "RowsetWorkFile::InsertRow|RowsetChangeFile::InsertRow",
+    "Colour": "#E3008C",
+    "PlanPart": "Hash Match.Page Row",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [
+      {
+        "Target": "CalledBy",
+        "Argument": null,
+        "Type": "",
+        "Operator": "Equal",
+        "Value": "CHashWorkfilePartitionGroup::Insert"
+      }
+    ],
+    "Label": "Copy Row",
+    "Title": "Copy Row To Workfile",
+    "Description": "Copy build row into Workfile Page",
+    "IsDetailed": true
   },
   {
     "Name": "Hash Table",
@@ -753,7 +838,7 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Build",
-    "Title": "Sort Build",
+    "Title": "Sort Table Build",
     "Description": "{OperatorName} Build sort table from input rows",
     "ReturnDescription": "{OperatorName} has sorted its input, so it can return rows in order",
     "IsPhase": true
@@ -775,6 +860,104 @@
   {
     "Name": "Sort",
     "Module": "sqlmin",
+    "Function": "RowsetSorted::InsertRow|RowsetChangeSort::InsertRow",
+    "Colour": "#E3008C",
+    "PlanPart": "Sort.Page Row",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [
+      {
+        "Target": "CalledBy",
+        "Argument": null,
+        "Type": "",
+        "Operator": "Equal",
+        "Value": "CQScanSortNew::BuildSortTable"
+      }
+    ],
+    "Label": "Copy Row",
+    "Title": "Copy Row To Record Page",
+    "Description": "Copy input row into record on current Record Page",
+    "IsDetailed": true
+  },
+  {
+    "Name": "Sort",
+    "Module": "sqlmin",
+    "Function": "lmlink",
+    "Colour": "#5C2E91",
+    "PlanPart": "Sort.Page",
+    "PlanPartColour": "#0026E4",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Link Page",
+    "Title": "Link Record Page",
+    "Description": "Add compare entry for each row on full Record Page and link them into Current List",
+    "IsDetailed": true
+  },
+  {
+    "Name": "Sort",
+    "Module": "sqlmin",
+    "Function": "lmAddCurToList",
+    "Colour": "#B146C2",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Merge List",
+    "Title": "Merge Into Runs",
+    "Description": "Merge Current List into run slots of Sort Descriptor",
+    "IsDetailed": true
+  },
+  {
+    "Name": "Sort",
+    "Module": "sqlmin",
+    "Function": "soGetRowBuf",
+    "Colour": "#CA5010",
+    "PlanPart": "Sort.Page",
+    "PlanPartColour": "#0026E4",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "New Page",
+    "Title": "New Record Page",
+    "Description": "Get empty Record Page for next input rows",
+    "IsDetailed": true
+  },
+  {
+    "Name": "Sort",
+    "Module": "sqlmin",
+    "Function": "lmsort",
+    "Colour": "#8764B8",
+    "PlanPart": "Sort.Labels",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Merge Runs",
+    "Title": "Merge Runs",
+    "Description": "Merge remaining runs into one sorted run"
+  },
+  {
+    "Name": "Sort",
+    "Module": "sqlmin",
+    "Function": "sort_initoutput",
+    "Colour": "#0078D4",
+    "PlanPart": "Sort.Arrow",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Output",
+    "Title": "Sort Table Output",
+    "Description": "{OperatorName} Prepare sorted run to return rows in order",
+    "IsPhase": true
+  },
+  {
+    "Name": "Sort",
+    "Module": "sqlmin",
     "Function": "RowsetSorted::GetNextSortedRowInternal",
     "Colour": "#0078D4",
     "PlanPart": "Sort.Arrow",
@@ -787,6 +970,35 @@
     "Description": "Get next row in sort order from sort table"
   },
   {
+    "Name": "Sort",
+    "Module": "sqlmin",
+    "Function": "lmnext",
+    "Colour": "#2B88D8",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Next Entry",
+    "Title": "Move Cursor",
+    "Description": "Move Cursor to next entry in sorted run",
+    "IsDetailed": true
+  },
+  {
+    "Name": "Sort",
+    "Module": "sqlmin",
+    "Function": "RowsetSorted::GetData",
+    "Colour": "#00B7C3",
+    "PlanPart": "Sort.Page Row",
+    "Background": "#69FFFFFF",
+    "HeightFactor": 1,
+    "WidthFactor": 1,
+    "Conditions": [],
+    "Label": "Copy Row Out",
+    "Title": "Copy Row From Record Page",
+    "Description": "Copy sorted row from its record on Record Page",
+    "IsDetailed": true
+  },
+  {
     "Name": "Compute Scalar",
     "Module": "sqlmin",
     "Function": "CBpQScanProject::BpGetBatchData",
@@ -797,7 +1009,7 @@
     "WidthFactor": 1,
     "Conditions": [],
     "Label": "Batch",
-    "Title": "Evaluate",
+    "Title": "Compute Scalar (Evaluate)",
     "Description": "<Predicate>{Expression}</Predicate>",
     "Details": "A Compute Scalar only forwards `BpGetNextBatch`. The expression runs when the operator above asks for the batch data, once for the whole batch",
     "Source": "Evaluate",

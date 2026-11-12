@@ -31,7 +31,9 @@ public sealed class PlanOutputRecordReader(IPageService pageService,
 
             var field = records.Find(r => r.Offset == record.Location.Offset)?
                                .Fields
-                               .Find(f => f.ColumnStructure.LeafOffset == record.ColumnOffset);
+                               .Find(f => record.ColumnId > 0
+                                              ? f.ColumnStructure.ColumnId == record.ColumnId
+                                              : f.ColumnStructure.LeafOffset == record.ColumnOffset);
 
             return field is { IsNull: true } ? NullText : field?.Value;
         }

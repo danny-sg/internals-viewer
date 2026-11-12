@@ -45,7 +45,11 @@ public sealed partial class MemoryStructureView : UserControl, IDisposable
                      or MemoryStructureNodeType.Group
                      or MemoryStructureNodeType.SortTable
                      or MemoryStructureNodeType.Rowset
-                     or MemoryStructureNodeType.Runs;
+                     or MemoryStructureNodeType.Runs
+                     or MemoryStructureNodeType.Statement
+                     or MemoryStructureNodeType.Operator
+                     or MemoryStructureNodeType.PlanObject
+                     or MemoryStructureNodeType.Link;
 
     private static TreeViewNode? Find(IList<TreeViewNode> nodes, string key)
     {
@@ -90,6 +94,10 @@ public sealed partial class MemoryStructureView : UserControl, IDisposable
         {
             viewModel.PropertyChanged += OnViewModelPropertyChanged;
         }
+
+        PlanObjectToggle.Visibility = viewModel is MemoryLineageViewModel ? Visibility.Visible : Visibility.Collapsed;
+
+        PlanObjectToggle.IsChecked = viewModel is MemoryLineageViewModel { IsPlanObjectVisible: true };
 
         Rebuild();
     }
@@ -223,6 +231,14 @@ public sealed partial class MemoryStructureView : UserControl, IDisposable
     }
 
     private void OnHexOffsetClicked(object? sender, int offset) => ViewModel?.SelectOffset(offset);
+
+    private void OnPlanObjectClick(object sender, RoutedEventArgs e)
+    {
+        if (Attached is MemoryLineageViewModel lineage)
+        {
+            lineage.IsPlanObjectVisible = PlanObjectToggle.IsChecked == true;
+        }
+    }
 
     private void OnMemoryPositionRequested(object? sender, double fraction) => ViewModel?.MovePlayhead(fraction);
 

@@ -63,6 +63,8 @@ public sealed partial class QueryPlanTabView : UserControl
         PlanRepeater.SizeChanged += OnPlanAreaSizeChanged;
 
         PlanScroller.SizeChanged += OnPlanAreaSizeChanged;
+
+        PlanScroller.AddHandler(PointerPressedEvent, new PointerEventHandler(OnPlanPointerPressed), handledEventsToo: true);
     }
 
     public QueryViewModel? ViewModel => DataContext as QueryViewModel;
@@ -176,6 +178,20 @@ public sealed partial class QueryPlanTabView : UserControl
 
     public Visibility GetGuideBarVisibility(bool isGuideMode, bool isStepsVisible)
         => isGuideMode && !isStepsVisible ? Visibility.Visible : Visibility.Collapsed;
+
+    protected override void OnKeyDown(KeyRoutedEventArgs e)
+    {
+        base.OnKeyDown(e);
+
+        if (e.Handled || e.Key != Windows.System.VirtualKey.Space || ViewModel is not { Layout.IsGuideMode: true } viewModel)
+        {
+            return;
+        }
+
+        viewModel.GuidePlayback.Step(forward: true);
+
+        e.Handled = true;
+    }
 
     private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
     {
@@ -350,6 +366,11 @@ public sealed partial class QueryPlanTabView : UserControl
 
             planControl.CounterToggleRequested -= OnCounterToggleRequested;
             planControl.CounterToggleRequested += OnCounterToggleRequested;
+
+            planControl.CanSkipTo = n => ViewModel?.CanSkipGuideTo(n) == true;
+
+            planControl.SkipToRequested -= OnPlanSkipToRequested;
+            planControl.SkipToRequested += OnPlanSkipToRequested;
 
             planControl.PageOpenRequested -= OnPageOpenRequested;
             planControl.PageOpenRequested += OnPageOpenRequested;
@@ -681,6 +702,21 @@ public sealed partial class QueryPlanTabView : UserControl
 
     private void OnPlanBackgroundTapped(object sender, TappedRoutedEventArgs e) => ClearPlanSelection();
 
+    private void OnPlanPointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        if (ViewModel?.Layout.IsGuideMode != true)
+        {
+            return;
+        }
+
+        var focused = FocusManager.GetFocusedElement(XamlRoot) as UIElement;
+
+        if (!ReferenceEquals(focused?.FindAscendantOrSelf<ScrollViewer>(), PlanScroller))
+        {
+            PlanScroller.Focus(FocusState.Pointer);
+        }
+    }
+
     private void ClearPlanSelection() => ViewModel?.SelectedPlanNode = null;
 
     private void OnPlanContextRequested(UIElement sender, ContextRequestedEventArgs e)
@@ -721,6 +757,8 @@ public sealed partial class QueryPlanTabView : UserControl
     }
 
     private void OnCounterToggleRequested(object? sender, PlanNode node) => ViewModel?.ToggleCounter(node);
+
+    private void OnPlanSkipToRequested(object? sender, PlanNode node) => ViewModel?.SkipGuideTo(node);
 
     private void OnPageOpenRequested(object? sender, PlanPage page) => ViewModel?.OpenOperatorPage(page);
 

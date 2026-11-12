@@ -65,6 +65,8 @@ public sealed partial class DocumentViewModel(string title,
 
     public double MinWidth { get; init; }
 
+    public bool IsTool { get; init; }
+
     public List<DocumentMenuItem> MenuItems { get; init; } = [];
 
     public Microsoft.UI.Xaml.Media.Brush? Accent { get; set; }

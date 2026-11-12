@@ -1,6 +1,5 @@
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory.Layouts;
-using InternalsViewer.Query.FullTrace.Memory.Layouts.Batches;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
 
@@ -51,6 +50,23 @@ public static class EngineLayout
         public static MemoryField TopCountField { get; } = Pointer("Top Count Expression", 0x90);
     }
 
+    public static class StreamAggregateIterator
+    {
+        public const int GroupRowSlot = 1;
+
+        private const string VariableWriter = "CQScanStreamAggregateNew::InitXVarTable";
+
+        public static MemoryField CountField { get; } = Number("Count",
+                                                               0x88,
+                                                               0x20,
+                                                               "CXVariant::SetZero",
+                                                               "CQScanStreamAggregateNew::GetRow");
+
+        public static MemoryField VariableTableField { get; } = Pointer("Variable Table", 0xD0, VariableWriter);
+
+        public static MemoryField VariablesField { get; } = Pointer("Variables", 0x00, VariableWriter);
+    }
+
     public static class HashIterator
     {
         private const string Creator = "CQScanHash::CreateInputAndOutput";
@@ -70,8 +86,6 @@ public static class EngineLayout
     {
         private const string Constructor = "CQScanBatchHelper::CQScanBatchHelper";
 
-        private const string GetRow = "CQScanBatchHelper::GetRow";
-
         public static MemoryField OutputValuesField { get; } = Pointer("Output Values", 0x48, Constructor);
 
         public static MemoryField OutputValueField { get; } = Pointer("Output Value", 0x00, Constructor);
@@ -79,18 +93,12 @@ public static class EngineLayout
         public static MemoryField ChildField { get; } = Pointer("Child", 0x58, "CBpXte::CreateBatchIterators");
 
         public static MemoryField RowBufferField { get; } = Pointer("Row Buffer", 0x78, Constructor);
-
-        public static MemoryField ColumnMapField { get; } = Pointer("Column Map", 0x80, Constructor);
-
-        public static MemoryField CursorField { get; } = Number("Cursor", 0x88, sizeof(int), GetRow);
-
-        public static MemoryField BatchField { get; } = Pointer("Batch", 0x90, GetRow);
-
-        public static MemoryField ColumnMapVectorField { get; } = Number("Vector", 0x02, sizeof(ushort), "CBpQScan*");
     }
 
     public static class PlanObject
     {
+        private const string StreamAggregateConstructor = "CXteStreamAggregate::CXteStreamAggregate";
+
         public static MemoryField NodeIdField { get; } = Number("Node Id", (int)PlanNode.PlanNodeIdOffset, sizeof(int));
 
         public static MemoryField InputsField { get; } = Pointer("Inputs", 0x18);
@@ -102,6 +110,27 @@ public static class EngineLayout
         public static MemoryField TopCountField { get; } = Pointer("Top Count Expression", 0x88);
 
         public static MemoryField RowsetIdField { get; } = Pointer("Rowset Id", 0xB0);
+
+        public static MemoryField GroupCountField { get; } = Number("Group Count",
+                                                                    0x60,
+                                                                    sizeof(int),
+                                                                    StreamAggregateConstructor);
+
+        public static MemoryField AggregateCountField { get; } = Number("Aggregate Count",
+                                                                        0x68,
+                                                                        sizeof(int),
+                                                                        StreamAggregateConstructor);
+
+        public static MemoryField CountColumnCountField { get; } = Number("Count Column Count",
+                                                                          0x6C,
+                                                                          sizeof(int),
+                                                                          StreamAggregateConstructor);
+
+        public static MemoryField GroupColumnsField { get; } = Pointer("Group Columns", 0x98, "CXteStreamAggregate::CreateValRefs");
+
+        public static MemoryField AggregateColumnsField { get; } = Pointer("Aggregate Columns", 0xA0, "CXteStreamAggregate::CreateValRefs");
+
+        public static MemoryField CountColumnsField { get; } = Pointer("Count Columns", 0xB0, "CXteStreamAggregate::Init");
     }
 
     public static class OutputList
@@ -128,6 +157,8 @@ public static class EngineLayout
         public static MemoryField JoinColumnField { get; } = Number("Column", 0x5C, sizeof(int));
 
         public static MemoryField OrdinalColumnField { get; } = Number("Column", 0x58, sizeof(int));
+
+        public static MemoryField StorageColumnIdField { get; } = Number("Column Id", 0x58, sizeof(int));
 
         public static MemoryField CalculatedProducerField { get; } = Pointer("Producer", 0x58);
 
@@ -245,19 +276,6 @@ public static class EngineLayout
     public static class RowBuffer
     {
         public static MemoryField EntryField { get; } = Number("Entry", 0x00, 0x20);
-    }
-
-    public static class Batch
-    {
-        public static MemoryField VectorsField { get; } = Pointer("Vectors", (int)BatchReader.VectorArrayOffset, "CBpBatch::*");
-
-        public static MemoryField SelectionField { get; } = Pointer("Selection", (int)BatchReader.SelectionOffset, "CBpBatch::*");
-
-        public static MemoryField VectorField { get; } = Pointer("Vector", 0x00, "CBpBatch::*");
-
-        public static MemoryField SelectedRowField { get; } = Number("Row", 0x00, sizeof(ushort));
-
-        public static MemoryField VectorSlotField { get; } = Pointer("Row", 0x00);
     }
 
     public static class SortIterator

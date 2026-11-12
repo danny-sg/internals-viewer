@@ -45,9 +45,7 @@ public sealed partial class MemoryIteratorViewModel : ObservableObject
 
     private const string RowBindingsHeader = "Row Bindings";
 
-    private const string OutputColumnsHeader = "Output Columns";
-
-    private const string LineageHeader = "Lineage";
+    public const string LineageHeader = "Lineage";
 
     [ObservableProperty]
     private bool _isAvailable;
@@ -82,6 +80,8 @@ public sealed partial class MemoryIteratorViewModel : ObservableObject
     private Dictionary<ulong, string>? ValueColumns { get; set; }
 
     private Dictionary<(int NodeId, ulong Reference), LineageGraph?> Graphs { get; } = [];
+
+    private IReadOnlyList<string>? RequestedTab { get; set; }
 
     public void Load(PlayheadMemoryViewModel owner)
     {
@@ -132,6 +132,8 @@ public sealed partial class MemoryIteratorViewModel : ObservableObject
         ValueColumns = null;
 
         Graphs.Clear();
+
+        RequestedTab = null;
 
         Markers = null;
 
@@ -196,6 +198,15 @@ public sealed partial class MemoryIteratorViewModel : ObservableObject
         {
             Tabs = tabs;
         }
+
+        SelectRequestedTab();
+    }
+
+    public void RequestTab(IReadOnlyList<string> path)
+    {
+        RequestedTab = path;
+
+        SelectRequestedTab();
     }
 
     public void OpenPlanObject()
@@ -269,37 +280,6 @@ public sealed partial class MemoryIteratorViewModel : ObservableObject
         return CreateTab(RowBindingsHeader, table, $"{scan.Bindings:X}:{bound.Count}");
     }
 
-    private static MemoryObjectTab CreateOutputColumnsTab(PlayheadMemoryViewModel owner, IteratorTarget target, ulong planObject)
-    {
-        var history = owner.History;
-
-        IReadOnlyList<PlanOutputColumn> outputs = target.Operator?.PlanNodeIdentifier is { } identifier
-            ? history.GetOutputColumns(identifier.NodeId)
-            : [];
-
-        var names = history.GetOutputColumnNames(planObject, outputs.Count);
-
-        var columns = new List<ResultColumn>
-        {
-            new(0, "Column", typeof(string), false) { Width = FieldWidth },
-            new(1, "Type", typeof(string), false) { Width = OffsetWidth * 2 },
-            new(2, "Reference", typeof(string), false) { Width = ValueWidth },
-            new(3, "Producer", typeof(string), true) { Width = FieldWidth }
-        };
-
-        var rows = outputs.Select((c, i) => new ResultRow<long>([names[i],
-                                                                 ColumnBindingText.GetType(c.Type),
-                                                                 owner.GetPointerCell(c.Reference),
-                                                                 GetOperatorLabel(history, c.ProducerNodeId)])
-        {
-            Id = i
-        });
-
-        return CreateTab(OutputColumnsHeader,
-                         new QueryResultSet { Columns = columns, Rows = [.. rows] },
-                         string.Join(",", outputs.Select(o => o.Reference)));
-    }
-
     private static QueryResultSet CreateFieldTable(PlayheadMemoryViewModel owner,
                                                    List<MemoryField> layout,
                                                    List<ulong> values,
@@ -331,9 +311,6 @@ public sealed partial class MemoryIteratorViewModel : ObservableObject
 
         return field.IsPointer ? owner.GetPointerCell(value) : $"{value:N0}";
     }
-
-    private static string GetOperatorLabel(MemoryHistoryViewModel history, int nodeId)
-        => history.IteratorTargets.Values.FirstOrDefault(t => t.Operator?.PlanNodeIdentifier?.NodeId == nodeId)?.Label ?? string.Empty;
 
     private static ulong GetPlanObject(MemoryHistoryViewModel history, IteratorTarget target)
     {
@@ -423,8 +400,6 @@ public sealed partial class MemoryIteratorViewModel : ObservableObject
 
         if (target.Type == IteratorTargetType.PlanObject)
         {
-            tabs.Add(CreateOutputColumnsTab(owner, target, Address));
-
             if (CreateLineageTab(owner, target) is { } lineage)
             {
                 tabs.Add(lineage);
@@ -529,6 +504,30 @@ public sealed partial class MemoryIteratorViewModel : ObservableObject
         }
 
         return tabs.Count > 0 ? new MemoryObjectTab(LineageHeader, tabs) : null;
+    }
+
+    private void SelectRequestedTab()
+    {
+        if (RequestedTab is not { Count: > 0 } path)
+        {
+            return;
+        }
+
+        var tabs = Tabs;
+
+        foreach (var header in path)
+        {
+            if (tabs.Find(t => t.Header == header) is not { } tab)
+            {
+                return;
+            }
+
+            tab.IsSelected = true;
+
+            tabs = tab.Tabs;
+        }
+
+        RequestedTab = null;
     }
 
     private static void Open(PlayheadMemoryViewModel owner, ulong address)

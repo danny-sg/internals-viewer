@@ -38,8 +38,6 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
     private const string TraceSummaryKey = "TraceSummary";
 
-    private const double TraceSummaryStar = 3;
-
     private readonly Dictionary<string, DocumentViewModel> _documentsByKey;
 
     private readonly HashSet<DocumentViewModel> _hiddenForTrace = [];
@@ -148,10 +146,14 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
                                                                                        keepAlive: true,
                                                                                        key: OperatorTracksKey),
 
-            [TraceSummaryKey] = DocumentViewModel.Create<QueryTraceSummaryTabView>("Trace Summary",
-                                                                                   content,
-                                                                                   keepAlive: true,
-                                                                                   key: TraceSummaryKey)
+            [TraceSummaryKey] = new DocumentViewModel("Trace Summary",
+                                                      content,
+                                                      static () => new QueryTraceSummaryTabView(),
+                                                      keepAlive: true,
+                                                      key: TraceSummaryKey)
+            {
+                IsTool = true
+            }
         };
 
         Dock = new DockLayoutViewModel(DefaultRoot());
@@ -286,7 +288,7 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         }
     }
 
-    public void ShowTraceSummary() => Dock.DockLeft(_documentsByKey[TraceSummaryKey], TraceSummaryStar);
+    public void ShowTraceSummary() => Dock.DockLeft(_documentsByKey[TraceSummaryKey]);
 
     public void ShowOperatorTracks()
     {

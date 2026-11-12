@@ -33,17 +33,24 @@ public static class PlanOutputLinkText
         PlanOutputLinkType.Record => "Record",
         PlanOutputLinkType.RowBuffer => "Row Buffer",
         PlanOutputLinkType.BufferEntry => "Buffer Entry",
-        PlanOutputLinkType.Batch => "Batch",
-        PlanOutputLinkType.Cursor => "Cursor",
-        PlanOutputLinkType.ColumnMap => "Column Map",
-        PlanOutputLinkType.VectorId => "Vector",
-        PlanOutputLinkType.Selection => "Selection",
-        PlanOutputLinkType.SelectedRow => "Row",
-        PlanOutputLinkType.Vectors => "Vectors",
-        PlanOutputLinkType.Vector => "Vector",
-        PlanOutputLinkType.VectorSlot => "Row",
+        PlanOutputLinkType.GroupColumns => "Group Columns",
+        PlanOutputLinkType.AggregateColumns => "Aggregate Columns",
+        PlanOutputLinkType.VariableTable => "Variable Table",
+        PlanOutputLinkType.CountColumns => "Count Columns",
+        PlanOutputLinkType.Variables => "Variables",
+        PlanOutputLinkType.PlanObject => "Plan Object",
         _ => "Input Column"
     };
 
-    public static string GetRowText(int offset) => offset < 0 ? $"Row Variable {-offset}" : $"Row 0x{offset:X}";
+    public static string GetName(PlanOutputStageType type) => type switch
+    {
+        PlanOutputStageType.RowBuffer => "Row Buffer",
+        PlanOutputStageType.RowContext => "Row Context",
+        PlanOutputStageType.InputValue => "Input Value",
+        PlanOutputStageType.Variables => "Variables",
+        PlanOutputStageType.Counter => "Counter",
+        PlanOutputStageType.Record => "Record",
+        PlanOutputStageType.Expression => "Expression",
+        _ => string.Empty
+    };
 }

@@ -13,6 +13,8 @@ namespace InternalsViewer.UI.App.ViewModels.Docking;
 /// </summary>
 public sealed partial class DockLayoutViewModel : ObservableObject
 {
+    private const double DocumentStar = 3;
+
     [ObservableProperty]
     private LayoutNode _root;
 
@@ -61,17 +63,26 @@ public sealed partial class DockLayoutViewModel : ObservableObject
             return;
         }
 
-        var group = Groups().FirstOrDefault();
-
-        if (group is null)
+        if (!Groups().Any())
         {
             return;
         }
 
-        group.Documents.Add(document);
-        group.SelectedDocument = document;
+        if (Groups().FirstOrDefault(g => g.IsTool == document.IsTool) is { } group)
+        {
+            group.Documents.Add(document);
+            group.SelectedDocument = document;
 
-        OnLayoutChanged();
+            OnLayoutChanged();
+        }
+        else if (document.IsTool)
+        {
+            DockLeft(document);
+        }
+        else
+        {
+            DockRight(document);
+        }
     }
 
     public void ShowBeside(DocumentViewModel document, DocumentViewModel neighbour, bool select = true)
@@ -86,7 +97,7 @@ public sealed partial class DockLayoutViewModel : ObservableObject
             return;
         }
 
-        if (FindGroup(neighbour) is not { } group)
+        if (FindGroup(neighbour) is not { } group || group.IsTool != document.IsTool)
         {
             Show(document);
             return;
@@ -102,7 +113,7 @@ public sealed partial class DockLayoutViewModel : ObservableObject
         OnLayoutChanged();
     }
 
-    public void DockLeft(DocumentViewModel document, double star)
+    public void DockLeft(DocumentViewModel document)
     {
         if (Contains(document))
         {
@@ -111,7 +122,7 @@ public sealed partial class DockLayoutViewModel : ObservableObject
             return;
         }
 
-        SetRoot(new SplitNode(Orientation.Horizontal, new TabGroupNode(document), Root) { FirstStar = 1, SecondStar = star });
+        SetRoot(new SplitNode(Orientation.Horizontal, new TabGroupNode(document), Root) { FirstStar = 1, SecondStar = DocumentStar });
     }
 
     public void DockBottom(DocumentViewModel document)
@@ -257,6 +268,9 @@ public sealed partial class DockLayoutViewModel : ObservableObject
     }
 
     private void OnLayoutChanged() => LayoutChanged?.Invoke(this, EventArgs.Empty);
+
+    private void DockRight(DocumentViewModel document)
+        => SetRoot(new SplitNode(Orientation.Horizontal, Root, new TabGroupNode(document)) { FirstStar = 1, SecondStar = DocumentStar });
 
     private void Remove(TabGroupNode group, DocumentViewModel document)
     {

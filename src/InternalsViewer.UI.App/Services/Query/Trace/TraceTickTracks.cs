@@ -147,11 +147,11 @@ public static partial class TraceTickTracks
     public static List<TraceTrackStep> GetSteps(IEnumerable<TraceTickTrack> tracks, IReadOnlySet<string>? hidden)
         => GetRuleSteps(tracks.Where(t => hidden?.Contains(t.Name) != true), static _ => true);
 
-    public static List<TraceTrackStep> GetPlanSteps(IEnumerable<TraceTickTrack> tracks, IReadOnlySet<string> additional)
-        => GetRuleSteps(tracks, r => IsPlanStep(r, additional));
+    public static List<TraceTrackStep> GetPlanSteps(IEnumerable<TraceTickTrack> tracks, IReadOnlySet<string> additional, bool isDetailed)
+        => GetRuleSteps(tracks, r => IsPlanStep(r, additional, isDetailed));
 
-    public static bool IsPlanStep(TraceTrackRule rule, IReadOnlySet<string> additional)
-        => rule.IsPlanDefault || additional.Contains(rule.GetPlanStepKey());
+    public static bool IsPlanStep(TraceTrackRule rule, IReadOnlySet<string> additional, bool isDetailed)
+        => (rule.IsPlanDefault || additional.Contains(rule.GetPlanStepKey())) && (isDetailed || !rule.IsDetailed);
 
     public static TraceStepNesting[] GetStepNesting(List<TraceTrackStep> steps)
     {

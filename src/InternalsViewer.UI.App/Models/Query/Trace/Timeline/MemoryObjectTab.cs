@@ -15,6 +15,9 @@ public sealed partial class MemoryObjectTab(string header,
     [ObservableProperty]
     private QueryResultSet? _table;
 
+    [ObservableProperty]
+    private bool _isSelected;
+
     public string Header { get; } = header;
 
     public List<MemoryObjectTab> Tabs { get; } = tabs;

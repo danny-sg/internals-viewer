@@ -4,6 +4,8 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
+    xmlns:types="using:InternalsViewer.UI.App.Controls.Columnstore"
+    xmlns:local="using:InternalsViewer.UI.App.Views.Query.Trace.Summary"
     xmlns:models="using:InternalsViewer.UI.App.Models.Query.Trace.Summary"
     xmlns:summary="using:InternalsViewer.UI.App.ViewModels.Query.Trace.Summary">
 
@@ -23,10 +25,16 @@
                 <TextBlock Text="{x:Bind ((models:TraceSummaryNode)Content).Name}"
                            FontSize="12"
                            VerticalAlignment="Center"/>
+                <types:DataTypeTextBlock DataType="{x:Bind local:TraceSummaryPaneView.GetDataType((models:TraceSummaryNode)Content)}"
+                                         Precision="{x:Bind local:TraceSummaryPaneView.GetPrecision((models:TraceSummaryNode)Content)}"
+                                         DataScale="{x:Bind local:TraceSummaryPaneView.GetScale((models:TraceSummaryNode)Content)}"
+                                         Length="{x:Bind local:TraceSummaryPaneView.GetLength((models:TraceSummaryNode)Content)}"
+                                         Visibility="{x:Bind ((models:TraceSummaryNode)Content).IsColumn}"/>
                 <TextBlock Text="{x:Bind ((models:TraceSummaryNode)Content).Detail}"
                            FontSize="12"
                            FontFamily="{StaticResource MonospaceFontFamily}"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Visibility="{x:Bind ((models:TraceSummaryNode)Content).HasDetail}"
                            VerticalAlignment="Center"/>
                 <TextBlock Text="{x:Bind ((models:TraceSummaryNode)Content).Value, Mode=OneWay}"
                            FontSize="12"

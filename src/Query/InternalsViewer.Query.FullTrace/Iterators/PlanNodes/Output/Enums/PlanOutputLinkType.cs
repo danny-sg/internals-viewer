@@ -29,14 +29,11 @@ public enum PlanOutputLinkType
     Record,
     RowBuffer,
     BufferEntry,
-    Batch,
-    Cursor,
-    ColumnMap,
-    VectorId,
-    Selection,
-    SelectedRow,
-    Vectors,
-    Vector,
-    VectorSlot,
-    Input
+    Input,
+    GroupColumns,
+    AggregateColumns,
+    VariableTable,
+    CountColumns,
+    Variables,
+    PlanObject
 }

@@ -115,6 +115,12 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
     private List<HexLink>? _links;
 
     [ObservableProperty]
+    private string _blockAddress = string.Empty;
+
+    [ObservableProperty]
+    private string _blockType = string.Empty;
+
+    [ObservableProperty]
     private QueryResultSet? _memoryTable;
 
     [ObservableProperty]
@@ -828,6 +834,10 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
         }
 
         Links = GetLinks(image);
+
+        BlockAddress = image.Block >= 0 ? GetAddressText(History.Store.Blocks[image.Block].Address) : string.Empty;
+
+        BlockType = image.Block >= 0 ? History.GetTypeName(image.Block) : string.Empty;
 
         EmptyText = node.HasData && image.Data is null ? NotAllocated : string.Empty;
     }

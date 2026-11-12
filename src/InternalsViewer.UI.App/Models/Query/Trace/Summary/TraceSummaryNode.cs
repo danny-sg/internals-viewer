@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
 
 namespace InternalsViewer.UI.App.Models.Query.Trace.Summary;
@@ -34,5 +35,13 @@ public sealed partial class TraceSummaryNode(string name, string detail, string 
 
     public List<TraceSummaryNode>? Children { get; init; }
 
+    public SqlTypeInfo? ColumnType { get; init; }
+
+    public string? LineageColumn { get; init; }
+
     public bool IsObject => Block >= 0;
+
+    public bool IsColumn => ColumnType is not null;
+
+    public bool HasDetail => Detail.Length > 0;
 }

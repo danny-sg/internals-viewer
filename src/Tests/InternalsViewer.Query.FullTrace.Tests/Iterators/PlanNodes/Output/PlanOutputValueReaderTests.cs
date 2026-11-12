@@ -31,7 +31,7 @@ public class PlanOutputValueReaderTests
     {
         var memory = new FakeTraceReplay().Write(Entry, (byte)0).Write(Entry + 0x08, 42);
 
-        Assert.Equal("42", PlanOutputValueReader.Read(memory, Column(IntType), Path(PlanOutputLinkType.BufferEntry, Entry, [])));
+        Assert.Equal("42", PlanOutputValueReader.Read(memory, Stage(IntType, PlanOutputLinkType.BufferEntry, Entry, [])));
     }
 
     [Fact]
@@ -44,7 +44,7 @@ public class PlanOutputValueReaderTests
                                           .Write(Data + 1, (byte)'b')
                                           .Write(Data + 2, (byte)'c');
 
-        Assert.Equal("abc", PlanOutputValueReader.Read(memory, Column(VarcharType), Path(PlanOutputLinkType.BufferEntry, Entry, [])));
+        Assert.Equal("abc", PlanOutputValueReader.Read(memory, Stage(VarcharType, PlanOutputLinkType.BufferEntry, Entry, [])));
     }
 
     [Fact]
@@ -52,7 +52,7 @@ public class PlanOutputValueReaderTests
     {
         var memory = new FakeTraceReplay().Write(Entry, (byte)3);
 
-        Assert.Equal("NULL", PlanOutputValueReader.Read(memory, Column(IntType), Path(PlanOutputLinkType.BufferEntry, Entry, [])));
+        Assert.Equal("NULL", PlanOutputValueReader.Read(memory, Stage(IntType, PlanOutputLinkType.BufferEntry, Entry, [])));
     }
 
     [Fact]
@@ -60,7 +60,7 @@ public class PlanOutputValueReaderTests
     {
         var memory = new FakeTraceReplay().Write(RowSlot, Row).Write(Row + 4, 7);
 
-        var value = PlanOutputValueReader.Read(memory, Column(IntType), Path(PlanOutputLinkType.RowSlot, RowSlot, [0], 4));
+        var value = PlanOutputValueReader.Read(memory, Stage(IntType, PlanOutputLinkType.RowSlot, RowSlot, [0], 4));
 
         Assert.Equal("7", value);
     }
@@ -70,7 +70,7 @@ public class PlanOutputValueReaderTests
     {
         var memory = new FakeTraceReplay().Write(RowSlot, Row).Write(Row + 4, "Row 200   "u8);
 
-        var value = PlanOutputValueReader.Read(memory, Column(CharType), Path(PlanOutputLinkType.RowSlot, RowSlot, [0], 4));
+        var value = PlanOutputValueReader.Read(memory, Stage(CharType, PlanOutputLinkType.RowSlot, RowSlot, [0], 4));
 
         Assert.Equal("Row 200   ", value);
     }
@@ -83,7 +83,7 @@ public class PlanOutputValueReaderTests
 
         var memory = new FakeTraceReplay().Write(RowSlot, Row).Write(Row, row);
 
-        var value = PlanOutputValueReader.Read(memory, Column(VarcharType), Path(PlanOutputLinkType.RowSlot, RowSlot, [0], -1));
+        var value = PlanOutputValueReader.Read(memory, Stage(VarcharType, PlanOutputLinkType.RowSlot, RowSlot, [0], -1));
 
         Assert.Equal("Row 1", value);
     }
@@ -91,7 +91,7 @@ public class PlanOutputValueReaderTests
     [Fact]
     public void A_Column_Without_A_Readable_Source_Has_No_Value()
     {
-        var value = PlanOutputValueReader.Read(new FakeTraceReplay(), Column(IntType), PlanOutputPath.Empty);
+        var value = PlanOutputValueReader.Read(new FakeTraceReplay(), new PlanOutputStage(Data, 0, -1) { ColumnType = IntType });
 
         Assert.Null(value);
     }
@@ -108,7 +108,7 @@ public class PlanOutputValueReaderTests
         var record = PlanOutputValueReader.ReadRecord(memory,
                                                       builder.Build(),
                                                       At(5),
-                                                      new PlanOutputPath
+                                                      new PlanOutputStage(Data, 0, -1)
                                                       {
                                                           Record = new PlanOutputValueSource(PlanOutputLinkType.Record, RowSlot, [0], -1)
                                                       });
@@ -116,8 +116,22 @@ public class PlanOutputValueReaderTests
         Assert.Equal(new PlanOutputRecord(new TraceBufferReference(new PageAddress(1, 2728), 6, 0x81), -1), record);
     }
 
-    private static PlanOutputColumn Column(SqlTypeInfo type) => new(Data, 0, type);
+    [Fact]
+    public void A_Record_Source_With_A_Column_Id_Locates_The_Column_By_Id()
+    {
+        var builder = new TraceBufferPool.Builder();
 
-    private static PlanOutputPath Path(PlanOutputLinkType type, ulong address, ulong[] chain, int? offset = null)
-        => new() { Value = new PlanOutputValueSource(type, address, chain, offset) };
+        builder.Add(new TraceBufferPage(Frame, new PageAddress(1, 2728), 6, At(1)));
+
+        var memory = new FakeTraceReplay().Write(RowSlot, Frame + 0x81);
+
+        var source = new PlanOutputValueSource(PlanOutputLinkType.Record, RowSlot, [0], null, 2);
+
+        var record = PlanOutputValueReader.ReadRecord(memory, builder.Build(), At(5), new PlanOutputStage(Data, 0, -1) { Record = source });
+
+        Assert.Equal(new PlanOutputRecord(new TraceBufferReference(new PageAddress(1, 2728), 6, 0x81), 0, 2), record);
+    }
+
+    private static PlanOutputStage Stage(SqlTypeInfo type, PlanOutputLinkType sourceType, ulong address, ulong[] chain, int? offset = null)
+        => new(Data, 0, -1) { ColumnType = type, Value = new PlanOutputValueSource(sourceType, address, chain, offset) };
 }

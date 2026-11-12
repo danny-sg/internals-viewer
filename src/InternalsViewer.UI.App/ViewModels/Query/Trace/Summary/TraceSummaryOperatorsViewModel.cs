@@ -3,18 +3,15 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
-using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Iterators.Enums;
 using InternalsViewer.Query.FullTrace.Memory.History;
-using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace.Summary;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryHistory;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline.Memory;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
-using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output.Enums;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.Summary;
 
@@ -29,6 +26,8 @@ public sealed class TraceSummaryOperatorsViewModel : TraceSummaryPaneViewModel
     private const string CompiledPlanObjectName = "Compiled Plan Object";
 
     private const string OperatorKeyPrefix = "operator/";
+
+    private const string StatementKey = "statement";
 
     private static readonly TimeSpan ValueInterval = TimeSpan.FromMilliseconds(50);
 
@@ -84,8 +83,6 @@ public sealed class TraceSummaryOperatorsViewModel : TraceSummaryPaneViewModel
 
     private static LoadedOperators Read(MemoryHistoryViewModel history)
     {
-        var store = history.Store;
-
         var operators = history.IteratorTargets
                                .Where(t => t.Value.Operator?.PlanNodeIdentifier is not null)
                                .GroupBy(t => t.Value.Operator!.PlanNodeIdentifier!.NodeId)
@@ -93,33 +90,42 @@ public sealed class TraceSummaryOperatorsViewModel : TraceSummaryPaneViewModel
 
         var live = new List<LiveValue>();
 
+        TraceSummaryNode? CreateColumns(int nodeId, string key)
+        {
+            var targets = operators[nodeId].Targets;
+
+            var planObject = targets.Find(t => t.Value.Type == IteratorTargetType.PlanObject).Key;
+
+            return history.GetOutputColumns(nodeId) is { Count: > 0 } columns
+                ? CreateOutputColumns(history, nodeId, columns, targets[0].Key, planObject, GetPosition(history, targets), key, live)
+                : null;
+        }
+
         TraceSummaryNode CreateOperator(int nodeId)
         {
             var (operatorEvent, targets) = operators[nodeId];
 
             var key = OperatorKeyPrefix + nodeId.ToString(CultureInfo.InvariantCulture);
 
-            var iterator = targets.Find(t => t.Value.Type == IteratorTargetType.Iterator) is { Value: not null } own
-                ? own.Key
-                : targets[0].Key;
+            var iterator = targets.Find(t => t.Value.Type == IteratorTargetType.Iterator);
 
-            var block = history.GetIteratorBlock(iterator);
+            var planObject = targets.Find(t => t.Value.Type == IteratorTargetType.PlanObject);
 
-            var position = block >= 0 ? store.Blocks[block].FromPosition : TracePosition.Unknown;
+            var position = GetPosition(history, targets);
 
-            var outputs = history.GetOutputColumns(nodeId) is { Count: > 0 } columns
-                ? CreateOutputColumns(history, nodeId, columns, iterator, position, key, live)
-                : null;
+            var children = new List<TraceSummaryNode>();
 
-            var others = targets.Where(t => t.Key != iterator)
-                                .OrderBy(t => t.Value.Type == IteratorTargetType.PlanObject ? 0 : 1)
-                                .ToList();
+            if (planObject.Value is not null)
+            {
+                children.Add(CreateTarget(history, planObject.Key, CompiledPlanObjectName, position, key, position));
+            }
 
-            var hasPlanObject = others.Exists(t => t.Value.Type == IteratorTargetType.PlanObject);
+            if (iterator.Value is not null)
+            {
+                children.Add(CreateTarget(history, iterator.Key, iterator.Value.TypeName, position, key, null));
+            }
 
-            List<TraceSummaryNode> children = [.. others.Select(t => CreateTarget(history, t.Key, t.Value, position, key, outputs))];
-
-            if (outputs is not null && !hasPlanObject)
+            if (CreateColumns(nodeId, key) is { } outputs)
             {
                 children.Add(outputs);
             }
@@ -128,59 +134,74 @@ public sealed class TraceSummaryOperatorsViewModel : TraceSummaryPaneViewModel
                                        .OrderBy(o => o.Key)
                                        .Select(o => CreateOperator(o.Key)));
 
-            return new TraceSummaryNode(operatorEvent.Label, GetBlockText(history, block, iterator), key)
+            return new TraceSummaryNode(operatorEvent.Label, string.Empty, key)
             {
-                Block = block,
-                Address = iterator,
                 Children = children,
                 HasChildren = children.Count > 0
             };
         }
 
-        var roots = operators.Where(o => o.Value.Event.ParentNodeId is not { } parent || !operators.ContainsKey(parent))
-                             .OrderBy(o => o.Key)
-                             .Select(o => CreateOperator(o.Key))
-                             .ToList();
+        var tops = operators.Where(o => o.Value.Event.ParentNodeId is not { } parent || !operators.ContainsKey(parent))
+                            .OrderBy(o => o.Key)
+                            .ToList();
+
+        List<TraceSummaryNode> roots = [.. tops.Select(o => CreateOperator(o.Key))];
+
+        if (tops.Count > 0
+            && tops[0].Value.Event.PlanNodeIdentifier is { } identifier
+            && history.GetStatementName(identifier) is { } statement)
+        {
+            List<TraceSummaryNode> children = tops.Count == 1 && CreateColumns(tops[0].Key, StatementKey) is { } outputs
+                ? [outputs, .. roots]
+                : roots;
+
+            roots = [new TraceSummaryNode(statement, string.Empty, StatementKey) { Children = children, HasChildren = true }];
+        }
 
         return new LoadedOperators(roots, live);
     }
 
+    private static TracePosition GetPosition(MemoryHistoryViewModel history, List<KeyValuePair<ulong, IteratorTarget>> targets)
+    {
+        var iterator = targets.Find(t => t.Value.Type == IteratorTargetType.Iterator);
+
+        var block = history.GetIteratorBlock(iterator.Value is null ? targets[0].Key : iterator.Key);
+
+        return block >= 0 ? history.Store.Blocks[block].FromPosition : TracePosition.Unknown;
+    }
+
+    private static int GetTargetBlock(MemoryHistoryViewModel history, ulong address, TracePosition position)
+        => history.GetIteratorBlock(address) is >= 0 and var block ? block : history.Store.GetBlock(address, position);
+
     private static TraceSummaryNode CreateTarget(MemoryHistoryViewModel history,
                                                  ulong address,
-                                                 IteratorTarget target,
+                                                 string name,
                                                  TracePosition position,
                                                  string key,
-                                                 TraceSummaryNode? outputs)
+                                                 TracePosition? openAt)
     {
-        var block = history.GetIteratorBlock(address) is >= 0 and var iteratorBlock
-            ? iteratorBlock
-            : history.Store.GetBlock(address, position);
+        var block = GetTargetBlock(history, address, position);
 
-        var isPlanObject = target.Type == IteratorTargetType.PlanObject;
-
-        List<TraceSummaryNode> children = isPlanObject && outputs is not null ? [outputs] : [];
-
-        return new TraceSummaryNode(isPlanObject ? CompiledPlanObjectName : target.TypeName,
-                                    GetBlockText(history, block, address),
-                                    $"{key}/{target.Type}/{address:X}")
+        return new TraceSummaryNode(name, GetBlockText(history, block, address), $"{key}/{name}/{address:X}")
         {
             Block = block,
             Address = address,
-            Position = isPlanObject ? position : null,
-            Children = children,
-            HasChildren = children.Count > 0
+            Position = openAt
         };
     }
 
     private static TraceSummaryNode CreateOutputColumns(MemoryHistoryViewModel history,
                                                         int nodeId,
                                                         IReadOnlyList<PlanOutputColumn> outputs,
-                                                        ulong iterator,
+                                                        ulong target,
+                                                        ulong planObject,
                                                         TracePosition position,
                                                         string key,
                                                         List<LiveValue> live)
     {
-        var names = history.GetOutputColumnNames(iterator, outputs.Count);
+        var names = history.GetOutputColumnNames(target, outputs.Count);
+
+        var planBlock = planObject == 0 ? -1 : GetTargetBlock(history, planObject, position);
 
         var columns = new List<TraceSummaryNode>(outputs.Count);
 
@@ -188,35 +209,20 @@ public sealed class TraceSummaryOperatorsViewModel : TraceSummaryPaneViewModel
         {
             var column = outputs[index];
 
-            var name = names[index];
-
-            var columnKey = $"{key}/output/{index}";
-
-            var path = history.GetOutputPath(nodeId, column);
-
-            var links = path.Links;
-
-            List<TraceSummaryNode> children =
-            [
-                .. links.Where(IsValueLink).Select((l, i) => CreateOutputLink(history, l, $"{columnKey}/{i}", live))
-            ];
-
-            var node = new TraceSummaryNode($"{name} · {ColumnBindingText.GetType(column.Type)}",
-                                            GetObjectText(history, column.Reference, position),
-                                            columnKey)
+            var node = new TraceSummaryNode(names[index], string.Empty, $"{key}/output/{index}")
             {
-                Block = history.Store.GetBlock(column.Reference, position),
-                Address = column.Reference,
+                Block = planBlock,
+                Address = planObject,
                 Position = position,
-                Children = children,
-                HasChildren = children.Count > 0
+                ColumnType = column.Type,
+                LineageColumn = planBlock >= 0 ? names[index] : null
             };
 
-            if (links.Count > 0)
+            if (history.GetOutputPath(nodeId, column).Stages is [var stage, ..])
             {
                 live.Add(new LiveValue(node,
-                                       m => PlanOutputValueReader.Read(m, column, path) ?? string.Empty,
-                                       m => history.GetOutputRecord(m, path)));
+                                       m => PlanOutputValueReader.Read(m, stage) ?? string.Empty,
+                                       m => history.GetOutputRecord(m, stage)));
             }
 
             columns.Add(node);
@@ -229,92 +235,10 @@ public sealed class TraceSummaryOperatorsViewModel : TraceSummaryPaneViewModel
         };
     }
 
-    private static bool IsValueLink(PlanOutputLink link)
-        => link is
-        {
-            Depth: 0,
-            Type: PlanOutputLinkType.Value
-                  or PlanOutputLinkType.Reader
-                  or PlanOutputLinkType.RowSlot
-                  or PlanOutputLinkType.BufferEntry
-                  or PlanOutputLinkType.Record
-                  or PlanOutputLinkType.Input
-        };
-
-    private static TraceSummaryNode CreateOutputLink(MemoryHistoryViewModel history,
-                                                     PlanOutputLink link,
-                                                     string key,
-                                                     List<LiveValue> live)
-    {
-        var name = link.Type == PlanOutputLinkType.RowSlot
-            ? $"{PlanOutputLinkText.GetName(link.Type)} {link.Slot}"
-            : PlanOutputLinkText.GetName(link.Type);
-
-        var detail = link.Type == PlanOutputLinkType.Record
-            ? GetFieldText(history, link.Address, link.Position)
-            : GetObjectText(history, link.Address, link.Position);
-
-        if (link is { Type: PlanOutputLinkType.Reader, Offset: { } readerOffset })
-        {
-            detail = $"{detail} · Slot {link.Slot} · {PlanOutputLinkText.GetRowText(readerOffset)}";
-        }
-        else if (link.Type == PlanOutputLinkType.Reader)
-        {
-            detail = $"{detail} · Slot {link.Slot}";
-        }
-        else if (link is { Type: PlanOutputLinkType.BufferEntry or PlanOutputLinkType.Record, Offset: { } offset })
-        {
-            detail = $"{detail} · {PlanOutputLinkText.GetRowText(offset)}";
-        }
-
-        var node = new TraceSummaryNode(name, detail, key)
-        {
-            Block = history.Store.GetBlock(link.Address, link.Position),
-            Address = link.Address,
-            Position = link.Position
-        };
-
-        if (link.Type is PlanOutputLinkType.RowSlot or PlanOutputLinkType.Record)
-        {
-            live.Add(new LiveValue(node, m => GetReferenceText(history, m, link.Address), _ => null));
-        }
-
-        return node;
-    }
-
-    private static string GetObjectText(MemoryHistoryViewModel history, ulong address, TracePosition position)
-        => GetBlockText(history, history.Store.GetBlock(address, position), address);
-
     private static string GetBlockText(MemoryHistoryViewModel history, int block, ulong address)
         => block >= 0 && history.Store.Blocks[block].Address == address && history.GetTypeName(block) is { Length: > 0 } type
             ? $"{type} · {GetAddressText(address)}"
             : GetAddressText(address);
-
-    private static string GetReferenceText(MemoryHistoryViewModel history, MemoryHistoryReader memory, ulong address)
-    {
-        if (!memory.TryRead(address, out ulong reference) || reference == 0)
-        {
-            return string.Empty;
-        }
-
-        if (history.Store.GetBlock(reference, memory.Position) < 0 && history.GetBufferPage(reference, memory.Position) is { } page)
-        {
-            var label = history.GetBufferPageLabel(page);
-
-            return history.GetBufferSlot(page) is { } slot ? $"{label} · Slot {slot}" : label;
-        }
-
-        return GetFieldText(history, reference, memory.Position);
-    }
-
-    private static string GetFieldText(MemoryHistoryViewModel history, ulong address, TracePosition position)
-    {
-        var block = history.Store.GetBlock(address, position);
-
-        return block >= 0 && history.GetTypeName(block) is { Length: > 0 } type
-            ? $"{type} +0x{address - history.Store.Blocks[block].Address:X} · {GetAddressText(address)}"
-            : GetAddressText(address);
-    }
 
     private static LiveValues ReadValues(MemoryHistoryStore store, List<LiveValue> live, TracePosition position)
     {

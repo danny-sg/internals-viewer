@@ -242,6 +242,18 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         ShowAddress(address);
     }
 
+    public void ShowIteratorTab(IReadOnlyList<string> tabs)
+    {
+        if (!Iterator.IsAvailable)
+        {
+            return;
+        }
+
+        SelectedTab = IteratorTab;
+
+        Iterator.RequestTab(tabs);
+    }
+
     public void ShowAddress(ulong address, int length = 1)
     {
         if (!IsOpen)

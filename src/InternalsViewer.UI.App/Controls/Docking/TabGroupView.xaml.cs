@@ -30,6 +30,8 @@ public sealed partial class TabGroupView : UserControl
     {
         InitializeComponent();
 
+        LayoutHelpers.ClipToBounds(ContentHost);
+
         Loaded += (_, _) =>
         {
             DockDragState.ActiveChanged += OnDragActiveChanged;
@@ -46,8 +48,7 @@ public sealed partial class TabGroupView : UserControl
 
     public DockLayoutViewModel? Dock { get; private set; }
 
-    private bool AcceptsCurrentDrag
-        => DockDragState.Document is { } document && Dock?.FindGroup(document) is not null;
+    private bool AcceptsCurrentDrag => DockDragState.IsFrom(Dock);
 
     public void Initialize(TabGroupNode group, DockLayoutViewModel dock)
     {
@@ -384,7 +385,7 @@ public sealed partial class TabGroupView : UserControl
 
     private void OnTabDragStarting(TabView sender, TabViewTabDragStartingEventArgs args)
     {
-        if (((args.Item as TabViewItem) ?? args.Tab)?.Tag is not DocumentViewModel document)
+        if (((args.Item as TabViewItem) ?? args.Tab)?.Tag is not DocumentViewModel document || Dock is not { } dock)
         {
             return;
         }
@@ -394,7 +395,7 @@ public sealed partial class TabGroupView : UserControl
         args.Data.RequestedOperation = DataPackageOperation.Move;
         args.Data.SetText(document.Title);
 
-        DockDragState.Begin(document);
+        DockDragState.Begin(document, dock);
     }
 
     private void OnTabDragCompleted(TabView sender, TabViewTabDragCompletedEventArgs args)
@@ -435,18 +436,18 @@ public sealed partial class TabGroupView : UserControl
 
     private void OnDrop(object sender, DragEventArgs e)
     {
-        var document = DockDragState.Document;
-
         HideHighlight();
 
-        if (document is not null && Group is { } group && Dock is { } dock && dock.FindGroup(document) is not null)
+        if (!AcceptsCurrentDrag || DockDragState.Document is not { } document || Group is not { } group || Dock is not { } dock)
         {
-            var zone = GetZone(e.GetPosition(RootArea));
-
-            // Defer: the move restructures the layout and rebuilds tab strips, which must not happen
-            // while the drag/drop operation is still in flight (throws ArgumentException in WinRT).
-            DispatcherQueue.TryEnqueue(() => dock.Move(document, group, zone));
+            return;
         }
+
+        var zone = GetZone(e.GetPosition(RootArea));
+
+        // Defer: the move restructures the layout and rebuilds tab strips, which must not happen
+        // while the drag/drop operation is still in flight (throws ArgumentException in WinRT).
+        DispatcherQueue.TryEnqueue(() => dock.Move(document, group, zone));
 
         DockDragState.End();
         e.Handled = true;

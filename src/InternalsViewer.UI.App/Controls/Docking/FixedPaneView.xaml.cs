@@ -1,5 +1,6 @@
 using System;
 using Windows.ApplicationModel.DataTransfer;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.ViewModels.Docking;
 using Microsoft.UI.Xaml.Controls;
 
@@ -11,6 +12,8 @@ public sealed partial class FixedPaneView : UserControl
     {
         InitializeComponent();
 
+        LayoutHelpers.ClipToBounds(ContentHost);
+
         Loaded += (_, _) => DockDragState.ActiveChanged += OnDragActiveChanged;
 
         Unloaded += (_, _) => DockDragState.ActiveChanged -= OnDragActiveChanged;
@@ -20,7 +23,7 @@ public sealed partial class FixedPaneView : UserControl
 
     public DockLayoutViewModel? Dock { get; private set; }
 
-    private bool AcceptsCurrentDrag => DockDragState.Document is { } document && Dock?.FindGroup(document) is not null;
+    private bool AcceptsCurrentDrag => DockDragState.IsFrom(Dock);
 
     public void Initialize(FixedNode node, DockLayoutViewModel dock, FrameworkElement? content)
     {
@@ -77,18 +80,18 @@ public sealed partial class FixedPaneView : UserControl
 
     private void OnDrop(object sender, DragEventArgs e)
     {
-        var document = DockDragState.Document;
-
         HideHighlight();
 
-        if (document is not null && Node is { } node && Dock is { } dock && dock.FindGroup(document) is not null)
+        if (!AcceptsCurrentDrag || DockDragState.Document is not { } document || Node is not { } node || Dock is not { } dock)
         {
-            var zone = GetZone(e);
+            return;
+        }
 
-            if (zone is not DropZone.Center)
-            {
-                DispatcherQueue.TryEnqueue(() => dock.Move(document, node, zone));
-            }
+        var zone = GetZone(e);
+
+        if (zone is not DropZone.Center)
+        {
+            DispatcherQueue.TryEnqueue(() => dock.Move(document, node, zone));
         }
 
         DockDragState.End();

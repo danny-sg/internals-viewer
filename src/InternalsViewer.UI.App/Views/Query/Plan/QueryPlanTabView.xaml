@@ -217,7 +217,7 @@
                                          Margin="4,0,0,0"
                                          Background="Transparent"
                                          BorderThickness="0"
-                                         ToolTipService.ToolTip="Next Step">
+                                         ToolTipService.ToolTip="Next Step (Space)">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                         <FontIcon Glyph="&#xE893;" FontSize="16" />
                                     <TextBlock Text="Next" />
@@ -260,6 +260,8 @@
                               MaxZoomFactor="4.0"
                               Background="White"
                               Padding="8"
+                              IsTabStop="True"
+                              UseSystemFocusVisuals="False"
                               ContextRequested="OnPlanContextRequested"
                               Tapped="OnPlanBackgroundTapped">
                     <ItemsRepeater x:Name="PlanRepeater"
@@ -269,6 +271,15 @@
                                    Layout="{StaticResource PlanStackLayout}"
                                    ItemTemplate="{StaticResource ExecutionPlanTemplate}" />
                 </ScrollViewer>
+
+                <TextBlock Grid.Row="1"
+                           Margin="0,12,24,0"
+                           HorizontalAlignment="Right"
+                           VerticalAlignment="Top"
+                           IsHitTestVisible="False"
+                           Style="{StaticResource SubtitleTextBlockStyle}"
+                           Text="{x:Bind ViewModel.GuidePhase, Mode=OneWay}"
+                           Visibility="{x:Bind ViewModel.Layout.IsGuideMode, Mode=OneWay}" />
 
                 <query:NoQueryHint Grid.Row="1"
                                    Layout="{x:Bind ViewModel.Layout, Mode=OneWay}"

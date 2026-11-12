@@ -25,5 +25,9 @@ public enum MemoryStructureNodeType
     RecordPage,
     ComparePages,
     ComparePage,
-    Memory
+    Memory,
+    Statement,
+    Operator,
+    PlanObject,
+    Link
 }

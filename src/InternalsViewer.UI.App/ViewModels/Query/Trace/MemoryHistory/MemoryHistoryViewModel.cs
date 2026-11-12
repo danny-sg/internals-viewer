@@ -37,6 +37,8 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 {
     private const string IteratorObject = "Iterator";
 
+    private const int StatementNodeId = -1;
+
     private const string UnknownWriter = "Unknown Writer";
 
     private const string UnknownObject = "Unknown Object";
@@ -236,26 +238,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
     public PlanOutputPath GetOutputPath(int nodeId, PlanOutputColumn column)
         => Trace?.GetOutputPath(nodeId, column) ?? PlanOutputPath.Empty;
 
-    public IReadOnlyList<PlanOutputLink> GetOutputLinks(int nodeId, PlanOutputColumn column, MemoryHistoryReader memory)
-        => Trace?.GetOutputLinks(nodeId, column, memory) ?? [];
-
     public string? GetUnexpectedWriter(PlanOutputLink link) => Trace?.GetUnexpectedWriter(link);
-
-    public InternalsViewer.Query.FullTrace.Locators.SqlTypeInfo? GetReferenceType(ulong reference)
-    {
-        foreach (var columns in Trace?.OutputColumns.Values ?? [])
-        {
-            foreach (var column in columns)
-            {
-                if (column.Reference == reference)
-                {
-                    return column.Type;
-                }
-            }
-        }
-
-        return null;
-    }
 
     public Task<string?> ReadRecordAsync(PlanOutputRecord record) => Records?.ReadAsync(record) ?? Task.FromResult<string?>(null);
 
@@ -266,8 +249,13 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
         return [.. Enumerable.Range(0, count).Select(i => columns?[i].Column is { Length: > 0 } name ? name : $"Column {i + 1}")];
     }
 
-    public PlanOutputRecord? GetOutputRecord(MemoryHistoryReader memory, PlanOutputPath path)
-        => Trace is { } trace ? PlanOutputValueReader.ReadRecord(memory, trace.BufferPool, memory.Position, path) : null;
+    public PlanOutputRecord? GetOutputRecord(MemoryHistoryReader memory, PlanOutputStage stage)
+        => Trace is { } trace ? PlanOutputValueReader.ReadRecord(memory, trace.BufferPool, memory.Position, stage) : null;
+
+    public string? GetStatementName(PlanNodeIdentifier node)
+        => ResolvePlanNode?.Invoke(new PlanNodeIdentifier(node.PlanHandleId, StatementNodeId)) is { IsStatement: true } statement
+            ? statement.PhysicalOperator
+            : null;
 
     public PlanNode? GetPlanNode(ulong iterator)
         => ResolvePlanNode is { } resolve
@@ -350,6 +338,9 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
            && (GetIteratorBlock(info.Address) == block || target.Type == IteratorTargetType.PlanObject)
             ? $"{target.TypeName} › {target.Label}"
             : null;
+
+    public IteratorTarget? GetRowBufferOwner(ulong buffer, TracePosition position)
+        => IteratorTarget.FindRowBufferOwner(Iterators, Store, buffer, position);
 
     public string GetTypeName(int block)
     {

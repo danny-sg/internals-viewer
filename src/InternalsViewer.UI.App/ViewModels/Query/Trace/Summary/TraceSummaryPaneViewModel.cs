@@ -6,6 +6,7 @@ using InternalsViewer.Query.FullTrace;
 using InternalsViewer.UI.App.Models.Query.Trace.Summary;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryHistory;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
+using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline.Memory;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.Summary;
 
@@ -79,10 +80,21 @@ public abstract partial class TraceSummaryPaneViewModel(string title,
 
     public void Open(TraceSummaryNode node)
     {
-        if (node.IsObject && node.Block < History.Store.Blocks.Count)
+        if (!node.IsObject || node.Block >= History.Store.Blocks.Count)
         {
-            GetNavigator().OpenMemory(node.Block, node.Address, node.Position ?? History.Store.Blocks[node.Block].FromPosition);
+            return;
         }
+
+        var position = node.Position ?? History.Store.Blocks[node.Block].FromPosition;
+
+        if (node.LineageColumn is { } column)
+        {
+            GetNavigator().OpenIteratorTab(node.Block, node.Address, position, [MemoryIteratorViewModel.LineageHeader, column]);
+
+            return;
+        }
+
+        GetNavigator().OpenMemory(node.Block, node.Address, position);
     }
 
     public void OpenHashTable(TraceSummaryNode node)
