@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output.Enums;
 
 namespace InternalsViewer.UI.App.Models.Query.Trace.Lineage;
 

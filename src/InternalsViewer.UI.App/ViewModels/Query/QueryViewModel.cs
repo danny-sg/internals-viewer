@@ -10,6 +10,7 @@ using InternalsViewer.UI.App.Services.Query.Trace;
 using InternalsViewer.UI.App.Models.Query.Plan;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Sorts;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.UI.Plugins.FullTrace.Menus;
@@ -33,7 +34,6 @@ using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
-using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Events.Latches;
@@ -97,6 +97,7 @@ using System.Text.Json;
 using InternalsViewer.Query.Export;
 using InternalsViewer.UI.App.Helpers;
 using Windows.Storage.Pickers;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
@@ -1123,6 +1124,34 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             ? TraceHashTableReader.GetGroup(trace.MemoryHistory,
                                             trace.CallStore,
                                             [.. trace.Lifetimes.Where(l => ReferenceEquals(l.Operator, op)).SelectMany(l => l.Instances)])
+            : null;
+
+    public void OpenSortTable(PlanNode node)
+    {
+        if (GetSortIterator(node) is { } iterator)
+        {
+            TraceTimelineTab.OpenSortTable(iterator, isBelowPlan: true);
+        }
+    }
+
+    public void OpenSortTable(ExecutionOperatorEvent op)
+    {
+        if (GetSortIterator(op) is { } iterator)
+        {
+            TraceTimelineTab.OpenSortTable(iterator, isBelowPlan: false);
+        }
+    }
+
+    public ulong? GetSortIterator(PlanNode node)
+        => Events.OfType<ExecutionOperatorEvent>().FirstOrDefault(e => e.PlanNodeIdentifier?.NodeId == node.NodeId) is { } op
+            ? GetSortIterator(op)
+            : null;
+
+    public ulong? GetSortIterator(ExecutionOperatorEvent op)
+        => Trace is { } trace
+            ? TraceSortTableReader.GetIterator(trace.MemoryHistory,
+                                               trace.AddressMap,
+                                               trace.Lifetimes.Where(l => ReferenceEquals(l.Operator, op)))
             : null;
 
     public Task OpenPageAsync(PageAddress pageAddress, ushort? slot = null, int? offset = null)

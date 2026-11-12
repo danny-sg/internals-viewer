@@ -11,9 +11,11 @@ public static class BatchReader
 
     public const int VectorEntrySize = 0x58;
 
-    private const ulong AllocationBitmapOffset = 0x00;
+    public const ulong VectorArrayOffset = 0x08;
 
-    private const ulong VectorArrayOffset = 0x08;
+    public const ulong SelectionOffset = 0x38;
+
+    private const ulong AllocationBitmapOffset = 0x00;
 
     private const ulong PureBitmapOffset = 0x10;
 
@@ -28,8 +30,6 @@ public static class BatchReader
     private const ulong ActiveRowCountOffset = 0x28;
 
     private const ulong MemoryObjectOffset = 0x30;
-
-    private const ulong SelectionOffset = 0x38;
 
     private const ulong DeepDataAllocatorOffset = 0x40;
 

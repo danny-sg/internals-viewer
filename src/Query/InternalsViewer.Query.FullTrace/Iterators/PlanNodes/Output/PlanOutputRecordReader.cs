@@ -5,7 +5,7 @@ using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
 using InternalsViewer.Internals.Interfaces.Services.Records;
 using Microsoft.Extensions.Logging;
 
-namespace InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
+namespace InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
 
 public sealed class PlanOutputRecordReader(IPageService pageService,
                                            IRecordService recordService,

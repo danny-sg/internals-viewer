@@ -2,12 +2,15 @@ using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.Interfaces;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 
-namespace InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
+namespace InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
 
 internal static class PlanOutputReader
 {
     private const int MaximumOutputs = 4096;
+
+    private const int MaximumRedirects = 4;
 
     public static IReadOnlyList<IteratorPlanNode> Read(IReadOnlyList<IteratorPlanNode> planNodes,
                                                        MemoryHistoryStore store,
@@ -68,11 +71,25 @@ internal static class PlanOutputReader
     private static PlanOutputColumn ReadColumn(IMemoryReader memory,
                                                ulong reference,
                                                PlanNodeLayout layout,
-                                               IReadOnlySet<ulong> planObjects)
+                                               IReadOnlySet<ulong> planObjects,
+                                               int depth = 0)
     {
-        var isStorage = !(memory.TryRead(reference + layout.ColumnProducerOffset, out ulong producer) && planObjects.Contains(producer))
+        var hasProducer = memory.TryRead(reference + layout.ColumnProducerOffset, out ulong producer) && planObjects.Contains(producer);
+
+        var isStorage = !hasProducer
                         && memory.TryRead(reference + layout.StorageColumnProducerOffset, out producer)
                         && planObjects.Contains(producer);
+
+        if (!hasProducer
+            && !isStorage
+            && depth < MaximumRedirects
+            && memory.TryRead(reference + layout.RedirectProducerOffset, out ulong redirectProducer)
+            && planObjects.Contains(redirectProducer)
+            && memory.TryRead(reference + layout.RedirectTargetOffset, out ulong target)
+            && target >= TraceAddress.MinimumAddress)
+        {
+            return ReadColumn(memory, target, layout, planObjects, depth + 1) with { Reference = reference, Producer = redirectProducer };
+        }
 
         memory.TryRead(reference + (isStorage ? layout.StorageColumnTypeOffset : layout.ColumnTypeOffset), out ulong header);
 

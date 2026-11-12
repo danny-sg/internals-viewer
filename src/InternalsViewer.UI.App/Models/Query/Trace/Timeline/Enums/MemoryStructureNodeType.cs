@@ -1,6 +1,6 @@
 namespace InternalsViewer.UI.App.Models.Query.Trace.Timeline.Enums;
 
-public enum MemoryHashTableNodeType
+public enum MemoryStructureNodeType
 {
     HashTable,
     BuildSide,
@@ -13,5 +13,17 @@ public enum MemoryHashTableNodeType
     BucketPage,
     OverflowPage,
     WorkfilePages,
-    WorkfilePage
+    WorkfilePage,
+    Bitmap,
+    BitmapPage,
+    SortTable,
+    Rowset,
+    Descriptor,
+    Runs,
+    Run,
+    RecordPages,
+    RecordPage,
+    ComparePages,
+    ComparePage,
+    Memory
 }

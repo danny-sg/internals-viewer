@@ -10,6 +10,8 @@ using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Pages;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Sorts;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Sorts.Enums;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Logging;
@@ -89,6 +91,15 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
     [ObservableProperty]
     private string _hashTablePartText = string.Empty;
 
+    [ObservableProperty]
+    private bool _isSortTableVisible;
+
+    [ObservableProperty]
+    private string _sortTableText = string.Empty;
+
+    [ObservableProperty]
+    private string _sortTablePartText = string.Empty;
+
     public PlayheadMemoryViewModel(MemoryHistoryViewModel history)
     {
         History = history;
@@ -160,6 +171,10 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     private RowRecordLayout? HashTableLayout { get; set; }
 
+    private ulong SortTableIterator { get; set; }
+
+    private TraceSortPart? SortTablePart { get; set; }
+
     public void Open(int block, ulong address, TracePosition position)
     {
         if (block < 0 || block >= History.Store.Blocks.Count)
@@ -202,6 +217,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         Batch.Load(this);
 
         FindHashTable();
+
+        FindSortTable();
 
         WorkfilePage.Load(History, block, HashTableLayout);
 
@@ -268,6 +285,16 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         HashTableText = string.Empty;
 
         HashTablePartText = string.Empty;
+
+        SortTableIterator = 0;
+
+        SortTablePart = null;
+
+        IsSortTableVisible = false;
+
+        SortTableText = string.Empty;
+
+        SortTablePartText = string.Empty;
 
         Writes.Clear();
 
@@ -357,6 +384,14 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         if (HashTableGroup != 0)
         {
             Navigator?.OpenHashTable(HashTableGroup, HashTablePart);
+        }
+    }
+
+    public void OpenSortTable()
+    {
+        if (SortTableIterator != 0)
+        {
+            Navigator?.OpenSortTable(SortTableIterator, SortTablePart);
         }
     }
 
@@ -614,6 +649,58 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         HashTableText = IsHashTableVisible ? $"0x{HashTableGroup:X16}" : string.Empty;
 
         HashTablePartText = HashTablePart is { } part ? HashTablePartLabel.GetText(part) : string.Empty;
+    }
+
+    private static string GetSortPartText(TraceSortPartType type) => type switch
+    {
+        TraceSortPartType.Iterator => "Sort Iterator",
+        TraceSortPartType.Rowset => "Rowset",
+        TraceSortPartType.Descriptor => "Sort Descriptor",
+        TraceSortPartType.RecordPage => "Record Page",
+        _ => "Compare Page"
+    };
+
+    private void FindSortTable()
+    {
+        var store = History.Store;
+
+        var block = store.Blocks[Block];
+
+        var iterator = block.Iterator != 0 ? block.Iterator : block.Address;
+
+        var found = (TraceSortPart?)null;
+
+        if (store.GetBlock(iterator, OpenedAt) is >= 0 and var iteratorBlock
+            && store.Blocks[iteratorBlock] is { } info
+            && info.Address == iterator
+            && History.AddressMap.GetLabel(info.Address, info.FromPosition, info.ToPosition) == TraceSortTableReader.IteratorClass)
+        {
+            var pages = TraceSortTableReader.GetPages(store, History.AddressMap, iterator);
+
+            var writes = store.GetWrites(Block);
+
+            List<TracePosition> positions = writes.Count > 0
+                ? [OpenedAt, block.FromPosition, writes[^1].Position]
+                : [OpenedAt, block.FromPosition];
+
+            foreach (var position in positions)
+            {
+                if (TraceSortTableReader.Read(store, pages, iterator, position)?.FindPart(block.Address, block.Size) is { } part)
+                {
+                    found = part;
+
+                    break;
+                }
+            }
+        }
+
+        (SortTableIterator, SortTablePart) = found is null ? (0UL, null) : (iterator, found);
+
+        IsSortTableVisible = SortTableIterator != 0;
+
+        SortTableText = IsSortTableVisible ? $"0x{SortTableIterator:X16}" : string.Empty;
+
+        SortTablePartText = SortTablePart is { } shown ? GetSortPartText(shown.Type) : string.Empty;
     }
 
     private RowRecordLayout? GetHashTableLayout(TraceHashTable table, TracePosition position)

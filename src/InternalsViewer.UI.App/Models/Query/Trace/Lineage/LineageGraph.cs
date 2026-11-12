@@ -1,16 +1,18 @@
 using System;
 using System.Collections.Generic;
-using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
 
 namespace InternalsViewer.UI.App.Models.Query.Trace.Lineage;
 
-public sealed class LineageGraph(int nodeId, PlanOutputColumn column, Action<ulong> open)
+public sealed class LineageGraph(int nodeId, PlanOutputColumn column, PlanOutputPath path, Action<ulong> open)
 {
-    public const double BoxWidth = 460;
+    public const double BoxWidth = 230;
 
     public const double HeaderHeight = 40;
 
-    public const double RowHeight = 22;
+    public const double LineHeight = 18;
+
+    public const double RowHeight = LineHeight * 2;
 
     public const double ColumnGap = 56;
 
@@ -22,7 +24,7 @@ public sealed class LineageGraph(int nodeId, PlanOutputColumn column, Action<ulo
 
     public PlanOutputColumn Column { get; } = column;
 
-    public IReadOnlyList<PlanOutputLink> Links { get; private set; } = [];
+    public PlanOutputPath Path { get; } = path;
 
     public List<LineageBox> Boxes { get; private set; } = [];
 
@@ -32,14 +34,18 @@ public sealed class LineageGraph(int nodeId, PlanOutputColumn column, Action<ulo
 
     public string Key { get; private set; } = string.Empty;
 
+    public IReadOnlyList<string> Warnings { get; private set; } = [];
+
     public int Version { get; set; }
 
     public void Open(ulong address) => open(address);
 
-    public void SetStructure(IReadOnlyList<PlanOutputLink> links, List<LineageBox> boxes, double width, double height, string key)
+    public void SetStructure(List<LineageBox> boxes,
+                             double width,
+                             double height,
+                             string key,
+                             IReadOnlyList<string> warnings)
     {
-        Links = links;
-
         Boxes = boxes;
 
         Width = width;
@@ -47,6 +53,8 @@ public sealed class LineageGraph(int nodeId, PlanOutputColumn column, Action<ulo
         Height = height;
 
         Key = key;
+
+        Warnings = warnings;
 
         Rebuilt?.Invoke(this, EventArgs.Empty);
     }

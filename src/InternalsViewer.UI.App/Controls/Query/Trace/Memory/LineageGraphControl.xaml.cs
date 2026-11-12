@@ -13,10 +13,6 @@ namespace InternalsViewer.UI.App.Controls.Query.Trace.Memory;
 
 public sealed partial class LineageGraphControl : UserControl
 {
-    private const double NameWidth = 190;
-
-    private const double PointerWidth = 150;
-
     private const double CellPadding = 8;
 
     private const double HeaderPadding = 4;
@@ -24,6 +20,8 @@ public sealed partial class LineageGraphControl : UserControl
     private const double TextSize = 12;
 
     private const double SubtitleSize = 11;
+
+    private const double LabelSize = 11;
 
     private const double LinkStub = 14;
 
@@ -40,6 +38,10 @@ public sealed partial class LineageGraphControl : UserControl
     private const string HeaderBackgroundKey = "SolidBackgroundFillColorSecondaryBrush";
 
     private const string SubtitleKey = "TextFillColorSecondaryBrush";
+
+    private const string LabelKey = "TextFillColorTertiaryBrush";
+
+    private const string WarningKey = "SystemFillColorCriticalBrush";
 
     private const string LinkKey = "ControlStrongStrokeColorDefaultBrush";
 
@@ -70,11 +72,18 @@ public sealed partial class LineageGraphControl : UserControl
 
     private static Point Snap(double x, double y) => new(Math.Floor(x) + 0.5, Math.Floor(y) + 0.5);
 
+    private static double GetValueLine(int index)
+        => LineageGraph.HeaderHeight + (index + 1) * LineageGraph.RowHeight - LineageGraph.LineHeight / 2;
+
     private void Build()
     {
         Surface.Children.Clear();
 
         Cells.Clear();
+
+        WarningBar.IsOpen = Graph?.Warnings.Count > 0;
+
+        WarningBar.Message = string.Join(Environment.NewLine, Graph?.Warnings ?? []);
 
         if (Graph is not { } graph)
         {
@@ -112,7 +121,7 @@ public sealed partial class LineageGraphControl : UserControl
     {
         var startX = box.X + LineageGraph.BoxWidth;
 
-        var startY = box.Y + LineageGraph.HeaderHeight + (index + 0.5) * LineageGraph.RowHeight;
+        var startY = box.Y + GetValueLine(index);
 
         var isForward = target.X > box.X;
 
@@ -125,7 +134,7 @@ public sealed partial class LineageGraphControl : UserControl
             var targetRow = target.Rows.FindIndex(r => r.Offset == box.Rows[index].TargetOffset);
 
             var endY = box.Rows[index].TargetOffset >= 0 && targetRow >= 0
-                ? target.Y + LineageGraph.HeaderHeight + (targetRow + 0.5) * LineageGraph.RowHeight
+                ? target.Y + GetValueLine(targetRow)
                 : target.Y + LineageGraph.HeaderHeight / 2;
 
             points.Add(Snap(middle, startY));
@@ -228,27 +237,36 @@ public sealed partial class LineageGraphControl : UserControl
         return border;
     }
 
-    private Grid CreateRow(LineageGraph graph, LineageRow row)
+    private StackPanel CreateRow(LineageGraph graph, LineageRow row)
     {
+        var label = new TextBlock
+        {
+            Text = row.Name,
+            Height = LineageGraph.LineHeight,
+            FontSize = LabelSize,
+            Foreground = AppResources.Get<Brush>(LabelKey),
+            Padding = new Thickness(CellPadding, 0, CellPadding, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis
+        };
+
+        if (row.UnexpectedWriter is { } writer)
+        {
+            label.Foreground = AppResources.Get<Brush>(WarningKey);
+
+            ToolTipService.SetToolTip(label, $"Written By {writer}");
+        }
+
         var grid = new Grid
         {
-            Height = LineageGraph.RowHeight,
+            Height = LineageGraph.LineHeight,
+            Padding = new Thickness(CellPadding, 0, CellPadding, 0),
             ColumnDefinitions =
             {
-                new ColumnDefinition { Width = new GridLength(NameWidth) },
-                new ColumnDefinition { Width = new GridLength(PointerWidth) },
+                new ColumnDefinition { Width = GridLength.Auto },
                 new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
             }
         };
-
-        grid.Children.Add(new TextBlock
-        {
-            Text = row.Name,
-            FontSize = TextSize,
-            Padding = new Thickness(CellPadding, 0, 0, 0),
-            VerticalAlignment = VerticalAlignment.Center,
-            TextTrimming = TextTrimming.CharacterEllipsis
-        });
 
         TextBlock? pointer = null;
 
@@ -259,13 +277,12 @@ public sealed partial class LineageGraphControl : UserControl
             var link = new HyperlinkButton
             {
                 Style = AppResources.Get<Style>(PointerStyleKey),
+                Padding = new Thickness(0, 0, CellPadding, 0),
                 VerticalAlignment = VerticalAlignment.Center,
                 Content = pointer
             };
 
             link.Click += (_, _) => graph.Open(row.Pointer);
-
-            Grid.SetColumn(link, 1);
 
             grid.Children.Add(link);
         }
@@ -273,18 +290,17 @@ public sealed partial class LineageGraphControl : UserControl
         var value = new TextBlock
         {
             FontSize = TextSize,
-            Padding = new Thickness(0, 0, CellPadding, 0),
             VerticalAlignment = VerticalAlignment.Center,
             TextTrimming = TextTrimming.CharacterEllipsis
         };
 
-        Grid.SetColumn(value, 2);
+        Grid.SetColumn(value, 1);
 
         grid.Children.Add(value);
 
         Cells.Add((row, pointer, value));
 
-        return grid;
+        return new StackPanel { Children = { label, grid } };
     }
 
     private void UpdateCells()

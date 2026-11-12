@@ -232,11 +232,15 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         var frames = callTree.GetNodes().Select(node => node.Frame!).ToList();
 
-        await SymbolDownloader.DownloadSymbols(frames.Select(f => f.Module), symbolsPath, messages, cancellationToken);
+        List<CallFrame> sqlServerFrames = [.. frames.Where(f => f.Module.IsSqlServer)];
+
+        await SymbolDownloader.DownloadSymbols(sqlServerFrames.Select(f => f.Module), symbolsPath, messages, cancellationToken);
 
         using var resolver = new SymbolResolver(symbolsPath);
 
-        resolver.ResolveFunctions(frames);
+        resolver.ResolveFunctions(sqlServerFrames);
+
+        SymbolResolver.ResolveExports(frames.Where(f => !f.Module.IsSqlServer), replay.Modules);
 
         LogUnknownSymbols(resolver.UnknownSymbols);
 

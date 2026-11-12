@@ -6,8 +6,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Iterators.Enums;
-using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
-using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings;
@@ -19,6 +17,8 @@ using InternalsViewer.UI.App.Models.Query.Trace.Lineage;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryHistory;
 using Microsoft.UI;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output.Enums;
 using Colour = System.Drawing.Color;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline.Memory;
@@ -231,7 +231,7 @@ public sealed partial class MemoryIteratorViewModel : ObservableObject
     {
         var targets = owner.History.IteratorTargets;
 
-        if (!memory.TryRead(address + IteratorLayout.InputsOffset, out ulong array)
+        if (!memory.TryRead(address + (ulong)EngineLayout.Iterator.InputsField.Offset, out ulong array)
             || array == 0
             || IteratorLayout.GetInputs(memory, array, targets) is not { Count: > 0 } inputs)
         {
@@ -365,7 +365,7 @@ public sealed partial class MemoryIteratorViewModel : ObservableObject
 
             for (var index = 0; index < outputs.Count; index++)
             {
-                foreach (var link in history.GetOutputLinks(identifier.NodeId, outputs[index]))
+                foreach (var link in history.GetOutputPath(identifier.NodeId, outputs[index]).Links)
                 {
                     if (link is { Depth: 0, Type: PlanOutputLinkType.Value or PlanOutputLinkType.BufferEntry })
                     {

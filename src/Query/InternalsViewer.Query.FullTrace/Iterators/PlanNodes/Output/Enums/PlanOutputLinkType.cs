@@ -1,4 +1,4 @@
-namespace InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
+namespace InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output.Enums;
 
 public enum PlanOutputLinkType
 {
@@ -29,5 +29,14 @@ public enum PlanOutputLinkType
     Record,
     RowBuffer,
     BufferEntry,
+    Batch,
+    Cursor,
+    ColumnMap,
+    VectorId,
+    Selection,
+    SelectedRow,
+    Vectors,
+    Vector,
+    VectorSlot,
     Input
 }

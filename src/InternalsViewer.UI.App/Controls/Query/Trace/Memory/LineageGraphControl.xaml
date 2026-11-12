@@ -4,14 +4,27 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <ScrollViewer ZoomMode="Enabled"
-                  MinZoomFactor="0.25"
-                  MaxZoomFactor="2"
-                  HorizontalScrollMode="Auto"
-                  HorizontalScrollBarVisibility="Auto"
-                  VerticalScrollMode="Auto"
-                  VerticalScrollBarVisibility="Auto"
-                  Background="{ThemeResource SolidBackgroundFillColorTertiaryBrush}">
-        <Canvas x:Name="Surface" HorizontalAlignment="Left" VerticalAlignment="Top"/>
-    </ScrollViewer>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <InfoBar x:Name="WarningBar"
+                 Severity="Warning"
+                 IsClosable="False"
+                 Title="Fields Written By Unexpected Functions"/>
+
+        <ScrollViewer Grid.Row="1"
+                      ZoomMode="Enabled"
+                      MinZoomFactor="0.25"
+                      MaxZoomFactor="2"
+                      HorizontalScrollMode="Auto"
+                      HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollMode="Auto"
+                      VerticalScrollBarVisibility="Auto"
+                      Background="{ThemeResource SolidBackgroundFillColorTertiaryBrush}">
+            <Canvas x:Name="Surface" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+        </ScrollViewer>
+    </Grid>
 </UserControl>

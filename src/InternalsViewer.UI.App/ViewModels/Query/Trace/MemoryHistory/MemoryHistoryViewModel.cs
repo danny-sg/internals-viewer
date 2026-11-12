@@ -17,7 +17,6 @@ using InternalsViewer.Query.Events;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Iterators.Enums;
-using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.History;
@@ -30,6 +29,7 @@ using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.Models;
 using Microsoft.UI;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryHistory;
 
@@ -86,6 +86,8 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
     public TraceCallStore? CallStore => Trace?.CallStore;
 
     public TraceTimeline? Timeline => Trace?.Timeline;
+
+    public TraceTimeline? QueryTimeline => Trace?.QueryTimeline;
 
     public MemoryHistoryBatchResolver? Batches { get; private set; }
 
@@ -231,10 +233,13 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
     public IReadOnlyList<PlanOutputColumn> GetOutputColumns(int nodeId) => Trace?.OutputColumns.GetValueOrDefault(nodeId) ?? [];
 
-    public IReadOnlyList<PlanOutputLink> GetOutputLinks(int nodeId, PlanOutputColumn column) => Trace?.GetOutputLinks(nodeId, column) ?? [];
+    public PlanOutputPath GetOutputPath(int nodeId, PlanOutputColumn column)
+        => Trace?.GetOutputPath(nodeId, column) ?? PlanOutputPath.Empty;
 
-    public IReadOnlyList<PlanOutputLink> GetOutputLinks(int nodeId, PlanOutputColumn column, TracePosition position)
-        => Trace?.GetOutputLinks(nodeId, column, position) ?? [];
+    public IReadOnlyList<PlanOutputLink> GetOutputLinks(int nodeId, PlanOutputColumn column, MemoryHistoryReader memory)
+        => Trace?.GetOutputLinks(nodeId, column, memory) ?? [];
+
+    public string? GetUnexpectedWriter(PlanOutputLink link) => Trace?.GetUnexpectedWriter(link);
 
     public InternalsViewer.Query.FullTrace.Locators.SqlTypeInfo? GetReferenceType(ulong reference)
     {
@@ -261,8 +266,8 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
         return [.. Enumerable.Range(0, count).Select(i => columns?[i].Column is { Length: > 0 } name ? name : $"Column {i + 1}")];
     }
 
-    public PlanOutputRecord? GetOutputRecord(MemoryHistoryReader memory, IReadOnlyList<PlanOutputLink> links)
-        => Trace is { } trace ? PlanOutputValueReader.ReadRecord(memory, trace.BufferPool, memory.Position, links) : null;
+    public PlanOutputRecord? GetOutputRecord(MemoryHistoryReader memory, PlanOutputPath path)
+        => Trace is { } trace ? PlanOutputValueReader.ReadRecord(memory, trace.BufferPool, memory.Position, path) : null;
 
     public PlanNode? GetPlanNode(ulong iterator)
         => ResolvePlanNode is { } resolve
@@ -310,7 +315,8 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
     public RowRecordLayout? GetWorkfileLayout(ulong iterator, IReadOnlyList<ColumnBinding> bindings, bool isProbeSide)
         => Workfiles?.Get(iterator, bindings, isProbeSide);
 
-    public SortRecordLayout? GetSortLayout(int block) => GetPageIterator(block) is { } iterator ? Workfiles?.GetSort(iterator) : null;
+    public SortRecordLayout? GetSortLayout(int block)
+        => GetPageIterator(block) is { } iterator ? Workfiles?.GetSort(iterator, () => ReadScanBindings(iterator, block)) : null;
 
     public SqlDbType? GetVectorType(ulong batch, int vector) => VectorTypes.TryGetValue((batch, vector), out var type) ? type : null;
 
@@ -577,6 +583,18 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
            && (owner.Name ?? trace.AddressMap.GetEntry(owner.Address, block.FromPosition)?.ClassName) is { } memoryObject
             ? $"{memoryObject}{MemoryObjectPageSuffix}"
             : null;
+
+    private List<ColumnBinding> ReadScanBindings(ulong iterator, int block)
+    {
+        var writes = Store.GetWrites(block);
+
+        var memory = new MemoryHistoryReader(Store, writes.Count > 0 ? writes[^1].Position : Store.Blocks[block].FromPosition);
+
+        return AccessorBindingLayout.ReadScan(memory, iterator) is { } scan
+               && AccessorBindingLayout.ReadHeader(memory, scan.Bindings) is { } header
+            ? AccessorBindingLayout.ReadColumns(memory, header.Columns, header.ColumnCount)
+            : [];
+    }
 
     private ulong? GetPageIterator(int block)
     {

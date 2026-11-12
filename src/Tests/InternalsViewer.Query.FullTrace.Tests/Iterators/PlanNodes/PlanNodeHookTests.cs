@@ -4,6 +4,7 @@ using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Locators;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Iterators.PlanNodes;
 

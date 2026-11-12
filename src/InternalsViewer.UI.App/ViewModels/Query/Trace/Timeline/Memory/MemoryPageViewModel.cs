@@ -240,7 +240,7 @@ public sealed partial class MemoryPageViewModel : ObservableObject
 
         SelectedSlot = PendingOffset is { } offset
             ? Slots.FirstOrDefault(s => s.Offset == offset)
-            : Slots.FirstOrDefault(s => s.Index == selected);
+            : Slots.FirstOrDefault(s => s.Index == (selected ?? PageDisplayBuilder.PageHeaderSlot));
 
         PendingOffset = null;
 

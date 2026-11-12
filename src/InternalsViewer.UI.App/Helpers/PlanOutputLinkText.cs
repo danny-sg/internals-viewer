@@ -1,4 +1,4 @@
-using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output.Enums;
 
 namespace InternalsViewer.UI.App.Helpers;
 
@@ -33,6 +33,15 @@ public static class PlanOutputLinkText
         PlanOutputLinkType.Record => "Record",
         PlanOutputLinkType.RowBuffer => "Row Buffer",
         PlanOutputLinkType.BufferEntry => "Buffer Entry",
+        PlanOutputLinkType.Batch => "Batch",
+        PlanOutputLinkType.Cursor => "Cursor",
+        PlanOutputLinkType.ColumnMap => "Column Map",
+        PlanOutputLinkType.VectorId => "Vector",
+        PlanOutputLinkType.Selection => "Selection",
+        PlanOutputLinkType.SelectedRow => "Row",
+        PlanOutputLinkType.Vectors => "Vectors",
+        PlanOutputLinkType.Vector => "Vector",
+        PlanOutputLinkType.VectorSlot => "Row",
         _ => "Input Column"
     };
 

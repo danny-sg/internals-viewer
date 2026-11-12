@@ -1,6 +1,7 @@
-using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output.Enums;
 
-namespace InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
+namespace InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
 
 public readonly record struct PlanOutputLink(PlanOutputLinkType Type, ulong Address, TracePosition Position)
 {
@@ -13,6 +14,8 @@ public readonly record struct PlanOutputLink(PlanOutputLinkType Type, ulong Addr
     public int SourceOffset { get; init; }
 
     public int Depth { get; init; }
+
+    public MemoryField? Field { get; init; }
 
     public bool IsRoute { get; init; }
 }

@@ -4,12 +4,15 @@ using System.Linq;
 using System.Threading.Tasks;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace;
-using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
-using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
+using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory.History;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Batches;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace.Lineage;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryHistory;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output.Enums;
 using SqlTypeInfo = InternalsViewer.Query.FullTrace.Locators.SqlTypeInfo;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline.Memory;
@@ -22,29 +25,29 @@ public static class LineageGraphBuilder
 
     private const int PointerSize = sizeof(ulong);
 
-    private const int BufferEntrySize = 0x20;
-
     private const string SlotName = "Slot";
+
+    private static MemoryField VectorField => EngineLayout.BatchAdapter.ColumnMapVectorField;
 
     public static LineageGraph? Build(MemoryHistoryViewModel history, int nodeId, PlanOutputColumn column, Action<ulong> open)
     {
-        var links = history.GetOutputLinks(nodeId, column);
+        var path = history.GetOutputPath(nodeId, column);
 
-        if (!links.Any(l => !l.IsRoute))
+        if (!path.Links.Any(l => !l.IsRoute))
         {
             return null;
         }
 
-        var graph = new LineageGraph(nodeId, column, open);
+        var graph = new LineageGraph(nodeId, column, path, open);
 
-        SetStructure(graph, history, links);
+        SetStructure(graph, history, path.Links);
 
         return graph;
     }
 
     public static void Refresh(LineageGraph graph, MemoryHistoryViewModel history, MemoryHistoryReader memory)
     {
-        var links = history.GetOutputLinks(graph.NodeId, graph.Column, memory.Position);
+        var links = history.GetOutputLinks(graph.NodeId, graph.Column, memory);
 
         if (links.Any(l => !l.IsRoute) && GetKey(links) != graph.Key)
         {
@@ -78,11 +81,11 @@ public static class LineageGraphBuilder
             }
         }
 
-        if (terminal is not null && PlanOutputValueReader.Read(memory, graph.Column, graph.Links) is { } value)
+        if (terminal is not null && PlanOutputValueReader.Read(memory, graph.Column, graph.Path) is { } value)
         {
             terminal.Value = value;
         }
-        else if (terminal is not null && history.GetOutputRecord(memory, graph.Links) is { } record)
+        else if (terminal is not null && history.GetOutputRecord(memory, graph.Path) is { } record)
         {
             _ = ReadRecordAsync(graph, history, terminal, record, graph.Version);
         }
@@ -116,13 +119,19 @@ public static class LineageGraphBuilder
 
         var types = new Dictionary<int, SqlTypeInfo?> { [0] = graph.Column.Type };
 
+        var warnings = new List<string>();
+
         LineageBox GetBox(ulong address, PlanOutputLinkType? type, LineageBox? parent, TracePosition position)
         {
             var start = GetStart(history, address, position);
 
             if (!boxes.TryGetValue(start, out var box))
             {
-                box = new LineageBox(GetTitle(history, start, type), GetSubtitle(history, start, position), start, type, parent);
+                box = new LineageBox(GetTitle(history, start, type, position),
+                                     GetSubtitle(history, start, position),
+                                     start,
+                                     type,
+                                     parent);
 
                 boxes[start] = box;
 
@@ -141,6 +150,13 @@ public static class LineageGraphBuilder
                 types[link.Depth + 1] = history.GetReferenceType(link.Address);
             }
 
+            var writer = history.GetUnexpectedWriter(link);
+
+            if (writer is not null)
+            {
+                warnings.Add($"{PlanOutputLinkText.GetName(link.Type)} +0x{link.SourceOffset:X} Written By {writer}");
+            }
+
             if (link.IsRoute)
             {
                 continue;
@@ -156,6 +172,9 @@ public static class LineageGraphBuilder
 
             var isEntry = isField && link.Type == PlanOutputLinkType.BufferEntry;
 
+            var isNumber = isField
+                           && link.Type is PlanOutputLinkType.Cursor or PlanOutputLinkType.VectorId or PlanOutputLinkType.SelectedRow;
+
             var row = source.Rows.Find(r => r.Offset == offset);
 
             if (row is null)
@@ -163,7 +182,7 @@ public static class LineageGraphBuilder
                 row = new LineageRow(GetRowName(link, source, offset),
                                      offset,
                                      GetDetail(link),
-                                     !isIndex && !isEntry,
+                                     !isIndex && !isEntry && !isNumber,
                                      isIndex,
                                      index == terminal)
                 {
@@ -172,6 +191,8 @@ public static class LineageGraphBuilder
 
                 source.Rows.Add(row);
             }
+
+            row.UnexpectedWriter ??= writer;
 
             if (isField || row.Target is not null)
             {
@@ -189,7 +210,7 @@ public static class LineageGraphBuilder
 
         var (width, height) = Place(order);
 
-        graph.SetStructure(links, order, width, height, GetKey(links));
+        graph.SetStructure(order, width, height, GetKey(links), warnings);
     }
 
     private static string GetKey(IReadOnlyList<PlanOutputLink> links)
@@ -258,14 +279,21 @@ public static class LineageGraphBuilder
         return -1;
     }
 
-    private static string GetTitle(MemoryHistoryViewModel history, ulong address, PlanOutputLinkType? type)
+    private static string GetTitle(MemoryHistoryViewModel history, ulong address, PlanOutputLinkType? type, TracePosition position)
     {
         if (history.IteratorTargets.TryGetValue(address, out var target))
         {
             return $"{target.TypeName} › {target.Label}";
         }
 
-        return type is { } linkType ? PlanOutputLinkText.GetName(linkType) : string.Empty;
+        if (type is { } linkType)
+        {
+            return PlanOutputLinkText.GetName(linkType);
+        }
+
+        var block = history.GetBlock(address, position);
+
+        return block >= 0 && history.Store.Blocks[block].Address == address ? history.GetTypeName(block) : string.Empty;
     }
 
     private static string GetSubtitle(MemoryHistoryViewModel history, ulong address, TracePosition position)
@@ -289,14 +317,20 @@ public static class LineageGraphBuilder
                 or PlanOutputLinkType.OutputValues
                 or PlanOutputLinkType.InputValues
                 or PlanOutputLinkType.RowContext => $"{name} [{offset / PointerSize}]",
-            PlanOutputLinkType.RowBuffer => $"{name} [{offset / BufferEntrySize}]",
+            PlanOutputLinkType.RowBuffer => $"{name} [{offset / EngineLayout.RowBuffer.EntryField.Length}]",
+            PlanOutputLinkType.Selection => $"{name} [{offset / EngineLayout.Batch.SelectedRowField.Length}]",
+            PlanOutputLinkType.Vectors => $"{name} [{offset / BatchReader.VectorEntrySize}]",
+            PlanOutputLinkType.Vector => $"{name} [{offset / PointerSize}]",
+            PlanOutputLinkType.ColumnMap => $"{name} [{(offset - VectorField.Offset) / VectorField.Length}]",
             _ => $"{name} +0x{offset:X}"
         };
     }
 
     private static string GetDetail(PlanOutputLink link) => link switch
     {
-        { Type: PlanOutputLinkType.RowContext, Slot: >= 0 } => $"{link.Slot}",
+        { Type: PlanOutputLinkType.RowContext or PlanOutputLinkType.Cursor or PlanOutputLinkType.SelectedRow, Slot: >= 0 }
+            => $"{link.Slot}",
+        { Type: PlanOutputLinkType.VectorId or PlanOutputLinkType.Vector, Slot: >= 0 } => $"v{link.Slot}",
         { Type: PlanOutputLinkType.Reader or PlanOutputLinkType.Value, Slot: >= 0, Offset: { } offset }
             => $"Slot {link.Slot} · {PlanOutputLinkText.GetRowText(offset)}",
         { Type: PlanOutputLinkType.Reader or PlanOutputLinkType.Value, Slot: >= 0 } => $"Slot {link.Slot}",

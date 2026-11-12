@@ -7,14 +7,14 @@ using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Iterators.Enums;
-using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
-using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace.Summary;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryHistory;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline.Memory;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output.Enums;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.Summary;
 
@@ -192,7 +192,9 @@ public sealed class TraceSummaryOperatorsViewModel : TraceSummaryPaneViewModel
 
             var columnKey = $"{key}/output/{index}";
 
-            var links = history.GetOutputLinks(nodeId, column);
+            var path = history.GetOutputPath(nodeId, column);
+
+            var links = path.Links;
 
             List<TraceSummaryNode> children =
             [
@@ -213,8 +215,8 @@ public sealed class TraceSummaryOperatorsViewModel : TraceSummaryPaneViewModel
             if (links.Count > 0)
             {
                 live.Add(new LiveValue(node,
-                                       m => PlanOutputValueReader.Read(m, column, links) ?? string.Empty,
-                                       m => history.GetOutputRecord(m, links)));
+                                       m => PlanOutputValueReader.Read(m, column, path) ?? string.Empty,
+                                       m => history.GetOutputRecord(m, path)));
             }
 
             columns.Add(node);

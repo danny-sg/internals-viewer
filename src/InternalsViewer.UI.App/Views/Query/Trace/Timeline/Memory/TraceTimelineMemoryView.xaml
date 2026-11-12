@@ -42,6 +42,31 @@
                        VerticalAlignment="Center"/>
         </StackPanel>
 
+        <StackPanel Grid.Row="0"
+                    Grid.ColumnSpan="2"
+                    Padding="12,8"
+                    Orientation="Horizontal"
+                    Spacing="12"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="0,0,0,1"
+                    Visibility="{x:Bind ViewModel.IsSortTableVisible, Mode=OneWay, FallbackValue=Collapsed}">
+            <TextBlock Text="Sort Table"
+                       FontSize="12"
+                       Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                       VerticalAlignment="Center"/>
+            <HyperlinkButton Content="{x:Bind ViewModel.SortTableText, Mode=OneWay}"
+                             FontSize="12"
+                             FontFamily="{StaticResource MonospaceFontFamily}"
+                             Style="{StaticResource DetailLinkStyle}"
+                             VerticalAlignment="Center"
+                             ToolTipService.ToolTip="Open Sort Table"
+                             Click="OnSortTableClick"/>
+            <TextBlock Text="{x:Bind ViewModel.SortTablePartText, Mode=OneWay}"
+                       FontSize="12"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       VerticalAlignment="Center"/>
+        </StackPanel>
+
         <hexView:HexViewControl Grid.Row="1"
                                 Grid.Column="0"
                                 VerticalAlignment="Stretch"

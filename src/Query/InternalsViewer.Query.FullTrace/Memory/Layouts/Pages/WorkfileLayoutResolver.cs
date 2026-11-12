@@ -18,7 +18,8 @@ public sealed class WorkfileLayoutResolver(DatabaseSource database, Func<ulong, 
 
     public RowRecordLayout? Get(ulong iterator) => iterator == 0 ? null : Layouts.GetOrAdd(iterator, Create);
 
-    public SortRecordLayout? GetSort(ulong iterator) => iterator == 0 ? null : SortLayouts.GetOrAdd(iterator, CreateSort);
+    public SortRecordLayout? GetSort(ulong iterator, Func<IReadOnlyList<ColumnBinding>> getBindings)
+        => iterator == 0 ? null : SortLayouts.GetOrAdd(iterator, i => CreateSort(i, getBindings()));
 
     public RowRecordLayout? Get(ulong iterator, IReadOnlyList<ColumnBinding> bindings, bool isProbeSide)
     {
@@ -69,21 +70,52 @@ public sealed class WorkfileLayoutResolver(DatabaseSource database, Func<ulong, 
         return RowRecordLayout.Create(columns.Count, HashTableColumnResolver.GetKeyCount(hashMatch), o => GetStructure(columns[o]));
     }
 
-    private SortRecordLayout? CreateSort(ulong iterator)
+    private static List<ColumnReference> GetSortRecordColumns(PlanNode sort)
     {
-        if (getPlanNode(iterator) is not { SortColumns.Count: > 0 } sort || sort.Children.FirstOrDefault() is not { } input)
-        {
-            return null;
-        }
+        List<ColumnReference> keys = [.. sort.SortColumns.Select(k => k.Column)];
 
-        var columns = input.OutputColumns;
+        var input = sort.Children.FirstOrDefault()?.OutputColumns ?? [];
 
-        return SortRecordLayout.Create(columns.Count, o => GetStructure(columns[o]), o => IsSortKey(sort, columns[o]));
+        return [.. keys, .. input.Where(c => !keys.Exists(k => IsSameColumn(k, c)))];
     }
 
-    private static bool IsSortKey(PlanNode sort, ColumnReference column)
-        => sort.SortColumns.Any(k => k.Column.TableKey == column.TableKey
-                                     && string.Equals(k.Column.Column, column.Column, StringComparison.OrdinalIgnoreCase));
+    private static bool IsSameColumn(ColumnReference left, ColumnReference right)
+        => left.TableKey == right.TableKey && string.Equals(left.Column, right.Column, StringComparison.OrdinalIgnoreCase);
+
+    private SortRecordLayout? CreateSort(ulong iterator, IReadOnlyList<ColumnBinding> bindings)
+    {
+        var sort = getPlanNode(iterator) is { SortColumns.Count: > 0 } node ? node : null;
+
+        var names = sort is null ? [] : GetSortRecordColumns(sort);
+
+        var keyCount = sort?.SortColumns.Count ?? 0;
+
+        if (bindings.Count == 0)
+        {
+            return names.Count == 0 ? null : SortRecordLayout.Create(names.Count, o => GetStructure(names[o]), o => o < keyCount);
+        }
+
+        var isNamed = names.Count == bindings.Count;
+
+        var columns = new List<ColumnStructure>(bindings.Count);
+
+        foreach (var (binding, index) in bindings.OrderBy(b => b.Ordinal).Select((b, i) => (b, i)))
+        {
+            if (!SqlTypeHelpers.TryGetSqlType(binding.Type, out var type))
+            {
+                return null;
+            }
+
+            columns.Add(new ColumnStructure
+            {
+                ColumnName = isNamed ? names[index].Column : $"Column {binding.Ordinal}",
+                DataType = type,
+                DataLength = (short)binding.MaximumLength
+            });
+        }
+
+        return SortRecordLayout.Create(columns.Count, o => columns[o], o => isNamed && o < keyCount);
+    }
 
     private ColumnStructure? GetStructure(ColumnReference column)
     {

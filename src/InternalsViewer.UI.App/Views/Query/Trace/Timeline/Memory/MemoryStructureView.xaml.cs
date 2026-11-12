@@ -13,9 +13,9 @@ using Microsoft.UI.Xaml.Input;
 
 namespace InternalsViewer.UI.App.Views.Query.Trace.Timeline.Memory;
 
-public sealed partial class MemoryHashTableView : UserControl, IDisposable
+public sealed partial class MemoryStructureView : UserControl, IDisposable
 {
-    public MemoryHashTableView()
+    public MemoryStructureView()
     {
         InitializeComponent();
 
@@ -28,9 +28,9 @@ public sealed partial class MemoryHashTableView : UserControl, IDisposable
         AddHandler(PointerPressedEvent, new PointerEventHandler(OnNavigationPointerPressed), handledEventsToo: true);
     }
 
-    public MemoryHashTableViewModel? ViewModel => DataContext as MemoryHashTableViewModel;
+    public MemoryStructureViewModel? ViewModel => DataContext as MemoryStructureViewModel;
 
-    private MemoryHashTableViewModel? Attached { get; set; }
+    private MemoryStructureViewModel? Attached { get; set; }
 
     private Dictionary<string, bool> Expansion { get; } = [];
 
@@ -38,17 +38,20 @@ public sealed partial class MemoryHashTableView : UserControl, IDisposable
 
     public void Dispose() => Attach(null);
 
-    private static bool IsExpandedByDefault(MemoryHashTableNode node)
-        => node.Type is MemoryHashTableNodeType.HashTable
-                     or MemoryHashTableNodeType.BuildSide
-                     or MemoryHashTableNodeType.ProbeSide
-                     or MemoryHashTableNodeType.Group;
+    private static bool IsExpandedByDefault(MemoryStructureNode node)
+        => node.Type is MemoryStructureNodeType.HashTable
+                     or MemoryStructureNodeType.BuildSide
+                     or MemoryStructureNodeType.ProbeSide
+                     or MemoryStructureNodeType.Group
+                     or MemoryStructureNodeType.SortTable
+                     or MemoryStructureNodeType.Rowset
+                     or MemoryStructureNodeType.Runs;
 
     private static TreeViewNode? Find(IList<TreeViewNode> nodes, string key)
     {
         foreach (var node in nodes)
         {
-            if (node.Content is MemoryHashTableNode { Key: var nodeKey } && nodeKey == key)
+            if (node.Content is MemoryStructureNode { Key: var nodeKey } && nodeKey == key)
             {
                 return node;
             }
@@ -69,7 +72,7 @@ public sealed partial class MemoryHashTableView : UserControl, IDisposable
         Attach(ViewModel);
     }
 
-    private void Attach(MemoryHashTableViewModel? viewModel)
+    private void Attach(MemoryStructureViewModel? viewModel)
     {
         if (ReferenceEquals(viewModel, Attached))
         {
@@ -95,11 +98,11 @@ public sealed partial class MemoryHashTableView : UserControl, IDisposable
     {
         switch (e.PropertyName)
         {
-            case nameof(MemoryHashTableViewModel.Roots):
+            case nameof(MemoryStructureViewModel.Roots):
                 Rebuild();
                 break;
 
-            case nameof(MemoryHashTableViewModel.SelectedNode):
+            case nameof(MemoryStructureViewModel.SelectedNode):
                 SyncSelection();
                 break;
         }
@@ -127,7 +130,7 @@ public sealed partial class MemoryHashTableView : UserControl, IDisposable
     {
         foreach (var node in nodes)
         {
-            if (node.Content is MemoryHashTableNode content && node.Children.Count > 0)
+            if (node.Content is MemoryStructureNode content && node.Children.Count > 0)
             {
                 Expansion[content.Key] = node.IsExpanded;
             }
@@ -136,7 +139,7 @@ public sealed partial class MemoryHashTableView : UserControl, IDisposable
         }
     }
 
-    private TreeViewNode CreateNode(MemoryHashTableNode node)
+    private TreeViewNode CreateNode(MemoryStructureNode node)
     {
         var tree = new TreeViewNode { Content = node };
 
@@ -173,7 +176,7 @@ public sealed partial class MemoryHashTableView : UserControl, IDisposable
 
     private void OnStructureSelectionChanged(TreeView sender, TreeViewSelectionChangedEventArgs args)
     {
-        if (IsSyncing || Attached is not { } viewModel || sender.SelectedNode?.Content is not MemoryHashTableNode node)
+        if (IsSyncing || Attached is not { } viewModel || sender.SelectedNode?.Content is not MemoryStructureNode node)
         {
             return;
         }
@@ -190,7 +193,7 @@ public sealed partial class MemoryHashTableView : UserControl, IDisposable
 
     private void OnStructureItemInvoked(TreeView sender, TreeViewItemInvokedEventArgs args)
     {
-        if (args.InvokedItem is TreeViewNode { Content: MemoryHashTableNode { IsSelectable: false } } node)
+        if (args.InvokedItem is TreeViewNode { Content: MemoryStructureNode { IsSelectable: false } } node)
         {
             node.IsExpanded = !node.IsExpanded;
         }
@@ -220,6 +223,8 @@ public sealed partial class MemoryHashTableView : UserControl, IDisposable
     }
 
     private void OnHexOffsetClicked(object? sender, int offset) => ViewModel?.SelectOffset(offset);
+
+    private void OnMemoryPositionRequested(object? sender, double fraction) => ViewModel?.MovePlayhead(fraction);
 
     private void OnPathClick(object sender, RoutedEventArgs e)
     {

@@ -824,7 +824,7 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
     private void OnNavigationPointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        if (e.OriginalSource is DependencyObject source && source.FindAscendantOrSelf<MemoryHashTableView>() is not null)
+        if (e.OriginalSource is DependencyObject source && source.FindAscendantOrSelf<MemoryStructureView>() is not null)
         {
             return;
         }
@@ -945,6 +945,11 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
         if (viewModel.GetHashTableGroup(op) is not null)
         {
             menu.Items.Add(MenuItems.Create("Open Hash Table", () => viewModel.OpenHashTable(op)));
+        }
+
+        if (viewModel.GetSortIterator(op) is not null)
+        {
+            menu.Items.Add(MenuItems.Create("Open Sort Table", () => viewModel.OpenSortTable(op)));
         }
     }
 }

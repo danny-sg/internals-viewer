@@ -2,8 +2,11 @@ using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Memory.Address;
+using InternalsViewer.Query.FullTrace.Memory.Allocation;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Pages;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
 
@@ -26,6 +29,20 @@ public static class TraceHashTableReader
     private const int MaximumPartitions = 256;
 
     private const int MaximumItems = 1024;
+
+    private const int MaximumAllocatorDepth = 6;
+
+    private const string BucketPageAllocator = "PvAllocateHashBucketPage";
+
+    private const string IteratorClass = "CQScanHash";
+
+    private const string GroupClass = "CHashWorkfilePartitionGroup";
+
+    private const string WorktableGroupClass = "CHashWorktablePartitionGroup";
+
+    private const string PartitionClass = "CHashWorkfilePartitionInstance";
+
+    private const string OtherBucketPagesName = "Other Bucket Pages";
 
     public static TraceHashTable? Read(MemoryHistoryStore store, ulong group, TracePosition position)
     {
@@ -62,6 +79,47 @@ public static class TraceHashTableReader
             ColumnArray = columnArray,
             Columns = columns
         };
+    }
+
+    public static List<TraceMemoryUsage> GetMemory(MemoryHistoryStore store, AddressMap addressMap, TraceCallStore calls, ulong iterator)
+    {
+        var parts = new Dictionary<int, string>();
+
+        foreach (var group in GetGroups(calls))
+        {
+            var accesses = GetAccesses(calls, group);
+
+            if (accesses.Count == 0 || GetIterator(store, group, accesses[^1].Position) != iterator)
+            {
+                continue;
+            }
+
+            foreach (var position in new[] { accesses[^1].Position, accesses[0].Position })
+            {
+                AddParts(store, Read(store, group, position), position, parts);
+            }
+        }
+
+        var blocks = new List<(int Block, string? Category)>();
+
+        for (var block = 0; block < store.Blocks.Count; block++)
+        {
+            var info = store.Blocks[block];
+
+            if (info.Iterator != iterator)
+            {
+                continue;
+            }
+
+            var category = parts.GetValueOrDefault(block)
+                           ?? (IsBucketPage(calls.GetNode(info.CallNodeIndex))
+                               ? OtherBucketPagesName
+                               : GetMemoryCategory(addressMap.GetLabel(info.Address, info.FromPosition, info.ToPosition)));
+
+            blocks.Add((block, category));
+        }
+
+        return TraceMemoryUsage.Build(store, blocks);
     }
 
     public static List<ulong> GetGroups(TraceCallStore calls)
@@ -207,6 +265,53 @@ public static class TraceHashTableReader
 
         return groups;
     }
+
+    private static bool IsBucketPage(CallTreeNode? node)
+    {
+        for (var depth = 0; node is not null && depth < MaximumAllocatorDepth; depth++, node = node.Parent)
+        {
+            if (node.Frame?.Function?.MethodName == BucketPageAllocator)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static void AddParts(MemoryHistoryStore store, TraceHashTable? table, TracePosition position, Dictionary<int, string> parts)
+    {
+        foreach (var part in table?.GetParts() ?? [])
+        {
+            if (part.Address != 0 && store.GetBlock(part.Address, position) is >= 0 and var block)
+            {
+                parts.TryAdd(block, GetPartCategory(part.Type));
+            }
+        }
+    }
+
+    private static string GetPartCategory(TraceHashPartType type) => type switch
+    {
+        TraceHashPartType.Group => "Partition Groups",
+        TraceHashPartType.Partition => "Partitions",
+        TraceHashPartType.Directory => "Directories",
+        TraceHashPartType.PointerPage => "Pointer Pages",
+        TraceHashPartType.BucketPage => "Item Pages",
+        TraceHashPartType.OverflowPage => "Overflow Pages",
+        TraceHashPartType.WorkfilePage => "Workfile Pages",
+        TraceHashPartType.WorkfileRowset => "Workfile Rowsets",
+        _ => "Bitmaps"
+    };
+
+    private static string? GetMemoryCategory(string? label) => label switch
+    {
+        WorkfilePageReader.ClassName => "Workfile Pages",
+        PartitionClass => "Partitions",
+        GroupClass => "Partition Groups",
+        WorktableGroupClass => "Worktable Groups",
+        IteratorClass => "Hash Iterator",
+        _ => null
+    };
 
     private static (ulong Array, List<TraceHashColumn> Columns) ReadColumns(MemoryHistoryStore store,
                                                                            MemoryHistoryReader memory,

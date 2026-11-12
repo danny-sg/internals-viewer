@@ -17,7 +17,10 @@ internal sealed record PlanNodeLayout
         ColumnProducerOffset = 0x50,
         StorageColumnProducerOffset = 0x30,
         StorageColumnTypeOffset = 0x38,
-        StorageColumnTypeDetailsOffset = 0x48
+        StorageColumnTypeDetailsOffset = 0x48,
+        RedirectTargetOffset = 0x30,
+        RedirectProducerOffset = 0x38,
+        RedirectColumnOffset = 0x40
     };
 
     public static PlanNodeLayout SqlServer2025 { get; } = new()
@@ -35,7 +38,10 @@ internal sealed record PlanNodeLayout
         ColumnProducerOffset = 0x50,
         StorageColumnProducerOffset = 0x30,
         StorageColumnTypeOffset = 0x38,
-        StorageColumnTypeDetailsOffset = 0x48
+        StorageColumnTypeDetailsOffset = 0x48,
+        RedirectTargetOffset = 0x30,
+        RedirectProducerOffset = 0x38,
+        RedirectColumnOffset = 0x40
     };
 
     public required ulong RowIteratorPlanObjectOffset { get; init; }
@@ -65,4 +71,10 @@ internal sealed record PlanNodeLayout
     public required ulong StorageColumnTypeOffset { get; init; }
 
     public required ulong StorageColumnTypeDetailsOffset { get; init; }
+
+    public required ulong RedirectTargetOffset { get; init; }
+
+    public required ulong RedirectProducerOffset { get; init; }
+
+    public required ulong RedirectColumnOffset { get; init; }
 }

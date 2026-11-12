@@ -1,7 +1,8 @@
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
 
-namespace InternalsViewer.Query.FullTrace.Tests.Iterators.PlanNodes;
+namespace InternalsViewer.Query.FullTrace.Tests.Iterators.PlanNodes.Output;
 
 [Trait("Category", "Unit")]
 public class PlanOutputReaderTests
@@ -17,6 +18,8 @@ public class PlanOutputReaderTests
     private const ulong NameColumn = 0x1F4_0000_8300;
 
     private const ulong Unknown = 0x1F4_0000_9000;
+
+    private const ulong Redirect = 0x1F4_0000_8400;
 
     [Fact]
     public void A_Plan_Object_Lists_The_Output_Columns_It_Was_Compiled_With()
@@ -54,6 +57,24 @@ public class PlanOutputReaderTests
         var columns = PlanOutputReader.Read(memory, PlanObject, PlanNodeLayout.SqlServer2025, new HashSet<ulong> { PlanObject });
 
         Assert.Equal([new PlanOutputColumn(NameColumn, PlanObject, new SqlTypeInfo(0xA7, 3, 100, 0, 0, 0x3400D008))], columns);
+    }
+
+    [Fact]
+    public void A_Batch_Redirect_Takes_Its_Type_From_The_Column_It_Redirects_To()
+    {
+        var memory = new FakeTraceReplay().Write(PlanObject + 0x30, Outputs)
+                                          .Write(Outputs + 0x08, 1)
+                                          .Write(Outputs + 0x10, OutputColumns)
+                                          .Write(OutputColumns, Redirect)
+                                          .Write(Redirect + 0x30, IdColumn)
+                                          .Write(Redirect + 0x38, PlanObject)
+                                          .Write(IdColumn + 0x30, 0x138UL)
+                                          .Write(IdColumn + 0x40, 0xA0004UL)
+                                          .Write(IdColumn + 0x50, Unknown);
+
+        var columns = PlanOutputReader.Read(memory, PlanObject, PlanNodeLayout.SqlServer2025, new HashSet<ulong> { PlanObject });
+
+        Assert.Equal([new PlanOutputColumn(Redirect, PlanObject, new SqlTypeInfo(0x38, 1, 4, 10, 0, 0))], columns);
     }
 
     [Fact]

@@ -2,12 +2,12 @@ using System.Data;
 using InternalsViewer.Internals.Converters;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Query.Extensions;
-using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.Interfaces;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output.Enums;
 
-namespace InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
+namespace InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
 
 public static class PlanOutputValueReader
 {
@@ -31,32 +31,18 @@ public static class PlanOutputValueReader
 
     private const ushort ComplexColumnFlag = 0x8000;
 
-    public static string? Read(IMemoryReader memory, PlanOutputColumn column, IReadOnlyList<PlanOutputLink> links)
+    public static string? Read(IMemoryReader memory, PlanOutputColumn column, PlanOutputPath path)
     {
-        if (!SqlTypeHelpers.TryGetSqlType(column.Type.TypeId, out var sqlType))
+        if (!SqlTypeHelpers.TryGetSqlType(column.Type.TypeId, out var sqlType)
+            || path.Value is not { } source
+            || source.Follow(memory) is not { } address)
         {
             return null;
         }
 
-        foreach (var link in links)
-        {
-            if (link is { Type: PlanOutputLinkType.BufferEntry, Depth: 0 })
-            {
-                return ReadEntry(memory, column.Type, sqlType, link.Address);
-            }
-        }
-
-        if (links.FirstOrDefault(l => l is { Type: PlanOutputLinkType.Value or PlanOutputLinkType.Reader, Depth: 0, Offset: not null })
-                is not { Offset: { } offset } reader
-            || links.FirstOrDefault(l => l is { Type: PlanOutputLinkType.RowSlot, Depth: 0 } && l.Slot == reader.Slot) is not
-               { Type: PlanOutputLinkType.RowSlot } slot
-            || !memory.TryRead(slot.Address, out ulong row)
-            || row < TraceAddress.MinimumAddress)
-        {
-            return null;
-        }
-
-        return ReadRowColumn(memory, row, offset, column.Type, sqlType);
+        return source.Type == PlanOutputLinkType.BufferEntry
+            ? ReadEntry(memory, column.Type, sqlType, address)
+            : ReadRowColumn(memory, address, source.Offset ?? 0, column.Type, sqlType);
     }
 
     public static string? ReadEntry(IMemoryReader memory, SqlTypeInfo type, ulong entry)
@@ -65,20 +51,12 @@ public static class PlanOutputValueReader
     public static PlanOutputRecord? ReadRecord(IMemoryReader memory,
                                                TraceBufferPool bufferPool,
                                                TracePosition position,
-                                               IReadOnlyList<PlanOutputLink> links)
-    {
-        foreach (var link in links)
-        {
-            if (link is { Type: PlanOutputLinkType.Record, Depth: 0, Offset: { } columnOffset }
-                && memory.TryRead(link.Address, out ulong record)
-                && bufferPool.GetFrameReference(record, position) is { } location)
-            {
-                return new PlanOutputRecord(location, columnOffset);
-            }
-        }
-
-        return null;
-    }
+                                               PlanOutputPath path)
+        => path.Record is { Offset: { } columnOffset } source
+           && source.Follow(memory) is { } record
+           && bufferPool.GetFrameReference(record, position) is { } location
+            ? new PlanOutputRecord(location, columnOffset)
+            : null;
 
     private static string? ReadEntry(IMemoryReader memory, SqlTypeInfo type, SqlDbType sqlType, ulong entry)
     {

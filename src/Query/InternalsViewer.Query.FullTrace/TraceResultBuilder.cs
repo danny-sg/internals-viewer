@@ -12,6 +12,7 @@ using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.Query.Memory;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
 
 namespace InternalsViewer.Query.FullTrace;
 
@@ -111,6 +112,8 @@ internal sealed class TraceResultBuilder(CallTree callTree,
                 Seeks = TraceSeekTrackBuilder.Build(Timeline, CallStore, Lifetimes, enclosing)
             }
         };
+
+        result.BuildOutputPaths();
 
         CallStore.ReleaseColumns();
 

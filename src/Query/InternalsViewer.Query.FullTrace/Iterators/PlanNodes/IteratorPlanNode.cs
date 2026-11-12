@@ -1,3 +1,5 @@
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
+
 namespace InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 
 internal readonly partial record struct IteratorPlanNode(ulong Iterator,

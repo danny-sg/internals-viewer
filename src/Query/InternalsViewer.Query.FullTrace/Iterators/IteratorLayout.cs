@@ -1,9 +1,7 @@
 using System.Buffers.Binary;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Iterators.Enums;
-using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory.Layouts;
-using InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
 using InternalsViewer.Query.Interfaces;
 
@@ -11,35 +9,9 @@ namespace InternalsViewer.Query.FullTrace.Iterators;
 
 public static class IteratorLayout
 {
-    public const int InputsOffset = 0x08;
-
-    public const int ExecutionContextOffset = 0x18;
-
-    public const int BuildOutputValuesOffset = 0x58;
-
-    public const int BuildInputValuesOffset = 0xC8;
-
-    public const int ScanRowsetOffset = 0x48;
-
     private const int PointerSize = sizeof(ulong);
 
     private const int MaximumInputs = 64;
-
-    private const int PrefetchManagerOffset = 0x70;
-
-    private const int ClientRowOffset = 0x168;
-
-    private const int TopCountOffset = 0x90;
-
-    private const int ProbeOutputValuesOffset = 0x60;
-
-    private const int ProbeInputValuesOffset = 0xD0;
-
-    private const int PlanInputsOffset = 0x18;
-
-    private const int PlanTopCountOffset = 0x88;
-
-    private const int RowsetIdOffset = 0xB0;
 
     private const string TableScanClass = "CQScanTableScanNew";
 
@@ -57,39 +29,39 @@ public static class IteratorLayout
 
     private static readonly List<MemoryField> IteratorFields =
     [
-        new("Inputs", InputsOffset, PointerSize),
-        new("Execution Context", ExecutionContextOffset, PointerSize)
+        EngineLayout.Iterator.InputsField,
+        EngineLayout.Iterator.ExecutionContextField
     ];
 
     private static readonly List<MemoryField> RowsetFields =
     [
-        new("Rowset", ScanRowsetOffset, PointerSize),
-        new("Prefetch Manager", PrefetchManagerOffset, PointerSize),
-        new("Row Buffer", (int)AccessorBindingLayout.ScanRowBufferOffset, PointerSize),
-        new("Row Bindings", (int)AccessorBindingLayout.ScanBindingsOffset, PointerSize),
-        new("Client Row", ClientRowOffset, PointerSize)
+        EngineLayout.ScanIterator.RowsetField,
+        EngineLayout.ScanIterator.PrefetchManagerField,
+        EngineLayout.ScanIterator.RowBufferField,
+        EngineLayout.ScanIterator.RowBindingsField,
+        EngineLayout.ScanIterator.ClientRowField
     ];
 
-    private static readonly List<MemoryField> TopFields = [new("Top Count Expression", TopCountOffset, PointerSize)];
+    private static readonly List<MemoryField> TopFields = [EngineLayout.TopIterator.TopCountField];
 
     private static readonly List<MemoryField> PlanObjectFields =
     [
-        new("Node Id", (int)PlanNodeLayout.SqlServer2025.PlanNodeIdOffset, sizeof(int)),
-        new("Inputs", PlanInputsOffset, PointerSize),
-        new("Query", (int)PlanNodeLayout.SqlServer2025.PlanQueryOffset, PointerSize),
-        new("Output Columns", (int)PlanNodeLayout.SqlServer2025.PlanOutputsOffset, PointerSize)
+        EngineLayout.PlanObject.NodeIdField,
+        EngineLayout.PlanObject.InputsField,
+        EngineLayout.PlanObject.QueryField,
+        EngineLayout.PlanObject.OutputColumnsField
     ];
 
-    private static readonly List<MemoryField> PlanTopFields = [new("Top Count Expression", PlanTopCountOffset, PointerSize)];
+    private static readonly List<MemoryField> PlanTopFields = [EngineLayout.PlanObject.TopCountField];
 
-    private static readonly List<MemoryField> PlanRowsetFields = [new("Rowset Id", RowsetIdOffset, PointerSize)];
+    private static readonly List<MemoryField> PlanRowsetFields = [EngineLayout.PlanObject.RowsetIdField];
 
     private static readonly List<MemoryField> HashValueFields =
     [
-        new("Build Output Values", BuildOutputValuesOffset, PointerSize),
-        new("Probe Output Values", ProbeOutputValuesOffset, PointerSize),
-        new("Build Input Values", BuildInputValuesOffset, PointerSize),
-        new("Probe Input Values", ProbeInputValuesOffset, PointerSize)
+        EngineLayout.HashIterator.BuildOutputValuesField,
+        EngineLayout.HashIterator.ProbeOutputValuesField,
+        EngineLayout.HashIterator.BuildInputValuesField,
+        EngineLayout.HashIterator.ProbeInputValuesField
     ];
 
     private static readonly List<MemoryField> HashFields = [.. HashValueFields, .. TraceHashTableLayout.IteratorFields];

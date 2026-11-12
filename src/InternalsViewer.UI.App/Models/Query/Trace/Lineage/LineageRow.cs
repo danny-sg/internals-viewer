@@ -25,4 +25,6 @@ public sealed class LineageRow(string name, int offset, string detail, bool hasP
     public string PointerText { get; set; } = string.Empty;
 
     public string Value { get; set; } = string.Empty;
+
+    public string? UnexpectedWriter { get; set; }
 }
