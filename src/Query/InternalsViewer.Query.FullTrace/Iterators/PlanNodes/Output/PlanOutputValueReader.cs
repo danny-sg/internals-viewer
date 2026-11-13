@@ -3,6 +3,7 @@ using InternalsViewer.Internals.Converters;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.Interfaces;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output.Enums;
@@ -37,9 +38,36 @@ public static class PlanOutputValueReader
             return null;
         }
 
-        return source.Type == PlanOutputLinkType.BufferEntry
-            ? ReadEntry(memory, type, sqlType, address)
-            : ReadRowColumn(memory, address, source.Offset ?? 0, type, sqlType);
+        return source.Type switch
+        {
+            PlanOutputLinkType.BufferEntry => ReadEntry(memory, type, sqlType, address),
+            PlanOutputLinkType.Expression => IsWritten(memory, address) ? ReadEntry(memory, type, sqlType, address) : null,
+            _ => ReadRowColumn(memory, address, source.Offset ?? 0, type, sqlType)
+        };
+    }
+
+    public static string? ReadVariant(IMemoryReader memory, VariantLocator variant, SqlDbType sqlType)
+    {
+        if (variant.Status == VariantStatus.Null)
+        {
+            return NullText;
+        }
+
+        if (variant.Status != VariantStatus.Value)
+        {
+            return null;
+        }
+
+        if (variant.Length == 0)
+        {
+            return SqlTypeHelpers.IsVariableLength(sqlType)
+                ? string.Empty
+                : DataConverter.BinaryToString(BitConverter.GetBytes(variant.Value), sqlType, 0, 0);
+        }
+
+        var data = new byte[Math.Min((int)variant.Length, MaximumLength)];
+
+        return memory.Read(variant.Value, data) == data.Length ? DataConverter.BinaryToString(data, sqlType, 0, 0) : null;
     }
 
     public static PlanOutputRecord? ReadRecord(IMemoryReader memory,
@@ -133,6 +161,9 @@ public static class PlanOutputValueReader
 
         return memory.Read(address, data) == length ? DataConverter.BinaryToString(data, sqlType, type.Precision, type.Scale) : null;
     }
+
+    private static bool IsWritten(IMemoryReader memory, ulong entry)
+        => memory.TryRead(entry + (ulong)EngineLayout.RowBuffer.TypeField.Offset, out byte typeId) && typeId != 0;
 
     private static bool IsFixed(SqlTypeInfo type) => type.TypeId is not (34 or 35 or 98 or 99 or 165 or 167 or 173 or 175
                                                                          or 231 or 239 or 240 or 241 or 244);

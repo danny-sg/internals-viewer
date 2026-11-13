@@ -220,7 +220,7 @@ public sealed partial class CallTreeViewModel
         Revealed = RevealTarget is null ? null : [.. path];
     }
 
-    private bool IsOutsideCrop(CallTreeNode node) => Query.CroppedRoots is { } cropped && !node.GetAncestors().Any(cropped.Contains);
+    private bool IsOutsideCrop(CallTreeNode node) => Query.IsOutsideCrop(node);
 
     private void ClearReveal()
     {

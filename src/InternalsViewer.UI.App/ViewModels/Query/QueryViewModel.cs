@@ -989,6 +989,13 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         TraceTimelineTab.OpenMemory(block, target.Address, position ?? target.FromPosition);
     }
 
+    public bool IsOutsideCrop(TracePosition position)
+        => CroppedRoots is not null
+           && Trace is { QueryTimeline: var timeline }
+           && (position < timeline.Start.Position || position > timeline.End.Position);
+
+    public bool IsOutsideCrop(CallTreeNode node) => CroppedRoots is { } roots && !node.GetAncestors().Any(roots.Contains);
+
     partial void OnTraceTimelineChanged(TraceTimeline? value)
     {
         MemoryHistory.SetWindow(value);

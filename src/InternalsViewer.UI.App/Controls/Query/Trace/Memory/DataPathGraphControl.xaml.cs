@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
+using InternalsViewer.UI.App.Controls.Columnstore;
+using InternalsViewer.UI.App.Controls.Query.Plan;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace.DataPath;
+using Microsoft.UI;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -17,7 +20,7 @@ public sealed partial class DataPathGraphControl : UserControl
 
     private const double TextSize = 12;
 
-    private const double TypeSize = 11;
+    private const double DetailSize = 11;
 
     private const double ArrowLength = 7;
 
@@ -27,21 +30,28 @@ public sealed partial class DataPathGraphControl : UserControl
 
     private const double DashGap = 3;
 
-    private const string BoxBorderKey = "CardStrokeColorDefaultBrush";
+    private const double CalculatorWidth = 14;
 
-    private const string BoxBackgroundKey = "SolidBackgroundFillColorBaseBrush";
+    private const double CalculatorHeight = 17;
+
+    private const int CalculatorScale = 2;
+
+
+    private const string BoxBackgroundKey = "SolidBackgroundFillColorQuarternaryBrush";
 
     private const string HeaderBackgroundKey = "SolidBackgroundFillColorSecondaryBrush";
 
-    private const string TypeKey = "TextFillColorSecondaryBrush";
+    private const string DetailKey = "TextFillColorSecondaryBrush";
+
+    private const string ValueKey = "TextFillColorPrimaryBrush";
+
+    private const string OutOfScopeKey = "SolidBackgroundFillColorBaseBrush";
 
     private const string LinkKey = "ControlStrongStrokeColorDefaultBrush";
 
     private const string LinkStyleKey = "DetailLinkStyle";
 
-    private const string SqlTypeKey = "SqlKeywordBrush";
-
-    private const string MonospaceKey = "MonospaceFontFamily";
+    private const string TagStyleKey = "TagTextBlockStyle";
 
     public static readonly DependencyProperty GraphProperty =
         DependencyProperty.Register(nameof(Graph),
@@ -60,9 +70,117 @@ public sealed partial class DataPathGraphControl : UserControl
         InitializeComponent();
     }
 
-    private List<(DataPathStage Stage, TextBlock Value)> Cells { get; } = [];
+    private List<(Func<string> Read, Func<bool> IsInScope, TextBlock Value, Border Box)> Cells { get; } = [];
 
     private static Point Snap(double x, double y) => new(Math.Floor(x) + 0.5, Math.Floor(y) + 0.5);
+
+    private static double GetMiddle(double y) => y + DataPathGraph.BoxHeight / 2;
+
+    private static TextBlock CreateText(string text, double size, bool isBold = false)
+        => new()
+        {
+            Text = text,
+            FontSize = size,
+            FontWeight = isBold ? FontWeights.SemiBold : FontWeights.Normal,
+            VerticalAlignment = VerticalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis
+        };
+
+    private static Image CreateCalculator()
+        => new()
+        {
+            Width = CalculatorWidth,
+            Height = CalculatorHeight,
+            Stretch = Stretch.Fill,
+            Margin = new Thickness(0, 0, CellPadding, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Source = PlanIconParts.CreateCalculatorSource((int)CalculatorWidth * CalculatorScale,
+                                                          (int)CalculatorHeight * CalculatorScale)
+        };
+
+    private static Border? CreateBadge(string kind)
+    {
+        if (kind.Length == 0)
+        {
+            return null;
+        }
+
+        var colour = PlanOutputLinkText.GetReferenceColour(kind);
+
+        var text = CreateText(kind, DetailSize);
+
+        text.Style = AppResources.Get<Style>(TagStyleKey);
+
+        text.Foreground = new SolidColorBrush(colour is null ? Colors.Black : Colors.White);
+
+        return new Border
+        {
+            Background = colour is { } found ? new SolidColorBrush(found) : AppResources.Get<Brush>(HeaderBackgroundKey),
+            CornerRadius = new CornerRadius(2),
+            Padding = new Thickness(4, 1, 4, 1),
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = text
+        };
+    }
+
+    private static Grid CreateHeader(string name, bool isCalculated, FrameworkElement? right)
+    {
+        var header = new Grid
+        {
+            Padding = new Thickness(CellPadding, 0, CellPadding, 0),
+            Background = AppResources.Get<Brush>(HeaderBackgroundKey),
+            ColumnDefinitions =
+            {
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
+                new ColumnDefinition { Width = GridLength.Auto },
+                new ColumnDefinition { Width = GridLength.Auto }
+            }
+        };
+
+        header.Children.Add(CreateText(name, TextSize, true));
+
+        if (isCalculated)
+        {
+            var calculator = CreateCalculator();
+
+            Grid.SetColumn(calculator, 1);
+
+            header.Children.Add(calculator);
+        }
+
+        if (right is not null)
+        {
+            Grid.SetColumn(right, 2);
+
+            header.Children.Add(right);
+        }
+
+        return header;
+    }
+
+    private static FrameworkElement CreateSource(DataPathGraph graph, string text, ulong address)
+    {
+        var block = CreateText(text, TextSize, true);
+
+        if (address == 0)
+        {
+            block.Margin = new Thickness(CellPadding, 0, CellPadding, 0);
+
+            return block;
+        }
+
+        var link = new HyperlinkButton
+        {
+            Style = AppResources.Get<Style>(LinkStyleKey),
+            Margin = new Thickness(CellPadding, 0, CellPadding, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Content = block
+        };
+
+        link.Click += (_, _) => graph.Open(address);
+
+        return link;
+    }
 
     private void Build()
     {
@@ -91,105 +209,142 @@ public sealed partial class DataPathGraphControl : UserControl
         {
             if (stage.Consumer is { } consumer)
             {
-                AddArrow(graph, stage, consumer.X + DataPathGraph.BoxWidth, consumer.Y, stage.IsBuild);
+                AddArrow(graph, stage.X, GetMiddle(stage.Y), consumer.X + DataPathGraph.BoxWidth, GetMiddle(consumer.Y), stage.IsBuild);
             }
         }
 
         foreach (var column in graph.Columns)
         {
-            if (column.Output is { } output)
+            foreach (var output in column.Outputs)
             {
-                AddArrow(graph, output, column.X + DataPathGraph.ColumnWidth, column.Y, false);
+                AddArrow(graph,
+                         output.X,
+                         GetMiddle(output.Y),
+                         column.X + DataPathGraph.BoxWidth,
+                         column.Y + column.Height / 2,
+                         false);
             }
         }
 
         foreach (var stage in graph.Stages)
         {
-            Surface.Children.Add(CreateBox(graph, stage));
+            var source = CreateSource(graph, stage.Source, stage.SourceAddress);
+
+            Surface.Children.Add(CreateBox(CreateHeader(stage.Name, stage.IsCalculated, CreateBadge(stage.Kind)),
+                                           [source, CreateDetail(stage.Detail)],
+                                           () => stage.Value,
+                                           () => stage.IsInScope,
+                                           stage.X,
+                                           stage.Y));
         }
 
         foreach (var column in graph.Columns)
         {
-            Surface.Children.Add(CreateColumn(column));
+            var type = new DataTypeTextBlock
+            {
+                DataType = SqlDataTypeFormat.GetDataType(column.Type),
+                Precision = column.Type?.Precision ?? 0,
+                DataScale = column.Type?.Scale ?? 0,
+                Length = column.Type?.MaxLength ?? 0,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            List<FrameworkElement> lines = column.Definition is { } definition ? [CreateDetail(DataPathPlan.GetText(definition))] : [];
+
+            Surface.Children.Add(CreateBox(CreateHeader(column.Name, column.Expression is not null, type),
+                                           lines,
+                                           () => column.Value,
+                                           () => column.IsInScope,
+                                           column.X,
+                                           column.Y));
         }
 
         UpdateCells();
     }
 
-    private static Border CreateColumn(DataPathColumn column)
+    private static TextBlock CreateDetail(string detail)
+    {
+        var text = CreateText(detail, DetailSize);
+
+        text.Margin = new Thickness(CellPadding, 0, CellPadding, 0);
+
+        text.Foreground = AppResources.Get<Brush>(DetailKey);
+
+        ToolTipService.SetToolTip(text, detail.Length > 0 ? detail : null);
+
+        return text;
+    }
+
+    private Border CreateBox(Grid header,
+                             IReadOnlyList<FrameworkElement> lines,
+                             Func<string> read,
+                             Func<bool> isInScope,
+                             double x,
+                             double y)
     {
         var grid = new Grid
         {
-            RowDefinitions =
-            {
-                new RowDefinition { Height = new GridLength(DataPathGraph.OperatorHeight) },
-                new RowDefinition { Height = new GridLength(DataPathGraph.LineHeight) }
-            }
+            RowDefinitions = { new RowDefinition { Height = new GridLength(DataPathGraph.HeaderHeight) } }
         };
 
-        grid.Children.Add(new Border
-        {
-            Padding = new Thickness(CellPadding, 0, CellPadding, 0),
-            Background = AppResources.Get<Brush>(HeaderBackgroundKey),
-            Child = new TextBlock
-            {
-                Text = column.Name,
-                FontSize = TextSize,
-                FontWeight = FontWeights.SemiBold,
-                VerticalAlignment = VerticalAlignment.Center,
-                TextTrimming = TextTrimming.CharacterEllipsis
-            }
-        });
+        grid.Children.Add(header);
 
-        var type = new TextBlock
+        foreach (var line in lines)
         {
-            Text = column.Type,
-            FontSize = TypeSize,
-            FontFamily = AppResources.Get<FontFamily>(MonospaceKey),
-            Foreground = AppResources.Get<Brush>(SqlTypeKey),
-            Margin = new Thickness(CellPadding, 0, CellPadding, 0),
-            VerticalAlignment = VerticalAlignment.Center,
-            TextTrimming = TextTrimming.CharacterEllipsis
+            Grid.SetRow(line, grid.RowDefinitions.Count);
+
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(DataPathGraph.LineHeight) });
+
+            grid.Children.Add(line);
+        }
+
+        var value = CreateText(string.Empty, TextSize);
+
+        value.Margin = new Thickness(CellPadding, 0, CellPadding, 0);
+
+        var valueBox = new Border
+        {
+            BorderThickness = new Thickness(0, 1, 0, 0),
+            BorderBrush = AppResources.Get<Brush>(HeaderBackgroundKey),
+            Child = value
         };
 
-        Grid.SetRow(type, 1);
+        Grid.SetRow(valueBox, grid.RowDefinitions.Count);
 
-        grid.Children.Add(type);
+        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(DataPathGraph.ValueHeight) });
 
-        var border = new Border
+        grid.Children.Add(valueBox);
+
+        var box = new Border
         {
-            Width = DataPathGraph.ColumnWidth,
-            Height = DataPathGraph.BoxHeight,
+            Width = DataPathGraph.BoxWidth,
+            Height = DataPathGraph.HeaderHeight + lines.Count * DataPathGraph.LineHeight + DataPathGraph.ValueHeight,
             BorderThickness = new Thickness(1),
-            BorderBrush = AppResources.Get<Brush>(BoxBorderKey),
+            BorderBrush = AppResources.Get<Brush>(HeaderBackgroundKey),
             Background = AppResources.Get<Brush>(BoxBackgroundKey),
             Child = grid
         };
 
-        Canvas.SetLeft(border, column.X);
+        Canvas.SetLeft(box, x);
 
-        Canvas.SetTop(border, column.Y);
+        Canvas.SetTop(box, y);
 
-        return border;
+        Cells.Add((read, isInScope, value, valueBox));
+
+        return box;
     }
 
-    private void AddArrow(DataPathGraph graph, DataPathStage input, double consumerRight, double consumerY, bool isDashed)
+    private void AddArrow(DataPathGraph graph, double startX, double startY, double consumerRight, double consumerY, bool isDashed)
     {
         var brush = AppResources.Get<Brush>(LinkKey);
 
-        var startX = input.X;
-
-        var startY = input.Y + DataPathGraph.BoxHeight / 2;
-
         var endX = consumerRight + ArrowLength;
-
-        var endY = consumerY + DataPathGraph.BoxHeight / 2;
 
         var middle = endX + (startX - endX) / 2;
 
         var line = new Polyline
         {
-            Points = { Snap(startX, startY), Snap(middle, startY), Snap(middle, endY), Snap(endX, endY) },
+            Points = { Snap(startX, startY), Snap(middle, startY), Snap(middle, consumerY), Snap(endX, consumerY) },
             Stroke = brush,
             StrokeThickness = 1,
             Width = graph.Width,
@@ -198,7 +353,7 @@ public sealed partial class DataPathGraphControl : UserControl
 
         if (isDashed)
         {
-            line.StrokeDashArray = [DashLength, DashGap];
+            line.StrokeDashArray = new DoubleCollection { DashLength, DashGap };
         }
 
         Surface.Children.Add(line);
@@ -207,9 +362,9 @@ public sealed partial class DataPathGraphControl : UserControl
         {
             Points =
             {
-                Snap(consumerRight, endY),
-                Snap(endX, endY - ArrowWidth),
-                Snap(endX, endY + ArrowWidth)
+                Snap(consumerRight, consumerY),
+                Snap(endX, consumerY - ArrowWidth),
+                Snap(endX, consumerY + ArrowWidth)
             },
             Fill = brush,
             Width = graph.Width,
@@ -217,108 +372,27 @@ public sealed partial class DataPathGraphControl : UserControl
         });
     }
 
-    private Border CreateBox(DataPathGraph graph, DataPathStage stage)
-    {
-        var grid = new Grid
-        {
-            RowDefinitions =
-            {
-                new RowDefinition { Height = new GridLength(DataPathGraph.OperatorHeight) },
-                new RowDefinition { Height = new GridLength(DataPathGraph.LineHeight) },
-                new RowDefinition { Height = new GridLength(DataPathGraph.LineHeight) }
-            }
-        };
-
-        var iterator = stage.Stage is { } output ? output.Iterator != 0 ? output.Iterator : output.PlanObject : 0;
-
-        var header = new Border
-        {
-            Padding = new Thickness(CellPadding, 0, CellPadding, 0),
-            Background = AppResources.Get<Brush>(HeaderBackgroundKey),
-            Child = CreateText(graph, stage.Operator, iterator, true)
-        };
-
-        grid.Children.Add(header);
-
-        var type = CreateText(graph, stage.Type, stage.Stage?.Address ?? 0, false);
-
-        Grid.SetRow(type, 1);
-
-        grid.Children.Add(type);
-
-        var value = new TextBlock
-        {
-            FontSize = TextSize,
-            Padding = new Thickness(CellPadding, 0, CellPadding, 0),
-            VerticalAlignment = VerticalAlignment.Center,
-            TextTrimming = TextTrimming.CharacterEllipsis
-        };
-
-        Grid.SetRow(value, 2);
-
-        grid.Children.Add(value);
-
-        Cells.Add((stage, value));
-
-        var border = new Border
-        {
-            Width = DataPathGraph.BoxWidth,
-            Height = DataPathGraph.BoxHeight,
-            BorderThickness = new Thickness(1),
-            BorderBrush = AppResources.Get<Brush>(BoxBorderKey),
-            Background = AppResources.Get<Brush>(BoxBackgroundKey),
-            Child = grid
-        };
-
-        Canvas.SetLeft(border, stage.X);
-
-        Canvas.SetTop(border, stage.Y);
-
-        return border;
-    }
-
-    private static FrameworkElement CreateText(DataPathGraph graph, string text, ulong address, bool isOperator)
-    {
-        var block = new TextBlock
-        {
-            Text = text,
-            FontSize = isOperator ? TextSize : TypeSize,
-            FontWeight = isOperator ? FontWeights.SemiBold : FontWeights.Normal,
-            VerticalAlignment = VerticalAlignment.Center,
-            TextTrimming = TextTrimming.CharacterEllipsis
-        };
-
-        var indent = new Thickness(isOperator ? 0 : CellPadding, 0, CellPadding, 0);
-
-        if (address == 0)
-        {
-            block.Margin = indent;
-
-            block.Foreground = AppResources.Get<Brush>(TypeKey);
-
-            return block;
-        }
-
-        var link = new HyperlinkButton
-        {
-            Style = AppResources.Get<Style>(LinkStyleKey),
-            Margin = indent,
-            VerticalAlignment = VerticalAlignment.Center,
-            Content = block
-        };
-
-        link.Click += (_, _) => graph.Open(address);
-
-        return link;
-    }
-
     private void UpdateCells()
     {
-        foreach (var (stage, value) in Cells)
-        {
-            value.Text = stage.Value;
+        var outOfScope = AppResources.Get<Brush>(OutOfScopeKey);
 
-            ToolTipService.SetToolTip(value, stage.Value.Length > 0 ? stage.Value : null);
+        var dimmed = AppResources.Get<Brush>(DetailKey);
+
+        var normal = AppResources.Get<Brush>(ValueKey);
+
+        foreach (var (read, isInScope, value, valueBox) in Cells)
+        {
+            var text = read();
+
+            var inScope = isInScope();
+
+            value.Text = text;
+
+            value.Foreground = inScope ? normal : dimmed;
+
+            valueBox.Background = inScope ? null : outOfScope;
+
+            ToolTipService.SetToolTip(value, text.Length > 0 ? text : null);
         }
     }
 

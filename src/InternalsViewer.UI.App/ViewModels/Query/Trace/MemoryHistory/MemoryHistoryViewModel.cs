@@ -252,6 +252,10 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
         return [.. Enumerable.Range(0, count).Select(i => columns?[i].Column is { Length: > 0 } name ? name : $"Column {i + 1}")];
     }
 
+    public string? GetStatementResult(TracePosition position, SqlDbType type) => Trace?.GetStatementResult(position, type);
+
+    public (TracePosition From, TracePosition To)? GetRowRange(ulong iterator) => Trace?.GetRowRange(iterator);
+
     public PlanOutputRecord? GetOutputRecord(MemoryHistoryReader memory, PlanOutputStage stage)
         => Trace is { } trace ? PlanOutputValueReader.ReadRecord(memory, trace.BufferPool, memory.Position, stage) : null;
 

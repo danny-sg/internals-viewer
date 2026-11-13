@@ -164,7 +164,7 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
 
         Page = new MemoryPageViewModel(ShowPageMarkers);
 
-        EntryDetails = GetEntryDetails;
+        EntryDetails = HasEntryDetails ? GetEntryDetails : null;
     }
 
     public abstract string Title { get; }
@@ -173,7 +173,7 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
 
     public MemoryPageViewModel Page { get; }
 
-    public Func<ResultRow<long>, ResultDetails> EntryDetails { get; }
+    public Func<ResultRow<long>, ResultDetails>? EntryDetails { get; }
 
     public bool IsFieldTableVisible => FieldTable is not null;
 
@@ -194,6 +194,8 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
     protected TracePosition Position => Playhead ?? OpenedAt;
 
     protected abstract HexImage? Image { get; }
+
+    protected virtual bool HasEntryDetails => true;
 
     protected string StructureKey { get; set; } = string.Empty;
 
@@ -925,7 +927,7 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
         return links;
     }
 
-    private object? GetValueCell(MemoryField field, ulong? value)
+    protected object? GetValueCell(MemoryField field, ulong? value)
     {
         if (value is not { } found)
         {

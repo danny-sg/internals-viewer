@@ -141,6 +141,8 @@ public sealed class TraceTimelineMinimap : UserControl, IDisposable
         ActualThemeChanged += OnActualThemeChanged;
     }
 
+    private ElementTheme? AppliedTheme { get; set; }
+
     public void Dispose()
     {
         Loaded -= OnLoaded;
@@ -158,12 +160,20 @@ public sealed class TraceTimelineMinimap : UserControl, IDisposable
         _marker.Dispose();
     }
 
-    private void OnLoaded(object sender, RoutedEventArgs e) => ApplyTheme();
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        if (AppliedTheme != ActualTheme)
+        {
+            ApplyTheme();
+        }
+    }
 
     private void OnActualThemeChanged(FrameworkElement sender, object args) => ApplyTheme();
 
     private void ApplyTheme()
     {
+        AppliedTheme = ActualTheme;
+
         var isDark = ActualTheme == ElementTheme.Dark;
 
         _background.Color = isDark ? new SKColor(0x20, 0x20, 0x20, 0xD9) : new SKColor(0xF3, 0xF3, 0xF3, 0xD9);

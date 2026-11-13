@@ -255,6 +255,8 @@ public static class EngineLayout
     public static class Statement
     {
         public static MemoryField RowContextField { get; } = Pointer("Row Context", 0xD8, "CXStmtQuery::AllocateMembers");
+
+        public static MemoryField ExecutorField { get; } = Pointer("Output Executor", 0xD0);
     }
 
     public static class RowContext
@@ -291,7 +293,24 @@ public static class EngineLayout
 
     public static class CachedSwitch
     {
+        public const int EntryOffset = 0x20;
+
         public static MemoryField ValueField { get; } = Pointer("Value", 0x08, "CQScanHash::SetupPartitionInputsAndOutputs");
+
+        public static IReadOnlyList<MemoryField> EntryFields { get; } =
+            [.. RowBuffer.EntryFields.Select(f => f with { Name = $"Cached {f.Name}", Offset = f.Offset + EntryOffset })];
+    }
+
+    public static class ExpressionValue
+    {
+        public static MemoryField ExecutorField { get; } = Pointer("Executor", 0x08);
+    }
+
+    public static class Executor
+    {
+        public static MemoryField ValuesField { get; } = Pointer("Input Values", 0x28);
+
+        public static MemoryField ValueField { get; } = Pointer("Value", 0x00);
     }
 
     public static class ExecValue

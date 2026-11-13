@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
+using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Operators;
 
@@ -17,6 +19,8 @@ public sealed class DataPathPlan
         {
             Add(child, null, 0);
         }
+
+        Pulls = ExpressionPullResolver.Resolve(statement);
     }
 
     public PlanNode Statement { get; }
@@ -27,9 +31,32 @@ public sealed class DataPathPlan
 
     private Dictionary<int, int> Levels { get; } = [];
 
-    public static string GetLabel(PlanNode node) => $"{node.PhysicalOperator} (Node {node.NodeId})";
+    private List<ExpressionPull> Pulls { get; }
+
+    public static IEnumerable<string> GetDefinitions(PlanNode node)
+        => node.DefinedValues.Select(d => $"{string.Join(", ", d.Columns.Select(c => c.Column))} = {GetText(d)}");
+
+    public static string GetText(DefinedValueInfo value)
+        => value.ParsedExpression is { } parsed ? PredicateText.From(parsed).ToString() : value.Expression ?? string.Empty;
+
+    public static string GetObjectName(PlanNode node)
+        => string.IsNullOrEmpty(node.Table)
+            ? string.Empty
+            : string.Join(".", new[] { node.Schema, node.Table, node.Index }.Where(p => !string.IsNullOrEmpty(p)));
 
     public int? GetLevel(int nodeId) => Levels.TryGetValue(nodeId, out var level) ? level : null;
+
+    public PlanNode? GetNode(int nodeId) => Nodes.GetValueOrDefault(nodeId);
+
+    public DefinedValueInfo? FindDefinition(string column)
+        => Nodes.Values
+                .Where(OperatorClassifier.IsComputeScalar)
+                .SelectMany(n => n.DefinedValues)
+                .FirstOrDefault(d => d.Expression is { Length: > 0 } && d.Columns.Exists(c => c.Column == column));
+
+    public PlanNode? GetPuller(PlanNode computeScalar)
+        => (Pulls.Find(p => ReferenceEquals(p.ComputeScalar, computeScalar) && p.OutputValues.Count > 0)
+            ?? Pulls.Find(p => ReferenceEquals(p.ComputeScalar, computeScalar)))?.Puller;
 
     public List<int> GetTops(Func<int, bool> isOperator)
     {
@@ -58,9 +85,12 @@ public sealed class DataPathPlan
 
             var (expression, value) = Resolve(root, output.Column, output.Table, isOperator, getColumn, inputs);
 
-            var type = value is not null
-                ? value.DataType?.ToString().ToLowerInvariant() ?? string.Empty
-                : inputs is [var input] ? input.Column.Type.ToString() : string.Empty;
+            SqlTypeInfo? type = inputs switch
+            {
+                [var input] when value is null => input.Column.Type,
+                [var first, ..] => first.Column.Type with { MaxLength = 0 },
+                _ => null
+            };
 
             columns.Add(new DataPathColumn(output.Column, type, inputs, expression, value));
         }

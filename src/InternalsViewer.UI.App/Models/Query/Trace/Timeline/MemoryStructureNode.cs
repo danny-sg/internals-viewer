@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
+using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline.Enums;
 
 namespace InternalsViewer.UI.App.Models.Query.Trace.Timeline;
@@ -37,7 +38,9 @@ public sealed partial class MemoryStructureNode(MemoryStructureNodeType type,
 
     public bool IsAddressVisible { get; init; } = true;
 
-    public string TypeText { get; init; } = string.Empty;
+    public SqlTypeInfo? ColumnType { get; init; }
+
+    public bool HasColumnType => ColumnType is not null;
 
     public List<MemoryStructureBadge> Badges { get; init; } = [];
 
@@ -64,4 +67,6 @@ public sealed partial class MemoryStructureNode(MemoryStructureNodeType type,
                                            or MemoryStructureNodeType.Expression);
 
     public bool IsPage => Type is MemoryStructureNodeType.WorkfilePage or MemoryStructureNodeType.RecordPage;
+
+    public bool IsCalculator => Type == MemoryStructureNodeType.Expression;
 }

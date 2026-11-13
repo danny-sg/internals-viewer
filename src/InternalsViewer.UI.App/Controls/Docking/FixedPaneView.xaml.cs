@@ -14,9 +14,20 @@ public sealed partial class FixedPaneView : UserControl
 
         LayoutHelpers.ClipToBounds(ContentHost);
 
-        Loaded += (_, _) => DockDragState.ActiveChanged += OnDragActiveChanged;
+        Loaded += (_, _) =>
+        {
+            DockDragState.ActiveChanged -= OnDragActiveChanged;
 
-        Unloaded += (_, _) => DockDragState.ActiveChanged -= OnDragActiveChanged;
+            DockDragState.ActiveChanged += OnDragActiveChanged;
+        };
+
+        Unloaded += (_, _) =>
+        {
+            if (!IsLoaded)
+            {
+                DockDragState.ActiveChanged -= OnDragActiveChanged;
+            }
+        };
     }
 
     public FixedNode? Node { get; private set; }
@@ -33,8 +44,6 @@ public sealed partial class FixedPaneView : UserControl
 
         ContentHost.Content = content;
     }
-
-    public void Release() => ContentHost.Content = null;
 
     private void OnDragActiveChanged(object? sender, EventArgs e)
     {

@@ -7,14 +7,13 @@ public static class ExpressionPullResolver
 {
     private const string ConstantPrefix = "ConstExpr";
 
-    public static List<ExpressionPull> Resolve(ExecutionPlan plan)
+    public static List<ExpressionPull> Resolve(ExecutionPlan plan) => [.. plan.Root.SelectMany(Resolve)];
+
+    public static List<ExpressionPull> Resolve(PlanNode root)
     {
         var pulls = new List<ExpressionPull>();
 
-        foreach (var root in plan.Root)
-        {
-            Visit(root, [], pulls);
-        }
+        Visit(root, [], pulls);
 
         return pulls;
     }

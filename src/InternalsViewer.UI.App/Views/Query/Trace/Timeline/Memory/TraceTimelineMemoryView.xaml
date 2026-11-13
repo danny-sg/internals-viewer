@@ -137,5 +137,19 @@
                 </TabViewItem>
             </TabView>
         </Grid>
+
+        <StackPanel Grid.Row="0"
+                    Grid.RowSpan="2"
+                    Grid.ColumnSpan="2"
+                    Spacing="12"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, FallbackValue=Collapsed}">
+            <ProgressRing HorizontalAlignment="Center"
+                          IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay, FallbackValue=False}"/>
+            <TextBlock HorizontalAlignment="Center"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       Text="Loading..."/>
+        </StackPanel>
     </Grid>
 </UserControl>

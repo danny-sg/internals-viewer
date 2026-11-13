@@ -8,15 +8,15 @@ public sealed class DataPathGraph(IReadOnlyList<DataPathStage> stages,
                                   IReadOnlyList<string> warnings,
                                   Action<ulong> open)
 {
-    public const double BoxWidth = 220;
+    public const double BoxWidth = 280;
 
-    public const double ColumnWidth = 160;
-
-    public const double OperatorHeight = 28;
+    public const double HeaderHeight = 28;
 
     public const double LineHeight = 20;
 
-    public const double BoxHeight = OperatorHeight + LineHeight * 2 + 6;
+    public const double ValueHeight = 26;
+
+    public const double BoxHeight = HeaderHeight + LineHeight * 2 + ValueHeight;
 
     public const double ColumnGap = 56;
 

@@ -1,12 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Data;
 using InternalsViewer.UI.App.Controls.HexView;
+using InternalsViewer.UI.App.Controls.Query.Plan;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline.Enums;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline.Memory;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -30,7 +33,17 @@ public sealed partial class MemoryStructureView : UserControl, IDisposable
         AddHandler(PointerPressedEvent, new PointerEventHandler(OnNavigationPointerPressed), handledEventsToo: true);
     }
 
+    public static SvgImageSource Calculator { get; } = PlanIconParts.CreateCalculatorSource(28, 34);
+
     public MemoryStructureViewModel? ViewModel => DataContext as MemoryStructureViewModel;
+
+    public static SqlDbType? GetDataType(MemoryStructureNode node) => SqlDataTypeFormat.GetDataType(node.ColumnType);
+
+    public static int GetPrecision(MemoryStructureNode node) => node.ColumnType?.Precision ?? 0;
+
+    public static int GetScale(MemoryStructureNode node) => node.ColumnType?.Scale ?? 0;
+
+    public static int GetLength(MemoryStructureNode node) => node.ColumnType?.MaxLength ?? 0;
 
     private MemoryStructureViewModel? Attached { get; set; }
 

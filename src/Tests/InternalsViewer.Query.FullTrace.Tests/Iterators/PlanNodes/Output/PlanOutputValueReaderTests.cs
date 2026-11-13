@@ -1,5 +1,7 @@
+using System.Data;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
@@ -25,6 +27,32 @@ public class PlanOutputValueReaderTests
     private static readonly SqlTypeInfo VarcharType = new(167, 0, 100, 0, 0, 0);
 
     private static readonly SqlTypeInfo CharType = new(175, 0, 10, 0, 0, 0);
+
+    [Fact]
+    public void A_Variant_Result_Is_Read_Through_Its_Pointer_With_Its_Length()
+    {
+        var memory = new FakeTraceReplay().Write(Data, "RowClu  "u8);
+
+        var variant = new VariantLocator(VariantLocator.Create(1, VariantStatus.Value, Data, 6));
+
+        Assert.Equal("RowClu", PlanOutputValueReader.ReadVariant(memory, variant, SqlDbType.VarChar));
+    }
+
+    [Fact]
+    public void A_Null_Variant_Result_Is_Null()
+    {
+        var variant = new VariantLocator(VariantLocator.Create(1, VariantStatus.Null, 0, 0));
+
+        Assert.Equal("NULL", PlanOutputValueReader.ReadVariant(new FakeTraceReplay(), variant, SqlDbType.VarChar));
+    }
+
+    [Fact]
+    public void A_Fixed_Variant_Result_Is_Read_Inline()
+    {
+        var variant = new VariantLocator(VariantLocator.Create(1, VariantStatus.Value, 42, 0));
+
+        Assert.Equal("42", PlanOutputValueReader.ReadVariant(new FakeTraceReplay(), variant, SqlDbType.Int));
+    }
 
     [Fact]
     public void A_Fixed_Buffer_Entry_Is_Read_Inline()

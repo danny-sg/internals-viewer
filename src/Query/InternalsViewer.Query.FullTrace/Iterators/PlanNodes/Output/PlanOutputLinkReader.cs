@@ -26,6 +26,8 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
     private Dictionary<ulong, TraceArgumentCall> FirstGetRows => field ??= GetFirstGetRows();
 
+    private Dictionary<ulong, (TracePosition From, TracePosition To)> RowRanges => field ??= GetRowRanges();
+
     private ulong[] PlanIterators => field ??= [.. trace.LinkedPlanNodes.Select(p => p.Iterator)];
 
     private Dictionary<ulong, SqlTypeInfo> ReferenceTypes => field ??= GetReferenceTypes();
@@ -201,6 +203,40 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
            && info.Address == address
             ? trace.AddressMap.GetLabel(info.Address, info.FromPosition, info.ToPosition)
             : null;
+
+    public (TracePosition From, TracePosition To)? GetRowRange(ulong iterator)
+        => RowRanges.TryGetValue(iterator, out var range) ? range : null;
+
+    private Dictionary<ulong, (TracePosition From, TracePosition To)> GetRowRanges()
+    {
+        var ranges = new Dictionary<ulong, (TracePosition From, TracePosition To)>();
+
+        foreach (var list in trace.CallStore.GetCallLists())
+        {
+            if (list.Count == 0 || trace.CallStore.GetFirstNode(list)?.Frame?.Function?.MethodName != GetRowMethod)
+            {
+                continue;
+            }
+
+            var from = list.GetFromPosition(0);
+
+            var to = list.GetToPosition(list.Count - 1);
+
+            for (var index = 0; index < list.Count; index++)
+            {
+                if (list.GetToPosition(index) is { IsKnown: true } end && end > to)
+                {
+                    to = end;
+                }
+            }
+
+            ranges[list.InstanceAddress] = ranges.TryGetValue(list.InstanceAddress, out var found)
+                ? (from < found.From ? from : found.From, to > found.To ? to : found.To)
+                : (from, to);
+        }
+
+        return ranges;
+    }
 
     private Dictionary<ulong, TraceArgumentCall> GetFirstGetRows()
     {
@@ -995,6 +1031,13 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
                 return AddReader(inner, address, EngineLayout.CachedSwitch.ValueField, depth, readers);
             }
 
+            if (getClassName(address) == PlanOutputValueLayout.ExpressionValueClass)
+            {
+                AddExpressionValue(address, source, sourceField, depth);
+
+                return null;
+            }
+
             if (ReadReader(address) is not { } reader)
             {
                 return null;
@@ -1012,6 +1055,72 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
             readers.Add(address);
 
             return reader;
+        }
+
+        private void AddExpressionValue(ulong expression, ulong source, MemoryField sourceField, int depth)
+        {
+            var record = Stage.Record;
+
+            Add(PlanOutputLinkType.Expression,
+                expression,
+                source,
+                sourceField,
+                depth,
+                className: PlanOutputValueLayout.ExpressionValueClass);
+
+            var executorField = EngineLayout.ExpressionValue.ExecutorField;
+
+            if (TryRead(expression, executorField, out ulong executor) && executor >= TraceAddress.MinimumAddress)
+            {
+                Add(PlanOutputLinkType.Executor, executor, expression, executorField, depth, className: getClassName(executor));
+
+                AddExecutorInputs(executor, depth);
+            }
+
+            Stage.Record = record;
+
+            SetStage(PlanOutputStageType.Expression, expression);
+
+            if (getClassName(source) == PlanOutputValueLayout.CachedSwitchClass)
+            {
+                SetValue(new PlanOutputValueSource(PlanOutputLinkType.Expression,
+                                                   source + EngineLayout.CachedSwitch.EntryOffset,
+                                                   [],
+                                                   null));
+            }
+        }
+
+        private void AddExecutorInputs(ulong executor, int depth)
+        {
+            var valuesField = EngineLayout.Executor.ValuesField;
+
+            if (!TryRead(executor, valuesField, out ulong values) || values < TraceAddress.MinimumAddress)
+            {
+                return;
+            }
+
+            Add(PlanOutputLinkType.InputValues, values, executor, valuesField, depth);
+
+            var count = Math.Min(getSize(values) / (int)PointerSize, MaximumEntries);
+
+            var valueField = EngineLayout.Executor.ValueField;
+
+            for (var index = 0; index < count; index++)
+            {
+                var valueOffset = (ulong)index * PointerSize;
+
+                if (!TryRead(values + valueOffset, valueField, out ulong value) || value < TraceAddress.MinimumAddress)
+                {
+                    continue;
+                }
+
+                Add(PlanOutputLinkType.InputValue, value, values, valueField, depth, valueOffset, className: getClassName(value));
+
+                if (ReadReader(value) is { } reader)
+                {
+                    AddRow(value, reader, depth);
+                }
+            }
         }
 
         private (int Slot, int? Offset, ulong Accessor, MemoryField SlotField)? ReadReader(ulong address)
@@ -1056,6 +1165,11 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
             if (info.Offset is { } rowOffset)
             {
                 SetValue(new PlanOutputValueSource(PlanOutputLinkType.RowSlot, rowSlot, [0], rowOffset));
+
+                if (memory.TryRead(rowSlot, out ulong row) && row >= TraceAddress.MinimumAddress)
+                {
+                    Add(PlanOutputLinkType.Record, row, rowSlot, null, depth);
+                }
             }
 
             if (info.Accessor == 0 || Stage.Record is not null || GetColumnOffset(info.Accessor) is not { } recordOffset)
@@ -1080,6 +1194,17 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
             if (Links.FindIndex(l => l is { Type: PlanOutputLinkType.RowContext, IsRoute: true }) is >= 0 and var index)
             {
                 return Links[index].Address;
+            }
+
+            if (GetAddress(PlanOutputLinkType.QueryContext) is null)
+            {
+                foreach (var iterator in Links.Where(l => l.Type == PlanOutputLinkType.Iterator).Select(l => l.Address).Distinct().ToList())
+                {
+                    if (AddMap(iterator))
+                    {
+                        break;
+                    }
+                }
             }
 
             if (GetAddress(PlanOutputLinkType.QueryContext) is not { } queryContext

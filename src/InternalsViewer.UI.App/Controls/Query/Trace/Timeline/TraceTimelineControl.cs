@@ -514,6 +514,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
     private float BandHeight => ShowsMemoryBand ? MemoryBandHeight : 0;
 
+    private ElementTheme? AppliedTheme { get; set; }
+
     public void ZoomToFit()
     {
         _scrollY = 0;
@@ -823,12 +825,20 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         _canvas.Invalidate();
     }
 
-    private void OnLoaded(object sender, RoutedEventArgs e) => ApplyTheme();
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        if (AppliedTheme != ActualTheme)
+        {
+            ApplyTheme();
+        }
+    }
 
     private void OnActualThemeChanged(FrameworkElement sender, object args) => ApplyTheme();
 
     private void ApplyTheme()
     {
+        AppliedTheme = ActualTheme;
+
         _paints.Apply(ActualTheme == ElementTheme.Dark);
 
         _minimapMarkers = null;

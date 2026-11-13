@@ -127,11 +127,27 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         IsCallStackVisible = false;
     }
 
-    public void RequestPlayhead(TracePoint point) => PlayheadRequested?.Invoke(this, point);
+    public void RequestPlayhead(TracePoint point)
+    {
+        if (Query.IsOutsideCrop(point.Position))
+        {
+            Query.QueryOptions.CropToQuery = false;
+        }
+
+        PlayheadRequested?.Invoke(this, point);
+    }
 
     public void MovePlayhead(TracePoint point) => RequestPlayhead(point);
 
-    public void ZoomToCall(CallTreeNode node, int callIndex) => PlayheadStack.RequestChart(c => c.ZoomToCall(node, callIndex));
+    public void ZoomToCall(CallTreeNode node, int callIndex)
+    {
+        if (Query.IsOutsideCrop(node))
+        {
+            Query.QueryOptions.CropToQuery = false;
+        }
+
+        PlayheadStack.RequestChart(c => c.ZoomToCall(node, callIndex));
+    }
 
     public void ShowCallStack(TracePoint point)
     {
@@ -208,9 +224,7 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
 
         var memory = new PlayheadMemoryViewModel(Query.MemoryHistory);
 
-        memory.Open(block, address, position);
-
-        if (!memory.IsOpen)
+        if (!memory.Open(block, address, position))
         {
             return;
         }
@@ -220,7 +234,7 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
             memory.ShowAddress(address, length);
         }
 
-        memory.SetPlayhead(Playhead);
+        memory.SetPlayhead(Query.IsOutsideCrop(position) ? null : Playhead);
 
         memory.Chart = Chart;
 
@@ -230,17 +244,14 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
 
         memory.MemoryRequested += OnMemoryRequested;
 
-        List<DocumentMenuItem> menuItems = [new("Open Reference Graph", () => OpenReferenceGraph(memory.Block, memory.Position))];
+        memory.Opened += OnMemoryOpened;
 
-        if (memory.IsHashTableVisible)
-        {
-            menuItems.Add(new DocumentMenuItem("Open Hash Table", memory.OpenHashTable));
-        }
-
-        if (memory.IsSortTableVisible)
-        {
-            menuItems.Add(new DocumentMenuItem("Open Sort Table", memory.OpenSortTable));
-        }
+        List<DocumentMenuItem> menuItems =
+        [
+            new("Open Reference Graph", () => OpenReferenceGraph(memory.Block, memory.Position)),
+            new("Open Hash Table", memory.OpenHashTable, () => memory.IsHashTableVisible),
+            new("Open Sort Table", memory.OpenSortTable, () => memory.IsSortTableVisible)
+        ];
 
         var document = new DocumentViewModel(memory.Title,
                                              memory,
@@ -697,7 +708,15 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         Chart?.ShowMemoryUpdates((active?.Content as PlayheadMemoryViewModel)?.GetUpdates(), active?.Title);
     }
 
-    private void OnMemoryPlayheadRequested(object? sender, TracePoint point) => PlayheadRequested?.Invoke(this, point);
+    private void OnMemoryPlayheadRequested(object? sender, TracePoint point) => RequestPlayhead(point);
+
+    private void OnMemoryOpened(object? sender, EventArgs e)
+    {
+        if (sender is PlayheadMemoryViewModel memory && ShownMemory is { } shown && ReferenceEquals(shown.Content, memory))
+        {
+            Chart?.ShowMemoryUpdates(memory.GetUpdates(), shown.Title);
+        }
+    }
 
     private void OnMemoryRequested(object? sender, MemoryRequest request)
     {
@@ -847,6 +866,8 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         memory.PlayheadRequested -= OnMemoryPlayheadRequested;
 
         memory.MemoryRequested -= OnMemoryRequested;
+
+        memory.Opened -= OnMemoryOpened;
 
         memory.Close();
     }

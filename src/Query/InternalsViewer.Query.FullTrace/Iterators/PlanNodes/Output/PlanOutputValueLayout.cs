@@ -12,11 +12,17 @@ public static class PlanOutputValueLayout
 
     public const string OutputListClass = "CBndOutputs";
 
+    public const string ExpressionValueClass = "CValExpr";
+
+    public const string ExecutorClass = "CEsExec";
+
     public static IReadOnlyList<MemoryField> GetFields(string? className) => className switch
     {
         TraceHashTableLayout.ValueClass => [EngineLayout.HashValue.RecordOffsetField, EngineLayout.HashValue.SlotField],
         StorageValueClass => [EngineLayout.StorageValue.SlotField, EngineLayout.StorageValue.AccessorField],
-        CachedSwitchClass => [EngineLayout.CachedSwitch.ValueField],
+        CachedSwitchClass => [EngineLayout.CachedSwitch.ValueField, .. EngineLayout.CachedSwitch.EntryFields],
+        ExpressionValueClass => [EngineLayout.ExpressionValue.ExecutorField],
+        ExecutorClass => [EngineLayout.Executor.ValuesField],
         OutputListClass => EngineLayout.OutputList.Fields,
         AccessorBindingLayout.ClassName => AccessorBindingLayout.Fields,
         _ => []

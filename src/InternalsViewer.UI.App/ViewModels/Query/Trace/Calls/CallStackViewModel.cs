@@ -107,8 +107,7 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
 
     public void OpenInCallTree(PlayheadCallRow row) => Query.OpenCallTree(row.Node, row.CallIndex);
 
-    public virtual void Zoom(PlayheadCallRow row)
-        => Query.TraceTimelineTab.PlayheadStack.RequestChart(c => c.ZoomToCall(row.Node, row.CallIndex));
+    public virtual void Zoom(PlayheadCallRow row) => Query.TraceTimelineTab.ZoomToCall(row.Node, row.CallIndex);
 
     public void Scope(PlayheadCallRow row) => Scope(row.Node);
 

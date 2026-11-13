@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Linq;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.History;
@@ -13,6 +15,7 @@ using InternalsViewer.Query.FullTrace.Memory.Layouts.Pages;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Sorts;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Sorts.Enums;
 using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Logging;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
@@ -54,6 +57,9 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _isOpen;
+
+    [ObservableProperty]
+    private bool _isLoading;
 
     [ObservableProperty]
     private byte[]? _data;
@@ -119,6 +125,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     public event EventHandler<MemoryRequest>? MemoryRequested;
 
+    public event EventHandler? Opened;
+
     public MemoryHistoryViewModel History { get; }
 
     public MemoryDetailsViewModel Details { get; } = new();
@@ -145,7 +153,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     public TracePosition Position => Playhead ?? OpenedAt;
 
-    public string Title => IsOpen && History.IsPage(Block) ? $"{ObjectName} 0x{History.Store.Blocks[Block].Address:X16}" : ObjectName;
+    public string Title => Block >= 0 && History.IsPage(Block) ? $"{ObjectName} 0x{History.Store.Blocks[Block].Address:X16}" : ObjectName;
 
     public IPlayheadChart? Chart { get; set; }
 
@@ -175,75 +183,41 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     private TraceSortPart? SortTablePart { get; set; }
 
-    public void Open(int block, ulong address, TracePosition position)
+    private (ulong Address, int Length) RequestedAddress { get; set; }
+
+    private IReadOnlyList<string>? RequestedIteratorTabs { get; set; }
+
+    public bool Open(int block, ulong address, TracePosition position)
     {
         if (block < 0 || block >= History.Store.Blocks.Count)
         {
-            return;
+            return false;
         }
 
         Block = block;
 
         OpenedAt = position;
 
-        WriteCount = -1;
-
-        Links = null;
-
-        References.Clear();
-
         ObjectName = History.GetObjectName(block);
 
-        Watches = History.GetWatches(block);
+        RequestedAddress = (address, 1);
 
-        Watches.CollectionChanged += OnWatchesChanged;
+        IsLoading = true;
 
-        IsOpen = true;
+        _ = LoadAsync(block, position);
 
-        SelectedChangeSpan = null;
-
-        Refresh();
-
-        Details.Load(this);
-
-        Writes.Load();
-
-        Reads.Load();
-
-        WatchList.Attach(Watches);
-
-        Buffer.Load(this);
-
-        Batch.Load(this);
-
-        FindHashTable();
-
-        FindSortTable();
-
-        WorkfilePage.Load(History, block, HashTableLayout);
-
-        Bindings.Load(this);
-
-        Iterator.Load(this);
-
-        ApplyMarkers();
-
-        if (!IsTabAvailable(SelectedTab) || SelectedTab == DetailsTab)
-        {
-            SelectedTab = GetFirstTab();
-        }
-
-        RefreshBatch();
-
-        RefreshBindings();
-
-        RefreshIterator();
-
-        ShowAddress(address);
+        return true;
     }
 
     public void ShowIteratorTab(IReadOnlyList<string> tabs)
     {
+        if (IsLoading)
+        {
+            RequestedIteratorTabs = tabs;
+
+            return;
+        }
+
         if (!Iterator.IsAvailable)
         {
             return;
@@ -256,6 +230,13 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     public void ShowAddress(ulong address, int length = 1)
     {
+        if (IsLoading)
+        {
+            RequestedAddress = (address, length);
+
+            return;
+        }
+
         if (!IsOpen)
         {
             return;
@@ -272,6 +253,10 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     public void Close()
     {
+        IsLoading = false;
+
+        RequestedIteratorTabs = null;
+
         HexLoader.Cancel();
 
         WatchList.Attach(null);
@@ -646,15 +631,112 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     private void OnWatchesChanged(object? sender, NotifyCollectionChangedEventArgs e) => Writes.Load();
 
-    private void FindHashTable()
+    private async Task LoadAsync(int block, TracePosition position)
     {
-        var (group, found, table, position) = History.CallStore is { } calls ? FindHashTablePart(calls) : (0, null, null, default);
+        try
+        {
+            var history = History;
 
-        (HashTableGroup, HashTablePart) = (group, found);
+            var match = await Task.Run(() => FindHashTable(history, block, position));
 
-        HashTableLayout = found is { Type: TraceHashPartType.WorkfilePage } && table is not null
-            ? GetHashTableLayout(table, position)
+            if (!IsLoading || Block != block)
+            {
+                return;
+            }
+
+            IsLoading = false;
+
+            Load(match);
+
+            Opened?.Invoke(this, EventArgs.Empty);
+        }
+        catch (Exception exception)
+        {
+            IsLoading = false;
+
+            await WeakReferenceMessenger.Default.Send(new ExceptionMessage(exception) { Message = "Exception loading memory" });
+        }
+    }
+
+    private void Load(HashTableMatch match)
+    {
+        WriteCount = -1;
+
+        Links = null;
+
+        References.Clear();
+
+        Watches = History.GetWatches(Block);
+
+        Watches.CollectionChanged += OnWatchesChanged;
+
+        IsOpen = true;
+
+        SelectedChangeSpan = null;
+
+        Refresh();
+
+        Details.Load(this);
+
+        Writes.Load();
+
+        Reads.Load();
+
+        WatchList.Attach(Watches);
+
+        Buffer.Load(this);
+
+        Batch.Load(this);
+
+        ApplyHashTable(match);
+
+        FindSortTable();
+
+        WorkfilePage.Load(History, Block, HashTableLayout);
+
+        Bindings.Load(this);
+
+        Iterator.Load(this);
+
+        ApplyMarkers();
+
+        if (!IsTabAvailable(SelectedTab) || SelectedTab == DetailsTab)
+        {
+            SelectedTab = GetFirstTab();
+        }
+
+        RefreshBatch();
+
+        RefreshBindings();
+
+        RefreshIterator();
+
+        ShowAddress(RequestedAddress.Address, RequestedAddress.Length);
+
+        if (RequestedIteratorTabs is { } tabs)
+        {
+            RequestedIteratorTabs = null;
+
+            ShowIteratorTab(tabs);
+        }
+    }
+
+    private static HashTableMatch FindHashTable(MemoryHistoryViewModel history, int block, TracePosition openedAt)
+    {
+        var (group, found, table, position) = history.CallStore is { } calls
+            ? FindHashTablePart(history, calls, block, openedAt)
+            : (0, null, null, default);
+
+        var layout = found is { Type: TraceHashPartType.WorkfilePage } && table is not null
+            ? GetHashTableLayout(history, table, position)
             : null;
+
+        return new HashTableMatch(group, found, layout);
+    }
+
+    private void ApplyHashTable(HashTableMatch match)
+    {
+        (HashTableGroup, HashTablePart, HashTableLayout) = (match.Group, match.Part, match.Layout);
 
         IsHashTableVisible = HashTableGroup != 0;
 
@@ -715,35 +797,39 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         SortTablePartText = SortTablePart is { } shown ? GetSortPartText(shown.Type) : string.Empty;
     }
 
-    private RowRecordLayout? GetHashTableLayout(TraceHashTable table, TracePosition position)
+    private static RowRecordLayout? GetHashTableLayout(MemoryHistoryViewModel history, TraceHashTable table, TracePosition position)
     {
         if (table.Columns.Count == 0)
         {
             return null;
         }
 
-        var slot = TraceHashTableReader.GetIteratorGroups(History.Store, History.AddressMap, table.Iterator, position)
+        var slot = TraceHashTableReader.GetIteratorGroups(history.Store, history.AddressMap, table.Iterator, position)
                                        .Find(g => g.Group == table.Group)
                                        .Slot;
 
-        return History.GetWorkfileLayout(table.Iterator,
+        return history.GetWorkfileLayout(table.Iterator,
                                          [.. table.Columns.Select(c => c.Binding)],
                                          slot / TraceHashTableLayout.GroupsPerSide == 1);
     }
 
-    private (ulong Group, TraceHashPart? Part, TraceHashTable? Table, TracePosition Position) FindHashTablePart(TraceCallStore calls)
+    private static (ulong Group, TraceHashPart? Part, TraceHashTable? Table, TracePosition Position) FindHashTablePart(
+        MemoryHistoryViewModel history,
+        TraceCallStore calls,
+        int index,
+        TracePosition openedAt)
     {
-        var block = History.Store.Blocks[Block];
+        var block = history.Store.Blocks[index];
 
         foreach (var group in TraceHashTableReader.GetGroups(calls))
         {
             var accesses = TraceHashTableReader.GetAccesses(calls, group);
 
-            List<TracePosition> positions = accesses.Count > 0 ? [OpenedAt, accesses[^1].Position] : [OpenedAt];
+            List<TracePosition> positions = accesses.Count > 0 ? [openedAt, accesses[^1].Position] : [openedAt];
 
             foreach (var position in positions)
             {
-                if (TraceHashTableReader.Read(History.Store, group, position) is { } table
+                if (TraceHashTableReader.Read(history.Store, group, position) is { } table
                     && table.FindPart(block.Address, block.Size) is { } part)
                 {
                     return (group, part, table, position);
@@ -1037,4 +1123,6 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
     }
 
     private sealed record HexImage(byte[] Data, List<MemoryChangeRun> Runs, List<MemoryHistoryPointer> Pointers);
+
+    private sealed record HashTableMatch(ulong Group, TraceHashPart? Part, RowRecordLayout? Layout);
 }

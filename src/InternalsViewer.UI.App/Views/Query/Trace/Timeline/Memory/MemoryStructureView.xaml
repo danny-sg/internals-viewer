@@ -11,13 +11,20 @@
     xmlns:predicates="using:InternalsViewer.UI.App.Controls.Query"
     xmlns:results="using:InternalsViewer.UI.App.Controls.Results"
     xmlns:timeline="using:InternalsViewer.UI.App.Models.Query.Trace.Timeline"
-    xmlns:traceMemory="using:InternalsViewer.UI.App.Controls.Query.Trace.Memory">
+    xmlns:traceMemory="using:InternalsViewer.UI.App.Controls.Query.Trace.Memory"
+    xmlns:types="using:InternalsViewer.UI.App.Controls.Columnstore">
 
     <UserControl.Resources>
         <DataTemplate x:Key="NodeTemplate" x:DataType="muxc:TreeViewNode">
             <StackPanel Orientation="Horizontal"
                         Spacing="6"
                         Opacity="{x:Bind ((timeline:MemoryStructureNode)Content).Opacity}">
+                <Image Width="14"
+                       Height="17"
+                       Stretch="Fill"
+                       VerticalAlignment="Center"
+                       Source="{x:Bind local:MemoryStructureView.Calculator}"
+                       Visibility="{x:Bind ((timeline:MemoryStructureNode)Content).IsCalculator}"/>
                 <TextBlock Text="{x:Bind ((timeline:MemoryStructureNode)Content).Name}"
                            FontSize="12"
                            VerticalAlignment="Center"/>
@@ -30,11 +37,12 @@
                            FontSize="12"
                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                            VerticalAlignment="Center"/>
-                <TextBlock Text="{x:Bind ((timeline:MemoryStructureNode)Content).TypeText}"
-                           FontSize="12"
-                           FontFamily="{StaticResource MonospaceFontFamily}"
-                           Foreground="{ThemeResource SqlKeywordBrush}"
-                           VerticalAlignment="Center"/>
+                <types:DataTypeTextBlock DataType="{x:Bind local:MemoryStructureView.GetDataType((timeline:MemoryStructureNode)Content)}"
+                                         Precision="{x:Bind local:MemoryStructureView.GetPrecision((timeline:MemoryStructureNode)Content)}"
+                                         DataScale="{x:Bind local:MemoryStructureView.GetScale((timeline:MemoryStructureNode)Content)}"
+                                         Length="{x:Bind local:MemoryStructureView.GetLength((timeline:MemoryStructureNode)Content)}"
+                                         VerticalAlignment="Center"
+                                         Visibility="{x:Bind ((timeline:MemoryStructureNode)Content).HasColumnType}"/>
                 <ItemsControl ItemsSource="{x:Bind ((timeline:MemoryStructureNode)Content).Badges}"
                               VerticalAlignment="Center">
                     <ItemsControl.ItemsPanel>
@@ -163,6 +171,7 @@
         <controls:GridSplitter Grid.Row="1"
                                Grid.Column="1"
                                Width="8"
+                               Background="{ThemeResource ControlStrokeColorDefaultBrush}"
                                ResizeBehavior="PreviousAndNext"
                                ResizeDirection="Columns"/>
 
@@ -222,7 +231,7 @@
                                     SelectedChangeSpan="{x:Bind ViewModel.ItemOutline, Mode=OneWay}"
                                     ScrollToOffset="{x:Bind ViewModel.ScrollToOffset, Mode=OneWay}"/>
 
-            <Grid Grid.Row="1" Grid.Column="1">
+            <Grid Grid.Row="1" Grid.Column="1" Visibility="{x:Bind ViewModel.IsHexVisible, Mode=OneWay}">
                 <results:ResultsGridControl ResultSet="{x:Bind ViewModel.FieldTable, Mode=OneWay}"
                                             SelectedRow="{x:Bind ViewModel.SelectedFieldRow, Mode=TwoWay}"
                                             Visibility="{x:Bind ViewModel.IsFieldTableVisible, Mode=OneWay}"/>

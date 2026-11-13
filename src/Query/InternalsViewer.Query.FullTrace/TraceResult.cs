@@ -1,3 +1,4 @@
+using System.Data;
 using InternalsViewer.Query.FullTrace.Memory.Address;
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
@@ -82,6 +83,8 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
     private PlanOutputLinkReader OutputLinks => field ??= new PlanOutputLinkReader(this);
 
+    private PlanOutputResultReader StatementResults => field ??= new PlanOutputResultReader(this);
+
     public void SetActivityWindow(TraceTimeline window)
     {
         if (ReferenceEquals(ActivityWindow, window))
@@ -123,7 +126,14 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
     public PlanOutputPath GetOutputPath(int nodeId, PlanOutputColumn column) => OutputLinks.Read(nodeId, column);
 
+    public string? GetStatementResult(TracePosition position, SqlDbType type)
+        => StatementResults.Read(position) is { } result
+            ? PlanOutputValueReader.ReadVariant(new MemoryHistoryReader(MemoryHistory, result.Position), result.Variant, type)
+            : null;
+
     public string? GetUnexpectedWriter(PlanOutputLink link) => OutputLinks.GetUnexpectedWriter(link);
+
+    public (TracePosition From, TracePosition To)? GetRowRange(ulong iterator) => OutputLinks.GetRowRange(iterator);
 
     public Dictionary<int, PlanOutputRoute> GetDataPath(IReadOnlyList<PlanOutputRouteOperator> operators, bool isPlanObjectIncluded)
         => OutputLinks.ReadDataPath(operators, isPlanObjectIncluded);

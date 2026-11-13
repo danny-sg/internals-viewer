@@ -43,7 +43,7 @@ public class DataPathPlanTests
 
         Assert.Equal(0, column.Expression?.NodeId);
 
-        Assert.Equal("[Expr1004]+[Expr1005]", column.Value?.Expression);
+        Assert.Equal("[Expr1004]+[Expr1005]", column.Definition?.Expression);
 
         Assert.Equal([new DataPathInput(1, Output(1, 1)), new DataPathInput(1, Output(1, 2))], column.Inputs);
     }
@@ -67,6 +67,39 @@ public class DataPathPlanTests
 
         Assert.False(plan.IsBlockingInput(1, 5));
     }
+
+    [Fact]
+    public void A_Compute_Scalar_Is_Evaluated_Where_Its_Value_Is_Stored_Or_Returned()
+    {
+        var statement = Statement();
+
+        var plan = new DataPathPlan(statement);
+
+        var computeScalar = statement.Children[0];
+
+        var join = computeScalar.Children[0];
+
+        Assert.Same(join, plan.GetPuller(join.Children[0]));
+
+        Assert.Same(statement, plan.GetPuller(join.Children[1]));
+
+        Assert.Same(statement, plan.GetPuller(computeScalar));
+    }
+
+    [Fact]
+    public void A_Calculated_Column_Is_Defined_By_Its_Compute_Scalar()
+    {
+        var plan = new DataPathPlan(Statement());
+
+        Assert.Equal("substring([TextField],(1),(3))", plan.FindDefinition("Expr1004")?.Expression);
+
+        Assert.Null(plan.FindDefinition("TextField"));
+    }
+
+    [Fact]
+    public void An_Object_Is_Named_By_Schema_Table_And_Index()
+        => Assert.Equal("dbo.HeapTable.ix_TextField",
+                        DataPathPlan.GetObjectName(new PlanNode { Schema = "dbo", Table = "HeapTable", Index = "ix_TextField" }));
 
     [Fact]
     public void Levels_Follow_The_Plan()

@@ -1,5 +1,9 @@
+using System.Collections.Generic;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output.Enums;
+using InternalsViewer.Query.Plans.Operators;
+using InternalsViewer.UI.App.Helpers.Converters.Calls;
+using Windows.UI;
 
 namespace InternalsViewer.UI.App.Helpers;
 
@@ -11,7 +15,7 @@ public static class PlanOutputLinkText
 
     public const string ScalarReference = "Scalar";
 
-    public const string StorageReference = "Storage";
+    public const string RowsetReference = "Rowset";
 
     public const string BatchRedirectReference = "Batch Redirect";
 
@@ -20,6 +24,19 @@ public static class PlanOutputLinkText
     public const string CounterReference = "Counter";
 
     private const string ReferencePrefix = "CValRef";
+
+    private static readonly Dictionary<string, OperatorCategory> ReferenceCategories = new()
+    {
+        [RowBufferReference] = OperatorCategory.Modification,
+        [HashReference] = OperatorCategory.Join,
+        [ScalarReference] = OperatorCategory.Transformation,
+        [RowsetReference] = OperatorCategory.DataAccess,
+        [VariablesReference] = OperatorCategory.Transformation,
+        [CounterReference] = OperatorCategory.Transformation
+    };
+
+    public static Color? GetReferenceColour(string reference)
+        => ReferenceCategories.TryGetValue(reference, out var category) ? OperatorCategoryToBrushConverter.ColourFor(category) : null;
 
     public static string GetName(PlanOutputLinkType type) => type switch
     {
@@ -57,6 +74,7 @@ public static class PlanOutputLinkText
         PlanOutputLinkType.RowBindings => "Row Bindings",
         PlanOutputLinkType.ColumnBindings => "Column Bindings",
         PlanOutputLinkType.ColumnBinding => "Column Binding",
+        PlanOutputLinkType.Executor => "Executor",
         _ => "Input Column"
     };
 
@@ -71,7 +89,7 @@ public static class PlanOutputLinkText
         "CValRefJoin" => HashReference,
         "CValRefCalculated" => ScalarReference,
         "CValRefBatchRedirect" => BatchRedirectReference,
-        "CValRefSS" => StorageReference,
+        "CValRefSS" => RowsetReference,
         { } className when className.StartsWith(ReferencePrefix, StringComparison.Ordinal) => className[ReferencePrefix.Length..],
         { } className => className,
         null => string.Empty
@@ -82,7 +100,10 @@ public static class PlanOutputLinkText
         "CValHashSwitch" => "Hash Switch",
         "CValHashCachedSwitch" => "Cached Switch",
         "CValHash" => "Hash Value",
-        "CValSSTable" => "Storage Value",
+        "CValSSTable" => "Rowset Value",
+        "CValExpr" => "Expression",
+        "CEsExec" => "Executor",
+        "CValEsConstXVar" => "Constant",
         _ => null
     };
 

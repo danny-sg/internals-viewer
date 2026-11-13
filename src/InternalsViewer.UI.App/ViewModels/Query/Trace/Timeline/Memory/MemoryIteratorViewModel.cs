@@ -495,7 +495,7 @@ public sealed partial class MemoryIteratorViewModel : ObservableObject
             if (!Graphs.TryGetValue(key, out var graph))
             {
                 var column = new DataPathColumn(names[index],
-                                                outputs[index].Type.ToString(),
+                                                outputs[index].Type,
                                                 [new DataPathInput(identifier.NodeId, outputs[index])]);
 
                 Graphs[key] = graph = DataPathGraphBuilder.Build(history,
