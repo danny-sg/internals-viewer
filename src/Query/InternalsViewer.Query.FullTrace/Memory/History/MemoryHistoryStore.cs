@@ -3,6 +3,7 @@ using System.Buffers.Binary;
 using System.Collections;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Helpers;
+using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -43,6 +44,8 @@ public sealed partial class MemoryHistoryStore
     public int WriteCount => Writes.Count;
 
     public int ReadCount => Reads.Count;
+
+    public EngineLayout Layout { get; private init; } = EngineLayout.Latest;
 
     private MemoryHistoryBlock[] BlockArray { get; }
 
@@ -257,6 +260,11 @@ public sealed partial class MemoryHistoryStore
 
     public CallTreeNode? GetAllocatingCall(int block, TraceTimeline timeline)
         => timeline.GetNode(BlockArray[block].CallNodeIndex)?.GetAncestors().FirstOrDefault(n => !AllocationFunction.IsAllocatorFrame(n.Frame));
+
+    internal MemoryHistoryStore WithLayout(EngineLayout layout)
+        => ReferenceEquals(layout, Layout)
+            ? this
+            : new(BlockArray, Writes, Iterators, Timeline, Reads, ReadStarts, Instances) { Layout = layout };
 
     private WriteRange GetBlockWrites(int block) => new(Writes, BlockArray[block].FirstWrite, BlockArray[block].WriteCount);
 

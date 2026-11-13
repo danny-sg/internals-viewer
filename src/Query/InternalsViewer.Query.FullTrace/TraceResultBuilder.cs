@@ -32,7 +32,7 @@ internal sealed class TraceResultBuilder(CallTree callTree,
 
     public TraceBufferPool BufferPool { get; init; } = TraceBufferPool.Empty;
 
-    public PlanNodeLayout PlanNodeLayout { get; init; } = PlanNodeLayout.SqlServer2025;
+    public Version? ServerVersion { get; init; }
 
     public IteratorPlanLink PlanLink { get; private set; } = IteratorPlanLink.Empty;
 
@@ -82,15 +82,19 @@ internal sealed class TraceResultBuilder(CallTree callTree,
     {
         Link();
 
+        var layout = ServerVersion is null ? EngineLayout.Find(memoryHistory, PlanNodes) : EngineLayout.Get(ServerVersion);
+
+        var store = memoryHistory.WithLayout(layout);
+
         var enclosing = EnclosingOperatorCallIndex.Build(CallStore, Lifetimes.OperatorsByInstance);
 
-        var pageAccesses = TracePageAccessList.Build(CallStore, memoryHistory, BufferPool, pageReads, Timeline);
+        var pageAccesses = TracePageAccessList.Build(CallStore, store, BufferPool, pageReads, Timeline);
 
         var result = new TraceResult(CallTree, CallStore, Timeline)
         {
             PlanLink = PlanLink,
             OperatorFrames = OperatorFrames,
-            PlanNodes = PlanOutputReader.Read(PlanNodes, memoryHistory, PlanNodeLayout),
+            PlanNodes = PlanOutputReader.Read(PlanNodes, store),
             Teardowns = Teardowns,
             HoBtAccess = HoBtAccessMap.Build(CallStore, Timeline.MappedNodes),
             Allocation = Allocation,
@@ -101,7 +105,8 @@ internal sealed class TraceResultBuilder(CallTree callTree,
             BufferPool = BufferPool,
             PageReads = pageReads,
             PageAccesses = pageAccesses,
-            MemoryHistory = memoryHistory,
+            MemoryHistory = store,
+            ServerVersion = ServerVersion,
             SourceTracks = new TraceSourceTrackMap(Timeline, CallStore, Lifetimes)
             {
                 EnclosingCalls = enclosing,

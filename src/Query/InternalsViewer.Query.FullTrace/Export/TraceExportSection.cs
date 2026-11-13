@@ -36,6 +36,8 @@ internal sealed class TraceExportSection : IQueryExportSection
 
     internal const string PageReadsEntry = "fulltrace/pagereads.bin";
 
+    internal const string ServerVersionEntry = "fulltrace/serverversion.bin";
+
     public bool CanExport(QueryExportContent content) => content.ExtraOf<TraceResult>() is not null;
 
     public void Write(QueryExportWriter writer, QueryExportContent content)
@@ -68,6 +70,11 @@ internal sealed class TraceExportSection : IQueryExportSection
         writer.WriteBinary(BufferPoolEntry, CompressionLevel.Fastest, fullTrace.BufferPool.Write);
 
         writer.WriteBinary(PageReadsEntry, CompressionLevel.Fastest, fullTrace.PageReads.Write);
+
+        if (fullTrace.ServerVersion is { } serverVersion)
+        {
+            writer.WriteBinary(ServerVersionEntry, CompressionLevel.NoCompression, w => w.Write(serverVersion.ToString()));
+        }
     }
 
     public IRunExtra? Read(QueryExportReader reader)
@@ -103,7 +110,10 @@ internal sealed class TraceExportSection : IQueryExportSection
                 : ObjectPoolSnapshot.Empty,
             BufferPool = reader.HasEntry(BufferPoolEntry) && reader.ReadBinary(BufferPoolEntry, TraceBufferPool.IsSupported)
                 ? reader.ReadBinary(BufferPoolEntry, TraceBufferPool.Read)
-                : TraceBufferPool.Empty
+                : TraceBufferPool.Empty,
+            ServerVersion = reader.HasEntry(ServerVersionEntry)
+                ? reader.ReadBinary(ServerVersionEntry, r => Version.Parse(r.ReadString()))
+                : null
         };
 
         builder.Link();

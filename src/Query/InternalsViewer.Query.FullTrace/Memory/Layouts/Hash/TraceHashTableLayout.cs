@@ -10,13 +10,7 @@ public static class TraceHashTableLayout
 
     public const string ValueClass = "CValHash";
 
-    public const int IteratorGroupsOffset = 0x140;
-
-    public const int IteratorGroupCount = 6;
-
     public const int GroupsPerSide = 3;
-
-    public const int CurrentGroupOffset = 0x210;
 
     public const int IteratorOffset = 0x10;
 
@@ -25,14 +19,6 @@ public static class TraceHashTableLayout
     public const int ScanColumnsOffset = 0x20;
 
     public const int ValueAccessorOffset = 0x38;
-
-    public const int ValueRecordOffset = 0x10;
-
-    public const int ValueSlotOffset = 0x2C;
-
-    public const int SwitchPrimaryOffset = 0x10;
-
-    public const int SwitchInputOffset = 0x18;
 
     public const int ActivePartitionOffset = 0xA0;
 
@@ -56,10 +42,6 @@ public static class TraceHashTableLayout
 
     public const int BitmapOffset = 0xC8;
 
-    public const int PartitionMaskOffset = 0x188;
-
-    public const int PartitionShiftOffset = 0x18C;
-
     public const int BucketSize = 0x80;
 
     public const int BucketsPerPage = 64;
@@ -77,21 +59,6 @@ public static class TraceHashTableLayout
     private const int PointerSize = sizeof(ulong);
 
     private const int EntrySize = sizeof(ulong);
-
-    public static IReadOnlyList<MemoryField> IteratorFields { get; } =
-    [
-        new("Build Partition Group", IteratorGroupsOffset, PointerSize),
-        new("Build Worktable Group", IteratorGroupsOffset + PointerSize, PointerSize),
-        new("Build Rebuild Group", IteratorGroupsOffset + 2 * PointerSize, PointerSize),
-        new("Probe Partition Group", IteratorGroupsOffset + 3 * PointerSize, PointerSize),
-        new("Probe Worktable Group", IteratorGroupsOffset + 4 * PointerSize, PointerSize),
-        new("Probe Rebuild Group", IteratorGroupsOffset + 5 * PointerSize, PointerSize),
-        new("Partition Mask", PartitionMaskOffset, sizeof(uint), IsHex: true),
-        new("Partition Shift", PartitionShiftOffset, sizeof(int)),
-        new("Workfile Resource Manager", 0x1B0, PointerSize),
-        new("Workfile Manager", 0x1B8, PointerSize),
-        new("Current Partition Group", CurrentGroupOffset, PointerSize)
-    ];
 
     public static IReadOnlyList<MemoryField> GroupFields { get; } =
     [

@@ -25,9 +25,7 @@ public class PlanOutputRouteTests
 
     private const ulong ProducerIterator = 0x1F4_0000_2400;
 
-    private const ulong Map = 0x1F4_0000_3800;
-
-    private const ulong Entry = 0x1F4_0000_3900;
+    private const ulong QueryContext = 0x1F4_0000_3400;
 
     private const ulong Context = 0x1F4_0000_3000;
 
@@ -68,7 +66,7 @@ public class PlanOutputRouteTests
         [
             Link(PlanOutputLinkType.InputValues, InputValues, Iterator, 0xC8),
             Link(PlanOutputLinkType.InputValue, InputValue, InputValues, 0x00),
-            Link(PlanOutputLinkType.BufferEntry, RowBuffer + 0x20, InputValue, 0x08, EngineLayout.ExecValue.EntryField)
+            Link(PlanOutputLinkType.BufferEntry, RowBuffer + 0x20, InputValue, 0x08, EngineLayout.Latest.ExecValue.EntryField)
         ];
 
         var routes = Create(false, (Operator(0, PlanObject, Iterator), join), (Operator(1, Producer, ProducerIterator), Scan()));
@@ -108,7 +106,7 @@ public class PlanOutputRouteTests
         [
             .. Scan(),
             Link(PlanOutputLinkType.ColumnBindings, Bindings, ProducerIterator, 0x88),
-            Link(PlanOutputLinkType.ColumnBinding, Bindings + 0x50, Bindings, 0x50, EngineLayout.RowBindings.ColumnBindingField)
+            Link(PlanOutputLinkType.ColumnBinding, Bindings + 0x50, Bindings, 0x50, EngineLayout.Latest.RowBindings.ColumnBindingField)
                 with { Slot = 1 }
         ];
 
@@ -142,7 +140,7 @@ public class PlanOutputRouteTests
 
         var routes = Create(true, (Operator(0, PlanObject, Iterator, path), []), (Operator(1, Producer, ProducerIterator), Scan()));
 
-        Assert.Equal("OutputList(OutputArray(Reference#0(Producer(MapEntry(Iterator)))))", Describe(routes[0].FromPlanObject));
+        Assert.Equal("OutputList(OutputArray(Reference#0(Producer(Iterator))))", Describe(routes[0].FromPlanObject));
 
         var reference = routes[0].FromPlanObject[0].Children[0].Children[0];
 
@@ -158,7 +156,7 @@ public class PlanOutputRouteTests
 
         var routes = Create(true, (Operator(0, PlanObject, Iterator, first, second), []));
 
-        Assert.Equal("OutputList(OutputArray(Reference#0(Producer(MapEntry(Iterator))),Reference#1(Producer(MapEntry(Iterator)))))",
+        Assert.Equal("OutputList(OutputArray(Reference#0(Producer(Iterator)),Reference#1(Producer(Iterator))))",
                      Describe(routes[0].FromPlanObject));
 
         Assert.Equal([0, 1], routes[0].FromPlanObject[0].Children[0].Children.Select(n => n.Column));
@@ -170,7 +168,7 @@ public class PlanOutputRouteTests
         PlanOutputLink[] storage =
         [
             Link(PlanOutputLinkType.ExecutionContext, Context, ProducerIterator, 0x18, isRoute: true),
-            Link(PlanOutputLinkType.IteratorMap, Map, Context, 0x290, isRoute: true),
+            Link(PlanOutputLinkType.QueryContext, QueryContext, Context, 0x1B8, isRoute: true),
             .. Scan()
         ];
 
@@ -200,25 +198,24 @@ public class PlanOutputRouteTests
 
     private static PlanOutputLink[] Scan() =>
     [
-        Link(PlanOutputLinkType.RowBuffer, RowBuffer, ProducerIterator, 0x80, EngineLayout.ScanIterator.RowBufferField),
-        Link(PlanOutputLinkType.BufferEntry, RowBuffer, RowBuffer, 0x00, EngineLayout.RowBuffer.EntryField),
-        Link(PlanOutputLinkType.BufferEntry, RowBuffer + 0x20, RowBuffer, 0x20, EngineLayout.RowBuffer.EntryField)
+        Link(PlanOutputLinkType.RowBuffer, RowBuffer, ProducerIterator, 0x80, EngineLayout.Latest.RowsetIterator.RowBufferField),
+        Link(PlanOutputLinkType.BufferEntry, RowBuffer, RowBuffer, 0x00, EngineLayout.Latest.RowBuffer.EntryField),
+        Link(PlanOutputLinkType.BufferEntry, RowBuffer + 0x20, RowBuffer, 0x20, EngineLayout.Latest.RowBuffer.EntryField)
     ];
 
     private static PlanOutputLink[] Column(ulong reference, int offset) =>
     [
-        Link(PlanOutputLinkType.OutputList, Outputs, PlanObject, 0x30, EngineLayout.PlanObject.OutputColumnsField, isRoute: true),
-        Link(PlanOutputLinkType.OutputArray, OutputArray, Outputs, 0x10, EngineLayout.OutputList.ColumnsField, isRoute: true),
-        Link(PlanOutputLinkType.Reference, reference, OutputArray, offset, EngineLayout.OutputList.ColumnField, isRoute: true)
+        Link(PlanOutputLinkType.OutputList, Outputs, PlanObject, 0x30, EngineLayout.Latest.PlanObject.OutputColumnsField, isRoute: true),
+        Link(PlanOutputLinkType.OutputArray, OutputArray, Outputs, 0x10, EngineLayout.Latest.OutputList.ColumnsField, isRoute: true),
+        Link(PlanOutputLinkType.Reference, reference, OutputArray, offset, EngineLayout.Latest.OutputList.ColumnField, isRoute: true)
     ];
 
     private static PlanOutputLink[] Producing(ulong reference = Reference) =>
     [
         Link(PlanOutputLinkType.Producer, Producer, reference, 0x50, isRoute: true),
-        Link(PlanOutputLinkType.MapEntry, Entry, Map, 0x08, isRoute: true),
-        Link(PlanOutputLinkType.Iterator, ProducerIterator, Entry, 0x10, isRoute: true),
+        Link(PlanOutputLinkType.Iterator, ProducerIterator, Producer, 0x00, isRoute: true),
         Link(PlanOutputLinkType.RowBuffer, RowBuffer, ProducerIterator, 0x80),
-        Link(PlanOutputLinkType.BufferEntry, RowBuffer + 0x20, RowBuffer, 0x20, EngineLayout.RowBuffer.EntryField)
+        Link(PlanOutputLinkType.BufferEntry, RowBuffer + 0x20, RowBuffer, 0x20, EngineLayout.Latest.RowBuffer.EntryField)
     ];
 
     private static PlanOutputLink Link(PlanOutputLinkType type,

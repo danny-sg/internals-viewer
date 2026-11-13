@@ -1,5 +1,6 @@
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
+using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Locators;
@@ -61,7 +62,7 @@ public class PlanNodeHookTests
     {
         var replay = PlanObjects().Write(Parent + 0x10, Parent + 0x10).Write(Parent + 0x48, PlanObject);
 
-        var hook = CreateHook(PlanNodeLayout.SqlServer2022);
+        var hook = CreateHook(EngineLayout.Get(new Version(16, 0)));
 
         hook.OnEntry(Call(GetRow, 1, Parent), replay);
 
@@ -73,7 +74,7 @@ public class PlanNodeHookTests
     {
         var replay = PlanObjects().Write(Parent + 0x10, Parent + 0x10).Write(Parent + 0x48, PlanObject);
 
-        var hook = CreateHook(PlanNodeLayout.SqlServer2022);
+        var hook = CreateHook(EngineLayout.Get(new Version(16, 0)));
 
         hook.OnEntry(Call(BatchHelperGetRow, 1, Parent), replay);
 
@@ -227,7 +228,7 @@ public class PlanNodeHookTests
                       .Write(BatchPlanObject, BatchPlanObjectTable)
                       .Write(BatchPlanObject + 0x10, PlanObject);
 
-    private static PlanNodeHook CreateHook(PlanNodeLayout? layout = null)
+    private static PlanNodeHook CreateHook(EngineLayout? layout = null)
         => new(new(new Dictionary<ulong, PlanNodeFunctionType>
                {
                    [GetRow] = PlanNodeFunctionType.Iterator,
@@ -242,7 +243,7 @@ public class PlanNodeHookTests
                    [PlanObjectTable] = PlanObjectClass.Row,
                    [BatchPlanObjectTable] = PlanObjectClass.Batch
                }),
-               layout ?? PlanNodeLayout.SqlServer2025);
+               layout ?? EngineLayout.Latest);
 
     private static TraceHookCall Call(ulong function, ulong id, ulong iterator, ulong returnValue = 0, ulong? at = null)
         => new()

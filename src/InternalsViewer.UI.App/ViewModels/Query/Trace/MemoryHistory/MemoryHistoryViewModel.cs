@@ -622,10 +622,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
         var memory = new MemoryHistoryReader(Store, writes.Count > 0 ? writes[^1].Position : Store.Blocks[block].FromPosition);
 
-        return AccessorBindingLayout.ReadScan(memory, iterator) is { } scan
-               && AccessorBindingLayout.ReadHeader(memory, scan.Bindings) is { } header
-            ? AccessorBindingLayout.ReadColumns(memory, header.Columns, header.ColumnCount)
-            : [];
+        return AccessorBindingLayout.ReadScanColumns(memory, iterator);
     }
 
     private ulong? GetPageIterator(int block)

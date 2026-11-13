@@ -127,6 +127,8 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
 
     private PlayheadLoader<HexImage> Loader { get; }
 
+    private EngineLayout Layout => History.Store.Layout;
+
     private HexImage? Loaded { get; set; }
 
     private Dictionary<string, List<MemoryField>> LinkFields { get; } = [];
@@ -348,10 +350,10 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
 
         if (History.IteratorTargets.TryGetValue(node.Address, out var target))
         {
-            return IteratorLayout.GetFields(className, target.Type, data, History.IteratorTargets);
+            return IteratorLayout.GetFields(History.Store, className, target.Type, data, History.IteratorTargets);
         }
 
-        return [.. fields.Concat(PlanOutputValueLayout.GetFields(className)).DistinctBy(f => f.Offset).OrderBy(f => f.Offset)];
+        return [.. fields.Concat(PlanOutputValueLayout.GetFields(History.Store, className)).DistinctBy(f => f.Offset).OrderBy(f => f.Offset)];
     }
 
     private void BuildTree(ulong? address)
@@ -512,11 +514,11 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
         return node;
     }
 
-    private void AddExpression(DataPathField field, MemoryStructureNode operatorNode)
+    private MemoryStructureNode? AddExpression(DataPathField field, MemoryStructureNode operatorNode)
     {
         if (field.Expression is not { } expression)
         {
-            return;
+            return null;
         }
 
         var node = CreateExpression(expression, field.Definition, operatorNode);
@@ -527,6 +529,8 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
         {
             ValueNodes.Add((field, node));
         }
+
+        return node;
     }
 
     private PlanOutputRouteNode GetDisplayRoot(PlanOutputRouteNode held)
@@ -584,9 +588,9 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
 
         var isBinding = array.Link.Type == PlanOutputLinkType.ColumnBindings;
 
-        var fields = isBinding ? BindingFields : EngineLayout.RowBuffer.EntryFields;
+        var fields = isBinding ? BindingFields : Layout.RowBuffer.EntryFields;
 
-        var size = isBinding ? AccessorBindingLayout.ColumnSize : EngineLayout.RowBuffer.EntryField.Length;
+        var size = isBinding ? AccessorBindingLayout.ColumnSize : Layout.RowBuffer.EntryField.Length;
 
         var entryType = isBinding ? PlanOutputLinkType.ColumnBinding : PlanOutputLinkType.BufferEntry;
 
@@ -642,7 +646,7 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
         var selected = SelectedItem is { } item ? entries.FindIndex(e => e.Link.Address == item) : -1;
 
         var valueIndex = fields.Select((f, i) => (Field: f, Index: i))
-                               .FirstOrDefault(f => f.Field == EngineLayout.RowBuffer.ValueField)
+                               .FirstOrDefault(f => f.Field == Layout.RowBuffer.ValueField)
                                .Index;
 
         var dataColour = Lighten(colours[valueIndex]);
@@ -729,11 +733,11 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
         Outlines = outlines;
     }
 
-    private static (int Offset, int Length)? GetDataSpan(byte[] data, int entry, ulong start)
+    private (int Offset, int Length)? GetDataSpan(byte[] data, int entry, ulong start)
     {
-        if (ReadValue(data, entry + EngineLayout.RowBuffer.StatusField.Offset, sizeof(byte)) is not 0
-            || ReadValue(data, entry + EngineLayout.RowBuffer.LengthField.Offset, sizeof(ulong)) is not (> 0 and var length)
-            || ReadValue(data, entry + EngineLayout.RowBuffer.ValueField.Offset, sizeof(ulong)) is not { } pointer
+        if (ReadValue(data, entry + Layout.RowBuffer.StatusField.Offset, sizeof(byte)) is not 0
+            || ReadValue(data, entry + Layout.RowBuffer.LengthField.Offset, sizeof(ulong)) is not (> 0 and var length)
+            || ReadValue(data, entry + Layout.RowBuffer.ValueField.Offset, sizeof(ulong)) is not { } pointer
             || pointer < start
             || pointer >= start + (ulong)data.Length)
         {
@@ -848,7 +852,9 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
             return;
         }
 
-        var holder = link is { Readers: { Count: > 0 } readers } && FindOperatorNode(parent) is { } consumer
+        var consumer = parent.Type == MemoryStructureNodeType.Expression ? parent : FindOperatorNode(parent);
+
+        var holder = link is { Readers: { Count: > 0 } readers } && consumer is not null
             ? GetReaderNode(readers, consumer)
             : parent;
 
@@ -883,11 +889,13 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
             operatorNode.Children.Add(CreateObject(compiled, operatorNode, names));
         }
 
-        AddExpression(field, operatorNode);
+        var inputParent = AddExpression(field, operatorNode) is { } expressionNode && field.Kind == DataPathFieldKind.Computed
+            ? expressionNode
+            : operatorNode;
 
         foreach (var input in field.Inputs)
         {
-            AddField(input.Source, input, operatorNode, depth + 1);
+            AddField(input.Source, input, inputParent, depth + 1);
         }
     }
 
@@ -968,14 +976,14 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
             ? new MemoryStructureBadge(reference, found) { TextColour = Colors.White }
             : new MemoryStructureBadge(reference, ReferenceColour);
 
-    private static string? GetSide(MemoryField field)
+    private string? GetSide(MemoryField field)
     {
-        if (field == EngineLayout.HashIterator.BuildInputValuesField)
+        if (field == Layout.HashIterator.BuildInputValuesField)
         {
             return InputLabel.Build;
         }
 
-        return field == EngineLayout.HashIterator.ProbeInputValuesField ? InputLabel.Probe : null;
+        return field == Layout.HashIterator.ProbeInputValuesField ? InputLabel.Probe : null;
     }
 
     private int GetColumnIndex(int nodeId, ulong reference)
@@ -1091,10 +1099,10 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
     private static bool IsEntryOf(PlanOutputLink link)
         => link.Type == PlanOutputLinkType.BufferEntry && link.Address == link.Source + (ulong)link.SourceOffset;
 
-    private static IEnumerable<MemoryField> GetEntryFields(string prefix, int offset)
-        => EngineLayout.RowBuffer.EntryFields.Select(f => f with { Name = $"{prefix}{f.Name}", Offset = offset + f.Offset });
+    private IEnumerable<MemoryField> GetEntryFields(string prefix, int offset)
+        => Layout.RowBuffer.EntryFields.Select(f => f with { Name = $"{prefix}{f.Name}", Offset = offset + f.Offset });
 
-    private static IEnumerable<MemoryField> GetOwnFields(PlanOutputLink link)
+    private IEnumerable<MemoryField> GetOwnFields(PlanOutputLink link)
     {
         if (link.Type == PlanOutputLinkType.BufferEntry)
         {

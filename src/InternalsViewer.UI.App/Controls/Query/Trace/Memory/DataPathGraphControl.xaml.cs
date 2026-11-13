@@ -47,6 +47,8 @@ public sealed partial class DataPathGraphControl : UserControl
 
     private const double ExpressionPadding = 2;
 
+    private const double ExpressionArrowGap = 3;
+
     private const double ExpressionRowHeight = 16;
 
     private const int CalculatorScale = 2;
@@ -95,6 +97,22 @@ public sealed partial class DataPathGraphControl : UserControl
     private List<(Func<string> Read, Func<bool> IsInScope, TextBlock Value, Border Box)> Cells { get; } = [];
 
     private static Point Snap(double x, double y) => new(Math.Floor(x) + 0.5, Math.Floor(y) + 0.5);
+
+    private static bool IsNested(DataPathStage stage) => stage is { IsComputed: true, Field.Definition: not null };
+
+    private static (double Right, double Middle) GetTarget(DataPathStage consumer)
+    {
+        if (!IsNested(consumer))
+        {
+            return (consumer.X + DataPathGraph.BoxWidth, GetMiddle(consumer.Y));
+        }
+
+        var nestedTop = consumer.Y + DataPathGraph.HeaderHeight + DataPathGraph.LineHeight;
+
+        var nestedHeight = DataPathGraph.LineHeight + DataPathGraph.ValueHeight;
+
+        return (consumer.X + DataPathGraph.BoxWidth - ExpressionInset - ExpressionArrowGap, nestedTop + nestedHeight / 2);
+    }
 
     private static double GetMiddle(double y) => y + DataPathGraph.BoxHeight / 2;
 
@@ -253,15 +271,9 @@ public sealed partial class DataPathGraphControl : UserControl
 
         foreach (var stage in graph.Stages)
         {
-            if (stage.Consumer is { } consumer)
+            if (stage.Consumer is { } consumer && !IsNested(consumer))
             {
-                AddArrow(graph,
-                         stage.X,
-                         GetMiddle(stage.Y),
-                         consumer.X + DataPathGraph.BoxWidth,
-                         GetMiddle(consumer.Y),
-                         stage.IsBuild,
-                         !stage.IsSeen);
+                AddStageArrow(graph, stage, consumer);
             }
         }
 
@@ -291,7 +303,7 @@ public sealed partial class DataPathGraphControl : UserControl
 
             var expression = stage.Field.Definition is { } definition ? DataPathText.GetExpression(definition) : null;
 
-            var nested = stage.IsComputed ? expression : null;
+            var nested = IsNested(stage) ? expression : null;
 
             List<FrameworkElement> lines = nested is not null ? [source]
                 : expression is not null ? [source, CreateExpression(expression)]
@@ -330,7 +342,22 @@ public sealed partial class DataPathGraphControl : UserControl
                                            false));
         }
 
+        foreach (var stage in graph.Stages)
+        {
+            if (stage.Consumer is { } consumer && IsNested(consumer))
+            {
+                AddStageArrow(graph, stage, consumer);
+            }
+        }
+
         UpdateCells();
+    }
+
+    private void AddStageArrow(DataPathGraph graph, DataPathStage stage, DataPathStage consumer)
+    {
+        var (right, middle) = GetTarget(consumer);
+
+        AddArrow(graph, stage.X, GetMiddle(stage.Y), right, middle, stage.IsBuild, !stage.IsSeen);
     }
 
     private static TextBlock CreateDetail(string detail)
@@ -384,7 +411,7 @@ public sealed partial class DataPathGraphControl : UserControl
 
         return new Border
         {
-            Margin = new Thickness(ExpressionInset, ExpressionGap, ExpressionInset, ExpressionGap),
+            Margin = new Thickness(ExpressionInset, ExpressionGap, ExpressionInset + ExpressionArrowGap, ExpressionGap),
             Padding = new Thickness(ExpressionPadding),
             BorderThickness = new Thickness(1),
             BorderBrush = AppResources.Get<Brush>(HeaderBackgroundKey),

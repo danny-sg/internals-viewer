@@ -4,6 +4,7 @@ using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Locators.Enums;
+using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.Interfaces;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output.Enums;
@@ -28,7 +29,7 @@ public static class PlanOutputValueReader
 
     private const ushort ComplexColumnFlag = 0x8000;
 
-    public static string? Read(IMemoryReader memory, PlanOutputStage stage)
+    public static string? Read(ITraceMemoryReader memory, PlanOutputStage stage)
     {
         if (stage.ColumnType is not { } type
             || !SqlTypeHelpers.TryGetSqlType(type.TypeId, out var sqlType)
@@ -81,8 +82,10 @@ public static class PlanOutputValueReader
             ? new PlanOutputRecord(location, source.Offset ?? 0, source.ColumnId)
             : null;
 
-    private static string? ReadEntry(IMemoryReader memory, SqlTypeInfo type, SqlDbType sqlType, ulong entry)
+    private static string? ReadEntry(ITraceMemoryReader memory, SqlTypeInfo type, SqlDbType sqlType, ulong entry)
     {
+        var buffer = memory.Layout.RowBuffer;
+
         if (!memory.TryRead(entry, out byte status))
         {
             return null;
@@ -95,11 +98,11 @@ public static class PlanOutputValueReader
 
         if (IsFixed(type) && type.MaxLength <= InlineSize)
         {
-            return Decode(memory, entry + (ulong)EngineLayout.RowBuffer.ValueField.Offset, type.MaxLength, type, sqlType);
+            return Decode(memory, entry + (ulong)buffer.ValueField.Offset, type.MaxLength, type, sqlType);
         }
 
-        if (!memory.TryRead(entry + (ulong)EngineLayout.RowBuffer.ValueField.Offset, out ulong data)
-            || !memory.TryRead(entry + (ulong)EngineLayout.RowBuffer.LengthField.Offset, out ulong length))
+        if (!memory.TryRead(entry + (ulong)buffer.ValueField.Offset, out ulong data)
+            || !memory.TryRead(entry + (ulong)buffer.LengthField.Offset, out ulong length))
         {
             return null;
         }
@@ -162,8 +165,8 @@ public static class PlanOutputValueReader
         return memory.Read(address, data) == length ? DataConverter.BinaryToString(data, sqlType, type.Precision, type.Scale) : null;
     }
 
-    private static bool IsWritten(IMemoryReader memory, ulong entry)
-        => memory.TryRead(entry + (ulong)EngineLayout.RowBuffer.TypeField.Offset, out byte typeId) && typeId != 0;
+    private static bool IsWritten(ITraceMemoryReader memory, ulong entry)
+        => memory.TryRead(entry + (ulong)memory.Layout.RowBuffer.TypeField.Offset, out byte typeId) && typeId != 0;
 
     private static bool IsFixed(SqlTypeInfo type) => type.TypeId is not (34 or 35 or 98 or 99 or 165 or 167 or 173 or 175
                                                                          or 231 or 239 or 240 or 241 or 244);

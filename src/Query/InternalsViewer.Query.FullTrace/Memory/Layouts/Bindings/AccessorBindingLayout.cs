@@ -18,10 +18,6 @@ public static class AccessorBindingLayout
 
     public const int LengthSize = sizeof(ulong);
 
-    public const ulong ScanRowBufferOffset = 0x80;
-
-    public const ulong ScanBindingsOffset = 0x88;
-
     public const ulong ColumnsOffset = 0x70;
 
     private const ulong ColumnCountOffset = 0x62;
@@ -93,19 +89,26 @@ public static class AccessorBindingLayout
         return columns;
     }
 
-    public static ScanBindingReference? ReadScan(IMemoryReader memory, ulong iterator)
+    public static ScanBindingReference? ReadScan(ITraceMemoryReader memory, ulong iterator)
     {
-        if (!memory.TryRead(iterator + ScanBindingsOffset, out ulong bindings)
+        var rowsetIterator = memory.Layout.RowsetIterator;
+
+        if (!memory.TryRead(iterator + (ulong)rowsetIterator.RowBindingsField.Offset, out ulong bindings)
             || bindings == 0
             || ReadHeader(memory, bindings) is not { } header)
         {
             return null;
         }
 
-        memory.TryRead(iterator + ScanRowBufferOffset, out ulong rowBuffer);
+        memory.TryRead(iterator + (ulong)rowsetIterator.RowBufferField.Offset, out ulong rowBuffer);
 
         return new ScanBindingReference(iterator, bindings, header.Columns, rowBuffer);
     }
+
+    public static List<ColumnBinding> ReadScanColumns(ITraceMemoryReader memory, ulong iterator)
+        => ReadScan(memory, iterator) is { } scan && ReadHeader(memory, scan.Bindings) is { } header
+            ? ReadColumns(memory, header.Columns, header.ColumnCount)
+            : [];
 
     private static ColumnBinding? ReadColumn(IMemoryReader memory, ulong address, int index)
     {

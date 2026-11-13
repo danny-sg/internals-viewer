@@ -1,10 +1,14 @@
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Hooks;
+using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.Query.FullTrace.Memory;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 
-internal sealed class FakeTraceReplay : ITraceReplay
+internal sealed class FakeTraceReplay : ITraceReplay, ITraceMemoryReader
 {
+    public EngineLayout Layout { get; init; } = EngineLayout.Latest;
+
     public List<(uint Thread, ulong Frame)> WatchedFrames { get; } = [];
 
     public TraceHookFrame[] Frames { get; set; } = [];

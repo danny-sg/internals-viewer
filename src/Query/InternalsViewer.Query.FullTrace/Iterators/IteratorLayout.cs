@@ -1,10 +1,10 @@
 using System.Buffers.Binary;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Iterators.Enums;
+using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.Layouts;
-using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Sorts;
-using InternalsViewer.Query.Interfaces;
 
 namespace InternalsViewer.Query.FullTrace.Iterators;
 
@@ -14,6 +14,12 @@ public static class IteratorLayout
 
     private const int MaximumInputs = 64;
 
+    private const string IteratorClass = "CQScanNew";
+
+    private const string RowsetClass = "CQScanRowsetNew";
+
+    private const string RowsetDynamicClass = "CQScanRowsetDynaNew";
+
     private const string TableScanClass = "CQScanTableScanNew";
 
     private const string RangeClass = "CQScanRangeNew";
@@ -22,67 +28,42 @@ public static class IteratorLayout
 
     private const string HashClass = "CQScanHash";
 
+    private const string FilterClass = "CQScanFilterNew";
+
+    private const string StreamAggregateClass = "CQScanStreamAggregateNew";
+
     private const string PlanTopClass = "CXteTop";
 
     private const string PlanTableScanClass = "CXteTableScan";
 
     private const string PlanRangeClass = "CXteRange";
 
-    private static readonly List<MemoryField> IteratorFields =
-    [
-        EngineLayout.Iterator.InputsField,
-        EngineLayout.Iterator.ExecutionContextField
-    ];
+    private static readonly Dictionary<string, string> BaseClasses = new()
+    {
+        [RowsetClass] = IteratorClass,
+        [RowsetDynamicClass] = RowsetClass,
+        [TableScanClass] = RowsetDynamicClass,
+        [RangeClass] = RowsetClass,
+        [TraceSortTableReader.IteratorClass] = RowsetClass,
+        [TopClass] = IteratorClass,
+        [HashClass] = IteratorClass,
+        [FilterClass] = IteratorClass,
+        [StreamAggregateClass] = IteratorClass
+    };
 
-    private static readonly List<MemoryField> RowsetFields =
-    [
-        EngineLayout.ScanIterator.RowsetField,
-        EngineLayout.ScanIterator.PrefetchManagerField,
-        EngineLayout.ScanIterator.RowBufferField,
-        EngineLayout.ScanIterator.RowBindingsField,
-        EngineLayout.ScanIterator.ClientRowField
-    ];
-
-    private static readonly List<MemoryField> TopFields = [EngineLayout.TopIterator.TopCountField];
-
-    private static readonly List<MemoryField> PlanObjectFields =
-    [
-        EngineLayout.PlanObject.NodeIdField,
-        EngineLayout.PlanObject.InputsField,
-        EngineLayout.PlanObject.QueryField,
-        EngineLayout.PlanObject.OutputColumnsField
-    ];
-
-    private static readonly List<MemoryField> PlanTopFields = [EngineLayout.PlanObject.TopCountField];
-
-    private static readonly List<MemoryField> PlanRowsetFields = [EngineLayout.PlanObject.RowsetIdField];
-
-    private static readonly List<MemoryField> HashValueFields =
-    [
-        EngineLayout.HashIterator.BuildOutputValuesField,
-        EngineLayout.HashIterator.ProbeOutputValuesField,
-        EngineLayout.HashIterator.BuildInputValuesField,
-        EngineLayout.HashIterator.ProbeInputValuesField
-    ];
-
-    private static readonly List<MemoryField> HashFields = [.. HashValueFields, .. TraceHashTableLayout.IteratorFields];
-
-    public static IReadOnlyList<MemoryField> ValueArrayFields => HashValueFields;
-
-    public static bool HasRowBindings(string? className) => className is TableScanClass or RangeClass;
-
-    public static bool HasRowBuffer(string? className) => HasRowBindings(className) || className == TraceSortTableReader.IteratorClass;
+    public static bool IsRowset(string? className) => IsA(className, RowsetClass);
 
     public static bool IsHash(string? className) => className == HashClass;
 
-    public static List<MemoryField> GetFields(string? className,
+    public static List<MemoryField> GetFields(MemoryHistoryStore store,
+                                              string? className,
                                               IteratorTargetType type,
                                               ReadOnlySpan<byte> data,
                                               IReadOnlyDictionary<ulong, IteratorTarget> targets)
     {
         var fields = new Dictionary<int, MemoryField>();
 
-        foreach (var field in GetClassFields(className, type))
+        foreach (var field in GetClassFields(store.Layout, className, type))
         {
             fields[field.Offset] = field;
         }
@@ -102,9 +83,14 @@ public static class IteratorLayout
         return [.. fields.Values.Where(f => f.Offset + f.Length <= length).OrderBy(f => f.Offset)];
     }
 
-    public static List<ulong> GetInputs(IMemoryReader memory, ulong inputs, IReadOnlyDictionary<ulong, IteratorTarget> targets)
+    public static List<ulong> GetInputs(ITraceMemoryReader memory, ulong iterator, IReadOnlyDictionary<ulong, IteratorTarget> targets)
     {
         var found = new List<ulong>();
+
+        if (!memory.TryRead(iterator + (ulong)memory.Layout.Iterator.InputsField.Offset, out ulong inputs) || inputs == 0)
+        {
+            return found;
+        }
 
         for (var index = 0; index < MaximumInputs; index++)
         {
@@ -119,30 +105,43 @@ public static class IteratorLayout
         return found;
     }
 
-    private static List<MemoryField> GetClassFields(string? className, IteratorTargetType type)
+    private static List<MemoryField> GetClassFields(EngineLayout layout, string? className, IteratorTargetType type)
     {
         if (type == IteratorTargetType.PlanObject)
         {
             List<MemoryField> planFields = className switch
             {
-                PlanTopClass => PlanTopFields,
-                PlanTableScanClass or PlanRangeClass => PlanRowsetFields,
+                PlanTopClass => [layout.PlanObject.TopCountField],
+                PlanTableScanClass or PlanRangeClass => [layout.PlanObject.RowsetIdField],
                 _ => []
             };
 
-            return [.. PlanObjectFields, .. planFields];
+            return [.. layout.PlanObject.Fields, .. planFields];
         }
 
-        List<MemoryField> fields = type == IteratorTargetType.ProfilingIterator
+        IReadOnlyList<MemoryField> fields = type == IteratorTargetType.ProfilingIterator
             ? []
             : className switch
             {
-                TableScanClass or RangeClass => RowsetFields,
-                TopClass => TopFields,
-                HashClass => HashFields,
+                TopClass => [layout.TopIterator.TopCountField],
+                HashClass => [.. layout.HashIterator.ValueArrayFields, .. layout.HashIterator.TableFields],
+                _ when IsRowset(className) => layout.RowsetIterator.Fields,
                 _ => []
             };
 
-        return [.. IteratorFields, .. fields];
+        return [layout.Iterator.InputsField, layout.Iterator.ExecutionContextField, .. fields];
+    }
+
+    private static bool IsA(string? className, string baseClass)
+    {
+        for (var current = className; current is not null; current = BaseClasses.GetValueOrDefault(current))
+        {
+            if (current == baseClass)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

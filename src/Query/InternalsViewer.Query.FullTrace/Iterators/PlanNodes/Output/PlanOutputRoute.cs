@@ -10,7 +10,6 @@ public sealed class PlanOutputRoute
     [
         PlanOutputLinkType.ExecutionContext,
         PlanOutputLinkType.QueryContext,
-        PlanOutputLinkType.IteratorMap,
         PlanOutputLinkType.QueryScan,
         PlanOutputLinkType.QueryScanContext,
         PlanOutputLinkType.Statement
@@ -22,7 +21,6 @@ public sealed class PlanOutputRoute
         PlanOutputLinkType.OutputArray,
         PlanOutputLinkType.Reference,
         PlanOutputLinkType.Producer,
-        PlanOutputLinkType.MapEntry,
         PlanOutputLinkType.Iterator
     ];
 

@@ -22,7 +22,7 @@ public static class TraceSortTableReader
 
     private const int PageSize = 8192;
 
-    private static int EntriesPerPage => PageSize / EngineLayout.SortEntry.Size;
+    private static int EntriesPerPage => PageSize / EngineLayout.SortEntryLayout.Size;
 
     public static ulong? GetIterator(MemoryHistoryStore store, AddressMap addressMap, IEnumerable<TraceOperatorLifetime> lifetimes)
     {
@@ -95,18 +95,20 @@ public static class TraceSortTableReader
     {
         var memory = new MemoryHistoryReader(store, position);
 
-        if (!TryRead(memory, iterator, EngineLayout.SortIterator.RowsetField, out ulong rowset) || rowset < TraceAddress.MinimumAddress)
+        var layout = store.Layout;
+
+        if (!TryRead(memory, iterator, layout.RowsetIterator.RowsetField, out ulong rowset) || rowset < TraceAddress.MinimumAddress)
         {
             return null;
         }
 
-        TryRead(memory, rowset, EngineLayout.SortRowset.DescriptorField, out ulong descriptor);
+        TryRead(memory, rowset, layout.SortRowset.DescriptorField, out ulong descriptor);
 
         var cursor = 0UL;
 
         if (descriptor >= TraceAddress.MinimumAddress)
         {
-            TryRead(memory, descriptor, EngineLayout.SortDescriptor.CursorField, out cursor);
+            TryRead(memory, descriptor, layout.SortDescriptor.CursorField, out cursor);
         }
 
         var live = pages.Where(p => p.Block >= 0 && store.IsLive(p.Block, position))
@@ -141,28 +143,30 @@ public static class TraceSortTableReader
         _ => null
     };
 
-    private static List<TraceSortEntry> ReadEntries(IMemoryReader memory, List<ulong> pages)
+    private static List<TraceSortEntry> ReadEntries(ITraceMemoryReader memory, List<ulong> pages)
     {
         var entries = new List<TraceSortEntry>();
+
+        var layout = memory.Layout.SortEntry;
 
         foreach (var page in pages)
         {
             for (var index = 0; index < EntriesPerPage; index++)
             {
-                var address = page + (ulong)(index * EngineLayout.SortEntry.Size);
+                var address = page + (ulong)(index * EngineLayout.SortEntryLayout.Size);
 
-                if (!TryRead(memory, address, EngineLayout.SortEntry.RecordField, out ulong record) || record == 0)
+                if (!TryRead(memory, address, layout.RecordField, out ulong record) || record == 0)
                 {
                     break;
                 }
 
-                TryRead(memory, address, EngineLayout.SortEntry.KeyField, out ulong key);
+                TryRead(memory, address, layout.KeyField, out ulong key);
 
-                TryRead(memory, address, EngineLayout.SortEntry.RecordLengthField, out ushort recordLength);
+                TryRead(memory, address, layout.RecordLengthField, out ushort recordLength);
 
-                TryRead(memory, address, EngineLayout.SortEntry.KeyLengthField, out ushort keyLength);
+                TryRead(memory, address, layout.KeyLengthField, out ushort keyLength);
 
-                TryRead(memory, address, EngineLayout.SortEntry.NextField, out ulong next);
+                TryRead(memory, address, layout.NextField, out ulong next);
 
                 entries.Add(new TraceSortEntry(entries.Count, address, record, key, recordLength, keyLength, next));
             }
@@ -171,7 +175,7 @@ public static class TraceSortTableReader
         return entries;
     }
 
-    private static List<TraceSortRun> ReadRuns(IMemoryReader memory, ulong descriptor, List<TraceSortEntry> entries)
+    private static List<TraceSortRun> ReadRuns(ITraceMemoryReader memory, ulong descriptor, List<TraceSortEntry> entries)
     {
         var runs = new List<TraceSortRun>();
 
@@ -182,7 +186,7 @@ public static class TraceSortTableReader
 
         var addresses = entries.Select(e => e.Address).ToHashSet();
 
-        foreach (var field in EngineLayout.SortDescriptor.RunHeadFields)
+        foreach (var field in memory.Layout.SortDescriptor.RunHeadFields)
         {
             if (TryRead(memory, descriptor, field, out ulong head) && addresses.Contains(head))
             {

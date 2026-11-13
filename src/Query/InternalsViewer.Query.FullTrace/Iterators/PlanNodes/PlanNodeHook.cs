@@ -2,13 +2,14 @@ using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.Extensions;
 
 namespace InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 
 internal sealed class PlanNodeHook(AddressTable<PlanNodeFunctionType> functions,
                                    AddressTable<PlanObjectClass> planObjects,
-                                   PlanNodeLayout layout) : ITraceHook
+                                   EngineLayout layout) : ITraceHook
 {
     private const int IteratorArgument = 0;
 
@@ -57,15 +58,15 @@ internal sealed class PlanNodeHook(AddressTable<PlanNodeFunctionType> functions,
 
             case PlanNodeFunctionType.BatchHelper:
                 BatchHelpers.Add(iterator);
-                AddPlanNode(replay, iterator, layout.RowIteratorPlanObjectOffset);
+                AddPlanNode(replay, iterator, layout.Iterator.PlanObjectField);
                 return;
 
             case PlanNodeFunctionType.Iterator:
-                AddPlanNode(replay, iterator, layout.RowIteratorPlanObjectOffset);
+                AddPlanNode(replay, iterator, layout.Iterator.PlanObjectField);
                 return;
 
             case PlanNodeFunctionType.BatchIterator:
-                AddPlanNode(replay, iterator, layout.BatchIteratorPlanObjectOffset);
+                AddPlanNode(replay, iterator, layout.BatchIterator.PlanObjectField);
                 return;
         }
     }
@@ -90,11 +91,11 @@ internal sealed class PlanNodeHook(AddressTable<PlanNodeFunctionType> functions,
 
     private static bool HasReturn(PlanNodeFunctionType type) => type is PlanNodeFunctionType.BatchFactory;
 
-    private void AddPlanNode(ITraceReplay replay, ulong iterator, ulong planObjectOffset)
+    private void AddPlanNode(ITraceReplay replay, ulong iterator, MemoryField planObjectField)
     {
         if (PlanNodes.ContainsKey(iterator)
             || PendingPlanNodes.ContainsKey(iterator)
-            || !replay.TryRead(iterator + planObjectOffset, out ulong planObject))
+            || !replay.TryRead(iterator + (ulong)planObjectField.Offset, out ulong planObject))
         {
             return;
         }
@@ -151,15 +152,15 @@ internal sealed class PlanNodeHook(AddressTable<PlanNodeFunctionType> functions,
         {
             batchPlanObject = planObject;
 
-            if (!replay.TryRead(batchPlanObject + layout.BatchPlanObjectOffset, out planObject))
+            if (!replay.TryRead(batchPlanObject + (ulong)layout.BatchPlanObject.PlanObjectField.Offset, out planObject))
             {
                 return null;
             }
         }
 
         if (GetPlanObjectClass(replay, planObject) != PlanObjectClass.Row
-            || !replay.TryRead(planObject + layout.PlanNodeIdOffset, out int nodeId)
-            || !replay.TryRead(planObject + layout.PlanQueryOffset, out ulong query)
+            || !replay.TryRead(planObject + (ulong)layout.PlanObject.NodeIdField.Offset, out int nodeId)
+            || !replay.TryRead(planObject + (ulong)layout.PlanObject.QueryField.Offset, out ulong query)
             || nodeId < 0
             || query < TraceAddress.MinimumAddress)
         {

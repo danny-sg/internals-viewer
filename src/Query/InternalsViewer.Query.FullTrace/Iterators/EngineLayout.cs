@@ -1,470 +1,637 @@
+using InternalsViewer.Query.Extensions;
+using InternalsViewer.Query.FullTrace.Iterators.Layouts;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
+using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings;
-using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
+using FieldTable = System.Collections.Generic.IReadOnlyDictionary<(string Type, string Name),
+    InternalsViewer.Query.FullTrace.Memory.Layouts.MemoryField>;
 
 namespace InternalsViewer.Query.FullTrace.Iterators;
 
-public static class EngineLayout
+public sealed class EngineLayout(string name, Version minimumVersion, Version maximumVersion, FieldTable fields)
 {
-    private const string AnyIterator = "CQScan*";
+    public static EngineLayout Latest => All[^1];
 
-    private static PlanNodeLayout PlanNode => PlanNodeLayout.SqlServer2025;
+    public string Name { get; } = name;
 
-    private static MemoryField Pointer(string name, int offset, params string[] writers)
-        => new(name, offset, sizeof(ulong)) { Writers = writers };
+    public Version MinimumVersion { get; } = minimumVersion;
 
-    private static MemoryField Number(string name, int offset, int length, params string[] writers)
-        => new(name, offset, length) { Writers = writers, IsNumber = true };
+    public Version MaximumVersion { get; } = maximumVersion;
 
-    private static MemoryField Bits(string name, int offset, params string[] writers)
-        => new(name, offset, sizeof(ulong), true) { Writers = writers, IsNumber = true };
+    public BaseIteratorLayout Iterator { get; } = new(fields);
 
-    public static class Iterator
+    public BatchIteratorLayout BatchIterator { get; } = new(fields);
+
+    public BatchPlanObjectLayout BatchPlanObject { get; } = new(fields);
+
+    public RowsetIteratorLayout RowsetIterator { get; } = new(fields);
+
+    public TopIteratorLayout TopIterator { get; } = new(fields);
+
+    public StreamAggregateIteratorLayout StreamAggregateIterator { get; } = new(fields);
+
+    public HashIteratorLayout HashIterator { get; } = new(fields);
+
+    public BatchAdapterLayout BatchAdapter { get; } = new(fields);
+
+    public PlanObjectLayout PlanObject { get; } = new(fields);
+
+    public OutputListLayout OutputList { get; } = new(fields);
+
+    public RowBindingsLayout RowBindings { get; } = new();
+
+    public ColumnReferenceLayout ColumnReference { get; } = new(fields);
+
+    public ExpressionLayout Expression { get; } = new(fields);
+
+    public ExecutionContextLayout ExecutionContext { get; } = new(fields);
+
+    public QueryContextLayout QueryContext { get; } = new(fields);
+
+    public QueryScanLayout QueryScan { get; } = new(fields);
+
+    public QueryScanContextLayout QueryScanContext { get; } = new(fields);
+
+    public StatementLayout Statement { get; } = new(fields);
+
+    public RowContextLayout RowContext { get; } = new(fields);
+
+    public HashValueLayout HashValue { get; } = new(fields);
+
+    public StorageValueLayout StorageValue { get; } = new(fields);
+
+    public SwitchValueLayout SwitchValue { get; } = new(fields);
+
+    public CachedSwitchLayout CachedSwitch { get; } = new(fields);
+
+    public ExpressionValueLayout ExpressionValue { get; } = new(fields);
+
+    public ExecutorLayout Executor { get; } = new(fields);
+
+    public ExecValueLayout ExecValue { get; } = new(fields);
+
+    public RowsetLayout Rowset { get; } = new(fields);
+
+    public RowLayout Row { get; } = new(fields);
+
+    public RowBufferLayout RowBuffer { get; } = new(fields);
+
+    public SortIteratorLayout SortIterator { get; } = new(fields);
+
+    public SortRowsetLayout SortRowset { get; } = new(fields);
+
+    public SortDescriptorLayout SortDescriptor { get; } = new(fields);
+
+    public SortEntryLayout SortEntry { get; } = new(fields);
+
+    internal static IReadOnlyList<EngineLayout> All { get; } = EngineLayoutReader.ReadAll();
+
+    public static EngineLayout Get(Version? version)
     {
-        public static MemoryField InputsField { get; } = Pointer("Inputs", 0x08, AnyIterator);
+        if (version is null)
+        {
+            return Latest;
+        }
 
-        public static MemoryField PlanObjectField { get; } = Pointer("Plan Object", (int)PlanNode.RowIteratorPlanObjectOffset);
+        var normalised = new Version(version.Major, version.Minor, Math.Max(version.Build, 0), Math.Max(version.Revision, 0));
 
-        public static MemoryField ExecutionContextField { get; } =
-            Pointer("Execution Context", 0x18, "::PqsWrapQScan", "CXte*", AnyIterator);
+        return All.FirstOrDefault(l => l.MinimumVersion <= normalised && normalised <= l.MaximumVersion)
+               ?? All.LastOrDefault(l => l.MinimumVersion <= normalised)
+               ?? All[0];
     }
 
-    public static class ScanIterator
+    internal static EngineLayout Find(MemoryHistoryStore store, IReadOnlyList<IteratorPlanNode> planNodes)
     {
-        public static MemoryField RowsetField { get; } = Pointer("Rowset", 0x48, "OpenRowsetSS::OpenRowset");
+        var planObjects = new Dictionary<ulong, ulong>();
 
-        public static MemoryField PrefetchManagerField { get; } = Pointer("Prefetch Manager", 0x70);
+        foreach (var planNode in planNodes)
+        {
+            if (!planNode.IsBatchHelper && planNode.BatchPlanObject == 0)
+            {
+                planObjects.TryAdd(planNode.Iterator, planNode.PlanObject);
+            }
+        }
 
-        public static MemoryField RowBufferField { get; } = Pointer("Row Buffer",
-                                                              (int)AccessorBindingLayout.ScanRowBufferOffset,
-                                                              "CPrefetchMgr::CreateBuffer",
-                                                              "CQScanRowsetNew::CQScanRowsetNew");
+        var counts = new int[All.Count];
 
-        public static MemoryField RowBindingsField { get; } = Pointer("Row Bindings", (int)AccessorBindingLayout.ScanBindingsOffset);
+        for (var block = 0; block < store.Blocks.Count; block++)
+        {
+            var address = store.Blocks[block].Address;
 
-        public static MemoryField ClientRowField { get; } = Pointer("Client Row", 0x168);
+            if (!planObjects.TryGetValue(address, out var planObject) || store.GetWrites(block) is not { Count: > 0 } writes)
+            {
+                continue;
+            }
+
+            var memory = new MemoryHistoryReader(store, writes[^1].Position);
+
+            for (var index = 0; index < All.Count; index++)
+            {
+                if (memory.TryRead(address + (ulong)All[index].Iterator.PlanObjectField.Offset, out ulong value) && value == planObject)
+                {
+                    counts[index]++;
+                }
+            }
+        }
+
+        var best = All.Count - 1;
+
+        for (var index = All.Count - 1; index >= 0; index--)
+        {
+            if (counts[index] > counts[best])
+            {
+                best = index;
+            }
+        }
+
+        return All[best];
     }
 
-    public static class TopIterator
+    private static MemoryField GetField(FieldTable fields, string type, string name)
+        => fields.TryGetValue((type, name), out var field)
+            ? field
+            : throw new InvalidDataException($"The engine layout has no {type} {name} field");
+
+    public sealed class BaseIteratorLayout(FieldTable fields)
     {
-        public static MemoryField TopCountField { get; } = Pointer("Top Count Expression", 0x90);
+        private const string Type = "Iterator";
+
+        public MemoryField InputsField { get; } = GetField(fields, Type, "Inputs");
+
+        public MemoryField PlanObjectField { get; } = GetField(fields, Type, "Plan Object");
+
+        public MemoryField ExecutionContextField { get; } = GetField(fields, Type, "Execution Context");
     }
 
-    public static class StreamAggregateIterator
+    public sealed class BatchIteratorLayout(FieldTable fields)
+    {
+        public MemoryField PlanObjectField { get; } = GetField(fields, "BatchIterator", "Plan Object");
+    }
+
+    public sealed class BatchPlanObjectLayout(FieldTable fields)
+    {
+        public MemoryField PlanObjectField { get; } = GetField(fields, "BatchPlanObject", "Plan Object");
+    }
+
+    public sealed class RowsetIteratorLayout(FieldTable fields)
+    {
+        private const string Type = "RowsetIterator";
+
+        public MemoryField RowsetField { get; } = GetField(fields, Type, "Rowset");
+
+        public MemoryField PrefetchManagerField { get; } = GetField(fields, Type, "Prefetch Manager");
+
+        public MemoryField RowBufferField { get; } = GetField(fields, Type, "Row Buffer");
+
+        public MemoryField RowBindingsField { get; } = GetField(fields, Type, "Row Bindings");
+
+        public MemoryField ClientRowField { get; } = GetField(fields, Type, "Client Row");
+
+        public IReadOnlyList<MemoryField> Fields
+            => field ??= [RowsetField, PrefetchManagerField, RowBufferField, RowBindingsField, ClientRowField];
+    }
+
+    public sealed class TopIteratorLayout(FieldTable fields)
+    {
+        public MemoryField TopCountField { get; } = GetField(fields, "TopIterator", "Top Count Expression");
+    }
+
+    public sealed class StreamAggregateIteratorLayout(FieldTable fields)
     {
         public const int GroupRowSlot = 1;
 
-        private const string VariableWriter = "CQScanStreamAggregateNew::InitXVarTable";
+        private const string Type = "StreamAggregateIterator";
 
-        public static MemoryField CountField { get; } = Number("Count",
-                                                               0x88,
-                                                               0x20,
-                                                               "CXVariant::SetZero",
-                                                               "CQScanStreamAggregateNew::GetRow");
+        public MemoryField CountField { get; } = GetField(fields, Type, "Count");
 
-        public static MemoryField VariableTableField { get; } = Pointer("Variable Table", 0xD0, VariableWriter);
+        public MemoryField VariableTableField { get; } = GetField(fields, Type, "Variable Table");
 
-        public static MemoryField VariablesField { get; } = Pointer("Variables", 0x00, VariableWriter);
+        public MemoryField VariablesField { get; } = GetField(fields, "VariableTable", "Variables");
 
-        public static MemoryField AggregateExecutorField { get; } = Pointer("Aggregate Executor", 0x68);
+        public MemoryField AggregateExecutorField { get; } = GetField(fields, Type, "Aggregate Executor");
 
-        public static MemoryField CompareExecutorsField { get; } = Pointer("Compare Executors", 0xA8);
+        public MemoryField CompareExecutorsField { get; } = GetField(fields, Type, "Compare Executors");
 
-        public static MemoryField MoveExecutorsField { get; } = Pointer("Move Executors", 0xB0);
+        public MemoryField MoveExecutorsField { get; } = GetField(fields, Type, "Move Executors");
     }
 
-    public static class HashIterator
+    public sealed class HashIteratorLayout(FieldTable fields)
     {
-        private const string Creator = "CQScanHash::CreateInputAndOutput";
+        private const string Type = "HashIterator";
 
-        public static MemoryField BuildOutputValuesField { get; } = Pointer("Build Output Values", 0x58, Creator);
+        public MemoryField BuildOutputValuesField { get; } = GetField(fields, Type, "Build Output Values");
 
-        public static MemoryField ProbeOutputValuesField { get; } = Pointer("Probe Output Values", 0x60, Creator);
+        public MemoryField ProbeOutputValuesField { get; } = GetField(fields, Type, "Probe Output Values");
 
-        public static MemoryField BuildInputValuesField { get; } = Pointer("Build Input Values", 0xC8, Creator);
+        public MemoryField BuildInputValuesField { get; } = GetField(fields, Type, "Build Input Values");
 
-        public static MemoryField ProbeInputValuesField { get; } = Pointer("Probe Input Values", 0xD0, Creator);
+        public MemoryField ProbeInputValuesField { get; } = GetField(fields, Type, "Probe Input Values");
 
-        public static MemoryField ValueField { get; } = Pointer("Value", 0x00, Creator);
-    }
+        public MemoryField ValueField { get; } = GetField(fields, "HashValueArray", "Value");
 
-    public static class BatchAdapter
-    {
-        private const string Constructor = "CQScanBatchHelper::CQScanBatchHelper";
-
-        public static MemoryField OutputValuesField { get; } = Pointer("Output Values", 0x48, Constructor);
-
-        public static MemoryField OutputValueField { get; } = Pointer("Output Value", 0x00, Constructor);
-
-        public static MemoryField ChildField { get; } = Pointer("Child", 0x58, "CBpXte::CreateBatchIterators");
-
-        public static MemoryField RowBufferField { get; } = Pointer("Row Buffer", 0x78, Constructor);
-    }
-
-    public static class PlanObject
-    {
-        private const string StreamAggregateConstructor = "CXteStreamAggregate::CXteStreamAggregate";
-
-        public static MemoryField NodeIdField { get; } = Number("Node Id", (int)PlanNode.PlanNodeIdOffset, sizeof(int));
-
-        public static MemoryField InputsField { get; } = Pointer("Inputs", 0x18);
-
-        public static MemoryField QueryField { get; } = Pointer("Query", (int)PlanNode.PlanQueryOffset);
-
-        public static MemoryField OutputColumnsField { get; } = Pointer("Output Columns", (int)PlanNode.PlanOutputsOffset, "CXte::CXte");
-
-        public static MemoryField TopCountField { get; } = Pointer("Top Count Expression", 0x88);
-
-        public static MemoryField RowsetIdField { get; } = Pointer("Rowset Id", 0xB0);
-
-        public static MemoryField GroupCountField { get; } = Number("Group Count",
-                                                                    0x60,
-                                                                    sizeof(int),
-                                                                    StreamAggregateConstructor);
-
-        public static MemoryField AggregateCountField { get; } = Number("Aggregate Count",
-                                                                        0x68,
-                                                                        sizeof(int),
-                                                                        StreamAggregateConstructor);
-
-        public static MemoryField CountColumnCountField { get; } = Number("Count Column Count",
-                                                                          0x6C,
-                                                                          sizeof(int),
-                                                                          StreamAggregateConstructor);
-
-        public static MemoryField GroupColumnsField { get; } = Pointer("Group Columns", 0x98, "CXteStreamAggregate::CreateValRefs");
-
-        public static MemoryField AggregateColumnsField { get; } = Pointer("Aggregate Columns", 0xA0, "CXteStreamAggregate::CreateValRefs");
-
-        public static MemoryField CountColumnsField { get; } = Pointer("Count Columns", 0xB0, "CXteStreamAggregate::Init");
-    }
-
-    public static class OutputList
-    {
-        public static MemoryField MemoryObjectField { get; } = Pointer("Memory Object", 0x00, "CBndOutputs::CBndOutputs");
-
-        public static MemoryField CountField { get; } = Number("Count", (int)PlanNode.OutputCountOffset, sizeof(int));
-
-        public static MemoryField CapacityField { get; } = Number("Capacity", 0x0C, sizeof(int), "CBndOutputs::CBndOutputs");
-
-        public static MemoryField ColumnsField { get; } = Pointer("Columns", (int)PlanNode.OutputColumnsOffset, "CBndOutputs::CBndOutputs");
-
-        public static MemoryField ColumnBitCountField { get; } = Number("Column Bits Length", 0x20, sizeof(int), "CBitVector::Init");
-
-        public static MemoryField ColumnBitMemoryObjectField { get; } = Pointer("Column Bits Memory Object", 0x28, "CBitVector::Init");
-
-        public static MemoryField ColumnBitsField { get; } = Bits("Column Bits", 0x30, "CBitVector::Set");
-
-        public static MemoryField FlagBitCountField { get; } = Number("Column Flags Length", 0x38, sizeof(int), "CBitVector::Init");
-
-        public static MemoryField FlagBitMemoryObjectField { get; } = Pointer("Column Flags Memory Object", 0x40, "CBitVector::Init");
-
-        public static MemoryField FlagBitsField { get; } = Bits("Column Flags", 0x48, "CBitVector::Set");
-
-        public static IReadOnlyList<MemoryField> Fields { get; } =
+        public IReadOnlyList<MemoryField> GroupFields { get; } =
         [
-            MemoryObjectField,
-            CountField,
-            CapacityField,
-            ColumnsField,
-            ColumnBitCountField,
-            ColumnBitMemoryObjectField,
-            ColumnBitsField,
-            FlagBitCountField,
-            FlagBitMemoryObjectField,
-            FlagBitsField
+            GetField(fields, Type, "Build Partition Group"),
+            GetField(fields, Type, "Build Worktable Group"),
+            GetField(fields, Type, "Build Rebuild Group"),
+            GetField(fields, Type, "Probe Partition Group"),
+            GetField(fields, Type, "Probe Worktable Group"),
+            GetField(fields, Type, "Probe Rebuild Group")
         ];
 
-        public static MemoryField ColumnField { get; } =
-            Pointer("Column", 0x00, "CXte::RemapOutputValrefs", "CBpXte::BpCompile", "CBndOutputs::Append");
+        public MemoryField PartitionMaskField { get; } = GetField(fields, Type, "Partition Mask");
+
+        public MemoryField PartitionShiftField { get; } = GetField(fields, Type, "Partition Shift");
+
+        public MemoryField WorkfileResourceManagerField { get; } = GetField(fields, Type, "Workfile Resource Manager");
+
+        public MemoryField WorkfileManagerField { get; } = GetField(fields, Type, "Workfile Manager");
+
+        public MemoryField CurrentGroupField { get; } = GetField(fields, Type, "Current Partition Group");
+
+        public IReadOnlyList<MemoryField> ValueArrayFields
+            => field ??= [BuildOutputValuesField, ProbeOutputValuesField, BuildInputValuesField, ProbeInputValuesField];
+
+        public IReadOnlyList<MemoryField> TableFields
+            => field ??=
+            [
+                .. GroupFields,
+                PartitionMaskField,
+                PartitionShiftField,
+                WorkfileResourceManagerField,
+                WorkfileManagerField,
+                CurrentGroupField
+            ];
     }
 
-    public static class RowBindings
+    public sealed class BatchAdapterLayout(FieldTable fields)
     {
-        public static MemoryField ColumnBindingsField { get; } = Pointer("Column Bindings", (int)AccessorBindingLayout.ColumnsOffset);
+        private const string Type = "BatchAdapter";
 
-        public static MemoryField ColumnBindingField { get; } = Number("Column Binding", 0x00, AccessorBindingLayout.ColumnSize);
+        public MemoryField OutputValuesField { get; } = GetField(fields, Type, "Output Values");
+
+        public MemoryField OutputValueField { get; } = GetField(fields, "BatchOutputValueArray", "Output Value");
+
+        public MemoryField ChildField { get; } = GetField(fields, Type, "Child");
+
+        public MemoryField RowBufferField { get; } = GetField(fields, Type, "Row Buffer");
     }
 
-    public static class ColumnReference
+    public sealed class PlanObjectLayout(FieldTable fields)
     {
-        public const ulong InterfaceOffset = 0x28;
+        private const string Type = "PlanObject";
 
-        public static MemoryField ProducerField { get; } = Pointer("Producer", (int)PlanNode.ColumnProducerOffset, "CValRef*");
+        private const string StreamAggregateType = "StreamAggregatePlanObject";
 
-        public static MemoryField StorageProducerField { get; } =
-            Pointer("Producer", (int)PlanNode.StorageColumnProducerOffset, "CValRefExecTable::CValRefExecTable");
+        public MemoryField NodeIdField { get; } = GetField(fields, Type, "Node Id");
 
-        public static MemoryField JoinSideField { get; } = Number("Side", 0x58, sizeof(ushort));
+        public MemoryField InputsField { get; } = GetField(fields, Type, "Inputs");
 
-        public static MemoryField JoinColumnField { get; } = Number("Column", 0x5C, sizeof(int));
+        public MemoryField QueryField { get; } = GetField(fields, Type, "Query");
 
-        public static MemoryField OrdinalColumnField { get; } = Number("Column", 0x58, sizeof(int));
+        public MemoryField OutputColumnsField { get; } = GetField(fields, Type, "Output Columns");
 
-        public static MemoryField StorageColumnIdField { get; } = Number("Column Id", 0x58, sizeof(int));
+        public MemoryField TopCountField { get; } = GetField(fields, "TopPlanObject", "Top Count Expression");
 
-        public static MemoryField CalculatedProducerField { get; } = Pointer("Producer", 0x58);
+        public MemoryField RowsetIdField { get; } = GetField(fields, "RowsetPlanObject", "Rowset Id");
 
-        public static MemoryField ExpressionField { get; } = Pointer("Expression", 0x68);
+        public MemoryField GroupCountField { get; } = GetField(fields, StreamAggregateType, "Group Count");
 
-        public static MemoryField RedirectProducerField { get; } =
-            Pointer("Producer", (int)PlanNode.RedirectProducerOffset, "CValRefBatchRedirect::CValRefBatchRedirect");
+        public MemoryField AggregateCountField { get; } = GetField(fields, StreamAggregateType, "Aggregate Count");
 
-        public static MemoryField RedirectColumnField { get; } = Number("Column", (int)PlanNode.RedirectColumnOffset, sizeof(int));
+        public MemoryField CountColumnCountField { get; } = GetField(fields, StreamAggregateType, "Count Column Count");
+
+        public MemoryField GroupColumnsField { get; } = GetField(fields, StreamAggregateType, "Group Columns");
+
+        public MemoryField AggregateColumnsField { get; } = GetField(fields, StreamAggregateType, "Aggregate Columns");
+
+        public MemoryField CountColumnsField { get; } = GetField(fields, StreamAggregateType, "Count Columns");
+
+        public IReadOnlyList<MemoryField> Fields => field ??= [NodeIdField, InputsField, QueryField, OutputColumnsField];
     }
 
-    public static class Expression
+    public sealed class OutputListLayout(FieldTable fields)
     {
-        public static MemoryField OperandsField { get; } = Pointer("Operands", 0x28);
+        private const string Type = "OutputList";
 
-        public static MemoryField OperandCountField { get; } = Number("Operand Count", 0x30, sizeof(int));
+        public MemoryField MemoryObjectField { get; } = GetField(fields, Type, "Memory Object");
 
-        public static MemoryField OperandField { get; } = Pointer("Operand", 0x00);
+        public MemoryField CountField { get; } = GetField(fields, Type, "Count");
+
+        public MemoryField CapacityField { get; } = GetField(fields, Type, "Capacity");
+
+        public MemoryField ColumnsField { get; } = GetField(fields, Type, "Columns");
+
+        public MemoryField ColumnBitCountField { get; } = GetField(fields, Type, "Column Bits Length");
+
+        public MemoryField ColumnBitMemoryObjectField { get; } = GetField(fields, Type, "Column Bits Memory Object");
+
+        public MemoryField ColumnBitsField { get; } = GetField(fields, Type, "Column Bits");
+
+        public MemoryField FlagBitCountField { get; } = GetField(fields, Type, "Column Flags Length");
+
+        public MemoryField FlagBitMemoryObjectField { get; } = GetField(fields, Type, "Column Flags Memory Object");
+
+        public MemoryField FlagBitsField { get; } = GetField(fields, Type, "Column Flags");
+
+        public MemoryField ColumnField { get; } = GetField(fields, "OutputColumnArray", "Column");
+
+        public IReadOnlyList<MemoryField> Fields
+            => field ??=
+            [
+                MemoryObjectField,
+                CountField,
+                CapacityField,
+                ColumnsField,
+                ColumnBitCountField,
+                ColumnBitMemoryObjectField,
+                ColumnBitsField,
+                FlagBitCountField,
+                FlagBitMemoryObjectField,
+                FlagBitsField
+            ];
     }
 
-    public static class ExecutionContext
+    public sealed class RowBindingsLayout
     {
-        public static MemoryField QueryContextField { get; } = Pointer("Query Execution Context", 0x1B8, "CQueryScan::Init");
+        public MemoryField ColumnBindingsField { get; } =
+            new("Column Bindings", (int)AccessorBindingLayout.ColumnsOffset, sizeof(ulong));
+
+        public MemoryField ColumnBindingField { get; } =
+            new("Column Binding", 0x00, AccessorBindingLayout.ColumnSize) { IsNumber = true };
     }
 
-    public static class QueryContext
+    public sealed class ColumnReferenceLayout(FieldTable fields)
     {
-        private const string Constructor = "CQueryExecContext::CQueryExecContext";
+        private const string Type = "ColumnReference";
 
-        public static MemoryField QueryScanField { get; } = Pointer("Query Scan", 0x20, Constructor);
+        private const string StorageType = "StorageReference";
 
-        public static MemoryField IteratorMapField { get; } = Pointer("Iterator Map", 0x290, Constructor);
+        private const string RedirectType = "RedirectReference";
+
+        public ulong InterfaceOffset { get; } = (ulong)GetField(fields, Type, "Interface").Offset;
+
+        public MemoryField TypeField { get; } = GetField(fields, Type, "Type");
+
+        public MemoryField TypeDetailsField { get; } = GetField(fields, Type, "Type Details");
+
+        public MemoryField ProducerField { get; } = GetField(fields, Type, "Producer");
+
+        public MemoryField StorageProducerField { get; } = GetField(fields, StorageType, "Producer");
+
+        public MemoryField StorageTypeField { get; } = GetField(fields, StorageType, "Type");
+
+        public MemoryField StorageTypeDetailsField { get; } = GetField(fields, StorageType, "Type Details");
+
+        public MemoryField StorageColumnIdField { get; } = GetField(fields, StorageType, "Column Id");
+
+        public MemoryField JoinSideField { get; } = GetField(fields, "JoinReference", "Side");
+
+        public MemoryField JoinColumnField { get; } = GetField(fields, "JoinReference", "Column");
+
+        public MemoryField OrdinalColumnField { get; } = GetField(fields, "OrdinalReference", "Column");
+
+        public MemoryField CalculatedProducerField { get; } = GetField(fields, "CalculatedReference", "Producer");
+
+        public MemoryField ExpressionField { get; } = GetField(fields, "CalculatedReference", "Expression");
+
+        public MemoryField RedirectTargetField { get; } = GetField(fields, RedirectType, "Target");
+
+        public MemoryField RedirectProducerField { get; } = GetField(fields, RedirectType, "Producer");
+
+        public MemoryField RedirectColumnField { get; } = GetField(fields, RedirectType, "Column");
     }
 
-    public static class IteratorMap
+    public sealed class ExpressionLayout(FieldTable fields)
     {
-        public static MemoryField BucketField { get; } = Pointer("Bucket", 0x00, AnyIterator);
+        public MemoryField OperandsField { get; } = GetField(fields, "Expression", "Operands");
 
-        public static MemoryField NextField { get; } = Pointer("Next", 0x00, AnyIterator);
+        public MemoryField OperandCountField { get; } = GetField(fields, "Expression", "Operand Count");
 
-        public static MemoryField PlanObjectField { get; } = Pointer("Plan Object", 0x08, AnyIterator);
-
-        public static MemoryField IteratorField { get; } = Pointer("Iterator", 0x10, AnyIterator);
+        public MemoryField OperandField { get; } = GetField(fields, "OperandArray", "Operand");
     }
 
-    public static class QueryScan
+    public sealed class ExecutionContextLayout(FieldTable fields)
     {
-        public static MemoryField ContextField { get; } = Pointer("Query Scan Context", 0x58, "CQueryScan::CQueryScan");
+        public MemoryField QueryContextField { get; } = GetField(fields, "ExecutionContext", "Query Execution Context");
     }
 
-    public static class QueryScanContext
+    public sealed class QueryContextLayout(FieldTable fields)
     {
-        public static MemoryField StatementField { get; } = Pointer("Statement", 0x28, "CQECtxt::Init");
+        public MemoryField QueryScanField { get; } = GetField(fields, "QueryContext", "Query Scan");
     }
 
-    public static class Statement
+    public sealed class QueryScanLayout(FieldTable fields)
     {
-        public static MemoryField RowContextField { get; } = Pointer("Row Context", 0xD8, "CXStmtQuery::AllocateMembers");
-
-        public static MemoryField ExecutorField { get; } = Pointer("Output Executor", 0xD0);
+        public MemoryField ContextField { get; } = GetField(fields, "QueryScan", "Query Scan Context");
     }
 
-    public static class RowContext
+    public sealed class QueryScanContextLayout(FieldTable fields)
     {
-        public static MemoryField SlotField { get; } =
-            Pointer("Slot", 0x00, "RowsetNewSS::FetchNextRow", "CHashWorkfilePartitionGroup::*");
+        public MemoryField StatementField { get; } = GetField(fields, "QueryScanContext", "Statement");
     }
 
-    public static class HashValue
+    public sealed class StatementLayout(FieldTable fields)
     {
-        public static MemoryField SlotField { get; } =
-            Number("Slot", TraceHashTableLayout.ValueSlotOffset, sizeof(int), "CValHash::CValHash");
+        public MemoryField RowContextField { get; } = GetField(fields, "Statement", "Row Context");
 
-        public static MemoryField RecordOffsetField { get; } = Number("Record Offset", TraceHashTableLayout.ValueRecordOffset, sizeof(int));
+        public MemoryField ExecutorField { get; } = GetField(fields, "Statement", "Output Executor");
     }
 
-    public static class StorageValue
+    public sealed class RowContextLayout(FieldTable fields)
     {
-        public static MemoryField SlotField { get; } = Number("Slot", 0x10, sizeof(int), "CQScanRowsetNew::CreateValSSTable");
-
-        public static MemoryField AccessorField { get; } = Pointer("Accessor", 0x18);
+        public MemoryField SlotField { get; } = GetField(fields, "RowContext", "Slot");
     }
 
-    public static class SwitchValue
+    public sealed class HashValueLayout(FieldTable fields)
     {
-        public static MemoryField ReaderField { get; } = Pointer("Reader",
-                                                           TraceHashTableLayout.SwitchPrimaryOffset,
-                                                           "CQScanHash::SetupPartitionInputsAndOutputs",
-                                                           "CQScanHash::CreateInputAndOutput");
+        public MemoryField SlotField { get; } = GetField(fields, "HashValue", "Slot");
 
-        public static MemoryField InputField { get; } =
-            Pointer("Input", TraceHashTableLayout.SwitchInputOffset, "CQScanHash::CreateInputAndOutput");
+        public MemoryField RecordOffsetField { get; } = GetField(fields, "HashValue", "Record Offset");
     }
 
-    public static class CachedSwitch
+    public sealed class StorageValueLayout(FieldTable fields)
     {
-        public const int EntryOffset = 0x20;
+        public MemoryField SlotField { get; } = GetField(fields, "StorageValue", "Slot");
 
-        public static MemoryField ValueField { get; } = Pointer("Value", 0x08, "CQScanHash::SetupPartitionInputsAndOutputs");
-
-        public static IReadOnlyList<MemoryField> EntryFields { get; } =
-            [.. RowBuffer.EntryFields.Select(f => f with { Name = $"Cached {f.Name}", Offset = f.Offset + EntryOffset })];
+        public MemoryField AccessorField { get; } = GetField(fields, "StorageValue", "Accessor");
     }
 
-    public static class ExpressionValue
+    public sealed class SwitchValueLayout(FieldTable fields)
     {
-        public static MemoryField ExecutorField { get; } = Pointer("Executor", 0x08);
+        public MemoryField ReaderField { get; } = GetField(fields, "SwitchValue", "Reader");
+
+        public MemoryField InputField { get; } = GetField(fields, "SwitchValue", "Input");
     }
 
-    public static class Executor
+    public sealed class CachedSwitchLayout(FieldTable fields)
     {
-        public static MemoryField ValuesField { get; } = Pointer("Input Values", 0x28);
+        public int EntryOffset { get; } = GetField(fields, "CachedSwitch", "Entry").Offset;
 
-        public static MemoryField ValueField { get; } = Pointer("Value", 0x00);
+        public MemoryField ValueField { get; } = GetField(fields, "CachedSwitch", "Value");
 
-        public static MemoryField ElementField { get; } = Pointer("Executor", 0x00);
+        public IReadOnlyList<MemoryField> EntryFields
+            => field ??= [.. new RowBufferLayout(fields).EntryFields.Select(GetEntryField)];
+
+        private MemoryField GetEntryField(MemoryField entry)
+            => entry with { Name = $"Cached {entry.Name}", Offset = entry.Offset + EntryOffset };
     }
 
-    public static class ExecValue
+    public sealed class ExpressionValueLayout(FieldTable fields)
     {
-        public static MemoryField EntryField { get; } = Pointer("Entry", 0x08, "CValRefOrdinal::PvalInvokeSpecific");
+        public MemoryField ExecutorField { get; } = GetField(fields, "ExpressionValue", "Executor");
     }
 
-    public static class Rowset
+    public sealed class ExecutorLayout(FieldTable fields)
     {
-        public const ulong InterfaceOffset = 0x70;
+        public MemoryField ValuesField { get; } = GetField(fields, "Executor", "Input Values");
 
-        public static MemoryField RowField { get; } = Pointer("Row", 0xB8, "RowsetNewSS::FetchNextRow");
+        public MemoryField ValueField { get; } = GetField(fields, "ExecutorValueArray", "Value");
+
+        public MemoryField ElementField { get; } = GetField(fields, "ExecutorArray", "Executor");
     }
 
-    public static class Row
+    public sealed class ExecValueLayout(FieldTable fields)
     {
-        public static MemoryField RecordField { get; } =
-            Pointer("Record", 0x50, "IndexRowScanner::*", "IndexDataSetSession::GetNextRowValuesInternal");
+        public MemoryField EntryField { get; } = GetField(fields, "ExecValue", "Entry");
     }
 
-    public static class RowBuffer
+    public sealed class RowsetLayout(FieldTable fields)
     {
-        public static MemoryField EntryField { get; } = Number("Entry", 0x00, 0x20);
+        public ulong InterfaceOffset { get; } = (ulong)GetField(fields, "Rowset", "Interface").Offset;
 
-        public static MemoryField StatusField { get; } = Number("Status", 0x00, sizeof(byte));
-
-        public static MemoryField TypeField { get; } = new("Type", 0x01, sizeof(byte), true) { IsNumber = true };
-
-        public static MemoryField ValueField { get; } = Pointer("Value", 0x08);
-
-        public static MemoryField LengthField { get; } = Number("Length", 0x10, sizeof(ulong));
-
-        public static IReadOnlyList<MemoryField> EntryFields { get; } = [StatusField, TypeField, ValueField, LengthField];
+        public MemoryField RowField { get; } = GetField(fields, "Rowset", "Row");
     }
 
-    public static class SortIterator
+    public sealed class RowLayout(FieldTable fields)
     {
-        public static MemoryField RowsetField { get; } = Pointer("Rowset", 0x48, "::CreateRowsetSort");
-
-        public static MemoryField PushRowExecutorField { get; } = Pointer("Push Row Executor", 0x1F0);
-
-        public static MemoryField MemoryUsageField { get; } = Pointer("Memory Usage", 0x208, "CQScanSortNew::CQScanSortNew");
-
-        public static IReadOnlyList<MemoryField> Fields { get; } =
-        [
-            Iterator.InputsField,
-            Iterator.PlanObjectField,
-            Iterator.ExecutionContextField,
-            RowsetField,
-            ScanIterator.RowBufferField,
-            ScanIterator.RowBindingsField,
-            PushRowExecutorField,
-            MemoryUsageField
-        ];
+        public MemoryField RecordField { get; } = GetField(fields, "Row", "Record");
     }
 
-    public static class SortRowset
+    public sealed class RowBufferLayout(FieldTable fields)
     {
-        public static MemoryField DescriptorField { get; } = Pointer("Sort Descriptor", 0x18, "RowsetSorted::CreateSort");
+        private const string Type = "RowBuffer";
 
-        public static MemoryField RowCountField { get; } = Number("Row Count", 0x98, sizeof(int), "::soAllocRecBuf");
+        public MemoryField EntryField { get; } = GetField(fields, Type, "Entry");
 
-        public static MemoryField KeyColumnsField { get; } = Pointer("Key Columns", 0xB8, "::build_sort_collist");
+        public MemoryField StatusField { get; } = GetField(fields, Type, "Status");
 
-        public static IReadOnlyList<MemoryField> Fields { get; } = [DescriptorField, RowCountField, KeyColumnsField];
+        public MemoryField TypeField { get; } = GetField(fields, Type, "Type");
+
+        public MemoryField ValueField { get; } = GetField(fields, Type, "Value");
+
+        public MemoryField LengthField { get; } = GetField(fields, Type, "Length");
+
+        public IReadOnlyList<MemoryField> EntryFields => field ??= [StatusField, TypeField, ValueField, LengthField];
     }
 
-    public static class SortDescriptor
+    public sealed class SortIteratorLayout(FieldTable fields)
+    {
+        public MemoryField PushRowExecutorField { get; } = GetField(fields, "SortIterator", "Push Row Executor");
+
+        public MemoryField MemoryUsageField { get; } = GetField(fields, "SortIterator", "Memory Usage");
+
+        public IReadOnlyList<MemoryField> Fields
+            => field ??= GetFields(new BaseIteratorLayout(fields), new RowsetIteratorLayout(fields));
+
+        private List<MemoryField> GetFields(BaseIteratorLayout iterator, RowsetIteratorLayout rowset)
+            =>
+            [
+                iterator.InputsField,
+                iterator.PlanObjectField,
+                iterator.ExecutionContextField,
+                rowset.RowsetField,
+                rowset.RowBufferField,
+                rowset.RowBindingsField,
+                PushRowExecutorField,
+                MemoryUsageField
+            ];
+    }
+
+    public sealed class SortRowsetLayout(FieldTable fields)
+    {
+        public MemoryField DescriptorField { get; } = GetField(fields, "SortRowset", "Sort Descriptor");
+
+        public MemoryField RowCountField { get; } = GetField(fields, "SortRowset", "Row Count");
+
+        public MemoryField KeyColumnsField { get; } = GetField(fields, "SortRowset", "Key Columns");
+
+        public IReadOnlyList<MemoryField> Fields => field ??= [DescriptorField, RowCountField, KeyColumnsField];
+    }
+
+    public sealed class SortDescriptorLayout(FieldTable fields)
     {
         public const int RunCount = 32;
 
-        private const string Initialiser = "::sort_init";
+        private const string Type = "SortDescriptor";
 
-        private const string Linker = "::lmlink";
+        public MemoryField ParametersField { get; } = GetField(fields, Type, "Sort Parameters");
 
-        private const string Merger = "::lmAddCurToList";
+        public MemoryField KeyColumnsField { get; } = GetField(fields, Type, "Key Columns");
 
-        private const string Sorter = "::lmsort";
+        public MemoryField MemoryUsageField { get; } = GetField(fields, Type, "Memory Usage");
 
-        private const int RunOffset = 0x70;
+        public MemoryField EstimatedRowsField { get; } = GetField(fields, Type, "Estimated Rows");
 
-        public static MemoryField ParametersField { get; } = Pointer("Sort Parameters", 0x08, Initialiser);
+        public MemoryField RecordLengthField { get; } = GetField(fields, Type, "Fixed Record Length");
 
-        public static MemoryField KeyColumnsField { get; } = Pointer("Key Columns", 0x10, Initialiser);
+        public MemoryField StateField { get; } = GetField(fields, Type, "State");
 
-        public static MemoryField MemoryUsageField { get; } = Pointer("Memory Usage", 0x20, Initialiser);
+        public IReadOnlyList<MemoryField> RunFields { get; } = GetRuns(GetField(fields, Type, "Run"));
 
-        public static MemoryField EstimatedRowsField { get; } = Number("Estimated Rows", 0x50, sizeof(int), Initialiser);
+        public MemoryField CursorField { get; } = GetField(fields, Type, "Cursor");
 
-        public static MemoryField RecordLengthField { get; } = Number("Fixed Record Length", 0x58, sizeof(int), Initialiser);
+        public MemoryField CurrentListField { get; } = GetField(fields, Type, "Current List");
 
-        public static MemoryField StateField { get; } = Number("State", 0x68, sizeof(int), "::sort_endinput");
+        public MemoryField CurrentListTailField { get; } = GetField(fields, Type, "Current List Tail");
 
-        public static IReadOnlyList<MemoryField> RunFields { get; } =
-        [
-            .. Enumerable.Range(0, RunCount).Select(i => Pointer($"Run {i}", RunOffset + i * sizeof(ulong), Merger, Sorter))
-        ];
+        public MemoryField CurrentListCountField { get; } = GetField(fields, Type, "Current List Count");
 
-        public static MemoryField CursorField { get; } = Pointer("Cursor", 0x170, Sorter, "::lmnext");
+        public MemoryField EntrySizeField { get; } = GetField(fields, Type, "Entry Size");
 
-        public static MemoryField CurrentListField { get; } = Pointer("Current List", 0x178, Linker, Merger);
+        public MemoryField LinkedCountField { get; } = GetField(fields, Type, "Linked Entries");
 
-        public static MemoryField CurrentListTailField { get; } = Pointer("Current List Tail", 0x180, Linker, Merger);
+        public IReadOnlyList<MemoryField> RunHeadFields => field ??= [.. RunFields, CursorField, CurrentListField];
 
-        public static MemoryField CurrentListCountField { get; } = Number("Current List Count", 0x188, sizeof(int), Linker, Merger);
+        public IReadOnlyList<MemoryField> Fields
+            => field ??=
+            [
+                ParametersField,
+                KeyColumnsField,
+                MemoryUsageField,
+                EstimatedRowsField,
+                RecordLengthField,
+                StateField,
+                .. RunFields,
+                CursorField,
+                CurrentListField,
+                CurrentListTailField,
+                CurrentListCountField,
+                EntrySizeField,
+                LinkedCountField
+            ];
 
-        public static MemoryField EntrySizeField { get; } = Number("Entry Size", 0x200, sizeof(int), Initialiser);
-
-        public static MemoryField LinkedCountField { get; } = Number("Linked Entries", 0x208, sizeof(int), Linker, Sorter);
-
-        public static IReadOnlyList<MemoryField> RunHeadFields { get; } = [.. RunFields, CursorField, CurrentListField];
-
-        public static IReadOnlyList<MemoryField> Fields { get; } =
-        [
-            ParametersField,
-            KeyColumnsField,
-            MemoryUsageField,
-            EstimatedRowsField,
-            RecordLengthField,
-            StateField,
-            .. RunFields,
-            CursorField,
-            CurrentListField,
-            CurrentListTailField,
-            CurrentListCountField,
-            EntrySizeField,
-            LinkedCountField
-        ];
+        private static List<MemoryField> GetRuns(MemoryField run)
+            => [.. Enumerable.Range(0, RunCount).Select(i => run with { Name = $"{run.Name} {i}", Offset = run.Offset + i * run.Length })];
     }
 
-    public static class SortEntry
+    public sealed class SortEntryLayout(FieldTable fields)
     {
         public const int Size = 0x28;
 
-        private const string Linker = "::lmlink";
+        private const string Type = "SortEntry";
 
-        public static MemoryField RecordField { get; } = Pointer("Record", 0x08, Linker);
+        public MemoryField RecordField { get; } = GetField(fields, Type, "Record");
 
-        public static MemoryField KeyField { get; } = Pointer("Key", 0x10, Linker);
+        public MemoryField KeyField { get; } = GetField(fields, Type, "Key");
 
-        public static MemoryField RecordLengthField { get; } = Number("Record Length", 0x18, sizeof(ushort), Linker);
+        public MemoryField RecordLengthField { get; } = GetField(fields, Type, "Record Length");
 
-        public static MemoryField KeyLengthField { get; } = Number("Key Length", 0x1A, sizeof(ushort), Linker);
+        public MemoryField KeyLengthField { get; } = GetField(fields, Type, "Key Length");
 
-        public static MemoryField NextField { get; } = Pointer("Next", 0x20, Linker, "::lmsort");
+        public MemoryField NextField { get; } = GetField(fields, Type, "Next");
 
-        public static IReadOnlyList<MemoryField> Fields { get; } = [RecordField, KeyField, RecordLengthField, KeyLengthField, NextField];
+        public IReadOnlyList<MemoryField> Fields => field ??= [RecordField, KeyField, RecordLengthField, KeyLengthField, NextField];
     }
 }

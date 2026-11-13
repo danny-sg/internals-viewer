@@ -1,0 +1,132 @@
+Version|16.0.0.0-16.*.*.*
+Type|Name|Offset|Length|Kind|Writers
+Iterator|Inputs|0x40|8|Pointer|CQScan*
+Iterator|Plan Object|0x48|8|Pointer|
+Iterator|Execution Context|0x50|8|Pointer|::PqsWrapQScan,CXte*,CQScan*
+BatchIterator|Plan Object|0x10|8|Pointer|
+BatchPlanObject|Plan Object|0x10|8|Pointer|
+RowsetIterator|Rowset|0x80|8|Pointer|OpenRowsetSS::OpenRowset,::CreateRowsetSort
+RowsetIterator|Prefetch Manager|0xA8|8|Pointer|
+RowsetIterator|Row Buffer|0xB8|8|Pointer|CPrefetchMgr::CreateBuffer,CQScanRowsetNew::CQScanRowsetNew
+RowsetIterator|Row Bindings|0xC0|8|Pointer|
+RowsetIterator|Client Row|0x1A0|8|Pointer|
+TopIterator|Top Count Expression|0xC8|8|Pointer|
+StreamAggregateIterator|Aggregate Executor|0xA0|8|Pointer|
+StreamAggregateIterator|Count|0xC0|32|Number|CXVariant::SetZero,CQScanStreamAggregateNew::GetRow
+StreamAggregateIterator|Compare Executors|0xE0|8|Pointer|
+StreamAggregateIterator|Move Executors|0xE8|8|Pointer|
+StreamAggregateIterator|Variable Table|0x108|8|Pointer|CQScanStreamAggregateNew::InitXVarTable
+VariableTable|Variables|0x00|8|Pointer|CQScanStreamAggregateNew::InitXVarTable
+HashIterator|Build Output Values|0x90|8|Pointer|CQScanHash::CreateInputAndOutput
+HashIterator|Probe Output Values|0x98|8|Pointer|CQScanHash::CreateInputAndOutput
+HashIterator|Build Input Values|0x100|8|Pointer|CQScanHash::CreateInputAndOutput
+HashIterator|Probe Input Values|0x108|8|Pointer|CQScanHash::CreateInputAndOutput
+HashIterator|Build Partition Group|0x178|8|Pointer|
+HashIterator|Build Worktable Group|0x180|8|Pointer|
+HashIterator|Build Rebuild Group|0x188|8|Pointer|
+HashIterator|Probe Partition Group|0x190|8|Pointer|
+HashIterator|Probe Worktable Group|0x198|8|Pointer|
+HashIterator|Probe Rebuild Group|0x1A0|8|Pointer|
+HashIterator|Partition Mask|0x1C0|4|Hex|
+HashIterator|Partition Shift|0x1C4|4|Number|
+HashIterator|Workfile Resource Manager|0x1E8|8|Pointer|
+HashIterator|Workfile Manager|0x1F0|8|Pointer|
+HashIterator|Current Partition Group|0x248|8|Pointer|
+HashValueArray|Value|0x00|8|Pointer|CQScanHash::CreateInputAndOutput
+BatchAdapter|Output Values|0x80|8|Pointer|CQScanBatchHelper::CQScanBatchHelper
+BatchAdapter|Child|0x90|8|Pointer|CBpXte::CreateBatchIterators
+BatchAdapter|Row Buffer|0xB0|8|Pointer|CQScanBatchHelper::CQScanBatchHelper
+BatchOutputValueArray|Output Value|0x00|8|Pointer|CQScanBatchHelper::CQScanBatchHelper
+SortIterator|Push Row Executor|0x228|8|Pointer|
+SortIterator|Memory Usage|0x240|8|Pointer|CQScanSortNew::CQScanSortNew
+PlanObject|Node Id|0x0C|4|Number|
+PlanObject|Inputs|0x18|8|Pointer|
+PlanObject|Query|0x28|8|Pointer|
+PlanObject|Output Columns|0x30|8|Pointer|CXte::CXte
+TopPlanObject|Top Count Expression|0x88|8|Pointer|
+RowsetPlanObject|Rowset Id|0xB0|8|Pointer|
+StreamAggregatePlanObject|Group Count|0x60|4|Number|CXteStreamAggregate::CXteStreamAggregate
+StreamAggregatePlanObject|Aggregate Count|0x68|4|Number|CXteStreamAggregate::CXteStreamAggregate
+StreamAggregatePlanObject|Count Column Count|0x6C|4|Number|CXteStreamAggregate::CXteStreamAggregate
+StreamAggregatePlanObject|Group Columns|0x98|8|Pointer|CXteStreamAggregate::CreateValRefs
+StreamAggregatePlanObject|Aggregate Columns|0xA0|8|Pointer|CXteStreamAggregate::CreateValRefs
+StreamAggregatePlanObject|Count Columns|0xB0|8|Pointer|CXteStreamAggregate::Init
+OutputList|Memory Object|0x00|8|Pointer|CBndOutputs::CBndOutputs
+OutputList|Count|0x08|4|Number|
+OutputList|Capacity|0x0C|4|Number|CBndOutputs::CBndOutputs
+OutputList|Columns|0x10|8|Pointer|CBndOutputs::CBndOutputs
+OutputList|Column Bits Length|0x20|4|Number|CBitVector::Init
+OutputList|Column Bits Memory Object|0x28|8|Pointer|CBitVector::Init
+OutputList|Column Bits|0x30|8|Hex|CBitVector::Set
+OutputList|Column Flags Length|0x38|4|Number|CBitVector::Init
+OutputList|Column Flags Memory Object|0x40|8|Pointer|CBitVector::Init
+OutputList|Column Flags|0x48|8|Hex|CBitVector::Set
+OutputColumnArray|Column|0x00|8|Pointer|CXte::RemapOutputValrefs,CBpXte::BpCompile,CBndOutputs::Append
+ColumnReference|Interface|0x20|8|Pointer|CValComp::CValComp
+ColumnReference|Type|0x28|8|Hex|
+ColumnReference|Type Details|0x38|8|Hex|
+ColumnReference|Producer|0x48|8|Pointer|CValRef*,CVRTableComp::*
+StorageReference|Producer|0x28|8|Pointer|CValRefSS::CValRefSS
+StorageReference|Type|0x30|8|Hex|
+StorageReference|Type Details|0x40|8|Hex|
+StorageReference|Column Id|0x50|4|Number|
+JoinReference|Side|0x50|2|Number|
+JoinReference|Column|0x54|4|Number|
+OrdinalReference|Column|0x50|4|Number|
+CalculatedReference|Producer|0x50|8|Pointer|
+CalculatedReference|Expression|0x60|8|Pointer|
+RedirectReference|Target|0x28|8|Pointer|
+RedirectReference|Producer|0x30|8|Pointer|CValRefBatchRedirect::CValRefBatchRedirect
+RedirectReference|Column|0x38|4|Number|
+Expression|Operands|0x28|8|Pointer|
+Expression|Operand Count|0x30|4|Number|
+OperandArray|Operand|0x00|8|Pointer|
+ExecutionContext|Query Execution Context|0x1B8|8|Pointer|CQueryScan::Init
+QueryContext|Query Scan|0x20|8|Pointer|CQueryExecContext::CQueryExecContext
+QueryScan|Query Scan Context|0x60|8|Pointer|CQueryScan::CQueryScan
+QueryScanContext|Statement|0x28|8|Pointer|CQECtxt::Init
+Statement|Output Executor|0xD0|8|Pointer|
+Statement|Row Context|0xD8|8|Pointer|CXStmtQuery::AllocateMembers
+RowContext|Slot|0x00|8|Pointer|RowsetNewSS::FetchNextRow,CHashWorkfilePartitionGroup::*
+HashValue|Record Offset|0x10|4|Number|
+HashValue|Slot|0x2C|4|Number|CValHash::CValHash
+StorageValue|Slot|0x10|4|Number|CValSSTable::CValSSTable
+StorageValue|Accessor|0x18|8|Pointer|
+SwitchValue|Reader|0x10|8|Pointer|CQScanHash::SetupPartitionInputsAndOutputs,CQScanHash::CreateInputAndOutput
+SwitchValue|Input|0x18|8|Pointer|CQScanHash::CreateInputAndOutput
+CachedSwitch|Value|0x08|8|Pointer|CQScanHash::SetupPartitionInputsAndOutputs
+CachedSwitch|Entry|0x20|32|Number|
+ExpressionValue|Executor|0x08|8|Pointer|
+Executor|Input Values|0x28|8|Pointer|
+ExecutorArray|Executor|0x00|8|Pointer|
+ExecutorValueArray|Value|0x00|8|Pointer|
+ExecValue|Entry|0x08|8|Pointer|CValRefOrdinal::PvalInvokeSpecific
+Rowset|Interface|0x70|8|Pointer|
+Rowset|Row|0xB8|8|Pointer|RowsetNewSS::FetchNextRow
+Row|Record|0x50|8|Pointer|IndexRowScanner::*,IndexDataSetSession::GetNextRowValuesInternal
+RowBuffer|Entry|0x00|32|Number|
+RowBuffer|Status|0x00|1|Number|
+RowBuffer|Type|0x01|1|Hex|
+RowBuffer|Value|0x08|8|Pointer|
+RowBuffer|Length|0x10|8|Number|
+SortRowset|Sort Descriptor|0x18|8|Pointer|RowsetSorted::CreateSort
+SortRowset|Row Count|0x98|4|Number|::soAllocRecBuf
+SortRowset|Key Columns|0xB8|8|Pointer|::build_sort_collist
+SortDescriptor|Sort Parameters|0x08|8|Pointer|::sort_init
+SortDescriptor|Key Columns|0x10|8|Pointer|::sort_init
+SortDescriptor|Memory Usage|0x20|8|Pointer|::sort_init
+SortDescriptor|Estimated Rows|0x50|4|Number|::sort_init
+SortDescriptor|Fixed Record Length|0x58|4|Number|::sort_init
+SortDescriptor|State|0x68|4|Number|::sort_endinput
+SortDescriptor|Run|0x70|8|Pointer|::lmAddCurToList,::lmsort
+SortDescriptor|Cursor|0x170|8|Pointer|::lmsort,::lmnext
+SortDescriptor|Current List|0x178|8|Pointer|::lmlink,::lmAddCurToList
+SortDescriptor|Current List Tail|0x180|8|Pointer|::lmlink,::lmAddCurToList
+SortDescriptor|Current List Count|0x188|4|Number|::lmlink,::lmAddCurToList
+SortDescriptor|Entry Size|0x200|4|Number|::sort_init
+SortDescriptor|Linked Entries|0x208|4|Number|::lmlink,::lmsort
+SortEntry|Record|0x08|8|Pointer|::lmlink
+SortEntry|Key|0x10|8|Pointer|::lmlink
+SortEntry|Record Length|0x18|2|Number|::lmlink
+SortEntry|Key Length|0x1A|2|Number|::lmlink
+SortEntry|Next|0x20|8|Pointer|::lmlink,::lmsort

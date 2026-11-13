@@ -107,6 +107,18 @@ public sealed partial class DocumentViewModel(string title,
         return holder;
     }
 
+    public void Realize()
+    {
+        if (!KeepAlive || _cachedView is not null)
+        {
+            return;
+        }
+
+        _cachedView = ViewFactory();
+
+        _cachedView.DataContext = Content;
+    }
+
     /// <summary>
     /// Fills <paramref name="host"/> with this document's tab strip commands
     /// </summary>

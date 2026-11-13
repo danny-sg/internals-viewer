@@ -53,7 +53,9 @@ internal static class IteratorSymbolLookup
     public static bool IsIteratorConstructor(CallFrame? frame)
         => frame?.Function is { ClassName: { } className } resolved && IsIterator(className) && resolved.MethodName == className;
 
-    public static bool IsProfilingIterator(CallFrame? frame) => frame?.Function?.ClassName is ProfileClass or LightProfileClass;
+    public static bool IsProfilingIterator(CallFrame? frame) => IsProfilingClass(frame?.Function?.ClassName);
+
+    public static bool IsProfilingClass(string? className) => className is ProfileClass or LightProfileClass;
 
     public static bool IsQueryScan(ReadOnlySpan<char> className) => className.StartsWith(QueryScanClass, StringComparison.Ordinal);
 

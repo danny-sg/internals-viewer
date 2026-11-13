@@ -1,4 +1,5 @@
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
+using InternalsViewer.Query.FullTrace.Memory.History;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Iterators.PlanNodes.Output;
 
@@ -13,5 +14,5 @@ public class PlanOutputValueLayoutTests
     [InlineData("CEsExec", "Input Values")]
     [InlineData("CValRefOrdinal", "")]
     public void A_Value_Object_Marks_The_Fields_Known_For_Its_Class(string className, string expected)
-        => Assert.Equal(expected, string.Join(",", PlanOutputValueLayout.GetFields(className).Select(f => f.Name)));
+        => Assert.Equal(expected, string.Join(",", PlanOutputValueLayout.GetFields(MemoryHistoryStore.Empty, className).Select(f => f.Name)));
 }

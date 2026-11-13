@@ -68,9 +68,9 @@ public static class TraceHashTableReader
             isLinked = memory.TryRead(link + sizeof(ulong), out link);
         }
 
-        memory.TryRead(iterator + TraceHashTableLayout.PartitionMaskOffset, out uint partitionMask);
+        memory.TryRead(iterator + (ulong)store.Layout.HashIterator.PartitionMaskField.Offset, out uint partitionMask);
 
-        memory.TryRead(iterator + TraceHashTableLayout.PartitionShiftOffset, out uint partitionShift);
+        memory.TryRead(iterator + (ulong)store.Layout.HashIterator.PartitionShiftField.Offset, out uint partitionShift);
 
         var (columnArray, columns) = ReadColumns(store, memory, position, group);
 
@@ -228,7 +228,8 @@ public static class TraceHashTableReader
             : null;
 
     public static ulong GetCurrentGroup(MemoryHistoryStore store, ulong iterator, TracePosition position)
-        => new MemoryHistoryReader(store, position).TryRead(iterator + TraceHashTableLayout.CurrentGroupOffset, out ulong group)
+        => new MemoryHistoryReader(store, position).TryRead(iterator + (ulong)store.Layout.HashIterator.CurrentGroupField.Offset,
+                                                            out ulong group)
             ? group
             : 0;
 
@@ -241,9 +242,11 @@ public static class TraceHashTableReader
 
         var groups = new List<(int Slot, ulong Group, bool IsWorktable)>();
 
-        for (var index = 0; index < TraceHashTableLayout.IteratorGroupCount; index++)
+        var fields = store.Layout.HashIterator.GroupFields;
+
+        for (var index = 0; index < fields.Count; index++)
         {
-            var slot = iterator + TraceHashTableLayout.IteratorGroupsOffset + (ulong)(index * sizeof(ulong));
+            var slot = iterator + (ulong)fields[index].Offset;
 
             if (!memory.TryRead(slot, out ulong group)
                 || group == 0

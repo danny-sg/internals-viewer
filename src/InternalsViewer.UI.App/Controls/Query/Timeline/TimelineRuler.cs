@@ -83,6 +83,18 @@ public sealed class TimelineRuler : UserControl, IDisposable
         set => SetValue(IsPinnedProperty, value);
     }
 
+    public static readonly DependencyProperty IsAlignedProperty =
+        DependencyProperty.Register(nameof(IsAligned),
+                                    typeof(bool),
+                                    typeof(TimelineRuler),
+                                    new PropertyMetadata(true));
+
+    public bool IsAligned
+    {
+        get => (bool)GetValue(IsAlignedProperty);
+        set => SetValue(IsAlignedProperty, value);
+    }
+
     public TimelineRuler()
     {
         Canvas = new SKXamlCanvas { IgnorePixelScaling = false };
@@ -223,7 +235,7 @@ public sealed class TimelineRuler : UserControl, IDisposable
     }
 
     private TimelineRulerArea GetArea(ITimelineRulerSource source, TimelineRulerState state)
-        => source.GetRulerOffset(this) is { } offset
+        => IsAligned && source.GetRulerOffset(this) is { } offset
             ? new TimelineRulerArea(offset + state.ContentLeft, offset + state.ContentRight)
             : new TimelineRulerArea(state.ContentLeft, ActualWidth);
 

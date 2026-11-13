@@ -90,7 +90,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         steps.Begin(OperatorsStep);
 
-        var builder = GetResultBuilder(replay, functions, request, callTree, session.Offsets.PlanNode);
+        var builder = GetResultBuilder(replay, functions, request, callTree, session.ServerVersion);
 
         builder.Link();
 
@@ -277,7 +277,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                                                 ReplayFunctionTable functions,
                                                 TraceRequest request,
                                                 CallTree callTree,
-                                                PlanNodeLayout planNodeLayout)
+                                                Version? serverVersion)
     {
         var (allocation, allocationCount, allocatedBytes, memoryObjects) = AllocationMapper.Map(replay.CallStore,
                                                                                                 functions.AllocationFunctions,
@@ -297,7 +297,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
             MemoryObjectSnapshot = request.MemoryClerks.MemoryObjects,
             ObjectPool = request.ObjectPool,
             BufferPool = replay.BufferPool,
-            PlanNodeLayout = planNodeLayout
+            ServerVersion = serverVersion
         };
     }
 

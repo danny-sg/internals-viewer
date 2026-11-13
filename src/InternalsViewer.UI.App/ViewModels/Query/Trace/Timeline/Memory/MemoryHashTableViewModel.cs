@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using InternalsViewer.Internals.Metadata.Structures;
 using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.Layouts;
@@ -107,17 +108,6 @@ public sealed class MemoryHashTableViewModel : MemoryStructureViewModel
     private static readonly int FirstField = GetField(TraceHashTableLayout.GroupFields,
                                                       TraceHashTableLayout.PartitionListOffset + sizeof(ulong));
 
-    private static readonly int CurrentField = GetField(TraceHashTableLayout.IteratorFields, TraceHashTableLayout.CurrentGroupOffset);
-
-    private static readonly int ColourCount = new[]
-    {
-        TraceHashTableLayout.IteratorFields.Count,
-        TraceHashTableLayout.GroupFields.Count,
-        TraceHashTableLayout.PartitionFields.Count,
-        TraceHashTableLayout.ItemFields.Count
-    }.Max();
-
-    private static readonly List<Colour> FieldColours = CreateColours(ColourCount);
 
     public MemoryHashTableViewModel(MemoryHistoryViewModel history, ulong group, TracePosition position, ITraceNavigator navigator)
         : base(history, position, navigator)
@@ -136,7 +126,9 @@ public sealed class MemoryHashTableViewModel : MemoryStructureViewModel
 
         Iterator = TraceHashTableReader.GetIterator(history.Store, group, at) ?? 0;
 
-        Groups = Iterator == 0 ? [] : TraceHashTableReader.GetIteratorGroups(history.Store, history.AddressMap, Iterator, at);
+        Groups = Iterator == 0
+            ? []
+            : TraceHashTableReader.GetIteratorGroups(history.Store, history.AddressMap, Iterator, at);
 
         if (!Groups.Exists(g => g.Group == group))
         {
@@ -157,6 +149,18 @@ public sealed class MemoryHashTableViewModel : MemoryStructureViewModel
     protected override HexImage? Image => Loaded?.Image;
 
     private ulong Group { get; }
+
+    private EngineLayout.HashIteratorLayout HashIterator => History.Store.Layout.HashIterator;
+
+    private int CurrentField => GetField(HashIterator.TableFields, HashIterator.CurrentGroupField.Offset);
+
+    private List<Colour> FieldColours => field ??= CreateColours(new[]
+    {
+        HashIterator.TableFields.Count,
+        TraceHashTableLayout.GroupFields.Count,
+        TraceHashTableLayout.PartitionFields.Count,
+        TraceHashTableLayout.ItemFields.Count
+    }.Max());
 
     private ulong Iterator { get; }
 
@@ -403,7 +407,7 @@ public sealed class MemoryHashTableViewModel : MemoryStructureViewModel
         return 0;
     }
 
-    private static List<MemoryStructureBadge> GetBadges(TraceHashTable table, TraceHashPartition partition)
+    private List<MemoryStructureBadge> GetBadges(TraceHashTable table, TraceHashPartition partition)
     {
         var badges = new List<MemoryStructureBadge>();
 
@@ -485,7 +489,7 @@ public sealed class MemoryHashTableViewModel : MemoryStructureViewModel
 
     private static bool IsInRange(int bucket, int first) => bucket >= first && bucket < first + TraceHashTableLayout.BucketsPerPage;
 
-    private static Marker CreateMarker(string name, int offset, int length, int colour)
+    private Marker CreateMarker(string name, int offset, int length, int colour)
         => CreateMarker(name, offset, length, FieldColours[colour]);
 
     private static object GetBucketCell(TraceHashAccess? found, int bucket, int current)
@@ -825,7 +829,7 @@ public sealed class MemoryHashTableViewModel : MemoryStructureViewModel
         switch (node.Type)
         {
             case MemoryStructureNodeType.HashTable:
-                ShowFields(node, TraceHashTableLayout.IteratorFields, FieldColours);
+                ShowFields(node, HashIterator.TableFields, FieldColours);
                 break;
 
             case MemoryStructureNodeType.Group:
@@ -1003,7 +1007,7 @@ public sealed class MemoryHashTableViewModel : MemoryStructureViewModel
         ShowItemMarkers($"{node.Key} {content}", () => GetPageMarkers(partition, page, hexBase), TraceHashTableLayout.BucketSize);
     }
 
-    private static IEnumerable<Marker> GetPageMarkers(TraceHashPartition partition, ulong page, int hexBase)
+    private IEnumerable<Marker> GetPageMarkers(TraceHashPartition partition, ulong page, int hexBase)
     {
         var fields = TraceHashTableLayout.ItemFields;
 

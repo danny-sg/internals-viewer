@@ -1,4 +1,5 @@
 using InternalsViewer.Query.FullTrace.Memory.Address;
+using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -72,7 +73,7 @@ internal sealed class ReplaySession : IDisposable
         Modules = ReadModules(handle);
         ServerVersion = Modules.FirstOrDefault(m => string.Equals(m.Name, ServerModule, StringComparison.OrdinalIgnoreCase))
                                ?.ProductVersion;
-        Offsets = new OffsetProvider(ServerVersion);
+        Layout = EngineLayout.Get(ServerVersion);
     }
 
     public TimeTravelTraceFile TraceFile { get; }
@@ -81,7 +82,7 @@ internal sealed class ReplaySession : IDisposable
 
     public Version? ServerVersion { get; }
 
-    internal OffsetProvider Offsets { get; }
+    internal EngineLayout Layout { get; }
 
     private TraceHandle Handle { get; }
 
@@ -224,7 +225,7 @@ internal sealed class ReplaySession : IDisposable
                                                      .Select(f => new AddressMapFunction(f.Address, AddressMapOperation.Allocated)),
                                             VtableResolver.GetUniqueClasses(functions.Vtables));
 
-        var planNodeHook = new PlanNodeHook(functions.PlanNodeFunctions, functions.PlanObjects, Offsets.PlanNode);
+        var planNodeHook = new PlanNodeHook(functions.PlanNodeFunctions, functions.PlanObjects, Layout);
 
         var bufferPool = new BufferPoolHook(functions.BufferPoolFunctions);
 

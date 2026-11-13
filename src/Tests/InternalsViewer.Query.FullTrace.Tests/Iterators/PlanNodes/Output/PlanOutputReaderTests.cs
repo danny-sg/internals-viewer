@@ -36,7 +36,7 @@ public class PlanOutputReaderTests
                                           .Write(NameColumn + 0x40, 0x3400D008_00000064UL)
                                           .Write(NameColumn + 0x50, Unknown);
 
-        var columns = PlanOutputReader.Read(memory, PlanObject, PlanNodeLayout.SqlServer2025, new HashSet<ulong> { PlanObject });
+        var columns = PlanOutputReader.Read(memory, PlanObject, new HashSet<ulong> { PlanObject });
 
         Assert.Equal([new PlanOutputColumn(IdColumn, PlanObject, new SqlTypeInfo(0x38, 1, 4, 10, 0, 0)),
                       new PlanOutputColumn(NameColumn, 0, new SqlTypeInfo(0xA7, 3, 100, 0, 0, 0x3400D008))],
@@ -54,7 +54,7 @@ public class PlanOutputReaderTests
                                           .Write(NameColumn + 0x38, 0x3A7UL)
                                           .Write(NameColumn + 0x48, 0x3400D008_00000064UL);
 
-        var columns = PlanOutputReader.Read(memory, PlanObject, PlanNodeLayout.SqlServer2025, new HashSet<ulong> { PlanObject });
+        var columns = PlanOutputReader.Read(memory, PlanObject, new HashSet<ulong> { PlanObject });
 
         Assert.Equal([new PlanOutputColumn(NameColumn, PlanObject, new SqlTypeInfo(0xA7, 3, 100, 0, 0, 0x3400D008))], columns);
     }
@@ -72,12 +72,12 @@ public class PlanOutputReaderTests
                                           .Write(IdColumn + 0x40, 0xA0004UL)
                                           .Write(IdColumn + 0x50, Unknown);
 
-        var columns = PlanOutputReader.Read(memory, PlanObject, PlanNodeLayout.SqlServer2025, new HashSet<ulong> { PlanObject });
+        var columns = PlanOutputReader.Read(memory, PlanObject, new HashSet<ulong> { PlanObject });
 
         Assert.Equal([new PlanOutputColumn(Redirect, PlanObject, new SqlTypeInfo(0x38, 1, 4, 10, 0, 0))], columns);
     }
 
     [Fact]
     public void A_Plan_Object_Without_An_Output_List_Has_No_Output_Columns()
-        => Assert.Empty(PlanOutputReader.Read(new FakeTraceReplay(), PlanObject, PlanNodeLayout.SqlServer2025, new HashSet<ulong>()));
+        => Assert.Empty(PlanOutputReader.Read(new FakeTraceReplay(), PlanObject, new HashSet<ulong>()));
 }

@@ -132,7 +132,7 @@ internal sealed class PlanOutputResultReader(TraceResult trace)
             }
         }
 
-        var offset = (ulong)EngineLayout.Statement.ExecutorField.Offset;
+        var offset = (ulong)trace.MemoryHistory.Layout.Statement.ExecutorField.Offset;
 
         var executors = new Dictionary<ulong, bool>();
 

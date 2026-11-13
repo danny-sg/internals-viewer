@@ -1,7 +1,8 @@
 using System.Buffers.Binary;
+using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings.Enums;
-using InternalsViewer.Query.Interfaces;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 
@@ -128,8 +129,10 @@ public class AccessorBindingLayoutTests
         BinaryPrimitives.WriteUInt64LittleEndian(data.AsSpan(offset + 0x48), infrequentData);
     }
 
-    private sealed class Memory : IMemoryReader
+    private sealed class Memory : ITraceMemoryReader
     {
+        public EngineLayout Layout => EngineLayout.Latest;
+
         private List<(ulong Address, byte[] Data)> Regions { get; } = [];
 
         public Memory Add(ulong address, byte[] data)

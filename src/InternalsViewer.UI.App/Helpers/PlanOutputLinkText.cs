@@ -47,8 +47,6 @@ public static class PlanOutputLinkText
         PlanOutputLinkType.Producer => "Producer",
         PlanOutputLinkType.ExecutionContext => "Execution Context",
         PlanOutputLinkType.QueryContext => "Query Execution Context",
-        PlanOutputLinkType.IteratorMap => "Iterator Map",
-        PlanOutputLinkType.MapEntry => "Map Entry",
         PlanOutputLinkType.Iterator => "Iterator",
         PlanOutputLinkType.OutputValues => "Output Values",
         PlanOutputLinkType.InputValues => "Input Values",

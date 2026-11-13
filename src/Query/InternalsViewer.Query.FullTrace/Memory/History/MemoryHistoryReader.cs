@@ -1,10 +1,12 @@
-using InternalsViewer.Query.Interfaces;
+using InternalsViewer.Query.FullTrace.Iterators;
 
 namespace InternalsViewer.Query.FullTrace.Memory.History;
 
-public sealed class MemoryHistoryReader(MemoryHistoryStore store, TracePosition position) : IMemoryReader
+public sealed class MemoryHistoryReader(MemoryHistoryStore store, TracePosition position) : ITraceMemoryReader
 {
     public TracePosition Position { get; } = position;
+
+    public EngineLayout Layout => store.Layout;
 
     private Dictionary<int, (MemoryHistoryImage Image, int WriteCount, bool[] IsRead)> Images { get; } = [];
 

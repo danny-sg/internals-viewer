@@ -166,7 +166,7 @@ public sealed partial class MemoryIteratorViewModel : ObservableObject
 
         var history = owner.History;
 
-        var layout = IteratorLayout.GetFields(ClassName, target.Type, data, history.IteratorTargets);
+        var layout = IteratorLayout.GetFields(history.Store, ClassName, target.Type, data, history.IteratorTargets);
 
         if (!layout.SequenceEqual(Layout))
         {
@@ -243,9 +243,7 @@ public sealed partial class MemoryIteratorViewModel : ObservableObject
     {
         var targets = owner.History.IteratorTargets;
 
-        if (!memory.TryRead(address + (ulong)EngineLayout.Iterator.InputsField.Offset, out ulong array)
-            || array == 0
-            || IteratorLayout.GetInputs(memory, array, targets) is not { Count: > 0 } inputs)
+        if (IteratorLayout.GetInputs(memory, address, targets) is not { Count: > 0 } inputs)
         {
             return null;
         }
@@ -419,14 +417,14 @@ public sealed partial class MemoryIteratorViewModel : ObservableObject
             return tabs;
         }
 
-        if (IteratorLayout.HasRowBindings(ClassName) && CreateRowBindingsTab(owner, memory, Address) is { } bindings)
+        if (IteratorLayout.IsRowset(ClassName) && CreateRowBindingsTab(owner, memory, Address) is { } bindings)
         {
             tabs.Add(bindings);
         }
 
         for (var index = 0; index < Layout.Count; index++)
         {
-            if (IteratorLayout.ValueArrayFields.Contains(Layout[index])
+            if (memory.Layout.HashIterator.ValueArrayFields.Contains(Layout[index])
                 && CreateValuesTab(owner, memory, Layout[index], values[index]) is { } array)
             {
                 tabs.Add(array);

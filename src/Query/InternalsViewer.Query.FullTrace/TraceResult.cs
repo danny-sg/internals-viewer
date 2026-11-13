@@ -57,6 +57,8 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
     public MemoryHistoryStore MemoryHistory { get; init; } = MemoryHistoryStore.Empty;
 
+    public Version? ServerVersion { get; init; }
+
     public TraceSourceTrackMap SourceTracks
     {
         get => field ??= new TraceSourceTrackMap(Timeline, CallStore, Lifetimes);

@@ -779,7 +779,9 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
             foreach (var position in positions)
             {
-                if (TraceSortTableReader.Read(store, pages, iterator, position)?.FindPart(block.Address, block.Size) is { } part)
+                var table = TraceSortTableReader.Read(store, pages, iterator, position);
+
+                if (table?.FindPart(block.Address, block.Size) is { } part)
                 {
                     found = part;
 
@@ -804,9 +806,9 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
             return null;
         }
 
-        var slot = TraceHashTableReader.GetIteratorGroups(history.Store, history.AddressMap, table.Iterator, position)
-                                       .Find(g => g.Group == table.Group)
-                                       .Slot;
+        var groups = TraceHashTableReader.GetIteratorGroups(history.Store, history.AddressMap, table.Iterator, position);
+
+        var slot = groups.Find(g => g.Group == table.Group).Slot;
 
         return history.GetWorkfileLayout(table.Iterator,
                                          [.. table.Columns.Select(c => c.Binding)],

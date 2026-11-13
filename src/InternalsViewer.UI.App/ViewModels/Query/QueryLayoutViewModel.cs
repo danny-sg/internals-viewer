@@ -420,6 +420,11 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         Dock.SetRoot(new TabGroupNode(documents));
 
         Dock.Activate(selected ?? _documentsByKey[SqlKey]);
+
+        if (IsTrace)
+        {
+            _documentsByKey[TraceTimelineKey].Realize();
+        }
     }
 
     private void SetGuideTimeline(bool isTrace)
@@ -429,11 +434,16 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
         if (!isTrace)
         {
             Dock.Close(timeline);
+
+            return;
         }
-        else if (!Dock.Contains(timeline))
+
+        if (!Dock.Contains(timeline))
         {
             Dock.ShowBeside(timeline, _documentsByKey[SqlKey], select: false);
         }
+
+        timeline.Realize();
     }
 
     private void ExitGuide()

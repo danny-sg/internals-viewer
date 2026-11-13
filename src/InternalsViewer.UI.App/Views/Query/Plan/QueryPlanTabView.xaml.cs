@@ -6,6 +6,7 @@ using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.Query.Plan;
 using InternalsViewer.UI.App.Models.Query.Plan;
 using InternalsViewer.UI.App.Services.Query.Trace;
+using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI;
 using Microsoft.UI.Dispatching;
@@ -19,7 +20,7 @@ using Microsoft.UI.Xaml.Input;
 namespace InternalsViewer.UI.App.Views.Query.Plan;
 
 /// <summary>Dock document hosting the execution plan diagrams for the active query</summary>
-public sealed partial class QueryPlanTabView : UserControl
+public sealed partial class QueryPlanTabView : UserControl, IDisposable
 {
     private const double GuidePaneMinHeight = 200;
 
@@ -141,6 +142,8 @@ public sealed partial class QueryPlanTabView : UserControl
 
     private ScrollViewer? GuideScroller { get; set; }
 
+    private SettingsViewModel Settings { get; } = App.GetService<SettingsViewModel>();
+
     public static ImageSource? GetStepIcon(Uri? icon) => icon is null ? null : new SvgImageSource(icon);
 
     public static Brush? GetStepBackground(bool isCurrent) => isCurrent ? CurrentStepBrush : null;
@@ -178,6 +181,15 @@ public sealed partial class QueryPlanTabView : UserControl
 
     public Visibility GetGuideBarVisibility(bool isGuideMode, bool isStepsVisible)
         => isGuideMode && !isStepsVisible ? Visibility.Visible : Visibility.Collapsed;
+
+    public Visibility GetStepsRulerVisibility(bool isPinned, bool isTrace) => !isPinned && isTrace ? Visibility.Visible : Visibility.Collapsed;
+
+    public void Dispose()
+    {
+        Bindings.StopTracking();
+
+        StepsRuler.Dispose();
+    }
 
     protected override void OnKeyDown(KeyRoutedEventArgs e)
     {

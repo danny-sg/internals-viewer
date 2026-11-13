@@ -9,8 +9,6 @@ public enum PlanOutputLinkType
     Producer,
     ExecutionContext,
     QueryContext,
-    IteratorMap,
-    MapEntry,
     Iterator,
     OutputValues,
     InputValues,

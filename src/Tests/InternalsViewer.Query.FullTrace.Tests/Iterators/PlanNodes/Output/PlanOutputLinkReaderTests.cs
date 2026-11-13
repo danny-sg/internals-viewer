@@ -1,4 +1,5 @@
 using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output.Enums;
@@ -32,12 +33,6 @@ public class PlanOutputLinkReaderTests
 
     private const ulong QueryContext = 0x1F4_0000_3400;
 
-    private const ulong Map = 0x1F4_0000_3800;
-
-    private const ulong Entry = 0x1F4_0000_3900;
-
-    private const ulong OtherEntry = 0x1F4_0000_3A00;
-
     private const ulong Values = 0x1F4_0000_4000;
 
     private const ulong Value = 0x1F4_0000_4100;
@@ -67,8 +62,6 @@ public class PlanOutputLinkReaderTests
     private const ulong Row = 0x1F4_0000_7300;
 
     private const ulong Record = 0x1F4_0001_0060;
-
-    private const ulong OwnerEntry = 0x1F4_0000_3B00;
 
     private const ulong OwnerIterator = 0x1F4_0000_2C00;
 
@@ -106,6 +99,9 @@ public class PlanOutputLinkReaderTests
 
     private const string StreamAggregate = "CXteStreamAggregate";
 
+    private static IReadOnlyList<IteratorPlanNode> DefaultNodes { get; } =
+        [Node(ProducerIterator, Producer), Node(InputIterator, InputProducer)];
+
     [Fact]
     public void Each_Link_Carries_The_Engine_Field_It_Was_Read_From()
     {
@@ -115,12 +111,12 @@ public class PlanOutputLinkReaderTests
 
         var links = Read(memory, "CValRefJoin");
 
-        Assert.Same(EngineLayout.QueryContext.IteratorMapField, links.Single(l => l.Type == PlanOutputLinkType.IteratorMap).Field);
+        Assert.Same(EngineLayout.Latest.ExecutionContext.QueryContextField, links.Single(l => l.Type == PlanOutputLinkType.QueryContext).Field);
 
-        Assert.Same(EngineLayout.HashIterator.ProbeOutputValuesField,
+        Assert.Same(EngineLayout.Latest.HashIterator.ProbeOutputValuesField,
                     links.Single(l => l.Type == PlanOutputLinkType.OutputValues).Field);
 
-        Assert.Same(EngineLayout.HashValue.SlotField,
+        Assert.Same(EngineLayout.Latest.HashValue.SlotField,
                     links.Single(l => l is { Type: PlanOutputLinkType.RowContext, IsRoute: false }).Field);
     }
 
@@ -138,10 +134,8 @@ public class PlanOutputLinkReaderTests
                       (PlanOutputLinkType.Reference, Reference, OutputArray, 0x08, true),
                       (PlanOutputLinkType.ExecutionContext, Context, Iterator, 0x18, true),
                       (PlanOutputLinkType.QueryContext, QueryContext, Context, 0x1B8, true),
-                      (PlanOutputLinkType.IteratorMap, Map, QueryContext, 0x290, true),
                       (PlanOutputLinkType.Producer, Producer, Reference, 0x50, true),
-                      (PlanOutputLinkType.MapEntry, Entry, Map, 0x08, true),
-                      (PlanOutputLinkType.Iterator, ProducerIterator, Entry, 0x10, true),
+                      (PlanOutputLinkType.Iterator, ProducerIterator, Producer, 0x00, true),
                       (PlanOutputLinkType.OutputValues, Values, ProducerIterator, 0x60, false),
                       (PlanOutputLinkType.Value, Value, Values, 0x08, false),
                       (PlanOutputLinkType.Reader, Hash, Value, 0x10, false),
@@ -166,17 +160,13 @@ public class PlanOutputLinkReaderTests
                                 .Write(Value + 0x18, InputReference)
                                 .Write(InputReference + 0x50, InputProducer)
                                 .Write(InputReference + 0x58, 1)
-                                .Write(Map, OtherEntry)
-                                .Write(OtherEntry + 0x08, InputProducer)
-                                .Write(OtherEntry + 0x10, InputIterator)
                                 .Write(InputIterator + 0x80, RowBuffer);
 
         var links = Read(memory, "CValRefJoin");
 
         Assert.Equal([(PlanOutputLinkType.Input, InputReference, Value, 0x18, 0),
                       (PlanOutputLinkType.Producer, InputProducer, InputReference, 0x50, 1),
-                      (PlanOutputLinkType.MapEntry, OtherEntry, Map, 0x00, 1),
-                      (PlanOutputLinkType.Iterator, InputIterator, OtherEntry, 0x10, 1),
+                      (PlanOutputLinkType.Iterator, InputIterator, InputProducer, 0x00, 1),
                       (PlanOutputLinkType.RowBuffer, RowBuffer, InputIterator, 0x80, 1),
                       (PlanOutputLinkType.BufferEntry, RowBuffer + 0x20, RowBuffer, 0x20, 1)],
                      links.SkipWhile(l => l.Type != PlanOutputLinkType.Input)
@@ -191,9 +181,6 @@ public class PlanOutputLinkReaderTests
                                 .Write(Value + 0x18, InputReference)
                                 .Write(InputReference + 0x50, InputProducer)
                                 .Write(InputReference + 0x58, 1)
-                                .Write(Map, OtherEntry)
-                                .Write(OtherEntry + 0x08, InputProducer)
-                                .Write(OtherEntry + 0x10, InputIterator)
                                 .Write(InputIterator + 0x80, RowBuffer);
 
         var stages = GetPath(memory, "CValRefJoin").Stages;
@@ -215,9 +202,6 @@ public class PlanOutputLinkReaderTests
                                 .Write(Value + 0x18, InputReference)
                                 .Write(InputReference + 0x50, InputProducer)
                                 .Write(InputReference + 0x58, 1)
-                                .Write(Map, OtherEntry)
-                                .Write(OtherEntry + 0x08, InputProducer)
-                                .Write(OtherEntry + 0x10, InputIterator)
                                 .Write(InputIterator + 0x80, RowBuffer)
                                 .Write(ProducerIterator + 0xC8, InputValueArray)
                                 .Write(InputValueArray + 0x08, InputValue)
@@ -235,10 +219,7 @@ public class PlanOutputLinkReaderTests
     [Fact]
     public void A_Passed_Through_Column_Goes_Straight_To_The_Row_Buffer_That_Holds_It()
     {
-        var memory = Route().Write(Map, OwnerEntry)
-                            .Write(OwnerEntry + 0x08, PlanObject)
-                            .Write(OwnerEntry + 0x10, OwnerIterator)
-                            .Write(OwnerIterator + 0x08, InputArray)
+        var memory = Route().Write(OwnerIterator + 0x08, InputArray)
                             .Write(InputArray, Profiling)
                             .Write(Profiling + 0x10, Producer)
                             .Write(Profiling + 0xA0, ProducerIterator)
@@ -246,7 +227,7 @@ public class PlanOutputLinkReaderTests
                             .Write(Reference + 0x58, 0)
                             .Write(ProducerIterator + 0x80, RowBuffer);
 
-        var links = Read(memory, "CValRefOrdinal");
+        var links = Read(memory, "CValRefOrdinal", [Node(OwnerIterator, PlanObject), .. DefaultNodes]);
 
         Assert.Equal([(PlanOutputLinkType.RowBuffer, RowBuffer, ProducerIterator, 0x80),
                       (PlanOutputLinkType.BufferEntry, RowBuffer, RowBuffer, 0x00)],
@@ -301,9 +282,6 @@ public class PlanOutputLinkReaderTests
                             .Write(Operands, InputReference + 0x28)
                             .Write(InputReference + 0x50, InputProducer)
                             .Write(InputReference + 0x58, 1)
-                            .Write(Map, OtherEntry)
-                            .Write(OtherEntry + 0x08, InputProducer)
-                            .Write(OtherEntry + 0x10, InputIterator)
                             .Write(InputIterator + 0x80, RowBuffer);
 
         var links = Read(memory, "CValRefCalculated");
@@ -327,9 +305,6 @@ public class PlanOutputLinkReaderTests
                             .Write(Operands, InputReference + 0x28)
                             .Write(InputReference + 0x50, InputProducer)
                             .Write(InputReference + 0x58, 1)
-                            .Write(Map, OtherEntry)
-                            .Write(OtherEntry + 0x08, InputProducer)
-                            .Write(OtherEntry + 0x10, InputIterator)
                             .Write(InputIterator + 0x80, RowBuffer);
 
         var stages = GetPath(memory, "CValRefCalculated").Stages;
@@ -340,19 +315,14 @@ public class PlanOutputLinkReaderTests
     }
 
     [Fact]
-    public void An_Iterator_Missing_From_The_Map_Is_Found_Through_Its_Profiling_Iterator()
+    public void A_Profiling_Wrapper_Is_Not_Taken_For_The_Producers_Iterator()
     {
-        var memory = Route().Write(Entry + 0x08, InputProducer)
-                            .Write(Profiling + 0x10, Producer)
-                            .Write(Profiling + 0x90, ProducerIterator)
-                            .Write(ProducerIterator + 0x10, Producer)
-                            .Write(Reference + 0x58, 0)
+        var memory = Route().Write(Reference + 0x58, 0)
                             .Write(ProducerIterator + 0x80, RowBuffer);
 
-        var links = Read(memory, "CValRefOrdinal", planIterators: [Profiling]);
+        var links = Read(memory, "CValRefOrdinal", [Node(Profiling, Producer), Node(ProducerIterator, Producer)]);
 
-        Assert.Contains(links,
-                        l => l is { Type: PlanOutputLinkType.Iterator, Address: ProducerIterator, Source: Profiling, SourceOffset: 0x90 });
+        Assert.Contains(links, l => l is { Type: PlanOutputLinkType.Iterator, Address: ProducerIterator, Source: Producer });
 
         Assert.Equal((PlanOutputLinkType.RowBuffer, RowBuffer, ProducerIterator),
                      links.Where(l => !l.IsRoute).Select(l => (l.Type, l.Address, l.Source)).First());
@@ -367,9 +337,6 @@ public class PlanOutputLinkReaderTests
                                 .Write(Value + 0x18, InputReference)
                                 .Write(InputReference + 0x50, InputProducer)
                                 .Write(InputReference + 0x58, 1)
-                                .Write(Map, OtherEntry)
-                                .Write(OtherEntry + 0x08, InputProducer)
-                                .Write(OtherEntry + 0x10, InputIterator)
                                 .Write(InputIterator + 0x80, RowBuffer);
 
         var path = GetPath(memory, "CValRefJoin");
@@ -396,7 +363,7 @@ public class PlanOutputLinkReaderTests
     [Fact]
     public void A_Batch_Column_Is_Followed_Through_The_Batch_To_Row_Adapter_Into_Its_Row_Buffer()
     {
-        var links = Read(BatchRoute(), "CValRefBatchRedirect", planIterators: [Adapter]);
+        var links = Read(BatchRoute(), "CValRefBatchRedirect", [Node(Adapter, PlanObject, true)]);
 
         Assert.Equal([(PlanOutputLinkType.Iterator, ProducerIterator, Adapter, 0x58),
                       (PlanOutputLinkType.OutputValues, AdapterValues, Adapter, 0x48),
@@ -409,7 +376,7 @@ public class PlanOutputLinkReaderTests
     [Fact]
     public void A_Batch_Column_Value_Is_The_Adapters_Row_Buffer_Entry()
     {
-        var stage = GetPath(BatchRoute(), "CValRefBatchRedirect", planIterators: [Adapter]).Stages[0];
+        var stage = GetPath(BatchRoute(), "CValRefBatchRedirect", [Node(Adapter, PlanObject, true)]).Stages[0];
 
         var value = Assert.NotNull(stage.Value);
 
@@ -432,24 +399,6 @@ public class PlanOutputLinkReaderTests
         Assert.Equal((PlanOutputLinkType.RowSlot, RowContext + 0x10, (int?)4), (value.Type, value.Address, value.Offset));
 
         Assert.Equal([0UL], value.Chain);
-    }
-
-    [Fact]
-    public void A_Producer_Further_Along_A_Bucket_Is_Reached_Through_The_Next_Entry()
-    {
-        var memory = Route().Write(Map + 0x08, OtherEntry)
-                            .Write(OtherEntry, Entry)
-                            .Write(OtherEntry + 0x08, InputProducer)
-                            .Write(Reference + 0x58, 0)
-                            .Write(ProducerIterator + 0x80, RowBuffer);
-
-        var links = Read(memory, "CValRefOrdinal");
-
-        Assert.Equal([(PlanOutputLinkType.MapEntry, OtherEntry, Map, 0x08),
-                      (PlanOutputLinkType.MapEntry, Entry, OtherEntry, 0x00),
-                      (PlanOutputLinkType.Iterator, ProducerIterator, Entry, 0x10)],
-                     links.Where(l => l.Type is PlanOutputLinkType.MapEntry or PlanOutputLinkType.Iterator)
-                          .Select(l => (l.Type, l.Address, l.Source, l.SourceOffset)));
     }
 
     [Fact]
@@ -659,12 +608,12 @@ public class PlanOutputLinkReaderTests
 
     private static IReadOnlyList<PlanOutputLink> Read(FakeTraceReplay memory,
                                                       string referenceClass,
-                                                      IReadOnlyList<ulong>? planIterators = null)
-        => GetPath(memory, referenceClass, planIterators).Links;
+                                                      IReadOnlyList<IteratorPlanNode>? planNodes = null)
+        => GetPath(memory, referenceClass, planNodes).Links;
 
     private static PlanOutputPath GetPath(FakeTraceReplay memory,
                                           string referenceClass,
-                                          IReadOnlyList<ulong>? planIterators = null,
+                                          IReadOnlyList<IteratorPlanNode>? planNodes = null,
                                           string producerClass = "CXteHash")
     {
         var route = new PlanOutputLinkReader.Route(memory,
@@ -672,7 +621,6 @@ public class PlanOutputLinkReaderTests
                                                    a => a == Producer ? producerClass : GetClassName(a, referenceClass),
                                                    a => a switch
                                                    {
-                                                       Map => 0x10,
                                                        InputArray => 0x08,
                                                        InputValueArray => 0x10,
                                                        ProducerIterator => 0x118,
@@ -684,7 +632,7 @@ public class PlanOutputLinkReaderTests
                                                        Variables => 0x40,
                                                        _ => 0
                                                    },
-                                                   planIterators ?? []);
+                                                   planNodes ?? DefaultNodes);
 
         route.AddOutput(PlanObject, Iterator, Reference);
 
@@ -710,8 +658,12 @@ public class PlanOutputLinkReaderTests
         Hash => "CValHash",
         Cached => "CValHashCachedSwitch",
         Storage => "CValSSTable",
+        Profiling => "CQScanProfileNew",
         _ => null
     };
+
+    private static IteratorPlanNode Node(ulong iterator, ulong planObject, bool isBatchHelper = false)
+        => new(iterator, planObject, 0, 0, 0, IsBatchHelper: isBatchHelper);
 
     private static FakeTraceReplay StreamAggregateRoute() => Route().Write(Producer + 0x60, 1)
                                                                    .Write(Producer + 0x68, 1)
@@ -734,10 +686,6 @@ public class PlanOutputLinkReaderTests
                                                                    .Write(Reference + 0x50, Producer)
                                                                    .Write(Iterator + 0x18, Context)
                                                                    .Write(Context + 0x1B8, QueryContext)
-                                                                   .Write(QueryContext + 0x290, Map)
-                                                                   .Write(Map + 0x08, Entry)
-                                                                   .Write(Entry + 0x08, Producer)
-                                                                   .Write(Entry + 0x10, ProducerIterator)
                                                                    .Write(QueryContext + 0x20, QueryScan)
                                                                    .Write(QueryScan + 0x58, ScanContext)
                                                                    .Write(ScanContext + 0x28, Statement)

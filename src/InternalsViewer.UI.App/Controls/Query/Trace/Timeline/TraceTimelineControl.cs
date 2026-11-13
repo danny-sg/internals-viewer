@@ -823,6 +823,8 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         }
 
         _canvas.Invalidate();
+
+        RulerChanged?.Invoke();
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)

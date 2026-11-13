@@ -3,12 +3,12 @@ using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
-using InternalsViewer.Query.Interfaces;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output.Enums;
 using RowColumnBinding = InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings.ColumnBinding;
 
@@ -27,8 +27,6 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
     private Dictionary<ulong, TraceArgumentCall> FirstGetRows => field ??= GetFirstGetRows();
 
     private Dictionary<ulong, (TracePosition From, TracePosition To)> RowRanges => field ??= GetRowRanges();
-
-    private ulong[] PlanIterators => field ??= [.. trace.LinkedPlanNodes.Select(p => p.Iterator)];
 
     private Dictionary<ulong, SqlTypeInfo> ReferenceTypes => field ??= GetReferenceTypes();
 
@@ -174,8 +172,8 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
         return path;
     }
 
-    private Route CreateRoute(IMemoryReader memory, TracePosition position)
-        => new(memory, position, a => GetClassName(a, position), a => GetSize(a, position), PlanIterators);
+    private Route CreateRoute(ITraceMemoryReader memory, TracePosition position)
+        => new(memory, position, a => GetClassName(a, position), a => GetSize(a, position), trace.LinkedPlanNodes);
 
     private Dictionary<ulong, SqlTypeInfo> GetReferenceTypes()
     {
@@ -263,19 +261,17 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
         return calls;
     }
 
-    internal sealed class Route(IMemoryReader memory,
+    internal sealed class Route(ITraceMemoryReader memory,
                                 TracePosition position,
                                 Func<ulong, string?> getClassName,
                                 Func<ulong, int> getSize,
-                                IReadOnlyList<ulong> planIterators)
+                                IReadOnlyList<IteratorPlanNode> planNodes)
     {
         private const ulong PointerSize = sizeof(ulong);
 
         private const int MaximumEntries = 64;
 
         private const int MaximumOutputs = 4096;
-
-        private const ulong WrappedSearchLength = 0x100;
 
         private const string JoinReferenceClass = "CValRefJoin";
 
@@ -299,52 +295,60 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
         private const string StreamAggregateIteratorClass = "CQScanStreamAggregateNew";
 
-        private static readonly MemoryField[] OutputValueFields =
-        [
-            EngineLayout.HashIterator.BuildOutputValuesField,
-            EngineLayout.HashIterator.ProbeOutputValuesField
-        ];
-
-        private static readonly MemoryField[] InputValueFields =
-        [
-            EngineLayout.HashIterator.BuildInputValuesField,
-            EngineLayout.HashIterator.ProbeInputValuesField
-        ];
+        private const string StorageRowsetClass = "RowsetNewSS";
 
         public List<PlanOutputLink> Links { get; } = [];
 
         public List<PlanOutputStage> Stages { get; } = [];
 
-        private static ulong BufferEntrySize { get; } = (ulong)EngineLayout.RowBuffer.EntryField.Length;
+        private EngineLayout Layout { get; } = memory.Layout;
+
+        private MemoryField[] OutputValueFields { get; } =
+        [
+            memory.Layout.HashIterator.BuildOutputValuesField,
+            memory.Layout.HashIterator.ProbeOutputValuesField
+        ];
+
+        private MemoryField[] InputValueFields { get; } =
+        [
+            memory.Layout.HashIterator.BuildInputValuesField,
+            memory.Layout.HashIterator.ProbeInputValuesField
+        ];
+
+        private ulong BufferEntrySize { get; } = (ulong)memory.Layout.RowBuffer.EntryField.Length;
 
         private int StageIndex { get; set; } = -1;
 
         private PlanOutputStage Stage => Stages[StageIndex];
 
+        private Dictionary<ulong, ulong> Iterators => field ??= GetIterators();
+
         public void AddOutput(ulong planObject, ulong iterator, ulong reference)
         {
-            if (!TryRead(planObject, EngineLayout.PlanObject.OutputColumnsField, out ulong outputs)
-                || !TryRead(outputs, EngineLayout.OutputList.CountField, out int count)
-                || !TryRead(outputs, EngineLayout.OutputList.ColumnsField, out ulong array))
+            if (!TryRead(planObject, Layout.PlanObject.OutputColumnsField, out ulong outputs)
+                || !TryRead(outputs, Layout.OutputList.CountField, out int count)
+                || !TryRead(outputs, Layout.OutputList.ColumnsField, out ulong array))
             {
                 return;
             }
 
-            Add(PlanOutputLinkType.OutputList, outputs, planObject, EngineLayout.PlanObject.OutputColumnsField, 0, isRoute: true);
+            Add(PlanOutputLinkType.OutputList, outputs, planObject, Layout.PlanObject.OutputColumnsField, 0, isRoute: true);
 
-            Add(PlanOutputLinkType.OutputArray, array, outputs, EngineLayout.OutputList.ColumnsField, 0, isRoute: true);
+            Add(PlanOutputLinkType.OutputArray, array, outputs, Layout.OutputList.ColumnsField, 0, isRoute: true);
 
             for (var index = 0UL; index < (ulong)Math.Clamp(count, 0, MaximumOutputs); index++)
             {
                 var columnOffset = index * PointerSize;
 
-                var columnField = EngineLayout.OutputList.ColumnField;
+                var columnField = Layout.OutputList.ColumnField;
 
                 if (TryRead(array + columnOffset, columnField, out ulong found) && found == reference)
                 {
                     Add(PlanOutputLinkType.Reference, reference, array, columnField, 0, columnOffset, isRoute: true);
 
-                    var owner = AddMap(iterator) && GetIterator(planObject, 0, false) is { } ownIterator ? ownIterator : iterator;
+                    var owner = GetIterator(planObject, 0, false) ?? iterator;
+
+                    AddContext(owner);
 
                     AddReference(reference, owner, 0);
 
@@ -361,15 +365,15 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
             Stages.Add(new PlanOutputStage(0, 0, -1));
 
-            AddMap(iterator);
+            AddContext(iterator);
 
             var className = getClassName(iterator);
 
-            if (IteratorLayout.HasRowBuffer(className))
+            if (IteratorLayout.IsRowset(className))
             {
                 var bindings = ReadRowBindings(iterator);
 
-                AddRowBufferStorage(iterator, EngineLayout.ScanIterator.RowBufferField, bindings?.Bound);
+                AddRowBufferStorage(iterator, Layout.RowsetIterator.RowBufferField, bindings?.Bound);
 
                 if (bindings is { } found)
                 {
@@ -377,20 +381,21 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
                 }
             }
 
-            if (IteratorLayout.HasRowBindings(className)
-                && TryRead(iterator, EngineLayout.ScanIterator.RowsetField, out ulong rowset)
-                && rowset >= TraceAddress.MinimumAddress + EngineLayout.Rowset.InterfaceOffset)
+            if (IteratorLayout.IsRowset(className)
+                && TryRead(iterator, Layout.RowsetIterator.RowsetField, out ulong rowset)
+                && rowset >= TraceAddress.MinimumAddress + Layout.Rowset.InterfaceOffset
+                && getClassName(rowset - Layout.Rowset.InterfaceOffset) == StorageRowsetClass)
             {
-                Add(PlanOutputLinkType.Rowset, rowset, iterator, EngineLayout.ScanIterator.RowsetField, 0);
+                Add(PlanOutputLinkType.Rowset, rowset, iterator, Layout.RowsetIterator.RowsetField, 0);
 
-                var rowField = EngineLayout.Rowset.RowField;
+                var rowField = Layout.Rowset.RowField;
 
-                AddRecord(rowset, rowField with { Offset = rowField.Offset - (int)EngineLayout.Rowset.InterfaceOffset }, 0);
+                AddRecord(rowset, rowField with { Offset = rowField.Offset - (int)Layout.Rowset.InterfaceOffset }, 0);
             }
 
             if (IteratorLayout.IsHash(className))
             {
-                var valueField = EngineLayout.HashIterator.ValueField;
+                var valueField = Layout.HashIterator.ValueField;
 
                 foreach (var field in OutputValueFields)
                 {
@@ -407,31 +412,31 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
             {
                 AddAggregateStorage(iterator);
 
-                AddExecutor(iterator, EngineLayout.StreamAggregateIterator.AggregateExecutorField);
+                AddExecutor(iterator, Layout.StreamAggregateIterator.AggregateExecutorField);
 
-                AddExecutorArray(iterator, EngineLayout.StreamAggregateIterator.CompareExecutorsField);
+                AddExecutorArray(iterator, Layout.StreamAggregateIterator.CompareExecutorsField);
 
-                AddExecutorArray(iterator, EngineLayout.StreamAggregateIterator.MoveExecutorsField);
+                AddExecutorArray(iterator, Layout.StreamAggregateIterator.MoveExecutorsField);
             }
 
             if (className == SortIteratorClass)
             {
-                AddExecutor(iterator, EngineLayout.SortIterator.PushRowExecutorField);
+                AddExecutor(iterator, Layout.SortIterator.PushRowExecutorField);
             }
 
             if (className == AdapterClass)
             {
-                var adapterValues = EngineLayout.BatchAdapter.OutputValuesField;
+                var adapterValues = Layout.BatchAdapter.OutputValuesField;
 
-                var adapterValue = EngineLayout.BatchAdapter.OutputValueField;
+                var adapterValue = Layout.BatchAdapter.OutputValueField;
 
                 AddValueArray(iterator, adapterValues, PlanOutputLinkType.OutputValues, PlanOutputLinkType.Value, adapterValue);
 
-                AddRowBufferStorage(iterator, EngineLayout.BatchAdapter.RowBufferField, null);
+                AddRowBufferStorage(iterator, Layout.BatchAdapter.RowBufferField, null);
             }
         }
 
-        private static ulong GetFieldAddress(ulong holder, MemoryField field, ulong elementOffset = 0)
+        private ulong GetFieldAddress(ulong holder, MemoryField field, ulong elementOffset = 0)
             => holder + (ulong)field.Offset + elementOffset;
 
         private ulong? AddReference(ulong reference, ulong owner, int depth)
@@ -470,8 +475,8 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
             }
 
             var producerField = className == StorageReferenceClass
-                ? EngineLayout.ColumnReference.StorageProducerField
-                : EngineLayout.ColumnReference.ProducerField;
+                ? Layout.ColumnReference.StorageProducerField
+                : Layout.ColumnReference.ProducerField;
 
             if (!TryRead(reference, producerField, out ulong producer) || getClassName(producer) is null)
             {
@@ -518,7 +523,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
         private void AddExpression(ulong reference, ulong owner, int depth)
         {
-            var producerField = EngineLayout.ColumnReference.CalculatedProducerField;
+            var producerField = Layout.ColumnReference.CalculatedProducerField;
 
             if (TryRead(reference, producerField, out ulong producer) && getClassName(producer) is not null)
             {
@@ -529,14 +534,14 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
                 Stage.Iterator = GetIterator(producer, depth) ?? 0;
             }
 
-            if (!TryRead(reference, EngineLayout.ColumnReference.ExpressionField, out ulong expression)
-                || !TryRead(expression, EngineLayout.Expression.OperandsField, out ulong operands)
-                || !TryRead(expression, EngineLayout.Expression.OperandCountField, out int count))
+            if (!TryRead(reference, Layout.ColumnReference.ExpressionField, out ulong expression)
+                || !TryRead(expression, Layout.Expression.OperandsField, out ulong operands)
+                || !TryRead(expression, Layout.Expression.OperandCountField, out int count))
             {
                 return;
             }
 
-            Add(PlanOutputLinkType.Expression, expression, reference, EngineLayout.ColumnReference.ExpressionField, depth, isRoute: true);
+            Add(PlanOutputLinkType.Expression, expression, reference, Layout.ColumnReference.ExpressionField, depth, isRoute: true);
 
             SetStage(PlanOutputStageType.Expression, expression);
 
@@ -544,12 +549,12 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
             {
                 var operandOffset = index * PointerSize;
 
-                if (!TryRead(operands + operandOffset, EngineLayout.Expression.OperandField, out ulong operand))
+                if (!TryRead(operands + operandOffset, Layout.Expression.OperandField, out ulong operand))
                 {
                     continue;
                 }
 
-                var interfaceStart = operand - EngineLayout.ColumnReference.InterfaceOffset;
+                var interfaceStart = operand - Layout.ColumnReference.InterfaceOffset;
 
                 var input = IsReference(interfaceStart) ? interfaceStart : operand;
 
@@ -558,7 +563,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
                     continue;
                 }
 
-                Add(PlanOutputLinkType.Input, input, operands, EngineLayout.Expression.OperandField, depth, operandOffset, isRoute: true);
+                Add(PlanOutputLinkType.Input, input, operands, Layout.Expression.OperandField, depth, operandOffset, isRoute: true);
 
                 AddReference(input, owner, depth + 1);
             }
@@ -566,10 +571,10 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
         private void AddBatchColumn(ulong reference, int depth)
         {
-            var producerField = EngineLayout.ColumnReference.RedirectProducerField;
+            var producerField = Layout.ColumnReference.RedirectProducerField;
 
             if (!TryRead(reference, producerField, out ulong planObject)
-                || !TryRead(reference, EngineLayout.ColumnReference.RedirectColumnField, out int column)
+                || !TryRead(reference, Layout.ColumnReference.RedirectColumnField, out int column)
                 || column is < 0 or >= MaximumOutputs)
             {
                 return;
@@ -588,28 +593,28 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
             Stage.Iterator = adapter;
 
-            if (TryRead(adapter, EngineLayout.BatchAdapter.ChildField, out ulong child) && child >= TraceAddress.MinimumAddress)
+            if (TryRead(adapter, Layout.BatchAdapter.ChildField, out ulong child) && child >= TraceAddress.MinimumAddress)
             {
-                Add(PlanOutputLinkType.Iterator, child, adapter, EngineLayout.BatchAdapter.ChildField, depth);
+                Add(PlanOutputLinkType.Iterator, child, adapter, Layout.BatchAdapter.ChildField, depth);
             }
 
             var columnOffset = (ulong)column * PointerSize;
 
-            if (TryRead(adapter, EngineLayout.BatchAdapter.OutputValuesField, out ulong values)
-                && TryRead(values + columnOffset, EngineLayout.BatchAdapter.OutputValueField, out ulong value))
+            if (TryRead(adapter, Layout.BatchAdapter.OutputValuesField, out ulong values)
+                && TryRead(values + columnOffset, Layout.BatchAdapter.OutputValueField, out ulong value))
             {
-                Add(PlanOutputLinkType.OutputValues, values, adapter, EngineLayout.BatchAdapter.OutputValuesField, depth);
+                Add(PlanOutputLinkType.OutputValues, values, adapter, Layout.BatchAdapter.OutputValuesField, depth);
 
-                Add(PlanOutputLinkType.Value, value, values, EngineLayout.BatchAdapter.OutputValueField, depth, columnOffset);
+                Add(PlanOutputLinkType.Value, value, values, Layout.BatchAdapter.OutputValueField, depth, columnOffset);
             }
 
             var entryOffset = (ulong)column * BufferEntrySize;
 
-            if (TryRead(adapter, EngineLayout.BatchAdapter.RowBufferField, out ulong rowBuffer) && rowBuffer >= TraceAddress.MinimumAddress)
+            if (TryRead(adapter, Layout.BatchAdapter.RowBufferField, out ulong rowBuffer) && rowBuffer >= TraceAddress.MinimumAddress)
             {
-                Add(PlanOutputLinkType.RowBuffer, rowBuffer, adapter, EngineLayout.BatchAdapter.RowBufferField, depth);
+                Add(PlanOutputLinkType.RowBuffer, rowBuffer, adapter, Layout.BatchAdapter.RowBufferField, depth);
 
-                var entryField = EngineLayout.RowBuffer.EntryField;
+                var entryField = Layout.RowBuffer.EntryField;
 
                 Add(PlanOutputLinkType.BufferEntry, rowBuffer + entryOffset, rowBuffer, entryField, depth, entryOffset);
 
@@ -621,9 +626,9 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
         private ulong? FindAdapter(ulong planObject)
         {
-            foreach (var iterator in planIterators)
+            foreach (var iterator in planNodes.Select(n => n.Iterator))
             {
-                if (getClassName(iterator) == AdapterClass && Read(iterator, EngineLayout.Iterator.PlanObjectField) == planObject)
+                if (getClassName(iterator) == AdapterClass && Read(iterator, Layout.Iterator.PlanObjectField) == planObject)
                 {
                     return iterator;
                 }
@@ -635,7 +640,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
         private void SetStorageRecord(ulong reference, ulong iterator, int depth)
         {
             if (Stage.Record is not null
-                || !TryRead(reference, EngineLayout.ColumnReference.StorageColumnIdField, out int columnId)
+                || !TryRead(reference, Layout.ColumnReference.StorageColumnIdField, out int columnId)
                 || columnId <= 0)
             {
                 return;
@@ -643,21 +648,21 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
             ulong[] chain =
             [
-                (ulong)EngineLayout.ScanIterator.RowsetField.Offset,
-                (ulong)EngineLayout.Rowset.RowField.Offset - EngineLayout.Rowset.InterfaceOffset,
-                (ulong)EngineLayout.Row.RecordField.Offset
+                (ulong)Layout.RowsetIterator.RowsetField.Offset,
+                (ulong)Layout.Rowset.RowField.Offset - Layout.Rowset.InterfaceOffset,
+                (ulong)Layout.Row.RecordField.Offset
             ];
 
             Stage.Record = new PlanOutputValueSource(PlanOutputLinkType.Record, iterator, chain, null, columnId);
 
             Stage.Type = PlanOutputStageType.Record;
 
-            if (TryRead(iterator, EngineLayout.ScanIterator.RowsetField, out ulong rowset)
-                && rowset >= TraceAddress.MinimumAddress + EngineLayout.Rowset.InterfaceOffset)
+            if (TryRead(iterator, Layout.RowsetIterator.RowsetField, out ulong rowset)
+                && rowset >= TraceAddress.MinimumAddress + Layout.Rowset.InterfaceOffset)
             {
-                Add(PlanOutputLinkType.Rowset, rowset, iterator, EngineLayout.ScanIterator.RowsetField, depth);
+                Add(PlanOutputLinkType.Rowset, rowset, iterator, Layout.RowsetIterator.RowsetField, depth);
 
-                AddRecord(rowset - EngineLayout.Rowset.InterfaceOffset, EngineLayout.Rowset.RowField, depth);
+                AddRecord(rowset - Layout.Rowset.InterfaceOffset, Layout.Rowset.RowField, depth);
             }
         }
 
@@ -670,7 +675,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
             Add(PlanOutputLinkType.Row, row, rowset, rowField, depth);
 
-            var recordField = EngineLayout.Row.RecordField;
+            var recordField = Layout.Row.RecordField;
 
             Add(PlanOutputLinkType.Record, GetFieldAddress(row, recordField), row, recordField, depth);
         }
@@ -680,119 +685,75 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
         private bool IsReference(ulong address)
             => getClassName(address)?.StartsWith(ReferenceClassPrefix, StringComparison.Ordinal) == true;
 
-        private bool AddMap(ulong iterator)
+        private bool AddContext(ulong iterator)
         {
             if (IsBatch(iterator)
-                || !TryRead(iterator, EngineLayout.Iterator.ExecutionContextField, out ulong context)
-                || !TryRead(context, EngineLayout.ExecutionContext.QueryContextField, out ulong queryContext)
-                || !TryRead(queryContext, EngineLayout.QueryContext.IteratorMapField, out ulong map))
+                || !TryRead(iterator, Layout.Iterator.ExecutionContextField, out ulong context)
+                || !TryRead(context, Layout.ExecutionContext.QueryContextField, out ulong queryContext))
             {
                 return false;
             }
 
-            Add(PlanOutputLinkType.ExecutionContext, context, iterator, EngineLayout.Iterator.ExecutionContextField, 0, isRoute: true);
+            Add(PlanOutputLinkType.ExecutionContext, context, iterator, Layout.Iterator.ExecutionContextField, 0, isRoute: true);
 
-            Add(PlanOutputLinkType.QueryContext, queryContext, context, EngineLayout.ExecutionContext.QueryContextField, 0, isRoute: true);
-
-            Add(PlanOutputLinkType.IteratorMap, map, queryContext, EngineLayout.QueryContext.IteratorMapField, 0, isRoute: true);
+            Add(PlanOutputLinkType.QueryContext, queryContext, context, Layout.ExecutionContext.QueryContextField, 0, isRoute: true);
 
             return true;
         }
 
         private ulong? GetIterator(ulong planObject, int depth, bool isLinked = true)
         {
-            var map = GetAddress(PlanOutputLinkType.IteratorMap) ?? 0;
-
-            var buckets = map == 0 ? 0 : Math.Min((ulong)getSize(map) / PointerSize, (ulong)MaximumEntries);
-
-            for (var bucket = 0UL; bucket < buckets; bucket++)
-            {
-                var entries = new List<(ulong Entry, ulong Source, MemoryField Field, ulong Offset)>();
-
-                var source = map;
-
-                var field = EngineLayout.IteratorMap.BucketField;
-
-                var offset = bucket * PointerSize;
-
-                while (entries.Count < MaximumEntries && TryRead(source + offset, field, out ulong entry) && entry != 0)
-                {
-                    entries.Add((entry, source, field, offset));
-
-                    if (TryRead(entry, EngineLayout.IteratorMap.PlanObjectField, out ulong found)
-                        && found == planObject
-                        && TryRead(entry, EngineLayout.IteratorMap.IteratorField, out ulong iterator))
-                    {
-                        if (!isLinked)
-                        {
-                            return iterator;
-                        }
-
-                        foreach (var (mapEntry, mapSource, mapField, mapOffset) in entries)
-                        {
-                            Add(PlanOutputLinkType.MapEntry, mapEntry, mapSource, mapField, depth, mapOffset, isRoute: true);
-                        }
-
-                        Add(PlanOutputLinkType.Iterator, iterator, entry, EngineLayout.IteratorMap.IteratorField, depth, isRoute: true);
-
-                        return iterator;
-                    }
-
-                    source = entry;
-
-                    field = EngineLayout.IteratorMap.NextField;
-
-                    offset = 0;
-                }
-            }
-
-            foreach (var planIterator in planIterators)
-            {
-                if (Read(planIterator, EngineLayout.Iterator.PlanObjectField) != planObject)
-                {
-                    continue;
-                }
-
-                var (iterator, offset) = GetWrapped(planIterator) ?? (planIterator, 0UL);
-
-                if (isLinked)
-                {
-                    Add(PlanOutputLinkType.Iterator, iterator, planIterator, null, depth, offset, isRoute: true);
-                }
-
-                return iterator;
-            }
-
-            return null;
-        }
-
-        private (ulong Iterator, ulong Offset)? GetWrapped(ulong profiling)
-        {
-            if (!TryRead(profiling, EngineLayout.Iterator.PlanObjectField, out ulong planObject) || planObject == 0)
+            if (!Iterators.TryGetValue(planObject, out var iterator))
             {
                 return null;
             }
 
-            for (var offset = 0UL; offset < WrappedSearchLength; offset += PointerSize)
+            if (isLinked)
             {
-                if (memory.TryRead(profiling + offset, out ulong found)
-                    && found != profiling
-                    && found != planObject
-                    && getSize(found) > 0
-                    && Read(found, EngineLayout.Iterator.PlanObjectField) == planObject)
+                Add(PlanOutputLinkType.Iterator, iterator, planObject, null, depth, isRoute: true);
+            }
+
+            return iterator;
+        }
+
+        private Dictionary<ulong, ulong> GetIterators()
+        {
+            var iterators = new Dictionary<ulong, ulong>();
+
+            var unnamed = new List<IteratorPlanNode>();
+
+            foreach (var planNode in planNodes)
+            {
+                if (planNode.IsBatchHelper)
                 {
-                    return (found, offset);
+                    continue;
+                }
+
+                var className = getClassName(planNode.Iterator);
+
+                if (className is null)
+                {
+                    unnamed.Add(planNode);
+                }
+                else if (!IteratorSymbolLookup.IsProfilingClass(className))
+                {
+                    iterators.TryAdd(planNode.PlanObject, planNode.Iterator);
                 }
             }
 
-            return null;
+            foreach (var planNode in unnamed)
+            {
+                iterators.TryAdd(planNode.PlanObject, planNode.Iterator);
+            }
+
+            return iterators;
         }
 
         private void AddJoinValue(ulong reference, ulong iterator, int depth)
         {
-            if (!TryRead(reference, EngineLayout.ColumnReference.JoinSideField, out ushort side)
+            if (!TryRead(reference, Layout.ColumnReference.JoinSideField, out ushort side)
                 || side >= OutputValueFields.Length
-                || !TryRead(reference, EngineLayout.ColumnReference.JoinColumnField, out int column)
+                || !TryRead(reference, Layout.ColumnReference.JoinColumnField, out int column)
                 || column is < 0 or >= MaximumOutputs)
             {
                 return;
@@ -803,7 +764,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
             var valueOffset = (ulong)column * PointerSize;
 
             if (!TryRead(iterator, valuesField, out ulong values)
-                || !TryRead(values + valueOffset, EngineLayout.HashIterator.ValueField, out ulong value))
+                || !TryRead(values + valueOffset, Layout.HashIterator.ValueField, out ulong value))
             {
                 return;
             }
@@ -813,7 +774,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
             Add(PlanOutputLinkType.Value,
                 value,
                 values,
-                EngineLayout.HashIterator.ValueField,
+                Layout.HashIterator.ValueField,
                 depth,
                 valueOffset,
                 className: getClassName(value));
@@ -830,7 +791,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
             var (primary, readers) = found;
 
-            var inputField = EngineLayout.SwitchValue.InputField;
+            var inputField = Layout.SwitchValue.InputField;
 
             if (!TryRead(value, inputField, out ulong input) || !IsReference(input))
             {
@@ -843,12 +804,12 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
             if (readers.Count == 1
                 && entry is { } inputEntry
-                && TryRead(primary, EngineLayout.CachedSwitch.ValueField, out ulong inner)
-                && Read(inner, EngineLayout.ExecValue.EntryField) == inputEntry)
+                && TryRead(primary, Layout.CachedSwitch.ValueField, out ulong inner)
+                && Read(inner, Layout.ExecValue.EntryField) == inputEntry)
             {
-                Add(PlanOutputLinkType.InputValue, inner, primary, EngineLayout.CachedSwitch.ValueField, depth);
+                Add(PlanOutputLinkType.InputValue, inner, primary, Layout.CachedSwitch.ValueField, depth);
 
-                Add(PlanOutputLinkType.BufferEntry, inputEntry, inner, EngineLayout.ExecValue.EntryField, depth);
+                Add(PlanOutputLinkType.BufferEntry, inputEntry, inner, Layout.ExecValue.EntryField, depth);
 
                 if (Stage.Type == PlanOutputStageType.None)
                 {
@@ -874,7 +835,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
             var readers = new List<ulong>();
 
-            var readerField = EngineLayout.SwitchValue.ReaderField;
+            var readerField = Layout.SwitchValue.ReaderField;
 
             if (!TryRead(value, readerField, out ulong primary))
             {
@@ -934,9 +895,9 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
                 {
                     AddExpressionExecutor(value, 0);
                 }
-                else if (TryRead(value, EngineLayout.ExecValue.EntryField, out ulong entry) && entry >= TraceAddress.MinimumAddress)
+                else if (TryRead(value, Layout.ExecValue.EntryField, out ulong entry) && entry >= TraceAddress.MinimumAddress)
                 {
-                    Add(PlanOutputLinkType.BufferEntry, entry, value, EngineLayout.ExecValue.EntryField, 0);
+                    Add(PlanOutputLinkType.BufferEntry, entry, value, Layout.ExecValue.EntryField, 0);
                 }
             }
         }
@@ -963,7 +924,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
             {
                 var entryOffset = (ulong)index * BufferEntrySize;
 
-                Add(PlanOutputLinkType.BufferEntry, rowBuffer + entryOffset, rowBuffer, EngineLayout.RowBuffer.EntryField, 0, entryOffset);
+                Add(PlanOutputLinkType.BufferEntry, rowBuffer + entryOffset, rowBuffer, Layout.RowBuffer.EntryField, 0, entryOffset);
             }
         }
 
@@ -975,9 +936,9 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
         private void AddRowBindingStorage(ulong iterator, (ulong Bindings, ulong Columns, List<RowColumnBinding> Bound) bindings)
         {
-            Add(PlanOutputLinkType.RowBindings, bindings.Bindings, iterator, EngineLayout.ScanIterator.RowBindingsField, 0);
+            Add(PlanOutputLinkType.RowBindings, bindings.Bindings, iterator, Layout.RowsetIterator.RowBindingsField, 0);
 
-            Add(PlanOutputLinkType.ColumnBindings, bindings.Columns, bindings.Bindings, EngineLayout.RowBindings.ColumnBindingsField, 0);
+            Add(PlanOutputLinkType.ColumnBindings, bindings.Columns, bindings.Bindings, Layout.RowBindings.ColumnBindingsField, 0);
 
             foreach (var binding in bindings.Bound)
             {
@@ -986,7 +947,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
                 Add(PlanOutputLinkType.ColumnBinding,
                     bindings.Columns + bindingOffset,
                     bindings.Columns,
-                    EngineLayout.RowBindings.ColumnBindingField,
+                    Layout.RowBindings.ColumnBindingField,
                     0,
                     bindingOffset,
                     binding.StatusOffset / (int)BufferEntrySize);
@@ -997,9 +958,9 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
         private void AddAggregateStorage(ulong iterator)
         {
-            var tableField = EngineLayout.StreamAggregateIterator.VariableTableField;
+            var tableField = Layout.StreamAggregateIterator.VariableTableField;
 
-            var rowSlot = (ulong)EngineLayout.StreamAggregateIterator.GroupRowSlot * PointerSize;
+            var rowSlot = (ulong)EngineLayout.StreamAggregateIteratorLayout.GroupRowSlot * PointerSize;
 
             if (TryRead(iterator, tableField, out ulong table)
                 && table >= TraceAddress.MinimumAddress
@@ -1009,7 +970,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
             {
                 Add(PlanOutputLinkType.VariableTable, table, iterator, tableField, 0);
 
-                Add(PlanOutputLinkType.Variables, row, table, EngineLayout.StreamAggregateIterator.VariablesField, 0, rowSlot);
+                Add(PlanOutputLinkType.Variables, row, table, Layout.StreamAggregateIterator.VariablesField, 0, rowSlot);
 
                 var count = Math.Min(getSize(row) / (int)BufferEntrySize, MaximumOutputs);
 
@@ -1017,11 +978,11 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
                 {
                     var entryOffset = (ulong)index * BufferEntrySize;
 
-                    Add(PlanOutputLinkType.BufferEntry, row + entryOffset, row, EngineLayout.RowBuffer.EntryField, 0, entryOffset);
+                    Add(PlanOutputLinkType.BufferEntry, row + entryOffset, row, Layout.RowBuffer.EntryField, 0, entryOffset);
                 }
             }
 
-            var countField = EngineLayout.StreamAggregateIterator.CountField;
+            var countField = Layout.StreamAggregateIterator.CountField;
 
             if (countField.Offset + countField.Length <= getSize(iterator))
             {
@@ -1037,7 +998,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
         {
             if (getClassName(address) == PlanOutputValueLayout.CachedSwitchClass)
             {
-                if (!TryRead(address, EngineLayout.CachedSwitch.ValueField, out ulong inner)
+                if (!TryRead(address, Layout.CachedSwitch.ValueField, out ulong inner)
                     || getClassName(inner) == PlanOutputValueLayout.CachedSwitchClass)
                 {
                     return null;
@@ -1047,7 +1008,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
                 readers.Add(address);
 
-                return AddReader(inner, address, EngineLayout.CachedSwitch.ValueField, depth, readers);
+                return AddReader(inner, address, Layout.CachedSwitch.ValueField, depth, readers);
             }
 
             if (getClassName(address) == PlanOutputValueLayout.ExpressionValueClass)
@@ -1096,7 +1057,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
             if (getClassName(source) == PlanOutputValueLayout.CachedSwitchClass)
             {
                 SetValue(new PlanOutputValueSource(PlanOutputLinkType.Expression,
-                                                   source + EngineLayout.CachedSwitch.EntryOffset,
+                                                   source + (ulong)Layout.CachedSwitch.EntryOffset,
                                                    [],
                                                    null));
             }
@@ -1104,7 +1065,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
         private void AddExpressionExecutor(ulong expression, int depth)
         {
-            var executorField = EngineLayout.ExpressionValue.ExecutorField;
+            var executorField = Layout.ExpressionValue.ExecutorField;
 
             if (TryRead(expression, executorField, out ulong executor) && executor >= TraceAddress.MinimumAddress)
             {
@@ -1116,7 +1077,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
         private void AddExecutorInputs(ulong executor, int depth)
         {
-            var valuesField = EngineLayout.Executor.ValuesField;
+            var valuesField = Layout.Executor.ValuesField;
 
             if (!TryRead(executor, valuesField, out ulong values) || values < TraceAddress.MinimumAddress)
             {
@@ -1127,7 +1088,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
             var count = Math.Min(getSize(values) / (int)PointerSize, MaximumEntries);
 
-            var valueField = EngineLayout.Executor.ValueField;
+            var valueField = Layout.Executor.ValueField;
 
             for (var index = 0; index < count; index++)
             {
@@ -1147,10 +1108,10 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
                     AddRow(value, reader, depth);
                 }
                 else if (className == PlanOutputValueLayout.ExecValueClass
-                         && TryRead(value, EngineLayout.ExecValue.EntryField, out ulong entry)
+                         && TryRead(value, Layout.ExecValue.EntryField, out ulong entry)
                          && entry >= TraceAddress.MinimumAddress)
                 {
-                    Add(PlanOutputLinkType.BufferEntry, entry, value, EngineLayout.ExecValue.EntryField, depth);
+                    Add(PlanOutputLinkType.BufferEntry, entry, value, Layout.ExecValue.EntryField, depth);
                 }
             }
         }
@@ -1178,7 +1139,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
             var count = Math.Min(getSize(array) / (int)PointerSize, MaximumEntries);
 
-            var element = EngineLayout.Executor.ElementField;
+            var element = Layout.Executor.ElementField;
 
             for (var index = 0; index < count; index++)
             {
@@ -1200,14 +1161,14 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
             switch (getClassName(address))
             {
                 case TraceHashTableLayout.ValueClass:
-                    return (ReadSlot(address, EngineLayout.HashValue.SlotField),
-                            TryRead(address, EngineLayout.HashValue.RecordOffsetField, out int offset) ? offset : (int?)null,
+                    return (ReadSlot(address, Layout.HashValue.SlotField),
+                            TryRead(address, Layout.HashValue.RecordOffsetField, out int offset) ? offset : (int?)null,
                             0,
-                            EngineLayout.HashValue.SlotField);
+                            Layout.HashValue.SlotField);
                 case PlanOutputValueLayout.StorageValueClass:
-                    TryRead(address, EngineLayout.StorageValue.AccessorField, out ulong accessor);
+                    TryRead(address, Layout.StorageValue.AccessorField, out ulong accessor);
 
-                    return (ReadSlot(address, EngineLayout.StorageValue.SlotField), null, accessor, EngineLayout.StorageValue.SlotField);
+                    return (ReadSlot(address, Layout.StorageValue.SlotField), null, accessor, Layout.StorageValue.SlotField);
                 default:
                     return null;
             }
@@ -1224,7 +1185,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
             var slotOffset = (ulong)info.Slot * PointerSize;
 
-            var slotField = EngineLayout.RowContext.SlotField;
+            var slotField = Layout.RowContext.SlotField;
 
             var rowSlot = GetFieldAddress(rowContext, slotField, slotOffset);
 
@@ -1249,7 +1210,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
                 return;
             }
 
-            ulong[] chain = [0, 0, (ulong)EngineLayout.Row.RecordField.Offset];
+            ulong[] chain = [0, 0, (ulong)Layout.Row.RecordField.Offset];
 
             Stage.Record = new PlanOutputValueSource(PlanOutputLinkType.Record, rowSlot, chain, recordOffset);
 
@@ -1272,7 +1233,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
             {
                 foreach (var iterator in Links.Where(l => l.Type == PlanOutputLinkType.Iterator).Select(l => l.Address).Distinct().ToList())
                 {
-                    if (AddMap(iterator))
+                    if (AddContext(iterator))
                     {
                         break;
                     }
@@ -1280,31 +1241,31 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
             }
 
             if (GetAddress(PlanOutputLinkType.QueryContext) is not { } queryContext
-                || !TryRead(queryContext, EngineLayout.QueryContext.QueryScanField, out ulong queryScan)
-                || !TryRead(queryScan, EngineLayout.QueryScan.ContextField, out ulong scanContext)
-                || !TryRead(scanContext, EngineLayout.QueryScanContext.StatementField, out ulong statement)
-                || !TryRead(statement, EngineLayout.Statement.RowContextField, out ulong rowContext)
+                || !TryRead(queryContext, Layout.QueryContext.QueryScanField, out ulong queryScan)
+                || !TryRead(queryScan, Layout.QueryScan.ContextField, out ulong scanContext)
+                || !TryRead(scanContext, Layout.QueryScanContext.StatementField, out ulong statement)
+                || !TryRead(statement, Layout.Statement.RowContextField, out ulong rowContext)
                 || rowContext < TraceAddress.MinimumAddress)
             {
                 return null;
             }
 
-            Add(PlanOutputLinkType.QueryScan, queryScan, queryContext, EngineLayout.QueryContext.QueryScanField, depth, isRoute: true);
+            Add(PlanOutputLinkType.QueryScan, queryScan, queryContext, Layout.QueryContext.QueryScanField, depth, isRoute: true);
 
-            Add(PlanOutputLinkType.QueryScanContext, scanContext, queryScan, EngineLayout.QueryScan.ContextField, depth, isRoute: true);
+            Add(PlanOutputLinkType.QueryScanContext, scanContext, queryScan, Layout.QueryScan.ContextField, depth, isRoute: true);
 
-            Add(PlanOutputLinkType.Statement, statement, scanContext, EngineLayout.QueryScanContext.StatementField, depth, isRoute: true);
+            Add(PlanOutputLinkType.Statement, statement, scanContext, Layout.QueryScanContext.StatementField, depth, isRoute: true);
 
-            Add(PlanOutputLinkType.RowContext, rowContext, statement, EngineLayout.Statement.RowContextField, depth, isRoute: true);
+            Add(PlanOutputLinkType.RowContext, rowContext, statement, Layout.Statement.RowContextField, depth, isRoute: true);
 
             return rowContext;
         }
 
         private ulong? AddBufferEntry(ulong reference, ulong iterator, int depth)
         {
-            var bufferField = EngineLayout.ScanIterator.RowBufferField;
+            var bufferField = Layout.RowsetIterator.RowBufferField;
 
-            if (!TryRead(reference, EngineLayout.ColumnReference.OrdinalColumnField, out int column)
+            if (!TryRead(reference, Layout.ColumnReference.OrdinalColumnField, out int column)
                 || column is < 0 or >= MaximumOutputs
                 || !TryRead(iterator, bufferField, out ulong rowBuffer)
                 || rowBuffer < TraceAddress.MinimumAddress)
@@ -1323,7 +1284,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
             Add(PlanOutputLinkType.RowBuffer, rowBuffer, iterator, bufferField, depth);
 
-            Add(PlanOutputLinkType.BufferEntry, entry, rowBuffer, EngineLayout.RowBuffer.EntryField, depth, entryOffset);
+            Add(PlanOutputLinkType.BufferEntry, entry, rowBuffer, Layout.RowBuffer.EntryField, depth, entryOffset);
 
             SetStage(PlanOutputStageType.RowBuffer, rowBuffer);
 
@@ -1334,18 +1295,18 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
         private ulong? AddAggregateValue(ulong reference, ulong producer, ulong iterator, int depth)
         {
-            var groupField = EngineLayout.PlanObject.GroupColumnsField;
+            var groupField = Layout.PlanObject.GroupColumnsField;
 
-            var aggregateField = EngineLayout.PlanObject.AggregateColumnsField;
+            var aggregateField = Layout.PlanObject.AggregateColumnsField;
 
-            var groupCountField = EngineLayout.PlanObject.GroupCountField;
+            var groupCountField = Layout.PlanObject.GroupCountField;
 
             if (FindColumn(producer, groupField, groupCountField, reference) is { } group)
             {
                 return AddVariable(PlanOutputLinkType.GroupColumns, groupField, reference, producer, iterator, group, group.Index, depth);
             }
 
-            if (FindColumn(producer, aggregateField, EngineLayout.PlanObject.AggregateCountField, reference) is { } aggregate)
+            if (FindColumn(producer, aggregateField, Layout.PlanObject.AggregateCountField, reference) is { } aggregate)
             {
                 var variable = GetColumnCount(producer, groupField, groupCountField) + aggregate.Index;
 
@@ -1359,11 +1320,11 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
                                    depth);
             }
 
-            var countField = EngineLayout.PlanObject.CountColumnsField;
+            var countField = Layout.PlanObject.CountColumnsField;
 
-            var valueField = EngineLayout.StreamAggregateIterator.CountField;
+            var valueField = Layout.StreamAggregateIterator.CountField;
 
-            if (FindColumn(producer, countField, EngineLayout.PlanObject.CountColumnCountField, reference) is not { Index: 0 } count
+            if (FindColumn(producer, countField, Layout.PlanObject.CountColumnCountField, reference) is not { Index: 0 } count
                 || (ulong)(valueField.Offset + valueField.Length) > (ulong)getSize(iterator))
             {
                 return null;
@@ -1391,9 +1352,9 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
                                    int variable,
                                    int depth)
         {
-            var tableField = EngineLayout.StreamAggregateIterator.VariableTableField;
+            var tableField = Layout.StreamAggregateIterator.VariableTableField;
 
-            var rowSlot = (ulong)EngineLayout.StreamAggregateIterator.GroupRowSlot * PointerSize;
+            var rowSlot = (ulong)EngineLayout.StreamAggregateIteratorLayout.GroupRowSlot * PointerSize;
 
             var entryOffset = (ulong)variable * BufferEntrySize;
 
@@ -1411,11 +1372,11 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
             Add(PlanOutputLinkType.VariableTable, table, iterator, tableField, depth);
 
-            Add(PlanOutputLinkType.Variables, row, table, EngineLayout.StreamAggregateIterator.VariablesField, depth, rowSlot);
+            Add(PlanOutputLinkType.Variables, row, table, Layout.StreamAggregateIterator.VariablesField, depth, rowSlot);
 
             var entry = row + entryOffset;
 
-            Add(PlanOutputLinkType.BufferEntry, entry, row, EngineLayout.RowBuffer.EntryField, depth, entryOffset);
+            Add(PlanOutputLinkType.BufferEntry, entry, row, Layout.RowBuffer.EntryField, depth, entryOffset);
 
             SetStage(PlanOutputStageType.Variables, row);
 
@@ -1432,7 +1393,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
                                     (ulong Array, int Index) column,
                                     int depth)
         {
-            Add(PlanOutputLinkType.PlanObject, producer, iterator, EngineLayout.Iterator.PlanObjectField, depth, isRoute: true);
+            Add(PlanOutputLinkType.PlanObject, producer, iterator, Layout.Iterator.PlanObjectField, depth, isRoute: true);
 
             Add(type, column.Array, producer, field, depth, isRoute: true);
 
@@ -1478,13 +1439,13 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
                 {
                     var valueOffset = (ulong)index * PointerSize;
 
-                    if (!TryRead(values + valueOffset, EngineLayout.HashIterator.ValueField, out ulong value))
+                    if (!TryRead(values + valueOffset, Layout.HashIterator.ValueField, out ulong value))
                     {
                         continue;
                     }
 
                     var isEntry = entry is { } target
-                                  && TryRead(value, EngineLayout.ExecValue.EntryField, out ulong pointer)
+                                  && TryRead(value, Layout.ExecValue.EntryField, out ulong pointer)
                                   && pointer == target;
 
                     if (!isEntry && !readers.Contains(value))
@@ -1494,11 +1455,11 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
                     Add(PlanOutputLinkType.InputValues, values, iterator, valuesField, depth);
 
-                    Add(PlanOutputLinkType.InputValue, value, values, EngineLayout.HashIterator.ValueField, depth, valueOffset);
+                    Add(PlanOutputLinkType.InputValue, value, values, Layout.HashIterator.ValueField, depth, valueOffset);
 
                     if (isEntry && entry is { } entryAddress)
                     {
-                        Add(PlanOutputLinkType.BufferEntry, entryAddress, value, EngineLayout.ExecValue.EntryField, depth);
+                        Add(PlanOutputLinkType.BufferEntry, entryAddress, value, Layout.ExecValue.EntryField, depth);
                     }
 
                     return;

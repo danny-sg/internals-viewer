@@ -22,12 +22,6 @@ namespace InternalsViewer.UI.App.ViewModels.Query;
 public sealed partial class QueryViewModel
 {
     [ObservableProperty]
-    private double _guideStepIndex;
-
-    [ObservableProperty]
-    private double _guideStepMaximum;
-
-    [ObservableProperty]
     private ObservableCollection<GuideStepGroup> _guideStepGroups = [];
 
     [ObservableProperty]
@@ -72,8 +66,6 @@ public sealed partial class QueryViewModel
     private bool GuideStepsDetailed { get; set; }
 
     private List<(int Index, PlanNode Node)> GuidePhaseStarts { get; set; } = [];
-
-    private bool IsSelectingGuideStep { get; set; }
 
     public void SelectGuideStep(GuideStepItem item) => SelectGuideStep(item.Index);
 
@@ -348,12 +340,6 @@ public sealed partial class QueryViewModel
 
     private void ShowGuideStep(int index)
     {
-        IsSelectingGuideStep = true;
-
-        GuideStepIndex = index;
-
-        IsSelectingGuideStep = false;
-
         SetCurrent(CurrentGuideStep, isCurrent: false);
 
         var item = index < GuideStepItems.Count ? GuideStepItems[index] : null;
@@ -411,8 +397,6 @@ public sealed partial class QueryViewModel
         GuideSteps = steps;
 
         GuidePhaseStarts = GetPhaseStarts(steps);
-
-        GuideStepMaximum = Math.Max(0, steps.Count - 1);
 
         BuildGuideStepGroups(Layout.IsGuideMode ? steps : []);
 
@@ -608,12 +592,6 @@ public sealed partial class QueryViewModel
         CurrentGuideStep = null;
 
         GuidePhase = string.Empty;
-
-        IsSelectingGuideStep = true;
-
-        GuideStepIndex = 0;
-
-        IsSelectingGuideStep = false;
     }
 
     partial void OnIsGuidePlayingChanged(bool value)
@@ -642,23 +620,6 @@ public sealed partial class QueryViewModel
             RowFlowPosition = null;
 
             UpdatePlanActivity(position);
-        }
-    }
-
-    partial void OnGuideStepIndexChanged(double value)
-    {
-        if (IsSelectingGuideStep || Trace is null)
-        {
-            return;
-        }
-
-        var index = (int)Math.Round(value);
-
-        if (index >= 0 && index < GetGuideSteps().Count)
-        {
-            GuidePlayback.Stop();
-
-            GoToGuideStep(index);
         }
     }
 }

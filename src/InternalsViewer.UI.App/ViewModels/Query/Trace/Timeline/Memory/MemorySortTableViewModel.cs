@@ -71,20 +71,6 @@ public sealed class MemorySortTableViewModel : MemoryStructureViewModel
 
     private const byte LastPrintable = 0x7E;
 
-    private static readonly IReadOnlyList<MemoryField> EntryFields = EngineLayout.SortEntry.Fields;
-
-    private static readonly int ColourCount = new[]
-    {
-        EngineLayout.SortIterator.Fields.Count,
-        EngineLayout.SortRowset.Fields.Count,
-        EngineLayout.SortDescriptor.Fields.Count,
-        EntryFields.Count
-    }.Max();
-
-    private static readonly List<Colour> FieldColours = CreateColours(ColourCount);
-
-    private static readonly int CursorColour = GetField(EngineLayout.SortDescriptor.Fields, EngineLayout.SortDescriptor.CursorField);
-
     public MemorySortTableViewModel(MemoryHistoryViewModel history, ulong iterator, TracePosition position, ITraceNavigator navigator)
         : base(history, position, navigator)
     {
@@ -106,6 +92,20 @@ public sealed class MemorySortTableViewModel : MemoryStructureViewModel
     protected override HexImage? Image => Loaded?.Image;
 
     private ulong Iterator { get; }
+
+    private EngineLayout Layout => History.Store.Layout;
+
+    private IReadOnlyList<MemoryField> EntryFields => Layout.SortEntry.Fields;
+
+    private List<Colour> FieldColours => field ??= CreateColours(new[]
+    {
+        Layout.SortIterator.Fields.Count,
+        Layout.SortRowset.Fields.Count,
+        Layout.SortDescriptor.Fields.Count,
+        EntryFields.Count
+    }.Max());
+
+    private int CursorColour => GetField(Layout.SortDescriptor.Fields, Layout.SortDescriptor.CursorField);
 
     private PlayheadLoader<LoadedTable?> Loader { get; }
 
@@ -145,7 +145,7 @@ public sealed class MemorySortTableViewModel : MemoryStructureViewModel
         }
         else if (node.Type is MemoryStructureNodeType.ComparePage or MemoryStructureNodeType.Run)
         {
-            var size = EngineLayout.SortEntry.Size;
+            var size = EngineLayout.SortEntryLayout.Size;
 
             var entry = HexAddress + (ulong)((offset - loaded.Image.Offset) / size * size);
 
@@ -198,11 +198,11 @@ public sealed class MemorySortTableViewModel : MemoryStructureViewModel
         switch (node.Type)
         {
             case MemoryStructureNodeType.SortTable:
-                ShowFields(node, EngineLayout.SortIterator.Fields, FieldColours);
+                ShowFields(node, Layout.SortIterator.Fields, FieldColours);
                 break;
 
             case MemoryStructureNodeType.Rowset:
-                ShowFields(node, EngineLayout.SortRowset.Fields, FieldColours);
+                ShowFields(node, Layout.SortRowset.Fields, FieldColours);
                 break;
 
             case MemoryStructureNodeType.Descriptor:
@@ -352,11 +352,11 @@ public sealed class MemorySortTableViewModel : MemoryStructureViewModel
 
     private static string GetText(long value) => value.ToString("N0", CultureInfo.CurrentCulture);
 
-    private static int GetFieldWidth(MemoryField field) => field switch
+    private int GetFieldWidth(MemoryField field) => field switch
     {
-        _ when field == EngineLayout.SortEntry.KeyField => KeyWidth,
-        _ when field == EngineLayout.SortEntry.RecordLengthField => RecordLengthWidth,
-        _ when field == EngineLayout.SortEntry.KeyLengthField => KeyLengthWidth,
+        _ when field == Layout.SortEntry.KeyField => KeyWidth,
+        _ when field == Layout.SortEntry.RecordLengthField => RecordLengthWidth,
+        _ when field == Layout.SortEntry.KeyLengthField => KeyLengthWidth,
         _ => AddressWidth
     };
 
@@ -378,9 +378,9 @@ public sealed class MemorySortTableViewModel : MemoryStructureViewModel
     private static MemoryStructureNode Node(MemoryStructureNodeType type, string name, ulong address, MemoryStructureNode? parent)
         => new(type, name, address, -1, parent);
 
-    private static MemoryStructureBadge GetCursorBadge() => new(CursorBadge, FieldColours[CursorColour].ToWindowsColor());
+    private MemoryStructureBadge GetCursorBadge() => new(CursorBadge, FieldColours[CursorColour].ToWindowsColor());
 
-    private static IEnumerable<Marker> GetEntryMarkers(List<TraceSortEntry> entries, ulong page, int hexBase)
+    private IEnumerable<Marker> GetEntryMarkers(List<TraceSortEntry> entries, ulong page, int hexBase)
     {
         foreach (var entry in entries)
         {
@@ -465,7 +465,7 @@ public sealed class MemorySortTableViewModel : MemoryStructureViewModel
             {
                 var run = table.Runs[index];
 
-                var hasCursor = run.Field != EngineLayout.SortDescriptor.CursorField && entries[index].Any(e => e.Address == table.Cursor);
+                var hasCursor = run.Field != Layout.SortDescriptor.CursorField && entries[index].Any(e => e.Address == table.Cursor);
 
                 heading.Children.Add(new MemoryStructureNode(MemoryStructureNodeType.Run, run.Field.Name, run.Address, -1, heading)
                 {
@@ -554,7 +554,7 @@ public sealed class MemorySortTableViewModel : MemoryStructureViewModel
 
     private void ShowDescriptor(MemoryStructureNode node)
     {
-        var fields = EngineLayout.SortDescriptor.Fields;
+        var fields = Layout.SortDescriptor.Fields;
 
         var data = Image?.Data;
 
@@ -562,7 +562,7 @@ public sealed class MemorySortTableViewModel : MemoryStructureViewModel
 
         List<MemoryField> shown =
         [
-            .. fields.Where(f => !EngineLayout.SortDescriptor.RunFields.Contains(f)
+            .. fields.Where(f => !Layout.SortDescriptor.RunFields.Contains(f)
                                  || ReadValue(data, offset + f.Offset, f.Length) is not (null or 0))
         ];
 
@@ -600,7 +600,7 @@ public sealed class MemorySortTableViewModel : MemoryStructureViewModel
 
         ShowItemMarkers($"{node.Key} {page:X} {string.Join(",", onPage.Select(e => e.Address))}",
                         () => GetEntryMarkers(onPage, page, hexBase),
-                        EngineLayout.SortEntry.Size);
+                        EngineLayout.SortEntryLayout.Size);
     }
 
     private ulong GetEntryPage(ulong entry) => Loaded?.Table.ComparePages.FirstOrDefault(p => IsOnPage(entry, p)) ?? 0;
@@ -634,7 +634,7 @@ public sealed class MemorySortTableViewModel : MemoryStructureViewModel
 
         SelectItemRow();
 
-        ShowItemMarkers($"{node.Key} {entries.Count}", () => GetEntryMarkers(entries, page, hexBase), EngineLayout.SortEntry.Size);
+        ShowItemMarkers($"{node.Key} {entries.Count}", () => GetEntryMarkers(entries, page, hexBase), EngineLayout.SortEntryLayout.Size);
     }
 
     private QueryResultSet CreateEntryTable(LoadedTable loaded, List<TraceSortEntry> entries, bool isRun)

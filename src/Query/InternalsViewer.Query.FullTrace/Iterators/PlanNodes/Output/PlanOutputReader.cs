@@ -1,7 +1,7 @@
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.History;
-using InternalsViewer.Query.Interfaces;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 
 namespace InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
@@ -12,9 +12,7 @@ internal static class PlanOutputReader
 
     private const int MaximumRedirects = 4;
 
-    public static IReadOnlyList<IteratorPlanNode> Read(IReadOnlyList<IteratorPlanNode> planNodes,
-                                                       MemoryHistoryStore store,
-                                                       PlanNodeLayout layout)
+    public static IReadOnlyList<IteratorPlanNode> Read(IReadOnlyList<IteratorPlanNode> planNodes, MemoryHistoryStore store)
     {
         if (store.Blocks.Count == 0 || planNodes.Count == 0)
         {
@@ -31,22 +29,21 @@ internal static class PlanOutputReader
             {
                 var memory = new MemoryHistoryReader(store, planNode.Constructed!.Value.Position);
 
-                outputs[planNode.PlanObject] = Read(memory, planNode.PlanObject, layout, planObjects);
+                outputs[planNode.PlanObject] = Read(memory, planNode.PlanObject, planObjects);
             }
         }
 
         return [.. planNodes.Select(p => outputs.TryGetValue(p.PlanObject, out var found) ? p with { Outputs = found } : p)];
     }
 
-    internal static IReadOnlyList<PlanOutputColumn> Read(IMemoryReader memory,
-                                                         ulong planObject,
-                                                         PlanNodeLayout layout,
-                                                         IReadOnlySet<ulong> planObjects)
+    internal static IReadOnlyList<PlanOutputColumn> Read(ITraceMemoryReader memory, ulong planObject, IReadOnlySet<ulong> planObjects)
     {
-        if (!memory.TryRead(planObject + layout.PlanOutputsOffset, out ulong outputs)
+        var layout = memory.Layout;
+
+        if (!memory.TryRead(planObject + (ulong)layout.PlanObject.OutputColumnsField.Offset, out ulong outputs)
             || outputs < TraceAddress.MinimumAddress
-            || !memory.TryRead(outputs + layout.OutputCountOffset, out int count)
-            || !memory.TryRead(outputs + layout.OutputColumnsOffset, out ulong columns)
+            || !memory.TryRead(outputs + (ulong)layout.OutputList.CountField.Offset, out int count)
+            || !memory.TryRead(outputs + (ulong)layout.OutputList.ColumnsField.Offset, out ulong columns)
             || count is <= 0 or > MaximumOutputs)
         {
             return [];
@@ -62,38 +59,43 @@ internal static class PlanOutputReader
                 return [];
             }
 
-            found[index] = ReadColumn(memory, reference, layout, planObjects);
+            found[index] = ReadColumn(memory, reference, layout.ColumnReference, planObjects);
         }
 
         return found;
     }
 
-    private static PlanOutputColumn ReadColumn(IMemoryReader memory,
+    private static PlanOutputColumn ReadColumn(ITraceMemoryReader memory,
                                                ulong reference,
-                                               PlanNodeLayout layout,
+                                               EngineLayout.ColumnReferenceLayout layout,
                                                IReadOnlySet<ulong> planObjects,
                                                int depth = 0)
     {
-        var hasProducer = memory.TryRead(reference + layout.ColumnProducerOffset, out ulong producer) && planObjects.Contains(producer);
+        var hasProducer = memory.TryRead(reference + (ulong)layout.ProducerField.Offset, out ulong producer)
+                          && planObjects.Contains(producer);
 
         var isStorage = !hasProducer
-                        && memory.TryRead(reference + layout.StorageColumnProducerOffset, out producer)
+                        && memory.TryRead(reference + (ulong)layout.StorageProducerField.Offset, out producer)
                         && planObjects.Contains(producer);
 
         if (!hasProducer
             && !isStorage
             && depth < MaximumRedirects
-            && memory.TryRead(reference + layout.RedirectProducerOffset, out ulong redirectProducer)
+            && memory.TryRead(reference + (ulong)layout.RedirectProducerField.Offset, out ulong redirectProducer)
             && planObjects.Contains(redirectProducer)
-            && memory.TryRead(reference + layout.RedirectTargetOffset, out ulong target)
+            && memory.TryRead(reference + (ulong)layout.RedirectTargetField.Offset, out ulong target)
             && target >= TraceAddress.MinimumAddress)
         {
             return ReadColumn(memory, target, layout, planObjects, depth + 1) with { Reference = reference, Producer = redirectProducer };
         }
 
-        memory.TryRead(reference + (isStorage ? layout.StorageColumnTypeOffset : layout.ColumnTypeOffset), out ulong header);
+        var typeField = isStorage ? layout.StorageTypeField : layout.TypeField;
 
-        memory.TryRead(reference + (isStorage ? layout.StorageColumnTypeDetailsOffset : layout.ColumnTypeDetailsOffset), out ulong details);
+        var detailsField = isStorage ? layout.StorageTypeDetailsField : layout.TypeDetailsField;
+
+        memory.TryRead(reference + (ulong)typeField.Offset, out ulong header);
+
+        memory.TryRead(reference + (ulong)detailsField.Offset, out ulong details);
 
         return new PlanOutputColumn(reference, planObjects.Contains(producer) ? producer : 0, SqlTypeInfo.Create(header, details));
     }
