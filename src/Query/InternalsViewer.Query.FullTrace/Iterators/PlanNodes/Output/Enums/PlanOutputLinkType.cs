@@ -12,8 +12,6 @@ public enum PlanOutputLinkType
     IteratorMap,
     MapEntry,
     Iterator,
-    Inputs,
-    ProfilingIterator,
     OutputValues,
     InputValues,
     InputValue,

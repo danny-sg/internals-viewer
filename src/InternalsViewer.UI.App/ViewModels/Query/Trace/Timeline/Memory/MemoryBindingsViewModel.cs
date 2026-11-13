@@ -231,6 +231,8 @@ public sealed partial class MemoryBindingsViewModel : ObservableObject
 
     public void OpenRowBuffer() => Open(Scan?.RowBuffer ?? 0);
 
+    public static string GetFieldName(ColumnBindingField field) => FieldNames[field];
+
     internal static QueryResultSet CreateColumnTable(PlayheadMemoryViewModel owner,
                                                      List<ColumnBinding> bound,
                                                      TracePosition position,

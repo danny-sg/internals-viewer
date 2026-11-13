@@ -6,6 +6,7 @@ using InternalsViewer.Execution.AccessPaths.Definitions;
 using InternalsViewer.Execution.AccessPaths.Joins;
 using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.Query.Plans.Operators;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Simulation;
 using InternalsViewer.UI.App.Services.Query.Simulation;
@@ -498,7 +499,8 @@ public static class SimulationLayoutBuilder
     private static (string Outer, string Inner) InputLabels(IteratorDefinition definition)
         => definition switch
         {
-            HashMatchDefinition => ("Build Input", "Probe Input"),
+            HashMatchDefinition => (InputLabel.Build, InputLabel.Probe),
+            NestedLoopsDefinition => (InputLabel.OuterLoop, InputLabel.InnerLoop),
             TopDefinition => ("Input", string.Empty),
             SelectDefinition => ("Input", string.Empty),
             ConcatenationDefinition => ("Input 1", "Input 2"),
@@ -509,7 +511,7 @@ public static class SimulationLayoutBuilder
             FilterDefinition or BatchFilterDefinition => ("Input", string.Empty),
             SegmentDefinition => ("Input", string.Empty),
             SequenceProjectDefinition => ("Input", string.Empty),
-            _ => ("Outer Input", "Inner Input")
+            _ => (InputLabel.Outer, InputLabel.Inner)
         };
 
     private static SimulationPane InputPane(IteratorDefinition? input,

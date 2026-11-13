@@ -23,7 +23,7 @@ internal sealed record ReplayFunctionTable(ulong[] ExcludedFunctions,
 
     public AddressTable<BufferPoolFunctionType> BufferPoolFunctions { get; init; } = AddressTable<BufferPoolFunctionType>.Empty;
 
-    public AddressTable<VtableSymbol[]> Vtables { get; init; } = AddressTable<VtableSymbol[]>.Empty;
+    public AddressTable<string[]> Vtables { get; init; } = AddressTable<string[]>.Empty;
 
     public AddressTable<int> StackArguments { get; init; } = AddressTable<int>.Empty;
 
@@ -37,7 +37,7 @@ internal sealed record ReplayFunctionTable(ulong[] ExcludedFunctions,
             PlanNodeFunctions = AddressTable<PlanNodeFunctionType>.Merge(modules.Select(m => (m.Table.PlanNodeFunctions, m.Address))),
             PlanObjects = AddressTable<PlanObjectClass>.Merge(modules.Select(m => (m.Table.PlanObjects, m.Address))),
             BufferPoolFunctions = AddressTable<BufferPoolFunctionType>.Merge(modules.Select(m => (m.Table.BufferPoolFunctions, m.Address))),
-            Vtables = AddressTable<VtableSymbol[]>.Merge(modules.Select(m => (m.Table.Vtables, m.Address))),
+            Vtables = AddressTable<string[]>.Merge(modules.Select(m => (m.Table.Vtables, m.Address))),
             StackArguments = AddressTable<int>.Merge(modules.Select(m => (m.Table.StackArguments, m.Address)))
         };
 

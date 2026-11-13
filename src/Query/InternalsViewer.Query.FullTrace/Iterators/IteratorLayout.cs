@@ -3,6 +3,7 @@ using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Iterators.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Sorts;
 using InternalsViewer.Query.Interfaces;
 
 namespace InternalsViewer.Query.FullTrace.Iterators;
@@ -69,6 +70,10 @@ public static class IteratorLayout
     public static IReadOnlyList<MemoryField> ValueArrayFields => HashValueFields;
 
     public static bool HasRowBindings(string? className) => className is TableScanClass or RangeClass;
+
+    public static bool HasRowBuffer(string? className) => HasRowBindings(className) || className == TraceSortTableReader.IteratorClass;
+
+    public static bool IsHash(string? className) => className == HashClass;
 
     public static List<MemoryField> GetFields(string? className,
                                               IteratorTargetType type,

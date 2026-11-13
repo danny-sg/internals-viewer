@@ -135,9 +135,13 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
 
     public void ShowCallStack(TracePoint point)
     {
+        Query.Layout.ShowTraceTimeline();
+
         RequestPlayhead(point);
 
         ShowCallStack();
+
+        Dock.Activate(CallStackDocument);
     }
 
     public void FindInCallTree(CallTreeNode node, int callIndex) => Query.OpenCallTree(node, callIndex);
@@ -369,19 +373,19 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         ShowStructure(document, isBelowPlan);
     }
 
-    public void OpenLineage()
+    public void OpenDataPath()
     {
-        if (FindLineage() is not { } document)
+        if (FindDataPath() is not { } document)
         {
-            var lineage = new MemoryLineageViewModel(Query.MemoryHistory, Playhead ?? TracePosition.Unknown, this);
+            var dataPath = new MemoryDataPathViewModel(Query.MemoryHistory, Playhead ?? TracePosition.Unknown, this);
 
-            lineage.SetPlayhead(Playhead);
+            dataPath.SetPlayhead(Playhead);
 
-            document = new DocumentViewModel(lineage.Title,
-                                             lineage,
+            document = new DocumentViewModel(dataPath.Title,
+                                             dataPath,
                                              static () => new MemoryStructureView(),
                                              keepAlive: true,
-                                             key: lineage.Key,
+                                             key: dataPath.Key,
                                              persist: false)
             {
                 MinWidth = HexViewControl.StandardWidth
@@ -798,7 +802,7 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
     private DocumentViewModel? FindSortTable(ulong iterator)
         => StructureDocuments.FirstOrDefault(d => d.Content is MemorySortTableViewModel table && table.Contains(iterator));
 
-    private DocumentViewModel? FindLineage() => StructureDocuments.FirstOrDefault(d => d.Content is MemoryLineageViewModel);
+    private DocumentViewModel? FindDataPath() => StructureDocuments.FirstOrDefault(d => d.Content is MemoryDataPathViewModel);
 
     private void ShowStructure(DocumentViewModel document, bool isBelowPlan)
     {

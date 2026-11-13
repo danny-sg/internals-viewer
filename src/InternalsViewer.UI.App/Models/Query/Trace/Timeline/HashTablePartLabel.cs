@@ -1,3 +1,4 @@
+using InternalsViewer.Query.Plans.Operators;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash.Enums;
 
@@ -29,7 +30,7 @@ public static class HashTablePartLabel
         return slot % TraceHashTableLayout.GroupsPerSide == 0 ? "Partition Group" : "Rebuild Group";
     }
 
-    public static string GetSideName(int slot) => slot / TraceHashTableLayout.GroupsPerSide == 0 ? "Build Side" : "Probe Side";
+    public static string GetSideName(int slot) => slot / TraceHashTableLayout.GroupsPerSide == 0 ? InputLabel.Build : InputLabel.Probe;
 
     public static string GetText(TraceHashPart part) => part.Type switch
     {

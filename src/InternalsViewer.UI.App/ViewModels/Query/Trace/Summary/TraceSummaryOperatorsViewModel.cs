@@ -215,7 +215,7 @@ public sealed class TraceSummaryOperatorsViewModel : TraceSummaryPaneViewModel
                 Address = planObject,
                 Position = position,
                 ColumnType = column.Type,
-                LineageColumn = planBlock >= 0 ? names[index] : null
+                DataPathColumn = planBlock >= 0 ? names[index] : null
             };
 
             if (history.GetOutputPath(nodeId, column).Stages is [var stage, ..])

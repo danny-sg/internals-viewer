@@ -67,7 +67,7 @@ Each operator tab's header has a [breakpoint](#breakpoints), the operator's name
 
 What fills the tab depends on the operator:
 
-- **Joins** - the two inputs side by side, **Build Input** and **Probe Input** for a Hash Match or **Outer Input** and **Inner Input** otherwise. A Hash Match shows its **Hash Table** under the build side, and the rows held from each side are shown as they wait to be matched
+- **Joins** - the two inputs side by side, **Build** and **Probe** for a Hash Match, **Outer Loop** and **Inner Loop** for a Nested Loops, or **Outer** and **Inner** otherwise. A Hash Match shows its **Hash Table** under the build side, and the rows held from each side are shown as they wait to be matched
 - **Sort** - the rows it has collected, which it holds until its input runs out
 - **Stream Aggregate** - the aggregates for the current group
 - **Hash Match (Aggregate)** - its hash table, or a local and a global table in batch mode

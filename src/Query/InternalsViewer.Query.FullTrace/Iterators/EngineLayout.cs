@@ -24,8 +24,6 @@ public static class EngineLayout
     {
         public static MemoryField InputsField { get; } = Pointer("Inputs", 0x08, AnyIterator);
 
-        public static MemoryField InputField { get; } = Pointer("Input", 0x00, AnyIterator);
-
         public static MemoryField PlanObjectField { get; } = Pointer("Plan Object", (int)PlanNode.RowIteratorPlanObjectOffset);
 
         public static MemoryField ExecutionContextField { get; } =
@@ -310,7 +308,8 @@ public static class EngineLayout
 
     public static class Row
     {
-        public static MemoryField RecordField { get; } = Pointer("Record", 0x50, "IndexRowScanner::*");
+        public static MemoryField RecordField { get; } =
+            Pointer("Record", 0x50, "IndexRowScanner::*", "IndexDataSetSession::GetNextRowValuesInternal");
     }
 
     public static class RowBuffer
@@ -319,11 +318,13 @@ public static class EngineLayout
 
         public static MemoryField StatusField { get; } = Number("Status", 0x00, sizeof(byte));
 
+        public static MemoryField TypeField { get; } = new("Type", 0x01, sizeof(byte), true) { IsNumber = true };
+
         public static MemoryField ValueField { get; } = Pointer("Value", 0x08);
 
         public static MemoryField LengthField { get; } = Number("Length", 0x10, sizeof(ulong));
 
-        public static IReadOnlyList<MemoryField> EntryFields { get; } = [StatusField, ValueField, LengthField];
+        public static IReadOnlyList<MemoryField> EntryFields { get; } = [StatusField, TypeField, ValueField, LengthField];
     }
 
     public static class SortIterator

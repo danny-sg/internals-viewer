@@ -17,6 +17,8 @@ public sealed class PlanOutputStage(ulong reference, int depth, int consumer)
 
     public PlanOutputStageType Type { get; internal set; }
 
+    public string? ReferenceClass { get; internal set; }
+
     public ulong Address { get; internal set; }
 
     public SqlTypeInfo? ColumnType { get; internal set; }

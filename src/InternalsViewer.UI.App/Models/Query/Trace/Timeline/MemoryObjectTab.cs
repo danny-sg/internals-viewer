@@ -2,14 +2,14 @@ using System;
 using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.Results;
-using InternalsViewer.UI.App.Models.Query.Trace.Lineage;
+using InternalsViewer.UI.App.Models.Query.Trace.DataPath;
 
 namespace InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 
 public sealed partial class MemoryObjectTab(string header,
                                             List<MemoryObjectTab> tabs,
                                             Action<ResultRow<long>?>? select = null,
-                                            LineageGraph? graph = null)
+                                            DataPathGraph? graph = null)
     : ObservableObject
 {
     [ObservableProperty]
@@ -22,7 +22,7 @@ public sealed partial class MemoryObjectTab(string header,
 
     public List<MemoryObjectTab> Tabs { get; } = tabs;
 
-    public LineageGraph? Graph { get; } = graph;
+    public DataPathGraph? Graph { get; } = graph;
 
     public bool HasTabs => Tabs.Count > 0;
 

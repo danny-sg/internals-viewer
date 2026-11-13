@@ -10,6 +10,7 @@
     xmlns:callStackSignatures="using:InternalsViewer.UI.App.Controls.Query.Trace.Calls.Signatures"
     xmlns:signatures="using:InternalsViewer.UI.App.Models.Query.Trace.Calls.Signatures"
     xmlns:stack="using:InternalsViewer.UI.App.Models.Query.Trace.Calls.Stack"
+    
     xmlns:selectors="using:InternalsViewer.UI.App.Helpers.Selectors">
 
     <UserControl.Resources>
@@ -130,6 +131,7 @@
                                      HorizontalAlignment="Left"
                                      Content="{x:Bind MemoryTarget}"
                                      Tag="{x:Bind}"
+                                     Padding="0,6,0,0"
                                      Visibility="{x:Bind calls:CallStackControl.GetTargetVisibility(MemoryTarget)}"
                                      IsEnabled="{x:Bind CanOpenTarget}"
                                      ToolTipService.ToolTip="{x:Bind calls:CallStackControl.GetTargetToolTip(IsBufferPage)}"
@@ -266,9 +268,17 @@
             </Setter>
         </Style>
 
+        <Style x:Key="ThreadItemStyle" TargetType="muxc:TreeViewItem" BasedOn="{StaticResource StackItemStyle}">
+            <Setter Property="Background" Value="{ThemeResource SolidBackgroundFillColorTertiaryBrush}"/>
+        </Style>
+
         <selectors:PlayheadStackTemplateSelector x:Key="StackTemplateSelector"
                                                  ThreadTemplate="{StaticResource ThreadTemplate}"
                                                  CallTemplate="{StaticResource CallTemplate}"/>
+
+        <selectors:PlayheadStackStyleSelector x:Key="StackStyleSelector"
+                                              ThreadStyle="{StaticResource ThreadItemStyle}"
+                                              CallStyle="{StaticResource StackItemStyle}"/>
     </UserControl.Resources>
 
     <Grid>
@@ -280,6 +290,7 @@
 
         <muxc:TreeView x:Name="StackTree"
                        Grid.Column="0"
+                       Background="{ThemeResource SolidBackgroundFillColorQuarternaryBrush}"
                        ItemTemplateSelector="{StaticResource StackTemplateSelector}"
                        SelectionMode="Single"
                        CanDragItems="False"
@@ -291,7 +302,7 @@
                        ScrollViewer.HorizontalScrollMode="Enabled"
                        ScrollViewer.VerticalScrollBarVisibility="Auto"
                        ScrollViewer.VerticalScrollMode="Enabled"
-                       ItemContainerStyle="{StaticResource StackItemStyle}"/>
+                       ItemContainerStyleSelector="{StaticResource StackStyleSelector}"/>
 
         <TextBlock Grid.Column="0"
                    Text="{x:Bind ViewModel.EmptyText, Mode=OneWay}"
@@ -347,7 +358,9 @@
                 </Button>
             </Grid>
 
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <ScrollViewer Grid.Row="1"
+                          VerticalScrollBarVisibility="Auto"
+                          Background="{ThemeResource SolidBackgroundFillColorQuarternaryBrush}">
                 <Grid Padding="12,8,12,8"
                       ColumnSpacing="12"
                       RowSpacing="4"

@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output.Enums;
 
@@ -18,4 +19,8 @@ public readonly record struct PlanOutputLink(PlanOutputLinkType Type, ulong Addr
     public MemoryField? Field { get; init; }
 
     public bool IsRoute { get; init; }
+
+    public SqlTypeInfo? ColumnType { get; init; }
+
+    public string? ClassName { get; init; }
 }

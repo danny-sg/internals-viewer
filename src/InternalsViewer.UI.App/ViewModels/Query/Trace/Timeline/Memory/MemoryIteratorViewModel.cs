@@ -13,7 +13,7 @@ using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Logging;
-using InternalsViewer.UI.App.Models.Query.Trace.Lineage;
+using InternalsViewer.UI.App.Models.Query.Trace.DataPath;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryHistory;
 using Microsoft.UI;
@@ -45,7 +45,7 @@ public sealed partial class MemoryIteratorViewModel : ObservableObject
 
     private const string RowBindingsHeader = "Row Bindings";
 
-    public const string LineageHeader = "Lineage";
+    public const string DataPathHeader = "Data Path";
 
     [ObservableProperty]
     private bool _isAvailable;
@@ -79,7 +79,7 @@ public sealed partial class MemoryIteratorViewModel : ObservableObject
 
     private Dictionary<ulong, string>? ValueColumns { get; set; }
 
-    private Dictionary<(int NodeId, ulong Reference), LineageGraph?> Graphs { get; } = [];
+    private Dictionary<(int NodeId, ulong Reference), DataPathGraph?> Graphs { get; } = [];
 
     private IReadOnlyList<string>? RequestedTab { get; set; }
 
@@ -186,7 +186,7 @@ public sealed partial class MemoryIteratorViewModel : ObservableObject
         {
             if (graph is not null)
             {
-                LineageGraphBuilder.Refresh(graph, history, memory);
+                DataPathGraphBuilder.Refresh(graph, history, memory);
             }
         }
 
@@ -400,9 +400,9 @@ public sealed partial class MemoryIteratorViewModel : ObservableObject
 
         if (target.Type == IteratorTargetType.PlanObject)
         {
-            if (CreateLineageTab(owner, target) is { } lineage)
+            if (CreateDataPathTab(owner, target) is { } dataPath)
             {
-                tabs.Add(lineage);
+                tabs.Add(dataPath);
             }
 
             return tabs;
@@ -473,7 +473,7 @@ public sealed partial class MemoryIteratorViewModel : ObservableObject
         return CreateTab(field.Name, new QueryResultSet { Columns = columns, Rows = [.. rows] }, string.Join(",", entries));
     }
 
-    private MemoryObjectTab? CreateLineageTab(PlayheadMemoryViewModel owner, IteratorTarget target)
+    private MemoryObjectTab? CreateDataPathTab(PlayheadMemoryViewModel owner, IteratorTarget target)
     {
         if (target.Operator?.PlanNodeIdentifier is not { } identifier)
         {
@@ -494,7 +494,14 @@ public sealed partial class MemoryIteratorViewModel : ObservableObject
 
             if (!Graphs.TryGetValue(key, out var graph))
             {
-                Graphs[key] = graph = LineageGraphBuilder.Build(history, identifier.NodeId, outputs[index], a => Open(owner, a));
+                var column = new DataPathColumn(names[index],
+                                                outputs[index].Type.ToString(),
+                                                [new DataPathInput(identifier.NodeId, outputs[index])]);
+
+                Graphs[key] = graph = DataPathGraphBuilder.Build(history,
+                                                                 DataPathGraphBuilder.GetPlan(history),
+                                                                 [column],
+                                                                 a => Open(owner, a));
             }
 
             if (graph is not null)
@@ -503,7 +510,7 @@ public sealed partial class MemoryIteratorViewModel : ObservableObject
             }
         }
 
-        return tabs.Count > 0 ? new MemoryObjectTab(LineageHeader, tabs) : null;
+        return tabs.Count > 0 ? new MemoryObjectTab(DataPathHeader, tabs) : null;
     }
 
     private void SelectRequestedTab()

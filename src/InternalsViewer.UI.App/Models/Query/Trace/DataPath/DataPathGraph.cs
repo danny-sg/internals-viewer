@@ -1,11 +1,16 @@
 using System;
 using System.Collections.Generic;
 
-namespace InternalsViewer.UI.App.Models.Query.Trace.Lineage;
+namespace InternalsViewer.UI.App.Models.Query.Trace.DataPath;
 
-public sealed class LineageGraph(IReadOnlyList<LineageStage> stages, IReadOnlyList<string> warnings, Action<ulong> open)
+public sealed class DataPathGraph(IReadOnlyList<DataPathStage> stages,
+                                  IReadOnlyList<DataPathColumn> columns,
+                                  IReadOnlyList<string> warnings,
+                                  Action<ulong> open)
 {
     public const double BoxWidth = 220;
+
+    public const double ColumnWidth = 160;
 
     public const double OperatorHeight = 28;
 
@@ -17,7 +22,9 @@ public sealed class LineageGraph(IReadOnlyList<LineageStage> stages, IReadOnlyLi
 
     public event EventHandler? Changed;
 
-    public IReadOnlyList<LineageStage> Stages { get; } = stages;
+    public IReadOnlyList<DataPathStage> Stages { get; } = stages;
+
+    public IReadOnlyList<DataPathColumn> Columns { get; } = columns;
 
     public IReadOnlyList<string> Warnings { get; } = warnings;
 

@@ -680,9 +680,8 @@ public sealed class ExecutionPlanControl : Canvas
 
         // Hash join inputs are labelled Build (the blocking side) / Probe (the streaming side) near the
         // child end of the line.
-        if (OperatorClassifier.IsHashJoin(parentNode))
+        if (InputLabel.Get(parentNode, GetOperator(childNode)) is { } label)
         {
-            var label = OperatorClassifier.RoleOf(parentNode, GetOperator(childNode)) == InputRole.Blocking ? "Build" : "Probe";
             AddBranchLabel(label, elbowX, start.Y);
         }
 
@@ -737,10 +736,8 @@ public sealed class ExecutionPlanControl : Canvas
 
         IteratorConnectors[childNode] = new IteratorConnector(request.Glow, response.Glow, middleX);
 
-        if (OperatorClassifier.IsHashJoin(parentNode))
+        if (InputLabel.Get(parentNode, parentNode.Children[lane]) is { } label)
         {
-            var label = OperatorClassifier.RoleOf(parentNode, parentNode.Children[lane]) == InputRole.Blocking ? "Build" : "Probe";
-
             AddBranchLabel(label, elbowX + offset, childY - offset);
         }
 

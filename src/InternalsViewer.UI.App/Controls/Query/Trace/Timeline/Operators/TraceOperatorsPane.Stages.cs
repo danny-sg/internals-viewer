@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using InternalsViewer.Query.FullTrace.Timeline;
-using InternalsViewer.UI.App.Controls.Query.Timeline.Renderers;
 using SkiaSharp;
 using Windows.Foundation;
 
@@ -11,7 +10,11 @@ internal sealed partial class TraceOperatorsPane
 {
     private const float StageInset = 4f;
 
-    private const float StageLabelHeight = 16f;
+    private const float StageLabelHeight = 28f;
+
+    private const float StageLabelPadding = 8f;
+
+    private const float StageLabelFontSize = 12f;
 
     private const float StageCornerRadius = 3f;
 
@@ -88,26 +91,24 @@ internal sealed partial class TraceOperatorsPane
 
     private void DrawStageLabel(SKCanvas canvas, TraceStage stage, SKRect rect)
     {
-        var band = new SKRect(rect.Left, rect.Top, rect.Right, Math.Min(rect.Top + StageLabelHeight, rect.Bottom));
+        var font = Paints.OperatorBoldFont;
+
+        font.Size = StageLabelFontSize;
+
+        var metrics = font.Metrics;
+
+        var baseline = rect.Top + StageLabelPadding + metrics.CapHeight;
+
+        var left = Math.Max(rect.Left, 0) + StageLabelPadding;
+
+        if (baseline + metrics.Descent > rect.Bottom || left + font.MeasureText(stage.Name) > rect.Right - StageLabelPadding)
+        {
+            return;
+        }
 
         Paints.Text.Color = OperatorLabelColour;
 
-        canvas.Save();
-
-        canvas.ClipRect(band);
-
-        OperatorLabelRenderer.Draw(canvas,
-                                   stage.Name,
-                                   stage.Node.Symbol,
-                                   Math.Max(band.Left, 0),
-                                   band.Right,
-                                   band.MidY,
-                                   band.Height,
-                                   Paints.OperatorBoldFont,
-                                   Paints.OperatorFont,
-                                   Paints.Text);
-
-        canvas.Restore();
+        canvas.DrawText(stage.Name, left, baseline, SKTextAlign.Left, font, Paints.Text);
     }
 
     private SKRect? GetStageRect(TraceStage stage, int width, double scale)

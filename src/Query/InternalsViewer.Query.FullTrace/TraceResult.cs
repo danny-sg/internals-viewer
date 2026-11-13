@@ -103,7 +103,7 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
             return;
         }
 
-        List<(AddressTable<VtableSymbol[]> Table, ulong Address)> vtables = [];
+        List<(AddressTable<string[]> Table, ulong Address)> vtables = [];
 
         foreach (var (module, start) in GetModuleStarts())
         {
@@ -115,7 +115,7 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
         if (vtables.Count > 0)
         {
-            var classes = VtableResolver.GetUniqueClasses(AddressTable<VtableSymbol[]>.Merge(vtables));
+            var classes = VtableResolver.GetUniqueClasses(AddressTable<string[]>.Merge(vtables));
 
             AddressMap = ObjectClassResolver.Resolve(AddressMap, MemoryHistory, classes);
         }
@@ -124,6 +124,9 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
     public PlanOutputPath GetOutputPath(int nodeId, PlanOutputColumn column) => OutputLinks.Read(nodeId, column);
 
     public string? GetUnexpectedWriter(PlanOutputLink link) => OutputLinks.GetUnexpectedWriter(link);
+
+    public Dictionary<int, PlanOutputRoute> GetDataPath(IReadOnlyList<PlanOutputRouteOperator> operators, bool isPlanObjectIncluded)
+        => OutputLinks.ReadDataPath(operators, isPlanObjectIncluded);
 
     internal void BuildOutputPaths() => OutputLinks.ReadAll();
 

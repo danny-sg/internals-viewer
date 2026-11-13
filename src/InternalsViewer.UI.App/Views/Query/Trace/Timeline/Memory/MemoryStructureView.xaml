@@ -8,6 +8,7 @@
     xmlns:local="using:InternalsViewer.UI.App.Views.Query.Trace.Timeline.Memory"
     xmlns:models="using:InternalsViewer.UI.App.Models"
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
+    xmlns:predicates="using:InternalsViewer.UI.App.Controls.Query"
     xmlns:results="using:InternalsViewer.UI.App.Controls.Results"
     xmlns:timeline="using:InternalsViewer.UI.App.Models.Query.Trace.Timeline"
     xmlns:traceMemory="using:InternalsViewer.UI.App.Controls.Query.Trace.Memory">
@@ -29,6 +30,11 @@
                            FontSize="12"
                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                            VerticalAlignment="Center"/>
+                <TextBlock Text="{x:Bind ((timeline:MemoryStructureNode)Content).TypeText}"
+                           FontSize="12"
+                           FontFamily="{StaticResource MonospaceFontFamily}"
+                           Foreground="{ThemeResource SqlKeywordBrush}"
+                           VerticalAlignment="Center"/>
                 <ItemsControl ItemsSource="{x:Bind ((timeline:MemoryStructureNode)Content).Badges}"
                               VerticalAlignment="Center">
                     <ItemsControl.ItemsPanel>
@@ -42,11 +48,19 @@
                                     CornerRadius="2"
                                     Padding="4,1"
                                     VerticalAlignment="Center">
-                                <TextBlock Text="{x:Bind Text}" Style="{StaticResource TagTextBlockStyle}" Foreground="Black"/>
+                                <TextBlock
+                                    Text="{x:Bind Text}"
+                                    Style="{StaticResource TagTextBlockStyle}"
+                                    Foreground="{x:Bind TextColour, Converter={StaticResource ColorToSolidColorBrushValueConverter}}"/>
                             </Border>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+                <TextBlock Text="{x:Bind ((timeline:MemoryStructureNode)Content).Value, Mode=OneWay}"
+                           FontSize="12"
+                           FontFamily="{StaticResource MonospaceFontFamily}"
+                           Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                           VerticalAlignment="Center"/>
             </StackPanel>
         </DataTemplate>
 
@@ -67,7 +81,8 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <Grid Grid.Row="0"
+        <Grid x:Name="CommandBarGrid"
+              Grid.Row="0"
               Grid.ColumnSpan="3"
               Padding="12,8"
               ColumnSpacing="12"
@@ -161,9 +176,10 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <StackPanel Grid.Row="0"
+            <StackPanel x:Name="HexHeader"
+                        Grid.Row="0"
                         Grid.ColumnSpan="2"
-                        Padding="12,6"
+                        Padding="12,8"
                         Orientation="Horizontal"
                         Spacing="16"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
@@ -174,10 +190,13 @@
                                FontSize="12"
                                Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                                VerticalAlignment="Center"/>
-                    <TextBlock Text="{x:Bind ViewModel.BlockAddress, Mode=OneWay}"
-                               FontSize="12"
-                               FontFamily="{StaticResource MonospaceFontFamily}"
-                               VerticalAlignment="Center"/>
+                    <HyperlinkButton Content="{x:Bind ViewModel.BlockAddress, Mode=OneWay}"
+                                     Command="{x:Bind ViewModel.OpenBlockMemoryCommand, Mode=OneWay}"
+                                     FontSize="12"
+                                     FontFamily="{StaticResource MonospaceFontFamily}"
+                                     Style="{StaticResource DetailLinkStyle}"
+                                     VerticalAlignment="Center"
+                                     ToolTipService.ToolTip="Open Memory"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Spacing="6">
                     <TextBlock Text="Type"
@@ -234,6 +253,19 @@
                                                      Chart="{x:Bind ViewModel.MemoryChart, Mode=OneWay}"
                                                      PositionRequested="OnMemoryPositionRequested"/>
             </Grid>
+
+            <traceMemory:DataPathGraphControl Grid.RowSpan="2"
+                                              Grid.ColumnSpan="2"
+                                              Graph="{x:Bind ViewModel.Graph, Mode=OneWay}"
+                                              Visibility="{x:Bind ViewModel.IsGraphVisible, Mode=OneWay}"/>
+
+            <predicates:PredicateTextBox Grid.RowSpan="2"
+                                         Grid.ColumnSpan="2"
+                                         Margin="12"
+                                         VerticalAlignment="Top"
+                                         HorizontalAlignment="Stretch"
+                                         Text="{x:Bind ViewModel.Expression, Mode=OneWay}"
+                                         Visibility="{x:Bind ViewModel.IsExpressionVisible, Mode=OneWay}"/>
         </Grid>
     </Grid>
 </UserControl>

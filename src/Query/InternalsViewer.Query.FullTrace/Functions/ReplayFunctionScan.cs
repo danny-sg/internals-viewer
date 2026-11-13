@@ -116,7 +116,7 @@ internal static class ReplayFunctionScan
 
             if (!symbol.IsFunction)
             {
-                vtables.VisitData(rva, name, symbol.DecoratedName);
+                vtables.VisitData(rva, name);
 
                 continue;
             }

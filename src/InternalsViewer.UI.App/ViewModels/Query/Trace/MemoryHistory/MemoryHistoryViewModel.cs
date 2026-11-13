@@ -240,6 +240,9 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
     public string? GetUnexpectedWriter(PlanOutputLink link) => Trace?.GetUnexpectedWriter(link);
 
+    public Dictionary<int, PlanOutputRoute> GetDataPath(IReadOnlyList<PlanOutputRouteOperator> operators, bool isPlanObjectIncluded)
+        => Trace?.GetDataPath(operators, isPlanObjectIncluded) ?? [];
+
     public Task<string?> ReadRecordAsync(PlanOutputRecord record) => Records?.ReadAsync(record) ?? Task.FromResult<string?>(null);
 
     public List<string> GetOutputColumnNames(ulong target, int count)
@@ -252,10 +255,12 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
     public PlanOutputRecord? GetOutputRecord(MemoryHistoryReader memory, PlanOutputStage stage)
         => Trace is { } trace ? PlanOutputValueReader.ReadRecord(memory, trace.BufferPool, memory.Position, stage) : null;
 
-    public string? GetStatementName(PlanNodeIdentifier node)
+    public PlanNode? GetStatement(PlanNodeIdentifier node)
         => ResolvePlanNode?.Invoke(new PlanNodeIdentifier(node.PlanHandleId, StatementNodeId)) is { IsStatement: true } statement
-            ? statement.PhysicalOperator
+            ? statement
             : null;
+
+    public string? GetStatementName(PlanNodeIdentifier node) => GetStatement(node)?.PhysicalOperator;
 
     public PlanNode? GetPlanNode(ulong iterator)
         => ResolvePlanNode is { } resolve
@@ -338,9 +343,6 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
            && (GetIteratorBlock(info.Address) == block || target.Type == IteratorTargetType.PlanObject)
             ? $"{target.TypeName} › {target.Label}"
             : null;
-
-    public IteratorTarget? GetRowBufferOwner(ulong buffer, TracePosition position)
-        => IteratorTarget.FindRowBufferOwner(Iterators, Store, buffer, position);
 
     public string GetTypeName(int block)
     {

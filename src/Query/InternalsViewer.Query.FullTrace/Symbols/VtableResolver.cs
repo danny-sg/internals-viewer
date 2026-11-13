@@ -28,22 +28,6 @@ internal static class VtableResolver
 {
     private const string VtableName = "::`vftable'";
 
-    private const string BaseStart = "{for `";
-
-    private const string BaseEnd = "'}";
-
-    private const string DecoratedPrefix = "??_7";
-
-    private const string DecoratedBaseMarker = "@@6B";
-
-    private const string DecoratedScopeEnd = "@@";
-
-    private const char DecoratedSeparator = '@';
-
-    private const char DecoratedSpecial = '?';
-
-    private const string ScopeSeparator = "::";
-
     internal static string? GetClassName(ReadOnlySpan<char> name)
     {
         var end = name.IndexOf(VtableName, StringComparison.Ordinal);
@@ -51,39 +35,7 @@ internal static class VtableResolver
         return end > 0 ? name[..end].ToString() : null;
     }
 
-    internal static string? GetBaseName(ReadOnlySpan<char> name, ReadOnlySpan<char> decoratedName)
-    {
-        if (name.IndexOf(BaseStart, StringComparison.Ordinal) is >= 0 and var start)
-        {
-            var named = name[(start + BaseStart.Length)..];
-
-            return named.IndexOf(BaseEnd, StringComparison.Ordinal) is > 0 and var end ? named[..end].ToString() : null;
-        }
-
-        if (!decoratedName.StartsWith(DecoratedPrefix, StringComparison.Ordinal)
-            || decoratedName.IndexOf(DecoratedBaseMarker, StringComparison.Ordinal) is not (>= 0 and var marker))
-        {
-            return null;
-        }
-
-        var scope = decoratedName[(marker + DecoratedBaseMarker.Length)..];
-
-        if (scope.IsEmpty
-            || scope[0] == DecoratedSeparator
-            || scope.Contains(DecoratedSpecial)
-            || scope.IndexOf(DecoratedScopeEnd, StringComparison.Ordinal) is not (> 0 and var scopeEnd))
-        {
-            return null;
-        }
-
-        var parts = scope[..scopeEnd].ToString().Split(DecoratedSeparator);
-
-        Array.Reverse(parts);
-
-        return string.Join(ScopeSeparator, parts);
-    }
-
-    internal static AddressTable<VtableSymbol[]> Read(SymbolTable table)
+    internal static AddressTable<string[]> Read(SymbolTable table)
     {
         var collector = new Collector();
 
@@ -93,40 +45,26 @@ internal static class VtableResolver
         {
             if (!symbol.IsFunction)
             {
-                collector.VisitData(symbol.Rva, symbol.Name, symbol.DecoratedName);
+                collector.VisitData(symbol.Rva, symbol.Name);
             }
         }
 
         return collector.Build();
     }
 
-    internal static Dictionary<ulong, string> GetUniqueClasses(IReadOnlyDictionary<ulong, VtableSymbol[]> vtables)
-    {
-        var classes = new Dictionary<ulong, string>();
+    internal static Dictionary<ulong, string> GetUniqueClasses(IReadOnlyDictionary<ulong, string[]> vtables)
+        => vtables.Where(v => v.Value.Length == 1).ToDictionary(v => v.Key, v => v.Value[0]);
 
-        foreach (var (address, symbols) in vtables)
-        {
-            var className = symbols[0].ClassName;
-
-            if (Array.TrueForAll(symbols, s => s.ClassName == className))
-            {
-                classes[address] = className;
-            }
-        }
-
-        return classes;
-    }
-
-    internal static AddressTable<T> GetFirstMatches<T>(IReadOnlyDictionary<ulong, VtableSymbol[]> vtables, Func<string, T?> match)
+    internal static AddressTable<T> GetFirstMatches<T>(IReadOnlyDictionary<ulong, string[]> vtables, Func<string, T?> match)
         where T : struct
     {
         var matches = new Dictionary<ulong, T>();
 
-        foreach (var (address, symbols) in vtables)
+        foreach (var (address, classes) in vtables)
         {
-            foreach (var symbol in symbols)
+            foreach (var className in classes)
             {
-                if (match(symbol.ClassName) is { } value)
+                if (match(className) is { } value)
                 {
                     matches[address] = value;
 
@@ -140,27 +78,25 @@ internal static class VtableResolver
 
     internal sealed class Collector
     {
-        private Dictionary<uint, List<VtableSymbol>> Symbols { get; } = [];
+        private Dictionary<uint, List<string>> Classes { get; } = [];
 
-        public void VisitData(uint rva, ReadOnlySpan<char> name, ReadOnlySpan<char> decoratedName = default)
+        public void VisitData(uint rva, ReadOnlySpan<char> name)
         {
             if (GetClassName(name) is not { } className)
             {
                 return;
             }
 
-            ref var symbols = ref CollectionsMarshal.GetValueRefOrAddDefault(Symbols, rva, out _);
+            ref var classes = ref CollectionsMarshal.GetValueRefOrAddDefault(Classes, rva, out _);
 
-            symbols ??= [];
+            classes ??= [];
 
-            var symbol = new VtableSymbol(className, GetBaseName(name, decoratedName));
-
-            if (!symbols.Contains(symbol))
+            if (!classes.Contains(className))
             {
-                symbols.Add(symbol);
+                classes.Add(className);
             }
         }
 
-        public AddressTable<VtableSymbol[]> Build() => new(Symbols.ToDictionary(c => (ulong)c.Key, c => c.Value.ToArray()));
+        public AddressTable<string[]> Build() => new(Classes.ToDictionary(c => (ulong)c.Key, c => c.Value.ToArray()));
     }
 }

@@ -54,7 +54,7 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
     private bool IsBuilding { get; set; }
 
     public static Brush? RowBackground(bool isCurrent)
-        => isCurrent ? AppResources.Get<Brush>("SolidBackgroundFillColorQuarternaryBrush") : null;
+        => isCurrent ? AppResources.Get<Brush>("SolidBackgroundFillColorSecondaryBrush") : null;
 
     public static Visibility GetTargetVisibility(string? target) => GetVisibility(target is not null);
 

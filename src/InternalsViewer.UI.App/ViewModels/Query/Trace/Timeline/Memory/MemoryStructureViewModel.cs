@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
@@ -20,6 +21,7 @@ using InternalsViewer.UI.App.Controls.HexView;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Logging;
+using InternalsViewer.UI.App.Models.Query.Trace.DataPath;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline.Enums;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryHistory;
@@ -45,6 +47,10 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
     private const string OpenMemoryCommand = "Open Memory";
 
     private const string OpenPageCommand = "Open Page";
+
+    private const string BufferPoolBadge = "Buffer Pool";
+
+    private const string BufferFrameBadge = "Buffer Pool Frame";
 
     private const string SelectCommand = "Select";
 
@@ -128,6 +134,16 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsHexVisible))]
+    [NotifyPropertyChangedFor(nameof(IsGraphVisible))]
+    private DataPathGraph? _graph;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsHexVisible))]
+    [NotifyPropertyChangedFor(nameof(IsExpressionVisible))]
+    private PredicateText? _expression;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsHexVisible))]
     private bool _isMemoryVisible;
 
     [ObservableProperty]
@@ -163,7 +179,11 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
 
     public bool IsEntryTableVisible => EntryTable is not null;
 
-    public bool IsHexVisible => !IsMemoryVisible;
+    public bool IsHexVisible => !IsMemoryVisible && Graph is null && Expression is null;
+
+    public bool IsGraphVisible => Graph is not null;
+
+    public bool IsExpressionVisible => Expression is not null;
 
     protected MemoryHistoryViewModel History { get; }
 
@@ -200,6 +220,8 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
     private TracePosition? Playhead { get; set; }
 
     private int PageBlock { get; set; } = -1;
+
+    private int ImageBlock { get; set; } = -1;
 
     private string? MarkerKey { get; set; }
 
@@ -301,6 +323,8 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
     protected abstract void OpenPointer(MemoryStructureNode node, ulong value);
 
     protected virtual ulong GetHexAddress(MemoryStructureNode node) => node.HasData ? node.Address : 0;
+
+    protected virtual string GetPointerText(MemoryStructureNode node, ulong pointer) => node.Name;
 
     protected MemoryStructureNode? Find(string key) => Roots.SelectMany(Flatten).FirstOrDefault(n => n.Key == key);
 
@@ -458,21 +482,32 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
 
         if (GetPointerNode(pointer) is { } node)
         {
-            return new ActionLinks([new ActionLink(text, () => OpenPointer(node, pointer))]) { Suffix = node.Name };
+            return new ActionLinks([new ActionLink(text, () => OpenPointer(node, pointer))]) { Suffix = GetPointerText(node, pointer) };
         }
 
         var position = Position;
 
         var block = History.GetBlock(pointer, position);
 
-        if (block < 0)
+        if (block >= 0)
+        {
+            return new ActionLinks([new ActionLink(text, () => Navigator.OpenMemory(block, pointer, position))])
+            {
+                Suffix = History.GetPointerTarget(pointer, position)
+            };
+        }
+
+        if (History.GetBufferPage(pointer, position) is not { } page)
         {
             return text;
         }
 
-        return new ActionLinks([new ActionLink(text, () => Navigator.OpenMemory(block, pointer, position))])
+        var offset = page.Offset == 0 ? string.Empty : $" +0x{page.Offset:X}";
+
+        return new ActionLinks([new ActionLink(text, () => Navigator.OpenBufferPage(page))])
         {
-            Suffix = History.GetPointerTarget(pointer, position)
+            Badges = [page.IsBuffer ? BufferPoolBadge : BufferFrameBadge],
+            Suffix = $"{History.GetBufferPageName(page)}{offset}"
         };
     }
 
@@ -721,6 +756,15 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanGoForward))]
     private void GoForward() => Travel(1);
 
+    [RelayCommand]
+    private void OpenBlockMemory()
+    {
+        if (ImageBlock >= 0)
+        {
+            Navigator.OpenMemory(ImageBlock, History.Store.Blocks[ImageBlock].Address, Position);
+        }
+    }
+
     private void Remember(HistoryEntry entry)
     {
         if (IsReplaying)
@@ -835,7 +879,9 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
 
         Links = GetLinks(image);
 
-        BlockAddress = image.Block >= 0 ? GetAddressText(History.Store.Blocks[image.Block].Address) : string.Empty;
+        ImageBlock = image.Block;
+
+        BlockAddress =image.Block >= 0 ? GetAddressText(History.Store.Blocks[image.Block].Address) : string.Empty;
 
         BlockType = image.Block >= 0 ? History.GetTypeName(image.Block) : string.Empty;
 
@@ -854,7 +900,9 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
         {
             if (GetPointerNode(value) is { } node)
             {
-                links.Add(new HexLink(offset, size, PointerPrefix + node.Name, SelectCommand, () => OpenPointer(node, value)));
+                var text = PointerPrefix + GetPointerText(node, value);
+
+                links.Add(new HexLink(offset, size, text, SelectCommand, () => OpenPointer(node, value)));
             }
             else if (block >= 0)
             {

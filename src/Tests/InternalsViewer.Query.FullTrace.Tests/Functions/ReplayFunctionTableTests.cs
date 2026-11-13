@@ -1,5 +1,4 @@
 using InternalsViewer.Query.FullTrace.Memory.Address;
-using InternalsViewer.Query.FullTrace.Symbols;
 using InternalsViewer.Query.FullTrace.Memory.Address.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
@@ -51,14 +50,14 @@ public class ReplayFunctionTableTests
     [Fact]
     public void Vtables_Move_To_The_Module_Base_And_Merge()
     {
-        var first = ReplayFunctionTable.Empty with { Vtables = Map((0x200, new[] { new VtableSymbol("CQScanTableScanNew", null) })) };
+        var first = ReplayFunctionTable.Empty with { Vtables = Map((0x200, new[] { "CQScanTableScanNew" })) };
 
-        var second = ReplayFunctionTable.Empty with { Vtables = Map((0x300, new[] { new VtableSymbol("CQScanRangeNew", null) })) };
+        var second = ReplayFunctionTable.Empty with { Vtables = Map((0x300, new[] { "CQScanRangeNew" })) };
 
         var merged = ReplayFunctionTable.Merge([(first, Base), (second, 0)]);
 
         Assert.Equal([(0x300ul, "CQScanRangeNew"), (Base + 0x200, "CQScanTableScanNew")],
-                     merged.Vtables.Select(v => (v.Key, v.Value[0].ClassName)).OrderBy(v => v.Key));
+                     merged.Vtables.Select(v => (v.Key, v.Value[0])).OrderBy(v => v.Key));
     }
 
     [Fact]

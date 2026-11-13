@@ -1,15 +1,19 @@
 using System.Collections.Generic;
+using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline.Enums;
 
 namespace InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 
-public sealed class MemoryStructureNode(MemoryStructureNodeType type,
-                                        string name,
-                                        ulong address,
-                                        int partition,
-                                        MemoryStructureNode? parent)
+public sealed partial class MemoryStructureNode(MemoryStructureNodeType type,
+                                                string name,
+                                                ulong address,
+                                                int partition,
+                                                MemoryStructureNode? parent) : ObservableObject
 {
     private const double InactiveOpacity = 0.45;
+
+    [ObservableProperty]
+    private string _value = string.Empty;
 
     public MemoryStructureNodeType Type { get; } = type;
 
@@ -31,6 +35,10 @@ public sealed class MemoryStructureNode(MemoryStructureNodeType type,
 
     public string Detail { get; init; } = string.Empty;
 
+    public bool IsAddressVisible { get; init; } = true;
+
+    public string TypeText { get; init; } = string.Empty;
+
     public List<MemoryStructureBadge> Badges { get; init; } = [];
 
     public List<MemoryStructureNode> Children { get; } = [];
@@ -39,7 +47,7 @@ public sealed class MemoryStructureNode(MemoryStructureNodeType type,
 
     public string Key => $"{Type}:{Group:X}:{Partition}:{Address:X}:{Index}";
 
-    public string AddressText => Address == 0 ? string.Empty : $"0x{Address:X16}";
+    public string AddressText => Address == 0 || !IsAddressVisible ? string.Empty : $"0x{Address:X16}";
 
     public bool IsSelectable => Type is not (MemoryStructureNodeType.BuildSide
                                              or MemoryStructureNodeType.ProbeSide
@@ -47,10 +55,13 @@ public sealed class MemoryStructureNode(MemoryStructureNodeType type,
                                              or MemoryStructureNodeType.WorkfilePages
                                              or MemoryStructureNodeType.Runs
                                              or MemoryStructureNodeType.RecordPages
-                                             or MemoryStructureNodeType.ComparePages
-                                             or MemoryStructureNodeType.Statement);
+                                             or MemoryStructureNodeType.ComparePages);
 
-    public bool HasData => IsSelectable && Type is not (MemoryStructureNodeType.Run or MemoryStructureNodeType.Memory);
+    public bool HasData => IsSelectable
+                           && Type is not (MemoryStructureNodeType.Run
+                                           or MemoryStructureNodeType.Memory
+                                           or MemoryStructureNodeType.Statement
+                                           or MemoryStructureNodeType.Expression);
 
     public bool IsPage => Type is MemoryStructureNodeType.WorkfilePage or MemoryStructureNodeType.RecordPage;
 }

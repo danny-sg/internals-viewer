@@ -21,6 +21,8 @@ public sealed partial class MemoryStructureView : UserControl, IDisposable
 
         HexColumn.Width = new GridLength(HexViewControl.StandardWidth);
 
+        CommandBarGrid.SizeChanged += (_, e) => HexHeader.Height = e.NewSize.Height;
+
         DataContextChanged += OnDataContextChanged;
 
         Loaded += (_, _) => LayoutHelpers.EnableHorizontalScrolling(StructureTree);
@@ -48,6 +50,7 @@ public sealed partial class MemoryStructureView : UserControl, IDisposable
                      or MemoryStructureNodeType.Runs
                      or MemoryStructureNodeType.Statement
                      or MemoryStructureNodeType.Operator
+                     or MemoryStructureNodeType.Expression
                      or MemoryStructureNodeType.PlanObject
                      or MemoryStructureNodeType.Link;
 
@@ -95,9 +98,9 @@ public sealed partial class MemoryStructureView : UserControl, IDisposable
             viewModel.PropertyChanged += OnViewModelPropertyChanged;
         }
 
-        PlanObjectToggle.Visibility = viewModel is MemoryLineageViewModel ? Visibility.Visible : Visibility.Collapsed;
+        PlanObjectToggle.Visibility = viewModel is MemoryDataPathViewModel ? Visibility.Visible : Visibility.Collapsed;
 
-        PlanObjectToggle.IsChecked = viewModel is MemoryLineageViewModel { IsPlanObjectVisible: true };
+        PlanObjectToggle.IsChecked = viewModel is MemoryDataPathViewModel { IsPlanObjectVisible: true };
 
         Rebuild();
     }
@@ -234,9 +237,9 @@ public sealed partial class MemoryStructureView : UserControl, IDisposable
 
     private void OnPlanObjectClick(object sender, RoutedEventArgs e)
     {
-        if (Attached is MemoryLineageViewModel lineage)
+        if (Attached is MemoryDataPathViewModel dataPath)
         {
-            lineage.IsPlanObjectVisible = PlanObjectToggle.IsChecked == true;
+            dataPath.IsPlanObjectVisible = PlanObjectToggle.IsChecked == true;
         }
     }
 

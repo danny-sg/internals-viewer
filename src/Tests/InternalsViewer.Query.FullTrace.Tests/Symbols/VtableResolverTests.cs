@@ -12,7 +12,7 @@ public class VtableResolverTests
 
         collector.VisitData(0x100, "CQScanTableScanNew::`vftable'");
 
-        Assert.Equal([new VtableSymbol("CQScanTableScanNew", null)], collector.Build()[0x100]);
+        Assert.Equal(["CQScanTableScanNew"], collector.Build()[0x100]);
     }
 
     [Fact]
@@ -22,31 +22,8 @@ public class VtableResolverTests
 
         collector.VisitData(0x100, "CMsqlReadOnlyXact::`vftable'{for `BaseXact'}");
 
-        Assert.Equal([new VtableSymbol("CMsqlReadOnlyXact", "BaseXact")], collector.Build()[0x100]);
+        Assert.Equal(["CMsqlReadOnlyXact"], collector.Build()[0x100]);
     }
-
-    [Fact]
-    public void The_Decorated_Name_Gives_The_Base_A_Vtable_Is_For()
-    {
-        var collector = new VtableResolver.Collector();
-
-        collector.VisitData(0x100, "CValRefJoin::`vftable'", "??_7CValRefJoin@@6BCValRef@@@");
-
-        collector.VisitData(0x200, "CValRefJoin::`vftable'", "??_7CValRefJoin@@6BCValComp@@@");
-
-        collector.VisitData(0x300, "CValHash::`vftable'", "??_7CValHash@@6B@");
-
-        var vtables = collector.Build();
-
-        Assert.Equal([new VtableSymbol("CValRefJoin", "CValRef"),
-                      new VtableSymbol("CValRefJoin", "CValComp"),
-                      new VtableSymbol("CValHash", null)],
-                     [vtables[0x100][0], vtables[0x200][0], vtables[0x300][0]]);
-    }
-
-    [Fact]
-    public void A_Base_In_A_Namespace_Is_Named_In_Full()
-        => Assert.Equal("Ns::Base", VtableResolver.GetBaseName("Derived::`vftable'", "??_7Derived@@6BBase@Ns@@@"));
 
     [Fact]
     public void Other_Data_Is_Not_A_Vtable()
@@ -71,16 +48,16 @@ public class VtableResolverTests
 
         collector.VisitData(0x100, "RowsetWorkTableWindow::`vftable'");
 
-        Assert.Equal(["RowsetWorkTableWindow", "RowsetWorkTableSS"], collector.Build()[0x100].Select(s => s.ClassName));
+        Assert.Equal(["RowsetWorkTableWindow", "RowsetWorkTableSS"], collector.Build()[0x100]);
     }
 
     [Fact]
     public void Only_A_Vtable_With_One_Class_Names_An_Object()
     {
-        var vtables = new Dictionary<ulong, VtableSymbol[]>
+        var vtables = new Dictionary<ulong, string[]>
         {
-            [0x100] = [new("CQScanTableScanNew", null)],
-            [0x200] = [new("RowsetWorkTableWindow", null), new("RowsetWorkTableSS", null)]
+            [0x100] = ["CQScanTableScanNew"],
+            [0x200] = ["RowsetWorkTableWindow", "RowsetWorkTableSS"]
         };
 
         Assert.Equal([(0x100ul, "CQScanTableScanNew")], VtableResolver.GetUniqueClasses(vtables).Select(c => (c.Key, c.Value)));

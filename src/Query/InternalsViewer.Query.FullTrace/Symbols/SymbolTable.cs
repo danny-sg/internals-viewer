@@ -617,8 +617,6 @@ internal sealed class SymbolTable
 
         public ReadOnlySpan<char> Signature => GetCharacters(SignatureField);
 
-        public ReadOnlySpan<char> DecoratedName => GetCharacters(DecoratedField);
-
         public FunctionSignature? Parsed
         {
             get

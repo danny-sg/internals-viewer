@@ -87,9 +87,9 @@ public abstract partial class TraceSummaryPaneViewModel(string title,
 
         var position = node.Position ?? History.Store.Blocks[node.Block].FromPosition;
 
-        if (node.LineageColumn is { } column)
+        if (node.DataPathColumn is { } column)
         {
-            GetNavigator().OpenIteratorTab(node.Block, node.Address, position, [MemoryIteratorViewModel.LineageHeader, column]);
+            GetNavigator().OpenIteratorTab(node.Block, node.Address, position, [MemoryIteratorViewModel.DataPathHeader, column]);
 
             return;
         }

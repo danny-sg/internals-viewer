@@ -28,8 +28,8 @@ tree is built by Full Trace.
 The Time Travel Debugging recording and replay. `Recording/` records SQL Server, `Native/` and `Stubs/` drive the replay
 through the native bridge, and `Hooks/` are the C# readers that run at each engine function of interest: `Calls/` is the
 call log those hooks fill, `Timeline/` the per-thread spans and the operator lifetimes, `Memory/` the allocations, the
-memory map and the memory history, `Iterators/` the link from iterator objects to plan nodes, `Output/` the output row
-lineage, `Locators/` the page and row arguments. `Calls/Tree/` is the call tree, and `Symbols/` downloads the PDBs,
+memory map and the memory history, `Iterators/` the link from iterator objects to plan nodes, `Output/` the data path of
+each output column, `Locators/` the page and row arguments. `Calls/Tree/` is the call tree, and `Symbols/` downloads the PDBs,
 resolves frames to names and classifies them: the category and operator rules are the text files in
 `Symbols/Categories/Mappings/`. `Iterators/OperatorFrameMap.cs` decides an operator's entry and exit frames.
 `TraceLoader.cs` runs a load end to end and `TraceResult.cs` is what the tools read.

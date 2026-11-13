@@ -4,8 +4,6 @@ namespace InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
 
 public sealed class PlanOutputRoute
 {
-    public const int StatementNodeId = -1;
-
     private const int PointerSize = sizeof(ulong);
 
     private static readonly HashSet<PlanOutputLinkType> ContextTypes =
@@ -25,48 +23,49 @@ public sealed class PlanOutputRoute
         PlanOutputLinkType.Reference,
         PlanOutputLinkType.Producer,
         PlanOutputLinkType.MapEntry,
-        PlanOutputLinkType.Input,
-        PlanOutputLinkType.Expression,
-        PlanOutputLinkType.PlanObject,
-        PlanOutputLinkType.GroupColumns,
-        PlanOutputLinkType.AggregateColumns,
-        PlanOutputLinkType.CountColumns
+        PlanOutputLinkType.Iterator
     ];
 
-    private static readonly HashSet<PlanOutputLinkType> WiringTypes = [PlanOutputLinkType.Inputs, PlanOutputLinkType.ProfilingIterator];
+    private static readonly HashSet<PlanOutputLinkType> HolderTypes =
+    [
+        PlanOutputLinkType.Value,
+        PlanOutputLinkType.InputValue,
+        PlanOutputLinkType.Reader,
+        PlanOutputLinkType.RowSlot
+    ];
 
-    private static readonly HashSet<PlanOutputLinkType> ReferenceTypes = [PlanOutputLinkType.Reference, PlanOutputLinkType.Input];
+    private static readonly HashSet<PlanOutputLinkType> PointedTypes =
+    [
+        PlanOutputLinkType.BufferEntry,
+        PlanOutputLinkType.Rowset,
+        PlanOutputLinkType.Row,
+        PlanOutputLinkType.Record
+    ];
 
-    private static readonly HashSet<PlanOutputLinkType> SharedTypes = [PlanOutputLinkType.RowContext];
+    private static readonly HashSet<PlanOutputLinkType> BlockTypes =
+    [
+        PlanOutputLinkType.Rowset,
+        PlanOutputLinkType.Row,
+        PlanOutputLinkType.Record
+    ];
 
-    private static readonly HashSet<PlanOutputLinkType> OutputTypes =
+    private static readonly HashSet<PlanOutputLinkType> NamedTypes =
     [
         PlanOutputLinkType.Value,
         PlanOutputLinkType.InputValue,
         PlanOutputLinkType.BufferEntry,
-        PlanOutputLinkType.Variables
-    ];
-
-    private static readonly HashSet<PlanOutputLinkType> ValueArrayTypes =
-    [
-        PlanOutputLinkType.OutputValues,
-        PlanOutputLinkType.RowBuffer,
-        PlanOutputLinkType.Variables
+        PlanOutputLinkType.Record
     ];
 
     private static readonly HashSet<PlanOutputLinkType> ArrayTypes =
     [
         PlanOutputLinkType.OutputArray,
-        PlanOutputLinkType.Inputs,
         PlanOutputLinkType.OutputValues,
         PlanOutputLinkType.InputValues,
         PlanOutputLinkType.RowContext,
         PlanOutputLinkType.RowBuffer,
         PlanOutputLinkType.VariableTable,
         PlanOutputLinkType.Variables,
-        PlanOutputLinkType.GroupColumns,
-        PlanOutputLinkType.AggregateColumns,
-        PlanOutputLinkType.CountColumns,
         PlanOutputLinkType.ColumnBindings
     ];
 
@@ -74,86 +73,57 @@ public sealed class PlanOutputRoute
 
     public List<PlanOutputRouteNode> FromIterator { get; } = [];
 
-    public static Dictionary<int, PlanOutputRoute> Create(IReadOnlyList<PlanOutputRouteOperator> operators, bool isPlanObjectIncluded)
+    public List<PlanOutputRouteEdge> Columns { get; } = [];
+
+    private List<(PlanOutputRouteNode? Holder, int Index)> Pending { get; } = [];
+
+    public static Dictionary<int, PlanOutputRoute> Create(IReadOnlyList<PlanOutputRouteOperator> operators,
+                                                          IReadOnlyDictionary<int, IReadOnlyList<PlanOutputLink>> storage,
+                                                          Func<PlanOutputLink, ulong> getBlockStart,
+                                                          bool isPlanObjectIncluded)
     {
         var routes = new Dictionary<int, PlanOutputRoute>();
 
-        var iterators = new Dictionary<ulong, int>();
+        var owners = new Dictionary<ulong, PlanOutputRouteEdge>();
+
+        var blocks = new Dictionary<ulong, PlanOutputRouteEdge>();
 
         foreach (var found in operators)
         {
-            routes.TryAdd(found.NodeId, new PlanOutputRoute());
-
-            if (found.Iterator != 0)
+            if (routes.TryAdd(found.NodeId, new PlanOutputRoute()))
             {
-                iterators.TryAdd(found.Iterator, found.NodeId);
+                routes[found.NodeId].AddStorage(found, storage.GetValueOrDefault(found.NodeId) ?? [], owners, blocks, getBlockStart);
             }
         }
 
-        var owners = new Dictionary<ulong, PlanOutputRouteEdge>();
-
-        foreach (var found in operators.OrderByDescending(o => GetDepth(operators, o)).ThenBy(o => o.NodeId))
+        foreach (var found in operators)
         {
-            for (var column = 0; column < found.Paths.Count; column++)
-            {
-                routes[found.NodeId].Add(found, found.Paths[column], column, iterators, owners, isPlanObjectIncluded);
-            }
-        }
+            routes[found.NodeId].AddReferences(found, storage.GetValueOrDefault(found.NodeId) ?? [], owners, blocks, getBlockStart);
 
-        foreach (var found in operators.Where(o => IsRoot(operators, o)))
-        {
-            foreach (var path in found.Paths)
+            routes[found.NodeId].Name(found, owners);
+
+            if (isPlanObjectIncluded)
             {
-                if (GetOutputAddress(path) is { } address && owners.TryGetValue(address, out var owner))
-                {
-                    AddReader(owner, new PlanOutputRouteEdge(StatementNodeId, null, owner.Link));
-                }
+                routes[found.NodeId].AddCompiled(found, owners);
             }
         }
 
         return routes;
     }
 
-    private static int GetDepth(IReadOnlyList<PlanOutputRouteOperator> operators, PlanOutputRouteOperator found)
+    private static PlanOutputRouteEdge? FindOwner(PlanOutputLink link,
+                                                  Dictionary<ulong, PlanOutputRouteEdge> owners,
+                                                  Dictionary<ulong, PlanOutputRouteEdge> blocks,
+                                                  Func<PlanOutputLink, ulong> getBlockStart)
     {
-        var depth = 0;
-
-        var parent = found.ParentNodeId;
-
-        while (depth < operators.Count && parent is { } nodeId && operators.FirstOrDefault(o => o.NodeId == nodeId) is { } next)
+        if (owners.TryGetValue(link.Address, out var owner))
         {
-            depth++;
-
-            parent = next.ParentNodeId;
+            return owner;
         }
 
-        return depth;
-    }
-
-    private static bool IsRoot(IReadOnlyList<PlanOutputRouteOperator> operators, PlanOutputRouteOperator found)
-        => found.ParentNodeId is not { } parent || operators.All(o => o.NodeId != parent);
-
-    private static ulong? GetOutputAddress(PlanOutputPath path)
-    {
-        foreach (var link in path.Links)
-        {
-            if (link is { IsRoute: false, Depth: 0 } && OutputTypes.Contains(link.Type))
-            {
-                return link.Address;
-            }
-        }
-
-        return path.Stages.Count > 0 ? path.Stages[0].Value?.Address : null;
-    }
-
-    private static void AddReader(PlanOutputRouteEdge owner, PlanOutputRouteEdge reader)
-    {
-        var readers = owner.Node!.Readers;
-
-        if (!readers.Exists(r => r.NodeId == reader.NodeId && r.Link.Source == reader.Link.Source))
-        {
-            readers.Add(reader);
-        }
+        return BlockTypes.Contains(link.Type) && getBlockStart(link) is not 0 and var start && blocks.TryGetValue(start, out var block)
+            ? block
+            : null;
     }
 
     private static void AddTarget(PlanOutputRouteNode? node, PlanOutputRouteEdge target)
@@ -164,46 +134,41 @@ public sealed class PlanOutputRoute
         }
     }
 
-    private static void Claim(Dictionary<ulong, PlanOutputRouteEdge> owners, int nodeId, PlanOutputRouteNode node)
+    private static void Claim(Dictionary<ulong, PlanOutputRouteEdge> owners,
+                              Dictionary<ulong, PlanOutputRouteEdge> blocks,
+                              Func<PlanOutputLink, ulong> getBlockStart,
+                              int nodeId,
+                              PlanOutputRouteNode node)
     {
         var link = node.Link;
 
-        if (SharedTypes.Contains(link.Type))
+        if (link.Type == PlanOutputLinkType.RowContext)
         {
             return;
         }
 
+        var edge = new PlanOutputRouteEdge(nodeId, node, link);
+
         if (!owners.TryGetValue(link.Address, out var owner)
             || owner.NodeId == nodeId && ArrayTypes.Contains(owner.Link.Type) && !ArrayTypes.Contains(link.Type))
         {
-            owners[link.Address] = new PlanOutputRouteEdge(nodeId, node, link);
+            owners[link.Address] = edge;
+        }
+
+        if (BlockTypes.Contains(link.Type) && getBlockStart(link) is not 0 and var start)
+        {
+            blocks.TryAdd(start, edge);
         }
     }
 
     private static bool IsContext(PlanOutputLink link)
         => ContextTypes.Contains(link.Type) || link is { Type: PlanOutputLinkType.RowContext, IsRoute: true };
 
-    private static bool IsOtherIterator(PlanOutputRouteNode? node, PlanOutputRouteOperator source, Dictionary<ulong, int> iterators)
-        => node is { Link.Type: PlanOutputLinkType.Iterator }
-           && node.Link.Address != source.Iterator
-           && iterators.ContainsKey(node.Link.Address);
-
-    private static bool IsDropped(PlanOutputLink link,
-                                  PlanOutputRouteNode? holder,
-                                  PlanOutputRouteOperator source,
-                                  Dictionary<ulong, int> iterators,
-                                  HashSet<ulong> dropped,
-                                  bool isPlanObjectIncluded)
-        => !isPlanObjectIncluded && CompiledTypes.Contains(link.Type)
-           || WiringTypes.Contains(link.Type)
-           || IsOtherIterator(holder, source, iterators)
-           || holder is null && link.Source != source.Iterator && dropped.Contains(link.Source);
-
-    private static int FindHolder(IReadOnlyList<PlanOutputLink> links, PlanOutputRouteNode?[] nodes, int index)
+    private static int FindHolder(IReadOnlyList<PlanOutputLink> links, IReadOnlyList<bool> isKnown, int index)
     {
         for (var holder = index - 1; holder >= 0; holder--)
         {
-            if (nodes[holder] is not null && links[holder].Address == links[index].Source)
+            if (isKnown[holder] && links[holder].Address == links[index].Source && links[holder].Source != links[index].Source)
             {
                 return holder;
             }
@@ -221,13 +186,13 @@ public sealed class PlanOutputRoute
         return length > 0 && link.SourceOffset >= offset ? (link.SourceOffset - offset) / length : -1;
     }
 
-    private static PlanOutputRouteNode GetOrAdd(List<PlanOutputRouteNode> siblings, PlanOutputLink link, int index, int column)
+    private static PlanOutputRouteNode GetOrAdd(List<PlanOutputRouteNode> siblings, PlanOutputLink link, int index)
     {
         var node = siblings.Find(n => n.Link.Type == link.Type && n.Link.Address == link.Address && n.Index == index);
 
         if (node is null)
         {
-            node = new PlanOutputRouteNode(link, index, column);
+            node = new PlanOutputRouteNode(link, index, -1);
 
             siblings.Add(node);
         }
@@ -235,119 +200,200 @@ public sealed class PlanOutputRoute
         return node;
     }
 
-    private List<PlanOutputRouteNode> GetSiblings(PlanOutputLink link,
-                                                  PlanOutputRouteNode? holder,
-                                                  PlanOutputRouteNode? previous,
-                                                  PlanOutputRouteOperator source)
+    private static IEnumerable<PlanOutputRouteNode> Flatten(IEnumerable<PlanOutputRouteNode> nodes)
+        => nodes.SelectMany(n => Flatten(n.Children).Prepend(n));
+
+    private void AddStorage(PlanOutputRouteOperator source,
+                            IReadOnlyList<PlanOutputLink> links,
+                            Dictionary<ulong, PlanOutputRouteEdge> owners,
+                            Dictionary<ulong, PlanOutputRouteEdge> blocks,
+                            Func<PlanOutputLink, ulong> getBlockStart)
     {
-        if (holder is { Link.Type: PlanOutputLinkType.Iterator } && holder.Link.Address == source.Iterator)
-        {
-            return FromIterator;
-        }
-
-        if (holder is not null)
-        {
-            return holder.Children;
-        }
-
-        if (link.Source == source.Iterator)
-        {
-            return FromIterator;
-        }
-
-        return link.Source == source.PlanObject || previous is null ? FromPlanObject : previous.Children;
-    }
-
-    private void Add(PlanOutputRouteOperator source,
-                     PlanOutputPath path,
-                     int column,
-                     Dictionary<ulong, int> iterators,
-                     Dictionary<ulong, PlanOutputRouteEdge> owners,
-                     bool isPlanObjectIncluded)
-    {
-        var links = path.Links;
-
         var nodes = new PlanOutputRouteNode?[links.Count];
 
-        var dropped = new HashSet<ulong>();
+        var isKnown = new bool[links.Count];
 
-        PlanOutputRouteNode? previous = null;
-
-        var stage = 0;
-
-        var isColumnPlaced = isPlanObjectIncluded;
+        var isPending = new bool[links.Count];
 
         for (var index = 0; index < links.Count; index++)
         {
             var link = links[index];
 
-            if (IsContext(link))
+            if (IsContext(link) || link.IsRoute)
             {
                 continue;
             }
 
-            var stageIndex = ReferenceTypes.Contains(link.Type) ? stage++ : -1;
+            var holder = FindHolder(links, isKnown, index);
 
-            var holder = FindHolder(links, nodes, index);
-
-            var holderNode = holder >= 0 ? nodes[holder] : null;
-
-            if (IsDropped(link, holderNode, source, iterators, dropped, isPlanObjectIncluded))
+            if (holder < 0 && link.Source != source.Iterator)
             {
-                dropped.Add(link.Address);
+                continue;
+            }
+
+            isKnown[index] = true;
+
+            if (holder >= 0 && (isPending[holder] || HolderTypes.Contains(links[holder].Type) && PointedTypes.Contains(link.Type)))
+            {
+                isPending[index] = true;
+
+                Pending.Add((nodes[holder], index));
 
                 continue;
             }
 
-            if (!link.IsRoute && owners.TryGetValue(link.Address, out var owner) && owner.NodeId != source.NodeId)
-            {
-                AddReader(owner, new PlanOutputRouteEdge(source.NodeId, holderNode, link));
-
-                AddTarget(holderNode, owner with { Link = link });
-
-                dropped.Add(link.Address);
-
-                continue;
-            }
+            var siblings = holder >= 0 ? nodes[holder]!.Children : FromIterator;
 
             var entry = holder >= 0 && ArrayTypes.Contains(links[holder].Type) ? GetIndex(link) : -1;
 
-            var entryColumn = entry >= 0 && links[holder].Type == PlanOutputLinkType.OutputArray && link.Depth == 0
-                              || link is { Type: PlanOutputLinkType.ColumnBinding, Depth: 0 }
-                ? column
-                : -1;
+            nodes[index] = GetOrAdd(siblings, link, entry);
 
-            if (!isColumnPlaced
-                && link.Depth == 0
-                && (entry >= 0 && ValueArrayTypes.Contains(links[holder].Type)
-                    || link.Type is PlanOutputLinkType.BufferEntry or PlanOutputLinkType.Record))
+            Claim(owners, blocks, getBlockStart, source.NodeId, nodes[index]!);
+        }
+    }
+
+    private void AddReferences(PlanOutputRouteOperator source,
+                               IReadOnlyList<PlanOutputLink> links,
+                               Dictionary<ulong, PlanOutputRouteEdge> owners,
+                               Dictionary<ulong, PlanOutputRouteEdge> blocks,
+                               Func<PlanOutputLink, ulong> getBlockStart)
+    {
+        var placed = new Dictionary<ulong, PlanOutputRouteNode>();
+
+        var dropped = new HashSet<ulong>();
+
+        foreach (var (holder, index) in Pending)
+        {
+            var link = links[index];
+
+            var parent = holder ?? placed.GetValueOrDefault(link.Source);
+
+            if (dropped.Contains(link.Source) || parent is null)
             {
-                entryColumn = column;
+                dropped.Add(link.Address);
 
-                isColumnPlaced = true;
+                continue;
             }
 
-            var node = GetOrAdd(GetSiblings(link, holderNode, previous, source), link, entry, entryColumn);
-
-            nodes[index] = node;
-
-            previous = node;
-
-            if (!link.IsRoute)
+            if (FindOwner(link, owners, blocks, getBlockStart) is { Node: not null } owner && owner.NodeId != source.NodeId)
             {
-                Claim(owners, source.NodeId, node);
+                AddTarget(parent, owner with { Link = link });
+
+                dropped.Add(link.Address);
+
+                continue;
             }
-            else if (stageIndex >= 0
-                     && stageIndex < path.Stages.Count
-                     && path.Stages[stageIndex] is { } found
-                     && found.PlanObject != source.PlanObject
-                     && found.Value?.Address is { } address
-                     && owners.TryGetValue(address, out var producer)
-                     && producer.NodeId != source.NodeId)
-            {
-                AddReader(producer, new PlanOutputRouteEdge(source.NodeId, node, link));
 
-                AddTarget(node, producer with { Link = link });
+            placed[link.Address] = GetOrAdd(parent.Children, link, -1);
+        }
+
+        Pending.Clear();
+    }
+
+    private static ulong? GetValueAddress(PlanOutputPath path)
+    {
+        foreach (var link in path.Links)
+        {
+            if (link is { IsRoute: false, Depth: 0 } && NamedTypes.Contains(link.Type))
+            {
+                return link.Address;
+            }
+        }
+
+        return path.Stages.Count > 0 ? path.Stages[0].Value?.Address : null;
+    }
+
+    private void Name(PlanOutputRouteOperator source, Dictionary<ulong, PlanOutputRouteEdge> owners)
+    {
+        for (var column = 0; column < source.Paths.Count; column++)
+        {
+            var path = source.Paths[column];
+
+            var owner = GetValueAddress(path) is { } address && owners.TryGetValue(address, out var found)
+                ? found
+                : new PlanOutputRouteEdge(source.NodeId, null, default);
+
+            Columns.Add(owner);
+
+            if (owner is { Node.Column: < 0 } && owner.NodeId == source.NodeId)
+            {
+                owner.Node!.Column = column;
+            }
+        }
+
+        var nodes = Flatten(FromIterator).ToList();
+
+        foreach (var binding in nodes.Where(n => n.Link.Type == PlanOutputLinkType.ColumnBinding))
+        {
+            if (nodes.Find(n => n.Link.Type == PlanOutputLinkType.BufferEntry
+                                && n.Index == binding.Link.Slot
+                                && n.Column >= 0) is { } entry)
+            {
+                binding.Column = entry.Column;
+            }
+        }
+    }
+
+    private void AddCompiled(PlanOutputRouteOperator source, Dictionary<ulong, PlanOutputRouteEdge> owners)
+    {
+        for (var column = 0; column < source.Paths.Count; column++)
+        {
+            var path = source.Paths[column];
+
+            var links = path.Links;
+
+            var nodes = new PlanOutputRouteNode?[links.Count];
+
+            var isKnown = new bool[links.Count];
+
+            PlanOutputRouteNode? previous = null;
+
+            for (var index = 0; index < links.Count; index++)
+            {
+                var link = links[index];
+
+                if (link.Depth != 0 || !link.IsRoute || !CompiledTypes.Contains(link.Type))
+                {
+                    continue;
+                }
+
+                var holder = FindHolder(links, isKnown, index);
+
+                var siblings = holder >= 0 ? nodes[holder]!.Children
+                               : link.Source == source.PlanObject || previous is null ? FromPlanObject
+                               : previous.Children;
+
+                var entry = holder >= 0 && ArrayTypes.Contains(links[holder].Type) ? GetIndex(link) : -1;
+
+                var node = GetOrAdd(siblings, link, entry);
+
+                isKnown[index] = true;
+
+                nodes[index] = node;
+
+                previous = node;
+
+                if (link.Type != PlanOutputLinkType.Reference)
+                {
+                    if (link.Type == PlanOutputLinkType.Iterator)
+                    {
+                        break;
+                    }
+
+                    continue;
+                }
+
+                node.Column = column;
+
+                if (path.Stages.Count > 0
+                    && path.Stages[0] is { } stage
+                    && stage.PlanObject != source.PlanObject
+                    && stage.Value?.Address is { } address
+                    && owners.TryGetValue(address, out var producer)
+                    && producer.NodeId != source.NodeId)
+                {
+                    AddTarget(node, producer with { Link = link });
+                }
             }
         }
     }

@@ -16,7 +16,7 @@
                                                 ResultSet="{x:Bind Table, Mode=OneWay}"
                                                 SelectedRow="{x:Bind SelectedRow, Mode=TwoWay}"/>
                     <local:MemoryObjectTabsView Visibility="{x:Bind HasTabs}" Tabs="{x:Bind Tabs}"/>
-                    <memory:LineageGraphControl Visibility="{x:Bind HasGraph}" Graph="{x:Bind Graph}"/>
+                    <memory:DataPathGraphControl Visibility="{x:Bind HasGraph}" Graph="{x:Bind Graph}"/>
                 </Grid>
             </TabViewItem>
         </DataTemplate>

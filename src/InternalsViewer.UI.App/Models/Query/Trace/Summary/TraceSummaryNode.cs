@@ -37,7 +37,7 @@ public sealed partial class TraceSummaryNode(string name, string detail, string 
 
     public SqlTypeInfo? ColumnType { get; init; }
 
-    public string? LineageColumn { get; init; }
+    public string? DataPathColumn { get; init; }
 
     public bool IsObject => Block >= 0;
 

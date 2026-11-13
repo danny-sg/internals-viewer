@@ -29,5 +29,7 @@ public enum MemoryStructureNodeType
     Statement,
     Operator,
     PlanObject,
-    Link
+    Link,
+    Column,
+    Expression
 }
