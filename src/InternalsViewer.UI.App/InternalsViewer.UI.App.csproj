@@ -422,7 +422,7 @@
       <Page Update="Controls\Page\HexViewControl.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
-      <Page Update="Controls\Query\PredicateTextBox.xaml">
+      <Page Update="Controls\Query\ExpressionTextBox.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
       <Page Update="Controls\Connections\BackupFileConnectionControl.xaml">

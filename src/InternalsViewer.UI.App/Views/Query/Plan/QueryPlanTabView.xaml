@@ -98,7 +98,7 @@
                             </Style>
                         </controls:MarkdownTextBlock.Resources>
                     </controls:MarkdownTextBlock>
-                    <query:PredicateTextBox Text="{x:Bind Predicate}"
+                    <query:ExpressionTextBox Text="{x:Bind Predicate}"
                                             HasBackground="False"
                                             TextPadding="0"
                                             IsHitTestVisible="False"

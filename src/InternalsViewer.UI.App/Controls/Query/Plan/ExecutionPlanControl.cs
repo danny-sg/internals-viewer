@@ -1240,7 +1240,7 @@ public sealed class ExecutionPlanControl : Canvas
 
         foreach (var value in values)
         {
-            list.Children.Add(new PredicateTextBox
+            list.Children.Add(new ExpressionTextBox
             {
                 Text = value.GetText(Plan?.Expressions),
                 HasBackground = false,

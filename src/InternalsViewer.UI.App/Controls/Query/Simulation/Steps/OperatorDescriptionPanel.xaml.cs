@@ -666,7 +666,7 @@ public sealed partial class OperatorDescriptionPanel : UserControl
             Child = new Border
             {
                 Margin = new Thickness(2, 0, 2, -3),
-                Child = new PredicateTextBox
+                Child = new ExpressionTextBox
                 {
                     Text = new PredicateText(tokens),
                     TextPadding = new Thickness(0),
@@ -711,7 +711,7 @@ public sealed partial class OperatorDescriptionPanel : UserControl
 
     private void AddPredicateTextRow(string title, PredicateText text)
     {
-        RowsPanel.Children.Add(SeekPanelRows.TitledRow(title, TitleWidth, new PredicateTextBox
+        RowsPanel.Children.Add(SeekPanelRows.TitledRow(title, TitleWidth, new ExpressionTextBox
         {
             Text = text,
             TextPadding = new Thickness(2, 0, 2, 0),
@@ -795,7 +795,7 @@ public sealed partial class OperatorDescriptionPanel : UserControl
 
             tokens.AddRange(PredicateWriter.Write(arms[index]));
 
-            view.Children.Add(new PredicateTextBox
+            view.Children.Add(new ExpressionTextBox
             {
                 Text = new PredicateText(tokens.ToImmutable()),
                 TextPadding = new Thickness(2, 0, 2, 0),

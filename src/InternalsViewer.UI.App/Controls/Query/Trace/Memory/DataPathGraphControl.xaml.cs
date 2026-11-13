@@ -131,7 +131,7 @@ public sealed partial class DataPathGraphControl : UserControl
 
         foreach (var token in expression.Tokens)
         {
-            text.Inlines.Add(new Run { Text = token.Text, Foreground = PredicateTextBox.GetBrush(token.Type, fallback) });
+            text.Inlines.Add(new Run { Text = token.Text, Foreground = ExpressionTextBox.GetBrush(token.Type, fallback) });
         }
 
         ToolTipService.SetToolTip(text, expression.ToString());

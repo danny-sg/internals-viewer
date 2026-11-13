@@ -269,7 +269,7 @@
                                               Graph="{x:Bind ViewModel.Graph, Mode=OneWay}"
                                               Visibility="{x:Bind ViewModel.IsGraphVisible, Mode=OneWay}"/>
 
-            <predicates:PredicateTextBox Grid.RowSpan="2"
+            <predicates:ExpressionTextBox Grid.RowSpan="2"
                                          Grid.ColumnSpan="2"
                                          Margin="12"
                                          VerticalAlignment="Top"

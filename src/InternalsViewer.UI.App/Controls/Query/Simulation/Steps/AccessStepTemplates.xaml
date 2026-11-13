@@ -36,7 +36,7 @@
     <simulation:StopReasonToTextConverter x:Key="StopReasonToTextConverter" />
     <converters:NullToVisibilityConverter x:Key="StepsNullToInverseVisibilityConverter" IsInverse="True" />
 
-    <Style x:Key="StepDetailStyle" TargetType="predicates:PredicateTextBox">
+    <Style x:Key="StepDetailStyle" TargetType="predicates:ExpressionTextBox">
         <Setter Property="TextPadding" Value="0,2,0,0" />
         <Setter Property="HasBackground" Value="False" />
     </Style>
@@ -71,7 +71,7 @@
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="{Binding Rule, Converter={StaticResource SeekRuleToTextConverter}}"
                                    Style="{StaticResource StepValueStyle}" />
-                        <predicates:PredicateTextBox Style="{StaticResource StepDetailStyle}"
+                        <predicates:ExpressionTextBox Style="{StaticResource StepDetailStyle}"
                                                      Text="{Binding Converter={StaticResource AccessStepToPredicateTextConverter}}" />
                         <TextBlock Text="{Binding Converter={StaticResource ProbeStartToTextConverter}}"
                                    Style="{StaticResource StepPropertyStyle}"
@@ -102,7 +102,7 @@
                     <TextBlock Text="{Binding High}" Style="{StaticResource StepValueStyle}" />
                 </StackPanel>
                 <StackPanel Orientation="Horizontal">
-                    <predicates:PredicateTextBox Style="{StaticResource StepDetailStyle}"
+                    <predicates:ExpressionTextBox Style="{StaticResource StepDetailStyle}"
                                                  Text="{Binding Converter={StaticResource AccessStepToPredicateTextConverter}}" />
                     <TextBlock Text="{Binding SearchRight, Converter={StaticResource ProbeDirectionToTextConverter}}"
                                Style="{StaticResource StepValueStyle}"
@@ -160,7 +160,7 @@
                                 <TextBlock Text="{Binding High}" Style="{StaticResource StepValueStyle}" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal">
-                                <predicates:PredicateTextBox 
+                                <predicates:ExpressionTextBox 
                                     Style="{StaticResource StepDetailStyle}"
                                     Text="{Binding Converter={StaticResource AccessStepToPredicateTextConverter}}" />
                                 <TextBlock Text="{Binding SearchRight, Converter={StaticResource ProbeDirectionToTextConverter}}"
@@ -201,7 +201,7 @@
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="{Binding Rule, Converter={StaticResource SeekRuleToTextConverter}}"
                                    Style="{StaticResource StepValueStyle}" />
-                        <predicates:PredicateTextBox Style="{StaticResource StepDetailStyle}"
+                        <predicates:ExpressionTextBox Style="{StaticResource StepDetailStyle}"
                                                      Text="{Binding Converter={StaticResource AccessStepToPredicateTextConverter}}" />
                     </StackPanel>
                 </StackPanel>
@@ -263,7 +263,7 @@
                         <TextBlock Text="{Binding Slot}" Width="34" Style="{StaticResource StepValueStyle}" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal">
-                        <predicates:PredicateTextBox Style="{StaticResource StepDetailStyle}"
+                        <predicates:ExpressionTextBox Style="{StaticResource StepDetailStyle}"
                                                      Text="{Binding Converter={StaticResource AccessStepToPredicateTextConverter}}" />
                         <TextBlock Text="{Binding Converter={StaticResource RangeEndToTextConverter}}"
                                    Style="{StaticResource StepPropertyStyle}"
@@ -301,7 +301,7 @@
                         <TextBlock Text="of" Style="{StaticResource StepPropertyStyle}" />
                         <TextBlock Text="{Binding RangeCount}" Style="{StaticResource StepValueStyle}" />
                     </StackPanel>
-                    <predicates:PredicateTextBox Style="{StaticResource StepDetailStyle}"
+                    <predicates:ExpressionTextBox Style="{StaticResource StepDetailStyle}"
                                                  Text="{Binding Converter={StaticResource AccessStepToPredicateTextConverter}}" />
                 </StackPanel>
             </StackPanel>
@@ -322,7 +322,7 @@
                         <TextBlock Text="{Binding RowIdentifier}" Style="{StaticResource StepValueStyle}"
                                    Visibility="{Binding RowIdentifier, Converter={StaticResource NullToVisibilityConverter}}" />
                     </StackPanel>
-                    <predicates:PredicateTextBox Style="{StaticResource StepDetailStyle}"
+                    <predicates:ExpressionTextBox Style="{StaticResource StepDetailStyle}"
                                                  Visibility="{Binding RowIdentifier, 
                                                               Converter={StaticResource StepsNullToInverseVisibilityConverter}}"
                                                  Text="{Binding Converter={StaticResource AccessStepToPredicateTextConverter}}" />

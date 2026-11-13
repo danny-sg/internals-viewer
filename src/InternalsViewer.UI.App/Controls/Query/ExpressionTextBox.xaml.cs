@@ -5,12 +5,12 @@ using Microsoft.UI.Xaml.Media;
 
 namespace InternalsViewer.UI.App.Controls.Query;
 
-public sealed partial class PredicateTextBox : UserControl
+public sealed partial class ExpressionTextBox : UserControl
 {
     public static readonly DependencyProperty TextProperty =
         DependencyProperty.Register(nameof(Text),
                                     typeof(PredicateText),
-                                    typeof(PredicateTextBox),
+                                    typeof(ExpressionTextBox),
                                     new PropertyMetadata(null, OnSourceChanged));
 
     /// <summary>
@@ -25,7 +25,7 @@ public sealed partial class PredicateTextBox : UserControl
     public static readonly DependencyProperty PlaceholderTextProperty =
         DependencyProperty.Register(nameof(PlaceholderText),
                                     typeof(string),
-                                    typeof(PredicateTextBox),
+                                    typeof(ExpressionTextBox),
                                     new PropertyMetadata(string.Empty, OnSourceChanged));
 
     /// <summary>
@@ -40,7 +40,7 @@ public sealed partial class PredicateTextBox : UserControl
     public static readonly DependencyProperty TextPaddingProperty =
         DependencyProperty.Register(nameof(TextPadding),
                                     typeof(Thickness),
-                                    typeof(PredicateTextBox),
+                                    typeof(ExpressionTextBox),
                                     new PropertyMetadata(new Thickness(10, 8, 10, 8)));
 
     public Thickness TextPadding
@@ -52,7 +52,7 @@ public sealed partial class PredicateTextBox : UserControl
     public static readonly DependencyProperty HasBackgroundProperty =
         DependencyProperty.Register(nameof(HasBackground),
                                     typeof(bool),
-                                    typeof(PredicateTextBox),
+                                    typeof(ExpressionTextBox),
                                     new PropertyMetadata(true, OnHasBackgroundChanged));
 
     public bool HasBackground
@@ -61,7 +61,7 @@ public sealed partial class PredicateTextBox : UserControl
         set => SetValue(HasBackgroundProperty, value);
     }
 
-    public PredicateTextBox()
+    public ExpressionTextBox()
     {
         InitializeComponent();
 
@@ -183,11 +183,11 @@ public sealed partial class PredicateTextBox : UserControl
 
     private static void OnHasBackgroundChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        ((PredicateTextBox)d).ApplyBackground();
+        ((ExpressionTextBox)d).ApplyBackground();
     }
 
     private static void OnSourceChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        ((PredicateTextBox)d).Render();
+        ((ExpressionTextBox)d).Render();
     }
 }
