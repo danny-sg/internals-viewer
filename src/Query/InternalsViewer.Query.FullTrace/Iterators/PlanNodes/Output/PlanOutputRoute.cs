@@ -66,7 +66,8 @@ public sealed class PlanOutputRoute
         PlanOutputLinkType.RowBuffer,
         PlanOutputLinkType.VariableTable,
         PlanOutputLinkType.Variables,
-        PlanOutputLinkType.ColumnBindings
+        PlanOutputLinkType.ColumnBindings,
+        PlanOutputLinkType.Executors
     ];
 
     public List<PlanOutputRouteNode> FromPlanObject { get; } = [];

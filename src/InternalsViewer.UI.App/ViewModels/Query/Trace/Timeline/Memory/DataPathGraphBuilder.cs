@@ -4,11 +4,10 @@ using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using InternalsViewer.Internals.Helpers;
-using InternalsViewer.Query.FullTrace;
-using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.Query.FullTrace.DataPath;
+using InternalsViewer.Query.FullTrace.Iterators.Enums;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
 using InternalsViewer.Query.FullTrace.Memory.History;
-using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace.DataPath;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryHistory;
@@ -23,44 +22,39 @@ public static class DataPathGraphBuilder
 
     private const string UnknownOperator = "Unknown Operator";
 
-    public static DataPathPlan? GetPlan(MemoryHistoryViewModel history)
-        => history.IteratorTargets.Values.Select(t => t.Operator?.PlanNodeIdentifier).OfType<PlanNodeIdentifier>().FirstOrDefault() is
-               { } identifier
-           && history.GetStatement(identifier) is { } statement
-            ? new DataPathPlan(statement)
-            : null;
+    private const int MaximumDepth = 32;
 
     public static DataPathGraph? Build(MemoryHistoryViewModel history,
-                                       DataPathPlan? plan,
-                                       IReadOnlyList<DataPathColumn> columns,
+                                       DataPathMap map,
+                                       IReadOnlyList<DataPathField> roots,
                                        Action<ulong> open)
     {
+        var operators = GetOperators(history);
+
         var levels = new Dictionary<DataPathStage, int>();
 
         var rows = new List<(DataPathColumn Column, List<DataPathStage> Stages)>();
 
         var warnings = new List<string>();
 
-        foreach (var column in columns)
+        foreach (var root in roots)
         {
-            column.Outputs.Clear();
-
-            column.Text = string.Empty;
+            var column = new DataPathColumn(root);
 
             var stages = new List<DataPathStage>();
 
-            foreach (var input in column.Inputs)
+            var context = new GraphContext(history, map, operators, column, stages, levels, warnings);
+
+            if (root.Node.IsStatement)
             {
-                var path = history.GetOutputPath(input.NodeId, input.Column);
-
-                if (path.Stages.Count == 0)
+                foreach (var input in root.Inputs)
                 {
-                    continue;
+                    AddStage(context, input.Source, null, input, 0);
                 }
-
-                AddPath(history, plan, path, column, stages, levels);
-
-                warnings.AddRange(GetWarnings(history, path));
+            }
+            else
+            {
+                AddStage(context, root, null, null, 0);
             }
 
             if (column.Outputs.Count > 0)
@@ -122,12 +116,12 @@ public static class DataPathGraphBuilder
 
         foreach (var stage in graph.Stages)
         {
-            if (stage.Stage is not { } output)
+            stage.IsActive = stage.Field.Scope is not { } scope || scope.From <= position && position <= scope.To;
+
+            if (stage.Field.Stage is not { } output)
             {
                 continue;
             }
-
-            stage.IsActive = stage.Scope is not { } scope || scope.From <= position && position <= scope.To;
 
             stage.Value = PlanOutputValueReader.Read(memory, output) ?? string.Empty;
 
@@ -137,7 +131,15 @@ public static class DataPathGraphBuilder
             }
         }
 
-        if (graph.Columns.Where(c => c.Expression is not null).ToList() is [var column] && GetResultType(column) is { } type)
+        foreach (var stage in graph.Stages)
+        {
+            if (stage.Field.Stage is null && graph.Stages.Where(s => s.Consumer == stage).ToList() is [var input])
+            {
+                stage.Value = input.Value;
+            }
+        }
+
+        if (graph.Columns.Where(c => c.Definition is not null).ToList() is [var column] && GetResultType(column) is { } type)
         {
             column.Text = history.GetStatementResult(memory.Position, type) ?? string.Empty;
         }
@@ -147,7 +149,7 @@ public static class DataPathGraphBuilder
 
     private static SqlDbType? GetResultType(DataPathColumn column)
         => column.Definition?.DataType
-           ?? (column.Inputs is [var first, ..] && SqlTypeHelpers.TryGetSqlType(first.Column.Type.TypeId, out var type) ? type : null);
+           ?? (column.Type is { } type && SqlTypeHelpers.TryGetSqlType(type.TypeId, out var found) ? found : null);
 
     private static async Task ReadRecordAsync(DataPathGraph graph,
                                               MemoryHistoryViewModel history,
@@ -165,157 +167,54 @@ public static class DataPathGraphBuilder
         }
     }
 
-    private static void AddPath(MemoryHistoryViewModel history,
-                                DataPathPlan? plan,
-                                PlanOutputPath path,
-                                DataPathColumn column,
-                                List<DataPathStage> stages,
-                                Dictionary<DataPathStage, int> levels)
+    private static void AddStage(GraphContext context, DataPathField field, DataPathStage? consumer, DataPathLink? link, int depth)
     {
-        var count = path.Stages.Count;
+        var nodeId = field.Node.NodeId;
 
-        var targets = new IteratorTarget?[count];
+        var (label, address) = context.Operators.TryGetValue(nodeId, out var found) ? found : (UnknownOperator, 0UL);
 
-        var keys = new ulong[count];
-
-        var nodeIds = new int?[count];
-
-        for (var index = 0; index < count; index++)
+        var box = new DataPathStage(field, label, address, consumer, link)
         {
-            var stage = path.Stages[index];
+            Detail = GetDetail(field),
+            IsBuild = consumer is not null && (consumer.IsBuild || link?.IsBlocking == true)
+        };
 
-            keys[index] = history.IteratorTargets.ContainsKey(stage.Iterator) ? stage.Iterator : stage.PlanObject;
+        context.Levels[box] = context.Map.GetLevel(nodeId) ?? (consumer is not null ? context.Levels[consumer] + 1 : 0);
 
-            targets[index] = history.IteratorTargets.GetValueOrDefault(keys[index]);
+        context.Stages.Add(box);
 
-            nodeIds[index] = targets[index]?.Operator?.PlanNodeIdentifier?.NodeId;
+        if (consumer is null)
+        {
+            context.Column.Outputs.Add(box);
         }
 
-        var mapped = new DataPathStage?[count];
-
-        var ids = new int?[count];
-
-        for (var index = 0; index < count; index++)
+        if (field.Output is { } output)
         {
-            var stage = path.Stages[index];
+            context.Warnings.AddRange(GetWarnings(context.History, context.History.GetOutputPath(nodeId, output)));
+        }
 
-            var consumer = stage.Consumer >= 0 ? mapped[stage.Consumer] : null;
+        if (depth >= MaximumDepth)
+        {
+            return;
+        }
 
-            var consumerId = stage.Consumer >= 0 ? ids[stage.Consumer] : null;
-
-            var isExpression = nodeIds[index] is null
-                               && plan is not null
-                               && GetInputNodeId(path, index, nodeIds) is { } inputId
-                               && plan.GetExpression(consumerId, inputId) is not null;
-
-            if (isExpression || consumer is not null && nodeIds[index] is { } same && same == consumerId)
-            {
-                mapped[index] = consumer;
-
-                ids[index] = consumerId;
-
-                continue;
-            }
-
-            var nodeId = nodeIds[index];
-
-            var name = GetFieldName(history, nodeId, keys[index], stage.Reference);
-
-            var definition = name.Length > 0 ? plan?.FindDefinition(name) : null;
-
-            var isBuild = consumer is not null
-                          && (consumer.IsBuild
-                              || nodeId is { } own && consumerId is { } reader && plan?.IsBlockingInput(reader, own) == true);
-
-            var box = new DataPathStage(name,
-                                        PlanOutputLinkText.GetReferenceName(stage),
-                                        targets[index]?.Label ?? UnknownOperator,
-                                        keys[index],
-                                        consumer)
-            {
-                Detail = GetDetail(plan, nodeId, definition),
-                IsCalculated = definition is not null,
-                Stage = stage,
-                IsBuild = isBuild,
-                Scope = nodeId is { } scoped ? GetScope(history, scoped) : null
-            };
-
-            levels[box] = (nodeId is { } id ? plan?.GetLevel(id) : null) ?? (consumer is not null ? levels[consumer] + 1 : 0);
-
-            stages.Add(box);
-
-            if (consumer is null)
-            {
-                column.Outputs.Add(box);
-            }
-
-            mapped[index] = box;
-
-            ids[index] = nodeId;
+        foreach (var input in field.Inputs)
+        {
+            AddStage(context, input.Source, box, input, depth + 1);
         }
     }
 
-    private static (TracePosition From, TracePosition To)? GetScope(MemoryHistoryViewModel history, int nodeId)
-    {
-        (TracePosition From, TracePosition To)? scope = null;
+    private static Dictionary<int, (string Label, ulong Address)> GetOperators(MemoryHistoryViewModel history)
+        => history.IteratorTargets
+                  .Where(t => t.Value.Operator?.PlanNodeIdentifier is not null)
+                  .GroupBy(t => t.Value.Operator!.PlanNodeIdentifier!.NodeId)
+                  .ToDictionary(g => g.Key,
+                                g => (g.First().Value.Label,
+                                      g.FirstOrDefault(t => t.Value.Type == IteratorTargetType.Iterator).Key is not 0 and var iterator
+                                          ? iterator
+                                          : g.FirstOrDefault(t => t.Value.Type == IteratorTargetType.PlanObject).Key));
 
-        foreach (var (address, target) in history.IteratorTargets)
-        {
-            if (target.Operator?.PlanNodeIdentifier?.NodeId != nodeId || history.GetRowRange(address) is not { } range)
-            {
-                continue;
-            }
-
-            scope = scope is { } found
-                ? (range.From < found.From ? range.From : found.From, range.To > found.To ? range.To : found.To)
-                : range;
-        }
-
-        return scope;
-    }
-
-    private static string GetDetail(DataPathPlan? plan, int? nodeId, DefinedValueInfo? definition)
-    {
-        if (definition is not null)
-        {
-            return DataPathPlan.GetText(definition);
-        }
-
-        return nodeId is { } id && plan?.GetNode(id) is { } node ? DataPathPlan.GetObjectName(node) : string.Empty;
-    }
-
-    private static string GetFieldName(MemoryHistoryViewModel history, int? nodeId, ulong target, ulong reference)
-    {
-        if (nodeId is not { } id)
-        {
-            return string.Empty;
-        }
-
-        var outputs = history.GetOutputColumns(id);
-
-        for (var index = 0; index < outputs.Count; index++)
-        {
-            if (outputs[index].Reference == reference)
-            {
-                return history.GetOutputColumnNames(target, outputs.Count)[index];
-            }
-        }
-
-        return string.Empty;
-    }
-
-    private static int? GetInputNodeId(PlanOutputPath path, int stageIndex, int?[] nodeIds)
-    {
-        for (var index = stageIndex + 1; index < path.Stages.Count; index++)
-        {
-            if (path.Stages[index].Consumer == stageIndex && nodeIds[index] is { } nodeId)
-            {
-                return nodeId;
-            }
-        }
-
-        return null;
-    }
+    private static string GetDetail(DataPathField field) => DataPathText.GetObjectName(field.Node);
 
     private static double Place(List<DataPathStage> stages, DataPathStage stage, double top)
     {
@@ -358,4 +257,12 @@ public static class DataPathGraphBuilder
 
         return warnings;
     }
+
+    private sealed record GraphContext(MemoryHistoryViewModel History,
+                                       DataPathMap Map,
+                                       Dictionary<int, (string Label, ulong Address)> Operators,
+                                       DataPathColumn Column,
+                                       List<DataPathStage> Stages,
+                                       Dictionary<DataPathStage, int> Levels,
+                                       List<string> Warnings);
 }

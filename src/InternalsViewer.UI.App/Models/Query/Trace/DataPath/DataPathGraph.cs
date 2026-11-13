@@ -14,7 +14,7 @@ public sealed class DataPathGraph(IReadOnlyList<DataPathStage> stages,
 
     public const double LineHeight = 20;
 
-    public const double ValueHeight = 26;
+    public const double ValueHeight = 36;
 
     public const double BoxHeight = HeaderHeight + LineHeight * 2 + ValueHeight;
 

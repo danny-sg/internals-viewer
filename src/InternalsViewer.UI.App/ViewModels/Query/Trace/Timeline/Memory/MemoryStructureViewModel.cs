@@ -98,6 +98,9 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
     private LogRecordAnnotation? _itemOutline;
 
     [ObservableProperty]
+    private ObservableCollection<LogRecordAnnotation>? _outlines;
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsFieldTableVisible))]
     private QueryResultSet? _fieldTable;
 
@@ -402,6 +405,8 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
     {
         Data = null;
 
+        Outlines = null;
+
         Markers = null;
 
         MarkerKey = null;
@@ -422,6 +427,8 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
     protected void ShowFields(MemoryStructureNode node, IReadOnlyList<MemoryField> layout, IReadOnlyList<Colour> colours)
     {
         EntryTable = null;
+
+        Outlines = null;
 
         IsPageVisible = false;
 

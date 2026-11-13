@@ -1,13 +1,12 @@
-using InternalsViewer.Query.FullTrace;
-using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
+using InternalsViewer.Query.FullTrace.DataPath;
+using InternalsViewer.Query.FullTrace.DataPath.Enums;
+using InternalsViewer.UI.App.Helpers;
 
 namespace InternalsViewer.UI.App.Models.Query.Trace.DataPath;
 
-public sealed class DataPathStage(string name, string kind, string source, ulong sourceAddress, DataPathStage? consumer)
+public sealed class DataPathStage(DataPathField field, string source, ulong sourceAddress, DataPathStage? consumer, DataPathLink? link)
 {
-    public string Name { get; } = name;
-
-    public string Kind { get; } = kind;
+    public DataPathField Field { get; } = field;
 
     public string Source { get; } = source;
 
@@ -15,15 +14,23 @@ public sealed class DataPathStage(string name, string kind, string source, ulong
 
     public DataPathStage? Consumer { get; } = consumer;
 
+    public DataPathLink? Link { get; } = link;
+
+    public string Name => Field.Name;
+
+    public string Kind => Field.Stage is { } stage ? PlanOutputLinkText.GetReferenceName(stage) : string.Empty;
+
+    public string Uses => DataPathText.GetUses(Field.Uses);
+
     public string Detail { get; init; } = string.Empty;
 
-    public bool IsCalculated { get; init; }
+    public bool IsPointer => Field.Kind == DataPathFieldKind.Pointer;
 
-    public PlanOutputStage? Stage { get; init; }
+    public bool IsComputed => Field.Kind == DataPathFieldKind.Computed;
 
     public bool IsBuild { get; init; }
 
-    public (TracePosition From, TracePosition To)? Scope { get; init; }
+    public bool IsSeen => Link?.IsSeen ?? true;
 
     public string Value { get; set; } = string.Empty;
 

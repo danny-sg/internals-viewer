@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.UI.App.Controls.Columnstore;
 using InternalsViewer.UI.App.Controls.Query.Plan;
 using InternalsViewer.UI.App.Helpers;
@@ -8,9 +9,11 @@ using Microsoft.UI;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
 using Windows.Foundation;
+using Windows.UI;
 
 namespace InternalsViewer.UI.App.Controls.Query.Trace.Memory;
 
@@ -34,10 +37,27 @@ public sealed partial class DataPathGraphControl : UserControl
 
     private const double CalculatorHeight = 17;
 
+    private const double NestedCalculatorWidth = 11;
+
+    private const double NestedCalculatorHeight = 13;
+
+    private const double ExpressionInset = 6;
+
+    private const double ExpressionGap = 4;
+
+    private const double ExpressionPadding = 2;
+
+    private const double ExpressionRowHeight = 16;
+
     private const int CalculatorScale = 2;
 
+    private const double BadgeGap = 4;
 
-    private const string BoxBackgroundKey = "SolidBackgroundFillColorQuarternaryBrush";
+    private const double FaintOpacity = 0.35;
+
+    private const string BoxBackgroundKey = "SolidBackgroundFillColorTertiaryBrush";
+
+    private const string ValueBackgroundKey = "SolidBackgroundFillColorQuarternaryBrush";
 
     private const string HeaderBackgroundKey = "SolidBackgroundFillColorSecondaryBrush";
 
@@ -52,6 +72,8 @@ public sealed partial class DataPathGraphControl : UserControl
     private const string LinkStyleKey = "DetailLinkStyle";
 
     private const string TagStyleKey = "TagTextBlockStyle";
+
+    private const string MonospaceKey = "MonospaceFontFamily";
 
     public static readonly DependencyProperty GraphProperty =
         DependencyProperty.Register(nameof(Graph),
@@ -86,26 +108,43 @@ public sealed partial class DataPathGraphControl : UserControl
             TextTrimming = TextTrimming.CharacterEllipsis
         };
 
-    private static Image CreateCalculator()
+    private static Image CreateCalculator(double width, double height)
         => new()
         {
-            Width = CalculatorWidth,
-            Height = CalculatorHeight,
+            Width = width,
+            Height = height,
             Stretch = Stretch.Fill,
-            Margin = new Thickness(0, 0, CellPadding, 0),
+            Margin = new Thickness(0, 0, BadgeGap, 0),
             VerticalAlignment = VerticalAlignment.Center,
-            Source = PlanIconParts.CreateCalculatorSource((int)CalculatorWidth * CalculatorScale,
-                                                          (int)CalculatorHeight * CalculatorScale)
+            Source = PlanIconParts.CreateCalculatorSource((int)width * CalculatorScale, (int)height * CalculatorScale)
         };
 
-    private static Border? CreateBadge(string kind)
+    private static TextBlock CreateExpression(PredicateText expression)
+    {
+        var text = CreateText(string.Empty, DetailSize);
+
+        text.FontFamily = AppResources.Get<FontFamily>(MonospaceKey) ?? text.FontFamily;
+
+        text.Margin = new Thickness(CellPadding, 0, CellPadding, 0);
+
+        var fallback = AppResources.Get<Brush>(DetailKey) ?? text.Foreground;
+
+        foreach (var token in expression.Tokens)
+        {
+            text.Inlines.Add(new Run { Text = token.Text, Foreground = PredicateTextBox.GetBrush(token.Type, fallback) });
+        }
+
+        ToolTipService.SetToolTip(text, expression.ToString());
+
+        return text;
+    }
+
+    private static Border? CreateBadge(string kind, Color? colour)
     {
         if (kind.Length == 0)
         {
             return null;
         }
-
-        var colour = PlanOutputLinkText.GetReferenceColour(kind);
 
         var text = CreateText(kind, DetailSize);
 
@@ -118,12 +157,13 @@ public sealed partial class DataPathGraphControl : UserControl
             Background = colour is { } found ? new SolidColorBrush(found) : AppResources.Get<Brush>(HeaderBackgroundKey),
             CornerRadius = new CornerRadius(2),
             Padding = new Thickness(4, 1, 4, 1),
+            Margin = new Thickness(BadgeGap, 0, 0, 0),
             VerticalAlignment = VerticalAlignment.Center,
             Child = text
         };
     }
 
-    private static Grid CreateHeader(string name, bool isCalculated, FrameworkElement? right)
+    private static Grid CreateHeader(string name, bool isCalculated, IEnumerable<FrameworkElement?> badges)
     {
         var header = new Grid
         {
@@ -131,28 +171,34 @@ public sealed partial class DataPathGraphControl : UserControl
             Background = AppResources.Get<Brush>(HeaderBackgroundKey),
             ColumnDefinitions =
             {
-                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
                 new ColumnDefinition { Width = GridLength.Auto },
-                new ColumnDefinition { Width = GridLength.Auto }
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
             }
         };
 
-        header.Children.Add(CreateText(name, TextSize, true));
-
         if (isCalculated)
         {
-            var calculator = CreateCalculator();
-
-            Grid.SetColumn(calculator, 1);
-
-            header.Children.Add(calculator);
+            header.Children.Add(CreateCalculator(CalculatorWidth, CalculatorHeight));
         }
 
-        if (right is not null)
-        {
-            Grid.SetColumn(right, 2);
+        var text = CreateText(name, TextSize, true);
 
-            header.Children.Add(right);
+        Grid.SetColumn(text, 1);
+
+        header.Children.Add(text);
+
+        foreach (var badge in badges)
+        {
+            if (badge is null)
+            {
+                continue;
+            }
+
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            Grid.SetColumn(badge, header.ColumnDefinitions.Count - 1);
+
+            header.Children.Add(badge);
         }
 
         return header;
@@ -209,7 +255,13 @@ public sealed partial class DataPathGraphControl : UserControl
         {
             if (stage.Consumer is { } consumer)
             {
-                AddArrow(graph, stage.X, GetMiddle(stage.Y), consumer.X + DataPathGraph.BoxWidth, GetMiddle(consumer.Y), stage.IsBuild);
+                AddArrow(graph,
+                         stage.X,
+                         GetMiddle(stage.Y),
+                         consumer.X + DataPathGraph.BoxWidth,
+                         GetMiddle(consumer.Y),
+                         stage.IsBuild,
+                         !stage.IsSeen);
             }
         }
 
@@ -222,6 +274,7 @@ public sealed partial class DataPathGraphControl : UserControl
                          GetMiddle(output.Y),
                          column.X + DataPathGraph.BoxWidth,
                          column.Y + column.Height / 2,
+                         false,
                          false);
             }
         }
@@ -230,12 +283,28 @@ public sealed partial class DataPathGraphControl : UserControl
         {
             var source = CreateSource(graph, stage.Source, stage.SourceAddress);
 
-            Surface.Children.Add(CreateBox(CreateHeader(stage.Name, stage.IsCalculated, CreateBadge(stage.Kind)),
-                                           [source, CreateDetail(stage.Detail)],
+            var badges = new[]
+            {
+                CreateBadge(stage.Uses, DataPathText.UseColour),
+                CreateBadge(stage.Kind, PlanOutputLinkText.GetReferenceColour(stage.Kind))
+            };
+
+            var expression = stage.Field.Definition is { } definition ? DataPathText.GetExpression(definition) : null;
+
+            var nested = stage.IsComputed ? expression : null;
+
+            List<FrameworkElement> lines = nested is not null ? [source]
+                : expression is not null ? [source, CreateExpression(expression)]
+                : [source, CreateDetail(stage.Detail)];
+
+            Surface.Children.Add(CreateBox(new BoxContent(CreateHeader(stage.Name, expression is not null && nested is null, badges),
+                                                          lines,
+                                                          nested),
                                            () => stage.Value,
                                            () => stage.IsInScope,
                                            stage.X,
-                                           stage.Y));
+                                           stage.Y,
+                                           stage.IsPointer));
         }
 
         foreach (var column in graph.Columns)
@@ -249,14 +318,16 @@ public sealed partial class DataPathGraphControl : UserControl
                 VerticalAlignment = VerticalAlignment.Center
             };
 
-            List<FrameworkElement> lines = column.Definition is { } definition ? [CreateDetail(DataPathPlan.GetText(definition))] : [];
+            var expression = column.Definition is { } definition ? DataPathText.GetExpression(definition) : null;
 
-            Surface.Children.Add(CreateBox(CreateHeader(column.Name, column.Expression is not null, type),
-                                           lines,
+            List<FrameworkElement> lines = expression is not null ? [CreateExpression(expression)] : [];
+
+            Surface.Children.Add(CreateBox(new BoxContent(CreateHeader(column.Name, expression is not null, [type]), lines, null),
                                            () => column.Value,
                                            () => column.IsInScope,
                                            column.X,
-                                           column.Y));
+                                           column.Y,
+                                           false));
         }
 
         UpdateCells();
@@ -275,21 +346,68 @@ public sealed partial class DataPathGraphControl : UserControl
         return text;
     }
 
-    private Border CreateBox(Grid header,
-                             IReadOnlyList<FrameworkElement> lines,
-                             Func<string> read,
-                             Func<bool> isInScope,
-                             double x,
-                             double y)
+    private static Border CreateExpressionBox(PredicateText expression, Border valueBox)
+    {
+        var grid = new Grid
+        {
+            ColumnDefinitions =
+            {
+                new ColumnDefinition { Width = GridLength.Auto },
+                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+            },
+            RowDefinitions =
+            {
+                new RowDefinition { Height = new GridLength(ExpressionRowHeight) },
+                new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
+            }
+        };
+
+        var calculator = CreateCalculator(NestedCalculatorWidth, NestedCalculatorHeight);
+
+        calculator.Margin = new Thickness(BadgeGap, 0, 0, 0);
+
+        grid.Children.Add(calculator);
+
+        var text = CreateExpression(expression);
+
+        text.Margin = new Thickness(BadgeGap, 0, CellPadding, 0);
+
+        Grid.SetColumn(text, 1);
+
+        grid.Children.Add(text);
+
+        Grid.SetRow(valueBox, 1);
+
+        Grid.SetColumnSpan(valueBox, 2);
+
+        grid.Children.Add(valueBox);
+
+        return new Border
+        {
+            Margin = new Thickness(ExpressionInset, ExpressionGap, ExpressionInset, ExpressionGap),
+            Padding = new Thickness(ExpressionPadding),
+            BorderThickness = new Thickness(1),
+            BorderBrush = AppResources.Get<Brush>(HeaderBackgroundKey),
+            CornerRadius = new CornerRadius(2),
+            Child = grid
+        };
+    }
+
+    private FrameworkElement CreateBox(BoxContent content,
+                                       Func<string> read,
+                                       Func<bool> isInScope,
+                                       double x,
+                                       double y,
+                                       bool isDashed)
     {
         var grid = new Grid
         {
             RowDefinitions = { new RowDefinition { Height = new GridLength(DataPathGraph.HeaderHeight) } }
         };
 
-        grid.Children.Add(header);
+        grid.Children.Add(content.Header);
 
-        foreach (var line in lines)
+        foreach (var line in content.Lines)
         {
             Grid.SetRow(line, grid.RowDefinitions.Count);
 
@@ -309,32 +427,73 @@ public sealed partial class DataPathGraphControl : UserControl
             Child = value
         };
 
-        Grid.SetRow(valueBox, grid.RowDefinitions.Count);
+        if (content.Expression is { } expression)
+        {
+            var nested = CreateExpressionBox(expression, valueBox);
 
-        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(DataPathGraph.ValueHeight) });
+            Grid.SetRow(nested, grid.RowDefinitions.Count);
 
-        grid.Children.Add(valueBox);
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(DataPathGraph.LineHeight + DataPathGraph.ValueHeight) });
+
+            grid.Children.Add(nested);
+        }
+        else
+        {
+            Grid.SetRow(valueBox, grid.RowDefinitions.Count);
+
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(DataPathGraph.ValueHeight) });
+
+            grid.Children.Add(valueBox);
+        }
+
+        var lineCount = content.Lines.Count + (content.Expression is null ? 0 : 1);
+
+        var height = DataPathGraph.HeaderHeight + lineCount * DataPathGraph.LineHeight + DataPathGraph.ValueHeight;
 
         var box = new Border
         {
             Width = DataPathGraph.BoxWidth,
-            Height = DataPathGraph.HeaderHeight + lines.Count * DataPathGraph.LineHeight + DataPathGraph.ValueHeight,
-            BorderThickness = new Thickness(1),
+            Height = height,
+            BorderThickness = new Thickness(isDashed ? 0 : 1),
             BorderBrush = AppResources.Get<Brush>(HeaderBackgroundKey),
             Background = AppResources.Get<Brush>(BoxBackgroundKey),
             Child = grid
         };
 
-        Canvas.SetLeft(box, x);
-
-        Canvas.SetTop(box, y);
-
         Cells.Add((read, isInScope, value, valueBox));
 
-        return box;
+        FrameworkElement element = isDashed
+            ? new Grid
+            {
+                Width = DataPathGraph.BoxWidth,
+                Height = height,
+                Children =
+                {
+                    box,
+                    new Rectangle
+                    {
+                        Stroke = AppResources.Get<Brush>(LinkKey),
+                        StrokeThickness = 1,
+                        StrokeDashArray = new DoubleCollection { DashLength, DashGap }
+                    }
+                }
+            }
+            : box;
+
+        Canvas.SetLeft(element, x);
+
+        Canvas.SetTop(element, y);
+
+        return element;
     }
 
-    private void AddArrow(DataPathGraph graph, double startX, double startY, double consumerRight, double consumerY, bool isDashed)
+    private void AddArrow(DataPathGraph graph,
+                          double startX,
+                          double startY,
+                          double consumerRight,
+                          double consumerY,
+                          bool isDashed,
+                          bool isFaint)
     {
         var brush = AppResources.Get<Brush>(LinkKey);
 
@@ -347,6 +506,7 @@ public sealed partial class DataPathGraphControl : UserControl
             Points = { Snap(startX, startY), Snap(middle, startY), Snap(middle, consumerY), Snap(endX, consumerY) },
             Stroke = brush,
             StrokeThickness = 1,
+            Opacity = isFaint ? FaintOpacity : 1,
             Width = graph.Width,
             Height = graph.Height
         };
@@ -367,6 +527,7 @@ public sealed partial class DataPathGraphControl : UserControl
                 Snap(endX, consumerY + ArrowWidth)
             },
             Fill = brush,
+            Opacity = isFaint ? FaintOpacity : 1,
             Width = graph.Width,
             Height = graph.Height
         });
@@ -375,6 +536,8 @@ public sealed partial class DataPathGraphControl : UserControl
     private void UpdateCells()
     {
         var outOfScope = AppResources.Get<Brush>(OutOfScopeKey);
+
+        var inScopeBackground = AppResources.Get<Brush>(ValueBackgroundKey);
 
         var dimmed = AppResources.Get<Brush>(DetailKey);
 
@@ -390,7 +553,7 @@ public sealed partial class DataPathGraphControl : UserControl
 
             value.Foreground = inScope ? normal : dimmed;
 
-            valueBox.Background = inScope ? null : outOfScope;
+            valueBox.Background = inScope ? inScopeBackground : outOfScope;
 
             ToolTipService.SetToolTip(value, text.Length > 0 ? text : null);
         }
@@ -424,4 +587,6 @@ public sealed partial class DataPathGraphControl : UserControl
 
         control.Build();
     }
+
+    private sealed record BoxContent(Grid Header, IReadOnlyList<FrameworkElement> Lines, PredicateText? Expression);
 }

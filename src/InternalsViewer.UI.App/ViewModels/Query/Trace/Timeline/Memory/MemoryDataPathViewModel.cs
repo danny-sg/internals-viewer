@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.Internals.Helpers;
@@ -8,23 +9,30 @@ using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Operators;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.FullTrace.DataPath;
+using InternalsViewer.Query.FullTrace.DataPath.Enums;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Iterators.Enums;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output.Enums;
+using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings.Enums;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Helpers.Converters.Calls;
 using InternalsViewer.UI.App.Models;
+using InternalsViewer.UI.App.Models.Logging;
 using InternalsViewer.UI.App.Models.Query.Trace.DataPath;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline.Enums;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryHistory;
 using Microsoft.UI;
 using Windows.UI;
+using Colour = System.Drawing.Color;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline.Memory;
 
@@ -61,6 +69,32 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
     private const int EntryColumnWidth = 160;
 
     private const int EntryFieldWidth = 120;
+
+    private const int DataColumnWidth = 220;
+
+    private const string DataColumnName = "Data";
+
+    private const string DataAreaName = "Data Area";
+
+    private const string VariableText = "(Variable)";
+
+    private const string KeysAndPredicatesName = "Keys And Predicates";
+
+    private const string NotSeenName = "Not Seen In Memory";
+
+    private const string PointerName = "Pointer";
+
+    private const int MaximumDepth = 32;
+
+    private static readonly string RecordOffsetName = MemoryBindingsViewModel.GetFieldName(ColumnBindingField.RecordOffset);
+
+    private static readonly HashSet<string> OffsetFieldNames =
+    [
+        RecordOffsetName,
+        MemoryBindingsViewModel.GetFieldName(ColumnBindingField.StatusOffset),
+        MemoryBindingsViewModel.GetFieldName(ColumnBindingField.LengthOffset),
+        MemoryBindingsViewModel.GetFieldName(ColumnBindingField.ValueOffset)
+    ];
 
     private static readonly IReadOnlyList<MemoryField> BindingFields =
         [.. AccessorBindingLayout.ColumnFields
@@ -101,29 +135,25 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
 
     private int NodeCount { get; set; }
 
-    private Dictionary<int, PlanOutputRoute> Routes { get; set; } = [];
-
     private Dictionary<int, DataPathOperator> Operators { get; set; } = [];
 
     private Dictionary<PlanOutputRouteNode, PlanOutputRouteNode> Containers { get; } = [];
 
     private Dictionary<MemoryStructureNode, PlanOutputRouteNode> RouteNodes { get; } = [];
 
-    private List<DataPathColumn> OutputColumns { get; } = [];
-
     private DataPathGraph? OutputGraph { get; set; }
 
-    private DataPathPlan? Plan { get; set; }
+    private DataPathMap Map { get; set; } = DataPathMap.Empty;
 
     private Dictionary<string, PredicateText> Expressions { get; } = [];
 
-    private MemoryStructureNode? CurrentColumn { get; set; }
-
     private string? EntryNodeKey { get; set; }
 
-    private List<(DataPathColumn Column, MemoryStructureNode Node)> ColumnNodes { get; } = [];
+    private string? OutlineKey { get; set; }
 
-    private List<(PlanOutputStage Stage, MemoryStructureNode Node)> ValueNodes { get; } = [];
+    private List<(DataPathField Field, MemoryStructureNode Node)> ColumnNodes { get; } = [];
+
+    private List<(DataPathField Field, MemoryStructureNode Node)> ValueNodes { get; } = [];
 
     public bool IsPlanObjectVisible
     {
@@ -196,6 +226,8 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
         }
         else
         {
+            OutlineKey = null;
+
             var fields = GetFields(node);
 
             ShowFields(node, fields, CreateColours(fields.Count));
@@ -232,9 +264,9 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
 
     private void RefreshValues()
     {
-        if (OutputGraph is null && OutputColumns.Count > 0)
+        if (OutputGraph is null && Map.Roots.Count > 0)
         {
-            SetOutputGraph(DataPathGraphBuilder.Build(History, Plan, OutputColumns, OpenAddress));
+            SetOutputGraph(DataPathGraphBuilder.Build(History, Map, Map.Roots, OpenAddress));
         }
 
         if (OutputGraph is { } graph)
@@ -260,27 +292,21 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
 
     private void OnValuesChanged(object? sender, EventArgs e)
     {
-        var values = new Dictionary<PlanOutputStage, string>();
+        var values = new Dictionary<DataPathField, string>();
 
         foreach (var stage in OutputGraph?.Stages ?? [])
         {
-            if (stage.Stage is { } output)
-            {
-                values.TryAdd(output, stage.Value);
-            }
+            values.TryAdd(stage.Field, stage.Value);
         }
 
-        foreach (var (stage, node) in ValueNodes)
+        foreach (var column in OutputGraph?.Columns ?? [])
         {
-            node.Value = values.GetValueOrDefault(stage) ?? string.Empty;
+            values[column.Field] = column.Value;
         }
 
-        foreach (var (column, node) in ColumnNodes)
+        foreach (var (field, node) in ValueNodes.Concat(ColumnNodes))
         {
-            if (column.Expression is not null)
-            {
-                node.Value = column.Text;
-            }
+            node.Value = values.GetValueOrDefault(field) ?? string.Empty;
         }
     }
 
@@ -340,29 +366,18 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
                                                                    GetTarget(g, IteratorTargetType.Iterator),
                                                                    GetTarget(g, IteratorTargetType.PlanObject)));
 
-        Plan = DataPathGraphBuilder.GetPlan(history);
-
-        var tops = Plan?.GetTops(Operators.ContainsKey)
-                   ?? [.. Operators.Where(o => o.Value.Event.ParentNodeId is not { } parent || !Operators.ContainsKey(parent))
-                                   .Select(o => o.Key)
-                                   .Order()];
-
-        if (tops.Count == 0)
+        if (Operators.Count == 0)
         {
             EmptyText = NoOperators;
 
             return;
         }
 
-        var statement = Node(MemoryStructureNodeType.Statement, Plan?.Statement.PhysicalOperator ?? StatementName, 0, null);
-
-        Routes = history.GetDataPath([.. Operators.Select(o => GetRouteOperator(o.Key, o.Value))], IsPlanObjectVisible);
+        Map = history.GetDataPathMap(IsPlanObjectVisible);
 
         Containers.Clear();
 
         RouteNodes.Clear();
-
-        OutputColumns.Clear();
 
         ValueNodes.Clear();
 
@@ -372,22 +387,16 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
 
         SetOutputGraph(null);
 
-        foreach (var root in Routes.Values.SelectMany(r => r.FromIterator.Concat(r.FromPlanObject)))
+        foreach (var root in Map.Routes.Values.SelectMany(r => r.FromIterator.Concat(r.FromPlanObject)))
         {
             AddContainers(root);
         }
 
-        var columns = Plan?.GetColumns(Operators.ContainsKey, GetOutputColumn) is { Count: > 0 } resolved ? resolved : GetTopColumns(tops);
+        var statement = Node(MemoryStructureNodeType.Statement, Map.Statement?.PhysicalOperator ?? StatementName, 0, null);
 
-        foreach (var column in columns)
+        foreach (var column in Map.Columns)
         {
-            var node = CreateColumn(column, statement);
-
-            statement.Children.Add(node);
-
-            ColumnNodes.Add((column, node));
-
-            OutputColumns.Add(column);
+            statement.Children.Add(CreateColumn(column, statement));
         }
 
         if (statement.Children.Count == 0)
@@ -398,6 +407,18 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
         }
 
         List<MemoryStructureNode> roots = [statement];
+
+        if (Map.Roots.Where(r => !r.Node.IsStatement).ToList() is { Count: > 0 } used)
+        {
+            var group = Node(MemoryStructureNodeType.Statement, KeysAndPredicatesName, 0, null);
+
+            foreach (var field in used)
+            {
+                group.Children.Add(CreateColumn(field, group));
+            }
+
+            roots.Add(group);
+        }
 
         var nodes = new Dictionary<ulong, MemoryStructureNode>();
 
@@ -426,52 +447,50 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
         }
     }
 
-    private MemoryStructureNode CreateColumn(DataPathColumn column, MemoryStructureNode parent)
+    private MemoryStructureNode CreateColumn(DataPathField field, MemoryStructureNode parent)
     {
-        DataPathInput? single = column is { Expression: null, Inputs: [var only] } ? only : null;
+        var held = field.Node.IsStatement
+            ? field is { Definition: null, Inputs: [var only] } ? only.Source.Held : null
+            : field.Held;
 
-        var path = single is { } input ? History.GetOutputPath(input.NodeId, input.Column) : PlanOutputPath.Empty;
-
-        var held = single is { } owner ? GetHeld(owner) : null;
-
-        var node = new MemoryStructureNode(MemoryStructureNodeType.Column, column.Name, held?.Link.Address ?? 0, -1, parent)
+        var node = new MemoryStructureNode(MemoryStructureNodeType.Column, field.Name, held?.Link.Address ?? 0, -1, parent)
         {
             Index = NodeCount++,
-            ColumnType = column.Type,
+            ColumnType = field.Type,
             IsAddressVisible = false
         };
 
-        CurrentColumn = node;
+        if (DataPathText.GetUses(field.Uses) is { Length: > 0 } uses)
+        {
+            node.Badges.Add(CreateBadge(uses, DataPathText.UseColour));
+        }
 
         if (held is not null)
         {
             LinkFields[node.Key] = GetLinkFields(held);
         }
 
-        if (path.Stages.Count > 0)
-        {
-            ValueNodes.Add((path.Stages[0], node));
+        ColumnNodes.Add((field, node));
 
-            AddStage(path, 0, null, node);
-        }
-
-        if (column.Expression is not { } expression)
+        if (!field.Node.IsStatement)
         {
+            AddField(field, null, node, 0);
+
             return node;
         }
 
-        var expressionNode = CreateExpression(expression, column.Definition, node);
+        var inputParent = node;
 
-        node.Children.Add(expressionNode);
-
-        foreach (var source in column.Inputs)
+        if (field.Expression is { } expression)
         {
-            var inputPath = History.GetOutputPath(source.NodeId, source.Column);
+            inputParent = CreateExpression(expression, field.Definition, node);
 
-            if (inputPath.Stages.Count > 0)
-            {
-                AddStage(inputPath, 0, null, expressionNode);
-            }
+            node.Children.Add(inputParent);
+        }
+
+        foreach (var input in field.Inputs)
+        {
+            AddField(input.Source, input, inputParent, 0);
         }
 
         return node;
@@ -485,31 +504,28 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
             IsAddressVisible = false
         };
 
-        if (value is { ParsedExpression: { } parsed })
+        if (value is not null)
         {
-            Expressions[node.Key] = PredicateText.From(parsed);
-        }
-        else if (value is { Expression: { } text })
-        {
-            Expressions[node.Key] = new PredicateText([new PredicateToken(PredicateTokenType.Unknown, text)]);
+            Expressions[node.Key] = DataPathText.GetExpression(value);
         }
 
         return node;
     }
 
-    private void AddEvaluation(PlanNode expression, int? consumerNodeId, MemoryStructureNode parent)
+    private void AddExpression(DataPathField field, MemoryStructureNode operatorNode)
     {
-        var puller = Plan?.GetPuller(expression);
-
-        var owner = puller is { IsStatement: false } && puller.NodeId == consumerNodeId
-            ? FindOperatorNode(parent) ?? parent
-            : CurrentColumn ?? parent;
-
-        var definition = GetDefinition(expression);
-
-        if (!owner.Children.Exists(c => c.Type == MemoryStructureNodeType.Expression && c.Name == definition))
+        if (field.Expression is not { } expression)
         {
-            owner.Children.Add(CreateExpression(expression, expression.DefinedValues is [var only] ? only : null, owner));
+            return;
+        }
+
+        var node = CreateExpression(expression, field.Definition, operatorNode);
+
+        operatorNode.Children.Add(node);
+
+        if (field.Kind == DataPathFieldKind.Computed)
+        {
+            ValueNodes.Add((field, node));
         }
     }
 
@@ -561,6 +577,8 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
         {
             EntryTable = null;
 
+            Outlines = null;
+
             return null;
         }
 
@@ -582,13 +600,17 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
 
         var values = offsets.Select(o => fields.Select(f => ReadValue(data, o + f.Offset, f.Length)).ToList()).ToList();
 
+        var spans = offsets.Select(o => isBinding ? null : GetDataSpan(data, o, start)).ToList();
+
+        var names = GetNodeId(node) is { } nodeId ? GetColumnNames(nodeId) : [];
+
+        var labels = entries.Select(e => GetEntryName(e, names)).ToList();
+
         var key = $"{node.Key} {string.Join(",", values.SelectMany(v => v))}";
 
         if (key != TableKey || EntryTable is null)
         {
             TableKey = key;
-
-            var names = GetNodeId(node) is { } nodeId ? GetColumnNames(nodeId) : [];
 
             List<ResultColumn> columns =
             [
@@ -600,8 +622,14 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
                 })
             ];
 
-            var rows = entries.Select((e, i) => new ResultRow<long>([GetEntryName(e, names),
-                                                                     .. fields.Select((f, j) => GetEntryCell(f, values[i][j]))])
+            if (!isBinding)
+            {
+                columns.Add(new ResultColumn(columns.Count, DataColumnName, typeof(string), true) { Width = DataColumnWidth });
+            }
+
+            var rows = entries.Select((e, i) => new ResultRow<long>([labels[i],
+                                                                     .. fields.Select((f, j) => GetEntryCell(f, values[i][j])),
+                                                                     .. isBinding ? Array.Empty<object?>() : [GetEntryData(values[i])]])
             {
                 Id = (long)e.Link.Address
             }).ToList();
@@ -611,17 +639,145 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
 
         SelectItemRow();
 
-        ShowItemMarkers($"{node.Key} entries",
-                        () => offsets.SelectMany(o => fields.Select((f, i) => CreateMarker(f.Name, o + f.Offset, f.Length, colours[i]))),
-                        size);
+        var selected = SelectedItem is { } item ? entries.FindIndex(e => e.Link.Address == item) : -1;
 
-        return SelectedItem is { } selected && selected >= start ? (int)(selected - start) : null;
+        var valueIndex = fields.Select((f, i) => (Field: f, Index: i))
+                               .FirstOrDefault(f => f.Field == EngineLayout.RowBuffer.ValueField)
+                               .Index;
+
+        var dataColour = Lighten(colours[valueIndex]);
+
+        IEnumerable<Marker> CreateMarkers()
+        {
+            for (var index = 0; index < entries.Count; index++)
+            {
+                if (selected >= 0 && index != selected)
+                {
+                    continue;
+                }
+
+                for (var field = 0; field < fields.Count; field++)
+                {
+                    var layout = fields[field];
+
+                    yield return CreateMarker(layout.Name, offsets[index] + layout.Offset, layout.Length, colours[field]);
+                }
+
+                if (spans[index] is { } span)
+                {
+                    yield return CreateMarker($"{labels[index]} {DataColumnName}", span.Offset, span.Length, dataColour);
+                }
+            }
+        }
+
+        SetMarkers($"{node.Key} entries {selected} {string.Join(",", spans)}", CreateMarkers);
+
+        ShowOutlines(node, selected >= 0 ? (offsets[selected], size, labels[selected], spans[selected]) : null, offsets, size, spans);
+
+        return selected >= 0 ? offsets[selected] : null;
     }
 
+    private void ShowOutlines(MemoryStructureNode node,
+                              (int Offset, int Size, string Label, (int Offset, int Length)? Data)? selected,
+                              List<int> offsets,
+                              int size,
+                              List<(int Offset, int Length)?> spans)
+    {
+        var data = spans.OfType<(int Offset, int Length)>().ToList();
+
+        var areaStart = offsets.Count > 0 ? offsets.Max() + size : 0;
+
+        var areaEnd = data.Count > 0 ? data.Max(s => s.Offset + s.Length) : 0;
+
+        var key = $"{node.Key} {selected} {areaStart} {areaEnd}";
+
+        if (key == OutlineKey)
+        {
+            return;
+        }
+
+        OutlineKey = key;
+
+        ItemOutline = selected is { } found
+            ? new LogRecordAnnotation { Offset = found.Offset, Length = found.Size, Description = found.Label }
+            : null;
+
+        var outlines = new ObservableCollection<LogRecordAnnotation>();
+
+        if (areaEnd > areaStart)
+        {
+            outlines.Add(new LogRecordAnnotation
+            {
+                Offset = areaStart,
+                Length = areaEnd - areaStart,
+                Description = DataAreaName,
+                IsDashed = true
+            });
+        }
+
+        if (selected is { Data: { } span } entry)
+        {
+            outlines.Add(new LogRecordAnnotation
+            {
+                Offset = span.Offset,
+                Length = span.Length,
+                Description = $"{entry.Label} {DataColumnName}",
+                OutlineColour = Colors.OrangeRed
+            });
+        }
+
+        Outlines = outlines;
+    }
+
+    private static (int Offset, int Length)? GetDataSpan(byte[] data, int entry, ulong start)
+    {
+        if (ReadValue(data, entry + EngineLayout.RowBuffer.StatusField.Offset, sizeof(byte)) is not 0
+            || ReadValue(data, entry + EngineLayout.RowBuffer.LengthField.Offset, sizeof(ulong)) is not (> 0 and var length)
+            || ReadValue(data, entry + EngineLayout.RowBuffer.ValueField.Offset, sizeof(ulong)) is not { } pointer
+            || pointer < start
+            || pointer >= start + (ulong)data.Length)
+        {
+            return null;
+        }
+
+        var offset = (int)(pointer - start);
+
+        return (offset, (int)Math.Min(length, (ulong)(data.Length - offset)));
+    }
+
+    private string GetEntryData(IReadOnlyList<ulong?> entry)
+    {
+        if (entry is not [{ } status, { } type, { } value, { } length]
+            || type == 0
+            || !SqlTypeHelpers.TryGetSqlType((byte)type, out var sqlType))
+        {
+            return string.Empty;
+        }
+
+        var variant = new VariantLocator(VariantLocator.Create(0, (VariantStatus)status, value, (uint)length));
+
+        return PlanOutputValueReader.ReadVariant(new MemoryHistoryReader(History.Store, Position), variant, sqlType) ?? string.Empty;
+    }
+
+    private static Colour Lighten(Colour colour)
+        => Colour.FromArgb(255, (colour.R + byte.MaxValue) / 2, (colour.G + byte.MaxValue) / 2, (colour.B + byte.MaxValue) / 2);
+
     private object? GetEntryCell(MemoryField field, ulong? value)
-        => field.Name == TypeFieldName && value is { } type && SqlTypeHelpers.TryGetSqlType((byte)type, out var sqlType)
-            ? SqlDataTypeFormat.GetName(sqlType)
-            : GetValueCell(field, value);
+    {
+        if (field.Name == TypeFieldName && value is { } type && SqlTypeHelpers.TryGetSqlType((byte)type, out var sqlType))
+        {
+            return SqlDataTypeFormat.GetName(sqlType);
+        }
+
+        if (value is not { } found || !OffsetFieldNames.Contains(field.Name))
+        {
+            return GetValueCell(field, value);
+        }
+
+        var offset = field.Length == sizeof(int) ? (int)found : (long)found;
+
+        return offset < 0 && field.Name == RecordOffsetName ? VariableText : $"0x{offset:X}";
+    }
 
     private string GetEntryName(PlanOutputRouteNode entry, IReadOnlyList<string> names)
         => GetDetail(entry, names) is { Length: > 0 } name ? $"[{entry.Index}] {name}" : $"[{entry.Index}]";
@@ -644,7 +800,7 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
         return null;
     }
 
-    private static string GetDefinition(PlanNode expression) => string.Join(", ", DataPathPlan.GetDefinitions(expression));
+    private static string GetDefinition(PlanNode expression) => string.Join(", ", DataPathText.GetDefinitions(expression));
 
     private MemoryStructureNode? FindRouteNode(MemoryStructureNode root, PlanOutputRouteNode route)
         => root.Children.SelectMany(Flatten).FirstOrDefault(n => RouteNodes.TryGetValue(n, out var found) && found == route);
@@ -683,186 +839,121 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
         return null;
     }
 
-    private PlanNode? GetExpression(PlanOutputPath path, int stageIndex, int? consumerNodeId)
+    private void AddField(DataPathField field, DataPathLink? link, MemoryStructureNode parent, int depth)
     {
-        for (var index = stageIndex + 1; index < path.Stages.Count; index++)
+        var nodeId = field.Node.NodeId;
+
+        if (!Operators.ContainsKey(nodeId) || depth > MaximumDepth)
         {
-            if (path.Stages[index].Consumer == stageIndex && FindOperator(path.Stages[index]) is { } inputNodeId)
-            {
-                return Plan?.GetExpression(consumerNodeId, inputNodeId);
-            }
-        }
-
-        return null;
-    }
-
-    private PlanOutputRouteNode? GetHeld(DataPathInput input)
-        => Routes.GetValueOrDefault(input.NodeId)?.Columns.ElementAtOrDefault(GetColumnIndex(input.NodeId, input.Column.Reference)).Node;
-
-    private List<DataPathColumn> GetTopColumns(IReadOnlyList<int> tops)
-    {
-        var columns = new List<DataPathColumn>();
-
-        foreach (var top in tops)
-        {
-            var outputs = History.GetOutputColumns(top);
-
-            var names = GetColumnNames(top);
-
-            for (var index = 0; index < outputs.Count; index++)
-            {
-                columns.Add(new DataPathColumn(index < names.Count ? names[index] : string.Empty,
-                                               outputs[index].Type,
-                                               [new DataPathInput(top, outputs[index])]));
-            }
-        }
-
-        return columns;
-    }
-
-    private PlanOutputColumn? GetOutputColumn(int nodeId, int index)
-        => History.GetOutputColumns(nodeId) is var outputs && index < outputs.Count ? outputs[index] : null;
-
-    private void AddStage(PlanOutputPath path, int stageIndex, int? consumerNodeId, MemoryStructureNode parent)
-    {
-        var stage = path.Stages[stageIndex];
-
-        if (FindOperator(stage) is not { } nodeId)
-        {
-            if (GetExpression(path, stageIndex, consumerNodeId) is { } expression)
-            {
-                AddEvaluation(expression, consumerNodeId, parent);
-
-                AddInputs(path, stageIndex, consumerNodeId ?? expression.NodeId, parent);
-            }
-
             return;
         }
 
-        if (nodeId == consumerNodeId)
-        {
-            AddInputs(path, stageIndex, nodeId, parent);
+        var holder = link is { Readers: { Count: > 0 } readers } && FindOperatorNode(parent) is { } consumer
+            ? GetReaderNode(readers, consumer)
+            : parent;
 
-            return;
+        var operatorNode = CreateOperator(field, holder, parent.Type == MemoryStructureNodeType.Expression ? field.Name : null, link);
+
+        if (field.Kind != DataPathFieldKind.Computed)
+        {
+            ValueNodes.Add((field, operatorNode));
         }
 
-        var prefix = parent.Type == MemoryStructureNodeType.Expression ? GetColumnName(nodeId, stage.Reference) : null;
-
-        var operatorNode = CreateOperator(nodeId, parent, prefix);
-
-        ValueNodes.Add((stage, operatorNode));
-
-        if (PlanOutputLinkText.GetReferenceName(stage) is { Length: > 0 } reference)
-        {
-            operatorNode.Badges.Add(CreateBadge(reference));
-        }
-
-        parent.Children.Add(operatorNode);
+        holder.Children.Add(operatorNode);
 
         var names = GetColumnNames(nodeId);
 
-        var column = GetColumnIndex(nodeId, stage.Reference);
+        var route = Map.Routes.GetValueOrDefault(nodeId);
 
-        var route = Routes.GetValueOrDefault(nodeId);
-
-        if (route?.Columns.ElementAtOrDefault(column) is { Node: { } held } location && location.NodeId == nodeId)
+        if (field.Held is { } held)
         {
             operatorNode.Children.Add(CreateObject(GetDisplayRoot(held), operatorNode, names));
 
-            if (FindBinding(route, held) is { } binding)
+            if (route is not null && FindBinding(route, held) is { } binding)
             {
                 operatorNode.Children.Add(CreateObject(binding, operatorNode, names));
             }
         }
 
-        if (route is not null && IsPlanObjectVisible && Flatten(route.FromPlanObject).FirstOrDefault(IsReferenceTo(column)) is { } compiled)
+        if (route is not null
+            && IsPlanObjectVisible
+            && field.Output is { } output
+            && Flatten(route.FromPlanObject).FirstOrDefault(IsReferenceTo(GetColumnIndex(nodeId, output.Reference))) is { } compiled)
         {
             operatorNode.Children.Add(CreateObject(compiled, operatorNode, names));
         }
 
-        AddInputs(path, stageIndex, nodeId, operatorNode);
-    }
+        AddExpression(field, operatorNode);
 
-    private void AddInputs(PlanOutputPath path, int stageIndex, int nodeId, MemoryStructureNode operatorNode)
-    {
-        var names = GetColumnNames(nodeId);
-
-        for (var index = stageIndex + 1; index < path.Stages.Count; index++)
+        foreach (var input in field.Inputs)
         {
-            if (path.Stages[index].Consumer != stageIndex)
-            {
-                continue;
-            }
-
-            var input = path.Stages[index];
-
-            MemoryStructureNode? holder = null;
-
-            foreach (var reader in GetInputReaders(input, nodeId))
-            {
-                var readerNode = FindRouteNode(operatorNode, reader);
-
-                if (readerNode is null)
-                {
-                    readerNode = CreateObject(reader, operatorNode, names);
-
-                    operatorNode.Children.Add(readerNode);
-                }
-
-                holder ??= readerNode;
-            }
-
-            AddStage(path, index, nodeId, holder ?? FindReader(operatorNode, input) ?? operatorNode);
+            AddField(input.Source, input, operatorNode, depth + 1);
         }
     }
 
-    private MemoryStructureNode? FindReader(MemoryStructureNode operatorNode, PlanOutputStage input)
-        => FindOperator(input) is { } inputNodeId
-            ? operatorNode.Children
-                          .SelectMany(Flatten)
-                          .FirstOrDefault(n => RouteNodes.TryGetValue(n, out var route) && IsReading(route, inputNodeId))
-            : null;
-
-    private MemoryStructureNode CreateOperator(int nodeId, MemoryStructureNode parent, string? prefix)
+    private MemoryStructureNode GetReaderNode(IReadOnlyList<PlanOutputRouteNode> readers, MemoryStructureNode consumer)
     {
-        var found = Operators[nodeId];
+        var names = GetNodeId(consumer) is { } nodeId ? GetColumnNames(nodeId) : [];
 
-        return new MemoryStructureNode(MemoryStructureNodeType.Operator,
-                                       prefix is { Length: > 0 } ? $"{prefix} › {found.Event.Label}" : found.Event.Label,
-                                       found.Iterator != 0 ? found.Iterator : found.PlanObject,
-                                       -1,
-                                       parent)
+        MemoryStructureNode? holder = null;
+
+        foreach (var reader in readers)
+        {
+            var readerNode = FindRouteNode(consumer, reader);
+
+            if (readerNode is null)
+            {
+                readerNode = CreateObject(reader, consumer, names);
+
+                consumer.Children.Add(readerNode);
+            }
+
+            holder ??= readerNode;
+        }
+
+        return holder ?? consumer;
+    }
+
+    private MemoryStructureNode CreateOperator(DataPathField field, MemoryStructureNode parent, string? prefix, DataPathLink? link)
+    {
+        var found = Operators[field.Node.NodeId];
+
+        var node = new MemoryStructureNode(MemoryStructureNodeType.Operator,
+                                           prefix is { Length: > 0 } ? $"{prefix} › {found.Event.Label}" : found.Event.Label,
+                                           found.Iterator != 0 ? found.Iterator : found.PlanObject,
+                                           -1,
+                                           parent)
         {
             Index = NodeCount++,
+            Detail = field is { Expression: null, Definition: { } definition } ? DataPathText.GetText(definition) : string.Empty,
             IsAddressVisible = false
         };
+
+        if (field.Stage is { } stage && PlanOutputLinkText.GetReferenceName(stage) is { Length: > 0 } reference)
+        {
+            node.Badges.Add(CreateBadge(reference));
+        }
+
+        if (field.Kind == DataPathFieldKind.Pointer)
+        {
+            node.Badges.Add(CreateBadge(PointerName));
+        }
+
+        if (DataPathText.GetUses(field.Uses) is { Length: > 0 } uses)
+        {
+            node.Badges.Add(CreateBadge(uses, DataPathText.UseColour));
+        }
+
+        if (link is { IsSeen: false })
+        {
+            node.Badges.Add(CreateBadge(NotSeenName));
+        }
+
+        return node;
     }
 
     private MemoryStructureNode CreateObject(PlanOutputRouteNode route, MemoryStructureNode parent, IReadOnlyList<string> names)
         => CreateLink(route, parent, names, Containers.TryGetValue(route, out var container) ? GetDisplayName(container) : null);
-
-    private List<PlanOutputRouteNode> GetInputReaders(PlanOutputStage input, int nodeId)
-    {
-        if (FindOperator(input) is not { } inputNodeId
-            || Routes.GetValueOrDefault(nodeId) is not { } route
-            || Routes.GetValueOrDefault(inputNodeId)?.Columns.ElementAtOrDefault(GetColumnIndex(inputNodeId, input.Reference)) is not
-                { Node: { } held })
-        {
-            return [];
-        }
-
-        var targets = GetContainers(held).ToHashSet();
-
-        var nodes = Flatten(route.FromIterator).ToList();
-
-        var inputs = nodes.Where(n => n.Link.Type == PlanOutputLinkType.InputValue).ToList();
-
-        return [.. nodes.Where(n => n.Targets.Exists(t => t.NodeId == inputNodeId && t.Node is { } target && targets.Contains(target)))
-                        .Select(n => GetContainers(n).Select(c => inputs.Find(i => i.Link.Address == c.Link.Address))
-                                                     .FirstOrDefault(i => i is not null))
-                        .OfType<PlanOutputRouteNode>()
-                        .Distinct()];
-    }
 
     private IEnumerable<PlanOutputRouteNode> GetContainers(PlanOutputRouteNode node)
     {
@@ -872,11 +963,9 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
         }
     }
 
-    private static bool IsReading(PlanOutputRouteNode route, int nodeId) => route.Targets.Exists(t => t.NodeId == nodeId);
-
-    private static MemoryStructureBadge CreateBadge(string reference)
-        => PlanOutputLinkText.GetReferenceColour(reference) is { } colour
-            ? new MemoryStructureBadge(reference, colour) { TextColour = Colors.White }
+    private static MemoryStructureBadge CreateBadge(string reference, Color? colour = null)
+        => (colour ?? PlanOutputLinkText.GetReferenceColour(reference)) is { } found
+            ? new MemoryStructureBadge(reference, found) { TextColour = Colors.White }
             : new MemoryStructureBadge(reference, ReferenceColour);
 
     private static string? GetSide(MemoryField field)
@@ -887,24 +976,6 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
         }
 
         return field == EngineLayout.HashIterator.ProbeInputValuesField ? InputLabel.Probe : null;
-    }
-
-    private string? GetColumnName(int nodeId, ulong reference)
-        => GetColumnIndex(nodeId, reference) is >= 0 and var index && GetColumnNames(nodeId) is var names && index < names.Count
-            ? names[index]
-            : null;
-
-    private int? FindOperator(PlanOutputStage stage)
-    {
-        foreach (var (nodeId, found) in Operators)
-        {
-            if (stage.Iterator != 0 && found.Iterator == stage.Iterator || stage.PlanObject != 0 && found.PlanObject == stage.PlanObject)
-            {
-                return nodeId;
-            }
-        }
-
-        return null;
     }
 
     private int GetColumnIndex(int nodeId, ulong reference)
@@ -1012,15 +1083,6 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
             : string.Empty;
     }
 
-    private PlanOutputRouteOperator GetRouteOperator(int nodeId, DataPathOperator found)
-    {
-        var history = History;
-
-        var paths = history.GetOutputColumns(nodeId).Select(c => history.GetOutputPath(nodeId, c)).ToList();
-
-        return new PlanOutputRouteOperator(nodeId, found.PlanObject, found.Iterator, paths);
-    }
-
     private static string GetRecordOffsetText(PlanOutputLink link)
         => link is { Type: PlanOutputLinkType.Reader or PlanOutputLinkType.Value, Offset: { } offset }
             ? offset < 0 ? $"{VariableColumnPrefix}{-offset}" : $"{RecordOffsetPrefix}0x{offset:X}"
@@ -1081,6 +1143,7 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
         {
             { Type: PlanOutputLinkType.OutputValues } => OutputName,
             { Type: PlanOutputLinkType.InputValues, Field: { } field } => GetSide(field) ?? field.Name,
+            { Type: PlanOutputLinkType.Executor or PlanOutputLinkType.Executors, Field: { } field } => field.Name,
             _ => PlanOutputLinkText.GetObjectName(link.ClassName) ?? PlanOutputLinkText.GetName(link.Type)
         };
 

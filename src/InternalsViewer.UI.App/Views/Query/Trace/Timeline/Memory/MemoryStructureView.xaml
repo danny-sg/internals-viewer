@@ -229,6 +229,7 @@
                                     OffsetClicked="OnHexOffsetClicked"
                                     SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"
                                     SelectedChangeSpan="{x:Bind ViewModel.ItemOutline, Mode=OneWay}"
+                                    ChangeSpans="{x:Bind ViewModel.Outlines, Mode=OneWay}"
                                     ScrollToOffset="{x:Bind ViewModel.ScrollToOffset, Mode=OneWay}"/>
 
             <Grid Grid.Row="1" Grid.Column="1" Visibility="{x:Bind ViewModel.IsHexVisible, Mode=OneWay}">

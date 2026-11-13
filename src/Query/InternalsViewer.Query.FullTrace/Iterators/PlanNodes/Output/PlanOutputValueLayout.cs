@@ -16,6 +16,8 @@ public static class PlanOutputValueLayout
 
     public const string ExecutorClass = "CEsExec";
 
+    public const string ExecValueClass = "CValExec";
+
     public static IReadOnlyList<MemoryField> GetFields(string? className) => className switch
     {
         TraceHashTableLayout.ValueClass => [EngineLayout.HashValue.RecordOffsetField, EngineLayout.HashValue.SlotField],

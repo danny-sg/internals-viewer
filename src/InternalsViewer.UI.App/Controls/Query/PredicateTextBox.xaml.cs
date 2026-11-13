@@ -148,7 +148,7 @@ public sealed partial class PredicateTextBox : UserControl
         return new InlineUIContainer { Child = block };
     }
 
-    private Brush BrushFor(PredicateTokenType type)
+    public static Brush GetBrush(PredicateTokenType type, Brush fallback)
     {
         var key = type switch
         {
@@ -176,8 +176,10 @@ public sealed partial class PredicateTextBox : UserControl
             return brush;
         }
 
-        return TextHost.Foreground;
+        return fallback;
     }
+
+    private Brush BrushFor(PredicateTokenType type) => GetBrush(type, TextHost.Foreground);
 
     private static void OnHasBackgroundChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {

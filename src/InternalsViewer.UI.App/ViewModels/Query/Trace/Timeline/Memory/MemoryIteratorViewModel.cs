@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.Extensions;
+using InternalsViewer.Query.FullTrace.DataPath;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Iterators.Enums;
 using InternalsViewer.Query.FullTrace.Memory.History;
@@ -488,20 +489,19 @@ public sealed partial class MemoryIteratorViewModel : ObservableObject
 
         var tabs = new List<MemoryObjectTab>();
 
+        DataPathMap? map = null;
+
         for (var index = 0; index < outputs.Count; index++)
         {
             var key = (identifier.NodeId, outputs[index].Reference);
 
             if (!Graphs.TryGetValue(key, out var graph))
             {
-                var column = new DataPathColumn(names[index],
-                                                outputs[index].Type,
-                                                [new DataPathInput(identifier.NodeId, outputs[index])]);
+                map ??= history.GetDataPathMap();
 
-                Graphs[key] = graph = DataPathGraphBuilder.Build(history,
-                                                                 DataPathGraphBuilder.GetPlan(history),
-                                                                 [column],
-                                                                 a => Open(owner, a));
+                Graphs[key] = graph = map.GetOutput(identifier.NodeId, index) is { } field
+                    ? DataPathGraphBuilder.Build(history, map, [field], a => Open(owner, a))
+                    : null;
             }
 
             if (graph is not null)

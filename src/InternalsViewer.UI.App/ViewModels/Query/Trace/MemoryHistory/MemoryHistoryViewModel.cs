@@ -15,6 +15,7 @@ using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.FullTrace.DataPath;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Iterators.Enums;
 using InternalsViewer.Query.FullTrace.Memory;
@@ -129,6 +130,8 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
     private Dictionary<int, string?> PointerTargets { get; } = [];
 
+    private Dictionary<bool, DataPathMap> DataPathMaps { get; } = [];
+
     private MagicBytesMatcher? MagicBytes { get; set; }
 
     private AddressMap? Map { get; set; }
@@ -149,6 +152,11 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
         VectorTypes.Clear();
 
         PointerTargets.Clear();
+
+        lock (DataPathMaps)
+        {
+            DataPathMaps.Clear();
+        }
 
         IsAvailable = Store.Blocks.Count > 0;
 
@@ -240,8 +248,22 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
     public string? GetUnexpectedWriter(PlanOutputLink link) => Trace?.GetUnexpectedWriter(link);
 
-    public Dictionary<int, PlanOutputRoute> GetDataPath(IReadOnlyList<PlanOutputRouteOperator> operators, bool isPlanObjectIncluded)
-        => Trace?.GetDataPath(operators, isPlanObjectIncluded) ?? [];
+    public DataPathMap GetDataPathMap(bool isPlanObjectIncluded = false)
+    {
+        lock (DataPathMaps)
+        {
+            if (!DataPathMaps.TryGetValue(isPlanObjectIncluded, out var map))
+            {
+                map = Trace is { } trace && FindStatement() is { } statement
+                    ? DataPathBuilder.Build(trace, statement, Iterators, isPlanObjectIncluded)
+                    : DataPathMap.Empty;
+
+                DataPathMaps[isPlanObjectIncluded] = map;
+            }
+
+            return map;
+        }
+    }
 
     public Task<string?> ReadRecordAsync(PlanOutputRecord record) => Records?.ReadAsync(record) ?? Task.FromResult<string?>(null);
 
@@ -265,6 +287,14 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
             : null;
 
     public string? GetStatementName(PlanNodeIdentifier node) => GetStatement(node)?.PhysicalOperator;
+
+    private PlanNode? FindStatement()
+        => Iterators.Values
+                    .Select(t => t.Operator?.PlanNodeIdentifier)
+                    .OfType<PlanNodeIdentifier>()
+                    .FirstOrDefault() is { } identifier
+            ? GetStatement(identifier)
+            : null;
 
     public PlanNode? GetPlanNode(ulong iterator)
         => ResolvePlanNode is { } resolve

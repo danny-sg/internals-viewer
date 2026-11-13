@@ -66,6 +66,12 @@ public static class EngineLayout
         public static MemoryField VariableTableField { get; } = Pointer("Variable Table", 0xD0, VariableWriter);
 
         public static MemoryField VariablesField { get; } = Pointer("Variables", 0x00, VariableWriter);
+
+        public static MemoryField AggregateExecutorField { get; } = Pointer("Aggregate Executor", 0x68);
+
+        public static MemoryField CompareExecutorsField { get; } = Pointer("Compare Executors", 0xA8);
+
+        public static MemoryField MoveExecutorsField { get; } = Pointer("Move Executors", 0xB0);
     }
 
     public static class HashIterator
@@ -311,6 +317,8 @@ public static class EngineLayout
         public static MemoryField ValuesField { get; } = Pointer("Input Values", 0x28);
 
         public static MemoryField ValueField { get; } = Pointer("Value", 0x00);
+
+        public static MemoryField ElementField { get; } = Pointer("Executor", 0x00);
     }
 
     public static class ExecValue
@@ -350,6 +358,8 @@ public static class EngineLayout
     {
         public static MemoryField RowsetField { get; } = Pointer("Rowset", 0x48, "::CreateRowsetSort");
 
+        public static MemoryField PushRowExecutorField { get; } = Pointer("Push Row Executor", 0x1F0);
+
         public static MemoryField MemoryUsageField { get; } = Pointer("Memory Usage", 0x208, "CQScanSortNew::CQScanSortNew");
 
         public static IReadOnlyList<MemoryField> Fields { get; } =
@@ -360,6 +370,7 @@ public static class EngineLayout
             RowsetField,
             ScanIterator.RowBufferField,
             ScanIterator.RowBindingsField,
+            PushRowExecutorField,
             MemoryUsageField
         ];
     }

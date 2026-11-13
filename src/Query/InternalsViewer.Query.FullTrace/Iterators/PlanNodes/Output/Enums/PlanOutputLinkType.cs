@@ -37,5 +37,6 @@ public enum PlanOutputLinkType
     RowBindings,
     ColumnBindings,
     ColumnBinding,
-    Executor
+    Executor,
+    Executors
 }

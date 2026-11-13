@@ -94,7 +94,7 @@ public static class ExpressionPullResolver
 
             if (OperatorClassifier.IsComputeScalar(parent))
             {
-                var derived = parent.DefinedValues.Where(d => d.References.Any(names.Contains)).ToList();
+                var derived = parent.DefinedValues.Where(d => d.References.Any(r => names.Contains(r.Column))).ToList();
 
                 names.UnionWith(derived.SelectMany(d => d.Columns.Select(c => c.Column)));
 
@@ -107,7 +107,7 @@ public static class ExpressionPullResolver
 
             if (OperatorClassifier.IsNestedLoop(parent) && input == 0 && parent.OuterReferences.Overlaps(names))
             {
-                foreach (var inner in GetDescendants(parent.Children[1]).Where(n => n.ReferencedValues.Overlaps(names)))
+                foreach (var inner in GetDescendants(parent.Children[1]).Where(n => IsUsed(n, names)))
                 {
                     yield return (inner, ExpressionPullSite.FirstInput, false);
                 }
@@ -117,7 +117,7 @@ public static class ExpressionPullResolver
 
             var isStored = isCarried && IsStored(parent, input);
 
-            if (isStored || parent.ReferencedValues.Overlaps(names))
+            if (isStored || IsUsed(parent, names))
             {
                 yield return (parent, input == 1 ? ExpressionPullSite.SecondInput : ExpressionPullSite.FirstInput, isStored);
             }
@@ -132,7 +132,10 @@ public static class ExpressionPullResolver
     }
 
     private static bool IsConstant(DefinedValueInfo value)
-        => value.References.Count > 0 && value.References.All(r => r.StartsWith(ConstantPrefix, StringComparison.Ordinal));
+        => value.References.Count > 0 && value.References.All(r => r.Column.StartsWith(ConstantPrefix, StringComparison.Ordinal));
+
+    private static bool IsUsed(PlanNode node, HashSet<string> names)
+        => node.ReferencedColumns.Exists(c => c.Column.Table.Length == 0 && names.Contains(c.Column.Column));
 
     private static bool IsCarried(PlanNode node, HashSet<string> names) => node.OutputColumns.Any(c => names.Contains(c.Column));
 

@@ -295,6 +295,8 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
         private const string StreamAggregateClass = "CXteStreamAggregate";
 
+        private const string SortIteratorClass = "CQScanSortNew";
+
         private const string StreamAggregateIteratorClass = "CQScanStreamAggregateNew";
 
         private static readonly MemoryField[] OutputValueFields =
@@ -404,6 +406,17 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
             if (className == StreamAggregateIteratorClass)
             {
                 AddAggregateStorage(iterator);
+
+                AddExecutor(iterator, EngineLayout.StreamAggregateIterator.AggregateExecutorField);
+
+                AddExecutorArray(iterator, EngineLayout.StreamAggregateIterator.CompareExecutorsField);
+
+                AddExecutorArray(iterator, EngineLayout.StreamAggregateIterator.MoveExecutorsField);
+            }
+
+            if (className == SortIteratorClass)
+            {
+                AddExecutor(iterator, EngineLayout.SortIterator.PushRowExecutorField);
             }
 
             if (className == AdapterClass)
@@ -905,7 +918,9 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
                     continue;
                 }
 
-                Add(entryType, value, values, entryField, 0, valueOffset, className: getClassName(value));
+                var className = getClassName(value);
+
+                Add(entryType, value, values, entryField, 0, valueOffset, className: className);
 
                 if (entryType == PlanOutputLinkType.Value)
                 {
@@ -914,6 +929,10 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
                 else if (ReadReader(value) is { } reader)
                 {
                     AddRow(value, reader, 0);
+                }
+                else if (className == PlanOutputValueLayout.ExpressionValueClass)
+                {
+                    AddExpressionExecutor(value, 0);
                 }
                 else if (TryRead(value, EngineLayout.ExecValue.EntryField, out ulong entry) && entry >= TraceAddress.MinimumAddress)
                 {
@@ -1068,14 +1087,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
                 depth,
                 className: PlanOutputValueLayout.ExpressionValueClass);
 
-            var executorField = EngineLayout.ExpressionValue.ExecutorField;
-
-            if (TryRead(expression, executorField, out ulong executor) && executor >= TraceAddress.MinimumAddress)
-            {
-                Add(PlanOutputLinkType.Executor, executor, expression, executorField, depth, className: getClassName(executor));
-
-                AddExecutorInputs(executor, depth);
-            }
+            AddExpressionExecutor(expression, depth);
 
             Stage.Record = record;
 
@@ -1087,6 +1099,18 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
                                                    source + EngineLayout.CachedSwitch.EntryOffset,
                                                    [],
                                                    null));
+            }
+        }
+
+        private void AddExpressionExecutor(ulong expression, int depth)
+        {
+            var executorField = EngineLayout.ExpressionValue.ExecutorField;
+
+            if (TryRead(expression, executorField, out ulong executor) && executor >= TraceAddress.MinimumAddress)
+            {
+                Add(PlanOutputLinkType.Executor, executor, expression, executorField, depth, className: getClassName(executor));
+
+                AddExecutorInputs(executor, depth);
             }
         }
 
@@ -1114,11 +1138,59 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
                     continue;
                 }
 
-                Add(PlanOutputLinkType.InputValue, value, values, valueField, depth, valueOffset, className: getClassName(value));
+                var className = getClassName(value);
+
+                Add(PlanOutputLinkType.InputValue, value, values, valueField, depth, valueOffset, className: className);
 
                 if (ReadReader(value) is { } reader)
                 {
                     AddRow(value, reader, depth);
+                }
+                else if (className == PlanOutputValueLayout.ExecValueClass
+                         && TryRead(value, EngineLayout.ExecValue.EntryField, out ulong entry)
+                         && entry >= TraceAddress.MinimumAddress)
+                {
+                    Add(PlanOutputLinkType.BufferEntry, entry, value, EngineLayout.ExecValue.EntryField, depth);
+                }
+            }
+        }
+
+        private void AddExecutor(ulong holder, MemoryField field)
+        {
+            if (TryRead(holder, field, out ulong executor)
+                && executor >= TraceAddress.MinimumAddress
+                && getClassName(executor) == PlanOutputValueLayout.ExecutorClass)
+            {
+                Add(PlanOutputLinkType.Executor, executor, holder, field, 0, className: PlanOutputValueLayout.ExecutorClass);
+
+                AddExecutorInputs(executor, 0);
+            }
+        }
+
+        private void AddExecutorArray(ulong holder, MemoryField field)
+        {
+            if (!TryRead(holder, field, out ulong array) || array < TraceAddress.MinimumAddress)
+            {
+                return;
+            }
+
+            Add(PlanOutputLinkType.Executors, array, holder, field, 0);
+
+            var count = Math.Min(getSize(array) / (int)PointerSize, MaximumEntries);
+
+            var element = EngineLayout.Executor.ElementField;
+
+            for (var index = 0; index < count; index++)
+            {
+                var offset = (ulong)index * PointerSize;
+
+                if (TryRead(array + offset, element, out ulong executor)
+                    && executor >= TraceAddress.MinimumAddress
+                    && getClassName(executor) == PlanOutputValueLayout.ExecutorClass)
+                {
+                    Add(PlanOutputLinkType.Executor, executor, array, element, 0, offset, className: PlanOutputValueLayout.ExecutorClass);
+
+                    AddExecutorInputs(executor, 0);
                 }
             }
         }

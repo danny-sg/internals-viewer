@@ -75,6 +75,7 @@ public static class PlanOutputLinkText
         PlanOutputLinkType.ColumnBindings => "Column Bindings",
         PlanOutputLinkType.ColumnBinding => "Column Binding",
         PlanOutputLinkType.Executor => "Executor",
+        PlanOutputLinkType.Executors => "Executors",
         _ => "Input Column"
     };
 
@@ -104,6 +105,9 @@ public static class PlanOutputLinkText
         "CValExpr" => "Expression",
         "CEsExec" => "Executor",
         "CValEsConstXVar" => "Constant",
+        "CValXVarTable" => "Variable",
+        "CValXVarTableRow" => "Variable Row",
+        "CValRowNoHrow" => "Row",
         _ => null
     };
 

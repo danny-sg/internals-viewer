@@ -23,7 +23,7 @@
                       HorizontalScrollBarVisibility="Auto"
                       VerticalScrollMode="Auto"
                       VerticalScrollBarVisibility="Auto"
-                      Background="Transparent">
+                      Background="{ThemeResource SolidBackgroundFillColorQuarternaryBrush}">
             <Canvas x:Name="Surface" HorizontalAlignment="Left" VerticalAlignment="Top"/>
         </ScrollViewer>
     </Grid>

@@ -1,32 +1,27 @@
 using System.Collections.Generic;
+using InternalsViewer.Query.FullTrace.DataPath;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.Plans.Model;
 
 namespace InternalsViewer.UI.App.Models.Query.Trace.DataPath;
 
-public sealed class DataPathColumn(string name,
-                                   SqlTypeInfo? type,
-                                   IReadOnlyList<DataPathInput> inputs,
-                                   PlanNode? expression = null,
-                                   DefinedValueInfo? definition = null)
+public sealed class DataPathColumn(DataPathField field)
 {
-    public string Name { get; } = name;
+    public DataPathField Field { get; } = field;
 
-    public SqlTypeInfo? Type { get; } = type;
+    public string Name => Field.Name;
 
-    public IReadOnlyList<DataPathInput> Inputs { get; } = inputs;
+    public SqlTypeInfo? Type => Field.Type;
 
-    public PlanNode? Expression { get; } = expression;
-
-    public DefinedValueInfo? Definition { get; } = definition;
+    public DefinedValueInfo? Definition => Field.Node.IsStatement ? Field.Definition : null;
 
     public List<DataPathStage> Outputs { get; } = [];
 
     public string Text { get; set; } = string.Empty;
 
-    public string Value => Expression is null && Outputs is [var output] ? output.Value : Text;
+    public string Value => Definition is null && Outputs is [var output] ? output.Value : Text;
 
-    public bool IsInScope => Expression is null && Outputs is [var output] ? output.IsInScope : Text.Length > 0;
+    public bool IsInScope => Definition is null && Outputs is [var output] ? output.IsInScope : Text.Length > 0;
 
     public double Height => DataPathGraph.HeaderHeight
                             + (Definition is null ? 0 : DataPathGraph.LineHeight)
