@@ -1,7 +1,7 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.Extensions;
-using InternalsViewer.Query.Interfaces;
 using InternalsViewer.Query.FullTrace.Locators.Enums;
+using InternalsViewer.Query.FullTrace.Memory;
 
 namespace InternalsViewer.Query.FullTrace.Locators;
 
@@ -19,7 +19,7 @@ public readonly record struct Locator(int ArgumentSlot, LocatorValueType ValueTy
 
     public string SearchText => ValueType == LocatorValueType.ColumnStoreObject ? new ColumnStoreObjectLocator(this).SearchText : ToString();
 
-    public static Locator? Read(LocatorValueType valueType, IMemoryReader memory, int argumentSlot, ulong address, ulong count = 1)
+    public static Locator? Read(LocatorValueType valueType, ITraceMemoryReader memory, int argumentSlot, ulong address, ulong count = 1)
         => valueType switch
     {
         LocatorValueType.Bindings

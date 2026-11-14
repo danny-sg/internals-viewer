@@ -9,6 +9,7 @@ using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.History;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.Query.Memory;
@@ -102,7 +103,7 @@ internal sealed class TraceResultBuilder(CallTree callTree,
             AddressMap = AddressMap,
             MemoryObjects = MemoryObjects,
             ObjectPool = ObjectPool,
-            BufferPool = BufferPool,
+            BufferPool = BufferPool.WithLayout(layout),
             PageReads = pageReads,
             PageAccesses = pageAccesses,
             MemoryHistory = store,

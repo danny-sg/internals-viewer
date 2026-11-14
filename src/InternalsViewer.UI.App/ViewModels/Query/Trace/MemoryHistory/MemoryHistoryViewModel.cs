@@ -333,8 +333,8 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
     public bool IsColumnBindings(int block) => GetMapLabel(Store.Blocks[block]) == AccessorBindingLayout.ColumnsClassName;
 
     public MemoryHistoryArray? GetArray(int block)
-        => IsColumnBindings(block) && AccessorBindingLayout.GetColumnCount(Store.Blocks[block].Size) is > 0 and var count
-            ? new MemoryHistoryArray(AccessorBindingLayout.ColumnSize, count)
+        => IsColumnBindings(block) && Store.Layout.ColumnBinding.GetColumnCount(Store.Blocks[block].Size) is > 0 and var count
+            ? new MemoryHistoryArray(Store.Layout.ColumnBinding.Size, count)
             : null;
 
     public RowRecordLayout? GetWorkfileLayout(int block) => GetPageIterator(block) is { } iterator ? Workfiles?.Get(iterator) : null;

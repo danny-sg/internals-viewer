@@ -4,7 +4,6 @@ using InternalsViewer.Query.FullTrace.Iterators.Enums;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.Layouts;
-using InternalsViewer.Query.FullTrace.Memory.Layouts.Sorts;
 
 namespace InternalsViewer.Query.FullTrace.Iterators;
 
@@ -18,40 +17,11 @@ public static class IteratorLayout
 
     private const string RowsetClass = "CQScanRowsetNew";
 
-    private const string RowsetDynamicClass = "CQScanRowsetDynaNew";
-
-    private const string TableScanClass = "CQScanTableScanNew";
-
-    private const string RangeClass = "CQScanRangeNew";
-
-    private const string TopClass = "CQScanTopNew";
-
     private const string HashClass = "CQScanHash";
 
-    private const string FilterClass = "CQScanFilterNew";
+    private const string PlanObjectClass = "CXte";
 
-    private const string StreamAggregateClass = "CQScanStreamAggregateNew";
-
-    private const string PlanTopClass = "CXteTop";
-
-    private const string PlanTableScanClass = "CXteTableScan";
-
-    private const string PlanRangeClass = "CXteRange";
-
-    private static readonly Dictionary<string, string> BaseClasses = new()
-    {
-        [RowsetClass] = IteratorClass,
-        [RowsetDynamicClass] = RowsetClass,
-        [TableScanClass] = RowsetDynamicClass,
-        [RangeClass] = RowsetClass,
-        [TraceSortTableReader.IteratorClass] = RowsetClass,
-        [TopClass] = IteratorClass,
-        [HashClass] = IteratorClass,
-        [FilterClass] = IteratorClass,
-        [StreamAggregateClass] = IteratorClass
-    };
-
-    public static bool IsRowset(string? className) => IsA(className, RowsetClass);
+    public static bool IsRowset(EngineLayout layout, string? className) => layout.IsA(className, RowsetClass);
 
     public static bool IsHash(string? className) => className == HashClass;
 
@@ -70,7 +40,7 @@ public static class IteratorLayout
 
         for (var offset = 0; offset + PointerSize <= data.Length; offset += PointerSize)
         {
-            if (!fields.ContainsKey(offset)
+            if ((!fields.TryGetValue(offset, out var named) || named.IsPointer)
                 && targets.TryGetValue(BinaryPrimitives.ReadUInt64LittleEndian(data[offset..]), out var target)
                 && target.Operator?.PlanNodeIdentifier is not null)
             {
@@ -107,41 +77,10 @@ public static class IteratorLayout
 
     private static List<MemoryField> GetClassFields(EngineLayout layout, string? className, IteratorTargetType type)
     {
-        if (type == IteratorTargetType.PlanObject)
-        {
-            List<MemoryField> planFields = className switch
-            {
-                PlanTopClass => [layout.PlanObject.TopCountField],
-                PlanTableScanClass or PlanRangeClass => [layout.PlanObject.RowsetIdField],
-                _ => []
-            };
+        var root = type == IteratorTargetType.PlanObject ? PlanObjectClass : IteratorClass;
 
-            return [.. layout.PlanObject.Fields, .. planFields];
-        }
+        var fields = type == IteratorTargetType.ProfilingIterator ? [] : layout.GetFields(className);
 
-        IReadOnlyList<MemoryField> fields = type == IteratorTargetType.ProfilingIterator
-            ? []
-            : className switch
-            {
-                TopClass => [layout.TopIterator.TopCountField],
-                HashClass => [.. layout.HashIterator.ValueArrayFields, .. layout.HashIterator.TableFields],
-                _ when IsRowset(className) => layout.RowsetIterator.Fields,
-                _ => []
-            };
-
-        return [layout.Iterator.InputsField, layout.Iterator.ExecutionContextField, .. fields];
-    }
-
-    private static bool IsA(string? className, string baseClass)
-    {
-        for (var current = className; current is not null; current = BaseClasses.GetValueOrDefault(current))
-        {
-            if (current == baseClass)
-            {
-                return true;
-            }
-        }
-
-        return false;
+        return layout.IsA(className, root) && fields.Count > 0 ? fields : [.. layout.GetFields(root), .. fields];
     }
 }

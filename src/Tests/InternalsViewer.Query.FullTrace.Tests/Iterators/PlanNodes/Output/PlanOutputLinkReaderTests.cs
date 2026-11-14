@@ -1,4 +1,5 @@
 using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;

@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
@@ -24,13 +25,6 @@ public sealed partial class MemoryBufferViewModel : ObservableObject
     private const string NoneText = "None";
 
     private const string UnknownText = "Unknown";
-
-    private static readonly List<Colour> FieldColours =
-    [
-        .. BufferDescriptor.Fields.Select((_, i) => ColourHelpers.HsvToColor(i * HueWheel / BufferDescriptor.Fields.Count,
-                                                                             FieldSaturation,
-                                                                             FieldValue))
-    ];
 
     [ObservableProperty]
     private bool _isAvailable;
@@ -52,7 +46,7 @@ public sealed partial class MemoryBufferViewModel : ObservableObject
 
         IsAvailable = owner.History.IsBuffer(owner.Block);
 
-        Markers = IsAvailable ? GetMarkers() : null;
+        Markers = IsAvailable ? GetMarkers(owner.History.Store.Layout.Buffer) : null;
     }
 
     public void Clear()
@@ -77,7 +71,7 @@ public sealed partial class MemoryBufferViewModel : ObservableObject
 
         Data = data;
 
-        Fields = data is { Length: BufferDescriptor.Size } ? GetFields(owner, data) : [];
+        Fields = data?.Length == owner.History.Store.Layout.Buffer.Size ? GetFields(owner, data) : [];
     }
 
     private static List<MemoryBufferField> GetFields(PlayheadMemoryViewModel owner, byte[] data)
@@ -86,23 +80,25 @@ public sealed partial class MemoryBufferViewModel : ObservableObject
 
         var address = history.Store.Blocks[owner.Block].Address;
 
-        var state = Read(data, BufferDescriptor.LatchStateOffset);
+        var layout = history.Store.Layout.Buffer;
+
+        var state = Read(data, layout.LatchStateField);
 
         return
         [
             GetPageField(owner, address),
-            new("Database Id", $"{ReadShort(data, BufferDescriptor.DatabaseIdOffset)}"),
-            new("Frame", $"0x{Read(data, BufferDescriptor.FrameOffset):X16}"),
-            new("Partition", $"{ReadShort(data, BufferDescriptor.PartitionOffset)}"),
-            new("Status", $"0x{ReadInt(data, BufferDescriptor.StatusOffset):X}"),
-            new("Error Code", $"{ReadInt(data, BufferDescriptor.ErrorCodeOffset)}"),
-            new("State History", $"0x{ReadInt(data, BufferDescriptor.StateHistoryOffset):X8}"),
-            new("Read \u00B5s", $"{Read(data, BufferDescriptor.ReadTimeOffset)}"),
-            new("Last Used", $"{ReadShort(data, BufferDescriptor.LastUsedOffset)}"),
-            new("Recovery Unit", GetPointerText(Read(data, BufferDescriptor.RecoveryUnitOffset))),
+            new("Database Id", $"{ReadShort(data, layout.DatabaseIdField)}"),
+            new("Frame", $"0x{Read(data, layout.FrameField):X16}"),
+            new("Partition", $"{ReadShort(data, layout.PartitionField)}"),
+            new("Status", $"0x{ReadInt(data, layout.StatusField):X}"),
+            new("Error Code", $"{ReadInt(data, layout.ErrorCodeField)}"),
+            new("State History", $"0x{ReadInt(data, layout.StateHistoryField):X8}"),
+            new("Read \u00B5s", $"{Read(data, layout.ReadTimeField)}"),
+            new("Last Used", $"{ReadShort(data, layout.LastUsedField)}"),
+            new("Recovery Unit", GetPointerText(Read(data, layout.RecoveryUnitField))),
             new("Latch", GetLatchText(state)),
-            new("Latch Owner", GetPointerText(Read(data, BufferDescriptor.LatchOwnerOffset))),
-            new("Latch Waiters", GetPointerText(Read(data, BufferDescriptor.LatchWaitersOffset))),
+            new("Latch Owner", GetPointerText(Read(data, layout.LatchOwnerField))),
+            new("Latch Waiters", GetPointerText(Read(data, layout.LatchWaitersField))),
             new("Latch State", $"0x{state:X16}")
         ];
     }
@@ -136,20 +132,28 @@ public sealed partial class MemoryBufferViewModel : ObservableObject
 
     private static string GetPointerText(ulong value) => value == 0 ? NoneText : $"0x{value:X16}";
 
-    private static ulong Read(byte[] data, int offset) => BinaryPrimitives.ReadUInt64LittleEndian(data.AsSpan(offset));
+    private static ulong Read(byte[] data, MemoryField field) => BinaryPrimitives.ReadUInt64LittleEndian(data.AsSpan(field.Offset));
 
-    private static uint ReadInt(byte[] data, int offset) => BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(offset));
+    private static uint ReadInt(byte[] data, MemoryField field) => BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(field.Offset));
 
-    private static ushort ReadShort(byte[] data, int offset) => BinaryPrimitives.ReadUInt16LittleEndian(data.AsSpan(offset));
+    private static ushort ReadShort(byte[] data, MemoryField field) => BinaryPrimitives.ReadUInt16LittleEndian(data.AsSpan(field.Offset));
 
-    private static ObservableCollection<Marker> GetMarkers()
-        => new(BufferDescriptor.Fields.Select((f, i) => new Marker
-        {
-            Name = f.Name,
-            StartPosition = f.Offset,
-            EndPosition = f.Offset + f.Length - 1,
-            BackColour = FieldColours[i].ToWindowsColor(),
-            MapColour = FieldColours[i].ToWindowsColor(),
-            ForeColour = Colors.Black
-        }));
+    private static ObservableCollection<Marker> GetMarkers(EngineLayout.BufferLayout layout)
+    {
+        var fields = layout.Fields;
+
+        return new(fields.Select((f, i) => CreateMarker(f, ColourHelpers.HsvToColor(i * HueWheel / fields.Count,
+                                                                                    FieldSaturation,
+                                                                                    FieldValue))));
+    }
+
+    private static Marker CreateMarker(MemoryField field, Colour colour) => new()
+    {
+        Name = field.Name,
+        StartPosition = field.Offset,
+        EndPosition = field.Offset + field.Length - 1,
+        BackColour = colour.ToWindowsColor(),
+        MapColour = colour.ToWindowsColor(),
+        ForeColour = Colors.Black
+    };
 }

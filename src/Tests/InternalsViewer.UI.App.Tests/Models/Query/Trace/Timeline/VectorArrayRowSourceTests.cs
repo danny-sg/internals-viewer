@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Batches;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
@@ -16,7 +17,12 @@ public class VectorArrayRowSourceTests
 
         BatchVector[] vectors = [new(1, 0x5040, false, [], []), new(2, 0, false, [], [])];
 
-        var source = new VectorArrayRowSource(new BatchState(0x1000, 900, 0, Block, 0, 0, 0, [], 0, [.. vectors]), Block, opened.Add);
+        var state = new BatchState(0x1000, 900, 0, Block, 0, 0, 0, [], 0, [.. vectors])
+        {
+            VectorSize = EngineLayout.Latest.Batch.VectorSize
+        };
+
+        var source = new VectorArrayRowSource(state, Block, opened.Add);
 
         var link = Assert.IsType<ActionLinks>(source.Value(0, 2)).Links.Single();
 

@@ -19,7 +19,7 @@ internal sealed class VectorArrayRowSource(BatchState state, ulong blockAddress,
         return ordinal switch
         {
             0 => vector.Id,
-            1 => $"0x{State.VectorArrayAddress - blockAddress + (ulong)(row * BatchReader.VectorEntrySize):X}",
+            1 => $"0x{State.GetVectorEntry(row) - blockAddress:X}",
             2 => GetLink(vector.Buffer),
             3 => GetLink(vector.CurrentDeepPage),
             _ => GetLink(vector.FirstDeepPage)

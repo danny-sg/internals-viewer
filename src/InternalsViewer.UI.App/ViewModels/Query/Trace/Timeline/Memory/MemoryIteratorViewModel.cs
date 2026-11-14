@@ -417,7 +417,7 @@ public sealed partial class MemoryIteratorViewModel : ObservableObject
             return tabs;
         }
 
-        if (IteratorLayout.IsRowset(ClassName) && CreateRowBindingsTab(owner, memory, Address) is { } bindings)
+        if (IteratorLayout.IsRowset(memory.Layout, ClassName) && CreateRowBindingsTab(owner, memory, Address) is { } bindings)
         {
             tabs.Add(bindings);
         }

@@ -369,7 +369,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
             var className = getClassName(iterator);
 
-            if (IteratorLayout.IsRowset(className))
+            if (IteratorLayout.IsRowset(Layout, className))
             {
                 var bindings = ReadRowBindings(iterator);
 
@@ -381,7 +381,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
                 }
             }
 
-            if (IteratorLayout.IsRowset(className)
+            if (IteratorLayout.IsRowset(Layout, className)
                 && TryRead(iterator, Layout.RowsetIterator.RowsetField, out ulong rowset)
                 && rowset >= TraceAddress.MinimumAddress + Layout.Rowset.InterfaceOffset
                 && getClassName(rowset - Layout.Rowset.InterfaceOffset) == StorageRowsetClass)
@@ -942,7 +942,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
             foreach (var binding in bindings.Bound)
             {
-                var bindingOffset = (ulong)(binding.Index * AccessorBindingLayout.ColumnSize);
+                var bindingOffset = (ulong)(binding.Index * Layout.ColumnBinding.Size);
 
                 Add(PlanOutputLinkType.ColumnBinding,
                     bindings.Columns + bindingOffset,

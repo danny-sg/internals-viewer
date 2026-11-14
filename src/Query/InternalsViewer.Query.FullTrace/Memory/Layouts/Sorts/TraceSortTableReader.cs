@@ -22,8 +22,6 @@ public static class TraceSortTableReader
 
     private const int PageSize = 8192;
 
-    private static int EntriesPerPage => PageSize / EngineLayout.SortEntryLayout.Size;
-
     public static ulong? GetIterator(MemoryHistoryStore store, AddressMap addressMap, IEnumerable<TraceOperatorLifetime> lifetimes)
     {
         foreach (var lifetime in lifetimes)
@@ -149,11 +147,13 @@ public static class TraceSortTableReader
 
         var layout = memory.Layout.SortEntry;
 
+        var entriesPerPage = PageSize / layout.Size;
+
         foreach (var page in pages)
         {
-            for (var index = 0; index < EntriesPerPage; index++)
+            for (var index = 0; index < entriesPerPage; index++)
             {
-                var address = page + (ulong)(index * EngineLayout.SortEntryLayout.Size);
+                var address = page + (ulong)(index * layout.Size);
 
                 if (!TryRead(memory, address, layout.RecordField, out ulong record) || record == 0)
                 {

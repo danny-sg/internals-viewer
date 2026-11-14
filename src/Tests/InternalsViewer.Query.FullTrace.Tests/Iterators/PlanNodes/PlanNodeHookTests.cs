@@ -1,6 +1,6 @@
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
-using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Locators;
@@ -60,9 +60,10 @@ public class PlanNodeHookTests
     [Fact]
     public void A_Row_Iterator_On_SQL_Server_2022_Reports_The_Plan_Node_Of_Its_Plan_Object()
     {
-        var replay = PlanObjects().Write(Parent + 0x10, Parent + 0x10).Write(Parent + 0x48, PlanObject);
+        var replay = PlanObjects(EngineLayout.Get(new Version(16, 0))).Write(Parent + 0x10, Parent + 0x10)
+                                                                      .Write(Parent + 0x48, PlanObject);
 
-        var hook = CreateHook(EngineLayout.Get(new Version(16, 0)));
+        var hook = CreateHook();
 
         hook.OnEntry(Call(GetRow, 1, Parent), replay);
 
@@ -72,9 +73,10 @@ public class PlanNodeHookTests
     [Fact]
     public void A_Batch_Helper_On_SQL_Server_2022_Reports_The_Plan_Node_Of_The_Operator_It_Adapts()
     {
-        var replay = PlanObjects().Write(Parent + 0x10, Parent + 0x10).Write(Parent + 0x48, PlanObject);
+        var replay = PlanObjects(EngineLayout.Get(new Version(16, 0))).Write(Parent + 0x10, Parent + 0x10)
+                                                                      .Write(Parent + 0x48, PlanObject);
 
-        var hook = CreateHook(EngineLayout.Get(new Version(16, 0)));
+        var hook = CreateHook();
 
         hook.OnEntry(Call(BatchHelperGetRow, 1, Parent), replay);
 
@@ -218,17 +220,17 @@ public class PlanNodeHookTests
         Assert.Equal((1, 1), (Assert.Single(columns[0]).ProducerNodeId, Assert.Single(columns[1]).ProducerNodeId));
     }
 
-    private static FakeTraceReplay Slots(ulong first, ulong second)
-        => new FakeTraceReplay().Write(Context, first).Write(Context + sizeof(ulong), second);
+    private static FakeTraceReplay Slots(ulong first, ulong second, EngineLayout? layout = null)
+        => new FakeTraceReplay { Layout = layout ?? EngineLayout.Latest }.Write(Context, first).Write(Context + sizeof(ulong), second);
 
-    private static FakeTraceReplay PlanObjects()
-        => Slots(0, 0).Write(PlanObject, PlanObjectTable)
+    private static FakeTraceReplay PlanObjects(EngineLayout? layout = null)
+        => Slots(0, 0, layout).Write(PlanObject, PlanObjectTable)
                       .Write(PlanObject + 0x0C, 2)
                       .Write(PlanObject + 0x28, Query)
                       .Write(BatchPlanObject, BatchPlanObjectTable)
                       .Write(BatchPlanObject + 0x10, PlanObject);
 
-    private static PlanNodeHook CreateHook(EngineLayout? layout = null)
+    private static PlanNodeHook CreateHook()
         => new(new(new Dictionary<ulong, PlanNodeFunctionType>
                {
                    [GetRow] = PlanNodeFunctionType.Iterator,
@@ -242,8 +244,7 @@ public class PlanNodeHookTests
                {
                    [PlanObjectTable] = PlanObjectClass.Row,
                    [BatchPlanObjectTable] = PlanObjectClass.Batch
-               }),
-               layout ?? EngineLayout.Latest);
+               }));
 
     private static TraceHookCall Call(ulong function, ulong id, ulong iterator, ulong returnValue = 0, ulong? at = null)
         => new()

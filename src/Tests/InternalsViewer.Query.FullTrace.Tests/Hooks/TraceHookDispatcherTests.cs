@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Native;
@@ -14,7 +15,7 @@ public class TraceHookDispatcherTests
         var returns = new Hook(new TraceHookFunction(0x2000, TraceHookEvents.Return),
                                new TraceHookFunction(0x3000, TraceHookEvents.Return));
 
-        var hooks = new TraceHookDispatcher([entries, returns]);
+        var hooks = new TraceHookDispatcher([entries, returns], EngineLayout.Latest);
 
         Assert.Equal([new HookFunction(0x1000, (uint)TraceHookEvents.Entry, 1),
                       new HookFunction(0x2000, (uint)(TraceHookEvents.Entry | TraceHookEvents.Return), 3),

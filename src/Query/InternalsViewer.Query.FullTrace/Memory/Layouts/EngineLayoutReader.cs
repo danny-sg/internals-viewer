@@ -1,13 +1,18 @@
 using System.Globalization;
-using InternalsViewer.Query.FullTrace.Memory.Layouts;
 
-namespace InternalsViewer.Query.FullTrace.Iterators.Layouts;
+namespace InternalsViewer.Query.FullTrace.Memory.Layouts;
 
 internal static class EngineLayoutReader
 {
+    private const string VersionsFolder = "Versions";
+
     private const string ResourceExtension = ".psv";
 
     private const string VersionKey = "Version";
+
+    private const string BaseKey = "Base";
+
+    private const string SizeKey = "Size";
 
     private const string HeaderKey = "Type";
 
@@ -29,7 +34,9 @@ internal static class EngineLayoutReader
 
     private const char VersionSeparator = '.';
 
-    private const int ColumnCount = 6;
+    private const int FieldColumnCount = 7;
+
+    private const int KeyColumnCount = 3;
 
     private const int VersionPartCount = 4;
 
@@ -37,7 +44,7 @@ internal static class EngineLayoutReader
     {
         var assembly = typeof(EngineLayoutReader).Assembly;
 
-        var prefix = $"{typeof(EngineLayoutReader).Namespace}.";
+        var prefix = $"{typeof(EngineLayoutReader).Namespace}.{VersionsFolder}.";
 
         var layouts = new List<EngineLayout>();
 
@@ -61,7 +68,7 @@ internal static class EngineLayoutReader
     {
         (Version Minimum, Version Maximum)? range = null;
 
-        var fields = new Dictionary<(string Type, string Name), MemoryField>();
+        var structures = new Dictionary<string, MemoryStructure>();
 
         while (reader.ReadLine() is { } line)
         {
@@ -81,26 +88,48 @@ internal static class EngineLayoutReader
                 case HeaderKey:
                     break;
 
-                default:
-                    var field = ReadField(name, columns);
+                case BaseKey:
+                    GetStructure(structures, ReadKey(name, columns)).Base = columns[2];
+                    break;
 
-                    if (!fields.TryAdd((columns[0], field.Name), field))
-                    {
-                        throw new InvalidDataException($"{name} has more than one {columns[0]} {field.Name} field");
-                    }
+                case SizeKey:
+                    GetStructure(structures, ReadKey(name, columns)).Size = ReadNumber(columns[2]);
+                    break;
+
+                default:
+                    var (field, count) = ReadField(name, columns);
+
+                    GetStructure(structures, columns[0]).Add(field, count);
 
                     break;
             }
         }
 
         return range is { } versions
-            ? new EngineLayout(name, versions.Minimum, versions.Maximum, fields)
+            ? new EngineLayout(name, versions.Minimum, versions.Maximum, structures)
             : throw new InvalidDataException($"{name} has no {VersionKey} line");
     }
 
-    private static MemoryField ReadField(string name, string[] columns)
+    private static MemoryStructure GetStructure(Dictionary<string, MemoryStructure> structures, string type)
     {
-        if (columns.Length != ColumnCount)
+        if (!structures.TryGetValue(type, out var structure))
+        {
+            structure = new MemoryStructure(type);
+
+            structures[type] = structure;
+        }
+
+        return structure;
+    }
+
+    private static string ReadKey(string name, string[] columns)
+        => columns.Length == KeyColumnCount
+            ? columns[1]
+            : throw new InvalidDataException($"{name} has a {columns[0]} line with {columns.Length} columns");
+
+    private static (MemoryField Field, int Count) ReadField(string name, string[] columns)
+    {
+        if (columns.Length != FieldColumnCount)
         {
             throw new InvalidDataException($"{name} has a line with {columns.Length} columns: {string.Join(Separator, columns)}");
         }
@@ -112,11 +141,13 @@ internal static class EngineLayoutReader
             throw new InvalidDataException($"{name} has an unknown kind {kind} on {columns[0]} {columns[1]}");
         }
 
-        return new MemoryField(columns[1], ReadNumber(columns[2]), ReadNumber(columns[3]), kind == HexKind)
+        var field = new MemoryField(columns[1], ReadNumber(columns[2]), ReadNumber(columns[3]), kind == HexKind)
         {
-            Writers = columns[5].Length == 0 ? [] : columns[5].Split(WriterSeparator),
+            Writers = columns[6].Length == 0 ? [] : columns[6].Split(WriterSeparator),
             IsNumber = kind != PointerKind
         };
+
+        return (field, columns[5].Length == 0 ? 1 : ReadNumber(columns[5]));
     }
 
     private static int ReadNumber(string text)

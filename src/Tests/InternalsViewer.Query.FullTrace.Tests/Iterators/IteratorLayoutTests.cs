@@ -20,9 +20,14 @@ public class IteratorLayoutTests
     [Fact]
     public void A_Scan_Marks_Its_Row_Buffer_And_Bindings()
     {
-        var fields = IteratorLayout.GetFields(MemoryHistoryStore.Empty, "CQScanTableScanNew", IteratorTargetType.Iterator, new byte[0x170], Targets());
+        var fields = IteratorLayout.GetFields(MemoryHistoryStore.Empty,
+                                              "CQScanTableScanNew",
+                                              IteratorTargetType.Iterator,
+                                              new byte[0x170],
+                                              Targets());
 
         Assert.Equal([("Inputs", 0x08),
+                      ("Plan Object", 0x10),
                       ("Execution Context", 0x18),
                       ("Rowset", 0x48),
                       ("Prefetch Manager", 0x70),
@@ -39,9 +44,13 @@ public class IteratorLayoutTests
 
         BitConverter.GetBytes(Top).CopyTo(data, 0x90);
 
-        var fields = IteratorLayout.GetFields(MemoryHistoryStore.Empty, "CQScanProfileNew", IteratorTargetType.ProfilingIterator, data, Targets());
+        var fields = IteratorLayout.GetFields(MemoryHistoryStore.Empty,
+                                              "CQScanProfileNew",
+                                              IteratorTargetType.ProfilingIterator,
+                                              data,
+                                              Targets());
 
-        Assert.Equal([("Inputs", 0x08), ("Execution Context", 0x18), ("Iterator › Top (Node 0)", 0x90)],
+        Assert.Equal([("Inputs", 0x08), ("Plan Object", 0x10), ("Execution Context", 0x18), ("Iterator › Top (Node 0)", 0x90)],
                      fields.Select(f => (f.Name, f.Offset)));
     }
 

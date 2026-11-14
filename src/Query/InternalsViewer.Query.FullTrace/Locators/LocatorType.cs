@@ -3,21 +3,18 @@ using InternalsViewer.Query.FullTrace.Locators.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Locators;
 
-internal readonly record struct LocatorType(LocatorValueType ValueType, bool IsIndirect, bool IsConst, int Offset = 0, int[]? Path = null)
+internal readonly record struct LocatorType(LocatorValueType ValueType,
+                                            bool IsIndirect,
+                                            bool IsConst,
+                                            LocatorPageSource PageSource = LocatorPageSource.Direct)
 {
-    private const int AllocationPageIdOffset = 0x8;
-
-    private const int BufferPageIdOffset = 0x70;
-
-    public static readonly int[] PageHandlePath = [0, 0x18];
-
-    public static readonly int[] PageRefPath = [0];
-
     private static readonly char[] Indirections = ['*', '&'];
 
     public bool IsOutput => IsIndirect && !IsConst;
 
-    public bool IsInOut => IsOutput && (ValueType == LocatorValueType.Referenced || Path is not null);
+    public bool IsInOut => IsOutput && (ValueType == LocatorValueType.Referenced || IsFollowed);
+
+    private bool IsFollowed => PageSource is LocatorPageSource.PageHandle or LocatorPageSource.PageReference;
 
     public static LocatorType? GetLocatorType(string type)
     {
@@ -61,36 +58,38 @@ internal readonly record struct LocatorType(LocatorValueType ValueType, bool IsI
         }
 
         var found = (names == 1 ? GetKnownLocator(name) : null)
-                    ?? (indirection >= 0 && ArgumentValue.IsReadable(target) ? (LocatorValueType.Referenced, 0, null) : null);
+                    ?? (indirection >= 0 && ArgumentValue.IsReadable(target)
+                        ? (LocatorValueType.Referenced, LocatorPageSource.Direct)
+                        : null);
 
         return found is { } match
-            ? new LocatorType(match.ValueType, indirection >= 0, isConst, match.Offset, match.Path)
+            ? new LocatorType(match.ValueType, indirection >= 0, isConst, match.PageSource)
             : null;
     }
 
-    private static (LocatorValueType ValueType, int Offset, int[]? Path)? GetKnownLocator(ReadOnlySpan<char> name) => name switch
+    private static (LocatorValueType ValueType, LocatorPageSource PageSource)? GetKnownLocator(ReadOnlySpan<char> name) => name switch
     {
         "PageId"
-            => (LocatorValueType.Page, 0, null),
+            => (LocatorValueType.Page, LocatorPageSource.Direct),
         "AllocationPageId"
-            => (LocatorValueType.Page, AllocationPageIdOffset, null),
+            => (LocatorValueType.Page, LocatorPageSource.AllocationPageId),
         "HPageHandle"
-            => (LocatorValueType.Page, BufferPageIdOffset, PageHandlePath),
+            => (LocatorValueType.Page, LocatorPageSource.PageHandle),
         "PageRef" or "BTreeHPage" or "IndexPageRef" or "HeapPageRef" or "TextPageRef" or "IAMPageRef" or "GAMPageRef"
             or "SGAMPageRef" or "PFSPageRef" or "PSPageRef"
-            => (LocatorValueType.Page, BufferPageIdOffset, PageRefPath),
+            => (LocatorValueType.Page, LocatorPageSource.PageReference),
         "RowId"
-            => (LocatorValueType.Row, 0, null),
+            => (LocatorValueType.Row, LocatorPageSource.Direct),
         "ColumnStoreObjectKey"
-            => (LocatorValueType.ColumnStoreObject, 0, null),
+            => (LocatorValueType.ColumnStoreObject, LocatorPageSource.Direct),
         "LSN"
-            => (LocatorValueType.LogSequenceNumber, 0, null),
+            => (LocatorValueType.LogSequenceNumber, LocatorPageSource.Direct),
         "CTypeInfo"
-            => (LocatorValueType.TypeInfo, 0, null),
+            => (LocatorValueType.TypeInfo, LocatorPageSource.Direct),
         "CXVariant"
-            => (LocatorValueType.Variant, 0, null),
+            => (LocatorValueType.Variant, LocatorPageSource.Direct),
         "tagDBBINDING"
-            => (LocatorValueType.Bindings, 0, null),
+            => (LocatorValueType.Bindings, LocatorPageSource.Direct),
         _ => null
     };
 

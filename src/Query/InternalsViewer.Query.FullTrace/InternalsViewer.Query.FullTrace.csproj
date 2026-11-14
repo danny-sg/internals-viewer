@@ -27,7 +27,7 @@
              override it from the user's app-data folder later). Matched by file name at load, not by resource path. -->
         <EmbeddedResource Include="Symbols\Categories\Mappings\*.txt" />
         <EmbeddedResource Include="Timeline\Tracks\PredefinedTracks.json" />
-        <EmbeddedResource Include="Iterators\Layouts\*.psv" />
+        <EmbeddedResource Include="Memory\Layouts\Versions\*.psv" />
     </ItemGroup>
 
     <ItemGroup>

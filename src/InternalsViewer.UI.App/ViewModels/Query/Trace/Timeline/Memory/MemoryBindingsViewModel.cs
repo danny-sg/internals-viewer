@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Memory.History;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings.Enums;
 using InternalsViewer.Query.Results;
@@ -105,6 +106,8 @@ public sealed partial class MemoryBindingsViewModel : ObservableObject
 
     private int Size { get; set; }
 
+    private EngineLayout Layout { get; set; } = EngineLayout.Latest;
+
     private ScanBindingReference? Scan { get; set; }
 
     private ulong Columns { get; set; }
@@ -134,6 +137,8 @@ public sealed partial class MemoryBindingsViewModel : ObservableObject
         }
 
         Owner = owner;
+
+        Layout = owner.History.Store.Layout;
 
         Scan = scan;
 
@@ -287,7 +292,7 @@ public sealed partial class MemoryBindingsViewModel : ObservableObject
     private (int Count, ulong Columns) GetColumns(MemoryHistoryReader reader)
         => Kind switch
         {
-            MemoryBindingsKind.Columns => (AccessorBindingLayout.GetColumnCount(Size), Address),
+            MemoryBindingsKind.Columns => (Layout.ColumnBinding.GetColumnCount(Size), Address),
             MemoryBindingsKind.Bindings => AccessorBindingLayout.ReadHeader(reader, Address) ?? (0, 0UL),
             _ => Scan is { } scan ? AccessorBindingLayout.ReadHeader(reader, scan.Bindings) ?? (0, 0UL) : (0, 0UL)
         };
@@ -302,7 +307,7 @@ public sealed partial class MemoryBindingsViewModel : ObservableObject
 
     private int GetStart(ColumnBinding column)
         => Kind == MemoryBindingsKind.Columns
-            ? column.Index * AccessorBindingLayout.ColumnSize
+            ? column.Index * Layout.ColumnBinding.Size
             : Math.Min(column.StatusOffset, column.ValueOffset);
 
     private ObservableCollection<Marker> GetMarkers(int? selected)
@@ -311,7 +316,7 @@ public sealed partial class MemoryBindingsViewModel : ObservableObject
 
         if (Kind == MemoryBindingsKind.Bindings)
         {
-            var fields = AccessorBindingLayout.Fields;
+            var fields = Layout.RowBindings.Fields;
 
             for (var index = 0; index < fields.Count; index++)
             {
@@ -340,13 +345,13 @@ public sealed partial class MemoryBindingsViewModel : ObservableObject
     {
         var name = GetColumnName(column);
 
-        var start = column.Index * AccessorBindingLayout.ColumnSize;
+        var start = column.Index * Layout.ColumnBinding.Size;
 
         var infrequent = column.InfrequentData >= Address && column.InfrequentData - Address < (ulong)Size
             ? (int)(column.InfrequentData - Address)
             : -1;
 
-        foreach (var field in AccessorBindingLayout.ColumnFields)
+        foreach (var field in Layout.ColumnBinding.Fields)
         {
             var offset = field.IsInfrequent ? infrequent < 0 ? -1 : infrequent + field.Offset : start + field.Offset;
 

@@ -1,4 +1,4 @@
-using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 
 namespace InternalsViewer.Query.FullTrace.Memory.History;
 

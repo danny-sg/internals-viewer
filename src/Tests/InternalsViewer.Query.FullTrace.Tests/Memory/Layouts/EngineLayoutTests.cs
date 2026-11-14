@@ -1,9 +1,8 @@
-using InternalsViewer.Query.FullTrace.Iterators;
-using InternalsViewer.Query.FullTrace.Iterators.Layouts;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using static InternalsViewer.Query.FullTrace.Tests.Memory.History.MemoryHistoryStoreHelper;
 
-namespace InternalsViewer.Query.FullTrace.Tests.Iterators;
+namespace InternalsViewer.Query.FullTrace.Tests.Memory.Layouts;
 
 [Trait("Category", "Unit")]
 public class EngineLayoutTests
@@ -20,6 +19,24 @@ public class EngineLayoutTests
     [InlineData(18, 0, 100, 1, "SqlServer2025")]
     public void A_Server_Version_Uses_The_Layout_Whose_Range_Holds_It(int major, int minor, int build, int revision, string expected)
         => Assert.Equal(expected, EngineLayout.Get(new Version(major, minor, build, revision)).Name);
+
+    [Theory]
+    [InlineData("CValHash", "Record Offset,Slot,Accessor")]
+    [InlineData("CValSSTable", "Slot,Accessor")]
+    [InlineData("CValHashCachedSwitch", "Value,Cached Status,Cached Type,Cached Value,Cached Length")]
+    [InlineData("CEsExec", "Input Values")]
+    [InlineData("CQScanTopNew", "Inputs,Plan Object,Execution Context,Top Count Expression")]
+    [InlineData("CQScanUnknown", "")]
+    public void A_Class_Has_Its_Own_Fields_And_Its_Base_Classes_Fields(string className, string expected)
+        => Assert.Equal(expected, string.Join(",", EngineLayout.Latest.GetFields(className).Select(f => f.Name)));
+
+    [Fact]
+    public void A_Repeated_Field_Is_Expanded_Into_Its_Elements()
+    {
+        var runs = EngineLayout.Latest.SortDescriptor.RunFields;
+
+        Assert.Equal((32, "Run 1", runs[0].Offset + 8), (runs.Count, runs[1].Name, runs[1].Offset));
+    }
 
     [Fact]
     public void An_Unknown_Version_Uses_The_Latest_Layout()

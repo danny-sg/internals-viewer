@@ -1,4 +1,5 @@
 using InternalsViewer.Query.FullTrace.Memory.History;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
 using InternalsViewer.Query.FullTrace.Tests.Memory.History;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
@@ -20,9 +21,11 @@ public class TraceHashTableReaderTests
 
     private const ulong OverflowPage = 0x60000;
 
-    private const ulong Slot = BucketPage + 3 * TraceHashTableLayout.BucketSize;
-
     private const ulong Overflow = OverflowPage + 0x80;
+
+    private static readonly ulong Slot = BucketPage + 3 * (ulong)Layout.HashItem.Size;
+
+    private static EngineLayout Layout => EngineLayout.Latest;
 
     [Fact]
     public void A_Bucket_Holds_The_Rows_In_Its_Head_Item_Then_In_Each_Overflow_Item()
@@ -64,11 +67,11 @@ public class TraceHashTableReaderTests
                                                     MemoryHistoryStoreHelper.Block(bindings, 0x110),
                                                     MemoryHistoryStoreHelper.Block(binding, 0x80)],
                                                    [(1, Group + 0x10, Pointer(0x70000)),
-                                                    (1, Group + TraceHashTableLayout.ColumnsOffset, Pointer(columnArray)),
-                                                    (1, Group + TraceHashTableLayout.ScanColumnsOffset, Pointer(scanArray)),
+                                                    (1, Group + (ulong)Layout.HashGroup.ColumnsField.Offset, Pointer(columnArray)),
+                                                    (1, Group + (ulong)Layout.HashGroup.ScanColumnsField.Offset, Pointer(scanArray)),
                                                     (1, columnArray, Pointer(value)),
                                                     (1, scanArray, Pointer(scanValue)),
-                                                    (1, value + TraceHashTableLayout.ValueAccessorOffset, Pointer(accessor)),
+                                                    (1, value + (ulong)Layout.HashValue.AccessorField.Offset, Pointer(accessor)),
                                                     (1, accessor, Pointer(bindings)),
                                                     (1, bindings + 0x62, BitConverter.GetBytes((ushort)1)),
                                                     (1, bindings + 0x70, Pointer(binding)),
@@ -103,7 +106,7 @@ public class TraceHashTableReaderTests
                                                     (1, Partition + 0x54, BitConverter.GetBytes(0x3Fu)),
                                                     (1, Directory, Pointer(PointerPage)),
                                                     (1, PointerPage, Pointer(BucketPage)),
-                                                    (1, Slot + TraceHashTableLayout.HeadOffset, Pointer(head)),
+                                                    (1, Slot + (ulong)Layout.HashItem.HeadField.Offset, Pointer(head)),
                                                     .. Item(head, Overflow, (11, 0xA0), (12, 0xB0)),
                                                     .. Item(Overflow, 0, (13, 0xC0))]);
 
@@ -114,11 +117,11 @@ public class TraceHashTableReaderTests
         =>
         [
             (1, address, [(byte)entries.Length]),
-            (1, address + TraceHashTableLayout.NextOffset, Pointer(next)),
+            (1, address + (ulong)Layout.HashItem.NextField.Offset, Pointer(next)),
             .. entries.SelectMany((e, i) => new (ulong, ulong, byte[])[]
             {
-                (1, address + (ulong)TraceHashTableLayout.GetKeyOffset(i), BitConverter.GetBytes(e.Key)),
-                (1, address + (ulong)TraceHashTableLayout.GetRowOffset(i), Pointer(e.Row))
+                (1, address + (ulong)Layout.HashItem.KeyFields[i].Offset, BitConverter.GetBytes(e.Key)),
+                (1, address + (ulong)Layout.HashItem.RowFields[i].Offset, Pointer(e.Row))
             })
         ];
 

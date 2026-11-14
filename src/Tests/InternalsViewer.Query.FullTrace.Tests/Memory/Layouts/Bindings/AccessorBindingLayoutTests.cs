@@ -1,6 +1,6 @@
 using System.Buffers.Binary;
-using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings.Enums;
 
@@ -66,7 +66,7 @@ public class AccessorBindingLayoutTests
 
     [Fact]
     public void The_Column_Count_Of_A_Column_Bindings_Array_Comes_From_Its_Size()
-        => Assert.Equal([2, 4], new[] { 256, 512 }.Select(AccessorBindingLayout.GetColumnCount));
+        => Assert.Equal([2, 4], new[] { 256, 512 }.Select(EngineLayout.Latest.ColumnBinding.GetColumnCount));
 
     [Fact]
     public void A_Scan_Holds_Its_Bindings_And_Its_Row_Buffer()

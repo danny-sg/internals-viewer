@@ -96,11 +96,6 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
         MemoryBindingsViewModel.GetFieldName(ColumnBindingField.ValueOffset)
     ];
 
-    private static readonly IReadOnlyList<MemoryField> BindingFields =
-        [.. AccessorBindingLayout.ColumnFields
-                                 .Where(f => !f.IsInfrequent)
-                                 .Select(f => new MemoryField(MemoryBindingsViewModel.GetFieldName(f.Field), f.Offset, f.Length))];
-
     private static readonly Color ReferenceColour = Color.FromArgb(255, 0xDD, 0xDD, 0xDD);
 
     public MemoryDataPathViewModel(MemoryHistoryViewModel history, TracePosition position, ITraceNavigator navigator)
@@ -128,6 +123,11 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
     private PlayheadLoader<HexImage> Loader { get; }
 
     private EngineLayout Layout => History.Store.Layout;
+
+    private IReadOnlyList<MemoryField> BindingFields
+        => field ??= [.. Layout.ColumnBinding.Fields
+                               .Where(f => !f.IsInfrequent)
+                               .Select(f => new MemoryField(MemoryBindingsViewModel.GetFieldName(f.Field), f.Offset, f.Length))];
 
     private HexImage? Loaded { get; set; }
 
@@ -353,7 +353,7 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
             return IteratorLayout.GetFields(History.Store, className, target.Type, data, History.IteratorTargets);
         }
 
-        return [.. fields.Concat(PlanOutputValueLayout.GetFields(History.Store, className)).DistinctBy(f => f.Offset).OrderBy(f => f.Offset)];
+        return [.. fields.Concat(Layout.GetFields(className)).DistinctBy(f => f.Offset).OrderBy(f => f.Offset)];
     }
 
     private void BuildTree(ulong? address)
@@ -590,7 +590,7 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
 
         var fields = isBinding ? BindingFields : Layout.RowBuffer.EntryFields;
 
-        var size = isBinding ? AccessorBindingLayout.ColumnSize : Layout.RowBuffer.EntryField.Length;
+        var size = isBinding ? Layout.ColumnBinding.Size : Layout.RowBuffer.EntryField.Length;
 
         var entryType = isBinding ? PlanOutputLinkType.ColumnBinding : PlanOutputLinkType.BufferEntry;
 
@@ -1111,9 +1111,7 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
 
         if (link.Type == PlanOutputLinkType.ColumnBinding)
         {
-            return AccessorBindingLayout.ColumnFields
-                                        .Where(f => !f.IsInfrequent)
-                                        .Select(f => new MemoryField(MemoryBindingsViewModel.GetFieldName(f.Field), f.Offset, f.Length));
+            return BindingFields;
         }
 
         return link.Field is { } field && link.Address == link.Source + (ulong)link.SourceOffset ? [field with { Offset = 0 }] : [];

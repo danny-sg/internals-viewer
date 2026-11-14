@@ -8,8 +8,7 @@ using InternalsViewer.Query.Extensions;
 namespace InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 
 internal sealed class PlanNodeHook(AddressTable<PlanNodeFunctionType> functions,
-                                   AddressTable<PlanObjectClass> planObjects,
-                                   EngineLayout layout) : ITraceHook
+                                   AddressTable<PlanObjectClass> planObjects) : ITraceHook
 {
     private const int IteratorArgument = 0;
 
@@ -58,15 +57,15 @@ internal sealed class PlanNodeHook(AddressTable<PlanNodeFunctionType> functions,
 
             case PlanNodeFunctionType.BatchHelper:
                 BatchHelpers.Add(iterator);
-                AddPlanNode(replay, iterator, layout.Iterator.PlanObjectField);
+                AddPlanNode(replay, iterator, replay.Layout.Iterator.PlanObjectField);
                 return;
 
             case PlanNodeFunctionType.Iterator:
-                AddPlanNode(replay, iterator, layout.Iterator.PlanObjectField);
+                AddPlanNode(replay, iterator, replay.Layout.Iterator.PlanObjectField);
                 return;
 
             case PlanNodeFunctionType.BatchIterator:
-                AddPlanNode(replay, iterator, layout.BatchIterator.PlanObjectField);
+                AddPlanNode(replay, iterator, replay.Layout.BatchIterator.PlanObjectField);
                 return;
         }
     }
@@ -152,15 +151,15 @@ internal sealed class PlanNodeHook(AddressTable<PlanNodeFunctionType> functions,
         {
             batchPlanObject = planObject;
 
-            if (!replay.TryRead(batchPlanObject + (ulong)layout.BatchPlanObject.PlanObjectField.Offset, out planObject))
+            if (!replay.TryRead(batchPlanObject + (ulong)replay.Layout.BatchPlanObject.PlanObjectField.Offset, out planObject))
             {
                 return null;
             }
         }
 
         if (GetPlanObjectClass(replay, planObject) != PlanObjectClass.Row
-            || !replay.TryRead(planObject + (ulong)layout.PlanObject.NodeIdField.Offset, out int nodeId)
-            || !replay.TryRead(planObject + (ulong)layout.PlanObject.QueryField.Offset, out ulong query)
+            || !replay.TryRead(planObject + (ulong)replay.Layout.PlanObject.NodeIdField.Offset, out int nodeId)
+            || !replay.TryRead(planObject + (ulong)replay.Layout.PlanObject.QueryField.Offset, out ulong query)
             || nodeId < 0
             || query < TraceAddress.MinimumAddress)
         {

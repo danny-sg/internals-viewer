@@ -1,9 +1,12 @@
 using InternalsViewer.Query.FullTrace.Hooks;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 
 namespace InternalsViewer.Query.FullTrace.Native;
 
 internal sealed unsafe class ReplayView : ITraceReplay
 {
+    public EngineLayout Layout { get; init; } = EngineLayout.Latest;
+
     public IntPtr View { get; set; }
 
     public IntPtr Session { get; set; }

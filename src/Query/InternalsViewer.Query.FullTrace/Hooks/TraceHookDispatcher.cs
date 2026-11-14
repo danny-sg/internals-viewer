@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Native.Enums;
 
@@ -8,9 +9,11 @@ internal sealed class TraceHookDispatcher
 {
     private const uint AllHookMask = uint.MaxValue;
 
-    public TraceHookDispatcher(IReadOnlyList<ITraceHook> hooks)
+    public TraceHookDispatcher(IReadOnlyList<ITraceHook> hooks, EngineLayout layout)
     {
         All = [.. hooks];
+
+        Replay = new ReplayView { Layout = layout };
 
         var capacity = 0;
 
@@ -55,7 +58,7 @@ internal sealed class TraceHookDispatcher
 
     private ITraceHook[] All { get; }
 
-    private ReplayView Replay { get; } = new();
+    private ReplayView Replay { get; }
 
     public unsafe void OnHook(IntPtr hookEvent, IntPtr view, IntPtr session)
     {

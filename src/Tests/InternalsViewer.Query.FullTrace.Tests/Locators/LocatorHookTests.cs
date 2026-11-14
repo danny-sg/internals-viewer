@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using System.Buffers.Binary;
 using System.Reflection.PortableExecutable;
 using System.Text;
@@ -40,11 +41,13 @@ public class LocatorHookTests
     }
 
     [Fact]
-    public void A_Path_Is_Followed_Before_The_Value_Is_Read()
+    public void A_Page_Reference_Is_Read_Through_The_Buffer_It_Points_To()
     {
-        var replay = new FakeTraceReplay().Write(Pointer + 8, Inner).Write(Inner + 0x10, Page336);
+        var pageId = (ulong)EngineLayout.Latest.Buffer.PageIdField.Offset;
 
-        var read = new LocatorRead(Function, 0, false, LocatorValueType.Page, Offset: 0x10, Path: [8]);
+        var replay = new FakeTraceReplay().Write(Pointer, Inner).Write(Inner + pageId, Page336);
+
+        var read = new LocatorRead(Function, 0, false, LocatorValueType.Page, LocatorPageSource.PageReference);
 
         Assert.Equal(Page336, Replay(read, replay, [Pointer, 0, 0, 0]).GetLocator(0)?.Value);
     }

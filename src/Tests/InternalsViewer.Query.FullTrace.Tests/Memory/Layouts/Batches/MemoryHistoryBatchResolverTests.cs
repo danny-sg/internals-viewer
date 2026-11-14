@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using System.Buffers.Binary;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Batches;
@@ -97,7 +98,7 @@ public class MemoryHistoryBatchResolverTests
         BinaryPrimitives.WriteUInt64LittleEndian(vectors.AsSpan(0x18), DeepPage);
         BinaryPrimitives.WriteUInt64LittleEndian(vectors.AsSpan(0x58), SecondBuffer + BufferOffset);
 
-        var page = new byte[DeepDataReader.PageHeaderSize];
+        var page = new byte[EngineLayout.Latest.DeepDataPage.HeaderSize];
 
         BinaryPrimitives.WriteUInt32LittleEndian(page.AsSpan(0x10), 0x53445042);
 

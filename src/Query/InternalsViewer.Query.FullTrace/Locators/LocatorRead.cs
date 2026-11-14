@@ -7,6 +7,5 @@ internal readonly record struct LocatorRead(ulong Function,
                                             int ArgumentSlot,
                                             bool IsReadAtReturn,
                                             LocatorValueType ValueType,
-                                            int Offset = 0,
-                                            int[]? Path = null,
+                                            LocatorPageSource PageSource = LocatorPageSource.Direct,
                                             int CountArgumentSlot = -1) : IArgumentRead;

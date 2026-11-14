@@ -95,11 +95,13 @@ public sealed class MemorySortTableViewModel : MemoryStructureViewModel
 
     private EngineLayout Layout => History.Store.Layout;
 
+    private IReadOnlyList<MemoryField> SortIteratorFields => field ??= Layout.GetFields(TraceSortTableReader.IteratorClass);
+
     private IReadOnlyList<MemoryField> EntryFields => Layout.SortEntry.Fields;
 
     private List<Colour> FieldColours => field ??= CreateColours(new[]
     {
-        Layout.SortIterator.Fields.Count,
+        SortIteratorFields.Count,
         Layout.SortRowset.Fields.Count,
         Layout.SortDescriptor.Fields.Count,
         EntryFields.Count
@@ -145,7 +147,7 @@ public sealed class MemorySortTableViewModel : MemoryStructureViewModel
         }
         else if (node.Type is MemoryStructureNodeType.ComparePage or MemoryStructureNodeType.Run)
         {
-            var size = EngineLayout.SortEntryLayout.Size;
+            var size = Layout.SortEntry.Size;
 
             var entry = HexAddress + (ulong)((offset - loaded.Image.Offset) / size * size);
 
@@ -198,7 +200,7 @@ public sealed class MemorySortTableViewModel : MemoryStructureViewModel
         switch (node.Type)
         {
             case MemoryStructureNodeType.SortTable:
-                ShowFields(node, Layout.SortIterator.Fields, FieldColours);
+                ShowFields(node, SortIteratorFields, FieldColours);
                 break;
 
             case MemoryStructureNodeType.Rowset:
@@ -600,7 +602,7 @@ public sealed class MemorySortTableViewModel : MemoryStructureViewModel
 
         ShowItemMarkers($"{node.Key} {page:X} {string.Join(",", onPage.Select(e => e.Address))}",
                         () => GetEntryMarkers(onPage, page, hexBase),
-                        EngineLayout.SortEntryLayout.Size);
+                        Layout.SortEntry.Size);
     }
 
     private ulong GetEntryPage(ulong entry) => Loaded?.Table.ComparePages.FirstOrDefault(p => IsOnPage(entry, p)) ?? 0;
@@ -634,7 +636,7 @@ public sealed class MemorySortTableViewModel : MemoryStructureViewModel
 
         SelectItemRow();
 
-        ShowItemMarkers($"{node.Key} {entries.Count}", () => GetEntryMarkers(entries, page, hexBase), EngineLayout.SortEntryLayout.Size);
+        ShowItemMarkers($"{node.Key} {entries.Count}", () => GetEntryMarkers(entries, page, hexBase), Layout.SortEntry.Size);
     }
 
     private QueryResultSet CreateEntryTable(LoadedTable loaded, List<TraceSortEntry> entries, bool isRun)

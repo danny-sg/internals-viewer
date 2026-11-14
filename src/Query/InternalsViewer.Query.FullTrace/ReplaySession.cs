@@ -1,5 +1,5 @@
 using InternalsViewer.Query.FullTrace.Memory.Address;
-using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -225,7 +225,7 @@ internal sealed class ReplaySession : IDisposable
                                                      .Select(f => new AddressMapFunction(f.Address, AddressMapOperation.Allocated)),
                                             VtableResolver.GetUniqueClasses(functions.Vtables));
 
-        var planNodeHook = new PlanNodeHook(functions.PlanNodeFunctions, functions.PlanObjects, Layout);
+        var planNodeHook = new PlanNodeHook(functions.PlanNodeFunctions, functions.PlanObjects);
 
         var bufferPool = new BufferPoolHook(functions.BufferPoolFunctions);
 
@@ -236,7 +236,8 @@ internal sealed class ReplaySession : IDisposable
                                     new StackArgumentHook(functions.StackArguments, store),
                                     addressMap,
                                     bufferPool,
-                                    .. stack is null ? Array.Empty<ITraceHook>() : [stack]]);
+                                    .. stack is null ? Array.Empty<ITraceHook>() : [stack]],
+                                   Layout);
 
         ReplayBridge.HookCallback onHook = hooks.OnHook;
 

@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Pages.Enums;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Memory.BufferPool;
@@ -22,6 +23,8 @@ public sealed partial class TraceBufferPool
     public static TraceBufferPool Empty { get; } = new([]);
 
     public int Count => Pages.Length;
+
+    public EngineLayout Layout { get; private init; } = EngineLayout.Latest;
 
     internal TracePosition? FirstPosition => Pages.Length == 0 ? null : Pages.Min(p => p.Position);
 
@@ -83,13 +86,16 @@ public sealed partial class TraceBufferPool
         return new TraceBufferReference(page.Page, page.DatabaseId, (int)(address - frame));
     }
 
+    internal TraceBufferPool WithLayout(EngineLayout layout)
+        => ReferenceEquals(layout, Layout) ? this : new TraceBufferPool(Pages, Layouts) { Layout = layout };
+
     internal IEnumerable<ulong> GetFrames() => Pages.Select(p => p.Frame).Distinct();
 
     private TraceBufferReference? GetBufferReference(ulong address, TracePosition position)
     {
         var last = SortedSearch.FirstAfter(BufferStarts, address) - 1;
 
-        if (last < 0 || address - BufferStarts[last] >= BufferDescriptor.Size)
+        if (last < 0 || address - BufferStarts[last] >= (ulong)Layout.Buffer.Size)
         {
             return null;
         }

@@ -101,13 +101,6 @@ public sealed class MemoryHashTableViewModel : MemoryStructureViewModel
 
     private const int RowField = 4;
 
-    private static readonly int ActiveField = GetField(TraceHashTableLayout.GroupFields, TraceHashTableLayout.ActivePartitionOffset);
-
-    private static readonly int LastField = GetField(TraceHashTableLayout.GroupFields, TraceHashTableLayout.PartitionListOffset);
-
-    private static readonly int FirstField = GetField(TraceHashTableLayout.GroupFields,
-                                                      TraceHashTableLayout.PartitionListOffset + sizeof(ulong));
-
 
     public MemoryHashTableViewModel(MemoryHistoryViewModel history, ulong group, TracePosition position, ITraceNavigator navigator)
         : base(history, position, navigator)
@@ -150,16 +143,24 @@ public sealed class MemoryHashTableViewModel : MemoryStructureViewModel
 
     private ulong Group { get; }
 
-    private EngineLayout.HashIteratorLayout HashIterator => History.Store.Layout.HashIterator;
+    private EngineLayout Layout => History.Store.Layout;
+
+    private EngineLayout.HashIteratorLayout HashIterator => Layout.HashIterator;
+
+    private int ActiveField => GetField(Layout.HashGroup.Fields, Layout.HashGroup.ActivePartitionField.Offset);
+
+    private int LastField => GetField(Layout.HashGroup.Fields, Layout.HashGroup.LastPartitionField.Offset);
+
+    private int FirstField => GetField(Layout.HashGroup.Fields, Layout.HashGroup.FirstPartitionField.Offset);
 
     private int CurrentField => GetField(HashIterator.TableFields, HashIterator.CurrentGroupField.Offset);
 
     private List<Colour> FieldColours => field ??= CreateColours(new[]
     {
         HashIterator.TableFields.Count,
-        TraceHashTableLayout.GroupFields.Count,
-        TraceHashTableLayout.PartitionFields.Count,
-        TraceHashTableLayout.ItemFields.Count
+        Layout.HashGroup.Fields.Count,
+        Layout.HashPartition.Fields.Count,
+        Layout.HashItem.Fields.Count
     }.Max());
 
     private ulong Iterator { get; }
@@ -221,7 +222,7 @@ public sealed class MemoryHashTableViewModel : MemoryStructureViewModel
         else if (node.Type is MemoryStructureNodeType.BucketPage or MemoryStructureNodeType.OverflowPage
                  && GetPartition(loaded, node) is not null)
         {
-            var size = (ulong)TraceHashTableLayout.BucketSize;
+            var size = (ulong)Layout.HashItem.Size;
 
             var item = HexAddress + (ulong)(offset - loaded.Image.Offset) / size * size;
 
@@ -429,9 +430,9 @@ public sealed class MemoryHashTableViewModel : MemoryStructureViewModel
         return badges;
     }
 
-    private static string GetBucketRange(TraceHashPartition partition, TraceHashPage page)
+    private string GetBucketRange(TraceHashPartition partition, TraceHashPage page)
     {
-        var last = Math.Min(page.FirstBucket + TraceHashTableLayout.BucketsPerPage, partition.BucketCount) - 1;
+        var last = Math.Min(page.FirstBucket + Layout.HashItem.BucketsPerPage, partition.BucketCount) - 1;
 
         return $"Buckets {page.FirstBucket}-{last}";
     }
@@ -487,7 +488,7 @@ public sealed class MemoryHashTableViewModel : MemoryStructureViewModel
             ? table.Partitions[node.Partition]
             : null;
 
-    private static bool IsInRange(int bucket, int first) => bucket >= first && bucket < first + TraceHashTableLayout.BucketsPerPage;
+    private bool IsInRange(int bucket, int first) => bucket >= first && bucket < first + Layout.HashItem.BucketsPerPage;
 
     private Marker CreateMarker(string name, int offset, int length, int colour)
         => CreateMarker(name, offset, length, FieldColours[colour]);
@@ -630,12 +631,12 @@ public sealed class MemoryHashTableViewModel : MemoryStructureViewModel
 
             if (node.Type == MemoryStructureNodeType.Group)
             {
-                nodes.TryAdd(node.Address + TraceHashTableLayout.PartitionListOffset, node);
+                nodes.TryAdd(node.Address + (ulong)Layout.HashGroup.LastPartitionField.Offset, node);
             }
 
             if (node.Type == MemoryStructureNodeType.Partition)
             {
-                nodes.TryAdd(node.Address + TraceHashTableLayout.PartitionLinkOffset, node);
+                nodes.TryAdd(node.Address + (ulong)Layout.HashPartition.PreviousPartitionField.Offset, node);
             }
         }
 
@@ -816,7 +817,7 @@ public sealed class MemoryHashTableViewModel : MemoryStructureViewModel
             return;
         }
 
-        Select(node, node.Address + (ulong)((bucket - node.FirstBucket) * TraceHashTableLayout.BucketSize));
+        Select(node, node.Address + (ulong)((bucket - node.FirstBucket) * Layout.HashItem.Size));
     }
 
     protected override void ShowDetail(MemoryStructureNode node)
@@ -833,7 +834,7 @@ public sealed class MemoryHashTableViewModel : MemoryStructureViewModel
                 break;
 
             case MemoryStructureNodeType.Group:
-                ShowFields(node, TraceHashTableLayout.GroupFields, FieldColours);
+                ShowFields(node, Layout.HashGroup.Fields, FieldColours);
                 break;
 
             case MemoryStructureNodeType.WorktableGroup:
@@ -845,7 +846,7 @@ public sealed class MemoryHashTableViewModel : MemoryStructureViewModel
                 break;
 
             case MemoryStructureNodeType.Partition:
-                ShowFields(node, TraceHashTableLayout.PartitionFields, FieldColours);
+                ShowFields(node, Layout.HashPartition.Fields, FieldColours);
                 break;
 
             case MemoryStructureNodeType.BucketPage:
@@ -1004,12 +1005,12 @@ public sealed class MemoryHashTableViewModel : MemoryStructureViewModel
 
         SelectItemRow();
 
-        ShowItemMarkers($"{node.Key} {content}", () => GetPageMarkers(partition, page, hexBase), TraceHashTableLayout.BucketSize);
+        ShowItemMarkers($"{node.Key} {content}", () => GetPageMarkers(partition, page, hexBase), Layout.HashItem.Size);
     }
 
     private IEnumerable<Marker> GetPageMarkers(TraceHashPartition partition, ulong page, int hexBase)
     {
-        var fields = TraceHashTableLayout.ItemFields;
+        var fields = Layout.HashItem.Fields;
 
         foreach (var bucket in partition.Buckets)
         {
@@ -1038,12 +1039,12 @@ public sealed class MemoryHashTableViewModel : MemoryStructureViewModel
                 for (var entry = 0; entry < item.Entries.Count; entry++)
                 {
                     yield return CreateMarker($"Bucket {bucket.Index} {fields[KeyField].Name} {entry + 1}",
-                                              offset + TraceHashTableLayout.GetKeyOffset(entry),
+                                              offset + Layout.HashItem.KeyFields[entry].Offset,
                                               fields[KeyField].Length,
                                               KeyField);
 
                     yield return CreateMarker($"Bucket {bucket.Index} {fields[RowField].Name} {entry + 1}",
-                                              offset + TraceHashTableLayout.GetRowOffset(entry),
+                                              offset + Layout.HashItem.RowFields[entry].Offset,
                                               fields[RowField].Length,
                                               RowField);
                 }
@@ -1079,7 +1080,7 @@ public sealed class MemoryHashTableViewModel : MemoryStructureViewModel
                                                  MemoryStructureNode node,
                                                  int current)
     {
-        var fields = TraceHashTableLayout.ItemFields;
+        var fields = Layout.HashItem.Fields;
 
         var columns = new List<ResultColumn>
         {
@@ -1093,13 +1094,13 @@ public sealed class MemoryHashTableViewModel : MemoryStructureViewModel
 
         var heads = partition.Buckets.ToDictionary(b => b.Address);
 
-        var last = Math.Min(node.FirstBucket + TraceHashTableLayout.BucketsPerPage, partition.BucketCount);
+        var last = Math.Min(node.FirstBucket + Layout.HashItem.BucketsPerPage, partition.BucketCount);
 
         var rows = new List<ResultRow<long>>();
 
         for (var bucket = node.FirstBucket; bucket < last; bucket++)
         {
-            var slot = node.Address + (ulong)((bucket - node.FirstBucket) * TraceHashTableLayout.BucketSize);
+            var slot = node.Address + (ulong)((bucket - node.FirstBucket) * Layout.HashItem.Size);
 
             var hasHead = heads.TryGetValue(slot, out var head);
 
@@ -1126,7 +1127,7 @@ public sealed class MemoryHashTableViewModel : MemoryStructureViewModel
 
     private QueryResultSet CreateOverflowPageTable(TraceHashAccess? access, TraceHashPartition partition, ulong page, int current)
     {
-        var fields = TraceHashTableLayout.ItemFields;
+        var fields = Layout.HashItem.Fields;
 
         var columns = new List<ResultColumn>
         {
@@ -1199,7 +1200,7 @@ public sealed class MemoryHashTableViewModel : MemoryStructureViewModel
             return new ResultDetails(string.Empty, [], NoRows);
         }
 
-        var fields = TraceHashTableLayout.ItemFields;
+        var fields = Layout.HashItem.Fields;
 
         var item = owner.Bucket.Items[owner.Position];
 

@@ -676,7 +676,7 @@ public sealed class MemoryHistoryGraph
             }
         }
 
-        if (!timeline.ContainsKey(BufferDescriptor.FrameOffset) && pool.IsBuffer(info.Address))
+        if (!timeline.ContainsKey(pool.Layout.Buffer.FrameField.Offset) && pool.IsBuffer(info.Address))
         {
             AddFrames(pool, timeline, info.Address, from, to, isWanted);
         }
@@ -713,7 +713,7 @@ public sealed class MemoryHistoryGraph
 
         if (frames.Count > 0)
         {
-            timeline[BufferDescriptor.FrameOffset] = frames;
+            timeline[pool.Layout.Buffer.FrameField.Offset] = frames;
         }
     }
 
