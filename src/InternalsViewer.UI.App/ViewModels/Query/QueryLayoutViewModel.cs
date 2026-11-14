@@ -266,6 +266,8 @@ public sealed partial class QueryLayoutViewModel : ObservableObject, IDisposable
 
     public void ShowBelowPlan(DocumentViewModel document) => Dock.DockBelow(document, _documentsByKey[PlanKey]);
 
+    public void ShowBesideTraceTimeline(DocumentViewModel document) => Dock.ShowBeside(document, _documentsByKey[TraceTimelineKey]);
+
     public void ShowCallTree()
     {
         IsCallTreeVisible = true;

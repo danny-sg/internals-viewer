@@ -78,7 +78,7 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
 
     private const string VariableText = "(Variable)";
 
-    private const string KeysAndPredicatesName = "Keys And Predicates";
+    private const string KeysAndPredicatesName = "Keys/Predicates";
 
     private const string NotSeenName = "Not Seen In Memory";
 

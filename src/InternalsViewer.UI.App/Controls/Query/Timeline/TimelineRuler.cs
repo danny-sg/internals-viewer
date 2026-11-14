@@ -524,6 +524,8 @@ public sealed class TimelineRuler : UserControl, IDisposable
 
         if (Source is not { } source || source.GetRulerState() is not { } state)
         {
+            DrawEmpty(canvas, width);
+
             return;
         }
 
@@ -531,6 +533,8 @@ public sealed class TimelineRuler : UserControl, IDisposable
 
         if (area.Width <= 0)
         {
+            DrawEmpty(canvas, width);
+
             return;
         }
 
@@ -550,6 +554,16 @@ public sealed class TimelineRuler : UserControl, IDisposable
         {
             DrawPlayhead(canvas, source, (float)TimelineRulerLayout.GetX(state, area, playhead), playhead, width);
         }
+    }
+
+    private void DrawEmpty(SKCanvas canvas, float width)
+    {
+        for (var x = 0f; x < width; x += TickSpacing)
+        {
+            canvas.DrawLine(x, RulerHeight - TickLength, x, RulerHeight, Paints.Tick);
+        }
+
+        canvas.DrawLine(0, RulerHeight, width, RulerHeight, Paints.Tick);
     }
 
     private void DrawCrop(SKCanvas canvas, TimelineRulerState state, TimelineRulerArea area)

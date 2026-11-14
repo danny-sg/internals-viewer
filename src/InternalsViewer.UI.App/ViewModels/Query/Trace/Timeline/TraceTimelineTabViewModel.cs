@@ -402,10 +402,12 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
                 MinWidth = HexViewControl.StandardWidth
             };
 
+            Query.Layout.RegisterDocument(document.Key, document);
+
             StructureDocuments.Add(document);
         }
 
-        ShowStructure(document, isBelowPlan: false);
+        Query.Layout.ShowBesideTraceTimeline(document);
     }
 
     public List<TraceMenuItem> GetMenuItems(TraceMenuTarget target)
