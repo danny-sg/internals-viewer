@@ -53,6 +53,8 @@ public sealed partial class MarkerTreeView
         InitializeComponent();
 
         RegisterPropertyChangedCallback(VisibilityProperty, OnVisibilityChanged);
+
+        Loaded += (_, _) => RebuildIfPending();
     }
 
     public event EventHandler<PageAddressEventArgs>? PageClicked;
@@ -61,9 +63,11 @@ public sealed partial class MarkerTreeView
 
     private ILogger Logger => _logger ??= App.GetService<ILoggerFactory>().CreateLogger<MarkerTreeView>();
 
-    private void OnVisibilityChanged(DependencyObject sender, DependencyProperty property)
+    private void OnVisibilityChanged(DependencyObject sender, DependencyProperty property) => RebuildIfPending();
+
+    private void RebuildIfPending()
     {
-        if (Visibility == Visibility.Visible && _isRebuildPending)
+        if (_isRebuildPending && IsLoaded && Visibility == Visibility.Visible)
         {
             RebuildNodes();
         }
@@ -92,6 +96,9 @@ public sealed partial class MarkerTreeView
             _isSyncingSelection = false;
         }
     }
+
+    private TreeViewNode? GetNode(Marker? marker)
+        => marker is not null && _nodesByMarker.TryGetValue(marker, out var node) ? node : null;
 
     private TreeViewNode BuildNode(Marker marker)
     {
@@ -170,7 +177,7 @@ public sealed partial class MarkerTreeView
             return;
         }
 
-        if (control.Visibility == Visibility.Collapsed)
+        if (control.Visibility == Visibility.Collapsed || !control.IsLoaded)
         {
             control._isRebuildPending = true;
 
@@ -187,20 +194,22 @@ public sealed partial class MarkerTreeView
             return;
         }
 
-        var newNode = e.NewValue is Marker marker
-                      && control._nodesByMarker.TryGetValue(marker, out var node)
-                      ? node
-                      : null;
+        var marker = e.NewValue as Marker;
 
-        if (ReferenceEquals(control.TreeView.SelectedNode, newNode))
+        if (ReferenceEquals(control.TreeView.SelectedNode, control.GetNode(marker)))
         {
             return;
         }
 
         control.DispatcherQueue.TryEnqueue(() =>
         {
+            if (!control.IsLoaded)
+            {
+                return;
+            }
+
             control._isSyncingSelection = true;
-            control.TreeView.SelectedNode = newNode;
+            control.TreeView.SelectedNode = control.GetNode(marker);
             control._isSyncingSelection = false;
         });
     }

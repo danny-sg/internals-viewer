@@ -6,6 +6,7 @@ using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Controls.Query.Plan;
 using InternalsViewer.UI.App.Models.Query.Plan;
 using InternalsViewer.UI.App.Services.Query.Trace;
+using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Query;
 using Microsoft.UI;
 using Microsoft.UI.Dispatching;
@@ -19,7 +20,7 @@ using Microsoft.UI.Xaml.Input;
 namespace InternalsViewer.UI.App.Views.Query.Plan;
 
 /// <summary>Dock document hosting the execution plan diagrams for the active query</summary>
-public sealed partial class QueryPlanTabView : UserControl
+public sealed partial class QueryPlanTabView : UserControl, IDisposable
 {
     private const double GuidePaneMinHeight = 200;
 
@@ -63,6 +64,8 @@ public sealed partial class QueryPlanTabView : UserControl
         PlanRepeater.SizeChanged += OnPlanAreaSizeChanged;
 
         PlanScroller.SizeChanged += OnPlanAreaSizeChanged;
+
+        PlanScroller.AddHandler(PointerPressedEvent, new PointerEventHandler(OnPlanPointerPressed), handledEventsToo: true);
     }
 
     public QueryViewModel? ViewModel => DataContext as QueryViewModel;
@@ -139,6 +142,8 @@ public sealed partial class QueryPlanTabView : UserControl
 
     private ScrollViewer? GuideScroller { get; set; }
 
+    private SettingsViewModel Settings { get; } = App.GetService<SettingsViewModel>();
+
     public static ImageSource? GetStepIcon(Uri? icon) => icon is null ? null : new SvgImageSource(icon);
 
     public static Brush? GetStepBackground(bool isCurrent) => isCurrent ? CurrentStepBrush : null;
@@ -176,6 +181,29 @@ public sealed partial class QueryPlanTabView : UserControl
 
     public Visibility GetGuideBarVisibility(bool isGuideMode, bool isStepsVisible)
         => isGuideMode && !isStepsVisible ? Visibility.Visible : Visibility.Collapsed;
+
+    public Visibility GetStepsRulerVisibility(bool isPinned, bool isTrace) => !isPinned && isTrace ? Visibility.Visible : Visibility.Collapsed;
+
+    public void Dispose()
+    {
+        Bindings.StopTracking();
+
+        StepsRuler.Dispose();
+    }
+
+    protected override void OnKeyDown(KeyRoutedEventArgs e)
+    {
+        base.OnKeyDown(e);
+
+        if (e.Handled || e.Key != Windows.System.VirtualKey.Space || ViewModel is not { Layout.IsGuideMode: true } viewModel)
+        {
+            return;
+        }
+
+        viewModel.GuidePlayback.Step(forward: true);
+
+        e.Handled = true;
+    }
 
     private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
     {
@@ -325,6 +353,16 @@ public sealed partial class QueryPlanTabView : UserControl
             planControl.IndexOpenRequested -= OnPlanIndexOpenRequested;
             planControl.IndexOpenRequested += OnPlanIndexOpenRequested;
 
+            planControl.CanOpenHashTable = n => ViewModel?.GetHashTableGroup(n) is not null;
+
+            planControl.HashTableOpenRequested -= OnPlanHashTableOpenRequested;
+            planControl.HashTableOpenRequested += OnPlanHashTableOpenRequested;
+
+            planControl.CanOpenSortTable = n => ViewModel?.GetSortIterator(n) is not null;
+
+            planControl.SortTableOpenRequested -= OnPlanSortTableOpenRequested;
+            planControl.SortTableOpenRequested += OnPlanSortTableOpenRequested;
+
 
             planControl.SimulationOpenRequested -= OnPlanSimulationOpenRequested;
             planControl.SimulationOpenRequested += OnPlanSimulationOpenRequested;
@@ -340,6 +378,11 @@ public sealed partial class QueryPlanTabView : UserControl
 
             planControl.CounterToggleRequested -= OnCounterToggleRequested;
             planControl.CounterToggleRequested += OnCounterToggleRequested;
+
+            planControl.CanSkipTo = n => ViewModel?.CanSkipGuideTo(n) == true;
+
+            planControl.SkipToRequested -= OnPlanSkipToRequested;
+            planControl.SkipToRequested += OnPlanSkipToRequested;
 
             planControl.PageOpenRequested -= OnPageOpenRequested;
             planControl.PageOpenRequested += OnPageOpenRequested;
@@ -671,6 +714,21 @@ public sealed partial class QueryPlanTabView : UserControl
 
     private void OnPlanBackgroundTapped(object sender, TappedRoutedEventArgs e) => ClearPlanSelection();
 
+    private void OnPlanPointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        if (ViewModel?.Layout.IsGuideMode != true)
+        {
+            return;
+        }
+
+        var focused = FocusManager.GetFocusedElement(XamlRoot) as UIElement;
+
+        if (!ReferenceEquals(focused?.FindAscendantOrSelf<ScrollViewer>(), PlanScroller))
+        {
+            PlanScroller.Focus(FocusState.Pointer);
+        }
+    }
+
     private void ClearPlanSelection() => ViewModel?.SelectedPlanNode = null;
 
     private void OnPlanContextRequested(UIElement sender, ContextRequestedEventArgs e)
@@ -696,6 +754,10 @@ public sealed partial class QueryPlanTabView : UserControl
 
     private void OnPlanIndexOpenRequested(object? sender, PlanNode node) => ViewModel?.OpenIndex(node);
 
+    private void OnPlanHashTableOpenRequested(object? sender, PlanNode node) => ViewModel?.OpenHashTable(node);
+
+    private void OnPlanSortTableOpenRequested(object? sender, PlanNode node) => ViewModel?.OpenSortTable(node);
+
     private void OnPlanSimulationOpenRequested(object? sender, PlanNode node) => ViewModel?.OpenSimulation(node);
 
     private void OnPlanCallTreeOpenRequested(object? sender, PlanNode node) => ViewModel?.OpenCallTree(node);
@@ -707,6 +769,8 @@ public sealed partial class QueryPlanTabView : UserControl
     }
 
     private void OnCounterToggleRequested(object? sender, PlanNode node) => ViewModel?.ToggleCounter(node);
+
+    private void OnPlanSkipToRequested(object? sender, PlanNode node) => ViewModel?.SkipGuideTo(node);
 
     private void OnPageOpenRequested(object? sender, PlanPage page) => ViewModel?.OpenOperatorPage(page);
 

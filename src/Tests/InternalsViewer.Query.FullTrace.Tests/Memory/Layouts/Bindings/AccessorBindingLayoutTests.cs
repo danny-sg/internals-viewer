@@ -1,7 +1,8 @@
 using System.Buffers.Binary;
+using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings.Enums;
-using InternalsViewer.Query.Interfaces;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 
@@ -65,7 +66,7 @@ public class AccessorBindingLayoutTests
 
     [Fact]
     public void The_Column_Count_Of_A_Column_Bindings_Array_Comes_From_Its_Size()
-        => Assert.Equal([2, 4], new[] { 256, 512 }.Select(AccessorBindingLayout.GetColumnCount));
+        => Assert.Equal([2, 4], new[] { 256, 512 }.Select(EngineLayout.Latest.ColumnBinding.GetColumnCount));
 
     [Fact]
     public void A_Scan_Holds_Its_Bindings_And_Its_Row_Buffer()
@@ -128,8 +129,10 @@ public class AccessorBindingLayoutTests
         BinaryPrimitives.WriteUInt64LittleEndian(data.AsSpan(offset + 0x48), infrequentData);
     }
 
-    private sealed class Memory : IMemoryReader
+    private sealed class Memory : ITraceMemoryReader
     {
+        public EngineLayout Layout => EngineLayout.Latest;
+
         private List<(ulong Address, byte[] Data)> Regions { get; } = [];
 
         public Memory Add(ulong address, byte[] data)

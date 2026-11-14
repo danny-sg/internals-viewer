@@ -4,6 +4,7 @@ using InternalsViewer.Execution.AccessPaths.Aggregation;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Execution.AccessPaths.Windowing;
+using InternalsViewer.Query.Plans.Enums;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Operators;
 using InternalsViewer.Query.Plans.Parsers.Predicates;
@@ -199,7 +200,7 @@ public static class ExecutionPlanParser
         ExtractObjectInfo(element, node);
 
         node.OutputColumns = ParseOutputColumns(element);
-        node.ReferencedValues = [.. GetValueReferences(element).Select(e => GetStringAttribute(e, "Column"))];
+        node.ReferencedColumns = ParseColumnUses(element);
         node.OuterReferences = ParseOuterReferences(element);
         node.DefinedValues = ParseDefinedValues(element, parameters);
         node.ProbedBitmaps = ParseProbedBitmaps(element);
@@ -691,7 +692,7 @@ public static class ExecutionPlanParser
             {
                 Columns = columns,
                 Expression = scalar?.Attribute("ScalarString")?.Value,
-                References = scalar is null ? [] : [.. GetValueReferences(scalar).Select(e => GetStringAttribute(e, "Column"))],
+                References = scalar is null ? [] : [.. GetColumnUses(scalar, ColumnUseType.Expression).Select(u => ReadColumn(u.Element))],
                 ParsedExpression = expressionParser.ParseExpression(scalar),
                 DataType = ParseConvertDataType(scalar)
             });
@@ -700,21 +701,35 @@ public static class ExecutionPlanParser
         return result;
     }
 
-    private static IEnumerable<XElement> GetValueReferences(XElement element)
+    private static List<ColumnUse> ParseColumnUses(XElement element)
+        => [.. GetColumnUses(element, ColumnUseType.Expression).Select(u => new ColumnUse(ReadColumn(u.Element), u.Type))];
+
+    private static IEnumerable<(XElement Element, ColumnUseType Type)> GetColumnUses(XElement element, ColumnUseType type)
     {
         foreach (var child in element.Elements().Where(e => e.Name.LocalName is not ("RelOp" or "OutputList" or "OuterReferences")))
         {
-            if (child.Name.LocalName == "ColumnReference" && child.Attribute("Table") is null)
+            if (child.Name.LocalName == "ColumnReference" && element.Name.LocalName is not ("DefinedValue" or "ValueVector"))
             {
-                yield return child;
+                yield return (child, type);
             }
 
-            foreach (var nested in GetValueReferences(child))
+            foreach (var nested in GetColumnUses(child, GetUseType(child.Name.LocalName) ?? type))
             {
                 yield return nested;
             }
         }
     }
+
+    private static ColumnUseType? GetUseType(string elementName)
+        => elementName switch
+        {
+            "HashKeysBuild" => ColumnUseType.BuildKey,
+            "HashKeysProbe" => ColumnUseType.ProbeKey,
+            "Predicate" or "SeekPredicates" or "ProbeResidual" or "BuildResidual" or "Residual" => ColumnUseType.Predicate,
+            "GroupBy" => ColumnUseType.Group,
+            "OrderBy" => ColumnUseType.Order,
+            _ => null
+        };
 
     private static HashSet<string> ParseOuterReferences(XElement element)
         => [.. element.Elements()

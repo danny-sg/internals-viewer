@@ -1,4 +1,5 @@
 using InternalsViewer.Query.FullTrace.Memory.Address;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -11,6 +12,7 @@ using InternalsViewer.Query.FullTrace.Native.Enums;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Recording;
 using InternalsViewer.Query.FullTrace.Functions;
+using InternalsViewer.Query.FullTrace.Symbols;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Stubs;
@@ -71,7 +73,7 @@ internal sealed class ReplaySession : IDisposable
         Modules = ReadModules(handle);
         ServerVersion = Modules.FirstOrDefault(m => string.Equals(m.Name, ServerModule, StringComparison.OrdinalIgnoreCase))
                                ?.ProductVersion;
-        Offsets = new OffsetProvider(ServerVersion);
+        Layout = EngineLayout.Get(ServerVersion);
     }
 
     public TimeTravelTraceFile TraceFile { get; }
@@ -80,9 +82,9 @@ internal sealed class ReplaySession : IDisposable
 
     public Version? ServerVersion { get; }
 
-    private TraceHandle Handle { get; }
+    internal EngineLayout Layout { get; }
 
-    private OffsetProvider Offsets { get; }
+    private TraceHandle Handle { get; }
 
     /// <summary>
     /// Semaphore to gate access to the replay engine
@@ -223,7 +225,7 @@ internal sealed class ReplaySession : IDisposable
                                                      .Select(f => new AddressMapFunction(f.Address, AddressMapOperation.Allocated)),
                                             VtableResolver.GetUniqueClasses(functions.Vtables));
 
-        var planNodeHook = new PlanNodeHook(functions.PlanNodeFunctions, functions.PlanObjects, Offsets.PlanNode);
+        var planNodeHook = new PlanNodeHook(functions.PlanNodeFunctions, functions.PlanObjects);
 
         var bufferPool = new BufferPoolHook(functions.BufferPoolFunctions);
 
@@ -234,7 +236,8 @@ internal sealed class ReplaySession : IDisposable
                                     new StackArgumentHook(functions.StackArguments, store),
                                     addressMap,
                                     bufferPool,
-                                    .. stack is null ? Array.Empty<ITraceHook>() : [stack]]);
+                                    .. stack is null ? Array.Empty<ITraceHook>() : [stack]],
+                                   Layout);
 
         ReplayBridge.HookCallback onHook = hooks.OnHook;
 

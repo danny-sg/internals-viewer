@@ -1,11 +1,14 @@
 using InternalsViewer.Query.FullTrace.Hooks;
-using InternalsViewer.Query.Interfaces;
+using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 
 namespace InternalsViewer.Query.FullTrace.Locators;
 
-internal sealed class ImageFallbackMemory(ITraceReplay replay, ImageText images) : IMemoryReader
+internal sealed class ImageFallbackMemory(ITraceReplay replay, ImageText images) : ITraceMemoryReader
 {
     public ITraceReplay Replay => replay;
+
+    public EngineLayout Layout => replay.Layout;
 
     public int Read(ulong address, Span<byte> destination)
     {

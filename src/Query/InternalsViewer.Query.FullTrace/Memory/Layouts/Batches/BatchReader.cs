@@ -1,7 +1,6 @@
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Batches.Enums;
-using InternalsViewer.Query.Interfaces;
 
 namespace InternalsViewer.Query.FullTrace.Memory.Layouts.Batches;
 
@@ -9,60 +8,11 @@ public static class BatchReader
 {
     public const string ClassName = "CBpBatch";
 
-    public const int VectorEntrySize = 0x58;
-
-    private const ulong AllocationBitmapOffset = 0x00;
-
-    private const ulong VectorArrayOffset = 0x08;
-
-    private const ulong PureBitmapOffset = 0x10;
-
-    private const ulong VectorCapacityOffset = 0x18;
-
-    private const ulong VectorCountOffset = 0x1C;
-
-    private const ulong VersionOffset = 0x20;
-
-    private const ulong CapacityOffset = 0x24;
-
-    private const ulong ActiveRowCountOffset = 0x28;
-
-    private const ulong MemoryObjectOffset = 0x30;
-
-    private const ulong SelectionOffset = 0x38;
-
-    private const ulong DeepDataAllocatorOffset = 0x40;
-
-    private const ulong FreeDeepPagesOffset = 0x48;
-
-    private const ulong BlobHandleFactoryOffset = 0x58;
-
-    private const ulong CurrentDeepPageOffset = 0x10;
-
-    private const ulong FirstDeepPageOffset = 0x18;
-
     private const int MaximumVectors = 1024;
 
     private const int MaximumRows = 0x10000;
 
-    public static List<MemoryField> Fields { get; } =
-    [
-        new("Allocation Bitmap", (int)AllocationBitmapOffset, sizeof(ulong)),
-        new("Vector Array", (int)VectorArrayOffset, sizeof(ulong)),
-        new("Pure Bitmap", (int)PureBitmapOffset, sizeof(ulong)),
-        new("Vector Capacity", (int)VectorCapacityOffset, sizeof(int)),
-        new("Vector Count", (int)VectorCountOffset, sizeof(int)),
-        new("Version", (int)VersionOffset, sizeof(int), IsHex: true),
-        new("Capacity", (int)CapacityOffset, sizeof(int)),
-        new("Active Rows", (int)ActiveRowCountOffset, sizeof(int)),
-        new("Memory Object", (int)MemoryObjectOffset, sizeof(ulong)),
-        new("Selection Vector", (int)SelectionOffset, sizeof(ulong)),
-        new("Deep Data Allocator", (int)DeepDataAllocatorOffset, sizeof(ulong)),
-        new("Free Deep Pages", (int)FreeDeepPagesOffset, sizeof(ulong)),
-        new("Blob Handle Factory", (int)BlobHandleFactoryOffset, sizeof(ulong))
-    ];
-
-    public static BatchState? Read(IMemoryReader memory, ulong address)
+    public static BatchState? Read(ITraceMemoryReader memory, ulong address)
     {
         if (ReadHeader(memory, address) is not { } header)
         {
@@ -83,8 +33,8 @@ public static class BatchReader
 
             vectors.Add(vector with
             {
-                CurrentDeepPage = GetEntryPointer(memory, header, index, CurrentDeepPageOffset),
-                FirstDeepPage = GetEntryPointer(memory, header, index, FirstDeepPageOffset)
+                CurrentDeepPage = GetEntryPointer(memory, header, index, memory.Layout.Batch.CurrentDeepPageField),
+                FirstDeepPage = GetEntryPointer(memory, header, index, memory.Layout.Batch.FirstDeepPageField)
             });
         }
 
@@ -97,10 +47,13 @@ public static class BatchReader
                               header.SelectionAddress,
                               selection,
                               rowCount,
-                              vectors);
+                              vectors)
+        {
+            VectorSize = memory.Layout.Batch.VectorSize
+        };
     }
 
-    public static List<(ulong Address, BatchPart Part)> GetParts(IMemoryReader memory, ulong address)
+    public static List<(ulong Address, BatchPart Part)> GetParts(ITraceMemoryReader memory, ulong address)
     {
         if (ReadHeader(memory, address) is not { } header)
         {
@@ -121,9 +74,9 @@ public static class BatchReader
 
             var deepData = new BatchPart(BatchPartType.DeepData, index + 1);
 
-            parts.Add((GetEntryPointer(memory, header, index, CurrentDeepPageOffset), deepData));
+            parts.Add((GetEntryPointer(memory, header, index, memory.Layout.Batch.CurrentDeepPageField), deepData));
 
-            var firstPage = GetEntryPointer(memory, header, index, FirstDeepPageOffset);
+            var firstPage = GetEntryPointer(memory, header, index, memory.Layout.Batch.FirstDeepPageField);
 
             parts.AddRange(DeepDataReader.GetPages(memory, firstPage).Select(p => (p, deepData)));
         }
@@ -131,21 +84,23 @@ public static class BatchReader
         return parts;
     }
 
-    private static Header? ReadHeader(IMemoryReader memory, ulong address)
+    private static Header? ReadHeader(ITraceMemoryReader memory, ulong address)
     {
-        if (!memory.TryRead(address + VectorArrayOffset, out ulong vectorArray)
-            || !memory.TryRead(address + VectorCountOffset, out int vectorCount)
-            || !memory.TryRead(address + CapacityOffset, out int capacity)
-            || !memory.TryRead(address + ActiveRowCountOffset, out int activeRowCount))
+        var layout = memory.Layout.Batch;
+
+        if (!memory.TryRead(address + (ulong)layout.VectorArrayField.Offset, out ulong vectorArray)
+            || !memory.TryRead(address + (ulong)layout.VectorCountField.Offset, out int vectorCount)
+            || !memory.TryRead(address + (ulong)layout.CapacityField.Offset, out int capacity)
+            || !memory.TryRead(address + (ulong)layout.ActiveRowCountField.Offset, out int activeRowCount))
         {
             return null;
         }
 
-        memory.TryRead(address + AllocationBitmapOffset, out ulong allocationBitmap);
+        memory.TryRead(address + (ulong)layout.AllocationBitmapField.Offset, out ulong allocationBitmap);
 
-        memory.TryRead(address + PureBitmapOffset, out ulong pureBitmap);
+        memory.TryRead(address + (ulong)layout.PureBitmapField.Offset, out ulong pureBitmap);
 
-        memory.TryRead(address + SelectionOffset, out ulong selection);
+        memory.TryRead(address + (ulong)layout.SelectionField.Offset, out ulong selection);
 
         return new Header(vectorArray,
                           Math.Clamp(vectorCount, 0, MaximumVectors),
@@ -156,15 +111,16 @@ public static class BatchReader
                           selection);
     }
 
-    private static ulong GetBuffer(IMemoryReader memory, Header header, int index) => GetEntryPointer(memory, header, index, 0);
+    private static ulong GetBuffer(ITraceMemoryReader memory, Header header, int index)
+        => GetEntryPointer(memory, header, index, memory.Layout.Batch.VectorBufferField);
 
-    private static ulong GetEntryPointer(IMemoryReader memory, Header header, int index, ulong offset)
+    private static ulong GetEntryPointer(ITraceMemoryReader memory, Header header, int index, MemoryField field)
         => header.VectorArrayAddress != 0
-           && memory.TryRead(header.VectorArrayAddress + (ulong)(index * VectorEntrySize) + offset, out ulong pointer)
+           && memory.TryRead(header.VectorArrayAddress + (ulong)(index * memory.Layout.Batch.VectorSize + field.Offset), out ulong pointer)
             ? pointer
             : 0;
 
-    private static ushort[] ReadSelection(IMemoryReader memory, ulong address, int count)
+    private static ushort[] ReadSelection(ITraceMemoryReader memory, ulong address, int count)
     {
         if (address == 0 || count == 0)
         {
@@ -178,7 +134,7 @@ public static class BatchReader
         return read == count ? selection : selection[..read];
     }
 
-    private static BatchVector ReadVector(IMemoryReader memory, int id, ulong buffer, bool isPure, int slotCount)
+    private static BatchVector ReadVector(ITraceMemoryReader memory, int id, ulong buffer, bool isPure, int slotCount)
     {
         var count = buffer == 0 ? 0 : slotCount;
 
@@ -194,7 +150,7 @@ public static class BatchReader
         return new BatchVector(id, buffer, isPure, slots, known);
     }
 
-    private static bool IsPure(IMemoryReader memory, ulong bitmap, int index)
+    private static bool IsPure(ITraceMemoryReader memory, ulong bitmap, int index)
         => bitmap != 0 && memory.TryRead(bitmap + (ulong)(index / 8), out byte bits) && (bits & (1 << (index % 8))) != 0;
 
     private readonly record struct Header(ulong VectorArrayAddress,

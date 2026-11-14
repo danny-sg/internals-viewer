@@ -9,9 +9,11 @@ using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.History;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.Query.Memory;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
 
 namespace InternalsViewer.Query.FullTrace;
 
@@ -30,6 +32,8 @@ internal sealed class TraceResultBuilder(CallTree callTree,
     public ObjectPoolSnapshot ObjectPool { get; init; } = ObjectPoolSnapshot.Empty;
 
     public TraceBufferPool BufferPool { get; init; } = TraceBufferPool.Empty;
+
+    public Version? ServerVersion { get; init; }
 
     public IteratorPlanLink PlanLink { get; private set; } = IteratorPlanLink.Empty;
 
@@ -79,15 +83,19 @@ internal sealed class TraceResultBuilder(CallTree callTree,
     {
         Link();
 
+        var layout = ServerVersion is null ? EngineLayout.Find(memoryHistory, PlanNodes) : EngineLayout.Get(ServerVersion);
+
+        var store = memoryHistory.WithLayout(layout);
+
         var enclosing = EnclosingOperatorCallIndex.Build(CallStore, Lifetimes.OperatorsByInstance);
 
-        var pageAccesses = TracePageAccessList.Build(CallStore, memoryHistory, BufferPool, pageReads, Timeline);
+        var pageAccesses = TracePageAccessList.Build(CallStore, store, BufferPool, pageReads, Timeline);
 
         var result = new TraceResult(CallTree, CallStore, Timeline)
         {
             PlanLink = PlanLink,
             OperatorFrames = OperatorFrames,
-            PlanNodes = PlanNodes,
+            PlanNodes = PlanOutputReader.Read(PlanNodes, store),
             Teardowns = Teardowns,
             HoBtAccess = HoBtAccessMap.Build(CallStore, Timeline.MappedNodes),
             Allocation = Allocation,
@@ -95,10 +103,11 @@ internal sealed class TraceResultBuilder(CallTree callTree,
             AddressMap = AddressMap,
             MemoryObjects = MemoryObjects,
             ObjectPool = ObjectPool,
-            BufferPool = BufferPool,
+            BufferPool = BufferPool.WithLayout(layout),
             PageReads = pageReads,
             PageAccesses = pageAccesses,
-            MemoryHistory = memoryHistory,
+            MemoryHistory = store,
+            ServerVersion = ServerVersion,
             SourceTracks = new TraceSourceTrackMap(Timeline, CallStore, Lifetimes)
             {
                 EnclosingCalls = enclosing,
@@ -109,6 +118,8 @@ internal sealed class TraceResultBuilder(CallTree callTree,
                 Seeks = TraceSeekTrackBuilder.Build(Timeline, CallStore, Lifetimes, enclosing)
             }
         };
+
+        result.BuildOutputPaths();
 
         CallStore.ReleaseColumns();
 

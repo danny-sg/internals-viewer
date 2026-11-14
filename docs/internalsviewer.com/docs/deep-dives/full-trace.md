@@ -94,11 +94,13 @@ So before attaching, the harness lists the modules loaded in SQL Server. If TTD 
 A Full Trace run goes:
 
 1. **Prepare** - the harness starts and restarts SQL Server if it has to, before the query's connection opens
-2. **Warm up** - unless **Clear Buffer Pool** is on, the query runs once untraced inside a transaction that is rolled back, so compiling the plan and reading its pages from disk are not in the recording
+2. **Warm up** - unless **Clear Buffer Pool** is on, the query runs once untraced inside a transaction that is rolled back, so reading its pages from disk is not in the recording
 3. **Snapshot the memory clerks** - `sys.dm_os_memory_clerks` and `sys.dm_os_memory_objects`, for naming memory later
-4. **Attach** - the event session is created, and the harness attaches TTD to the process with `-module sqlmin.dll -module sqllang.dll` just before the session starts
+4. **Attach** - the event session is created, the database's plan cache is cleared with `ALTER DATABASE SCOPED CONFIGURATION CLEAR PROCEDURE_CACHE`, and the harness attaches TTD to the process with `-module sqlmin.dll -module sqllang.dll` just before the session starts
 5. **Run the query** - its results are read, then the harness runs `TTD.exe -stop` and the recording is closed
 6. **Snapshot the memory clerks again** - while it is still the same SQL Server process
+
+Clearing the plan cache puts compiling the plan in the recording, and that is on purpose. SQL Server builds some of what a plan runs with once, keeps it with the cached plan and reuses it on every run. The accessors that scans and seeks read rows through are one example. A plan compiled by the warm-up, or by any earlier run, would leave them out of the recording, and Memory History could not follow them.
 
 ### A minimal event session
 
@@ -215,7 +217,15 @@ The compiler gets in the way in one place. With profile-guided optimisation, `CQ
 
 Which object belongs to which operator comes from how the plan is built. Before the first row, `CQueryScan::Setup` walks the compiled plan, and each of the plan's own objects - a `CXte*` class in row mode, `CBpXte*` in batch mode - builds the iterator for its operator. In row mode `CXte*::QScanGet` builds it and returns it, and in batch mode `CBpXte::CreateBatchIterators` and each `CBpXte*::PbpqsGet` build them. These calls nest exactly as the plan does, so the plan objects form a tree with the plan's shape, and their calls are kept apart by object just as the iterators' are.
 
-That tree is aligned with the plan. A plan object scores against an operator when the iterator classes it constructed are ones the mappings give that operator, and loses points when they are not. Skipping a plan node or a plan object costs points too. The iterator each plan object built - its return value, or the object its constructor ran on - then takes that plan object's operator, and wrappers such as the profiling iterator are looked through to the iterator inside. This needs no row counts and no guesswork about stack shapes, only the calls that build the plan.
+That tree is aligned with the plan. A plan object scores against an operator when the iterator classes it constructed are ones the mappings give that operator, and loses points when they are not. Skipping a plan node or a plan object costs points too. The iterator each plan object built - its return value, or the object its constructor ran on - then takes that plan object's operator, and wrappers such as the profiling iterator are looked through to the iterator inside. This needs no row counts and no guesswork about stack shapes, only the calls that build the plan. A recording can hold more than one statement, such as the query SQL Server runs to create statistics while it compiles yours, so the plan objects are linked to the last statement, which is the query you ran.
+
+Each plan object also records the columns its operator was compiled to output. Its output list holds one column reference per column, and each reference carries the column's type, length, precision, scale and collation, and the plan object that produces it. An operator that passes rows through, such as a Top, lists the same references as the operator below it, so following a column's producer leads from the top of the plan down to the operator whose row holds it. The output lists are written while the plan compiles, first with the optimizer's column references and then remapped to the ones execution uses. They are read from Memory History, at the moment each plan object's iterator is built, so they need Memory History and a plan compiled inside the recording.
+
+From a column reference to its value, the app follows the pointers execution follows. A compiled plan can be shared by several runs, so it holds nothing of one run's objects. Each run has an execution context instead, which every iterator holds, and its own iterators, each linked to the plan object that built it as above. A column reference names the plan object that produces it and where in that operator its value sits: for a scan or seek, which entry of the iterator's row buffer, and for a join, which side and which entry of the join's output values. So a column's chain runs from the reference to its producer, to the iterator that plan object built, and on to the row buffer entry or the join's output value. A join's output value reads through a reader on a slot of the statement's row context, which the execution context leads to, and points back to the column reference it was built from in the operator below, where the chain carries on. A stream aggregate has no row buffer. Its plan object lists its group columns, its aggregates and its counts in three arrays, and where a column sits in them says where its value is. The iterator keeps the current group as a row of variables in its table of variables: the group columns first, then the aggregates, such as a `SUM`, each updated as the group's rows arrive. A `COUNT(*)` is a counter held in the iterator itself. Every step is a pointer read, taken once the operator has started returning rows.
+
+Each column's chain is found once, while the trace is built, and kept, because almost all of it is set up before the first row and stays put. It is split into stages, one for each operator that holds the value on its way to the column. Each stage keeps where its operator holds the value, such as a row buffer entry, a slot of the row context, a variable or a counter, and the pointers from there to the value, so showing values as the playhead moves takes a few reads per stage. Where an operator reads the value through a column reference of the operator below, as a join does from its inputs, the stage of the operator below feeds its own. The query's **Data Path** tab lays each column out from the statement back to where its value is held. The column's stages give the operators in turn, the one that holds the value and the inputs that feed it. What each of them holds is read straight from its iterator's fields at its first `GetRow`: the row buffer and the row bindings that fill it, the rowset, the arrays of values and the variables. An operator's own object that points into the storage of the operator below it, such as a hash join's input value pointing at a scan's row buffer entry, is how it reads from it, so it sits between the two. The pointers that only pass rows, from an operator's inputs through the profiling iterators to the operators below, are not part of it. A column a scan reads straight from the page has no row buffer entry. Its reference names the column of the table, and its value is that column of the record the scan's rowset is on, read from the page in the database.
+
+Where each pointer sits in its object can move between builds. On SQL Server 2022 every iterator's own fields sit 0x38 bytes further in than on SQL Server 2025, and a column reference's sit 8 bytes nearer its start. So the offsets are kept in one file per version of SQL Server, each naming the range of builds it applies to, and a trace is read with the file for the build it recorded. An export made before the build was saved with it is matched by where its iterators hold their plan objects. Each field the chain reads also carries the functions seen writing it, such as `CQScanHash::CreateInputAndOutput` for a hash join's arrays of values or `CQueryScan::Init` for the execution context's link to the query's context. When a chain is drawn, the app finds the last write to each field before that moment in the memory history and checks its function against that list. A write made by `memset`, `memcpy` or `memmove` counts as its caller's. If that write did not leave the value the field now holds, the write that did was not recorded, and the field is not checked. A field written by any other function is flagged on the Data Path tab, which is how a build that lays the object out differently shows up. Across the recordings the layout was measured from, every field with a recorded writer was written by an expected function.
 
 The linked objects give each operator its entry frames - for the Call Tree's operator view and its target badge, see [How operator matching works](/docs/deep-dives/operator-matching) - and its lifetime, from its object's first method call to its last, for the Trace Timeline's Operators pane. The Arguments tab uses the same link to name an iterator or a plan object when its address turns up as a value.
 
@@ -231,6 +241,26 @@ SQL Server allocates through SQLOS, which is not recorded. But every allocation 
 - **Operators** - an operator's memory in use is what was allocated inside its own calls on its thread and not yet freed, which is what the Trace Timeline's Operators pane draws and gives the peak of.
 
 The known gap is a memory object released as a whole. Its pages go back through the plumbing, so its memory is never seen to be freed, and in use only climbs for it.
+
+### Object classes
+
+The trace names the object at an address from the calls that built and used it: the constructor that ran on it, the first member function called on it, or the declared type of a parameter it was passed as. A constructor names its own class, which is not always the class of the object. A `CValRefPrefetch` runs its base class's constructor, `CValRefOrdinal::CValRefOrdinal`, first, and a call made through a pointer to a base class names the base class too.
+
+Every C++ object with virtual functions starts with a pointer to its class's virtual function table, and the public symbols name each table, such as ``CValRefPrefetch::`vftable'``. A class with several bases has a table for each, named for the base it serves, and the one at the start of the object is for its first base. So the table an object holds gives its class:
+
+- **Tables** - the replay's function scan reads every table symbol with its class and base. A table the linker shares between classes, because they came out identical, is left out, since it cannot say which class it is.
+- **During the replay** - an object no constructor or member function has named, known only by where it was allocated or by a parameter's type, is named by the table it holds the first time it is passed to a call.
+- **From Memory History** - the table at the start of an object changes over its life. Each constructor writes its own class's table, from the base class down to the most derived, and each destructor writes its own back on the way out. Memory History holds every one of those writes, so once the replay is done each object takes the class it held most often while its member functions were called or it was passed to a call. An object never used that way takes the most derived class it was built up to, the last table before one it had already held.
+
+A class from the table does not replace a name that a constructor or member function gave the object when:
+
+- **The table never changed** - one table is no more specific than the constructor that wrote it.
+- **It was left at the free** - the class is only what the last destructor wrote before the memory was freed.
+- **The named class has no table** - its first field is then an object with virtual functions, and the table belongs to that field.
+
+Taking the class an object held longest does not work. Much of a query's memory comes from pools that are released as a whole, so a destroyed object keeps the base class table its last destructor wrote until the pool goes, often for longer than it held its own.
+
+The class from the table only names objects, in the Call Stack, the memory tabs, the Memory History lane and the graphs. Matching objects to operators and reading their fields still use the classes the constructors name, because the mappings and layouts are written against those. An exported run carries the classes with the rest of its memory, and a run exported before they were recorded has them worked out as it is imported.
 
 ### No clock
 
@@ -271,13 +301,13 @@ The recording itself is deleted once it has replayed successfully. Everything ab
   - `TraceLoader.cs` - the load that ties the steps together
   - `ReplaySession.cs` and `Native/` - opening the recording and calling the bridge
   - `Functions/` - the function sets the replay needs, from the PDBs
-  - `Symbols/` - downloading PDBs (`SymbolDownloader.cs`), resolving frames through DIA (`SymbolResolver.cs`, `Dia/`), and the Module / Category classification and its mapping files (`Categories/`)
+  - `Symbols/` - downloading PDBs (`SymbolDownloader.cs`), resolving frames through DIA (`SymbolResolver.cs`, `Dia/`), the Module / Category classification and its mapping files (`Categories/`), and the virtual function tables (`VtableResolver.cs`)
   - `Calls/Tree/` - the call tree, with `CallTreeBuilder.cs` mapping nodes to frames
   - `QueryExecutionCropper.cs` - finding where the query's execution starts
   - `CallLog/` and `Arguments/` - the compressed argument log, and reading its values by the function's signature
   - `Locators/` - the page, row, columnstore object and referenced value reads
   - `Iterators/` - linking plan objects and iterators to the plan, finding each operator's call tree frames (`OperatorFrameMap.cs`), and their lifetimes
-  - `Memory/` - allocations, frees, clerks and memory in use
+  - `Memory/` - allocations, frees, clerks and memory in use, and in `Memory/Address/` the map of what each address holds, with `ObjectClassResolver.cs` naming objects by the table they hold
   - `Timeline/` - the Trace Timeline's spans and axes
   - `Export/` - the Full Trace part of an exported run
 - `src/Query/InternalsViewer.Query/QueryRunner.cs` - the run sequence, and `Export/` - exporting and importing a run

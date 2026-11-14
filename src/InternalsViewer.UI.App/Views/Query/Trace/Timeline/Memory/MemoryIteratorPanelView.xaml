@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Views.Query.Trace.Timeline.Memory.MemoryIteratorPanelView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:InternalsViewer.UI.App.Views.Query.Trace.Timeline.Memory">
+
+    <local:MemoryObjectTabsView Tabs="{x:Bind ViewModel.Iterator.Tabs, Mode=OneWay}">
+        <local:MemoryObjectTabsView.Footer>
+            <Button HorizontalAlignment="Right"
+                    VerticalAlignment="Center"
+                    Margin="0,0,8,0"
+                    Style="{StaticResource TabCommandButtonStyle}"
+                    Visibility="{x:Bind ViewModel.Iterator.IsPlanObjectAvailable, Mode=OneWay}"
+                    ToolTipService.ToolTip="Open the operator's compiled plan object"
+                    Click="OnPlanObjectClick">
+                <TextBlock Text="Plan Object" VerticalAlignment="Center"/>
+            </Button>
+        </local:MemoryObjectTabsView.Footer>
+    </local:MemoryObjectTabsView>
+</UserControl>

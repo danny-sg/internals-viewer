@@ -5,6 +5,8 @@ using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool.Enums;
 
+using InternalsViewer.Query.FullTrace.Symbols;
+
 namespace InternalsViewer.Query.FullTrace.Functions;
 
 internal sealed record ReplayFunctionTable(ulong[] ExcludedFunctions,

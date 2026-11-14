@@ -99,6 +99,23 @@ public class QueryLayoutViewModelTests
         Assert.Equal("FlameChart", group.SelectedDocument?.Key);
     }
 
+    [Fact]
+    public void Tabs_Opened_Beside_The_Trace_Summary_Open_With_The_Other_Documents()
+    {
+        var layout = new QueryLayoutViewModel(new object());
+
+        layout.ShowTraceSummary();
+
+        layout.ShowExecutionPlan();
+
+        Assert.True(layout.TryGetDocument("Sql", out var sql));
+        Assert.True(layout.TryGetDocument("Plan", out var plan));
+        Assert.True(layout.TryGetDocument("TraceSummary", out var summary));
+
+        Assert.Same(layout.Dock.FindGroup(sql), layout.Dock.FindGroup(plan));
+        Assert.NotSame(layout.Dock.FindGroup(summary), layout.Dock.FindGroup(plan));
+    }
+
     [Theory]
     [InlineData(true, false)]
     [InlineData(false, true)]

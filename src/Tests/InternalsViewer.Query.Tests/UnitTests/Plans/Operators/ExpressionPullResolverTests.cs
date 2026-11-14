@@ -87,7 +87,7 @@ public class ExpressionPullResolverTests
     {
         var computeScalar = ComputeScalar(Value);
 
-        computeScalar.DefinedValues = [computeScalar.DefinedValues[0] with { References = ["ConstExpr3"] }];
+        computeScalar.DefinedValues = [computeScalar.DefinedValues[0] with { References = [Column("ConstExpr3")] }];
 
         var statement = Statement(computeScalar);
 
@@ -101,7 +101,7 @@ public class ExpressionPullResolverTests
 
         var upper = ComputeScalar(Other);
 
-        upper.DefinedValues = [upper.DefinedValues[0] with { References = [Value] }];
+        upper.DefinedValues = [upper.DefinedValues[0] with { References = [Column(Value)] }];
 
         upper.Children = [lower];
 
@@ -187,7 +187,13 @@ public class ExpressionPullResolverTests
     private static PlanNode Scan() => new() { PhysicalOperator = "Index Scan" };
 
     private static PlanNode Operator(string name, string[] references, string[] output, params PlanNode[] children)
-        => new() { PhysicalOperator = name, ReferencedValues = [.. references], OutputColumns = Columns(output), Children = [.. children] };
+        => new()
+        {
+            PhysicalOperator = name,
+            ReferencedColumns = [.. references.Select(r => new ColumnUse(Column(r), ColumnUseType.Expression))],
+            OutputColumns = Columns(output),
+            Children = [.. children]
+        };
 
     private static PlanNode ComputeScalar(params string[] values)
         => new()
@@ -201,5 +207,7 @@ public class ExpressionPullResolverTests
     private static DefinedValueInfo Defined(string value)
         => new() { Columns = [new ColumnReference { Column = value }], Expression = value };
 
-    private static List<ColumnReference> Columns(string[] names) => [.. names.Select(n => new ColumnReference { Column = n })];
+    private static List<ColumnReference> Columns(string[] names) => [.. names.Select(Column)];
+
+    private static ColumnReference Column(string name) => new() { Column = name };
 }

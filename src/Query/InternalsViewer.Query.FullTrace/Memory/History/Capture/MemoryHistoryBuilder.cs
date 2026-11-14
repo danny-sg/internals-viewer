@@ -9,6 +9,7 @@ using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
 using InternalsViewer.Query.FullTrace.Memory.History.Capture.StackObjects;
 using InternalsViewer.Query.FullTrace.Memory.History.Capture.Watches;
+using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Helpers;
@@ -21,7 +22,8 @@ internal sealed class MemoryHistoryBuilder
                                   IReadOnlyList<ulong> owners,
                                   IReadOnlyDictionary<ulong, TracePosition> iterators,
                                   TraceTimeline? timeline,
-                                  StackSnapshotResult? stack = null)
+                                  StackSnapshotResult? stack = null,
+                                  Func<ulong, TracePosition, MemoryObjectReference?>? getPageOwner = null)
     {
         Stacks = new WatchHitCallResolver(timeline);
 
@@ -49,6 +51,8 @@ internal sealed class MemoryHistoryBuilder
         Sites = AddStackSites();
 
         Lookup = new WatchedBlockIndex(Blocks);
+
+        Lookup.EndReusedBlocks(getPageOwner);
 
         Lookup.ClipToContainers();
 

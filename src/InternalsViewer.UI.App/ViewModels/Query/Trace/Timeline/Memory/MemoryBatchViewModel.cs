@@ -63,12 +63,6 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
 
     private static readonly Colour PureColour = Colour.FromArgb(255, 29, 158, 117);
 
-    private static readonly List<Colour> FieldColours =
-    [
-        .. BatchReader.Fields.Select((_, i) => ColourHelpers.HsvToColor(i * HueWheel / BatchReader.Fields.Count,
-                                                                        FieldSaturation,
-                                                                        FieldValue))
-    ];
 
     [ObservableProperty]
     private bool _isAvailable;
@@ -161,6 +155,10 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
 
     private PlayheadMemoryViewModel? Owner { get; set; }
 
+    private IReadOnlyList<MemoryField> Fields { get; set; } = [];
+
+    private List<Colour> FieldColours { get; set; } = [];
+
     private MemoryHistoryBatchResolver? Batches { get; set; }
 
     private int Block { get; set; } = -1;
@@ -192,6 +190,10 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
         Block = owner.Block;
 
         BlockAddress = owner.History.Store.Blocks[Block].Address;
+
+        Fields = owner.History.Store.Layout.Batch.Fields;
+
+        FieldColours = [.. Fields.Select((_, i) => ColourHelpers.HsvToColor(i * HueWheel / Fields.Count, FieldSaturation, FieldValue))];
 
         if (Batches?.GetPart(Block) is not { } part)
         {
@@ -313,12 +315,12 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
 
     partial void OnSelectedHeaderRowChanged(ResultRow<long>? value)
     {
-        if (value is not { Id: var index } || index < 0 || index >= BatchReader.Fields.Count)
+        if (value is not { Id: var index } || index < 0 || index >= Fields.Count)
         {
             return;
         }
 
-        var field = BatchReader.Fields[(int)index];
+        var field = Fields[(int)index];
 
         Outline(field.Offset, field.Length, field.Name, FieldColours[(int)index]);
     }
@@ -335,8 +337,8 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
         switch (PartType)
         {
             case BatchPartType.VectorArray when row < state.Vectors.Count:
-                Outline(GetOffset(state.VectorArrayAddress) + row * BatchReader.VectorEntrySize,
-                        BatchReader.VectorEntrySize,
+                Outline(GetOffset(state.GetVectorEntry(row)),
+                        state.VectorSize,
                         $"Vector {state.Vectors[row].Id}");
                 break;
 
@@ -392,7 +394,7 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
 
         var reader = batch.Reader;
 
-        List<ulong?> fields = type == BatchPartType.Header ? [.. BatchReader.Fields.Select(f => ReadField(batch, f))] : [];
+        List<ulong?> fields = type == BatchPartType.Header ? [.. reader.Layout.Batch.Fields.Select(f => ReadField(batch, f))] : [];
 
         var bitmap = type is BatchPartType.AllocationBitmap or BatchPartType.PureBitmap ? new byte[size] : [];
 
@@ -545,7 +547,7 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
             new(2, "Value", typeof(string), true) { Width = VectorWidth }
         };
 
-        var rows = BatchReader.Fields.Select((f, i) => new ResultRow<long>([new SwatchText(f.Name, FieldColours[i]),
+        var rows = Fields.Select((f, i) => new ResultRow<long>([new SwatchText(f.Name, FieldColours[i]),
                                                                              $"0x{f.Offset:X}",
                                                                              GetFieldCell(f, values[i])])
         {
@@ -833,8 +835,8 @@ public sealed partial class MemoryBatchViewModel : ObservableObject
             Source = source
         };
 
-    private static ObservableCollection<Marker> GetFieldMarkers()
-        => new(BatchReader.Fields.Select((f, i) => new Marker
+    private ObservableCollection<Marker> GetFieldMarkers()
+        => new(Fields.Select((f, i) => new Marker
         {
             Name = f.Name,
             StartPosition = f.Offset,

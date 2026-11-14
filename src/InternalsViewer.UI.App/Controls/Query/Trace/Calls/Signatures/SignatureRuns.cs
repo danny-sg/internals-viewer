@@ -2,7 +2,6 @@ using System;
 using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace.Calls.Signatures.Enums;
 using InternalsViewer.UI.App.Models.Query.Trace.Calls.Signatures;
-using InternalsViewer.UI.App.Models.Query.Trace.Calls.Stack;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
@@ -12,16 +11,6 @@ namespace InternalsViewer.UI.App.Controls.Query.Trace.Calls.Signatures;
 
 public static class SignatureRuns
 {
-    public static readonly DependencyProperty FunctionProperty
-        = DependencyProperty.RegisterAttached("Function",
-                                              typeof(string),
-                                              typeof(SignatureRuns),
-                                              new PropertyMetadata(null, OnFunctionChanged));
-
-    public static string? GetFunction(DependencyObject element) => (string?)element.GetValue(FunctionProperty);
-
-    public static void SetFunction(DependencyObject element, string? value) => element.SetValue(FunctionProperty, value);
-
     public static readonly DependencyProperty ArgumentProperty
         = DependencyProperty.RegisterAttached("Argument",
                                               typeof(CallSignaturePart),
@@ -31,16 +20,6 @@ public static class SignatureRuns
     public static CallSignaturePart? GetArgument(DependencyObject element) => (CallSignaturePart?)element.GetValue(ArgumentProperty);
 
     public static void SetArgument(DependencyObject element, CallSignaturePart? value) => element.SetValue(ArgumentProperty, value);
-
-    public static readonly DependencyProperty StepProperty
-        = DependencyProperty.RegisterAttached("Step",
-                                              typeof(SourceStep),
-                                              typeof(SignatureRuns),
-                                              new PropertyMetadata(null, OnStepChanged));
-
-    public static SourceStep? GetStep(DependencyObject element) => (SourceStep?)element.GetValue(StepProperty);
-
-    public static void SetStep(DependencyObject element, SourceStep? value) => element.SetValue(StepProperty, value);
 
     public static void AddFunction(InlineCollection inlines, string function)
     {
@@ -113,21 +92,16 @@ public static class SignatureRuns
         return text.Inlines;
     }
 
-    private static void OnFunctionChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        if (Cleared(d) is { } inlines && e.NewValue is string function)
-        {
-            AddFunction(inlines, function);
-        }
-
-        ToolTipService.SetToolTip(d, e.NewValue);
-    }
-
     private static void OnArgumentChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (Cleared(d) is not { } inlines || e.NewValue is not CallSignaturePart part)
         {
             return;
+        }
+
+        if (part.Location is { } location)
+        {
+            inlines.Add(new Run { Text = $"{location}  ", Foreground = AppResources.Get<Brush>("TextFillColorSecondaryBrush") });
         }
 
         if (part.DeclaredType is { } type)
@@ -138,20 +112,5 @@ public static class SignatureRuns
         }
 
         AddValue(inlines, part, decode: part.MemoryTarget is null);
-    }
-
-    private static void OnStepChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        if (Cleared(d) is not { } inlines || e.NewValue is not SourceStep step)
-        {
-            return;
-        }
-
-        AddFunction(inlines, step.Node.Symbol);
-
-        if (step.Position.IsKnown)
-        {
-            inlines.Add(new Run { Text = $"  [{step.Position}]", Foreground = AppResources.Get<Brush>("TextFillColorSecondaryBrush") });
-        }
     }
 }

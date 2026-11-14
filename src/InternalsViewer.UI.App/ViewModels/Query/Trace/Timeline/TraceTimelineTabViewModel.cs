@@ -6,6 +6,8 @@ using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Sorts;
 using InternalsViewer.Query.Recording;
 using InternalsViewer.UI.App.Controls.Query.Trace.Calls;
 using InternalsViewer.UI.App.Controls.Docking;
@@ -108,7 +110,7 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
 
     private List<DocumentViewModel> GraphDocuments { get; } = [];
 
-    private List<DocumentViewModel> HashTableDocuments { get; } = [];
+    private List<DocumentViewModel> StructureDocuments { get; } = [];
 
     private List<DocumentViewModel> PluginDocuments { get; } = [];
 
@@ -125,17 +127,37 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         IsCallStackVisible = false;
     }
 
-    public void RequestPlayhead(TracePoint point) => PlayheadRequested?.Invoke(this, point);
+    public void RequestPlayhead(TracePoint point)
+    {
+        if (Query.IsOutsideCrop(point.Position))
+        {
+            Query.QueryOptions.CropToQuery = false;
+        }
+
+        PlayheadRequested?.Invoke(this, point);
+    }
 
     public void MovePlayhead(TracePoint point) => RequestPlayhead(point);
 
-    public void ZoomToCall(CallTreeNode node, int callIndex) => PlayheadStack.RequestChart(c => c.ZoomToCall(node, callIndex));
+    public void ZoomToCall(CallTreeNode node, int callIndex)
+    {
+        if (Query.IsOutsideCrop(node))
+        {
+            Query.QueryOptions.CropToQuery = false;
+        }
+
+        PlayheadStack.RequestChart(c => c.ZoomToCall(node, callIndex));
+    }
 
     public void ShowCallStack(TracePoint point)
     {
+        Query.Layout.ShowTraceTimeline();
+
         RequestPlayhead(point);
 
         ShowCallStack();
+
+        Dock.Activate(CallStackDocument);
     }
 
     public void FindInCallTree(CallTreeNode node, int callIndex) => Query.OpenCallTree(node, callIndex);
@@ -171,6 +193,16 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         }
     }
 
+    public void OpenIteratorTab(int block, ulong address, TracePosition position, IReadOnlyList<string> tabs)
+    {
+        OpenMemory(block, address, position);
+
+        if (MemoryDocuments.FirstOrDefault(d => d.Key == $"Memory{block}")?.Content is PlayheadMemoryViewModel memory)
+        {
+            memory.ShowIteratorTab(tabs);
+        }
+    }
+
     public void OpenMemory(int block, ulong address, TracePosition position, int length = 1)
     {
         Query.Layout.ShowTraceTimeline();
@@ -192,9 +224,7 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
 
         var memory = new PlayheadMemoryViewModel(Query.MemoryHistory);
 
-        memory.Open(block, address, position);
-
-        if (!memory.IsOpen)
+        if (!memory.Open(block, address, position))
         {
             return;
         }
@@ -204,7 +234,7 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
             memory.ShowAddress(address, length);
         }
 
-        memory.SetPlayhead(Playhead);
+        memory.SetPlayhead(Query.IsOutsideCrop(position) ? null : Playhead);
 
         memory.Chart = Chart;
 
@@ -213,6 +243,15 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         memory.PlayheadRequested += OnMemoryPlayheadRequested;
 
         memory.MemoryRequested += OnMemoryRequested;
+
+        memory.Opened += OnMemoryOpened;
+
+        List<DocumentMenuItem> menuItems =
+        [
+            new("Open Reference Graph", () => OpenReferenceGraph(memory.Block, memory.Position)),
+            new("Open Hash Table", memory.OpenHashTable, () => memory.IsHashTableVisible),
+            new("Open Sort Table", memory.OpenSortTable, () => memory.IsSortTableVisible)
+        ];
 
         var document = new DocumentViewModel(memory.Title,
                                              memory,
@@ -223,7 +262,7 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
                                              commandsFactory: () => CreateMemoryCommands(memory))
         {
             MinWidth = HexViewControl.StandardWidth,
-            MenuItems = [new DocumentMenuItem("Open Reference Graph", () => OpenReferenceGraph(memory.Block, memory.Position))]
+            MenuItems = menuItems
         };
 
         var neighbour = MemoryDocuments.LastOrDefault(Dock.Contains) ?? CallStackDocument;
@@ -272,13 +311,19 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         AddGraph(key, new MemoryReferenceGraphViewModel(Query.MemoryHistory, start, this));
     }
 
-    public void OpenHashTable(ulong group) => OpenHashTable(group, -1, -1, isBelowPlan: false);
+    public void OpenHashTable(ulong group, TraceHashPart? part)
+    {
+        OpenHashTable(group, -1, -1, isBelowPlan: false);
+
+        if (part is { } found && FindHashTable(group)?.Content is MemoryHashTableViewModel table)
+        {
+            table.ShowPart(group, found);
+        }
+    }
 
     public void OpenHashTable(ulong group, int partition, int bucket, bool isBelowPlan)
     {
-        var key = $"HashTable:{group:X}";
-
-        if (HashTableDocuments.FirstOrDefault(d => d.Key == key) is not { } document)
+        if (FindHashTable(group) is not { } document)
         {
             var table = new MemoryHashTableViewModel(Query.MemoryHistory, group, Playhead ?? TracePosition.Unknown, this);
 
@@ -286,43 +331,98 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
 
             document = new DocumentViewModel(table.Title,
                                              table,
-                                             static () => new MemoryHashTableView(),
+                                             static () => new MemoryStructureView(),
                                              keepAlive: true,
-                                             key: key,
+                                             key: table.Key,
                                              persist: false)
             {
                 MinWidth = HexViewControl.StandardWidth
             };
 
-            HashTableDocuments.Add(document);
+            StructureDocuments.Add(document);
         }
 
-        if (Query.Layout.Dock.Contains(document))
-        {
-            Query.Layout.Dock.Activate(document);
-        }
-        else if (isBelowPlan && !Dock.Contains(document))
-        {
-            Query.Layout.RegisterDocument(key, document);
-
-            Query.Layout.ShowBelowPlan(document);
-        }
-        else
-        {
-            Query.Layout.ShowTraceTimeline();
-
-            ShowPanel(document, MemoryDocuments.LastOrDefault(Dock.Contains) ?? CallStackDocument);
-        }
+        ShowStructure(document, isBelowPlan);
 
         if (bucket >= 0)
         {
-            ((MemoryHashTableViewModel)document.Content).ShowBucket(partition, bucket);
+            ((MemoryHashTableViewModel)document.Content).ShowBucket(group, partition, bucket);
         }
+    }
+
+    public void OpenSortTable(ulong iterator, TraceSortPart? part)
+    {
+        OpenSortTable(iterator, isBelowPlan: false);
+
+        if (part is { } found && FindSortTable(iterator)?.Content is MemorySortTableViewModel table)
+        {
+            table.ShowPart(found);
+        }
+    }
+
+    public void OpenSortTable(ulong iterator, bool isBelowPlan)
+    {
+        if (FindSortTable(iterator) is not { } document)
+        {
+            var table = new MemorySortTableViewModel(Query.MemoryHistory, iterator, Playhead ?? TracePosition.Unknown, this);
+
+            table.SetPlayhead(Playhead);
+
+            document = new DocumentViewModel(table.Title,
+                                             table,
+                                             static () => new MemoryStructureView(),
+                                             keepAlive: true,
+                                             key: table.Key,
+                                             persist: false)
+            {
+                MinWidth = HexViewControl.StandardWidth
+            };
+
+            StructureDocuments.Add(document);
+        }
+
+        ShowStructure(document, isBelowPlan);
+    }
+
+    public void OpenDataPath()
+    {
+        if (FindDataPath() is not { } document)
+        {
+            var dataPath = new MemoryDataPathViewModel(Query.MemoryHistory, Playhead ?? TracePosition.Unknown, this);
+
+            dataPath.SetPlayhead(Playhead);
+
+            document = new DocumentViewModel(dataPath.Title,
+                                             dataPath,
+                                             static () => new MemoryStructureView(),
+                                             keepAlive: true,
+                                             key: dataPath.Key,
+                                             persist: false)
+            {
+                MinWidth = HexViewControl.StandardWidth
+            };
+
+            Query.Layout.RegisterDocument(document.Key, document);
+
+            StructureDocuments.Add(document);
+        }
+
+        Query.Layout.ShowBesideTraceTimeline(document);
     }
 
     public List<TraceMenuItem> GetMenuItems(TraceMenuTarget target)
     {
         var items = new List<TraceMenuItem>();
+
+        if (Trace is { } trace
+            && TraceHashTableReader.GetCallTarget(trace.MemoryHistory,
+                                                  trace.CallStore,
+                                                  target.Node,
+                                                  target.CallIndex) is var (group, location))
+        {
+            items.Add(new TraceMenuItem("Open Hash Table",
+                                        () => OpenHashTable(group, location?.Partition ?? -1, location?.Bucket ?? -1, isBelowPlan: false)));
+        }
 
         foreach (var contributor in Query.MenuContributors)
         {
@@ -370,7 +470,7 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
             Query.Layout.Close(document);
         }
 
-        foreach (var document in HashTableDocuments.ToList())
+        foreach (var document in StructureDocuments.ToList())
         {
             if (Dock.Contains(document))
             {
@@ -402,9 +502,9 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
             ((MemoryReferenceGraphViewModel)document.Content).SetPlayhead(position);
         }
 
-        foreach (var document in HashTableDocuments)
+        foreach (var document in StructureDocuments)
         {
-            ((MemoryHashTableViewModel)document.Content).SetPlayhead(position);
+            ((MemoryStructureViewModel)document.Content).SetPlayhead(position);
         }
     }
 
@@ -436,16 +536,16 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
 
         MemoryDocuments.Clear();
 
-        foreach (var document in HashTableDocuments)
+        foreach (var document in StructureDocuments)
         {
             Query.Layout.Close(document);
 
             Query.Layout.RemoveDocument(document.Key, out _);
 
-            DisposeHashTable(document);
+            DisposeStructure(document);
         }
 
-        HashTableDocuments.Clear();
+        StructureDocuments.Clear();
 
         foreach (var document in GraphDocuments)
         {
@@ -586,9 +686,9 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         {
             DisposeMemory(document);
         }
-        else if (HashTableDocuments.Remove(document))
+        else if (StructureDocuments.Remove(document))
         {
-            DisposeHashTable(document);
+            DisposeStructure(document);
         }
 
         ShowActiveMemoryUpdates();
@@ -610,7 +710,15 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         Chart?.ShowMemoryUpdates((active?.Content as PlayheadMemoryViewModel)?.GetUpdates(), active?.Title);
     }
 
-    private void OnMemoryPlayheadRequested(object? sender, TracePoint point) => PlayheadRequested?.Invoke(this, point);
+    private void OnMemoryPlayheadRequested(object? sender, TracePoint point) => RequestPlayhead(point);
+
+    private void OnMemoryOpened(object? sender, EventArgs e)
+    {
+        if (sender is PlayheadMemoryViewModel memory && ShownMemory is { } shown && ReferenceEquals(shown.Content, memory))
+        {
+            Chart?.ShowMemoryUpdates(memory.GetUpdates(), shown.Title);
+        }
+    }
 
     private void OnMemoryRequested(object? sender, MemoryRequest request)
     {
@@ -676,11 +784,11 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
 
             DisposePluginDocument(document);
         }
-        else if (HashTableDocuments.Remove(document))
+        else if (StructureDocuments.Remove(document))
         {
             Query.Layout.RemoveDocument(document.Key, out _);
 
-            DisposeHashTable(document);
+            DisposeStructure(document);
         }
     }
 
@@ -709,11 +817,39 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         }
     }
 
-    private static void DisposeHashTable(DocumentViewModel document)
+    private DocumentViewModel? FindHashTable(ulong group)
+        => StructureDocuments.FirstOrDefault(d => d.Content is MemoryHashTableViewModel table && table.Contains(group));
+
+    private DocumentViewModel? FindSortTable(ulong iterator)
+        => StructureDocuments.FirstOrDefault(d => d.Content is MemorySortTableViewModel table && table.Contains(iterator));
+
+    private DocumentViewModel? FindDataPath() => StructureDocuments.FirstOrDefault(d => d.Content is MemoryDataPathViewModel);
+
+    private void ShowStructure(DocumentViewModel document, bool isBelowPlan)
+    {
+        if (Query.Layout.Dock.Contains(document))
+        {
+            Query.Layout.Dock.Activate(document);
+        }
+        else if (isBelowPlan && !Dock.Contains(document))
+        {
+            Query.Layout.RegisterDocument(document.Key, document);
+
+            Query.Layout.ShowBelowPlan(document);
+        }
+        else
+        {
+            Query.Layout.ShowTraceTimeline();
+
+            ShowPanel(document, MemoryDocuments.LastOrDefault(Dock.Contains) ?? CallStackDocument);
+        }
+    }
+
+    private static void DisposeStructure(DocumentViewModel document)
     {
         document.DisposeView();
 
-        ((MemoryHashTableViewModel)document.Content).Close();
+        ((MemoryStructureViewModel)document.Content).Close();
     }
 
     private static void DisposeGraph(DocumentViewModel document)
@@ -732,6 +868,8 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         memory.PlayheadRequested -= OnMemoryPlayheadRequested;
 
         memory.MemoryRequested -= OnMemoryRequested;
+
+        memory.Opened -= OnMemoryOpened;
 
         memory.Close();
     }

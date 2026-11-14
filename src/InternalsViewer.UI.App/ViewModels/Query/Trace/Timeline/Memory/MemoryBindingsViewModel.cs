@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Memory.History;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings.Enums;
 using InternalsViewer.Query.Results;
@@ -105,6 +106,8 @@ public sealed partial class MemoryBindingsViewModel : ObservableObject
 
     private int Size { get; set; }
 
+    private EngineLayout Layout { get; set; } = EngineLayout.Latest;
+
     private ScanBindingReference? Scan { get; set; }
 
     private ulong Columns { get; set; }
@@ -134,6 +137,8 @@ public sealed partial class MemoryBindingsViewModel : ObservableObject
         }
 
         Owner = owner;
+
+        Layout = owner.History.Store.Layout;
 
         Scan = scan;
 
@@ -231,6 +236,45 @@ public sealed partial class MemoryBindingsViewModel : ObservableObject
 
     public void OpenRowBuffer() => Open(Scan?.RowBuffer ?? 0);
 
+    public static string GetFieldName(ColumnBindingField field) => FieldNames[field];
+
+    internal static QueryResultSet CreateColumnTable(PlayheadMemoryViewModel owner,
+                                                     List<ColumnBinding> bound,
+                                                     TracePosition position,
+                                                     Func<ColumnBindingField, Colour?> getMarker)
+    {
+        ResultColumn GetColumn(ColumnBindingField field, Type type, ResultAlignment alignment = ResultAlignment.Left)
+            => new((int)field, FieldNames[field], type, true) { Alignment = alignment, MarkerColour = getMarker(field) };
+
+        var columns = new List<ResultColumn>
+        {
+            GetColumn(ColumnBindingField.Ordinal, typeof(int), ResultAlignment.Right),
+            GetColumn(ColumnBindingField.Type, typeof(string)),
+            GetColumn(ColumnBindingField.MaximumLength, typeof(int), ResultAlignment.Right),
+            GetColumn(ColumnBindingField.RecordOffset, typeof(string), ResultAlignment.Right),
+            GetColumn(ColumnBindingField.StatusOffset, typeof(string), ResultAlignment.Right),
+            GetColumn(ColumnBindingField.LengthOffset, typeof(string), ResultAlignment.Right),
+            GetColumn(ColumnBindingField.ValueOffset, typeof(string), ResultAlignment.Right),
+            GetColumn(ColumnBindingField.Flags, typeof(string)),
+            GetColumn(ColumnBindingField.ColumnAttributes, typeof(string))
+        };
+
+        var rows = bound.Select((b, i) => new ResultRow<long>([b.Ordinal,
+                                                               GetTypeText(b.Type),
+                                                               b.MaximumLength,
+                                                               GetRecordText(b),
+                                                               GetOffsetText(b.StatusOffset),
+                                                               b.LengthOffset is { } length ? GetOffsetText(length) : null,
+                                                               GetOffsetText(b.ValueOffset),
+                                                               GetFlagsCell(b.Flags),
+                                                               GetPointerCell(owner, b.ColumnAttributes, position)])
+        {
+            Id = i
+        });
+
+        return new QueryResultSet { Columns = columns, Rows = [.. rows] };
+    }
+
     partial void OnSelectedRowChanged(ResultRow<long>? value)
     {
         if (Owner is not { } owner || Kind == MemoryBindingsKind.Bindings)
@@ -248,7 +292,7 @@ public sealed partial class MemoryBindingsViewModel : ObservableObject
     private (int Count, ulong Columns) GetColumns(MemoryHistoryReader reader)
         => Kind switch
         {
-            MemoryBindingsKind.Columns => (AccessorBindingLayout.GetColumnCount(Size), Address),
+            MemoryBindingsKind.Columns => (Layout.ColumnBinding.GetColumnCount(Size), Address),
             MemoryBindingsKind.Bindings => AccessorBindingLayout.ReadHeader(reader, Address) ?? (0, 0UL),
             _ => Scan is { } scan ? AccessorBindingLayout.ReadHeader(reader, scan.Bindings) ?? (0, 0UL) : (0, 0UL)
         };
@@ -263,7 +307,7 @@ public sealed partial class MemoryBindingsViewModel : ObservableObject
 
     private int GetStart(ColumnBinding column)
         => Kind == MemoryBindingsKind.Columns
-            ? column.Index * AccessorBindingLayout.ColumnSize
+            ? column.Index * Layout.ColumnBinding.Size
             : Math.Min(column.StatusOffset, column.ValueOffset);
 
     private ObservableCollection<Marker> GetMarkers(int? selected)
@@ -272,7 +316,7 @@ public sealed partial class MemoryBindingsViewModel : ObservableObject
 
         if (Kind == MemoryBindingsKind.Bindings)
         {
-            var fields = AccessorBindingLayout.Fields;
+            var fields = Layout.RowBindings.Fields;
 
             for (var index = 0; index < fields.Count; index++)
             {
@@ -301,13 +345,13 @@ public sealed partial class MemoryBindingsViewModel : ObservableObject
     {
         var name = GetColumnName(column);
 
-        var start = column.Index * AccessorBindingLayout.ColumnSize;
+        var start = column.Index * Layout.ColumnBinding.Size;
 
         var infrequent = column.InfrequentData >= Address && column.InfrequentData - Address < (ulong)Size
             ? (int)(column.InfrequentData - Address)
             : -1;
 
-        foreach (var field in AccessorBindingLayout.ColumnFields)
+        foreach (var field in Layout.ColumnBinding.Fields)
         {
             var offset = field.IsInfrequent ? infrequent < 0 ? -1 : infrequent + field.Offset : start + field.Offset;
 
@@ -394,42 +438,7 @@ public sealed partial class MemoryBindingsViewModel : ObservableObject
     }
 
     private QueryResultSet GetTable(PlayheadMemoryViewModel owner, List<ColumnBinding> bound, TracePosition position)
-    {
-        var columns = new List<ResultColumn>
-        {
-            GetColumn(ColumnBindingField.Ordinal, typeof(int), ResultAlignment.Right),
-            GetColumn(ColumnBindingField.Type, typeof(string)),
-            GetColumn(ColumnBindingField.MaximumLength, typeof(int), ResultAlignment.Right),
-            GetColumn(ColumnBindingField.RecordOffset, typeof(string), ResultAlignment.Right),
-            GetColumn(ColumnBindingField.StatusOffset, typeof(string), ResultAlignment.Right),
-            GetColumn(ColumnBindingField.LengthOffset, typeof(string), ResultAlignment.Right),
-            GetColumn(ColumnBindingField.ValueOffset, typeof(string), ResultAlignment.Right),
-            GetColumn(ColumnBindingField.Flags, typeof(string)),
-            GetColumn(ColumnBindingField.ColumnAttributes, typeof(string))
-        };
-
-        var rows = bound.Select((b, i) => new ResultRow<long>([b.Ordinal,
-                                                               GetTypeText(b.Type),
-                                                               b.MaximumLength,
-                                                               GetRecordText(b),
-                                                               GetOffsetText(b.StatusOffset),
-                                                               b.LengthOffset is { } length ? GetOffsetText(length) : null,
-                                                               GetOffsetText(b.ValueOffset),
-                                                               GetFlagsCell(b.Flags),
-                                                               GetPointerCell(owner, b.ColumnAttributes, position)])
-        {
-            Id = i
-        });
-
-        return new QueryResultSet { Columns = columns, Rows = [.. rows] };
-    }
-
-    private ResultColumn GetColumn(ColumnBindingField field, Type type, ResultAlignment alignment = ResultAlignment.Left)
-        => new((int)field, FieldNames[field], type, true)
-        {
-            Alignment = alignment,
-            MarkerColour = IsMarked(field) ? GetFieldColour(field) : null
-        };
+        => CreateColumnTable(owner, bound, position, f => IsMarked(f) ? GetFieldColour(f) : null);
 
     private bool IsMarked(ColumnBindingField field)
         => Kind == MemoryBindingsKind.Columns

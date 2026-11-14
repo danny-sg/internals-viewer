@@ -36,7 +36,7 @@ public sealed class PlanNode
 
     public List<ColumnReference> OutputColumns { get; set; } = [];
 
-    public HashSet<string> ReferencedValues { get; set; } = [];
+    public List<ColumnUse> ReferencedColumns { get; set; } = [];
 
     public HashSet<string> OuterReferences { get; set; } = [];
 

@@ -15,7 +15,8 @@ internal readonly record struct AddressEntry(ulong Address,
                                              string? ClassName = null,
                                              ulong Bytes = 0,
                                              string? Site = null,
-                                             string? MemoryObject = null)
+                                             string? MemoryObject = null,
+                                             string? VtableClassName = null)
 {
     public bool IsAlive => !ToPosition.IsKnown;
 }

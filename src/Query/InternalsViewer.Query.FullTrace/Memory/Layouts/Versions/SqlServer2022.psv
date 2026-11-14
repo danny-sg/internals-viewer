@@ -1,0 +1,263 @@
+Version|16.0.0.0-16.*.*.*
+Base|CQScanRowsetNew|CQScanNew
+Base|CQScanRowsetDynaNew|CQScanRowsetNew
+Base|CQScanTableScanNew|CQScanRowsetDynaNew
+Base|CQScanRangeNew|CQScanRowsetNew
+Base|CQScanSortNew|CQScanRowsetNew
+Base|CQScanTopNew|CQScanNew
+Base|CQScanHash|CQScanNew
+Base|CQScanFilterNew|CQScanNew
+Base|CQScanStreamAggregateNew|CQScanNew
+Base|CQScanBatchHelper|CQScanNew
+Base|CXteTop|CXte
+Base|CXteTableScan|CXte
+Base|CXteRange|CXte
+Base|CXteStreamAggregate|CXte
+Size|SortEntry|0x28
+Size|HashItem|0x80
+Size|BUF|0xC0
+Size|BatchVector|0x58
+Size|DeepDataPage|0x18
+Size|ColumnBinding|0x50
+Size|ColumnBindingInfrequent|0x30
+Type|Name|Offset|Length|Kind|Count|Writers
+CQScanNew|Inputs|0x40|8|Pointer||CQScan*
+CQScanNew|Plan Object|0x48|8|Pointer||
+CQScanNew|Execution Context|0x50|8|Pointer||::PqsWrapQScan,CXte*,CQScan*
+CBpQScan|Plan Object|0x10|8|Pointer||
+CBpXte|Plan Object|0x10|8|Pointer||
+CQScanRowsetNew|Rowset|0x80|8|Pointer||OpenRowsetSS::OpenRowset,::CreateRowsetSort
+CQScanRowsetNew|Prefetch Manager|0xA8|8|Pointer||
+CQScanRowsetNew|Row Buffer|0xB8|8|Pointer||CPrefetchMgr::CreateBuffer,CQScanRowsetNew::CQScanRowsetNew
+CQScanRowsetNew|Row Bindings|0xC0|8|Pointer||
+CQScanRowsetNew|Client Row|0x1A0|8|Pointer||
+CQScanTopNew|Top Count Expression|0xC8|8|Pointer||
+CQScanStreamAggregateNew|Aggregate Executor|0xA0|8|Pointer||
+CQScanStreamAggregateNew|Count|0xC0|32|Number||CXVariant::SetZero,CQScanStreamAggregateNew::GetRow
+CQScanStreamAggregateNew|Compare Executors|0xE0|8|Pointer||
+CQScanStreamAggregateNew|Move Executors|0xE8|8|Pointer||
+CQScanStreamAggregateNew|Variable Table|0x108|8|Pointer||CQScanStreamAggregateNew::InitXVarTable
+VariableTable|Variables|0x00|8|Pointer||CQScanStreamAggregateNew::InitXVarTable
+CQScanHash|Build Output Values|0x90|8|Pointer||CQScanHash::CreateInputAndOutput
+CQScanHash|Probe Output Values|0x98|8|Pointer||CQScanHash::CreateInputAndOutput
+CQScanHash|Build Input Values|0x100|8|Pointer||CQScanHash::CreateInputAndOutput
+CQScanHash|Probe Input Values|0x108|8|Pointer||CQScanHash::CreateInputAndOutput
+CQScanHash|Build Partition Group|0x178|8|Pointer||
+CQScanHash|Build Worktable Group|0x180|8|Pointer||
+CQScanHash|Build Rebuild Group|0x188|8|Pointer||
+CQScanHash|Probe Partition Group|0x190|8|Pointer||
+CQScanHash|Probe Worktable Group|0x198|8|Pointer||
+CQScanHash|Probe Rebuild Group|0x1A0|8|Pointer||
+CQScanHash|Partition Mask|0x1C0|4|Hex||
+CQScanHash|Partition Shift|0x1C4|4|Number||
+CQScanHash|Workfile Resource Manager|0x1E8|8|Pointer||
+CQScanHash|Workfile Manager|0x1F0|8|Pointer||
+CQScanHash|Current Partition Group|0x248|8|Pointer||
+HashValueArray|Value|0x00|8|Pointer||CQScanHash::CreateInputAndOutput
+CQScanBatchHelper|Output Values|0x80|8|Pointer||CQScanBatchHelper::CQScanBatchHelper
+CQScanBatchHelper|Child|0x90|8|Pointer||CBpXte::CreateBatchIterators
+CQScanBatchHelper|Row Buffer|0xB0|8|Pointer||CQScanBatchHelper::CQScanBatchHelper
+BatchOutputValueArray|Output Value|0x00|8|Pointer||CQScanBatchHelper::CQScanBatchHelper
+CQScanSortNew|Push Row Executor|0x228|8|Pointer||
+CQScanSortNew|Memory Usage|0x240|8|Pointer||CQScanSortNew::CQScanSortNew
+CXte|Node Id|0x0C|4|Number||
+CXte|Inputs|0x18|8|Pointer||
+CXte|Query|0x28|8|Pointer||
+CXte|Output Columns|0x30|8|Pointer||CXte::CXte
+CXteTop|Top Count Expression|0x88|8|Pointer||
+CXteTableScan|Rowset Id|0xB0|8|Pointer||
+CXteRange|Rowset Id|0xB0|8|Pointer||
+CXteStreamAggregate|Group Count|0x60|4|Number||CXteStreamAggregate::CXteStreamAggregate
+CXteStreamAggregate|Aggregate Count|0x68|4|Number||CXteStreamAggregate::CXteStreamAggregate
+CXteStreamAggregate|Count Column Count|0x6C|4|Number||CXteStreamAggregate::CXteStreamAggregate
+CXteStreamAggregate|Group Columns|0x98|8|Pointer||CXteStreamAggregate::CreateValRefs
+CXteStreamAggregate|Aggregate Columns|0xA0|8|Pointer||CXteStreamAggregate::CreateValRefs
+CXteStreamAggregate|Count Columns|0xB0|8|Pointer||CXteStreamAggregate::Init
+CBndOutputs|Memory Object|0x00|8|Pointer||CBndOutputs::CBndOutputs
+CBndOutputs|Count|0x08|4|Number||
+CBndOutputs|Capacity|0x0C|4|Number||CBndOutputs::CBndOutputs
+CBndOutputs|Columns|0x10|8|Pointer||CBndOutputs::CBndOutputs
+CBndOutputs|Column Bits Length|0x20|4|Number||CBitVector::Init
+CBndOutputs|Column Bits Memory Object|0x28|8|Pointer||CBitVector::Init
+CBndOutputs|Column Bits|0x30|8|Hex||CBitVector::Set
+CBndOutputs|Column Flags Length|0x38|4|Number||CBitVector::Init
+CBndOutputs|Column Flags Memory Object|0x40|8|Pointer||CBitVector::Init
+CBndOutputs|Column Flags|0x48|8|Hex||CBitVector::Set
+OutputColumnArray|Column|0x00|8|Pointer||CXte::RemapOutputValrefs,CBpXte::BpCompile,CBndOutputs::Append
+CValRefComp|Interface|0x20|8|Pointer||CValComp::CValComp
+CValRefComp|Type|0x28|8|Hex||
+CValRefComp|Type Details|0x38|8|Hex||
+CValRefComp|Producer|0x48|8|Pointer||CValRef*,CVRTableComp::*
+CValRefSS|Producer|0x28|8|Pointer||CValRefSS::CValRefSS
+CValRefSS|Type|0x30|8|Hex||
+CValRefSS|Type Details|0x40|8|Hex||
+CValRefSS|Column Id|0x50|4|Number||
+CValRefJoin|Side|0x50|2|Number||
+CValRefJoin|Column|0x54|4|Number||
+CValRefOrdinal|Column|0x50|4|Number||
+CValRefCalculated|Producer|0x50|8|Pointer||
+CValRefCalculated|Expression|0x60|8|Pointer||
+CValRefBatchRedirect|Target|0x28|8|Pointer||
+CValRefBatchRedirect|Producer|0x30|8|Pointer||CValRefBatchRedirect::CValRefBatchRedirect
+CValRefBatchRedirect|Column|0x38|4|Number||
+CTypeInfo|Type|0x00|8|Hex||
+CTypeInfo|Type Details|0x10|8|Hex||
+Expression|Operands|0x28|8|Pointer||
+Expression|Operand Count|0x30|4|Number||
+OperandArray|Operand|0x00|8|Pointer||
+CExecContext|Query Execution Context|0x1B8|8|Pointer||CQueryScan::Init
+CQueryExecContext|Query Scan|0x20|8|Pointer||CQueryExecContext::CQueryExecContext
+CQueryScan|Query Scan Context|0x60|8|Pointer||CQueryScan::CQueryScan
+CQECtxt|Statement|0x28|8|Pointer||CQECtxt::Init
+CXStmtQuery|Output Executor|0xD0|8|Pointer||
+CXStmtQuery|Row Context|0xD8|8|Pointer||CXStmtQuery::AllocateMembers
+RowContext|Slot|0x00|8|Pointer||RowsetNewSS::FetchNextRow,CHashWorkfilePartitionGroup::*
+CValHash|Record Offset|0x10|4|Number||
+CValHash|Slot|0x2C|4|Number||CValHash::CValHash
+CValHash|Accessor|0x38|8|Pointer||
+CValSSTable|Slot|0x10|4|Number||CValSSTable::CValSSTable
+CValSSTable|Accessor|0x18|8|Pointer||
+CValHashSwitch|Reader|0x10|8|Pointer||CQScanHash::SetupPartitionInputsAndOutputs,CQScanHash::CreateInputAndOutput
+CValHashSwitch|Input|0x18|8|Pointer||CQScanHash::CreateInputAndOutput
+CValHashCachedSwitch|Value|0x08|8|Pointer||CQScanHash::SetupPartitionInputsAndOutputs
+CValHashCachedSwitch|Cached Status|0x20|1|Number||
+CValHashCachedSwitch|Cached Type|0x21|1|Hex||
+CValHashCachedSwitch|Cached Value|0x28|8|Pointer||
+CValHashCachedSwitch|Cached Length|0x30|8|Number||
+CValExpr|Executor|0x08|8|Pointer||
+CEsExec|Input Values|0x28|8|Pointer||
+ExecutorArray|Executor|0x00|8|Pointer||
+ExecutorValueArray|Value|0x00|8|Pointer||
+CValExec|Entry|0x08|8|Pointer||CValRefOrdinal::PvalInvokeSpecific
+RowsetNewSS|Interface|0x70|8|Pointer||
+RowsetNewSS|Row|0xB8|8|Pointer||RowsetNewSS::FetchNextRow
+Row|Record|0x50|8|Pointer||IndexRowScanner::*,IndexDataSetSession::GetNextRowValuesInternal
+XVariant|Entry|0x00|32|Number||
+XVariant|Status|0x00|1|Number||
+XVariant|Type|0x01|1|Hex||
+XVariant|Value|0x08|8|Pointer||
+XVariant|Length|0x10|8|Number||
+RowsetSorted|Sort Descriptor|0x18|8|Pointer||RowsetSorted::CreateSort
+RowsetSorted|Row Count|0x98|4|Number||::soAllocRecBuf
+RowsetSorted|Key Columns|0xB8|8|Pointer||::build_sort_collist
+SORTDES|Sort Parameters|0x08|8|Pointer||::sort_init
+SORTDES|Key Columns|0x10|8|Pointer||::sort_init
+SORTDES|Memory Usage|0x20|8|Pointer||::sort_init
+SORTDES|Estimated Rows|0x50|4|Number||::sort_init
+SORTDES|Fixed Record Length|0x58|4|Number||::sort_init
+SORTDES|State|0x68|4|Number||::sort_endinput
+SORTDES|Run|0x70|8|Pointer|32|::lmAddCurToList,::lmsort
+SORTDES|Cursor|0x170|8|Pointer||::lmsort,::lmnext
+SORTDES|Current List|0x178|8|Pointer||::lmlink,::lmAddCurToList
+SORTDES|Current List Tail|0x180|8|Pointer||::lmlink,::lmAddCurToList
+SORTDES|Current List Count|0x188|4|Number||::lmlink,::lmAddCurToList
+SORTDES|Entry Size|0x200|4|Number||::sort_init
+SORTDES|Linked Entries|0x208|4|Number||::lmlink,::lmsort
+SortEntry|Record|0x08|8|Pointer||::lmlink
+SortEntry|Key|0x10|8|Pointer||::lmlink
+SortEntry|Record Length|0x18|2|Number||::lmlink
+SortEntry|Key Length|0x1A|2|Number||::lmlink
+SortEntry|Next|0x20|8|Pointer||::lmlink,::lmsort
+CHashWorkfilePartitionGroup|Virtual Table|0x00|8|Pointer||
+CHashWorkfilePartitionGroup|Compiled Group|0x08|8|Pointer||
+CHashWorkfilePartitionGroup|Iterator|0x10|8|Pointer||
+CHashWorkfilePartitionGroup|Columns|0x18|8|Pointer||
+CHashWorkfilePartitionGroup|Scan Columns|0x20|8|Pointer||
+CHashWorkfilePartitionGroup|Insert Expression|0x28|8|Pointer||
+CHashWorkfilePartitionGroup|Expression|0x30|8|Pointer||
+CHashWorkfilePartitionGroup|Update Expression|0x38|8|Pointer||
+CHashWorkfilePartitionGroup|Expression|0x40|8|Pointer||
+CHashWorkfilePartitionGroup|Expression|0x48|8|Pointer||
+CHashWorkfilePartitionGroup|Compare Expression|0x50|8|Pointer||
+CHashWorkfilePartitionGroup|Active Insert Expression|0x70|8|Pointer||
+CHashWorkfilePartitionGroup|Active Update Expression|0x78|8|Pointer||
+CHashWorkfilePartitionGroup|Column Info|0x80|8|Pointer||
+CHashWorkfilePartitionGroup|Workfile Group|0x88|8|Pointer||
+CHashWorkfilePartitionGroup|Workfile Group|0x90|8|Pointer||
+CHashWorkfilePartitionGroup|Column Flags|0x98|8|Pointer||
+CHashWorkfilePartitionGroup|Active Partition|0xA0|8|Pointer||
+CHashWorkfilePartitionGroup|Scan Partition|0xA8|8|Pointer||
+CHashWorkfilePartitionGroup|Last Partition|0xF0|8|Pointer||
+CHashWorkfilePartitionGroup|First Partition|0xF8|8|Pointer||
+CHashWorkfilePartitionInstance|Virtual Table|0x00|8|Pointer||
+CHashWorkfilePartitionInstance|Group|0x08|8|Pointer||
+CHashWorkfilePartitionInstance|Flag|0x10|1|Number||
+CHashWorkfilePartitionInstance|Workfile Has Rows|0x14|1|Number||
+CHashWorkfilePartitionInstance|State|0x18|4|Hex||
+CHashWorkfilePartitionInstance|Row Count|0x20|4|Number||
+CHashWorkfilePartitionInstance|Instance Number|0x28|4|Number||
+CHashWorkfilePartitionInstance|Workfile Rowset|0x30|8|Pointer||
+CHashWorkfilePartitionInstance|Workfile Rowset|0x38|8|Pointer||
+CHashWorkfilePartitionInstance|Workfile Rowset|0x40|8|Pointer||
+CHashWorkfilePartitionInstance|Directory|0x48|8|Pointer||
+CHashWorkfilePartitionInstance|Directory Count|0x50|4|Number||
+CHashWorkfilePartitionInstance|Bucket Mask|0x54|4|Hex||
+CHashWorkfilePartitionInstance|Initialised|0x58|1|Number||
+CHashWorkfilePartitionInstance|Current Item|0x60|8|Pointer||
+CHashWorkfilePartitionInstance|Entry Index|0x68|4|Number||
+CHashWorkfilePartitionInstance|Last Lookup Key|0x70|4|Number||
+CHashWorkfilePartitionInstance|Overflow Page|0x78|8|Pointer||
+CHashWorkfilePartitionInstance|Overflow Items Left|0x80|4|Number||
+CHashWorkfilePartitionInstance|Overflow Total|0x88|4|Number||
+CHashWorkfilePartitionInstance|Page Count|0x90|4|Number||
+CHashWorkfilePartitionInstance|Previous Partition|0x98|8|Pointer||
+CHashWorkfilePartitionInstance|Next Partition|0xA0|8|Pointer||
+CHashWorkfilePartitionInstance|Bitmap State|0xA8|4|Number||
+CHashWorkfilePartitionInstance|Bitmap|0xB0|8|Pointer||
+CHashWorkfilePartitionInstance|Bitmap Setting|0xB8|4|Number||
+CHashWorkfilePartitionInstance|Bitmap Setting|0xBC|4|Number||
+CHashWorkfilePartitionInstance|Bitmap Mask|0xC0|4|Hex||
+CHashWorkfilePartitionInstance|Bitmap Pages|0xC8|8|Pointer||
+HashItem|Count|0x00|1|Number||
+HashItem|Head|0x10|8|Pointer||
+HashItem|Next|0x18|8|Pointer||
+HashItem|Key|0x20|8|Number|6|
+HashItem|Row|0x50|8|Pointer|6|
+BUF|Frame (bpage)|0x00|8|Pointer||
+BUF|Database Id (bdbid)|0x2C|2|Number||
+BUF|State History (blog)|0x30|4|Number||
+BUF|Read µs (bReadMicroSec)|0x40|8|Number||
+BUF|Error Code (berrcode)|0x5C|4|Number||
+BUF|Last Used (bUse1)|0x60|2|Number||
+BUF|Status (bstat)|0x64|4|Number||
+BUF|Page ID (bpageno)|0x70|4|Number||
+BUF|File ID (bpageno)|0x74|2|Number||
+BUF|Partition (bpart)|0x76|2|Number||
+BUF|Recovery Unit (bpru)|0x90|8|Pointer||
+BUF|Latch Waiters|0x98|8|Pointer||
+BUF|Latch Owner|0xA0|8|Pointer||
+BUF|Latch State|0xA8|8|Hex||
+CBpBatch|Allocation Bitmap|0x00|8|Pointer||
+CBpBatch|Vector Array|0x08|8|Pointer||
+CBpBatch|Pure Bitmap|0x10|8|Pointer||
+CBpBatch|Vector Capacity|0x18|4|Number||
+CBpBatch|Vector Count|0x1C|4|Number||
+CBpBatch|Version|0x20|4|Hex||
+CBpBatch|Capacity|0x24|4|Number||
+CBpBatch|Active Rows|0x28|4|Number||
+CBpBatch|Memory Object|0x30|8|Pointer||
+CBpBatch|Selection Vector|0x38|8|Pointer||
+CBpBatch|Deep Data Allocator|0x40|8|Pointer||
+CBpBatch|Free Deep Pages|0x48|8|Pointer||
+CBpBatch|Blob Handle Factory|0x58|8|Pointer||
+BatchVector|Buffer|0x00|8|Pointer||
+BatchVector|Current Deep Page|0x10|8|Pointer||
+BatchVector|First Deep Page|0x18|8|Pointer||
+DeepDataPage|Next Page|0x08|8|Pointer||
+DeepDataPage|Magic|0x10|4|Hex||
+DeepDataPage|Capacity|0x14|2|Number||
+AccBindings|Column Count|0x62|2|Number||
+AccBindings|Memory Object|0x68|8|Pointer||
+AccBindings|Column Bindings|0x70|8|Pointer||
+ColumnBinding|Record Offset|0x00|4|Number||
+ColumnBinding|Ordinal|0x04|2|Number||
+ColumnBinding|Column Attributes|0x18|8|Hex||
+ColumnBinding|Value Offset|0x28|4|Number||
+ColumnBinding|Status Offset|0x30|4|Number||
+ColumnBinding|Maximum Length|0x3C|2|Number||
+ColumnBinding|Type|0x3E|1|Number||
+ColumnBinding|Flags|0x40|4|Hex||
+ColumnBinding|Infrequent Data|0x48|8|Pointer||
+ColumnBindingInfrequent|Length Offset|0x18|4|Number||
+AllocationPageId|Page Id|0x08|8|Number||
+PageHandle|Buffer|0x18|8|Pointer||

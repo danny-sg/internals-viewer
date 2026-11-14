@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using CommunityToolkit.WinUI;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace;
@@ -15,6 +16,7 @@ using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
 using InternalsViewer.UI.App.ViewModels;
 using InternalsViewer.UI.App.ViewModels.Query;
+using InternalsViewer.UI.App.Views.Query.Trace.Timeline.Memory;
 using InternalsViewer.UI.App.Views.Query.Trace.OperatorTracks;
 using InternalsViewer.UI.Plugins.FullTrace.Menus;
 using Microsoft.UI.Xaml.Controls;
@@ -822,6 +824,11 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
     private void OnNavigationPointerPressed(object sender, PointerRoutedEventArgs e)
     {
+        if (e.OriginalSource is DependencyObject source && source.FindAscendantOrSelf<MemoryStructureView>() is not null)
+        {
+            return;
+        }
+
         var properties = e.GetCurrentPoint(this).Properties;
 
         if (properties.IsXButton1Pressed)
@@ -925,9 +932,24 @@ public sealed partial class QueryTraceTimelineTabView : UserControl, IDocumentCo
 
     private void OnOperatorMenuRequested(MenuFlyout menu, ExecutionOperatorEvent op)
     {
-        if (ViewModel is { } viewModel && viewModel.GetIndexName(op) is { } index)
+        if (ViewModel is not { } viewModel)
+        {
+            return;
+        }
+
+        if (viewModel.GetIndexName(op) is { } index)
         {
             menu.Items.Add(MenuItems.Create($"Open Index: {index}", () => viewModel.OpenIndex(op)));
+        }
+
+        if (viewModel.GetHashTableGroup(op) is not null)
+        {
+            menu.Items.Add(MenuItems.Create("Open Hash Table", () => viewModel.OpenHashTable(op)));
+        }
+
+        if (viewModel.GetSortIterator(op) is not null)
+        {
+            menu.Items.Add(MenuItems.Create("Open Sort Table", () => viewModel.OpenSortTable(op)));
         }
     }
 }

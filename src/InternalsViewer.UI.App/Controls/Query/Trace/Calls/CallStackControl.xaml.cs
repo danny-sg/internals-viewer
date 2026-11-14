@@ -47,26 +47,20 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
 
     private SettingsViewModel Settings { get; } = App.GetService<SettingsViewModel>();
 
-    private static Brush TransparentBrush { get; } = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
-
     private HashSet<uint> ExpandedThreads { get; } = [];
 
     private PlayheadCallRow? ContextRow { get; set; }
 
-    private SourceStep? ContextStep { get; set; }
-
-    private SourceFrame? ContextFrame { get; set; }
-
     private bool IsBuilding { get; set; }
 
     public static Brush? RowBackground(bool isCurrent)
-        => isCurrent ? AppResources.Get<Brush>("SolidBackgroundFillColorQuarternaryBrush") : null;
-
-    public static string ArgumentLabel(string? label, string? location) => label ?? location ?? string.Empty;
+        => isCurrent ? AppResources.Get<Brush>("SolidBackgroundFillColorSecondaryBrush") : null;
 
     public static Visibility GetTargetVisibility(string? target) => GetVisibility(target is not null);
 
-    public static Visibility GetChipVisibility(bool isTracked, string? target) => GetVisibility(isTracked && target is null);
+    public static Visibility IsClassVisible(PlayheadCallRow? row) => GetVisibility(row?.ObjectClass is not null);
+
+    public static Visibility IsBaseClassVisible(PlayheadCallRow? row) => GetVisibility(row?.BaseClass is not null);
 
     public static string GetTargetToolTip(bool isBufferPage) => isBufferPage ? OpenPageToolTip : OpenMemoryToolTip;
 
@@ -87,8 +81,6 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
 
     private Visibility IsTextVisible(string? text) => GetVisibility(!string.IsNullOrEmpty(text));
 
-    private Visibility IsMemoryVisible(CallSignaturePart? part) => GetVisibility(part is { IsMemoryTracked: true, MemoryTarget: null });
-
     private Visibility IsTargetVisible(CallSignaturePart? part) => GetVisibility(part?.MemoryTarget is not null);
 
     private string TargetText(CallSignaturePart? part) => part?.MemoryTarget ?? string.Empty;
@@ -99,12 +91,7 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
 
     private Visibility IsEmpty(IReadOnlyList<PlayheadThreadRow>? threads) => GetVisibility(threads is not { Count: > 0 });
 
-    private Visibility IsFunctionVisible(PlayheadCallRow? row, CallSignaturePart? selected)
-        => GetVisibility(row is not null && selected is null);
-
     private Visibility AreArgumentsVisible(PlayheadCallRow? row) => GetVisibility(row is { Arguments.Count: > 0 });
-
-    private Visibility IsSourceVisible(IReadOnlyList<SourceStep>? steps) => GetVisibility(steps is { Count: > 0 });
 
     private string PositionText(PlayheadCallRow? row) => row is { FromPosition.IsKnown: true } ? row.FromPosition.ToString() : "None";
 
@@ -124,9 +111,16 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
             : "None";
 
     private string ReturnText(PlayheadCallRow? row)
-        => row?.Return is { } returned
-            ? $"{returned.TypeName} {returned.GetText(Settings.DecodeValues && returned.MemoryTarget is null)}".Trim()
-            : "None";
+    {
+        if (row?.Return is not { } returned)
+        {
+            return "None";
+        }
+
+        var value = returned.GetText(Settings.DecodeValues && returned.MemoryTarget is null);
+
+        return string.Join(' ', new[] { returned.Location, returned.TypeName, value }.Where(t => t is not null));
+    }
 
     private void OnViewModelChanged()
     {
@@ -163,10 +157,6 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
                 Rebuild();
 
                 SelectRow();
-                break;
-
-            case nameof(CallStackViewModel.SelectedValue):
-                ShowDetails();
                 break;
 
             case nameof(CallStackViewModel.SelectedCall):
@@ -238,7 +228,7 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
 
     private void ShowDetails()
     {
-        var isVisible = Attached is { SelectedValue: not null } or { SelectedCall: not null };
+        var isVisible = Attached is { SelectedCall: not null };
 
         if (isVisible != (DetailsPane.Visibility == Visibility.Visible))
         {
@@ -254,8 +244,6 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
         }
 
         ShowDetailsTitle();
-
-        ShowValueDetails();
     }
 
     private void ShowDetailsTitle()
@@ -267,85 +255,8 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
             SignatureRuns.AddFunction(DetailsTitle.Inlines, function.Text);
         }
 
-        if (Attached?.SelectedValue is { Label: { } label } value)
-        {
-            DetailsTitle.Inlines.Add(new Run
-            {
-                Text = $"  [{label}]",
-                Foreground = AppResources.Get<Brush>("TextFillColorSecondaryBrush")
-            });
-
-            if (value.DeclaredType is { } type)
-            {
-                DetailsTitle.Inlines.Add(new Run { Text = " " });
-
-                SignatureRuns.AddType(DetailsTitle.Inlines, type);
-            }
-        }
-
         ToolTipService.SetToolTip(DetailsTitle, string.Concat(DetailsTitle.Inlines.OfType<Run>().Select(r => r.Text)));
     }
-
-    private void ShowValueDetails()
-    {
-        ValueTypeText.Inlines.Clear();
-
-        ValueDecodedText.Inlines.Clear();
-
-        ValueTypeCopyButton.Tag = null;
-
-        ValueDecodedCopyButton.Tag = null;
-
-        ValueDecodedCopyButton.Visibility = Visibility.Collapsed;
-
-        if (Attached?.SelectedValue is not { } value)
-        {
-            return;
-        }
-
-        if ((value.DeclaredType ?? (value.IsThis ? CallSignaturePart.ThisLabel : null)) is { } type)
-        {
-            SignatureRuns.AddType(ValueTypeText.Inlines, type);
-        }
-
-        if (value.Location is { } location)
-        {
-            ValueTypeText.Inlines.Add(new Run
-            {
-                Text = ValueTypeText.Inlines.Count > 0 ? $" ({location})" : location,
-                Foreground = AppResources.Get<Brush>("TextFillColorSecondaryBrush")
-            });
-        }
-
-        if (value.Decoded is not null)
-        {
-            SignatureRuns.AddValue(ValueDecodedText.Inlines, value, decode: true);
-        }
-
-        ValueTypeCopyButton.Tag = GetText(ValueTypeText);
-
-        ValueDecodedCopyButton.Tag = GetText(ValueDecodedText);
-
-        var typeVisibility = GetVisibility(ValueTypeText.Inlines.Count > 0);
-
-        ValueTypeLabel.Visibility = typeVisibility;
-
-        ValueTypeText.Visibility = typeVisibility;
-
-        ValueTypeCopyButton.Visibility = typeVisibility;
-
-        var decodedVisibility = GetVisibility(ValueDecodedText.Inlines.Count > 0);
-
-        ValueDecodedLabel.Visibility = decodedVisibility;
-
-        ValueDecodedText.Visibility = decodedVisibility;
-
-        ValueDecodedCopyButton.Visibility = decodedVisibility;
-    }
-
-    private Style GetStyle(string key) => (Style)Resources[key];
-
-    private static string GetText(TextBlock textBlock) => string.Concat(textBlock.Inlines.OfType<Run>().Select(r => r.Text));
 
     private void OnStackTreeExpanding(TreeView sender, TreeViewExpandingEventArgs args)
     {
@@ -371,84 +282,7 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
         }
     }
 
-    private void OnValueSelected(object? sender, CallSignaturePart part)
-    {
-        if (Attached is not { } viewModel)
-        {
-            return;
-        }
-
-        if ((sender as FrameworkElement)?.DataContext is TreeViewNode { Content: PlayheadCallRow row })
-        {
-            viewModel.SelectedCall = row;
-        }
-
-        viewModel.SelectedValue = part;
-    }
-
-    private void OnArgumentTapped(object sender, TappedRoutedEventArgs e)
-    {
-        if ((sender as FrameworkElement)?.DataContext is CallSignaturePart part && Attached is { } viewModel)
-        {
-            viewModel.SelectedValue = part;
-        }
-    }
-
     private void OnCloseDetailsClick(object sender, RoutedEventArgs e) => Attached?.ClearSelection();
-
-    private void OnSourceStepPointerEntered(object sender, PointerRoutedEventArgs e)
-    {
-        SetSourceHover(sender, true);
-
-        Attached?.Mark((sender as FrameworkElement)?.DataContext as SourceStep);
-    }
-
-    private void OnSourceFramePointerEntered(object sender, PointerRoutedEventArgs e)
-    {
-        SetSourceHover(sender, true);
-
-        if ((sender as FrameworkElement)?.DataContext is SourceFrame frame)
-        {
-            Attached?.MarkFrame(frame);
-        }
-    }
-
-    private void OnSourcePointerExited(object sender, PointerRoutedEventArgs e)
-    {
-        SetSourceHover(sender, false);
-
-        Attached?.Mark(null);
-    }
-
-    private static void SetSourceHover(object sender, bool hovered)
-    {
-        if (sender is Panel panel)
-        {
-            panel.Background = hovered ? AppResources.Get<Brush>("SystemFillColorSuccessBackgroundBrush") : TransparentBrush;
-        }
-    }
-
-    private void OnSourceStepRightTapped(object sender, RightTappedRoutedEventArgs e)
-        => ContextStep = (sender as FrameworkElement)?.DataContext as SourceStep;
-
-    private void OnSourceGoToClick(object sender, RoutedEventArgs e)
-    {
-        if (ContextStep is { } step)
-        {
-            Attached?.GoTo(step);
-        }
-    }
-
-    private void OnSourceFrameRightTapped(object sender, RightTappedRoutedEventArgs e)
-        => ContextFrame = (sender as FrameworkElement)?.DataContext as SourceFrame;
-
-    private void OnSourceFrameGoToClick(object sender, RoutedEventArgs e)
-    {
-        if (ContextFrame is { } frame)
-        {
-            Attached?.GoTo(frame);
-        }
-    }
 
     private void OnCallRowRightTapped(object sender, RightTappedRoutedEventArgs e)
         => ContextRow = (sender as FrameworkElement)?.DataContext is TreeViewNode { Content: PlayheadCallRow row } ? row : null;
@@ -509,8 +343,6 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
         }
     }
 
-    private void OnMemoryTapped(object sender, TappedRoutedEventArgs e) => e.Handled = true;
-
     private void OnStartClick(object sender, RoutedEventArgs e) => MovePlayhead(Attached?.SelectedCall?.Span.From);
 
     private void OnEndClick(object sender, RoutedEventArgs e) => MovePlayhead(Attached?.SelectedCall?.Span.To);
@@ -527,17 +359,11 @@ public sealed partial class CallStackControl : UserControl, IReferenceFinder, ID
     private void OnReturnContextRequested(UIElement sender, ContextRequestedEventArgs e)
         => ShowAddressMenu(Attached?.SelectedCall?.Return, sender, e);
 
-    private void OnSelectedValueContextRequested(UIElement sender, ContextRequestedEventArgs e)
-        => ShowAddressMenu(Attached?.SelectedValue, sender, e);
-
     private void OnArgumentContextRequested(UIElement sender, ContextRequestedEventArgs e)
         => ShowAddressMenu((sender as FrameworkElement)?.DataContext as CallSignaturePart, sender, e);
 
     private void OnDetailsTitleContextRequested(UIElement sender, ContextRequestedEventArgs e)
-        => ShowSearchMenu(Attached?.SelectedValue is { } value ? value.DeclaredType : Attached?.SelectedCall?.Node.Symbol, sender, e);
-
-    private void OnValueTypeContextRequested(UIElement sender, ContextRequestedEventArgs e)
-        => ShowSearchMenu(Attached?.SelectedValue?.DeclaredType, sender, e);
+        => ShowSearchMenu(Attached?.SelectedCall?.Node.Symbol, sender, e);
 
     private void MovePlayhead(TracePoint? point)
     {

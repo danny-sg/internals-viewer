@@ -173,6 +173,8 @@ public sealed partial class HexViewControl
         target.HexRichTextBlock.Blocks.Clear();
         target.HexRichTextBlock.Blocks.Add(paragraph);
 
+        target.HexRichTextBlock.UpdateLayout();
+
         HighlightMarkers(target, target.Markers);
 
         target.DrawChangeSpans();

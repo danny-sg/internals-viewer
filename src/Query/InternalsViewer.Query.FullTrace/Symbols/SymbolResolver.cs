@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
+using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Symbols.Categories;
 using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 using InternalsViewer.Query.FullTrace.Symbols.Dia;
@@ -238,6 +239,44 @@ public sealed class SymbolResolver(string symbolsPath) : IDisposable
                 frame.Function!.Signature = scoped;
             }
         }
+    }
+
+    internal static void ResolveExports(IEnumerable<CallFrame> frames, IReadOnlyList<TraceModule> modules)
+    {
+        var paths = modules.DistinctBy(m => m.Identity).ToDictionary(m => m.Identity, m => m.Path);
+
+        var exports = new Dictionary<FrameModule, Dictionary<uint, string>>();
+
+        var functions = new FrameFunctionCache();
+
+        foreach (var frame in frames)
+        {
+            if (!paths.TryGetValue(frame.Module, out var path))
+            {
+                continue;
+            }
+
+            if (!exports.TryGetValue(frame.Module, out var names))
+            {
+                names = GetExportNames(path);
+
+                exports[frame.Module] = names;
+            }
+
+            functions.Resolve(frame, names.TryGetValue(frame.Rva, out var name) ? name + StartOffset : $"0x{frame.Rva:X}");
+        }
+    }
+
+    private static Dictionary<uint, string> GetExportNames(string path)
+    {
+        var names = new Dictionary<uint, string>();
+
+        foreach (var (name, rva) in ModuleExportReader.Read(path))
+        {
+            names.TryAdd(rva, name);
+        }
+
+        return names;
     }
 
     private static uint GetFunctionRva(CallFrame frame)

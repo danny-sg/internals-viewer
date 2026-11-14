@@ -212,6 +212,38 @@ public class AddressMapHookTests
     }
 
     [Fact]
+    public void An_Object_No_Constructor_Named_Is_Named_By_The_Vtable_It_Holds()
+    {
+        var (hook, replay) = Create();
+
+        hook.OnReturn(Call(OperatorNew, 20, returnValue: HeapObject), replay);
+
+        replay.Write(HeapObject, Vtable);
+
+        hook.OnEntry(Call(Consumer, 21, arguments: [0, HeapObject, 0, 0]), replay);
+
+        Assert.Equal("CQScanTableScanNew", hook.Build()[^1].VtableClassName);
+    }
+
+    [Fact]
+    public void An_Object_A_Constructor_Named_Is_Not_Renamed_By_Its_Vtable()
+    {
+        var (hook, replay) = Create();
+
+        hook.OnReturn(Call(OperatorNew, 20, returnValue: HeapObject), replay);
+
+        replay.Write(HeapObject, 0x1234ul);
+
+        hook.OnEntry(Call(Constructor, 21, arguments: [HeapObject, 0, 0, 0]), replay);
+
+        replay.Write(HeapObject, Vtable);
+
+        hook.OnEntry(Call(Consumer, 22, arguments: [0, HeapObject, 0, 0]), replay);
+
+        Assert.All(hook.Build(), e => Assert.Null(e.VtableClassName));
+    }
+
+    [Fact]
     public void Memory_With_No_Allocation_Is_Not_Read()
     {
         var (hook, replay) = Create();

@@ -44,6 +44,8 @@ public sealed partial class MemoryHistoryStore
 
     public int ReadCount => Reads.Count;
 
+    public EngineLayout Layout { get; private init; } = EngineLayout.Latest;
+
     private MemoryHistoryBlock[] BlockArray { get; }
 
     private MemoryHistoryAccessTable Writes { get; }
@@ -257,6 +259,11 @@ public sealed partial class MemoryHistoryStore
 
     public CallTreeNode? GetAllocatingCall(int block, TraceTimeline timeline)
         => timeline.GetNode(BlockArray[block].CallNodeIndex)?.GetAncestors().FirstOrDefault(n => !AllocationFunction.IsAllocatorFrame(n.Frame));
+
+    internal MemoryHistoryStore WithLayout(EngineLayout layout)
+        => ReferenceEquals(layout, Layout)
+            ? this
+            : new(BlockArray, Writes, Iterators, Timeline, Reads, ReadStarts, Instances) { Layout = layout };
 
     private WriteRange GetBlockWrites(int block) => new(Writes, BlockArray[block].FirstWrite, BlockArray[block].WriteCount);
 

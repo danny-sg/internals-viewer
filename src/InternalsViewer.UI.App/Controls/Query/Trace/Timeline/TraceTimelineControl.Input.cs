@@ -231,6 +231,10 @@ public sealed partial class TraceTimelineControl
             {
                 ZoomToOperator(operatorHit);
             }
+            else if (_operators.GetStageAt(position) is { } stage)
+            {
+                ZoomTo(stage.Span);
+            }
             else if (_operators.IsBackground(position))
             {
                 ClearSelections();
@@ -399,7 +403,10 @@ public sealed partial class TraceTimelineControl
                                  ? InputSystemCursorShape.Hand
                                  : InputSystemCursorShape.Arrow);
 
-        var hit = found?.Call ?? HitTest(position) ?? GetMarkHit(operatorsHover.Tick?.Tick?.Node, operatorsHover.Tick?.Tick?.CallIndex);
+        var hit = found?.Call
+                  ?? HitTest(position)
+                  ?? GetMarkHit(operatorsHover.Tick?.Tick?.Node, operatorsHover.Tick?.Tick?.CallIndex)
+                  ?? GetMarkHit(operatorsHover.Stage?.Node, operatorsHover.Stage?.Span.CallIndex);
 
         if (hit != _hover
             || !Nullable.Equals(found, _hoverBlock)
@@ -434,7 +441,7 @@ public sealed partial class TraceTimelineControl
         {
             OpenToolTip(GetBufferLatchToolTip(latch), position);
         }
-        else if (hit is { } hovered && operatorsHover.Tick?.Tick is null)
+        else if (hit is { } hovered && operatorsHover.Tick?.Tick is null && operatorsHover.Stage is null)
         {
             ShowToolTip(hovered, position);
         }

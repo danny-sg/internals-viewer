@@ -1,7 +1,9 @@
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Hooks;
-using InternalsViewer.Query.Interfaces;
+using InternalsViewer.Query.FullTrace.Locators.Enums;
+using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 
 namespace InternalsViewer.Query.FullTrace.Locators;
 
@@ -20,9 +22,9 @@ internal sealed class LocatorHook(IEnumerable<LocatorRead> reads, TraceCallStore
         }
     }
 
-    private static bool TryFollow(ITraceReplay replay, int[]? path, ref ulong pointer)
+    private static bool TryFollow(ITraceReplay replay, LocatorPageSource source, ref ulong pointer)
     {
-        foreach (var hop in path ?? [])
+        foreach (var hop in GetPath(replay.Layout, source))
         {
             if (!replay.TryRead(pointer + (uint)hop, out ulong next) || next == 0)
             {
@@ -37,15 +39,31 @@ internal sealed class LocatorHook(IEnumerable<LocatorRead> reads, TraceCallStore
 
     private Locator? ReadValue(ITraceReplay replay, LocatorRead read, ulong pointer, ulong count)
     {
-        if (pointer == 0 || !TryFollow(replay, read.Path, ref pointer))
+        if (pointer == 0 || !TryFollow(replay, read.PageSource, ref pointer))
         {
             return null;
         }
 
-        return Locator.Read(read.ValueType, GetMemory(replay), read.ArgumentSlot, pointer + (uint)read.Offset, count);
+        var offset = GetOffset(replay.Layout, read.PageSource);
+
+        return Locator.Read(read.ValueType, GetMemory(replay), read.ArgumentSlot, pointer + offset, count);
     }
 
-    private IMemoryReader GetMemory(ITraceReplay replay)
+    private static int[] GetPath(EngineLayout layout, LocatorPageSource source) => source switch
+    {
+        LocatorPageSource.PageHandle => [0, layout.PageLocation.PageHandleBufferField.Offset],
+        LocatorPageSource.PageReference => [0],
+        _ => []
+    };
+
+    private static ulong GetOffset(EngineLayout layout, LocatorPageSource source) => source switch
+    {
+        LocatorPageSource.AllocationPageId => (ulong)layout.PageLocation.AllocationPageIdField.Offset,
+        LocatorPageSource.PageHandle or LocatorPageSource.PageReference => (ulong)layout.Buffer.PageIdField.Offset,
+        _ => 0
+    };
+
+    private ITraceMemoryReader GetMemory(ITraceReplay replay)
     {
         if (images is null)
         {

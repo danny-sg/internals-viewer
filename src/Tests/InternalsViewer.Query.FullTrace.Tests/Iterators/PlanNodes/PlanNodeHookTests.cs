@@ -1,8 +1,11 @@
 using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.Hooks.Enums;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Enums;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
+using InternalsViewer.Query.FullTrace.Locators;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Iterators.PlanNodes;
 
@@ -41,6 +44,7 @@ public class PlanNodeHookTests
 
     private const ulong Value = 0x1F4_0000_6000;
 
+
     [Fact]
     public void A_Row_Iterator_Reports_The_Plan_Node_Of_Its_Plan_Object()
     {
@@ -56,9 +60,10 @@ public class PlanNodeHookTests
     [Fact]
     public void A_Row_Iterator_On_SQL_Server_2022_Reports_The_Plan_Node_Of_Its_Plan_Object()
     {
-        var replay = PlanObjects().Write(Parent + 0x10, Parent + 0x10).Write(Parent + 0x48, PlanObject);
+        var replay = PlanObjects(EngineLayout.Get(new Version(16, 0))).Write(Parent + 0x10, Parent + 0x10)
+                                                                      .Write(Parent + 0x48, PlanObject);
 
-        var hook = CreateHook(PlanNodeLayout.SqlServer2022);
+        var hook = CreateHook();
 
         hook.OnEntry(Call(GetRow, 1, Parent), replay);
 
@@ -68,9 +73,10 @@ public class PlanNodeHookTests
     [Fact]
     public void A_Batch_Helper_On_SQL_Server_2022_Reports_The_Plan_Node_Of_The_Operator_It_Adapts()
     {
-        var replay = PlanObjects().Write(Parent + 0x10, Parent + 0x10).Write(Parent + 0x48, PlanObject);
+        var replay = PlanObjects(EngineLayout.Get(new Version(16, 0))).Write(Parent + 0x10, Parent + 0x10)
+                                                                      .Write(Parent + 0x48, PlanObject);
 
-        var hook = CreateHook(PlanNodeLayout.SqlServer2022);
+        var hook = CreateHook();
 
         hook.OnEntry(Call(BatchHelperGetRow, 1, Parent), replay);
 
@@ -200,17 +206,31 @@ public class PlanNodeHookTests
         Assert.Empty(hook.GetPlanNodes());
     }
 
-    private static FakeTraceReplay Slots(ulong first, ulong second)
-        => new FakeTraceReplay().Write(Context, first).Write(Context + sizeof(ulong), second);
+    [Fact]
+    public void An_Output_Column_Names_The_Plan_Node_That_Produces_It()
+    {
+        var type = new SqlTypeInfo(0x38, 1, 4, 10, 0, 0);
 
-    private static FakeTraceReplay PlanObjects()
-        => Slots(0, 0).Write(PlanObject, PlanObjectTable)
+        var top = new IteratorPlanNode(Parent, BatchPlanObject, 0, Query, 0) { Outputs = [new PlanOutputColumn(Value, PlanObject, type)] };
+
+        var scan = new IteratorPlanNode(Child, PlanObject, 0, Query, 1) { Outputs = [new PlanOutputColumn(Value, PlanObject, type)] };
+
+        var columns = IteratorPlanNode.GetOutputColumns([top, scan]);
+
+        Assert.Equal((1, 1), (Assert.Single(columns[0]).ProducerNodeId, Assert.Single(columns[1]).ProducerNodeId));
+    }
+
+    private static FakeTraceReplay Slots(ulong first, ulong second, EngineLayout? layout = null)
+        => new FakeTraceReplay { Layout = layout ?? EngineLayout.Latest }.Write(Context, first).Write(Context + sizeof(ulong), second);
+
+    private static FakeTraceReplay PlanObjects(EngineLayout? layout = null)
+        => Slots(0, 0, layout).Write(PlanObject, PlanObjectTable)
                       .Write(PlanObject + 0x0C, 2)
                       .Write(PlanObject + 0x28, Query)
                       .Write(BatchPlanObject, BatchPlanObjectTable)
                       .Write(BatchPlanObject + 0x10, PlanObject);
 
-    private static PlanNodeHook CreateHook(PlanNodeLayout? layout = null)
+    private static PlanNodeHook CreateHook()
         => new(new(new Dictionary<ulong, PlanNodeFunctionType>
                {
                    [GetRow] = PlanNodeFunctionType.Iterator,
@@ -224,8 +244,7 @@ public class PlanNodeHookTests
                {
                    [PlanObjectTable] = PlanObjectClass.Row,
                    [BatchPlanObjectTable] = PlanObjectClass.Batch
-               }),
-               layout ?? PlanNodeLayout.SqlServer2025);
+               }));
 
     private static TraceHookCall Call(ulong function, ulong id, ulong iterator, ulong returnValue = 0, ulong? at = null)
         => new()

@@ -4,6 +4,7 @@ using InternalsViewer.Execution.AccessPaths.Aggregation;
 using InternalsViewer.Execution.AccessPaths.Predicates;
 using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Execution.AccessPaths.Windowing;
+using InternalsViewer.Query.Plans.Enums;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Parsers;
 using InternalsViewer.Query.Plans;
@@ -1552,6 +1553,58 @@ public class ExecutionPlanParserTests
         Assert.Same(plan.NodesById[0], plan.Root[0].Children[0]);
     }
 
+    private const string ColumnUseXml = """
+        <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan">
+          <BatchSequence>
+            <Batch>
+              <Statements>
+                <StmtSimple StatementType="SELECT" StatementSubTreeCost="1">
+                  <QueryPlan>
+                    <RelOp NodeId="0" PhysicalOp="Stream Aggregate" LogicalOp="Aggregate" EstimatedExecutionMode="Row">
+                      <OutputList><ColumnReference Column="Expr1007" /></OutputList>
+                      <StreamAggregate>
+                        <DefinedValues>
+                          <DefinedValue>
+                            <ColumnReference Column="Expr1007" />
+                            <ScalarOperator ScalarString="MAX([h].[Id])">
+                              <Aggregate AggType="MAX" Distinct="false">
+                                <ScalarOperator>
+                                  <Identifier>
+                                    <ColumnReference Schema="[dbo]" Table="[HeapTable]" Alias="[h]" Column="Id" />
+                                  </Identifier>
+                                </ScalarOperator>
+                              </Aggregate>
+                            </ScalarOperator>
+                          </DefinedValue>
+                        </DefinedValues>
+                        <GroupBy><ColumnReference Schema="[dbo]" Table="[HeapTable]" Alias="[h]" Column="TextField" /></GroupBy>
+                        <RelOp NodeId="1" PhysicalOp="Hash Match" LogicalOp="Inner Join" EstimatedExecutionMode="Row">
+                          <OutputList><ColumnReference Schema="[dbo]" Table="[HeapTable]" Alias="[h]" Column="Id" /></OutputList>
+                          <Hash>
+                            <DefinedValues />
+                            <HashKeysBuild><ColumnReference Schema="[dbo]" Table="[HeapTable]" Alias="[h]" Column="Id" /></HashKeysBuild>
+                            <HashKeysProbe>
+                              <ColumnReference Schema="[dbo]" Table="[ClusteredTable]" Alias="[c]" Column="Id" />
+                            </HashKeysProbe>
+                            <ProbeResidual>
+                              <ScalarOperator ScalarString="[c].[TextField] IS NOT NULL">
+                                <Identifier>
+                                  <ColumnReference Schema="[dbo]" Table="[ClusteredTable]" Alias="[c]" Column="TextField" />
+                                </Identifier>
+                              </ScalarOperator>
+                            </ProbeResidual>
+                          </Hash>
+                        </RelOp>
+                      </StreamAggregate>
+                    </RelOp>
+                  </QueryPlan>
+                </StmtSimple>
+              </Statements>
+            </Batch>
+          </BatchSequence>
+        </ShowPlanXML>
+        """;
+
     private const string ValueReferenceXml = """
         <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan">
           <BatchSequence>
@@ -1593,13 +1646,40 @@ public class ExecutionPlanParserTests
 
         Assert.Equal(["Expr1"], node.OuterReferences.ToArray());
 
-        Assert.Empty(node.ReferencedValues);
+        Assert.Empty(node.ReferencedColumns);
     }
 
     [Fact]
     public void A_Defined_Value_Lists_The_Values_Its_Expression_Reads()
     {
-        Assert.Equal(["ConstExpr2"], Parse(ValueReferenceXml).NodesById[1].DefinedValues[0].References);
+        Assert.Equal(["ConstExpr2"], Parse(ValueReferenceXml).NodesById[1].DefinedValues[0].References.Select(r => r.Column));
+    }
+
+    [Fact]
+    public void A_Defined_Value_Keeps_The_Table_Of_A_Column_It_Reads()
+    {
+        var reference = Assert.Single(Parse(ColumnUseXml).NodesById[0].DefinedValues[0].References);
+
+        Assert.Equal(("HeapTable", "Id"), (reference.Table, reference.Column));
+    }
+
+    [Fact]
+    public void An_Operator_Lists_The_Columns_It_Uses_With_Their_Use()
+    {
+        var uses = Parse(ColumnUseXml).NodesById[1].ReferencedColumns.Select(u => (u.Column.Table, u.Column.Column, u.Type));
+
+        Assert.Equal([("HeapTable", "Id", ColumnUseType.BuildKey),
+                      ("ClusteredTable", "Id", ColumnUseType.ProbeKey),
+                      ("ClusteredTable", "TextField", ColumnUseType.Predicate)],
+                     uses);
+    }
+
+    [Fact]
+    public void An_Operator_Does_Not_Use_The_Columns_It_Defines()
+    {
+        var uses = Parse(ColumnUseXml).NodesById[0].ReferencedColumns.Select(u => (u.Column.Column, u.Type));
+
+        Assert.Equal([("Id", ColumnUseType.Expression), ("TextField", ColumnUseType.Group)], uses);
     }
 
     [Fact]

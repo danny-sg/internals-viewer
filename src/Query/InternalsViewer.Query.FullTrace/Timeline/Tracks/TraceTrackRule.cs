@@ -74,6 +74,9 @@ public sealed partial record TraceTrackRule(string Name,
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool IsPhase { get; init; }
 
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool IsDetailed { get; init; }
+
     public bool IsPlanDefault { get; init; } = true;
 
     public TraceTickSourceType Source { get; init; }

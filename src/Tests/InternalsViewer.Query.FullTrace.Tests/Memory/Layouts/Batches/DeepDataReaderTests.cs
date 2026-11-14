@@ -2,7 +2,8 @@ using System.Buffers.Binary;
 using System.Text;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Batches;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
-using InternalsViewer.Query.Interfaces;
+using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Batches;
 
@@ -53,9 +54,9 @@ public class DeepDataReaderTests
 
         BinaryPrimitives.WriteUInt64LittleEndian(page.AsSpan(0x08), next);
         BinaryPrimitives.WriteUInt32LittleEndian(page.AsSpan(0x10), 0x53445042);
-        BinaryPrimitives.WriteUInt16LittleEndian(page.AsSpan(0x14), PageSize - DeepDataReader.PageHeaderSize);
+        BinaryPrimitives.WriteUInt16LittleEndian(page.AsSpan(0x14), (ushort)(PageSize - EngineLayout.Latest.DeepDataPage.HeaderSize));
 
-        var offset = DeepDataReader.PageHeaderSize;
+        var offset = EngineLayout.Latest.DeepDataPage.HeaderSize;
 
         foreach (var value in values)
         {
@@ -70,8 +71,10 @@ public class DeepDataReaderTests
         return page;
     }
 
-    private sealed class Memory : IMemoryReader
+    private sealed class Memory : ITraceMemoryReader
     {
+        public EngineLayout Layout => EngineLayout.Latest;
+
         private List<(ulong Address, byte[] Data)> Regions { get; } = [];
 
         public Memory Add(ulong address, byte[] data)

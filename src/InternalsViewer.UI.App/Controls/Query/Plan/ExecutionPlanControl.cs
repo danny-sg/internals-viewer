@@ -48,8 +48,8 @@ public sealed class ExecutionPlanControl : Canvas
     private const double CurrentArrowMoveSeconds = 0.3;
     private const double CurrentArrowOvershoot = 0.3;
     private const double ClickTolerance = 4;
-    private const double StepLabelGap = 2;
-    private const double StepLabelRoom = 56;
+    private const double StepLabelGap = 8;
+    private const double StepLabelRoom = 62;
     private const double CallArrowRotation = -90;
     private const double ReturnArrowRotation = 90;
     private const double CalculatorWidth = 14;
@@ -171,6 +171,12 @@ public sealed class ExecutionPlanControl : Canvas
         set => SetValue(IsFullTraceProperty, value);
     }
 
+    public Func<PlanNode, bool>? CanOpenHashTable { get; set; }
+
+    public Func<PlanNode, bool>? CanOpenSortTable { get; set; }
+
+    public Func<PlanNode, bool>? CanSkipTo { get; set; }
+
     public static readonly DependencyProperty CurrentStepProperty =
         DependencyProperty.Register(nameof(CurrentStep), typeof(PlanStepMarker), typeof(ExecutionPlanControl),
             new PropertyMetadata(null, OnCurrentStepChanged));
@@ -252,6 +258,10 @@ public sealed class ExecutionPlanControl : Canvas
 
     public event EventHandler<PlanNode>? IndexOpenRequested;
 
+    public event EventHandler<PlanNode>? HashTableOpenRequested;
+
+    public event EventHandler<PlanNode>? SortTableOpenRequested;
+
     public event EventHandler<PlanNode>? SimulationOpenRequested;
 
     public event EventHandler<PlanNode>? CallTreeOpenRequested;
@@ -259,6 +269,8 @@ public sealed class ExecutionPlanControl : Canvas
     public event EventHandler<PlanNode>? PropertiesOpenRequested;
 
     public event EventHandler<PlanNode>? CounterToggleRequested;
+
+    public event EventHandler<PlanNode>? SkipToRequested;
 
     public event EventHandler<PlanPage>? PageOpenRequested;
 
@@ -668,9 +680,8 @@ public sealed class ExecutionPlanControl : Canvas
 
         // Hash join inputs are labelled Build (the blocking side) / Probe (the streaming side) near the
         // child end of the line.
-        if (OperatorClassifier.IsHashJoin(parentNode))
+        if (InputLabel.Get(parentNode, GetOperator(childNode)) is { } label)
         {
-            var label = OperatorClassifier.RoleOf(parentNode, GetOperator(childNode)) == InputRole.Blocking ? "Build" : "Probe";
             AddBranchLabel(label, elbowX, start.Y);
         }
 
@@ -725,10 +736,8 @@ public sealed class ExecutionPlanControl : Canvas
 
         IteratorConnectors[childNode] = new IteratorConnector(request.Glow, response.Glow, middleX);
 
-        if (OperatorClassifier.IsHashJoin(parentNode))
+        if (InputLabel.Get(parentNode, parentNode.Children[lane]) is { } label)
         {
-            var label = OperatorClassifier.RoleOf(parentNode, parentNode.Children[lane]) == InputRole.Blocking ? "Build" : "Probe";
-
             AddBranchLabel(label, elbowX + offset, childY - offset);
         }
 
@@ -930,6 +939,17 @@ public sealed class ExecutionPlanControl : Canvas
         {
             var flyout = new MenuFlyout();
 
+            if (CanSkipTo?.Invoke(node) == true)
+            {
+                var skipTo = new MenuFlyoutItem { Text = "Skip To" };
+
+                skipTo.Click += (_, _) => SkipToRequested?.Invoke(this, node);
+
+                flyout.Items.Add(skipTo);
+
+                flyout.Items.Add(new MenuFlyoutSeparator());
+            }
+
             if (!string.IsNullOrEmpty(node.Index) &&
                 OperatorClassifier.GetCategory(node) == OperatorCategory.DataAccess)
             {
@@ -956,6 +976,24 @@ public sealed class ExecutionPlanControl : Canvas
                 openSimulation.Click += (_, _) => SimulationOpenRequested?.Invoke(this, node);
 
                 flyout.Items.Add(openSimulation);
+            }
+
+            if (IsFullTrace && CanOpenHashTable?.Invoke(node) == true)
+            {
+                var openHashTable = new MenuFlyoutItem { Text = "Hash Table" };
+
+                openHashTable.Click += (_, _) => HashTableOpenRequested?.Invoke(this, node);
+
+                flyout.Items.Add(openHashTable);
+            }
+
+            if (IsFullTrace && CanOpenSortTable?.Invoke(node) == true)
+            {
+                var openSortTable = new MenuFlyoutItem { Text = "Sort Table" };
+
+                openSortTable.Click += (_, _) => SortTableOpenRequested?.Invoke(this, node);
+
+                flyout.Items.Add(openSortTable);
             }
 
             var openCallTree = new MenuFlyoutItem { Text = "Call Tree" };
@@ -1202,7 +1240,7 @@ public sealed class ExecutionPlanControl : Canvas
 
         foreach (var value in values)
         {
-            list.Children.Add(new PredicateTextBox
+            list.Children.Add(new ExpressionTextBox
             {
                 Text = value.GetText(Plan?.Expressions),
                 HasBackground = false,
@@ -1334,7 +1372,7 @@ public sealed class ExecutionPlanControl : Canvas
 
         var isFlying = isMoving && (shownLeft != left || shownTop != top || shownRotation != rotation);
 
-        ShowStepLabel(step.Step, isFlying, centreX, aboveIcon - CurrentArrowSize * scale / 2 - StepLabelGap);
+        ShowStepLabel(step.Step, isFlying, centreX, aboveIcon - (CurrentArrowSize / 2 + StepLabelGap) * scale);
 
         if (isMoving)
         {

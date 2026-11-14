@@ -35,6 +35,8 @@ internal sealed class AddressMapHook(Dictionary<ulong, AddressMapFunction> opera
 
     private HashSet<int> ReadEntries { get; } = [];
 
+    private HashSet<int> ClassifiedEntries { get; } = [];
+
     private ListPool<int> Lists { get; } = new();
 
     public ChunkedList<AddressEntry> Build() => Entries;
@@ -62,6 +64,11 @@ internal sealed class AddressMapHook(Dictionary<ulong, AddressMapFunction> opera
             {
                 Record(AddressMapOperation.Declared, call.Arguments[declared.ArgumentSlot], call, replay, declared.Name);
             }
+        }
+
+        foreach (var argument in call.Arguments)
+        {
+            ReadVtableClass(argument, replay);
         }
     }
 
@@ -195,6 +202,24 @@ internal sealed class AddressMapHook(Dictionary<ulong, AddressMapFunction> opera
         if (replay.TryRead(address, out ulong vtable) && Vtables.TryGetValue(vtable, out var className))
         {
             Entries[latest] = entry with { ClassName = className };
+        }
+    }
+
+    private void ReadVtableClass(ulong address, ITraceReplay replay)
+    {
+        if (Vtables.Count == 0
+            || address < TraceAddress.MinimumAddress
+            || !LatestEntries.TryGetValue(address, out var latest)
+            || Entries[latest] is not { IsAlive: true, VtableClassName: null } entry
+            || entry.Operation is AddressMapOperation.Constructed or AddressMapOperation.Visited
+            || !ClassifiedEntries.Add(latest))
+        {
+            return;
+        }
+
+        if (replay.TryRead(address, out ulong vtable) && Vtables.TryGetValue(vtable, out var className))
+        {
+            Entries[latest] = entry with { VtableClassName = className };
         }
     }
 

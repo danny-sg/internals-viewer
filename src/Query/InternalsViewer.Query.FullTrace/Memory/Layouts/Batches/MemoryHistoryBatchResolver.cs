@@ -138,6 +138,6 @@ public sealed class MemoryHistoryBatchResolver(MemoryHistoryStore store,
     private bool IsHeader(int block) => getClassName(block) == BatchReader.ClassName;
 
     private bool IsDeepDataPage(int block)
-        => store.GetWrites(block).Any(w => store.TryGetWrittenValue(w, DeepDataReader.PageMagicOffset, out var magic)
+        => store.GetWrites(block).Any(w => store.TryGetWrittenValue(w, store.Layout.DeepDataPage.MagicField.Offset, out var magic)
                                            && magic == DeepDataReader.PageMagic);
 }

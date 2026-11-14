@@ -36,8 +36,6 @@ public sealed partial class DockHost : UserControl
         set => SetValue(FixedContentProperty, value);
     }
 
-    private readonly Dictionary<SplitNode, (Grid Grid, bool Horizontal)> _grids = new();
-
     public DockHost()
     {
         InitializeComponent();
@@ -49,9 +47,13 @@ public sealed partial class DockHost : UserControl
 
     private FixedPaneView? FixedPane { get; set; }
 
+    private Dictionary<SplitNode, (Grid Grid, bool Horizontal)> Grids { get; set; } = [];
+
+    private Dictionary<TabGroupNode, TabGroupView> GroupViews { get; set; } = [];
+
     public void CaptureSizes()
     {
-        foreach (var (node, (grid, horizontal)) in _grids)
+        foreach (var (node, (grid, horizontal)) in Grids)
         {
             if (horizontal && grid.ColumnDefinitions.Count == 3)
             {
@@ -93,43 +95,92 @@ public sealed partial class DockHost : UserControl
     {
         CaptureSizes();
 
-        _grids.Clear();
+        var grids = Grids;
 
-        FixedPane?.Release();
+        var groupViews = GroupViews;
 
-        FixedPane = null;
+        Grids = [];
 
-        RootHost.Child = Layout is null ? null : BuildNode(Layout.Root);
+        GroupViews = [];
+
+        var root = Layout is null ? null : BuildNode(Layout.Root, grids, groupViews);
+
+        foreach (var view in groupViews.Values)
+        {
+            view.Release();
+        }
+
+        if (ReferenceEquals(RootHost.Child, root))
+        {
+            return;
+        }
+
+        if (root is not null)
+        {
+            Detach(root);
+        }
+
+        RootHost.Child = root;
     }
 
-    private FrameworkElement BuildNode(LayoutNode node)
+    private FrameworkElement BuildNode(LayoutNode node,
+                                       Dictionary<SplitNode, (Grid Grid, bool Horizontal)> grids,
+                                       Dictionary<TabGroupNode, TabGroupView> groupViews)
     {
         if (node is TabGroupNode group)
         {
-            var view = new TabGroupView();
-            view.Initialize(group, Layout!);
+            if (!groupViews.Remove(group, out var view))
+            {
+                view = new TabGroupView();
+
+                view.Initialize(group, Layout!);
+            }
+
+            GroupViews[group] = view;
+
             return view;
         }
 
         if (node is FixedNode fixedNode)
         {
-            var pane = new FixedPaneView();
+            FixedPane ??= new FixedPaneView();
 
             fixedNode.MinWidth = FixedContent?.MinWidth ?? 0;
 
-            pane.Initialize(fixedNode, Layout!, FixedContent);
+            FixedPane.Initialize(fixedNode, Layout!, FixedContent);
 
-            FixedPane = pane;
-
-            return pane;
+            return FixedPane;
         }
 
         var split = (SplitNode)node;
+
         var horizontal = split.Orientation == Orientation.Horizontal;
 
+        var first = BuildNode(split.First, grids, groupViews);
+
+        var second = BuildNode(split.Second, grids, groupViews);
+
+        var grid = grids.TryGetValue(split, out var built) && built.Horizontal == horizontal
+            ? built.Grid
+            : CreateGrid(split, horizontal);
+
+        PlaceChildren(grid, first, second, horizontal);
+
+        if (horizontal)
+        {
+            grid.ColumnDefinitions[0].MinWidth = split.First.GetMinWidth(SplitterSize);
+
+            grid.ColumnDefinitions[2].MinWidth = split.Second.GetMinWidth(SplitterSize);
+        }
+
+        Grids[split] = (grid, horizontal);
+
+        return grid;
+    }
+
+    private static Grid CreateGrid(SplitNode split, bool horizontal)
+    {
         var grid = new Grid();
-        var first = BuildNode(split.First);
-        var second = BuildNode(split.Second);
 
         var splitter = new GridSplitter
         {
@@ -141,19 +192,15 @@ public sealed partial class DockHost : UserControl
             ? new GridLength(pixels)
             : new GridLength(split.FirstStar, GridUnitType.Star);
 
+        var secondLength = new GridLength(split.SecondStar, GridUnitType.Star);
+
         if (horizontal)
         {
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = firstLength, MinWidth = split.First.GetMinWidth(SplitterSize) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = firstLength });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            grid.ColumnDefinitions.Add(new ColumnDefinition
-            {
-                Width = new GridLength(split.SecondStar, GridUnitType.Star),
-                MinWidth = split.Second.GetMinWidth(SplitterSize)
-            });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = secondLength });
 
-            Grid.SetColumn(first, 0);
             Grid.SetColumn(splitter, 1);
-            Grid.SetColumn(second, 2);
 
             splitter.Width = SplitterSize;
             splitter.ResizeDirection = GridSplitter.GridResizeDirection.Columns;
@@ -164,11 +211,9 @@ public sealed partial class DockHost : UserControl
         {
             grid.RowDefinitions.Add(new RowDefinition { Height = firstLength });
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(split.SecondStar, GridUnitType.Star) });
+            grid.RowDefinitions.Add(new RowDefinition { Height = secondLength });
 
-            Grid.SetRow(first, 0);
             Grid.SetRow(splitter, 1);
-            Grid.SetRow(second, 2);
 
             splitter.Height = SplitterSize;
             splitter.ResizeDirection = GridSplitter.GridResizeDirection.Rows;
@@ -176,13 +221,57 @@ public sealed partial class DockHost : UserControl
             splitter.HorizontalAlignment = HorizontalAlignment.Stretch;
         }
 
-        grid.Children.Add(first);
         grid.Children.Add(splitter);
-        grid.Children.Add(second);
-
-        _grids[split] = (grid, horizontal);
 
         return grid;
+    }
+
+    private static void PlaceChildren(Grid grid, FrameworkElement first, FrameworkElement second, bool horizontal)
+    {
+        for (var index = grid.Children.Count - 1; index >= 0; index--)
+        {
+            var child = grid.Children[index];
+
+            if (child is not GridSplitter && !ReferenceEquals(child, first) && !ReferenceEquals(child, second))
+            {
+                grid.Children.RemoveAt(index);
+            }
+        }
+
+        Place(grid, first, 0, horizontal);
+
+        Place(grid, second, 2, horizontal);
+    }
+
+    private static void Place(Grid grid, FrameworkElement element, int cell, bool horizontal)
+    {
+        if (!ReferenceEquals(element.Parent, grid))
+        {
+            Detach(element);
+
+            grid.Children.Add(element);
+        }
+
+        if (horizontal)
+        {
+            Grid.SetColumn(element, cell);
+        }
+        else
+        {
+            Grid.SetRow(element, cell);
+        }
+    }
+
+    private static void Detach(FrameworkElement element)
+    {
+        if (element.Parent is Panel panel)
+        {
+            panel.Children.Remove(element);
+        }
+        else if (element.Parent is Border border)
+        {
+            border.Child = null;
+        }
     }
 
     private static void OnLayoutPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

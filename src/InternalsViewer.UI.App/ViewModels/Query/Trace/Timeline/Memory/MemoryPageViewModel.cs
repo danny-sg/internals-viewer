@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
+using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Pages;
 using InternalsViewer.Query.Results;
@@ -95,15 +96,27 @@ public sealed partial class MemoryPageViewModel : ObservableObject
 
     private int? PendingOffset { get; set; }
 
-    public void Load(MemoryHistoryViewModel history, int block)
+    public void Load(MemoryHistoryViewModel history, int block, RowRecordLayout? layout = null)
     {
         Clear();
 
         IsAvailable = history.IsPage(block);
 
-        Layout = IsAvailable ? history.GetWorkfileLayout(block) : null;
+        Layout = IsAvailable ? layout ?? history.GetWorkfileLayout(block) : null;
 
         SortLayout = IsAvailable ? history.GetSortLayout(block) : null;
+    }
+
+    public void SelectContaining(int offset)
+    {
+        var slot = offset < PageHeader.Size
+            ? Slots.FirstOrDefault(s => s.Index == PageDisplayBuilder.PageHeaderSlot)
+            : Slots.Where(s => s.Index >= 0 && s.Offset <= offset).MaxBy(s => s.Offset);
+
+        if (slot is not null)
+        {
+            SelectedSlot = slot;
+        }
     }
 
     public void SelectOffset(int offset)
@@ -227,7 +240,7 @@ public sealed partial class MemoryPageViewModel : ObservableObject
 
         SelectedSlot = PendingOffset is { } offset
             ? Slots.FirstOrDefault(s => s.Offset == offset)
-            : Slots.FirstOrDefault(s => s.Index == selected);
+            : Slots.FirstOrDefault(s => s.Index == (selected ?? PageDisplayBuilder.PageHeaderSlot));
 
         PendingOffset = null;
 

@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages.Enums;
@@ -223,7 +224,7 @@ public class BufferPoolHookTests
         hook.OnReturn(new TraceHookCall { FunctionAddress = Get, CallId = 1, Thread = 7, ReturnValue = Buffer, Position = At(5) },
                       Replay());
 
-        Assert.Equal([new MemoryBlock(Buffer, BufferDescriptor.Size, 7, At(3), TracePosition.Unknown)], hook.GetBuffers());
+        Assert.Equal([new MemoryBlock(Buffer, (ulong)EngineLayout.Latest.Buffer.Size, 7, At(3), TracePosition.Unknown)], hook.GetBuffers());
     }
 
     [Fact]

@@ -3,13 +3,19 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Linq;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Messaging;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Pages;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Sorts;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Sorts.Enums;
 using InternalsViewer.UI.App.Helpers;
+using InternalsViewer.UI.App.Messages;
 using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Logging;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
@@ -23,21 +29,25 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 {
     private const string NotYetChanged = "Not Yet Changed";
 
-    private const int WritesTab = 1;
+    private const int BufferTab = 0;
 
-    private const int ReadsTab = 2;
+    private const int BatchTab = 1;
 
-    private const int BufferTab = 5;
+    private const int VectorsTab = 2;
 
-    private const int BatchTab = 6;
+    private const int PageTab = 3;
+
+    private const int BindingsTab = 4;
+
+    private const int IteratorTab = 5;
+
+    private const int DetailsTab = 6;
+
+    private const int WritesTab = 7;
+
+    private const int ReadsTab = 8;
 
     private const int LoadInterval = 50;
-
-    private const int VectorsTab = 7;
-
-    private const int PageTab = 8;
-
-    private const int BindingsTab = 9;
 
     private const string OpenMemoryCommand = "Open Memory";
 
@@ -47,6 +57,9 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _isOpen;
+
+    [ObservableProperty]
+    private bool _isLoading;
 
     [ObservableProperty]
     private byte[]? _data;
@@ -67,7 +80,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
     private string _emptyText = string.Empty;
 
     [ObservableProperty]
-    private int _selectedTab;
+    private int _selectedTab = DetailsTab;
 
     [ObservableProperty]
     private LogRecordAnnotation? _selectedChangeSpan;
@@ -80,6 +93,18 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     [ObservableProperty]
     private string _hashTableText = string.Empty;
+
+    [ObservableProperty]
+    private string _hashTablePartText = string.Empty;
+
+    [ObservableProperty]
+    private bool _isSortTableVisible;
+
+    [ObservableProperty]
+    private string _sortTableText = string.Empty;
+
+    [ObservableProperty]
+    private string _sortTablePartText = string.Empty;
 
     public PlayheadMemoryViewModel(MemoryHistoryViewModel history)
     {
@@ -99,6 +124,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
     public event EventHandler<TracePoint>? PlayheadRequested;
 
     public event EventHandler<MemoryRequest>? MemoryRequested;
+
+    public event EventHandler? Opened;
 
     public MemoryHistoryViewModel History { get; }
 
@@ -120,11 +147,13 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     public MemoryBindingsViewModel Bindings { get; } = new();
 
+    public MemoryIteratorViewModel Iterator { get; } = new();
+
     public int Block { get; private set; } = -1;
 
     public TracePosition Position => Playhead ?? OpenedAt;
 
-    public string Title => IsOpen && History.IsPage(Block) ? $"{ObjectName} 0x{History.Store.Blocks[Block].Address:X16}" : ObjectName;
+    public string Title => Block >= 0 && History.IsPage(Block) ? $"{ObjectName} 0x{History.Store.Blocks[Block].Address:X16}" : ObjectName;
 
     public IPlayheadChart? Chart { get; set; }
 
@@ -146,73 +175,68 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     private ulong HashTableGroup { get; set; }
 
-    public void Open(int block, ulong address, TracePosition position)
+    private TraceHashPart? HashTablePart { get; set; }
+
+    private RowRecordLayout? HashTableLayout { get; set; }
+
+    private ulong SortTableIterator { get; set; }
+
+    private TraceSortPart? SortTablePart { get; set; }
+
+    private (ulong Address, int Length) RequestedAddress { get; set; }
+
+    private IReadOnlyList<string>? RequestedIteratorTabs { get; set; }
+
+    public bool Open(int block, ulong address, TracePosition position)
     {
         if (block < 0 || block >= History.Store.Blocks.Count)
         {
-            return;
+            return false;
         }
 
         Block = block;
 
         OpenedAt = position;
 
-        WriteCount = -1;
-
-        Links = null;
-
-        References.Clear();
-
         ObjectName = History.GetObjectName(block);
 
-        Watches = History.GetWatches(block);
+        RequestedAddress = (address, 1);
 
-        Watches.CollectionChanged += OnWatchesChanged;
+        IsLoading = true;
 
-        IsOpen = true;
+        _ = LoadAsync(block, position);
 
-        SelectedChangeSpan = null;
+        return true;
+    }
 
-        Refresh();
-
-        Details.Load(this);
-
-        Writes.Load();
-
-        Reads.Load();
-
-        WatchList.Attach(Watches);
-
-        Buffer.Load(this);
-
-        Batch.Load(this);
-
-        WorkfilePage.Load(History, block);
-
-        Bindings.Load(this);
-
-        FindHashTable();
-
-        ApplyMarkers();
-
-        if ((SelectedTab == BufferTab && !Buffer.IsAvailable)
-            || (SelectedTab == BatchTab && !Batch.IsAvailable)
-            || (SelectedTab == VectorsTab && !Batch.IsVectorsAvailable)
-            || (SelectedTab == PageTab && !WorkfilePage.IsAvailable)
-            || (SelectedTab == BindingsTab && !Bindings.IsAvailable))
+    public void ShowIteratorTab(IReadOnlyList<string> tabs)
+    {
+        if (IsLoading)
         {
-            SelectedTab = 0;
+            RequestedIteratorTabs = tabs;
+
+            return;
         }
 
-        RefreshBatch();
+        if (!Iterator.IsAvailable)
+        {
+            return;
+        }
 
-        RefreshBindings();
+        SelectedTab = IteratorTab;
 
-        ShowAddress(address);
+        Iterator.RequestTab(tabs);
     }
 
     public void ShowAddress(ulong address, int length = 1)
     {
+        if (IsLoading)
+        {
+            RequestedAddress = (address, length);
+
+            return;
+        }
+
         if (!IsOpen)
         {
             return;
@@ -229,6 +253,10 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     public void Close()
     {
+        IsLoading = false;
+
+        RequestedIteratorTabs = null;
+
         HexLoader.Cancel();
 
         WatchList.Attach(null);
@@ -243,11 +271,27 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         Bindings.Clear();
 
+        Iterator.Clear();
+
         HashTableGroup = 0;
+
+        HashTablePart = null;
 
         IsHashTableVisible = false;
 
         HashTableText = string.Empty;
+
+        HashTablePartText = string.Empty;
+
+        SortTableIterator = 0;
+
+        SortTablePart = null;
+
+        IsSortTableVisible = false;
+
+        SortTableText = string.Empty;
+
+        SortTablePartText = string.Empty;
 
         Writes.Clear();
 
@@ -336,7 +380,15 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
     {
         if (HashTableGroup != 0)
         {
-            Navigator?.OpenHashTable(HashTableGroup);
+            Navigator?.OpenHashTable(HashTableGroup, HashTablePart);
+        }
+    }
+
+    public void OpenSortTable()
+    {
+        if (SortTableIterator != 0)
+        {
+            Navigator?.OpenSortTable(SortTableIterator, SortTablePart);
         }
     }
 
@@ -572,37 +624,222 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         RefreshBindings();
 
+        RefreshIterator();
+
         ApplyMarkers();
     }
 
     private void OnWatchesChanged(object? sender, NotifyCollectionChangedEventArgs e) => Writes.Load();
 
-    private void FindHashTable()
+    private async Task LoadAsync(int block, TracePosition position)
     {
-        HashTableGroup = History.CallStore is { } calls ? GetHashTableGroup(calls) : 0;
+        try
+        {
+            var history = History;
+
+            var match = await Task.Run(() => FindHashTable(history, block, position));
+
+            if (!IsLoading || Block != block)
+            {
+                return;
+            }
+
+            IsLoading = false;
+
+            Load(match);
+
+            Opened?.Invoke(this, EventArgs.Empty);
+        }
+        catch (Exception exception)
+        {
+            IsLoading = false;
+
+            await WeakReferenceMessenger.Default.Send(new ExceptionMessage(exception) { Message = "Exception loading memory" });
+        }
+    }
+
+    private void Load(HashTableMatch match)
+    {
+        WriteCount = -1;
+
+        Links = null;
+
+        References.Clear();
+
+        Watches = History.GetWatches(Block);
+
+        Watches.CollectionChanged += OnWatchesChanged;
+
+        IsOpen = true;
+
+        SelectedChangeSpan = null;
+
+        Refresh();
+
+        Details.Load(this);
+
+        Writes.Load();
+
+        Reads.Load();
+
+        WatchList.Attach(Watches);
+
+        Buffer.Load(this);
+
+        Batch.Load(this);
+
+        ApplyHashTable(match);
+
+        FindSortTable();
+
+        WorkfilePage.Load(History, Block, HashTableLayout);
+
+        Bindings.Load(this);
+
+        Iterator.Load(this);
+
+        ApplyMarkers();
+
+        if (!IsTabAvailable(SelectedTab) || SelectedTab == DetailsTab)
+        {
+            SelectedTab = GetFirstTab();
+        }
+
+        RefreshBatch();
+
+        RefreshBindings();
+
+        RefreshIterator();
+
+        ShowAddress(RequestedAddress.Address, RequestedAddress.Length);
+
+        if (RequestedIteratorTabs is { } tabs)
+        {
+            RequestedIteratorTabs = null;
+
+            ShowIteratorTab(tabs);
+        }
+    }
+
+    private static HashTableMatch FindHashTable(MemoryHistoryViewModel history, int block, TracePosition openedAt)
+    {
+        var (group, found, table, position) = history.CallStore is { } calls
+            ? FindHashTablePart(history, calls, block, openedAt)
+            : (0, null, null, default);
+
+        var layout = found is { Type: TraceHashPartType.WorkfilePage } && table is not null
+            ? GetHashTableLayout(history, table, position)
+            : null;
+
+        return new HashTableMatch(group, found, layout);
+    }
+
+    private void ApplyHashTable(HashTableMatch match)
+    {
+        (HashTableGroup, HashTablePart, HashTableLayout) = (match.Group, match.Part, match.Layout);
 
         IsHashTableVisible = HashTableGroup != 0;
 
         HashTableText = IsHashTableVisible ? $"0x{HashTableGroup:X16}" : string.Empty;
+
+        HashTablePartText = HashTablePart is { } part ? HashTablePartLabel.GetText(part) : string.Empty;
     }
 
-    private ulong GetHashTableGroup(TraceCallStore calls)
+    private static string GetSortPartText(TraceSortPartType type) => type switch
     {
-        var block = History.Store.Blocks[Block];
+        TraceSortPartType.Iterator => "Sort Iterator",
+        TraceSortPartType.Rowset => "Rowset",
+        TraceSortPartType.Descriptor => "Sort Descriptor",
+        TraceSortPartType.RecordPage => "Record Page",
+        _ => "Compare Page"
+    };
+
+    private void FindSortTable()
+    {
+        var store = History.Store;
+
+        var block = store.Blocks[Block];
+
+        var iterator = block.Iterator != 0 ? block.Iterator : block.Address;
+
+        var found = (TraceSortPart?)null;
+
+        if (store.GetBlock(iterator, OpenedAt) is >= 0 and var iteratorBlock
+            && store.Blocks[iteratorBlock] is { } info
+            && info.Address == iterator
+            && History.AddressMap.GetLabel(info.Address, info.FromPosition, info.ToPosition) == TraceSortTableReader.IteratorClass)
+        {
+            var pages = TraceSortTableReader.GetPages(store, History.AddressMap, iterator);
+
+            var writes = store.GetWrites(Block);
+
+            List<TracePosition> positions = writes.Count > 0
+                ? [OpenedAt, block.FromPosition, writes[^1].Position]
+                : [OpenedAt, block.FromPosition];
+
+            foreach (var position in positions)
+            {
+                var table = TraceSortTableReader.Read(store, pages, iterator, position);
+
+                if (table?.FindPart(block.Address, block.Size) is { } part)
+                {
+                    found = part;
+
+                    break;
+                }
+            }
+        }
+
+        (SortTableIterator, SortTablePart) = found is null ? (0UL, null) : (iterator, found);
+
+        IsSortTableVisible = SortTableIterator != 0;
+
+        SortTableText = IsSortTableVisible ? $"0x{SortTableIterator:X16}" : string.Empty;
+
+        SortTablePartText = SortTablePart is { } shown ? GetSortPartText(shown.Type) : string.Empty;
+    }
+
+    private static RowRecordLayout? GetHashTableLayout(MemoryHistoryViewModel history, TraceHashTable table, TracePosition position)
+    {
+        if (table.Columns.Count == 0)
+        {
+            return null;
+        }
+
+        var groups = TraceHashTableReader.GetIteratorGroups(history.Store, history.AddressMap, table.Iterator, position);
+
+        var slot = groups.Find(g => g.Group == table.Group).Slot;
+
+        return history.GetWorkfileLayout(table.Iterator,
+                                         [.. table.Columns.Select(c => c.Binding)],
+                                         slot / TraceHashTableLayout.GroupsPerSide == 1);
+    }
+
+    private static (ulong Group, TraceHashPart? Part, TraceHashTable? Table, TracePosition Position) FindHashTablePart(
+        MemoryHistoryViewModel history,
+        TraceCallStore calls,
+        int index,
+        TracePosition openedAt)
+    {
+        var block = history.Store.Blocks[index];
 
         foreach (var group in TraceHashTableReader.GetGroups(calls))
         {
             var accesses = TraceHashTableReader.GetAccesses(calls, group);
 
-            List<TracePosition> positions = accesses.Count > 0 ? [OpenedAt, accesses[^1].Position] : [OpenedAt];
+            List<TracePosition> positions = accesses.Count > 0 ? [openedAt, accesses[^1].Position] : [openedAt];
 
-            if (positions.Any(p => TraceHashTableReader.Read(History.Store, group, p)?.Contains(block.Address, block.Size) == true))
+            foreach (var position in positions)
             {
-                return group;
+                if (TraceHashTableReader.Read(history.Store, group, position) is { } table
+                    && table.FindPart(block.Address, block.Size) is { } part)
+                {
+                    return (group, part, table, position);
+                }
             }
         }
 
-        return 0;
+        return (0, null, null, default);
     }
 
     private int? GetReadIndex(int index)
@@ -646,6 +883,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         RefreshBatch();
 
         RefreshBindings();
+
+        RefreshIterator();
     }
 
     private void Refresh()
@@ -761,6 +1000,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
             Buffer.SetData(Data);
 
+            Iterator.SetData(Data);
+
             WorkfilePage.SetData(Data);
 
             RefreshPage();
@@ -793,6 +1034,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
             BatchTab when Batch.FieldMarkers is { } fields => fields,
             PageTab when WorkfilePage.IsAvailable => WorkfilePage.Markers,
             BindingsTab when Bindings.Markers is { } fields => fields,
+            IteratorTab when Iterator.Markers is { } fields => fields,
             _ => WriterMarkers
         };
 
@@ -800,6 +1042,30 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         {
             Markers = markers;
         }
+    }
+
+    private bool IsTabAvailable(int tab) => tab switch
+    {
+        BufferTab => Buffer.IsAvailable,
+        BatchTab => Batch.IsAvailable,
+        VectorsTab => Batch.IsVectorsAvailable,
+        PageTab => WorkfilePage.IsAvailable,
+        BindingsTab => Bindings.IsAvailable,
+        IteratorTab => Iterator.IsAvailable,
+        _ => true
+    };
+
+    private int GetFirstTab()
+    {
+        for (var tab = BufferTab; tab < DetailsTab; tab++)
+        {
+            if (IsTabAvailable(tab))
+            {
+                return tab;
+            }
+        }
+
+        return DetailsTab;
     }
 
     private void RefreshPage()
@@ -828,6 +1094,16 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         }
     }
 
+    private void RefreshIterator()
+    {
+        if (IsOpen && SelectedTab == IteratorTab)
+        {
+            Iterator.Refresh();
+
+            ApplyMarkers();
+        }
+    }
+
     private IEnumerable<Marker> GetChangeMarkers(List<MemoryChangeRun> runs)
     {
         foreach (var run in runs)
@@ -849,4 +1125,6 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
     }
 
     private sealed record HexImage(byte[] Data, List<MemoryChangeRun> Runs, List<MemoryHistoryPointer> Pointers);
+
+    private sealed record HashTableMatch(ulong Group, TraceHashPart? Part, RowRecordLayout? Layout);
 }

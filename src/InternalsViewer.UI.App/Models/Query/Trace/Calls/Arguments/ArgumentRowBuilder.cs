@@ -249,7 +249,7 @@ public static class ArgumentRowBuilder
                                                bool includeType = false,
                                                string? label = null)
     {
-        var (reading, className, origin, isLocal) = GetDecoded(slot, value, call, describe);
+        var (reading, className, _, isLocal) = GetDecoded(slot, value, call, describe);
 
         return new CallSignaturePart($"0x{value:X}",
                                      CallSignaturePartKind.Value,
@@ -262,7 +262,6 @@ public static class ArgumentRowBuilder
                                      includeType && slot.Type != ThisType ? slot.Type : null,
                                      label,
                                      slot.Type == ThisType ? null : slot.Type,
-                                     origin,
                                      slot.Source,
                                      isLocal);
     }

@@ -1,19 +1,27 @@
 using System.Buffers.Binary;
-using InternalsViewer.Query.Interfaces;
 using InternalsViewer.Query.FullTrace.Locators.Enums;
+using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.Interfaces;
 
 namespace InternalsViewer.Query.FullTrace.Locators;
 
 public readonly record struct TypeInfoLocator(Locator Locator)
 {
-    private const int DetailOffset = 16;
-
     public SqlTypeInfo TypeInfo => SqlTypeInfo.Create(Locator.Value, Locator.Detail);
 
-    public static Locator? Read(IMemoryReader memory, int argumentSlot, ulong address)
-        => ReadBytes(memory, address) is { } header
-            ? new Locator(argumentSlot, LocatorValueType.TypeInfo, header, ReadBytes(memory, address + DetailOffset) ?? 0)
-            : null;
+    public static Locator? Read(ITraceMemoryReader memory, int argumentSlot, ulong address)
+    {
+        var layout = memory.Layout.TypeInfo;
+
+        if (ReadBytes(memory, address + (ulong)layout.TypeField.Offset) is not { } header)
+        {
+            return null;
+        }
+
+        var details = ReadBytes(memory, address + (ulong)layout.TypeDetailsField.Offset) ?? 0;
+
+        return new Locator(argumentSlot, LocatorValueType.TypeInfo, header, details);
+    }
 
     public override string ToString() => TypeInfo.ToString();
 

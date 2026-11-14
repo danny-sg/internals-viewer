@@ -90,7 +90,7 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         steps.Begin(OperatorsStep);
 
-        var builder = GetResultBuilder(replay, functions, request, callTree);
+        var builder = GetResultBuilder(replay, functions, request, callTree, session.ServerVersion);
 
         builder.Link();
 
@@ -112,6 +112,8 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
             : null;
 
         var result = builder.Build(memory?.History ?? MemoryHistoryStore.Empty, memory?.PageReads ?? TracePageReadList.Empty);
+
+        result.ResolveObjectClasses(request.SymbolsPath);
 
         Logger.LogInformation("{Objects} HoBt access object(s) linked to their HoBt", result.HoBtAccess.Count);
 
@@ -232,11 +234,15 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         var frames = callTree.GetNodes().Select(node => node.Frame!).ToList();
 
-        await SymbolDownloader.DownloadSymbols(frames.Select(f => f.Module), symbolsPath, messages, cancellationToken);
+        List<CallFrame> sqlServerFrames = [.. frames.Where(f => f.Module.IsSqlServer)];
+
+        await SymbolDownloader.DownloadSymbols(sqlServerFrames.Select(f => f.Module), symbolsPath, messages, cancellationToken);
 
         using var resolver = new SymbolResolver(symbolsPath);
 
-        resolver.ResolveFunctions(frames);
+        resolver.ResolveFunctions(sqlServerFrames);
+
+        SymbolResolver.ResolveExports(frames.Where(f => !f.Module.IsSqlServer), replay.Modules);
 
         LogUnknownSymbols(resolver.UnknownSymbols);
 
@@ -270,7 +276,8 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
     private TraceResultBuilder GetResultBuilder(ReplayResult replay,
                                                 ReplayFunctionTable functions,
                                                 TraceRequest request,
-                                                CallTree callTree)
+                                                CallTree callTree,
+                                                Version? serverVersion)
     {
         var (allocation, allocationCount, allocatedBytes, memoryObjects) = AllocationMapper.Map(replay.CallStore,
                                                                                                 functions.AllocationFunctions,
@@ -289,7 +296,8 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
                                           memoryObjects),
             MemoryObjectSnapshot = request.MemoryClerks.MemoryObjects,
             ObjectPool = request.ObjectPool,
-            BufferPool = replay.BufferPool
+            BufferPool = replay.BufferPool,
+            ServerVersion = serverVersion
         };
     }
 
@@ -343,13 +351,20 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         HashSet<ulong> iterators = [.. lifetimes.OperatorsByInstance.Keys, .. replay.PlanNodes.Select(p => p.Iterator)];
 
-        var owners = AllocationOwnerResolver.GetOwners([.. allocations.Select(a => a.Block)], replay.CallStore, iterators, replay.PlanNodes);
+        var firstPositions = MemoryWatchPlanner.GetFirstPositions(replay.CallStore, iterators);
+
+        var owners = AllocationOwnerResolver.GetOwners([.. allocations.Select(a => a.Block)],
+                                                       replay.CallStore,
+                                                       iterators,
+                                                       firstPositions,
+                                                       replay.PlanNodes);
 
         var historyBuilder = new MemoryHistoryBuilder(allocations,
                                                            owners,
-                                                           MemoryWatchPlanner.GetFirstPositions(replay.CallStore, iterators),
+                                                           firstPositions,
                                                            timeline,
-                                                           replay.StackSnapshotResult);
+                                                           replay.StackSnapshotResult,
+                                                           memoryObjects.GetOwner);
 
         Logger.LogInformation("{Objects} stack object(s) handed between functions, read {Snapshots} time(s) into {Changes} change(s)",
                               replay.StackSnapshotResult.Objects.Length,

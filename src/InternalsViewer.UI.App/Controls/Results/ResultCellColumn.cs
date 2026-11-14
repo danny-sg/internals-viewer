@@ -364,6 +364,7 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
     {
         if (host.Content is not StackPanel { Tag: ActionLinks previous } panel
             || previous.Links.Count != actions.Links.Count
+            || previous.Badges.Count != actions.Badges.Count
             || (previous.Suffix is null) != (actions.Suffix is null))
         {
             panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = ActionSpacing };
@@ -375,6 +376,11 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
                 button.Click += OnActionClick;
 
                 panel.Children.Add(button);
+            }
+
+            foreach (var badge in actions.Badges)
+            {
+                panel.Children.Add(CreateBadge(badge));
             }
 
             if (actions.Suffix is not null)
@@ -396,6 +402,14 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
             if (panel.Children[index] is HyperlinkButton button)
             {
                 SetAction(button, actions.Links[index]);
+            }
+        }
+
+        for (var index = 0; index < actions.Badges.Count; index++)
+        {
+            if (panel.Children[actions.Links.Count + index] is Border { Child: TextBlock badge })
+            {
+                badge.Text = actions.Badges[index];
             }
         }
 
@@ -446,7 +460,18 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 
     private static void SetAction(HyperlinkButton button, ActionLink link)
     {
-        button.Content = link.Glyph is { } glyph ? new FontIcon { Glyph = glyph, FontSize = ActionGlyphSize } : link.Text;
+        if (link.Glyph is { } glyph)
+        {
+            button.Content = new FontIcon { Glyph = glyph, FontSize = ActionGlyphSize };
+        }
+        else
+        {
+            var text = button.Content as TextBlock ?? new TextBlock();
+
+            HexText.Apply(text, link.Text);
+
+            button.Content = text;
+        }
 
         ToolTipService.SetToolTip(button, link.Glyph is null ? null : link.Text);
 

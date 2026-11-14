@@ -30,8 +30,12 @@ public sealed partial class TabGroupView : UserControl
     {
         InitializeComponent();
 
+        LayoutHelpers.ClipToBounds(ContentHost);
+
         Loaded += (_, _) =>
         {
+            DockDragState.ActiveChanged -= OnDragActiveChanged;
+
             DockDragState.ActiveChanged += OnDragActiveChanged;
 
             // Deferred to here rather than done in BuildTabs: a dock rebuild constructs the new tree while the old
@@ -46,8 +50,7 @@ public sealed partial class TabGroupView : UserControl
 
     public DockLayoutViewModel? Dock { get; private set; }
 
-    private bool AcceptsCurrentDrag
-        => DockDragState.Document is { } document && Dock?.FindGroup(document) is not null;
+    private bool AcceptsCurrentDrag => DockDragState.IsFrom(Dock);
 
     public void Initialize(TabGroupNode group, DockLayoutViewModel dock)
     {
@@ -60,6 +63,17 @@ public sealed partial class TabGroupView : UserControl
         group.PropertyChanged += OnGroupPropertyChanged;
     }
 
+    public void Release()
+    {
+        ClearHeaderSubscriptions();
+
+        if (Group is not null)
+        {
+            Group.Documents.CollectionChanged -= OnDocumentsChanged;
+            Group.PropertyChanged -= OnGroupPropertyChanged;
+        }
+    }
+
     private void OnDragActiveChanged(object? sender, EventArgs e)
     {
         if (!DockDragState.IsActive)
@@ -70,14 +84,9 @@ public sealed partial class TabGroupView : UserControl
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
-        DockDragState.ActiveChanged -= OnDragActiveChanged;
-
-        ClearHeaderSubscriptions();
-
-        if (Group is not null)
+        if (!IsLoaded)
         {
-            Group.Documents.CollectionChanged -= OnDocumentsChanged;
-            Group.PropertyChanged -= OnGroupPropertyChanged;
+            DockDragState.ActiveChanged -= OnDragActiveChanged;
         }
     }
 
@@ -258,14 +267,19 @@ public sealed partial class TabGroupView : UserControl
 
         var menu = new MenuFlyout();
 
-        foreach (var menuItem in document.MenuItems)
+        List<(DocumentMenuItem Item, MenuFlyoutItem Element)> items =
+            [.. document.MenuItems.Select(m => (m, MenuItems.Create(m.Text, m.Invoke)))];
+
+        foreach (var (_, element) in items)
         {
-            menu.Items.Add(MenuItems.Create(menuItem.Text, menuItem.Invoke));
+            menu.Items.Add(element);
         }
 
-        if (document.MenuItems.Count > 0)
+        var separator = new MenuFlyoutSeparator();
+
+        if (items.Count > 0)
         {
-            menu.Items.Add(new MenuFlyoutSeparator());
+            menu.Items.Add(separator);
         }
 
         menu.Items.Add(closeAll);
@@ -274,6 +288,13 @@ public sealed partial class TabGroupView : UserControl
 
         menu.Opening += (_, _) =>
         {
+            foreach (var (item, element) in items)
+            {
+                element.Visibility = item.IsAvailable?.Invoke() is false ? Visibility.Collapsed : Visibility.Visible;
+            }
+
+            separator.Visibility = items.Any(i => i.Element.Visibility == Visibility.Visible) ? Visibility.Visible : Visibility.Collapsed;
+
             var documents = Group?.Documents ?? [];
 
             closeAll.IsEnabled = documents.Any(d => d.CanClose);
@@ -384,7 +405,7 @@ public sealed partial class TabGroupView : UserControl
 
     private void OnTabDragStarting(TabView sender, TabViewTabDragStartingEventArgs args)
     {
-        if (((args.Item as TabViewItem) ?? args.Tab)?.Tag is not DocumentViewModel document)
+        if (((args.Item as TabViewItem) ?? args.Tab)?.Tag is not DocumentViewModel document || Dock is not { } dock)
         {
             return;
         }
@@ -394,7 +415,7 @@ public sealed partial class TabGroupView : UserControl
         args.Data.RequestedOperation = DataPackageOperation.Move;
         args.Data.SetText(document.Title);
 
-        DockDragState.Begin(document);
+        DockDragState.Begin(document, dock);
     }
 
     private void OnTabDragCompleted(TabView sender, TabViewTabDragCompletedEventArgs args)
@@ -435,18 +456,18 @@ public sealed partial class TabGroupView : UserControl
 
     private void OnDrop(object sender, DragEventArgs e)
     {
-        var document = DockDragState.Document;
-
         HideHighlight();
 
-        if (document is not null && Group is { } group && Dock is { } dock && dock.FindGroup(document) is not null)
+        if (!AcceptsCurrentDrag || DockDragState.Document is not { } document || Group is not { } group || Dock is not { } dock)
         {
-            var zone = GetZone(e.GetPosition(RootArea));
-
-            // Defer: the move restructures the layout and rebuilds tab strips, which must not happen
-            // while the drag/drop operation is still in flight (throws ArgumentException in WinRT).
-            DispatcherQueue.TryEnqueue(() => dock.Move(document, group, zone));
+            return;
         }
+
+        var zone = GetZone(e.GetPosition(RootArea));
+
+        // Defer: the move restructures the layout and rebuilds tab strips, which must not happen
+        // while the drag/drop operation is still in flight (throws ArgumentException in WinRT).
+        DispatcherQueue.TryEnqueue(() => dock.Move(document, group, zone));
 
         DockDragState.End();
         e.Handled = true;

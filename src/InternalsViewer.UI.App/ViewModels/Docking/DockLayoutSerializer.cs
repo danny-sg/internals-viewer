@@ -58,25 +58,17 @@ public static class DockLayoutSerializer
 
         if (!node.IsSplit)
         {
-            var group = new TabGroupNode();
+            var documents = node.Documents.Select(resolve).OfType<DocumentViewModel>().Distinct().ToArray();
 
-            foreach (var key in node.Documents)
-            {
-                if (resolve(key) is { } document && !group.Documents.Contains(document))
-                {
-                    group.Documents.Add(document);
-                }
-            }
-
-            if (group.Documents.Count == 0)
+            if (documents.Length == 0)
             {
                 return null;
             }
 
-            group.SelectedDocument = group.Documents.FirstOrDefault(d => d.Key == node.Selected)
-                                     ?? group.Documents.FirstOrDefault();
-
-            return group;
+            return new TabGroupNode(documents)
+            {
+                SelectedDocument = documents.FirstOrDefault(d => d.Key == node.Selected) ?? documents[0]
+            };
         }
 
         var first = Deserialize(node.First, resolve);

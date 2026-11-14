@@ -1,3 +1,4 @@
+using System.Data;
 using InternalsViewer.Query.FullTrace.Memory.Address;
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
@@ -9,9 +10,13 @@ using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.History;
+using InternalsViewer.Query.FullTrace.Functions;
+using InternalsViewer.Query.FullTrace.Helpers;
+using InternalsViewer.Query.FullTrace.Symbols;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
 using InternalsViewer.Query.Memory;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
 
 namespace InternalsViewer.Query.FullTrace;
 
@@ -25,6 +30,11 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
     internal IReadOnlyList<IteratorPlanNode> PlanNodes { get; init; } = [];
 
+    internal IReadOnlyList<IteratorPlanNode> LinkedPlanNodes
+        => field ??= PlanLink.PlanObjects.Count == 0
+            ? PlanNodes
+            : [.. PlanNodes.Where(p => PlanLink.PlanObjects.ContainsKey(p.PlanObject))];
+
     internal IReadOnlyList<QueryTeardown> Teardowns { get; init; } = [];
 
     public HoBtAccessMap HoBtAccess { get; init; } = HoBtAccessMap.Empty;
@@ -33,7 +43,7 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
     public TraceOperatorLifetimeList Lifetimes { get; init; } = TraceOperatorLifetimeList.Empty;
 
-    public AddressMap AddressMap { get; init; } = AddressMap.Empty;
+    public AddressMap AddressMap { get; internal set; } = AddressMap.Empty;
 
     public MemoryObjectMap MemoryObjects { get; init; } = MemoryObjectMap.Empty;
 
@@ -47,6 +57,8 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
     public MemoryHistoryStore MemoryHistory { get; init; } = MemoryHistoryStore.Empty;
 
+    public Version? ServerVersion { get; init; }
+
     public TraceSourceTrackMap SourceTracks
     {
         get => field ??= new TraceSourceTrackMap(Timeline, CallStore, Lifetimes);
@@ -54,6 +66,9 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
     }
 
     public TraceHashTableMap HashTables => field ??= new TraceHashTableMap(this);
+
+    public IReadOnlyDictionary<int, IReadOnlyList<PlanOutputColumn>> OutputColumns
+        => field ??= IteratorPlanNode.GetOutputColumns(LinkedPlanNodes);
 
     public IReadOnlyList<CallTreeNode> QueryRoots => Roots ??= QueryExecutionCropper.GetRoots(CallTree);
 
@@ -68,6 +83,10 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
     private Dictionary<TraceTimeline, Dictionary<CallTreeNode, int[]>> ActivityByWindow { get; } =
         new(ReferenceEqualityComparer.Instance);
 
+    private PlanOutputLinkReader OutputLinks => field ??= new PlanOutputLinkReader(this);
+
+    private PlanOutputResultReader StatementResults => field ??= new PlanOutputResultReader(this);
+
     public void SetActivityWindow(TraceTimeline window)
     {
         if (ReferenceEquals(ActivityWindow, window))
@@ -80,6 +99,62 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
         CallTree.SetCallActivity(() => GetCallActivity(window));
 
         CallTree.ComputeActivity(ActivityBuckets);
+    }
+
+    public void ResolveObjectClasses(string symbolsPath)
+    {
+        if (MemoryHistory.Blocks.Count == 0)
+        {
+            return;
+        }
+
+        List<(AddressTable<string[]> Table, ulong Address)> vtables = [];
+
+        foreach (var (module, start) in GetModuleStarts())
+        {
+            if (ReplayFunctionResolver.IsReplayedModule(module.Name) && SymbolTableCache.Get(symbolsPath, module) is { } table)
+            {
+                vtables.Add((VtableResolver.Read(table), start));
+            }
+        }
+
+        if (vtables.Count > 0)
+        {
+            var classes = VtableResolver.GetUniqueClasses(AddressTable<string[]>.Merge(vtables));
+
+            AddressMap = ObjectClassResolver.Resolve(AddressMap, MemoryHistory, classes);
+        }
+    }
+
+    public PlanOutputPath GetOutputPath(int nodeId, PlanOutputColumn column) => OutputLinks.Read(nodeId, column);
+
+    public string? GetStatementResult(TracePosition position, SqlDbType type)
+        => StatementResults.Read(position) is { } result
+            ? PlanOutputValueReader.ReadVariant(new MemoryHistoryReader(MemoryHistory, result.Position), result.Variant, type)
+            : null;
+
+    public string? GetUnexpectedWriter(PlanOutputLink link) => OutputLinks.GetUnexpectedWriter(link);
+
+    public (TracePosition From, TracePosition To)? GetRowRange(ulong iterator) => OutputLinks.GetRowRange(iterator);
+
+    public Dictionary<int, PlanOutputRoute> GetDataPath(IReadOnlyList<PlanOutputRouteOperator> operators, bool isPlanObjectIncluded)
+        => OutputLinks.ReadDataPath(operators, isPlanObjectIncluded);
+
+    internal void BuildOutputPaths() => OutputLinks.ReadAll();
+
+    private Dictionary<FrameModule, ulong> GetModuleStarts()
+    {
+        var starts = new Dictionary<FrameModule, ulong>();
+
+        foreach (var node in CallTree.GetNodes())
+        {
+            if (node.Frame is { Address: > 0, Rva: > 0 } frame && frame.Address > frame.Rva)
+            {
+                starts.TryAdd(frame.Module, frame.Address - frame.Rva);
+            }
+        }
+
+        return starts;
     }
 
     private Dictionary<CallTreeNode, int[]> GetCallActivity(TraceTimeline window)

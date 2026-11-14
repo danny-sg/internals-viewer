@@ -141,6 +141,8 @@ public sealed class TraceTimelineMinimap : UserControl, IDisposable
         ActualThemeChanged += OnActualThemeChanged;
     }
 
+    private ElementTheme? AppliedTheme { get; set; }
+
     public void Dispose()
     {
         Loaded -= OnLoaded;
@@ -158,28 +160,20 @@ public sealed class TraceTimelineMinimap : UserControl, IDisposable
         _marker.Dispose();
     }
 
-    private static float GetMarkerTop(TraceTimeline timeline, MinimapMarker marker, float height)
+    private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        var threads = timeline.Threads;
-
-        if (marker.Lane < 0 || marker.Lane >= threads.Count || marker.Depth < 0)
+        if (AppliedTheme != ActualTheme)
         {
-            return 0;
+            ApplyTheme();
         }
-
-        var laneHeight = height / threads.Count;
-
-        var rowHeight = laneHeight / Math.Max(1, threads[marker.Lane].Rows.Count);
-
-        return Math.Min(height, marker.Lane * laneHeight + marker.Depth * rowHeight);
     }
-
-    private void OnLoaded(object sender, RoutedEventArgs e) => ApplyTheme();
 
     private void OnActualThemeChanged(FrameworkElement sender, object args) => ApplyTheme();
 
     private void ApplyTheme()
     {
+        AppliedTheme = ActualTheme;
+
         var isDark = ActualTheme == ElementTheme.Dark;
 
         _background.Color = isDark ? new SKColor(0x20, 0x20, 0x20, 0xD9) : new SKColor(0xF3, 0xF3, 0xF3, 0xD9);
@@ -277,7 +271,7 @@ public sealed class TraceTimelineMinimap : UserControl, IDisposable
 
             var x = (float)((marker.Position - start) * unit);
 
-            canvas.DrawLine(x, GetMarkerTop(timeline, marker, height), x, height, _marker);
+            canvas.DrawLine(x, 0, x, height, _marker);
         }
     }
 

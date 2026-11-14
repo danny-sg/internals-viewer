@@ -25,7 +25,7 @@ public sealed class TraceReferenceFinder(TraceCallStore store,
     private Lazy<Dictionary<ulong, CallFrame>> Frames { get; } = new(() => GetFrames(tree));
 
     public static string GetIteratorName(IteratorTarget iterator)
-        => $"{iterator.Label} {(iterator.IsPlanObject ? "Plan Object" : "Iterator")}";
+        => $"{iterator.Label} {iterator.TypeName}";
 
     public static string? GetAllocationName(AddressMapEntry entry)
         => (entry.Site ?? entry.Allocator) is { } allocation ? $"{allocation} Allocation" : null;
@@ -127,13 +127,14 @@ public sealed class TraceReferenceFinder(TraceCallStore store,
 
             var moment = firstUse.Location == ArgumentLayout.ReturnRegisterName ? call.ToPosition : call.FromPosition;
 
-            if (addressMap.GetEntry(value, moment) is { } entry && (entry.ClassName ?? GetAllocationName(entry)) is { } typeName)
+            if (addressMap.GetEntry(value, moment) is { } entry
+                && (entry.VtableClassName ?? entry.ClassName ?? GetAllocationName(entry)) is { } typeName)
             {
                 return typeName;
             }
 
             if (addressMap.GetContaining(value, moment) is ({ } inside, var offset)
-                && (inside.ClassName ?? GetAllocationName(inside)) is { } container)
+                && (inside.VtableClassName ?? inside.ClassName ?? GetAllocationName(inside)) is { } container)
             {
                 return $"{container} + 0x{offset:X}";
             }

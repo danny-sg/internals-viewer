@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Views.Query.Trace.Timeline.Memory.MemoryObjectTabsView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:InternalsViewer.UI.App.Views.Query.Trace.Timeline.Memory"
+    xmlns:models="using:InternalsViewer.UI.App.Models.Query.Trace.Timeline"
+    xmlns:results="using:InternalsViewer.UI.App.Controls.Results"
+    xmlns:memory="using:InternalsViewer.UI.App.Controls.Query.Trace.Memory">
+
+    <UserControl.Resources>
+        <DataTemplate x:Key="ObjectTabTemplate" x:DataType="models:MemoryObjectTab">
+            <TabViewItem Header="{x:Bind Header}" IsClosable="False" IsSelected="{x:Bind IsSelected, Mode=TwoWay}">
+                <Grid>
+                    <results:ResultsGridControl Visibility="{x:Bind HasTable}"
+                                                ResultSet="{x:Bind Table, Mode=OneWay}"
+                                                SelectedRow="{x:Bind SelectedRow, Mode=TwoWay}"/>
+                    <local:MemoryObjectTabsView Visibility="{x:Bind HasTabs}" Tabs="{x:Bind Tabs}"/>
+                    <memory:DataPathGraphControl Visibility="{x:Bind HasGraph}" Graph="{x:Bind Graph}"/>
+                </Grid>
+            </TabViewItem>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <TabView x:Name="Strip"
+             VerticalAlignment="Stretch"
+             IsAddTabButtonVisible="False"
+             CanDragTabs="False"
+             CanReorderTabs="False"
+             TabWidthMode="SizeToContent"
+             TabItemsSource="{x:Bind Tabs, Mode=OneWay}"
+             TabItemTemplate="{StaticResource ObjectTabTemplate}"
+             TabStripFooter="{x:Bind Footer, Mode=OneWay}"
+             SelectionChanged="OnSelectionChanged"/>
+</UserControl>

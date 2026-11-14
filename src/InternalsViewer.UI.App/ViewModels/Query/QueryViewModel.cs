@@ -9,6 +9,8 @@ using InternalsViewer.UI.App.Services.Query.Simulation;
 using InternalsViewer.UI.App.Services.Query.Trace;
 using InternalsViewer.UI.App.Models.Query.Plan;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Hash;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Sorts;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks.Enums;
 using InternalsViewer.UI.Plugins.FullTrace.Menus;
@@ -57,6 +59,7 @@ using InternalsViewer.UI.App.ViewModels.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Calls;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryHistory;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.OperatorTracks;
+using InternalsViewer.UI.App.ViewModels.Query.Trace.Summary;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline;
 using InternalsViewer.UI.App.ViewModels.Tabs;
 using InternalsViewer.UI.App.Views.Query.Index;
@@ -72,6 +75,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using InternalsViewer.Internals.Interfaces.MetadataProviders;
 using InternalsViewer.Internals.Interfaces.Services.Loaders.Pages;
+using InternalsViewer.Internals.Interfaces.Services.Records;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Transactions;
 using InternalsViewer.TransactionLog.LogRecords;
@@ -93,6 +97,7 @@ using System.Text.Json;
 using InternalsViewer.Query.Export;
 using InternalsViewer.UI.App.Helpers;
 using Windows.Storage.Pickers;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
@@ -110,7 +115,8 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                           SimulationTabViewModelFactory simulationTabViewModelFactory,
                                           TraceTickTrackStore tickTrackStore,
                                           IEnumerable<ITraceMenuContributor> menuContributors,
-                                          IPageService pageService)
+                                          IPageService pageService,
+                                          IRecordService recordService)
 {
     public QueryViewModel Create(DatabaseSource database) => new(logger,
                                                                  queryRunner,
@@ -127,6 +133,7 @@ public sealed class QueryViewModelFactory(ILogger<QueryViewModel> logger,
                                                                  tickTrackStore,
                                                                  menuContributors,
                                                                  pageService,
+                                                                 recordService,
                                                                  database);
 }
 
@@ -392,6 +399,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                           TraceTickTrackStore tickTrackStore,
                           IEnumerable<ITraceMenuContributor> menuContributors,
                           IPageService pageService,
+                          IRecordService recordService,
                           DatabaseSource database)
     {
         _simulationTabViewModelFactory = simulationTabViewModelFactory;
@@ -402,7 +410,12 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         Arguments = new ArgumentsViewModel(logger, Symbols);
 
-        MemoryHistory = new MemoryHistoryViewModel(OpenCallTree);
+        MemoryHistory = new MemoryHistoryViewModel(OpenCallTree)
+        {
+            Records = new PlanOutputRecordReader(pageService, recordService, database, logger)
+        };
+
+        TraceSummary = new TraceSummaryViewModel(MemoryHistory, () => TraceTimelineTab);
 
         RowResolver = new PageRowResolver(pageService, database, logger);
 
@@ -516,6 +529,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public ArgumentsViewModel Arguments { get; }
 
     public MemoryHistoryViewModel MemoryHistory { get; }
+
+    public TraceSummaryViewModel TraceSummary { get; }
 
     public List<ITraceMenuContributor> MenuContributors { get; }
 
@@ -691,6 +706,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             TraceFile = null;
 
             MemoryHistory.SetTrace(value, Events, Database, ResolvePlanNode);
+
+            TraceSummary.Reset();
 
             CreatedTraceTimelineTab?.CloseMemory();
         }
@@ -892,6 +909,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             FollowGuidePlayhead(position);
 
             UpdatePlanActivity(position);
+
+            TraceSummary.SetPlayhead(position);
         }
     }
 
@@ -948,11 +967,20 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [RelayCommand]
     private void ShowObjectGraph()
     {
-        if (Trace is { } trace && TraceTimeline is { } timeline && TraceStartCall.Find(trace.CallStore, timeline) is { } start)
+        if (GetTraceStartCall() is { } start)
         {
             TraceTimelineTab.OpenObjectGraph(start);
         }
     }
+
+    [RelayCommand]
+    private void ShowTraceSummary() => Layout.ShowTraceSummary();
+
+    [RelayCommand]
+    private void ShowDataPath() => TraceTimelineTab.OpenDataPath();
+
+    private TraceStartCall? GetTraceStartCall()
+        => Trace is { } trace && TraceTimeline is { } timeline ? TraceStartCall.Find(trace.CallStore, timeline) : null;
 
     public void ShowMemoryWrite(int block, TracePosition? position)
     {
@@ -961,9 +989,18 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         TraceTimelineTab.OpenMemory(block, target.Address, position ?? target.FromPosition);
     }
 
+    public bool IsOutsideCrop(TracePosition position)
+        => CroppedRoots is not null
+           && Trace is { QueryTimeline: var timeline }
+           && (position < timeline.Start.Position || position > timeline.End.Position);
+
+    public bool IsOutsideCrop(CallTreeNode node) => CroppedRoots is { } roots && !node.GetAncestors().Any(roots.Contains);
+
     partial void OnTraceTimelineChanged(TraceTimeline? value)
     {
         MemoryHistory.SetWindow(value);
+
+        TraceSummary.Reset();
 
         SetGuidePositionText();
     }
@@ -1070,6 +1107,62 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public void OpenHashTable(ulong group, int partition, int bucket)
         => TraceTimelineTab.OpenHashTable(group, partition, bucket, isBelowPlan: true);
+
+    public void OpenHashTable(PlanNode node)
+    {
+        if (GetHashTableGroup(node) is { } group)
+        {
+            TraceTimelineTab.OpenHashTable(group, -1, -1, isBelowPlan: true);
+        }
+    }
+
+    public void OpenHashTable(ExecutionOperatorEvent op)
+    {
+        if (GetHashTableGroup(op) is { } group)
+        {
+            TraceTimelineTab.OpenHashTable(group, -1, -1, isBelowPlan: false);
+        }
+    }
+
+    public ulong? GetHashTableGroup(PlanNode node)
+        => Events.OfType<ExecutionOperatorEvent>().FirstOrDefault(e => e.PlanNodeIdentifier?.NodeId == node.NodeId) is { } op
+            ? GetHashTableGroup(op)
+            : null;
+
+    public ulong? GetHashTableGroup(ExecutionOperatorEvent op)
+        => Trace is { } trace
+            ? TraceHashTableReader.GetGroup(trace.MemoryHistory,
+                                            trace.CallStore,
+                                            [.. trace.Lifetimes.Where(l => ReferenceEquals(l.Operator, op)).SelectMany(l => l.Instances)])
+            : null;
+
+    public void OpenSortTable(PlanNode node)
+    {
+        if (GetSortIterator(node) is { } iterator)
+        {
+            TraceTimelineTab.OpenSortTable(iterator, isBelowPlan: true);
+        }
+    }
+
+    public void OpenSortTable(ExecutionOperatorEvent op)
+    {
+        if (GetSortIterator(op) is { } iterator)
+        {
+            TraceTimelineTab.OpenSortTable(iterator, isBelowPlan: false);
+        }
+    }
+
+    public ulong? GetSortIterator(PlanNode node)
+        => Events.OfType<ExecutionOperatorEvent>().FirstOrDefault(e => e.PlanNodeIdentifier?.NodeId == node.NodeId) is { } op
+            ? GetSortIterator(op)
+            : null;
+
+    public ulong? GetSortIterator(ExecutionOperatorEvent op)
+        => Trace is { } trace
+            ? TraceSortTableReader.GetIterator(trace.MemoryHistory,
+                                               trace.AddressMap,
+                                               trace.Lifetimes.Where(l => ReferenceEquals(l.Operator, op)))
+            : null;
 
     public Task OpenPageAsync(PageAddress pageAddress, ushort? slot = null, int? offset = null)
     {
@@ -2684,6 +2777,11 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             var run = await QueryExport.ReadAsync(stream, id => Database.AllocationUnits.GetValueOrDefault(id), CancellationToken.None);
 
+            if (run.ExtraOf<TraceResult>() is { } imported)
+            {
+                await ResolveObjectClassesAsync(imported);
+            }
+
             AddMessage(new ProgressDetail(step) { IsStep = true, Elapsed = Stopwatch.GetElapsedTime(started) });
 
             ShowImportedRun(run);
@@ -2763,6 +2861,20 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         ShowResultTabsForFirstRun();
 
         RefreshFilteredEvents();
+    }
+
+    private async Task ResolveObjectClassesAsync(TraceResult trace)
+    {
+        var symbolsPath = _settingsViewModel.SymbolsPath;
+
+        try
+        {
+            await Task.Run(() => trace.ResolveObjectClasses(symbolsPath));
+        }
+        catch (Exception exception) when (exception is IOException or InvalidOperationException or UnauthorizedAccessException)
+        {
+            Logger.LogWarning(exception, "Objects could not be named by their vtables from the symbols in {Path}", symbolsPath);
+        }
     }
 
     private void ShowTrace(TraceResult result, TimeTravelTraceFile? traceFile)

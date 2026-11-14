@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="InternalsViewer.UI.App.Views.Query.Trace.Timeline.Memory.MemoryStructureView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls"
+    xmlns:hexView="using:InternalsViewer.UI.App.Controls.HexView"
+    xmlns:local="using:InternalsViewer.UI.App.Views.Query.Trace.Timeline.Memory"
+    xmlns:models="using:InternalsViewer.UI.App.Models"
+    xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
+    xmlns:predicates="using:InternalsViewer.UI.App.Controls.Query"
+    xmlns:results="using:InternalsViewer.UI.App.Controls.Results"
+    xmlns:timeline="using:InternalsViewer.UI.App.Models.Query.Trace.Timeline"
+    xmlns:traceMemory="using:InternalsViewer.UI.App.Controls.Query.Trace.Memory"
+    xmlns:types="using:InternalsViewer.UI.App.Controls.Columnstore">
+
+    <UserControl.Resources>
+        <DataTemplate x:Key="NodeTemplate" x:DataType="muxc:TreeViewNode">
+            <StackPanel Orientation="Horizontal"
+                        Spacing="6"
+                        Opacity="{x:Bind ((timeline:MemoryStructureNode)Content).Opacity}">
+                <Image Width="14"
+                       Height="17"
+                       Stretch="Fill"
+                       VerticalAlignment="Center"
+                       Source="{x:Bind local:MemoryStructureView.Calculator}"
+                       Visibility="{x:Bind ((timeline:MemoryStructureNode)Content).IsCalculator}"/>
+                <TextBlock Text="{x:Bind ((timeline:MemoryStructureNode)Content).Name}"
+                           FontSize="12"
+                           VerticalAlignment="Center"/>
+                <TextBlock Text="{x:Bind ((timeline:MemoryStructureNode)Content).AddressText}"
+                           FontSize="12"
+                           FontFamily="{StaticResource MonospaceFontFamily}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           VerticalAlignment="Center"/>
+                <TextBlock Text="{x:Bind ((timeline:MemoryStructureNode)Content).Detail}"
+                           FontSize="12"
+                           Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                           VerticalAlignment="Center"/>
+                <types:DataTypeTextBlock DataType="{x:Bind local:MemoryStructureView.GetDataType((timeline:MemoryStructureNode)Content)}"
+                                         Precision="{x:Bind local:MemoryStructureView.GetPrecision((timeline:MemoryStructureNode)Content)}"
+                                         DataScale="{x:Bind local:MemoryStructureView.GetScale((timeline:MemoryStructureNode)Content)}"
+                                         Length="{x:Bind local:MemoryStructureView.GetLength((timeline:MemoryStructureNode)Content)}"
+                                         VerticalAlignment="Center"
+                                         Visibility="{x:Bind ((timeline:MemoryStructureNode)Content).HasColumnType}"/>
+                <ItemsControl ItemsSource="{x:Bind ((timeline:MemoryStructureNode)Content).Badges}"
+                              VerticalAlignment="Center">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="4"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="timeline:MemoryStructureBadge">
+                            <Border Background="{x:Bind Colour, Converter={StaticResource ColorToSolidColorBrushValueConverter}}"
+                                    CornerRadius="2"
+                                    Padding="4,1"
+                                    VerticalAlignment="Center">
+                                <TextBlock
+                                    Text="{x:Bind Text}"
+                                    Style="{StaticResource TagTextBlockStyle}"
+                                    Foreground="{x:Bind TextColour, Converter={StaticResource ColorToSolidColorBrushValueConverter}}"/>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Text="{x:Bind ((timeline:MemoryStructureNode)Content).Value, Mode=OneWay}"
+                           FontSize="12"
+                           FontFamily="{StaticResource MonospaceFontFamily}"
+                           Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+        </DataTemplate>
+
+        <Style x:Key="NodeItemStyle" TargetType="muxc:TreeViewItem">
+            <Setter Property="MinHeight" Value="24"/>
+            <Setter Property="Padding" Value="4,0,0,0"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Background="{ThemeResource SolidBackgroundFillColorTertiaryBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="320" MinWidth="160"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <Grid x:Name="CommandBarGrid"
+              Grid.Row="0"
+              Grid.ColumnSpan="3"
+              Padding="12,8"
+              ColumnSpacing="12"
+              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+              BorderThickness="0,0,0,1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <Button Style="{StaticResource TabCommandButtonStyle}"
+                        Command="{x:Bind ViewModel.GoBackCommand, Mode=OneWay}"
+                        VerticalAlignment="Center"
+                        ToolTipService.ToolTip="Back">
+                    <FontIcon Glyph="&#xE72B;" FontSize="12"/>
+                </Button>
+                <Button Style="{StaticResource TabCommandButtonStyle}"
+                        Command="{x:Bind ViewModel.GoForwardCommand, Mode=OneWay}"
+                        Margin="0,0,6,0"
+                        VerticalAlignment="Center"
+                        ToolTipService.ToolTip="Forward">
+                    <FontIcon Glyph="&#xE72A;" FontSize="12"/>
+                </Button>
+                <ItemsControl ItemsSource="{x:Bind ViewModel.Path, Mode=OneWay}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="6"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="models:ActionLink">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <HyperlinkButton Content="{x:Bind Text}"
+                                                 FontSize="12"
+                                                 Style="{StaticResource DetailLinkStyle}"
+                                                 VerticalAlignment="Center"
+                                                 Click="OnPathClick"/>
+                                <TextBlock Text="&#x203A;"
+                                           FontSize="12"
+                                           Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Text="{x:Bind ViewModel.PathTitle, Mode=OneWay}"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <ToggleButton x:Name="PlanObjectToggle"
+                          Grid.Column="1"
+                          Content="Plan Object"
+                          Style="{StaticResource TabCommandToggleStyle}"
+                          VerticalAlignment="Center"
+                          Visibility="Collapsed"
+                          ToolTipService.ToolTip="Start each column at its operator's plan object and follow its reference to the value"
+                          Click="OnPlanObjectClick"/>
+        </Grid>
+
+        <muxc:TreeView x:Name="StructureTree"
+                       Grid.Row="1"
+                       Grid.Column="0"
+                       ItemTemplate="{StaticResource NodeTemplate}"
+                       ItemContainerStyle="{StaticResource NodeItemStyle}"
+                       SelectionMode="Single"
+                       CanDragItems="False"
+                       CanReorderItems="False"
+                       SelectionChanged="OnStructureSelectionChanged"
+                       ItemInvoked="OnStructureItemInvoked"
+                       ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                       ScrollViewer.HorizontalScrollMode="Enabled"
+                       ScrollViewer.VerticalScrollBarVisibility="Auto"
+                       ScrollViewer.VerticalScrollMode="Enabled"/>
+
+        <controls:GridSplitter Grid.Row="1"
+                               Grid.Column="1"
+                               Width="8"
+                               Background="{ThemeResource ControlStrokeColorDefaultBrush}"
+                               ResizeBehavior="PreviousAndNext"
+                               ResizeDirection="Columns"/>
+
+        <Grid Grid.Row="1" Grid.Column="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="HexColumn" Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel x:Name="HexHeader"
+                        Grid.Row="0"
+                        Grid.ColumnSpan="2"
+                        Padding="12,8"
+                        Orientation="Horizontal"
+                        Spacing="16"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="0,0,0,1"
+                        Visibility="{x:Bind ViewModel.IsHexVisible, Mode=OneWay}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="Address"
+                               FontSize="12"
+                               Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                               VerticalAlignment="Center"/>
+                    <HyperlinkButton Content="{x:Bind ViewModel.BlockAddress, Mode=OneWay}"
+                                     Command="{x:Bind ViewModel.OpenBlockMemoryCommand, Mode=OneWay}"
+                                     FontSize="12"
+                                     FontFamily="{StaticResource MonospaceFontFamily}"
+                                     Style="{StaticResource DetailLinkStyle}"
+                                     VerticalAlignment="Center"
+                                     ToolTipService.ToolTip="Open Memory"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="Type"
+                               FontSize="12"
+                               Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Text="{x:Bind ViewModel.BlockType, Mode=OneWay}"
+                               FontSize="12"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+            </StackPanel>
+
+            <hexView:HexViewControl Grid.Row="1"
+                                    Grid.Column="0"
+                                    Visibility="{x:Bind ViewModel.IsHexVisible, Mode=OneWay}"
+                                    VerticalAlignment="Stretch"
+                                    Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
+                                    Data="{x:Bind ViewModel.Data, Mode=OneWay}"
+                                    Markers="{x:Bind ViewModel.Markers, Mode=OneWay}"
+                                    Links="{x:Bind ViewModel.Links, Mode=OneWay}"
+                                    OffsetClicked="OnHexOffsetClicked"
+                                    SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"
+                                    SelectedChangeSpan="{x:Bind ViewModel.ItemOutline, Mode=OneWay}"
+                                    ChangeSpans="{x:Bind ViewModel.Outlines, Mode=OneWay}"
+                                    ScrollToOffset="{x:Bind ViewModel.ScrollToOffset, Mode=OneWay}"/>
+
+            <Grid Grid.Row="1" Grid.Column="1" Visibility="{x:Bind ViewModel.IsHexVisible, Mode=OneWay}">
+                <results:ResultsGridControl ResultSet="{x:Bind ViewModel.FieldTable, Mode=OneWay}"
+                                            SelectedRow="{x:Bind ViewModel.SelectedFieldRow, Mode=TwoWay}"
+                                            Visibility="{x:Bind ViewModel.IsFieldTableVisible, Mode=OneWay}"/>
+
+                <results:ResultsGridControl ResultSet="{x:Bind ViewModel.EntryTable, Mode=OneWay}"
+                                            RowDetails="{x:Bind ViewModel.EntryDetails, Mode=OneWay}"
+                                            SelectedRow="{x:Bind ViewModel.SelectedEntryRow, Mode=TwoWay}"
+                                            Visibility="{x:Bind ViewModel.IsEntryTableVisible, Mode=OneWay}"/>
+
+                <local:MemoryPagePanelView DataContext="{x:Bind ViewModel.Page, Mode=OneWay}"
+                                           Visibility="{x:Bind ViewModel.IsPageVisible, Mode=OneWay}"/>
+
+                <TextBlock HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Text="{x:Bind ViewModel.EmptyText, Mode=OneWay}"/>
+            </Grid>
+
+            <Grid Grid.RowSpan="2" Grid.ColumnSpan="2" Visibility="{x:Bind ViewModel.IsMemoryVisible, Mode=OneWay}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <results:ResultsGridControl Grid.Column="0" ResultSet="{x:Bind ViewModel.MemoryTable, Mode=OneWay}"/>
+
+                <traceMemory:MemoryUsageChartControl Grid.Column="1"
+                                                     Chart="{x:Bind ViewModel.MemoryChart, Mode=OneWay}"
+                                                     PositionRequested="OnMemoryPositionRequested"/>
+            </Grid>
+
+            <traceMemory:DataPathGraphControl Grid.RowSpan="2"
+                                              Grid.ColumnSpan="2"
+                                              Graph="{x:Bind ViewModel.Graph, Mode=OneWay}"
+                                              Visibility="{x:Bind ViewModel.IsGraphVisible, Mode=OneWay}"/>
+
+            <predicates:ExpressionTextBox Grid.RowSpan="2"
+                                         Grid.ColumnSpan="2"
+                                         Margin="12"
+                                         VerticalAlignment="Top"
+                                         HorizontalAlignment="Stretch"
+                                         Text="{x:Bind ViewModel.Expression, Mode=OneWay}"
+                                         Visibility="{x:Bind ViewModel.IsExpressionVisible, Mode=OneWay}"/>
+        </Grid>
+    </Grid>
+</UserControl>

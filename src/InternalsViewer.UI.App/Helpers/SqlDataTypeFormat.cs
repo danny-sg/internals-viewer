@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using InternalsViewer.Query.FullTrace.Locators;
+using InternalsViewer.Internals.Helpers;
+using System.Collections.Generic;
 using System.Data;
 
 namespace InternalsViewer.UI.App.Helpers;
@@ -31,6 +33,9 @@ public static class SqlDataTypeFormat
         SqlDbType.DateTimeOffset => "DATETIMEOFFSET",
         _ => type.ToString().ToUpperInvariant()
     };
+
+    public static SqlDbType? GetDataType(SqlTypeInfo? type)
+        => type is { } found && SqlTypeHelpers.TryGetSqlType(found.TypeId, out var dataType) ? dataType : null;
 
     public static List<string> GetArguments(SqlDbType type, int precision, int scale, int length)
     {

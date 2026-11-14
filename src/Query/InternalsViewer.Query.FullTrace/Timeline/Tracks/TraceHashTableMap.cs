@@ -1,6 +1,7 @@
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.History;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using System.Buffers.Binary;
 
@@ -20,15 +21,9 @@ public sealed class TraceHashTableMap(TraceResult trace)
 
     private const int HashArgument = 2;
 
-    private const int ActivePartitionOffset = 0xA0;
-
-    private const int BucketMaskOffset = 0x54;
-
-    private const int PartitionMaskOffset = 0x188;
-
-    private const int PartitionShiftOffset = 0x18C;
-
     private Dictionary<ExecutionOperatorEvent, Layout?> Layouts { get; } = new(ReferenceEqualityComparer.Instance);
+
+    private EngineLayout Engine => trace.MemoryHistory.Layout;
 
     public (ulong Group, int Partition, int Bucket)? GetLocation(TraceTick tick)
     {
@@ -73,11 +68,11 @@ public sealed class TraceHashTableMap(TraceResult trace)
     {
         var position = tick.Span.From.Position;
 
-        if (ReadValue(call.GetSlot(PartitionGroupArgument) + ActivePartitionOffset, sizeof(ulong), position) is not { } partition
-            || ReadValue(partition + BucketMaskOffset, sizeof(uint), position) is not { } bucketMask
+        if (ReadValue(call.GetSlot(PartitionGroupArgument), Engine.HashGroup.ActivePartitionField, position) is not { } partition
+            || ReadValue(partition, Engine.HashPartition.BucketMaskField, position) is not { } bucketMask
             || GetHashIterator(tick) is not { } iterator
-            || ReadValue(iterator + PartitionMaskOffset, sizeof(uint), position) is not { } partitionMask
-            || ReadValue(iterator + PartitionShiftOffset, sizeof(uint), position) is not { } partitionShift)
+            || ReadValue(iterator, Engine.HashIterator.PartitionMaskField, position) is not { } partitionMask
+            || ReadValue(iterator, Engine.HashIterator.PartitionShiftField, position) is not { } partitionShift)
         {
             return null;
         }
@@ -105,6 +100,9 @@ public sealed class TraceHashTableMap(TraceResult trace)
 
         return null;
     }
+
+    private ulong? ReadValue(ulong holder, MemoryField field, TracePosition position)
+        => ReadValue(holder + (ulong)field.Offset, field.Length, position);
 
     private ulong? ReadValue(ulong address, int length, TracePosition position)
     {

@@ -65,6 +65,8 @@ public sealed partial class DocumentViewModel(string title,
 
     public double MinWidth { get; init; }
 
+    public bool IsTool { get; init; }
+
     public List<DocumentMenuItem> MenuItems { get; init; } = [];
 
     public Microsoft.UI.Xaml.Media.Brush? Accent { get; set; }
@@ -103,6 +105,18 @@ public sealed partial class DocumentViewModel(string title,
         _currentHolder = holder;
 
         return holder;
+    }
+
+    public void Realize()
+    {
+        if (!KeepAlive || _cachedView is not null)
+        {
+            return;
+        }
+
+        _cachedView = ViewFactory();
+
+        _cachedView.DataContext = Content;
     }
 
     /// <summary>

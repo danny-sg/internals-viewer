@@ -136,6 +136,18 @@ internal static partial class PlanIconParts
         return overlay;
     }
 
+    public static SvgImageSource CreateCalculatorSource(int pixelWidth, int pixelHeight)
+    {
+        var source = new SvgImageSource { RasterizePixelWidth = pixelWidth, RasterizePixelHeight = pixelHeight };
+
+        if (GetCalculatorIcon(false) is { } svg)
+        {
+            _ = LoadAsync(source, svg);
+        }
+
+        return source;
+    }
+
     public static async Task LoadAsync(SvgImageSource source, string svg)
     {
         using var stream = new InMemoryRandomAccessStream();

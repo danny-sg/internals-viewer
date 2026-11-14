@@ -8,7 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.13" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="11.0.0" />
     </ItemGroup>
 
     <ItemGroup>
@@ -27,6 +27,7 @@
              override it from the user's app-data folder later). Matched by file name at load, not by resource path. -->
         <EmbeddedResource Include="Symbols\Categories\Mappings\*.txt" />
         <EmbeddedResource Include="Timeline\Tracks\PredefinedTracks.json" />
+        <EmbeddedResource Include="Memory\Layouts\Versions\*.psv" />
     </ItemGroup>
 
     <ItemGroup>
@@ -34,6 +35,10 @@
             <Link>runtimes\win-x64\native\%(Filename)%(Extension)</Link>
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Iterators\PlanNodes\Output\" />
     </ItemGroup>
 
 </Project>

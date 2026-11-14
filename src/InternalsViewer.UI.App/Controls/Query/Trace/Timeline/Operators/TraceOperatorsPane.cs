@@ -184,6 +184,8 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
         canvas.ClipRect(new SKRect(0, Top, width, Top + Height));
 
+        DrawStages(canvas, width, scale);
+
         for (var row = 0; row < Rows.Length; row++)
         {
             for (var track = 0; track < Rows[row].Lifetimes.Length; track++)
@@ -230,6 +232,8 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
         DrawBandHover(canvas, scale);
 
+        DrawStageHover(canvas, scale);
+
         canvas.Restore();
     }
 
@@ -244,7 +248,9 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
 
         var operatorHit = tick is null ? GetOperatorAt(position) : null;
 
-        return new TraceOperatorsHover(operatorHit, tick);
+        var stage = tick is null && operatorHit is null ? GetStageAt(position) : null;
+
+        return new TraceOperatorsHover(operatorHit, tick, stage);
     }
 
     public string? GetToolTip(TraceOperatorsHover hover, Point position)
@@ -257,6 +263,11 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
         if (hover.Tick is { } tick)
         {
             return GetTickToolTip(tick);
+        }
+
+        if (hover.Stage is { } stage)
+        {
+            return GetStageToolTip(stage);
         }
 
         return Contains(position) ? ToolTipTitle : null;
@@ -304,15 +315,25 @@ internal sealed partial class TraceOperatorsPane(ITraceTimelineHost host, Func<(
         {
             Host.ClickCall(tick.Node, tick.CallIndex);
         }
+        else if (GetOperatorAt(position) is { } operatorHit)
+        {
+            SelectOperator(operatorHit);
+        }
+        else if (GetStageAt(position) is { } stage)
+        {
+            Host.ClickCall(stage.Node, stage.Span.CallIndex);
+        }
         else
         {
-            SelectOperator(GetOperatorAt(position));
+            SelectOperator(null);
         }
     }
 
     public void Dispose()
     {
         Rows = [];
+
+        Stages = [];
 
         VisibleTracks = [];
 

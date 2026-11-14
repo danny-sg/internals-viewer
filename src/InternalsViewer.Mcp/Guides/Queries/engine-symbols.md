@@ -29,7 +29,7 @@ labels each function with its category. The categories, and the kind of class in
 | --- | --- | --- |
 | Statement Execution | Batch and statement execution | `CXStmtSelect::XretExecute`, `CXStmtQuery::ErsqExecuteQuery` |
 | Query Execution | The execution context and the execution tree | `CQueryScan`, `CXte*` (plan nodes), `CMsqlExecContext` |
-| Query Operator | Row mode iterators | `CQScan*` (`CQScanRangeNew` seek, `CQScanTableScanNew` scan, `CQScanHash` hash match, `CQScanSort`, `CQScanNLJoinNew` nested loops, `CQScanStreamAggregateNew`, `CQScanTopNew`) |
+| Query Operator | Row mode iterators | `CQScan*` (`CQScanRangeNew` seek, `CQScanTableScanNew` scan, `CQScanHash` hash match, `CQScanSort`, `CQScanNLJoinNew` nested loops, `CQScanStreamAggregateNew`, `CQScanTopNew`), and the actual-plan profiling iterators `CQScanProfileNew` and `CQScanLightProfileNew` that wrap them |
 | Batch Operator | Batch mode iterators and their structures | `CBpQScan*`, `CBpag*` (aggregates), `CBpBatch`, `CBpSpillProcessor` |
 | Rowset | The rowset interface operators pull rows through, and record decoding | `RowsetNewSS`, `IndexDataSetSession`, `HeapDataSetSession`, `DatasetSession`, `FixedVarRecord`, `CValRow` |
 | B-Tree Navigation | Walking an index from root to leaf | `BTreeMgr::Seek`, `BTreeMgr::HandleRoot`, `IndexPageManager::GetPageWithKey`, `IndexRowScanner`, `BTreeRow` |
@@ -51,7 +51,7 @@ labels each function with its category. The categories, and the kind of class in
 | Compilation, Optimization, Query Binding | Building the plan | `CCompPlan`, `COptContext`, `CAlgTableMetadata` |
 | Networking | TDS and the client connection | `CNetConnection`, `CTdsConn`, `CPhysicalConnection` |
 | Security | Permission checks, encryption | `CMEDRcsSecurity`, Always Encrypted checks |
-| Extended Events, Tracing | Event publishing and profiling. Cut out of a Full Trace tree, except the operator profile wrappers (`CQScanProfileNew`, `CQScanLightProfileNew`) which keep their callees |
+| Extended Events, Tracing | Event publishing and profiling. Cut out of a Full Trace tree |
 | System | Windows, the C runtime, `memcpy`, `__security_check_cookie` |
 
 Categories marked infrastructure in the app (Extended Events, Tracing, SQLOS Scheduling and Synchronisation, I/O

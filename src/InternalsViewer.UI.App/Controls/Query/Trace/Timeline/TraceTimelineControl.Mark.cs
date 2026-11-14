@@ -28,26 +28,17 @@ public sealed partial class TraceTimelineControl
 
     private readonly Dictionary<(CallTreeNode Node, int CallIndex, TraceTimelineAxis Axis), MarkedCall?> _markedCalls = [];
 
-    private (CallTreeNode Node, int CallIndex)? _marked;
-
     private TracePoint[] _markedPoints = [];
 
     private TracePoint[] _pinnedPoints = [];
 
     private (TracePoint[] Points, TraceTimelineAxis Axis, double[] Values)? _markedValues;
 
-    private (double Current, double[] Marked, int Lane, int Depth)? _minimapMarkers;
+    private (double Current, double[] Marked)? _minimapMarkers;
 
     public int PinnedPositionCount => _pinnedPoints.Length;
 
     private TraceTimeline? Overview => FullTimeline ?? _timeline;
-
-    public void MarkCall(CallTreeNode? node, int callIndex)
-    {
-        _marked = node is not null && callIndex >= 0 ? (node, callIndex) : null;
-
-        _canvas.Invalidate();
-    }
 
     public void MarkPositions(TracePoint[]? points)
     {
@@ -61,20 +52,6 @@ public sealed partial class TraceTimelineControl
         _pinnedPoints = points;
 
         _canvas.Invalidate();
-    }
-
-    public void MovePlayheadTo(CallTreeNode node, int callIndex)
-    {
-        if (RevealCall(node, callIndex) is not { } start)
-        {
-            return;
-        }
-
-        RememberLocation();
-
-        StopPlay();
-
-        PlacePlayhead(start);
     }
 
     public void MovePlayheadTo(TracePoint point)
@@ -103,9 +80,6 @@ public sealed partial class TraceTimelineControl
         ZoomTo(span);
     }
 
-    private double? RevealCall(CallTreeNode node, int callIndex)
-        => RevealSpan(node, callIndex) is { } span ? TraceScale.GetValue(span.From, _axis) : null;
-
     private TraceSpan? RevealSpan(CallTreeNode node, int callIndex)
     {
         if (GetCall(node, callIndex) is not { } found)
@@ -123,8 +97,6 @@ public sealed partial class TraceTimelineControl
 
     private void ClearMark()
     {
-        _marked = null;
-
         _markedPoints = [];
 
         _markedValues = null;
@@ -146,13 +118,6 @@ public sealed partial class TraceTimelineControl
 
     private void DrawMark(SKCanvas canvas, int width, int height)
     {
-        if (GetMarkedCall() is { } marked)
-        {
-            DrawMarkedCall(canvas, marked, width, height);
-
-            return;
-        }
-
         var points = _markedPoints.Length > 0 ? _markedPoints : _pinnedPoints;
 
         if (points.Length == 0)
@@ -199,7 +164,7 @@ public sealed partial class TraceTimelineControl
 
         if (isOutside)
         {
-            ShowMinimap(values, -1, -1, width, height);
+            ShowMinimap(values, width, height);
         }
         else
         {
@@ -226,26 +191,6 @@ public sealed partial class TraceTimelineControl
         _markedValues = (points, _axis, values);
 
         return values;
-    }
-
-    private void DrawMarkedCall(SKCanvas canvas, MarkedCall marked, int width, int height)
-    {
-        var start = TraceScale.GetValue(marked.Span.From, _axis);
-
-        var x = (float)((start - _viewStart) * PixelsPerUnit(width));
-
-        if (x < 0 || x > width || GetMarkedTop(marked) is not { } rowTop)
-        {
-            ShowMinimap([start], marked.Lane, marked.Depth, width, height);
-
-            return;
-        }
-
-        var bottom = height - BandHeight;
-
-        canvas.DrawLine(x, Math.Max(ContentTop, Math.Min(rowTop, bottom)), x, bottom, _paints.Mark);
-
-        HideMinimap();
     }
 
     private float? GetMarkedTop(MarkedCall marked)
@@ -284,7 +229,7 @@ public sealed partial class TraceTimelineControl
         return null;
     }
 
-    private void ShowMinimap(ReadOnlySpan<double> marked, int lane, int depth, int width, int height)
+    private void ShowMinimap(ReadOnlySpan<double> marked, int width, int height)
     {
         var fits = width >= MinimapWidth + MinimapMargin * 2 && height - BandHeight - ContentTop >= MinimapHeight + MinimapMargin * 2;
 
@@ -305,11 +250,7 @@ public sealed partial class TraceTimelineControl
 
         var current = _playhead ?? double.NaN;
 
-        if (_minimapMarkers is not { } shown
-            || !shown.Current.Equals(current)
-            || !shown.Marked.AsSpan().SequenceEqual(marked)
-            || shown.Lane != lane
-            || shown.Depth != depth)
+        if (_minimapMarkers is not { } shown || !shown.Current.Equals(current) || !shown.Marked.AsSpan().SequenceEqual(marked))
         {
             var markers = new List<MinimapMarker>(marked.Length + 1);
 
@@ -322,12 +263,12 @@ public sealed partial class TraceTimelineControl
 
             foreach (var value in marked)
             {
-                markers.Add(GetMinimapMarker(value, paint, lane, depth));
+                markers.Add(GetMinimapMarker(value, paint));
             }
 
             _minimap.Markers = markers;
 
-            _minimapMarkers = (current, marked.ToArray(), lane, depth);
+            _minimapMarkers = (current, marked.ToArray());
         }
 
         _minimap.Visibility = Visibility.Visible;
@@ -335,11 +276,11 @@ public sealed partial class TraceTimelineControl
 
     private void HideMinimap() => _minimap.Visibility = Visibility.Collapsed;
 
-    private static MinimapMarker GetMinimapMarker(double position, SKPaint paint, int lane = -1, int depth = -1)
+    private static MinimapMarker GetMinimapMarker(double position, SKPaint paint)
     {
         var colour = Color.FromArgb(paint.Color.Alpha, paint.Color.Red, paint.Color.Green, paint.Color.Blue);
 
-        return new MinimapMarker(position, colour, lane, depth, paint.StrokeWidth);
+        return new MinimapMarker(position, colour, paint.StrokeWidth);
     }
 
     private void ReleaseMinimap()
@@ -351,8 +292,6 @@ public sealed partial class TraceTimelineControl
 
         _minimapMarkers = null;
     }
-
-    private MarkedCall? GetMarkedCall() => _marked is { } marked ? GetCall(marked.Node, marked.CallIndex) : null;
 
     private MarkedCall? GetCall(CallTreeNode node, int callIndex)
     {
@@ -377,8 +316,8 @@ public sealed partial class TraceTimelineControl
     {
         var thread = timeline.Threads[hit.Lane];
 
-        return new MarkedCall(thread.Rows[hit.Depth].GetSpan(hit.Index), thread.ThreadId, hit.Lane, hit.Depth);
+        return new MarkedCall(thread.Rows[hit.Depth].GetSpan(hit.Index), thread.ThreadId);
     }
 
-    private readonly record struct MarkedCall(TraceSpan Span, uint ThreadId, int Lane, int Depth);
+    private readonly record struct MarkedCall(TraceSpan Span, uint ThreadId);
 }

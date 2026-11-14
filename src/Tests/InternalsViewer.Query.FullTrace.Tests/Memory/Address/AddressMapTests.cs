@@ -252,6 +252,31 @@ public class AddressMapTests
     }
 
     [Fact]
+    public void The_Class_Named_By_The_Vtable_Is_Rebuilt_From_What_Is_Written()
+    {
+        var map = Build(Entry(AddressMapOperation.Allocated, call: 10, OperatorNew),
+                        Entry(AddressMapOperation.Constructed, call: 20, ScanConstructor) with { VtableClassName = "CQScanRangeDerived" });
+
+        using var stream = new MemoryStream();
+
+        using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
+        {
+            map.Write(writer);
+        }
+
+        stream.Position = 0;
+
+        using var reader = new BinaryReader(stream);
+
+        var read = AddressMap.Read(reader, GetNode);
+
+        Assert.Equal(("CQScanRangeDerived", "CQScanRangeNew", "CQScanRangeDerived"),
+                     (read.GetVtableClassName(Address, At(0), At(100)),
+                      read.GetEntry(Address, At(25))?.ClassName,
+                      read.GetEntry(Address, At(15))?.VtableClassName));
+    }
+
+    [Fact]
     public void A_Map_Written_Before_Declared_Types_Is_Not_Current()
     {
         using var stream = new MemoryStream();

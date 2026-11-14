@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Data;
 using System.Linq;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Database;
@@ -14,7 +15,9 @@ using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.FullTrace;
+using InternalsViewer.Query.FullTrace.DataPath;
 using InternalsViewer.Query.FullTrace.Iterators;
+using InternalsViewer.Query.FullTrace.Iterators.Enums;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.History;
@@ -27,12 +30,15 @@ using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.Models;
 using Microsoft.UI;
+using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryHistory;
 
 public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> openCall) : ObservableObject
 {
     private const string IteratorObject = "Iterator";
+
+    private const int StatementNodeId = -1;
 
     private const string UnknownWriter = "Unknown Writer";
 
@@ -82,6 +88,10 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
     public TraceCallStore? CallStore => Trace?.CallStore;
 
+    public TraceTimeline? Timeline => Trace?.Timeline;
+
+    public TraceTimeline? QueryTimeline => Trace?.QueryTimeline;
+
     public MemoryHistoryBatchResolver? Batches { get; private set; }
 
     public TracePosition WindowStart
@@ -108,13 +118,19 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
     private IReadOnlyDictionary<ulong, IteratorTarget> Iterators { get; set; } = new Dictionary<ulong, IteratorTarget>();
 
+    private Dictionary<ulong, int> IteratorBlocks { get; set; } = [];
+
     private HexWatchStore WatchStore { get; } = new();
 
     private Dictionary<(ulong Batch, int Vector), SqlDbType> VectorTypes { get; } = [];
 
     private WorkfileLayoutResolver? Workfiles { get; set; }
 
+    private Func<PlanNodeIdentifier, PlanNode?>? ResolvePlanNode { get; set; }
+
     private Dictionary<int, string?> PointerTargets { get; } = [];
+
+    private Dictionary<bool, DataPathMap> DataPathMaps { get; } = [];
 
     private MagicBytesMatcher? MagicBytes { get; set; }
 
@@ -129,13 +145,22 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
     {
         Trace = trace;
 
+        ResolvePlanNode = resolvePlanNode;
+
         DatabaseId = database.DatabaseId;
 
         VectorTypes.Clear();
 
         PointerTargets.Clear();
 
+        lock (DataPathMaps)
+        {
+            DataPathMaps.Clear();
+        }
+
         IsAvailable = Store.Blocks.Count > 0;
+
+        IteratorBlocks = GetIteratorBlocks();
 
         Iterators = trace is null
             ? new Dictionary<ulong, IteratorTarget>()
@@ -149,7 +174,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
         Map = trace?.AddressMap;
 
-        Workfiles = trace is null ? null : new WorkfileLayoutResolver(database, i => GetPlanNode(i, resolvePlanNode));
+        Workfiles = trace is null ? null : new WorkfileLayoutResolver(database, GetPlanNode);
 
         ScopeStart = null;
 
@@ -210,6 +235,74 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
     public TraceBufferPool BufferPool => Trace?.BufferPool ?? TraceBufferPool.Empty;
 
+    public AddressMap AddressMap => Map ?? AddressMap.Empty;
+
+    public IReadOnlyDictionary<ulong, IteratorTarget> IteratorTargets => Iterators;
+
+    public PlanOutputRecordReader? Records { get; init; }
+
+    public IReadOnlyList<PlanOutputColumn> GetOutputColumns(int nodeId) => Trace?.OutputColumns.GetValueOrDefault(nodeId) ?? [];
+
+    public PlanOutputPath GetOutputPath(int nodeId, PlanOutputColumn column)
+        => Trace?.GetOutputPath(nodeId, column) ?? PlanOutputPath.Empty;
+
+    public string? GetUnexpectedWriter(PlanOutputLink link) => Trace?.GetUnexpectedWriter(link);
+
+    public DataPathMap GetDataPathMap(bool isPlanObjectIncluded = false)
+    {
+        lock (DataPathMaps)
+        {
+            if (!DataPathMaps.TryGetValue(isPlanObjectIncluded, out var map))
+            {
+                map = Trace is { } trace && FindStatement() is { } statement
+                    ? DataPathBuilder.Build(trace, statement, Iterators, isPlanObjectIncluded)
+                    : DataPathMap.Empty;
+
+                DataPathMaps[isPlanObjectIncluded] = map;
+            }
+
+            return map;
+        }
+    }
+
+    public Task<string?> ReadRecordAsync(PlanOutputRecord record) => Records?.ReadAsync(record) ?? Task.FromResult<string?>(null);
+
+    public List<string> GetOutputColumnNames(ulong target, int count)
+    {
+        var columns = GetPlanNode(target)?.OutputColumns is { } found && found.Count == count ? found : null;
+
+        return [.. Enumerable.Range(0, count).Select(i => columns?[i].Column is { Length: > 0 } name ? name : $"Column {i + 1}")];
+    }
+
+    public string? GetStatementResult(TracePosition position, SqlDbType type) => Trace?.GetStatementResult(position, type);
+
+    public (TracePosition From, TracePosition To)? GetRowRange(ulong iterator) => Trace?.GetRowRange(iterator);
+
+    public PlanOutputRecord? GetOutputRecord(MemoryHistoryReader memory, PlanOutputStage stage)
+        => Trace is { } trace ? PlanOutputValueReader.ReadRecord(memory, trace.BufferPool, memory.Position, stage) : null;
+
+    public PlanNode? GetStatement(PlanNodeIdentifier node)
+        => ResolvePlanNode?.Invoke(new PlanNodeIdentifier(node.PlanHandleId, StatementNodeId)) is { IsStatement: true } statement
+            ? statement
+            : null;
+
+    public string? GetStatementName(PlanNodeIdentifier node) => GetStatement(node)?.PhysicalOperator;
+
+    private PlanNode? FindStatement()
+        => Iterators.Values
+                    .Select(t => t.Operator?.PlanNodeIdentifier)
+                    .OfType<PlanNodeIdentifier>()
+                    .FirstOrDefault() is { } identifier
+            ? GetStatement(identifier)
+            : null;
+
+    public PlanNode? GetPlanNode(ulong iterator)
+        => ResolvePlanNode is { } resolve
+           && Iterators.TryGetValue(iterator, out var target)
+           && target.Operator?.PlanNodeIdentifier is { } identifier
+            ? resolve(identifier)
+            : null;
+
     public TraceBufferReference? GetBufferPage(ulong address, TracePosition position) => Trace?.BufferPool.GetReference(address, position);
 
     public string GetBufferPageLabel(TraceBufferReference reference)
@@ -227,6 +320,9 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
     public string GetBufferPageName(TraceBufferReference reference) => $"{GetDatabasePrefix(reference)}{reference.Page}";
 
+    public int? GetBufferSlot(TraceBufferReference reference)
+        => reference.IsBuffer ? null : Trace?.BufferPool.GetLayout(reference.Page, reference.DatabaseId)?.GetSlot(reference.Offset);
+
     public bool IsBuffer(int block) => Trace?.BufferPool.IsBuffer(Store.Blocks[block].Address) == true;
 
     public bool IsPage(int block)
@@ -237,13 +333,17 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
     public bool IsColumnBindings(int block) => GetMapLabel(Store.Blocks[block]) == AccessorBindingLayout.ColumnsClassName;
 
     public MemoryHistoryArray? GetArray(int block)
-        => IsColumnBindings(block) && AccessorBindingLayout.GetColumnCount(Store.Blocks[block].Size) is > 0 and var count
-            ? new MemoryHistoryArray(AccessorBindingLayout.ColumnSize, count)
+        => IsColumnBindings(block) && Store.Layout.ColumnBinding.GetColumnCount(Store.Blocks[block].Size) is > 0 and var count
+            ? new MemoryHistoryArray(Store.Layout.ColumnBinding.Size, count)
             : null;
 
     public RowRecordLayout? GetWorkfileLayout(int block) => GetPageIterator(block) is { } iterator ? Workfiles?.Get(iterator) : null;
 
-    public SortRecordLayout? GetSortLayout(int block) => GetPageIterator(block) is { } iterator ? Workfiles?.GetSort(iterator) : null;
+    public RowRecordLayout? GetWorkfileLayout(ulong iterator, IReadOnlyList<ColumnBinding> bindings, bool isProbeSide)
+        => Workfiles?.Get(iterator, bindings, isProbeSide);
+
+    public SortRecordLayout? GetSortLayout(int block)
+        => GetPageIterator(block) is { } iterator ? Workfiles?.GetSort(iterator, () => ReadScanBindings(iterator, block)) : null;
 
     public SqlDbType? GetVectorType(ulong batch, int vector) => VectorTypes.TryGetValue((batch, vector), out var type) ? type : null;
 
@@ -260,6 +360,23 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
     }
 
     public string GetObjectName(int block) => GetDisplayLabel(block) is { Length: > 0 } name ? name : UnknownObject;
+
+    public int GetIteratorBlock(ulong address) => IteratorBlocks.GetValueOrDefault(address, -1);
+
+    public IteratorTarget? GetIteratorTarget(int block)
+        => Store.Blocks[block] is var info
+           && Iterators.TryGetValue(info.Address, out var target)
+           && (GetIteratorBlock(info.Address) == block || target.Type == IteratorTargetType.PlanObject)
+            ? target
+            : null;
+
+    public string? GetOperatorName(int block)
+        => Store.Blocks[block] is var info
+           && Iterators.TryGetValue(info.Address, out var target)
+           && target.Operator is { PlanNodeIdentifier: not null }
+           && (GetIteratorBlock(info.Address) == block || target.Type == IteratorTargetType.PlanObject)
+            ? $"{target.TypeName} › {target.Label}"
+            : null;
 
     public string GetTypeName(int block)
     {
@@ -426,6 +543,22 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
     private bool IsTracked(int block)
         => Store.IsCreatedWithin(block, Window?.Start.Position ?? default, Window?.End.Position ?? TracePosition.Unknown);
 
+    private Dictionary<ulong, int> GetIteratorBlocks()
+    {
+        var blocks = new Dictionary<ulong, int>();
+
+        for (var block = 0; block < Store.Blocks.Count; block++)
+        {
+            if (Store.Blocks[block] is { IsIterator: true } info
+                && (!blocks.TryGetValue(info.Address, out var current) || Store.Blocks[current].FromPosition < info.FromPosition))
+            {
+                blocks[info.Address] = block;
+            }
+        }
+
+        return blocks;
+    }
+
     private string GetDisplayLabel(int block)
         => GetObjectLabel(block) is { Length: > 0 } label
             ? label
@@ -439,20 +572,18 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
            ?? MagicBytes?.GetClassName(block)
            ?? GetArrayLabel(block)
            ?? GetMemoryObjectPageLabel(Store.Blocks[block])
+           ?? GetVtableLabel(Store.Blocks[block])
            ?? GetMapLabel(Store.Blocks[block])
            ?? (Store.Blocks[block].IsIterator ? IteratorObject : string.Empty);
 
     private string? GetArrayLabel(int block)
         => Store.GetArray(block) is { } array
            && Store.Blocks[block] is var allocation
-           && Map?.GetClassName(array.FirstElement, allocation.FromPosition, allocation.ToPosition) is { } element
+           && (Map?.GetVtableClassName(array.FirstElement, allocation.FromPosition, allocation.ToPosition)
+               ?? Map?.GetClassName(array.FirstElement, allocation.FromPosition, allocation.ToPosition)) is { } element
             ? $"{element}[{array.Count}]"
             : null;
 
-    private PlanNode? GetPlanNode(ulong iterator, Func<PlanNodeIdentifier, PlanNode?> resolvePlanNode)
-        => Iterators.TryGetValue(iterator, out var target) && target.Operator?.PlanNodeIdentifier is { } identifier
-            ? resolvePlanNode(identifier)
-            : null;
 
     private PageAddress[] GetBufferPages(ulong buffer)
         => Trace is { } trace ? [.. trace.BufferPool.GetResidencies(buffer).Select(r => r.Page).Distinct()] : [];
@@ -473,6 +604,9 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
     private string? GetMapLabel(MemoryHistoryBlock block) => Trace?.AddressMap.GetLabel(block.Address, block.FromPosition, block.ToPosition);
 
+    private string? GetVtableLabel(MemoryHistoryBlock block)
+        => Trace?.AddressMap.GetVtableClassName(block.Address, block.FromPosition, block.ToPosition);
+
     private string? GetMemoryObjectPageLabel(MemoryHistoryBlock block)
         => Trace is { } trace
            && trace.MemoryObjects.GetOwner(block.Address, block.FromPosition) is { } owner
@@ -481,6 +615,15 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
            && (owner.Name ?? trace.AddressMap.GetEntry(owner.Address, block.FromPosition)?.ClassName) is { } memoryObject
             ? $"{memoryObject}{MemoryObjectPageSuffix}"
             : null;
+
+    private List<ColumnBinding> ReadScanBindings(ulong iterator, int block)
+    {
+        var writes = Store.GetWrites(block);
+
+        var memory = new MemoryHistoryReader(Store, writes.Count > 0 ? writes[^1].Position : Store.Blocks[block].FromPosition);
+
+        return AccessorBindingLayout.ReadScanColumns(memory, iterator);
+    }
 
     private ulong? GetPageIterator(int block)
     {

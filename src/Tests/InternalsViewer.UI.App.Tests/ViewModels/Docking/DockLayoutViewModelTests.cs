@@ -281,6 +281,123 @@ public class DockLayoutViewModelTests
         Assert.Same(first, group.SelectedDocument);
     }
 
+    [Fact]
+    public void Show_Passes_Over_A_Tool_Group()
+    {
+        var sql = Document("sql");
+        var plan = Document("plan");
+
+        var dock = new DockLayoutViewModel(new TabGroupNode(sql));
+
+        dock.DockLeft(Tool("summary"));
+
+        dock.Show(plan);
+
+        Assert.Same(dock.FindGroup(sql), dock.FindGroup(plan));
+    }
+
+    [Fact]
+    public void Show_Docks_A_Document_Beside_The_Tools_When_No_Document_Group_Is_Open()
+    {
+        var tools = new TabGroupNode(Tool("summary"));
+        var plan = Document("plan");
+
+        var dock = new DockLayoutViewModel(tools);
+
+        dock.Show(plan);
+
+        var root = Assert.IsType<SplitNode>(dock.Root);
+
+        Assert.Equal(Orientation.Horizontal, root.Orientation);
+        Assert.Same(tools, root.First);
+        Assert.Same(plan, Assert.Single(Assert.IsType<TabGroupNode>(root.Second).Documents));
+    }
+
+    [Fact]
+    public void ShowBeside_A_Tool_Shows_A_Document_In_A_Document_Group()
+    {
+        var sql = Document("sql");
+        var summary = Tool("summary");
+        var plan = Document("plan");
+
+        var dock = new DockLayoutViewModel(new TabGroupNode(sql));
+
+        dock.DockLeft(summary);
+
+        dock.ShowBeside(plan, summary);
+
+        Assert.Same(dock.FindGroup(sql), dock.FindGroup(plan));
+    }
+
+    [Fact]
+    public void A_Tool_Moved_Into_A_Document_Group_Takes_Documents_Beside_It()
+    {
+        var sql = Document("sql");
+        var summary = Tool("summary");
+        var plan = Document("plan");
+
+        var documents = new TabGroupNode(sql);
+
+        var dock = new DockLayoutViewModel(documents);
+
+        dock.DockLeft(summary);
+
+        dock.Move(summary, documents, DropZone.Center);
+
+        dock.Show(plan);
+
+        Assert.Equal([sql, summary, plan], documents.Documents);
+        Assert.False(documents.IsTool);
+    }
+
+    [Fact]
+    public void A_Tool_Moved_To_An_Edge_Is_A_Tool_Again()
+    {
+        var sql = Document("sql");
+        var summary = Tool("summary");
+        var plan = Document("plan");
+
+        var documents = new TabGroupNode(sql, summary);
+
+        var dock = new DockLayoutViewModel(documents);
+
+        dock.Move(summary, documents, DropZone.Left);
+
+        dock.Show(plan);
+
+        Assert.True(dock.FindGroup(summary)?.IsTool);
+        Assert.Same(documents, dock.FindGroup(plan));
+    }
+
+    [Fact]
+    public void A_Tool_Group_Left_Without_Tools_Takes_Documents()
+    {
+        var summary = Tool("summary");
+        var sql = Document("sql");
+        var plan = Document("plan");
+        var events = Document("events");
+
+        var tools = new TabGroupNode(summary);
+
+        var documents = new TabGroupNode(sql, plan);
+
+        var dock = new DockLayoutViewModel(new SplitNode(Orientation.Horizontal, tools, documents));
+
+        dock.Move(plan, tools, DropZone.Center);
+
+        Assert.True(tools.IsTool);
+
+        dock.Move(summary, documents, DropZone.Center);
+
+        dock.Show(events);
+
+        Assert.False(tools.IsTool);
+        Assert.Same(tools, dock.FindGroup(events));
+    }
+
     private static DocumentViewModel Document(string key, bool canClose = true)
         => new(key, content: key, viewFactory: () => null!, canClose: canClose, key: key);
+
+    private static DocumentViewModel Tool(string key)
+        => new(key, content: key, viewFactory: () => null!, key: key) { IsTool = true };
 }

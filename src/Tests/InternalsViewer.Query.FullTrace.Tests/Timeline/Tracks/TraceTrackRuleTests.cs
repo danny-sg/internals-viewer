@@ -216,6 +216,25 @@ public class TraceTrackRuleTests
     }
 
     [Fact]
+    public void A_Detailed_Rule_Stays_Detailed_Through_The_File_Format()
+    {
+        var rule = new TraceTrackRule("Sort", string.Empty, string.Empty, "#FFFFFF", 1, 1, []) { IsDetailed = true };
+
+        using var stream = new MemoryStream();
+
+        TraceTrackRule.Write(stream, [rule]);
+
+        stream.Position = 0;
+
+        Assert.True(Assert.Single(TraceTrackRule.Read(stream)).IsDetailed);
+    }
+
+    [Fact]
+    public void Only_Sort_And_Hash_Table_Rules_Are_Detailed()
+        => Assert.Equal(["Hash Table", "Sort"],
+                        TraceTrackRule.GetPredefined().Where(d => d.IsDetailed).Select(d => d.Name).Distinct().Order());
+
+    [Fact]
     public void Only_Page_Header_Access_And_Open_Are_Not_Plan_Defaults()
         => Assert.Equal(["Page Header Access", "Open"],
                         TraceTrackRule.GetPredefined().Where(d => !d.IsPlanDefault).Select(d => d.GetLabel()));
@@ -309,12 +328,14 @@ public class TraceTrackRuleTests
     }
 
     [Fact]
-    public void The_Sort_Build_Is_A_Phase_Around_Its_Pushed_Rows()
+    public void The_Sort_Build_And_Output_Are_Phases_Around_Their_Rows()
     {
-        var rules = TraceTrackRule.GetPredefined().Where(d => d.Name == "Sort").ToList();
+        var rules = TraceTrackRule.GetPredefined().Where(d => d.Name == "Sort" && !d.IsDetailed).ToList();
 
         Assert.Equal([("Build", "CQScanSortNew::BuildSortTable", true),
                       ("Push Row", "CQScanSortNew::PushRow", false),
+                      ("Merge Runs", "lmsort", false),
+                      ("Output", "sort_initoutput", true),
                       ("Sorted Row", "RowsetSorted::GetNextSortedRowInternal", false)],
                      rules.Select(r => (r.GetLabel(), r.Function, r.IsPhase)));
     }
