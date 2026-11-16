@@ -15,6 +15,8 @@ internal static class EngineLayoutReader
 
     private const string SizeKey = "Size";
 
+    private const string ValueKey = "Value";
+
     private const string HeaderKey = "Type";
 
     private const string PointerKind = "Pointer";
@@ -38,6 +40,8 @@ internal static class EngineLayoutReader
     private const int FieldColumnCount = 7;
 
     private const int KeyColumnCount = 3;
+
+    private const int ValueColumnCount = 4;
 
     private const int VersionPartCount = 4;
 
@@ -90,11 +94,15 @@ internal static class EngineLayoutReader
                     break;
 
                 case BaseKey:
-                    GetStructure(structures, ReadKey(name, columns)).Base = columns[2];
+                    GetStructure(structures, ReadKey(name, columns, KeyColumnCount)).Base = columns[2];
                     break;
 
                 case SizeKey:
-                    GetStructure(structures, ReadKey(name, columns)).Size = ReadNumber(columns[2]);
+                    GetStructure(structures, ReadKey(name, columns, KeyColumnCount)).Size = ReadNumber(columns[2]);
+                    break;
+
+                case ValueKey:
+                    GetStructure(structures, ReadKey(name, columns, ValueColumnCount)).AddValue(columns[2], ReadNumber(columns[3]));
                     break;
 
                 default:
@@ -131,8 +139,8 @@ internal static class EngineLayoutReader
         return structure;
     }
 
-    private static string ReadKey(string name, string[] columns)
-        => columns.Length == KeyColumnCount
+    private static string ReadKey(string name, string[] columns, int columnCount)
+        => columns.Length == columnCount
             ? columns[1]
             : throw new InvalidDataException($"{name} has a {columns[0]} line with {columns.Length} columns");
 

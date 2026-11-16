@@ -20,12 +20,6 @@ public static class TraceHashTableReader
 
     private const int HashArgument = 2;
 
-    private const int DirectoryShift = 16;
-
-    private const int PageShift = 6;
-
-    private const uint PageIndexMask = 0x3FF;
-
     private const int MaximumPartitions = 256;
 
     private const int MaximumItems = 1024;
@@ -59,7 +53,7 @@ public static class TraceHashTableReader
 
         var head = group + (ulong)memory.Layout.HashGroup.LastPartitionField.Offset;
 
-        var isLinked = memory.TryRead(head + sizeof(ulong), out ulong link);
+        var isLinked = memory.TryRead(group + (ulong)memory.Layout.HashGroup.FirstPartitionField.Offset, out ulong link);
 
         while (isLinked && link != 0 && link != head && partitions.Count < MaximumPartitions)
         {
@@ -67,7 +61,7 @@ public static class TraceHashTableReader
 
             partitions.Add(ReadPartition(store, memory, position, partitions.Count, instance));
 
-            isLinked = memory.TryRead(link + sizeof(ulong), out link);
+            isLinked = memory.TryRead(instance + (ulong)memory.Layout.HashPartition.NextPartitionField.Offset, out link);
         }
 
         memory.TryRead(iterator + (ulong)store.Layout.HashIterator.PartitionMaskField.Offset, out uint partitionMask);
@@ -389,9 +383,11 @@ public static class TraceHashTableReader
 
         for (var first = 0L; directory != 0 && directoryCount > 0 && first <= mask; first += memory.Layout.HashItem.BucketsPerPage)
         {
-            var entry = (ulong)((first >> DirectoryShift) & (directoryCount - 1));
+            var pageIndex = first / memory.Layout.HashItem.BucketsPerPage;
 
-            var pointerIndex = (int)((ulong)(first >> PageShift) & PageIndexMask);
+            var entry = (ulong)(pageIndex / memory.Layout.HashItem.PointersPerPage) & (directoryCount - 1);
+
+            var pointerIndex = (int)(pageIndex % memory.Layout.HashItem.PointersPerPage);
 
             if (!memory.TryRead(directory + entry * sizeof(ulong), out ulong pointerPage) || pointerPage == 0)
             {

@@ -26,6 +26,12 @@ Size|BatchVector|0x58
 Size|DeepDataPage|0x18
 Size|ColumnBinding|0x50
 Size|ColumnBindingInfrequent|0x30
+Size|tagDBBINDING|0x58
+Value|CQScanNew|End Of Rows Status|0x40EC6
+Value|CQScanNew|Fake Row Status|0x4FFFF
+Value|BUF|Latch Exclusive Flag|0x02
+Value|BUF|Latch Waiters Flag|0x08
+Value|BUF|Latch Shared Shift|12
 Type|Name|Offset|Length|Kind|Count|Writers
 CQScanNew|Inputs|0x08|8|Pointer||CQScan*
 CQScanNew|Plan Object|0x10|8|Pointer||
@@ -272,3 +278,15 @@ ColumnBinding|Infrequent Data|0x48|8|Pointer||
 ColumnBindingInfrequent|Length Offset|0x18|4|Number||
 AllocationPageId|Page Id|0x08|8|Number||
 PageHandle|Buffer|0x18|8|Pointer||
+CBpSoftPartitionPageHeader|Magic|0x1C|4|Hex||
+CBpOverflowBucketPage|Magic|0x48|4|Hex||
+ColumnStoreObjectKey|HoBt Id|0x04|6|Hex||
+ColumnStoreObjectKey|Column Id|0x0C|4|Number||
+ColumnStoreObjectKey|Object Id|0x10|4|Number||
+ColumnStoreObjectKey|Object Type|0x14|2|Number||
+tagDBBINDING|Ordinal|0x00|8|Number||
+tagDBBINDING|Value Offset|0x08|8|Number||
+tagDBBINDING|Length Offset|0x10|8|Number||
+tagDBBINDING|Status Offset|0x18|8|Number||
+tagDBBINDING|Parts|0x38|4|Hex||
+tagDBBINDING|Type|0x54|2|Number||

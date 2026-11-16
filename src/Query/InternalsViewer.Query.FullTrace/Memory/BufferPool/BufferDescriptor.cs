@@ -1,41 +1,36 @@
 using System.Buffers.Binary;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool.Enums;
 using InternalsViewer.Query.FullTrace.Memory.History;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 
 namespace InternalsViewer.Query.FullTrace.Memory.BufferPool;
 
 public static class BufferDescriptor
 {
-    private const ulong ExclusiveFlag = 0x02;
-
-    private const ulong WaitersFlag = 0x08;
-
-    private const int SharedShift = 12;
-
-    public static BufferLatchState GetLatchState(ulong state)
+    public static BufferLatchState GetLatchState(EngineLayout.BufferLayout layout, ulong state)
     {
-        if (HasWaiters(state))
+        if (HasWaiters(layout, state))
         {
             return BufferLatchState.Waiting;
         }
 
-        if (IsExclusive(state))
+        if (IsExclusive(layout, state))
         {
             return BufferLatchState.Exclusive;
         }
 
-        return GetSharedCount(state) > 0 ? BufferLatchState.Shared : BufferLatchState.Released;
+        return GetSharedCount(layout, state) > 0 ? BufferLatchState.Shared : BufferLatchState.Released;
     }
 
-    public static int GetSharedCount(ulong state) => (int)(state >> SharedShift);
+    public static int GetSharedCount(EngineLayout.BufferLayout layout, ulong state) => (int)(state >> layout.LatchSharedShift);
 
-    public static bool IsExclusive(ulong state) => (state & ExclusiveFlag) != 0;
+    public static bool IsExclusive(EngineLayout.BufferLayout layout, ulong state) => (state & layout.LatchExclusiveFlag) != 0;
 
-    public static bool HasWaiters(ulong state) => (state & WaitersFlag) != 0;
+    public static bool HasWaiters(EngineLayout.BufferLayout layout, ulong state) => (state & layout.LatchWaitersFlag) != 0;
 
-    public static List<(int Write, ulong State)> GetLatchStates(MemoryHistoryStore store, int block)
+    public static List<(int Write, BufferLatchState State)> GetLatchStates(MemoryHistoryStore store, int block)
     {
-        var states = new List<(int Write, ulong State)>();
+        var states = new List<(int Write, BufferLatchState State)>();
 
         var writes = store.GetWrites(block);
 
@@ -60,7 +55,7 @@ public static class BufferDescriptor
 
             store.CopyBytes(write, start - write.Offset, word[(start - offset)..(end - offset)]);
 
-            states.Add((first + index, BinaryPrimitives.ReadUInt64LittleEndian(word)));
+            states.Add((first + index, GetLatchState(store.Layout.Buffer, BinaryPrimitives.ReadUInt64LittleEndian(word))));
         }
 
         return states;

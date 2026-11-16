@@ -4,6 +4,7 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Internals.Engine.Pages.Enums;
+using InternalsViewer.Internals.Services.Pages.Parsers;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Pages;
 using InternalsViewer.Query.Results;
 using InternalsViewer.UI.App.Helpers;
@@ -21,8 +22,6 @@ public sealed partial class MemoryPageViewModel : ObservableObject
     public const int DataTab = 1;
 
     private const int LoadInterval = 50;
-
-    private const int PageTypeOffset = 1;
 
     private const string WorkfileTitle = "Workfile Page";
 
@@ -142,7 +141,9 @@ public sealed partial class MemoryPageViewModel : ObservableObject
 
         Data = data;
 
-        Title = data is { Length: > PageTypeOffset } && data[PageTypeOffset] == (byte)PageType.Sort ? SortTitle : WorkfileTitle;
+        Title = data is { Length: > PageHeaderParser.PageTypeOffset } && data[PageHeaderParser.PageTypeOffset] == (byte)PageType.Sort
+            ? SortTitle
+            : WorkfileTitle;
     }
 
     public void Refresh()

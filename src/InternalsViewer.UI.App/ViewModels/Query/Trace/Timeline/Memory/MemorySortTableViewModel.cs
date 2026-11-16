@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
+using InternalsViewer.Internals.Services.Pages.Parsers;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Iterators;
@@ -64,8 +65,6 @@ public sealed class MemorySortTableViewModel : MemoryStructureViewModel
 
     private const int ColumnWidth = 120;
 
-    private const int SlotCountOffset = 0x16;
-
     private const int MaximumKeyBytes = 32;
 
     private const byte FirstPrintable = 0x20;
@@ -93,8 +92,6 @@ public sealed class MemorySortTableViewModel : MemoryStructureViewModel
     protected override HexImage? Image => Loaded?.Image;
 
     private ulong Iterator { get; }
-
-    private EngineLayout Layout => History.Store.Layout;
 
     private IReadOnlyList<MemoryField> SortIteratorFields => field ??= Layout.GetFields(TraceSortTableReader.IteratorClass);
 
@@ -316,7 +313,7 @@ public sealed class MemorySortTableViewModel : MemoryStructureViewModel
 
         foreach (var page in table.RecordPages)
         {
-            rows[page] = memory.TryRead(page + SlotCountOffset, out ushort slots) ? slots : 0;
+            rows[page] = memory.TryRead(page + PageHeaderParser.SlotCountOffset, out ushort slots) ? slots : 0;
         }
 
         return new LoadedTable(table, keys, rows, HexImage.Read(history, hexAddress, position));

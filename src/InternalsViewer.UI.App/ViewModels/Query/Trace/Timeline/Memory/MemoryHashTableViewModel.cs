@@ -144,8 +144,6 @@ public sealed class MemoryHashTableViewModel : MemoryStructureViewModel
 
     private ulong Group { get; }
 
-    private EngineLayout Layout => History.Store.Layout;
-
     private EngineLayout.HashIteratorLayout HashIterator => Layout.HashIterator;
 
     private int ActiveField => GetField(Layout.HashGroup.Fields, Layout.HashGroup.ActivePartitionField.Offset);

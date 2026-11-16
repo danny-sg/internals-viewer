@@ -594,7 +594,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
                                                  index,
                                                  Store.Blocks[index].Address,
                                                  label,
-                                                 BufferDescriptor.GetLatchState(state),
+                                                 state,
                                                  Store.GetWrite(write).CallNodeIndex >= 0));
             }
         }

@@ -30,6 +30,8 @@ public class LocatorHookTests
 
     private const ulong ReturnedFlag = TraceCallColumnSet.ReturnedFlag;
 
+    private static ulong BindingSize => (ulong)EngineLayout.Latest.OleDbBinding.Size;
+
     [Fact]
     public void A_Pointer_Argument_Is_Read_When_The_Call_Is_Made()
     {
@@ -226,7 +228,7 @@ public class LocatorHookTests
     public void Bindings_Are_Read_For_The_Count_Before_Them()
     {
         var replay = new FakeTraceReplay().Write(Pointer, Binding(1, 3, 0x1, 0x0))
-                                          .Write(Pointer + BindingLocator.Size, Binding(2, 130, 0x7, 0x8, 0x108, 0x110));
+                                          .Write(Pointer + BindingSize, Binding(2, 130, 0x7, 0x8, 0x108, 0x110));
 
         var read = new LocatorRead(Function, 2, false, LocatorValueType.Bindings, CountArgumentSlot: 1);
 
@@ -249,7 +251,7 @@ public class LocatorHookTests
     public void A_Binding_Without_A_Count_Is_Read_Alone()
     {
         var replay = new FakeTraceReplay().Write(Pointer, Binding(1, 3, 0x1, 0x0))
-                                          .Write(Pointer + BindingLocator.Size, Binding(2, 3, 0x1, 0x4));
+                                          .Write(Pointer + BindingSize, Binding(2, 3, 0x1, 0x4));
 
         var locator = Replay(new LocatorRead(Function, 1, false, LocatorValueType.Bindings), replay).GetLocator(1);
 
@@ -258,7 +260,7 @@ public class LocatorHookTests
 
     private static byte[] Binding(ulong ordinal, ushort type, uint parts, ulong value, ulong length = 0, ulong status = 0)
     {
-        var bytes = new byte[BindingLocator.Size];
+        var bytes = new byte[BindingSize];
 
         BinaryPrimitives.WriteUInt64LittleEndian(bytes, ordinal);
 

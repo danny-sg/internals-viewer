@@ -20,11 +20,11 @@ public class BufferDescriptorTests
     [InlineData(0x000Aul, BufferLatchState.Waiting)]
     [InlineData(0x1018ul, BufferLatchState.Waiting)]
     public void The_Latch_State_Comes_From_The_State_Word(ulong state, BufferLatchState expected)
-        => Assert.Equal(expected, BufferDescriptor.GetLatchState(state));
+        => Assert.Equal(expected, BufferDescriptor.GetLatchState(Layout, state));
 
     [Fact]
     public void Shared_Holders_Are_Counted_Above_The_Flags()
-        => Assert.Equal(2, BufferDescriptor.GetSharedCount(0x2010));
+        => Assert.Equal(2, BufferDescriptor.GetSharedCount(Layout, 0x2010));
 
     [Fact]
     public void The_Latch_States_Follow_Every_Write_To_The_State_Word()
@@ -35,6 +35,7 @@ public class BufferDescriptorTests
                                                (4, Buffer + (ulong)Layout.LatchStateField.Offset, [0x00]),
                                                (5, Buffer + (ulong)Layout.LatchStateField.Offset + 1, [0x10])]);
 
-        Assert.Equal([(0, 0x02ul), (2, 0ul), (3, 0x1000ul)], BufferDescriptor.GetLatchStates(store, 0));
+        Assert.Equal([(0, BufferLatchState.Exclusive), (2, BufferLatchState.Released), (3, BufferLatchState.Shared)],
+                     BufferDescriptor.GetLatchStates(store, 0));
     }
 }

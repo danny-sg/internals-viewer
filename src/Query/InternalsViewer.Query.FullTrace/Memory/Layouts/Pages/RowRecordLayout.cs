@@ -1,15 +1,12 @@
 using System.Buffers.Binary;
 using System.Data;
+using InternalsViewer.Internals.Engine.Records.FixedVarRecordType;
 using InternalsViewer.Internals.Metadata.Structures;
 
 namespace InternalsViewer.Query.FullTrace.Memory.Layouts.Pages;
 
 public sealed class RowRecordLayout
 {
-    private const int HeaderSize = 4;
-
-    private const int FixedEndOffset = 2;
-
     private const string KeySuffix = " (Build Key)";
 
     public RowRecordLayout(List<ColumnStructure> columns, int keyCount = 0)
@@ -64,14 +61,14 @@ public sealed class RowRecordLayout
 
     public bool Fits(ReadOnlySpan<byte> data, int offset)
     {
-        if (offset < 0 || offset + HeaderSize > data.Length)
+        if (offset < 0 || offset + FixedVarRecord.FixedDataOffset > data.Length)
         {
             return false;
         }
 
-        var fixedEnd = BinaryPrimitives.ReadUInt16LittleEndian(data[(offset + FixedEndOffset)..]);
+        var fixedEnd = BinaryPrimitives.ReadUInt16LittleEndian(data[(offset + FixedVarRecord.ColumnCountOffsetPosition)..]);
 
-        return fixedEnd == HeaderSize + FixedLength
+        return fixedEnd == FixedVarRecord.FixedDataOffset + FixedLength
                && offset + fixedEnd + sizeof(ushort) <= data.Length
                && BinaryPrimitives.ReadUInt16LittleEndian(data[(offset + fixedEnd)..]) == Columns.Count;
     }
@@ -80,7 +77,7 @@ public sealed class RowRecordLayout
     {
         var structure = new TableStructure(0);
 
-        var fixedOffset = HeaderSize;
+        var fixedOffset = FixedVarRecord.FixedDataOffset;
 
         var variableIndex = 0;
 

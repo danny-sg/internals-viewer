@@ -123,8 +123,6 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
 
     private PlayheadLoader<HexImage> Loader { get; }
 
-    private EngineLayout Layout => History.Store.Layout;
-
     private IReadOnlyList<MemoryField> BindingFields
         => field ??= [.. Layout.ColumnBinding.Fields
                                .Where(f => !f.IsInfrequent)

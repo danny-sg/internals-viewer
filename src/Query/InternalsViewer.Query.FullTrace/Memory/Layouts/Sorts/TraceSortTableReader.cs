@@ -1,3 +1,4 @@
+using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory.Address;
@@ -19,8 +20,6 @@ public static class TraceSortTableReader
     private const string RowsetClass = "RowsetSorted";
 
     private const string DescriptorClass = "SORTDES";
-
-    private const int PageSize = 8192;
 
     public static ulong? GetIterator(MemoryHistoryStore store, AddressMap addressMap, IEnumerable<TraceOperatorLifetime> lifetimes)
     {
@@ -49,7 +48,7 @@ public static class TraceSortTableReader
         {
             var info = store.Blocks[block];
 
-            if (info.Iterator != iterator || info.Size != PageSize)
+            if (info.Iterator != iterator || info.Size != PageData.Size)
             {
                 continue;
             }
@@ -147,7 +146,7 @@ public static class TraceSortTableReader
 
         var layout = memory.Layout.SortEntry;
 
-        var entriesPerPage = PageSize / layout.Size;
+        var entriesPerPage = PageData.Size / layout.Size;
 
         foreach (var page in pages)
         {

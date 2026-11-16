@@ -181,6 +181,8 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
 
     protected MemoryHistoryViewModel History { get; }
 
+    protected EngineLayout Layout => History.Store.Layout;
+
     protected ITraceNavigator Navigator { get; }
 
     protected TracePosition OpenedAt { get; }
@@ -436,7 +438,8 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
 
         var selected = SelectedFieldRow?.Id;
 
-        FieldTable = MemoryFieldTableBuilder.CreateFieldTable(GetPointerCell,
+        FieldTable = MemoryFieldTableBuilder.CreateFieldTable(Layout,
+                                                              GetPointerCell,
                                                               [.. ShownFields.Select(f => f.Field)],
                                                               [.. values],
                                                               [.. ShownFields.Select(f => colours[f.Colour])]);
@@ -898,7 +901,8 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
         return links;
     }
 
-    protected object GetValueCell(MemoryField field, ulong? value) => MemoryFieldTableBuilder.GetValueCell(GetPointerCell, field, value);
+    protected object GetValueCell(MemoryField field, ulong? value)
+        => MemoryFieldTableBuilder.GetValueCell(Layout, GetPointerCell, field, value);
 
     private MemoryUsageChart? CreateChart(IReadOnlyList<TraceMemoryUsage> usage, IReadOnlyList<Colour> colours, TracePosition position)
     {

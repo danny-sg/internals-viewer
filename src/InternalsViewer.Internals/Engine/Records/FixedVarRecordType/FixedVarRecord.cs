@@ -5,6 +5,10 @@ namespace InternalsViewer.Internals.Engine.Records.FixedVarRecordType;
 
 public abstract class FixedVarRecord : Record
 {
+    public const int ColumnCountOffsetPosition = sizeof(byte) + sizeof(byte);
+
+    public const int FixedDataOffset = ColumnCountOffsetPosition + sizeof(short);
+
     [DataStructureItem(ItemType.StatusBitsA)]
     public byte StatusBitsA { get; set; }
 

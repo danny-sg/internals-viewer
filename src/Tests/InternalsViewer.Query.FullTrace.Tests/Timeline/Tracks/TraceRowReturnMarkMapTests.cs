@@ -3,6 +3,7 @@ using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Native;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
@@ -352,7 +353,7 @@ public class TraceRowReturnMarkMapTests
             new(Thread, bottom ?? Scan, 1, [Whole()], MemoryUsageCurve.Empty, timeline.Scale) { Instances = [ScanIterator] }
         ];
 
-        return TraceRowReturnMarkMap.Build(timeline, calls, new TraceOperatorLifetimeList(lifetimes));
+        return TraceRowReturnMarkMap.Build(timeline, calls, new TraceOperatorLifetimeList(lifetimes), EngineLayout.Latest);
     }
 
     private static ulong[] Call((ulong Start, ulong End, ulong Status) call, int callNodeIndex)

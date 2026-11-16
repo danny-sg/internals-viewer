@@ -18,26 +18,26 @@ public static class MemoryFieldDecoderLookup
         (ColumnBindingFlags.LargeObject, "Large Object")
     ];
 
-    public static string GetText(MemoryFieldDecoder decoder, ulong value) => decoder switch
+    public static string GetText(EngineLayout layout, MemoryFieldDecoder decoder, ulong value) => decoder switch
     {
-        MemoryFieldDecoder.Latch => GetLatchText(value),
+        MemoryFieldDecoder.Latch => GetLatchText(layout.Buffer, value),
         MemoryFieldDecoder.SqlType => SqlTypeHelpers.TryGetSqlType((byte)value, out var sqlType) ? $"{sqlType}" : $"0x{value:X2}",
         MemoryFieldDecoder.BindingFlags => GetFlagsText((ColumnBindingFlags)(uint)value),
         MemoryFieldDecoder.RecordOffset => (int)(uint)value is < 0 and var offset ? $"{VariablePrefix}{-offset}" : $"{value}",
         _ => $"{value}"
     };
 
-    private static string GetLatchText(ulong state)
+    private static string GetLatchText(EngineLayout.BufferLayout layout, ulong state)
     {
-        var shared = BufferDescriptor.GetSharedCount(state);
+        var shared = BufferDescriptor.GetSharedCount(layout, state);
 
-        var mode = BufferDescriptor.IsExclusive(state)
+        var mode = BufferDescriptor.IsExclusive(layout, state)
             ? "Exclusive"
             : shared > 0
                 ? $"Shared, {shared} {(shared == 1 ? "Holder" : "Holders")}"
                 : "Released";
 
-        return BufferDescriptor.HasWaiters(state) ? $"{mode}, Waiters" : mode;
+        return BufferDescriptor.HasWaiters(layout, state) ? $"{mode}, Waiters" : mode;
     }
 
     private static string GetFlagsText(ColumnBindingFlags flags)

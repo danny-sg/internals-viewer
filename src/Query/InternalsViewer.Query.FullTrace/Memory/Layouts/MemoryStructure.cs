@@ -16,6 +16,8 @@ public sealed class MemoryStructure(string name)
 
     private Dictionary<string, List<MemoryField>> Elements { get; } = [];
 
+    private Dictionary<string, int> Values { get; } = [];
+
     public MemoryField Get(string fieldName)
         => Rows.TryGetValue(fieldName, out var rows) && rows.Count == 1
             ? rows[0]
@@ -25,6 +27,9 @@ public sealed class MemoryStructure(string name)
 
     public IReadOnlyList<MemoryField> GetAll(string fieldName)
         => Elements.TryGetValue(fieldName, out var elements) ? elements : throw new InvalidDataException($"{Name} has no {fieldName} field");
+
+    public int GetValue(string valueName)
+        => Values.TryGetValue(valueName, out var value) ? value : throw new InvalidDataException($"{Name} has no {valueName} value");
 
     internal void Add(MemoryField field, int count)
     {
@@ -39,6 +44,8 @@ public sealed class MemoryStructure(string name)
             AddTo(Elements, field.Name, element);
         }
     }
+
+    internal void AddValue(string valueName, int value) => Values[valueName] = value;
 
     private static void AddTo(Dictionary<string, List<MemoryField>> lookup, string key, MemoryField field)
     {

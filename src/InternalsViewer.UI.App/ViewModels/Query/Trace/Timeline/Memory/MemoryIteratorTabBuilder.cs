@@ -137,7 +137,7 @@ internal sealed class MemoryIteratorTabBuilder
                                                     header.Columns,
                                                     header.ColumnCount);
 
-        var table = CreateRowTable(owner.GetPointerCell, bindings, CreateColours(bindings.Fields.Count));
+        var table = CreateRowTable(memory.Layout, owner.GetPointerCell, bindings, CreateColours(bindings.Fields.Count));
 
         return CreateTab(RowBindingsHeader, table, string.Join(";", bindings.Rows.Select(r => string.Join(",", r))));
     }
@@ -179,7 +179,8 @@ internal sealed class MemoryIteratorTabBuilder
             return column;
         }
 
-        return memory.TryRead(value + sizeof(ulong), out ulong entry) && columns.TryGetValue(entry, out var entryColumn)
+        return memory.TryRead(value + (ulong)memory.Layout.CachedSwitch.ValueField.Offset, out ulong entry)
+               && columns.TryGetValue(entry, out var entryColumn)
             ? entryColumn
             : string.Empty;
     }

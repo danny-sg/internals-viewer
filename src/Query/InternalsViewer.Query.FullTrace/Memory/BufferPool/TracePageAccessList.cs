@@ -243,18 +243,17 @@ public sealed class TracePageAccessList
         {
             var read = reads[index];
 
-            if (pool.GetFrameReference(read.Address, read.Position) is not { } reference)
+            if (IsPostRead(postReads, read.Thread, read.Position)
+                || pool.GetFrameReference(read.Address, read.Position) is not { } reference)
             {
                 continue;
             }
 
-            var isPostRead = IsPostRead(postReads, read.Thread, read.Position);
-
-            var isWholePage = isPostRead || (reference.Offset == PageHeader.Size && reference.Offset + read.Length == PageData.Size);
+            var isWholePage = reference.Offset == PageHeader.Size && reference.Offset + read.Length == PageData.Size;
 
             var hasLayout = pool.GetLayout(reference.Page, reference.DatabaseId) is not null;
 
-            if (reference.Offset < PageHeader.Size ? isPostRead : !isWholePage && !hasLayout)
+            if (reference.Offset >= PageHeader.Size && !isWholePage && !hasLayout)
             {
                 continue;
             }

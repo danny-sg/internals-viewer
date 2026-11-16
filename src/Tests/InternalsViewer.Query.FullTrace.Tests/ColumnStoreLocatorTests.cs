@@ -11,6 +11,8 @@ public class ColumnStoreLocatorTests
 {
     private const ulong HobtId = 0x0100_0000_02A7_0000;
 
+    private const ulong KeyAddress = 0x21C_0BB4_C180;
+
     [Fact]
     public void A_Key_Is_Read_From_Its_Three_Words()
     {
@@ -134,7 +136,9 @@ public class ColumnStoreLocatorTests
     {
         var (first, second, third) = Words(type, column, objectId);
 
-        return new ColumnStoreObjectLocator(ColumnStoreObjectLocator.Create(1, first, second, third));
+        var memory = new FakeTraceReplay().Write(KeyAddress, first).Write(KeyAddress + 8, second).Write(KeyAddress + 16, third);
+
+        return new ColumnStoreObjectLocator(ColumnStoreObjectLocator.Read(memory, 1, KeyAddress)!.Value);
     }
 
     private static (ulong First, ulong Second, ulong Third) Words(ColumnStoreObjectType type, int column, int objectId)

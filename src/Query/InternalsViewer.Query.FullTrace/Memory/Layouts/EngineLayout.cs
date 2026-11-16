@@ -1,3 +1,4 @@
+using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory.History;
@@ -110,6 +111,10 @@ public sealed class EngineLayout(string name, Version minimumVersion, Version ma
 
     public PageLocationLayout PageLocation { get; } = new(Get(structures, "AllocationPageId"), Get(structures, "PageHandle"));
 
+    public ColumnStoreObjectKeyLayout ColumnStoreObjectKey { get; } = new(Get(structures, "ColumnStoreObjectKey"));
+
+    public OleDbBindingLayout OleDbBinding { get; } = new(Get(structures, "tagDBBINDING"));
+
     internal static IReadOnlyList<EngineLayout> All { get; } = EngineLayoutReader.ReadAll();
 
     public static EngineLayout Get(Version? version)
@@ -192,7 +197,7 @@ public sealed class EngineLayout(string name, Version minimumVersion, Version ma
 
         foreach (var planNode in planNodes)
         {
-            if (!planNode.IsBatchHelper && planNode.BatchPlanObject == 0)
+            if (planNode is { IsBatchHelper: false, BatchPlanObject: 0 })
             {
                 planObjects.TryAdd(planNode.Iterator, planNode.PlanObject);
             }
@@ -253,6 +258,10 @@ public sealed class EngineLayout(string name, Version minimumVersion, Version ma
         public MemoryField PlanObjectField { get; } = structure.Get("Plan Object");
 
         public MemoryField ExecutionContextField { get; } = structure.Get("Execution Context");
+
+        public uint EndOfRowsStatus { get; } = (uint)structure.GetValue("End Of Rows Status");
+
+        public uint FakeRowStatus { get; } = (uint)structure.GetValue("Fake Row Status");
     }
 
     public sealed class BatchIteratorLayout(MemoryStructure structure)
@@ -693,6 +702,8 @@ public sealed class EngineLayout(string name, Version minimumVersion, Version ma
 
         public MemoryField PreviousPartitionField { get; } = structure.Get("Previous Partition");
 
+        public MemoryField NextPartitionField { get; } = structure.Get("Next Partition");
+
         public MemoryField BitmapPagesField { get; } = structure.Get("Bitmap Pages");
 
         public IReadOnlyList<MemoryField> Fields => structure.Fields;
@@ -700,11 +711,11 @@ public sealed class EngineLayout(string name, Version minimumVersion, Version ma
 
     public sealed class HashItemLayout(MemoryStructure structure)
     {
-        private const int PageSize = 8192;
-
         public int Size { get; } = structure.Size;
 
-        public int BucketsPerPage => PageSize / Size;
+        public int BucketsPerPage => PageData.Size / Size;
+
+        public int PointersPerPage => PageData.Size / sizeof(ulong);
 
         public MemoryField CountField { get; } = structure.Get("Count");
 
@@ -738,6 +749,12 @@ public sealed class EngineLayout(string name, Version minimumVersion, Version ma
         public MemoryField LatchWaitersField { get; } = structure.Get("Latch Waiters");
 
         public MemoryField LatchStateField { get; } = structure.Get("Latch State");
+
+        public ulong LatchExclusiveFlag { get; } = (ulong)structure.GetValue("Latch Exclusive Flag");
+
+        public ulong LatchWaitersFlag { get; } = (ulong)structure.GetValue("Latch Waiters Flag");
+
+        public int LatchSharedShift { get; } = structure.GetValue("Latch Shared Shift");
     }
 
     public sealed class BatchLayout(MemoryStructure structure, MemoryStructure vector)
@@ -783,5 +800,33 @@ public sealed class EngineLayout(string name, Version minimumVersion, Version ma
         public MemoryField AllocationPageIdField { get; } = allocationPage.Get("Page Id");
 
         public MemoryField PageHandleBufferField { get; } = pageHandle.Get("Buffer");
+    }
+
+    public sealed class ColumnStoreObjectKeyLayout(MemoryStructure structure)
+    {
+        public MemoryField HoBtIdField { get; } = structure.Get("HoBt Id");
+
+        public MemoryField ColumnIdField { get; } = structure.Get("Column Id");
+
+        public MemoryField ObjectIdField { get; } = structure.Get("Object Id");
+
+        public MemoryField ObjectTypeField { get; } = structure.Get("Object Type");
+    }
+
+    public sealed class OleDbBindingLayout(MemoryStructure structure)
+    {
+        public int Size { get; } = structure.Size;
+
+        public MemoryField OrdinalField { get; } = structure.Get("Ordinal");
+
+        public MemoryField ValueOffsetField { get; } = structure.Get("Value Offset");
+
+        public MemoryField LengthOffsetField { get; } = structure.Get("Length Offset");
+
+        public MemoryField StatusOffsetField { get; } = structure.Get("Status Offset");
+
+        public MemoryField PartsField { get; } = structure.Get("Parts");
+
+        public MemoryField TypeField { get; } = structure.Get("Type");
     }
 }

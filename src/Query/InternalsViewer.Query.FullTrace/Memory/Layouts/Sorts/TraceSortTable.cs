@@ -1,3 +1,4 @@
+using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Sorts.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Memory.Layouts.Sorts;
@@ -11,8 +12,6 @@ public sealed record TraceSortTable(ulong Iterator,
                                     IReadOnlyList<TraceSortEntry> Entries,
                                     IReadOnlyList<TraceSortRun> Runs)
 {
-    private const int PageSize = 8192;
-
     public TraceSortPart? FindPart(ulong address, int length)
     {
         var end = address + (ulong)length;
@@ -47,7 +46,7 @@ public sealed record TraceSortTable(ulong Iterator,
         }
     }
 
-    public IEnumerable<TraceSortEntry> GetEntries(ulong page) => Entries.Where(e => e.Address >= page && e.Address < page + PageSize);
+    public IEnumerable<TraceSortEntry> GetEntries(ulong page) => Entries.Where(e => e.Address >= page && e.Address < page + PageData.Size);
 
     public TraceSortEntry? GetEntry(ulong address) => Entries.FirstOrDefault(e => e.Address == address);
 }

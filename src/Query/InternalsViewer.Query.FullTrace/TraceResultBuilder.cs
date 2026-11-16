@@ -111,7 +111,7 @@ internal sealed class TraceResultBuilder(CallTree callTree,
             SourceTracks = new TraceSourceTrackMap(Timeline, CallStore, Lifetimes)
             {
                 EnclosingCalls = enclosing,
-                RowReturns = TraceRowReturnMarkMap.Build(Timeline, CallStore, Lifetimes, enclosing),
+                RowReturns = TraceRowReturnMarkMap.Build(Timeline, CallStore, Lifetimes, layout, enclosing),
                 RowAccesses = TraceRowAccessTrackBuilder.Build(Timeline, CallStore, pageAccesses, BufferPool, Lifetimes, enclosing),
                 PageHeaderAccesses = TraceRowAccessTrackBuilder.BuildHeaders(Timeline, pageAccesses, Lifetimes, enclosing),
                 PageFetches = TracePageFetchTrackBuilder.Build(Timeline, pageAccesses, BufferPool, Lifetimes, enclosing),

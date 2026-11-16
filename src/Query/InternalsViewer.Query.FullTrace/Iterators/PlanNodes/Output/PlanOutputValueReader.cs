@@ -1,5 +1,6 @@
 using System.Data;
 using InternalsViewer.Internals.Converters;
+using InternalsViewer.Internals.Engine.Records.FixedVarRecordType;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Locators;
@@ -20,8 +21,6 @@ public static class PlanOutputValueReader
     private const int MaximumLength = 8000;
 
     private const string NullText = "NULL";
-
-    private const ulong RowFixedEndOffset = 0x02;
 
     private const int CountSize = sizeof(ushort);
 
@@ -146,7 +145,7 @@ public static class PlanOutputValueReader
             return IsVariable(type) ? null : Decode(memory, row + (ulong)offset, type.MaxLength, type, sqlType);
         }
 
-        if (!memory.TryRead(row + RowFixedEndOffset, out ushort fixedEnd)
+        if (!memory.TryRead(row + FixedVarRecord.ColumnCountOffsetPosition, out ushort fixedEnd)
             || !memory.TryRead(row + fixedEnd, out ushort columnCount))
         {
             return null;

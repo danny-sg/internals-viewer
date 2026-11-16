@@ -6,13 +6,18 @@ namespace InternalsViewer.Query.FullTrace.Memory.Layouts;
 
 public sealed class MagicBytesMatcher(MemoryHistoryStore store)
 {
-    private static Dictionary<(int Offset, uint Magic), string> ClassNames { get; } = new()
-    {
-        [(0x1C, GetMagic("BPSP"))] = "CBpSoftPartitionPageHeader",
-        [(0x48, GetMagic("BPOP"))] = "CBpOverflowBucketPage"
-    };
+    private const string MagicField = "Magic";
 
-    private static int[] Offsets { get; } = [.. ClassNames.Keys.Select(k => k.Offset).Distinct()];
+    private static (string ClassName, uint Magic)[] Pages { get; } =
+    [
+        ("CBpSoftPartitionPageHeader", GetMagic("BPSP")),
+        ("CBpOverflowBucketPage", GetMagic("BPOP"))
+    ];
+
+    private Dictionary<(int Offset, uint Magic), string> ClassNames
+        => field ??= Pages.ToDictionary(p => (store.Layout.GetStructure(p.ClassName).Get(MagicField).Offset, p.Magic), p => p.ClassName);
+
+    private int[] Offsets => field ??= [.. ClassNames.Keys.Select(k => k.Offset).Distinct()];
 
     private BlockCache<string?> Names => field ??= new(FindClassName);
 

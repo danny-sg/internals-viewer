@@ -303,7 +303,7 @@
     ],
     "Label": "False",
     "Title": "Evaluate Expression",
-    "Description": "Evaluate predicate <Predicate>{ExecutionPlan.Expression}</Predicate> → `{Result}`"
+    "Description": "Evaluate predicate <Predicate>{ExecutionPlan.Predicate}</Predicate> → `{Result}`"
   },
   {
     "Name": "Evaluations",
@@ -342,7 +342,7 @@
     ],
     "Label": "NULL",
     "Title": "Evaluate Expression",
-    "Description": "Evaluate predicate <Predicate>{ExecutionPlan.Expression}</Predicate> → `{Result}`"
+    "Description": "Evaluate predicate <Predicate>{ExecutionPlan.Predicate}</Predicate> → `{Result}`"
   },
   {
     "Name": "Evaluations",

@@ -145,15 +145,15 @@ public class TracePageAccessListTests
     }
 
     [Fact]
-    public void Reads_While_The_Page_Is_Completed_From_Disk_Are_An_Access_To_The_Page()
+    public void Reads_While_The_Page_Is_Completed_From_Disk_Are_Not_Accesses()
     {
         var calls = new Recording().Call("FCB", "PostRead", sequence: 5, rcx: 0, endSequence: 8).Build();
 
-        var reads = Reads((6, 9, 0x158, 8), (7, 9, 0x198, 8), (9, 9, 0x5B3, 4));
+        var reads = Reads((6, 9, 0x60, 0x2000 - 0x60), (7, 9, 0x198, 8), (9, 9, 0x5B3, 4));
 
         var accesses = Read(TracePageAccessList.Build(calls, MemoryHistoryStore.Empty, LaidOutPool(), reads));
 
-        Assert.Equal([(At(6), (int?)null), (At(9), (int?)0x5B3)], accesses.Select(a => (a.Position, a.Offset)));
+        Assert.Equal([(At(9), (int?)0x5B3)], accesses.Select(a => (a.Position, a.Offset)));
     }
 
     [Fact]

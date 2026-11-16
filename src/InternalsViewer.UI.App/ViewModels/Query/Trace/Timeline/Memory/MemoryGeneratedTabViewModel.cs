@@ -292,8 +292,8 @@ public sealed partial class MemoryGeneratedTabViewModel : ObservableObject
     private MemoryObjectTab CreateObjectTab(PlayheadMemoryViewModel owner, LayoutObject item, int index)
     {
         var table = item.Layout == MemoryTabLayout.Row
-            ? CreateRowTable(GetPointerCell, item, Colours[index])
-            : CreateFieldTable(GetPointerCell, item.Fields, item.Rows[0], Colours[index]);
+            ? CreateRowTable(owner.History.Store.Layout, GetPointerCell, item, Colours[index])
+            : CreateFieldTable(owner.History.Store.Layout, GetPointerCell, item.Fields, item.Rows[0], Colours[index]);
 
         var key = string.Join(";", item.Rows.Select(r => string.Join(",", r)));
 
