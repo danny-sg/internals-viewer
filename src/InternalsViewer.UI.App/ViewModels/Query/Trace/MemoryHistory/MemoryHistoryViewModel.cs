@@ -281,6 +281,11 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
     public PlanOutputRecord? GetOutputRecord(MemoryHistoryReader memory, PlanOutputStage stage)
         => Trace is { } trace ? PlanOutputValueReader.ReadRecord(memory, trace.BufferPool, memory.Position, stage) : null;
 
+    public ulong? GetRecord(PlanOutputLink link, TracePosition position)
+        => Trace is { } trace
+            ? PlanOutputValueReader.GetRecord(new MemoryHistoryReader(trace.MemoryHistory, position), trace.BufferPool, position, link)
+            : null;
+
     public PlanNode? GetStatement(PlanNodeIdentifier node)
         => ResolvePlanNode?.Invoke(new PlanNodeIdentifier(node.PlanHandleId, StatementNodeId)) is { IsStatement: true } statement
             ? statement

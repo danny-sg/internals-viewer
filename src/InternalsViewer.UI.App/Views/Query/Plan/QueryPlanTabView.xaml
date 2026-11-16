@@ -151,7 +151,6 @@
 
                 <Border x:Name="PlanCommandBarHost"
                         Grid.Row="0"
-                        Background="{ThemeResource LayerFillColorDefaultBrush}"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                         BorderThickness="0,0,0,1"
                         Visibility="{x:Bind GetGuideBarVisibility(ViewModel.Layout.IsGuideMode, ViewModel.IsGuideStepsVisible), Mode=OneWay}">
@@ -259,7 +258,7 @@
                               ZoomMode="Enabled"
                               MinZoomFactor="0.25"
                               MaxZoomFactor="4.0"
-                              Background="White"
+                              Background="{ThemeResource SolidBackgroundFillColorQuarternaryBrush}"
                               Padding="8"
                               IsTabStop="True"
                               UseSystemFocusVisuals="False"
@@ -306,7 +305,6 @@
             </controls:GridSplitter>
 
             <Grid Grid.Row="2"
-                  Background="White"
                   Visibility="{x:Bind GetGuidePaneVisibility(ViewModel.Layout.IsGuideMode, ViewModel.IsGuideStepsVisible), Mode=OneWay}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="40" />
@@ -315,7 +313,7 @@
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
                 <Grid Grid.Row="0"
-                      Padding="8,4,16,4"
+                      Padding="8,4,8,4"
                       BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                       BorderThickness="0,0,0,1">
                     <Grid.ColumnDefinitions>
@@ -344,6 +342,7 @@
                     <timeline:TimelineRuler x:Name="StepsRuler"
                                             IsAligned="False"
                                             Source="{x:Bind ViewModel.TraceRuler, Mode=OneWay}"
+                                            Status="{x:Bind ViewModel.RulerStatus, Mode=OneWay}"
                                             IsPinned="{x:Bind Settings.PinTimeline, Mode=TwoWay}" />
                 </Border>
                 <Border x:Name="StepsCommandBarHost"
@@ -353,7 +352,6 @@
                         BorderThickness="0,0,0,1" />
                 <ListView x:Name="GuideStepList"
                           Grid.Row="3"
-                          Background="{ThemeResource SolidBackgroundFillColorTertiaryBrush}"
                           ItemsSource="{x:Bind GuideStepSource.View, Mode=OneWay}"
                           SelectionMode="None"
                           IsItemClickEnabled="True"

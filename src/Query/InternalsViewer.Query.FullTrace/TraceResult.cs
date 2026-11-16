@@ -83,7 +83,11 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
     private Dictionary<TraceTimeline, Dictionary<CallTreeNode, int[]>> ActivityByWindow { get; } =
         new(ReferenceEqualityComparer.Instance);
 
-    private PlanOutputLinkReader OutputLinks => field ??= new PlanOutputLinkReader(this);
+    private PlanOutputLinkReader OutputLinks
+    {
+        get => field ??= new PlanOutputLinkReader(this);
+        set;
+    }
 
     private PlanOutputResultReader StatementResults => field ??= new PlanOutputResultReader(this);
 
@@ -123,7 +127,13 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
             var classes = VtableResolver.GetUniqueClasses(AddressTable<string[]>.Merge(vtables));
 
             AddressMap = ObjectClassResolver.Resolve(AddressMap, MemoryHistory, classes);
+
+            OutputLinks = new PlanOutputLinkReader(this);
         }
+
+        BuildOutputPaths();
+
+        CallStore.ReleaseColumns();
     }
 
     public PlanOutputPath GetOutputPath(int nodeId, PlanOutputColumn column) => OutputLinks.Read(nodeId, column);

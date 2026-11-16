@@ -119,8 +119,6 @@ internal sealed class TraceResultBuilder(CallTree callTree,
             }
         };
 
-        result.BuildOutputPaths();
-
         CallStore.ReleaseColumns();
 
         return result;

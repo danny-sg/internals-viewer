@@ -39,6 +39,8 @@ public sealed class TimelineRuler : UserControl, IDisposable
 
     private const float LabelGap = 4f;
 
+    private const float StatusLeft = 21f;
+
     private const float HandleWidth = 7f;
 
     private const float HandleHeight = 8f;
@@ -93,6 +95,18 @@ public sealed class TimelineRuler : UserControl, IDisposable
     {
         get => (bool)GetValue(IsAlignedProperty);
         set => SetValue(IsAlignedProperty, value);
+    }
+
+    public static readonly DependencyProperty StatusProperty =
+        DependencyProperty.Register(nameof(Status),
+                                    typeof(string),
+                                    typeof(TimelineRuler),
+                                    new PropertyMetadata(null, OnStatusChanged));
+
+    public string? Status
+    {
+        get => (string?)GetValue(StatusProperty);
+        set => SetValue(StatusProperty, value);
     }
 
     public TimelineRuler()
@@ -564,6 +578,15 @@ public sealed class TimelineRuler : UserControl, IDisposable
         }
 
         canvas.DrawLine(0, RulerHeight, width, RulerHeight, Paints.Tick);
+
+        if (Status is not { Length: > 0 } status)
+        {
+            return;
+        }
+
+        var baseline = GetBaseline(Paints.Font, 0, RulerHeight - TickLength);
+
+        canvas.DrawText(status, StatusLeft, baseline, SKTextAlign.Left, Paints.Font, Paints.SecondaryText);
     }
 
     private void DrawCrop(SKCanvas canvas, TimelineRulerState state, TimelineRulerArea area)
@@ -594,7 +617,7 @@ public sealed class TimelineRuler : UserControl, IDisposable
     {
         var (step, values) = TimelineRulerLayout.GetTicks(state, area, TickSpacing);
 
-        var baseline = GetBaseline(0, RulerHeight - TickLength);
+        var baseline = GetBaseline(Paints.Font, 0, RulerHeight - TickLength);
 
         foreach (var value in values)
         {
@@ -743,12 +766,14 @@ public sealed class TimelineRuler : UserControl, IDisposable
 
         canvas.DrawRoundRect(new SKRect(left, 0, left + badgeWidth, badgeHeight), BadgeRadius, BadgeRadius, Paints.PlayheadFill);
 
-        canvas.DrawText(text, left + PlayheadBadgePadding, GetBaseline(0, badgeHeight), SKTextAlign.Left, Paints.Font, Paints.PlayheadText);
+        var baseline = GetBaseline(Paints.Font, 0, badgeHeight);
+
+        canvas.DrawText(text, left + PlayheadBadgePadding, baseline, SKTextAlign.Left, Paints.Font, Paints.PlayheadText);
     }
 
-    private float GetBaseline(float top, float height)
+    private static float GetBaseline(SKFont font, float top, float height)
     {
-        var metrics = Paints.Font.Metrics;
+        var metrics = font.Metrics;
 
         return top + (height - (metrics.Descent - metrics.Ascent)) / 2 - metrics.Ascent;
     }
@@ -771,6 +796,8 @@ public sealed class TimelineRuler : UserControl, IDisposable
 
         ruler.Canvas.Invalidate();
     }
+
+    private static void OnStatusChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) => ((TimelineRuler)d).Canvas.Invalidate();
 
     private enum RulerDrag
     {

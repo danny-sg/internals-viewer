@@ -4,7 +4,12 @@ using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
 
-internal readonly record struct PlanOutputValueSource(PlanOutputLinkType Type, ulong Address, ulong[] Chain, int? Offset, int ColumnId = 0)
+internal readonly record struct PlanOutputValueSource(PlanOutputLinkType Type,
+                                                      ulong Address,
+                                                      ulong[] Chain,
+                                                      int? Offset,
+                                                      int ColumnId = 0,
+                                                      bool IsHeapRow = false)
 {
     public ulong? Follow(IMemoryReader memory)
     {

@@ -3,6 +3,7 @@ using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Locators.Enums;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output.Enums;
@@ -21,6 +22,10 @@ public class PlanOutputValueReaderTests
     private const ulong Row = 0x1F4_0000_4000;
 
     private const ulong Frame = 0x1F4_0001_0000;
+
+    private const ulong PageHandle = 0x1F4_0000_5000;
+
+    private const ulong Buffer = 0x1F4_0000_6000;
 
     private static readonly SqlTypeInfo IntType = new(56, 0, 4, 10, 0, 0);
 
@@ -158,6 +163,72 @@ public class PlanOutputValueReaderTests
         var record = PlanOutputValueReader.ReadRecord(memory, builder.Build(), At(5), new PlanOutputStage(Data, 0, -1) { Record = source });
 
         Assert.Equal(new PlanOutputRecord(new TraceBufferReference(new PageAddress(1, 2728), 6, 0x81), 0, 2), record);
+    }
+
+    [Fact]
+    public void A_Heap_Row_Record_Is_Found_From_Its_Page_And_Slot()
+    {
+        var source = new PlanOutputValueSource(PlanOutputLinkType.Record, Row, [], null, 2, IsHeapRow: true);
+
+        var stage = new PlanOutputStage(Data, 0, -1) { Record = source };
+
+        var record = PlanOutputValueReader.ReadRecord(GetHeapRow(2), GetHeapPage(), At(5), stage);
+
+        Assert.Equal(new PlanOutputRecord(new TraceBufferReference(new PageAddress(1, 9104), 11, 0x94), 0, 2), record);
+    }
+
+    [Fact]
+    public void A_Heap_Record_Link_Gives_The_Record_At_The_Rows_Current_Slot()
+    {
+        var slotField = EngineLayout.Latest.HeapRow.SlotField;
+
+        var link = new PlanOutputLink(PlanOutputLinkType.Record, Row + (ulong)slotField.Offset, At(5))
+        {
+            Source = Row,
+            SourceOffset = slotField.Offset,
+            Field = slotField
+        };
+
+        Assert.Equal(Frame + 0x7A, PlanOutputValueReader.GetRecord(GetHeapRow(1), GetHeapPage(), At(5), link));
+    }
+
+    [Fact]
+    public void A_Record_Link_Gives_The_Record_Its_Row_Points_To()
+    {
+        var recordField = EngineLayout.Latest.Row.RecordField;
+
+        var memory = new FakeTraceReplay().Write(Row + (ulong)recordField.Offset, Frame + 0x81);
+
+        var link = new PlanOutputLink(PlanOutputLinkType.Record, Row + (ulong)recordField.Offset, At(5))
+        {
+            Source = Row,
+            SourceOffset = recordField.Offset,
+            Field = recordField
+        };
+
+        Assert.Equal(Frame + 0x81, PlanOutputValueReader.GetRecord(memory, TraceBufferPool.Empty, At(5), link));
+    }
+
+    private static FakeTraceReplay GetHeapRow(int slot)
+    {
+        var layout = EngineLayout.Latest;
+
+        return new FakeTraceReplay().Write(Row + (ulong)layout.HeapRow.PageHandleField.Offset, PageHandle)
+                                    .Write(PageHandle + (ulong)layout.PageLocation.PageHandleBufferField.Offset, Buffer)
+                                    .Write(Row + (ulong)layout.HeapRow.SlotField.Offset, slot);
+    }
+
+    private static TraceBufferPool GetHeapPage()
+    {
+        var builder = new TraceBufferPool.Builder();
+
+        var page = new PageAddress(1, 9104);
+
+        builder.Add(new TraceBufferPage(Frame, page, 11, At(1), Buffer));
+
+        builder.AddLayout(page, 11, [0x60, 0x7A, 0x94]);
+
+        return builder.Build();
     }
 
     private static PlanOutputStage Stage(SqlTypeInfo type, PlanOutputLinkType sourceType, ulong address, ulong[] chain, int? offset = null)

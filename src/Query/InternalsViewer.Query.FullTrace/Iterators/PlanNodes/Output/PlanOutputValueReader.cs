@@ -71,16 +71,43 @@ public static class PlanOutputValueReader
         return memory.Read(variant.Value, data) == data.Length ? DataConverter.BinaryToString(data, sqlType, 0, 0) : null;
     }
 
-    public static PlanOutputRecord? ReadRecord(IMemoryReader memory,
+    public static PlanOutputRecord? ReadRecord(ITraceMemoryReader memory,
                                                TraceBufferPool bufferPool,
                                                TracePosition position,
                                                PlanOutputStage stage)
         => stage.Record is { } source
            && (source.Offset is not null || source.ColumnId > 0)
-           && source.Follow(memory) is { } record
+           && source.Follow(memory) is { } found
+           && (source.IsHeapRow ? GetHeapRecord(memory, bufferPool, position, found) : found) is { } record
            && bufferPool.GetFrameReference(record, position) is { } location
             ? new PlanOutputRecord(location, source.Offset ?? 0, source.ColumnId)
             : null;
+
+    public static ulong? GetRecord(ITraceMemoryReader memory, TraceBufferPool bufferPool, TracePosition position, PlanOutputLink link)
+    {
+        if (link.Type != PlanOutputLinkType.Record)
+        {
+            return null;
+        }
+
+        if (link.Field == memory.Layout.HeapRow.SlotField)
+        {
+            return GetHeapRecord(memory, bufferPool, position, link.Source);
+        }
+
+        return memory.TryRead(link.Source + (ulong)link.SourceOffset, out ulong record) && record != 0 ? record : null;
+    }
+
+    private static ulong? GetHeapRecord(ITraceMemoryReader memory, TraceBufferPool bufferPool, TracePosition position, ulong row)
+    {
+        var heapRow = memory.Layout.HeapRow;
+
+        return memory.TryRead(row + (ulong)heapRow.PageHandleField.Offset, out ulong pageHandle)
+               && memory.TryRead(pageHandle + (ulong)memory.Layout.PageLocation.PageHandleBufferField.Offset, out ulong buffer)
+               && memory.TryRead(row + (ulong)heapRow.SlotField.Offset, out int slot)
+            ? bufferPool.GetRecord(buffer, slot, position)
+            : null;
+    }
 
     private static string? ReadEntry(ITraceMemoryReader memory, SqlTypeInfo type, SqlDbType sqlType, ulong entry)
     {

@@ -17,6 +17,7 @@
                 Visibility="{x:Bind Settings.PinTimeline, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
             <timeline:TimelineRuler x:Name="Ruler"
                                     Source="{x:Bind EventTimeline}"
+                                    Status="{x:Bind ViewModel.RulerStatus, Mode=OneWay}"
                                     IsPinned="{x:Bind Settings.PinTimeline, Mode=TwoWay}"/>
         </Border>
 

@@ -13,6 +13,12 @@ Base|CXteTop|CXte
 Base|CXteTableScan|CXte
 Base|CXteRange|CXte
 Base|CXteStreamAggregate|CXte
+Base|CValRefOrdinal|CValRefComp
+Base|CValRefPrefetch|CValRefOrdinal
+Base|CValRefJoin|CValRefComp
+Base|CValRefCalculated|CValRefComp
+Base|CValHashCachedSwitch|CValExec
+Base|CValExpr|CValExec
 Size|SortEntry|0x28
 Size|HashItem|0x80
 Size|BUF|0xC0
@@ -130,8 +136,11 @@ ExecutorArray|Executor|0x00|8|Pointer||
 ExecutorValueArray|Value|0x00|8|Pointer||
 CValExec|Entry|0x08|8|Pointer||CValRefOrdinal::PvalInvokeSpecific
 RowsetNewSS|Interface|0x70|8|Pointer||
-RowsetNewSS|Row|0xB8|8|Pointer||RowsetNewSS::FetchNextRow
-Row|Record|0x50|8|Pointer||IndexRowScanner::*,IndexDataSetSession::GetNextRowValuesInternal
+RowsetNewSS|Data Set Session|0xB0|8|Pointer||
+RowsetNewSS|Row|0xB8|8|Pointer||RowsetNewSS::FetchNextRow,IndexDataSetSession::FetchRowByKeyValueInternal,HeapDataSetSession::GetRowByRID
+Row|Record|0x50|8|Pointer||IndexRowScanner::*,IndexDataSetSession::GetNextRowValuesInternal,IndexDataSetSession::GetRowByKeyValue
+HeapRowObject|Page Handle|0x40|8|Pointer||
+HeapRowObject|Slot|0x50|4|Number||HeapDataSetSession::GetNextRowValuesInternal,HeapDataSetSession::GetRowByRID
 XVariant|Entry|0x00|32|Number||
 XVariant|Status|0x00|1|Number||
 XVariant|Type|0x01|1|Hex||

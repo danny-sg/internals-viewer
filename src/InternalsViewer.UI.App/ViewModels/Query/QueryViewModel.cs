@@ -303,6 +303,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsTraceTimelineHintVisible))]
     [NotifyPropertyChangedFor(nameof(IsNoQueryHintVisible))]
+    [NotifyPropertyChangedFor(nameof(RulerStatus))]
     [NotifyCanExecuteChangedFor(nameof(ExportRunCommand))]
     private bool _isTraceLoading;
 
@@ -724,6 +725,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             OnPropertyChanged(nameof(IsNoQueryHintVisible));
 
+            OnPropertyChanged(nameof(RulerStatus));
+
             OnPropertyChanged(nameof(IsRulerAvailable));
         }
     }
@@ -768,6 +771,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public int SelectedRowSlotCount => RowResolver.SlotCount;
 
     public bool IsNoQueryHintVisible => LastRun is null && !ExecuteQueryCommand.IsRunning && !IsTraceLoading;
+
+    public string? RulerStatus => ExecuteQueryCommand.IsRunning || IsTraceLoading ? "Running" : LastRun is null ? "No Query" : null;
 
     private IBufferPoolInfoProvider BufferPoolInfoProvider { get; }
 
@@ -1202,6 +1207,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         if (e.PropertyName == nameof(IAsyncRelayCommand.IsRunning))
         {
             OnPropertyChanged(nameof(IsNoQueryHintVisible));
+
+            OnPropertyChanged(nameof(RulerStatus));
         }
     }
 

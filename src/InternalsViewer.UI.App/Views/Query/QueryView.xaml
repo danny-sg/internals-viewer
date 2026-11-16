@@ -222,12 +222,13 @@
         <Border Grid.Row="1"
                 BorderBrush="{ThemeResource LayerFillColorDefaultBrush}"
                 BorderThickness="0,8,0,0"
-                Visibility="{x:Bind GetRulerVisibility(Settings.PinTimeline, ViewModel.IsRulerAvailable, ViewModel.Layout.IsTrace, ViewModel.Layout.IsTraceTimelineVisible), Mode=OneWay}">
+                Visibility="{x:Bind Settings.PinTimeline, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
             <Border Padding="0,4,0,0"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     BorderThickness="0,1,0,1">
                 <timeline:TimelineRuler x:Name="PinnedRuler"
                                         Source="{x:Bind ViewModel.RulerSource, Mode=OneWay}"
+                                        Status="{x:Bind ViewModel.RulerStatus, Mode=OneWay}"
                                         IsPinned="{x:Bind Settings.PinTimeline, Mode=TwoWay}"/>
             </Border>
         </Border>

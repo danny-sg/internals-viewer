@@ -13,4 +13,6 @@ public static class PlanOutputValueLayout
     public const string ExecutorClass = "CEsExec";
 
     public const string ExecValueClass = "CValExec";
+
+    public const string HeapSessionClass = "HeapDataSetSession";
 }

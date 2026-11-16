@@ -30,6 +30,16 @@ public class EngineLayoutTests
     public void A_Class_Has_Its_Own_Fields_And_Its_Base_Classes_Fields(string className, string expected)
         => Assert.Equal(expected, string.Join(",", EngineLayout.Latest.GetFields(className).Select(f => f.Name)));
 
+    [Theory]
+    [InlineData("CValRefComp", "CValRefOrdinal", "CValRefOrdinal")]
+    [InlineData("CValRefComp", "CValRefPrefetch", "CValRefOrdinal")]
+    [InlineData("CValExec", "CValHashCachedSwitch", "CValHashCachedSwitch")]
+    [InlineData("CValRefComp", "CValRefComp", "CValRefComp")]
+    [InlineData("CValRefComp", "CValRefSS", "CValRefComp")]
+    [InlineData("CValRefOrdinal", null, "CValRefOrdinal")]
+    public void A_Base_Class_Label_Resolves_To_The_Nearest_Vtable_Class_With_Fields(string label, string? vtableClass, string expected)
+        => Assert.Equal(expected, EngineLayout.Latest.ResolveClass(label, vtableClass));
+
     [Fact]
     public void A_Repeated_Field_Is_Expanded_Into_Its_Elements()
     {

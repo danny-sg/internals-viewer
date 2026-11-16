@@ -13,6 +13,12 @@ Base|CXteTop|CXte
 Base|CXteTableScan|CXte
 Base|CXteRange|CXte
 Base|CXteStreamAggregate|CXte
+Base|CValRefOrdinal|CValRefComp
+Base|CValRefPrefetch|CValRefOrdinal
+Base|CValRefJoin|CValRefComp
+Base|CValRefCalculated|CValRefComp
+Base|CValHashCachedSwitch|CValExec
+Base|CValExpr|CValExec
 Size|SortEntry|0x28
 Size|HashItem|0x80
 Size|BUF|0xC0
@@ -83,7 +89,7 @@ CBndOutputs|Column Bits|0x30|8|Hex||CBitVector::Set
 CBndOutputs|Column Flags Length|0x38|4|Number||CBitVector::Init
 CBndOutputs|Column Flags Memory Object|0x40|8|Pointer||CBitVector::Init
 CBndOutputs|Column Flags|0x48|8|Hex||CBitVector::Set
-OutputColumnArray|Column|0x00|8|Pointer||CXte::RemapOutputValrefs,CBpXte::BpCompile,CBndOutputs::Append
+OutputColumnArray|Column|0x00|8|Pointer||CXte::RemapOutputValrefs,CXte::ExecCompile,CBpXte::BpCompile,CBndOutputs::Append
 CValRefComp|Interface|0x20|8|Pointer||CValComp::CValComp
 CValRefComp|Type|0x28|8|Hex||
 CValRefComp|Type Details|0x38|8|Hex||
@@ -105,7 +111,7 @@ CTypeInfo|Type Details|0x10|8|Hex||
 Expression|Operands|0x28|8|Pointer||
 Expression|Operand Count|0x30|4|Number||
 OperandArray|Operand|0x00|8|Pointer||
-CExecContext|Query Execution Context|0x1B8|8|Pointer||CQueryScan::Init
+CExecContext|Query Execution Context|0x1A8|8|Pointer||CQueryScan::Init
 CQueryExecContext|Query Scan|0x20|8|Pointer||CQueryExecContext::CQueryExecContext
 CQueryScan|Query Scan Context|0x60|8|Pointer||CQueryScan::CQueryScan
 CQECtxt|Statement|0x28|8|Pointer||CQECtxt::Init
@@ -117,7 +123,7 @@ CValHash|Slot|0x2C|4|Number||CValHash::CValHash
 CValHash|Accessor|0x38|8|Pointer||
 CValSSTable|Slot|0x10|4|Number||CValSSTable::CValSSTable
 CValSSTable|Accessor|0x18|8|Pointer||
-CValHashSwitch|Reader|0x10|8|Pointer||CQScanHash::SetupPartitionInputsAndOutputs,CQScanHash::CreateInputAndOutput
+CValHashSwitch|Reader|0x10|8|Pointer||CQScanHash::SetupPartitionInputsAndOutputs,CQScanHash::CreateInputAndOutput,CQScanHash::PickInputAndPrepareOutput
 CValHashSwitch|Input|0x18|8|Pointer||CQScanHash::CreateInputAndOutput
 CValHashCachedSwitch|Value|0x08|8|Pointer||CQScanHash::SetupPartitionInputsAndOutputs
 CValHashCachedSwitch|Cached Status|0x20|1|Number||
@@ -130,8 +136,11 @@ ExecutorArray|Executor|0x00|8|Pointer||
 ExecutorValueArray|Value|0x00|8|Pointer||
 CValExec|Entry|0x08|8|Pointer||CValRefOrdinal::PvalInvokeSpecific
 RowsetNewSS|Interface|0x70|8|Pointer||
-RowsetNewSS|Row|0xB8|8|Pointer||RowsetNewSS::FetchNextRow
-Row|Record|0x50|8|Pointer||IndexRowScanner::*,IndexDataSetSession::GetNextRowValuesInternal
+RowsetNewSS|Data Set Session|0xB0|8|Pointer||
+RowsetNewSS|Row|0xB8|8|Pointer||RowsetNewSS::FetchNextRow,IndexDataSetSession::FetchRowByKeyValueInternal,HeapDataSetSession::GetRowByRID
+Row|Record|0x50|8|Pointer||IndexRowScanner::*,IndexDataSetSession::GetNextRowValuesInternal,IndexDataSetSession::GetRowByKeyValue
+HeapRowObject|Page Handle|0x40|8|Pointer||
+HeapRowObject|Slot|0x50|4|Number||HeapDataSetSession::GetNextRowValuesInternal,HeapDataSetSession::GetRowByRID
 XVariant|Entry|0x00|32|Number||
 XVariant|Status|0x00|1|Number||
 XVariant|Type|0x01|1|Hex||

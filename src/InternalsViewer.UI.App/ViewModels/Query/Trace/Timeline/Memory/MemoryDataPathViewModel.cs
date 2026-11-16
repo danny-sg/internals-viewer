@@ -809,12 +809,7 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
     private MemoryStructureNode? FindRouteNode(MemoryStructureNode root, PlanOutputRouteNode route)
         => root.Children.SelectMany(Flatten).FirstOrDefault(n => RouteNodes.TryGetValue(n, out var found) && found == route);
 
-    private ulong? GetCurrentRecord(PlanOutputLink link)
-        => link.Type == PlanOutputLinkType.Record
-           && new MemoryHistoryReader(History.Store, Position).TryRead(link.Source + (ulong)link.SourceOffset, out ulong record)
-           && record != 0
-            ? record
-            : null;
+    private ulong? GetCurrentRecord(PlanOutputLink link) => History.GetRecord(link, Position);
 
     private MemoryStructureBadge? GetRecordBadge(PlanOutputLink link)
     {

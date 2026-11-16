@@ -86,6 +86,22 @@ public sealed partial class TraceBufferPool
         return new TraceBufferReference(page.Page, page.DatabaseId, (int)(address - frame));
     }
 
+    public ulong? GetRecord(ulong buffer, int slot, TracePosition position)
+    {
+        var index = SortedSearch.FirstAfter(Buffers, (buffer, position), GetBufferKey) - 1;
+
+        if (index < 0 || Buffers[index].Buffer != buffer)
+        {
+            return null;
+        }
+
+        var page = Buffers[index];
+
+        return GetLayout(page.Page, page.DatabaseId)?.OffsetTable is { } offsets && slot >= 0 && slot < offsets.Length
+            ? page.Frame + offsets[slot]
+            : null;
+    }
+
     internal TraceBufferPool WithLayout(EngineLayout layout)
         => ReferenceEquals(layout, Layout) ? this : new TraceBufferPool(Pages, Layouts) { Layout = layout };
 

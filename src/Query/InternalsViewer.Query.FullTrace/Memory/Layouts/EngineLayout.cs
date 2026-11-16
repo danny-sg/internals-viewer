@@ -89,6 +89,8 @@ public sealed class EngineLayout(string name, Version minimumVersion, Version ma
 
     public RowLayout Row { get; } = new(Get(structures, "Row"));
 
+    public HeapRowLayout HeapRow { get; } = new(Get(structures, "HeapRowObject"));
+
     public RowBufferLayout RowBuffer { get; } = new(Get(structures, "XVariant"));
 
     public SortIteratorLayout SortIterator { get; } = new(Get(structures, "CQScanSortNew"));
@@ -132,6 +134,26 @@ public sealed class EngineLayout(string name, Version minimumVersion, Version ma
     public MemoryStructure GetStructure(string type) => Get(structures, type);
 
     public bool IsA(string? className, string baseClass) => GetClassChain(className).Any(s => s.Name == baseClass);
+
+    public string? ResolveClass(string? label, string? vtableClass)
+    {
+        string? resolved = null;
+
+        foreach (var structure in GetClassChain(vtableClass))
+        {
+            if (structure.Name == label)
+            {
+                return resolved ?? label;
+            }
+
+            if (resolved is null && structure.Fields.Count > 0)
+            {
+                resolved = structure.Name;
+            }
+        }
+
+        return label;
+    }
 
     public List<MemoryField> GetFields(string? className)
     {
@@ -584,12 +606,21 @@ public sealed class EngineLayout(string name, Version minimumVersion, Version ma
     {
         public ulong InterfaceOffset { get; } = (ulong)structure.Get("Interface").Offset;
 
+        public MemoryField DataSetSessionField { get; } = structure.Get("Data Set Session");
+
         public MemoryField RowField { get; } = structure.Get("Row");
     }
 
     public sealed class RowLayout(MemoryStructure structure)
     {
         public MemoryField RecordField { get; } = structure.Get("Record");
+    }
+
+    public sealed class HeapRowLayout(MemoryStructure structure)
+    {
+        public MemoryField PageHandleField { get; } = structure.Get("Page Handle");
+
+        public MemoryField SlotField { get; } = structure.Get("Slot");
     }
 
     public sealed class RowBufferLayout(MemoryStructure structure)

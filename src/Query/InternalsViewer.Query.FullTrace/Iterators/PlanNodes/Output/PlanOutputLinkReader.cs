@@ -16,8 +16,6 @@ namespace InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
 
 internal sealed class PlanOutputLinkReader(TraceResult trace)
 {
-    private const string GetRowMethod = "GetRow";
-
     private const int InstanceArgument = 0;
 
     private ConcurrentDictionary<(int NodeId, ulong Reference), PlanOutputPath> Cache { get; } = new();
@@ -70,6 +68,9 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
         return node?.Frame?.Function is { } writer ? $"{writer.ClassName}::{writer.MethodName}" : null;
     }
+
+    private static bool IsGetRow(string? method)
+        => method is IteratorSymbolLookup.GetRowMethod or IteratorSymbolLookup.GetRowOrReQualifyMethod;
 
     private static bool IsCurrentValue(MemoryHistoryStore store, MemoryHistoryWrite write, int offset, PlanOutputLink link, int length)
     {
@@ -196,11 +197,20 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
             : 0;
 
     private string? GetClassName(ulong address, TracePosition position)
-        => trace.MemoryHistory.GetBlock(address, position) is >= 0 and var block
-           && trace.MemoryHistory.Blocks[block] is var info
-           && info.Address == address
-            ? trace.AddressMap.GetLabel(info.Address, info.FromPosition, info.ToPosition)
-            : null;
+    {
+        if (trace.MemoryHistory.GetBlock(address, position) is not (>= 0 and var block)
+            || trace.MemoryHistory.Blocks[block] is not { } info
+            || info.Address != address)
+        {
+            return null;
+        }
+
+        var label = trace.AddressMap.GetLabel(info.Address, info.FromPosition, info.ToPosition);
+
+        var vtableClass = trace.AddressMap.GetVtableClassName(info.Address, info.FromPosition, info.ToPosition);
+
+        return trace.MemoryHistory.Layout.ResolveClass(label, vtableClass);
+    }
 
     public (TracePosition From, TracePosition To)? GetRowRange(ulong iterator)
         => RowRanges.TryGetValue(iterator, out var range) ? range : null;
@@ -211,7 +221,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
         foreach (var list in trace.CallStore.GetCallLists())
         {
-            if (list.Count == 0 || trace.CallStore.GetFirstNode(list)?.Frame?.Function?.MethodName != GetRowMethod)
+            if (list.Count == 0 || !IsGetRow(trace.CallStore.GetFirstNode(list)?.Frame?.Function?.MethodName))
             {
                 continue;
             }
@@ -242,7 +252,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
         foreach (var list in trace.CallStore.GetCallLists())
         {
-            if (trace.CallStore.GetFirstNode(list)?.Frame?.Function?.MethodName != GetRowMethod)
+            if (!IsGetRow(trace.CallStore.GetFirstNode(list)?.Frame?.Function?.MethodName))
             {
                 continue;
             }
@@ -390,7 +400,10 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
                 var rowField = Layout.Rowset.RowField;
 
-                AddRecord(rowset, rowField with { Offset = rowField.Offset - (int)Layout.Rowset.InterfaceOffset }, 0);
+                AddRecord(rowset,
+                          rowField with { Offset = rowField.Offset - (int)Layout.Rowset.InterfaceOffset },
+                          0,
+                          IsHeapRowset(rowset - Layout.Rowset.InterfaceOffset));
             }
 
             if (IteratorLayout.IsHash(className))
@@ -646,27 +659,41 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
                 return;
             }
 
-            ulong[] chain =
+            var rowset = TryRead(iterator, Layout.RowsetIterator.RowsetField, out ulong found)
+                         && found >= TraceAddress.MinimumAddress + Layout.Rowset.InterfaceOffset
+                ? found - Layout.Rowset.InterfaceOffset
+                : 0;
+
+            var isHeapRow = rowset != 0 && IsHeapRowset(rowset);
+
+            List<ulong> chain =
             [
                 (ulong)Layout.RowsetIterator.RowsetField.Offset,
-                (ulong)Layout.Rowset.RowField.Offset - Layout.Rowset.InterfaceOffset,
-                (ulong)Layout.Row.RecordField.Offset
+                (ulong)Layout.Rowset.RowField.Offset - Layout.Rowset.InterfaceOffset
             ];
 
-            Stage.Record = new PlanOutputValueSource(PlanOutputLinkType.Record, iterator, chain, null, columnId);
+            if (!isHeapRow)
+            {
+                chain.Add((ulong)Layout.Row.RecordField.Offset);
+            }
+
+            Stage.Record = new PlanOutputValueSource(PlanOutputLinkType.Record, iterator, [.. chain], null, columnId, isHeapRow);
 
             Stage.Type = PlanOutputStageType.Record;
 
-            if (TryRead(iterator, Layout.RowsetIterator.RowsetField, out ulong rowset)
-                && rowset >= TraceAddress.MinimumAddress + Layout.Rowset.InterfaceOffset)
+            if (rowset != 0)
             {
-                Add(PlanOutputLinkType.Rowset, rowset, iterator, Layout.RowsetIterator.RowsetField, depth);
+                Add(PlanOutputLinkType.Rowset, found, iterator, Layout.RowsetIterator.RowsetField, depth);
 
-                AddRecord(rowset - Layout.Rowset.InterfaceOffset, Layout.Rowset.RowField, depth);
+                AddRecord(rowset, Layout.Rowset.RowField, depth, isHeapRow);
             }
         }
 
-        private void AddRecord(ulong rowset, MemoryField? rowField, int depth)
+        private bool IsHeapRowset(ulong rowset)
+            => TryRead(rowset, Layout.Rowset.DataSetSessionField, out ulong session)
+               && getClassName(session) == PlanOutputValueLayout.HeapSessionClass;
+
+        private void AddRecord(ulong rowset, MemoryField? rowField, int depth, bool isHeapRow)
         {
             if (!memory.TryRead(rowset + (ulong)(rowField?.Offset ?? 0), out ulong row) || row < TraceAddress.MinimumAddress)
             {
@@ -674,6 +701,15 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
             }
 
             Add(PlanOutputLinkType.Row, row, rowset, rowField, depth);
+
+            if (isHeapRow)
+            {
+                var slotField = Layout.HeapRow.SlotField;
+
+                Add(PlanOutputLinkType.Record, GetFieldAddress(row, slotField), row, slotField, depth, slot: ReadSlot(row, slotField));
+
+                return;
+            }
 
             var recordField = Layout.Row.RecordField;
 
@@ -1218,7 +1254,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
             {
                 Add(PlanOutputLinkType.Rowset, rowset, rowSlot, null, depth);
 
-                AddRecord(rowset, null, depth);
+                AddRecord(rowset, null, depth, false);
             }
         }
 
