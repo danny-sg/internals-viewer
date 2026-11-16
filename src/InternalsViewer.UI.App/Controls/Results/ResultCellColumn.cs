@@ -388,6 +388,7 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
                 panel.Children.Add(new TextBlock
                 {
                     VerticalAlignment = VerticalAlignment.Center,
+                    TextLineBounds = TextLineBounds.TrimToCapHeight,
                     Foreground = Resource("TextFillColorSecondaryBrush")
                 });
             }
@@ -431,7 +432,11 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
                 VerticalAlignment = VerticalAlignment.Center
             };
 
-            panel.Children.Add(new TextBlock { VerticalAlignment = VerticalAlignment.Center });
+            panel.Children.Add(new TextBlock
+            {
+                VerticalAlignment = VerticalAlignment.Center,
+                TextLineBounds = TextLineBounds.TrimToCapHeight
+            });
 
             foreach (var _ in value.Actions)
             {
@@ -466,7 +471,7 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
         }
         else
         {
-            var text = button.Content as TextBlock ?? new TextBlock();
+            var text = button.Content as TextBlock ?? new TextBlock { TextLineBounds = TextLineBounds.TrimToCapHeight };
 
             HexText.Apply(text, link.Text);
 

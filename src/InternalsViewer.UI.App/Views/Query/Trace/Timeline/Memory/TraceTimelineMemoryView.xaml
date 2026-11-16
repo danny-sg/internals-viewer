@@ -67,7 +67,8 @@
                        VerticalAlignment="Center"/>
         </StackPanel>
 
-        <hexView:HexViewControl Grid.Row="1"
+        <hexView:HexViewControl x:Name="Hex"
+                                Grid.Row="1"
                                 Grid.Column="0"
                                 VerticalAlignment="Stretch"
                                 Background="{ThemeResource LayerOnMicaBaseAltFillColorDefault}"
@@ -76,6 +77,7 @@
                                 Links="{x:Bind ViewModel.Links, Mode=OneWay}"
                                 Watches="{x:Bind ViewModel.Watches, Mode=TwoWay}"
                                 SelectedChangeSpan="{x:Bind ViewModel.SelectedChangeSpan, Mode=OneWay}"
+                                SelectedMarker="{x:Bind ViewModel.SelectedMarker, Mode=TwoWay}"
                                 ScrollToOffset="{x:Bind ViewModel.ScrollToOffset, Mode=OneWay}"
                                 IsChangeNavigationEnabled="True"
                                 ChangeNavigationRequested="OnChangeNavigationRequested"
@@ -90,11 +92,6 @@
                      IsAddTabButtonVisible="False"
                      TabWidthMode="SizeToContent"
                      SelectedIndex="{x:Bind ViewModel.SelectedTab, Mode=TwoWay}">
-                <TabViewItem Header="BUF"
-                             IsClosable="False"
-                             Visibility="{x:Bind ViewModel.Buffer.IsAvailable, Mode=OneWay}">
-                    <local:MemoryBufferPanelView/>
-                </TabViewItem>
                 <TabViewItem Header="{x:Bind ViewModel.Batch.Title, Mode=OneWay}"
                              IsClosable="False"
                              Visibility="{x:Bind ViewModel.Batch.IsAvailable, Mode=OneWay}">
@@ -110,15 +107,11 @@
                              Visibility="{x:Bind ViewModel.WorkfilePage.IsAvailable, Mode=OneWay}">
                     <local:MemoryPagePanelView DataContext="{x:Bind ViewModel.WorkfilePage, Mode=OneWay}"/>
                 </TabViewItem>
-                <TabViewItem Header="Bindings"
+                <TabViewItem Header="{x:Bind ViewModel.Generated.Header, Mode=OneWay}"
                              IsClosable="False"
-                             Visibility="{x:Bind ViewModel.Bindings.IsAvailable, Mode=OneWay}">
-                    <local:MemoryBindingsPanelView/>
-                </TabViewItem>
-                <TabViewItem Header="{x:Bind ViewModel.Iterator.Header, Mode=OneWay}"
-                             IsClosable="False"
-                             Visibility="{x:Bind ViewModel.Iterator.IsAvailable, Mode=OneWay}">
-                    <local:MemoryIteratorPanelView/>
+                             Visibility="{x:Bind ViewModel.Generated.IsAvailable, Mode=OneWay}">
+                    <local:MemoryObjectTabsView Tabs="{x:Bind ViewModel.Generated.Tabs, Mode=OneWay}"
+                                                ParentHeader="{x:Bind ViewModel.Generated.Header, Mode=OneWay}"/>
                 </TabViewItem>
                 <TabViewItem Header="Details" IsClosable="False">
                     <local:MemoryDetailsPanelView/>

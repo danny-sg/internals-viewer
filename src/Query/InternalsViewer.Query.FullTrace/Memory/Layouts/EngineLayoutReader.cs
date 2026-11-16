@@ -1,4 +1,5 @@
 using System.Globalization;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Enums;
 
 namespace InternalsViewer.Query.FullTrace.Memory.Layouts;
 
@@ -105,6 +106,14 @@ internal static class EngineLayoutReader
             }
         }
 
+        foreach (var structure in structures.Values)
+        {
+            if (structure.Fields.FirstOrDefault(f => f.Structure is { } embedded && !structures.ContainsKey(embedded)) is { } unknown)
+            {
+                throw new InvalidDataException($"{name} has an unknown kind {unknown.Structure} on {structure.Name} {unknown.Name}");
+            }
+        }
+
         return range is { } versions
             ? new EngineLayout(name, versions.Minimum, versions.Maximum, structures)
             : throw new InvalidDataException($"{name} has no {VersionKey} line");
@@ -136,15 +145,14 @@ internal static class EngineLayoutReader
 
         var kind = columns[4];
 
-        if (kind is not (PointerKind or NumberKind or HexKind))
-        {
-            throw new InvalidDataException($"{name} has an unknown kind {kind} on {columns[0]} {columns[1]}");
-        }
+        MemoryFieldDecoder? decoder = Enum.TryParse<MemoryFieldDecoder>(kind, out var found) ? found : null;
 
         var field = new MemoryField(columns[1], ReadNumber(columns[2]), ReadNumber(columns[3]), kind == HexKind)
         {
             Writers = columns[6].Length == 0 ? [] : columns[6].Split(WriterSeparator),
-            IsNumber = kind != PointerKind
+            IsNumber = kind is NumberKind or HexKind || decoder is not null,
+            Decoder = decoder,
+            Structure = kind is PointerKind or NumberKind or HexKind || decoder is not null ? null : kind
         };
 
         return (field, columns[5].Length == 0 ? 1 : ReadNumber(columns[5]));

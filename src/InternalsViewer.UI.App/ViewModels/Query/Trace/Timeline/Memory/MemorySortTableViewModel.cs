@@ -19,6 +19,7 @@ using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline.Enums;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryHistory;
+using static InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline.Memory.MemoryFieldTableBuilder;
 using Colour = System.Drawing.Color;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline.Memory;

@@ -26,8 +26,6 @@ public sealed class EngineLayout(string name, Version minimumVersion, Version ma
 
     public RowsetIteratorLayout RowsetIterator { get; } = new(Get(structures, "CQScanRowsetNew"));
 
-    public TopIteratorLayout TopIterator { get; } = new(Get(structures, "CQScanTopNew"));
-
     public StreamAggregateIteratorLayout StreamAggregateIterator { get; } =
         new(Get(structures, "CQScanStreamAggregateNew"), Get(structures, "VariableTable"));
 
@@ -35,10 +33,7 @@ public sealed class EngineLayout(string name, Version minimumVersion, Version ma
 
     public BatchAdapterLayout BatchAdapter { get; } = new(Get(structures, "CQScanBatchHelper"), Get(structures, "BatchOutputValueArray"));
 
-    public PlanObjectLayout PlanObject { get; } = new(Get(structures, "CXte"),
-                                                      Get(structures, "CXteTop"),
-                                                      Get(structures, "CXteTableScan"),
-                                                      Get(structures, "CXteStreamAggregate"));
+    public PlanObjectLayout PlanObject { get; } = new(Get(structures, "CXte"), Get(structures, "CXteStreamAggregate"));
 
     public OutputListLayout OutputList { get; } = new(Get(structures, "CBndOutputs"), Get(structures, "OutputColumnArray"));
 
@@ -87,7 +82,7 @@ public sealed class EngineLayout(string name, Version minimumVersion, Version ma
 
     public RowsetLayout Rowset { get; } = new(Get(structures, "RowsetNewSS"));
 
-    public RowLayout Row { get; } = new(Get(structures, "Row"));
+    public RowLayout Row { get; } = new(Get(structures, "BTreeRow"));
 
     public HeapRowLayout HeapRow { get; } = new(Get(structures, "HeapRowObject"));
 
@@ -153,6 +148,27 @@ public sealed class EngineLayout(string name, Version minimumVersion, Version ma
         }
 
         return label;
+    }
+
+    public string? GetFieldPath(string? className, int offset)
+    {
+        foreach (var field in GetFields(className))
+        {
+            if (offset == field.Offset)
+            {
+                return field.Name;
+            }
+
+            if (field.Structure is { } embedded
+                && offset > field.Offset
+                && offset < field.Offset + field.Length
+                && GetFieldPath(embedded, offset - field.Offset) is { } inner)
+            {
+                return $"{field.Name}.{inner}";
+            }
+        }
+
+        return null;
     }
 
     public List<MemoryField> GetFields(string? className)
@@ -253,18 +269,9 @@ public sealed class EngineLayout(string name, Version minimumVersion, Version ma
     {
         public MemoryField RowsetField { get; } = structure.Get("Rowset");
 
-        public MemoryField PrefetchManagerField { get; } = structure.Get("Prefetch Manager");
-
         public MemoryField RowBufferField { get; } = structure.Get("Row Buffer");
 
         public MemoryField RowBindingsField { get; } = structure.Get("Row Bindings");
-
-        public MemoryField ClientRowField { get; } = structure.Get("Client Row");
-    }
-
-    public sealed class TopIteratorLayout(MemoryStructure structure)
-    {
-        public MemoryField TopCountField { get; } = structure.Get("Top Count Expression");
     }
 
     public sealed class StreamAggregateIteratorLayout(MemoryStructure structure, MemoryStructure variables)
@@ -342,22 +349,13 @@ public sealed class EngineLayout(string name, Version minimumVersion, Version ma
         public MemoryField RowBufferField { get; } = structure.Get("Row Buffer");
     }
 
-    public sealed class PlanObjectLayout(MemoryStructure structure,
-                                         MemoryStructure top,
-                                         MemoryStructure tableScan,
-                                         MemoryStructure streamAggregate)
+    public sealed class PlanObjectLayout(MemoryStructure structure, MemoryStructure streamAggregate)
     {
         public MemoryField NodeIdField { get; } = structure.Get("Node Id");
-
-        public MemoryField InputsField { get; } = structure.Get("Inputs");
 
         public MemoryField QueryField { get; } = structure.Get("Query");
 
         public MemoryField OutputColumnsField { get; } = structure.Get("Output Columns");
-
-        public MemoryField TopCountField { get; } = top.Get("Top Count Expression");
-
-        public MemoryField RowsetIdField { get; } = tableScan.Get("Rowset Id");
 
         public MemoryField GroupCountField { get; } = streamAggregate.Get("Group Count");
 
@@ -374,25 +372,9 @@ public sealed class EngineLayout(string name, Version minimumVersion, Version ma
 
     public sealed class OutputListLayout(MemoryStructure structure, MemoryStructure columns)
     {
-        public MemoryField MemoryObjectField { get; } = structure.Get("Memory Object");
-
         public MemoryField CountField { get; } = structure.Get("Count");
 
-        public MemoryField CapacityField { get; } = structure.Get("Capacity");
-
         public MemoryField ColumnsField { get; } = structure.Get("Columns");
-
-        public MemoryField ColumnBitCountField { get; } = structure.Get("Column Bits Length");
-
-        public MemoryField ColumnBitMemoryObjectField { get; } = structure.Get("Column Bits Memory Object");
-
-        public MemoryField ColumnBitsField { get; } = structure.Get("Column Bits");
-
-        public MemoryField FlagBitCountField { get; } = structure.Get("Column Flags Length");
-
-        public MemoryField FlagBitMemoryObjectField { get; } = structure.Get("Column Flags Memory Object");
-
-        public MemoryField FlagBitsField { get; } = structure.Get("Column Flags");
 
         public MemoryField ColumnField { get; } = columns.Get("Column");
     }
@@ -401,13 +383,9 @@ public sealed class EngineLayout(string name, Version minimumVersion, Version ma
     {
         public MemoryField ColumnCountField { get; } = structure.Get("Column Count");
 
-        public MemoryField MemoryObjectField { get; } = structure.Get("Memory Object");
-
         public MemoryField ColumnBindingsField { get; } = structure.Get("Column Bindings");
 
         public MemoryField ColumnBindingField { get; } = new("Column Binding", 0x00, column.Size) { IsNumber = true };
-
-        public IReadOnlyList<MemoryField> Fields => structure.Fields;
     }
 
     public sealed class ColumnBindingLayout(MemoryStructure structure, MemoryStructure infrequent)
@@ -641,17 +619,11 @@ public sealed class EngineLayout(string name, Version minimumVersion, Version ma
     public sealed class SortIteratorLayout(MemoryStructure structure)
     {
         public MemoryField PushRowExecutorField { get; } = structure.Get("Push Row Executor");
-
-        public MemoryField MemoryUsageField { get; } = structure.Get("Memory Usage");
     }
 
     public sealed class SortRowsetLayout(MemoryStructure structure)
     {
         public MemoryField DescriptorField { get; } = structure.Get("Sort Descriptor");
-
-        public MemoryField RowCountField { get; } = structure.Get("Row Count");
-
-        public MemoryField KeyColumnsField { get; } = structure.Get("Key Columns");
 
         public IReadOnlyList<MemoryField> Fields => structure.Fields;
     }
@@ -759,31 +731,13 @@ public sealed class EngineLayout(string name, Version minimumVersion, Version ma
 
         public MemoryField DatabaseIdField { get; } = structure.Get("Database Id (bdbid)");
 
-        public MemoryField StateHistoryField { get; } = structure.Get("State History (blog)");
-
-        public MemoryField ReadTimeField { get; } = structure.Get("Read µs (bReadMicroSec)");
-
-        public MemoryField ErrorCodeField { get; } = structure.Get("Error Code (berrcode)");
-
-        public MemoryField LastUsedField { get; } = structure.Get("Last Used (bUse1)");
-
-        public MemoryField StatusField { get; } = structure.Get("Status (bstat)");
-
         public MemoryField PageIdField { get; } = structure.Get("Page ID (bpageno)");
 
         public MemoryField FileIdField { get; } = structure.Get("File ID (bpageno)");
 
-        public MemoryField PartitionField { get; } = structure.Get("Partition (bpart)");
-
-        public MemoryField RecoveryUnitField { get; } = structure.Get("Recovery Unit (bpru)");
-
         public MemoryField LatchWaitersField { get; } = structure.Get("Latch Waiters");
 
-        public MemoryField LatchOwnerField { get; } = structure.Get("Latch Owner");
-
         public MemoryField LatchStateField { get; } = structure.Get("Latch State");
-
-        public IReadOnlyList<MemoryField> Fields => structure.Fields;
     }
 
     public sealed class BatchLayout(MemoryStructure structure, MemoryStructure vector)

@@ -25,6 +25,13 @@ public static class IteratorLayout
 
     public static bool IsHash(string? className) => className == HashClass;
 
+    public static string GetLayoutType(EngineLayout layout, string? className, IteratorTargetType type)
+    {
+        var root = type == IteratorTargetType.PlanObject ? PlanObjectClass : IteratorClass;
+
+        return type != IteratorTargetType.ProfilingIterator && layout.IsA(className, root) ? className! : root;
+    }
+
     public static List<MemoryField> GetFields(MemoryHistoryStore store,
                                               string? className,
                                               IteratorTargetType type,

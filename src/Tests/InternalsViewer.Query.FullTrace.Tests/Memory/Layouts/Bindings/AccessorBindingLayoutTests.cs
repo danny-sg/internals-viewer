@@ -38,6 +38,27 @@ public class AccessorBindingLayoutTests
     }
 
     [Fact]
+    public void A_Row_Buffer_Has_The_Status_Length_And_Value_Of_Each_Column_In_Offset_Order()
+    {
+        List<ColumnBinding> columns =
+        [
+            new(0, 1, 4, 0x8, 0x0, null, 4, 0x38, ColumnBindingFlags.None, 0, 0),
+            new(1, 2, -1, 0x40, 0x20, 0x28, 50, 0xA7, ColumnBindingFlags.Length | ColumnBindingFlags.ByReference, 0, 0)
+        ];
+
+        var fields = AccessorBindingLayout.GetRowBufferFields(columns);
+
+        Assert.Equal([("Column 1 Status", 0x0),
+                      ("Column 1 Value", 0x8),
+                      ("Column 2 Status", 0x20),
+                      ("Column 2 Length", 0x28),
+                      ("Column 2 Value", 0x40)],
+                     fields.Select(f => (f.Name, f.Offset)));
+
+        Assert.True(fields[^1].IsPointer);
+    }
+
+    [Fact]
     public void Length_Offset_Is_Read_From_The_Infrequent_Data_When_The_Length_Is_Bound()
         => Assert.Equal([null, 0x30], AccessorBindingLayout.ReadColumns(GetMemory(), Columns, 2).Select(c => c.LengthOffset));
 

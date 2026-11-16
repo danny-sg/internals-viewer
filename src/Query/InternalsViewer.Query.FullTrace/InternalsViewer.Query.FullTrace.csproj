@@ -28,6 +28,7 @@
         <EmbeddedResource Include="Symbols\Categories\Mappings\*.txt" />
         <EmbeddedResource Include="Timeline\Tracks\PredefinedTracks.json" />
         <EmbeddedResource Include="Memory\Layouts\Versions\*.psv" />
+        <EmbeddedResource Include="Memory\Layouts\Tabs\Tabs.psv" />
     </ItemGroup>
 
     <ItemGroup>

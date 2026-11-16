@@ -26,6 +26,7 @@ using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline.Enums;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryHistory;
 using Microsoft.UI;
+using static InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline.Memory.MemoryFieldTableBuilder;
 using Colour = System.Drawing.Color;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline.Memory;
@@ -53,16 +54,6 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
     private const string BufferFrameBadge = "Buffer Pool Frame";
 
     private const string SelectCommand = "Select";
-
-    private const int HueWheel = 256;
-
-    private const double GoldenRatio = 0.6180339887;
-
-    private const int FieldSaturation = 60;
-
-    private const int FieldValue = 250;
-
-    private const int ValueWidth = 360;
 
     private const int NumberWidth = 110;
 
@@ -279,11 +270,6 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
         Nodes = [];
     }
 
-    protected static List<Colour> CreateColours(int count)
-        => [.. Enumerable.Range(0, count).Select(i => ColourHelpers.HsvToColor((int)(i * GoldenRatio * HueWheel) % HueWheel,
-                                                                               FieldSaturation,
-                                                                               FieldValue))];
-
     protected static ulong? ReadValue(byte[]? data, int offset, int length)
     {
         if (data is null || offset < 0 || offset + length > data.Length)
@@ -301,17 +287,6 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
             _ => BinaryPrimitives.ReadUInt64LittleEndian(span)
         };
     }
-
-    protected static Marker CreateMarker(string name, int offset, int length, Colour colour)
-        => new()
-        {
-            Name = name,
-            StartPosition = offset,
-            EndPosition = offset + length - 1,
-            BackColour = colour.ToWindowsColor(),
-            MapColour = colour.ToWindowsColor(),
-            ForeColour = Colors.Black
-        };
 
     protected static IEnumerable<MemoryStructureNode> Flatten(MemoryStructureNode node) => node.Children.SelectMany(Flatten).Prepend(node);
 
@@ -461,23 +436,12 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
 
         var selected = SelectedFieldRow?.Id;
 
-        var columns = new List<ResultColumn>
-        {
-            new(0, "Field", typeof(string), false) { Width = FieldWidth },
-            new(1, "Offset", typeof(string), false) { Width = OffsetWidth, Alignment = ResultAlignment.Right },
-            new(2, "Value", typeof(string), true) { Width = ValueWidth }
-        };
+        FieldTable = MemoryFieldTableBuilder.CreateFieldTable(GetPointerCell,
+                                                              [.. ShownFields.Select(f => f.Field)],
+                                                              [.. values],
+                                                              [.. ShownFields.Select(f => colours[f.Colour])]);
 
-        var rows = ShownFields.Select((f, i) => new ResultRow<long>([new SwatchText(f.Field.Name, colours[f.Colour]),
-                                                                     $"0x{f.Field.Offset:X}",
-                                                                     GetValueCell(f.Field, values[i])])
-        {
-            Id = i
-        }).ToList();
-
-        FieldTable = new QueryResultSet { Columns = columns, Rows = rows };
-
-        SelectedFieldRow = rows.FirstOrDefault(r => r.Id == selected);
+        SelectedFieldRow = FieldTable.Rows.FirstOrDefault(r => r.Id == selected);
     }
 
     protected object GetPointerCell(ulong pointer)
@@ -934,20 +898,7 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
         return links;
     }
 
-    protected object? GetValueCell(MemoryField field, ulong? value)
-    {
-        if (value is not { } found)
-        {
-            return null;
-        }
-
-        if (field.IsPointer)
-        {
-            return GetPointerCell(found);
-        }
-
-        return field.IsHex ? $"0x{found:X8}" : found.ToString("N0", CultureInfo.CurrentCulture);
-    }
+    protected object GetValueCell(MemoryField field, ulong? value) => MemoryFieldTableBuilder.GetValueCell(GetPointerCell, field, value);
 
     private MemoryUsageChart? CreateChart(IReadOnlyList<TraceMemoryUsage> usage, IReadOnlyList<Colour> colours, TracePosition position)
     {

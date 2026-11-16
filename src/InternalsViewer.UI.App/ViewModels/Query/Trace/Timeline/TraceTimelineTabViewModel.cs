@@ -630,6 +630,10 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
 
     private static FrameworkElement CreateMemoryCommands(PlayheadMemoryViewModel memory)
         => TabCommands.Panel(CommandSpacing,
+                             TabCommands.Toggle(TabCommands.Label("Hex"),
+                                                memory.IsHexVisible,
+                                                "Show or hide the hex view",
+                                                (sender, _) => memory.IsHexVisible = TabCommands.IsChecked(sender)),
                              TabCommands.Button(TabCommands.Glyph(StepBackGlyph),
                                                 "Previous Update",
                                                 (_, _) => memory.StepWrite(isForward: false)),

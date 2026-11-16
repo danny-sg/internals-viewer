@@ -6,8 +6,6 @@ public static class PlanOutputValueLayout
 
     public const string StorageValueClass = "CValSSTable";
 
-    public const string OutputListClass = "CBndOutputs";
-
     public const string ExpressionValueClass = "CValExpr";
 
     public const string ExecutorClass = "CEsExec";

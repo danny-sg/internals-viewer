@@ -13,6 +13,8 @@ public class EngineLayoutTests
 
     private const string ResourceExtension = ".psv";
 
+    private const string VersionsFolder = ".Versions.";
+
     [Theory]
     [InlineData(16, 0, 1210, 3, "SqlServer2022")]
     [InlineData(17, 0, 5015, 4, "SqlServer2025")]
@@ -78,6 +80,39 @@ public class EngineLayoutTests
     }
 
     [Fact]
+    public void A_Field_Whose_Kind_Is_A_Structure_Embeds_That_Structure()
+    {
+        var field = EngineLayout.Latest.GetStructure("HeapDataSetSession").Get("Heap Row");
+
+        Assert.Equal(("HeapRowObject", false), (field.Structure, field.IsPointer));
+    }
+
+    [Fact]
+    public void A_Field_Path_Names_The_Field_At_An_Offset_Through_Embedded_Objects()
+    {
+        var layout = EngineLayout.Latest;
+
+        var heapRow = layout.GetStructure("HeapDataSetSession").Get("Heap Row").Offset;
+
+        var slot = heapRow + layout.HeapRow.SlotField.Offset;
+
+        Assert.Equal(("Heap Row", "Heap Row.Slot", null),
+                     (layout.GetFieldPath("HeapDataSetSession", heapRow),
+                      layout.GetFieldPath("HeapDataSetSession", slot),
+                      layout.GetFieldPath("HeapDataSetSession", heapRow + 1)));
+    }
+
+    [Fact]
+    public void A_Field_Whose_Kind_Is_Not_A_Structure_Is_Refused()
+    {
+        var text = ReadResources().Single(r => r.Name.EndsWith("SqlServer2025.psv", StringComparison.Ordinal)).Text;
+
+        var reader = new StringReader(text + "BUF|Extra|0xB8|8|Missing||\n");
+
+        Assert.Throws<InvalidDataException>(() => EngineLayoutReader.Read("Test", reader));
+    }
+
+    [Fact]
     public void A_Layout_File_Without_A_Version_Is_Refused()
     {
         var reader = new StringReader("Type|Name|Offset|Length|Kind|Writers");
@@ -103,7 +138,9 @@ public class EngineLayoutTests
     {
         var assembly = typeof(EngineLayout).Assembly;
 
-        foreach (var name in assembly.GetManifestResourceNames().Where(n => n.EndsWith(ResourceExtension, StringComparison.Ordinal)))
+        foreach (var name in assembly.GetManifestResourceNames()
+                                     .Where(n => n.Contains(VersionsFolder, StringComparison.Ordinal)
+                                                 && n.EndsWith(ResourceExtension, StringComparison.Ordinal)))
         {
             using var reader = new StreamReader(assembly.GetManifestResourceStream(name)!);
 

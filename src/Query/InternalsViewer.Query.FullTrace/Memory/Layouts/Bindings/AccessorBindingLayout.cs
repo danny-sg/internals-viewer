@@ -63,6 +63,27 @@ public static class AccessorBindingLayout
             ? ReadColumns(memory, header.Columns, header.ColumnCount)
             : [];
 
+    public static List<MemoryField> GetRowBufferFields(List<ColumnBinding> columns)
+    {
+        var fields = new List<MemoryField>();
+
+        foreach (var column in columns)
+        {
+            var name = $"Column {column.Ordinal}";
+
+            fields.Add(new MemoryField($"{name} Status", column.StatusOffset, StatusSize) { IsNumber = true });
+
+            if (column.LengthOffset is { } length)
+            {
+                fields.Add(new MemoryField($"{name} Length", length, LengthSize) { IsNumber = true });
+            }
+
+            fields.Add(new MemoryField($"{name} Value", column.ValueOffset, column.ValueLength) { IsNumber = !column.IsByReference });
+        }
+
+        return [.. fields.OrderBy(f => f.Offset)];
+    }
+
     private static ColumnBinding? ReadColumn(ITraceMemoryReader memory, ulong address, int index)
     {
         var layout = memory.Layout.ColumnBinding;

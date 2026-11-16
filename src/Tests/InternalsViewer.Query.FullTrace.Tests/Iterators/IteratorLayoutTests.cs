@@ -3,6 +3,7 @@ using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Iterators.Enums;
 using InternalsViewer.Query.FullTrace.Memory.History;
+using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.Plans.Model;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Iterators;
@@ -16,6 +17,15 @@ public class IteratorLayoutTests
 
     private const ulong Parent = 0x1F4_0000_3000;
 
+
+    [Theory]
+    [InlineData("CQScanHash", IteratorTargetType.Iterator, "CQScanHash")]
+    [InlineData("CQScanNLJoinTrivialNew", IteratorTargetType.Iterator, "CQScanNew")]
+    [InlineData("CQScanHash", IteratorTargetType.ProfilingIterator, "CQScanNew")]
+    [InlineData("CXteTop", IteratorTargetType.PlanObject, "CXteTop")]
+    [InlineData("CXteHash", IteratorTargetType.PlanObject, "CXte")]
+    public void An_Operator_Object_Shows_Its_Class_Or_The_Root_The_Layout_Knows(string className, IteratorTargetType type, string expected)
+        => Assert.Equal(expected, IteratorLayout.GetLayoutType(EngineLayout.Latest, className, type));
 
     [Fact]
     public void A_Scan_Marks_Its_Row_Buffer_And_Bindings()

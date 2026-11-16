@@ -89,7 +89,7 @@ public abstract partial class TraceSummaryPaneViewModel(string title,
 
         if (node.DataPathColumn is { } column)
         {
-            GetNavigator().OpenIteratorTab(node.Block, node.Address, position, [MemoryIteratorViewModel.DataPathHeader, column]);
+            GetNavigator().OpenIteratorTab(node.Block, node.Address, position, [MemoryIteratorTabBuilder.DataPathHeader, column]);
 
             return;
         }

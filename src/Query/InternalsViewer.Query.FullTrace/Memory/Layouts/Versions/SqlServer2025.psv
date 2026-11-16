@@ -39,7 +39,7 @@ CQScanRowsetNew|Row Bindings|0x88|8|Pointer||
 CQScanRowsetNew|Client Row|0x168|8|Pointer||
 CQScanTopNew|Top Count Expression|0x90|8|Pointer||
 CQScanStreamAggregateNew|Aggregate Executor|0x68|8|Pointer||
-CQScanStreamAggregateNew|Count|0x88|32|Number||CXVariant::SetZero,CQScanStreamAggregateNew::GetRow
+CQScanStreamAggregateNew|Count|0x88|0x20|Number||CXVariant::SetZero,CQScanStreamAggregateNew::GetRow
 CQScanStreamAggregateNew|Compare Executors|0xA8|8|Pointer||
 CQScanStreamAggregateNew|Move Executors|0xB0|8|Pointer||
 CQScanStreamAggregateNew|Variable Table|0xD0|8|Pointer||CQScanStreamAggregateNew::InitXVarTable
@@ -138,10 +138,12 @@ CValExec|Entry|0x08|8|Pointer||CValRefOrdinal::PvalInvokeSpecific
 RowsetNewSS|Interface|0x70|8|Pointer||
 RowsetNewSS|Data Set Session|0xB0|8|Pointer||
 RowsetNewSS|Row|0xB8|8|Pointer||RowsetNewSS::FetchNextRow,IndexDataSetSession::FetchRowByKeyValueInternal,HeapDataSetSession::GetRowByRID
-Row|Record|0x50|8|Pointer||IndexRowScanner::*,IndexDataSetSession::GetNextRowValuesInternal,IndexDataSetSession::GetRowByKeyValue
+BTreeRow|Record|0x50|8|Pointer||IndexRowScanner::*,IndexDataSetSession::GetNextRowValuesInternal,IndexDataSetSession::GetRowByKeyValue
 HeapRowObject|Page Handle|0x40|8|Pointer||
 HeapRowObject|Slot|0x50|4|Number||HeapDataSetSession::GetNextRowValuesInternal,HeapDataSetSession::GetRowByRID
-XVariant|Entry|0x00|32|Number||
+HeapDataSetSession|Heap Row|0x368|0x658|HeapRowObject||
+IndexRowScanner|Row|0xB0|0xBD0|BTreeRow||
+XVariant|Entry|0x00|0x20|Number||
 XVariant|Status|0x00|1|Number||
 XVariant|Type|0x01|1|Hex||
 XVariant|Value|0x08|8|Pointer||
@@ -235,7 +237,7 @@ BUF|Partition (bpart)|0x76|2|Number||
 BUF|Recovery Unit (bpru)|0x90|8|Pointer||
 BUF|Latch Waiters|0x98|8|Pointer||
 BUF|Latch Owner|0xA0|8|Pointer||
-BUF|Latch State|0xA8|8|Hex||
+BUF|Latch State|0xA8|8|Latch||
 CBpBatch|Allocation Bitmap|0x00|8|Pointer||
 CBpBatch|Vector Array|0x08|8|Pointer||
 CBpBatch|Pure Bitmap|0x10|8|Pointer||
@@ -258,14 +260,14 @@ DeepDataPage|Capacity|0x14|2|Number||
 AccBindings|Column Count|0x62|2|Number||
 AccBindings|Memory Object|0x68|8|Pointer||
 AccBindings|Column Bindings|0x70|8|Pointer||
-ColumnBinding|Record Offset|0x00|4|Number||
+ColumnBinding|Record Offset|0x00|4|RecordOffset||
 ColumnBinding|Ordinal|0x04|2|Number||
-ColumnBinding|Column Attributes|0x18|8|Hex||
+ColumnBinding|Column Attributes|0x18|8|Pointer||
 ColumnBinding|Value Offset|0x28|4|Number||
 ColumnBinding|Status Offset|0x30|4|Number||
 ColumnBinding|Maximum Length|0x3C|2|Number||
-ColumnBinding|Type|0x3E|1|Number||
-ColumnBinding|Flags|0x40|4|Hex||
+ColumnBinding|Type|0x3E|1|SqlType||
+ColumnBinding|Flags|0x40|4|BindingFlags||
 ColumnBinding|Infrequent Data|0x48|8|Pointer||
 ColumnBindingInfrequent|Length Offset|0x18|4|Number||
 AllocationPageId|Page Id|0x08|8|Number||

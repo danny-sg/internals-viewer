@@ -130,6 +130,15 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
     private Dictionary<int, string?> PointerTargets { get; } = [];
 
+    private Dictionary<(int Block, ulong Offset), string> PointerFields { get; } = [];
+
+    private TraceTablePartResolver? LoadedTableParts { get; set; }
+
+    private TraceTablePartResolver TableParts
+        => LoadedTableParts ??= Trace is { } trace
+            ? TraceTablePartResolver.Build(Store, trace.AddressMap, trace.CallStore)
+            : TraceTablePartResolver.Empty;
+
     private Dictionary<bool, DataPathMap> DataPathMaps { get; } = [];
 
     private MagicBytesMatcher? MagicBytes { get; set; }
@@ -153,6 +162,8 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
         PointerTargets.Clear();
 
+        PointerFields.Clear();
+
         lock (DataPathMaps)
         {
             DataPathMaps.Clear();
@@ -171,6 +182,8 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
             : new MemoryHistoryBatchResolver(Store, b => GetMapLabel(Store.Blocks[b]), b => GetAllocatingCall(b)?.Symbol);
 
         MagicBytes = trace is null ? null : new MagicBytesMatcher(Store);
+
+        LoadedTableParts = null;
 
         Map = trace?.AddressMap;
 
@@ -230,7 +243,21 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
         var offset = address - Store.Blocks[block].Address;
 
-        return label is null || offset == 0 ? label : $"{label} +0x{offset:X}";
+        if (label is null || offset == 0)
+        {
+            return label;
+        }
+
+        if (!PointerFields.TryGetValue((block, offset), out var target))
+        {
+            target = Store.Layout.GetFieldPath(GetLayoutType(block), (int)offset) is { } field
+                ? $"{label}.{field}"
+                : $"{label} +0x{offset:X}";
+
+            PointerFields[(block, offset)] = target;
+        }
+
+        return target;
     }
 
     public TraceBufferPool BufferPool => Trace?.BufferPool ?? TraceBufferPool.Empty;
@@ -325,17 +352,33 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
     public string GetBufferPageName(TraceBufferReference reference) => $"{GetDatabasePrefix(reference)}{reference.Page}";
 
-    public int? GetBufferSlot(TraceBufferReference reference)
-        => reference.IsBuffer ? null : Trace?.BufferPool.GetLayout(reference.Page, reference.DatabaseId)?.GetSlot(reference.Offset);
-
     public bool IsBuffer(int block) => Trace?.BufferPool.IsBuffer(Store.Blocks[block].Address) == true;
 
     public bool IsPage(int block)
         => Store.Blocks[block].Size == PageData.Size && GetMapLabel(Store.Blocks[block]) == WorkfilePageReader.ClassName;
 
-    public bool IsAccessorBindings(int block) => GetMapLabel(Store.Blocks[block]) == AccessorBindingLayout.ClassName;
+    public ScanBindingReference? FindScan(int block, TracePosition position)
+    {
+        var info = Store.Blocks[block];
 
-    public bool IsColumnBindings(int block) => GetMapLabel(Store.Blocks[block]) == AccessorBindingLayout.ColumnsClassName;
+        if (info.Iterator == 0 || info.IsIterator)
+        {
+            return null;
+        }
+
+        foreach (var at in GetScanPositions(info, position))
+        {
+            if (AccessorBindingLayout.ReadScan(new MemoryHistoryReader(Store, at), info.Iterator) is { } scan
+                && scan.Contains(info.Address)
+                && Store.GetBlock(scan.Bindings, at) is >= 0 and var bindings
+                && IsAccessorBindings(bindings))
+            {
+                return scan;
+            }
+        }
+
+        return null;
+    }
 
     public MemoryHistoryArray? GetArray(int block)
         => IsColumnBindings(block) && Store.Layout.ColumnBinding.GetColumnCount(Store.Blocks[block].Size) is > 0 and var count
@@ -382,6 +425,20 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
            && (GetIteratorBlock(info.Address) == block || target.Type == IteratorTargetType.PlanObject)
             ? $"{target.TypeName} › {target.Label}"
             : null;
+
+    public string? GetLayoutType(int block)
+    {
+        if (IsBuffer(block))
+        {
+            return BufferObject;
+        }
+
+        var vtableClass = GetVtableLabel(Store.Blocks[block]);
+
+        var type = Store.Layout.ResolveClass(GetMapLabel(Store.Blocks[block]), vtableClass) ?? vtableClass;
+
+        return GetIteratorTarget(block) is { } target ? IteratorLayout.GetLayoutType(Store.Layout, type, target.Type) : type;
+    }
 
     public string GetTypeName(int block)
     {
@@ -576,10 +633,28 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
            ?? Batches?.GetPart(block)?.Name
            ?? MagicBytes?.GetClassName(block)
            ?? GetArrayLabel(block)
+           ?? GetTablePartName(block)
            ?? GetMemoryObjectPageLabel(Store.Blocks[block])
            ?? GetVtableLabel(Store.Blocks[block])
            ?? GetMapLabel(Store.Blocks[block])
            ?? (Store.Blocks[block].IsIterator ? IteratorObject : string.Empty);
+
+    private string? GetTablePartName(int block)
+    {
+        var info = Store.Blocks[block];
+
+        if (GetVtableLabel(info) is not null
+            || Trace?.AddressMap.GetClassName(info.Address, info.FromPosition, info.ToPosition) is not null)
+        {
+            return null;
+        }
+
+        return TableParts.GetHashPart(block) is { } hash
+            ? HashTablePartLabel.GetName(hash)
+            : TableParts.GetSortPart(block) is { } sort
+                ? SortTablePartLabel.GetName(sort)
+                : null;
+    }
 
     private string? GetArrayLabel(int block)
         => Store.GetArray(block) is { } array
@@ -605,6 +680,25 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
         return GetBufferPage(buffer.Address, buffer.FromPosition) is { } reference
             ? $"{BufferObject} {GetBufferPageName(reference)}"
             : BufferObject;
+    }
+
+    private bool IsAccessorBindings(int block) => GetMapLabel(Store.Blocks[block]) == AccessorBindingLayout.ClassName;
+
+    private bool IsColumnBindings(int block) => GetMapLabel(Store.Blocks[block]) == AccessorBindingLayout.ColumnsClassName;
+
+    private IEnumerable<TracePosition> GetScanPositions(MemoryHistoryBlock block, TracePosition position)
+    {
+        if (position.IsKnown)
+        {
+            yield return position;
+        }
+
+        var iterator = Store.GetBlock(block.Iterator, block.FromPosition);
+
+        if (iterator >= 0 && Store.Blocks[iterator] is { WriteCount: > 0 } found)
+        {
+            yield return Store.GetPoint(found.FirstWrite + found.WriteCount - 1).Position;
+        }
     }
 
     private string? GetMapLabel(MemoryHistoryBlock block) => Trace?.AddressMap.GetLabel(block.Address, block.FromPosition, block.ToPosition);

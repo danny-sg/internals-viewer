@@ -35,7 +35,14 @@ public sealed partial class MemoryObjectTab(string header,
         get;
         set
         {
+            if (ReferenceEquals(field, value))
+            {
+                return;
+            }
+
             field = value;
+
+            OnPropertyChanged();
 
             select?.Invoke(value);
         }

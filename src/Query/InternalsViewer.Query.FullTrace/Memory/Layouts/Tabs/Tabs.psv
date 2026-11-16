@@ -1,0 +1,13 @@
+Header|Type|Layout|Trailing
+Iterator|CQScanNew|Column|
+Plan Object|CXte|Column|
+Buffer|BUF|Column|
+Accessor Bindings|AccBindings|Column|
+Column Bindings|ColumnBinding|Row|ColumnBindingInfrequent
+Infrequent Data|ColumnBindingInfrequent|Row|
+Rowset|RowsetNewSS|Column|
+Heap Data Set Session|HeapDataSetSession|Column|
+Index Row Scanner|IndexRowScanner|Column|
+Heap Row|HeapRowObject|Column|
+B-Tree Row|BTreeRow|Column|
+Page Handle|PageHandle|Column|

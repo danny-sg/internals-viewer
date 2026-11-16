@@ -21,6 +21,7 @@ using InternalsViewer.UI.App.Models;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline.Enums;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryHistory;
+using static InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline.Memory.MemoryFieldTableBuilder;
 using Colour = System.Drawing.Color;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline.Memory;
@@ -491,7 +492,7 @@ public sealed class MemoryHashTableViewModel : MemoryStructureViewModel
     private bool IsInRange(int bucket, int first) => bucket >= first && bucket < first + Layout.HashItem.BucketsPerPage;
 
     private Marker CreateMarker(string name, int offset, int length, int colour)
-        => CreateMarker(name, offset, length, FieldColours[colour]);
+        => MemoryFieldTableBuilder.CreateMarker(name, offset, length, FieldColours[colour]);
 
     private static object GetBucketCell(TraceHashAccess? found, int bucket, int current)
     {

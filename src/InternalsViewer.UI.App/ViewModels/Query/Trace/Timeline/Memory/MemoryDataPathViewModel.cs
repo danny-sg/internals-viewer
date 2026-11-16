@@ -32,6 +32,7 @@ using InternalsViewer.UI.App.Models.Query.Trace.Timeline.Enums;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.MemoryHistory;
 using Microsoft.UI;
 using Windows.UI;
+using static InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline.Memory.MemoryFieldTableBuilder;
 using Colour = System.Drawing.Color;
 
 namespace InternalsViewer.UI.App.ViewModels.Query.Trace.Timeline.Memory;
@@ -86,14 +87,14 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
 
     private const int MaximumDepth = 32;
 
-    private static readonly string RecordOffsetName = MemoryBindingsViewModel.GetFieldName(ColumnBindingField.RecordOffset);
+    private static readonly string RecordOffsetName = ColumnBindingText.GetFieldName(ColumnBindingField.RecordOffset);
 
     private static readonly HashSet<string> OffsetFieldNames =
     [
         RecordOffsetName,
-        MemoryBindingsViewModel.GetFieldName(ColumnBindingField.StatusOffset),
-        MemoryBindingsViewModel.GetFieldName(ColumnBindingField.LengthOffset),
-        MemoryBindingsViewModel.GetFieldName(ColumnBindingField.ValueOffset)
+        ColumnBindingText.GetFieldName(ColumnBindingField.StatusOffset),
+        ColumnBindingText.GetFieldName(ColumnBindingField.LengthOffset),
+        ColumnBindingText.GetFieldName(ColumnBindingField.ValueOffset)
     ];
 
     private static readonly Color ReferenceColour = Color.FromArgb(255, 0xDD, 0xDD, 0xDD);
@@ -127,7 +128,7 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
     private IReadOnlyList<MemoryField> BindingFields
         => field ??= [.. Layout.ColumnBinding.Fields
                                .Where(f => !f.IsInfrequent)
-                               .Select(f => new MemoryField(MemoryBindingsViewModel.GetFieldName(f.Field), f.Offset, f.Length))];
+                               .Select(f => new MemoryField(ColumnBindingText.GetFieldName(f.Field), f.Offset, f.Length))];
 
     private HexImage? Loaded { get; set; }
 

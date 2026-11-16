@@ -20,8 +20,6 @@ public sealed record TraceHashTable(ulong Group,
         return partition < Partitions.Count ? (partition, (int)(hash & Partitions[partition].BucketMask)) : null;
     }
 
-    public bool Contains(ulong address, int length) => FindPart(address, length) is not null;
-
     public TraceHashPart? FindPart(ulong address, int length)
     {
         var end = address + (ulong)length;

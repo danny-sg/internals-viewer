@@ -1,12 +1,30 @@
+using System.Collections.Generic;
 using System.Data;
 using InternalsViewer.Internals.Helpers;
 using SqlTypeInfo = InternalsViewer.Query.FullTrace.Locators.SqlTypeInfo;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings.Enums;
 
 namespace InternalsViewer.UI.App.Helpers;
 
 public static class ColumnBindingText
 {
+    private static readonly Dictionary<ColumnBindingField, string> FieldNames = new()
+    {
+        [ColumnBindingField.Ordinal] = "Ordinal",
+        [ColumnBindingField.Type] = "Type",
+        [ColumnBindingField.MaximumLength] = "Size",
+        [ColumnBindingField.RecordOffset] = "Record Offset",
+        [ColumnBindingField.StatusOffset] = "Status Offset",
+        [ColumnBindingField.LengthOffset] = "Length Offset",
+        [ColumnBindingField.ValueOffset] = "Value Offset",
+        [ColumnBindingField.Flags] = "Flags",
+        [ColumnBindingField.ColumnAttributes] = "Column Attributes",
+        [ColumnBindingField.InfrequentData] = "Infrequent Data"
+    };
+
+    public static string GetFieldName(ColumnBindingField field) => FieldNames[field];
+
     public static string GetType(ColumnBinding binding) => GetType(binding.Type, 0, 0, binding.MaximumLength);
 
     public static string GetType(SqlTypeInfo type) => GetType(type.TypeId, type.Precision, type.Scale, type.MaxLength);

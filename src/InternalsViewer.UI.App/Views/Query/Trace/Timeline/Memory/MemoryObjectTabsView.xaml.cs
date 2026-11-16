@@ -19,16 +19,16 @@ public sealed partial class MemoryObjectTabsView : UserControl
         set => SetValue(TabsProperty, value);
     }
 
-    public static readonly DependencyProperty FooterProperty =
-        DependencyProperty.Register(nameof(Footer),
-                                    typeof(UIElement),
+    public static readonly DependencyProperty ParentHeaderProperty =
+        DependencyProperty.Register(nameof(ParentHeader),
+                                    typeof(string),
                                     typeof(MemoryObjectTabsView),
-                                    new PropertyMetadata(null));
+                                    new PropertyMetadata(null, OnParentHeaderChanged));
 
-    public UIElement? Footer
+    public string? ParentHeader
     {
-        get => (UIElement?)GetValue(FooterProperty);
-        set => SetValue(FooterProperty, value);
+        get => (string?)GetValue(ParentHeaderProperty);
+        set => SetValue(ParentHeaderProperty, value);
     }
 
     public MemoryObjectTabsView()
@@ -48,10 +48,26 @@ public sealed partial class MemoryObjectTabsView : UserControl
         }
     }
 
+    private void ApplySingleTab()
+    {
+        var single = Tabs is [{ HasTable: true } tab] && tab.Header == ParentHeader ? tab : null;
+
+        SingleTab.Content = single;
+
+        SingleTab.Visibility = single is null ? Visibility.Collapsed : Visibility.Visible;
+
+        Strip.Visibility = single is null ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     private static void OnTabsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var view = (MemoryObjectTabsView)d;
 
+        view.ApplySingleTab();
+
         view.DispatcherQueue.TryEnqueue(view.SelectFirst);
     }
+
+    private static void OnParentHeaderChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        => ((MemoryObjectTabsView)d).ApplySingleTab();
 }

@@ -52,7 +52,7 @@ public class TraceHashTableTests
     [InlineData(BucketPage)]
     [InlineData(WorkfilePage)]
     [InlineData(OverflowPage)]
-    public void Each_Block_Of_The_Table_Is_Part_Of_It(ulong block) => Assert.True(CreateTable().Contains(block, BlockSize));
+    public void Each_Block_Of_The_Table_Is_Part_Of_It(ulong block) => Assert.NotNull(CreateTable().FindPart(block, BlockSize));
 
     [Theory]
     [InlineData(Group, TraceHashPartType.Group)]
@@ -68,7 +68,7 @@ public class TraceHashTableTests
         => Assert.Equal(type, CreateTable().FindPart(block, BlockSize)?.Type);
 
     [Fact]
-    public void A_Block_Outside_The_Table_Is_Not_Part_Of_It() => Assert.False(CreateTable().Contains(0x9000, BlockSize));
+    public void A_Block_Outside_The_Table_Is_Not_Part_Of_It() => Assert.Null(CreateTable().FindPart(0x9000, BlockSize));
 
     private static TraceHashPartition Partition(int index) => new(index, 0, 0, 0x3F, 0, 0, [], []);
 

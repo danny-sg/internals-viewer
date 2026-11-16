@@ -29,23 +29,19 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 {
     private const string NotYetChanged = "Not Yet Changed";
 
-    private const int BufferTab = 0;
+    private const int BatchTab = 0;
 
-    private const int BatchTab = 1;
+    private const int VectorsTab = 1;
 
-    private const int VectorsTab = 2;
+    private const int PageTab = 2;
 
-    private const int PageTab = 3;
+    private const int GeneratedTab = 3;
 
-    private const int BindingsTab = 4;
+    private const int DetailsTab = 4;
 
-    private const int IteratorTab = 5;
+    private const int WritesTab = 5;
 
-    private const int DetailsTab = 6;
-
-    private const int WritesTab = 7;
-
-    private const int ReadsTab = 8;
+    private const int ReadsTab = 6;
 
     private const int LoadInterval = 50;
 
@@ -84,6 +80,12 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     [ObservableProperty]
     private LogRecordAnnotation? _selectedChangeSpan;
+
+    [ObservableProperty]
+    private Marker? _selectedMarker;
+
+    [ObservableProperty]
+    private bool _isHexVisible = true;
 
     [ObservableProperty]
     private int? _scrollToOffset;
@@ -139,15 +141,11 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     public MemoryReferencesViewModel References { get; }
 
-    public MemoryBufferViewModel Buffer { get; } = new();
-
     public MemoryBatchViewModel Batch { get; } = new();
 
     public MemoryPageViewModel WorkfilePage { get; }
 
-    public MemoryBindingsViewModel Bindings { get; } = new();
-
-    public MemoryIteratorViewModel Iterator { get; } = new();
+    public MemoryGeneratedTabViewModel Generated { get; } = new();
 
     public int Block { get; private set; } = -1;
 
@@ -218,17 +216,19 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
             return;
         }
 
-        if (!Iterator.IsAvailable)
+        if (!Generated.IsAvailable)
         {
             return;
         }
 
-        SelectedTab = IteratorTab;
+        SelectedTab = GeneratedTab;
 
-        Iterator.RequestTab(tabs);
+        Generated.RequestTab(tabs);
     }
 
-    public void ShowAddress(ulong address, int length = 1)
+    public void ShowAddress(ulong address, int length = 1) => ShowAddress(address, length, true);
+
+    private void ShowAddress(ulong address, int length, bool isFieldSelected)
     {
         if (IsLoading)
         {
@@ -249,6 +249,11 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         SelectedChangeSpan = length > 1 && offset < (ulong)block.Size
             ? new LogRecordAnnotation { Offset = (int)offset, Length = length, Description = $"0x{address:X16}" }
             : null;
+
+        if (length == 1 && Generated.Select(address, isFieldSelected))
+        {
+            SelectedTab = GeneratedTab;
+        }
     }
 
     public void Close()
@@ -263,15 +268,11 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         References.Clear();
 
-        Buffer.Clear();
-
         Batch.Clear();
 
         WorkfilePage.Clear();
 
-        Bindings.Clear();
-
-        Iterator.Clear();
+        Generated.Clear();
 
         HashTableGroup = 0;
 
@@ -320,6 +321,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         SelectedChangeSpan = null;
 
+        SelectedMarker = null;
+
         EmptyText = string.Empty;
 
         IsOpen = false;
@@ -356,7 +359,9 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
             : $"{text}  {label}";
     }
 
-    public object GetPointerCell(ulong pointer)
+    public object GetPointerCell(ulong pointer) => GetPointerCell(pointer, null);
+
+    public object GetPointerCell(ulong pointer, string? target)
     {
         var text = $"0x{pointer:X16}";
 
@@ -372,7 +377,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         return new ActionLinks([new ActionLink(text, () => RequestMemory(pointer))])
         {
-            Suffix = History.GetPointerTarget(pointer, Position)
+            Suffix = target ?? History.GetPointerTarget(pointer, Position)
         };
     }
 
@@ -596,16 +601,6 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         chart.MarkPositions([.. points]);
     }
 
-    public void ShowMarkers(int? offset)
-    {
-        if (offset is { } scroll)
-        {
-            ScrollToOffset = scroll;
-        }
-
-        ApplyMarkers();
-    }
-
     public Windows.UI.Color GetCategoryColour(int callNodeIndex) => History.GetCategoryColour(callNodeIndex);
 
     partial void OnSelectedTabChanged(int value)
@@ -615,6 +610,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
             SelectedChangeSpan = null;
         }
 
+        SelectedMarker = null;
+
         if (value is BatchTab or VectorsTab)
         {
             RefreshBatch();
@@ -622,9 +619,17 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         RefreshPage();
 
-        RefreshBindings();
+        RefreshGenerated();
 
-        RefreshIterator();
+        ApplyMarkers();
+    }
+
+    private void ShowMarkers(int? offset)
+    {
+        if (offset is { } scroll)
+        {
+            ScrollToOffset = scroll;
+        }
 
         ApplyMarkers();
     }
@@ -674,6 +679,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         SelectedChangeSpan = null;
 
+        SelectedMarker = null;
+
         Refresh();
 
         Details.Load(this);
@@ -684,8 +691,6 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         WatchList.Attach(Watches);
 
-        Buffer.Load(this);
-
         Batch.Load(this);
 
         ApplyHashTable(match);
@@ -694,9 +699,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         WorkfilePage.Load(History, Block, HashTableLayout);
 
-        Bindings.Load(this);
-
-        Iterator.Load(this);
+        Generated.Load(this);
 
         ApplyMarkers();
 
@@ -707,11 +710,9 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         RefreshBatch();
 
-        RefreshBindings();
+        RefreshGenerated();
 
-        RefreshIterator();
-
-        ShowAddress(RequestedAddress.Address, RequestedAddress.Length);
+        ShowAddress(RequestedAddress.Address, RequestedAddress.Length, false);
 
         if (RequestedIteratorTabs is { } tabs)
         {
@@ -744,15 +745,6 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         HashTablePartText = HashTablePart is { } part ? HashTablePartLabel.GetText(part) : string.Empty;
     }
-
-    private static string GetSortPartText(TraceSortPartType type) => type switch
-    {
-        TraceSortPartType.Iterator => "Sort Iterator",
-        TraceSortPartType.Rowset => "Rowset",
-        TraceSortPartType.Descriptor => "Sort Descriptor",
-        TraceSortPartType.RecordPage => "Record Page",
-        _ => "Compare Page"
-    };
 
     private void FindSortTable()
     {
@@ -796,7 +788,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         SortTableText = IsSortTableVisible ? $"0x{SortTableIterator:X16}" : string.Empty;
 
-        SortTablePartText = SortTablePart is { } shown ? GetSortPartText(shown.Type) : string.Empty;
+        SortTablePartText = SortTablePart is { } shown ? SortTablePartLabel.GetName(shown.Type) : string.Empty;
     }
 
     private static RowRecordLayout? GetHashTableLayout(MemoryHistoryViewModel history, TraceHashTable table, TracePosition position)
@@ -882,9 +874,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         RefreshBatch();
 
-        RefreshBindings();
-
-        RefreshIterator();
+        RefreshGenerated();
     }
 
     private void Refresh()
@@ -928,8 +918,6 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
             References.SetPointers([]);
 
             WatchList.Refresh(null);
-
-            Buffer.SetData(null);
 
             WorkfilePage.SetData(null);
 
@@ -998,9 +986,9 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
             WatchList.Refresh(Data);
 
-            Buffer.SetData(Data);
+            Generated.Refresh(hex.Pointers);
 
-            Iterator.SetData(Data);
+            SelectAvailableTab();
 
             WorkfilePage.SetData(Data);
 
@@ -1030,11 +1018,9 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
     {
         var markers = SelectedTab switch
         {
-            BufferTab when Buffer.Markers is { } fields => fields,
             BatchTab when Batch.FieldMarkers is { } fields => fields,
             PageTab when WorkfilePage.IsAvailable => WorkfilePage.Markers,
-            BindingsTab when Bindings.Markers is { } fields => fields,
-            IteratorTab when Iterator.Markers is { } fields => fields,
+            GeneratedTab when Generated.Markers is { } fields => fields,
             _ => WriterMarkers
         };
 
@@ -1046,18 +1032,24 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     private bool IsTabAvailable(int tab) => tab switch
     {
-        BufferTab => Buffer.IsAvailable,
         BatchTab => Batch.IsAvailable,
         VectorsTab => Batch.IsVectorsAvailable,
         PageTab => WorkfilePage.IsAvailable,
-        BindingsTab => Bindings.IsAvailable,
-        IteratorTab => Iterator.IsAvailable,
+        GeneratedTab => Generated.IsAvailable,
         _ => true
     };
 
+    private void SelectAvailableTab()
+    {
+        if (!IsTabAvailable(SelectedTab))
+        {
+            SelectedTab = GetFirstTab();
+        }
+    }
+
     private int GetFirstTab()
     {
-        for (var tab = BufferTab; tab < DetailsTab; tab++)
+        for (var tab = BatchTab; tab < DetailsTab; tab++)
         {
             if (IsTabAvailable(tab))
             {
@@ -1084,21 +1076,13 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         }
     }
 
-    private void RefreshBindings()
+    private void RefreshGenerated()
     {
-        if (IsOpen && SelectedTab == BindingsTab)
+        if (IsOpen && SelectedTab == GeneratedTab)
         {
-            Bindings.Refresh(Position);
+            Generated.Refresh(Pointers);
 
-            ApplyMarkers();
-        }
-    }
-
-    private void RefreshIterator()
-    {
-        if (IsOpen && SelectedTab == IteratorTab)
-        {
-            Iterator.Refresh();
+            SelectAvailableTab();
 
             ApplyMarkers();
         }

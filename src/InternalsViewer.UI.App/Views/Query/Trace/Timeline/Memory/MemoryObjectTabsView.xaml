@@ -13,6 +13,7 @@
             <TabViewItem Header="{x:Bind Header}" IsClosable="False" IsSelected="{x:Bind IsSelected, Mode=TwoWay}">
                 <Grid>
                     <results:ResultsGridControl Visibility="{x:Bind HasTable}"
+                                                IsStatusBarVisible="False"
                                                 ResultSet="{x:Bind Table, Mode=OneWay}"
                                                 SelectedRow="{x:Bind SelectedRow, Mode=TwoWay}"/>
                     <local:MemoryObjectTabsView Visibility="{x:Bind HasTabs}" Tabs="{x:Bind Tabs}"/>
@@ -20,16 +21,31 @@
                 </Grid>
             </TabViewItem>
         </DataTemplate>
+
+        <DataTemplate x:Key="SingleTabTemplate" x:DataType="models:MemoryObjectTab">
+            <results:ResultsGridControl IsStatusBarVisible="False"
+                                        ResultSet="{x:Bind Table, Mode=OneWay}"
+                                        SelectedRow="{x:Bind SelectedRow, Mode=TwoWay}"/>
+        </DataTemplate>
     </UserControl.Resources>
 
-    <TabView x:Name="Strip"
-             VerticalAlignment="Stretch"
-             IsAddTabButtonVisible="False"
-             CanDragTabs="False"
-             CanReorderTabs="False"
-             TabWidthMode="SizeToContent"
-             TabItemsSource="{x:Bind Tabs, Mode=OneWay}"
-             TabItemTemplate="{StaticResource ObjectTabTemplate}"
-             TabStripFooter="{x:Bind Footer, Mode=OneWay}"
-             SelectionChanged="OnSelectionChanged"/>
+    <Grid>
+        <TabView x:Name="Strip"
+                 VerticalAlignment="Stretch"
+                 IsAddTabButtonVisible="False"
+                 CanDragTabs="False"
+                 CanReorderTabs="False"
+                 TabWidthMode="SizeToContent"
+                 TabItemsSource="{x:Bind Tabs, Mode=OneWay}"
+                 TabItemTemplate="{StaticResource ObjectTabTemplate}"
+                 SelectionChanged="OnSelectionChanged"/>
+
+        <ContentControl x:Name="SingleTab"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch"
+                        HorizontalContentAlignment="Stretch"
+                        VerticalContentAlignment="Stretch"
+                        Visibility="Collapsed"
+                        ContentTemplate="{StaticResource SingleTabTemplate}"/>
+    </Grid>
 </UserControl>
