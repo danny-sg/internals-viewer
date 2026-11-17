@@ -287,10 +287,6 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
         private const string OrdinalReferenceClass = "CValRefOrdinal";
 
-        private const string StorageReferenceClass = "CValRefSS";
-
-        private const string CalculatedReferenceClass = "CValRefCalculated";
-
         private const string ReferenceClassPrefix = "CValRef";
 
         private const string BatchIteratorPrefix = "CBpQScan";
@@ -473,7 +469,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
 
             Stage.ReferenceClass = className;
 
-            if (className == CalculatedReferenceClass)
+            if (className == PlanOutputValueLayout.CalculatedReferenceClass)
             {
                 AddExpression(reference, owner, depth);
 
@@ -487,7 +483,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
                 return null;
             }
 
-            var producerField = className == StorageReferenceClass
+            var producerField = className == PlanOutputValueLayout.StorageReferenceClass
                 ? Layout.ColumnReference.StorageProducerField
                 : Layout.ColumnReference.ProducerField;
 
@@ -519,7 +515,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
                 return null;
             }
 
-            if (className == StorageReferenceClass)
+            if (className == PlanOutputValueLayout.StorageReferenceClass)
             {
                 SetStorageRecord(reference, producerIterator, depth);
 

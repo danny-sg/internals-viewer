@@ -11,6 +11,8 @@ public sealed class DataPathLink(DataPathField source, bool isBlocking)
 
     public ColumnUseType Use { get; internal set; }
 
+    public bool IsRecordRead { get; internal set; }
+
     public IReadOnlyList<PlanOutputRouteNode>? Readers { get; internal set; }
 
     public bool IsSeen => Readers is not { Count: 0 };

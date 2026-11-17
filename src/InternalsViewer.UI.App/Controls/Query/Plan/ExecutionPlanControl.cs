@@ -54,7 +54,7 @@ public sealed class ExecutionPlanControl : Canvas
     private const double ReturnArrowRotation = 90;
     private const double CalculatorWidth = 14;
     private const double CalculatorHeight = 17;
-    private const double CalculatorGap = 4;
+    private const double CalculatorGap = 2;
     private const double ExpressionSpacing = 4;
     private const int RenderSettleMilliseconds = 100;
 
@@ -1223,9 +1223,9 @@ public sealed class ExecutionPlanControl : Canvas
             Source = CreateCalculatorSource(isInactive)
         };
 
-        var iconLeft = GetLeft(NodeControls[puller]) + BaseNodeWidth / 2 - PlanNodeControl.IconHalfWidth;
+        var iconRight = GetLeft(NodeControls[puller]) + BaseNodeWidth / 2 + PlanNodeControl.GetIconRight(puller);
 
-        SetLeft(image, iconLeft - CalculatorGap - CalculatorWidth);
+        SetLeft(image, iconRight + CalculatorGap);
 
         SetTop(image, GetTop(NodeControls[puller]) + PlanNodeControl.IconCentre - CalculatorHeight / 2);
 

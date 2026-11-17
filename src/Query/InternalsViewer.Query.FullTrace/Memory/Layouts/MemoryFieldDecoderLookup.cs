@@ -1,3 +1,5 @@
+using System.Numerics;
+using InternalsViewer.Internals.Extensions;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings.Enums;
@@ -24,8 +26,16 @@ public static class MemoryFieldDecoderLookup
         MemoryFieldDecoder.SqlType => SqlTypeHelpers.TryGetSqlType((byte)value, out var sqlType) ? $"{sqlType}" : $"0x{value:X2}",
         MemoryFieldDecoder.BindingFlags => GetFlagsText((ColumnBindingFlags)(uint)value),
         MemoryFieldDecoder.RecordOffset => (int)(uint)value is < 0 and var offset ? $"{VariablePrefix}{-offset}" : $"{value}",
+        MemoryFieldDecoder.Bitmap => GetBitmapText(value),
         _ => $"{value}"
     };
+
+    private static string GetBitmapText(ulong value)
+    {
+        var count = Math.Max(1, (sizeof(ulong) * 8 - BitOperations.LeadingZeroCount(value) + 7) / 8);
+
+        return string.Join(" ", BitConverter.GetBytes(value).Take(count).Select(b => b.ToBinaryString()));
+    }
 
     private static string GetLatchText(EngineLayout.BufferLayout layout, ulong state)
     {

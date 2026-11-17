@@ -10,8 +10,9 @@ Base|CQScanFilterNew|CQScanNew
 Base|CQScanStreamAggregateNew|CQScanNew
 Base|CQScanBatchHelper|CQScanNew
 Base|CXteTop|CXte
-Base|CXteTableScan|CXte
-Base|CXteRange|CXte
+Base|CXteRowset|CXte
+Base|CXteTableScan|CXteRowset
+Base|CXteRange|CXteRowset
 Base|CXteStreamAggregate|CXte
 Base|CValRefOrdinal|CValRefComp
 Base|CValRefPrefetch|CValRefOrdinal
@@ -77,6 +78,7 @@ CXte|Inputs|0x18|8|Pointer||
 CXte|Query|0x28|8|Pointer||
 CXte|Output Columns|0x30|8|Pointer||CXte::CXte
 CXteTop|Top Count Expression|0x88|8|Pointer||
+CXteRowset|Direct Select|0x88|1|Number||CXteRowset::EnableDirectSelect
 CXteTableScan|Rowset Id|0xB0|8|Pointer||
 CXteRange|Rowset Id|0xB0|8|Pointer||
 CXteStreamAggregate|Group Count|0x60|4|Number||CXteStreamAggregate::CXteStreamAggregate
@@ -89,12 +91,12 @@ CBndOutputs|Memory Object|0x00|8|Pointer||CBndOutputs::CBndOutputs
 CBndOutputs|Count|0x08|4|Number||
 CBndOutputs|Capacity|0x0C|4|Number||CBndOutputs::CBndOutputs
 CBndOutputs|Columns|0x10|8|Pointer||CBndOutputs::CBndOutputs
-CBndOutputs|Column Bits Length|0x20|4|Number||CBitVector::Init
-CBndOutputs|Column Bits Memory Object|0x28|8|Pointer||CBitVector::Init
-CBndOutputs|Column Bits|0x30|8|Hex||CBitVector::Set
+CBndOutputs|Prefetch Columns Length|0x20|4|Number||CBitVector::Init
+CBndOutputs|Prefetch Columns Memory Object|0x28|8|Pointer||CBitVector::Init
+CBndOutputs|Prefetch Columns|0x30|4|Bitmap||CBitVector::Set
 CBndOutputs|Column Flags Length|0x38|4|Number||CBitVector::Init
 CBndOutputs|Column Flags Memory Object|0x40|8|Pointer||CBitVector::Init
-CBndOutputs|Column Flags|0x48|8|Hex||CBitVector::Set
+CBndOutputs|Column Flags|0x48|4|Bitmap||CBitVector::Set
 OutputColumnArray|Column|0x00|8|Pointer||CXte::RemapOutputValrefs,CBpXte::BpCompile,CBndOutputs::Append
 CValRefComp|Interface|0x28|8|Pointer||CValComp::CValComp
 CValRefComp|Type|0x30|8|Hex||

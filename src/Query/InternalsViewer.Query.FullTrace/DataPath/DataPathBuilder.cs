@@ -278,11 +278,18 @@ public sealed class DataPathBuilder
 
             var path = GetPath(node.NodeId, output);
 
+            var column = GetColumn(node, outputs.Count, index);
+
+            if (IsCarriedExpression(node, column, path))
+            {
+                continue;
+            }
+
             var held = route?.Columns.ElementAtOrDefault(index) is { Node: { } found } location && location.NodeId == node.NodeId
                 ? found
                 : null;
 
-            var field = new DataPathField(node, GetColumn(node, outputs.Count, index))
+            var field = new DataPathField(node, column)
             {
                 Output = output,
                 Type = output.Type,
@@ -352,14 +359,14 @@ public sealed class DataPathBuilder
 
             var sources = new List<DataPathField>();
 
+            (PlanNode Expression, DefinedValueInfo Value)? definition = null;
+
             if (FindChild(node, column.Column, column.Table) is { } child)
             {
-                (PlanNode Expression, DefinedValueInfo Value)? definition = null;
-
                 GetSources(child, column.Column, column.Table, sources, ref definition);
             }
 
-            if (sources is [var single])
+            if (definition is null && sources is [var single])
             {
                 Outputs[(node.NodeId, index)] = single;
             }
@@ -513,11 +520,18 @@ public sealed class DataPathBuilder
     private static DefinedValueInfo? FindDefinition(PlanNode node, string column, string table)
         => node.DefinedValues.Find(d => d.Expression is { Length: > 0 } && d.Columns.Exists(c => IsMatch(c, column, table)));
 
+    private static bool IsCarriedExpression(PlanNode node, ColumnReference column, PlanOutputPath path)
+        => path.Stages is [{ ReferenceClass: PlanOutputValueLayout.CalculatedReferenceClass }, ..]
+           && FindDefinition(node, column.Column, column.Table) is null;
+
     private void Link(DataPathField field, DataPathField source, ColumnUseType use)
     {
         if (field.Inputs.Find(l => l.Source == source) is not { } link)
         {
-            link = new DataPathLink(source, !field.Node.IsStatement && IsBlockingInput(field.Node.NodeId, source.Node.NodeId));
+            link = new DataPathLink(source, !field.Node.IsStatement && IsBlockingInput(field.Node.NodeId, source.Node.NodeId))
+            {
+                IsRecordRead = field.Stage?.ReferenceClass == PlanOutputValueLayout.StorageReferenceClass
+            };
 
             field.Inputs.Add(link);
         }

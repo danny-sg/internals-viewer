@@ -1,7 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Helpers;
-using InternalsViewer.Query.FullTrace.Symbols.Categories;
 using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
 using InternalsViewer.Query.FullTrace.Symbols.Dia;
 using InternalsViewer.Query.FullTrace.Symbols.Enums;

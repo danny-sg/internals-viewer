@@ -45,6 +45,8 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
 
     private const string PointerPrefix = "Pointer: ";
 
+    private const string IndirectPrefix = "→ ";
+
     private const string OpenMemoryCommand = "Open Memory";
 
     private const string OpenPageCommand = "Open Page";
@@ -110,6 +112,12 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
 
     [ObservableProperty]
     private string _emptyText = string.Empty;
+
+    [ObservableProperty]
+    private bool _isLoading;
+
+    [ObservableProperty]
+    private string? _loadingMessage;
 
     [ObservableProperty]
     private List<HexLink>? _links;
@@ -464,6 +472,18 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
         var position = Position;
 
         var block = History.GetBlock(pointer, position);
+
+        if (block >= 0 && History.GetIndirectPointer(pointer, position) is { } inner)
+        {
+            var innerBlock = History.GetBlock(inner, position);
+
+            return new ActionLinks([new ActionLink(text, () => Navigator.OpenMemory(block, pointer, position)),
+                                    new ActionLink($"{IndirectPrefix}{GetAddressText(inner)}",
+                                                   () => Navigator.OpenMemory(innerBlock, inner, position))])
+            {
+                Suffix = History.GetPointerTarget(inner, position)
+            };
+        }
 
         if (block >= 0)
         {
@@ -883,6 +903,11 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
             else if (block >= 0)
             {
                 var target = History.GetPointerTarget(value, position) ?? GetAddressText(value);
+
+                if (History.GetIndirectPointer(value, position) is { } inner)
+                {
+                    target += $" {IndirectPrefix}{History.GetPointerTarget(inner, position)}";
+                }
 
                 links.Add(new HexLink(offset,
                                       size,

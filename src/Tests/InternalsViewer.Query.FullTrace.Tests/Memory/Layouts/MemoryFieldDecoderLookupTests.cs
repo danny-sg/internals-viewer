@@ -35,6 +35,13 @@ public class MemoryFieldDecoderLookupTests
     public void A_Negative_Record_Offset_Is_A_Variable_Column(ulong offset, string expected)
         => Assert.Equal(expected, MemoryFieldDecoderLookup.GetText(EngineLayout.Latest, MemoryFieldDecoder.RecordOffset, offset));
 
+    [Theory]
+    [InlineData(0x0UL, "00000000")]
+    [InlineData(0x6UL, "01100000")]
+    [InlineData(0x101UL, "10000000 10000000")]
+    public void A_Bitmap_Is_Read_Lowest_Bit_First_A_Byte_At_A_Time(ulong bits, string expected)
+        => Assert.Equal(expected, MemoryFieldDecoderLookup.GetText(EngineLayout.Latest, MemoryFieldDecoder.Bitmap, bits));
+
     [Fact]
     public void A_Field_Whose_Kind_Is_A_Decoder_Uses_It()
         => Assert.Equal(MemoryFieldDecoder.Latch, EngineLayout.Latest.GetStructure("BUF").Get("Latch State").Decoder);

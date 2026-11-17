@@ -1,6 +1,5 @@
 using InternalsViewer.Internals.Engine.Pages;
 using InternalsViewer.Query.Extensions;
-using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory.Address;
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Memory.History;

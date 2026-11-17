@@ -2,7 +2,6 @@ using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Iterators.Enums;
 using InternalsViewer.Query.Events;
 using InternalsViewer.Query.Events.Operators;
-using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.Plans.Model;
 
 namespace InternalsViewer.Query.FullTrace.Iterators;

@@ -159,6 +159,9 @@ public sealed partial class PlanNodeControl : UserControl
 
     private SvgImageSource? CreatedIconSource { get; set; }
 
+    public static double GetIconRight(PlanNode node)
+        => IconHalfWidth + (PlanIconParts.HasPage(PlanIconResolver.GetAssetName(node)) ? IndicatorWidth : 0);
+
     public void SetRenderScale(double scale, double zoom)
     {
         RenderScale = scale;

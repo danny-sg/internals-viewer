@@ -277,5 +277,23 @@
                                          Text="{x:Bind ViewModel.Expression, Mode=OneWay}"
                                          Visibility="{x:Bind ViewModel.IsExpressionVisible, Mode=OneWay}"/>
         </Grid>
+
+        <Grid Grid.Row="1"
+              Grid.ColumnSpan="3"
+              Background="{ThemeResource SolidBackgroundFillColorTertiaryBrush}"
+              Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay}">
+            <StackPanel Orientation="Vertical"
+                        Spacing="8"
+                        MaxWidth="360"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
+                <ProgressRing IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}"
+                              HorizontalAlignment="Center"/>
+                <TextBlock Text="{x:Bind ViewModel.LoadingMessage, Mode=OneWay}"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center"
+                           TextWrapping="Wrap"/>
+            </StackPanel>
+        </Grid>
     </Grid>
 </UserControl>

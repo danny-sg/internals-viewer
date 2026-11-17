@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -22,6 +23,7 @@ using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.Services.Query.Trace;
 using InternalsViewer.UI.App.ViewModels.Query.Trace.OperatorTracks;
+using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
@@ -38,9 +40,11 @@ public sealed partial class QueryViewModel
 
     private ILookup<(PlanNode Puller, ExpressionPullSite Site), ExpressionPull>? CreatedExpressionPulls { get; set; }
 
-    private Dictionary<PlanNode, Dictionary<string, PredicateText>> PlanValues { get; } = [];
+    private ConcurrentDictionary<PlanNode, Dictionary<string, PredicateText>> PlanValues { get; } = [];
 
-    private Dictionary<PlanNode, List<(string Column, SqlDbType? Type)>> SeekKeyColumns { get; } = [];
+    private ConcurrentDictionary<PlanNode, List<(string Column, SqlDbType? Type)>> SeekKeyColumns { get; } = [];
+
+    private int TickTrackVersion { get; set; }
 
     public void AddTickTrack(TraceTrackRule definition) => TickTrackStore.Add(definition);
 
@@ -105,16 +109,29 @@ public sealed partial class QueryViewModel
             : string.Empty;
     }
 
-    private void OnTickTrackStoreChanged(object? sender, PropertyChangedEventArgs e)
+#pragma warning disable VSTHRD100
+    private async void OnTickTrackStoreChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(TraceTickTrackStore.Definitions))
+        if (e.PropertyName != nameof(TraceTickTrackStore.Definitions))
         {
-            RefreshTickTracks();
+            return;
+        }
+
+        try
+        {
+            await RefreshTickTracksAsync();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "The tick tracks could not be built");
         }
     }
+#pragma warning restore VSTHRD100
 
     private void ResetTickTracks()
     {
+        TickTrackVersion++;
+
         ClearTickTrackCache();
 
         TickTracks = [];
@@ -131,8 +148,10 @@ public sealed partial class QueryViewModel
         TrackSeries.Clear();
     }
 
-    private void RefreshTickTracks()
+    private async Task RefreshTickTracksAsync()
     {
+        var version = ++TickTrackVersion;
+
         if (Trace is not { } trace)
         {
             ResetTickTracks();
@@ -140,60 +159,64 @@ public sealed partial class QueryViewModel
             return;
         }
 
-        var definitions = TickTrackStore.Definitions;
+        List<TraceTrackRule[]> groups = [.. TickTrackStore.Definitions.GroupBy(d => d.Name, StringComparer.OrdinalIgnoreCase)
+                                                                      .Select(g => g.ToArray())];
 
-        var groups = definitions.GroupBy(d => d.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        var cached = groups.Select(GetCachedSeries).ToList();
 
-        var names = groups.Select(g => g.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var statement = GetStatementOperator();
 
-        foreach (var stale in TrackSeries.Keys.Where(k => !names.Contains(k)).ToList())
+        var getPulled = GetPulledComputeScalarLookup();
+
+        var built = await Task.Run(() => groups.Select((g, i) => cached[i] ?? TraceTrackBuilder.Build(trace, g, statement, getPulled))
+                                               .ToList());
+
+        if (version != TickTrackVersion || !ReferenceEquals(trace, Trace))
         {
-            TrackSeries.Remove(stale);
+            return;
         }
+
+        TrackSeries.Clear();
 
         List<TraceTickTrack> tracks = [];
 
         for (var index = 0; index < groups.Count; index++)
         {
-            TraceTrackRule[] rules = [.. groups[index]];
+            var series = built[index];
 
-            if (!TrackSeries.TryGetValue(groups[index].Key, out var cache)
-                || !cache.Rules.SequenceEqual(rules, ReferenceEqualityComparer.Instance))
-            {
-                var series = TraceTrackBuilder.Build(trace, rules, GetStatementOperator(), GetPulledComputeScalars);
-
-                cache = new TickTrackCache(rules, series);
-
-                TrackSeries[groups[index].Key] = cache;
-            }
+            TrackSeries[groups[index][0].Name] = new TickTrackCache(groups[index], series);
 
             tracks.Add(TraceTickTracks.Create(trace,
-                                              rules,
-                                              cache.Series,
+                                              groups[index],
+                                              series,
                                               index,
                                               TickTrackStore.IsAdded,
                                               GetParentOperatorName,
                                               GetStepPredicate,
-                                              cache.Series.GetWatch));
+                                              series.GetWatch));
         }
 
         TickTracks = tracks;
     }
 
+    private TraceTickTrackSeries? GetCachedSeries(TraceTrackRule[] rules)
+        => TrackSeries.TryGetValue(rules[0].Name, out var cache) && cache.Rules.SequenceEqual(rules, ReferenceEqualityComparer.Instance)
+            ? cache.Series
+            : null;
+
     private ExecutionOperatorEvent? GetStatementOperator()
         => Events.OfType<ExecutionOperatorEvent>().FirstOrDefault(o => GetPlanNode(o) is { IsStatement: true });
 
-    private List<ExecutionOperatorEvent> GetPulledComputeScalars(ExecutionOperatorEvent puller, ExpressionPullSite site)
+    private Func<ExecutionOperatorEvent, ExpressionPullSite, List<ExecutionOperatorEvent>> GetPulledComputeScalarLookup()
     {
-        if (GetPlanNode(puller) is not { } node)
-        {
-            return [];
-        }
-
         var operators = Events.OfType<ExecutionOperatorEvent>().ToList();
 
-        return [.. ExpressionPulls[(node, site)].Select(p => operators.Find(o => ReferenceEquals(GetPlanNode(o), p.ComputeScalar)))
-                                                .OfType<ExecutionOperatorEvent>()];
+        var pulls = ExpressionPulls;
+
+        return (puller, site) => GetPlanNode(puller) is { } node
+            ? [.. pulls[(node, site)].Select(p => operators.Find(o => ReferenceEquals(GetPlanNode(o), p.ComputeScalar)))
+                                     .OfType<ExecutionOperatorEvent>()]
+            : [];
     }
 
     private IReadOnlyList<DefinedValueInfo> GetEvaluatedValues(TraceTick tick)

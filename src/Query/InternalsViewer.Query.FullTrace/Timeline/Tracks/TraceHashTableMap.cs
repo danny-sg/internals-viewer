@@ -1,6 +1,6 @@
+using System.Collections.Concurrent;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
-using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
 using System.Buffers.Binary;
@@ -21,7 +21,7 @@ public sealed class TraceHashTableMap(TraceResult trace)
 
     private const int HashArgument = 2;
 
-    private Dictionary<ExecutionOperatorEvent, Layout?> Layouts { get; } = new(ReferenceEqualityComparer.Instance);
+    private ConcurrentDictionary<ExecutionOperatorEvent, Layout?> Layouts { get; } = new(ReferenceEqualityComparer.Instance);
 
     private EngineLayout Engine => trace.MemoryHistory.Layout;
 
@@ -53,16 +53,7 @@ public sealed class TraceHashTableMap(TraceResult trace)
         => ((int)((hash & partitionMask) >> partitionShift), (int)(hash & bucketMask));
 
     private Layout? GetLayout(TraceTick tick, TraceArgumentCall call)
-    {
-        if (!Layouts.TryGetValue(tick.Operator, out var layout))
-        {
-            layout = ReadLayout(tick, call);
-
-            Layouts[tick.Operator] = layout;
-        }
-
-        return layout;
-    }
+        => Layouts.TryGetValue(tick.Operator, out var layout) ? layout : Layouts.GetOrAdd(tick.Operator, ReadLayout(tick, call));
 
     private Layout? ReadLayout(TraceTick tick, TraceArgumentCall call)
     {

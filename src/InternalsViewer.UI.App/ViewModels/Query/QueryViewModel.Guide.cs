@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using InternalsViewer.Query.Events.Operators;
@@ -16,6 +17,7 @@ using InternalsViewer.UI.App.Models.Query.Plan;
 using InternalsViewer.UI.App.Models.Query.Plan.Enums;
 using InternalsViewer.UI.App.Models.Query.Trace.Timeline;
 using InternalsViewer.UI.App.Services.Query.Trace;
+using Microsoft.Extensions.Logging;
 
 namespace InternalsViewer.UI.App.ViewModels.Query;
 
@@ -66,6 +68,10 @@ public sealed partial class QueryViewModel
     private bool GuideStepsDetailed { get; set; }
 
     private List<(int Index, PlanNode Node)> GuidePhaseStarts { get; set; } = [];
+
+    private int GuideStepVersion { get; set; }
+
+    private ulong GuidePositionOrigin => TraceTimeline?.Start.Position.Sequence ?? 0;
 
     public void SelectGuideStep(GuideStepItem item) => SelectGuideStep(item.Index);
 
@@ -358,7 +364,7 @@ public sealed partial class QueryViewModel
 
     private void SetGuidePositionText()
     {
-        var origin = TraceTimeline?.Start.Position.Sequence ?? 0;
+        var origin = GuidePositionOrigin;
 
         foreach (var item in GuideStepItems)
         {
@@ -376,34 +382,79 @@ public sealed partial class QueryViewModel
 
     private List<TraceTrackStep> GetGuideSteps()
     {
-        if (GuideSteps is not { } steps
-            || !ReferenceEquals(GuideStepsAdditional, _settingsViewModel.PlanAdditionalStepSet)
-            || GuideStepsDetailed != _settingsViewModel.PlanDetailedSteps)
+        if (Layout.IsGuideMode
+            && (!ReferenceEquals(GuideStepsAdditional, _settingsViewModel.PlanAdditionalStepSet)
+                || GuideStepsDetailed != _settingsViewModel.PlanDetailedSteps))
         {
-            return RefreshGuideSteps();
+            RefreshGuideSteps();
         }
 
-        return steps;
+        return GuideSteps ?? [];
     }
 
-    private List<TraceTrackStep> RefreshGuideSteps()
+#pragma warning disable VSTHRD100
+    private async void RefreshGuideSteps(Action<List<TraceTrackStep>>? then = null)
     {
-        GuideStepsAdditional = _settingsViewModel.PlanAdditionalStepSet;
+        var version = ++GuideStepVersion;
 
-        GuideStepsDetailed = _settingsViewModel.PlanDetailedSteps;
+        var tracks = TickTracks;
 
-        var steps = TraceTickTracks.GetPlanSteps(TickTracks, GuideStepsAdditional, GuideStepsDetailed);
+        var isGuideMode = Layout.IsGuideMode;
 
-        GuideSteps = steps;
+        var origin = GuidePositionOrigin;
 
-        GuidePhaseStarts = GetPhaseStarts(steps);
+        var additional = _settingsViewModel.PlanAdditionalStepSet;
 
-        BuildGuideStepGroups(Layout.IsGuideMode ? steps : []);
+        var isDetailed = _settingsViewModel.PlanDetailedSteps;
 
-        return steps;
+        GuideStepsAdditional = additional;
+
+        GuideStepsDetailed = isDetailed;
+
+        try
+        {
+            var build = await Task.Run(() => BuildGuideSteps(tracks, additional, isDetailed, isGuideMode, origin));
+
+            if (version != GuideStepVersion)
+            {
+                return;
+            }
+
+            GuideSteps = build.Steps;
+
+            GuidePhaseStarts = build.PhaseStarts;
+
+            SetGuideStepItems(build.Items, build.Groups);
+
+            if (origin != GuidePositionOrigin)
+            {
+                SetGuidePositionText();
+            }
+
+            then?.Invoke(build.Steps);
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "The Guide Mode steps could not be built");
+        }
+    }
+#pragma warning restore VSTHRD100
+
+    private GuideStepBuild BuildGuideSteps(IReadOnlyList<TraceTickTrack> tracks,
+                                           IReadOnlySet<string> additional,
+                                           bool isDetailed,
+                                           bool isGuideMode,
+                                           ulong origin)
+    {
+        var steps = TraceTickTracks.GetPlanSteps(tracks, additional, isDetailed);
+
+        var (items, groups) = CreateGuideStepItems(isGuideMode ? steps : [], origin);
+
+        return new GuideStepBuild(steps, GetPhaseStarts(steps), items, groups);
     }
 
-    private void BuildGuideStepGroups(List<TraceTrackStep> steps)
+    private (List<GuideStepItem> Items, ObservableCollection<GuideStepGroup> Groups) CreateGuideStepItems(List<TraceTrackStep> steps,
+                                                                                                          ulong origin)
     {
         var items = new List<GuideStepItem>(steps.Count);
 
@@ -444,13 +495,21 @@ public sealed partial class QueryViewModel
                                          TraceTickTracks.GetStepPredicate(step),
                                          GetStepPlacement(step),
                                          TraceTickTracks.IsStickyStep(step, index, nesting),
-                                         step.Point.Position);
+                                         step.Point.Position)
+            {
+                PositionText = TracePositionText.GetRulerText(step.Point.Position, origin)
+            };
 
             group.Add(item);
 
             items.Add(item);
         }
 
+        return (items, groups);
+    }
+
+    private void SetGuideStepItems(List<GuideStepItem> items, ObservableCollection<GuideStepGroup> groups)
+    {
         CurrentGuideStep = null;
 
         GuidePhase = string.Empty;
@@ -460,8 +519,6 @@ public sealed partial class QueryViewModel
         GuideStepGroups = groups;
 
         GuideTree = new GuideStepTree(items, groups);
-
-        SetGuidePositionText();
     }
 
     private static void SetCurrent(GuideStepItem? item, bool isCurrent)
@@ -548,12 +605,13 @@ public sealed partial class QueryViewModel
     {
         GuidePlayback.Stop();
 
-        var steps = RefreshGuideSteps();
-
-        if (TraceTimelineTab.Playhead is { } position && TraceTickTracks.GetLatestStepIndex(steps, position) is >= 0 and var index)
+        RefreshGuideSteps(steps =>
         {
-            GoToGuideStep(index);
-        }
+            if (TraceTimelineTab.Playhead is { } position && TraceTickTracks.GetLatestStepIndex(steps, position) is >= 0 and var index)
+            {
+                GoToGuideStep(index);
+            }
+        });
     }
 
     private static PlanStepPlacement GetStepPlacement(TraceTrackStep step)
@@ -612,7 +670,9 @@ public sealed partial class QueryViewModel
         }
         else
         {
-            BuildGuideStepGroups([]);
+            GuideStepVersion++;
+
+            SetGuideStepItems([], []);
         }
 
         if (RowFlowPosition is { } position)
@@ -622,4 +682,9 @@ public sealed partial class QueryViewModel
             UpdatePlanActivity(position);
         }
     }
+
+    private sealed record GuideStepBuild(List<TraceTrackStep> Steps,
+                                         List<(int Index, PlanNode Node)> PhaseStarts,
+                                         List<GuideStepItem> Items,
+                                         ObservableCollection<GuideStepGroup> Groups);
 }

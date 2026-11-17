@@ -1,4 +1,3 @@
-using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
 using System.Runtime.InteropServices;
 

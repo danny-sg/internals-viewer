@@ -101,19 +101,6 @@
 
                 <AppBarSeparator/>
 
-                <!--Trace-->
-                <AppBarElementContainer VerticalContentAlignment="Center">
-                    <Button Margin="3,0,3,0"
-                            Command="{x:Bind SimulationCommand, Mode=OneWay}"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            ToolTipService.ToolTip="Step through the query's plan in the Simulation tab">
-                        <TextBlock Text="Simulation" VerticalAlignment="Center" />
-                    </Button>
-                </AppBarElementContainer>
-
-                <AppBarSeparator/>
-
                 <!--Clear Buffer Pool Toggle-->
                 <AppBarElementContainer VerticalContentAlignment="Center">
                     <ToggleButton Margin="12,0,8,0"

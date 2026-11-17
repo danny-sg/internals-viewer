@@ -219,25 +219,26 @@ internal sealed class ReplaySession : IDisposable
 
         var operations = AddressMapHook.GetOperations(functions.AddressMapFunctions);
 
-        var addressMap = new AddressMapHook(operations,
-                                            functions.AllocationFunctions
-                                                     .Where(f => f is { IsAllocation: true, IsVirtual: false })
-                                                     .Select(f => new AddressMapFunction(f.Address, AddressMapOperation.Allocated)),
-                                            VtableResolver.GetUniqueClasses(functions.Vtables));
+        var addressMapHook = new AddressMapHook(operations,
+                                                functions.AllocationFunctions
+                                                         .Where(f => f is { IsAllocation: true, IsVirtual: false })
+                                                         .Select(f => new AddressMapFunction(f.Address, AddressMapOperation.Allocated)),
+                                                VtableResolver.GetUniqueClasses(functions.Vtables));
 
         var planNodeHook = new PlanNodeHook(functions.PlanNodeFunctions, functions.PlanObjects);
 
-        var bufferPool = new BufferPoolHook(functions.BufferPoolFunctions);
+        var bufferPoolHook = new BufferPoolHook(functions.BufferPoolFunctions);
 
-        var stack = isStackCaptured ? new StackSnapshotHook(operations) : null;
+        var stackSnapshotHook = isStackCaptured ? new StackSnapshotHook(operations) : null;
 
-        var hooks = new TraceHookDispatcher([planNodeHook,
-                                    new LocatorHook(functions.LocatorReads, store, images),
-                                    new StackArgumentHook(functions.StackArguments, store),
-                                    addressMap,
-                                    bufferPool,
-                                    .. stack is null ? Array.Empty<ITraceHook>() : [stack]],
-                                   Layout);
+        var hooks = new TraceHookDispatcher([
+                                                planNodeHook,
+                                                new LocatorHook(functions.LocatorReads, store, images),
+                                                new StackArgumentHook(functions.StackArguments, store),
+                                                addressMapHook,
+                                                bufferPoolHook,
+                                                .. stackSnapshotHook is null ? Array.Empty<ITraceHook>() : [stackSnapshotHook]
+                                            ], Layout);
 
         ReplayBridge.HookCallback onHook = hooks.OnHook;
 
@@ -305,12 +306,12 @@ internal sealed class ReplaySession : IDisposable
                                         Modules,
                                         store.Build(),
                                         timeline.Build(nodes),
-                                        addressMap.Build(),
-                                        bufferPool.Build(),
+                                        addressMapHook.Build(),
+                                        bufferPoolHook.Build(),
                                         planNodeHook.GetPlanNodes())
                 {
-                    Buffers = bufferPool.GetBuffers(),
-                    StackSnapshotResult = stack?.Build() ?? StackSnapshotResult.Empty
+                    Buffers = bufferPoolHook.GetBuffers(),
+                    StackSnapshotResult = stackSnapshotHook?.Build() ?? StackSnapshotResult.Empty
                 };
             }
             finally

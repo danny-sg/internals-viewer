@@ -51,6 +51,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
     private const string PointerPrefix = "Pointer: ";
 
+    private const string IndirectPrefix = "→ ";
+
     [ObservableProperty]
     private bool _isOpen;
 
@@ -184,6 +186,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
     private (ulong Address, int Length) RequestedAddress { get; set; }
 
     private IReadOnlyList<string>? RequestedIteratorTabs { get; set; }
+
+    private bool IsDefaultTabPending { get; set; }
 
     public bool Open(int block, ulong address, TracePosition position)
     {
@@ -375,6 +379,15 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
             return GetBufferPageCell(text, pointer, Position) ?? text;
         }
 
+        if (target is null && History.GetIndirectPointer(pointer, Position) is { } inner)
+        {
+            return new ActionLinks([new ActionLink(text, () => RequestMemory(pointer)),
+                                    new ActionLink($"{IndirectPrefix}0x{inner:X16}", () => RequestMemory(inner))])
+            {
+                Suffix = History.GetPointerTarget(inner, Position)
+            };
+        }
+
         return new ActionLinks([new ActionLink(text, () => RequestMemory(pointer))])
         {
             Suffix = target ?? History.GetPointerTarget(pointer, Position)
@@ -511,17 +524,12 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         SelectedChangeSpan = null;
 
-        string? function = null;
-
-        foreach (var run in Runs)
+        if (Runs.FindIndex(r => r.Start <= offset && offset <= r.End) is not (>= 0 and var index))
         {
-            if (run.Start <= offset && offset <= run.End)
-            {
-                function = run.State == MemoryChangeState.Pending ? null : History.GetWriterLabel(run.CallNodeIndex);
-
-                break;
-            }
+            return;
         }
+
+        var function = Runs[index].State == MemoryChangeState.Pending ? null : History.GetWriterLabel(Runs[index].CallNodeIndex);
 
         ShowWrites(function, History.Store.Blocks[Block].Address + (ulong)offset);
     }
@@ -703,10 +711,9 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         ApplyMarkers();
 
-        if (!IsTabAvailable(SelectedTab) || SelectedTab == DetailsTab)
-        {
-            SelectedTab = GetFirstTab();
-        }
+        IsDefaultTabPending = true;
+
+        SelectFirstTab();
 
         RefreshBatch();
 
@@ -954,6 +961,11 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
             {
                 var target = History.GetPointerTarget(value, Position) ?? $"0x{value:X16}";
 
+                if (History.GetIndirectPointer(value, Position) is { } inner)
+                {
+                    target += $" {IndirectPrefix}{History.GetPointerTarget(inner, Position)}";
+                }
+
                 links.Add(new HexLink(offset,
                                       MemoryHistoryPointerReader.PointerSize,
                                       PointerPrefix + target,
@@ -1011,6 +1023,13 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
             References.SetPointers(hex.Pointers);
         }
 
+        if (IsDefaultTabPending)
+        {
+            IsDefaultTabPending = false;
+
+            SelectFirstTab();
+        }
+
         ApplyMarkers();
     }
 
@@ -1038,6 +1057,14 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         GeneratedTab => Generated.IsAvailable,
         _ => true
     };
+
+    private void SelectFirstTab()
+    {
+        if (!IsTabAvailable(SelectedTab) || SelectedTab == DetailsTab)
+        {
+            SelectedTab = GetFirstTab();
+        }
+    }
 
     private void SelectAvailableTab()
     {

@@ -14,6 +14,7 @@ using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events;
+using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.DataPath;
 using InternalsViewer.Query.FullTrace.Iterators;
@@ -132,6 +133,8 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
     private Dictionary<(int Block, ulong Offset), string> PointerFields { get; } = [];
 
+    private Dictionary<int, bool> UnnamedBlocks { get; } = [];
+
     private TraceTablePartResolver? LoadedTableParts { get; set; }
 
     private TraceTablePartResolver TableParts
@@ -163,6 +166,8 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
         PointerTargets.Clear();
 
         PointerFields.Clear();
+
+        UnnamedBlocks.Clear();
 
         lock (DataPathMaps)
         {
@@ -258,6 +263,25 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
         }
 
         return target;
+    }
+
+    public string? GetPointerDetail(ulong address)
+        => Iterators.TryGetValue(address, out var target) && target.Operator?.PlanNodeIdentifier is not null
+            ? $"{target.TypeName} › {target.Label}"
+            : null;
+
+    public ulong? GetIndirectPointer(ulong address, TracePosition position)
+    {
+        var block = Store.GetBlock(address, position);
+
+        if (block < 0 || !IsUnnamed(block))
+        {
+            return null;
+        }
+
+        return new MemoryHistoryReader(Store, position).TryRead(address, out ulong value) && Store.GetBlock(value, position) >= 0
+            ? value
+            : null;
     }
 
     public TraceBufferPool BufferPool => Trace?.BufferPool ?? TraceBufferPool.Empty;
@@ -638,6 +662,23 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
            ?? GetVtableLabel(Store.Blocks[block])
            ?? GetMapLabel(Store.Blocks[block])
            ?? (Store.Blocks[block].IsIterator ? IteratorObject : string.Empty);
+
+    private bool IsUnnamed(int block)
+    {
+        if (!UnnamedBlocks.TryGetValue(block, out var isUnnamed))
+        {
+            var info = Store.Blocks[block];
+
+            isUnnamed = !info.IsIterator
+                        && Trace?.AddressMap.GetClassName(info.Address, info.FromPosition, info.ToPosition) is null
+                        && GetObjectLabel(block) is var label
+                        && (label.Length == 0 || label == GetMapLabel(info));
+
+            UnnamedBlocks[block] = isUnnamed;
+        }
+
+        return isUnnamed;
+    }
 
     private string? GetTablePartName(int block)
     {

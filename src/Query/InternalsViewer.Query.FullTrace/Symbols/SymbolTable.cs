@@ -2,7 +2,6 @@ using System.IO.Compression;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
-using InternalsViewer.Query.FullTrace.Symbols;
 using InternalsViewer.Query.FullTrace.Symbols.Enums;
 using InternalsViewer.Query.Events.Parsing;
 using InternalsViewer.Query.FullTrace.Symbols.Dia;

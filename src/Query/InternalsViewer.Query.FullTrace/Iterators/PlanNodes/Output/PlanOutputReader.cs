@@ -3,7 +3,6 @@ using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.Layouts;
-using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 
 namespace InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
 

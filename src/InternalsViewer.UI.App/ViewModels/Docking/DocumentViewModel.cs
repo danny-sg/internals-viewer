@@ -42,7 +42,16 @@ public sealed partial class DocumentViewModel(string title,
     /// <summary>
     /// The object set as the view's <c>DataContext</c> (e.g. the shared query view model)
     /// </summary>
-    public object Content { get; } = content;
+    public object Content
+    {
+        get;
+        set
+        {
+            field = value;
+
+            _cachedView?.DataContext = value;
+        }
+    } = content;
 
     /// <summary>
     /// Builds a view instance for this document

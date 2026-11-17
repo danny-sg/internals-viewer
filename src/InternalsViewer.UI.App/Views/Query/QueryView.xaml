@@ -67,9 +67,10 @@
                                    IsChecked="{x:Bind ViewModel.Layout.IsExecutionPlanVisible, Mode=TwoWay}"/>
                                 <ToggleMenuFlyoutItem Text="Events"
                                    IsChecked="{x:Bind ViewModel.Layout.IsEventsVisible, Mode=TwoWay}"
-                                   IsEnabled="{x:Bind ViewModel.Layout.CanShowEventViews, Mode=OneWay}"/>
+                                   Visibility="{x:Bind ViewModel.Layout.CanShowEventViews, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
-                                <MenuFlyoutSubItem Text="Calls">
+                                <MenuFlyoutSubItem Text="Calls"
+                                                   Visibility="{x:Bind ViewModel.Layout.IsTrace, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                                     <ToggleMenuFlyoutItem Text="Call Tree"
                                        IsChecked="{x:Bind ViewModel.Layout.IsCallTreeVisible, Mode=TwoWay}"/>
                                     <MenuFlyoutSeparator/>
@@ -81,14 +82,21 @@
                                 <MenuFlyoutSeparator/>
                                 <ToggleMenuFlyoutItem Text="Timeline"
                                    IsChecked="{x:Bind ViewModel.Layout.IsTimelineVisible, Mode=TwoWay}"
-                                   IsEnabled="{x:Bind ViewModel.Layout.CanShowEventViews, Mode=OneWay}"/>
+                                   Visibility="{x:Bind ViewModel.Layout.CanShowEventViews, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                 <ToggleMenuFlyoutItem Text="Trace Timeline"
                                    IsChecked="{x:Bind ViewModel.Layout.IsTraceTimelineVisible, Mode=TwoWay}"
-                                   IsEnabled="{x:Bind ViewModel.Layout.IsTrace, Mode=OneWay}"/>
+                                   Visibility="{x:Bind ViewModel.Layout.IsTrace, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                 <ToggleMenuFlyoutItem Text="Pin Timeline"
                                    IsChecked="{x:Bind Settings.PinTimeline, Mode=TwoWay}"/>
                                 <ToggleMenuFlyoutItem Text="Simulation"
                                    IsChecked="{x:Bind ViewModel.IsSimulationVisible, Mode=TwoWay}"/>
+                                <MenuFlyoutSeparator Visibility="{x:Bind ViewModel.MemoryHistory.IsAvailable, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                <MenuFlyoutItem Text="Trace Summary"
+                                                Command="{x:Bind ViewModel.ShowTraceSummaryCommand}"
+                                                Visibility="{x:Bind ViewModel.MemoryHistory.IsAvailable, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                <MenuFlyoutItem Text="Data Path"
+                                                Command="{x:Bind ViewModel.ShowDataPathCommand}"
+                                                Visibility="{x:Bind ViewModel.MemoryHistory.IsAvailable, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                 <MenuFlyoutSeparator/>
                                 <MenuFlyoutItem Text="Reset Layout"
                              Command="{x:Bind ViewModel.ResetLayoutCommand}"/>
@@ -155,7 +163,8 @@
                                 <ToggleMenuFlyoutItem Text="Guide Mode"
                                                       IsChecked="{x:Bind ViewModel.Layout.IsGuideMode, Mode=OneWay}"
                                                       Click="OnGuideModeClick"/>
-                                <MenuFlyoutSubItem Text="Capture">
+                                <MenuFlyoutSubItem Text="Capture"
+                                                   Visibility="{x:Bind ViewModel.Layout.IsTrace, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                                     <MenuFlyoutSubItem Text="Heap Memory">
                                         <ToggleMenuFlyoutItem Text="Reads"
                                                               IsChecked="{x:Bind ViewModel.QueryOptions.CaptureHeapReads, Mode=TwoWay}"/>
@@ -167,21 +176,17 @@
                                     <ToggleMenuFlyoutItem Text="Page Reads"
                                                           IsChecked="{x:Bind ViewModel.QueryOptions.CapturePageReads, Mode=TwoWay}"/>
                                 </MenuFlyoutSubItem>
-                                <MenuFlyoutSeparator/>
+                                <MenuFlyoutSeparator Visibility="{x:Bind ViewModel.Layout.IsTrace, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                 <MenuFlyoutItem Text="Search symbols"
-                                                Command="{x:Bind ViewModel.SearchSymbolsCommand}"/>
-                                <MenuFlyoutSeparator/>
+                                                Command="{x:Bind ViewModel.SearchSymbolsCommand}"
+                                                Visibility="{x:Bind ViewModel.Layout.IsTrace, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                <MenuFlyoutSeparator Visibility="{x:Bind ViewModel.Layout.IsTrace, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                 <MenuFlyoutItem Text="Operator Tracks"
-                                                Command="{x:Bind ViewModel.ShowOperatorTracksCommand}"/>
-                                <MenuFlyoutSeparator                                                 Visibility="{x:Bind ViewModel.MemoryHistory.IsAvailable, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                Command="{x:Bind ViewModel.ShowOperatorTracksCommand}"
+                                                Visibility="{x:Bind ViewModel.Layout.IsTrace, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                <MenuFlyoutSeparator Visibility="{x:Bind ViewModel.MemoryHistory.IsAvailable, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                 <MenuFlyoutItem Text="Object Graph"
                                                 Command="{x:Bind ViewModel.ShowObjectGraphCommand}"
-                                                Visibility="{x:Bind ViewModel.MemoryHistory.IsAvailable, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                <MenuFlyoutItem Text="Trace Summary"
-                                                Command="{x:Bind ViewModel.ShowTraceSummaryCommand}"
-                                                Visibility="{x:Bind ViewModel.MemoryHistory.IsAvailable, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                <MenuFlyoutItem Text="Data Path"
-                                                Command="{x:Bind ViewModel.ShowDataPathCommand}"
                                                 Visibility="{x:Bind ViewModel.MemoryHistory.IsAvailable, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
                             </MenuBarItem>
 

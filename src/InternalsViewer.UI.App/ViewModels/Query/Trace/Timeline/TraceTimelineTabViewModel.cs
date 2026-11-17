@@ -388,9 +388,7 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
     {
         if (FindDataPath() is not { } document)
         {
-            var dataPath = new MemoryDataPathViewModel(Query.MemoryHistory, Playhead ?? TracePosition.Unknown, this);
-
-            dataPath.SetPlayhead(Playhead);
+            var dataPath = CreateDataPath(Playhead, isPlanObjectVisible: false);
 
             document = new DocumentViewModel(dataPath.Title,
                                              dataPath,
@@ -408,6 +406,30 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         }
 
         Query.Layout.ShowBesideTraceTimeline(document);
+    }
+
+    public void ReloadDataPath()
+    {
+        if (FindDataPath() is not { } document)
+        {
+            return;
+        }
+
+        var previous = (MemoryDataPathViewModel)document.Content;
+
+        previous.Close();
+
+        document.Content = CreateDataPath(null, previous.IsPlanObjectVisible);
+    }
+
+    public void ShowTraceStatus()
+    {
+        if (FindDataPath()?.Content is MemoryDataPathViewModel dataPath)
+        {
+            dataPath.IsLoading = Query.IsTraceLoading;
+
+            dataPath.LoadingMessage = Query.TraceStatus;
+        }
     }
 
     public List<TraceMenuItem> GetMenuItems(TraceMenuTarget target)
@@ -470,7 +492,7 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
             Query.Layout.Close(document);
         }
 
-        foreach (var document in StructureDocuments.ToList())
+        foreach (var document in StructureDocuments.Where(d => d.Content is not MemoryDataPathViewModel).ToList())
         {
             if (Dock.Contains(document))
             {
@@ -828,6 +850,19 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
         => StructureDocuments.FirstOrDefault(d => d.Content is MemorySortTableViewModel table && table.Contains(iterator));
 
     private DocumentViewModel? FindDataPath() => StructureDocuments.FirstOrDefault(d => d.Content is MemoryDataPathViewModel);
+
+    private MemoryDataPathViewModel CreateDataPath(TracePosition? playhead, bool isPlanObjectVisible)
+    {
+        var dataPath = new MemoryDataPathViewModel(Query.MemoryHistory, playhead ?? TracePosition.Unknown, this, isPlanObjectVisible)
+        {
+            IsLoading = Query.IsTraceLoading,
+            LoadingMessage = Query.TraceStatus
+        };
+
+        dataPath.SetPlayhead(playhead);
+
+        return dataPath;
+    }
 
     private void ShowStructure(DocumentViewModel document, bool isBelowPlan)
     {

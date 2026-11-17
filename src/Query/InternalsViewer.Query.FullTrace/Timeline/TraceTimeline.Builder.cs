@@ -1,10 +1,5 @@
-using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using System.Runtime.InteropServices;
-using InternalsViewer.Query.FullTrace.Calls.Tree;
-using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Native;
-using InternalsViewer.Query.FullTrace.Timeline.Enums;
-using InternalsViewer.Query.Helpers;
 
 namespace InternalsViewer.Query.FullTrace.Timeline;
 

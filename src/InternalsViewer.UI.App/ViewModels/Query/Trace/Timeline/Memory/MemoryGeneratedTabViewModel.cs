@@ -270,9 +270,9 @@ public sealed partial class MemoryGeneratedTabViewModel : ObservableObject
             return string.Empty;
         }
 
-        if (owner.History.IteratorTargets.TryGetValue(pointer, out var target) && target.Operator?.PlanNodeIdentifier is not null)
+        if (owner.History.GetPointerDetail(pointer) is { } detail)
         {
-            return owner.GetPointerCell(pointer, $"{target.TypeName} › {target.Label}");
+            return owner.GetPointerCell(pointer, detail);
         }
 
         if (Definition is null

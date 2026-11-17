@@ -99,18 +99,22 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
 
     private static readonly Color ReferenceColour = Color.FromArgb(255, 0xDD, 0xDD, 0xDD);
 
-    public MemoryDataPathViewModel(MemoryHistoryViewModel history, TracePosition position, ITraceNavigator navigator)
+    public MemoryDataPathViewModel(MemoryHistoryViewModel history,
+                                   TracePosition position,
+                                   ITraceNavigator navigator,
+                                   bool isPlanObjectVisible)
         : base(history, position, navigator)
     {
         Loader = new PlayheadLoader<HexImage>(LoadInterval, Apply);
 
-        IsApplying = true;
-
-        BuildTree(null);
-
-        IsApplying = false;
-
-        Show();
+        if (isPlanObjectVisible)
+        {
+            IsPlanObjectVisible = true;
+        }
+        else
+        {
+            Rebuild();
+        }
     }
 
     public override string Title => DataPathTitle;
@@ -168,15 +172,7 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
 
             field = value;
 
-            IsApplying = true;
-
-            LinkFields.Clear();
-
-            BuildTree(SelectedNode?.Address);
-
-            IsApplying = false;
-
-            Show();
+            Rebuild();
         }
     }
 
@@ -262,6 +258,19 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
 
     protected override string GetPointerText(MemoryStructureNode node, ulong pointer)
         => History.GetPointerTarget(pointer, Position) ?? node.Name;
+
+    private void Rebuild()
+    {
+        IsApplying = true;
+
+        LinkFields.Clear();
+
+        BuildTree(SelectedNode?.Address);
+
+        IsApplying = false;
+
+        Show();
+    }
 
     private void RefreshValues()
     {
@@ -931,7 +940,7 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
             IsAddressVisible = false
         };
 
-        if (field.Stage is { } stage && PlanOutputLinkText.GetReferenceName(stage) is { Length: > 0 } reference)
+        if (PlanOutputLinkText.GetReferenceName(field, link) is { Length: > 0 } reference)
         {
             node.Badges.Add(CreateBadge(reference));
         }

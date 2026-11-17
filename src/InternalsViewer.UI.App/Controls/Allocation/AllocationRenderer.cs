@@ -183,7 +183,7 @@ public sealed class AllocationRenderer : IDisposable
 
         var top = pageRect.Top + Math.Min(slot, slotCount - 1) * pageRect.Height / slotCount;
 
-        g.DrawRect(new SKRect(pageRect.Left, top, pageRect.Right, top + rowHeight), SelectedRowPaint);
+        g.DrawRect(new SKRect(pageRect.Left + 1, top, pageRect.Right, top + rowHeight), SelectedRowPaint);
     }
 
     internal void DrawPageMarker(SKCanvas g, SKRect rect, AllocationLayer layer, SKColor colour)

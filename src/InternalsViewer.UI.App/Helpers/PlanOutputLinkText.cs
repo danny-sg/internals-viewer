@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using InternalsViewer.Query.FullTrace.DataPath;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output.Enums;
 using InternalsViewer.Query.Plans.Operators;
@@ -17,6 +18,8 @@ public static class PlanOutputLinkText
 
     public const string RowsetReference = "Rowset";
 
+    public const string RecordReference = "Record";
+
     public const string BatchRedirectReference = "Batch Redirect";
 
     public const string VariablesReference = "Variables";
@@ -31,6 +34,7 @@ public static class PlanOutputLinkText
         [HashReference] = OperatorCategory.Join,
         [ScalarReference] = OperatorCategory.Transformation,
         [RowsetReference] = OperatorCategory.DataAccess,
+        [RecordReference] = OperatorCategory.DataAccess,
         [VariablesReference] = OperatorCategory.Transformation,
         [CounterReference] = OperatorCategory.Transformation
     };
@@ -76,6 +80,11 @@ public static class PlanOutputLinkText
         PlanOutputLinkType.Executors => "Executors",
         _ => "Input Column"
     };
+
+    public static string GetReferenceName(DataPathField field, DataPathLink? link)
+        => link is { IsRecordRead: true } ? RecordReference
+            : field.Stage is { } stage ? GetReferenceName(stage)
+            : string.Empty;
 
     public static string GetReferenceName(PlanOutputStage stage) => stage.ReferenceClass switch
     {

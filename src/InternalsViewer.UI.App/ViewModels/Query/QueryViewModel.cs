@@ -149,6 +149,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private const string TraceLoadedStep = "Loading Full Trace";
 
+    private const string BuildingTracksStatus = "Building Tracks";
+
     private const string RunFileType = "Internals Viewer Run";
 
     private readonly SimulationTabViewModelFactory _simulationTabViewModelFactory;
@@ -702,6 +704,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         get;
         set
         {
+            CreatedTraceTimelineTab?.CloseMemory();
+         
             field = value;
 
             TraceFile = null;
@@ -710,7 +714,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             TraceSummary.Reset();
 
-            CreatedTraceTimelineTab?.CloseMemory();
+            CreatedTraceTimelineTab?.ReloadDataPath();
+
         }
     }
 
@@ -1010,6 +1015,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         SetGuidePositionText();
     }
 
+    partial void OnIsTraceLoadingChanged(bool value) => CreatedTraceTimelineTab?.ShowTraceStatus();
+
+    partial void OnTraceStatusChanged(string? value) => CreatedTraceTimelineTab?.ShowTraceStatus();
+
     partial void OnSelectedEventChanged(EngineEvent? value) => SelectedEventProperties = value?.GetProperties() ?? [];
 
     partial void OnCallTreeChanged(CallTree? value)
@@ -1252,9 +1261,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             CreatedGuidePlayback?.Stop();
 
-            RefreshGuideSteps();
-
-            SelectFirstGuideStep();
+            RefreshGuideSteps(_ => SelectFirstGuideStep());
 
             OnPropertyChanged(nameof(TransportSource));
 
@@ -2669,6 +2676,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             ShowTrace(result, request.TraceFile);
 
+            TraceStatus = BuildingTracksStatus;
+
+            await RefreshTickTracksAsync();
+
             Layout.ShowGuidePlan();
 
             LastRun = LastRun is { } run ? run with { Extras = [.. run.Extras, result] } : null;
@@ -2791,7 +2802,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
             AddMessage(new ProgressDetail(step) { IsStep = true, Elapsed = Stopwatch.GetElapsedTime(started) });
 
-            ShowImportedRun(run);
+            await ShowImportedRunAsync(run);
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or JsonException or UnauthorizedAccessException)
         {
@@ -2807,7 +2818,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         }
     }
 
-    private void ShowImportedRun(QueryExportContent run)
+    private async Task ShowImportedRunAsync(QueryExportContent run)
     {
         var exported = run.ExportedAt is { } exportedAt ? $" on {exportedAt:g}" : string.Empty;
 
@@ -2840,6 +2851,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
             }
 
             ShowTrace(fullTrace, null);
+
+            await RefreshTickTracksAsync();
 
             Layout.ShowGuidePlan();
         }
@@ -2913,9 +2926,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         RowReturnMarks = result.SourceTracks.RowReturns;
 
-        ClearTickTrackCache();
-
-        RefreshTickTracks();
+        ResetTickTracks();
 
         StatementName = GetStatementOperator(result.Lifetimes)?.Name;
 

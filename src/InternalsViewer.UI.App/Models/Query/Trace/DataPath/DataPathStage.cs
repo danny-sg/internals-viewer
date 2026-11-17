@@ -18,7 +18,7 @@ public sealed class DataPathStage(DataPathField field, string source, ulong sour
 
     public string Name => Field.Name;
 
-    public string Kind => Field.Stage is { } stage ? PlanOutputLinkText.GetReferenceName(stage) : string.Empty;
+    public string Kind => PlanOutputLinkText.GetReferenceName(Field, Link);
 
     public string Uses => DataPathText.GetUses(Field.Uses);
 

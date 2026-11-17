@@ -1,5 +1,3 @@
-using System.Runtime.CompilerServices;
-
 namespace InternalsViewer.Query.FullTrace.Memory.BufferPool;
 
 public sealed partial class TracePageReadList

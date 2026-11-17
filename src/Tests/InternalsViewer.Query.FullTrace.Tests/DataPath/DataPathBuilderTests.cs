@@ -68,6 +68,20 @@ public class DataPathBuilderTests
     }
 
     [Fact]
+    public void A_Field_Read_Through_The_Rowset_Reads_Its_Source_Record_Not_Its_Row_Buffer()
+    {
+        var storage = new PlanOutputStage(0x102, 0, 1) { ReferenceClass = PlanOutputValueLayout.StorageReferenceClass };
+
+        var map = Build(JoinStatement(),
+                        (n, c) => n == 1 && c.Reference == 0x102 ? new PlanOutputPath { Stages = [storage] } : PlanOutputPath.Empty,
+                        1,
+                        3,
+                        5);
+
+        Assert.Equal((false, true), (map.GetOutput(1, 1)!.Inputs[0].IsRecordRead, map.GetOutput(1, 2)!.Inputs[0].IsRecordRead));
+    }
+
+    [Fact]
     public void A_Key_The_Operator_Also_Returns_Is_A_Use_Of_Its_Own_Field()
         => Assert.Equal(ColumnUseType.BuildKey, Build(JoinStatement(), 1, 3, 5).GetOutput(1, 0)!.Uses);
 
@@ -138,6 +152,27 @@ public class DataPathBuilderTests
     }
 
     [Fact]
+    public void A_Deferred_Expression_Passed_Through_Operators_Is_Only_A_Field_Of_The_Select()
+    {
+        var calculated = new PlanOutputStage(0, 0, 1) { ReferenceClass = PlanOutputValueLayout.CalculatedReferenceClass };
+
+        var map = Build(TopStatement(),
+                        (_, c) => c.Reference % 0x100 == 2 ? new PlanOutputPath { Stages = [calculated] } : PlanOutputPath.Empty,
+                        0,
+                        1,
+                        3,
+                        4);
+
+        var column = map.Columns[2];
+
+        Assert.Equal((2, "[TextField]+' Appended'"), (column.Expression?.NodeId, column.Definition?.Expression));
+
+        Assert.Equal([(3, "TextField")], Sources(column));
+
+        Assert.Equal((null, null), (map.GetOutput(0, 2), map.GetOutput(1, 2)));
+    }
+
+    [Fact]
     public void Levels_Follow_The_Plan()
     {
         var map = Build(JoinStatement(), 1, 3, 5);
@@ -149,6 +184,9 @@ public class DataPathBuilderTests
         => [.. field.Inputs.Select(i => (i.Source.Node.NodeId, i.Source.Name))];
 
     private static DataPathMap Build(PlanNode statement, params int[] operators)
+        => Build(statement, (_, _) => PlanOutputPath.Empty, operators);
+
+    private static DataPathMap Build(PlanNode statement, Func<int, PlanOutputColumn, PlanOutputPath> getPath, params int[] operators)
     {
         var nodes = new Dictionary<int, PlanNode>();
 
@@ -160,7 +198,7 @@ public class DataPathBuilderTests
         return DataPathBuilder.Build(statement,
                                      operators,
                                      n => GetOutputs(nodes[n], nodes),
-                                     (_, _) => PlanOutputPath.Empty,
+                                     getPath,
                                      new Dictionary<int, PlanOutputRoute>(),
                                      _ => null);
     }
@@ -241,6 +279,31 @@ public class DataPathBuilderTests
                 }
             ]
         });
+
+    private static PlanNode TopStatement()
+    {
+        List<ColumnReference> outputs = [Column("Id", HeapTable), Column("TextField", ClusteredTable), Column("Expr1003")];
+
+        var outer = new PlanNode
+        {
+            NodeId = 2,
+            PhysicalOperator = "Compute Scalar",
+            OutputColumns = [Column("Id", HeapTable), Column("Expr1003")],
+            DefinedValues = [Defined("Expr1003", "[TextField]+' Appended'", Column("TextField", HeapTable))],
+            Children = [Seek(3, "Index Seek", HeapTable)]
+        };
+
+        var join = new PlanNode
+        {
+            NodeId = 1,
+            PhysicalOperator = "Nested Loops",
+            LogicalOperator = "Inner Join",
+            OutputColumns = outputs,
+            Children = [outer, Seek(4, "Clustered Index Seek", ClusteredTable)]
+        };
+
+        return Statement(new PlanNode { NodeId = 0, PhysicalOperator = "Top", OutputColumns = outputs, Children = [join] });
+    }
 
     private static PlanNode Scalar(int nodeId, string column, PlanNode input)
         => new()

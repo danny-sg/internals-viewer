@@ -1,6 +1,5 @@
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using System.IO.Compression;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Locators.Enums;
