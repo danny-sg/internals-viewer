@@ -238,6 +238,66 @@ public class CallTreeTests(ITestOutputHelper output)
         Assert.Equal(1, builds);
     }
 
+    [Fact]
+    public void Windows_Calls_Made_By_Windows_Are_Cut_Down_To_The_Entry_Call()
+    {
+        var tree = new CallTree();
+
+        var write = tree.AddCall(tree.Root, Frame("WriteData", 100), 1);
+
+        var encrypt = tree.AddCall(write, SystemFrame("sspicli", "EncryptMessage", 200), 1);
+
+        var seal = tree.AddCall(encrypt, SystemFrame("schannel", "SslSealMessageStream", 300), 1);
+
+        tree.AddCall(seal, SystemFrame("bcrypt", "BCryptEncrypt", 400), 1);
+
+        Assert.Equal(["EncryptMessage::m", "WriteData::m"], CutInnerSystemCalls(tree, _ => false));
+    }
+
+    [Fact]
+    public void A_Windows_Call_That_Calls_Back_Into_Sql_Server_Is_Kept()
+    {
+        var tree = new CallTree();
+
+        var sort = tree.AddCall(tree.Root, Frame("Sort", 100), 1);
+
+        var qsort = tree.AddCall(sort, SystemFrame("ucrtbase", "qsort", 200), 1);
+
+        var partition = tree.AddCall(qsort, SystemFrame("ucrtbase", "Partition", 300), 1);
+
+        tree.AddCall(partition, Frame("Compare", 400), 5);
+
+        tree.AddCall(qsort, SystemFrame("ucrtbase", "Swap", 500), 3);
+
+        Assert.Equal(["Compare::m", "Partition::m", "Sort::m", "qsort::m"], CutInnerSystemCalls(tree, _ => false));
+    }
+
+    [Fact]
+    public void A_Logged_Windows_Call_Is_Kept()
+    {
+        var tree = new CallTree();
+
+        var alloc = tree.AddCall(tree.Root, Frame("Alloc", 100), 1);
+
+        var heapAlloc = tree.AddCall(alloc, SystemFrame("kernelbase", "HeapAlloc", 200), 1);
+
+        var allocateHeap = tree.AddCall(heapAlloc, SystemFrame("ntdll", "RtlAllocateHeap", 300), 1);
+
+        tree.AddCall(allocateHeap, SystemFrame("ntdll", "RtlpAllocateHeapInternal", 400), 1);
+
+        Assert.Equal(["Alloc::m", "HeapAlloc::m", "RtlAllocateHeap::m"],
+                     CutInnerSystemCalls(tree, n => n.Symbol == "RtlAllocateHeap::m"));
+    }
+
+    private static List<string> CutInnerSystemCalls(CallTree tree, Func<CallTreeNode, bool> isKept)
+    {
+        var collapsed = tree.CollapseToFunctions();
+
+        collapsed.RemoveCallsUnder(collapsed.GetInnerSystemCalls(isKept).Contains);
+
+        return [.. collapsed.GetNodes().Select(n => n.Symbol).Order(StringComparer.Ordinal)];
+    }
+
     private static string Render(CallTree tree)
         => string.Concat(tree.Root.Children.Values.OrderBy(c => c.Order).Select(CallTree.Render));
 
@@ -254,6 +314,13 @@ public class CallTreeTests(ITestOutputHelper output)
     private static CallFrame Frame(string name, uint rva) => new()
     {
         Module = new("sqllang"),
+        Rva = rva,
+        Function = new FrameFunction { ClassName = name, MethodName = "m" },
+    };
+
+    private static CallFrame SystemFrame(string module, string name, uint rva) => new()
+    {
+        Module = new(module),
         Rva = rva,
         Function = new FrameFunction { ClassName = name, MethodName = "m" },
     };

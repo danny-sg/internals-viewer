@@ -473,15 +473,14 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
 
         var block = History.GetBlock(pointer, position);
 
-        if (block >= 0 && History.GetIndirectPointer(pointer, position) is { } inner)
+        if (block >= 0 && History.GetPointerArray(pointer, position) is [{ Block: >= 0 and var innerBlock, Value: var inner }])
         {
-            var innerBlock = History.GetBlock(inner, position);
-
             return new ActionLinks([new ActionLink(text, () => Navigator.OpenMemory(block, pointer, position)),
                                     new ActionLink($"{IndirectPrefix}{GetAddressText(inner)}",
                                                    () => Navigator.OpenMemory(innerBlock, inner, position))])
             {
-                Suffix = History.GetPointerTarget(inner, position)
+                Suffix = History.GetPointerTarget(inner, position),
+                IsChained = true
             };
         }
 
@@ -903,11 +902,6 @@ public abstract partial class MemoryStructureViewModel : ObservableObject
             else if (block >= 0)
             {
                 var target = History.GetPointerTarget(value, position) ?? GetAddressText(value);
-
-                if (History.GetIndirectPointer(value, position) is { } inner)
-                {
-                    target += $" {IndirectPrefix}{History.GetPointerTarget(inner, position)}";
-                }
 
                 links.Add(new HexLink(offset,
                                       size,

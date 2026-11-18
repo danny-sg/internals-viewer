@@ -53,7 +53,7 @@ This page covers the four parts that make it work: what Time Travel Debugging pr
 
 [Time Travel Debugging](https://learn.microsoft.com/en-us/windows-hardware/drivers/debuggercmds/time-travel-debugging-overview) (TTD) ships with WinDbg and has two halves.
 
-**The recorder**, `TTD.exe`, attaches to a running process by injecting itself into it, then records every instruction the process executes into a `.run` file - enough to replay the execution exactly, registers and memory included. It can be limited to chosen modules with `-module`, and Full Trace records only `sqlmin.dll` and `sqllang.dll`, the storage engine and the query processor.
+**The recorder**, `TTD.exe`, attaches to a running process by injecting itself into it, then records every instruction the process executes into a `.run` file - enough to replay the execution exactly, registers and memory included. It can be limited to chosen modules with `-module`, and Full Trace limits it to `sqlmin.dll` and `sqllang.dll`, the storage engine and the query processor. Recording starts when either of them runs and follows every call it makes, so SQLOS and Windows code reached from the engine is recorded too. Internals Viewer keeps the first call into Windows and cuts the Windows code below it when it loads the trace.
 
 **The replay API** reads a `.run` file back. The headers come from the `Microsoft.TimeTravelDebugging.Apis` NuGet package, and the engine itself is `TTDReplay.dll`, shipped beside the recorder. It provides:
 

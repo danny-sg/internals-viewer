@@ -26,8 +26,8 @@ the acquire and `lock_released` the release.
 a seek and from a lookup is two nodes. Calls is how many times that path was taken. Allocated bytes and allocations are the node's own. The
 app shows the subtree total, which `query_calltree` with `hot` and `by` set to `inclusive-alloc`, and `inclusive`, give. `query_functions`
 adds every path of a function together. The root has an empty key. In a Full Trace the Extended Events and tracing machinery
-was cut out of the tree, so what is left is the query's own work, and SQLOS (`sqldk`) was not recorded, so only the calls into
-it appear, not what it did.
+was cut out of the tree, so what is left is the query's own work. Windows code is cut below the first Windows call, so a call
+into Windows appears but not what it did.
 
 **Operators and the tree.** Each plan node has an operator event. Node -1 is the statement itself (`SELECT`). Entry frames are
 the call tree nodes where that operator's execution begins and exit frames where a child operator takes over, so `query_calltree`
@@ -67,9 +67,10 @@ Some things are absent by design. None of them is a gap in the capture or a sign
 - **A Full Trace run's event session is minimal.** It captures the batch start and end, the per-operator profile, the actual
   plan and the parallelism waits that identify worker threads. Its lock, latch, page read and I/O detail comes from the calls
   instead. A run without Full Trace has those events.
-- **SQLOS (`sqldk`) and Windows are not recorded** in a Full Trace, only `sqlmin` and `sqllang`. Calls into the scheduler,
-  memory objects, synchronisation and the operating system appear as the entry call only, so waiting, memory allocation
-  inside SQLOS and disk I/O add almost no instructions. Instruction counts measure recorded engine code.
+- **Windows appears as the entry call only.** Recording starts in `sqlmin` and `sqllang` and follows every call they make,
+  so SQLOS (`sqldk`) is recorded in full. The Windows code below the first Windows call is cut from the call tree and the
+  timeline when the run loads, unless it calls back into SQL Server. Waiting and disk I/O happen in the kernel, which is
+  never recorded, so they add almost no instructions.
 - **A Full Trace has no clock.** Positions and instructions are the only measures. Nothing in it is a duration.
 - **Crop to query** trims the call tree and events to the statement's execution, so the batch handling above it and anything
   before the query started are not there.

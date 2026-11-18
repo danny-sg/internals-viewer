@@ -13,7 +13,10 @@ using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.Allocation;
+using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.History;
+using InternalsViewer.UI.App.Helpers;
 using InternalsViewer.UI.App.Models.Query.Trace.Calls.Arguments;
 using InternalsViewer.UI.App.Models.Query.Trace.Calls.Signatures;
 using InternalsViewer.UI.App.Models.Query.Trace.Calls.Stack;
@@ -27,6 +30,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
                                   HoBtAccessMap hobtAccess,
                                   AddressMap addressMap,
                                   MemoryHistoryStore memoryHistory,
+                                  TraceBufferPool bufferPool,
                                   MemoryObjectMap memoryObjects,
                                   StorageIdMap storageIds,
                                   SymbolsViewModel symbols) : ITraceSignatureSource
@@ -74,7 +78,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
 
         var isObject = isPointer || entry is not null;
 
-        var containing = isPointer && value != 0 && entry is null ? addressMap.GetContaining(value, GetPosition(slot, call)) : null;
+        var containing = isPointer && value != 0 && entry is null ? GetContaining(value, GetPosition(slot, call)) : null;
 
         if (GetStorageId(slot, value, call) is { } storageId)
         {
@@ -114,6 +118,19 @@ public sealed class CallStoreLookup(TraceCallStore store,
         if (ArgumentValue.GetPointeeClass(slot.Type) is { } declared)
         {
             return new ValueDescription(address, declared) { Origin = entry };
+        }
+
+        if (GetAllocationType(value, GetPosition(slot, call)) is { } allocated)
+        {
+            return new ValueDescription(address, allocated) { Origin = entry };
+        }
+
+        if (MemoryHistoryPointerReader.ReadArray(memoryHistory, bufferPool, value, GetPosition(slot, call)) is { } array)
+        {
+            return new ValueDescription(address, PointerArrayText.Get([.. array.Select(p => GetTargetName(p, GetPosition(slot, call)))]))
+            {
+                Origin = entry
+            };
         }
 
         if ((entry?.Site ?? entry?.Allocator) is { } allocation)
@@ -250,6 +267,61 @@ public sealed class CallStoreLookup(TraceCallStore store,
            && (owner.Name ?? addressMap.GetEntry(owner.Address, position)?.ClassName) is { } memoryObject
             ? new ValueDescription(owner.GetText(value), memoryObject)
             : null;
+
+    private string? GetAllocationType(ulong value, TracePosition position)
+        => memoryHistory.GetBlock(value, position) is >= 0 and var block
+           && memoryHistory.Blocks[block] is { IsStack: false } item
+           && item.Address == value
+            ? AllocationTypeReader.GetLabel(Store, item.CallNodeIndex, item.Size)
+            : null;
+
+    private string GetTargetName(MemoryHistoryPointer pointer, TracePosition position)
+    {
+        if (pointer.Page is { } page)
+        {
+            return $"Page {page.Page}";
+        }
+
+        var entry = addressMap.GetEntry(pointer.Value, position);
+
+        if ((entry?.VtableClassName ?? entry?.ClassName) is { } className)
+        {
+            return className;
+        }
+
+        if (GetContaining(pointer.Value, position) is ({ } inside, var offset)
+            && (inside.VtableClassName ?? inside.ClassName ?? TraceReferenceFinder.GetAllocationName(inside)) is { } container)
+        {
+            return memoryHistory.Layout.GetFieldPath(inside.VtableClassName ?? inside.ClassName, (int)offset) is { } field
+                ? $"{container}.{field}"
+                : $"{container} + 0x{offset:X}";
+        }
+
+        return entry?.Site ?? $"0x{pointer.Value:X}";
+    }
+
+    private (AddressMapEntry Entry, ulong Offset)? GetContaining(ulong value, TracePosition position)
+    {
+        var containing = addressMap.GetContaining(value, position);
+
+        if (memoryHistory.GetBlock(value, position) is not (>= 0 and var block)
+            || memoryHistory.Blocks[block] is not { IsStack: false } live)
+        {
+            return containing;
+        }
+
+        if (containing is ({ } inside, _) && inside.Address > live.Address && inside.FromPosition >= live.FromPosition)
+        {
+            return containing;
+        }
+
+        if (value != live.Address && addressMap.GetEntry(live.Address, position) is { } entry)
+        {
+            return (entry, value - live.Address);
+        }
+
+        return containing is ({ } outer, _) && outer.Address <= live.Address ? containing : null;
+    }
 
     private ValueCallRow GetCallRow(TraceValueCall valueCall,
                                     TraceValueUse use,

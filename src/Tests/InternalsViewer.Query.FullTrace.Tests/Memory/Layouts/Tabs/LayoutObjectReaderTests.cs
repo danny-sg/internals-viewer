@@ -124,10 +124,66 @@ public class LayoutObjectReaderTests
         Assert.Equal((session, -1), session.Find(Session + 0x20));
     }
 
-    private static LayoutObject ReadSession(FakeTraceReplay memory, List<ulong>? pointers = null)
+    [Fact]
+    public void An_Object_Found_Inside_A_Block_Is_A_Byte_Field_Named_By_Its_Class()
+    {
+        var block = ReadBlock([], [new EmbeddedObject(Session + 0x48, "CMxcContainer", 0x20)]);
+
+        var field = Assert.Single(block.Fields);
+
+        Assert.Equal(("CMxcContainer", 0x48, 0x20, true, null), (field.Name, field.Offset, field.Length, field.IsBytes, field.Structure));
+
+        Assert.Equal(Session + 0x48, block.Rows[0][0]);
+
+        Assert.Empty(block.Children);
+    }
+
+    [Fact]
+    public void A_Pointer_Inside_An_Object_Found_Inside_A_Block_Keeps_Its_Own_Field()
+    {
+        var block = ReadBlock([Session + 0x58], [new EmbeddedObject(Session + 0x48, "CMxcContainer", 0x20)]);
+
+        Assert.Equal(["CMxcContainer", "Pointer+0x58"], block.Fields.Select(f => f.Name));
+    }
+
+    [Fact]
+    public void An_Object_Found_Inside_A_Block_Reads_Its_Fields_When_Its_Layout_Is_Known()
+    {
+        var size = Layout.GetKnownSize("HeapRowObject");
+
+        var block = LayoutObjectReader.Read(new FakeTraceReplay(),
+                                            "Block",
+                                            [],
+                                            Session,
+                                            0x40 + size,
+                                            embedded: [new EmbeddedObject(Session + 0x40, "HeapRowObject", 0)]);
+
+        var row = Assert.Single(block.Children);
+
+        Assert.Equal(("HeapRowObject", Session + 0x40, size), (row.Type, row.Address, row.Size));
+
+        Assert.Contains(Layout.HeapRow.SlotField, row.Fields);
+    }
+
+    [Fact]
+    public void An_Object_The_Layout_Already_Declares_Is_Not_Added_Again()
+    {
+        var session = ReadSession(new FakeTraceReplay(),
+                                  embedded: [new EmbeddedObject(Session + (ulong)HeapRowField.Offset, "HeapRowObject", 0)]);
+
+        Assert.Equal(HeapRowField, Assert.Single(session.Fields, f => f.Offset == HeapRowField.Offset));
+    }
+
+    private static LayoutObject ReadBlock(List<ulong> pointers, IReadOnlyList<EmbeddedObject> embedded)
+        => LayoutObjectReader.Read(new FakeTraceReplay(), "Block", [], Session, 0x100, pointers, embedded);
+
+    private static LayoutObject ReadSession(FakeTraceReplay memory,
+                                            List<ulong>? pointers = null,
+                                            IReadOnlyList<EmbeddedObject>? embedded = null)
         => LayoutObjectReader.Read(memory,
                                    new MemoryTab("Heap Data Set Session", "HeapDataSetSession", MemoryTabLayout.Column),
                                    Session,
                                    SessionSize,
-                                   pointers);
+                                   pointers,
+                                   embedded);
 }

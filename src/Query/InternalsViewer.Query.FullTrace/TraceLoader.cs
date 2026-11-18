@@ -264,14 +264,23 @@ public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder
 
         replay.Timeline.RemoveCallsUnder(n => n.IsInstrumentation);
 
-        Logger.LogInformation("{Calls} call(s) after removing Extended Events and tracing, {Spans} call span(s) on {Threads} "
-                              + "thread(s) in the trace timeline",
+        var systemCalls = callTree.GetInnerSystemCalls(n => n.Frame is { } frame && IsLogged(replay, frame));
+
+        callTree.RemoveCallsUnder(systemCalls.Contains);
+
+        replay.Timeline.RemoveCallsUnder(systemCalls.Contains);
+
+        Logger.LogInformation("{Calls} call(s) after removing Extended Events, tracing and calls inside Windows, {Spans} call span(s) "
+                              + "on {Threads} thread(s) in the trace timeline",
                               callTree.GetNodes().Sum(n => n.CallCount),
                               replay.Timeline.SpanCount,
                               replay.Timeline.Threads.Count);
 
         return callTree;
     }
+
+    private static bool IsLogged(ReplayResult replay, CallFrame frame)
+        => replay.CallStore.GetCallList(frame.Address, frame.InstanceAddress) is not null;
 
     private TraceResultBuilder GetResultBuilder(ReplayResult replay,
                                                 ReplayFunctionTable functions,

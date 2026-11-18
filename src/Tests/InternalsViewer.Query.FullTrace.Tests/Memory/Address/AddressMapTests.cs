@@ -293,6 +293,54 @@ public class AddressMapTests
         Assert.False(AddressMap.IsSupported(reader));
     }
 
+    [Fact]
+    public void An_Object_Constructed_Inside_A_Block_Is_Embedded_In_It()
+    {
+        var map = Build(Entry(AddressMapOperation.Allocated, call: 10, OperatorNew, bytes: 0x100),
+                        Entry(AddressMapOperation.Constructed, call: 20, ScanConstructor, address: Address + 0x48));
+
+        var embedded = Assert.Single(map.GetEmbedded(Address, 0x100, At(10), At(30)));
+
+        Assert.Equal((Address + 0x48, "CQScanRangeNew"), (embedded.Address, embedded.ClassName));
+    }
+
+    [Fact]
+    public void A_Label_From_Before_The_Block_Was_Allocated_Is_Not_Embedded()
+    {
+        var map = Build(Entry(AddressMapOperation.Constructed, call: 5, ScanConstructor, address: Address + 0x48),
+                        Entry(AddressMapOperation.Allocated, call: 10, OperatorNew, bytes: 0x100));
+
+        Assert.Empty(map.GetEmbedded(Address, 0x100, At(10), At(30)));
+    }
+
+    [Fact]
+    public void An_Object_Only_Called_Inside_A_Block_Is_Not_Embedded()
+    {
+        var map = Build(Entry(AddressMapOperation.Allocated, call: 10, OperatorNew, bytes: 0x100),
+                        Entry(AddressMapOperation.Visited, call: 20, ScanMethod, address: Address + 0x48));
+
+        Assert.Empty(map.GetEmbedded(Address, 0x100, At(10), At(30)));
+    }
+
+    [Fact]
+    public void A_Type_Only_Declared_Inside_A_Block_Is_Not_Embedded()
+    {
+        var map = Build(Entry(AddressMapOperation.Allocated, call: 10, OperatorNew, bytes: 0x100),
+                        Entry(AddressMapOperation.Declared, call: 20, Factory, className: "AccBindings", address: Address + 0x48));
+
+        Assert.Empty(map.GetEmbedded(Address, 0x100, At(10), At(30)));
+    }
+
+    [Fact]
+    public void A_Separate_Allocation_Inside_A_Block_Is_Not_Embedded()
+    {
+        var map = Build(Entry(AddressMapOperation.Allocated, call: 10, OperatorNew, bytes: 0x100),
+                        Entry(AddressMapOperation.Allocated, call: 20, OperatorNew, bytes: 0x20, address: Address + 0x48),
+                        Entry(AddressMapOperation.Constructed, call: 21, ScanConstructor, address: Address + 0x48));
+
+        Assert.Empty(map.GetEmbedded(Address, 0x100, At(10), At(30)));
+    }
+
     private static AddressMap Build(params AddressEntry[] entries) => AddressMap.Build(entries, GetNode);
 
     private static AddressEntry Entry(AddressMapOperation operation,

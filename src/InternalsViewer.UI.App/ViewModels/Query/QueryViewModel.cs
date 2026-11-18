@@ -2916,7 +2916,8 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                             result.AddressMap,
                             result.MemoryHistory,
                             result.MemoryObjects,
-                            StorageIdMap.Build(Database.AllocationUnits.Values));
+                            StorageIdMap.Build(Database.AllocationUnits.Values),
+                            result.BufferPool);
 
         FullTraceTimeline = result.Timeline;
 

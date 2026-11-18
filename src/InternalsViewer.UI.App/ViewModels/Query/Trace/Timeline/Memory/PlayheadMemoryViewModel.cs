@@ -379,12 +379,13 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
             return GetBufferPageCell(text, pointer, Position) ?? text;
         }
 
-        if (target is null && History.GetIndirectPointer(pointer, Position) is { } inner)
+        if (target is null && History.GetPointerArray(pointer, Position) is [{ Block: >= 0, Value: var inner }])
         {
             return new ActionLinks([new ActionLink(text, () => RequestMemory(pointer)),
                                     new ActionLink($"{IndirectPrefix}0x{inner:X16}", () => RequestMemory(inner))])
             {
-                Suffix = History.GetPointerTarget(inner, Position)
+                Suffix = History.GetPointerTarget(inner, Position),
+                IsChained = true
             };
         }
 
@@ -960,11 +961,6 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
             if (block >= 0)
             {
                 var target = History.GetPointerTarget(value, Position) ?? $"0x{value:X16}";
-
-                if (History.GetIndirectPointer(value, Position) is { } inner)
-                {
-                    target += $" {IndirectPrefix}{History.GetPointerTarget(inner, Position)}";
-                }
 
                 links.Add(new HexLink(offset,
                                       MemoryHistoryPointerReader.PointerSize,

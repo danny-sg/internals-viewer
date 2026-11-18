@@ -14,17 +14,18 @@ using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events;
-using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.DataPath;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Iterators.Enums;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Batches;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Memory.Layouts.Pages;
+using InternalsViewer.Query.FullTrace.Memory.Layouts.Tabs;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Helpers;
@@ -231,58 +232,20 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
     public int GetBlock(ulong address, TracePosition position) => Store.GetBlock(address, position);
 
     public string? GetPointerTarget(ulong address, TracePosition position)
-    {
-        var block = Store.GetBlock(address, position);
-
-        if (block < 0)
-        {
-            return null;
-        }
-
-        if (!PointerTargets.TryGetValue(block, out var label))
-        {
-            label = GetDisplayLabel(block) is { Length: > 0 } name ? name : null;
-
-            PointerTargets[block] = label;
-        }
-
-        var offset = address - Store.Blocks[block].Address;
-
-        if (label is null || offset == 0)
-        {
-            return label;
-        }
-
-        if (!PointerFields.TryGetValue((block, offset), out var target))
-        {
-            target = Store.Layout.GetFieldPath(GetLayoutType(block), (int)offset) is { } field
-                ? $"{label}.{field}"
-                : $"{label} +0x{offset:X}";
-
-            PointerFields[(block, offset)] = target;
-        }
-
-        return target;
-    }
+        => GetPointerArray(address, position) is { } array ? GetPointerArrayText(array, position) : GetPointerLabel(address, position);
 
     public string? GetPointerDetail(ulong address)
         => Iterators.TryGetValue(address, out var target) && target.Operator?.PlanNodeIdentifier is not null
             ? $"{target.TypeName} › {target.Label}"
             : null;
 
-    public ulong? GetIndirectPointer(ulong address, TracePosition position)
-    {
-        var block = Store.GetBlock(address, position);
-
-        if (block < 0 || !IsUnnamed(block))
-        {
-            return null;
-        }
-
-        return new MemoryHistoryReader(Store, position).TryRead(address, out ulong value) && Store.GetBlock(value, position) >= 0
-            ? value
+    public List<MemoryHistoryPointer>? GetPointerArray(ulong address, TracePosition position)
+        => Store.GetBlock(address, position) is >= 0 and var block && IsUnnamed(block)
+            ? MemoryHistoryPointerReader.ReadArray(Store, BufferPool, address, position)
             : null;
-    }
+
+    public List<EmbeddedObject> GetEmbeddedObjects(int block, TracePosition position)
+        => EmbeddedObjectReader.Read(AddressMap, Store, CallStore, block, position);
 
     public TraceBufferPool BufferPool => Trace?.BufferPool ?? TraceBufferPool.Empty;
 
@@ -660,8 +623,16 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
            ?? GetTablePartName(block)
            ?? GetMemoryObjectPageLabel(Store.Blocks[block])
            ?? GetVtableLabel(Store.Blocks[block])
+           ?? GetAllocationTypeLabel(Store.Blocks[block])
            ?? GetMapLabel(Store.Blocks[block])
            ?? (Store.Blocks[block].IsIterator ? IteratorObject : string.Empty);
+
+    private string? GetAllocationTypeLabel(MemoryHistoryBlock block)
+        => Trace is { } trace
+           && !block.IsStack
+           && trace.AddressMap.GetClassName(block.Address, block.FromPosition, block.ToPosition) is null
+            ? AllocationTypeReader.GetLabel(trace.CallStore, block.CallNodeIndex, block.Size)
+            : null;
 
     private bool IsUnnamed(int block)
     {
@@ -679,6 +650,46 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
         return isUnnamed;
     }
+
+    private string? GetPointerLabel(ulong address, TracePosition position)
+    {
+        var block = Store.GetBlock(address, position);
+
+        if (block < 0)
+        {
+            return null;
+        }
+
+        if (!PointerTargets.TryGetValue(block, out var label))
+        {
+            label = GetDisplayLabel(block) is { Length: > 0 } name ? name : null;
+
+            PointerTargets[block] = label;
+        }
+
+        var offset = address - Store.Blocks[block].Address;
+
+        if (label is null || offset == 0)
+        {
+            return label;
+        }
+
+        if (!PointerFields.TryGetValue((block, offset), out var target))
+        {
+            target = Store.Layout.GetFieldPath(GetLayoutType(block), (int)offset) is { } field
+                ? $"{label}.{field}"
+                : $"{label} +0x{offset:X}";
+
+            PointerFields[(block, offset)] = target;
+        }
+
+        return target;
+    }
+
+    private string GetPointerArrayText(List<MemoryHistoryPointer> pointers, TracePosition position)
+        => PointerArrayText.Get([.. pointers.Select(p => p.Page is { } page
+                                                        ? GetBufferPageLabel(page)
+                                                        : GetPointerLabel(p.Value, position) ?? $"0x{p.Value:X16}")]);
 
     private string? GetTablePartName(int block)
     {
@@ -704,7 +715,6 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
                ?? Map?.GetClassName(array.FirstElement, allocation.FromPosition, allocation.ToPosition)) is { } element
             ? $"{element}[{array.Count}]"
             : null;
-
 
     private PageAddress[] GetBufferPages(ulong buffer)
         => Trace is { } trace ? [.. trace.BufferPool.GetResidencies(buffer).Select(r => r.Page).Distinct()] : [];

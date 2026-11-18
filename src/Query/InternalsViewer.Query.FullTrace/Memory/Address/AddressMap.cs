@@ -18,7 +18,9 @@ public sealed partial class AddressMap
 
         Labels = [.. labels.OrderBy(l => l.Value).Select(l => l.Key)];
 
-        Blocks = new AddressIndex([.. Entries.Where(e => e.Value.Any(entry => entry.Bytes > 0)).Select(e => e.Key).Order()],
+        Addresses = [.. Entries.Keys.Order()];
+
+        Blocks =new AddressIndex([.. Entries.Where(e => e.Value.Any(entry => entry.Bytes > 0)).Select(e => e.Key).Order()],
                                   Entries.Values.SelectMany(e => e).Select(e => e.Bytes).DefaultIfEmpty(0ul).Max());
     }
 
@@ -29,6 +31,8 @@ public sealed partial class AddressMap
     private Dictionary<ulong, StoredEntry[]> Entries { get; }
 
     private Label[] Labels { get; }
+
+    private ulong[] Addresses { get; }
 
     private AddressIndex Blocks { get; }
 
@@ -80,6 +84,33 @@ public sealed partial class AddressMap
         }
 
         return innermost is { } containing ? (ToEntry(containing.Address, containing.Entry), containing.Offset) : null;
+    }
+
+    public List<AddressMapEntry> GetEmbedded(ulong address, int size, TracePosition from, TracePosition position)
+    {
+        var embedded = new List<AddressMapEntry>();
+
+        if (!position.IsKnown)
+        {
+            return embedded;
+        }
+
+        var end = address + (ulong)size;
+
+        for (var index = SortedSearch.FirstAfter(Addresses, address); index < Addresses.Length && Addresses[index] < end; index++)
+        {
+            var entries = Entries[Addresses[index]];
+
+            if (GetEntryIndex(entries, position) is >= 0 and var found
+                && entries[found] is { Bytes: 0 } entry
+                && entry.FromPosition >= from
+                && IsObject(Labels[entry.LabelIndex]))
+            {
+                embedded.Add(ToEntry(Addresses[index], entry));
+            }
+        }
+
+        return embedded;
     }
 
     internal IEnumerable<AddressMapEntry> GetEntries() => Entries.SelectMany(e => e.Value.Select(entry => ToEntry(e.Key, entry)));
@@ -235,6 +266,9 @@ public sealed partial class AddressMap
     }
 
     private static bool IsLiveAt(AddressMapEntry entry, TracePosition position) => !entry.ToPosition.IsKnown || position <= entry.ToPosition;
+
+    private static bool IsObject(Label label)
+        => label is { VtableClassName: not null } or { Operation: AddressMapOperation.Constructed, ClassName: not null };
 
     private static bool IsWithin(StoredEntry entry, TracePosition from, TracePosition to)
         => entry.FromPosition >= from && entry.FromPosition < to;

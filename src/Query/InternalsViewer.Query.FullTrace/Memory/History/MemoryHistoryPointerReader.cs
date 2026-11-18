@@ -30,6 +30,42 @@ public static class MemoryHistoryPointerReader
         ];
     }
 
+    public static List<MemoryHistoryPointer>? ReadArray(MemoryHistoryStore store,
+                                                        TraceBufferPool pool,
+                                                        ulong address,
+                                                        TracePosition position)
+    {
+        if (store.GetBlock(address, position) is not (>= 0 and var block)
+            || store.Blocks[block] is not { Size: > 0 } item
+            || item.Address != address
+            || address % PointerSize != 0
+            || item.Size % PointerSize != 0
+            || store.GetWriteCount(block, position) is not (> 0 and var count))
+        {
+            return null;
+        }
+
+        var image = store.GetImage(block, count - 1);
+
+        var pointers = Find(store, pool, block, image, count, position);
+
+        var next = 0;
+
+        for (var offset = 0; offset < item.Size; offset += PointerSize)
+        {
+            if (next < pointers.Count && pointers[next].Offset == offset)
+            {
+                next++;
+            }
+            else if (!IsEmpty(image, offset))
+            {
+                return null;
+            }
+        }
+
+        return pointers.Count > 0 ? pointers : null;
+    }
+
     public static List<MemoryHistoryPointer> Find(MemoryHistoryStore store,
                                                   TraceBufferPool pool,
                                                   int block,
@@ -100,6 +136,19 @@ public static class MemoryHistoryPointerReader
                 }
             }
         }
+    }
+
+    private static bool IsEmpty(MemoryHistoryImage image, int offset)
+    {
+        for (var index = offset; index < offset + PointerSize; index++)
+        {
+            if (image.Known[index] && image.Data[index] != 0)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static int GetLastWrite(int[] lastWrites, int offset)

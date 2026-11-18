@@ -56,7 +56,8 @@ internal static class MemoryFieldTableBuilder
                                                   Func<ulong, object> getPointerCell,
                                                   List<MemoryField> fields,
                                                   ulong?[] values,
-                                                  List<Colour> colours)
+                                                  List<Colour> colours,
+                                                  Func<ulong, int, string>? getBytes = null)
     {
         var columns = new List<ResultColumn>
         {
@@ -67,7 +68,7 @@ internal static class MemoryFieldTableBuilder
 
         var rows = fields.Select((f, i) => new ResultRow<long>([new SwatchText(f.Name, colours[i]),
                                                                  $"0x{f.Offset:X}",
-                                                                 GetValueCell(layout, getPointerCell, f, values[i])])
+                                                                 GetValueCell(layout, getPointerCell, f, values[i], getBytes)])
         {
             Id = i
         });
@@ -78,7 +79,8 @@ internal static class MemoryFieldTableBuilder
     public static QueryResultSet CreateRowTable(EngineLayout layout,
                                                 Func<ulong, object> getPointerCell,
                                                 LayoutObject item,
-                                                List<Colour> colours)
+                                                List<Colour> colours,
+                                                Func<ulong, int, string>? getBytes = null)
     {
         var columns = new List<ResultColumn>
         {
@@ -94,7 +96,7 @@ internal static class MemoryFieldTableBuilder
         var rows = item.Rows.Select((r, i) => new ResultRow<long>(
         [
             $"{i}",
-            .. item.Fields.Select((f, j) => GetValueCell(layout, getPointerCell, f, r[j]))
+            .. item.Fields.Select((f, j) => GetValueCell(layout, getPointerCell, f, r[j], getBytes))
         ])
         {
             Id = i
@@ -103,11 +105,20 @@ internal static class MemoryFieldTableBuilder
         return new QueryResultSet { Columns = columns, Rows = [.. rows] };
     }
 
-    public static object GetValueCell(EngineLayout layout, Func<ulong, object> getPointerCell, MemoryField field, ulong? value)
+    public static object GetValueCell(EngineLayout layout,
+                                      Func<ulong, object> getPointerCell,
+                                      MemoryField field,
+                                      ulong? value,
+                                      Func<ulong, int, string>? getBytes = null)
     {
         if (value is not { } found)
         {
             return string.Empty;
+        }
+
+        if (field.IsBytes)
+        {
+            return getBytes?.Invoke(found, field.Length) ?? string.Empty;
         }
 
         if (field.Decoder is { } decoder)

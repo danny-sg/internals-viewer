@@ -16,6 +16,7 @@ using InternalsViewer.Query.Results;
 using Microsoft.Extensions.Logging;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Memory;
+using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.UI.App.Models.Query.Trace.Calls.Arguments;
 using InternalsViewer.UI.App.Models.Query.Trace.Calls.Stack;
@@ -90,7 +91,8 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
                           AddressMap? addressMap = null,
                           MemoryHistoryStore? memoryHistory = null,
                           MemoryObjectMap? memoryObjects = null,
-                          StorageIdMap? storageIds = null)
+                          StorageIdMap? storageIds = null,
+                          TraceBufferPool? bufferPool = null)
     {
         Cancel();
 
@@ -102,6 +104,7 @@ public sealed partial class ArgumentsViewModel(ILogger logger, SymbolsViewModel 
                                 hobtAccess ?? HoBtAccessMap.Empty,
                                 addressMap ?? AddressMap.Empty,
                                 memoryHistory ?? MemoryHistoryStore.Empty,
+                                bufferPool ?? TraceBufferPool.Empty,
                                 memoryObjects ?? MemoryObjectMap.Empty,
                                 storageIds ?? StorageIdMap.Empty,
                                 symbols);

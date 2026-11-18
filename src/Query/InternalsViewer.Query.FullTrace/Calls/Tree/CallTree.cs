@@ -129,6 +129,18 @@ public sealed class CallTree
         }
     }
 
+    public HashSet<CallTreeNode> GetInnerSystemCalls(Func<CallTreeNode, bool> isKept)
+    {
+        var calls = new HashSet<CallTreeNode>(ReferenceEqualityComparer.Instance);
+
+        foreach (var child in Root.Children.Values)
+        {
+            AddInnerSystemCalls(child, isKept, calls);
+        }
+
+        return calls;
+    }
+
     private static void AddCallActivity(CallTreeNode target, int[] activity)
     {
         if (activity.Length == 0)
@@ -175,6 +187,23 @@ public sealed class CallTree
         if (!keep)
         {
             parent.Children.Remove(node.Key);
+        }
+
+        return keep;
+    }
+
+    private static bool AddInnerSystemCalls(CallTreeNode node, Func<CallTreeNode, bool> isKept, HashSet<CallTreeNode> calls)
+    {
+        var keep = node.Frame?.Module.IsSqlServer != false || isKept(node);
+
+        foreach (var child in node.Children.Values)
+        {
+            keep |= AddInnerSystemCalls(child, isKept, calls);
+        }
+
+        if (!keep && node.Parent?.Frame?.Module.IsSqlServer == false)
+        {
+            calls.Add(node);
         }
 
         return keep;

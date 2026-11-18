@@ -157,9 +157,11 @@ public sealed partial class MemoryGeneratedTabViewModel : ObservableObject
 
         var addresses = GetPointerAddresses(owner, pointers);
 
+        var embedded = owner.History.GetEmbeddedObjects(owner.Block, owner.Position);
+
         var root = Definition is { } definition
-            ? LayoutObjectReader.Read(memory, definition, Address, Size, addresses)
-            : LayoutObjectReader.Read(memory, Header, RowBufferFields, Address, Size, addresses);
+            ? LayoutObjectReader.Read(memory, definition, Address, Size, addresses, embedded)
+            : LayoutObjectReader.Read(memory, Header, RowBufferFields, Address, Size, addresses, embedded);
 
         IsAvailable = Definition is not null || Scan is not null || root.Fields.Count > 0;
 
@@ -242,7 +244,7 @@ public sealed partial class MemoryGeneratedTabViewModel : ObservableObject
             {
                 for (var field = 0; field < item.Fields.Count; field++)
                 {
-                    if (item.Fields[field] is { Structure: null } found)
+                    if (item.Fields[field] is { Structure: null, Length: > 0 } found)
                     {
                         yield return CreateMarker(found.Name,
                                                   start + element * item.Stride + found.Offset,
@@ -286,14 +288,19 @@ public sealed partial class MemoryGeneratedTabViewModel : ObservableObject
         return owner.GetPointerCell(pointer);
     }
 
+    private string GetBytes(ulong address, int length)
+        => Owner?.Data is { } data && address >= Address && (int)(address - Address) + length <= data.Length
+            ? string.Join(" ", data.Skip((int)(address - Address)).Take(length).Select(b => $"{b:X2}"))
+            : string.Empty;
+
     private List<MemoryField> GetRowBufferFields(MemoryHistoryReader memory)
         => Scan is { } scan ? AccessorBindingLayout.GetRowBufferFields(AccessorBindingLayout.ReadScanColumns(memory, scan.Iterator)) : [];
 
     private MemoryObjectTab CreateObjectTab(PlayheadMemoryViewModel owner, LayoutObject item, int index)
     {
         var table = item.Layout == MemoryTabLayout.Row
-            ? CreateRowTable(owner.History.Store.Layout, GetPointerCell, item, Colours[index])
-            : CreateFieldTable(owner.History.Store.Layout, GetPointerCell, item.Fields, item.Rows[0], Colours[index]);
+            ? CreateRowTable(owner.History.Store.Layout, GetPointerCell, item, Colours[index], GetBytes)
+            : CreateFieldTable(owner.History.Store.Layout, GetPointerCell, item.Fields, item.Rows[0], Colours[index], GetBytes);
 
         var key = string.Join(";", item.Rows.Select(r => string.Join(",", r)));
 

@@ -35,6 +35,8 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
 
     private static readonly Thickness CellPadding = new(8, 0, 4, 0);
 
+    private static readonly Thickness ChainedLinkMargin = new(-ActionSpacing, 0, 0, 0);
+
     private static readonly Thickness ClassMargin = new(0, 0, 4, 0);
 
     private static readonly Thickness BadgePadding = new(5, 1, 5, 2);
@@ -365,13 +367,19 @@ internal sealed class ResultCellColumn(int ordinal) : TableViewColumn
         if (host.Content is not StackPanel { Tag: ActionLinks previous } panel
             || previous.Links.Count != actions.Links.Count
             || previous.Badges.Count != actions.Badges.Count
-            || (previous.Suffix is null) != (actions.Suffix is null))
+            || (previous.Suffix is null) != (actions.Suffix is null)
+            || previous.IsChained != actions.IsChained)
         {
             panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = ActionSpacing };
 
-            foreach (var _ in actions.Links)
+            for (var index = 0; index < actions.Links.Count; index++)
             {
                 var button = new HyperlinkButton { Style = (Style)Application.Current.Resources["ResultPointerStyle"] };
+
+                if (actions.IsChained && index > 0)
+                {
+                    button.Margin = ChainedLinkMargin;
+                }
 
                 button.Click += OnActionClick;
 

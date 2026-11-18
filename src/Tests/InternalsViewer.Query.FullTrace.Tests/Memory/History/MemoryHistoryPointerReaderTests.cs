@@ -56,5 +56,60 @@ public class MemoryHistoryPointerReaderTests
                      MemoryHistoryPointerReader.Read(store, builder.Build(), MemoryHistoryStoreHelper.GetBlock(store, Holder), Holder, At(7)));
     }
 
+    [Fact]
+    public void A_Block_Holding_Only_Pointers_Is_Read_As_An_Array_Of_Them()
+    {
+        var store = MemoryHistoryStoreHelper.Build([MemoryHistoryStoreHelper.Block(Holder, 0x10),
+                                                    MemoryHistoryStoreHelper.Block(Target, 0x20)],
+                                              [(2, Holder, Pointer(Target)), (2, Holder + 8, Pointer(Target + 8)), (3, Target, [1])]);
+
+        var array = MemoryHistoryPointerReader.ReadArray(store, TraceBufferPool.Empty, Holder, At(5));
+
+        Assert.Equal([Target, Target + 8], array?.Select(p => p.Value));
+    }
+
+    [Fact]
+    public void A_Block_With_A_Slot_That_Is_Not_A_Pointer_Is_Not_An_Array()
+    {
+        var store = MemoryHistoryStoreHelper.Build([MemoryHistoryStoreHelper.Block(Holder, 0x10),
+                                                    MemoryHistoryStoreHelper.Block(Target, 0x20)],
+                                              [(2, Holder, Pointer(Target)), (2, Holder + 8, Pointer(7)), (3, Target, [1])]);
+
+        Assert.Null(MemoryHistoryPointerReader.ReadArray(store, TraceBufferPool.Empty, Holder, At(5)));
+    }
+
+    [Fact]
+    public void Empty_Slots_After_The_Pointers_Do_Not_Stop_A_Block_Being_An_Array()
+    {
+        var store = MemoryHistoryStoreHelper.Build([MemoryHistoryStoreHelper.Block(Holder, 0x20),
+                                                    MemoryHistoryStoreHelper.Block(Target, 0x20)],
+                                              [(2, Holder, Pointer(Target)),
+                                               (2, Holder + 8, Pointer(Target + 8)),
+                                               (2, Holder + 0x10, Pointer(0)),
+                                               (3, Target, [1])]);
+
+        var array = MemoryHistoryPointerReader.ReadArray(store, TraceBufferPool.Empty, Holder, At(5));
+
+        Assert.Equal([Target, Target + 8], array?.Select(p => p.Value));
+    }
+
+    [Fact]
+    public void A_Block_Of_Empty_Slots_Is_Not_An_Array()
+    {
+        var store = MemoryHistoryStoreHelper.Build([MemoryHistoryStoreHelper.Block(Holder, 0x10)], [(2, Holder, Pointer(0))]);
+
+        Assert.Null(MemoryHistoryPointerReader.ReadArray(store, TraceBufferPool.Empty, Holder, At(5)));
+    }
+
+    [Fact]
+    public void An_Address_Inside_A_Block_Is_Not_An_Array()
+    {
+        var store = MemoryHistoryStoreHelper.Build([MemoryHistoryStoreHelper.Block(Holder, 0x10),
+                                                    MemoryHistoryStoreHelper.Block(Target, 0x20)],
+                                              [(2, Holder, Pointer(Target)), (2, Holder + 8, Pointer(Target)), (3, Target, [1])]);
+
+        Assert.Null(MemoryHistoryPointerReader.ReadArray(store, TraceBufferPool.Empty, Holder + 8, At(5)));
+    }
+
     private static byte[] Pointer(ulong value) => BitConverter.GetBytes(value);
 }

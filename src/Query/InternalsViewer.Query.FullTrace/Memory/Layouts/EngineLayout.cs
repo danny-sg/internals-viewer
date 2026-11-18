@@ -133,6 +133,11 @@ public sealed class EngineLayout(string name, Version minimumVersion, Version ma
 
     public MemoryStructure GetStructure(string type) => Get(structures, type);
 
+    public int GetKnownSize(string type)
+        => structures.TryGetValue(type, out var structure) && structure.Size > 0
+            ? structure.Size
+            : GetFields(type).Select(f => f.Offset + f.Length).DefaultIfEmpty(0).Max();
+
     public bool IsA(string? className, string baseClass) => GetClassChain(className).Any(s => s.Name == baseClass);
 
     public string? ResolveClass(string? label, string? vtableClass)

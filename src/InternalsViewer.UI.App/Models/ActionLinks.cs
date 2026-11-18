@@ -7,6 +7,8 @@ public sealed record ActionLinks(IReadOnlyList<ActionLink> Links)
 {
     public string? Suffix { get; init; }
 
+    public bool IsChained { get; init; }
+
     public IReadOnlyList<string> Badges { get; init; } = [];
 
     public override string ToString()
