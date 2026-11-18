@@ -7,24 +7,20 @@ using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Export;
 using InternalsViewer.Query.FullTrace.Arguments;
-using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Compilation;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.History;
-using InternalsViewer.Query.FullTrace.Functions;
-using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Symbols;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Tracks;
-using InternalsViewer.Query.Memory;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
 
 namespace InternalsViewer.Query.FullTrace;
 
-public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, TraceTimeline Timeline) : IRunExtra
+public sealed record TraceResult(CallTree CallTree, TraceStore Store) : IRunExtra
 {
     internal const int ActivityBuckets = 96;
 
@@ -41,23 +37,21 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
             ? PlanNodes
             : [.. PlanNodes.Where(p => PlanLink.PlanObjects.ContainsKey(p.PlanObject))];
 
-    internal IReadOnlyList<QueryTeardown> Teardowns { get; init; } = [];
-
     public HoBtAccessMap HoBtAccess { get; init; } = HoBtAccessMap.Empty;
 
     public AllocationIndex Allocation { get; init; } = AllocationIndex.Empty;
 
     public TraceOperatorLifetimeList Lifetimes { get; init; } = TraceOperatorLifetimeList.Empty;
 
-    public AddressMap AddressMap { get; internal set; } = AddressMap.Empty;
+    public AddressMap AddressMap { get; init; } = AddressMap.Empty;
 
-    public IReadOnlyDictionary<ulong, string> VtableClasses { get; private set; } = new Dictionary<ulong, string>();
+    public IReadOnlyDictionary<ulong, string> VtableClasses { get; init; } = new Dictionary<ulong, string>();
 
-    internal IReadOnlyList<TraceModule> ModuleImages { get; set; } = [];
+    internal IReadOnlyList<TraceModule> ModuleImages { get; init; } = [];
+
+    internal ModuleSymbolIndex ModuleSymbols { get; init; } = ModuleSymbolIndex.Empty;
 
     public MemoryObjectMap MemoryObjects { get; init; } = MemoryObjectMap.Empty;
-
-    public ObjectPoolSnapshot ObjectPool { get; init; } = ObjectPoolSnapshot.Empty;
 
     public TraceBufferPool BufferPool { get; init; } = TraceBufferPool.Empty;
 
@@ -71,7 +65,7 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
     public TraceSourceTrackMap SourceTracks
     {
-        get => field ??= new TraceSourceTrackMap(Timeline, CallStore, Lifetimes);
+        get => field ??= new TraceSourceTrackMap(Store.Timeline, Store.Calls, Lifetimes);
         init;
     }
 
@@ -98,18 +92,12 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
     private TraceCompilation? Compilation { get; set; }
 
-    private ModuleSymbolIndex ModuleSymbols { get; set; } = ModuleSymbolIndex.Empty;
-
     private ConcurrentDictionary<ulong, string?> ModuleLabels { get; } = new();
 
     private Dictionary<TraceTimeline, Dictionary<CallTreeNode, int[]>> ActivityByWindow { get; } =
         new(ReferenceEqualityComparer.Instance);
 
-    private PlanOutputLinkReader OutputLinks
-    {
-        get => field ??= new PlanOutputLinkReader(this);
-        set;
-    }
+    private PlanOutputLinkReader OutputLinks => field ??= new PlanOutputLinkReader(this);
 
     private PlanOutputResultReader StatementResults => field ??= new PlanOutputResultReader(this);
 
@@ -127,53 +115,6 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
         CallTree.ComputeActivity(ActivityBuckets);
     }
 
-    public void ResolveObjectClasses(string symbolsPath)
-    {
-        if (MemoryHistory.Blocks.Count == 0)
-        {
-            return;
-        }
-
-        List<(AddressTable<string[]> Table, ulong Address)> vtables = [];
-
-        List<(string Module, ulong Start, SymbolTable Table)> symbols = [];
-
-        foreach (var (module, start) in GetModuleStarts())
-        {
-            if (ReplayFunctionResolver.IsReplayedModule(module.Name) && SymbolTableCache.Get(symbolsPath, module) is { } table)
-            {
-                vtables.Add((VtableResolver.Read(table), start));
-
-                symbols.Add((module.Name, start, table));
-            }
-        }
-
-        ModuleSymbols = new ModuleSymbolIndex(symbols);
-
-        ModuleLabels.Clear();
-
-        if (vtables.Count > 0)
-        {
-            var classes = VtableResolver.GetUniqueClasses(AddressTable<string[]>.Merge(vtables));
-
-            VtableClasses = classes;
-
-            BlockClasses.Clear();
-
-            AddressMap = ObjectClassResolver.Resolve(AddressMap, MemoryHistory, classes);
-
-            ListReader = null;
-
-            Compilation = null;
-
-            OutputLinks = new PlanOutputLinkReader(this);
-        }
-
-        BuildOutputPaths();
-
-        CallStore.ReleaseColumns();
-    }
-
     public string? GetVtableClass(int block)
         => BlockClasses.GetOrAdd(block, b => ObjectClassResolver.GetClass(MemoryHistory, VtableClasses, b, []).ClassName);
 
@@ -181,7 +122,7 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
     public MemoryListNode? GetListNode(int block) => (ListReader ??= new MemoryListReader(MemoryHistory, AddressMap)).GetNode(block);
 
-    public TraceCompilation GetCompilation() => Compilation ??= TraceCompilationReader.Read(Timeline, MemoryHistory, CallStore, AddressMap);
+    public TraceCompilation GetCompilation() => Compilation ??= TraceCompilationReader.Read(Store, MemoryHistory, AddressMap);
 
     public bool IsVtable(ulong value)
         => VtableClasses.ContainsKey(value)
@@ -230,21 +171,6 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
         return count == 0 ? null : MemoryHistoryTextReader.GetLiteralLabel(bytes[..count]);
     }
 
-    private Dictionary<FrameModule, ulong> GetModuleStarts()
-    {
-        var starts = new Dictionary<FrameModule, ulong>();
-
-        foreach (var node in CallTree.GetNodes())
-        {
-            if (node.Frame is { Address: > 0, Rva: > 0 } frame && frame.Address > frame.Rva)
-            {
-                starts.TryAdd(frame.Module, frame.Address - frame.Rva);
-            }
-        }
-
-        return starts;
-    }
-
     private Dictionary<CallTreeNode, int[]> GetCallActivity(TraceTimeline window)
     {
         lock (ActivityByWindow)
@@ -262,6 +188,6 @@ public sealed record TraceResult(CallTree CallTree, TraceCallStore CallStore, Tr
 
     private TraceTimeline GetQueryTimeline()
         => QueryRoots.Count > 0
-            ? Timeline.CropTo(QueryRoots.ToHashSet<CallTreeNode>(ReferenceEqualityComparer.Instance)) ?? Timeline
-            : Timeline;
+            ? Store.Timeline.CropTo(QueryRoots.ToHashSet<CallTreeNode>(ReferenceEqualityComparer.Instance)) ?? Store.Timeline
+            : Store.Timeline;
 }

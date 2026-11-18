@@ -315,7 +315,7 @@ public static partial class TraceTickTracks
 
     public static Locator? GetRowId(TraceResult trace, TraceTick tick)
         => tick.Node.Frame is not null
-           && trace.CallStore.GetCallList(tick.FunctionAddress, tick.InstanceAddress) is { } list
+           && trace.Store.Calls.GetCallList(tick.FunctionAddress, tick.InstanceAddress) is { } list
            && tick.CallIndex < list.Count
             ? list[tick.CallIndex].Locators.Where(l => l.ValueType == LocatorValueType.Row).Select(l => (Locator?)l).FirstOrDefault()
             : null;
@@ -505,7 +505,7 @@ public static partial class TraceTickTracks
         => trace.PageAccesses.GetRowAccess(tick.Span.From.Position)?.Page
            ?? trace.PageAccesses.GetHeaderAccess(tick.Span.From.Position)?.Access.Page
            ?? trace.PageAccesses.GetFetch(tick.Span.From.Position)?.Page
-           ?? GetRead(tick, trace.CallStore)?.Page
+           ?? GetRead(tick, trace.Store.Calls)?.Page
            ?? GetRowId(trace, tick)?.Page;
 
     private static int? GetSlot(TraceResult trace, TraceTick tick)
@@ -600,7 +600,7 @@ public static partial class TraceTickTracks
         TraceTickSourceType.RowAccess => GetRowAccessDetails(tick, trace.PageAccesses, trace.BufferPool),
         TraceTickSourceType.PageHeaderAccess => GetHeaderAccessDetails(tick, trace.PageAccesses),
         TraceTickSourceType.Seek or TraceTickSourceType.PageFetch => GetSeekDetails(tick, trace.PageAccesses),
-        TraceTickSourceType.Call => GetReadDetails(tick, trace.CallStore),
+        TraceTickSourceType.Call => GetReadDetails(tick, trace.Store.Calls),
         _ => []
     };
 

@@ -1,6 +1,6 @@
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 
@@ -42,13 +42,11 @@ public class QueryTeardownTests
 
         var teardown = tree.AddCall(execute, Frame("CQueryScan", "DestroyQuery", 0x30), 1);
 
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add(spans);
 
-        var timeline = builder.Build([new(-1, 0x10, 0, 1), new(0, 0x20, 0, 1), new(0, 0x30, 0, 1)]);
-
-        timeline.MapNodes([execute, scan, teardown]);
+        var timeline = builder.Build([new(-1, 0x10, 0, 1), new(0, 0x20, 0, 1), new(0, 0x30, 0, 1)], [execute, scan, teardown]);
 
         return timeline;
     }
@@ -59,6 +57,7 @@ public class QueryTeardownTests
     private static CallFrame Frame(string className, string methodName, uint rva) => new()
     {
         Module = new("sqlmin"),
+        Address = rva,
         Rva = rva,
         Function = new FrameFunction { ClassName = className, MethodName = methodName }
     };

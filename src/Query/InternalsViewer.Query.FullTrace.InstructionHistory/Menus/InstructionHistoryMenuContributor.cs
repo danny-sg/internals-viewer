@@ -21,14 +21,14 @@ public sealed class InstructionHistoryMenuContributor(IInstructionHistoryReader 
     {
         if (!settings.IsEnabled
             || target is not { Node: { Frame: { } frame } node, CallIndex: >= 0 and var callIndex }
-            || host.Trace?.CallStore.GetCallList(frame.Address, frame.InstanceAddress) is not { } calls
+            || host.Trace?.Store.Calls.GetCallList(frame.Address, frame.InstanceAddress) is not { } calls
             || callIndex >= calls.Count)
         {
             return;
         }
 
         var request = new InstructionRequest(frame,
-                                             calls.GetThread(callIndex),
+                                             calls.GetThreadId(callIndex),
                                              calls.GetFromPosition(callIndex),
                                              calls.GetToPosition(callIndex));
 

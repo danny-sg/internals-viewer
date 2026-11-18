@@ -51,7 +51,7 @@ labels each function with its category. The categories, and the kind of class in
 | Compilation, Optimization, Query Binding | Building the plan | `CCompPlan`, `COptContext`, `CAlgTableMetadata` |
 | Networking | TDS and the client connection | `CNetConnection`, `CTdsConn`, `CPhysicalConnection` |
 | Security | Permission checks, encryption | `CMEDRcsSecurity`, Always Encrypted checks |
-| Extended Events, Tracing | Event publishing and profiling. Cut out of a Full Trace tree |
+| Extended Events, Tracing | Event publishing and profiling. Skipped by the Full Trace replay |
 | System | Windows, the C runtime, `memcpy`, `__security_check_cookie` |
 
 Categories marked infrastructure in the app (Extended Events, Tracing, SQLOS Scheduling and Synchronisation, I/O

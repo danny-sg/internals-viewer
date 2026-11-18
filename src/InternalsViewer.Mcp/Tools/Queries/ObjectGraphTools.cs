@@ -52,13 +52,13 @@ public sealed class ObjectGraphTools(McpDocumentResolver documents)
             return "no memory history in the trace";
         }
 
-        var timeline = trace.Timeline;
+        var timeline = trace.Store.Timeline;
 
         var from = timeline.Start.Position;
 
         var to = timeline.End.Position;
 
-        var shutdown = timeline.GetFirstCallStart(TraceTimeline.ShutdownSymbol) ?? TracePosition.Unknown;
+        var shutdown = timeline.GetFirstSpanStart(TraceTimeline.ShutdownSymbol) ?? TracePosition.Unknown;
 
         var levels = Math.Clamp(depth, 1, MaximumDepth);
 
@@ -92,7 +92,7 @@ public sealed class ObjectGraphTools(McpDocumentResolver documents)
         }
         else
         {
-            var start = TraceStartCall.Find(trace.CallStore, timeline)
+            var start = TraceStartCall.Find(trace.Store.Calls, timeline)
                         ?? throw new McpException("The trace has no first call to start the Object Graph from.");
 
             at = position is null ? start.Call.FromPosition : Parse.Position(position);
@@ -194,7 +194,7 @@ public sealed class ObjectGraphTools(McpDocumentResolver documents)
 
         var name = trace.AddressMap.GetVtableClassName(block.Address, block.FromPosition, block.ToPosition)
                    ?? trace.AddressMap.GetLabel(block.Address, block.FromPosition, block.ToPosition)
-                   ?? history.GetAllocatingCall(found.Block, trace.Timeline)?.Symbol
+                   ?? history.GetAllocatingCall(found.Block, trace.Store.Timeline)?.Symbol
                    ?? "Object";
 
         if (node.Element is { } element)

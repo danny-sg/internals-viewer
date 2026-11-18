@@ -14,13 +14,16 @@ public sealed class QueryExportReader
 {
     private const int BufferSize = 1 << 16;
 
-    private QueryExportReader(ZipArchive zip, IReadOnlyList<EngineEvent> events)
+    private QueryExportReader(ZipArchive zip, IReadOnlyList<EngineEvent> events, string? symbolsPath)
     {
         Zip = zip;
         Events = events;
+        SymbolsPath = symbolsPath;
     }
 
     public IReadOnlyList<EngineEvent> Events { get; }
+
+    public string? SymbolsPath { get; }
 
     private ZipArchive Zip { get; }
 
@@ -52,6 +55,7 @@ public sealed class QueryExportReader
 
     internal static QueryExportContent Read(Stream stream,
                                             Func<long, AllocationUnit?> allocationUnitOf,
+                                            string? symbolsPath,
                                             IReadOnlyList<IQueryExportSection> sections,
                                             CancellationToken cancellationToken)
     {
@@ -101,7 +105,7 @@ public sealed class QueryExportReader
             LogRecords = [.. manifest.ResultLogRecords.Select(id => references.LogRecords[id])]
         };
 
-        var reader = new QueryExportReader(zip, result.EngineEvents);
+        var reader = new QueryExportReader(zip, result.EngineEvents, symbolsPath);
 
         var extras = new List<IRunExtra>();
 

@@ -19,10 +19,10 @@ internal sealed class WatchHitCallResolver(TraceTimeline? timeline)
     public int GetReplayNodeIndex(int spanId) => timeline?.GetSpanCall(spanId).ReplayNodeIndex ?? -1;
 
     public ulong GetInstructions(uint thread, TracePosition position)
-        => timeline?.GetInnermostCall(thread, position) is { } span ? timeline.GetInstructions(span, position) : 0;
+        => timeline?.GetInnermostSpan(thread, position) is { } span ? timeline.GetInstructions(span, position) : 0;
 
     public int GetReplayNodeIndex(uint thread, TracePosition position)
-        => timeline?.GetInnermostCall(thread, position) is { } span ? span.ReplayNodeIndex : -1;
+        => timeline?.GetInnermostSpan(thread, position) is { } span ? span.ReplayNodeIndex : -1;
 
     public TracePosition? GetFrameStart(uint thread, TracePosition position, int replayNodeIndex)
     {

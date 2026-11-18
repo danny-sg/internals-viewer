@@ -45,9 +45,9 @@ public class MemoryHistoryPointerReaderTests
     [Fact]
     public void A_Pointer_Into_A_Frame_Is_Kept_Only_When_The_Frame_Held_The_Page_As_It_Was_Written()
     {
-        var builder = new TraceBufferPool.Builder();
+        var builder = new ReplayBufferPool();
 
-        builder.Add(new TraceBufferPage(Frame, new PageAddress(1, 100), 6, At(4)));
+        builder.AddSighting(new TraceBufferPage(Frame, new PageAddress(1, 100), 6, At(4)));
 
         var store = MemoryHistoryStoreHelper.Build([MemoryHistoryStoreHelper.Block(Holder, 0x10)],
                                               [(2, Holder, Pointer(Frame + 0x60)), (5, Holder + 8, Pointer(Frame + 0x80))]);

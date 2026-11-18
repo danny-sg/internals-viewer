@@ -1165,11 +1165,13 @@ public sealed class ExecutionPlanControl : Canvas
             return;
         }
 
-        foreach (var pulls in ExpressionPullResolver.Resolve(Plan).Where(p => p.OutputValues.Count > 0).GroupBy(p => p.Puller))
+        foreach (var evaluations in ExpressionEvaluationResolver.Resolve(Plan)
+                                                                .Where(p => p.OutputValues.Count > 0)
+                                                                .GroupBy(p => p.Evaluator))
         {
-            if (NodeControls.ContainsKey(pulls.Key))
+            if (NodeControls.ContainsKey(evaluations.Key))
             {
-                Calculators[pulls.Key] = AddCalculator(pulls.Key, pulls.SelectMany(p => p.OutputValues).Distinct());
+                Calculators[evaluations.Key] = AddCalculator(evaluations.Key, evaluations.SelectMany(p => p.OutputValues).Distinct());
             }
         }
 
@@ -1179,11 +1181,11 @@ public sealed class ExecutionPlanControl : Canvas
         }
     }
 
-    private EvaluationCalculator AddCalculator(PlanNode puller, IEnumerable<DefinedValueInfo> values)
+    private EvaluationCalculator AddCalculator(PlanNode evaluator, IEnumerable<DefinedValueInfo> values)
     {
-        var idle = AddCalculatorImage(puller, isInactive: true);
+        var idle = AddCalculatorImage(evaluator, isInactive: true);
 
-        var lit = AddCalculatorImage(puller, isInactive: false);
+        var lit = AddCalculatorImage(evaluator, isInactive: false);
 
         lit.IsHitTestVisible = false;
 
@@ -1192,7 +1194,7 @@ public sealed class ExecutionPlanControl : Canvas
         return new EvaluationCalculator(idle, lit, new PlanHighlight(lit));
     }
 
-    private Image AddCalculatorImage(PlanNode puller, bool isInactive)
+    private Image AddCalculatorImage(PlanNode evaluator, bool isInactive)
     {
         var image = new Image
         {
@@ -1202,11 +1204,11 @@ public sealed class ExecutionPlanControl : Canvas
             Source = CreateCalculatorSource(isInactive)
         };
 
-        var iconRight = GetLeft(NodeControls[puller]) + BaseNodeWidth / 2 + PlanNodeControl.GetIconRight(puller);
+        var iconRight = GetLeft(NodeControls[evaluator]) + BaseNodeWidth / 2 + PlanNodeControl.GetIconRight(evaluator);
 
         SetLeft(image, iconRight + CalculatorGap);
 
-        SetTop(image, GetTop(NodeControls[puller]) + PlanNodeControl.IconCentre - CalculatorHeight / 2);
+        SetTop(image, GetTop(NodeControls[evaluator]) + PlanNodeControl.IconCentre - CalculatorHeight / 2);
 
         Children.Add(image);
 

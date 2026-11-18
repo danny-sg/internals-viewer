@@ -17,7 +17,7 @@ public sealed partial class TraceTimeline
 
         for (var replayNodeIndex = 0; replayNodeIndex < depths.Length; replayNodeIndex++)
         {
-            var parent = Parents[replayNodeIndex];
+            var parent = GetParent(replayNodeIndex);
 
             depths[replayNodeIndex] = parent >= 0 ? depths[parent] + 1 : 0;
 
@@ -107,7 +107,7 @@ public sealed partial class TraceTimeline
 
             if (lifts[replayNodeIndex] < 0)
             {
-                var parent = Parents[replayNodeIndex];
+                var parent = GetParent(replayNodeIndex);
 
                 lifts[replayNodeIndex] = parent < 0 ? 0 : GetLift(parent, depth - 1) + (folded[parent] ? 1 : 0);
             }
@@ -167,7 +167,7 @@ public sealed partial class TraceTimeline
             return depth;
         }
 
-        if (node.Parent is not { } parent || !parent.Children.TryGetValue(node.Key, out var child) || !ReferenceEquals(child, node))
+        if (node.Parent is not { } parent || !parent.ChildrenByKey.TryGetValue(node.Key, out var child) || !ReferenceEquals(child, node))
         {
             depth = -1;
         }

@@ -38,7 +38,7 @@ public sealed class CallLogTools(McpDocumentResolver documents)
     {
         var scope = await Documents.ResolveAsync(document, cancellationToken);
 
-        var store = scope.RequireTrace().CallStore;
+        var store = scope.RequireTrace().Store.Calls;
 
         var context = scope.Context;
 
@@ -57,7 +57,7 @@ public sealed class CallLogTools(McpDocumentResolver documents)
 
         var pattern = Parse.Pattern(function);
 
-        var keys = store.Functions.Keys.Where(k => pattern.IsMatch(context.GetFunctionName(k.FunctionAddress, k.InstanceAddress))).ToList();
+        var keys = store.Chunks.Keys.Where(k => pattern.IsMatch(context.GetFunctionName(k.FunctionAddress, k.InstanceAddress))).ToList();
 
         if (instance is not null)
         {
@@ -205,7 +205,7 @@ public sealed class CallLogTools(McpDocumentResolver documents)
 
         var rows = new List<(string Name, ulong Address, ulong Instance, int Calls, int Locators)>();
 
-        foreach (var key in store.Functions.Keys)
+        foreach (var key in store.Chunks.Keys)
         {
             var name = context.GetFunctionName(key.FunctionAddress, key.InstanceAddress);
 
@@ -216,7 +216,7 @@ public sealed class CallLogTools(McpDocumentResolver documents)
 
             var calls = store.GetCallList(key.FunctionAddress, key.InstanceAddress)?.Count ?? 0;
 
-            var locators = store.Locators.TryGetValue(key, out var table) ? table.Count : 0;
+            var locators = store.Locators.GetTable(key.FunctionAddress, key.InstanceAddress)?.Count ?? 0;
 
             rows.Add((name, key.FunctionAddress, key.InstanceAddress, calls, locators));
         }

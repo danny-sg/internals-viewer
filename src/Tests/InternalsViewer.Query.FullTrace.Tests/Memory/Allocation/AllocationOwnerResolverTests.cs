@@ -79,25 +79,23 @@ public class AllocationOwnerResolverTests
 
         CallTreeNode[] mapped =
         [
-            tree.AddCall(tree.Root, Frame("CQScanNLJoinNew", "Open", 0x10), 1),
-            tree.AddCall(tree.Root, Frame("CQScanTableScanNew", "Open", 0x20), 1),
-            tree.AddCall(tree.Root, Frame("CXteTableScan", "QScanGet", 0x30), 1),
-            tree.AddCall(tree.Root, Frame("CQScanNLJoinNew", "CQScanNLJoinNew", 0x40), 1)
+            tree.AddCall(tree.Root, Frame("CQScanNLJoinNew", "Open", 0x10, OpenFunction, Parent), 1),
+            tree.AddCall(tree.Root, Frame("CQScanTableScanNew", "Open", 0x20, OpenFunction, Child), 1),
+            tree.AddCall(tree.Root, Frame("CXteTableScan", "QScanGet", 0x30, BuildFunction, PlanObject), 1),
+            tree.AddCall(tree.Root, Frame("CQScanNLJoinNew", "CQScanNLJoinNew", 0x40, ConstructorFunction, 0), 1)
         ];
 
-        var store = new TraceCallStore.Builder();
+        var store = new ReplayCallLog();
 
-        store.Add(OpenFunction, Parent, Chunk(Call(10, 90, 0)), 1);
+        store.AddChunk(OpenFunction, Parent, Chunk(Call(10, 90, 0)), 1);
 
-        store.Add(OpenFunction, Child, Chunk(Call(20, 40, 1)), 1);
+        store.AddChunk(OpenFunction, Child, Chunk(Call(20, 40, 1)), 1);
 
-        store.Add(BuildFunction, PlanObject, Chunk(Call(1, 8, 2)), 1);
+        store.AddChunk(BuildFunction, PlanObject, Chunk(Call(1, 8, 2)), 1);
 
-        store.Add(ConstructorFunction, 0, Chunk(Call(100, 120, 3, Parent)), 1);
+        store.AddChunk(ConstructorFunction, 0, Chunk(Call(100, 120, 3, Parent)), 1);
 
-        var calls = store.Build();
-
-        calls.MapNodes(mapped);
+        var calls = store.Build(mapped);
 
         return AllocationOwnerResolver.GetOwners(blocks,
                                                  calls,
@@ -109,11 +107,12 @@ public class AllocationOwnerResolverTests
     private static ulong[] Call(ulong start, ulong end, int replayNodeIndex, ulong instance = 0)
         => Row(start, flags: Thread | TraceCallColumnSet.ReturnedFlag, rcx: instance, replayNodeIndex: replayNodeIndex, endSequence: end);
 
-    private static CallFrame Frame(string className, string method, uint rva) => new()
+    private static CallFrame Frame(string className, string method, uint rva, ulong address, ulong instance) => new()
     {
         Module = new("sqlmin"),
         Rva = rva,
-        Address = OpenFunction,
+        Address = address,
+        InstanceAddress = instance,
         Function = new FrameFunction
         {
             ClassName = className,

@@ -105,9 +105,9 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
     public MemoryHistoryStore Store => Trace?.MemoryHistory ?? MemoryHistoryStore.Empty;
 
-    public TraceCallStore? CallStore => Trace?.CallStore;
+    public TraceCallStore? CallStore => Trace?.Store.Calls;
 
-    public TraceTimeline? Timeline => Trace?.Timeline;
+    public TraceTimeline? Timeline => Trace?.Store.Timeline;
 
     public TraceTimeline? QueryTimeline => Trace?.QueryTimeline;
 
@@ -169,7 +169,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
     private TraceTablePartResolver TableParts
         => LoadedTableParts ??= Trace is { } trace
-            ? TraceTablePartResolver.Build(Store, trace.AddressMap, trace.CallStore)
+            ? TraceTablePartResolver.Build(Store, trace.AddressMap, trace.Store.Calls)
             : TraceTablePartResolver.Empty;
 
     private Dictionary<bool, DataPathMap> DataPathMaps { get; } = [];
@@ -533,7 +533,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
         return GetObjectName(block);
     }
 
-    public CallTreeNode? GetWriter(int replayNodeIndex) => replayNodeIndex >= 0 ? Trace?.Timeline.GetNode(replayNodeIndex) : null;
+    public CallTreeNode? GetWriter(int replayNodeIndex) => replayNodeIndex >= 0 ? Trace?.Store.Timeline.GetNode(replayNodeIndex) : null;
 
     public Windows.UI.Color GetCategoryColour(int replayNodeIndex)
         => ColourHelpers.FromHex(GetWriter(replayNodeIndex)?.CategoryColour) ?? Colors.Gray;
@@ -544,7 +544,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
     public TraceCallLink GetCallLink(uint thread, TracePoint point, CallTreeNode? node)
     {
-        if (Trace?.Timeline is not { } timeline
+        if (Trace?.Store.Timeline is not { } timeline
             || timeline.GetStack(point.Position).FirstOrDefault(s => s.ThreadId == thread) is not { } stack)
         {
             return new TraceCallLink(point, node, -1);
@@ -574,12 +574,12 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
         if (!Store.Blocks[block].IsInline)
         {
-            return Store.GetAllocatingCall(block, trace.Timeline);
+            return Store.GetAllocatingCall(block, trace.Store.Timeline);
         }
 
         var writes = Store.GetWrites(block);
 
-        return writes.Count > 0 ? trace.Timeline.GetNode(writes[0].ReplayNodeIndex) : null;
+        return writes.Count > 0 ? trace.Store.Timeline.GetNode(writes[0].ReplayNodeIndex) : null;
     }
 
     public ObservableCollection<HexWatch> GetWatches(int block) => WatchStore.GetWatches(GetWatchName(block));
@@ -810,7 +810,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
         => Trace is { } trace
            && !block.IsStack
            && trace.AddressMap.GetClassName(block.Address, block.FromPosition, block.ToPosition) is null
-            ? AllocationTypeReader.GetLabel(trace.CallStore, block.ReplayNodeIndex, block.Size)
+            ? AllocationTypeReader.GetLabel(trace.Store.Calls, block.ReplayNodeIndex, block.Size)
             : null;
 
     private bool IsUnnamed(int block)

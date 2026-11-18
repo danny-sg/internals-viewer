@@ -26,7 +26,7 @@ public sealed class TraceSourceTrackMap(TraceTimeline timeline, TraceCallStore c
         init;
     }
 
-    internal EnclosingOperatorCallIndex PullerCalls
+    internal EnclosingOperatorCallIndex EvaluatorCalls
         => field ??= EnclosingOperatorCallIndex.Build(CallStore,
                                                       Lifetimes.OperatorsByInstance
                                                                .Where(o => !OperatorClassifier.IsComputeScalar(o.Value))

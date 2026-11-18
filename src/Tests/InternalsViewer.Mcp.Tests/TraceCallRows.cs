@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Calls;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 
 namespace InternalsViewer.Mcp.Tests;
 
@@ -35,7 +35,7 @@ internal static class TraceCallRows
 
     public static TraceCallStore CallsFor(IReadOnlyList<CallNode> nodes, IEnumerable<CallSpan> spans)
     {
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
         foreach (var calls in spans.Where(s => s.CallIndex != uint.MaxValue).GroupBy(s => s.ReplayNodeIndex))
         {
@@ -47,7 +47,7 @@ internal static class TraceCallRows
                                                        endSequence: s.ToSequence,
                                                        endSteps: s.ToSteps))];
 
-            builder.Add(nodes[calls.Key].FunctionAddress, nodes[calls.Key].InstanceAddress, Chunk(rows), rows.Length);
+            builder.AddChunk(nodes[calls.Key].FunctionAddress, nodes[calls.Key].InstanceAddress, Chunk(rows), rows.Length);
         }
 
         return builder.Build();
@@ -68,7 +68,7 @@ internal static class TraceCallRows
         return columns;
     }
 
-    public static void Add(this TraceCallStore.Builder builder,
+    public static void AddChunk(this ReplayCallLog builder,
                            ulong functionAddress,
                            ulong instanceAddress,
                            ReadOnlySpan<ulong> columns,
@@ -82,7 +82,7 @@ internal static class TraceCallRows
 
         try
         {
-            builder.Add(functionAddress, instanceAddress, handle.AddrOfPinnedObject(), calls);
+            builder.AddChunk(functionAddress, instanceAddress, handle.AddrOfPinnedObject(), calls);
         }
         finally
         {

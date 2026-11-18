@@ -2,10 +2,11 @@ using System.Runtime.InteropServices;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Helpers;
-using InternalsViewer.Query.FullTrace.Hooks;
-using InternalsViewer.Query.FullTrace.Hooks.Enums;
+using InternalsViewer.Query.FullTrace.Replay.Hooks;
+using InternalsViewer.Query.FullTrace.Replay.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Memory.Address.Enums;
 using InternalsViewer.Query.Helpers;
+using InternalsViewer.Query.FullTrace.Replay.Hooks.Interfaces;
 
 namespace InternalsViewer.Query.FullTrace.Memory.Address;
 

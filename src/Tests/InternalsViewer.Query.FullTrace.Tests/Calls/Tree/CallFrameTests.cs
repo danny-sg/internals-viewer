@@ -21,7 +21,7 @@ public class CallFrameTests
     [Fact]
     public void An_Unresolved_Frame_Is_Its_Module_Relative_Address()
     {
-        Assert.Equal("sqlmin+0x2509D40", new CallFrame { Module = new("sqlmin"), Rva = 0x2509D40 }.QualifiedName);
+        Assert.Equal("sqlmin+0x2509D40", new CallFrame { Module = new("sqlmin"), Address = 0x2509D40, Rva = 0x2509D40 }.QualifiedName);
         Assert.Equal("sqlmin+0x2509D40", Resolved("0x2509D40", 0x2509D40).QualifiedName);
     }
 
@@ -29,6 +29,13 @@ public class CallFrameTests
     {
         SymbolHelper.SplitOffset(symbol, out var name, out var offset);
 
-        return new CallFrame { Module = new("sqlmin"), Rva = rva, Function = FrameFunction.Parse("sqlmin", name), Offset = offset };
+        return new CallFrame
+        {
+            Module = new("sqlmin"),
+            Address = rva,
+            Rva = rva,
+            Function = FrameFunction.Parse("sqlmin", name),
+            Offset = offset
+        };
     }
 }

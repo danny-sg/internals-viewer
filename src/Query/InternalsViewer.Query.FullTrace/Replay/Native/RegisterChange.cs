@@ -1,0 +1,6 @@
+using System.Runtime.InteropServices;
+
+namespace InternalsViewer.Query.FullTrace.Replay.Native;
+
+[StructLayout(LayoutKind.Sequential)]
+internal readonly record struct RegisterChange(uint Register, ulong Low, ulong High);

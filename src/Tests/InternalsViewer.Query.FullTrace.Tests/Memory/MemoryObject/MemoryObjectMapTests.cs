@@ -3,7 +3,7 @@ using System.Text;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 using InternalsViewer.Query.Memory;
@@ -167,14 +167,14 @@ public class MemoryObjectMapTests
 
         public MemoryObjectMap Build(IReadOnlyDictionary<ulong, MemoryObjectInfo> types)
         {
-            var builder = new TraceCallStore.Builder();
+            var builder = new ReplayCallLog();
 
             foreach (var (frame, rows) in Functions.Values)
             {
-                builder.Add(frame.Address, frame.InstanceAddress, TraceCallRowHelper.Chunk([.. rows]), rows.Count);
+                builder.AddChunk(frame.Address, frame.InstanceAddress, TraceCallRowHelper.Chunk([.. rows]), rows.Count);
             }
 
-            return MemoryObjectMap.Build(builder.Build(), Nodes, types);
+            return MemoryObjectMap.Build(builder.Build(), Tree, types);
         }
 
         public Recording Call(string className, string method, ulong sequence, ulong rcx, ulong rdx = 0, ulong returned = 0)

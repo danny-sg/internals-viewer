@@ -13,43 +13,36 @@ public sealed partial class TraceCallStore
     private const long CachedColumns = CachedColumnBytes / sizeof(ulong);
 
     private TraceCallStore(Dictionary<(ulong FunctionAddress, ulong InstanceAddress), Chunk[]> functions,
-                           Dictionary<(ulong FunctionAddress, ulong InstanceAddress), LocatorTable> locators,
-                           Locator[] uniqueLocators)
+                           TraceLocatorSet locators,
+                           TraceNodeMap nodes)
     {
-        Functions = functions;
+        Chunks = functions;
         Locators = locators;
-        UniqueLocators = uniqueLocators;
+        Nodes = nodes;
         Lists = functions.ToDictionary(f => f.Key,
                                        f => new TraceCallList(f.Key.FunctionAddress,
                                                               f.Key.InstanceAddress,
                                                               f.Value,
                                                               Columns,
-                                                              locators.GetValueOrDefault(f.Key)));
+                                                              locators.GetTable(f.Key.FunctionAddress, f.Key.InstanceAddress)));
 
         CallCount = functions.Values.Sum(f => f.Sum(c => (long)c.CallCount));
-        Size = functions.Values.Sum(f => f.Sum(c => (long)c.Columns.Length));
-        LocatorCount = locators.Values.Sum(l => (long)l.Count);
+        CompressedSize = functions.Values.Sum(f => f.Sum(c => (long)c.Columns.Length));
     }
 
-    public int FunctionCount => Functions.Count;
+    public int FunctionCount => Chunks.Count;
 
     public long CallCount { get; }
 
-    public long Size { get; }
+    public long CompressedSize { get; }
 
-    public long LocatorCount { get; }
+    internal IReadOnlyDictionary<(ulong FunctionAddress, ulong InstanceAddress), Chunk[]> Chunks { get; }
 
-    public int UniqueLocatorCount => UniqueLocators.Length;
-
-    internal IReadOnlyDictionary<(ulong FunctionAddress, ulong InstanceAddress), Chunk[]> Functions { get; }
-
-    internal IReadOnlyDictionary<(ulong FunctionAddress, ulong InstanceAddress), LocatorTable> Locators { get; }
-
-    private Locator[] UniqueLocators { get; }
+    internal TraceLocatorSet Locators { get; }
 
     private Dictionary<(ulong FunctionAddress, ulong InstanceAddress), TraceCallList> Lists { get; }
 
-    private CallTreeNode?[] Nodes { get; set; } = [];
+    private TraceNodeMap Nodes { get; }
 
     private ChunkCache Columns { get; } = new(CachedColumns);
 
@@ -58,14 +51,13 @@ public sealed partial class TraceCallStore
 
     public CallTreeNode? GetNode(TraceArgumentCall call) => GetNode(call.ReplayNodeIndex);
 
-    public CallTreeNode? GetNode(int replayNodeIndex)
-        => replayNodeIndex >= 0 && replayNodeIndex < Nodes.Length ? Nodes[replayNodeIndex] : null;
+    public CallTreeNode? GetNode(int replayNodeIndex) => Nodes.GetNode(replayNodeIndex);
 
     public CallTreeNode? GetFirstNode(TraceCallList calls) => GetNode(calls.GetReplayNodeIndex(0));
 
     public IEnumerable<TraceCallList> GetCallLists()
     {
-        foreach (var (functionAddress, instanceAddress) in FunctionKeys)
+        foreach (var (functionAddress, instanceAddress) in Chunks.Keys)
         {
             if (GetCallList(functionAddress, instanceAddress) is { Count: > 0 } list)
             {
@@ -74,7 +66,7 @@ public sealed partial class TraceCallStore
         }
     }
 
-    public IReadOnlyList<int> GetIncludedCalls(TraceCallList calls, Func<CallTreeNode?, bool> include, CancellationToken cancellationToken)
+    public IReadOnlyList<int> GetIncludedCallIndexes(TraceCallList calls, Func<CallTreeNode?, bool> include, CancellationToken cancellationToken)
     {
         var included = new List<int>(calls.Count);
 
@@ -94,15 +86,11 @@ public sealed partial class TraceCallStore
         return included;
     }
 
-    internal void MapNodes(CallTreeNode?[] nodes) => Nodes = nodes;
+    internal void ClearColumnCache() => Columns.Clear();
 
-    internal void ReleaseColumns() => Columns.Clear();
-
-    internal IEnumerable<(ulong FunctionAddress, ulong InstanceAddress)> FunctionKeys => Functions.Keys;
-
-    internal void AnnotateNodes()
+    internal void AddNodeLocators()
     {
-        foreach (var ((functionAddress, instanceAddress), table) in Locators)
+        foreach (var ((functionAddress, instanceAddress), table) in Locators.Tables)
         {
             if (GetCallList(functionAddress, instanceAddress) is not { } calls)
             {

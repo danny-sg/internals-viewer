@@ -105,13 +105,13 @@ public sealed record ArgumentLayout(IReadOnlyList<ArgumentSlot> Slots, string? R
     }
 
     public static string GetStackLocation(int position)
-        => position >= RegisterCount && position < CapturedSlotCount ? StackLocations[position] : FormatStackLocation(position);
+        => position is >= RegisterCount and < CapturedSlotCount ? StackLocations[position] : FormatStackLocation(position);
 
     public bool IsDeclared(string location)
     {
         if (location == ReturnRegisterName)
         {
-            return ReturnType is not { } returnType || (returnType != VoidType && !ArgumentValue.IsFloating(returnType));
+            return ReturnType is null || (ReturnType != VoidType && !ArgumentValue.IsFloating(ReturnType));
         }
 
         foreach (var slot in Slots)

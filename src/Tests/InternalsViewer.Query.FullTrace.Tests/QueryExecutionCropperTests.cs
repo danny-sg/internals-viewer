@@ -1,7 +1,7 @@
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Calls;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Symbols.Categories;
 using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
@@ -111,17 +111,15 @@ public class QueryExecutionCropperTests
 
         var execute = tree.AddCall(source, Frame("CXStmtQuery", "ErsqExecuteQuery", 0x40), 1);
 
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add([Span(0, 0, 100), Span(1, 10, 20), Span(2, 30, 90)]);
 
-        var timeline = builder.Build([new(-1, 0x20, 0, 1), new(0, 0x30, 0, 1), new(0, 0x40, 0, 1)]);
+        var timeline = builder.Build([new(-1, 0x20, 0, 1), new(0, 0x30, 0, 1), new(0, 0x40, 0, 1)], [source, transform, execute]);
 
-        timeline.MapNodes([source, transform, execute]);
+        var trace = new TraceResult(tree, new TraceStore(new ReplayCallLog().Build(), timeline));
 
-        var trace = new TraceResult(tree, new TraceCallStore.Builder().Build(), timeline);
-
-        Assert.Equal((3L, 1L), (trace.Timeline.SpanCount, trace.QueryTimeline.SpanCount));
+        Assert.Equal((3L, 1L), (trace.Store.Timeline.SpanCount, trace.QueryTimeline.SpanCount));
     }
 
     [Fact]
@@ -137,21 +135,20 @@ public class QueryExecutionCropperTests
 
         var scan = tree.AddCall(execute, Frame("CQScanTableScanNew", "GetRow", 0x50), 2);
 
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add([Span(0, 0, 100), Span(1, 10, 20), Span(2, 30, 90), Span(3, 32, 35), Span(3, 80, 85)]);
 
-        var timeline = builder.Build([new(-1, 0x20, 0, 1), new(0, 0x30, 0, 1), new(0, 0x40, 0, 1), new(2, 0x50, 0, 1)]);
+        var timeline = builder.Build([new(-1, 0x20, 0, 1), new(0, 0x30, 0, 1), new(0, 0x40, 0, 1), new(2, 0x50, 0, 1)],
+                                     [source, transform, execute, scan]);
 
-        timeline.MapNodes([source, transform, execute, scan]);
-
-        var trace = new TraceResult(tree, new TraceCallStore.Builder().Build(), timeline);
+        var trace = new TraceResult(tree, new TraceStore(new ReplayCallLog().Build(), timeline));
 
         trace.SetActivityWindow(trace.QueryTimeline);
 
         Assert.Equal([0, 3, 80], Buckets(execute));
 
-        trace.SetActivityWindow(trace.Timeline);
+        trace.SetActivityWindow(trace.Store.Timeline);
 
         Assert.Equal([28, 30, 76], Buckets(execute));
     }
@@ -160,7 +157,7 @@ public class QueryExecutionCropperTests
         => new(1, start, 1, end, start, end, replayNodeIndex, 7, 0, 1);
 
     private static int[] Buckets(CallTreeNode node)
-        => [.. Enumerable.Range(0, node.ActivityCounts.Length).Where(i => node.ActivityCounts[i] > 0)];
+        => [.. Enumerable.Range(0, node.SubtreeActivityCounts.Length).Where(i => node.SubtreeActivityCounts[i] > 0)];
 
     private static CallFrame Frame(string className,
                                         string methodName,
@@ -168,6 +165,7 @@ public class QueryExecutionCropperTests
                                         SymbolCategory category = SymbolCategory.Unknown) => new()
     {
         Module = new("sqllang"),
+        Address = rva,
         Rva = rva,
         Function = new FrameFunction { ClassName = className, MethodName = methodName, SymbolCategory = category }
     };

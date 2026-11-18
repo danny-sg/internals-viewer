@@ -4,7 +4,7 @@ using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -140,11 +140,9 @@ public class TraceReadResolverTests
             Span(5, 21, 24)
         ];
 
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add(spans);
-
-        var timeline = builder.Build(Nodes);
 
         var tree = new CallTree();
 
@@ -162,19 +160,19 @@ public class TraceReadResolverTests
 
         CallTreeNode[] nodes = [join, scan, scanGet, readAhead, rootGet, fromDisk];
 
-        timeline.MapNodes(nodes);
+        var timeline = builder.Build(Nodes, nodes);
 
-        var store = new TraceCallStore.Builder();
+        var store = new ReplayCallLog();
 
-        store.Add(Helper, JoinIterator, Chunk(Call(10, 60, 0)), 1);
+        store.AddChunk(Helper, JoinIterator, Chunk(Call(10, 60, 0)), 1);
 
-        store.Add(Helper, ScanIterator, Chunk(Call(15, 30, 1)), 1);
+        store.AddChunk(Helper, ScanIterator, Chunk(Call(15, 30, 1)), 1);
 
-        store.Add(GetFunction, BufferPool, Chunk(Call(20, 25, 2), Call(70, 72, 4)), 2);
+        store.AddChunk(GetFunction, BufferPool, Chunk(Call(20, 25, 2), Call(70, 72, 4)), 2);
 
-        store.Add(ReadAheadFunction, BufferPool, Chunk(Call(35, 45, 3, pageCount: 40)), 1);
+        store.AddChunk(ReadAheadFunction, BufferPool, Chunk(Call(35, 45, 3, pageCount: 40)), 1);
 
-        store.Add(GetFromDiskFunction, BufferPool, Chunk(Call(21, 24, 5, pageCount: 1)), 1);
+        store.AddChunk(GetFromDiskFunction, BufferPool, Chunk(Call(21, 24, 5, pageCount: 1)), 1);
 
         store.AddLocator(GetFunction, BufferPool, 0, Page(1, 1056), false);
 
@@ -184,11 +182,7 @@ public class TraceReadResolverTests
 
         store.AddLocator(GetFromDiskFunction, BufferPool, 0, Page(1, 1056), false);
 
-        var calls = store.Build();
-
-        calls.MapNodes(nodes);
-
-        timeline.SetCalls(calls);
+        var calls = store.Build(nodes);
 
         TraceOperatorLifetime[] lifetimes =
         [
@@ -196,7 +190,10 @@ public class TraceReadResolverTests
             new(Thread, Scan, 1, [Whole()], MemoryUsageCurve.Empty, timeline.Scale) { Instances = [ScanIterator] }
         ];
 
-        var trace = new TraceResult(new CallTree(), calls, timeline) { Lifetimes = new TraceOperatorLifetimeList(lifetimes) };
+        var trace = new TraceResult(new CallTree(), new TraceStore(calls, timeline))
+        {
+            Lifetimes = new TraceOperatorLifetimeList(lifetimes)
+        };
 
         TraceTrackRule[] rules = [.. TraceTrackRule.GetPredefined().Where(d => d.Name == ReadsTrack)];
 

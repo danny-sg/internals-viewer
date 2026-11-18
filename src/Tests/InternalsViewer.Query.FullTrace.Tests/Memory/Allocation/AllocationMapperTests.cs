@@ -3,7 +3,7 @@ using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.Allocation.Enums;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Memory;
@@ -31,19 +31,17 @@ public class AllocationMapperTests
         var caller = tree.AddCall(tree.Root, Frame(0x10), 1);
         var allocator = tree.AddCall(caller, Frame(Allocator), 2);
 
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(Allocator, 0, Chunk(Row(1, size: 100, replayNodeIndex: 1), Row(2, size: 200, replayNodeIndex: 1)), 2);
+        builder.AddChunk(Allocator, 0, Chunk(Row(1, size: 100, replayNodeIndex: 1), Row(2, size: 200, replayNodeIndex: 1)), 2);
 
-        var store = builder.Build();
-
-        store.MapNodes([caller, allocator]);
+        var store = builder.Build([caller, allocator]);
 
         var (_, allocations, bytes, _) = AllocationMapper.Map(store, [Function(Allocator)], null);
 
         Assert.Equal((300ul, 2L), (bytes, allocations));
         Assert.Equal((300L, 2L), (allocator.AllocatedBytes, allocator.AllocationCount));
-        Assert.Equal((300L, 2L), (caller.AllocatedBytesIncludingChildren, caller.AllocationsIncludingChildren));
+        Assert.Equal((300L, 2L), (caller.AllocatedBytesIncludingChildren, caller.AllocationCountIncludingChildren));
         Assert.Equal(0L, caller.AllocatedBytes);
     }
 
@@ -56,14 +54,12 @@ public class AllocationMapperTests
         var outer = tree.AddCall(caller, Frame(Allocator), 1);
         var inner = tree.AddCall(outer, Frame(Inner), 1);
 
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(Allocator, 0, Chunk(Row(1, size: 64, replayNodeIndex: 1)), 1);
-        builder.Add(Inner, 0, Chunk(Row(2, size: 8192, replayNodeIndex: 2)), 1);
+        builder.AddChunk(Allocator, 0, Chunk(Row(1, size: 64, replayNodeIndex: 1)), 1);
+        builder.AddChunk(Inner, 0, Chunk(Row(2, size: 8192, replayNodeIndex: 2)), 1);
 
-        var store = builder.Build();
-
-        store.MapNodes([caller, outer, inner]);
+        var store = builder.Build([caller, outer, inner]);
 
         var (_, _, bytes, _) = AllocationMapper.Map(store, [Function(Allocator), Function(Inner)], null);
 
@@ -81,13 +77,11 @@ public class AllocationMapperTests
         var objectPages = tree.AddCall(create, Resolved(Inner, "sqldk", "MemoryClerkInternal", "AllocatePages"), 1);
         var workspacePages = tree.AddCall(caller, Resolved(Inner, "sqldk", "MemoryClerkInternal", "AllocatePages"), 1);
 
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(Inner, 0, Chunk(Row(1, size: 1, replayNodeIndex: 2), Row(2, size: 2, replayNodeIndex: 3)), 2);
+        builder.AddChunk(Inner, 0, Chunk(Row(1, size: 1, replayNodeIndex: 2), Row(2, size: 2, replayNodeIndex: 3)), 2);
 
-        var store = builder.Build();
-
-        store.MapNodes([caller, create, objectPages, workspacePages]);
+        var store = builder.Build([caller, create, objectPages, workspacePages]);
 
         var (_, _, bytes, _) = AllocationMapper.Map(store, [ClerkPages()], null);
 
@@ -105,22 +99,19 @@ public class AllocationMapperTests
         var allocator = tree.AddCall(caller, Frame(Allocator), 1);
         var pages = tree.AddCall(allocator, Resolved(Inner, "sqldk", "MemoryClerkInternal", "AllocatePages"), 1);
 
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(Allocator, 0, Chunk(Row(1, size: 64, replayNodeIndex: 1, returned: 0xA0)), 1);
-        builder.Add(Inner, 0, Chunk(Row(2, size: 1, replayNodeIndex: 2, receiver: 0xC1)), 1);
+        builder.AddChunk(Allocator, 0, Chunk(Row(1, size: 64, replayNodeIndex: 1, returned: 0xA0)), 1);
+        builder.AddChunk(Inner, 0, Chunk(Row(2, size: 1, replayNodeIndex: 2, receiver: 0xC1)), 1);
 
-        var store = builder.Build();
+        var store = builder.Build([caller, allocator, pages]);
 
-        store.MapNodes([caller, allocator, pages]);
-
-        var timelineBuilder = new TraceTimeline.Builder();
+        var timelineBuilder = new ReplaySpans();
 
         timelineBuilder.Add([Span(0, 0, 40, uint.MaxValue), Span(1, 10, 20, 0), Span(2, 12, 13, 0)]);
 
-        var timeline = timelineBuilder.Build([new(-1, 0x10, 0, 1), new(0, Allocator, 0, 1), new(1, Inner, 0, 1)]);
-
-        timeline.MapNodes([caller, allocator, pages]);
+        var timeline = timelineBuilder.Build([new(-1, 0x10, 0, 1), new(0, Allocator, 0, 1), new(1, Inner, 0, 1)],
+                                             [caller, allocator, pages]);
 
         var (memory, _, _, _) = AllocationMapper.Map(store,
                                                      [Function(Allocator), ClerkPages()],
@@ -142,21 +133,17 @@ public class AllocationMapperTests
         var caller = tree.AddCall(tree.Root, Frame(0x10), 1);
         var allocator = tree.AddCall(caller, Resolved(Allocator, "sqldk", "CMemObj", "Alloc"), 1);
 
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(Allocator, 0, Chunk(Row(1, size: 48, replayNodeIndex: 1, returned: 0xA0, receiver: 0xB0)), 1);
+        builder.AddChunk(Allocator, 0, Chunk(Row(1, size: 48, replayNodeIndex: 1, returned: 0xA0, receiver: 0xB0)), 1);
 
-        var store = builder.Build();
+        var store = builder.Build([caller, allocator]);
 
-        store.MapNodes([caller, allocator]);
-
-        var timelineBuilder = new TraceTimeline.Builder();
+        var timelineBuilder = new ReplaySpans();
 
         timelineBuilder.Add([Span(0, 0, 40, uint.MaxValue), Span(1, 10, 20, 0)]);
 
-        var timeline = timelineBuilder.Build([new(-1, 0x10, 0, 1), new(0, Allocator, 0, 1)]);
-
-        timeline.MapNodes([caller, allocator]);
+        var timeline = timelineBuilder.Build([new(-1, 0x10, 0, 1), new(0, Allocator, 0, 1)], [caller, allocator]);
 
         var (memory, _, _, _) = AllocationMapper.Map(store,
                                                      [new(Allocator, AllocationOperation.Allocate, 1, -1, 1) { IsObjectCall = true }],
@@ -178,26 +165,22 @@ public class AllocationMapperTests
         var child = tree.AddCall(allocator, Resolved(Inner, "sqldk", "CMemThread<CMemObj>", "Alloc"), 1);
         var parent = tree.AddCall(child, Resolved(Parent, "sqldk", "CMemObj", "Alloc"), 1);
 
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(Allocator, 0, Chunk(Row(1, size: 64, replayNodeIndex: 1, returned: 0xA0)), 1);
-        builder.Add(Inner, 0, Chunk(Row(2, size: 64, replayNodeIndex: 2, receiver: 0xB1)), 1);
-        builder.Add(Parent, 0, Chunk(Row(3, size: 64, replayNodeIndex: 3, receiver: 0xB0)), 1);
+        builder.AddChunk(Allocator, 0, Chunk(Row(1, size: 64, replayNodeIndex: 1, returned: 0xA0)), 1);
+        builder.AddChunk(Inner, 0, Chunk(Row(2, size: 64, replayNodeIndex: 2, receiver: 0xB1)), 1);
+        builder.AddChunk(Parent, 0, Chunk(Row(3, size: 64, replayNodeIndex: 3, receiver: 0xB0)), 1);
 
-        var store = builder.Build();
+        var store = builder.Build([caller, allocator, child, parent]);
 
-        store.MapNodes([caller, allocator, child, parent]);
-
-        var timelineBuilder = new TraceTimeline.Builder();
+        var timelineBuilder = new ReplaySpans();
 
         timelineBuilder.Add([Span(0, 0, 40, uint.MaxValue), Span(1, 10, 20, 0), Span(2, 11, 19, 0), Span(3, 12, 18, 0)]);
 
         var timeline = timelineBuilder.Build([new(-1, 0x10, 0, 1),
                                               new(0, Allocator, 0, 1),
                                               new(1, Inner, 0, 1),
-                                              new(2, Parent, 0, 1)]);
-
-        timeline.MapNodes([caller, allocator, child, parent]);
+                                              new(2, Parent, 0, 1)], [caller, allocator, child, parent]);
 
         var (memory, _, bytes, _) = AllocationMapper.Map(store,
                                                          [Function(Allocator),
@@ -218,22 +201,19 @@ public class AllocationMapperTests
         var allocator = tree.AddCall(caller, Frame(Allocator), 1);
         var memoryObject = tree.AddCall(allocator, Resolved(Inner, "sqldk", "CMemProc", "Alloc"), 1);
 
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(Allocator, 0, Chunk(Row(1, size: 888, replayNodeIndex: 1, returned: 0xA0)), 1);
-        builder.Add(Inner, 0, Chunk(Row(2, size: 888, replayNodeIndex: 2, returned: 0xA0, receiver: 0xB0)), 1);
+        builder.AddChunk(Allocator, 0, Chunk(Row(1, size: 888, replayNodeIndex: 1, returned: 0xA0)), 1);
+        builder.AddChunk(Inner, 0, Chunk(Row(2, size: 888, replayNodeIndex: 2, returned: 0xA0, receiver: 0xB0)), 1);
 
-        var store = builder.Build();
+        var store = builder.Build([caller, allocator, memoryObject]);
 
-        store.MapNodes([caller, allocator, memoryObject]);
-
-        var timelineBuilder = new TraceTimeline.Builder();
+        var timelineBuilder = new ReplaySpans();
 
         timelineBuilder.Add([Span(0, 0, 40, uint.MaxValue), Span(1, 10, 20, 0), Span(2, 11, 19, 0)]);
 
-        var timeline = timelineBuilder.Build([new(-1, 0x10, 0, 1), new(0, Allocator, 0, 1), new(1, Inner, 0, 1)]);
-
-        timeline.MapNodes([caller, allocator, memoryObject]);
+        var timeline = timelineBuilder.Build([new(-1, 0x10, 0, 1), new(0, Allocator, 0, 1), new(1, Inner, 0, 1)],
+                                             [caller, allocator, memoryObject]);
 
         var (_, _, _, memoryObjects) = AllocationMapper.Map(store,
                                                             [Function(Allocator),
@@ -260,26 +240,22 @@ public class AllocationMapperTests
         var child = tree.AddCall(allocator, Resolved(Inner, "sqldk", "CMemThread<CMemObj>", "Alloc"), 1);
         var parent = tree.AddCall(child, Resolved(Parent, "sqldk", "CMemObj", "Alloc"), 1);
 
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(Allocator, 0, Chunk(Row(1, size: 64, replayNodeIndex: 1, returned: 0xA0)), 1);
-        builder.Add(Inner, 0, Chunk(Row(2, size: 64, replayNodeIndex: 2, receiver: 0xB1)), 1);
-        builder.Add(Parent, 0, Chunk(Row(3, size: 64, replayNodeIndex: 3, receiver: 0xB0)), 1);
+        builder.AddChunk(Allocator, 0, Chunk(Row(1, size: 64, replayNodeIndex: 1, returned: 0xA0)), 1);
+        builder.AddChunk(Inner, 0, Chunk(Row(2, size: 64, replayNodeIndex: 2, receiver: 0xB1)), 1);
+        builder.AddChunk(Parent, 0, Chunk(Row(3, size: 64, replayNodeIndex: 3, receiver: 0xB0)), 1);
 
-        var store = builder.Build();
+        var store = builder.Build([caller, allocator, child, parent]);
 
-        store.MapNodes([caller, allocator, child, parent]);
-
-        var timelineBuilder = new TraceTimeline.Builder();
+        var timelineBuilder = new ReplaySpans();
 
         timelineBuilder.Add([Span(0, 0, 40, uint.MaxValue), Span(1, 10, 20, 0), Span(2, 11, 19, 0), Span(3, 12, 18, 0)]);
 
         var timeline = timelineBuilder.Build([new(-1, 0x10, 0, 1),
                                               new(0, Allocator, 0, 1),
                                               new(1, Inner, 0, 1),
-                                              new(2, Parent, 0, 1)]);
-
-        timeline.MapNodes([caller, allocator, child, parent]);
+                                              new(2, Parent, 0, 1)], [caller, allocator, child, parent]);
 
         var (_, _, _, memoryObjects) = AllocationMapper.Map(store,
                                                             [Function(Allocator),

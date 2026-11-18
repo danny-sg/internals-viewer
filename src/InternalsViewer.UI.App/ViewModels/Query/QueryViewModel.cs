@@ -298,7 +298,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsFullTrace))]
-    private TraceTimeline? _fullTraceTimeline;
+    private TraceStore? _traceStore;
 
     [ObservableProperty]
     private AllocationIndex _traceAllocation = AllocationIndex.Empty;
@@ -723,7 +723,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     public bool IsTraceTimelineHintVisible => TraceTimeline is null && !IsTraceLoading;
 
-    public bool IsFullTrace => FullTraceTimeline is not null;
+    public bool IsFullTrace => TraceStore is not null;
 
     public PlanActivity PlanActivity { get; private set; } = PlanActivity.Empty;
 
@@ -906,7 +906,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     private void ShowDataPath() => TraceTimelineTab.OpenDataPath();
 
     private TraceStartCall? GetTraceStartCall()
-        => Trace is { } trace && TraceTimeline is { } timeline ? TraceStartCall.Find(trace.CallStore, timeline) : null;
+        => Trace is { } trace && TraceTimeline is { } timeline ? TraceStartCall.Find(trace.Store.Calls, timeline) : null;
 
     public void ShowMemoryWrite(int block, TracePosition? position)
     {
@@ -1062,7 +1062,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
     public ulong? GetHashTableGroup(ExecutionOperatorEvent op)
         => Trace is { } trace
             ? TraceHashTableReader.GetGroup(trace.MemoryHistory,
-                                            trace.CallStore,
+                                            trace.Store.Calls,
                                             [.. trace.Lifetimes.Where(l => ReferenceEquals(l.Operator, op)).SelectMany(l => l.Instances)])
             : null;
 
@@ -1254,7 +1254,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         TraceTimeline = null;
 
-        FullTraceTimeline = null;
+        TraceStore = null;
 
         TraceAllocation = AllocationIndex.Empty;
 
@@ -1713,7 +1713,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         => tick.Span.From.Position < position && position < tick.Span.To.Position;
 
     private PlanNode GetCalculatorNode(PlanNode computeScalar, TraceTick tick)
-        => !computeScalar.IsBatchMode && tick.Caller is { } caller && GetPlanNode(caller) is { } puller ? puller : computeScalar;
+        => !computeScalar.IsBatchMode && tick.Caller is { } caller && GetPlanNode(caller) is { } evaluator ? evaluator : computeScalar;
 
     private List<PlanNode> GetPlanNodes(IEnumerable<ExecutionOperatorEvent> operators)
     {
@@ -2523,12 +2523,10 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         {
             await using var stream = File.OpenRead(file.Path);
 
-            var run = await QueryExport.ReadAsync(stream, id => Database.AllocationUnits.GetValueOrDefault(id), CancellationToken.None);
-
-            if (run.ExtraOf<TraceResult>() is { } imported)
-            {
-                await ResolveObjectClassesAsync(imported);
-            }
+            var run = await QueryExport.ReadAsync(stream,
+                                                  id => Database.AllocationUnits.GetValueOrDefault(id),
+                                                  _settingsViewModel.SymbolsPath,
+                                                  CancellationToken.None);
 
             AddMessage(new ProgressDetail(step) { IsStep = true, Elapsed = Stopwatch.GetElapsedTime(started) });
 
@@ -2611,20 +2609,6 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
         RefreshFilteredEvents();
     }
 
-    private async Task ResolveObjectClassesAsync(TraceResult trace)
-    {
-        var symbolsPath = _settingsViewModel.SymbolsPath;
-
-        try
-        {
-            await Task.Run(() => trace.ResolveObjectClasses(symbolsPath));
-        }
-        catch (Exception exception) when (exception is IOException or InvalidOperationException or UnauthorizedAccessException)
-        {
-            Logger.LogWarning(exception, "Objects could not be named by their vtables from the symbols in {Path}", symbolsPath);
-        }
-    }
-
     private void ShowTrace(TraceResult result, TimeTravelTraceFile? traceFile)
     {
         Trace = result;
@@ -2637,7 +2621,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         var iterators = IteratorTarget.Build(result.CallTree, Events, result.PlanLink, result.OperatorFrames);
 
-        Arguments.SetSource(result.CallStore,
+        Arguments.SetSource(result.Store.Calls,
                             result.CallTree,
                             iterators,
                             result.HoBtAccess,
@@ -2650,7 +2634,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
                             result.GetModuleLabel,
                             result.GetInterfaceName);
 
-        FullTraceTimeline = result.Timeline;
+        TraceStore = result.Store;
 
         TraceAllocation = result.Allocation;
 
@@ -2683,7 +2667,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
     private TraceTimeline ApplyCrop(TraceResult result)
     {
-        var timeline = QueryOptions.CropToQuery ? result.QueryTimeline : result.Timeline;
+        var timeline = QueryOptions.CropToQuery ? result.QueryTimeline : result.Store.Timeline;
 
         result.SetActivityWindow(timeline);
 
@@ -2798,7 +2782,7 @@ public sealed partial class QueryViewModel : TabViewModel, IAllocationViewModel
 
         TraceTimeline = null;
 
-        FullTraceTimeline = null;
+        TraceStore = null;
 
         TraceAllocation = AllocationIndex.Empty;
 

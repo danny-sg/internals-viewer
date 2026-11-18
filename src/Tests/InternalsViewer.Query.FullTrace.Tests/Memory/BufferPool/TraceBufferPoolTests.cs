@@ -48,9 +48,9 @@ public class TraceBufferPoolTests
     [Fact]
     public void Slot_Offsets_Round_Trip_Through_An_Export()
     {
-        var builder = new TraceBufferPool.Builder();
+        var builder = new ReplayBufferPool();
 
-        builder.Add(new TraceBufferPage(Frame, First, Database, At(2)));
+        builder.AddSighting(new TraceBufferPage(Frame, First, Database, At(2)));
 
         builder.AddLayout(First, Database, [0x60, 0x90]);
 
@@ -62,15 +62,15 @@ public class TraceBufferPoolTests
 
         var read = TraceBufferPool.Read(new BinaryReader(stream));
 
-        Assert.Equal([0x60, 0x90], read.GetLayout(First, Database)?.OffsetTable ?? []);
+        Assert.Equal([0x60, 0x90], read.GetPageLayout(First, Database)?.OffsetTable ?? []);
     }
 
     [Fact]
     public void A_Page_Type_Round_Trips_Through_An_Export()
     {
-        var builder = new TraceBufferPool.Builder();
+        var builder = new ReplayBufferPool();
 
-        builder.Add(new TraceBufferPage(Frame, First, Database, At(2)));
+        builder.AddSighting(new TraceBufferPage(Frame, First, Database, At(2)));
 
         builder.AddLayout(First, Database, [0x60, 0x90], PageType.Iam);
 
@@ -82,7 +82,7 @@ public class TraceBufferPoolTests
 
         var read = TraceBufferPool.Read(new BinaryReader(stream));
 
-        Assert.Equal(PageType.Iam, read.GetLayout(First, Database)?.PageHeader.PageType);
+        Assert.Equal(PageType.Iam, read.GetPageLayout(First, Database)?.PageHeader.PageType);
     }
 
     [Fact]
@@ -153,11 +153,11 @@ public class TraceBufferPoolTests
 
     private static TraceBufferPool Build(params (ulong Frame, PageAddress Page, ulong Sequence, ulong Buffer)[] pages)
     {
-        var builder = new TraceBufferPool.Builder();
+        var builder = new ReplayBufferPool();
 
         foreach (var (frame, page, sequence, buffer) in pages)
         {
-            builder.Add(new TraceBufferPage(frame, page, Database, At(sequence), buffer));
+            builder.AddSighting(new TraceBufferPage(frame, page, Database, At(sequence), buffer));
         }
 
         return builder.Build();

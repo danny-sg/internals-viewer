@@ -180,7 +180,7 @@ public class OperatorFrameMapBuildTests
     private static OperatorFrameMap Match(CallTree tree,
                                           IReadOnlyList<ExecutionOperatorEvent> operators,
                                           params (ulong InstanceAddress, int Node)[] links)
-        => OperatorFrameMap.Build(tree.CollapseToFunctions(), operators, LinkOf(links));
+        => OperatorFrameMap.Build(tree.Project(), operators, LinkOf(links));
 
     private static IteratorPlanLink LinkOf(params (ulong InstanceAddress, int Node)[] links)
         => new(new Dictionary<ulong, PlanNodeIdentifier>(),
@@ -224,6 +224,7 @@ public class OperatorFrameMapBuildTests
     {
         Module = new(module),
         Rva = (uint)StringComparer.Ordinal.GetHashCode($"{className}::{method}"),
+        Address = (uint)StringComparer.Ordinal.GetHashCode($"{className}::{method}"),
         InstanceAddress = instance,
         Function = new FrameFunction
         {

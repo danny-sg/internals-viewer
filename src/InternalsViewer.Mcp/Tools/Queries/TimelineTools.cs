@@ -40,7 +40,7 @@ public sealed class TimelineTools(McpDocumentResolver documents)
 
         var trace = scope.RequireTrace();
 
-        var timeline = trace.Timeline;
+        var timeline = trace.Store.Timeline;
 
         var useInstructions = axis.ToLowerInvariant() switch
         {
@@ -129,36 +129,6 @@ public sealed class TimelineTools(McpDocumentResolver documents)
                       Format.Hex(planNode.Query),
                       planNode.Constructed is { } constructed ? Format.Position(constructed) : string.Empty,
                       planNode.IsBatchHelper);
-        }
-
-        table.Write(builder);
-
-        return builder.ToString();
-    }
-
-    [McpServerTool(Name = "query_teardowns", ReadOnly = true)]
-    [Description("Full Trace: where the query's execution ended on each thread")]
-    public async Task<string> Teardowns([Description(DocumentDescription)] string? document = null,
-                                        CancellationToken cancellationToken = default)
-    {
-        var scope = await Documents.ResolveAsync(document, cancellationToken);
-
-        var trace = scope.RequireTrace();
-
-        if (trace.Teardowns.Count == 0)
-        {
-            return "no teardowns in the trace";
-        }
-
-        var builder = new StringBuilder();
-
-        builder.AppendLine("teardowns: where the query's execution ended on each thread");
-
-        var table = new TextTable("Thread", "Position", "Instructions");
-
-        foreach (var teardown in trace.Teardowns.OrderBy(t => t.Thread))
-        {
-            table.Add(teardown.Thread, Format.Position(teardown.End), Format.Number(teardown.End.Instructions));
         }
 
         table.Write(builder);

@@ -109,28 +109,6 @@ public class TimelineToolsTests
         Assert.Contains("1:0", text);
     }
 
-    [Fact]
-    public async Task Teardowns_Reports_When_There_Are_None()
-    {
-        var (resolver, _) = CreateResolver(Create());
-
-        Assert.Equal("no teardowns in the trace", await new TimelineTools(resolver).Teardowns());
-    }
-
-    [Fact]
-    public async Task Teardowns_Lists_Where_Each_Thread_Ended()
-    {
-        var run = WithTrace(Create(), t => t with { Teardowns = [new QueryTeardown(7, new TracePoint(At(0x64), 100))] });
-
-        var (resolver, _) = CreateResolver(run);
-
-        var text = await new TimelineTools(resolver).Teardowns();
-
-        Assert.Contains("Thread  Position  Instructions", text);
-        Assert.Contains("64:0", text);
-        Assert.Contains("100", text);
-    }
-
     private static QueryExportContent WithTrace(QueryExportContent run, Func<TraceResult, TraceResult> change)
         => run with { Extras = [change(run.ExtraOf<TraceResult>()!)] };
 }

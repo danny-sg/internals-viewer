@@ -5,7 +5,7 @@ using System.Text;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.FullTrace.Locators.Enums;
 using InternalsViewer.Query.FullTrace.Calls;
-using InternalsViewer.Query.FullTrace.Hooks;
+using InternalsViewer.Query.FullTrace.Replay.Hooks;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Arguments;
 
@@ -61,9 +61,9 @@ public class LocatorHookTests
 
         var replay = new FakeTraceReplay().Write(Pointer, Page336);
 
-        var store = new TraceCallStore.Builder();
+        var store = new ReplayCallLog();
 
-        store.Add(Function, 0, Chunk(Row(1, flags: ReturnedFlag)), 1);
+        store.AddChunk(Function, 0, Chunk(Row(1, flags: ReturnedFlag)), 1);
 
         var hook = new LocatorHook([new LocatorRead(Function, register, true, LocatorValueType.Page)], store);
 
@@ -79,9 +79,9 @@ public class LocatorHookTests
     {
         var register = ArgumentLayout.ReturnArgumentSlot;
 
-        var store = new TraceCallStore.Builder();
+        var store = new ReplayCallLog();
 
-        store.Add(Function, 0, Chunk(Row(1)), 1);
+        store.AddChunk(Function, 0, Chunk(Row(1)), 1);
 
         var hook = new LocatorHook([new LocatorRead(Function, register, true, LocatorValueType.Page)], store);
 
@@ -282,9 +282,9 @@ public class LocatorHookTests
                                             ulong[]? arguments = null,
                                             ImageText? images = null)
     {
-        var store = new TraceCallStore.Builder();
+        var store = new ReplayCallLog();
 
-        store.Add(Function, 0, Chunk(Row(1)), 1);
+        store.AddChunk(Function, 0, Chunk(Row(1)), 1);
 
         new LocatorHook([read], store, images).OnEntry(Call(arguments ?? [0, Pointer, 0, 0]), replay);
 

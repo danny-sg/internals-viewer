@@ -1,4 +1,4 @@
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 
 namespace InternalsViewer.Query.FullTrace.Calls.Tree;
 
@@ -10,10 +10,9 @@ namespace InternalsViewer.Query.FullTrace.Calls.Tree;
 /// </remarks>
 internal static class CallTreeBuilder
 {
-    public static (CallTree Tree, CallTreeNode[] Nodes) Build(IReadOnlyList<CallNode> calls,
-                                                                    IReadOnlyList<TraceModule> modules)
+    public static (CallTree Tree, TraceNodeMap Nodes) Build(IReadOnlyList<CallNode> calls, IReadOnlyList<TraceModule> modules)
     {
-        var callTree = new CallTree();
+        var replayed = new CallTree();
 
         var ordered = modules.OrderBy(m => m.StartAddress).ToArray();
 
@@ -25,12 +24,16 @@ internal static class CallTreeBuilder
         {
             var call = calls[i];
 
-            var parent = call.ParentIndex < 0 ? callTree.Root : nodes[call.ParentIndex];
+            var parent = call.ParentIndex < 0 ? replayed.Root : nodes[call.ParentIndex];
 
-            nodes[i] = callTree.AddCall(parent, CreateFrame(ordered, starts, call), (long)call.CallCount);
+            nodes[i] = replayed.AddCall(parent, CreateFrame(ordered, starts, call), (long)call.CallCount);
         }
 
-        return (callTree, nodes);
+        var projected = new Dictionary<CallTreeNode, CallTreeNode>(ReferenceEqualityComparer.Instance);
+
+        var callTree = replayed.Project(onProjected: (original, node) => projected[original] = node);
+
+        return (callTree, TraceNodeMap.Build(calls, [.. nodes.Select(n => projected.GetValueOrDefault(n))]));
     }
 
     private static CallFrame CreateFrame(TraceModule[] modules, ulong[] starts, CallNode call)

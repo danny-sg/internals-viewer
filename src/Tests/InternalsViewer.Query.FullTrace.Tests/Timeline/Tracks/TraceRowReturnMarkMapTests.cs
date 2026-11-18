@@ -4,7 +4,7 @@ using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.Layouts;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -310,11 +310,9 @@ public class TraceRowReturnMarkMapTests
         CallSpan[] spans = [.. joinCalls.Select((c, i) => Span(0, c.Start, c.End, (uint)i)),
                             .. scanCalls.Select((c, i) => Span(1, c.Start, c.End, (uint)i))];
 
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add(spans);
-
-        var timeline = builder.Build(Nodes);
 
         var tree = new CallTree();
 
@@ -324,28 +322,24 @@ public class TraceRowReturnMarkMapTests
 
         CallTreeNode[] nodes = [join, scan];
 
-        timeline.MapNodes(nodes);
+        var timeline = builder.Build(Nodes, nodes);
 
         var open = tree.AddCall(tree.Root, Frame(JoinIterator, "Open"), 1);
 
-        var store = new TraceCallStore.Builder();
+        var store = new ReplayCallLog();
 
-        store.Add(Helper, JoinIterator, Chunk([.. joinCalls.Select(c => Call(c, replayNodeIndex: 0))]), joinCalls.Length);
+        store.AddChunk(Helper, JoinIterator, Chunk([.. joinCalls.Select(c => Call(c, replayNodeIndex: 0))]), joinCalls.Length);
 
-        store.Add(Helper, ScanIterator, Chunk([.. scanCalls.Select(c => Call(c, replayNodeIndex: 1))]), scanCalls.Length);
+        store.AddChunk(Helper, ScanIterator, Chunk([.. scanCalls.Select(c => Call(c, replayNodeIndex: 1))]), scanCalls.Length);
 
         if (joinOpens is not null)
         {
             ulong[][] opens = [.. joinOpens.Select(c => Call((c.Start, c.End, RowStatus), replayNodeIndex: 2))];
 
-            store.Add(OpenFunction, JoinIterator, Chunk(opens), opens.Length);
+            store.AddChunk(OpenFunction, JoinIterator, Chunk(opens), opens.Length);
         }
 
-        var calls = store.Build();
-
-        calls.MapNodes([join, scan, open]);
-
-        timeline.SetCalls(calls);
+        var calls = store.Build([join, scan, open]);
 
         TraceOperatorLifetime[] lifetimes =
         [

@@ -23,10 +23,10 @@ public class TraceCallStoreTests
     [Fact]
     public void The_Calls_Of_One_Function_On_One_Instance_Are_Read_Back_In_Order()
     {
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(0x1000, 0, Chunk(Row(7, rcx: 0xA0)), 1);
-        builder.Add(0x2000, 0xB0, Chunk(Row(8, rcx: 0xB0), Row(9, rcx: 0xB0)), 2);
+        builder.AddChunk(0x1000, 0, Chunk(Row(7, rcx: 0xA0)), 1);
+        builder.AddChunk(0x2000, 0xB0, Chunk(Row(8, rcx: 0xB0), Row(9, rcx: 0xB0)), 2);
 
         var calls = builder.Build().GetCallList(0x2000, 0xB0);
 
@@ -38,10 +38,10 @@ public class TraceCallStoreTests
     [Fact]
     public void Calls_Logged_In_Several_Chunks_Read_As_One_List()
     {
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(0x1000, 0, Chunk(Row(1), Row(2)), 2);
-        builder.Add(0x1000, 0, Chunk(Row(3)), 1);
+        builder.AddChunk(0x1000, 0, Chunk(Row(1), Row(2)), 2);
+        builder.AddChunk(0x1000, 0, Chunk(Row(3)), 1);
 
         var calls = builder.Build().GetCallList(0x1000, 0);
 
@@ -54,9 +54,9 @@ public class TraceCallStoreTests
     [Fact]
     public void A_Function_With_No_Logged_Calls_Reads_As_Nothing()
     {
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(0x1000, 0, Chunk(Row(7, rcx: 0xA0)), 1);
+        builder.AddChunk(0x1000, 0, Chunk(Row(7, rcx: 0xA0)), 1);
 
         Assert.Null(builder.Build().GetCallList(0x1000, 0xB0));
     }
@@ -64,24 +64,24 @@ public class TraceCallStoreTests
     [Fact]
     public void Repeated_Values_Compress_Well()
     {
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
         var calls = 1_000;
 
-        builder.Add(0x1000, 0, Chunk([.. Enumerable.Range(0, calls).Select(i => Row((ulong)i, rcx: 0xA0))]), calls);
+        builder.AddChunk(0x1000, 0, Chunk([.. Enumerable.Range(0, calls).Select(i => Row((ulong)i, rcx: 0xA0))]), calls);
 
         var store = builder.Build();
 
         Assert.Equal(calls, store.CallCount);
-        Assert.True(store.Size < calls * TraceCallColumnSet.ValueCount * sizeof(ulong) / 10);
+        Assert.True(store.CompressedSize < calls * TraceCallColumnSet.ValueCount * sizeof(ulong) / 10);
     }
 
     [Fact]
     public void A_Call_Carries_Where_It_Started_And_Ended()
     {
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(0x1000, 0, Chunk(Row(41, steps: 3, endSequence: 57, endSteps: 9)), 1);
+        builder.AddChunk(0x1000, 0, Chunk(Row(41, steps: 3, endSequence: 57, endSteps: 9)), 1);
 
         var call = builder.Build().GetCallList(0x1000, 0)![0];
 
@@ -91,9 +91,9 @@ public class TraceCallStoreTests
     [Fact]
     public void A_Call_Still_Running_Has_No_End()
     {
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(0x1000, 0, Chunk(Row(41)), 1);
+        builder.AddChunk(0x1000, 0, Chunk(Row(41)), 1);
 
         Assert.False(builder.Build().GetCallList(0x1000, 0)![0].ToPosition.IsKnown);
     }
@@ -101,12 +101,12 @@ public class TraceCallStoreTests
     [Fact]
     public void An_End_Reported_After_Its_Chunk_Was_Sent_Is_Applied()
     {
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(0x1000, 0, Chunk(Row(1), Row(2)), 2);
-        builder.Add(0x1000, 0, Chunk(Row(3)), 1);
+        builder.AddChunk(0x1000, 0, Chunk(Row(1), Row(2)), 2);
+        builder.AddChunk(0x1000, 0, Chunk(Row(3)), 1);
 
-        builder.AddToPosition(0x1000, 0, 2, 90, 4, 0x42, 1);
+        builder.AddCallEnd(0x1000, 0, 2, 90, 4, 0x42, 1);
 
         var call = builder.Build().GetCallList(0x1000, 0)![2];
 
@@ -116,36 +116,36 @@ public class TraceCallStoreTests
     [Fact]
     public void A_Call_Reads_Its_Start_And_Thread_Across_Chunks()
     {
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(0x1000, 0, Chunk(Row(3, flags: 7), Row(8, flags: 7)), 2);
-        builder.Add(0x1000, 0, Chunk(Row(20, flags: 5)), 1);
+        builder.AddChunk(0x1000, 0, Chunk(Row(3, flags: 7), Row(8, flags: 7)), 2);
+        builder.AddChunk(0x1000, 0, Chunk(Row(20, flags: 5)), 1);
 
         var calls = builder.Build().GetCallList(0x1000, 0)!;
 
         Assert.Equal([(At(3), 7u), (At(8), 7u), (At(20), 5u)],
-                     Enumerable.Range(0, 3).Select(i => (calls.GetFromPosition(i), calls.GetThread(i))));
+                     Enumerable.Range(0, 3).Select(i => (calls.GetFromPosition(i), calls.GetThreadId(i))));
     }
 
     [Fact]
     public void The_Enclosing_Call_Is_The_Latest_Started_On_The_Thread_That_Has_Not_Ended()
     {
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(0x1000, 0, Chunk(Row(3, endSequence: 40), Row(5, endSequence: 9), Row(50)), 3);
+        builder.AddChunk(0x1000, 0, Chunk(Row(3, endSequence: 40), Row(5, endSequence: 9), Row(50)), 3);
 
         var calls = builder.Build().GetCallList(0x1000, 0)!;
 
-        Assert.Equal([0, 1, 0, -1, 2], new ulong[] { 4, 7, 12, 2, 60 }.Select(s => calls.IndexOfEnclosing(At(s), 0)));
-        Assert.Equal(-1, calls.IndexOfEnclosing(At(7), 5));
+        Assert.Equal([0, 1, 0, -1, 2], new ulong[] { 4, 7, 12, 2, 60 }.Select(s => calls.GetEnclosingCallIndex(0, At(s))));
+        Assert.Equal(-1, calls.GetEnclosingCallIndex(5, At(7)));
     }
 
     [Fact]
     public void A_String_Is_Kept_When_Written()
     {
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(0x1000, 0, Chunk(Row(1)), 1);
+        builder.AddChunk(0x1000, 0, Chunk(Row(1)), 1);
 
         builder.AddLocator(0x1000, 0, 0, new Locator(1, LocatorValueType.WideText, 10, 0, "dbo.Orders"), false);
 
@@ -160,7 +160,7 @@ public class TraceCallStoreTests
 
         using var reader = new BinaryReader(stream);
 
-        var locator = TraceCallStore.Read(reader).GetCallList(0x1000, 0)![0].GetLocator(1);
+        var locator = TraceCallStore.Read(reader, TraceNodeMap.Empty).GetCallList(0x1000, 0)![0].GetLocator(1);
 
         Assert.Equal((LocatorValueType.WideText, "dbo.Orders"), (locator?.ValueType, locator?.ToString()));
     }
@@ -168,9 +168,9 @@ public class TraceCallStoreTests
     [Fact]
     public void Bindings_Are_Kept_When_Written()
     {
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(0x1000, 0, Chunk(Row(1)), 1);
+        builder.AddChunk(0x1000, 0, Chunk(Row(1)), 1);
 
         builder.AddLocator(0x1000, 0, 0, new Locator(3, LocatorValueType.Bindings, 1, 1, "1,3,1,0,0,0"), false);
 
@@ -185,7 +185,7 @@ public class TraceCallStoreTests
 
         using var reader = new BinaryReader(stream);
 
-        var locator = TraceCallStore.Read(reader).GetCallList(0x1000, 0)![0].GetLocator(3);
+        var locator = TraceCallStore.Read(reader, TraceNodeMap.Empty).GetCallList(0x1000, 0)![0].GetLocator(3);
 
         Assert.Equal((LocatorValueType.Bindings, "1: I4 Value +0x0"), (locator?.ValueType, locator?.ToString()));
     }
@@ -193,9 +193,9 @@ public class TraceCallStoreTests
     [Fact]
     public async Task A_Stack_Argument_Is_Kept_As_A_Value_Beside_The_Page_It_Points_To()
     {
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(0x1000, 0, Chunk(Row(1), Row(2)), 2);
+        builder.AddChunk(0x1000, 0, Chunk(Row(1), Row(2)), 2);
 
         builder.AddStackArguments(0x1000, 0, 1, [0x5_0000]);
         builder.AddLocator(0x1000, 0, 1, new Locator(4, LocatorValueType.Page, Page336), false);
@@ -220,16 +220,14 @@ public class TraceCallStoreTests
     {
         var tree = new CallTree();
 
-        var first = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x10 }, 1);
-        var second = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x20 }, 1);
+        var first = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Address = 0x10, Rva = 0x10 }, 1);
+        var second = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Address = 0x20, Rva = 0x20 }, 1);
 
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(0x1000, 0, Chunk(Row(1, rcx: 0xA0, replayNodeIndex: 1), Row(2, replayNodeIndex: -1)), 2);
+        builder.AddChunk(0x1000, 0, Chunk(Row(1, rcx: 0xA0, replayNodeIndex: 1), Row(2, replayNodeIndex: -1)), 2);
 
-        var store = builder.Build();
-
-        store.MapNodes([first, second]);
+        var store = builder.Build([first, second]);
 
         var calls = store.GetCallList(0x1000, 0)!;
 
@@ -241,9 +239,9 @@ public class TraceCallStoreTests
     [Fact]
     public void A_Page_Read_In_The_Replay_Is_Attached_To_Its_Call()
     {
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(0x1000, 0, Chunk(Row(1), Row(2)), 2);
+        builder.AddChunk(0x1000, 0, Chunk(Row(1), Row(2)), 2);
 
         builder.AddLocator(0x1000, 0, 1, new Locator(2, LocatorValueType.Page, Page336), false);
 
@@ -254,16 +252,16 @@ public class TraceCallStoreTests
         Assert.Empty(calls[0].Locators);
         Assert.Equal(new PageAddress(1, 336), calls[1].GetLocator(2)?.Page);
         Assert.Null(calls[1].GetLocator(1));
-        Assert.Equal(1, store.LocatorCount);
+        Assert.Equal(1, store.Locators.Count);
     }
 
     [Fact]
     public void Identical_Locators_Are_Stored_Once()
     {
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(0x1000, 0, Chunk(Row(1), Row(2), Row(3)), 3);
-        builder.Add(0x2000, 0, Chunk(Row(4)), 1);
+        builder.AddChunk(0x1000, 0, Chunk(Row(1), Row(2), Row(3)), 3);
+        builder.AddChunk(0x2000, 0, Chunk(Row(4)), 1);
 
         builder.AddLocator(0x1000, 0, 0, new Locator(1, LocatorValueType.Referenced, 1), false);
         builder.AddLocator(0x1000, 0, 1, new Locator(1, LocatorValueType.Referenced, 1), false);
@@ -274,8 +272,8 @@ public class TraceCallStoreTests
 
         var calls = store.GetCallList(0x1000, 0)!;
 
-        Assert.Equal(4, store.LocatorCount);
-        Assert.Equal(2, store.UniqueLocatorCount);
+        Assert.Equal(4, store.Locators.Count);
+        Assert.Equal(2, store.Locators.ValueCount);
         Assert.Equal([1ul, 1ul, 0ul], calls.Select(c => Assert.Single(c.Locators).Value));
         Assert.Equal(1ul, Assert.Single(store.GetCallList(0x2000, 0)![0].Locators).Value);
     }
@@ -283,25 +281,25 @@ public class TraceCallStoreTests
     [Fact]
     public void A_Replaced_Value_Is_Not_Kept_In_The_Unique_Locators()
     {
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(0x1000, 0, Chunk(Row(1)), 1);
+        builder.AddChunk(0x1000, 0, Chunk(Row(1)), 1);
 
         builder.AddLocator(0x1000, 0, 0, new Locator(1, LocatorValueType.Referenced, 7), false);
         builder.AddLocator(0x1000, 0, 0, new Locator(1, LocatorValueType.Referenced, 9), true);
 
         var store = builder.Build();
 
-        Assert.Equal(1, store.UniqueLocatorCount);
+        Assert.Equal(1, store.Locators.ValueCount);
         Assert.Equal(9ul, Assert.Single(store.GetCallList(0x1000, 0)![0].Locators).Value);
     }
 
     [Fact]
     public void Positions_Survive_Delta_Encoding()
     {
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(0x1000, 0, Chunk(Row(50, endSequence: 60, endSteps: 4), Row(40), Row(70, steps: 9, endSequence: 70, endSteps: 12)), 3);
+        builder.AddChunk(0x1000, 0, Chunk(Row(50, endSequence: 60, endSteps: 4), Row(40), Row(70, steps: 9, endSequence: 70, endSteps: 12)), 3);
 
         var calls = builder.Build().GetCallList(0x1000, 0)!;
 
@@ -312,19 +310,19 @@ public class TraceCallStoreTests
     [Fact]
     public void A_Recycled_Column_Buffer_Reads_Its_Own_Chunk()
     {
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(0x1000, 0, Chunk(Row(1), Row(2)), 2);
-        builder.Add(0x2000, 0, Chunk(Row(3), Row(4)), 2);
-        builder.Add(0x3000, 0, Chunk(Row(5), Row(6)), 2);
+        builder.AddChunk(0x1000, 0, Chunk(Row(1), Row(2)), 2);
+        builder.AddChunk(0x2000, 0, Chunk(Row(3), Row(4)), 2);
+        builder.AddChunk(0x3000, 0, Chunk(Row(5), Row(6)), 2);
 
         var store = builder.Build();
 
-        var first = store.Functions[(0x1000, 0)][0];
+        var first = store.Chunks[(0x1000, 0)][0];
 
-        var second = store.Functions[(0x2000, 0)][0];
+        var second = store.Chunks[(0x2000, 0)][0];
 
-        var third = store.Functions[(0x3000, 0)][0];
+        var third = store.Chunks[(0x3000, 0)][0];
 
         var cache = new TraceCallStore.ChunkCache(2 * 2 * TraceCallColumnSet.ValueCount + 6);
 
@@ -339,9 +337,9 @@ public class TraceCallStoreTests
     [Fact]
     public void A_Value_Read_On_Return_Replaces_The_One_Read_When_Called()
     {
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(0x1000, 0, Chunk(Row(1), Row(2)), 2);
+        builder.AddChunk(0x1000, 0, Chunk(Row(1), Row(2)), 2);
 
         builder.AddLocator(0x1000, 0, 0, new Locator(1, LocatorValueType.Referenced, 3), false);
         builder.AddLocator(0x1000, 0, 1, new Locator(1, LocatorValueType.Referenced, 3), false);
@@ -358,19 +356,17 @@ public class TraceCallStoreTests
     {
         var tree = new CallTree();
 
-        var node = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x10 }, 1);
+        var node = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Address = 0x10, Rva = 0x10 }, 1);
 
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(0x1000, 0, Chunk(Row(10, replayNodeIndex: 0)), 1);
+        builder.AddChunk(0x1000, 0, Chunk(Row(10, replayNodeIndex: 0)), 1);
 
         builder.AddLocator(0x1000, 0, 0, new Locator(1, LocatorValueType.Referenced, 3), false);
 
-        var store = builder.Build();
+        var store = builder.Build([node]);
 
-        store.MapNodes([node]);
-
-        store.AnnotateNodes();
+        store.AddNodeLocators();
 
         Assert.False(node.HasLocators);
     }
@@ -380,22 +376,20 @@ public class TraceCallStoreTests
     {
         var tree = new CallTree();
 
-        var first = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x10 }, 1);
-        var second = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x20 }, 1);
+        var first = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Address = 0x10, Rva = 0x10 }, 1);
+        var second = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Address = 0x20, Rva = 0x20 }, 1);
 
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(0x1000, 0, Chunk(Row(10, replayNodeIndex: 0), Row(11, replayNodeIndex: 1), Row(12, replayNodeIndex: 1)), 3);
+        builder.AddChunk(0x1000, 0, Chunk(Row(10, replayNodeIndex: 0), Row(11, replayNodeIndex: 1), Row(12, replayNodeIndex: 1)), 3);
 
         builder.AddLocator(0x1000, 0, 0, new Locator(2, LocatorValueType.Page, Page336), false);
         builder.AddLocator(0x1000, 0, 1, new Locator(2, LocatorValueType.Page, Page336 + 1), false);
         builder.AddLocator(0x1000, 0, 2, new Locator(2, LocatorValueType.Page, Page336 + 2), false);
 
-        var store = builder.Build();
+        var store = builder.Build([first, second]);
 
-        store.MapNodes([first, second]);
-
-        store.AnnotateNodes();
+        store.AddNodeLocators();
 
         Assert.Equal("(1:336)", first.LocatorsLabel);
         Assert.Equal("2 Pages", second.LocatorsLabel);

@@ -2,19 +2,20 @@ using System.Runtime.InteropServices;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
-using InternalsViewer.Query.FullTrace.Hooks;
-using InternalsViewer.Query.FullTrace.Hooks.Enums;
+using InternalsViewer.Query.FullTrace.Replay.Hooks;
+using InternalsViewer.Query.FullTrace.Replay.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Locators.Enums;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.Layouts;
+using InternalsViewer.Query.FullTrace.Replay.Hooks.Interfaces;
 
 namespace InternalsViewer.Query.FullTrace.Locators;
 
 internal sealed class LocatorHook : ITraceHook
 {
-    public LocatorHook(IEnumerable<LocatorRead> reads, TraceCallStore.Builder store, ImageText? images = null)
+    public LocatorHook(LocatorRead[] reads, ReplayCallLog log, ImageText? images = null)
     {
-        Store = store;
+        Log = log;
 
         Images = images;
 
@@ -61,7 +62,7 @@ internal sealed class LocatorHook : ITraceHook
                                                            ? TraceHookEvents.Entry | TraceHookEvents.Return
                                                            : TraceHookEvents.Entry));
 
-    private TraceCallStore.Builder Store { get; }
+    private ReplayCallLog Log { get; }
 
     private ImageText? Images { get; }
 
@@ -200,7 +201,7 @@ internal sealed class LocatorHook : ITraceHook
 
         if (ReadValue(replay, read, pointer, count) is { } found)
         {
-            Store.AddLocator(call.FunctionAddress, call.InstanceAddress, (int)call.CallIndex, found, read.IsReadAtReturn);
+            Log.AddLocator(call.FunctionAddress, call.InstanceAddress, (int)call.CallIndex, found, read.IsReadAtReturn);
         }
     }
 

@@ -67,11 +67,11 @@ public sealed class TraceCallList : IReadOnlyList<TraceArgumentCall>
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    public int IndexOfEnclosing(TracePosition position, uint thread)
+    public int GetEnclosingCallIndex(uint thread, TracePosition position)
     {
         for (var index = GetFirstStartingAfter(position) - 1; index >= 0; index--)
         {
-            if (GetThread(index) == thread && GetToPosition(index) >= position)
+            if (GetThreadId(index) == thread && GetToPosition(index) >= position)
             {
                 return index;
             }
@@ -94,7 +94,7 @@ public sealed class TraceCallList : IReadOnlyList<TraceArgumentCall>
         return Columns.Read(chunk, callIndex, static (columns, offset) => columns.GetToPosition(offset));
     }
 
-    public uint GetThread(int index)
+    public uint GetThreadId(int index)
     {
         var (chunk, callIndex) = GetLocation(index);
 

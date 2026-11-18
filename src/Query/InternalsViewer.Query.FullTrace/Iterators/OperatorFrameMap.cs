@@ -112,7 +112,7 @@ public sealed class OperatorFrameMap
 
         var pending = new Stack<(CallTreeNode Node, ulong Context)>();
 
-        foreach (var child in callTree.Root.ChildNodes)
+        foreach (var child in callTree.Root.Children)
         {
             pending.Push((child, 0));
         }
@@ -132,7 +132,7 @@ public sealed class OperatorFrameMap
                 context = frame.InstanceAddress;
             }
 
-            foreach (var child in node.ChildNodes)
+            foreach (var child in node.Children)
             {
                 pending.Push((child, context));
             }

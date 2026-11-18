@@ -15,14 +15,16 @@ public sealed class DataPathMap
 
     public IReadOnlyList<DataPathField> Fields { get; init; } = [];
 
-    public IReadOnlyDictionary<int, PlanOutputRoute> Routes { get; init; } = new Dictionary<int, PlanOutputRoute>();
+    public IReadOnlyDictionary<int, PlanOutputRoute> Routes { get; init; } 
+        = new Dictionary<int, PlanOutputRoute>();
 
     internal IReadOnlyDictionary<(int NodeId, int Index), DataPathField> Outputs { get; init; }
         = new Dictionary<(int NodeId, int Index), DataPathField>();
 
     internal IReadOnlyDictionary<int, int> Levels { get; init; } = new Dictionary<int, int>();
 
-    public DataPathField? GetOutput(int nodeId, int index) => Outputs.GetValueOrDefault((nodeId, index));
+    public DataPathField? GetOutput(int nodeId, int index) 
+        => Outputs.GetValueOrDefault((nodeId, index));
 
     public int? GetLevel(int nodeId) => Levels.TryGetValue(nodeId, out var level) ? level : null;
 }

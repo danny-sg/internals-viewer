@@ -35,10 +35,11 @@ public sealed partial class QueryViewModel
 
     private Dictionary<string, TickTrackCache> TrackSeries { get; } = new(StringComparer.OrdinalIgnoreCase);
 
-    private ILookup<(PlanNode Puller, ExpressionPullSite Site), ExpressionPull> ExpressionPulls
-        => CreatedExpressionPulls ??= ExecutionPlans.SelectMany(ExpressionPullResolver.Resolve).ToLookup(p => (p.Puller, p.Site));
+    private ILookup<(PlanNode Evaluator, ExpressionEvaluationSite Site), ExpressionEvaluation> ExpressionEvaluations
+        => CreatedExpressionEvaluations ??= ExecutionPlans.SelectMany(ExpressionEvaluationResolver.Resolve)
+                                                          .ToLookup(p => (p.Evaluator, p.Site));
 
-    private ILookup<(PlanNode Puller, ExpressionPullSite Site), ExpressionPull>? CreatedExpressionPulls { get; set; }
+    private ILookup<(PlanNode Evaluator, ExpressionEvaluationSite Site), ExpressionEvaluation>? CreatedExpressionEvaluations { get; set; }
 
     private ConcurrentDictionary<PlanNode, Dictionary<string, PredicateText>> PlanValues { get; } = [];
 
@@ -139,7 +140,7 @@ public sealed partial class QueryViewModel
 
     private void ClearTickTrackCache()
     {
-        CreatedExpressionPulls = null;
+        CreatedExpressionEvaluations = null;
 
         PlanValues.Clear();
 
@@ -166,9 +167,9 @@ public sealed partial class QueryViewModel
 
         var statement = GetStatementOperator();
 
-        var getPulled = GetPulledComputeScalarLookup();
+        var getEvaluated = GetEvaluatedComputeScalarLookup();
 
-        var built = await Task.Run(() => groups.Select((g, i) => cached[i] ?? TraceTrackBuilder.Build(trace, g, statement, getPulled))
+        var built = await Task.Run(() => groups.Select((g, i) => cached[i] ?? TraceTrackBuilder.Build(trace, g, statement, getEvaluated))
                                                .ToList());
 
         if (version != TickTrackVersion || !ReferenceEquals(trace, Trace))
@@ -207,14 +208,14 @@ public sealed partial class QueryViewModel
     private ExecutionOperatorEvent? GetStatementOperator()
         => Events.OfType<ExecutionOperatorEvent>().FirstOrDefault(o => GetPlanNode(o) is { IsStatement: true });
 
-    private Func<ExecutionOperatorEvent, ExpressionPullSite, List<ExecutionOperatorEvent>> GetPulledComputeScalarLookup()
+    private Func<ExecutionOperatorEvent, ExpressionEvaluationSite, List<ExecutionOperatorEvent>> GetEvaluatedComputeScalarLookup()
     {
         var operators = Events.OfType<ExecutionOperatorEvent>().ToList();
 
-        var pulls = ExpressionPulls;
+        var evaluations = ExpressionEvaluations;
 
-        return (puller, site) => GetPlanNode(puller) is { } node
-            ? [.. pulls[(node, site)].Select(p => operators.Find(o => ReferenceEquals(GetPlanNode(o), p.ComputeScalar)))
+        return (evaluator, site) => GetPlanNode(evaluator) is { } node
+            ? [.. evaluations[(node, site)].Select(p => operators.Find(o => ReferenceEquals(GetPlanNode(o), p.ComputeScalar)))
                                      .OfType<ExecutionOperatorEvent>()]
             : [];
     }
@@ -226,13 +227,13 @@ public sealed partial class QueryViewModel
             return [];
         }
 
-        var puller = tick.Caller is { } caller ? GetPlanNode(caller) : null;
+        var evaluator = tick.Caller is { } caller ? GetPlanNode(caller) : null;
 
-        var pull = ExpressionPulls.SelectMany(p => p)
+        var evaluation = ExpressionEvaluations.SelectMany(p => p)
                                   .Where(p => ReferenceEquals(p.ComputeScalar, computeScalar))
-                                  .FirstOrDefault(p => ReferenceEquals(p.Puller, puller));
+                                  .FirstOrDefault(p => ReferenceEquals(p.Evaluator, evaluator));
 
-        return pull?.Values ?? computeScalar.DefinedValues;
+        return evaluation?.Values ?? computeScalar.DefinedValues;
     }
 
     private PredicateText? GetStepPredicate(TraceTick tick, string name)

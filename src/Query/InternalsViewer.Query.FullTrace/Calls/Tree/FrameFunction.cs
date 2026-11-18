@@ -28,8 +28,6 @@ public sealed class FrameFunction
         ? $"{ClassName}::{MethodName}"
         : MethodName;
 
-    internal string FunctionKey => field ??= $"{ModuleName}!{ClassName}::{MethodName}";
-
     internal static FrameFunction Parse(string module, string name)
     {
         var separator = SymbolHelper.FindClassMethodSeparator(name);

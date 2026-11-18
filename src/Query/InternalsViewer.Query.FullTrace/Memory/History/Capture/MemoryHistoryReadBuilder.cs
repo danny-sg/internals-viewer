@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.Helpers;
 

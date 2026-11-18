@@ -59,12 +59,12 @@ public sealed partial class MemoryObjectMap
     private HashSet<ulong> Owners => field ??= [.. Pages.Values.SelectMany(c => c).Select(c => c.MemoryObject)];
 
     public static MemoryObjectMap Build(TraceCallStore store,
-                                        IReadOnlyList<CallTreeNode?> nodes,
+                                        CallTree tree,
                                         IReadOnlyDictionary<ulong, MemoryObjectInfo> objects)
     {
         var claims = new Dictionary<(ulong Page, int Size), List<Claim>>();
 
-        foreach (var (address, instance, slots) in GetFunctions(nodes))
+        foreach (var (address, instance, slots) in GetFunctions(tree))
         {
             if (store.GetCallList(address, instance) is not { } calls)
             {
@@ -144,8 +144,8 @@ public sealed partial class MemoryObjectMap
 
     private static ulong GetPage(ulong address, int size) => address & ~((ulong)size - 1);
 
-    private static IEnumerable<(ulong Address, ulong Instance, int[] Slots)> GetFunctions(IReadOnlyList<CallTreeNode?> nodes)
-        => nodes.OfType<CallTreeNode>()
+    private static IEnumerable<(ulong Address, ulong Instance, int[] Slots)> GetFunctions(CallTree tree)
+        => tree.GetNodes()
                 .Select(n => n.Frame)
                 .OfType<CallFrame>()
                 .Where(f => f.Function is { } resolved

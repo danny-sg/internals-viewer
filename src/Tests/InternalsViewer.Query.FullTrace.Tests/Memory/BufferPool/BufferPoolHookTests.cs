@@ -2,8 +2,8 @@ using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages.Enums;
-using InternalsViewer.Query.FullTrace.Hooks;
-using InternalsViewer.Query.FullTrace.Hooks.Enums;
+using InternalsViewer.Query.FullTrace.Replay.Hooks;
+using InternalsViewer.Query.FullTrace.Replay.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool.Enums;
@@ -54,7 +54,7 @@ public class BufferPoolHookTests
 
         hook.OnEntry(LatchRelease(Buffer, 8), replay);
 
-        var layout = hook.Build().GetLayout(new PageAddress(1, 100), 6);
+        var layout = TraceBufferPool.Build(hook.Build()).GetPageLayout(new PageAddress(1, 100), 6);
 
         Assert.Equal((PageType.Iam, 2), (layout?.PageHeader.PageType, layout?.OffsetTable.Length));
     }
@@ -70,7 +70,7 @@ public class BufferPoolHookTests
 
         hook.OnEntry(LatchRelease(Buffer, 8), replay);
 
-        Assert.Equal([0x60, 0x90, 0], hook.Build().GetLayout(new PageAddress(1, 100), 6)?.OffsetTable ?? []);
+        Assert.Equal([0x60, 0x90, 0], TraceBufferPool.Build(hook.Build()).GetPageLayout(new PageAddress(1, 100), 6)?.OffsetTable ?? []);
     }
 
     [Fact]
@@ -86,7 +86,7 @@ public class BufferPoolHookTests
 
         hook.OnEntry(LatchRelease(Buffer, 8), replay);
 
-        Assert.Equal([0x60, 0x90], hook.Build().GetLayout(new PageAddress(1, 100), 6)?.OffsetTable ?? []);
+        Assert.Equal([0x60, 0x90], TraceBufferPool.Build(hook.Build()).GetPageLayout(new PageAddress(1, 100), 6)?.OffsetTable ?? []);
     }
 
     [Fact]
@@ -102,7 +102,7 @@ public class BufferPoolHookTests
 
         hook.OnEntry(LatchRelease(Buffer, 8), replay);
 
-        Assert.Equal([0x60, 0, 0], hook.Build().GetLayout(new PageAddress(1, 100), 6)?.OffsetTable ?? []);
+        Assert.Equal([0x60, 0, 0], TraceBufferPool.Build(hook.Build()).GetPageLayout(new PageAddress(1, 100), 6)?.OffsetTable ?? []);
     }
 
     [Fact]
@@ -112,7 +112,7 @@ public class BufferPoolHookTests
 
         hook.OnReturn(Return(Buffer, 5), Replay());
 
-        Assert.Null(hook.Build().GetLayout(new PageAddress(1, 100), 6));
+        Assert.Null(TraceBufferPool.Build(hook.Build()).GetPageLayout(new PageAddress(1, 100), 6));
     }
 
     [Fact]
@@ -122,7 +122,8 @@ public class BufferPoolHookTests
 
         hook.OnReturn(Return(Buffer, 5), Replay());
 
-        Assert.Equal(new TraceBufferReference(new PageAddress(1, 100), 6, 0x60), hook.Build().GetReference(Frame + 0x60, At(6)));
+        Assert.Equal(new TraceBufferReference(new PageAddress(1, 100), 6, 0x60),
+                     TraceBufferPool.Build(hook.Build()).GetReference(Frame + 0x60, At(6)));
     }
 
     [Fact]
@@ -134,7 +135,7 @@ public class BufferPoolHookTests
 
         hook.OnReturn(Return(Buffer, 5), replay);
 
-        Assert.Equal([0x60, 0x90], hook.Build().GetLayout(new PageAddress(1, 100), 6)?.OffsetTable ?? []);
+        Assert.Equal([0x60, 0x90], TraceBufferPool.Build(hook.Build()).GetPageLayout(new PageAddress(1, 100), 6)?.OffsetTable ?? []);
     }
 
     [Fact]
@@ -149,7 +150,7 @@ public class BufferPoolHookTests
 
         hook.OnReturn(Return(Buffer, 5), replay);
 
-        Assert.Equal(PageType.Iam, hook.Build().GetLayout(new PageAddress(1, 100), 6)?.PageHeader.PageType);
+        Assert.Equal(PageType.Iam, TraceBufferPool.Build(hook.Build()).GetPageLayout(new PageAddress(1, 100), 6)?.PageHeader.PageType);
     }
 
     [Fact]
@@ -165,7 +166,7 @@ public class BufferPoolHookTests
 
         hook.OnReturn(Return(Buffer, 30), replay);
 
-        Assert.Equal([0x60], hook.Build().GetLayout(new PageAddress(1, 101), 6)?.OffsetTable ?? []);
+        Assert.Equal([0x60], TraceBufferPool.Build(hook.Build()).GetPageLayout(new PageAddress(1, 101), 6)?.OffsetTable ?? []);
     }
 
     [Fact]
@@ -177,7 +178,7 @@ public class BufferPoolHookTests
 
         hook.OnReturn(Return(Buffer, 5), Replay());
 
-        Assert.Equal(new PageAddress(1, 100), hook.Build().GetReference(Frame, At(4))?.Page);
+        Assert.Equal(new PageAddress(1, 100), TraceBufferPool.Build(hook.Build()).GetReference(Frame, At(4))?.Page);
     }
 
     [Fact]
@@ -193,7 +194,8 @@ public class BufferPoolHookTests
 
         hook.OnReturn(Return(Buffer, 30), replay);
 
-        Assert.Equal(new TraceBufferReference(new PageAddress(1, 101), 6, 0x10), hook.Build().GetReference(NextFrame + 0x10, At(21)));
+        Assert.Equal(new TraceBufferReference(new PageAddress(1, 101), 6, 0x10),
+                     TraceBufferPool.Build(hook.Build()).GetReference(NextFrame + 0x10, At(21)));
     }
 
     [Fact]
@@ -209,7 +211,7 @@ public class BufferPoolHookTests
 
         hook.OnReturn(Return(Buffer, 30), replay);
 
-        Assert.Null(hook.Build().GetReference(NextFrame, At(25)));
+        Assert.Null(TraceBufferPool.Build(hook.Build()).GetReference(NextFrame, At(25)));
     }
 
     [Fact]
@@ -224,7 +226,7 @@ public class BufferPoolHookTests
         hook.OnReturn(new TraceHookCall { FunctionAddress = Get, CallId = 1, Thread = 7, ReturnValue = Buffer, Position = At(5) },
                       Replay());
 
-        Assert.Equal([new MemoryBlock(Buffer, (ulong)EngineLayout.Latest.Buffer.Size, 7, At(3), TracePosition.Unknown)], hook.GetBuffers());
+        Assert.Equal([new MemoryBlock(Buffer, (ulong)EngineLayout.Latest.Buffer.Size, 7, At(3), TracePosition.Unknown)], hook.GetBufferBlocks());
     }
 
     [Fact]
@@ -241,7 +243,7 @@ public class BufferPoolHookTests
 
         hook.OnReturn(Return(0, 6), replay);
 
-        Assert.Equal(0, hook.Build().Count);
+        Assert.Equal(0, TraceBufferPool.Build(hook.Build()).Count);
     }
 
     private static BufferPoolHook Create()

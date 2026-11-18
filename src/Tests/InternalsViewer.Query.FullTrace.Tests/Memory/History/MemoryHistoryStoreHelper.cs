@@ -3,7 +3,7 @@ using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.History.Capture;
 using InternalsViewer.Query.FullTrace.Memory.History.Capture.Watches;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Tests.Memory.MemoryObject;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -22,7 +22,7 @@ internal static class MemoryHistoryStoreHelper
 
     public static TraceTimeline Calls(params (ulong From, ulong To)[] calls)
     {
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add([.. calls.Select((c, i) => new CallSpan(c.From, 0, c.To, 0, c.From, c.To, 0, Thread, (uint)i, 1))]);
 

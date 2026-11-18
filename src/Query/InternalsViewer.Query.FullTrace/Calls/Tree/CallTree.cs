@@ -3,18 +3,6 @@ using InternalsViewer.Query.FullTrace.Locators;
 
 namespace InternalsViewer.Query.FullTrace.Calls.Tree;
 
-/// <summary>
-/// The query run's whole call stack as a single tree, with events linked at the leaf of their path
-/// </summary>
-/// <remarks>
-/// Merging every event's call stack into one structure shows the code paths the query took at a glance (execution
-/// flow), keeps the per-event path (each event references its leaf node), and lets a frame be resolved once instead of
-/// once per event. Returned with the query results.
-///
-/// Built in two stages: during parse frames are keyed by RVA (raw, unresolved) so each is resolved once; then, once
-/// resolved, <see cref="CollapseToFunctions"/> rebuilds it keyed by function so a function's many call sites merge into
-/// a single node (offsets kept on the node), and grafts truncated stacks onto the fuller path they belong to.
-/// </remarks>
 public sealed class CallTree
 {
     public CallTree()
@@ -24,44 +12,20 @@ public sealed class CallTree
 
     public CallTreeNode Root { get; }
 
-    // Incrementing so each node records the order it was first created (first seen).
     private int NextOrder { get; set; }
 
-    public CallTreeNode AddCall(CallTreeNode parent, CallFrame frame, long calls)
+    public CallTreeNode AddCall(CallTreeNode parent, CallFrame frame, long callCount)
     {
-        var node = GetChild(parent, frame, GetRvaKey);
+        var node = GetChild(parent, frame);
 
-        node.CallCount += calls;
+        node.CallCount += callCount;
 
         return node;
     }
 
-    /// <summary>
-    /// Rebuilds the tree keyed on the resolved function, merging a function's call sites and repointing events
-    /// </summary>
-    public CallTree CollapseToFunctions(Action<CallTreeNode, CallTreeNode>? collapsed = null)
-        => Project(collapsed: collapsed);
-
-    /// <summary>
-    /// Rebuilds the tree keyed on the resolved function, over the events <paramref name="include"/> selects
-    /// </summary>
-    /// <remarks>
-    /// The projected tree owns fresh nodes carrying only the included events, which is the point: a node in the shared
-    /// tree holds every event that reached that function, so scoping by walking the shared nodes shows one operator's
-    /// frames with the whole query's event counts on them. Projecting gives a tree that is only about the scope.
-    ///
-    /// <paramref name="cutAt"/> truncates each path at (and including) the first matching node, so the result is rooted
-    /// at the boundary rather than the thread start — an operator's own segment rather than how it was reached.
-    /// Grafting is skipped for a cut, since a cut's roots are the boundaries by design and grafting would undo them.
-    ///
-    /// <paramref name="stopBelow"/> is the other end of the same idea: a leaf reached THROUGH one of these frames is
-    /// below the segment (it is a nested operator's work), so its path is picked up from just above that frame and its
-    /// events are left out. Without it a segment cut only at the top runs all the way down to the leaves, swallowing
-    /// every operator nested inside it.
-    /// </remarks>
     public CallTree Project(Func<CallTreeNode, bool>? cutAt = null,
                             Func<CallTreeNode, bool>? stopBelow = null,
-                            Action<CallTreeNode, CallTreeNode>? collapsed = null)
+                            Action<CallTreeNode, CallTreeNode>? onProjected = null)
     {
         var projected = new CallTree();
 
@@ -72,9 +36,6 @@ public sealed class CallTree
 
         foreach (var node in leaves)
         {
-            // A leaf the cut never reaches is not in this segment, so it is dropped rather than inserted whole —
-            // otherwise a path that missed the boundary would come in rooted at the thread start, the one thing cutting
-            // is meant to remove.
             if (!segment.Contains(node))
             {
                 continue;
@@ -87,7 +48,7 @@ public sealed class CallTree
             // segment can show what it handed off to rather than simply stopping.
             if (nested is not null)
             {
-                segment.GetProjected(nested.Parent!).CutBelow.Add(nested);
+                segment.GetProjected(nested.Parent!).AddCutBelow(nested);
 
                 continue;
             }
@@ -105,11 +66,11 @@ public sealed class CallTree
             AddCallActivity(leaf, GetCallActivity(node));
         }
 
-        if (collapsed is not null)
+        if (onProjected is not null)
         {
             foreach (var (original, node) in segment.Projections)
             {
-                collapsed(original, node);
+                onProjected(original, node);
             }
         }
 
@@ -121,26 +82,6 @@ public sealed class CallTree
         return projected;
     }
 
-    public void RemoveCallsUnder(Func<CallTreeNode, bool> boundary)
-    {
-        foreach (var child in Root.Children.Values.ToList())
-        {
-            RemoveCallsUnder(Root, child, boundary(child), boundary);
-        }
-    }
-
-    public HashSet<CallTreeNode> GetInnerSystemCalls(Func<CallTreeNode, bool> isKept)
-    {
-        var calls = new HashSet<CallTreeNode>(ReferenceEqualityComparer.Instance);
-
-        foreach (var child in Root.Children.Values)
-        {
-            AddInnerSystemCalls(child, isKept, calls);
-        }
-
-        return calls;
-    }
-
     private static void AddCallActivity(CallTreeNode target, int[] activity)
     {
         if (activity.Length == 0)
@@ -148,76 +89,24 @@ public sealed class CallTree
             return;
         }
 
-        if (target.CallActivity.Length != activity.Length)
+        if (target.OwnActivityCounts.Length != activity.Length)
         {
-            target.CallActivity = new int[activity.Length];
+            target.OwnActivityCounts = new int[activity.Length];
         }
 
         for (var i = 0; i < activity.Length; i++)
         {
-            target.CallActivity[i] += activity[i];
+            target.OwnActivityCounts[i] += activity[i];
         }
     }
 
-    private static bool RemoveCallsUnder(CallTreeNode parent,
-                                         CallTreeNode node,
-                                         bool below,
-                                         Func<CallTreeNode, bool> boundary)
+    private CallTreeNode GetChild(CallTreeNode parent, CallFrame frame)
     {
-        if (below)
+        if (!parent.ChildrenByKey.TryGetValue((frame.Address, frame.InstanceAddress), out var child))
         {
-            node.CallCount = 0;
+            child = new CallTreeNode { Frame = frame, Parent = parent, Order = NextOrder++ };
 
-            node.CallActivity = [];
-
-            node.AllocatedBytes = 0;
-
-            node.AllocationCount = 0;
-
-            node.Locators = null;
-        }
-
-        var keep = node.CallCount > 0;
-
-        foreach (var child in node.Children.Values.ToList())
-        {
-            keep |= RemoveCallsUnder(node, child, below || boundary(child), boundary);
-        }
-
-        if (!keep)
-        {
-            parent.Children.Remove(node.Key);
-        }
-
-        return keep;
-    }
-
-    private static bool AddInnerSystemCalls(CallTreeNode node, Func<CallTreeNode, bool> isKept, HashSet<CallTreeNode> calls)
-    {
-        var keep = node.Frame?.Module.IsSqlServer != false || isKept(node);
-
-        foreach (var child in node.Children.Values)
-        {
-            keep |= AddInnerSystemCalls(child, isKept, calls);
-        }
-
-        if (!keep && node.Parent?.Frame?.Module.IsSqlServer == false)
-        {
-            calls.Add(node);
-        }
-
-        return keep;
-    }
-
-    private CallTreeNode GetChild(CallTreeNode parent, CallFrame frame, Func<CallFrame, string> getKey)
-    {
-        var key = getKey(frame);
-
-        if (!parent.Children.TryGetValue(key, out var child))
-        {
-            child = new CallTreeNode { Frame = frame, Parent = parent, Key = key, Order = NextOrder++ };
-
-            parent.Children[key] = child;
+            parent.ChildrenByKey[child.Key] = child;
         }
 
         return child;
@@ -289,7 +178,7 @@ public sealed class CallTree
     }
 
     private int[] GetCallActivity(CallTreeNode node)
-        => CallActivitySource is { } source ? source.Value.GetValueOrDefault(node) ?? [] : node.CallActivity;
+        => CallActivitySource is { } source ? source.Value.GetValueOrDefault(node) ?? [] : node.OwnActivityCounts;
 
     private void ClearActivity()
     {
@@ -309,7 +198,7 @@ public sealed class CallTree
         {
             AddCounts(counts, GetCallActivity(current));
 
-            foreach (var child in current.Children.Values)
+            foreach (var child in current.Children)
             {
                 pending.Push(child);
             }
@@ -344,16 +233,13 @@ public sealed class CallTree
                 yield return node;
             }
 
-            foreach (var child in node.Children.Values)
+            foreach (var child in node.Children)
             {
                 stack.Push(child);
             }
         }
     }
 
-    /// <summary>
-    /// Renders a single node and its descendants to the same indented text as <see cref="Render()"/>
-    /// </summary>
     public static string Render(CallTreeNode node)
     {
         var builder = new StringBuilder();
@@ -367,7 +253,7 @@ public sealed class CallTree
     {
         builder.Append(' ', depth * 2);
 
-        builder.Append(node.Symbol.Length > 0 ? node.Symbol : node.Key);
+        builder.Append(node.Symbol.Length > 0 ? node.Symbol : node.Frame?.QualifiedName);
 
         if (node.CallCount > 0)
         {
@@ -376,32 +262,10 @@ public sealed class CallTree
 
         builder.AppendLine();
 
-        foreach (var child in node.Children.Values.OrderBy(c => c.Order))
+        foreach (var child in node.Children.OrderBy(c => c.Order))
         {
             RenderNode(child, depth + 1, builder);
         }
-    }
-
-    private static string GetRvaKey(CallFrame frame)
-        => frame.InstanceAddress == 0 ? $"{frame.Module.Name}!{frame.Rva}" : $"{frame.Module.Name}!{frame.Rva}@{frame.InstanceAddress:X}";
-
-    private static string GetFunctionKey(CallFrame frame)
-    {
-        if (frame.Function is not { } function)
-        {
-            return GetRvaKey(frame);
-        }
-
-        var module = frame.Module.Name;
-
-        if (frame.InstanceAddress != 0)
-        {
-            return $"{module}!{function.ClassName}::{function.MethodName}@{frame.InstanceAddress:X}";
-        }
-
-        return function.ModuleName == module
-            ? function.FunctionKey
-            : $"{module}!{function.ClassName}::{function.MethodName}";
     }
 
     private sealed class Segmenter(CallTree projected,
@@ -458,7 +322,7 @@ public sealed class CallTree
             {
                 var parent = IsTop(node) ? projected.Root : GetProjected(node.Parent!);
 
-                result = projected.GetChild(parent, node.Frame!, GetFunctionKey);
+                result = projected.GetChild(parent, node.Frame!);
 
                 result.AddPlanOperators(node.PlanOperators);
 

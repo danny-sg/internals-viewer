@@ -1,6 +1,5 @@
 using InternalsViewer.Query.FullTrace.Memory.Address;
 using InternalsViewer.Mcp.Tools.Queries;
-using InternalsViewer.Query.Events.BatchMode.Enums;
 using InternalsViewer.Query.Export;
 using InternalsViewer.Query.FullTrace;
 using InternalsViewer.Query.FullTrace.Helpers;
@@ -8,7 +7,6 @@ using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.Address.Enums;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Memory.History.Enums;
-using InternalsViewer.Query.Memory;
 using ModelContextProtocol;
 using static InternalsViewer.Mcp.Tests.TestRuns;
 
@@ -107,30 +105,6 @@ public class MemoryToolsTests
     }
 
     [Fact]
-    public async Task Object_Pool_Reports_When_There_Is_No_Snapshot()
-    {
-        var (resolver, _) = CreateResolver(Create());
-
-        Assert.Equal("no object pool snapshot in the trace", await new MemoryTools(resolver).ObjectPool());
-    }
-
-    [Fact]
-    public async Task Object_Pool_Lists_The_Entries()
-    {
-        var pool = new ObjectPoolSnapshot([new ObjectPoolEntry(0x10, 0x20, 0x30, 8, ColumnStoreObjectType.ColumnSegment, 5, 72057594, 1, 2, 4096)]);
-
-        var (resolver, _) = CreateResolver(WithTrace(Create(), t => t with { ObjectPool = pool }));
-
-        var text = await new MemoryTools(resolver).ObjectPool();
-
-        Assert.Contains("1 columnstore object pool entries at the end of the run", text);
-        Assert.Contains("ColumnSegment", text);
-        Assert.Contains("72057594", text);
-        Assert.Contains("4.0 KB", text);
-        Assert.Contains("0x20", text);
-    }
-
-    [Fact]
     public async Task Memory_History_Reports_When_There_Is_None()
     {
         var (resolver, _) = CreateResolver(Create());
@@ -210,12 +184,12 @@ public class MemoryToolsTests
                 new AddressEntry(0xA, 0, 1, 0, At(0x16), At(0x1F), 1, 7, AddressMapOperation.Allocated, "CQScanRowsetNew", 100, "sqlmin!CQScanRowsetNew::GetRow",
                                  "MEMOBJ_EXECUTE"),
                 new AddressEntry(0xA, 0, 1, 0, At(0x17), At(0x1F), 1, 7, AddressMapOperation.Constructed, "CQScanRowsetNew")
-            ], t.Timeline.GetNode)
+            ], t.Store.Timeline.GetNode)
         });
 
     private static QueryExportContent WithMemoryHistory(QueryExportContent run)
     {
-        var timeline = run.ExtraOf<TraceResult>()!.Timeline;
+        var timeline = run.ExtraOf<TraceResult>()!.Store.Timeline;
 
         MemoryHistoryBlock[] blocks = [new MemoryHistoryBlock(Scan, 0xA, 16, true, false, 7, 1, At(0x16), At(0x1F), 22, 31, 0, 2)];
 

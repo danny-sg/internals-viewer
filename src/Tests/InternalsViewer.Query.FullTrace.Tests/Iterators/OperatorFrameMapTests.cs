@@ -61,7 +61,7 @@ public class OperatorFrameMapTests
 
         Label((Operator(1, "Index Scan", "HeapTable", "ix_HeapTable_Id"), open));
 
-        var projected = Assert.Single(tree.CollapseToFunctions().Root.ChildNodes);
+        var projected = Assert.Single(tree.Project().Root.Children);
 
         Assert.Equal("HeapTable.ix_HeapTable_Id", projected.TargetLabel);
     }
@@ -93,6 +93,7 @@ public class OperatorFrameMapTests
     private static CallFrame Frame(string className, string method, uint rva) => new()
     {
         Module = new("sqlmin"),
+        Address = rva,
         Rva = rva,
         Function = new FrameFunction
         {

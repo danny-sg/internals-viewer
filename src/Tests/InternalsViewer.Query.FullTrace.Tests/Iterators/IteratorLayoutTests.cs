@@ -85,7 +85,9 @@ public class IteratorLayoutTests
     {
         var tree = new CallTree();
 
-        var getRow = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x10, InstanceAddress = Top }, 1);
+        var frame = new CallFrame { Module = new("sqlmin"), Address = 0x10, Rva = 0x10, InstanceAddress = Top };
+
+        var getRow = tree.AddCall(tree.Root, frame, 1);
 
         var top = new ExecutionOperatorEvent
         {

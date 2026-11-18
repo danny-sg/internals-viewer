@@ -1,7 +1,8 @@
 using InternalsViewer.Query.FullTrace.Calls;
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Helpers;
-using InternalsViewer.Query.FullTrace.Hooks;
-using InternalsViewer.Query.FullTrace.Hooks.Enums;
+using InternalsViewer.Query.FullTrace.Replay.Hooks;
+using InternalsViewer.Query.FullTrace.Replay.Hooks.Enums;
 
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRowHelper;
 
@@ -18,7 +19,8 @@ public class StackArgumentHookTests
 
     [Fact]
     public void Every_Function_With_Stack_Slots_Is_Hooked_At_Its_Entry()
-        => Assert.Equal([new TraceHookFunction(Function, TraceHookEvents.Entry)], new StackArgumentHook(Slots(2), new TraceCallStore.Builder()).Functions);
+        => Assert.Equal([new TraceHookFunction(Function, TraceHookEvents.Entry)],
+                        new StackArgumentHook(Slots(2), new ReplayCallLog()).Functions);
 
     [Fact]
     public void A_Stack_Argument_Is_Read_Past_The_Return_Address_And_Home_Space()
@@ -58,10 +60,10 @@ public class StackArgumentHookTests
     [Fact]
     public async Task Stack_Arguments_Keep_Their_Call_Across_Chunks_And_Are_Found_By_Value()
     {
-        var store = new TraceCallStore.Builder();
+        var store = new ReplayCallLog();
 
-        store.Add(Function, 0, Chunk(Row(1), Row(2)), 2);
-        store.Add(Function, 0, Chunk(Row(3)), 1);
+        store.AddChunk(Function, 0, Chunk(Row(1), Row(2)), 2);
+        store.AddChunk(Function, 0, Chunk(Row(3)), 1);
 
         store.AddStackArguments(Function, 0, 0, [0x10, 0x20]);
         store.AddStackArguments(Function, 0, 2, [0x30, 0x20]);
@@ -82,9 +84,9 @@ public class StackArgumentHookTests
     [Fact]
     public void Stack_Arguments_Survive_An_Export_Round_Trip()
     {
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(Function, 0, Chunk(Row(1)), 1);
+        builder.AddChunk(Function, 0, Chunk(Row(1)), 1);
 
         builder.AddStackArguments(Function, 0, 0, [0x5_0000, 0x6_0000, 0x7_0000]);
 
@@ -94,7 +96,7 @@ public class StackArgumentHookTests
 
         stream.Position = 0;
 
-        var call = TraceCallStore.Read(new BinaryReader(stream)).GetCallList(Function, 0)![0];
+        var call = TraceCallStore.Read(new BinaryReader(stream), TraceNodeMap.Empty).GetCallList(Function, 0)![0];
 
         Assert.Equal([0x5_0000ul, 0x6_0000ul, 0x7_0000ul], call.IntegerSlots.Skip(4));
     }
@@ -103,9 +105,9 @@ public class StackArgumentHookTests
 
     private static TraceArgumentCall Replay(FakeTraceReplay replay, int slots)
     {
-        var store = new TraceCallStore.Builder();
+        var store = new ReplayCallLog();
 
-        store.Add(Function, 0, Chunk(Row(1)), 1);
+        store.AddChunk(Function, 0, Chunk(Row(1)), 1);
 
         new StackArgumentHook(Slots(slots), store).OnEntry(Call(), replay);
 

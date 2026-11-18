@@ -84,9 +84,9 @@ public class MemoryHistoryGraphTests
     [Fact]
     public void Pointers_Into_The_Same_Page_Share_One_Box()
     {
-        var builder = new TraceBufferPool.Builder();
+        var builder = new ReplayBufferPool();
 
-        builder.Add(new TraceBufferPage(Frame, new PageAddress(1, 100), 6, At(1)));
+        builder.AddSighting(new TraceBufferPage(Frame, new PageAddress(1, 100), 6, At(1)));
 
         var store = MemoryHistoryStoreHelper.Build([MemoryHistoryStoreHelper.Block(First, 0x10)],
                                               [(2, First, Pointer(Frame + 0x60)), (3, First + 8, Pointer(Frame))]);
@@ -105,9 +105,9 @@ public class MemoryHistoryGraphTests
     [Fact]
     public void A_Pointer_Moving_Within_A_Page_Gives_The_Offset_It_Holds_At_A_Position()
     {
-        var builder = new TraceBufferPool.Builder();
+        var builder = new ReplayBufferPool();
 
-        builder.Add(new TraceBufferPage(Frame, new PageAddress(1, 100), 6, At(1)));
+        builder.AddSighting(new TraceBufferPage(Frame, new PageAddress(1, 100), 6, At(1)));
 
         var store = MemoryHistoryStoreHelper.Build([MemoryHistoryStoreHelper.Block(First, 0x10)],
                                               [(2, First, Pointer(Frame + 0x60)), (4, First, Pointer(Frame + 0x1A0))]);
@@ -127,9 +127,9 @@ public class MemoryHistoryGraphTests
     {
         const ulong buffer = 0x7000;
 
-        var builder = new TraceBufferPool.Builder();
+        var builder = new ReplayBufferPool();
 
-        builder.Add(new TraceBufferPage(Frame, new PageAddress(1, 100), 6, At(1), buffer));
+        builder.AddSighting(new TraceBufferPage(Frame, new PageAddress(1, 100), 6, At(1), buffer));
 
         var store = MemoryHistoryStoreHelper.Build([MemoryHistoryStoreHelper.Block(First, 0x10), MemoryHistoryStoreHelper.Block(buffer, 0xC0)],
                                               [(2, buffer + 0x70, [1]), (3, First, Pointer(buffer))]);

@@ -14,7 +14,7 @@ public static class TraceTrackBuilder
     public static TraceTickTrackSeries Build(TraceResult trace,
                                              IReadOnlyList<TraceTrackRule> rules,
                                              ExecutionOperatorEvent? statement,
-                                             Func<ExecutionOperatorEvent, ExpressionPullSite, List<ExecutionOperatorEvent>> getPulled)
+                                             Func<ExecutionOperatorEvent, ExpressionEvaluationSite, List<ExecutionOperatorEvent>> evaluated)
     {
         var watches = new Dictionary<TraceTrackRule, TraceWatch>(ReferenceEqualityComparer.Instance);
 
@@ -23,7 +23,7 @@ public static class TraceTrackBuilder
             TraceTickSourceType.Watch
                 => GetWatch(trace, rule, watches).Series,
             TraceTickSourceType.Evaluate
-                => BuildAssigned(trace, rule, statement, p => getPulled(p, (ExpressionPullSite)rule.Value)),
+                => BuildAssigned(trace, rule, statement, p => evaluated(p, (ExpressionEvaluationSite)rule.Value)),
             TraceTickSourceType.Statement
                 => BuildAssigned(trace, rule, statement, _ => statement is null ? [] : [statement]),
             _ => Build(trace, rule)
@@ -34,8 +34,8 @@ public static class TraceTrackBuilder
 
     internal static TraceTickSeries Build(TraceResult trace, TraceTrackRule rule)
         => rule.Source == TraceTickSourceType.Call
-            ? Build(trace.Timeline, trace.CallStore, trace.Lifetimes, rule, trace.SourceTracks.EnclosingCalls)
-            : Filter(trace.Timeline, trace.SourceTracks.GetSeries(rule.Source), rule);
+            ? Build(trace.Store.Timeline, trace.Store.Calls, trace.Lifetimes, rule, trace.SourceTracks.EnclosingCalls)
+            : Filter(trace.Store.Timeline, trace.SourceTracks.GetSeries(rule.Source), rule);
 
     internal static TraceTickSeries BuildAssigned(TraceResult trace,
                                                   TraceTrackRule rule,
@@ -48,9 +48,9 @@ public static class TraceTrackBuilder
 
         var evaluations = new List<(TraceTickSource Source, ExecutionOperatorEvent? Owner)>();
 
-        foreach (var list in trace.CallStore.GetCallLists())
+        foreach (var list in trace.Store.Calls.GetCallLists())
         {
-            if (trace.CallStore.GetFirstNode(list) is not { Frame: not null } first || !rule.IsFunction(first))
+            if (trace.Store.Calls.GetFirstNode(list) is not { Frame: not null } first || !rule.IsFunction(first))
             {
                 continue;
             }
@@ -59,7 +59,7 @@ public static class TraceTrackBuilder
 
             for (var index = 0; index < list.Count; index++)
             {
-                if (trace.Timeline.FindCall(list.FunctionAddress, list.InstanceAddress, index) is not { } location)
+                if (trace.Store.Timeline.FindSpan(list, index) is not { } location)
                 {
                     continue;
                 }
@@ -82,7 +82,7 @@ public static class TraceTrackBuilder
                                 .Select(s => new SweepSpan<TracePosition>(s.Thread.ThreadId, s.From.Position, s.To.Position, 0))
                                 .ToList();
 
-        var pullers = trace.SourceTracks.PullerCalls.GetEnclosing(points, includeRowReturns: true);
+        var evaluators = trace.SourceTracks.EvaluatorCalls.GetEnclosing(points, includeRowReturns: true);
 
         var assigned = new Dictionary<ExecutionOperatorEvent, IReadOnlyList<ExecutionOperatorEvent>>(ReferenceEqualityComparer.Instance);
 
@@ -92,26 +92,26 @@ public static class TraceTrackBuilder
         {
             var (source, owner) = evaluations[index];
 
-            var puller = owners.GetValueOrDefault(pullers[index]) ?? statement;
+            var evaluator = owners.GetValueOrDefault(evaluators[index]) ?? statement;
 
             if (owner is not null && OperatorClassifier.IsComputeScalar(owner))
             {
-                sources.Add(source with { Operator = owner, Caller = puller });
+                sources.Add(source with { Operator = owner, Caller = evaluator });
             }
-            else if (puller is not null)
+            else if (evaluator is not null)
             {
-                if (!assigned.TryGetValue(puller, out var operators))
+                if (!assigned.TryGetValue(evaluator, out var operators))
                 {
-                    operators = getOperators(puller);
+                    operators = getOperators(evaluator);
 
-                    assigned[puller] = operators;
+                    assigned[evaluator] = operators;
                 }
 
-                sources.AddRange(operators.Select(o => source with { Operator = o, Caller = puller }));
+                sources.AddRange(operators.Select(o => source with { Operator = o, Caller = evaluator }));
             }
         }
 
-        return TraceTickSeries.Create(trace.Timeline, sources);
+        return TraceTickSeries.Create(trace.Store.Timeline, sources);
     }
 
     internal static TraceTickTrackSeries BuildTrack(TraceResult trace,
@@ -132,7 +132,7 @@ public static class TraceTrackBuilder
 
         var count = Math.Min(rules.Count, byte.MaxValue + 1);
 
-        return new TraceTickTrackSeries(Combine(trace.Timeline, [.. rules.Take(count).Select(getSeries)]),
+        return new TraceTickTrackSeries(Combine(trace.Store.Timeline, [.. rules.Take(count).Select(getSeries)]),
                                         [.. Enumerable.Range(0, count).Select(i => (byte)i)]);
     }
 
@@ -280,7 +280,7 @@ public static class TraceTrackBuilder
                 var call = list[index];
 
                 if (getValue(frame, call) is not { } value
-                    || timeline.FindCall(list.FunctionAddress, list.InstanceAddress, index) is not { } location
+                    || timeline.FindSpan(list, index) is not { } location
                     || (isNode is not null && !isNode(location.Node)))
                 {
                     continue;

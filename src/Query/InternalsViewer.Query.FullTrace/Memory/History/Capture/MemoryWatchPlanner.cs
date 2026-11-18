@@ -4,7 +4,7 @@ using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory.Allocation.Enums;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 
 namespace InternalsViewer.Query.FullTrace.Memory.History.Capture;
 
@@ -35,7 +35,7 @@ internal static class MemoryWatchPlanner
                     continue;
                 }
 
-                var thread = list.GetThread(index);
+                var thread = list.GetThreadId(index);
 
                 if (function.GetReleased(call) is not 0 and var released)
                 {

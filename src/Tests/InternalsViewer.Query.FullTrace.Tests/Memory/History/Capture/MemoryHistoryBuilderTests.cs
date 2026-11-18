@@ -9,7 +9,7 @@ using InternalsViewer.Query.FullTrace.Memory.History.Enums;
 using InternalsViewer.Query.FullTrace.Memory.History.Capture.StackObjects;
 using InternalsViewer.Query.FullTrace.Memory.History.Capture.Watches;
 using InternalsViewer.Query.FullTrace.Memory.MemoryObject;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -216,7 +216,7 @@ public class MemoryHistoryBuilderTests
     [Fact]
     public void A_Memory_Object_Page_Is_Watched_Unless_An_Allocation_Already_Covers_It()
     {
-        var store = new TraceCallStore.Builder().Build();
+        var store = new ReplayCallLog().Build();
 
         var allocations = MemoryWatchPlanner.GetAllocations(store,
                                                               [],
@@ -297,13 +297,11 @@ public class MemoryHistoryBuilderTests
         var grant = tree.AddCall(query, Frame(string.Empty, "PbufGetGrantedBuf", 0x20), 1);
         var steal = tree.AddCall(grant, Frame("BPool", "Steal", 0x30), 1);
 
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add([Span(0, 0, 100, 0), Span(1, 10, 20, 0), Span(2, 12, 18, 0)]);
 
-        var timeline = builder.Build([new(-1, 0x10, 0, 1), new(0, 0x20, 0, 1), new(1, 0x30, 0, 1)]);
-
-        timeline.MapNodes([query, grant, steal]);
+        var timeline = builder.Build([new(-1, 0x10, 0, 1), new(0, 0x20, 0, 1), new(1, 0x30, 0, 1)], [query, grant, steal]);
 
         var store = Build([Block(Page, 0x2000, from: 15), Block(Owned, 0x2000, from: 30)],
                           [Write(40, Page, 1), Write(41, Owned, 1)],
@@ -339,7 +337,7 @@ public class MemoryHistoryBuilderTests
 
         using var reader = new BinaryReader(stream);
 
-        var store = MemoryHistoryStore.Read(reader, timeline);
+        var store = MemoryHistoryStore.Read(reader, new TraceStore(new ReplayCallLog().Build(), timeline));
 
         var write = store.GetWrites(0)[1];
 
@@ -353,7 +351,7 @@ public class MemoryHistoryBuilderTests
     {
         var start = 5ul << 32;
 
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add([new CallSpan(0, 0, 100, 0, start, start + 100, 0, Thread, 0, 1)]);
 
@@ -372,7 +370,7 @@ public class MemoryHistoryBuilderTests
 
         using var reader = new BinaryReader(stream);
 
-        var store = MemoryHistoryStore.Read(reader, timeline);
+        var store = MemoryHistoryStore.Read(reader, new TraceStore(new ReplayCallLog().Build(), timeline));
 
         Assert.Equal(start + 50, built.GetPoint(0).Instructions);
         Assert.Equal(new TracePoint(At(50), start + 50), store.GetPoint(0));
@@ -621,7 +619,7 @@ public class MemoryHistoryBuilderTests
         var pages = tree.AddCall(getRow, Frame("CMemThread<CMemObj>", "PbGetNewPages", 0x40), 1);
         var bufferPool = tree.AddCall(query, Frame("BPool", "Get", 0x50), 1);
 
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add([Span(0, 0, 100, 0),
                      Span(1, 10, 20, 0),
@@ -636,9 +634,7 @@ public class MemoryHistoryBuilderTests
                                       new(0, 0x20, Iterator, 3),
                                       new(1, 0x30, 0, 2),
                                       new(1, 0x40, 0, 1),
-                                      new(0, 0x50, 0, 1)]);
-
-        timeline.MapNodes([query, getRow, scanner, pages, bufferPool]);
+                                      new(0, 0x50, 0, 1)], [query, getRow, scanner, pages, bufferPool]);
 
         return (timeline, (query, getRow, scanner));
     }

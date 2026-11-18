@@ -36,7 +36,7 @@ public sealed class MemoryHistoryCallPathResolver(MemoryHistoryStore store, Trac
             }
 
             var instance = calls.GetCallList(frame.Address, frame.InstanceAddress) is { } list
-                           && list.IndexOfEnclosing(position, info.Thread) is >= 0 and var call
+                           && list.GetEnclosingCallIndex(info.Thread, position) is >= 0 and var call
                            && list[call].GetSlot(0) is >= MinimumAddress and <= MaximumAddress and var slot
                 ? slot
                 : 0;

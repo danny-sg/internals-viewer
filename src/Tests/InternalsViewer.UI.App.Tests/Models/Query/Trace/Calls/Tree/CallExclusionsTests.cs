@@ -59,5 +59,5 @@ public class CallExclusionsTests
         Assert.True(exclusions.Includes(null));
     }
 
-    private static CallFrame Frame(string module, uint rva) => new() { Module = new(module), Rva = rva };
+    private static CallFrame Frame(string module, uint rva) => new() { Module = new(module), Address = rva, Rva = rva };
 }

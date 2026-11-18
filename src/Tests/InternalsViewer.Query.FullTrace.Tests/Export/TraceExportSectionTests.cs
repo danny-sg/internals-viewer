@@ -12,7 +12,7 @@ using InternalsViewer.Query.FullTrace.Iterators.PlanNodes;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Locators.Enums;
 using InternalsViewer.Query.FullTrace.Memory;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -57,30 +57,18 @@ public class TraceExportSectionTests
     {
         var fullTrace = (await Import(await Export(Content()))).ExtraOf<TraceResult>()!;
 
-        var calls = fullTrace.CallStore.GetCallList(0x30, Scan)!;
+        var calls = fullTrace.Store.Calls.GetCallList(0x30, Scan)!;
 
-        var getRow = fullTrace.CallTree.Root.ChildNodes.Single().ChildNodes.Single();
+        var getRow = fullTrace.CallTree.Root.Children.Single().Children.Single();
 
         Assert.Equal(2, calls.Count);
         Assert.Equal(6ul, calls[1].IntegerSlots[0]);
-        Assert.Same(getRow, fullTrace.CallStore.GetNode(calls[1]));
+        Assert.Same(getRow, fullTrace.Store.Calls.GetNode(calls[1]));
         Assert.Equal(new PageAddress(1, 336), calls[1].GetLocator(2)?.Page);
         Assert.Equal("(1:336), (1:336:4)", getRow.LocatorsDetail);
-        Assert.Equal(3, fullTrace.Timeline.SpanCount);
+        Assert.Equal(3, fullTrace.Store.Timeline.SpanCount);
         Assert.Equal(100ul, fullTrace.Allocation.GetPeakInUseDuring(At(0), At(100)));
         Assert.Single(fullTrace.Lifetimes);
-    }
-
-    [Fact]
-    public async Task A_Node_Removed_From_The_Full_Trace_Tree_Stays_Out_Of_It_On_Import()
-    {
-        var fullTrace = (await Import(await Export(Content()))).ExtraOf<TraceResult>()!;
-
-        var publish = fullTrace.Timeline.GetNode(2)!;
-
-        Assert.Equal("XeSqlPkg::lock_acquired::Publish", publish.Symbol);
-        Assert.Same(fullTrace.Timeline.GetNode(0), publish.Parent);
-        Assert.DoesNotContain(publish, fullTrace.CallTree.GetNodes());
     }
 
     [Fact]
@@ -99,7 +87,7 @@ public class TraceExportSectionTests
     {
         using var stream = new MemoryStream(await Export(Content()));
 
-        var imported = await WithoutTrace.ReadAsync(stream, _ => null, CancellationToken.None);
+        var imported = await WithoutTrace.ReadAsync(stream, _ => null, null, CancellationToken.None);
 
         Assert.Empty(imported.Extras);
         Assert.Single(imported.Result.EngineEvents.OfType<ExecutionOperatorEvent>());
@@ -118,7 +106,7 @@ public class TraceExportSectionTests
     {
         using var stream = new MemoryStream(export);
 
-        return await WithTrace.ReadAsync(stream, _ => null, CancellationToken.None);
+        return await WithTrace.ReadAsync(stream, _ => null, null, CancellationToken.None);
     }
 
     private static Dictionary<string, byte[]> Entries(byte[] export)
@@ -199,21 +187,13 @@ public class TraceExportSectionTests
 
         getRow.AllocationCount = 1;
 
-        getRow.CallActivity = [0, 1, 2];
+        getRow.OwnActivityCounts = [0, 1, 2];
 
-        var publish = tree.AddCall(caller, Frame(0x50, "XeSqlPkg::lock_acquired::Publish+0x0"), 1);
+        var builder = new ReplaySpans();
 
-        var builder = new TraceTimeline.Builder();
+        builder.Add([Span(0, 0, 100), Span(1, 20, 25), Span(1, 30, 35)]);
 
-        builder.Add([Span(0, 0, 100), Span(1, 20, 25), Span(1, 30, 35), Span(2, 40, 41)]);
-
-        var timeline = builder.Build([new(-1, 0x10, 0, 1), new(0, 0x30, Scan, 2), new(0, 0x50, 0, 1)]);
-
-        timeline.MapNodes([caller, getRow, publish]);
-
-        tree.RemoveCallsUnder(node => node.IsInstrumentation);
-
-        timeline.RemoveCallsUnder(node => node.IsInstrumentation);
+        var timeline = builder.Build([new(-1, 0x10, 0, 1), new(0, 0x30, Scan, 2)], [caller, getRow]);
 
         var memory = AllocationIndex.Build([new MemoryAllocation(7, At(22), At(23), 100, 0xA)], [new MemoryFree(7, At(31), At(32), 0xA)]);
 
@@ -223,17 +203,20 @@ public class TraceExportSectionTests
 
         var lifetimes = IteratorLifetimeBuilder.Build(timeline, memory, owners, planNodes, []);
 
-        var storeBuilder = new TraceCallStore.Builder();
+        var storeBuilder = new ReplayCallLog();
 
-        storeBuilder.Add(0x30, Scan, TraceCallRowHelper.Chunk(Call(1, 5), Call(2, 6)), 2);
+        storeBuilder.AddChunk(0x30, Scan, TraceCallRowHelper.Chunk(Call(1, 5), Call(2, 6)), 2);
 
         storeBuilder.AddLocator(0x30, Scan, 1, new Locator(2, LocatorValueType.Page, Page336), false);
 
-        var callStore = storeBuilder.Build();
+        var callStore = storeBuilder.Build([caller, getRow]);
 
-        callStore.MapNodes([caller, getRow, publish]);
-
-        return new TraceResult(tree, callStore, timeline) { Allocation = memory, Lifetimes = lifetimes, PlanNodes = planNodes };
+        return new TraceResult(tree, new TraceStore(callStore, timeline))
+        {
+            Allocation = memory,
+            Lifetimes = lifetimes,
+            PlanNodes = planNodes
+        };
     }
 
     private static CallFrame Frame(ulong rva, string symbol, ulong instance = 0)

@@ -1,0 +1,28 @@
+namespace InternalsViewer.Query.FullTrace.Replay.Hooks;
+
+internal readonly ref struct TraceHookCall
+{
+    public ulong FunctionAddress { get; init; }
+
+    public ulong InstanceAddress { get; init; }
+
+    public ulong CallId { get; init; }
+
+    public uint CallIndex { get; init; }
+
+    public uint Thread { get; init; }
+
+    public int ReplayNodeIndex { get; init; }
+
+    public ReadOnlySpan<ulong> Arguments { get; init; }
+
+    public ulong ReturnValue { get; init; }
+
+    public ulong StackPointer { get; init; }
+
+    public ulong ReturnAddress { get; init; }
+
+    public TracePosition Position { get; init; }
+
+    public ulong Instructions { get; init; }
+}

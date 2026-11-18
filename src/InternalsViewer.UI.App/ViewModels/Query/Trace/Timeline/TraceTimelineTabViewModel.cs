@@ -416,7 +416,7 @@ public sealed partial class TraceTimelineTabViewModel : ObservableObject, ITrace
 
         if (Trace is { } trace
             && TraceHashTableReader.GetCallTarget(trace.MemoryHistory,
-                                                  trace.CallStore,
+                                                  trace.Store.Calls,
                                                   target.Node,
                                                   target.CallIndex) is var (group, location))
         {

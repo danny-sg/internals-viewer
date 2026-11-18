@@ -407,7 +407,7 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
                 continue;
             }
 
-            foreach (var child in node.Children.Values)
+            foreach (var child in node.Children)
             {
                 stack.Push(child);
             }
@@ -536,7 +536,7 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
                     continue;
                 }
 
-                foreach (var child in node.Children.Values.OrderByDescending(c => c.Order))
+                foreach (var child in node.Children.OrderByDescending(c => c.Order))
                 {
                     stack.Push((child, level + 1));
                 }
@@ -747,7 +747,7 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
                 {
                     stack.Push((node, true));
 
-                    foreach (var child in node.Children.Values)
+                    foreach (var child in node.Children)
                     {
                         if (!Cache.ContainsKey(child))
                         {
@@ -764,7 +764,7 @@ public sealed class CallTreeTools(McpDocumentResolver documents)
 
                 var allocations = node.AllocationCount;
 
-                foreach (var child in node.Children.Values)
+                foreach (var child in node.Children)
                 {
                     var childTotals = Cache[child];
 

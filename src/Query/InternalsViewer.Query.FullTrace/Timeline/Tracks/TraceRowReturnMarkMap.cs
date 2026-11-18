@@ -81,7 +81,8 @@ public sealed class TraceRowReturnMarkMap
 
                 var parent = enclosing == 0 ? null : groupsByInstance.GetValueOrDefault((enclosing, group.Thread));
 
-                if (timeline.FindCall(call.FunctionAddress, group.InstanceAddress, call.CallIndex) is not { } location
+                if (calls.GetCallList(call.FunctionAddress, group.InstanceAddress) is not { } list
+                    || timeline.FindSpan(list, call.CallIndex) is not { } location
                     || GetReturnType(layout.Iterator,
                                      group,
                                      index,

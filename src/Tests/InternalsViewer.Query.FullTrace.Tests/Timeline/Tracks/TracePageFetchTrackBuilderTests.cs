@@ -27,7 +27,7 @@ public class TracePageFetchTrackBuilderTests
     {
         var page = new PageAddress(1, 154);
 
-        var builder = new TraceBufferPool.Builder();
+        var builder = new ReplayBufferPool();
 
         builder.AddLayout(page, 5, [0x60, 0x8C], PageType.Iam);
 

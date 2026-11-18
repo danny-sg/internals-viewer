@@ -1,6 +1,6 @@
 namespace InternalsViewer.Query.FullTrace.DataPath.Enums;
 
-public enum DataPathFieldKind
+public enum DataPathFieldType
 {
     None,
     Copy,

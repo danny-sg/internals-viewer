@@ -1,7 +1,8 @@
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Memory;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -138,41 +139,17 @@ public class TraceTimelineTests
     }
 
     [Fact]
-    public void Calls_Under_An_Excluded_Frame_Go_With_It()
-    {
-        var timeline = Build(Span(replayNodeIndex: 2, start: 10, end: 20),
-                             Span(replayNodeIndex: 1, start: 5, end: 30),
-                             Span(replayNodeIndex: 0, start: 0, end: 40));
-
-        var tree = new CallTree();
-
-        var root = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x10 }, 1);
-        var publish = tree.AddCall(root, new CallFrame { Module = new("sqlmin"), Rva = 0x20 }, 1);
-        var inner = tree.AddCall(publish, new CallFrame { Module = new("sqlmin"), Rva = 0x30 }, 1);
-
-        timeline.MapNodes([root, publish, inner]);
-
-        timeline.RemoveCallsUnder(n => ReferenceEquals(n, publish));
-
-        var thread = Assert.Single(timeline.Threads);
-
-        Assert.Equal([1, 0, 0], thread.Rows.Select(r => r.Count));
-        Assert.Equal(1, thread.CallCount);
-    }
-
-    [Fact]
     public void A_Cropped_Timeline_Fits_To_The_Calls_Under_Its_Root()
     {
-        var timeline = Build(Span(replayNodeIndex: 2, start: 10, end: 20),
-                             Span(replayNodeIndex: 1, start: 5, end: 30),
-                             Span(replayNodeIndex: 0, start: 0, end: 40));
-
         var tree = new CallTree();
 
-        var execute = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Rva = 0x20 }, 1);
-        var inner = tree.AddCall(execute, new CallFrame { Module = new("sqlmin"), Rva = 0x30 }, 1);
+        var execute = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Address = 0x20, Rva = 0x20 }, 1);
+        var inner = tree.AddCall(execute, new CallFrame { Module = new("sqlmin"), Address = 0x30, Rva = 0x30 }, 1);
 
-        timeline.MapNodes([null, execute, inner]);
+        var timeline = Build([null, execute, inner],
+                             Span(replayNodeIndex: 2, start: 10, end: 20),
+                             Span(replayNodeIndex: 1, start: 5, end: 30),
+                             Span(replayNodeIndex: 0, start: 0, end: 40));
 
         var cropped = timeline.CropTo(new HashSet<CallTreeNode>(ReferenceEqualityComparer.Instance) { execute });
 
@@ -196,22 +173,20 @@ public class TraceTimelineTests
             new(2, 0x4000, 0, 1)
         ];
 
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add([Span(replayNodeIndex: 0, start: 0, end: 100),
                      Span(replayNodeIndex: 1, start: 10, end: 90),
                      Span(replayNodeIndex: 2, start: 20, end: 40),
                      Span(replayNodeIndex: 3, start: 25, end: 30)]);
 
-        var timeline = builder.Build(nodes);
-
         var tree = new CallTree();
 
-        var execute = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Rva = 0x20 }, 1);
-        var scan = tree.AddCall(execute, new CallFrame { Module = new("sqlmin"), Rva = 0x30 }, 1);
-        var read = tree.AddCall(scan, new CallFrame { Module = new("sqlmin"), Rva = 0x40 }, 1);
+        var execute = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Address = 0x20, Rva = 0x20 }, 1);
+        var scan = tree.AddCall(execute, new CallFrame { Module = new("sqlmin"), Address = 0x30, Rva = 0x30 }, 1);
+        var read = tree.AddCall(scan, new CallFrame { Module = new("sqlmin"), Address = 0x40, Rva = 0x40 }, 1);
 
-        timeline.MapNodes([null, execute, scan, read]);
+        var timeline = builder.Build(nodes, [null, execute, scan, read]);
 
         var cropped = timeline.CropTo(new HashSet<CallTreeNode>(ReferenceEqualityComparer.Instance) { execute });
 
@@ -276,28 +251,11 @@ public class TraceTimelineTests
     }
 
     [Fact]
-    public void Calls_Removed_From_Between_Kept_Calls_Close_Up_In_Their_Row()
-    {
-        var (timeline, execute) = BuildAroundExecute();
-
-        timeline.RemoveCallsUnder(n => ReferenceEquals(n, execute));
-
-        var thread = Assert.Single(timeline.Threads);
-
-        Assert.Equal([[0d, 30d], [2d, 32d]], thread.Rows.Select(r => Starts(r)));
-        Assert.Equal([[10d, 40d], [8d, 38d]], thread.Rows.Select(r => Ends(r)));
-        Assert.Equal([0, 0, 1, 1], thread.Rows.SelectMany(r => Enumerable.Range(0, r.Count).Select(r.GetReplayNodeIndex)));
-        Assert.Equal(4, thread.CallCount);
-    }
-
-    [Fact]
     public void An_Exported_Timeline_Reads_Each_Row_Back_Into_One_Store_Per_Thread()
     {
-        var (timeline, execute) = BuildAroundExecute();
+        var timeline = BuildAroundExcludedCall();
 
-        timeline.RemoveCallsUnder(n => ReferenceEquals(n, execute));
-
-        CallTreeNode[] nodes = [.. Enumerable.Range(0, 4).Select(i => timeline.GetNode(i)!)];
+        CallTreeNode[] nodes = [.. Enumerable.Range(0, 2).Select(i => timeline.GetNode(i)!)];
 
         using var stream = new MemoryStream();
 
@@ -347,18 +305,17 @@ public class TraceTimelineTests
     [Fact]
     public void A_Cropped_Timeline_Drops_Threads_Outside_The_Cropped_Tree()
     {
-        var timeline = Build(Span(replayNodeIndex: 1, start: 5, end: 30),
-                             Span(replayNodeIndex: 0, start: 0, end: 40, thread: 9));
-
         var tree = new CallTree();
 
-        var execute = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Rva = 0x20 }, 1);
+        var execute = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Address = 0x20, Rva = 0x20 }, 1);
 
         var uncropped = new CallTree();
 
-        var elsewhere = uncropped.AddCall(uncropped.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x90 }, 1);
+        var elsewhere = uncropped.AddCall(uncropped.Root, new CallFrame { Module = new("sqlmin"), Address = 0x90, Rva = 0x90 }, 1);
 
-        timeline.MapNodes([elsewhere, execute, null]);
+        var timeline = Build([elsewhere, execute, null],
+                             Span(replayNodeIndex: 1, start: 5, end: 30),
+                             Span(replayNodeIndex: 0, start: 0, end: 40, thread: 9));
 
         var cropped = timeline.CropTo(new HashSet<CallTreeNode>(ReferenceEqualityComparer.Instance) { execute });
 
@@ -369,17 +326,16 @@ public class TraceTimelineTests
     [Fact]
     public void Calls_Under_A_Folded_Frame_Move_Up_Into_Its_Place()
     {
-        var timeline = Build(Span(replayNodeIndex: 2, start: 10, end: 20),
-                             Span(replayNodeIndex: 1, start: 5, end: 30),
-                             Span(replayNodeIndex: 0, start: 0, end: 40));
-
         var tree = new CallTree();
 
-        var root = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x10 }, 1);
-        var folded = tree.AddCall(root, new CallFrame { Module = new("sqlmin"), Rva = 0x20 }, 1);
-        var inner = tree.AddCall(folded, new CallFrame { Module = new("sqlmin"), Rva = 0x30 }, 1);
+        var root = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Address = 0x10, Rva = 0x10 }, 1);
+        var folded = tree.AddCall(root, new CallFrame { Module = new("sqlmin"), Address = 0x20, Rva = 0x20 }, 1);
+        var inner = tree.AddCall(folded, new CallFrame { Module = new("sqlmin"), Address = 0x30, Rva = 0x30 }, 1);
 
-        timeline.MapNodes([root, folded, inner]);
+        var timeline = Build([root, folded, inner],
+                             Span(replayNodeIndex: 2, start: 10, end: 20),
+                             Span(replayNodeIndex: 1, start: 5, end: 30),
+                             Span(replayNodeIndex: 0, start: 0, end: 40));
 
         var thread = Assert.Single(timeline.Fold(n => ReferenceEquals(n, folded)).Threads);
 
@@ -390,7 +346,7 @@ public class TraceTimelineTests
     [Fact]
     public void Calls_Lifted_Between_Kept_Calls_Stay_In_Start_Order()
     {
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add([Span(replayNodeIndex: 0, start: 0, end: 100),
                      Span(replayNodeIndex: 3, start: 5, end: 8, callIndex: 7),
@@ -398,16 +354,15 @@ public class TraceTimelineTests
                      Span(replayNodeIndex: 2, start: 20, end: 30, callIndex: 8),
                      Span(replayNodeIndex: 3, start: 50, end: 60, callIndex: 9)]);
 
-        var timeline = builder.Build([new(-1, 0x1000, 0, 1), new(0, 0x2000, 0, 1), new(1, 0x3000, 0, 1), new(0, 0x4000, 0, 2)]);
-
         var tree = new CallTree();
 
-        var root = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x10 }, 1);
-        var folded = tree.AddCall(root, new CallFrame { Module = new("sqlmin"), Rva = 0x20 }, 1);
-        var inner = tree.AddCall(folded, new CallFrame { Module = new("sqlmin"), Rva = 0x30 }, 1);
-        var sibling = tree.AddCall(root, new CallFrame { Module = new("sqlmin"), Rva = 0x40 }, 2);
+        var root = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Address = 0x10, Rva = 0x10 }, 1);
+        var folded = tree.AddCall(root, new CallFrame { Module = new("sqlmin"), Address = 0x20, Rva = 0x20 }, 1);
+        var inner = tree.AddCall(folded, new CallFrame { Module = new("sqlmin"), Address = 0x30, Rva = 0x30 }, 1);
+        var sibling = tree.AddCall(root, new CallFrame { Module = new("sqlmin"), Address = 0x40, Rva = 0x40 }, 2);
 
-        timeline.MapNodes([root, folded, inner, sibling]);
+        var timeline = builder.Build([new(-1, 0x1000, 0, 1), new(0, 0x2000, 0, 1), new(1, 0x3000, 0, 1), new(0, 0x4000, 0, 2)],
+                                     [root, folded, inner, sibling]);
 
         var row = Assert.Single(timeline.Fold(n => ReferenceEquals(n, folded)).Threads).Rows[1];
 
@@ -433,17 +388,16 @@ public class TraceTimelineTests
     [Fact]
     public void Folding_A_Root_Lifts_Its_Callees_To_The_Top()
     {
-        var timeline = Build(Span(replayNodeIndex: 2, start: 10, end: 20),
-                             Span(replayNodeIndex: 1, start: 5, end: 30),
-                             Span(replayNodeIndex: 0, start: 0, end: 40));
-
         var tree = new CallTree();
 
-        var outer = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Rva = 0x10 }, 1);
-        var execute = tree.AddCall(outer, new CallFrame { Module = new("sqllang"), Rva = 0x20 }, 1);
-        var inner = tree.AddCall(execute, new CallFrame { Module = new("sqlmin"), Rva = 0x30 }, 1);
+        var outer = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Address = 0x10, Rva = 0x10 }, 1);
+        var execute = tree.AddCall(outer, new CallFrame { Module = new("sqllang"), Address = 0x20, Rva = 0x20 }, 1);
+        var inner = tree.AddCall(execute, new CallFrame { Module = new("sqlmin"), Address = 0x30, Rva = 0x30 }, 1);
 
-        timeline.MapNodes([outer, execute, inner]);
+        var timeline = Build([outer, execute, inner],
+                             Span(replayNodeIndex: 2, start: 10, end: 20),
+                             Span(replayNodeIndex: 1, start: 5, end: 30),
+                             Span(replayNodeIndex: 0, start: 0, end: 40));
 
         var rooted = timeline.RootAt(n => ReferenceEquals(n, execute));
 
@@ -466,17 +420,16 @@ public class TraceTimelineTests
     [Fact]
     public void A_Root_Keeps_Only_Its_Calls_And_Their_Callees_With_Itself_At_The_Top()
     {
-        var timeline = Build(Span(replayNodeIndex: 2, start: 10, end: 20),
-                             Span(replayNodeIndex: 1, start: 5, end: 30),
-                             Span(replayNodeIndex: 0, start: 0, end: 40));
-
         var tree = new CallTree();
 
-        var outer = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Rva = 0x10 }, 1);
-        var execute = tree.AddCall(outer, new CallFrame { Module = new("sqllang"), Rva = 0x20 }, 1);
-        var inner = tree.AddCall(execute, new CallFrame { Module = new("sqlmin"), Rva = 0x30 }, 1);
+        var outer = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Address = 0x10, Rva = 0x10 }, 1);
+        var execute = tree.AddCall(outer, new CallFrame { Module = new("sqllang"), Address = 0x20, Rva = 0x20 }, 1);
+        var inner = tree.AddCall(execute, new CallFrame { Module = new("sqlmin"), Address = 0x30, Rva = 0x30 }, 1);
 
-        timeline.MapNodes([outer, execute, inner]);
+        var timeline = Build([outer, execute, inner],
+                             Span(replayNodeIndex: 2, start: 10, end: 20),
+                             Span(replayNodeIndex: 1, start: 5, end: 30),
+                             Span(replayNodeIndex: 0, start: 0, end: 40));
 
         var rooted = timeline.RootAt(n => ReferenceEquals(n, execute));
 
@@ -499,7 +452,7 @@ public class TraceTimelineTests
             new(2, 0x4000, 0, 1)
         ];
 
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add([Span(replayNodeIndex: 1, start: 10, end: 50),
                      Span(replayNodeIndex: 0, start: 0, end: 60),
@@ -508,16 +461,14 @@ public class TraceTimelineTests
                      Span(replayNodeIndex: 2, start: 70, end: 80, thread: 9),
                      Span(replayNodeIndex: 2, start: 0, end: 10, thread: 11, sequence: 3)]);
 
-        var timeline = builder.Build(nodes);
-
         var tree = new CallTree();
 
-        var session = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Rva = 0x10 }, 1);
-        var statement = tree.AddCall(session, new CallFrame { Module = new("sqllang"), Rva = 0x20 }, 1);
-        var task = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x30 }, 1);
-        var producer = tree.AddCall(task, new CallFrame { Module = new("sqlmin"), Rva = 0x40 }, 1);
+        var session = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Address = 0x10, Rva = 0x10 }, 1);
+        var statement = tree.AddCall(session, new CallFrame { Module = new("sqllang"), Address = 0x20, Rva = 0x20 }, 1);
+        var task = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Address = 0x30, Rva = 0x30 }, 1);
+        var producer = tree.AddCall(task, new CallFrame { Module = new("sqlmin"), Address = 0x40, Rva = 0x40 }, 1);
 
-        timeline.MapNodes([session, statement, task, producer]);
+        var timeline = builder.Build(nodes, [session, statement, task, producer]);
 
         var rooted = timeline.RootAt(n => ReferenceEquals(n, statement));
 
@@ -585,16 +536,15 @@ public class TraceTimelineTests
     {
         var tree = new CallTree();
 
-        var root = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x100 }, 3);
-        var child = tree.AddCall(root, new CallFrame { Module = new("sqlmin"), Rva = 0x200 }, 2);
+        var root = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Address = 0x100, Rva = 0x100 }, 3);
+        var child = tree.AddCall(root, new CallFrame { Module = new("sqlmin"), Address = 0x200, Rva = 0x200 }, 2);
 
-        var timeline = Build(Span(replayNodeIndex: 0, start: 0, end: 10),
+        var timeline = Build([root, child, null],
+                             Span(replayNodeIndex: 0, start: 0, end: 10),
                              Span(replayNodeIndex: 0, start: 80, end: 85),
                              Span(replayNodeIndex: 0, start: 90, end: 100),
                              Span(replayNodeIndex: 1, start: 30, end: 35),
                              Span(replayNodeIndex: 1, start: 31, end: 32, flags: 3));
-
-        timeline.MapNodes([root, child, null]);
 
         var activity = timeline.GetCallActivity(4);
 
@@ -607,13 +557,11 @@ public class TraceTimelineTests
     {
         CallSpan[] spans = [Span(replayNodeIndex: 0, start: 0, end: 40), Span(replayNodeIndex: 1, start: 5, end: 20), Span(replayNodeIndex: 1, start: 25, end: 30, callIndex: 1)];
 
-        var timeline = Build(spans);
+        var nodes = CreateNodes();
 
-        var nodes = MapNodes(timeline);
+        var store = new TraceStore(TraceCallRowHelper.CallsFor(Nodes, spans), Build(nodes, spans));
 
-        timeline.SetCalls(TraceCallRowHelper.CallsFor(Nodes, spans));
-
-        var found = timeline.FindCall(nodes[1], 1);
+        var found = store.FindSpan(nodes[1], 1);
 
         Assert.Equal((0, 1, 1, 1), (found?.ThreadIndex, found?.Depth, found?.Index, found?.CallIndex));
         Assert.Same(nodes[1], found?.Node);
@@ -624,20 +572,20 @@ public class TraceTimelineTests
     {
         CallSpan[] spans = [Span(replayNodeIndex: 0, start: 0, end: 40)];
 
-        var timeline = Build(spans);
+        var nodes = CreateNodes();
 
-        var nodes = MapNodes(timeline);
+        var timeline = Build(nodes, spans);
 
-        Assert.Null(timeline.FindCall(nodes[0], 0));
+        Assert.Null(new TraceStore(new ReplayCallLog().Build(), timeline).FindSpan(nodes[0], 0));
 
-        timeline.SetCalls(TraceCallRowHelper.CallsFor(Nodes, spans));
+        var store = new TraceStore(TraceCallRowHelper.CallsFor(Nodes, spans), timeline);
 
-        Assert.NotNull(timeline.FindCall(nodes[0], 0));
-        Assert.Null(timeline.FindCall(nodes[0], 1));
-        Assert.Null(timeline.FindCall(nodes[2], 0));
+        Assert.NotNull(store.FindSpan(nodes[0], 0));
+        Assert.Null(store.FindSpan(nodes[0], 1));
+        Assert.Null(store.FindSpan(nodes[2], 0));
     }
 
-    private static CallTreeNode[] MapNodes(TraceTimeline timeline)
+    private static CallTreeNode[] CreateNodes()
     {
         var tree = new CallTree();
 
@@ -647,19 +595,13 @@ public class TraceTimelineTests
 
         var leaf = tree.AddCall(child, new CallFrame { Module = new("sqlmin"), Rva = 0x30, Address = 0x3000 }, 1);
 
-        CallTreeNode[] nodes = [root, child, leaf];
-
-        timeline.MapNodes(nodes);
-
-        return nodes;
+        return [root, child, leaf];
     }
 
     [Fact]
-    public void A_Material_Removed_Call_Is_Cut_From_Both_Axes()
+    public void A_Material_Excluded_Call_Is_Cut_From_Both_Axes()
     {
-        var (timeline, execute) = BuildAroundExecute();
-
-        timeline.RemoveCallsUnder(n => ReferenceEquals(n, execute));
+        var timeline = BuildAroundExcludedCall();
 
         var thread = Assert.Single(timeline.Threads);
 
@@ -671,9 +613,7 @@ public class TraceTimelineTests
     [Fact]
     public void A_Cut_Is_Marked_Where_The_Calls_Either_Side_Meet_On_Each_Axis()
     {
-        var (timeline, execute) = BuildAroundExecute();
-
-        timeline.RemoveCallsUnder(n => ReferenceEquals(n, execute));
+        var timeline = BuildAroundExcludedCall();
 
         Assert.Equal([20d], timeline.GetCuts(Instructions));
         Assert.Equal(1 + 20d / 81, Assert.Single(timeline.GetCuts(TraceTimelineAxis.Position)), 9);
@@ -692,11 +632,9 @@ public class TraceTimelineTests
     }
 
     [Fact]
-    public void A_Removed_Call_Too_Small_To_Matter_Leaves_No_Dead_Span()
+    public void An_Excluded_Call_Too_Small_To_Matter_Leaves_No_Dead_Span()
     {
-        var timeline = Build(Span(replayNodeIndex: 0, start: 0, end: 1000), Span(replayNodeIndex: 1, start: 100, end: 105));
-
-        RemoveChild(timeline);
+        var timeline = Build(Span(replayNodeIndex: 0, start: 0, end: 1000), Span(replayNodeIndex: -2, start: 100, end: 105));
 
         var thread = Assert.Single(timeline.Threads);
 
@@ -705,13 +643,11 @@ public class TraceTimelineTests
     }
 
     [Fact]
-    public void Small_Removed_Calls_With_Nothing_Between_Them_Are_One_Dead_Span()
+    public void Small_Excluded_Calls_With_Nothing_Between_Them_Are_One_Dead_Span()
     {
         var timeline = Build(Span(replayNodeIndex: 0, start: 0, end: 1000),
-                             Span(replayNodeIndex: 1, start: 100, end: 105),
-                             Span(replayNodeIndex: 1, start: 106, end: 111, callIndex: 1));
-
-        RemoveChild(timeline);
+                             Span(replayNodeIndex: -2, start: 100, end: 105),
+                             Span(replayNodeIndex: -2, start: 106, end: 111));
 
         var thread = Assert.Single(timeline.Threads);
 
@@ -723,10 +659,8 @@ public class TraceTimelineTests
     public void A_Dead_Span_Another_Thread_Is_Busy_In_Stays_On_The_Position_Axis()
     {
         var timeline = Build(Span(replayNodeIndex: 0, start: 0, end: 100),
-                             Span(replayNodeIndex: 1, start: 20, end: 60),
+                             Span(replayNodeIndex: -2, start: 20, end: 60),
                              Span(replayNodeIndex: 0, start: 30, end: 40, thread: 8));
-
-        RemoveChild(timeline);
 
         var busy = timeline.Threads.Single(t => t.ThreadId == 7);
 
@@ -747,19 +681,6 @@ public class TraceTimelineTests
         Assert.Equal(new TracePosition(1, 70), scale.GetPosition(1.3));
     }
 
-    private static void RemoveChild(TraceTimeline timeline)
-    {
-        var tree = new CallTree();
-
-        var root = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x10 }, 1);
-        var publish = tree.AddCall(root, new CallFrame { Module = new("sqlmin"), Rva = 0x20 }, 2);
-        var inner = tree.AddCall(publish, new CallFrame { Module = new("sqlmin"), Rva = 0x30 }, 1);
-
-        timeline.MapNodes([root, publish, inner]);
-
-        timeline.RemoveCallsUnder(n => ReferenceEquals(n, publish));
-    }
-
     private static (TraceTimeline Timeline, CallTreeNode Execute) BuildAroundExecute()
     {
         CallNode[] nodes =
@@ -770,7 +691,7 @@ public class TraceTimelineTests
             new(2, 0x4000, 0, 1)
         ];
 
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add([Span(replayNodeIndex: 0, start: 0, end: 10),
                      Span(replayNodeIndex: 1, start: 2, end: 8),
@@ -780,18 +701,38 @@ public class TraceTimelineTests
                      Span(replayNodeIndex: 0, start: 70, end: 80),
                      Span(replayNodeIndex: 1, start: 72, end: 78)]);
 
-        var timeline = builder.Build(nodes);
+        var tree = new CallTree();
+
+        var outside = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Address = 0x10, Rva = 0x10 }, 1);
+        var setup = tree.AddCall(outside, new CallFrame { Module = new("sqllang"), Address = 0x18, Rva = 0x18 }, 1);
+        var execute = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Address = 0x20, Rva = 0x20 }, 1);
+        var scan = tree.AddCall(execute, new CallFrame { Module = new("sqlmin"), Address = 0x30, Rva = 0x30 }, 1);
+
+        return (builder.Build(nodes, [outside, setup, execute, scan]), execute);
+    }
+
+    private static TraceTimeline BuildAroundExcludedCall()
+    {
+        CallNode[] nodes =
+        [
+            new(-1, 0x1000, 0, 1),
+            new(0, 0x2000, 0, 1)
+        ];
+
+        var builder = new ReplaySpans();
+
+        builder.Add([Span(replayNodeIndex: 0, start: 0, end: 10),
+                     Span(replayNodeIndex: 1, start: 2, end: 8),
+                     Span(replayNodeIndex: -2, start: 20, end: 60),
+                     Span(replayNodeIndex: 0, start: 70, end: 80),
+                     Span(replayNodeIndex: 1, start: 72, end: 78)]);
 
         var tree = new CallTree();
 
-        var outside = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Rva = 0x10 }, 1);
-        var setup = tree.AddCall(outside, new CallFrame { Module = new("sqllang"), Rva = 0x18 }, 1);
-        var execute = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Rva = 0x20 }, 1);
-        var scan = tree.AddCall(execute, new CallFrame { Module = new("sqlmin"), Rva = 0x30 }, 1);
+        var outside = tree.AddCall(tree.Root, new CallFrame { Module = new("sqllang"), Address = 0x10, Rva = 0x10 }, 1);
+        var setup = tree.AddCall(outside, new CallFrame { Module = new("sqllang"), Address = 0x18, Rva = 0x18 }, 1);
 
-        timeline.MapNodes([outside, setup, execute, scan]);
-
-        return (timeline, execute);
+        return builder.Build(nodes, [outside, setup]);
     }
 
     private static double[] Starts(TraceTimelineRow row, TraceTimelineAxis axis = Instructions)
@@ -799,13 +740,15 @@ public class TraceTimelineTests
 
     private static double[] Ends(TraceTimelineRow row) => [.. Enumerable.Range(0, row.Count).Select(i => row.GetEnd(Instructions, i))];
 
-    private static TraceTimeline Build(params CallSpan[] spans)
+    private static TraceTimeline Build(params CallSpan[] spans) => Build([], spans);
+
+    private static TraceTimeline Build(CallTreeNode?[] mapped, params CallSpan[] spans)
     {
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add(spans);
 
-        return builder.Build(Nodes);
+        return builder.Build(Nodes, mapped);
     }
 
     private static CallSpan Span(int replayNodeIndex,

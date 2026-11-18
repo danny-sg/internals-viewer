@@ -56,7 +56,7 @@ public class MemoryWatchToolsTests
 
     private static QueryExportContent WithMemoryHistory(QueryExportContent run)
     {
-        var timeline = run.ExtraOf<TraceResult>()!.Timeline;
+        var timeline = run.ExtraOf<TraceResult>()!.Store.Timeline;
 
         MemoryHistoryBlock[] blocks = [new MemoryHistoryBlock(Scan, 0xA, 16, true, false, 7, 1, At(0x16), At(0x1F), 22, 31, 0, 1)];
 

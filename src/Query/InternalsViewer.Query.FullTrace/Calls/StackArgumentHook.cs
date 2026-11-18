@@ -1,10 +1,11 @@
 using InternalsViewer.Query.FullTrace.Helpers;
-using InternalsViewer.Query.FullTrace.Hooks;
-using InternalsViewer.Query.FullTrace.Hooks.Enums;
+using InternalsViewer.Query.FullTrace.Replay.Hooks;
+using InternalsViewer.Query.FullTrace.Replay.Hooks.Enums;
+using InternalsViewer.Query.FullTrace.Replay.Hooks.Interfaces;
 
 namespace InternalsViewer.Query.FullTrace.Calls;
 
-internal sealed class StackArgumentHook(AddressTable<int> functions, TraceCallStore.Builder store) : ITraceHook
+internal sealed class StackArgumentHook(AddressTable<int> functions, ReplayCallLog log) : ITraceHook
 {
     public IEnumerable<TraceHookFunction> Functions => functions.Keys.Select(f => new TraceHookFunction(f, TraceHookEvents.Entry));
 
@@ -17,6 +18,6 @@ internal sealed class StackArgumentHook(AddressTable<int> functions, TraceCallSt
 
         var stack = replay.GetStackArguments(call);
 
-        store.AddStackArguments(call.FunctionAddress, call.InstanceAddress, call.CallIndex, stack[..Math.Min(count, stack.Length)]);
+        log.AddStackArguments(call.FunctionAddress, call.InstanceAddress, call.CallIndex, stack[..Math.Min(count, stack.Length)]);
     }
 }

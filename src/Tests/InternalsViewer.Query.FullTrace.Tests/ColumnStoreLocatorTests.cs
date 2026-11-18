@@ -1,6 +1,6 @@
 using InternalsViewer.Query.FullTrace.Arguments;
 using InternalsViewer.Query.FullTrace.Calls;
-using InternalsViewer.Query.FullTrace.Hooks;
+using InternalsViewer.Query.FullTrace.Replay.Hooks;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.Events.BatchMode.Enums;
 
@@ -98,9 +98,9 @@ public class ColumnStoreLocatorTests
 
         const ulong partial = 0x21C_0BB4_D180;
 
-        var builder = new TraceCallStore.Builder();
+        var builder = new ReplayCallLog();
 
-        builder.Add(0x1000, 0, Columns(2), 2);
+        builder.AddChunk(0x1000, 0, Columns(2), 2);
 
         var (first, second, third) = Words(ColumnStoreObjectType.ColumnSegment, 2, 3);
 
@@ -115,7 +115,7 @@ public class ColumnStoreLocatorTests
 
         LocatorReadLookup.AddReads(reads, 0x1000, signature, ArgumentLayout.GetLayout(signature));
 
-        var hook = new LocatorHook(reads, builder);
+        var hook = new LocatorHook([.. reads], builder);
 
         hook.OnEntry(new TraceHookCall { FunctionAddress = 0x1000, CallIndex = 0, Arguments = new[] { 0ul, complete, 0ul, 0ul } }, replay);
         hook.OnEntry(new TraceHookCall { FunctionAddress = 0x1000, CallIndex = 1, Arguments = new[] { 0ul, partial, 0ul, 0ul } }, replay);

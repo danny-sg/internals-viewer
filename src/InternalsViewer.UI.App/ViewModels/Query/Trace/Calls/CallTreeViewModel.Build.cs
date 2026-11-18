@@ -649,7 +649,7 @@ public sealed partial class CallTreeViewModel
 
     private static string GetRowKey(CallTreeRow row) => row.Content switch
     {
-        CallTreeNode node => node.Key,
+        CallTreeNode node => node.Key.ToString(),
         OperatorRow operatorRow => $"Operator {operatorRow.Operator.PlanNodeIdentifier}",
         OperatorLink link => $"Link {link.Operator.PlanNodeIdentifier}",
         _ => string.Empty

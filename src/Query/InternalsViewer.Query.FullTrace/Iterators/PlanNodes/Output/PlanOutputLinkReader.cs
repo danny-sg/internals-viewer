@@ -114,7 +114,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
             if (write.Type != MemoryHistoryAccessType.Read && write.Offset <= offset && offset < write.Offset + write.Length)
             {
                 return IsCurrentValue(store, write, offset, link, field.Length)
-                    ? GetFunctionName(trace.CallStore.GetNode(write.ReplayNodeIndex))
+                    ? GetFunctionName(trace.Store.Calls.GetNode(write.ReplayNodeIndex))
                     : null;
             }
         }
@@ -219,9 +219,9 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
     {
         var ranges = new Dictionary<ulong, (TracePosition From, TracePosition To)>();
 
-        foreach (var list in trace.CallStore.GetCallLists())
+        foreach (var list in trace.Store.Calls.GetCallLists())
         {
-            if (list.Count == 0 || !IsGetRow(trace.CallStore.GetFirstNode(list)?.Frame?.Function?.MethodName))
+            if (list.Count == 0 || !IsGetRow(trace.Store.Calls.GetFirstNode(list)?.Frame?.Function?.MethodName))
             {
                 continue;
             }
@@ -250,9 +250,9 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
     {
         var calls = new Dictionary<ulong, TraceArgumentCall>();
 
-        foreach (var list in trace.CallStore.GetCallLists())
+        foreach (var list in trace.Store.Calls.GetCallLists())
         {
-            if (!IsGetRow(trace.CallStore.GetFirstNode(list)?.Frame?.Function?.MethodName))
+            if (!IsGetRow(trace.Store.Calls.GetFirstNode(list)?.Frame?.Function?.MethodName))
             {
                 continue;
             }

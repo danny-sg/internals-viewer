@@ -46,7 +46,7 @@ public sealed class TracePageAccessList
     public double? GetSlotFraction(TracePosition position, TraceBufferPool pool)
     {
         if (GetRowAccess(position) is not { Offset: { } offset } access
-            || pool.GetLayout(access.Page, access.DatabaseId) is not { } layout
+            || pool.GetPageLayout(access.Page, access.DatabaseId) is not { } layout
             || layout.GetSlot(offset) is not { } slot)
         {
             return null;
@@ -249,7 +249,7 @@ public sealed class TracePageAccessList
 
             var isWholePage = reference.Offset == PageHeader.Size && reference.Offset + read.Length == PageData.Size;
 
-            var hasLayout = pool.GetLayout(reference.Page, reference.DatabaseId) is not null;
+            var hasLayout = pool.GetPageLayout(reference.Page, reference.DatabaseId) is not null;
 
             if (reference.Offset >= PageHeader.Size && !isWholePage && !hasLayout)
             {
@@ -364,7 +364,7 @@ public sealed class TracePageAccessList
     {
         var access = candidate.Access;
 
-        if (access.Offset is not { } offset || pool.GetLayout(access.Page, access.DatabaseId) is not { } layout)
+        if (access.Offset is not { } offset || pool.GetPageLayout(access.Page, access.DatabaseId) is not { } layout)
         {
             return candidate;
         }

@@ -1,3 +1,5 @@
+using InternalsViewer.Query.FullTrace.Calls;
+
 namespace InternalsViewer.Query.FullTrace.Timeline;
 
 public sealed partial class TraceTimeline
@@ -6,16 +8,15 @@ public sealed partial class TraceTimeline
 
     internal int GetSpanId(int lane, int depth, int index) => GetSpanIds().GetId(lane, depth, index);
 
-    internal int FindSpanId(int replayNodeIndex, int callIndex, TracePosition position)
+    internal int FindSpanId(int replayNodeIndex, int callIndex, TracePosition position, TraceCallList? calls)
     {
         if (replayNodeIndex < 0)
         {
             return -1;
         }
 
-        if (callIndex >= 0
-            && GetNode(replayNodeIndex) is { } node
-            && FindCall(node, callIndex) is { } location
+        if (calls is not null
+            && FindSpan(calls, callIndex) is { } location
             && GetSpanId(location.ThreadIndex, location.Depth, location.Index) is var found
             && IsSpanAt(found, replayNodeIndex, callIndex, position))
         {

@@ -1,7 +1,8 @@
 using System.Runtime.InteropServices;
-using InternalsViewer.Query.FullTrace.Hooks;
+using InternalsViewer.Query.FullTrace.Replay.Hooks;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Memory.Layouts;
+using InternalsViewer.Query.FullTrace.Replay.Hooks.Interfaces;
 
 namespace InternalsViewer.Query.FullTrace.Tests;
 

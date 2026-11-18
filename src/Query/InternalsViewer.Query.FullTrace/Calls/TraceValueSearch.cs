@@ -83,7 +83,7 @@ public sealed class TraceValueSearch(TraceCallStore store)
     {
         var valueCalls = new List<TraceValueCall>();
 
-        if (!store.Functions.TryGetValue((use.FunctionAddress, use.InstanceAddress), out var chunks))
+        if (!store.Chunks.TryGetValue((use.FunctionAddress, use.InstanceAddress), out var chunks))
         {
             return valueCalls;
         }
@@ -127,7 +127,7 @@ public sealed class TraceValueSearch(TraceCallStore store)
 
     private IEnumerable<(ulong FunctionAddress, ulong InstanceAddress, int Start, TraceCallStore.Chunk Chunk)> GetScans()
     {
-        foreach (var ((functionAddress, instanceAddress), chunks) in store.Functions)
+        foreach (var ((functionAddress, instanceAddress), chunks) in store.Chunks)
         {
             var start = 0;
 

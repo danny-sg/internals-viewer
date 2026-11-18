@@ -1,7 +1,7 @@
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Memory;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Timeline;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
@@ -72,16 +72,14 @@ public class InstanceMemoryCurveMapTests
         var allocator = tree.AddCall(hash, Frame(string.Empty, "operator new", 0x30), 1);
         var plan = tree.AddCall(query, Frame("CXteHash", "QScanGet", 0x40, PlanObject), 1);
 
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add([Span(0, 0, 100, 0), Span(1, 10, 20, 0), Span(2, 12, 13, 0), Span(1, 30, 40, 1), Span(3, 50, 60, 0)]);
 
         var timeline = builder.Build([new(-1, 0x10, QueryScan, 1),
                                       new(0, 0x20, HashMatch, 2),
                                       new(1, 0x30, 0, 1),
-                                      new(0, 0x40, PlanObject, 1)]);
-
-        timeline.MapNodes([query, hash, allocator, plan]);
+                                      new(0, 0x40, PlanObject, 1)], [query, hash, allocator, plan]);
 
         var memory = AllocationIndex.Build([new(Thread, At(12), At(13), 100, 0xA), new(Thread, At(52), At(53), 50, 0xB)], []);
 

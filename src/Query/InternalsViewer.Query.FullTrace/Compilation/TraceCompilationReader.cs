@@ -41,11 +41,11 @@ public static class TraceCompilationReader
         ("Optimizer Output", "COptExpr::PqteConvertTree", 0, false)
     ];
 
-    public static TraceCompilation Read(TraceTimeline timeline, MemoryHistoryStore store, TraceCallStore calls, AddressMap map)
+    public static TraceCompilation Read(TraceStore trace, MemoryHistoryStore store, AddressMap map)
     {
-        var text = FindText(store, calls);
+        var text = FindText(store, trace.Calls);
 
-        var steps = Nest(ReadSteps(timeline));
+        var steps = Nest(ReadSteps(trace));
 
         Place(steps, map.GetEntries()
                         .Where(e => e is { Operation: AddressMapOperation.Constructed, ClassName: not null })
@@ -55,9 +55,9 @@ public static class TraceCompilationReader
                                       o.Entry.FromPosition,
                                       new TraceCompileObject(o.Entry.ClassName!, o.Entry.Address, o.Block, o.Entry.FromPosition))));
 
-        PlaceTrees(steps, ReadTrees(timeline, store, map));
+        PlaceTrees(steps, ReadTrees(trace, store, map));
 
-        return new TraceCompilation(text, ReadTokens(timeline, text?.Text), steps);
+        return new TraceCompilation(text, ReadTokens(trace, text?.Text), steps);
     }
 
     internal static (string Name, string? Detail)? GetStepName(string symbol)
@@ -141,15 +141,15 @@ public static class TraceCompilationReader
         }
     }
 
-    private static IEnumerable<(uint Thread, TracePosition Position, TraceExpressionTree Tree)> ReadTrees(TraceTimeline timeline,
+    private static IEnumerable<(uint Thread, TracePosition Position, TraceExpressionTree Tree)> ReadTrees(TraceStore trace,
                                                                                                          MemoryHistoryStore store,
                                                                                                          AddressMap map)
     {
         foreach (var (name, symbol, slot, isEnd) in TreePoints)
         {
-            foreach (var (threadId, span) in GetOutermostCalls(timeline, symbol))
+            foreach (var (threadId, span) in GetOutermostCalls(trace.Timeline, symbol))
             {
-                if (timeline.GetNode(span.ReplayNodeIndex) is not { } node || timeline.GetCall(node, span.CallIndex) is not { } call)
+                if (trace.GetCall(span) is not { } call)
                 {
                     continue;
                 }
@@ -172,7 +172,7 @@ public static class TraceCompilationReader
     {
         (uint ThreadId, TraceSpan Span)? outer = null;
 
-        foreach (var call in timeline.GetCalls(symbol).OrderBy(c => c.ThreadId).ThenBy(c => c.Span.From.Position))
+        foreach (var call in timeline.GetSpans(symbol).OrderBy(c => c.ThreadId).ThenBy(c => c.Span.From.Position))
         {
             if (outer is { } last && last.ThreadId == call.ThreadId && call.Span.From.Position < last.Span.To.Position)
             {
@@ -191,16 +191,16 @@ public static class TraceCompilationReader
     private static TraceCompileStep? Find(List<TraceCompileStep> steps, uint thread, TracePosition position)
         => steps.Find(s => s.Contains(thread, position)) is { } found ? Find(found.Steps, thread, position) ?? found : null;
 
-    private static IEnumerable<TraceCompileStep> ReadSteps(TraceTimeline timeline)
+    private static IEnumerable<TraceCompileStep> ReadSteps(TraceStore trace)
     {
-        foreach (var stage in TraceStage.Build(timeline))
+        foreach (var stage in TraceStage.Build(trace.Timeline, trace))
         {
             yield return new TraceCompileStep(stage.Name, null, stage.Node, stage.ThreadId, stage.Span);
         }
 
-        foreach (var (threadId, span) in timeline.GetCalls(n => GetStepName(n.Symbol) is not null))
+        foreach (var (threadId, span) in trace.Timeline.GetSpans(n => GetStepName(n.Symbol) is not null))
         {
-            if (timeline.GetNode(span.ReplayNodeIndex) is { } node && GetStepName(node.Symbol) is { } step)
+            if (trace.Nodes.GetNode(span.ReplayNodeIndex) is { } node && GetStepName(node.Symbol) is { } step)
             {
                 yield return new TraceCompileStep(step.Name, step.Detail, node, threadId, span);
             }
@@ -232,15 +232,15 @@ public static class TraceCompilationReader
     private static bool IsAllocatedIn(TraceCallStore calls, int replayNodeIndex)
         => calls.GetNode(replayNodeIndex)?.GetAncestors().Take(AllocationDepth).Any(n => n.Symbol == TextSymbol) == true;
 
-    private static List<TraceToken> ReadTokens(TraceTimeline timeline, string? text)
+    private static List<TraceToken> ReadTokens(TraceStore trace, string? text)
     {
-        var kinds = timeline.GetCalls(TokenKindSymbol).ToList();
+        var kinds = trace.Timeline.GetSpans(TokenKindSymbol).ToList();
 
-        var offsets = timeline.GetCalls(TokenOffsetSymbol).ToList();
+        var offsets = trace.Timeline.GetSpans(TokenOffsetSymbol).ToList();
 
-        var calls = timeline.GetCalls(TokenSymbol).OrderBy(c => c.Span.From.Position).ToList();
+        var calls = trace.Timeline.GetSpans(TokenSymbol).OrderBy(c => c.Span.From.Position).ToList();
 
-        var starts = calls.Select(c => FindInside(timeline, offsets, c) is { } call
+        var starts = calls.Select(c => FindInside(trace, offsets, c) is { } call
                                           ? ((int)call.GetSlot(OffsetSlot) - OffsetLead) / sizeof(char)
                                           : -1)
                           .ToList();
@@ -251,7 +251,7 @@ public static class TraceCompilationReader
         {
             var (threadId, span) = calls[index];
 
-            if (timeline.GetNode(span.ReplayNodeIndex) is not { } node)
+            if (trace.Nodes.GetNode(span.ReplayNodeIndex) is not { } node)
             {
                 continue;
             }
@@ -260,12 +260,12 @@ public static class TraceCompilationReader
 
             var end = index + 1 < starts.Count ? starts[index + 1] : text?.Length ?? start;
 
-            var kind = FindInside(timeline, kinds, calls[index]) is { } kindCall ? (TraceTokenType)kindCall.ReturnedValue : default;
+            var kind = FindInside(trace, kinds, calls[index]) is { } kindCall ? (TraceTokenType)kindCall.ReturnedValue : default;
 
             tokens.Add(new TraceToken(GetText(text, start, end),
                                       start,
                                       kind,
-                                      (int)(timeline.GetCall(node, span.CallIndex)?.ReturnedValue ?? 0),
+                                      (int)(trace.GetCall(node, span.CallIndex)?.ReturnedValue ?? 0),
                                       node,
                                       span.CallIndex,
                                       span.From.Position));
@@ -274,7 +274,7 @@ public static class TraceCompilationReader
         return tokens;
     }
 
-    private static TraceArgumentCall? FindInside(TraceTimeline timeline,
+    private static TraceArgumentCall? FindInside(TraceStore trace,
                                                  List<(uint ThreadId, TraceSpan Span)> calls,
                                                  (uint ThreadId, TraceSpan Span) outer)
     {
@@ -282,10 +282,9 @@ public static class TraceCompilationReader
         {
             if (threadId == outer.ThreadId
                 && outer.Span.From.Position <= span.From.Position
-                && span.To.Position <= outer.Span.To.Position
-                && timeline.GetNode(span.ReplayNodeIndex) is { } node)
+                && span.To.Position <= outer.Span.To.Position)
             {
-                return timeline.GetCall(node, span.CallIndex);
+                return trace.GetCall(span);
             }
         }
 

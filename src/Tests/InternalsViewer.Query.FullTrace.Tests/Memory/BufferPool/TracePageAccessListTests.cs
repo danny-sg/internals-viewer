@@ -314,11 +314,11 @@ public class TracePageAccessListTests
 
     private static TraceBufferPool Pool()
     {
-        var builder = new TraceBufferPool.Builder();
+        var builder = new ReplayBufferPool();
 
-        builder.Add(new TraceBufferPage(Frame, Page, Database, At(1), Buffer));
+        builder.AddSighting(new TraceBufferPage(Frame, Page, Database, At(1), Buffer));
 
-        builder.Add(new TraceBufferPage(OtherFrame, OtherPage, Database, At(1), OtherBuffer));
+        builder.AddSighting(new TraceBufferPage(OtherFrame, OtherPage, Database, At(1), OtherBuffer));
 
         return builder.Build();
     }
@@ -330,11 +330,11 @@ public class TracePageAccessListTests
 
     private static TraceBufferPool LaidOutPool(PageType type = PageType.None)
     {
-        var builder = new TraceBufferPool.Builder();
+        var builder = new ReplayBufferPool();
 
-        builder.Add(new TraceBufferPage(Frame, Page, Database, At(1), Buffer));
+        builder.AddSighting(new TraceBufferPage(Frame, Page, Database, At(1), Buffer));
 
-        builder.Add(new TraceBufferPage(OtherFrame, OtherPage, Database, At(1), OtherBuffer));
+        builder.AddSighting(new TraceBufferPage(OtherFrame, OtherPage, Database, At(1), OtherBuffer));
 
         builder.AddLayout(Page, Database, [0x100, 0x5B3, 0x611], type);
 
@@ -427,16 +427,14 @@ public class TracePageAccessListTests
 
         public TraceCallStore Build()
         {
-            var builder = new TraceCallStore.Builder();
+            var builder = new ReplayCallLog();
 
             foreach (var (frame, rows) in Functions.Values)
             {
-                builder.Add(frame.Address, frame.InstanceAddress, TraceCallRowHelper.Chunk([.. rows]), rows.Count);
+                builder.AddChunk(frame.Address, frame.InstanceAddress, TraceCallRowHelper.Chunk([.. rows]), rows.Count);
             }
 
-            var store = builder.Build();
-
-            store.MapNodes([.. Nodes]);
+            var store = builder.Build([.. Nodes]);
 
             return store;
         }

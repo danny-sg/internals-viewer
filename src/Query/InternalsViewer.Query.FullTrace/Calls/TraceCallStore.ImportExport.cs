@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Export;
 using InternalsViewer.Query.FullTrace.Locators;
 
@@ -9,7 +10,7 @@ public sealed partial class TraceCallStore
 
     internal static bool IsSupported(BinaryReader reader) => reader.ReadInt32() == -FormatVersion;
 
-    internal static TraceCallStore Read(BinaryReader reader)
+    internal static TraceCallStore Read(BinaryReader reader, TraceNodeMap nodes)
     {
         var functions = new Dictionary<(ulong FunctionAddress, ulong InstanceAddress), Chunk[]>();
 
@@ -38,29 +39,16 @@ public sealed partial class TraceCallStore
             functions[key] = chunks;
         }
 
-        var locators = new Dictionary<(ulong FunctionAddress, ulong InstanceAddress), LocatorTable>();
-
-        var uniqueLocators = LocatorTable.ReadLocators(reader);
-
-        var tableCount = reader.ReadInt32();
-
-        for (var index = 0; index < tableCount; index++)
-        {
-            var key = (reader.ReadUInt64(), reader.ReadUInt64());
-
-            locators[key] = LocatorTable.Read(reader, uniqueLocators);
-        }
-
-        return new TraceCallStore(functions, locators, uniqueLocators);
+        return new TraceCallStore(functions, TraceLocatorSet.Read(reader), nodes);
     }
 
     internal void Write(BinaryWriter writer)
     {
         writer.Write(-FormatVersion);
 
-        writer.Write(Functions.Count);
+        writer.Write(Chunks.Count);
 
-        foreach (var ((functionAddress, instanceAddress), chunks) in Functions)
+        foreach (var ((functionAddress, instanceAddress), chunks) in Chunks)
         {
             writer.Write(functionAddress);
 
@@ -78,17 +66,6 @@ public sealed partial class TraceCallStore
             }
         }
 
-        LocatorTable.WriteLocators(writer, UniqueLocators);
-
-        writer.Write(Locators.Count);
-
-        foreach (var ((functionAddress, instanceAddress), table) in Locators)
-        {
-            writer.Write(functionAddress);
-
-            writer.Write(instanceAddress);
-
-            table.Write(writer);
-        }
+        Locators.Write(writer);
     }
 }

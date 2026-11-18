@@ -18,7 +18,7 @@ public sealed class DataPathField(PlanNode node, ColumnReference column)
 
     public SqlTypeInfo? Type { get; internal set; }
 
-    public DataPathFieldKind Kind { get; internal set; }
+    public DataPathFieldType FieldType { get; internal set; }
 
     public ColumnUseType Uses { get; internal set; }
 

@@ -1,6 +1,6 @@
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Tree;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRowHelper;
 
@@ -16,10 +16,7 @@ public class TraceStageTests
     [Fact]
     public void Stages_Nest_Inside_The_Stages_That_Call_Them()
     {
-        var stages = TraceStage.Build(Build([Span(0, 0, 100, 7),
-                                             Span(1, 10, 30, 7),
-                                             Span(2, 40, 90, 7),
-                                             Span(3, 45, 80, 7)]));
+        var stages = BuildStages([Span(0, 0, 100, 7), Span(1, 10, 30, 7), Span(2, 40, 90, 7), Span(3, 45, 80, 7)]);
 
         Assert.Equal([("Compilation", 0), ("Algebrization", 1), ("Plan Build", 1), ("Optimization", 2)],
                      stages.Select(s => (s.Name, s.Depth)));
@@ -28,7 +25,7 @@ public class TraceStageTests
     [Fact]
     public void Other_Calls_Are_Not_Stages()
     {
-        var stages = TraceStage.Build(Build([Span(0, 0, 50, 7), Span(4, 60, 90, 7)]));
+        var stages = BuildStages([Span(0, 0, 50, 7), Span(4, 60, 90, 7)]);
 
         Assert.Equal(["Compilation"], stages.Select(s => s.Name));
     }
@@ -36,7 +33,7 @@ public class TraceStageTests
     [Fact]
     public void A_Stage_On_Another_Thread_Is_Not_Nested()
     {
-        var stages = TraceStage.Build(Build([Span(0, 0, 100, 7), Span(1, 10, 30, 9)]));
+        var stages = BuildStages([Span(0, 0, 100, 7), Span(1, 10, 30, 9)]);
 
         Assert.Equal([(7u, 0), (9u, 0)], stages.Select(s => (s.ThreadId, s.Depth)));
     }
@@ -44,7 +41,7 @@ public class TraceStageTests
     [Fact]
     public void A_Stage_Starting_Where_Another_Ends_Is_Not_Nested()
     {
-        var stages = TraceStage.Build(Build([Span(0, 0, 50, 7), Span(0, 50, 90, 7)]));
+        var stages = BuildStages([Span(0, 0, 50, 7), Span(0, 50, 90, 7)]);
 
         Assert.Equal([0, 0], stages.Select(s => s.Depth));
     }
@@ -52,11 +49,11 @@ public class TraceStageTests
     [Fact]
     public void A_Search_Is_Named_By_Its_Optimization_Level()
     {
-        var calls = new TraceCallStore.Builder();
+        var calls = new ReplayCallLog();
 
-        calls.Add(SearchAddress, 0, Chunk(Row(1, rdx: 1), Row(1, rdx: 2)), 2);
+        calls.AddChunk(SearchAddress, 0, Chunk(Row(1, rdx: 1), Row(1, rdx: 2)), 2);
 
-        var stages = TraceStage.Build(Build([Span(3, 0, 100, 7), Span(5, 10, 40, 7), Span(5, 50, 90, 7, callIndex: 1)], calls.Build()));
+        var stages = BuildStages([Span(3, 0, 100, 7), Span(5, 10, 40, 7), Span(5, 50, 90, 7, callIndex: 1)], calls.Build());
 
         Assert.Equal([("Optimization", 0), ("Search 1", 1), ("Search 2", 1)], stages.Select(s => (s.Name, s.Depth)));
     }
@@ -64,12 +61,12 @@ public class TraceStageTests
     [Fact]
     public void A_Search_Without_Its_Logged_Call_Has_No_Level()
     {
-        var stages = TraceStage.Build(Build([Span(5, 10, 40, 7)]));
+        var stages = BuildStages([Span(5, 10, 40, 7)]);
 
         Assert.Equal(["Search"], stages.Select(s => s.Name));
     }
 
-    private static TraceTimeline Build(CallSpan[] spans, TraceCallStore? calls = null)
+    private static IReadOnlyList<TraceStage> BuildStages(CallSpan[] spans, TraceCallStore? calls = null)
     {
         var tree = new CallTree();
 
@@ -85,7 +82,7 @@ public class TraceStageTests
 
         var search = tree.AddCall(optimize, Frame("sqllang", "CMemo", "PerformOptimizationStage", SearchAddress), 2);
 
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add(spans);
 
@@ -94,16 +91,9 @@ public class TraceStageTests
                                       new(0, 0x30, 0, 1),
                                       new(2, 0x40, 0, 1),
                                       new(-1, 0x50, 0, 1),
-                                      new(3, SearchAddress, 0, 2)]);
+                                      new(3, SearchAddress, 0, 2)], [compile, normalize, build, optimize, scan, search]);
 
-        timeline.MapNodes([compile, normalize, build, optimize, scan, search]);
-
-        if (calls is not null)
-        {
-            timeline.SetCalls(calls);
-        }
-
-        return timeline;
+        return TraceStage.Build(timeline, new TraceStore(calls ?? new ReplayCallLog().Build(), timeline));
     }
 
     private static CallSpan Span(int replayNodeIndex, ulong start, ulong end, uint thread, uint callIndex = 0)

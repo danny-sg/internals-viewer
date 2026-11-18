@@ -23,15 +23,6 @@ internal sealed class TraceSpanStore(int count)
         Flags[index] = flags;
     }
 
-    public void Move(int source, int target)
-    {
-        Froms[target] = Froms[source];
-        Tos[target] = Tos[source];
-        ReplayNodeIndexes[target] = ReplayNodeIndexes[source];
-        Calls[target] = Calls[source];
-        Flags[target] = Flags[source];
-    }
-
     public void Sort(int offset, int count)
     {
         if (IsSorted(offset, count))

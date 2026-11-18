@@ -1,6 +1,6 @@
-using InternalsViewer.Query.FullTrace.Hooks;
 using InternalsViewer.Query.FullTrace.InstructionHistory.Replay.Enums;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Replay.Native;
+using InternalsViewer.Query.FullTrace.Replay.Hooks.Interfaces;
 
 namespace InternalsViewer.Query.FullTrace.InstructionHistory.Replay;
 

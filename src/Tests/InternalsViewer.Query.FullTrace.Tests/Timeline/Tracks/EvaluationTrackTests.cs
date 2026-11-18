@@ -8,7 +8,7 @@ using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Calls.Enums;
 using InternalsViewer.Query.FullTrace.Memory;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Allocation;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 using InternalsViewer.Query.FullTrace.Timeline;
@@ -33,7 +33,7 @@ public class EvaluationTrackTests
 
     private const ulong Compare = 0x2000;
 
-    private const ulong TupleCompare = 0x3000;
+    private const ulong Hash = 0x3000;
 
     private const ulong FilterIterator = 0x1F4_0000_1000;
 
@@ -76,7 +76,7 @@ public class EvaluationTrackTests
         new(0, Helper, ScanIterator, 1),
         new(1, Compare, 0, 3),
         new(0, Compare, 0, 2),
-        new(1, TupleCompare, 0, 1)
+        new(1, Hash, 0, 1)
     ];
 
     [Fact]
@@ -102,7 +102,7 @@ public class EvaluationTrackTests
     [Fact]
     public void Expression_Service_Functions_Other_Than_The_Evaluations_Are_Not_Read()
     {
-        Assert.DoesNotContain(Build().GetAllTicks(), e => e.FunctionAddress == TupleCompare);
+        Assert.DoesNotContain(Build().GetAllTicks(), e => e.FunctionAddress == Hash);
     }
 
     [Fact]
@@ -191,7 +191,7 @@ public class EvaluationTrackTests
     }
 
     [Fact]
-    public void A_Pulled_Value_Is_Evaluated_On_The_Compute_Scalar_With_The_Puller_As_Its_Caller()
+    public void A_Deferred_Value_Is_Evaluated_On_The_Compute_Scalar_With_The_Evaluator_As_Its_Caller()
     {
         var computeScalar = new ExecutionOperatorEvent
         {
@@ -214,7 +214,10 @@ public class EvaluationTrackTests
 
         var source = Evaluations(trace);
 
-        trace = trace with { SourceTracks = new TraceSourceTrackMap(trace.Timeline, trace.CallStore, trace.Lifetimes) { Seeks = source } };
+        trace = trace with
+        {
+            SourceTracks = new TraceSourceTrackMap(trace.Store.Timeline, trace.Store.Calls, trace.Lifetimes) { Seeks = source }
+        };
 
         var track = FromRules(trace, SourceRule(2), SourceRule(0));
 
@@ -230,7 +233,7 @@ public class EvaluationTrackTests
 
         trace = trace with
         {
-            SourceTracks = new TraceSourceTrackMap(trace.Timeline, trace.CallStore, trace.Lifetimes) { Seeks = Evaluations(trace) }
+            SourceTracks = new TraceSourceTrackMap(trace.Store.Timeline, trace.Store.Calls, trace.Lifetimes) { Seeks = Evaluations(trace) }
         };
 
         Assert.Equal((1, 0),
@@ -271,7 +274,7 @@ public class EvaluationTrackTests
     {
         var (timeline, calls, lifetimes) = BuildTrace();
 
-        return new TraceResult(new CallTree(), calls, timeline) { Lifetimes = lifetimes };
+        return new TraceResult(new CallTree(), new TraceStore(calls, timeline)) { Lifetimes = lifetimes };
     }
 
     private static (TraceTimeline Timeline, TraceCallStore Calls, TraceOperatorLifetimeList Lifetimes) BuildTrace()
@@ -288,37 +291,35 @@ public class EvaluationTrackTests
             Span(4, 16, 17)
         ];
 
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add(spans);
 
-        var timeline = builder.Build(Nodes);
-
         var tree = new CallTree();
 
-        var filter = tree.AddCall(tree.Root, Frame(FilterIterator, "CQScanFilterNew", "GetRow", 0x10), 1);
+        var filter = tree.AddCall(tree.Root, Frame(Helper, FilterIterator, "CQScanFilterNew", "GetRow", 0x10), 1);
 
-        var scan = tree.AddCall(filter, Frame(ScanIterator, "CQScanTableScanNew", "GetRow", 0x20), 1);
+        var scan = tree.AddCall(filter, Frame(Helper, ScanIterator, "CQScanTableScanNew", "GetRow", 0x20), 1);
 
-        var scanCompare = tree.AddCall(scan, Frame(0, "CEsExec", "FastCompare1", 0x30), 3);
+        var scanCompare = tree.AddCall(scan, Frame(Compare, 0, "CEsExec", "FastCompare1", 0x30), 3);
 
-        var filterCompare = tree.AddCall(filter, Frame(0, "CEsExec", "FastCompare1", 0x30), 2);
+        var filterCompare = tree.AddCall(filter, Frame(Compare, 0, "CEsExec", "FastCompare1", 0x30), 2);
 
-        var tupleCompare = tree.AddCall(scan, Frame(0, "CEsExec", "FastTupleCompare", 0x40), 1);
+        var hash = tree.AddCall(scan, Frame(Hash, 0, "CEsExec", "FastHash", 0x40), 1);
 
-        CallTreeNode[] nodes = [filter, scan, scanCompare, filterCompare, tupleCompare];
+        CallTreeNode[] nodes = [filter, scan, scanCompare, filterCompare, hash];
 
-        timeline.MapNodes(nodes);
+        var timeline = builder.Build(Nodes, nodes);
 
-        var store = new TraceCallStore.Builder();
+        var store = new ReplayCallLog();
 
-        store.Add(Helper, FilterIterator, Chunk(Call(10, 60, 0)), 1);
+        store.AddChunk(Helper, FilterIterator, Chunk(Call(10, 60, 0)), 1);
 
-        store.Add(Helper, ScanIterator, Chunk(Call(15, 30, 1)), 1);
+        store.AddChunk(Helper, ScanIterator, Chunk(Call(15, 30, 1)), 1);
 
-        store.Add(Compare, 0, Chunk(Call(20, 22, 2), Call(24, 26, 2), Call(27, 28, 2), Call(40, 42, 3), Call(44, 46, 3)), 5);
+        store.AddChunk(Compare, 0, Chunk(Call(20, 22, 2), Call(24, 26, 2), Call(27, 28, 2), Call(40, 42, 3), Call(44, 46, 3)), 5);
 
-        store.Add(TupleCompare, 0, Chunk(Call(16, 17, 4)), 1);
+        store.AddChunk(Hash, 0, Chunk(Call(16, 17, 4)), 1);
 
         store.AddLocator(Compare, 0, 0, VariantLocator.Create(ResultRegister, VariantStatus.Value, 0, 0), true);
 
@@ -328,13 +329,9 @@ public class EvaluationTrackTests
 
         store.AddLocator(Compare, 0, 3, VariantLocator.Create(ResultRegister, VariantStatus.Value, 1, 0), true);
 
-        store.AddLocator(TupleCompare, 0, 0, VariantLocator.Create(ResultRegister, VariantStatus.Value, 0, 0), true);
+        store.AddLocator(Hash, 0, 0, VariantLocator.Create(ResultRegister, VariantStatus.Value, 0, 0), true);
 
-        var calls = store.Build();
-
-        calls.MapNodes(nodes);
-
-        timeline.SetCalls(calls);
+        var calls = store.Build(nodes);
 
         TraceOperatorLifetime[] lifetimes =
         [
@@ -348,11 +345,11 @@ public class EvaluationTrackTests
     private static ulong[] Call(ulong start, ulong end, int replayNodeIndex)
         => Row(start, flags: Thread | TraceCallColumnSet.ReturnedFlag, replayNodeIndex: replayNodeIndex, endSequence: end);
 
-    private static CallFrame Frame(ulong instance, string className, string method, uint rva) => new()
+    private static CallFrame Frame(ulong address, ulong instance, string className, string method, uint rva) => new()
     {
         Module = new("SqlTsEs"),
         Rva = rva,
-        Address = Helper,
+        Address = address,
         InstanceAddress = instance,
         Function = new FrameFunction
         {

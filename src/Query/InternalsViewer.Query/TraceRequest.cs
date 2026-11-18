@@ -17,7 +17,6 @@ public sealed record TraceRequest(TimeTravelTraceFile TraceFile,
                                   IReadOnlyList<EngineEvent> Events,
                                   string SymbolsPath,
                                   MemoryClerkSnapshot MemoryClerks,
-                                  ObjectPoolSnapshot ObjectPool,
                                   IReadOnlySet<uint> ThreadIds)
 {
     public bool RecordMemoryHistory { get; init; } = true;

@@ -38,7 +38,7 @@ public sealed partial class TraceTimelineControl
 
     public int PinnedPositionCount => _pinnedPoints.Length;
 
-    private TraceTimeline? Overview => FullTimeline ?? _timeline;
+    private TraceTimeline? Overview => Store?.Timeline ?? _timeline;
 
     public void MarkPositions(TracePoint[]? points)
     {

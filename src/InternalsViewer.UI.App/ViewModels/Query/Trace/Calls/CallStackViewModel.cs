@@ -79,9 +79,11 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
     {
         Opened = (node, callIndex);
 
-        TraceTimeline?[] timelines = [Query.TraceTimeline, Query.FullTraceTimeline];
+        var store = Query.TraceStore;
 
-        var stacks = await Task.Run(() => GetStackAt(timelines, node, callIndex));
+        TraceTimeline?[] timelines = [Query.TraceTimeline, store?.Timeline];
+
+        var stacks = await Task.Run(() => GetStackAt(store, timelines, node, callIndex));
 
         SetStack(stacks);
     }
@@ -146,11 +148,14 @@ public partial class CallStackViewModel(QueryViewModel query) : ObservableObject
 
     partial void OnSelectedCallChanged(PlayheadCallRow? value) => Highlight();
 
-    private static IReadOnlyList<TraceThreadStack> GetStackAt(IEnumerable<TraceTimeline?> timelines, CallTreeNode node, int callIndex)
+    private static IReadOnlyList<TraceThreadStack> GetStackAt(TraceStore? store,
+                                                              IEnumerable<TraceTimeline?> timelines,
+                                                              CallTreeNode node,
+                                                              int callIndex)
     {
         foreach (var timeline in timelines.OfType<TraceTimeline>().Distinct())
         {
-            if (timeline.FindCall(node, callIndex) is { } location)
+            if (store?.FindSpan(node, callIndex, timeline) is { } location)
             {
                 return timeline.GetStack(location.From.Position);
             }

@@ -1,3 +1,4 @@
+using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.History;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
 using static InternalsViewer.Query.FullTrace.Tests.Memory.History.MemoryHistoryStoreHelper;
@@ -76,7 +77,7 @@ public class MemoryHistoryReadTests
 
         using var reader = new BinaryReader(stream);
 
-        var imported = MemoryHistoryStore.Read(reader, timeline);
+        var imported = MemoryHistoryStore.Read(reader, new TraceStore(new ReplayCallLog().Build(), timeline));
 
         Assert.Equal(store.GetReads(0), imported.GetReads(0));
         Assert.Equal(store.GetReadPoint(0), imported.GetReadPoint(0));

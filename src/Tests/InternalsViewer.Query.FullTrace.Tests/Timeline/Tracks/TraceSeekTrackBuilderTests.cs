@@ -2,7 +2,7 @@ using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Memory.Allocation;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 using InternalsViewer.Query.FullTrace.Timeline;
 using InternalsViewer.Query.FullTrace.Timeline.Enums;
 using InternalsViewer.Query.FullTrace.Timeline.Ticks;
@@ -122,11 +122,9 @@ public class TraceSeekTrackBuilderTests
             new(2, GetFunction, BufferPool, 2)
         ];
 
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add([Span(0, 10, 60), Span(1, 15, 45), Span(2, 20, 40), Span(3, 22, 23), Span(3, 42, 43, 1)]);
-
-        var timeline = builder.Build(callNodes);
 
         var tree = new CallTree();
 
@@ -140,23 +138,19 @@ public class TraceSeekTrackBuilderTests
 
         CallTreeNode[] nodes = [range, lookup, seek, get];
 
-        timeline.MapNodes(nodes);
+        var timeline = builder.Build(callNodes, nodes);
 
-        var store = new TraceCallStore.Builder();
+        var store = new ReplayCallLog();
 
-        store.Add(Helper, RangeIterator, Chunk(Call(10, 60, 0)), 1);
+        store.AddChunk(Helper, RangeIterator, Chunk(Call(10, 60, 0)), 1);
 
-        store.Add(RowLookupFunction, 0, Chunk(Call(15, 45, 1)), 1);
+        store.AddChunk(RowLookupFunction, 0, Chunk(Call(15, 45, 1)), 1);
 
-        store.Add(GetPageWithKeyFunction, PageManager, Chunk(Call(20, 40, 2)), 1);
+        store.AddChunk(GetPageWithKeyFunction, PageManager, Chunk(Call(20, 40, 2)), 1);
 
-        store.Add(GetFunction, BufferPool, Chunk(Call(22, 23, 3), Call(42, 43, 3)), 2);
+        store.AddChunk(GetFunction, BufferPool, Chunk(Call(22, 23, 3), Call(42, 43, 3)), 2);
 
-        var calls = store.Build();
-
-        calls.MapNodes(nodes);
-
-        timeline.SetCalls(calls);
+        var calls = store.Build(nodes);
 
         var lifetime = new TraceOperatorLifetime(Thread, Range, 0, [Whole()], MemoryUsageCurve.Empty, timeline.Scale)
         {
@@ -170,11 +164,9 @@ public class TraceSeekTrackBuilderTests
 
     private static TraceTickSeries Build()
     {
-        var builder = new TraceTimeline.Builder();
+        var builder = new ReplaySpans();
 
         builder.Add([Span(0, 10, 60), Span(1, 20, 40), Span(2, 22, 23), Span(2, 26, 27, 1), Span(2, 32, 33, 2), Span(3, 50, 52, 3)]);
-
-        var timeline = builder.Build(Nodes);
 
         var tree = new CallTree();
 
@@ -188,21 +180,17 @@ public class TraceSeekTrackBuilderTests
 
         CallTreeNode[] nodes = [range, seek, seekGet, rangeGet];
 
-        timeline.MapNodes(nodes);
+        var timeline = builder.Build(Nodes, nodes);
 
-        var store = new TraceCallStore.Builder();
+        var store = new ReplayCallLog();
 
-        store.Add(Helper, RangeIterator, Chunk(Call(10, 60, 0)), 1);
+        store.AddChunk(Helper, RangeIterator, Chunk(Call(10, 60, 0)), 1);
 
-        store.Add(GetPageWithKeyFunction, PageManager, Chunk(Call(20, 40, 1)), 1);
+        store.AddChunk(GetPageWithKeyFunction, PageManager, Chunk(Call(20, 40, 1)), 1);
 
-        store.Add(GetFunction, BufferPool, Chunk(Call(22, 23, 2), Call(26, 27, 2), Call(32, 33, 2), Call(50, 52, 3)), 4);
+        store.AddChunk(GetFunction, BufferPool, Chunk(Call(22, 23, 2), Call(26, 27, 2), Call(32, 33, 2), Call(50, 52, 3)), 4);
 
-        var calls = store.Build();
-
-        calls.MapNodes(nodes);
-
-        timeline.SetCalls(calls);
+        var calls = store.Build(nodes);
 
         var lifetime = new TraceOperatorLifetime(Thread, Range, 0, [Whole()], MemoryUsageCurve.Empty, timeline.Scale)
         {

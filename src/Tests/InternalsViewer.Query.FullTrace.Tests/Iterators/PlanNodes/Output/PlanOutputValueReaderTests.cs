@@ -132,9 +132,9 @@ public class PlanOutputValueReaderTests
     [Fact]
     public void A_Record_Source_Locates_The_Current_Record_On_Its_Page()
     {
-        var builder = new TraceBufferPool.Builder();
+        var builder = new ReplayBufferPool();
 
-        builder.Add(new TraceBufferPage(Frame, new PageAddress(1, 2728), 6, At(1)));
+        builder.AddSighting(new TraceBufferPage(Frame, new PageAddress(1, 2728), 6, At(1)));
 
         var memory = new FakeTraceReplay().Write(RowSlot, Frame + 0x81);
 
@@ -152,9 +152,9 @@ public class PlanOutputValueReaderTests
     [Fact]
     public void A_Record_Source_With_A_Column_Id_Locates_The_Column_By_Id()
     {
-        var builder = new TraceBufferPool.Builder();
+        var builder = new ReplayBufferPool();
 
-        builder.Add(new TraceBufferPage(Frame, new PageAddress(1, 2728), 6, At(1)));
+        builder.AddSighting(new TraceBufferPage(Frame, new PageAddress(1, 2728), 6, At(1)));
 
         var memory = new FakeTraceReplay().Write(RowSlot, Frame + 0x81);
 
@@ -220,11 +220,11 @@ public class PlanOutputValueReaderTests
 
     private static TraceBufferPool GetHeapPage()
     {
-        var builder = new TraceBufferPool.Builder();
+        var builder = new ReplayBufferPool();
 
         var page = new PageAddress(1, 9104);
 
-        builder.Add(new TraceBufferPage(Frame, page, 11, At(1), Buffer));
+        builder.AddSighting(new TraceBufferPage(Frame, page, 11, At(1), Buffer));
 
         builder.AddLayout(page, 11, [0x60, 0x7A, 0x94]);
 

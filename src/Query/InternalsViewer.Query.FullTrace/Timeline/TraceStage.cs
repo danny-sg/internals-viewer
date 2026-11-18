@@ -21,9 +21,9 @@ public sealed record TraceStage(string Name, CallTreeNode Node, uint ThreadId, T
         ["CXteBuilder::Prepare"] = "Plan Objects"
     };
 
-    public static IReadOnlyList<TraceStage> Build(TraceTimeline timeline)
+    public static IReadOnlyList<TraceStage> Build(TraceTimeline timeline, TraceStore store)
     {
-        var calls = timeline.GetCalls(n => Names.ContainsKey(n.Symbol))
+        var calls = timeline.GetSpans(n => Names.ContainsKey(n.Symbol))
                             .OrderBy(c => c.ThreadId)
                             .ThenBy(c => c.Span.From.Position)
                             .ThenByDescending(c => c.Span.To.Position);
@@ -44,7 +44,7 @@ public sealed record TraceStage(string Name, CallTreeNode Node, uint ThreadId, T
                 open.Pop();
             }
 
-            var stage = new TraceStage(GetName(timeline, node, span), node, threadId, span, open.Count);
+            var stage = new TraceStage(GetName(store, node, span), node, threadId, span, open.Count);
 
             stages.Add(stage);
 
@@ -54,11 +54,11 @@ public sealed record TraceStage(string Name, CallTreeNode Node, uint ThreadId, T
         return stages;
     }
 
-    private static string GetName(TraceTimeline timeline, CallTreeNode node, TraceSpan span)
+    private static string GetName(TraceStore store, CallTreeNode node, TraceSpan span)
     {
         var symbol = node.Symbol;
 
-        return symbol == SearchSymbol && timeline.GetCall(node, span.CallIndex) is { } call
+        return symbol == SearchSymbol && store.GetCall(node, span.CallIndex) is { } call
             ? $"{Names[symbol]} {(uint)call.GetSlot(SearchLevelSlot)}"
             : Names[symbol];
     }

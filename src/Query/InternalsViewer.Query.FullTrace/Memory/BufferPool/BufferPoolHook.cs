@@ -4,9 +4,10 @@ using InternalsViewer.Internals.Engine.Pages.Enums;
 using InternalsViewer.Internals.Services.Pages.Parsers;
 using InternalsViewer.Query.Extensions;
 using InternalsViewer.Query.FullTrace.Helpers;
-using InternalsViewer.Query.FullTrace.Hooks;
-using InternalsViewer.Query.FullTrace.Hooks.Enums;
+using InternalsViewer.Query.FullTrace.Replay.Hooks;
+using InternalsViewer.Query.FullTrace.Replay.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool.Enums;
+using InternalsViewer.Query.FullTrace.Replay.Hooks.Interfaces;
 
 namespace InternalsViewer.Query.FullTrace.Memory.BufferPool;
 
@@ -57,7 +58,7 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
                                                            ? TraceHookEvents.Entry
                                                            : TraceHookEvents.Entry | TraceHookEvents.Return));
 
-    private TraceBufferPool.Builder Pages { get; } = new();
+    private ReplayBufferPool Pages { get; } = new();
 
     private Dictionary<(uint Thread, ulong Id), CallStart> Starts { get; } = [];
 
@@ -75,13 +76,13 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
 
     private static int MaximumSlotCount => (PageData.Size - PageHeader.Size) / sizeof(ushort);
 
-    public TraceBufferPool Build()
+    public ReplayBufferPool Build()
     {
         foreach (var read in Reads)
         {
             if (FileDatabases.TryGetValue(read.FileControlBlock, out var databaseId))
             {
-                Pages.Add(new TraceBufferPage(read.Frame, read.Page, databaseId, read.Position));
+                Pages.AddSighting(new TraceBufferPage(read.Frame, read.Page, databaseId, read.Position));
 
                 if (read.Layout is { Offsets: { } offsets } layout && Layouts.Add((read.Frame, read.Page)))
                 {
@@ -95,10 +96,10 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
             FinishLayout(buffer);
         }
 
-        return Pages.Build();
+        return Pages;
     }
 
-    public MemoryBlock[] GetBuffers()
+    public MemoryBlock[] GetBufferBlocks()
         => [.. Buffers.Select(b => new MemoryBlock(b.Key, (ulong)b.Value.Size, b.Value.Thread, b.Value.Position, TracePosition.Unknown))];
 
     public void OnEntry(in TraceHookCall call, ITraceReplay replay)
@@ -184,7 +185,7 @@ internal sealed class BufferPoolHook(AddressTable<BufferPoolFunctionType> functi
             FileDatabases[read.FileControlBlock] = databaseId;
         }
 
-        Pages.Add(new TraceBufferPage(frame, page, databaseId, start, buffer));
+        Pages.AddSighting(new TraceBufferPage(frame, page, databaseId, start, buffer));
 
         TrackLayout(buffer, frame, page, databaseId, replay);
 

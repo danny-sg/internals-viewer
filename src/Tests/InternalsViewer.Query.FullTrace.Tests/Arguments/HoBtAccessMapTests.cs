@@ -152,14 +152,14 @@ public class HoBtAccessMapTests
 
         public HoBtAccessMap Build()
         {
-            var builder = new TraceCallStore.Builder();
+            var builder = new ReplayCallLog();
 
             foreach (var (frame, rows) in Functions.Values)
             {
-                builder.Add(frame.Address, frame.InstanceAddress, TraceCallRowHelper.Chunk([.. rows]), rows.Count);
+                builder.AddChunk(frame.Address, frame.InstanceAddress, TraceCallRowHelper.Chunk([.. rows]), rows.Count);
             }
 
-            return HoBtAccessMap.Build(builder.Build(), Nodes);
+            return HoBtAccessMap.Build(builder.Build(), Tree);
         }
 
         private Recording Call(string method, ulong sequence, ulong rcx, ulong rdx, ulong r8)

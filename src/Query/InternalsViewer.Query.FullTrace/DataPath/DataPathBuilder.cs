@@ -31,7 +31,7 @@ public sealed class DataPathBuilder
 
         GetScope = getScope;
 
-        Pulls = ExpressionPullResolver.Resolve(statement);
+        Evaluations = ExpressionEvaluationResolver.Resolve(statement);
     }
 
     private PlanNode Statement { get; }
@@ -46,7 +46,7 @@ public sealed class DataPathBuilder
 
     private Func<int, (TracePosition From, TracePosition To)?> GetScope { get; }
 
-    private List<ExpressionPull> Pulls { get; }
+    private List<ExpressionEvaluation> Evaluations { get; }
 
     private Dictionary<int, PlanNode> Nodes { get; } = [];
 
@@ -148,28 +148,31 @@ public sealed class DataPathBuilder
     private static ColumnReference GetColumn(PlanNode node, int count, int index)
         => node.OutputColumns.Count == count ? node.OutputColumns[index] : new ColumnReference { Column = $"Column {index + 1}" };
 
-    private static DataPathFieldKind GetKind(PlanOutputPath path)
+    private static DataPathFieldType GetFieldType(PlanOutputPath path)
     {
         if (path.Stages is not [var stage, ..])
         {
-            return DataPathFieldKind.None;
+            return DataPathFieldType.None;
         }
 
         var links = path.Links.Where(l => l.Depth == 0).ToList();
 
         if (stage.Type == PlanOutputStageType.Expression || links.Exists(l => l.ClassName == PlanOutputValueLayout.ExpressionValueClass))
         {
-            return DataPathFieldKind.Computed;
+            return DataPathFieldType.Computed;
         }
 
         return stage.Type switch
         {
-            PlanOutputStageType.RowBuffer or PlanOutputStageType.Variables or PlanOutputStageType.Counter => DataPathFieldKind.Copy,
-            PlanOutputStageType.RowContext => links.Exists(l => l.ClassName == TraceHashTableLayout.ValueClass)
-                ? DataPathFieldKind.Copy
-                : DataPathFieldKind.Pointer,
-            PlanOutputStageType.Record or PlanOutputStageType.InputValue => DataPathFieldKind.Pointer,
-            _ => DataPathFieldKind.None
+            PlanOutputStageType.RowBuffer or PlanOutputStageType.Variables or PlanOutputStageType.Counter 
+                => DataPathFieldType.Copy,
+            PlanOutputStageType.RowContext 
+                => links.Exists(l => l.ClassName == TraceHashTableLayout.ValueClass)
+                                ? DataPathFieldType.Copy
+                                : DataPathFieldType.Pointer,
+            PlanOutputStageType.Record or PlanOutputStageType.InputValue 
+                => DataPathFieldType.Pointer,
+            _ => DataPathFieldType.None
         };
     }
 
@@ -293,7 +296,7 @@ public sealed class DataPathBuilder
             {
                 Output = output,
                 Type = output.Type,
-                Kind = GetKind(path),
+                FieldType = GetFieldType(path),
                 Stage = path.Stages.FirstOrDefault(),
                 Held = held,
                 Scope = scope
@@ -334,7 +337,7 @@ public sealed class DataPathBuilder
 
                 field.Expression = expression;
 
-                field.Evaluator = GetPuller(expression);
+                field.Evaluator = GetEvaluator(expression);
             }
         }
 
@@ -392,10 +395,10 @@ public sealed class DataPathBuilder
 
             var field = new DataPathField(Statement, output)
             {
-                Kind = DataPathFieldKind.Statement,
+                FieldType = DataPathFieldType.Statement,
                 Definition = definition?.Value,
                 Expression = definition?.Expression,
-                Evaluator = definition is { } found ? GetPuller(found.Expression) ?? Statement : null,
+                Evaluator = definition is { } found ? GetEvaluator(found.Expression) ?? Statement : null,
                 Type = sources switch
                 {
                     [var only] when definition is null => only.Type,
@@ -448,7 +451,7 @@ public sealed class DataPathBuilder
             {
                 field = new DataPathField(node, column)
                 {
-                    Kind = DataPathFieldKind.Pointer,
+                    FieldType = DataPathFieldType.Pointer,
                     Type = sources[0].Type,
                     Scope = GetScope(node.NodeId)
                 };
@@ -539,9 +542,9 @@ public sealed class DataPathBuilder
         link.Use |= use;
     }
 
-    private PlanNode? GetPuller(PlanNode computeScalar)
-        => (Pulls.Find(p => ReferenceEquals(p.ComputeScalar, computeScalar) && p.OutputValues.Count > 0)
-            ?? Pulls.Find(p => ReferenceEquals(p.ComputeScalar, computeScalar)))?.Puller;
+    private PlanNode? GetEvaluator(PlanNode computeScalar)
+        => (Evaluations.Find(p => ReferenceEquals(p.ComputeScalar, computeScalar) && p.OutputValues.Count > 0)
+            ?? Evaluations.Find(p => ReferenceEquals(p.ComputeScalar, computeScalar)))?.Evaluator;
 
     private bool IsBlockingInput(int consumerNodeId, int inputNodeId)
     {

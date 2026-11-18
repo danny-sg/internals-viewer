@@ -180,5 +180,5 @@ function (`FORMAT`, `TRY_PARSE`, user CLR) was invoked from the expression.
 - **Memory.** What it allocated, by class and site, against the grant.
 - **State.** The fields that changed, who changed them and what the pattern means, inferences marked.
 - **Cost.** Instructions under its entry frames, and the heaviest calls.
-- **Limits.** What the export cannot show: fields whose names are not recorded, Windows internals below the
-  entry call, values in floating point registers, time.
+- **Limits.** What the export cannot show: fields whose names are not recorded, the names of Windows functions
+  that are not exported, values in floating point registers, time.

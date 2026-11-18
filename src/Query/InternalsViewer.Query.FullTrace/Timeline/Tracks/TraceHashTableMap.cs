@@ -28,7 +28,7 @@ public sealed class TraceHashTableMap(TraceResult trace)
     public (ulong Group, int Partition, int Bucket)? GetLocation(TraceTick tick)
     {
         if (tick.Node.Frame is not { Function: { ClassName: PartitionGroupClass, MethodName: InsertMethod or LookupMethod } }
-            || trace.CallStore.GetCallList(tick.FunctionAddress, tick.InstanceAddress) is not { } list
+            || trace.Store.Calls.GetCallList(tick.FunctionAddress, tick.InstanceAddress) is not { } list
             || tick.CallIndex >= list.Count)
         {
             return null;

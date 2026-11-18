@@ -29,7 +29,7 @@ public sealed partial class TraceTimelineRow
         Count = count;
     }
 
-    public int Count { get; private set; }
+    public int Count { get; }
 
     public TraceScale Scale { get; }
 
@@ -86,38 +86,6 @@ public sealed partial class TraceTimelineRow
         Array.Resize(ref indexes, kept);
 
         return new TraceTimelineRow(Scale, Clock, Store, indexes);
-    }
-
-    internal int RemoveAll(Func<int, bool> isRemoved)
-    {
-        var kept = 0;
-
-        for (var index = 0; index < Count; index++)
-        {
-            var storeIndex = GetStoreIndex(index);
-
-            if (isRemoved(Store.ReplayNodeIndexes[storeIndex]))
-            {
-                continue;
-            }
-
-            if (Indexes is null)
-            {
-                Store.Move(storeIndex, Offset + kept);
-            }
-            else
-            {
-                Indexes[Offset + kept] = storeIndex;
-            }
-
-            kept++;
-        }
-
-        var removed = Count - kept;
-
-        Count = kept;
-
-        return removed;
     }
 
     public int GetFirstEndingAfter(TraceTimelineAxis axis, double value, int from = 0)

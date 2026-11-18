@@ -82,7 +82,7 @@ internal sealed class PlanOutputResultReader(TraceResult trace)
     {
         (VariantLocator Variant, TracePosition Position)? last = null;
 
-        foreach (var list in trace.CallStore.GetCallLists())
+        foreach (var list in trace.Store.Calls.GetCallLists())
         {
             for (var index = FirstAtOrAfter(list, evaluation.From);
                  index < list.Count && list.GetFromPosition(index) < evaluation.To;
@@ -90,7 +90,7 @@ internal sealed class PlanOutputResultReader(TraceResult trace)
             {
                 var end = list.GetToPosition(index);
 
-                if (list.GetThread(index) != evaluation.Thread
+                if (list.GetThreadId(index) != evaluation.Thread
                     || !end.IsKnown
                     || end > evaluation.To
                     || last is { } found && end <= found.Position)
@@ -121,9 +121,9 @@ internal sealed class PlanOutputResultReader(TraceResult trace)
 
         var calls = new List<(TraceCallList List, int Index)>();
 
-        foreach (var list in trace.CallStore.GetCallLists())
+        foreach (var list in trace.Store.Calls.GetCallLists())
         {
-            if (trace.CallStore.GetFirstNode(list)?.Frame?.Function is { ClassName: ExecutorClassName })
+            if (trace.Store.Calls.GetFirstNode(list)?.Frame?.Function is { ClassName: ExecutorClassName })
             {
                 for (var index = 0; index < list.Count; index++)
                 {
@@ -159,7 +159,7 @@ internal sealed class PlanOutputResultReader(TraceResult trace)
 
             if (isStatement)
             {
-                evaluations.Add((list.GetThread(index), from, to));
+                evaluations.Add((list.GetThreadId(index), from, to));
             }
         }
 

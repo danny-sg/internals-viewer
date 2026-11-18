@@ -17,7 +17,8 @@ public readonly record struct Locator(int ArgumentSlot, LocatorValueType ValueTy
 
     public RowIdentifier Row => new(Page, Slot);
 
-    public string SearchText => ValueType == LocatorValueType.ColumnStoreObject ? new ColumnStoreObjectLocator(this).SearchText : ToString();
+    public string SearchText 
+        => ValueType == LocatorValueType.ColumnStoreObject ? new ColumnStoreObjectLocator(this).SearchText : ToString();
 
     public static Locator? Read(LocatorValueType valueType, ITraceMemoryReader memory, int argumentSlot, ulong address, ulong count = 1)
         => valueType switch

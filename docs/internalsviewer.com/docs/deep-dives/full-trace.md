@@ -135,7 +135,7 @@ The PDBs are read with the Debug Interface Access (DIA) API. DIA normally comes 
 
 Then one walk over each PDB of `sqlmin.dll`, `sqllang.dll` and `sqldk.dll` sorts functions into the sets the replay needs:
 
-- **Excluded functions** - every function the Call Tree's category mappings put in Extended Events or tracing, around 9,000 of them, so the replay can skip them
+- **Excluded functions** - every function the Call Tree's category mappings put in Extended Events or tracing, around 9,000 of them, so the replay can skip them. A function whose code is shared with other functions by identical code folding is kept, since its address runs code that is not tracing as well
 - **Instance methods** - `Open`, `GetRow`, `Close` and their batch mode and helper forms on every `CQScan*`, `CBpQScan*` and `CQueryScan*` class, and the methods of the plan's own `CXte*` and `CBpXte*` objects, whose calls are kept apart by the object they ran on
 - **Memory functions** - the allocators and frees, for counting memory
 - **Locator reads** - functions that take or return a page id, row id, page handle or page reference, columnstore object key, LSN or string, and pointer or reference arguments to simple values, for reading those values as the replay passes
@@ -207,7 +207,7 @@ Each node's address is looked up in the module ranges and becomes a frame - modu
 
 The whole recording is kept, compilation included, so what is worked out from it - objects, allocations and memory - sees every call. **Crop To Query** only changes what is shown, and can be switched without tracing again. Each thread's calls start well above the query - receiving the batch, compiling and setting up the statement - so with it on the Call Tree starts at the outermost `CXStmtQuery::ErsqExecuteQuery`, the statement's execution in `sqllang.dll`. It starts as the plan's iterators are built and returns just after they are torn down, so the batch work around it is left out - checks for schema changes and statement setup before it, and releasing locks and freeing memory after it. Switch **Crop To Query** off to see that work. A parallel worker's thread never runs beneath that frame, so a thread running operator code without it is shown from its top. The Trace Timeline is cropped to match.
 
-Anything left beneath Extended Events or tracing frames is then removed from the tree and the Trace Timeline. Each node's activity band counts when its calls started, bucketed by trace position, and its locators are gathered from the call log, so a frame can show the pages and rows it read and the Call Tree's search can find frames by a page address, a RID or `rowgroup:N column:M`.
+Each node's activity band counts when its calls started, bucketed by trace position, and its locators are gathered from the call log, so a frame can show the pages and rows it read and the Call Tree's search can find frames by a page address, a RID or `rowgroup:N column:M`.
 
 ### Operators by iterator
 
@@ -299,12 +299,12 @@ The recording itself is deleted once it has replayed successfully. Everything ab
 - `src/Query/InternalsViewer.Query.FullTrace/` - the managed side:
   - `Recording/` - preparing a recording: finding WinDbg, the TTD copy, the licence check, the trace folder, starting the harness and the events it signals
   - `TraceLoader.cs` - the load that ties the steps together
-  - `ReplaySession.cs` and `Native/` - opening the recording and calling the bridge
-  - `Functions/` - the function sets the replay needs, from the PDBs
+  - `Replay/` - everything that drives the bridge, ending in the raw `ReplayCapture.cs`: `ReplaySession.cs` opens the recording and runs the passes, `Native/` calls the bridge, `Hooks/` dispatches calls to the hooks, `Functions/` holds the function sets the replay needs from the PDBs, and `Stubs/` resolves import stubs
+  - `TraceResultBuilder.cs` and `TraceStore.cs` - turning the raw captures into the final result, with the calls and the timeline held together in the store
   - `Symbols/` - downloading PDBs (`SymbolDownloader.cs`), resolving frames through DIA (`SymbolResolver.cs`, `Dia/`), the Module / Category classification and its mapping files (`Categories/`), and the virtual function tables (`VtableResolver.cs`)
   - `Calls/Tree/` - the call tree, with `CallTreeBuilder.cs` mapping nodes to frames
   - `QueryExecutionCropper.cs` - finding where the query's execution starts
-  - `CallLog/` and `Arguments/` - the compressed argument log, and reading its values by the function's signature
+  - `Calls/` and `Arguments/` - the compressed argument log, and reading its values by the function's signature
   - `Locators/` - the page, row, columnstore object and referenced value reads
   - `Iterators/` - linking plan objects and iterators to the plan, finding each operator's call tree frames (`OperatorFrameMap.cs`), and their lifetimes
   - `Memory/` - allocations, frees, clerks and memory in use, and in `Memory/Address/` the map of what each address holds, with `ObjectClassResolver.cs` naming objects by the table they hold

@@ -533,7 +533,7 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
 
         operatorNode.Children.Add(node);
 
-        if (field.Kind == DataPathFieldKind.Computed)
+        if (field.FieldType == DataPathFieldType.Computed)
         {
             ValueNodes.Add((field, node));
         }
@@ -863,7 +863,7 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
 
         var operatorNode = CreateOperator(field, holder, parent.Type == MemoryStructureNodeType.Expression ? field.Name : null, link);
 
-        if (field.Kind != DataPathFieldKind.Computed)
+        if (field.FieldType != DataPathFieldType.Computed)
         {
             ValueNodes.Add((field, operatorNode));
         }
@@ -892,7 +892,7 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
             operatorNode.Children.Add(CreateObject(compiled, operatorNode, names));
         }
 
-        var inputParent = AddExpression(field, operatorNode) is { } expressionNode && field.Kind == DataPathFieldKind.Computed
+        var inputParent = AddExpression(field, operatorNode) is { } expressionNode && field.FieldType == DataPathFieldType.Computed
             ? expressionNode
             : operatorNode;
 
@@ -945,7 +945,7 @@ public sealed class MemoryDataPathViewModel : MemoryStructureViewModel
             node.Badges.Add(CreateBadge(reference));
         }
 
-        if (field.Kind == DataPathFieldKind.Pointer)
+        if (field.FieldType == DataPathFieldType.Pointer)
         {
             node.Badges.Add(CreateBadge(PointerName));
         }

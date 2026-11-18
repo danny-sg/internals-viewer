@@ -1,6 +1,6 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool;
-using InternalsViewer.Query.FullTrace.Native;
+using InternalsViewer.Query.FullTrace.Replay.Native;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Memory.BufferPool;
@@ -66,11 +66,11 @@ public class TracePageReadListBuilderTests
 
     private static TracePageReadList.Builder Recorder()
     {
-        var builder = new TraceBufferPool.Builder();
+        var builder = new ReplayBufferPool();
 
-        builder.Add(new TraceBufferPage(Frame, new PageAddress(1, 405), Database, At(1)));
+        builder.AddSighting(new TraceBufferPage(Frame, new PageAddress(1, 405), Database, At(1)));
 
-        builder.Add(new TraceBufferPage(OtherFrame, new PageAddress(1, 406), Database, At(2)));
+        builder.AddSighting(new TraceBufferPage(OtherFrame, new PageAddress(1, 406), Database, At(2)));
 
         return new TracePageReadList.Builder(builder.Build());
     }

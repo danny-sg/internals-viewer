@@ -23,7 +23,7 @@ public sealed class TraceTimelineThread
 
     public IReadOnlyList<TraceTimelineRow> Rows { get; }
 
-    public long CallCount { get; private set; }
+    public long CallCount { get; }
 
     internal TraceSpanStore Store { get; }
 
@@ -58,22 +58,15 @@ public sealed class TraceTimelineThread
         return new TraceTimelineThread(ThreadId, Clock, Store, kept, kept.Sum(r => (long)r.Count));
     }
 
-    internal void RemoveAll(Func<int, bool> isRemoved)
-    {
-        foreach (var row in Rows)
-        {
-            CallCount -= row.RemoveAll(isRemoved);
-        }
-
-        Boundaries = null;
-    }
-
     internal IReadOnlyList<(TracePosition From, TracePosition To)> 
-        GetMaterialDeadSpans(IEnumerable<(TracePosition From, TracePosition To)> excluded,
-                             Func<int, bool> isRemoved,
-                             TraceScale scale)
+        GetMaterialDeadSpans(IEnumerable<(TracePosition From, TracePosition To)> excluded, TraceScale scale)
     {
-        List<(TracePosition From, TracePosition To)> removed = [.. excluded];
+        List<(TracePosition From, TracePosition To)> dead = [.. excluded];
+
+        if (dead.Count == 0)
+        {
+            return [];
+        }
 
         List<TracePosition> kept = [];
 
@@ -81,23 +74,11 @@ public sealed class TraceTimelineThread
         {
             for (var index = 0; index < row.Count; index++)
             {
-                if (isRemoved(row.GetReplayNodeIndex(index)))
-                {
-                    removed.Add((row.GetFromPosition(index), row.GetToPosition(index)));
-                }
-                else
-                {
-                    kept.Add(row.GetFromPosition(index));
-                }
+                kept.Add(row.GetFromPosition(index));
             }
         }
 
-        if (removed.Count == 0)
-        {
-            return [];
-        }
-
-        removed.Sort((left, right) => left.From.CompareTo(right.From));
+        dead.Sort((left, right) => left.From.CompareTo(right.From));
 
         kept.Sort();
 
@@ -111,7 +92,7 @@ public sealed class TraceTimelineThread
 
         List<(TracePosition From, TracePosition To)> merged = [];
 
-        foreach (var (from, to) in removed)
+        foreach (var (from, to) in dead)
         {
             if (merged.Count > 0
                 && (from <= merged[^1].To || (!IsMaterial(merged[^1].To, from) && !HasPositionBetween(kept, merged[^1].To, from))))

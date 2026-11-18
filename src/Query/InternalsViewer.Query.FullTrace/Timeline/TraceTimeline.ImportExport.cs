@@ -8,14 +8,12 @@ public sealed partial class TraceTimeline
     private const int FormatVersion = 4;
 
     private TraceTimeline(IReadOnlyList<TraceTimelineThread> threads,
-                          int[] parents,
-                          CallTreeNode?[] nodes,
+                          TraceNodeMap nodes,
                           TraceScale scale,
                           TracePoint start,
                           TracePoint end)
     {
         Threads = threads;
-        Parents = parents;
         Nodes = nodes;
         Scale = scale;
         SpanCount = threads.Sum(t => t.CallCount);
@@ -38,9 +36,7 @@ public sealed partial class TraceTimeline
 
         var end = TracePointExport.Read(reader);
 
-        var parents = ExportBinary.ReadArray<int>(reader);
-
-        CallTreeNode?[] nodes = [.. ExportBinary.ReadArray<int>(reader).Select(id => id < 0 ? null : nodesById[id])];
+        var nodes = TraceNodeMap.Read(reader, nodesById);
 
         var threads = new TraceTimelineThread[reader.ReadInt32()];
 
@@ -68,7 +64,7 @@ public sealed partial class TraceTimeline
             threads[index] = new TraceTimelineThread(threadId, clock, store, rows, calls);
         }
 
-        var timeline = new TraceTimeline(threads, parents, nodes, scale, start, end);
+        var timeline = new TraceTimeline(threads, nodes, scale, start, end);
 
         timeline.SetCuts();
 
@@ -85,9 +81,7 @@ public sealed partial class TraceTimeline
 
         TracePointExport.Write(writer, End);
 
-        ExportBinary.WriteArray(writer, Parents);
-
-        ExportBinary.WriteArray(writer, [.. Nodes.Select(node => node is null ? -1 : getId(node))]);
+        Nodes.Write(writer, getId);
 
         writer.Write(Threads.Count);
 

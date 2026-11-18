@@ -1,5 +1,6 @@
 using InternalsViewer.Query.FullTrace.InstructionHistory.Listing;
 using InternalsViewer.Query.FullTrace.InstructionHistory.Replay.Enums;
+using InternalsViewer.Query.FullTrace.Replay;
 using InternalsViewer.Query.Recording;
 
 namespace InternalsViewer.Query.FullTrace.InstructionHistory.Replay;
@@ -25,14 +26,14 @@ public sealed class InstructionHistoryReader : IInstructionHistoryReader
 
         var hook = new InstructionStepHook();
 
-        var outcome = await session.ReplayAsync(request.Thread,
-                                                request.From,
-                                                request.To,
-                                                request.Frame.Address,
-                                                MaximumSteps,
-                                                hook,
-                                                null,
-                                                cancellationToken);
+        var outcome = await session.ReplayStepsAsync(request.Thread,
+                                                     request.From,
+                                                     request.To,
+                                                     request.Frame.Address,
+                                                     MaximumSteps,
+                                                     hook,
+                                                     null,
+                                                     cancellationToken);
 
         return hook.Builder.Build((TraceInstructionOutcome)outcome);
     }

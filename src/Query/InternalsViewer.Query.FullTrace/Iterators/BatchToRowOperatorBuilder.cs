@@ -81,7 +81,7 @@ internal static class BatchToRowOperatorBuilder
 
         while (pending.TryDequeue(out var callNode))
         {
-            foreach (var child in callNode.ChildNodes)
+            foreach (var child in callNode.Children)
             {
                 if (child.Frame is { InstanceAddress: not 0 } frame && owners.TryGetValue(frame.InstanceAddress, out var owner))
                 {

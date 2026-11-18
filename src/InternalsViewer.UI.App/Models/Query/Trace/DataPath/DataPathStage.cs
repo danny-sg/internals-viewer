@@ -24,9 +24,9 @@ public sealed class DataPathStage(DataPathField field, string source, ulong sour
 
     public string Detail { get; init; } = string.Empty;
 
-    public bool IsPointer => Field.Kind == DataPathFieldKind.Pointer;
+    public bool IsPointer => Field.FieldType == DataPathFieldType.Pointer;
 
-    public bool IsComputed => Field.Kind == DataPathFieldKind.Computed;
+    public bool IsComputed => Field.FieldType == DataPathFieldType.Computed;
 
     public bool IsBuild { get; init; }
 

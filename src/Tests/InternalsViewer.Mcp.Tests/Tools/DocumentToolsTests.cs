@@ -29,7 +29,7 @@ public class DocumentToolsTests
 
         var (resolver, document) = TestRuns.CreateResolver(run);
 
-        var getRow = run.ExtraOf<TraceResult>()!.CallTree.Root.ChildNodes.Single().ChildNodes.Single();
+        var getRow = run.ExtraOf<TraceResult>()!.CallTree.Root.Children.Single().Children.Single();
 
         document.Recorded.Selection = new McpSelection { CallNode = getRow, Playhead = TestRuns.At(5, 1) };
 
