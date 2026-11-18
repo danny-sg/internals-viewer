@@ -11,6 +11,7 @@
     xmlns:cs="using:InternalsViewer.UI.App.Controls.Query.Simulation.Columnstore"
     xmlns:tableView="using:WinUI.TableView"
     xmlns:converters="using:InternalsViewer.UI.App.Helpers.Converters"
+    xmlns:scan="using:InternalsViewer.UI.App.Controls.Columnstore.Scan"
     mc:Ignorable="d">
 
     <UserControl.Resources>
@@ -352,7 +353,7 @@
                               SelectedItem="{x:Bind Batch.SelectedFilterBitmap, Mode=TwoWay}"
                               DisplayMemberPath="Title" />
 
-                    <cs:FilterBitmapGrid Grid.Row="1"
+                    <scan:FilterBitmapGrid Grid.Row="1"
                                          Model="{x:Bind Batch.SelectedFilterBitmap, Mode=OneWay}"
                                          HorizontalAlignment="Stretch"
                                          VerticalAlignment="Stretch" />

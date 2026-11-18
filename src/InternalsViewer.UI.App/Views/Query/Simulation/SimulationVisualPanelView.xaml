@@ -8,6 +8,7 @@
     xmlns:index="using:InternalsViewer.UI.App.Controls.Index"
     xmlns:allocation="using:InternalsViewer.UI.App.Controls.Allocation"
     xmlns:cs="using:InternalsViewer.UI.App.Controls.Query.Simulation.Columnstore"
+    xmlns:scan="using:InternalsViewer.UI.App.Controls.Columnstore.Scan"
     mc:Ignorable="d"
     Loaded="OnLoaded">
 
@@ -28,7 +29,7 @@
                                 VerticalAlignment="Stretch"
                                 HorizontalAlignment="Stretch" />
 
-            <cs:ColumnstoreScanControl x:Name="ColumnstoreScanControl"
+            <scan:ColumnstoreScanControl x:Name="ColumnstoreScanControl"
                                        Visibility="{x:Bind ColumnstoreVisibility(ViewModel.VisualType, ViewModel.IsVisualInitialized), Mode=OneWay}"
                                        RowGroups="{x:Bind ViewModel.ScanRowGroups, Mode=OneWay}"
                                        ActiveRowGroupId="{x:Bind ViewModel.ActiveRowGroupId, Mode=OneWay}"

@@ -1,11 +1,10 @@
-using System;
 using InternalsViewer.UI.App.Models.Query.Simulation.Columnstore;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using SkiaSharp;
 using SkiaSharp.Views.Windows;
 
-namespace InternalsViewer.UI.App.Controls.Query.Simulation.Columnstore;
+namespace InternalsViewer.UI.App.Controls.Columnstore.Scan;
 
 public sealed partial class FilterBitmapGrid : UserControl, IDisposable
 {

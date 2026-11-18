@@ -562,6 +562,7 @@
     <ItemGroup>
       <Folder Include="Assets\Help\images\" />
       <Folder Include="Controls\Columnstore\Dictionary\" />
+      <Folder Include="Controls\Columnstore\Scan\" />
       <Folder Include="Controls\Columnstore\Structure\" />
       <Folder Include="Controls\Columnstore\Segment\" />
       <Folder Include="Controls\Logging\" />
@@ -570,6 +571,7 @@
       <Folder Include="Controls\Query\Trace\Timeline\Operators\" />
       <Folder Include="Helpers\Plans\" />
       <Folder Include="Helpers\Trace\" />
+      <Folder Include="Models\Query\Simulation\Columnstore\" />
       <Folder Include="ViewModels\Columnstore\Segment\" />
       <Folder Include="Views\Query\Index\" />
       <Folder Include="Views\Query\Plan\" />

@@ -1,16 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using Windows.System;
+using Windows.UI.Core;
 using InternalsViewer.UI.App.Models.Query.Simulation.Columnstore;
-using InternalsViewer.UI.App.Controls.Columnstore;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
-using Windows.System;
-using Windows.UI.Core;
 using SkiaSharp;
 using SkiaSharp.Views.Windows;
 
-namespace InternalsViewer.UI.App.Controls.Query.Simulation.Columnstore;
+namespace InternalsViewer.UI.App.Controls.Columnstore.Scan;
 
 public sealed partial class ColumnstoreScanControl
 {
@@ -99,7 +97,7 @@ public sealed partial class ColumnstoreScanControl
 
     private bool _isDragging;
 
-    private global::Windows.Foundation.Point _dragStart;
+    private Windows.Foundation.Point _dragStart;
 
     private float _dragStartOffsetX;
 
@@ -247,7 +245,7 @@ public sealed partial class ColumnstoreScanControl
     /// <summary>
     /// Drags the drawing under the pointer, once the press has moved far enough to be a drag
     /// </summary>
-    private bool Pan(global::Windows.Foundation.Point position)
+    private bool Pan(Windows.Foundation.Point position)
     {
         var deltaX = position.X - _dragStart.X;
         var deltaY = position.Y - _dragStart.Y;

@@ -1,11 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Globalization;
-using InternalsViewer.UI.App.Controls.Columnstore;
 using InternalsViewer.UI.App.Models.Query.Simulation.Columnstore;
 using SkiaSharp;
 
-namespace InternalsViewer.UI.App.Controls.Query.Simulation.Columnstore;
+namespace InternalsViewer.UI.App.Controls.Columnstore.Scan;
 
 public sealed class ColumnstoreScanRenderer : IDisposable
 {
@@ -66,13 +64,13 @@ public sealed class ColumnstoreScanRenderer : IDisposable
     }
 
     public List<ColumnstoreRegion> Draw(SKCanvas canvas,
-                                               SKRect bounds,
-                                               IReadOnlyList<ScanRowGroup> rowGroups,
-                                               int? activeRowGroupId,
-                                               int batchFirstRow,
-                                               int batchRowCount,
-                                               SKColor nodeColour,
-                                               bool isDark)
+                                        SKRect bounds,
+                                        IReadOnlyList<ScanRowGroup> rowGroups,
+                                        int? activeRowGroupId,
+                                        int batchFirstRow,
+                                        int batchRowCount,
+                                        SKColor nodeColour,
+                                        bool isDark)
     {
         canvas.Clear(SKColors.Transparent);
 
@@ -121,11 +119,11 @@ public sealed class ColumnstoreScanRenderer : IDisposable
     }
 
     private void DrawSegments(SKCanvas canvas,
-                                     SKRect rect,
-                                     ScanRowGroup rowGroup,
-                                     SKColor nodeColour,
-                                     SKPaint paint,
-                                     List<ColumnstoreRegion> regions)
+                              SKRect rect,
+                              ScanRowGroup rowGroup,
+                              SKColor nodeColour,
+                              SKPaint paint,
+                              List<ColumnstoreRegion> regions)
     {
         if (rowGroup.Segments.Count == 0)
         {
@@ -154,11 +152,11 @@ public sealed class ColumnstoreScanRenderer : IDisposable
     }
 
     private void DrawRuns(SKCanvas canvas,
-                                 SKRect box,
-                                 ScanSegment segment,
-                                 ScanRowGroup rowGroup,
-                                 SKColor colour,
-                                 SKPaint paint)
+                          SKRect box,
+                          ScanSegment segment,
+                          ScanRowGroup rowGroup,
+                          SKColor colour,
+                          SKPaint paint)
     {
         if (!segment.IsOpened
             || segment.IsEliminated
@@ -240,12 +238,12 @@ public sealed class ColumnstoreScanRenderer : IDisposable
     }
 
     private void DrawBatch(SKCanvas canvas,
-                                  SKRect rect,
-                                  ScanRowGroup rowGroup,
-                                  int firstRow,
-                                  int rowCount,
-                                  SKColor nodeColour,
-                                  SKPaint paint)
+                           SKRect rect,
+                           ScanRowGroup rowGroup,
+                           int firstRow,
+                           int rowCount,
+                           SKColor nodeColour,
+                           SKPaint paint)
     {
         var area = new SKRect(rect.Left + SegmentInset,
                               rect.Top + SegmentInset,
