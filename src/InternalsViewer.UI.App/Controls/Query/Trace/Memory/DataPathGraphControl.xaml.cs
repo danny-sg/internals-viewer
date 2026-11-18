@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using InternalsViewer.Execution.AccessPaths.Text;
+using InternalsViewer.Query.Plans.Text;
 using InternalsViewer.UI.App.Controls.Columnstore;
 using InternalsViewer.UI.App.Controls.Query.Plan;
 using InternalsViewer.UI.App.Helpers;

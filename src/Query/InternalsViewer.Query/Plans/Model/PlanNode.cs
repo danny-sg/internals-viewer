@@ -46,21 +46,13 @@ public sealed class PlanNode
 
     public List<SortColumnInfo> SortColumns { get; set; } = [];
 
-    public SortInfo? SortInfo { get; set; }
-
     public MergeInfo? MergeInfo { get; set; }
-
-    public TopInfo? TopInfo { get; set; }
 
     public NestedLoopsInfo? NestedLoopsInfo { get; set; }
 
     public List<ColumnReference> GroupByColumns { get; set; } = [];
 
     public AggregateInfo? AggregateInfo { get; set; }
-
-    public SegmentInfo? SegmentInfo { get; set; }
-
-    public SequenceProjectInfo? SequenceProjectInfo { get; set; }
 
     public PlanIoStatistics? IoStats { get; set; }
 

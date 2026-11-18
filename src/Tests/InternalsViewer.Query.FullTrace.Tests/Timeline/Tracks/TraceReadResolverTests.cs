@@ -206,9 +206,9 @@ public class TraceReadResolverTests
     private static (PageAddress Page, int PageCount, bool IsReadAhead)? GetRead(TraceCallStore calls, TraceTick read)
         => TraceReadResolver.GetRead(read.Node.Frame!, calls.GetCallList(read.FunctionAddress, read.InstanceAddress)![read.CallIndex]);
 
-    private static ulong[] Call(ulong start, ulong end, int callNodeIndex, ulong pageCount = 0)
+    private static ulong[] Call(ulong start, ulong end, int replayNodeIndex, ulong pageCount = 0)
     {
-        var row = Row(start, flags: Thread | TraceCallColumnSet.ReturnedFlag, rcx: BufferPool, callNodeIndex: callNodeIndex, endSequence: end);
+        var row = Row(start, flags: Thread | TraceCallColumnSet.ReturnedFlag, rcx: BufferPool, replayNodeIndex: replayNodeIndex, endSequence: end);
 
         row[TraceCallColumnSet.IntegerOffset + 3] = pageCount;
 
@@ -233,5 +233,5 @@ public class TraceReadResolverTests
 
     private static TraceSpan Whole() => new(new TracePoint(At(0), 0), new TracePoint(At(1000), 1000), 0, 0, TraceSpanFlags.None);
 
-    private static CallSpan Span(int callNodeIndex, ulong start, ulong end, uint callIndex = 0) => new(start, 0, end, 0, start, end, callNodeIndex, Thread, callIndex, 1);
+    private static CallSpan Span(int replayNodeIndex, ulong start, ulong end, uint callIndex = 0) => new(start, 0, end, 0, start, end, replayNodeIndex, Thread, callIndex, 1);
 }

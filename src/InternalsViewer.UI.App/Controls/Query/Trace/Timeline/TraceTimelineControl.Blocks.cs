@@ -36,11 +36,11 @@ public sealed partial class TraceTimelineControl
 
     private float _directionY = MathF.Sin(DefaultExtrusionAngle);
 
-    private Block Raised(FlameHit call, int callNodeIndex, float left, float right, float top, float height, ulong bytes, ulong maximum)
+    private Block Raised(FlameHit call, int replayNodeIndex, float left, float right, float top, float height, ulong bytes, ulong maximum)
     {
         var ratio = LogRatio(bytes, maximum);
 
-        return new Block(call, callNodeIndex, ColourOf(callNodeIndex), left, right, top, height, ratio, ExtrusionOf(ratio, _extrusionLength), bytes);
+        return new Block(call, replayNodeIndex, ColourOf(replayNodeIndex), left, right, top, height, ratio, ExtrusionOf(ratio, _extrusionLength), bytes);
     }
 
     private static float LogRatio(ulong bytes, ulong maximum)
@@ -156,7 +156,7 @@ public sealed partial class TraceTimelineControl
 
         canvas.ClipRect(new SKRect(0, 0, length, block.Height));
 
-        canvas.DrawText(LabelOf(block.CallNodeIndex), LabelPadding, Baseline(0, block.Height), SKTextAlign.Left, _paints.TiltedFont, _paints.Text);
+        canvas.DrawText(LabelOf(block.ReplayNodeIndex), LabelPadding, Baseline(0, block.Height), SKTextAlign.Left, _paints.TiltedFont, _paints.Text);
 
         canvas.Restore();
     }
@@ -310,7 +310,7 @@ public sealed partial class TraceTimelineControl
         => new((byte)(colour.Red * factor), (byte)(colour.Green * factor), (byte)(colour.Blue * factor), colour.Alpha);
 
     private readonly record struct Block(FlameHit Call,
-                                         int CallNodeIndex,
+                                         int ReplayNodeIndex,
                                          SKColor Colour,
                                          float Left,
                                          float Right,

@@ -215,7 +215,7 @@ public sealed partial class TraceTimelineControl
 
                 var index = row.GetIndex(marked.Span.From.Position);
 
-                if (index < 0 || row.GetCallIndex(index) != marked.Span.CallIndex || row.GetCallNodeIndex(index) != marked.Span.CallNodeIndex)
+                if (index < 0 || row.GetCallIndex(index) != marked.Span.CallIndex || row.GetReplayNodeIndex(index) != marked.Span.ReplayNodeIndex)
                 {
                     continue;
                 }

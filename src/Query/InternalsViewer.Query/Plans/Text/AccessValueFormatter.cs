@@ -1,9 +1,11 @@
 ﻿using System.Data;
 using System.Globalization;
 using System.Text;
-using InternalsViewer.Execution.AccessPaths.Values;
+using InternalsViewer.Query.Plans.Text.Enums;
+using InternalsViewer.Query.Plans.Values;
+using InternalsViewer.Query.Plans.Values.Enums;
 
-namespace InternalsViewer.Execution.AccessPaths.Text;
+namespace InternalsViewer.Query.Plans.Text;
 
 /// <summary>
 /// Renders a value the way it would be written in Transact-SQL
@@ -37,14 +39,6 @@ internal static class AccessValueFormatter
             _ => 
                 new PredicateToken(PredicateTokenType.Literal, FormatBytes(value))
         };
-    }
-
-    /// <summary>
-    /// Formats a value as plain text without any token role
-    /// </summary>
-    public static string ToText(AccessValue value)
-    {
-        return Format(value).Text;
     }
 
     /// <summary>

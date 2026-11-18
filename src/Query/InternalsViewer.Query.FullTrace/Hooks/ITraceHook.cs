@@ -1,5 +1,3 @@
-using InternalsViewer.Query.FullTrace.Native;
-
 namespace InternalsViewer.Query.FullTrace.Hooks;
 
 /// <summary>
@@ -43,13 +41,6 @@ internal interface ITraceHook
     /// When a specific watched frame has ended
     /// </summary>
     void OnFrameEnded(in TraceHookCall call)
-    {
-    }
-
-    void OnInstructionChunk(ReadOnlySpan<InstructionStep> steps,
-                            ReadOnlySpan<RegisterChange> changes,
-                            ReadOnlySpan<InstructionCode> code,
-                            ReadOnlySpan<byte> bytes)
     {
     }
 }

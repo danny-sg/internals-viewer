@@ -7,11 +7,32 @@ internal sealed unsafe class ReplayView : ITraceReplay
 {
     public EngineLayout Layout { get; init; } = EngineLayout.Latest;
 
-    public IntPtr View { get; set; }
+    private IntPtr View { get; set; }
 
-    public IntPtr Session { get; set; }
+    private IntPtr Session { get; set; }
 
     private TraceHookFrame[] Frames { get; set; } = new TraceHookFrame[256];
+
+    private int FrameCount { get; set; } = -1;
+
+    private uint FrameThread { get; set; }
+
+    private ulong[] StackArguments { get; } = new ulong[TraceHookArgumentReader.StackSlotCount];
+
+    private bool IsStackRead { get; set; }
+
+    public void Begin(IntPtr view, IntPtr session)
+    {
+        View = view;
+
+        Session = session;
+
+        FrameCount = -1;
+
+        IsStackRead = false;
+    }
+
+    public void End() => Begin(IntPtr.Zero, IntPtr.Zero);
 
     public int Read(ulong address, Span<byte> destination)
     {
@@ -35,16 +56,35 @@ internal sealed unsafe class ReplayView : ITraceReplay
             return [];
         }
 
-        var count = Fill(thread);
-
-        if (count > Frames.Length)
+        if (FrameCount < 0 || FrameThread != thread)
         {
-            Frames = new TraceHookFrame[count];
+            var count = Fill(thread);
 
-            count = Fill(thread);
+            if (count > Frames.Length)
+            {
+                Frames = new TraceHookFrame[count];
+
+                count = Fill(thread);
+            }
+
+            FrameCount = (int)Math.Min(count, (uint)Frames.Length);
+
+            FrameThread = thread;
         }
 
-        return Frames.AsSpan(0, (int)Math.Min(count, (uint)Frames.Length));
+        return Frames.AsSpan(0, FrameCount);
+    }
+
+    public ReadOnlySpan<ulong> GetStackArguments(in TraceHookCall call)
+    {
+        if (!IsStackRead)
+        {
+            TraceHookArgumentReader.ReadStackArguments(this, call, StackArguments);
+
+            IsStackRead = true;
+        }
+
+        return StackArguments;
     }
 
     private uint Fill(uint thread)

@@ -1,4 +1,4 @@
-using InternalsViewer.UI.App.Models.Query.Simulation.Columnstore;
+using InternalsViewer.UI.App.Models.Columnstore;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using SkiaSharp;

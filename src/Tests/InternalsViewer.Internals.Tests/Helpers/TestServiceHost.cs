@@ -1,5 +1,4 @@
-﻿using InternalsViewer.Execution;
-using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.Hosting;
 
 namespace InternalsViewer.Internals.Tests.Helpers;
 
@@ -21,7 +20,6 @@ internal class TestServiceHost
                 .ConfigureServices((context, services) =>
                 {
                     services.RegisterServices();
-                    services.RegisterExecutionServices();
                 }).Build();
     }
 

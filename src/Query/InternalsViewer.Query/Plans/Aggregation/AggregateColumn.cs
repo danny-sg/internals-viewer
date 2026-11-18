@@ -1,6 +1,7 @@
-using InternalsViewer.Execution.AccessPaths.Predicates;
+using InternalsViewer.Query.Plans.Aggregation.Enums;
+using InternalsViewer.Query.Plans.Predicates;
 
-namespace InternalsViewer.Execution.AccessPaths.Aggregation;
+namespace InternalsViewer.Query.Plans.Aggregation;
 
 public sealed record AggregateColumn(string Column, AggregateFunction Function)
 {

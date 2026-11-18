@@ -20,9 +20,9 @@ public static class AllocationTypeReader
 
     private const string PointerArrayMarker = "*[";
 
-    public static string? GetLabel(TraceCallStore calls, int callNodeIndex, int size)
+    public static string? GetLabel(TraceCallStore calls, int replayNodeIndex, int size)
     {
-        var functions = calls.GetNode(callNodeIndex)?.GetAncestors().Select(n => n.Frame!.Function).OfType<FrameFunction>() ?? [];
+        var functions = calls.GetNode(replayNodeIndex)?.GetAncestors().Select(n => n.Frame!.Function).OfType<FrameFunction>() ?? [];
 
         return GetLabel(functions.Take(MaximumDepth), size);
     }

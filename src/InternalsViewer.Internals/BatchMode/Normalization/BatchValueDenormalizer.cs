@@ -44,11 +44,6 @@ public static class BatchValueDenormalizer
                : BatchValueType.Inline;
     }
 
-    /// <summary>
-    /// Gets the Data Id for a dictionary
-    /// </summary>
-    public static long GetDictionaryDataId(BatchValue slot) => slot.Value >> 16;
-
     public static int GetDictionaryNumber(BatchValue slot)
         => (int)(((slot.Value >> 1) & DictionaryLowMask) | ((slot.Value >>> DictionaryHighShift) & DictionaryHighMask));
 

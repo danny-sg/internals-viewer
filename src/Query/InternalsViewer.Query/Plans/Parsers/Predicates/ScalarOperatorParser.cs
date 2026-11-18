@@ -1,8 +1,9 @@
 using System.Collections.Immutable;
 using System.Xml.Linq;
-using InternalsViewer.Execution.AccessPaths.Predicates;
-using InternalsViewer.Execution.AccessPaths.Values;
 using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.Query.Plans.Predicates;
+using InternalsViewer.Query.Plans.Predicates.Enums;
+using InternalsViewer.Query.Plans.Values;
 
 namespace InternalsViewer.Query.Plans.Parsers.Predicates;
 

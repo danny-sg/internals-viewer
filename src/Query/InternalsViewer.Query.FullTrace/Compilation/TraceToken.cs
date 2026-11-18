@@ -5,11 +5,11 @@ namespace InternalsViewer.Query.FullTrace.Compilation;
 
 public sealed record TraceToken(string Text,
                                 int Offset,
-                                TraceTokenKind Kind,
+                                TraceTokenType TokenType,
                                 int Id,
                                 CallTreeNode Node,
                                 int CallIndex,
                                 TracePosition Position)
 {
-    public string KindName => Enum.IsDefined(Kind) ? Kind.ToString() : $"Kind {(int)Kind}";
+    public string KindName => Enum.IsDefined(TokenType) ? TokenType.ToString() : $"Type {(int)TokenType}";
 }

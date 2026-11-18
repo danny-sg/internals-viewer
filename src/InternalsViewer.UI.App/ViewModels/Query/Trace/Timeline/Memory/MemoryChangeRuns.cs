@@ -32,7 +32,7 @@ public static class MemoryChangeRuns
                 {
                     states[offset] = MemoryChangeState.Changed;
 
-                    writers[offset] = write.CallNodeIndex;
+                    writers[offset] = write.ReplayNodeIndex;
                 }
                 else if (states[offset] == MemoryChangeState.Unchanged)
                 {
@@ -63,7 +63,7 @@ public static class MemoryChangeRuns
             {
                 states[offset] = MemoryChangeState.Read;
 
-                readers[offset] = read.CallNodeIndex;
+                readers[offset] = read.ReplayNodeIndex;
             }
         }
 
@@ -95,4 +95,4 @@ public static class MemoryChangeRuns
     }
 }
 
-public readonly record struct MemoryChangeRun(int Start, int End, MemoryChangeState State, int CallNodeIndex);
+public readonly record struct MemoryChangeRun(int Start, int End, MemoryChangeState State, int ReplayNodeIndex);

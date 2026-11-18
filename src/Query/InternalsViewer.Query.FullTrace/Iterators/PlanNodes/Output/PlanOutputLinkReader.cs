@@ -114,7 +114,7 @@ internal sealed class PlanOutputLinkReader(TraceResult trace)
             if (write.Type != MemoryHistoryAccessType.Read && write.Offset <= offset && offset < write.Offset + write.Length)
             {
                 return IsCurrentValue(store, write, offset, link, field.Length)
-                    ? GetFunctionName(trace.CallStore.GetNode(write.CallNodeIndex))
+                    ? GetFunctionName(trace.CallStore.GetNode(write.ReplayNodeIndex))
                     : null;
             }
         }

@@ -188,7 +188,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
             : (TracePosition.Unknown, TracePosition.Unknown);
 
     public CallReference? GetOrigin(AddressMapEntry origin)
-        => Store.GetNode(origin.CallNodeIndex) is { Frame: not null } node && CallsOf(node) is { } calls
+        => Store.GetNode(origin.ReplayNodeIndex) is { Frame: not null } node && CallsOf(node) is { } calls
             ? new CallReference(node, origin.CallIndex < calls.Count ? origin.CallIndex : -1)
             : null;
 
@@ -266,7 +266,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
     {
         if (memoryHistory.GetBlock(value, position) is not (>= 0 and var index)
             || memoryHistory.Blocks[index] is not { IsStack: true } block
-            || Store.GetNode(block.CallNodeIndex)?.Frame is not { } frame)
+            || Store.GetNode(block.ReplayNodeIndex)?.Frame is not { } frame)
         {
             return null;
         }
@@ -286,7 +286,7 @@ public sealed class CallStoreLookup(TraceCallStore store,
         => memoryHistory.GetBlock(value, position) is >= 0 and var block
            && memoryHistory.Blocks[block] is { IsStack: false } item
            && item.Address == value
-            ? AllocationTypeReader.GetLabel(Store, item.CallNodeIndex, item.Size)
+            ? AllocationTypeReader.GetLabel(Store, item.ReplayNodeIndex, item.Size)
             : null;
 
     private string GetTargetName(MemoryHistoryPointer pointer, TracePosition position)

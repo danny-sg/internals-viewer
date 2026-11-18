@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using Windows.System;
 using Windows.UI.Core;
-using InternalsViewer.UI.App.Models.Query.Simulation.Columnstore;
+using InternalsViewer.UI.App.Models.Columnstore;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;

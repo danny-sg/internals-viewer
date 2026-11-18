@@ -392,9 +392,16 @@ public sealed class CallTree
             return GetRvaKey(frame);
         }
 
-        var key = $"{frame.Module.Name}!{function.ClassName}::{function.MethodName}";
+        var module = frame.Module.Name;
 
-        return frame.InstanceAddress == 0 ? key : $"{key}@{frame.InstanceAddress:X}";
+        if (frame.InstanceAddress != 0)
+        {
+            return $"{module}!{function.ClassName}::{function.MethodName}@{frame.InstanceAddress:X}";
+        }
+
+        return function.ModuleName == module
+            ? function.FunctionKey
+            : $"{module}!{function.ClassName}::{function.MethodName}";
     }
 
     private sealed class Segmenter(CallTree projected,

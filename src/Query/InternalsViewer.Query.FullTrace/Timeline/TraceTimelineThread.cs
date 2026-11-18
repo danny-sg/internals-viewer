@@ -81,7 +81,7 @@ public sealed class TraceTimelineThread
         {
             for (var index = 0; index < row.Count; index++)
             {
-                if (isRemoved(row.GetCallNodeIndex(index)))
+                if (isRemoved(row.GetReplayNodeIndex(index)))
                 {
                     removed.Add((row.GetFromPosition(index), row.GetToPosition(index)));
                 }

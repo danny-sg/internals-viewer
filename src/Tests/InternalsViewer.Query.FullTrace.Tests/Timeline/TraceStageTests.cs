@@ -106,8 +106,8 @@ public class TraceStageTests
         return timeline;
     }
 
-    private static CallSpan Span(int callNodeIndex, ulong start, ulong end, uint thread, uint callIndex = 0)
-        => new(1, start, 1, end, start, end, callNodeIndex, thread, callIndex, Returned);
+    private static CallSpan Span(int replayNodeIndex, ulong start, ulong end, uint thread, uint callIndex = 0)
+        => new(1, start, 1, end, start, end, replayNodeIndex, thread, callIndex, Returned);
 
     private static CallFrame Frame(string module, string className, string methodName, ulong address) => new()
     {

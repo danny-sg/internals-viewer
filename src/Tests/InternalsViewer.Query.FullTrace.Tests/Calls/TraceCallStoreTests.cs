@@ -225,7 +225,7 @@ public class TraceCallStoreTests
 
         var builder = new TraceCallStore.Builder();
 
-        builder.Add(0x1000, 0, Chunk(Row(1, rcx: 0xA0, callNodeIndex: 1), Row(2, callNodeIndex: -1)), 2);
+        builder.Add(0x1000, 0, Chunk(Row(1, rcx: 0xA0, replayNodeIndex: 1), Row(2, replayNodeIndex: -1)), 2);
 
         var store = builder.Build();
 
@@ -362,7 +362,7 @@ public class TraceCallStoreTests
 
         var builder = new TraceCallStore.Builder();
 
-        builder.Add(0x1000, 0, Chunk(Row(10, callNodeIndex: 0)), 1);
+        builder.Add(0x1000, 0, Chunk(Row(10, replayNodeIndex: 0)), 1);
 
         builder.AddLocator(0x1000, 0, 0, new Locator(1, LocatorValueType.Referenced, 3), false);
 
@@ -385,7 +385,7 @@ public class TraceCallStoreTests
 
         var builder = new TraceCallStore.Builder();
 
-        builder.Add(0x1000, 0, Chunk(Row(10, callNodeIndex: 0), Row(11, callNodeIndex: 1), Row(12, callNodeIndex: 1)), 3);
+        builder.Add(0x1000, 0, Chunk(Row(10, replayNodeIndex: 0), Row(11, replayNodeIndex: 1), Row(12, replayNodeIndex: 1)), 3);
 
         builder.AddLocator(0x1000, 0, 0, new Locator(2, LocatorValueType.Page, Page336), false);
         builder.AddLocator(0x1000, 0, 1, new Locator(2, LocatorValueType.Page, Page336 + 1), false);

@@ -33,7 +33,7 @@ public class AllocationMapperTests
 
         var builder = new TraceCallStore.Builder();
 
-        builder.Add(Allocator, 0, Chunk(Row(1, size: 100, callNodeIndex: 1), Row(2, size: 200, callNodeIndex: 1)), 2);
+        builder.Add(Allocator, 0, Chunk(Row(1, size: 100, replayNodeIndex: 1), Row(2, size: 200, replayNodeIndex: 1)), 2);
 
         var store = builder.Build();
 
@@ -58,8 +58,8 @@ public class AllocationMapperTests
 
         var builder = new TraceCallStore.Builder();
 
-        builder.Add(Allocator, 0, Chunk(Row(1, size: 64, callNodeIndex: 1)), 1);
-        builder.Add(Inner, 0, Chunk(Row(2, size: 8192, callNodeIndex: 2)), 1);
+        builder.Add(Allocator, 0, Chunk(Row(1, size: 64, replayNodeIndex: 1)), 1);
+        builder.Add(Inner, 0, Chunk(Row(2, size: 8192, replayNodeIndex: 2)), 1);
 
         var store = builder.Build();
 
@@ -83,7 +83,7 @@ public class AllocationMapperTests
 
         var builder = new TraceCallStore.Builder();
 
-        builder.Add(Inner, 0, Chunk(Row(1, size: 1, callNodeIndex: 2), Row(2, size: 2, callNodeIndex: 3)), 2);
+        builder.Add(Inner, 0, Chunk(Row(1, size: 1, replayNodeIndex: 2), Row(2, size: 2, replayNodeIndex: 3)), 2);
 
         var store = builder.Build();
 
@@ -107,8 +107,8 @@ public class AllocationMapperTests
 
         var builder = new TraceCallStore.Builder();
 
-        builder.Add(Allocator, 0, Chunk(Row(1, size: 64, callNodeIndex: 1, returned: 0xA0)), 1);
-        builder.Add(Inner, 0, Chunk(Row(2, size: 1, callNodeIndex: 2, receiver: 0xC1)), 1);
+        builder.Add(Allocator, 0, Chunk(Row(1, size: 64, replayNodeIndex: 1, returned: 0xA0)), 1);
+        builder.Add(Inner, 0, Chunk(Row(2, size: 1, replayNodeIndex: 2, receiver: 0xC1)), 1);
 
         var store = builder.Build();
 
@@ -144,7 +144,7 @@ public class AllocationMapperTests
 
         var builder = new TraceCallStore.Builder();
 
-        builder.Add(Allocator, 0, Chunk(Row(1, size: 48, callNodeIndex: 1, returned: 0xA0, receiver: 0xB0)), 1);
+        builder.Add(Allocator, 0, Chunk(Row(1, size: 48, replayNodeIndex: 1, returned: 0xA0, receiver: 0xB0)), 1);
 
         var store = builder.Build();
 
@@ -180,9 +180,9 @@ public class AllocationMapperTests
 
         var builder = new TraceCallStore.Builder();
 
-        builder.Add(Allocator, 0, Chunk(Row(1, size: 64, callNodeIndex: 1, returned: 0xA0)), 1);
-        builder.Add(Inner, 0, Chunk(Row(2, size: 64, callNodeIndex: 2, receiver: 0xB1)), 1);
-        builder.Add(Parent, 0, Chunk(Row(3, size: 64, callNodeIndex: 3, receiver: 0xB0)), 1);
+        builder.Add(Allocator, 0, Chunk(Row(1, size: 64, replayNodeIndex: 1, returned: 0xA0)), 1);
+        builder.Add(Inner, 0, Chunk(Row(2, size: 64, replayNodeIndex: 2, receiver: 0xB1)), 1);
+        builder.Add(Parent, 0, Chunk(Row(3, size: 64, replayNodeIndex: 3, receiver: 0xB0)), 1);
 
         var store = builder.Build();
 
@@ -220,8 +220,8 @@ public class AllocationMapperTests
 
         var builder = new TraceCallStore.Builder();
 
-        builder.Add(Allocator, 0, Chunk(Row(1, size: 888, callNodeIndex: 1, returned: 0xA0)), 1);
-        builder.Add(Inner, 0, Chunk(Row(2, size: 888, callNodeIndex: 2, returned: 0xA0, receiver: 0xB0)), 1);
+        builder.Add(Allocator, 0, Chunk(Row(1, size: 888, replayNodeIndex: 1, returned: 0xA0)), 1);
+        builder.Add(Inner, 0, Chunk(Row(2, size: 888, replayNodeIndex: 2, returned: 0xA0, receiver: 0xB0)), 1);
 
         var store = builder.Build();
 
@@ -262,9 +262,9 @@ public class AllocationMapperTests
 
         var builder = new TraceCallStore.Builder();
 
-        builder.Add(Allocator, 0, Chunk(Row(1, size: 64, callNodeIndex: 1, returned: 0xA0)), 1);
-        builder.Add(Inner, 0, Chunk(Row(2, size: 64, callNodeIndex: 2, receiver: 0xB1)), 1);
-        builder.Add(Parent, 0, Chunk(Row(3, size: 64, callNodeIndex: 3, receiver: 0xB0)), 1);
+        builder.Add(Allocator, 0, Chunk(Row(1, size: 64, replayNodeIndex: 1, returned: 0xA0)), 1);
+        builder.Add(Inner, 0, Chunk(Row(2, size: 64, replayNodeIndex: 2, receiver: 0xB1)), 1);
+        builder.Add(Parent, 0, Chunk(Row(3, size: 64, replayNodeIndex: 3, receiver: 0xB0)), 1);
 
         var store = builder.Build();
 
@@ -317,8 +317,8 @@ public class AllocationMapperTests
     private static AllocationFunction ClerkPages()
         => new(Inner, AllocationOperation.Allocate, 1, -1, 8192) { IsPage = true, CarriesClerk = true };
 
-    private static CallSpan Span(int callNodeIndex, ulong start, ulong end, uint callIndex)
-        => new(1, start, 1, end, start, end, callNodeIndex, 7, callIndex, 1);
+    private static CallSpan Span(int replayNodeIndex, ulong start, ulong end, uint callIndex)
+        => new(1, start, 1, end, start, end, replayNodeIndex, 7, callIndex, 1);
 
     private static ulong PeakWorkspace(TraceTimeline timeline, AllocationIndex allocation)
         => allocation.GetPeakWorkspaceDuring(timeline.Start.Position, timeline.End.Position.Next);
@@ -347,13 +347,13 @@ public class AllocationMapperTests
 
     private static CallFrame Frame(ulong address) => new() { Module = new("sqldk"), Rva = (uint)address, Address = address };
 
-    private static ulong[] Row(ulong sequence, ulong size, int callNodeIndex, ulong returned = 0, ulong receiver = 0)
+    private static ulong[] Row(ulong sequence, ulong size, int replayNodeIndex, ulong returned = 0, ulong receiver = 0)
         => TraceCallRowHelper.Row(sequence,
                              flags: returned != 0 ? ReturnedFlag : 0,
                              rcx: receiver,
                              rdx: size,
                              returnValue: returned,
-                             callNodeIndex: callNodeIndex);
+                             replayNodeIndex: replayNodeIndex);
 
     private static ulong[] Chunk(params ulong[][] rows) => TraceCallRowHelper.Chunk(rows);
 }

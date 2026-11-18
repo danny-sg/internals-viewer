@@ -121,7 +121,7 @@ internal sealed class ReplaySession : IDisposable
                                                      TracePosition to,
                                                      ulong entryAddress,
                                                      long maximumSteps,
-                                                     List<ITraceHook> hooks,
+                                                     IInstructionHook hook,
                                                      IProgress<double>? progress,
                                                      CancellationToken cancellationToken)
     {
@@ -129,7 +129,7 @@ internal sealed class ReplaySession : IDisposable
 
         try
         {
-            return await Task.Run(() => ReplaySteps(thread, from, to, entryAddress, maximumSteps, hooks, progress, cancellationToken),
+            return await Task.Run(() => ReplaySteps(thread, from, to, entryAddress, maximumSteps, hook, progress, cancellationToken),
                                   cancellationToken);
         }
         finally
@@ -459,7 +459,7 @@ internal sealed class ReplaySession : IDisposable
                                           TracePosition to,
                                           ulong entryAddress,
                                           long maximumSteps,
-                                          List<ITraceHook> hooks,
+                                          IInstructionHook hook,
                                           IProgress<double>? progress,
                                           CancellationToken cancellationToken)
     {
@@ -480,7 +480,7 @@ internal sealed class ReplaySession : IDisposable
 
             try
             {
-                OnInstructionChunk(hooks, steps, stepCount, changes, changeCount, code, codeCount, bytes, byteCount);
+                OnInstructionChunk(hook, steps, stepCount, changes, changeCount, code, codeCount, bytes, byteCount);
             }
             catch (Exception exception)
             {
@@ -536,7 +536,7 @@ internal sealed class ReplaySession : IDisposable
         }
     }
 
-    private static unsafe void OnInstructionChunk(List<ITraceHook> hooks,
+    private static unsafe void OnInstructionChunk(IInstructionHook hook,
                                                   IntPtr steps,
                                                   int stepCount,
                                                   IntPtr changes,
@@ -546,18 +546,10 @@ internal sealed class ReplaySession : IDisposable
                                                   IntPtr bytes,
                                                   int byteCount)
     {
-        var stepSpan = new ReadOnlySpan<InstructionStep>((void*)steps, stepCount);
-
-        var changeSpan = new ReadOnlySpan<RegisterChange>((void*)changes, changeCount);
-
-        var codeSpan = new ReadOnlySpan<InstructionCode>((void*)code, codeCount);
-
-        var byteSpan = new ReadOnlySpan<byte>((void*)bytes, byteCount);
-
-        foreach (var hook in hooks)
-        {
-            hook.OnInstructionChunk(stepSpan, changeSpan, codeSpan, byteSpan);
-        }
+        hook.OnInstructionChunk(new ReadOnlySpan<InstructionStep>((void*)steps, stepCount),
+                                new ReadOnlySpan<RegisterChange>((void*)changes, changeCount),
+                                new ReadOnlySpan<InstructionCode>((void*)code, codeCount),
+                                new ReadOnlySpan<byte>((void*)bytes, byteCount));
     }
 
     private static TraceModule[] ReadModules(TraceHandle handle)

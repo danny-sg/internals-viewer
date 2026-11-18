@@ -58,7 +58,7 @@ public sealed partial class TraceTimelineControl
         {
             values[index] = TraceScale.GetValue(writes.GetPoint(index), _axis);
 
-            colours[index] = GetCategoryColour(writes.GetCallNodeIndex(index)).WithAlpha(alpha);
+            colours[index] = GetCategoryColour(writes.GetReplayNodeIndex(index)).WithAlpha(alpha);
         }
 
         Array.Sort(values, colours);

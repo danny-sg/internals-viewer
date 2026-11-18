@@ -203,9 +203,9 @@ public sealed class TimelineTools(McpDocumentResolver documents)
 
                 for (var index = 0; index < row.Count; index++)
                 {
-                    var callNodeIndex = row.GetCallNodeIndex(index);
+                    var replayNodeIndex = row.GetReplayNodeIndex(index);
 
-                    if (node is { } wantedNode && GetNodeId(scope, timeline, callNodeIndex) != wantedNode)
+                    if (node is { } wantedNode && GetNodeId(scope, timeline, replayNodeIndex) != wantedNode)
                     {
                         continue;
                     }
@@ -235,7 +235,7 @@ public sealed class TimelineTools(McpDocumentResolver documents)
                                                   rowIndex,
                                                   from,
                                                   to,
-                                                  callNodeIndex,
+                                                  replayNodeIndex,
                                                   row.GetCallIndex(index),
                                                   row.GetFlags(index));
 
@@ -269,7 +269,7 @@ public sealed class TimelineTools(McpDocumentResolver documents)
 
         foreach (var candidate in ranked)
         {
-            var nodeId = GetNodeId(scope, timeline, candidate.CallNodeIndex);
+            var nodeId = GetNodeId(scope, timeline, candidate.ReplayNodeIndex);
 
             table.Add(useInstructions
                           ? candidate.Length.ToString("N0", CultureInfo.InvariantCulture)
@@ -281,7 +281,7 @@ public sealed class TimelineTools(McpDocumentResolver documents)
                       candidate.CallIndex < 0 ? string.Empty : candidate.CallIndex,
                       candidate.Flags.HasFlag(TraceSpanFlags.Returned) ? "ret" : string.Empty,
                       nodeId is { } id ? id : string.Empty,
-                      GetFunctionName(scope, timeline, candidate.CallNodeIndex));
+                      GetFunctionName(scope, timeline, candidate.ReplayNodeIndex));
         }
 
         table.Write(builder);
@@ -303,7 +303,7 @@ public sealed class TimelineTools(McpDocumentResolver documents)
             {
                 for (var index = 0; index < row.Count; index++)
                 {
-                    if (GetNodeId(scope, timeline, row.GetCallNodeIndex(index)) != nodeId)
+                    if (GetNodeId(scope, timeline, row.GetReplayNodeIndex(index)) != nodeId)
                     {
                         continue;
                     }
@@ -366,11 +366,11 @@ public sealed class TimelineTools(McpDocumentResolver documents)
         return (first, last);
     }
 
-    private static int? GetNodeId(McpDocumentScope scope, TraceTimeline timeline, int callNodeIndex)
-        => timeline.GetNode(callNodeIndex) is { } node ? scope.Context.Nodes.GetId(node) : null;
+    private static int? GetNodeId(McpDocumentScope scope, TraceTimeline timeline, int replayNodeIndex)
+        => timeline.GetNode(replayNodeIndex) is { } node ? scope.Context.Nodes.GetId(node) : null;
 
-    private static string GetFunctionName(McpDocumentScope scope, TraceTimeline timeline, int callNodeIndex)
-        => timeline.GetNode(callNodeIndex) is { } node ? scope.Context.GetFunctionName(node) : $"raw node {callNodeIndex}";
+    private static string GetFunctionName(McpDocumentScope scope, TraceTimeline timeline, int replayNodeIndex)
+        => timeline.GetNode(replayNodeIndex) is { } node ? scope.Context.GetFunctionName(node) : $"raw node {replayNodeIndex}";
 
     private sealed record SpanRange(ulong? FromInstructions, ulong? ToInstructions, TracePosition? FromPosition, TracePosition? ToPosition)
     {
@@ -391,7 +391,7 @@ public sealed class TimelineTools(McpDocumentResolver documents)
                                              int Depth,
                                              TracePoint From,
                                              TracePoint To,
-                                             int CallNodeIndex,
+                                             int ReplayNodeIndex,
                                              int CallIndex,
                                              TraceSpanFlags Flags);
 }

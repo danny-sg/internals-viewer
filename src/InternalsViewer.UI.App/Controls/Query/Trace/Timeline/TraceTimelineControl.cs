@@ -786,7 +786,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
                 return null;
             }
 
-            if (!Excludes(matches, row.GetCallNodeIndex(index)))
+            if (!Excludes(matches, row.GetReplayNodeIndex(index)))
             {
                 return row.GetStart(_axis, index);
             }
@@ -804,7 +804,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
                 return null;
             }
 
-            if (!Excludes(matches, row.GetCallNodeIndex(index)))
+            if (!Excludes(matches, row.GetReplayNodeIndex(index)))
             {
                 return row.GetStart(_axis, index);
             }
@@ -1244,14 +1244,14 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
 
         var any = false;
 
-        for (var callNodeIndex = 0; callNodeIndex < hidden.Length; callNodeIndex++)
+        for (var replayNodeIndex = 0; replayNodeIndex < hidden.Length; replayNodeIndex++)
         {
-            var parent = timeline.GetParent(callNodeIndex);
+            var parent = timeline.GetParent(replayNodeIndex);
 
-            hidden[callNodeIndex] = (parent >= 0 && hidden[parent])
-                           || (timeline.GetNode(callNodeIndex) is { Frame: not null } callNode && categories.Contains(callNode.Category));
+            hidden[replayNodeIndex] = (parent >= 0 && hidden[parent])
+                           || (timeline.GetNode(replayNodeIndex) is { Frame: not null } callNode && categories.Contains(callNode.Category));
 
-            any |= hidden[callNodeIndex];
+            any |= hidden[replayNodeIndex];
         }
 
         return any ? hidden : null;
@@ -1325,7 +1325,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
     }
 
     private CallReference? GetCallReference(FlameHit? hit)
-        => hit is { } at && SpanOf(at) is { } span && _visible?.GetNode(span.CallNodeIndex) is { } node
+        => hit is { } at && SpanOf(at) is { } span && _visible?.GetNode(span.ReplayNodeIndex) is { } node
                ? new CallReference(node, span.CallIndex, true)
                : null;
 
@@ -1333,7 +1333,7 @@ public sealed partial class TraceTimelineControl : Grid, IPlayheadChart, IDispos
         => hit is { } at
            && SpanOf(at) is { } span
            && span.CallIndex == reference.CallIndex
-           && ReferenceEquals(_visible?.GetNode(span.CallNodeIndex), reference.Node);
+           && ReferenceEquals(_visible?.GetNode(span.ReplayNodeIndex), reference.Node);
 
     private void BringIntoView(FlameHit hit)
     {

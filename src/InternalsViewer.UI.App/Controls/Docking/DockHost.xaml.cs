@@ -188,9 +188,7 @@ public sealed partial class DockHost : UserControl
             ResizeBehavior = GridSplitter.GridResizeBehavior.PreviousAndNext
         };
 
-        var firstLength = split.FirstPixels is { } pixels
-            ? new GridLength(pixels)
-            : new GridLength(split.FirstStar, GridUnitType.Star);
+        var firstLength = new GridLength(split.FirstStar, GridUnitType.Star);
 
         var secondLength = new GridLength(split.SecondStar, GridUnitType.Star);
 

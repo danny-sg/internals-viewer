@@ -364,11 +364,11 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
         for (var index = 0; index < writes.Count; index++)
         {
-            var callNodeIndex = writes.GetCallNodeIndex(index);
+            var replayNodeIndex = writes.GetReplayNodeIndex(index);
 
-            if (callNodeIndex >= 0 && callNodeIndex < writers.Length)
+            if (replayNodeIndex >= 0 && replayNodeIndex < writers.Length)
             {
-                writers[callNodeIndex] = true;
+                writers[replayNodeIndex] = true;
             }
         }
 
@@ -643,7 +643,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
         Host.OnMemoryLayoutChanged();
     }
 
-    private void DrawPoints(SKCanvas canvas, List<(int X, int Y, int CallNodeIndex, bool IsRead)> marks, int size, bool[]? scope)
+    private void DrawPoints(SKCanvas canvas, List<(int X, int Y, int ReplayNodeIndex, bool IsRead)> marks, int size, bool[]? scope)
     {
         PointPaint.StrokeWidth = size;
 
@@ -653,17 +653,17 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
         ClearPoints(ScopedPointsByColour);
 
-        foreach (var (x, y, callNodeIndex, isRead) in marks)
+        foreach (var (x, y, replayNodeIndex, isRead) in marks)
         {
             var point = new SKPoint(x + size / 2f, y + size / 2f);
 
-            var colour = isRead ? GetReadColour(GetColour(callNodeIndex)) : GetColour(callNodeIndex);
+            var colour = isRead ? GetReadColour(GetColour(replayNodeIndex)) : GetColour(replayNodeIndex);
 
             if (scope is null)
             {
                 AddPoint(PointsByColour, colour, point);
             }
-            else if (IsInScope(scope, callNodeIndex))
+            else if (IsInScope(scope, replayNodeIndex))
             {
                 AddPoint(ScopedPointsByColour, colour, point);
             }
@@ -763,13 +763,13 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
                         Paints.Fill);
     }
 
-    private SKColor GetColour(int callNodeIndex)
+    private SKColor GetColour(int replayNodeIndex)
     {
-        if (!Colours.TryGetValue(callNodeIndex, out var colour))
+        if (!Colours.TryGetValue(replayNodeIndex, out var colour))
         {
-            colour = Host.GetColour(callNodeIndex);
+            colour = Host.GetColour(replayNodeIndex);
 
-            Colours[callNodeIndex] = colour;
+            Colours[replayNodeIndex] = colour;
         }
 
         return colour;
@@ -854,7 +854,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
         var stamps = new bool[columns * ((int)MathF.Ceiling(key.Height) + view.MarkSize + 1)];
 
-        var marks = new List<(int X, int Y, int CallNodeIndex, bool IsRead)>();
+        var marks = new List<(int X, int Y, int ReplayNodeIndex, bool IsRead)>();
 
         if (key.Scope is { } scope)
         {
@@ -882,7 +882,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
                                  FrameKey key,
                                  int columns,
                                  bool[] stamps,
-                                 List<(int X, int Y, int CallNodeIndex, bool IsRead)> marks,
+                                 List<(int X, int Y, int ReplayNodeIndex, bool IsRead)> marks,
                                  bool[]? scope)
     {
         if (view.GetRows(structure, lane.Run, lane.Address, lane.Length) is not { } rows
@@ -920,9 +920,9 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
             var next = GetLowerBound(lane, start + (column + 1) * size / scale, index + 1);
 
-            if (column >= 0 && GetMarkWriter(lane, index, next, scope) is { } callNodeIndex && IsFirstAt(stamps, row + column))
+            if (column >= 0 && GetMarkWriter(lane, index, next, scope) is { } replayNodeIndex && IsFirstAt(stamps, row + column))
             {
-                marks.Add((column * size, y, callNodeIndex, lane.IsRead));
+                marks.Add((column * size, y, replayNodeIndex, lane.IsRead));
             }
 
             index = next;
@@ -933,24 +933,24 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
     {
         if (scope is null)
         {
-            return lane.Writes[from].CallNodeIndex;
+            return lane.Writes[from].ReplayNodeIndex;
         }
 
         for (var index = from; index < to; index++)
         {
-            var callNodeIndex = lane.Writes[index].CallNodeIndex;
+            var replayNodeIndex = lane.Writes[index].ReplayNodeIndex;
 
-            if (IsInScope(scope, callNodeIndex))
+            if (IsInScope(scope, replayNodeIndex))
             {
-                return callNodeIndex;
+                return replayNodeIndex;
             }
         }
 
         return null;
     }
 
-    private static bool IsInScope(bool[] scope, int callNodeIndex)
-        => callNodeIndex >= 0 && callNodeIndex < scope.Length && scope[callNodeIndex];
+    private static bool IsInScope(bool[] scope, int replayNodeIndex)
+        => replayNodeIndex >= 0 && replayNodeIndex < scope.Length && scope[replayNodeIndex];
 
     private static void AddPoint(Dictionary<SKColor, List<SKPoint>> pointsByColour, SKColor colour, SKPoint point)
     {
@@ -1043,7 +1043,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
     {
         for (var index = GetLowerBound(lane, from, 0); index < lane.Writes.Length && lane.Writes[index].Value <= to; index++)
         {
-            if (scope is null || IsInScope(scope, lane.Writes[index].CallNodeIndex))
+            if (scope is null || IsInScope(scope, lane.Writes[index].ReplayNodeIndex))
             {
                 return true;
             }
@@ -1272,7 +1272,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
             laneIds[index] = last;
 
-            laneWrites[index] = new LaneWrite(index, traceScale.GetValue(write.Point, axis), write.CallNodeIndex);
+            laneWrites[index] = new LaneWrite(index, traceScale.GetValue(write.Point, axis), write.ReplayNodeIndex);
 
             counts[last]++;
         }
@@ -1550,7 +1550,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
     private sealed record Lane(int Block, ulong Address, int Length, int Run, LaneWrite[] Writes, bool IsRead);
 
-    private readonly record struct LaneWrite(int Index, double Value, int CallNodeIndex);
+    private readonly record struct LaneWrite(int Index, double Value, int ReplayNodeIndex);
 
     private sealed record Structure(IReadOnlyList<TraceMemoryBlock> Blocks,
                                     TraceScale TraceScale,
@@ -1580,7 +1580,7 @@ internal sealed class TraceMemoryPane(ITraceTimelineHost host, Func<(float Top, 
 
     private sealed record Frame(FrameKey Key, Structure Structure, View View, SKPicture Picture);
 
-    private sealed record Rendered(Structure Structure, View View, List<(int X, int Y, int CallNodeIndex, bool IsRead)> Marks);
+    private sealed record Rendered(Structure Structure, View View, List<(int X, int Y, int ReplayNodeIndex, bool IsRead)> Marks);
 
     private sealed record View(int MarkSize,
                                int[] Active,

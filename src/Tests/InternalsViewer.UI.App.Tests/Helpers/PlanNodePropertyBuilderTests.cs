@@ -1,8 +1,8 @@
 ﻿using InternalsViewer.Query.Events.Operators;
 using System.Data;
-using InternalsViewer.Execution.AccessPaths.Predicates;
-using InternalsViewer.Execution.AccessPaths.Search;
-using InternalsViewer.Execution.AccessPaths.Values;
+using InternalsViewer.Query.Plans.Predicates.Enums;
+using InternalsViewer.Query.Plans.Search;
+using InternalsViewer.Query.Plans.Values;
 using InternalsViewer.Query.Plans.Joins;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.UI.App.Helpers;

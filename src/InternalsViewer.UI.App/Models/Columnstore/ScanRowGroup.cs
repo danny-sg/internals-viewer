@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace InternalsViewer.UI.App.Models.Query.Simulation.Columnstore;
+namespace InternalsViewer.UI.App.Models.Columnstore;
 
 public sealed class ScanRowGroup
 {

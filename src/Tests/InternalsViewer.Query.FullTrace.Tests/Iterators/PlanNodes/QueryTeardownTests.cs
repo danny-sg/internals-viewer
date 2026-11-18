@@ -53,8 +53,8 @@ public class QueryTeardownTests
         return timeline;
     }
 
-    private static CallSpan Span(int callNodeIndex, ulong start, ulong end, uint thread, uint flags = Returned)
-        => new(1, start, 1, end, start, end, callNodeIndex, thread, 0, flags);
+    private static CallSpan Span(int replayNodeIndex, ulong start, ulong end, uint thread, uint flags = Returned)
+        => new(1, start, 1, end, start, end, replayNodeIndex, thread, 0, flags);
 
     private static CallFrame Frame(string className, string methodName, uint rva) => new()
     {

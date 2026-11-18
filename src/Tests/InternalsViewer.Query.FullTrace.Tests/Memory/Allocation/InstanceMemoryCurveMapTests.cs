@@ -102,8 +102,8 @@ public class InstanceMemoryCurveMapTests
         }
     };
 
-    private static CallSpan Span(int callNodeIndex, ulong start, ulong end, uint callIndex)
-        => new(start, 0, end, 0, start, end, callNodeIndex, Thread, callIndex, 1);
+    private static CallSpan Span(int replayNodeIndex, ulong start, ulong end, uint callIndex)
+        => new(start, 0, end, 0, start, end, replayNodeIndex, Thread, callIndex, 1);
 
     private sealed record Nodes(CallTreeNode Query, CallTreeNode Hash, CallTreeNode Allocator, CallTreeNode Plan);
 }

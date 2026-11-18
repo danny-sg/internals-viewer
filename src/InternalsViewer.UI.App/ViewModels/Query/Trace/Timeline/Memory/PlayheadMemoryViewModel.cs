@@ -549,8 +549,8 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         {
             Offset = write.Offset,
             Length = write.Length,
-            Description = History.GetWriterLabel(write.CallNodeIndex),
-            OutlineColour = GetCategoryColour(write.CallNodeIndex)
+            Description = History.GetWriterLabel(write.ReplayNodeIndex),
+            OutlineColour = GetCategoryColour(write.ReplayNodeIndex)
         };
     }
 
@@ -611,17 +611,17 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         {
             Offset = read.Offset,
             Length = read.Length,
-            Description = History.GetWriterLabel(read.CallNodeIndex),
-            OutlineColour = GetReadColour(read.CallNodeIndex)
+            Description = History.GetWriterLabel(read.ReplayNodeIndex),
+            OutlineColour = GetReadColour(read.ReplayNodeIndex)
         };
     }
 
     public void MarkRead(int? index)
         => MarkPosition(index is { } wanted && GetReadIndex(wanted) is { } found ? History.Store.GetReadPoint(found) : null);
 
-    public Windows.UI.Color GetReadColour(int callNodeIndex)
+    public Windows.UI.Color GetReadColour(int replayNodeIndex)
     {
-        var colour = GetCategoryColour(callNodeIndex);
+        var colour = GetCategoryColour(replayNodeIndex);
 
         return Windows.UI.Color.FromArgb(colour.A,
                                          (byte)(colour.R + (255 - colour.R) / 2),
@@ -647,7 +647,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
             return;
         }
 
-        var function = runs[index].State == MemoryChangeState.Pending ? null : History.GetWriterLabel(runs[index].CallNodeIndex);
+        var function = runs[index].State == MemoryChangeState.Pending ? null : History.GetWriterLabel(runs[index].ReplayNodeIndex);
 
         var address = History.Store.Blocks[Block].Address + (ulong)offset;
 
@@ -694,7 +694,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         for (var index = first; index < first + count; index++)
         {
-            if (History.GetWriterLabel(store.GetRead(index).CallNodeIndex) == label)
+            if (History.GetWriterLabel(store.GetRead(index).ReplayNodeIndex) == label)
             {
                 points.Add(store.GetReadPoint(index));
             }
@@ -727,7 +727,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
 
         for (var index = 0; index < writes.Count; index++)
         {
-            if (History.GetWriterLabel(writes[index].CallNodeIndex) == label)
+            if (History.GetWriterLabel(writes[index].ReplayNodeIndex) == label)
             {
                 points.Add(store.GetPoint(first + index));
             }
@@ -736,7 +736,7 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         chart.MarkPositions([.. points]);
     }
 
-    public Windows.UI.Color GetCategoryColour(int callNodeIndex) => History.GetCategoryColour(callNodeIndex);
+    public Windows.UI.Color GetCategoryColour(int replayNodeIndex) => History.GetCategoryColour(replayNodeIndex);
 
     partial void OnSelectedTabChanged(int value)
     {
@@ -1261,11 +1261,11 @@ public sealed partial class PlayheadMemoryViewModel : ObservableObject
         {
             var isPending = run.State == MemoryChangeState.Pending;
 
-            var category = isPending ? null : (Windows.UI.Color?)GetCategoryColour(run.CallNodeIndex);
+            var category = isPending ? null : (Windows.UI.Color?)GetCategoryColour(run.ReplayNodeIndex);
 
             yield return new Marker
             {
-                Name = isPending ? NotYetChanged : History.GetWriterLabel(run.CallNodeIndex),
+                Name = isPending ? NotYetChanged : History.GetWriterLabel(run.ReplayNodeIndex),
                 StartPosition = run.Start,
                 EndPosition = run.End,
                 BackColour = category is { } colour ? ColourHelpers.Lighten(colour.ToColor()).ToWindowsColor() : Colors.WhiteSmoke,

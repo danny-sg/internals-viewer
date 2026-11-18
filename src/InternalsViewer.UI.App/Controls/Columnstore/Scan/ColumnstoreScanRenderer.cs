@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Globalization;
-using InternalsViewer.UI.App.Models.Query.Simulation.Columnstore;
+using InternalsViewer.UI.App.Models.Columnstore;
 using SkiaSharp;
 
 namespace InternalsViewer.UI.App.Controls.Columnstore.Scan;

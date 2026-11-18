@@ -210,7 +210,7 @@ public class MemoryObjectMapTests
                                                 rcx: rcx,
                                                 rdx: rdx,
                                                 returnValue: returned,
-                                                callNodeIndex: Nodes.Count - 1));
+                                                replayNodeIndex: Nodes.Count - 1));
 
             return this;
         }

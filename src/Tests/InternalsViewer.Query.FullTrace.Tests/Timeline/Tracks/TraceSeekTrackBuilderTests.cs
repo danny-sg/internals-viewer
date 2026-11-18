@@ -214,8 +214,8 @@ public class TraceSeekTrackBuilderTests
         return TraceSeekTrackBuilder.Build(timeline, calls, lifetimes, EnclosingOperatorCallIndex.Build(calls, lifetimes.OperatorsByInstance));
     }
 
-    private static ulong[] Call(ulong start, ulong end, int callNodeIndex)
-        => Row(start, flags: Thread | TraceCallColumnSet.ReturnedFlag, callNodeIndex: callNodeIndex, endSequence: end);
+    private static ulong[] Call(ulong start, ulong end, int replayNodeIndex)
+        => Row(start, flags: Thread | TraceCallColumnSet.ReturnedFlag, replayNodeIndex: replayNodeIndex, endSequence: end);
 
     private static CallFrame Frame(ulong address, ulong instance, string className, string method) => new()
     {
@@ -233,6 +233,6 @@ public class TraceSeekTrackBuilderTests
 
     private static TraceSpan Whole() => new(new TracePoint(At(0), 0), new TracePoint(At(1000), 1000), 0, 0, TraceSpanFlags.None);
 
-    private static CallSpan Span(int callNodeIndex, ulong start, ulong end, uint callIndex = 0)
-        => new(start, 0, end, 0, start, end, callNodeIndex, Thread, callIndex, 1);
+    private static CallSpan Span(int replayNodeIndex, ulong start, ulong end, uint callIndex = 0)
+        => new(start, 0, end, 0, start, end, replayNodeIndex, Thread, callIndex, 1);
 }

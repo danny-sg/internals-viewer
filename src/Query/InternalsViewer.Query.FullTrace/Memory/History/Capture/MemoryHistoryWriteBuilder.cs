@@ -269,9 +269,10 @@ internal sealed class MemoryHistoryWriteBuilder(WatchedBlockIndex lookup, WatchH
     {
         var spanId = stacks.GetWriter(hit.Thread, hit.Position);
 
-        if (stacks.GetCallNodeIndex(spanId) is >= 0 and var callNodeIndex && stacks.GetIterator(callNodeIndex) is not 0 and var iterator)
+        if (stacks.GetReplayNodeIndex(spanId) is >= 0 and var replayNodeIndex
+            && stacks.GetIterator(replayNodeIndex) is not 0 and var iterator)
         {
-            Iterators[callNodeIndex] = iterator;
+            Iterators[replayNodeIndex] = iterator;
         }
 
         return spanId;

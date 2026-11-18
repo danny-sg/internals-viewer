@@ -267,7 +267,7 @@ internal sealed class AddressMapHook(Dictionary<ulong, AddressMapFunction> opera
                     Frame = call.CallId,
                     CallIndex = (int)call.CallIndex,
                     FromPosition = call.Position,
-                    CallNodeIndex = call.CallNodeIndex
+                    ReplayNodeIndex = call.ReplayNodeIndex
                 };
 
                 return;
@@ -298,7 +298,7 @@ internal sealed class AddressMapHook(Dictionary<ulong, AddressMapFunction> opera
                                      owner,
                                      call.Position,
                                      TracePosition.Unknown,
-                                     call.CallNodeIndex,
+                                     call.ReplayNodeIndex,
                                      call.Thread,
                                      operation,
                                      className));

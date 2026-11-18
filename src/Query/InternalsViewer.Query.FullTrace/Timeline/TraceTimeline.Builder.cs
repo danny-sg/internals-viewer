@@ -78,17 +78,17 @@ public sealed partial class TraceTimeline
 
         public void Add(CallSpan span)
         {
-            var from = new TracePosition(span.StartSequence, span.StartSteps);
+            var from = new TracePosition(span.FromSequence, span.FromSteps);
 
-            var to = new TracePosition(span.EndSequence, span.EndSteps);
+            var to = new TracePosition(span.ToSequence, span.ToSteps);
 
-            Clock.Add(from, span.StartInstructions);
+            Clock.Add(from, span.FromInstructions);
 
-            Clock.Add(to, span.EndInstructions);
+            Clock.Add(to, span.ToInstructions);
 
-            MaximumSteps = Math.Max(MaximumSteps, Math.Max(span.StartSteps, span.EndSteps));
+            MaximumSteps = Math.Max(MaximumSteps, Math.Max(span.FromSteps, span.ToSteps));
 
-            if (span.CallNodeIndex == ExcludedNode)
+            if (span.ReplayNodeIndex == ExcludedNode)
             {
                 Excluded.Add((from, to));
 
@@ -100,7 +100,7 @@ public sealed partial class TraceTimeline
                 Chunks.Add(new PendingSpan[ChunkSize]);
             }
 
-            Chunks[^1]![Count & ChunkMask] = new PendingSpan(from, to, span.CallNodeIndex, span.CallIndex, (byte)span.Flags);
+            Chunks[^1]![Count & ChunkMask] = new PendingSpan(from, to, span.ReplayNodeIndex, span.CallIndex, (byte)span.Flags);
 
             Count++;
         }
@@ -144,7 +144,7 @@ public sealed partial class TraceTimeline
                 {
                     var span = spans[offset];
 
-                    store.Set(next[GetDepth(span, depths)]++, span.From, span.To, span.CallNodeIndex, span.CallIndex, span.Flags);
+                    store.Set(next[GetDepth(span, depths)]++, span.From, span.To, span.ReplayNodeIndex, span.CallIndex, span.Flags);
                 }
 
                 Chunks[chunk] = null;
@@ -175,9 +175,9 @@ public sealed partial class TraceTimeline
         }
 
         private static int GetDepth(in PendingSpan span, int[] depths)
-            => span.CallNodeIndex >= 0 && span.CallNodeIndex < depths.Length ? depths[span.CallNodeIndex] : 0;
+            => span.ReplayNodeIndex >= 0 && span.ReplayNodeIndex < depths.Length ? depths[span.ReplayNodeIndex] : 0;
 
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
-        private readonly record struct PendingSpan(TracePosition From, TracePosition To, int CallNodeIndex, uint CallIndex, byte Flags);
+        private readonly record struct PendingSpan(TracePosition From, TracePosition To, int ReplayNodeIndex, uint CallIndex, byte Flags);
     }
 }

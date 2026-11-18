@@ -2,8 +2,9 @@
 using System.Globalization;
 using System.Text;
 using System.Linq;
-using InternalsViewer.Execution.AccessPaths.Predicates;
-using InternalsViewer.Execution.AccessPaths.Text;
+using InternalsViewer.Query.Plans.Predicates;
+using InternalsViewer.Query.Plans.Text;
+using InternalsViewer.Query.Plans.Text.Enums;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans.Joins;
 using InternalsViewer.Query.Plans.Model;

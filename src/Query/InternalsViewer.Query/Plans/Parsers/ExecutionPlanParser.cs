@@ -1,13 +1,12 @@
 ﻿using System.Data;
 using System.Xml.Linq;
-using InternalsViewer.Execution.AccessPaths.Aggregation;
-using InternalsViewer.Execution.AccessPaths.Predicates;
-using InternalsViewer.Execution.AccessPaths.Values;
-using InternalsViewer.Execution.AccessPaths.Windowing;
+using InternalsViewer.Query.Plans.Aggregation;
 using InternalsViewer.Query.Plans.Enums;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans.Operators;
 using InternalsViewer.Query.Plans.Parsers.Predicates;
+using InternalsViewer.Query.Plans.Predicates;
+using InternalsViewer.Query.Plans.Values.Enums;
 
 namespace InternalsViewer.Query.Plans.Parsers;
 
@@ -205,7 +204,6 @@ public static class ExecutionPlanParser
         node.DefinedValues = ParseDefinedValues(element, parameters);
         node.ProbedBitmaps = ParseProbedBitmaps(element);
         node.SortColumns = ParseSortColumns(element);
-        node.SortInfo = ParseSortInfo(element);
         node.MergeInfo = ParseMergeInfo(element, parameters);
         node.NestedLoopsInfo = ParseNestedLoopsInfo(element, parameters);
         node.GroupByColumns = ParseGroupBy(element);
@@ -220,16 +218,6 @@ public static class ExecutionPlanParser
         if (OperatorClassifier.IsAggregate(node))
         {
             node.AggregateInfo = ParseAggregateInfo(element, node);
-        }
-
-        if (OperatorClassifier.IsSegment(node))
-        {
-            node.SegmentInfo = ParseSegmentInfo(element, node);
-        }
-
-        if (OperatorClassifier.IsSequenceProject(node))
-        {
-            node.SequenceProjectInfo = ParseSequenceProjectInfo(element);
         }
 
         if (OperatorClassifier.IsDataAccess(node))
@@ -262,34 +250,13 @@ public static class ExecutionPlanParser
             node.Children.Add(ParseRelationalOperator(child, parameters, level + 1));
         }
 
-        if (string.Equals(node.PhysicalOperator, "Top", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(node.PhysicalOperator, "Top", StringComparison.OrdinalIgnoreCase)
+            && node.Children is [{ PredicateInfo: { } childPredicateInfo }])
         {
-            node.TopInfo = ParseTopInfo(element, parameters);
-
-            if (node.Children is [{ PredicateInfo: { } childPredicateInfo }])
-            {
-                childPredicateInfo.RowGoal = ParseTopRowCount(element, parameters);
-            }
+            childPredicateInfo.RowGoal = ParseTopRowCount(element, parameters);
         }
 
         return node;
-    }
-
-    private static TopInfo? ParseTopInfo(XElement element, PlanParameters parameters)
-    {
-        var top = element.Elements().FirstOrDefault(e => e.Name.LocalName == "Top");
-
-        if (top is null)
-        {
-            return null;
-        }
-
-        return new TopInfo
-        {
-            RowCount = ParseTopRowCount(element, parameters),
-            IsPercent = IsTrue(top.Attribute("IsPercent")),
-            WithTies = IsTrue(top.Attribute("WithTies"))
-        };
     }
 
     private static long? ParseTopRowCount(XElement element, PlanParameters parameters)
@@ -809,62 +776,6 @@ public static class ExecutionPlanParser
         };
     }
 
-    private static SegmentInfo ParseSegmentInfo(XElement element, PlanNode node)
-    {
-        var column = element.Elements()
-                            .FirstOrDefault(e => e.Name.LocalName == "Segment")?
-                            .Elements()
-                            .FirstOrDefault(e => e.Name.LocalName == "SegmentColumn")?
-                            .Elements()
-                            .FirstOrDefault(e => e.Name.LocalName == "ColumnReference");
-
-        return new SegmentInfo
-        {
-            GroupBy = node.GroupByColumns,
-            SegmentColumn = column is null ? null : ReadColumn(column)
-        };
-    }
-
-    /// <summary>
-    /// Reads the ranking functions a Sequence Project defines
-    /// </summary>
-    /// <remarks>
-    /// A ranking function is a running count rather than an expression over one row, so it is read straight from the Sequence element
-    /// instead of going through the scalar parser, which has nothing it could evaluate it to. Any defined value that does not resolve to
-    /// a known function leaves the operator untranslated rather than being dropped, which would return the wrong row.
-    /// </remarks>
-    private static SequenceProjectInfo ParseSequenceProjectInfo(XElement element)
-    {
-        var definedValues = FindDefinedValues(element)?
-                            .Elements()
-                            .Where(e => e.Name.LocalName == "DefinedValue")
-                            .ToList() ?? [];
-
-        var columns = new List<RankingColumn>();
-
-        foreach (var definedValue in definedValues)
-        {
-            var column = definedValue.Elements().FirstOrDefault(e => e.Name.LocalName == "ColumnReference");
-
-            var sequence = definedValue.Descendants().FirstOrDefault(e => e.Name.LocalName == "Sequence");
-
-            if (column is null
-                || sequence is null
-                || RankingFunctions.Parse(sequence.Attribute("FunctionName")?.Value) is not { } function)
-            {
-                continue;
-            }
-
-            columns.Add(new RankingColumn(ReadColumn(column).Column.Trim('[', ']'), function));
-        }
-
-        return new SequenceProjectInfo
-        {
-            Columns = columns,
-            HasUntranslatedFunction = columns.Count < definedValues.Count
-        };
-    }
-
     private static List<ColumnReference> GroupingColumns(PlanNode node)
     {
         if (node.GroupByColumns.Count > 0)
@@ -883,25 +794,6 @@ public static class ExecutionPlanParser
            ?? element.Elements()
                      .SelectMany(e => e.Elements())
                      .FirstOrDefault(e => e.Name.LocalName == "DefinedValues");
-
-    private static SortInfo? ParseSortInfo(XElement element)
-    {
-        var sort = element.Elements().FirstOrDefault(e => e.Name.LocalName is "Sort" or "TopSort");
-
-        if (sort is null)
-        {
-            return null;
-        }
-
-        long? rows = null;
-
-        if (sort.Name.LocalName == "TopSort" && long.TryParse(sort.Attribute("Rows")?.Value, out var parsed))
-        {
-            rows = parsed;
-        }
-
-        return new SortInfo(IsTrue(sort.Attribute("Distinct")), rows, IsTrue(sort.Attribute("WithTies")));
-    }
 
     private static List<SortColumnInfo> ParseSortColumns(XElement element)
     {

@@ -1,5 +1,5 @@
 using System.Data;
-using InternalsViewer.Execution.AccessPaths.Predicates;
+using InternalsViewer.Query.Plans.Predicates;
 
 namespace InternalsViewer.Query.Plans.Model;
 

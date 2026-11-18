@@ -31,9 +31,9 @@ internal interface ITraceTimelineHost
 
     double GetOrigin(TraceTimelineAxis axis);
 
-    SKColor GetColour(int callNodeIndex);
+    SKColor GetColour(int replayNodeIndex);
 
-    string GetLabel(int callNodeIndex);
+    string GetLabel(int replayNodeIndex);
 
     void Invalidate();
 

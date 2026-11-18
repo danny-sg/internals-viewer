@@ -8,7 +8,7 @@ internal sealed class TraceInnermostCallIndex(TraceTimeline? timeline)
 
     private Dictionary<uint, int> Depths { get; } = [];
 
-    public (int CallNodeIndex, int CallIndex) GetCall(uint thread, TracePosition position)
+    public (int ReplayNodeIndex, int CallIndex) GetCall(uint thread, TracePosition position)
     {
         if (!TryFind(thread, position, out var lane, out var depth, out var index))
         {
@@ -17,7 +17,7 @@ internal sealed class TraceInnermostCallIndex(TraceTimeline? timeline)
 
         var row = timeline!.Threads[lane].Rows[depth];
 
-        return (row.GetCallNodeIndex(index), row.GetCallIndex(index));
+        return (row.GetReplayNodeIndex(index), row.GetCallIndex(index));
     }
 
     public int GetSpanId(uint thread, TracePosition position) => GetSpanId(thread, position, out _);

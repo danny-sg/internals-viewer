@@ -119,17 +119,17 @@ public static class EmbeddedObjectReader
 
         foreach (var write in store.GetWrites(block))
         {
-            Add(write.CallNodeIndex, write.Offset, write.Length);
+            Add(write.ReplayNodeIndex, write.Offset, write.Length);
         }
 
         foreach (var read in store.GetReads(block))
         {
-            Add(read.CallNodeIndex, read.Offset, read.Length);
+            Add(read.ReplayNodeIndex, read.Offset, read.Length);
         }
 
         return [.. objects.Select((o, i) => o with { Length = Math.Max(0, ends[i] - starts[i]) })];
 
-        void Add(int callNodeIndex, int offset, int length)
+        void Add(int replayNodeIndex, int offset, int length)
         {
             var index = SortedSearch.FirstAfter<int>(starts, offset) - 1;
 
@@ -140,20 +140,20 @@ public static class EmbeddedObjectReader
 
             var limit = index + 1 < starts.Length ? starts[index + 1] : size;
 
-            if (offset < limit && getClassName(callNodeIndex) == objects[index].Type)
+            if (offset < limit && getClassName(replayNodeIndex) == objects[index].Type)
             {
                 ends[index] = Math.Max(ends[index], Math.Min(offset + length, limit));
             }
         }
     }
 
-    private static string? GetClassName(TraceCallStore? calls, Dictionary<int, string?> classNames, int callNodeIndex)
+    private static string? GetClassName(TraceCallStore? calls, Dictionary<int, string?> classNames, int replayNodeIndex)
     {
-        if (!classNames.TryGetValue(callNodeIndex, out var className))
+        if (!classNames.TryGetValue(replayNodeIndex, out var className))
         {
-            className = calls?.GetNode(callNodeIndex)?.Frame?.Function?.ClassName is { Length: > 0 } found ? found : null;
+            className = calls?.GetNode(replayNodeIndex)?.Frame?.Function?.ClassName is { Length: > 0 } found ? found : null;
 
-            classNames[callNodeIndex] = className;
+            classNames[replayNodeIndex] = className;
         }
 
         return className;

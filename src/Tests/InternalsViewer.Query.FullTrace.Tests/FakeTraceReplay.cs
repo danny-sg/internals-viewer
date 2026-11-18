@@ -51,4 +51,13 @@ internal sealed class FakeTraceReplay : ITraceReplay, ITraceMemoryReader
     }
 
     public ReadOnlySpan<TraceHookFrame> GetFrames(uint thread) => Frames;
+
+    public ReadOnlySpan<ulong> GetStackArguments(in TraceHookCall call)
+    {
+        var stack = new ulong[TraceHookArgumentReader.StackSlotCount];
+
+        TraceHookArgumentReader.ReadStackArguments(this, call, stack);
+
+        return stack;
+    }
 }

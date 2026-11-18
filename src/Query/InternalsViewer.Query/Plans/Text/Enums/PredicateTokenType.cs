@@ -1,4 +1,4 @@
-namespace InternalsViewer.Execution.AccessPaths.Text;
+namespace InternalsViewer.Query.Plans.Text.Enums;
 
 /// <summary>
 /// The role a piece of predicate text plays, used to drive formatting

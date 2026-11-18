@@ -100,7 +100,6 @@ public sealed class ExecutionPlanControl : Canvas
 
     private static readonly Point[] CurrentArrowPoints = [new(10, 2), new(10, 17), new(3, 10), new(10, 17), new(17, 10)];
 
-
     public static readonly DependencyProperty PlanProperty =
         DependencyProperty.Register(nameof(Plan), typeof(ExecutionPlan), typeof(ExecutionPlanControl),
             new PropertyMetadata(null, OnPlanChanged));
@@ -261,8 +260,6 @@ public sealed class ExecutionPlanControl : Canvas
     public event EventHandler<PlanNode>? HashTableOpenRequested;
 
     public event EventHandler<PlanNode>? SortTableOpenRequested;
-
-    public event EventHandler<PlanNode>? SimulationOpenRequested;
 
     public event EventHandler<PlanNode>? CallTreeOpenRequested;
 
@@ -958,24 +955,6 @@ public sealed class ExecutionPlanControl : Canvas
                 openIndex.Click += (_, _) => IndexOpenRequested?.Invoke(this, node);
 
                 flyout.Items.Add(openIndex);
-            }
-
-            var canSimulate = node.IsStatement
-                           || OperatorClassifier.IsTop(node)
-                           || OperatorClassifier.IsConcatenation(node)
-                           || OperatorClassifier.IsSort(node)
-                           || (!string.IsNullOrEmpty(node.Table) && OperatorClassifier.GetCategory(node) == OperatorCategory.DataAccess)
-                           || CorrelatedJoinResolver.Resolve(node) is not null
-                           || MergeJoinResolver.Resolve(node) is not null
-                           || HashJoinResolver.Resolve(node) is not null;
-
-            if (canSimulate)
-            {
-                var openSimulation = new MenuFlyoutItem { Text = "Simulate" };
-
-                openSimulation.Click += (_, _) => SimulationOpenRequested?.Invoke(this, node);
-
-                flyout.Items.Add(openSimulation);
             }
 
             if (IsFullTrace && CanOpenHashTable?.Invoke(node) == true)

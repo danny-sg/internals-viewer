@@ -756,7 +756,7 @@ public sealed partial class TraceTimelineControl
 
         if (span is { } found)
         {
-            node = _visible?.GetNode(found.CallNodeIndex);
+            node = _visible?.GetNode(found.ReplayNodeIndex);
             callIndex = found.CallIndex;
         }
 
@@ -884,7 +884,7 @@ public sealed partial class TraceTimelineControl
 
         _canvas.Invalidate();
 
-        if (hit is not { } selected || SpanOf(selected) is not { } span || _visible?.GetNode(span.CallNodeIndex) is not { } node)
+        if (hit is not { } selected || SpanOf(selected) is not { } span || _visible?.GetNode(span.ReplayNodeIndex) is not { } node)
         {
             return;
         }
@@ -1050,7 +1050,7 @@ public sealed partial class TraceTimelineControl
     }
 
     private void RootAt(FlameHit? hit)
-        => SetRoot(hit is { } at && SpanOf(at) is { } span ? _visible?.GetNode(span.CallNodeIndex) : null);
+        => SetRoot(hit is { } at && SpanOf(at) is { } span ? _visible?.GetNode(span.ReplayNodeIndex) : null);
 
     private void Click(FlameHit? hit)
     {
@@ -1235,11 +1235,11 @@ public sealed partial class TraceTimelineControl
 
         var span = row.GetSpan(hit.Index);
 
-        var node = timeline.GetNode(span.CallNodeIndex);
+        var node = timeline.GetNode(span.ReplayNodeIndex);
 
         var lines = new List<string>
         {
-            LabelOf(span.CallNodeIndex),
+            LabelOf(span.ReplayNodeIndex),
             node?.Category is { Length: > 0 } category ? category : "Unknown",
             span.CallIndex >= 0
                 ? $"Thread {thread.ThreadId}  ·  Call {span.CallIndex + 1}  ·  Depth {hit.Depth}"

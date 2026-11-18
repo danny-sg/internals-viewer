@@ -22,7 +22,15 @@ public sealed class FrameFunction
 
     public CategoryAttribute? SymbolMetadata => SymbolCategory.GetCategoryMetadata();
 
-    public static FrameFunction Parse(string module, string name)
+    internal string? ModuleName { get; init; }
+
+    internal string Symbol => field ??= ClassName is { Length: > 0 } className
+        ? $"{className}::{MethodName}"
+        : MethodName;
+
+    internal string FunctionKey => field ??= $"{ModuleName}!{ClassName}::{MethodName}";
+
+    internal static FrameFunction Parse(string module, string name)
     {
         var separator = SymbolHelper.FindClassMethodSeparator(name);
 
@@ -43,7 +51,8 @@ public sealed class FrameFunction
             MethodName = methodName,
             SymbolCategory = mappings.Classify(module, className, methodName),
             OperatorName = operatorName,
-            PlanOperator = planOperator
+            PlanOperator = planOperator,
+            ModuleName = module
         };
     }
 }

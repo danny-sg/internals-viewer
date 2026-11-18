@@ -49,7 +49,6 @@ export default defineConfig({
               { text: "Full Trace", link: "docs/user-guide/query/FullTrace" },
               { text: "Call Tree", link: "docs/user-guide/query/CallStack" },
               { text: "Trace Timeline", link: "docs/user-guide/query/TraceTimeline" },
-              { text: "Simulation", link: "docs/user-guide/query/Simulation" },
               {
                 text: "Execution Plan",
                 link: "docs/user-guide/query/ExecutionPlan",

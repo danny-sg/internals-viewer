@@ -69,9 +69,9 @@ internal static class BatchToRowOperatorBuilder
 
         var pending = new Queue<CallTreeNode>();
 
-        for (var callNodeIndex = 0; callNodeIndex < timeline.NodeCount; callNodeIndex++)
+        for (var replayNodeIndex = 0; replayNodeIndex < timeline.NodeCount; replayNodeIndex++)
         {
-            if (timeline.GetNode(callNodeIndex) is { Frame.InstanceAddress: var instance } callNode
+            if (timeline.GetNode(replayNodeIndex) is { Frame.InstanceAddress: var instance } callNode
                 && helpers.Contains(instance)
                 && seen.Add(callNode))
             {

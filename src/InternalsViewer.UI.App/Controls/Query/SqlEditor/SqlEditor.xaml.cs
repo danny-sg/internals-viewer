@@ -63,19 +63,6 @@ public sealed partial class SqlEditorControl : UserControl, IDisposable
         set => SetValue(CancelCommandProperty, value);
     }
 
-    public static readonly DependencyProperty SimulationCommandProperty =
-        DependencyProperty.Register(
-            nameof(SimulationCommand),
-            typeof(ICommand),
-            typeof(SqlEditorControl),
-            new PropertyMetadata(null));
-
-    public ICommand? SimulationCommand
-    {
-        get => (ICommand)GetValue(SimulationCommandProperty);
-        set => SetValue(SimulationCommandProperty, value);
-    }
-
     public static readonly DependencyProperty TrackQueryProperty =
         DependencyProperty.Register(nameof(TrackQuery), typeof(bool), typeof(SqlEditorControl),
             new PropertyMetadata(true, OnTrackQueryChanged));

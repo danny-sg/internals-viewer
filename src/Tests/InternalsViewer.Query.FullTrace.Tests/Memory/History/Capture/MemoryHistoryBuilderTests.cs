@@ -344,8 +344,8 @@ public class MemoryHistoryBuilderTests
         var write = store.GetWrites(0)[1];
 
         Assert.Equal((1, 2, (byte)7), (store.Blocks.Count, store.WriteCount, store.GetImage(0, 1).Data[8]));
-        Assert.Equal((2, 0, Iterator), (write.CallNodeIndex, write.CallIndex, store.GetIterator(write)));
-        Assert.Equal((built.Blocks[0].CallNodeIndex, Thread), (store.Blocks[0].CallNodeIndex, store.Blocks[0].Thread));
+        Assert.Equal((2, 0, Iterator), (write.ReplayNodeIndex, write.CallIndex, store.GetIterator(write)));
+        Assert.Equal((built.Blocks[0].ReplayNodeIndex, Thread), (store.Blocks[0].ReplayNodeIndex, store.Blocks[0].Thread));
     }
 
     [Fact]
@@ -504,7 +504,7 @@ public class MemoryHistoryBuilderTests
         var writes = store.GetWrites(0);
 
         Assert.Equal((true, 6, At(5), At(50), 1),
-                     (block.IsStack, block.CallNodeIndex, block.FromPosition, block.ToPosition, block.InstanceCount));
+                     (block.IsStack, block.ReplayNodeIndex, block.FromPosition, block.ToPosition, block.InstanceCount));
         Assert.Equal([MemoryHistoryAccessType.Initialised, MemoryHistoryAccessType.Changed], writes.Select(w => w.Type));
         Assert.Equal((2, (byte)9), (writes[1].Offset, store.GetBytes(writes[1])[0]));
     }
@@ -657,8 +657,8 @@ public class MemoryHistoryBuilderTests
         }
     };
 
-    private static CallSpan Span(int callNodeIndex, ulong start, ulong end, uint callIndex)
-        => new(start, 0, end, 0, start, end, callNodeIndex, Thread, callIndex, 1);
+    private static CallSpan Span(int replayNodeIndex, ulong start, ulong end, uint callIndex)
+        => new(start, 0, end, 0, start, end, replayNodeIndex, Thread, callIndex, 1);
 
     private static MemoryBlock Block(ulong pointer, ulong bytes, ulong from, ulong? to = null)
         => new(pointer, bytes, Thread, At(from), to is { } end ? At(end) : TracePosition.Unknown);

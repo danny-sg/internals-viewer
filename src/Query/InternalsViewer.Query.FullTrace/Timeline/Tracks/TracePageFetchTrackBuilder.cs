@@ -21,7 +21,7 @@ internal static class TracePageFetchTrackBuilder
             var access = accesses[index];
 
             if (access.Offset is not null
-                || timeline.GetNode(access.CallNodeIndex) is not { } node
+                || timeline.GetNode(access.ReplayNodeIndex) is not { } node
                 || timeline.FindCall(node, access.CallIndex) is not { } location)
             {
                 continue;

@@ -28,7 +28,7 @@ internal unsafe struct HookEvent
 
     public ulong Instructions;
 
-    public int CallNodeIndex;
+    public int ReplayNodeIndex;
 
     public uint CallIndex;
 

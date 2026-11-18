@@ -26,22 +26,6 @@ public sealed class PageLoader : IPageLoader
         return BuildPageData(database, pageAddress, data, isMarkEnabled);
     }
 
-    /// <summary>
-    /// Loads a page into a provided buffer
-    /// </summary>
-    /// <remarks>
-    /// Buffer scenarios are when pages are loaded on a transitory basis for index traversal etc. so markers are switched off
-    /// </remarks>
-    public async Task<PageData> LoadInto(DatabaseSource database,
-                                         PageAddress pageAddress,
-                                         byte[] buffer,
-                                         CancellationToken cancellationToken)
-    {
-        await database.Connection.PageReader.ReadInto(database.Name, pageAddress, buffer, cancellationToken);
-
-        return BuildPageData(database, pageAddress, buffer, false);
-    }
-
     public static PageData BuildPageData(DatabaseSource database,
                                          PageAddress pageAddress,
                                          byte[] data,

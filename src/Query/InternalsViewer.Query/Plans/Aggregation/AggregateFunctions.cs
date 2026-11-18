@@ -1,6 +1,6 @@
-using System.Data;
+using InternalsViewer.Query.Plans.Aggregation.Enums;
 
-namespace InternalsViewer.Execution.AccessPaths.Aggregation;
+namespace InternalsViewer.Query.Plans.Aggregation;
 
 public static class AggregateFunctions
 {
@@ -16,23 +16,6 @@ public static class AggregateFunctions
             "AVG" => AggregateFunction.Average,
             "ANY" => AggregateFunction.Any,
             _ => null
-        };
-
-    public static SqlDbType? ResultType(AggregateFunction function, SqlDbType? argumentType)
-        => function switch
-        {
-            AggregateFunction.CountStar or AggregateFunction.CountBig
-                => SqlDbType.BigInt,
-            AggregateFunction.Count
-                => SqlDbType.Int,
-            AggregateFunction.Average or AggregateFunction.Sum
-                => argumentType switch
-                {
-                    SqlDbType.TinyInt or SqlDbType.SmallInt or SqlDbType.Int => SqlDbType.Int,
-                    SqlDbType.Real => SqlDbType.Float,
-                    _ => argumentType
-                },
-            _ => argumentType
         };
 
     public static string ToDisplayName(this AggregateFunction function)

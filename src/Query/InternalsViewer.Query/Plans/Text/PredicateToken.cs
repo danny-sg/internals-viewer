@@ -1,4 +1,6 @@
-namespace InternalsViewer.Execution.AccessPaths.Text;
+using InternalsViewer.Query.Plans.Text.Enums;
+
+namespace InternalsViewer.Query.Plans.Text;
 
 /// <summary>
 /// A single run of predicate text/token type

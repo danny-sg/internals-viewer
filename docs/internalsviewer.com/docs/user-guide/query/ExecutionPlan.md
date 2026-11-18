@@ -28,7 +28,6 @@ Clicking an operator selects it and highlights its name, and clicking the plan's
 
 - **Skip To** - in [Guide Mode](#guide-mode), moves on to the next step where this operator takes over as the one heading the step. It is on the menu only when the operator has one after the current step
 - **Open Index:** and the index's name - opens the index in the [Index View](/docs/user-guide/index-view), linked to the replay, or a columnstore index in the [Columnstore Viewer](/docs/user-guide/columnstore)
-- **Simulate** - steps through the operator and everything beneath it in the [Simulation](/docs/user-guide/query/Simulation) pane
 - **Call Tree** and **Properties** - open those panes for the operator
 - **Show Counter** - for a [Full Trace](/docs/user-guide/query/FullTrace) run, shows or hides the operator's counter badge. The statement's is on to start with and every other operator's is off
 

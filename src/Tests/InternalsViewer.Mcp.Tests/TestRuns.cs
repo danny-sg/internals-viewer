@@ -280,8 +280,8 @@ internal static class TestRuns
         };
     }
 
-    private static CallSpan Span(int callNodeIndex, ulong start, ulong end)
-        => new(start, 0, end, 0, start, end, callNodeIndex, 7, uint.MaxValue, 1);
+    private static CallSpan Span(int replayNodeIndex, ulong start, ulong end)
+        => new(start, 0, end, 0, start, end, replayNodeIndex, 7, uint.MaxValue, 1);
 
-    private static ulong[] Call(ulong sequence, ulong rcx) => TraceCallRows.Row(sequence, rcx: rcx, callNodeIndex: 1);
+    private static ulong[] Call(ulong sequence, ulong rcx) => TraceCallRows.Row(sequence, rcx: rcx, replayNodeIndex: 1);
 }

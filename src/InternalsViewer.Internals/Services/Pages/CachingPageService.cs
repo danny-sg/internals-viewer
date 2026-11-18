@@ -54,24 +54,6 @@ public sealed partial class CachingPageService(ILogger<CachingPageService> logge
         return LoadAsync(dbCache, database, pageAddress, cancellationToken, isMarkEnabled);
     }
 
-    public Task<Page> GetPage(DatabaseSource database,
-                              PageAddress pageAddress,
-                              byte[] buffer,
-                              CancellationToken cancellationToken)
-    {
-        var dbCache = _cache.GetOrCreateValue(database);
-
-        if (dbCache.TryGetValue(pageAddress, out var cached))
-        {
-            LogCacheHit(Logger, pageAddress);
-
-            return cached;
-        }
-
-        // Don't cache the page as it came from a buffered load that is a lightweight load
-        return inner.GetPage(database, pageAddress, buffer, cancellationToken);
-    }
-
     public async Task<T> GetPage<T>(DatabaseSource database,
                                     PageAddress pageAddress,
                                     CancellationToken cancellationToken,

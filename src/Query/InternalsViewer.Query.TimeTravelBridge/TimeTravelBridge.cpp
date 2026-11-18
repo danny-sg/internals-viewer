@@ -46,9 +46,9 @@ namespace
 
     constexpr size_t ValuesPerCall = 11;
 
-    constexpr size_t StartSequenceValue = 0;
+    constexpr size_t FromSequenceValue = 0;
 
-    constexpr size_t StartStepsValue = 1;
+    constexpr size_t FromStepsValue = 1;
 
     constexpr size_t ThreadValue = 2;
 
@@ -58,9 +58,9 @@ namespace
 
     constexpr size_t NodeValue = 8;
 
-    constexpr size_t EndSequenceValue = 9;
+    constexpr size_t ToSequenceValue = 9;
 
-    constexpr size_t EndStepsValue = 10;
+    constexpr size_t ToStepsValue = 10;
 
     constexpr uint64_t UnknownSequence = UINT64_MAX;
 
@@ -171,8 +171,8 @@ namespace
         LoggedFunction* Function;
         int64_t         ChunkRowIndex;
         uint32_t        Chunk;
-        Position        Start;
-        uint64_t        StartInstructions;
+        Position        From;
+        uint64_t        FromInstructions;
         uint32_t        CallIndex;
         uint32_t        Flags;
         uint64_t        CallId;
@@ -386,7 +386,7 @@ namespace
             hookEvent.StackPointer = stackPointer;
             hookEvent.ReturnAddress = returnAddress;
             SetPosition(hookEvent, clock);
-            hookEvent.CallNodeIndex = node;
+            hookEvent.ReplayNodeIndex = node;
             hookEvent.CallIndex = callIndex;
             hookEvent.Thread = threadId;
             hookEvent.Type = EntryHook;
@@ -416,7 +416,7 @@ namespace
             hookEvent.StackPointer = stackPointer;
             hookEvent.ReturnAddress = frame.ReturnAddress;
             SetPosition(hookEvent, clock);
-            hookEvent.CallNodeIndex = frame.Node;
+            hookEvent.ReplayNodeIndex = frame.Node;
             hookEvent.CallIndex = frame.CallIndex;
             hookEvent.Thread = threadId;
             hookEvent.Type = thread != nullptr ? ReturnHook : AbandonedHook;
@@ -432,7 +432,7 @@ namespace
             hookEvent.CallId = frame.CallId;
             hookEvent.StackPointer = frame.StackPointer;
             SetPosition(hookEvent, clock);
-            hookEvent.CallNodeIndex = frame.Node;
+            hookEvent.ReplayNodeIndex = frame.Node;
             hookEvent.CallIndex = frame.CallIndex;
             hookEvent.Thread = threadId;
             hookEvent.Type = FrameEndedHook;
@@ -509,11 +509,11 @@ namespace
                 return;
             }
 
-            Spans.push_back(CallSpan{ static_cast<uint64_t>(frame.Start.Sequence),
-                                      static_cast<uint64_t>(frame.Start.Steps),
+            Spans.push_back(CallSpan{ static_cast<uint64_t>(frame.From.Sequence),
+                                      static_cast<uint64_t>(frame.From.Steps),
                                       static_cast<uint64_t>(end.Last.Sequence),
                                       static_cast<uint64_t>(end.Last.Steps),
-                                      frame.StartInstructions,
+                                      frame.FromInstructions,
                                       end.Instructions,
                                       frame.Node,
                                       thread,
@@ -598,8 +598,8 @@ namespace
 
         auto* values = function.Values.data() + chunkRowIndex * ValuesPerCall;
 
-        values[StartSequenceValue] = static_cast<uint64_t>(position.Sequence);
-        values[StartStepsValue] = static_cast<uint64_t>(position.Steps);
+        values[FromSequenceValue] = static_cast<uint64_t>(position.Sequence);
+        values[FromStepsValue] = static_cast<uint64_t>(position.Steps);
         values[ThreadValue] = threadId;
 
         values[IntegerValues + 0] = registers.Rcx;
@@ -609,7 +609,7 @@ namespace
 
         values[NodeValue] = static_cast<uint64_t>(node);
 
-        values[EndSequenceValue] = UnknownSequence;
+        values[ToSequenceValue] = UnknownSequence;
 
         function.InFlight++;
 
@@ -707,9 +707,9 @@ namespace
 
         auto* values = frame.Function->Values.data() + frame.ChunkRowIndex * ValuesPerCall;
 
-        values[EndSequenceValue] = static_cast<uint64_t>(clock.Last.Sequence);
+        values[ToSequenceValue] = static_cast<uint64_t>(clock.Last.Sequence);
 
-        values[EndStepsValue] = static_cast<uint64_t>(clock.Last.Steps);
+        values[ToStepsValue] = static_cast<uint64_t>(clock.Last.Steps);
 
         if (returned)
         {

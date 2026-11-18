@@ -173,7 +173,7 @@ public sealed partial class AddressMap
     {
         var operation = entry.Operation;
 
-        var node = getNode(entry.CallNodeIndex);
+        var node = getNode(entry.ReplayNodeIndex);
 
         var allocates = operation == AddressMapOperation.Allocated;
 
@@ -188,7 +188,7 @@ public sealed partial class AddressMap
                                   entry.FromPosition,
                                   entry.ToPosition,
                                   entry.Thread,
-                                  entry.CallNodeIndex,
+                                  entry.ReplayNodeIndex,
                                   entry.ClassName ?? (allocates ? null : GetName(node?.Frame?.Function?.ClassName)),
                                   allocates ? GetName(node?.Symbol) : null,
                                   bytes,
@@ -292,7 +292,7 @@ public sealed partial class AddressMap
                                entry.Bytes,
                                entry.CallIndex,
                                entry.Thread,
-                               entry.CallNodeIndex,
+                               entry.ReplayNodeIndex,
                                index);
     }
 
@@ -322,7 +322,7 @@ public sealed partial class AddressMap
                                   entry.FromPosition,
                                   entry.ToPosition,
                                   entry.Thread,
-                                  entry.CallNodeIndex,
+                                  entry.ReplayNodeIndex,
                                   label.ClassName,
                                   label.Allocator,
                                   entry.Bytes,
@@ -337,7 +337,7 @@ public sealed partial class AddressMap
                                                ulong Bytes,
                                                int CallIndex,
                                                uint Thread,
-                                               int CallNodeIndex,
+                                               int ReplayNodeIndex,
                                                int LabelIndex);
 
     private readonly record struct Label(AddressMapOperation Operation,

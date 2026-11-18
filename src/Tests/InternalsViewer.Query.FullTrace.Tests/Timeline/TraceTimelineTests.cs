@@ -25,21 +25,21 @@ public class TraceTimelineTests
     [Fact]
     public void Calls_Are_Laid_Out_In_Rows_By_Call_Depth()
     {
-        var timeline = Build(Span(callNodeIndex: 2, start: 10, end: 20),
-                             Span(callNodeIndex: 1, start: 5, end: 30),
-                             Span(callNodeIndex: 0, start: 0, end: 40));
+        var timeline = Build(Span(replayNodeIndex: 2, start: 10, end: 20),
+                             Span(replayNodeIndex: 1, start: 5, end: 30),
+                             Span(replayNodeIndex: 0, start: 0, end: 40));
 
         var thread = Assert.Single(timeline.Threads);
 
-        Assert.Equal([0, 1, 2], thread.Rows.Select(r => r.GetCallNodeIndex(0)));
+        Assert.Equal([0, 1, 2], thread.Rows.Select(r => r.GetReplayNodeIndex(0)));
         Assert.Equal(3, thread.CallCount);
     }
 
     [Fact]
     public void Calls_In_A_Row_Are_Ordered_By_Where_They_Start()
     {
-        var timeline = Build(Span(callNodeIndex: 1, start: 50, end: 60, sequence: 9),
-                             Span(callNodeIndex: 1, start: 10, end: 20, sequence: 3));
+        var timeline = Build(Span(replayNodeIndex: 1, start: 50, end: 60, sequence: 9),
+                             Span(replayNodeIndex: 1, start: 10, end: 20, sequence: 3));
 
         var row = Assert.Single(timeline.Threads).Rows[1];
 
@@ -79,7 +79,7 @@ public class TraceTimelineTests
     [Fact]
     public void A_Call_Is_Found_By_Where_It_Ran()
     {
-        var row = Build(Span(callNodeIndex: 0, start: 0, end: 10), Span(callNodeIndex: 0, start: 20, end: 30, sequence: 2)).Threads[0].Rows[0];
+        var row = Build(Span(replayNodeIndex: 0, start: 0, end: 10), Span(replayNodeIndex: 0, start: 20, end: 30, sequence: 2)).Threads[0].Rows[0];
 
         Assert.Equal(1, row.GetIndex(Instructions, 25, 0));
         Assert.Equal(-1, row.GetIndex(Instructions, 15, 0));
@@ -89,26 +89,26 @@ public class TraceTimelineTests
     [Fact]
     public void The_Stack_At_A_Position_Is_Each_Threads_Calls_In_Progress_Outermost_First()
     {
-        var timeline = Build(Span(callNodeIndex: 0, start: 0, end: 40, callIndex: 4),
-                             Span(callNodeIndex: 1, start: 5, end: 30, callIndex: 5),
-                             Span(callNodeIndex: 2, start: 10, end: 20, callIndex: 6),
-                             Span(callNodeIndex: 0, start: 20, end: 60, thread: 9, callIndex: 7));
+        var timeline = Build(Span(replayNodeIndex: 0, start: 0, end: 40, callIndex: 4),
+                             Span(replayNodeIndex: 1, start: 5, end: 30, callIndex: 5),
+                             Span(replayNodeIndex: 2, start: 10, end: 20, callIndex: 6),
+                             Span(replayNodeIndex: 0, start: 20, end: 60, thread: 9, callIndex: 7));
 
         var stacks = timeline.GetStack(At(1, 25));
 
         Assert.Equal([(7u, "0:4 1:5"), (9u, "0:7")],
-                     stacks.Select(s => (s.ThreadId, string.Join(' ', s.Calls.Select(c => $"{c.CallNodeIndex}:{c.CallIndex}")))));
+                     stacks.Select(s => (s.ThreadId, string.Join(' ', s.Calls.Select(c => $"{c.ReplayNodeIndex}:{c.CallIndex}")))));
     }
 
     [Fact]
     public void A_Position_No_Call_Covers_Has_No_Stack()
-        => Assert.Empty(Build(Span(callNodeIndex: 0, start: 0, end: 10)).GetStack(At(1, 15)));
+        => Assert.Empty(Build(Span(replayNodeIndex: 0, start: 0, end: 10)).GetStack(At(1, 15)));
 
     [Fact]
     public void Each_Thread_Has_Its_Own_Lane_In_The_Order_It_Started()
     {
-        var timeline = Build(Span(callNodeIndex: 0, start: 0, end: 10, thread: 9, sequence: 5),
-                             Span(callNodeIndex: 0, start: 0, end: 10, thread: 4, sequence: 2));
+        var timeline = Build(Span(replayNodeIndex: 0, start: 0, end: 10, thread: 9, sequence: 5),
+                             Span(replayNodeIndex: 0, start: 0, end: 10, thread: 4, sequence: 2));
 
         Assert.Equal([4u, 9u], timeline.Threads.Select(t => t.ThreadId));
         Assert.Equal(10, timeline.GetEnd(Instructions));
@@ -117,7 +117,7 @@ public class TraceTimelineTests
     [Fact]
     public void A_Call_Without_A_Logged_Call_Reads_As_No_Call()
     {
-        var span = Build(Span(callNodeIndex: 0, start: 0, end: 10, callIndex: uint.MaxValue, flags: 2)).Threads[0].Rows[0].GetSpan(0);
+        var span = Build(Span(replayNodeIndex: 0, start: 0, end: 10, callIndex: uint.MaxValue, flags: 2)).Threads[0].Rows[0].GetSpan(0);
 
         Assert.Equal(-1, span.CallIndex);
         Assert.Equal(TraceSpanFlags.StartUnknown, span.Flags);
@@ -126,9 +126,9 @@ public class TraceTimelineTests
     [Fact]
     public void A_Filter_Drops_Calls_But_Keeps_Each_Lane_And_Row()
     {
-        var timeline = Build(Span(callNodeIndex: 2, start: 10, end: 20),
-                             Span(callNodeIndex: 1, start: 5, end: 30),
-                             Span(callNodeIndex: 0, start: 0, end: 40));
+        var timeline = Build(Span(replayNodeIndex: 2, start: 10, end: 20),
+                             Span(replayNodeIndex: 1, start: 5, end: 30),
+                             Span(replayNodeIndex: 0, start: 0, end: 40));
 
         var thread = Assert.Single(timeline.Filter(n => n != 2).Threads);
 
@@ -140,9 +140,9 @@ public class TraceTimelineTests
     [Fact]
     public void Calls_Under_An_Excluded_Frame_Go_With_It()
     {
-        var timeline = Build(Span(callNodeIndex: 2, start: 10, end: 20),
-                             Span(callNodeIndex: 1, start: 5, end: 30),
-                             Span(callNodeIndex: 0, start: 0, end: 40));
+        var timeline = Build(Span(replayNodeIndex: 2, start: 10, end: 20),
+                             Span(replayNodeIndex: 1, start: 5, end: 30),
+                             Span(replayNodeIndex: 0, start: 0, end: 40));
 
         var tree = new CallTree();
 
@@ -163,9 +163,9 @@ public class TraceTimelineTests
     [Fact]
     public void A_Cropped_Timeline_Fits_To_The_Calls_Under_Its_Root()
     {
-        var timeline = Build(Span(callNodeIndex: 2, start: 10, end: 20),
-                             Span(callNodeIndex: 1, start: 5, end: 30),
-                             Span(callNodeIndex: 0, start: 0, end: 40));
+        var timeline = Build(Span(replayNodeIndex: 2, start: 10, end: 20),
+                             Span(replayNodeIndex: 1, start: 5, end: 30),
+                             Span(replayNodeIndex: 0, start: 0, end: 40));
 
         var tree = new CallTree();
 
@@ -180,7 +180,7 @@ public class TraceTimelineTests
 
         var thread = Assert.Single(cropped.Threads);
 
-        Assert.Equal([1, 2], thread.Rows.Select(r => r.GetCallNodeIndex(0)));
+        Assert.Equal([1, 2], thread.Rows.Select(r => r.GetReplayNodeIndex(0)));
         Assert.Equal((5d, 30d), (cropped.GetStart(Instructions), cropped.GetEnd(Instructions)));
         Assert.Equal((0d, 40d), (timeline.GetStart(Instructions), timeline.GetEnd(Instructions)));
     }
@@ -198,10 +198,10 @@ public class TraceTimelineTests
 
         var builder = new TraceTimeline.Builder();
 
-        builder.Add([Span(callNodeIndex: 0, start: 0, end: 100),
-                     Span(callNodeIndex: 1, start: 10, end: 90),
-                     Span(callNodeIndex: 2, start: 20, end: 40),
-                     Span(callNodeIndex: 3, start: 25, end: 30)]);
+        builder.Add([Span(replayNodeIndex: 0, start: 0, end: 100),
+                     Span(replayNodeIndex: 1, start: 10, end: 90),
+                     Span(replayNodeIndex: 2, start: 20, end: 40),
+                     Span(replayNodeIndex: 3, start: 25, end: 30)]);
 
         var timeline = builder.Build(nodes);
 
@@ -219,7 +219,7 @@ public class TraceTimelineTests
 
         var thread = Assert.Single(cropped.Threads);
 
-        Assert.Equal([1, 2, 3], thread.Rows.Select(r => r.GetCallNodeIndex(0)));
+        Assert.Equal([1, 2, 3], thread.Rows.Select(r => r.GetReplayNodeIndex(0)));
         Assert.Equal((10d, 90d), (cropped.GetStart(Instructions), cropped.GetEnd(Instructions)));
     }
 
@@ -239,7 +239,7 @@ public class TraceTimelineTests
         var rows = thread.Rows;
 
         Assert.Equal([[20d], [25d, 35d]], rows.Select(r => Starts(r)));
-        Assert.Equal([2, 3, 3], rows.SelectMany(r => Enumerable.Range(0, r.Count).Select(r.GetCallNodeIndex)));
+        Assert.Equal([2, 3, 3], rows.SelectMany(r => Enumerable.Range(0, r.Count).Select(r.GetReplayNodeIndex)));
         Assert.Same(source.Store, thread.Store);
     }
 
@@ -256,7 +256,7 @@ public class TraceTimelineTests
 
         Assert.Equal([2d, 20d, 72d], Starts(row));
         Assert.Equal([8d, 60d, 78d], Ends(row));
-        Assert.Equal([1, 2, 1], Enumerable.Range(0, row.Count).Select(row.GetCallNodeIndex));
+        Assert.Equal([1, 2, 1], Enumerable.Range(0, row.Count).Select(row.GetReplayNodeIndex));
         Assert.Same(source.Store, thread.Store);
     }
 
@@ -286,7 +286,7 @@ public class TraceTimelineTests
 
         Assert.Equal([[0d, 30d], [2d, 32d]], thread.Rows.Select(r => Starts(r)));
         Assert.Equal([[10d, 40d], [8d, 38d]], thread.Rows.Select(r => Ends(r)));
-        Assert.Equal([0, 0, 1, 1], thread.Rows.SelectMany(r => Enumerable.Range(0, r.Count).Select(r.GetCallNodeIndex)));
+        Assert.Equal([0, 0, 1, 1], thread.Rows.SelectMany(r => Enumerable.Range(0, r.Count).Select(r.GetReplayNodeIndex)));
         Assert.Equal(4, thread.CallCount);
     }
 
@@ -314,7 +314,7 @@ public class TraceTimelineTests
 
         Assert.Equal([[0d, 30d], [2d, 32d]], thread.Rows.Select(r => Starts(r)));
         Assert.Equal([[10d, 40d], [8d, 38d]], thread.Rows.Select(r => Ends(r)));
-        Assert.Equal([0, 0, 1, 1], thread.Rows.SelectMany(r => Enumerable.Range(0, r.Count).Select(r.GetCallNodeIndex)));
+        Assert.Equal([0, 0, 1, 1], thread.Rows.SelectMany(r => Enumerable.Range(0, r.Count).Select(r.GetReplayNodeIndex)));
         Assert.Equal(4, thread.CallCount);
     }
 
@@ -341,14 +341,14 @@ public class TraceTimelineTests
         var read = TraceTimelineRow.Read(reader, TraceScale.Default, thread.Clock, new TraceSpanStore(2), 0);
 
         Assert.Equal([25d, 35d], Starts(read));
-        Assert.Equal([3, 3], Enumerable.Range(0, read.Count).Select(read.GetCallNodeIndex));
+        Assert.Equal([3, 3], Enumerable.Range(0, read.Count).Select(read.GetReplayNodeIndex));
     }
 
     [Fact]
     public void A_Cropped_Timeline_Drops_Threads_Outside_The_Cropped_Tree()
     {
-        var timeline = Build(Span(callNodeIndex: 1, start: 5, end: 30),
-                             Span(callNodeIndex: 0, start: 0, end: 40, thread: 9));
+        var timeline = Build(Span(replayNodeIndex: 1, start: 5, end: 30),
+                             Span(replayNodeIndex: 0, start: 0, end: 40, thread: 9));
 
         var tree = new CallTree();
 
@@ -369,9 +369,9 @@ public class TraceTimelineTests
     [Fact]
     public void Calls_Under_A_Folded_Frame_Move_Up_Into_Its_Place()
     {
-        var timeline = Build(Span(callNodeIndex: 2, start: 10, end: 20),
-                             Span(callNodeIndex: 1, start: 5, end: 30),
-                             Span(callNodeIndex: 0, start: 0, end: 40));
+        var timeline = Build(Span(replayNodeIndex: 2, start: 10, end: 20),
+                             Span(replayNodeIndex: 1, start: 5, end: 30),
+                             Span(replayNodeIndex: 0, start: 0, end: 40));
 
         var tree = new CallTree();
 
@@ -383,7 +383,7 @@ public class TraceTimelineTests
 
         var thread = Assert.Single(timeline.Fold(n => ReferenceEquals(n, folded)).Threads);
 
-        Assert.Equal([0, 2], thread.Rows.Select(r => r.GetCallNodeIndex(0)));
+        Assert.Equal([0, 2], thread.Rows.Select(r => r.GetReplayNodeIndex(0)));
         Assert.Equal(2, thread.CallCount);
     }
 
@@ -392,11 +392,11 @@ public class TraceTimelineTests
     {
         var builder = new TraceTimeline.Builder();
 
-        builder.Add([Span(callNodeIndex: 0, start: 0, end: 100),
-                     Span(callNodeIndex: 3, start: 5, end: 8, callIndex: 7),
-                     Span(callNodeIndex: 1, start: 10, end: 40),
-                     Span(callNodeIndex: 2, start: 20, end: 30, callIndex: 8),
-                     Span(callNodeIndex: 3, start: 50, end: 60, callIndex: 9)]);
+        builder.Add([Span(replayNodeIndex: 0, start: 0, end: 100),
+                     Span(replayNodeIndex: 3, start: 5, end: 8, callIndex: 7),
+                     Span(replayNodeIndex: 1, start: 10, end: 40),
+                     Span(replayNodeIndex: 2, start: 20, end: 30, callIndex: 8),
+                     Span(replayNodeIndex: 3, start: 50, end: 60, callIndex: 9)]);
 
         var timeline = builder.Build([new(-1, 0x1000, 0, 1), new(0, 0x2000, 0, 1), new(1, 0x3000, 0, 1), new(0, 0x4000, 0, 2)]);
 
@@ -411,7 +411,7 @@ public class TraceTimelineTests
 
         var row = Assert.Single(timeline.Fold(n => ReferenceEquals(n, folded)).Threads).Rows[1];
 
-        Assert.Equal([3, 2, 3], Enumerable.Range(0, row.Count).Select(row.GetCallNodeIndex));
+        Assert.Equal([3, 2, 3], Enumerable.Range(0, row.Count).Select(row.GetReplayNodeIndex));
         Assert.Equal([7, 8, 9], Enumerable.Range(0, row.Count).Select(row.GetCallIndex));
         Assert.Equal([5d, 20d, 50d], Starts(row));
     }
@@ -419,9 +419,9 @@ public class TraceTimelineTests
     [Fact]
     public void Overlapping_Calls_In_One_Row_Are_Sorted_With_Their_Columns()
     {
-        var timeline = Build(Span(callNodeIndex: 0, start: 30, end: 40, callIndex: 1),
-                             Span(callNodeIndex: 0, start: 10, end: 50, callIndex: 2),
-                             Span(callNodeIndex: 0, start: 20, end: 25, callIndex: 3));
+        var timeline = Build(Span(replayNodeIndex: 0, start: 30, end: 40, callIndex: 1),
+                             Span(replayNodeIndex: 0, start: 10, end: 50, callIndex: 2),
+                             Span(replayNodeIndex: 0, start: 20, end: 25, callIndex: 3));
 
         var row = Assert.Single(timeline.Threads).Rows[0];
 
@@ -433,9 +433,9 @@ public class TraceTimelineTests
     [Fact]
     public void Folding_A_Root_Lifts_Its_Callees_To_The_Top()
     {
-        var timeline = Build(Span(callNodeIndex: 2, start: 10, end: 20),
-                             Span(callNodeIndex: 1, start: 5, end: 30),
-                             Span(callNodeIndex: 0, start: 0, end: 40));
+        var timeline = Build(Span(replayNodeIndex: 2, start: 10, end: 20),
+                             Span(replayNodeIndex: 1, start: 5, end: 30),
+                             Span(replayNodeIndex: 0, start: 0, end: 40));
 
         var tree = new CallTree();
 
@@ -451,13 +451,13 @@ public class TraceTimelineTests
 
         var thread = Assert.Single(rooted.Fold(n => ReferenceEquals(n, outer) || ReferenceEquals(n, execute)).Threads);
 
-        Assert.Equal([2], thread.Rows.Select(r => r.GetCallNodeIndex(0)));
+        Assert.Equal([2], thread.Rows.Select(r => r.GetReplayNodeIndex(0)));
     }
 
     [Fact]
     public void Each_Call_Path_Knows_The_Path_It_Was_Called_From()
     {
-        var timeline = Build(Span(callNodeIndex: 0, start: 0, end: 10));
+        var timeline = Build(Span(replayNodeIndex: 0, start: 0, end: 10));
 
         Assert.Equal(3, timeline.NodeCount);
         Assert.Equal([-1, 0, 1], Enumerable.Range(0, 3).Select(timeline.GetParent));
@@ -466,9 +466,9 @@ public class TraceTimelineTests
     [Fact]
     public void A_Root_Keeps_Only_Its_Calls_And_Their_Callees_With_Itself_At_The_Top()
     {
-        var timeline = Build(Span(callNodeIndex: 2, start: 10, end: 20),
-                             Span(callNodeIndex: 1, start: 5, end: 30),
-                             Span(callNodeIndex: 0, start: 0, end: 40));
+        var timeline = Build(Span(replayNodeIndex: 2, start: 10, end: 20),
+                             Span(replayNodeIndex: 1, start: 5, end: 30),
+                             Span(replayNodeIndex: 0, start: 0, end: 40));
 
         var tree = new CallTree();
 
@@ -484,7 +484,7 @@ public class TraceTimelineTests
 
         var thread = Assert.Single(rooted.Threads);
 
-        Assert.Equal([1, 2], thread.Rows.Select(r => r.GetCallNodeIndex(0)));
+        Assert.Equal([1, 2], thread.Rows.Select(r => r.GetReplayNodeIndex(0)));
         Assert.Equal(2, thread.CallCount);
     }
 
@@ -501,12 +501,12 @@ public class TraceTimelineTests
 
         var builder = new TraceTimeline.Builder();
 
-        builder.Add([Span(callNodeIndex: 1, start: 10, end: 50),
-                     Span(callNodeIndex: 0, start: 0, end: 60),
-                     Span(callNodeIndex: 3, start: 20, end: 30, thread: 9),
-                     Span(callNodeIndex: 2, start: 15, end: 40, thread: 9),
-                     Span(callNodeIndex: 2, start: 70, end: 80, thread: 9),
-                     Span(callNodeIndex: 2, start: 0, end: 10, thread: 11, sequence: 3)]);
+        builder.Add([Span(replayNodeIndex: 1, start: 10, end: 50),
+                     Span(replayNodeIndex: 0, start: 0, end: 60),
+                     Span(replayNodeIndex: 3, start: 20, end: 30, thread: 9),
+                     Span(replayNodeIndex: 2, start: 15, end: 40, thread: 9),
+                     Span(replayNodeIndex: 2, start: 70, end: 80, thread: 9),
+                     Span(replayNodeIndex: 2, start: 0, end: 10, thread: 11, sequence: 3)]);
 
         var timeline = builder.Build(nodes);
 
@@ -528,13 +528,13 @@ public class TraceTimelineTests
         var worker = rooted.Threads[1];
 
         Assert.Equal(2, worker.CallCount);
-        Assert.Equal([2, 3], worker.Rows.Select(r => r.GetCallNodeIndex(0)));
+        Assert.Equal([2, 3], worker.Rows.Select(r => r.GetReplayNodeIndex(0)));
     }
 
     [Fact]
     public void A_Root_That_Was_Never_Called_Gives_Nothing()
     {
-        var timeline = Build(Span(callNodeIndex: 0, start: 0, end: 10));
+        var timeline = Build(Span(replayNodeIndex: 0, start: 0, end: 10));
 
         Assert.Null(timeline.RootAt(_ => false));
     }
@@ -552,9 +552,9 @@ public class TraceTimelineTests
     [Fact]
     public void Steps_Within_A_Sequence_Are_Spread_Evenly()
     {
-        var timeline = Build(Span(callNodeIndex: 0, start: 100_000, end: 100_010),
-                             Span(callNodeIndex: 0, start: 100_020, end: 100_030),
-                             Span(callNodeIndex: 0, start: 999_990, end: 999_999));
+        var timeline = Build(Span(replayNodeIndex: 0, start: 100_000, end: 100_010),
+                             Span(replayNodeIndex: 0, start: 100_020, end: 100_030),
+                             Span(replayNodeIndex: 0, start: 999_990, end: 999_999));
 
         var starts = Starts(timeline.Threads[0].Rows[0], TraceTimelineAxis.Position);
 
@@ -567,9 +567,9 @@ public class TraceTimelineTests
     [Fact]
     public void Self_Allocations_Belong_To_The_Deepest_Call_Running_At_The_Time()
     {
-        var timeline = Build(Span(callNodeIndex: 2, start: 10, end: 20),
-                             Span(callNodeIndex: 1, start: 5, end: 30),
-                             Span(callNodeIndex: 0, start: 0, end: 40));
+        var timeline = Build(Span(replayNodeIndex: 2, start: 10, end: 20),
+                             Span(replayNodeIndex: 1, start: 5, end: 30),
+                             Span(replayNodeIndex: 0, start: 0, end: 40));
 
         var memory = AllocationIndex.Build([new(7, At(1, 10), At(1, 11), 100, 0xA),
                                         new(7, At(1, 25), At(1, 26), 30, 0xB),
@@ -588,11 +588,11 @@ public class TraceTimelineTests
         var root = tree.AddCall(tree.Root, new CallFrame { Module = new("sqlmin"), Rva = 0x100 }, 3);
         var child = tree.AddCall(root, new CallFrame { Module = new("sqlmin"), Rva = 0x200 }, 2);
 
-        var timeline = Build(Span(callNodeIndex: 0, start: 0, end: 10),
-                             Span(callNodeIndex: 0, start: 80, end: 85),
-                             Span(callNodeIndex: 0, start: 90, end: 100),
-                             Span(callNodeIndex: 1, start: 30, end: 35),
-                             Span(callNodeIndex: 1, start: 31, end: 32, flags: 3));
+        var timeline = Build(Span(replayNodeIndex: 0, start: 0, end: 10),
+                             Span(replayNodeIndex: 0, start: 80, end: 85),
+                             Span(replayNodeIndex: 0, start: 90, end: 100),
+                             Span(replayNodeIndex: 1, start: 30, end: 35),
+                             Span(replayNodeIndex: 1, start: 31, end: 32, flags: 3));
 
         timeline.MapNodes([root, child, null]);
 
@@ -605,7 +605,7 @@ public class TraceTimelineTests
     [Fact]
     public void A_Call_Is_Found_Where_The_Call_Log_Says_It_Started()
     {
-        CallSpan[] spans = [Span(callNodeIndex: 0, start: 0, end: 40), Span(callNodeIndex: 1, start: 5, end: 20), Span(callNodeIndex: 1, start: 25, end: 30, callIndex: 1)];
+        CallSpan[] spans = [Span(replayNodeIndex: 0, start: 0, end: 40), Span(replayNodeIndex: 1, start: 5, end: 20), Span(replayNodeIndex: 1, start: 25, end: 30, callIndex: 1)];
 
         var timeline = Build(spans);
 
@@ -622,7 +622,7 @@ public class TraceTimelineTests
     [Fact]
     public void A_Call_Is_Not_Found_Without_Its_Call_Log_Or_Outside_It()
     {
-        CallSpan[] spans = [Span(callNodeIndex: 0, start: 0, end: 40)];
+        CallSpan[] spans = [Span(replayNodeIndex: 0, start: 0, end: 40)];
 
         var timeline = Build(spans);
 
@@ -682,7 +682,7 @@ public class TraceTimelineTests
     [Fact]
     public void A_Call_The_Replay_Excluded_Is_A_Dead_Span_And_Not_A_Call()
     {
-        var timeline = Build(Span(callNodeIndex: 0, start: 0, end: 1000), Span(callNodeIndex: -2, start: 100, end: 500));
+        var timeline = Build(Span(replayNodeIndex: 0, start: 0, end: 1000), Span(replayNodeIndex: -2, start: 100, end: 500));
 
         var thread = Assert.Single(timeline.Threads);
 
@@ -694,7 +694,7 @@ public class TraceTimelineTests
     [Fact]
     public void A_Removed_Call_Too_Small_To_Matter_Leaves_No_Dead_Span()
     {
-        var timeline = Build(Span(callNodeIndex: 0, start: 0, end: 1000), Span(callNodeIndex: 1, start: 100, end: 105));
+        var timeline = Build(Span(replayNodeIndex: 0, start: 0, end: 1000), Span(replayNodeIndex: 1, start: 100, end: 105));
 
         RemoveChild(timeline);
 
@@ -707,9 +707,9 @@ public class TraceTimelineTests
     [Fact]
     public void Small_Removed_Calls_With_Nothing_Between_Them_Are_One_Dead_Span()
     {
-        var timeline = Build(Span(callNodeIndex: 0, start: 0, end: 1000),
-                             Span(callNodeIndex: 1, start: 100, end: 105),
-                             Span(callNodeIndex: 1, start: 106, end: 111, callIndex: 1));
+        var timeline = Build(Span(replayNodeIndex: 0, start: 0, end: 1000),
+                             Span(replayNodeIndex: 1, start: 100, end: 105),
+                             Span(replayNodeIndex: 1, start: 106, end: 111, callIndex: 1));
 
         RemoveChild(timeline);
 
@@ -722,9 +722,9 @@ public class TraceTimelineTests
     [Fact]
     public void A_Dead_Span_Another_Thread_Is_Busy_In_Stays_On_The_Position_Axis()
     {
-        var timeline = Build(Span(callNodeIndex: 0, start: 0, end: 100),
-                             Span(callNodeIndex: 1, start: 20, end: 60),
-                             Span(callNodeIndex: 0, start: 30, end: 40, thread: 8));
+        var timeline = Build(Span(replayNodeIndex: 0, start: 0, end: 100),
+                             Span(replayNodeIndex: 1, start: 20, end: 60),
+                             Span(replayNodeIndex: 0, start: 30, end: 40, thread: 8));
 
         RemoveChild(timeline);
 
@@ -772,13 +772,13 @@ public class TraceTimelineTests
 
         var builder = new TraceTimeline.Builder();
 
-        builder.Add([Span(callNodeIndex: 0, start: 0, end: 10),
-                     Span(callNodeIndex: 1, start: 2, end: 8),
-                     Span(callNodeIndex: 2, start: 20, end: 60),
-                     Span(callNodeIndex: 3, start: 25, end: 30),
-                     Span(callNodeIndex: 3, start: 35, end: 40),
-                     Span(callNodeIndex: 0, start: 70, end: 80),
-                     Span(callNodeIndex: 1, start: 72, end: 78)]);
+        builder.Add([Span(replayNodeIndex: 0, start: 0, end: 10),
+                     Span(replayNodeIndex: 1, start: 2, end: 8),
+                     Span(replayNodeIndex: 2, start: 20, end: 60),
+                     Span(replayNodeIndex: 3, start: 25, end: 30),
+                     Span(replayNodeIndex: 3, start: 35, end: 40),
+                     Span(replayNodeIndex: 0, start: 70, end: 80),
+                     Span(replayNodeIndex: 1, start: 72, end: 78)]);
 
         var timeline = builder.Build(nodes);
 
@@ -808,12 +808,12 @@ public class TraceTimelineTests
         return builder.Build(Nodes);
     }
 
-    private static CallSpan Span(int callNodeIndex,
+    private static CallSpan Span(int replayNodeIndex,
                                  ulong start,
                                  ulong end,
                                  uint thread = 7,
                                  ulong sequence = 1,
                                  uint callIndex = 0,
                                  uint flags = 1)
-        => new(sequence, start, sequence, end, start, end, callNodeIndex, thread, callIndex, flags);
+        => new(sequence, start, sequence, end, start, end, replayNodeIndex, thread, callIndex, flags);
 }

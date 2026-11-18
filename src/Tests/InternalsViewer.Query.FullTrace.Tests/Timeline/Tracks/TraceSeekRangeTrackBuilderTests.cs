@@ -215,8 +215,8 @@ public class TraceSeekRangeTrackBuilderTests
                            calls);
     }
 
-    private static ulong[] Call(ulong start, ulong end, int callNodeIndex, ulong range = 0)
-        => Row(start, flags: Thread | TraceCallColumnSet.ReturnedFlag, r8: range, callNodeIndex: callNodeIndex, endSequence: end);
+    private static ulong[] Call(ulong start, ulong end, int replayNodeIndex, ulong range = 0)
+        => Row(start, flags: Thread | TraceCallColumnSet.ReturnedFlag, r8: range, replayNodeIndex: replayNodeIndex, endSequence: end);
 
     private static CallFrame Frame(ulong address, ulong instance, string className, string method, string module = "sqlmin") => new()
     {
@@ -234,8 +234,8 @@ public class TraceSeekRangeTrackBuilderTests
 
     private static TraceSpan Whole() => new(new TracePoint(At(0), 0), new TracePoint(At(1000), 1000), 0, 0, TraceSpanFlags.None);
 
-    private static CallSpan Span(int callNodeIndex, ulong start, ulong end, uint callIndex = 0)
-        => new(start, 0, end, 0, start, end, callNodeIndex, Thread, callIndex, 1);
+    private static CallSpan Span(int replayNodeIndex, ulong start, ulong end, uint callIndex = 0)
+        => new(start, 0, end, 0, start, end, replayNodeIndex, Thread, callIndex, 1);
 
     private sealed record SeekRun(TraceTickSeries Ranges, TraceTickSeries Keys, TraceCallStore Calls);
 }

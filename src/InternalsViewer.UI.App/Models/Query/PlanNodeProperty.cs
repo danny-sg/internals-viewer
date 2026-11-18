@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using InternalsViewer.Execution.AccessPaths.Text;
+using InternalsViewer.Query.Plans.Text;
 
 namespace InternalsViewer.UI.App.Models.Query;
 

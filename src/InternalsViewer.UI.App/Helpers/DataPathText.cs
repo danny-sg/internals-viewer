@@ -1,8 +1,9 @@
 using System.Collections.Generic;
 using System.Linq;
-using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.Query.Plans.Enums;
 using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.Query.Plans.Text;
+using InternalsViewer.Query.Plans.Text.Enums;
 using Windows.UI;
 
 namespace InternalsViewer.UI.App.Helpers;

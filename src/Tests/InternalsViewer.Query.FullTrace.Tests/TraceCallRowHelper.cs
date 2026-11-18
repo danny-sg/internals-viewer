@@ -12,7 +12,7 @@ internal static class TraceCallRowHelper
                               ulong rdx = 0,
                               ulong r8 = 0,
                               ulong returnValue = 0,
-                              int callNodeIndex = 0,
+                              int replayNodeIndex = 0,
                               ulong steps = 0,
                               ulong endSequence = ulong.MaxValue,
                               ulong endSteps = 0)
@@ -26,7 +26,7 @@ internal static class TraceCallRowHelper
         row[TraceCallColumnSet.IntegerOffset + 1] = rdx;
         row[TraceCallColumnSet.IntegerOffset + 2] = r8;
         row[TraceCallColumnSet.ReturnValueIndex] = returnValue;
-        row[TraceCallColumnSet.NodeIndex] = (ulong)callNodeIndex;
+        row[TraceCallColumnSet.NodeIndex] = (ulong)replayNodeIndex;
         row[TraceCallColumnSet.ToSequenceIndex] = endSequence;
         row[TraceCallColumnSet.ToStepsIndex] = endSteps;
 
@@ -37,12 +37,12 @@ internal static class TraceCallRowHelper
     {
         var builder = new TraceCallStore.Builder();
 
-        foreach (var calls in spans.Where(s => s.CallIndex != uint.MaxValue).GroupBy(s => s.CallNodeIndex))
+        foreach (var calls in spans.Where(s => s.CallIndex != uint.MaxValue).GroupBy(s => s.ReplayNodeIndex))
         {
             ulong[][] rows = [.. calls.OrderBy(s => s.CallIndex)
                                       .Select(s => Row(s.StartSequence,
                                                        flags: s.Thread,
-                                                       callNodeIndex: s.CallNodeIndex,
+                                                       replayNodeIndex: s.ReplayNodeIndex,
                                                        steps: s.StartSteps,
                                                        endSequence: s.EndSequence,
                                                        endSteps: s.EndSteps))];

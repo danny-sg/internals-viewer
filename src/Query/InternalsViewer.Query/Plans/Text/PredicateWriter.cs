@@ -1,10 +1,11 @@
 using System.Collections.Immutable;
-using InternalsViewer.Execution.AccessPaths.Predicates;
-using InternalsViewer.Execution.AccessPaths.Results.Steps;
-using InternalsViewer.Execution.AccessPaths.Search;
-using InternalsViewer.Execution.AccessPaths.Values;
+using InternalsViewer.Query.Plans.Predicates;
+using InternalsViewer.Query.Plans.Predicates.Enums;
+using InternalsViewer.Query.Plans.Search;
+using InternalsViewer.Query.Plans.Text.Enums;
+using InternalsViewer.Query.Plans.Values;
 
-namespace InternalsViewer.Execution.AccessPaths.Text;
+namespace InternalsViewer.Query.Plans.Text;
 
 /// <summary>
 /// Turns predicates and seek bounds into a sequence of formatted tokens
@@ -48,42 +49,6 @@ public static class PredicateWriter
         return tokens.ToImmutable();
     }
 
-    public static ImmutableArray<PredicateToken> Write(AccessStep.Probe probe)
-    {
-        var tokens = ImmutableArray.CreateBuilder<PredicateToken>();
-
-        WriteComparedKeys(tokens, probe.Key, probe.Target, probe.Width, probe.Comparison);
-
-        return tokens.ToImmutable();
-    }
-
-    public static ImmutableArray<PredicateToken> Write(AccessStep.RangeEnd rangeEnd)
-    {
-        var tokens = ImmutableArray.CreateBuilder<PredicateToken>();
-
-        WriteComparedKeys(tokens, rangeEnd.Key, rangeEnd.Boundary, rangeEnd.Width, rangeEnd.Comparison);
-
-        return tokens.ToImmutable();
-    }
-
-    public static ImmutableArray<PredicateToken> Write(AccessStep.ProbeResult probeResult)
-    {
-        var tokens = ImmutableArray.CreateBuilder<PredicateToken>();
-
-        WriteRuleCondition(tokens, probeResult.Rule, probeResult.Target, probeResult.Width);
-
-        return tokens.ToImmutable();
-    }
-
-    public static ImmutableArray<PredicateToken> Write(AccessStep.ProbeStart probeStart)
-    {
-        var tokens = ImmutableArray.CreateBuilder<PredicateToken>();
-
-        WriteRuleCondition(tokens, probeStart.Rule, probeStart.Target, probeStart.Width);
-
-        return tokens.ToImmutable();
-    }
-
     /// <summary>
     /// Flattens tokens to plain text
     /// </summary>
@@ -95,90 +60,6 @@ public static class PredicateWriter
         }
 
         return string.Concat(tokens.Select(t => t.Text));
-    }
-
-    internal static void WriteKeyValues(ImmutableArray<PredicateToken>.Builder tokens, AccessKey key, int length)
-    {
-        var isComposite = length > 1;
-
-        if (isComposite)
-        {
-            tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, "("));
-        }
-
-        for (var index = 0; index < length; index++)
-        {
-            if (index > 0)
-            {
-                tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, ","));
-                Space(tokens);
-            }
-
-            tokens.Add(AccessValueFormatter.Format(key[index]));
-        }
-
-        if (isComposite)
-        {
-            tokens.Add(new PredicateToken(PredicateTokenType.Punctuation, ")"));
-        }
-    }
-
-    private static void WriteComparedKeys(ImmutableArray<PredicateToken>.Builder tokens,
-                                          in AccessKey key,
-                                          in AccessKey target,
-                                          int width,
-                                          int comparison)
-    {
-        var length = Math.Min(width, Math.Min(key.Count, target.Count));
-
-        if (length == 0)
-        {
-            return;
-        }
-
-        WriteKeyValues(tokens, key, length);
-
-        Space(tokens);
-
-        var description = comparison switch
-        {
-            < 0 => "<",
-            0 => "=",
-            > 0 => ">"
-        };
-
-        tokens.Add(new PredicateToken(PredicateTokenType.Operator, description));
-
-        Space(tokens);
-
-        WriteKeyValues(tokens, target, length);
-    }
-
-    private static void WriteRuleCondition(ImmutableArray<PredicateToken>.Builder tokens,
-                                           SeekRule? rule,
-                                           in AccessKey target,
-                                           int width)
-    {
-        var length = Math.Min(width, target.Count);
-
-        if (rule is null || length == 0)
-        {
-            return;
-        }
-
-        var symbol = rule switch
-        {
-            SeekRule.LowestGreaterOrEqual => ">=",
-            SeekRule.LowestGreater => ">",
-            SeekRule.HighestLessOrEqual => "<=",
-            _ => "<"
-        };
-
-        tokens.Add(new PredicateToken(PredicateTokenType.Operator, symbol));
-
-        Space(tokens);
-
-        WriteKeyValues(tokens, target, length);
     }
 
     private static void WriteBounds(ImmutableArray<PredicateToken>.Builder tokens, SeekBounds bounds)

@@ -13,10 +13,6 @@
       <Build Solution="*|x64" Project="false" />
       <Build Solution="*|x86" Project="false" />
     </Project>
-    <Project Path="Tests/InternalsViewer.Execution.Tests/InternalsViewer.Execution.Tests.csproj">
-      <Build Solution="*|x64" Project="false" />
-      <Build Solution="*|x86" Project="false" />
-    </Project>
     <Project Path="Tests/InternalsViewer.Internals.Tests.VerificationTool/InternalsViewer.Internals.Tests.VerificationTool.csproj">
       <Build Solution="*|x64" Project="false" />
       <Build Solution="*|x86" Project="false" />
@@ -90,9 +86,6 @@
       <Build Solution="*|x86" Project="false" />
     </Project>
   </Folder>
-  <Project Path="InternalsViewer.Execution/InternalsViewer.Execution.csproj">
-    <Build Solution="Debug|x86" Project="false" />
-  </Project>
   <Project Path="InternalsViewer.Internals.Metadata.SourceGenerators/InternalsViewer.Internals.Metadata.SourceGenerators.csproj">
     <Build Solution="Debug|x86" Project="false" />
   </Project>

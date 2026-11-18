@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
-using InternalsViewer.Execution.AccessPaths.Predicates;
-using InternalsViewer.Execution.AccessPaths.Search;
 using InternalsViewer.Query.Plans.Joins;
+using InternalsViewer.Query.Plans.Predicates;
+using InternalsViewer.Query.Plans.Search;
 
 namespace InternalsViewer.Query.Plans.Model;
 

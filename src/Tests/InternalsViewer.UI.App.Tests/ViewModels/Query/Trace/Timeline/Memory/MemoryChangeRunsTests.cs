@@ -46,7 +46,7 @@ public class MemoryChangeRunsTests
 
         Assert.Equal(MemoryChangeState.Changed, run.State);
 
-        Assert.Equal(7, run.CallNodeIndex);
+        Assert.Equal(7, run.ReplayNodeIndex);
     }
 
     [Fact]
@@ -85,12 +85,12 @@ public class MemoryChangeRunsTests
     public void A_Read_After_The_Playhead_Is_Not_Shown()
         => Assert.Empty(MemoryChangeRuns.GetReadRuns([Read(9, 4, 4, 7)], new TracePosition(5, 0), Size));
 
-    private static MemoryHistoryRead Read(ulong sequence, int offset, int length, int callNodeIndex)
-        => new(new TracePosition(sequence, 0), callNodeIndex, 0, offset, length, 1);
+    private static MemoryHistoryRead Read(ulong sequence, int offset, int length, int replayNodeIndex)
+        => new(new TracePosition(sequence, 0), replayNodeIndex, 0, offset, length, 1);
 
     private static MemoryHistoryWrite Write(int offset,
                                             int length,
-                                            int callNodeIndex,
+                                            int replayNodeIndex,
                                             MemoryHistoryAccessType type = MemoryHistoryAccessType.Changed)
-        => new(0, TracePosition.Unknown, callNodeIndex, 0, offset, (ushort)length, type);
+        => new(0, TracePosition.Unknown, replayNodeIndex, 0, offset, (ushort)length, type);
 }

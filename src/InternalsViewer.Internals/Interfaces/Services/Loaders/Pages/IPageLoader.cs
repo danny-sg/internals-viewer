@@ -11,9 +11,4 @@ public interface IPageLoader
                         PageAddress pageAddress, 
                         CancellationToken cancellationToken,
                         bool isMarkEnabled = true);
-
-    Task<PageData> LoadInto(DatabaseSource database, 
-                            PageAddress pageAddress, 
-                            byte[] buffer, 
-                            CancellationToken cancellationToken);
 }

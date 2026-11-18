@@ -30,7 +30,7 @@ public sealed class InstructionHistoryReader : IInstructionHistoryReader
                                                 request.To,
                                                 request.Frame.Address,
                                                 MaximumSteps,
-                                                [hook],
+                                                hook,
                                                 null,
                                                 cancellationToken);
 

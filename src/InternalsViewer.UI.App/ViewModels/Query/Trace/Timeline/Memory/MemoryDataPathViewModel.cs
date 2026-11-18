@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using InternalsViewer.Execution.AccessPaths.Text;
+using InternalsViewer.Query.Plans.Text;
 using InternalsViewer.Internals.Helpers;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.Plans.Model;

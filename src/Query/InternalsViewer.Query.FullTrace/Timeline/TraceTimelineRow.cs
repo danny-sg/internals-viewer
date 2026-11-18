@@ -53,13 +53,14 @@ public sealed partial class TraceTimelineRow
 
     public double GetEnd(TraceTimelineAxis axis, int index) => Scale.GetValue(GetToPosition(index), Clock, axis);
 
-    public int GetCallNodeIndex(int index) => Store.CallNodeIndexes[GetStoreIndex(index)];
+    public int GetReplayNodeIndex(int index) => Store.ReplayNodeIndexes[GetStoreIndex(index)];
 
     public int GetCallIndex(int index) => Store.GetCallIndex(GetStoreIndex(index));
 
     public TraceSpanFlags GetFlags(int index) => (TraceSpanFlags)Store.Flags[GetStoreIndex(index)];
 
-    public TraceSpan GetSpan(int index) => new(GetFrom(index), GetTo(index), GetCallNodeIndex(index), GetCallIndex(index), GetFlags(index));
+    public TraceSpan GetSpan(int index)
+        => new(GetFrom(index), GetTo(index), GetReplayNodeIndex(index), GetCallIndex(index), GetFlags(index));
 
     public TraceTimelineRow Filter(Func<int, bool> include)
     {
@@ -71,7 +72,7 @@ public sealed partial class TraceTimelineRow
         {
             var storeIndex = GetStoreIndex(index);
 
-            if (include(Store.CallNodeIndexes[storeIndex]))
+            if (include(Store.ReplayNodeIndexes[storeIndex]))
             {
                 indexes[kept++] = storeIndex;
             }
@@ -95,7 +96,7 @@ public sealed partial class TraceTimelineRow
         {
             var storeIndex = GetStoreIndex(index);
 
-            if (isRemoved(Store.CallNodeIndexes[storeIndex]))
+            if (isRemoved(Store.ReplayNodeIndexes[storeIndex]))
             {
                 continue;
             }
@@ -141,13 +142,13 @@ public sealed partial class TraceTimelineRow
         return index < Count && GetFromPosition(index) <= position ? index : -1;
     }
 
-    internal int GetIndex(TracePosition from, int callNodeIndex, int callIndex)
+    internal int GetIndex(TracePosition from, int replayNodeIndex, int callIndex)
     {
         var index = GetLowerBound(Store.Froms, from, strict: false);
 
         return index < Count
                && GetFromPosition(index) == from
-               && GetCallNodeIndex(index) == callNodeIndex
+               && GetReplayNodeIndex(index) == replayNodeIndex
                && GetCallIndex(index) == callIndex
             ? index
             : -1;

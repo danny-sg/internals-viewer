@@ -30,7 +30,7 @@ public sealed class MemoryHistoryCallPathResolver(MemoryHistoryStore store, Trac
 
             var index = row.GetIndex(position);
 
-            if (index < 0 || timeline.GetNode(row.GetSpan(index).CallNodeIndex)?.Frame is not { Function.ClassName.Length: > 0 } frame)
+            if (index < 0 || timeline.GetNode(row.GetSpan(index).ReplayNodeIndex)?.Frame is not { Function.ClassName.Length: > 0 } frame)
             {
                 continue;
             }

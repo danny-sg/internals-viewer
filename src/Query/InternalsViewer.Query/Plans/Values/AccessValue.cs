@@ -1,8 +1,9 @@
 using System.Data;
 using System.Globalization;
 using System.Runtime.InteropServices;
+using InternalsViewer.Query.Plans.Values.Enums;
 
-namespace InternalsViewer.Execution.AccessPaths.Values;
+namespace InternalsViewer.Query.Plans.Values;
 
 /// <summary>
 /// A single typed key value or value used in a predicate
@@ -47,18 +48,6 @@ public readonly struct AccessValue : IEquatable<AccessValue>
     public string? ColumnName { get; }
 
     public bool IsNull => Type == AccessValueType.Null;
-
-    public static bool operator ==(AccessValue left, AccessValue right) => left.Equals(right);
-
-    public static bool operator !=(AccessValue left, AccessValue right) => !left.Equals(right);
-
-    /// <summary>
-    /// Creates a null value of a given type
-    /// </summary>
-    public static AccessValue FromNull(SqlDbType dataType)
-    {
-        return new AccessValue(dataType, AccessValueType.Null, 0, 0, default, null);
-    }
 
     /// <summary>
     /// Creates a signed integral value, also used for bit, date and time types

@@ -1,9 +1,8 @@
 using System.Collections.Immutable;
-using InternalsViewer.Execution.AccessPaths.Predicates;
-using InternalsViewer.Execution.AccessPaths.Results.Steps;
-using InternalsViewer.Execution.AccessPaths.Search;
+using InternalsViewer.Query.Plans.Predicates;
+using InternalsViewer.Query.Plans.Search;
 
-namespace InternalsViewer.Execution.AccessPaths.Text;
+namespace InternalsViewer.Query.Plans.Text;
 
 /// <summary>
 /// A formatted predicate ready to be displayed
@@ -40,26 +39,6 @@ public sealed record PredicateText(ImmutableArray<PredicateToken> Tokens)
     public static PredicateText From(AccessExpression expression)
     {
         return new PredicateText(PredicateWriter.Write(expression));
-    }
-
-    public static PredicateText From(AccessStep.Probe probe)
-    {
-        return new PredicateText(PredicateWriter.Write(probe));
-    }
-
-    public static PredicateText From(AccessStep.ProbeResult probeResult)
-    {
-        return new PredicateText(PredicateWriter.Write(probeResult));
-    }
-
-    public static PredicateText From(AccessStep.RangeEnd rangeEnd)
-    {
-        return new PredicateText(PredicateWriter.Write(rangeEnd));
-    }
-
-    public static PredicateText From(AccessStep.ProbeStart probeStart)
-    {
-        return new PredicateText(PredicateWriter.Write(probeStart));
     }
 
     public override string ToString()

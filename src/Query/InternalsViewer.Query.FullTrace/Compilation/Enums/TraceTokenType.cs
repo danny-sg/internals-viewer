@@ -1,6 +1,6 @@
 namespace InternalsViewer.Query.FullTrace.Compilation.Enums;
 
-public enum TraceTokenKind
+public enum TraceTokenType
 {
     Word = 1,
     Number = 2,

@@ -6,5 +6,5 @@ public readonly record struct TracePageAccess(TracePosition Position,
                                               PageAddress Page,
                                               ushort DatabaseId,
                                               int? Offset,
-                                              int CallNodeIndex,
+                                              int ReplayNodeIndex,
                                               int CallIndex);

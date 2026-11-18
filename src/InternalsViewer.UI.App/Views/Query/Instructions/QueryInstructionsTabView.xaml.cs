@@ -37,8 +37,7 @@ public sealed partial class QueryInstructionsTabView : UserControl
             {
                 q.Layout.IsTraceTimelineVisible = true;
             }
-        },
-        ["Simulation"] = q => q.IsSimulationVisible = true
+        }
     };
 
     private QueryOptionsViewModel? _subscribedOptions;

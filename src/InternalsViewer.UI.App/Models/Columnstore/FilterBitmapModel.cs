@@ -1,9 +1,6 @@
-using System;
 using System.Collections.Generic;
-using InternalsViewer.Execution.AccessPaths.Predicates;
-using InternalsViewer.Execution.AccessPaths.Results.Steps;
 
-namespace InternalsViewer.UI.App.Models.Query.Simulation.Columnstore;
+namespace InternalsViewer.UI.App.Models.Columnstore;
 
 /// <summary>
 /// A compressed data filter bitmap of qualifying dictionary ids
@@ -31,44 +28,6 @@ public sealed class FilterBitmapModel
     public string SubTitle => IsTruncated
         ? $"{Form} - {QualifyingCount:N0}/{EntryCount:N0} (showing {Cells.Count:N0})"
         : $"{Form} - {QualifyingCount:N0}/{EntryCount:N0}";
-
-    public static FilterBitmapModel From(AccessStep.CompressedDataFilterBitmap step, int maxCells)
-    {
-        var count = Math.Min(step.DictionaryIds.Count, maxCells);
-
-        var cells = new List<FilterBitmapCell>(count);
-
-        for (var i = 0; i < count; i++)
-        {
-            cells.Add(new FilterBitmapCell
-            {
-                Index = i,
-                DataId = step.DictionaryIds[i],
-                Qualifies = step.Qualifies[i],
-                Value = i < step.Values.Count ? step.Values[i] : string.Empty
-            });
-        }
-
-        return new FilterBitmapModel
-        {
-            RowGroupId = step.RowGroupId,
-            ColumnId = step.ColumnId,
-            ColumnName = step.ColumnName,
-            Form = FormText(step.Category),
-            EntryCount = step.EntryCount,
-            QualifyingCount = step.QualifyingCount,
-            Cells = cells,
-            IsTruncated = step.DictionaryIds.Count > count
-        };
-    }
-
-    private static string FormText(CompressedFilterCategory category) => category switch
-    {
-        CompressedFilterCategory.RawBitmap => "RAWBITMAP",
-        CompressedFilterCategory.Equality => "EQ",
-        CompressedFilterCategory.Comparison => "Comparison",
-        _ => "Filter"
-    };
 }
 
 /// <summary>

@@ -108,7 +108,7 @@ public static class TraceHashTableReader
             }
 
             var category = parts.GetValueOrDefault(block)
-                           ?? (IsBucketPage(calls.GetNode(info.CallNodeIndex))
+                           ?? (IsBucketPage(calls.GetNode(info.ReplayNodeIndex))
                                ? OtherBucketPagesName
                                : GetMemoryCategory(addressMap.GetLabel(info.Address, info.FromPosition, info.ToPosition)));
 

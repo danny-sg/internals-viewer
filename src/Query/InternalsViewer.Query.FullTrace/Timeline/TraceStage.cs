@@ -34,7 +34,7 @@ public sealed record TraceStage(string Name, CallTreeNode Node, uint ThreadId, T
 
         foreach (var (threadId, span) in calls)
         {
-            if (timeline.GetNode(span.CallNodeIndex) is not { } node)
+            if (timeline.GetNode(span.ReplayNodeIndex) is not { } node)
             {
                 continue;
             }

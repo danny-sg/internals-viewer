@@ -106,8 +106,8 @@ public class AllocationOwnerResolverTests
                                                  [new IteratorPlanNode(Child, PlanObject, 0, 0, 1)]);
     }
 
-    private static ulong[] Call(ulong start, ulong end, int callNodeIndex, ulong instance = 0)
-        => Row(start, flags: Thread | TraceCallColumnSet.ReturnedFlag, rcx: instance, callNodeIndex: callNodeIndex, endSequence: end);
+    private static ulong[] Call(ulong start, ulong end, int replayNodeIndex, ulong instance = 0)
+        => Row(start, flags: Thread | TraceCallColumnSet.ReturnedFlag, rcx: instance, replayNodeIndex: replayNodeIndex, endSequence: end);
 
     private static CallFrame Frame(string className, string method, uint rva) => new()
     {

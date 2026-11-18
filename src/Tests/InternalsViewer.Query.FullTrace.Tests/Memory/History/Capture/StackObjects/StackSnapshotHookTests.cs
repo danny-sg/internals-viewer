@@ -65,7 +65,7 @@ public class StackSnapshotHookTests
         var item = Assert.Single(hook.Build().Objects);
 
         Assert.Equal((StackObject, (int)(OwnerStackPointer - StackObject), 2, At(10, 3), At(99)),
-                     (item.Address, item.Size, item.OwnerCallNodeIndex, item.FirstPosition, item.EndPosition));
+                     (item.Address, item.Size, item.OwnerReplayNodeIndex, item.FromPosition, item.ToPosition));
         Assert.Equal([(Thread, 5ul)], replay.WatchedFrames);
     }
 
@@ -136,7 +136,7 @@ public class StackSnapshotHookTests
             CallId = id,
             Position = position,
             Thread = Thread,
-            CallNodeIndex = 7,
+            ReplayNodeIndex = 7,
             Arguments = arguments ?? [0, 0, 0, 0],
             StackPointer = StackPointer
         };

@@ -79,7 +79,7 @@ public class TraceReferenceFinderTests
 
         var builder = new TraceCallStore.Builder();
 
-        builder.Add(getRow.Frame!.Address, 0, Chunk(Row(1, rcx: Value, callNodeIndex: 0), Row(2, rcx: Value, callNodeIndex: 0)), 2);
+        builder.Add(getRow.Frame!.Address, 0, Chunk(Row(1, rcx: Value, replayNodeIndex: 0), Row(2, rcx: Value, replayNodeIndex: 0)), 2);
 
         var store = builder.Build();
 

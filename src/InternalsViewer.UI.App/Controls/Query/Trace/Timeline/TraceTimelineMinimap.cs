@@ -403,9 +403,9 @@ public sealed class TraceTimelineMinimap : UserControl, IDisposable
 
             var right = (float)((row.GetEnd(Axis, index) - start) * unit);
 
-            var callNodeIndex = row.GetCallNodeIndex(index);
+            var replayNodeIndex = row.GetReplayNodeIndex(index);
 
-            var isGrey = included is not null && (callNodeIndex < 0 || callNodeIndex >= included.Length || !included[callNodeIndex]);
+            var isGrey = included is not null && (replayNodeIndex < 0 || replayNodeIndex >= included.Length || !included[replayNodeIndex]);
 
             if (runNode >= 0 && isGrey == runGrey && left <= runRight + RunGap)
             {
@@ -423,7 +423,7 @@ public sealed class TraceTimelineMinimap : UserControl, IDisposable
 
             runRight = right;
 
-            runNode = callNodeIndex;
+            runNode = replayNodeIndex;
 
             runGrey = isGrey;
         }
@@ -444,11 +444,11 @@ public sealed class TraceTimelineMinimap : UserControl, IDisposable
             {
                 for (var index = 0; index < row.Count; index++)
                 {
-                    var callNodeIndex = row.GetCallNodeIndex(index);
+                    var replayNodeIndex = row.GetReplayNodeIndex(index);
 
-                    if (callNodeIndex >= 0 && callNodeIndex < included.Length)
+                    if (replayNodeIndex >= 0 && replayNodeIndex < included.Length)
                     {
-                        included[callNodeIndex] = true;
+                        included[replayNodeIndex] = true;
                     }
                 }
             }
@@ -459,14 +459,14 @@ public sealed class TraceTimelineMinimap : UserControl, IDisposable
 
     private void FillRun(SKCanvas canvas,
                          TraceTimeline timeline,
-                         int callNodeIndex,
+                         int replayNodeIndex,
                          bool isGrey,
                          float left,
                          float right,
                          float top,
                          float height)
     {
-        _run.Color = ColourOf(timeline.GetNode(callNodeIndex)?.CategoryColour, isGrey);
+        _run.Color = ColourOf(timeline.GetNode(replayNodeIndex)?.CategoryColour, isGrey);
 
         canvas.DrawRect(new SKRect(left, top, Math.Max(right, left + RunGap), top + height), _run);
     }

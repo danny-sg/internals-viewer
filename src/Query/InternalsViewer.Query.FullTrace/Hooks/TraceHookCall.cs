@@ -12,7 +12,7 @@ internal readonly ref struct TraceHookCall
 
     public uint Thread { get; init; }
 
-    public int CallNodeIndex { get; init; }
+    public int ReplayNodeIndex { get; init; }
 
     public ReadOnlySpan<ulong> Arguments { get; init; }
 

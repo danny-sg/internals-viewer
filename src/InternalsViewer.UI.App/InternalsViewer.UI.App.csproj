@@ -137,7 +137,6 @@
         <None Remove="Images\Wide310x150Logo.scale-150.png" />
         <None Remove="Images\Wide310x150Logo.scale-200.png" />
         <None Remove="Images\Wide310x150Logo.scale-400.png" />
-        <None Remove="Controls\Query\Simulation\Steps\AccessStepTemplates.xaml" />
         <None Remove="Styles\CommonStyles.xaml" />
         <None Remove="Styles\Markers\MarkerStylesDark.xaml" />
         <None Remove="Styles\Markers\MarkerStylesLight.xaml" />
@@ -340,9 +339,6 @@
       <Page Update="Controls\Results\ResultsGridControl.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
-      <Page Update="Controls\Query\Simulation\Steps\AccessStepsControl.xaml">
-        <Generator>MSBuild:Compile</Generator>
-      </Page>
       <Page Update="Views\Query\Tabs\CallstackDocumentView.xaml">
         <Generator>MSBuild:Compile</Generator>
       </Page>
@@ -482,9 +478,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Page Update="Controls\Query\Simulation\Steps\AccessStepTemplates.xaml">
-            <Generator>MSBuild:Compile</Generator>
-        </Page>
         <Page Update="Styles\CommonStyles.xaml">
             <Generator>MSBuild:Compile</Generator>
         </Page>
@@ -556,7 +549,6 @@
 
     <ItemGroup>
       <ProjectReference Include="..\InternalsViewer.TransactionLog\InternalsViewer.TransactionLog.csproj" />
-      <ProjectReference Include="..\InternalsViewer.Execution\InternalsViewer.Execution.csproj" />
     </ItemGroup>
 
     <ItemGroup>
@@ -571,11 +563,9 @@
       <Folder Include="Controls\Query\Trace\Timeline\Operators\" />
       <Folder Include="Helpers\Plans\" />
       <Folder Include="Helpers\Trace\" />
-      <Folder Include="Models\Query\Simulation\Columnstore\" />
       <Folder Include="ViewModels\Columnstore\Segment\" />
       <Folder Include="Views\Query\Index\" />
       <Folder Include="Views\Query\Plan\" />
-      <Folder Include="Views\Query\Simulation\Panels\" />
     </ItemGroup>
 
     <ItemGroup>

@@ -154,6 +154,8 @@ internal sealed record AllocationFunction(ulong Address,
     public bool IsAllocation
         => Operation is AllocationOperation.Allocate or AllocationOperation.AllocateArray or AllocationOperation.Reallocate;
 
+    public bool IsAllocationOrFree => IsAllocation || this is { Operation: AllocationOperation.Free, PointerArgumentSlot: >= 0 };
+
     public static bool IsMemoryObjectClass(string? className)
         => className is not null && (className == MemoryObjectFactory || IsMemoryObject(className));
 
@@ -182,6 +184,9 @@ internal sealed record AllocationFunction(ulong Address,
     public ulong GetObject(TraceArgumentCall call) => Operation == AllocationOperation.Create ? call.ReturnedValue : call.GetSlot(0);
 
     public ulong GetPointer(TraceArgumentCall call) => call.GetSlot(PointerArgumentSlot);
+
+    public ulong GetReleased(TraceArgumentCall call)
+        => Operation is AllocationOperation.Free or AllocationOperation.Reallocate ? GetPointer(call) : 0;
 
     public string? GetSite(TraceArgumentCall call)
     {

@@ -2,8 +2,9 @@ using System.Data;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
+using InternalsViewer.Query.Plans.Values.Enums;
 
-namespace InternalsViewer.Execution.AccessPaths.Values;
+namespace InternalsViewer.Query.Plans.Values;
 
 /// <summary>
 /// Compares <see cref="AccessValue"/> instances using index key ordering

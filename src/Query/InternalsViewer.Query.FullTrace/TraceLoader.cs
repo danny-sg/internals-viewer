@@ -25,6 +25,42 @@ using InternalsViewer.Query.FullTrace.Functions;
 
 namespace InternalsViewer.Query.FullTrace;
 
+/// <summary>
+/// Runs the trace loading process
+/// </summary>
+/// <remarks>
+/// Steps to run a trace:
+///
+/// 1. Trace is opened (and indexed) using the TimeTravelBridge C++ library
+///
+/// 2. Symbols are resolved using ReplayFunctionResolver
+///
+/// 3. Trace threads replayed:
+/// 
+///     Call chunks
+///     -----------
+///
+///     Calls are logged in chunks where each call is recorded vertically as a set of 11 ulong values in a single dimensional ulong array.
+///
+///     The bridge builds up the chunks and periodically flushes them.
+///
+///     Calls record the execution of a function on a thread including:
+/// 
+///     - Start position (sequence/steps)
+///     - Thread Id + Bit 32 return flag
+///     - Register arguments RCX, RDX, R8, and R9
+///     - Call path node index
+///     - End position (sequence/steps)
+///
+///     Node Index is generated inside the bridge and is the key that links the other data structures.
+///
+///     Spans
+///     -----
+///
+///     
+///     
+///    
+/// </remarks>
 public sealed class TraceLoader(ILogger<TraceLoader> logger, ITimeTravelRecorder? timeTravelRecorder = null)
 {
     private const string OpeningStep = "Opening Full Trace";

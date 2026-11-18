@@ -78,7 +78,7 @@ internal sealed class TraceHookDispatcher
             CallId = source->CallId,
             CallIndex = source->CallIndex,
             Thread = source->Thread,
-            CallNodeIndex = source->CallNodeIndex,
+            ReplayNodeIndex = source->ReplayNodeIndex,
             Arguments = new ReadOnlySpan<ulong>(source->Arguments, HookEvent.ArgumentCount),
             ReturnValue = source->ReturnValue,
             StackPointer = source->StackPointer,
@@ -87,9 +87,7 @@ internal sealed class TraceHookDispatcher
             Instructions = source->Instructions
         };
 
-        Replay.View = view;
-
-        Replay.Session = session;
+        Replay.Begin(view, session);
 
         try
         {
@@ -107,9 +105,7 @@ internal sealed class TraceHookDispatcher
         }
         finally
         {
-            Replay.View = IntPtr.Zero;
-
-            Replay.Session = IntPtr.Zero;
+            Replay.End();
         }
     }
 

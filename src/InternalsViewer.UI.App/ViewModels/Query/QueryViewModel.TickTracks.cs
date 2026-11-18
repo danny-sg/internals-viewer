@@ -6,7 +6,7 @@ using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
-using InternalsViewer.Execution.AccessPaths.Text;
+using InternalsViewer.Query.Plans.Text;
 using InternalsViewer.Internals.Providers.Metadata;
 using InternalsViewer.Query.Events.Operators;
 using InternalsViewer.Query.FullTrace;

@@ -59,7 +59,7 @@ public sealed partial class AddressMap
 
                 writer.Write(entry.ToPosition.Steps);
 
-                writer.Write(entry.CallNodeIndex);
+                writer.Write(entry.ReplayNodeIndex);
 
                 writer.Write(entry.Thread);
 
@@ -105,7 +105,7 @@ public sealed partial class AddressMap
                                               Owner: reader.ReadUInt64(),
                                               FromPosition: new TracePosition(reader.ReadUInt64(), reader.ReadUInt64()),
                                               ToPosition: new TracePosition(reader.ReadUInt64(), reader.ReadUInt64()),
-                                              CallNodeIndex: reader.ReadInt32(),
+                                              ReplayNodeIndex: reader.ReadInt32(),
                                               Thread: reader.ReadUInt32(),
                                               Operation: (AddressMapOperation)reader.ReadByte(),
                                               ClassName: ReadName(reader, names),

@@ -32,7 +32,6 @@ public partial class SettingsViewModel(SettingsService settingsService,
     private const string TraceDirectoryKey = "TraceDirectory";
     private const string MaxTraceSizeKey = "MaxTraceSizeMb";
     private const string AutoDeleteTraceKey = "AutoDeleteTrace";
-    private const string SimulationNestedLayoutKey = "TraceNestedLayout";
     private const string PlanAnnotationsKey = "PlanAnnotations";
 
     private const string ColumnstoreResolutionKey = "FullColumnstoreAllocationResolution";
@@ -96,9 +95,6 @@ public partial class SettingsViewModel(SettingsService settingsService,
 
     [ObservableProperty]
     private bool _autoDeleteTrace = true;
-
-    [ObservableProperty]
-    private bool _simulationNestedLayout = true;
 
     [ObservableProperty]
     private bool _fullColumnstoreResolution = true;
@@ -258,10 +254,6 @@ public partial class SettingsViewModel(SettingsService settingsService,
         var savedAutoDelete = await SettingsService.ReadSettingAsync<bool?>(AutoDeleteTraceKey);
 
         AutoDeleteTrace = savedAutoDelete ?? true;
-
-        var savedNestedLayout = await SettingsService.ReadSettingAsync<bool?>(SimulationNestedLayoutKey);
-
-        SimulationNestedLayout = savedNestedLayout ?? true;
 
         var savedColumnstoreResolution = await SettingsService.ReadSettingAsync<bool?>(ColumnstoreResolutionKey);
 
@@ -583,11 +575,6 @@ public partial class SettingsViewModel(SettingsService settingsService,
     partial void OnFullColumnstoreResolutionChanged(bool value)
     {
         _ = SettingsService.SaveSettingAsync(ColumnstoreResolutionKey, value);
-    }
-
-    partial void OnSimulationNestedLayoutChanged(bool value)
-    {
-        _ = SettingsService.SaveSettingAsync(SimulationNestedLayoutKey, value);
     }
 
     partial void OnPlanAnnotationsChanged(bool value)

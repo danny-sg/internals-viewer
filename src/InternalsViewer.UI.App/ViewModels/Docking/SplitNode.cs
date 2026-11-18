@@ -26,9 +26,6 @@ public sealed partial class SplitNode : LayoutNode
     [ObservableProperty]
     private double _secondStar = 1;
 
-    [ObservableProperty]
-    private double? _firstPixels;
-
     public SplitNode(Orientation orientation, LayoutNode first, LayoutNode second)
     {
         Orientation = orientation;

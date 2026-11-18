@@ -1,4 +1,4 @@
-namespace InternalsViewer.Execution.AccessPaths.Values;
+namespace InternalsViewer.Query.Plans.Values.Enums;
 
 /// <summary>
 /// Storage strategy used by an <see cref="AccessValue"/>

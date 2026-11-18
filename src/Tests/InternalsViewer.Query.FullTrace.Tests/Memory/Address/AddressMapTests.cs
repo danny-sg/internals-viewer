@@ -345,7 +345,7 @@ public class AddressMapTests
 
     private static AddressEntry Entry(AddressMapOperation operation,
                                       ulong call,
-                                      int callNodeIndex,
+                                      int replayNodeIndex,
                                       ulong owner = 0,
                                       ulong until = 0,
                                       string? className = null,
@@ -359,7 +359,7 @@ public class AddressMapTests
                owner,
                At(call),
                until == 0 ? TracePosition.Unknown : At(until),
-               callNodeIndex,
+               replayNodeIndex,
                7,
                operation,
                className,
@@ -367,7 +367,7 @@ public class AddressMapTests
                site,
                memoryObject);
 
-    private static CallTreeNode? GetNode(int callNodeIndex) => callNodeIndex >= 0 && callNodeIndex < Nodes.Length ? Nodes[callNodeIndex] : null;
+    private static CallTreeNode? GetNode(int replayNodeIndex) => replayNodeIndex >= 0 && replayNodeIndex < Nodes.Length ? Nodes[replayNodeIndex] : null;
 
     private static CallTreeNode[] GetNodes()
     {

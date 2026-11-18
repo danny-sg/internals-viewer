@@ -1,4 +1,5 @@
-﻿using InternalsViewer.Execution.AccessPaths.Text;
+﻿using InternalsViewer.Query.Plans.Text;
+using InternalsViewer.Query.Plans.Text.Enums;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;

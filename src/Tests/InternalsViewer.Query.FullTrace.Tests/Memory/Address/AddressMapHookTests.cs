@@ -281,7 +281,7 @@ public class AddressMapHookTests
             CallId = id,
             Position = At(id),
             Thread = Thread,
-            CallNodeIndex = 7,
+            ReplayNodeIndex = 7,
             Arguments = arguments ?? [0, 0, 0, 0],
             ReturnValue = returnValue,
             StackPointer = StackPointer

@@ -1,4 +1,4 @@
-namespace InternalsViewer.Execution.AccessPaths.Predicates;
+namespace InternalsViewer.Query.Plans.Predicates.Enums;
 
 /// <summary>
 /// Comparison operators available to a predicate

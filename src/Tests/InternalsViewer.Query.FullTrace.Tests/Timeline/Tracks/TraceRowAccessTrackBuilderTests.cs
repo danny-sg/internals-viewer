@@ -215,12 +215,12 @@ public class TraceRowAccessTrackBuilderTests
             : TraceRowAccessTrackBuilder.BuildHeaders(timeline, accesses, lifetimes, enclosing);
     }
 
-    private static ulong[] Call(ulong start, ulong end, int callNodeIndex, ulong rcx = 0, ulong returnValue = 0)
+    private static ulong[] Call(ulong start, ulong end, int replayNodeIndex, ulong rcx = 0, ulong returnValue = 0)
         => Row(start,
                flags: Thread | TraceCallColumnSet.ReturnedFlag,
                rcx: rcx,
                returnValue: returnValue,
-               callNodeIndex: callNodeIndex,
+               replayNodeIndex: replayNodeIndex,
                endSequence: end);
 
     private static CallFrame Frame(ulong address, ulong instance, string className, string method) => new()
@@ -239,6 +239,6 @@ public class TraceRowAccessTrackBuilderTests
 
     private static TraceSpan Whole() => new(new TracePoint(At(0), 0), new TracePoint(At(1000), 1000), 0, 0, TraceSpanFlags.None);
 
-    private static CallSpan Span(int callNodeIndex, ulong start, ulong end)
-        => new(start, 0, end, 0, start, end, callNodeIndex, Thread, 0, 1);
+    private static CallSpan Span(int replayNodeIndex, ulong start, ulong end)
+        => new(start, 0, end, 0, start, end, replayNodeIndex, Thread, 0, 1);
 }

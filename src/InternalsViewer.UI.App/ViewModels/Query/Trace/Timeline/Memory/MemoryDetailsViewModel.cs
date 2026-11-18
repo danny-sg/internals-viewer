@@ -133,7 +133,7 @@ public sealed partial class MemoryDetailsViewModel : ObservableObject
         UpdateCount = $"{writes.Count:N0}";
 
         Writers = [.. Enumerable.Range(0, writes.Count)
-                                .GroupBy(i => writes[i].CallNodeIndex)
+                                .GroupBy(i => writes[i].ReplayNodeIndex)
                                 .Select(g => GetWriter(owner, g.Key, g.First(), g.Count()))];
 
         var reads = store.GetReads(owner.Block);
@@ -141,7 +141,7 @@ public sealed partial class MemoryDetailsViewModel : ObservableObject
         ReadCount = $"{reads.Sum(r => (long)r.Count):N0}";
 
         Readers = [.. Enumerable.Range(0, reads.Count)
-                                .GroupBy(i => reads[i].CallNodeIndex)
+                                .GroupBy(i => reads[i].ReplayNodeIndex)
                                 .Select(g => GetReader(owner, g.Key, g.First(), g.Sum(i => reads[i].Count)))];
     }
 
@@ -180,7 +180,7 @@ public sealed partial class MemoryDetailsViewModel : ObservableObject
         Readers = [];
     }
 
-    private static MemoryWriterSummary GetWriter(PlayheadMemoryViewModel owner, int callNodeIndex, int first, int count)
+    private static MemoryWriterSummary GetWriter(PlayheadMemoryViewModel owner, int replayNodeIndex, int first, int count)
     {
         var store = owner.History.Store;
 
@@ -188,12 +188,12 @@ public sealed partial class MemoryDetailsViewModel : ObservableObject
 
         var write = store.GetWrites(owner.Block)[first];
 
-        var link = new TraceCallLink(store.GetPoint(block.FirstWrite + first), owner.History.GetWriter(callNodeIndex), write.CallIndex);
+        var link = new TraceCallLink(store.GetPoint(block.FirstWrite + first), owner.History.GetWriter(replayNodeIndex), write.CallIndex);
 
-        return new MemoryWriterSummary(owner.History.GetWriterLabel(callNodeIndex), owner.GetCategoryColour(callNodeIndex), count, link);
+        return new MemoryWriterSummary(owner.History.GetWriterLabel(replayNodeIndex), owner.GetCategoryColour(replayNodeIndex), count, link);
     }
 
-    private static MemoryWriterSummary GetReader(PlayheadMemoryViewModel owner, int callNodeIndex, int first, int count)
+    private static MemoryWriterSummary GetReader(PlayheadMemoryViewModel owner, int replayNodeIndex, int first, int count)
     {
         var store = owner.History.Store;
 
@@ -201,8 +201,8 @@ public sealed partial class MemoryDetailsViewModel : ObservableObject
 
         var read = store.GetRead(start + first);
 
-        var link = new TraceCallLink(store.GetReadPoint(start + first), owner.History.GetWriter(callNodeIndex), read.CallIndex);
+        var link = new TraceCallLink(store.GetReadPoint(start + first), owner.History.GetWriter(replayNodeIndex), read.CallIndex);
 
-        return new MemoryWriterSummary(owner.History.GetWriterLabel(callNodeIndex), owner.GetReadColour(callNodeIndex), count, link);
+        return new MemoryWriterSummary(owner.History.GetWriterLabel(replayNodeIndex), owner.GetReadColour(replayNodeIndex), count, link);
     }
 }

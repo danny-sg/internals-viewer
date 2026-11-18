@@ -71,7 +71,7 @@ internal sealed class StubResolver(ImageText images, IReadOnlyList<TraceModule> 
                 return NotStub;
             }
 
-            Replay.View = view;
+            Replay.Begin(view, IntPtr.Zero);
 
             if (!stub.TryResolve(new Span<ulong>((void*)registers, RegisterCount), Replay, Memory, out var resolved))
             {
@@ -90,7 +90,7 @@ internal sealed class StubResolver(ImageText images, IReadOnlyList<TraceModule> 
         }
         finally
         {
-            Replay.View = IntPtr.Zero;
+            Replay.End();
         }
     }
 

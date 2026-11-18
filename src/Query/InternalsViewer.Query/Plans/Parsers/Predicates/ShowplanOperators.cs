@@ -1,4 +1,4 @@
-using InternalsViewer.Execution.AccessPaths.Predicates;
+using InternalsViewer.Query.Plans.Predicates.Enums;
 
 namespace InternalsViewer.Query.Plans.Parsers.Predicates;
 

@@ -363,10 +363,6 @@ public sealed partial class QueryPlanTabView : UserControl, IDisposable
             planControl.SortTableOpenRequested -= OnPlanSortTableOpenRequested;
             planControl.SortTableOpenRequested += OnPlanSortTableOpenRequested;
 
-
-            planControl.SimulationOpenRequested -= OnPlanSimulationOpenRequested;
-            planControl.SimulationOpenRequested += OnPlanSimulationOpenRequested;
-
             planControl.CallTreeOpenRequested -= OnPlanCallTreeOpenRequested;
             planControl.CallTreeOpenRequested += OnPlanCallTreeOpenRequested;
 
@@ -757,8 +753,6 @@ public sealed partial class QueryPlanTabView : UserControl, IDisposable
     private void OnPlanHashTableOpenRequested(object? sender, PlanNode node) => ViewModel?.OpenHashTable(node);
 
     private void OnPlanSortTableOpenRequested(object? sender, PlanNode node) => ViewModel?.OpenSortTable(node);
-
-    private void OnPlanSimulationOpenRequested(object? sender, PlanNode node) => ViewModel?.OpenSimulation(node);
 
     private void OnPlanCallTreeOpenRequested(object? sender, PlanNode node) => ViewModel?.OpenCallTree(node);
 

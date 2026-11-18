@@ -14,13 +14,13 @@ extern "C"
 
     struct CallSpan
     {
-        uint64_t StartSequence;
-        uint64_t StartSteps;
-        uint64_t EndSequence;
-        uint64_t EndSteps;
-        uint64_t StartInstructions;
-        uint64_t EndInstructions;
-        int32_t  CallNodeIndex;
+        uint64_t FromSequence;
+        uint64_t FromSteps;
+        uint64_t ToSequence;
+        uint64_t ToSteps;
+        uint64_t FromInstructions;
+        uint64_t ToInstructions;
+        int32_t  ReplayNodeIndex;
         uint32_t Thread;
         uint32_t CallIndex;
         uint32_t Flags;
@@ -52,7 +52,7 @@ extern "C"
         uint64_t CallId;
         uint64_t StackPointer;
         uint64_t InstanceAddress;
-        int32_t  CallNodeIndex;
+        int32_t  ReplayNodeIndex;
     };
 
     struct HookEvent
@@ -67,7 +67,7 @@ extern "C"
         uint64_t         Sequence;
         uint64_t         Steps;
         uint64_t         Instructions;
-        int32_t          CallNodeIndex;
+        int32_t          ReplayNodeIndex;
         uint32_t         CallIndex;
         uint32_t         Thread;
         uint32_t         Type;

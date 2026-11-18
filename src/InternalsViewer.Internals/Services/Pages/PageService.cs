@@ -33,18 +33,6 @@ public sealed partial class PageService(ILogger<PageService> logger,
         return ParsePage(page, pageAddress);
     }
 
-    public async Task<Page> GetPage(DatabaseSource database,
-                                    PageAddress pageAddress,
-                                    byte[] buffer,
-                                    CancellationToken cancellationToken)
-    {
-        LogLoadBufferPage(Logger, pageAddress);
-
-        var page = await loader.LoadInto(database, pageAddress, buffer, cancellationToken);
-
-        return ParsePage(page, pageAddress);
-    }
-
     public async Task<T> GetPage<T>(DatabaseSource database,
                                     PageAddress pageAddress,
                                     CancellationToken cancellationToken,

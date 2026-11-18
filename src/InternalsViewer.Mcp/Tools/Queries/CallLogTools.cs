@@ -276,7 +276,7 @@ public sealed class CallLogTools(McpDocumentResolver documents)
                 continue;
             }
 
-            var where = store.GetNode(call) is { } node ? context.GetFunctionName(node) : $"raw node {call.CallNodeIndex}";
+            var where = store.GetNode(call) is { } node ? context.GetFunctionName(node) : $"raw node {call.ReplayNodeIndex}";
 
             var positions = $"{Format.Position(call.FromPosition)} to {Format.Position(call.ToPosition)}";
 

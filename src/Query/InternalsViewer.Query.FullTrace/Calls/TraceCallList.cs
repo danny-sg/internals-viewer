@@ -101,11 +101,11 @@ public sealed class TraceCallList : IReadOnlyList<TraceArgumentCall>
         return Columns.Read(chunk, callIndex, static (columns, offset) => columns.GetThread(offset));
     }
 
-    internal int GetCallNodeIndex(int index)
+    internal int GetReplayNodeIndex(int index)
     {
         var (chunk, callIndex) = GetLocation(index);
 
-        return Columns.Read(chunk, callIndex, static (columns, offset) => columns.GetCallNodeIndex(offset));
+        return Columns.Read(chunk, callIndex, static (columns, offset) => columns.GetReplayNodeIndex(offset));
     }
 
     internal IEnumerable<(TraceCallColumnSet Columns, int First)> ReadChunks(TraceCallStore.ColumnBuffer buffer)

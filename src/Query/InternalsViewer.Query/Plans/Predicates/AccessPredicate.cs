@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
+using InternalsViewer.Query.Plans.Predicates.Enums;
 
-namespace InternalsViewer.Execution.AccessPaths.Predicates;
+namespace InternalsViewer.Query.Plans.Predicates;
 
 /// <summary>
 /// A predicate evaluated against a row, using three valued logic

@@ -75,7 +75,7 @@ public class TraceValueSearchTests
 
         var builder = new TraceCallStore.Builder();
 
-        builder.Add(0x1000, 0, Chunk(Row(1, rcx: 0xA0, callNodeIndex: 0), Row(2, rcx: 0xA0, callNodeIndex: 1), Row(3, rcx: 0xA0, callNodeIndex: 0)), 3);
+        builder.Add(0x1000, 0, Chunk(Row(1, rcx: 0xA0, replayNodeIndex: 0), Row(2, rcx: 0xA0, replayNodeIndex: 1), Row(3, rcx: 0xA0, replayNodeIndex: 0)), 3);
 
         var store = builder.Build();
 

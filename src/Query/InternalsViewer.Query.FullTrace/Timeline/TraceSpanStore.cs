@@ -6,7 +6,7 @@ internal sealed class TraceSpanStore(int count)
 
     public TracePosition[] Tos { get; } = new TracePosition[count];
 
-    public int[] CallNodeIndexes { get; } = new int[count];
+    public int[] ReplayNodeIndexes { get; } = new int[count];
 
     public uint[] Calls { get; } = new uint[count];
 
@@ -14,11 +14,11 @@ internal sealed class TraceSpanStore(int count)
 
     public int GetCallIndex(int index) => Calls[index] == uint.MaxValue ? -1 : (int)Calls[index];
 
-    public void Set(int index, TracePosition from, TracePosition to, int callNodeIndex, uint callIndex, byte flags)
+    public void Set(int index, TracePosition from, TracePosition to, int replayNodeIndex, uint callIndex, byte flags)
     {
         Froms[index] = from;
         Tos[index] = to;
-        CallNodeIndexes[index] = callNodeIndex;
+        ReplayNodeIndexes[index] = replayNodeIndex;
         Calls[index] = callIndex;
         Flags[index] = flags;
     }
@@ -27,7 +27,7 @@ internal sealed class TraceSpanStore(int count)
     {
         Froms[target] = Froms[source];
         Tos[target] = Tos[source];
-        CallNodeIndexes[target] = CallNodeIndexes[source];
+        ReplayNodeIndexes[target] = ReplayNodeIndexes[source];
         Calls[target] = Calls[source];
         Flags[target] = Flags[source];
     }
@@ -91,7 +91,7 @@ internal sealed class TraceSpanStore(int count)
     {
         (Froms[left], Froms[right]) = (Froms[right], Froms[left]);
         (Tos[left], Tos[right]) = (Tos[right], Tos[left]);
-        (CallNodeIndexes[left], CallNodeIndexes[right]) = (CallNodeIndexes[right], CallNodeIndexes[left]);
+        (ReplayNodeIndexes[left], ReplayNodeIndexes[right]) = (ReplayNodeIndexes[right], ReplayNodeIndexes[left]);
         (Calls[left], Calls[right]) = (Calls[right], Calls[left]);
         (Flags[left], Flags[right]) = (Flags[right], Flags[left]);
     }

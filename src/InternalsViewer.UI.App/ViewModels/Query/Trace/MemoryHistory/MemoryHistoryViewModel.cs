@@ -533,14 +533,14 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
         return GetObjectName(block);
     }
 
-    public CallTreeNode? GetWriter(int callNodeIndex) => callNodeIndex >= 0 ? Trace?.Timeline.GetNode(callNodeIndex) : null;
+    public CallTreeNode? GetWriter(int replayNodeIndex) => replayNodeIndex >= 0 ? Trace?.Timeline.GetNode(replayNodeIndex) : null;
 
-    public Windows.UI.Color GetCategoryColour(int callNodeIndex)
-        => ColourHelpers.FromHex(GetWriter(callNodeIndex)?.CategoryColour) ?? Colors.Gray;
+    public Windows.UI.Color GetCategoryColour(int replayNodeIndex)
+        => ColourHelpers.FromHex(GetWriter(replayNodeIndex)?.CategoryColour) ?? Colors.Gray;
 
     public Windows.UI.Color? GetAllocationColour(int block) => ColourHelpers.FromHex(GetAllocatingCall(block)?.CategoryColour);
 
-    public string GetWriterLabel(int callNodeIndex) => GetWriterLabel(GetWriter(callNodeIndex));
+    public string GetWriterLabel(int replayNodeIndex) => GetWriterLabel(GetWriter(replayNodeIndex));
 
     public TraceCallLink GetCallLink(uint thread, TracePoint point, CallTreeNode? node)
     {
@@ -554,14 +554,14 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
         foreach (var call in stack.Calls)
         {
-            if (node is null || ReferenceEquals(timeline.GetNode(call.CallNodeIndex), node))
+            if (node is null || ReferenceEquals(timeline.GetNode(call.ReplayNodeIndex), node))
             {
                 found = call;
             }
         }
 
         return found is { } span
-            ? new TraceCallLink(point, timeline.GetNode(span.CallNodeIndex), span.CallIndex)
+            ? new TraceCallLink(point, timeline.GetNode(span.ReplayNodeIndex), span.CallIndex)
             : new TraceCallLink(point, node, -1);
     }
 
@@ -579,7 +579,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
 
         var writes = Store.GetWrites(block);
 
-        return writes.Count > 0 ? trace.Timeline.GetNode(writes[0].CallNodeIndex) : null;
+        return writes.Count > 0 ? trace.Timeline.GetNode(writes[0].ReplayNodeIndex) : null;
     }
 
     public ObservableCollection<HexWatch> GetWatches(int block) => WatchStore.GetWatches(GetWatchName(block));
@@ -673,7 +673,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
                                                  Store.Blocks[index].Address,
                                                  label,
                                                  state,
-                                                 Store.GetWrite(write).CallNodeIndex >= 0));
+                                                 Store.GetWrite(write).ReplayNodeIndex >= 0));
             }
         }
 
@@ -810,7 +810,7 @@ public sealed partial class MemoryHistoryViewModel(Action<CallTreeNode, int> ope
         => Trace is { } trace
            && !block.IsStack
            && trace.AddressMap.GetClassName(block.Address, block.FromPosition, block.ToPosition) is null
-            ? AllocationTypeReader.GetLabel(trace.CallStore, block.CallNodeIndex, block.Size)
+            ? AllocationTypeReader.GetLabel(trace.CallStore, block.ReplayNodeIndex, block.Size)
             : null;
 
     private bool IsUnnamed(int block)

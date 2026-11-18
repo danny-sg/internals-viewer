@@ -297,7 +297,7 @@ public class TracePageAccessListTests
 
         var accesses = Read(TracePageAccessList.Build(calls, MemoryHistoryStore.Empty, Pool()));
 
-        Assert.Equal([(0, 0), (1, 0), (1, 1)], accesses.Select(a => (a.CallNodeIndex, a.CallIndex)));
+        Assert.Equal([(0, 0), (1, 0), (1, 1)], accesses.Select(a => (a.ReplayNodeIndex, a.CallIndex)));
     }
 
     [Fact]
@@ -419,7 +419,7 @@ public class TracePageAccessListTests
                                                      rcx: rcx,
                                                      rdx: rdx,
                                                      returnValue: returnValue,
-                                                     callNodeIndex: Nodes.Count - 1,
+                                                     replayNodeIndex: Nodes.Count - 1,
                                                      endSequence: endSequence));
 
             return this;

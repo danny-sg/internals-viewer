@@ -37,8 +37,7 @@ internal static class MemoryWatchPlanner
 
                 var thread = list.GetThread(index);
 
-                if (function.Operation is not (AllocationOperation.Allocate or AllocationOperation.AllocateArray)
-                    && function.GetPointer(call) is not 0 and var released)
+                if (function.GetReleased(call) is not 0 and var released)
                 {
                     events.Add((list.GetFromPosition(index), released, 0, thread, false, false));
                 }
@@ -150,7 +149,5 @@ internal static class MemoryWatchPlanner
         return positions;
     }
 
-    private static bool IsWatched(AllocationFunction function)
-        => !function.IsVirtual
-           && (function.IsAllocation || function is { Operation: AllocationOperation.Free, PointerArgumentSlot: >= 0 });
+    private static bool IsWatched(AllocationFunction function) => function is { IsVirtual: false, IsAllocationOrFree: true };
 }

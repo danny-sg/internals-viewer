@@ -1,5 +1,6 @@
-﻿using InternalsViewer.Execution.AccessPaths.Predicates;
-using InternalsViewer.Execution.AccessPaths.Text;
+﻿using InternalsViewer.Query.Plans.Predicates;
+using InternalsViewer.Query.Plans.Text;
+using InternalsViewer.Query.Plans.Text.Enums;
 using InternalsViewer.Query.Plans.Model;
 using InternalsViewer.Query.Plans;
 using InternalsViewer.Query.Results;

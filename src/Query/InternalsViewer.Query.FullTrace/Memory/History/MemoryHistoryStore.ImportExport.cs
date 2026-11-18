@@ -36,7 +36,7 @@ public sealed partial class MemoryHistoryStore
 
             writer.Write(block.Thread);
 
-            writer.Write(block.CallNodeIndex);
+            writer.Write(block.ReplayNodeIndex);
 
             WritePosition(writer, block.FromPosition);
 
@@ -63,9 +63,9 @@ public sealed partial class MemoryHistoryStore
 
         writer.Write(Iterators.Count);
 
-        foreach (var (callNodeIndex, iterator) in Iterators)
+        foreach (var (replayNodeIndex, iterator) in Iterators)
         {
-            writer.Write(callNodeIndex);
+            writer.Write(replayNodeIndex);
 
             writer.Write(iterator);
         }
@@ -107,7 +107,7 @@ public sealed partial class MemoryHistoryStore
                                                    IsIterator: reader.ReadBoolean(),
                                                    IsInline: reader.ReadBoolean(),
                                                    Thread: reader.ReadUInt32(),
-                                                   CallNodeIndex: reader.ReadInt32(),
+                                                   ReplayNodeIndex: reader.ReadInt32(),
                                                    FromPosition: ReadPosition(reader),
                                                    ToPosition: ReadPosition(reader),
                                                    FromInstructions: reader.ReadUInt64(),
@@ -250,26 +250,26 @@ public sealed partial class MemoryHistoryStore
     {
         public TraceTimeline? Timeline => timeline;
 
-        private Dictionary<(int CallNodeIndex, int CallIndex), int> Calls { get; } = [];
+        private Dictionary<(int ReplayNodeIndex, int CallIndex), int> Calls { get; } = [];
 
-        public int Get(int callNodeIndex, int callIndex, TracePosition position)
+        public int Get(int replayNodeIndex, int callIndex, TracePosition position)
         {
             if (timeline is null)
             {
                 return -1;
             }
 
-            if (Calls.TryGetValue((callNodeIndex, callIndex), out var spanId)
-                && timeline.IsSpanAt(spanId, callNodeIndex, callIndex, position))
+            if (Calls.TryGetValue((replayNodeIndex, callIndex), out var spanId)
+                && timeline.IsSpanAt(spanId, replayNodeIndex, callIndex, position))
             {
                 return spanId;
             }
 
-            spanId = timeline.FindSpanId(callNodeIndex, callIndex, position);
+            spanId = timeline.FindSpanId(replayNodeIndex, callIndex, position);
 
             if (spanId >= 0)
             {
-                Calls[(callNodeIndex, callIndex)] = spanId;
+                Calls[(replayNodeIndex, callIndex)] = spanId;
             }
 
             return spanId;

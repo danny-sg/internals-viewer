@@ -32,9 +32,9 @@ public sealed partial class TraceTimelineControl : ITraceTimelineHost
 
     double ITraceTimelineHost.GetOrigin(TraceTimelineAxis axis) => OriginOf(axis);
 
-    SKColor ITraceTimelineHost.GetColour(int callNodeIndex) => GetPaneColour(callNodeIndex);
+    SKColor ITraceTimelineHost.GetColour(int replayNodeIndex) => GetPaneColour(replayNodeIndex);
 
-    string ITraceTimelineHost.GetLabel(int callNodeIndex) => LabelOf(callNodeIndex);
+    string ITraceTimelineHost.GetLabel(int replayNodeIndex) => LabelOf(replayNodeIndex);
 
     void ITraceTimelineHost.Invalidate() => _canvas.Invalidate();
 

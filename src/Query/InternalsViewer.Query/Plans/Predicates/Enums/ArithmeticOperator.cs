@@ -1,4 +1,4 @@
-namespace InternalsViewer.Execution.AccessPaths.Predicates;
+namespace InternalsViewer.Query.Plans.Predicates.Enums;
 
 public enum ArithmeticOperator
 {

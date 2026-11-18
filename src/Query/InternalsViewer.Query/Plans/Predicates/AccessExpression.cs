@@ -1,7 +1,8 @@
 using System.Collections.Immutable;
-using InternalsViewer.Execution.AccessPaths.Values;
+using InternalsViewer.Query.Plans.Predicates.Enums;
+using InternalsViewer.Query.Plans.Values;
 
-namespace InternalsViewer.Execution.AccessPaths.Predicates;
+namespace InternalsViewer.Query.Plans.Predicates;
 
 /// <summary>
 /// A scalar expression appearing in a predicate

@@ -36,7 +36,7 @@ internal static class TraceRowAccessTrackBuilder
                 continue;
             }
 
-            var isFound = IsInSearch(location.Node, access.CallNodeIndex, searches)
+            var isFound = IsInSearch(location.Node, access.ReplayNodeIndex, searches)
                           && pool.GetLayout(access.Page, access.DatabaseId)?.GetSlot(offset) is { } slot
                           && GetSearchResult(timeline, calls, location, access.Position) == slot;
 
@@ -65,7 +65,7 @@ internal static class TraceRowAccessTrackBuilder
     }
 
     private static TraceSpanLocation? GetLocation(TraceTimeline timeline, TracePageAccess access)
-        => timeline.GetNode(access.CallNodeIndex) is { } node ? timeline.FindCall(node, access.CallIndex) : null;
+        => timeline.GetNode(access.ReplayNodeIndex) is { } node ? timeline.FindCall(node, access.CallIndex) : null;
 
     private static TraceTickSource GetSource(TraceSpanLocation location, TracePageAccess access, TraceRowAccessType type)
     {
@@ -74,16 +74,16 @@ internal static class TraceRowAccessTrackBuilder
         return TraceTickSource.Create(location, (byte)type, point);
     }
 
-    private static bool IsInSearch(CallTreeNode node, int callNodeIndex, Dictionary<int, bool> searches)
+    private static bool IsInSearch(CallTreeNode node, int replayNodeIndex, Dictionary<int, bool> searches)
     {
-        if (!searches.TryGetValue(callNodeIndex, out var isInSearch))
+        if (!searches.TryGetValue(replayNodeIndex, out var isInSearch))
         {
             for (var current = node; current is not null && !isInSearch; current = current.Parent)
             {
                 isInSearch = IsSearch(current);
             }
 
-            searches[callNodeIndex] = isInSearch;
+            searches[replayNodeIndex] = isInSearch;
         }
 
         return isInSearch;
@@ -96,7 +96,7 @@ internal static class TraceRowAccessTrackBuilder
             var row = location.Thread.Rows[depth];
 
             if (row.GetIndex(position) is not (>= 0 and var index)
-                || timeline.GetNode(row.GetCallNodeIndex(index)) is not { Frame: { } frame } node
+                || timeline.GetNode(row.GetReplayNodeIndex(index)) is not { Frame: { } frame } node
                 || !IsSearch(node))
             {
                 continue;

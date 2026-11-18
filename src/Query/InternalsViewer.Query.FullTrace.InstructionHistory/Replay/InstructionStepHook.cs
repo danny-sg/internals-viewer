@@ -4,10 +4,8 @@ using InternalsViewer.Query.FullTrace.Native;
 
 namespace InternalsViewer.Query.FullTrace.InstructionHistory.Replay;
 
-internal sealed class InstructionStepHook : ITraceHook
+internal sealed class InstructionStepHook : IInstructionHook
 {
-    public IEnumerable<TraceHookFunction> Functions => [];
-
     public TraceInstructionHistory.Builder Builder { get; } = new();
 
     public void OnInstructionChunk(ReadOnlySpan<InstructionStep> steps,

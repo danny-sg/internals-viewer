@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
-using InternalsViewer.Execution.AccessPaths.Text;
 using InternalsViewer.Query.Plans.Model;
+using InternalsViewer.Query.Plans.Text;
+using InternalsViewer.Query.Plans.Text.Enums;
 
 namespace InternalsViewer.Query.Plans;
 
@@ -80,20 +81,6 @@ public static class PlanNodePredicateText
             : PredicateText.Empty;
     }
 
-    public static bool HasRedundantResidual(this PlanNode node)
-    {
-        if (node.PredicateInfo is not { HasSeekBounds: true, Residual: not null })
-        {
-            return false;
-        }
-
-        var seek = Normalize(node.GetSeekText());
-
-        var residual = Normalize(node.GetResidualText());
-
-        return seek.Length > 0 && seek == residual;
-    }
-
     public static PredicateText GetText(this DefinedValueInfo value, ExpressionCatalog? expressions)
     {
         var text = value.ParsedExpression is { } expression ? PredicateText.From(expression) : PredicateText.Empty;
@@ -122,14 +109,5 @@ public static class PlanNodePredicateText
         }
 
         return new PredicateText(tokens.ToImmutable());
-    }
-
-    private static string Normalize(PredicateText text)
-    {
-        return PredicateWriter.ToText(text.Tokens)
-                   .Replace("(", string.Empty)
-                   .Replace(")", string.Empty)
-                   .Replace("  ", " ")
-                   .Trim();
     }
 }

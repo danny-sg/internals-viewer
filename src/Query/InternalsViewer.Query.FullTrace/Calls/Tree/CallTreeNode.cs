@@ -160,12 +160,7 @@ public sealed class CallTreeNode
     /// </summary>
     public string Category => Frame?.Function?.SymbolMetadata?.Name ?? Frame?.Module.Name ?? string.Empty;
 
-    /// <summary>
-    /// The resolved <c>Class::Method</c> of this frame
-    /// </summary>
-    public string Symbol => Frame?.Function is { } resolved
-        ? resolved.ClassName is { Length: > 0 } className ? $"{className}::{resolved.MethodName}" : resolved.MethodName
-        : string.Empty;
+    public string Symbol => Frame?.Function?.Symbol ?? string.Empty;
 
     /// <summary>
     /// Hex colour of the symbol category, for the node's tag

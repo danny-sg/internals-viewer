@@ -43,7 +43,7 @@ internal static class AllocationMapper
 
         ulong bytes = 0;
 
-        foreach (var function in functions.Where(f => f.IsAllocation || f is { Operation: AllocationOperation.Free, PointerArgumentSlot: >= 0 }))
+        foreach (var function in functions.Where(f => f.IsAllocationOrFree))
         {
             if (GetCalls(function.Address) is not { } logged)
             {
@@ -63,23 +63,19 @@ internal static class AllocationMapper
                     continue;
                 }
 
-                var pointer = function.GetPointer(call);
+                if (callValues.Released.Length > 0)
+                {
+                    callValues.Released[index] = function.GetReleased(call);
+                }
 
                 if (!function.IsAllocation)
                 {
-                    callValues.Released[index] = pointer;
-
                     continue;
                 }
 
                 callValues.Bytes[index] = function.GetByteCount(call);
 
                 callValues.Returned[index] = call.ReturnedValue;
-
-                if (function.Operation == AllocationOperation.Reallocate && pointer != 0)
-                {
-                    callValues.Released[index] = pointer;
-                }
 
                 if (node is null || IsNested(node, byAddress, nested))
                 {

@@ -1,4 +1,4 @@
-namespace InternalsViewer.Execution.AccessPaths.Aggregation;
+namespace InternalsViewer.Query.Plans.Aggregation.Enums;
 
 public enum AggregateFunction
 {

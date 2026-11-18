@@ -56,11 +56,12 @@ public sealed partial class TraceCallStore
     public TraceCallList? GetCallList(ulong functionAddress, ulong instanceAddress)
         => Lists.GetValueOrDefault((functionAddress, instanceAddress));
 
-    public CallTreeNode? GetNode(TraceArgumentCall call) => GetNode(call.CallNodeIndex);
+    public CallTreeNode? GetNode(TraceArgumentCall call) => GetNode(call.ReplayNodeIndex);
 
-    public CallTreeNode? GetNode(int callNodeIndex) => callNodeIndex >= 0 && callNodeIndex < Nodes.Length ? Nodes[callNodeIndex] : null;
+    public CallTreeNode? GetNode(int replayNodeIndex)
+        => replayNodeIndex >= 0 && replayNodeIndex < Nodes.Length ? Nodes[replayNodeIndex] : null;
 
-    public CallTreeNode? GetFirstNode(TraceCallList calls) => GetNode(calls.GetCallNodeIndex(0));
+    public CallTreeNode? GetFirstNode(TraceCallList calls) => GetNode(calls.GetReplayNodeIndex(0));
 
     public IEnumerable<TraceCallList> GetCallLists()
     {
@@ -84,7 +85,7 @@ public sealed partial class TraceCallStore
                 cancellationToken.ThrowIfCancellationRequested();
             }
 
-            if (include(GetNode(calls.GetCallNodeIndex(index))))
+            if (include(GetNode(calls.GetReplayNodeIndex(index))))
             {
                 included.Add(index);
             }
@@ -115,7 +116,7 @@ public sealed partial class TraceCallStore
                     continue;
                 }
 
-                if (callIndex < calls.Count && GetNode(calls.GetCallNodeIndex(callIndex)) is { } node)
+                if (callIndex < calls.Count && GetNode(calls.GetReplayNodeIndex(callIndex)) is { } node)
                 {
                     (node.Locators ??= new LocatorSet()).Add(locator);
                 }

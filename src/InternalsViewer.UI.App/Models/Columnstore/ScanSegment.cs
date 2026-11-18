@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using InternalsViewer.Internals.Columnstore.Segments;
 
-namespace InternalsViewer.UI.App.Models.Query.Simulation.Columnstore;
+namespace InternalsViewer.UI.App.Models.Columnstore;
 
 public sealed class ScanSegment
 {

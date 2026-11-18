@@ -34,11 +34,6 @@ resolves frames to names and classifies them: the category and operator rules ar
 `Symbols/Categories/Mappings/`. `Iterators/OperatorFrameMap.cs` decides an operator's entry and exit frames.
 `TraceLoader.cs` runs a load end to end and `TraceResult.cs` is what the tools read.
 
-## Execution simulation, `src/InternalsViewer.Execution`
-
-The Volcano-model iterators, access paths and executors behind the Simulation view, which replays query execution
-against the pages.
-
 ## The app, `src/InternalsViewer.UI.App`
 
 The WinUI 3 app: `Views/` (XAML), `ViewModels/` and `Models/`, with the drawn surfaces in `Controls/` (the timelines,
