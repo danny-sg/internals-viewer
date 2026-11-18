@@ -190,7 +190,10 @@ public sealed partial class MemoryDetailsViewModel : ObservableObject
 
         var link = new TraceCallLink(store.GetPoint(block.FirstWrite + first), owner.History.GetWriter(replayNodeIndex), write.CallIndex);
 
-        return new MemoryWriterSummary(owner.History.GetWriterLabel(replayNodeIndex), owner.GetCategoryColour(replayNodeIndex), count, link);
+        return new MemoryWriterSummary(owner.History.GetWriterLabel(replayNodeIndex),
+                                       owner.GetCategoryColour(replayNodeIndex),
+                                       count,
+                                       link);
     }
 
     private static MemoryWriterSummary GetReader(PlayheadMemoryViewModel owner, int replayNodeIndex, int first, int count)

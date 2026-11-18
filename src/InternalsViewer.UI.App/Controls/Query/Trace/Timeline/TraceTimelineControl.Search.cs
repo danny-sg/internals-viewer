@@ -308,7 +308,8 @@ public sealed partial class TraceTimelineControl
 
             for (var replayNodeIndex = 0; replayNodeIndex < excluded.Length; replayNodeIndex++)
             {
-                excluded[replayNodeIndex] |= timeline.GetNode(replayNodeIndex) is { Frame: not null } node && hidden.Contains(node.Category);
+                excluded[replayNodeIndex] |= timeline.GetNode(replayNodeIndex) is { Frame: not null } node
+                                             && hidden.Contains(node.Category);
             }
         }
 

@@ -24,8 +24,8 @@ public sealed class FrameFunction
 
     internal string? ModuleName { get; init; }
 
-    internal string Symbol => field ??= ClassName is { Length: > 0 } className
-        ? $"{className}::{MethodName}"
+    internal string Symbol => field ??= ClassName is { Length: > 0 }
+        ? $"{ClassName}::{MethodName}"
         : MethodName;
 
     internal string FunctionKey => field ??= $"{ModuleName}!{ClassName}::{MethodName}";

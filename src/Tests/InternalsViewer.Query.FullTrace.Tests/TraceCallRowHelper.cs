@@ -40,12 +40,12 @@ internal static class TraceCallRowHelper
         foreach (var calls in spans.Where(s => s.CallIndex != uint.MaxValue).GroupBy(s => s.ReplayNodeIndex))
         {
             ulong[][] rows = [.. calls.OrderBy(s => s.CallIndex)
-                                      .Select(s => Row(s.StartSequence,
+                                      .Select(s => Row(s.FromSequence,
                                                        flags: s.Thread,
                                                        replayNodeIndex: s.ReplayNodeIndex,
-                                                       steps: s.StartSteps,
-                                                       endSequence: s.EndSequence,
-                                                       endSteps: s.EndSteps))];
+                                                       steps: s.FromSteps,
+                                                       endSequence: s.ToSequence,
+                                                       endSteps: s.ToSteps))];
 
             builder.Add(nodes[calls.Key].FunctionAddress, nodes[calls.Key].InstanceAddress, Chunk(rows), rows.Length);
         }
