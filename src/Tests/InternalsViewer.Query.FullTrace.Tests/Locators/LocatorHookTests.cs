@@ -8,6 +8,7 @@ using InternalsViewer.Query.FullTrace.Calls;
 using InternalsViewer.Query.FullTrace.Replay.Hooks;
 using InternalsViewer.Query.FullTrace.Locators;
 using InternalsViewer.Query.FullTrace.Arguments;
+using InternalsViewer.Query.FullTrace.Replay;
 
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRowHelper;
 

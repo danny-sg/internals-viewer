@@ -3,6 +3,7 @@ using InternalsViewer.Query.FullTrace.Calls.Tree;
 using InternalsViewer.Query.FullTrace.Helpers;
 using InternalsViewer.Query.FullTrace.Replay.Hooks;
 using InternalsViewer.Query.FullTrace.Replay.Hooks.Enums;
+using InternalsViewer.Query.FullTrace.Replay;
 
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRowHelper;
 

@@ -16,6 +16,7 @@ using InternalsViewer.Query.FullTrace.Timeline;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 using InternalsViewer.Query.FullTrace.Symbols.Categories;
 using InternalsViewer.Query.FullTrace.Symbols.Categories.Enums;
+using InternalsViewer.Query.FullTrace.Replay;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Memory.History.Capture;
 

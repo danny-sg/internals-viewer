@@ -1,7 +1,8 @@
 using InternalsViewer.Internals.Engine.Address;
 using InternalsViewer.Internals.Engine.Pages.Enums;
+using InternalsViewer.Query.FullTrace.Memory.BufferPool;
 
-namespace InternalsViewer.Query.FullTrace.Memory.BufferPool;
+namespace InternalsViewer.Query.FullTrace.Replay;
 
 internal sealed class ReplayBufferPool
 {

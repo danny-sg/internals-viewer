@@ -7,6 +7,7 @@ using InternalsViewer.Query.FullTrace.Memory.Layouts;
 using static InternalsViewer.Query.FullTrace.Tests.TracePositionHelper;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output;
 using InternalsViewer.Query.FullTrace.Iterators.PlanNodes.Output.Enums;
+using InternalsViewer.Query.FullTrace.Replay;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Iterators.PlanNodes.Output;
 

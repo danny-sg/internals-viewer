@@ -9,6 +9,7 @@ using InternalsViewer.Query.FullTrace.Calls.Enums;
 using InternalsViewer.Query.FullTrace.Iterators;
 using InternalsViewer.Query.FullTrace.Memory;
 using InternalsViewer.Query.FullTrace.Tests.Memory.Layouts.Bindings;
+using InternalsViewer.Query.FullTrace.Replay;
 using static InternalsViewer.Query.FullTrace.Tests.TraceCallRowHelper;
 
 namespace InternalsViewer.Query.FullTrace.Tests.Calls;

@@ -8,6 +8,7 @@ using InternalsViewer.Query.FullTrace.Replay.Hooks;
 using InternalsViewer.Query.FullTrace.Replay.Hooks.Enums;
 using InternalsViewer.Query.FullTrace.Memory.BufferPool.Enums;
 using InternalsViewer.Query.FullTrace.Replay.Hooks.Interfaces;
+using InternalsViewer.Query.FullTrace.Replay;
 
 namespace InternalsViewer.Query.FullTrace.Memory.BufferPool;
 

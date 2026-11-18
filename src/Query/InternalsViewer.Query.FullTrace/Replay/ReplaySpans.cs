@@ -1,7 +1,8 @@
 using System.Runtime.InteropServices;
 using InternalsViewer.Query.FullTrace.Replay.Native;
+using InternalsViewer.Query.FullTrace.Timeline;
 
-namespace InternalsViewer.Query.FullTrace.Timeline;
+namespace InternalsViewer.Query.FullTrace.Replay;
 
 internal sealed class ReplaySpans
 {
